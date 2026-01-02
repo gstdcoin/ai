@@ -1,24 +1,18 @@
-# GSTD — Distributed AI & Computing Network
+# GSTD AI & Distributed Computing Platform
 
-GSTD (Global Smart Technology Decentralized) is a high-performance DePIN (Decentralized Physical Infrastructure Network) platform designed to harness idle computing power through a global network of devices.
+## Overview
+GSTD is a high-performance DePIN infrastructure designed for AI inference and distributed computations, integrated with the TON Blockchain.
 
-## 🚀 Vision
-The project aims to bridge the gap between high-demand AI/ML tasks and distributed computing resources. By utilizing Telegram Mini App (TMA) as a primary interface, GSTD enables seamless participation for millions of users worldwide.
+## Key Features
+- **Secure Payouts**: 95/5 reward split (Worker/Platform).
+- **Golden Reserve**: Automated GSTD to XAUt (Tether Gold) swaps via STON.fi.
+- **Security**: 24-hour payout aggregation, full UUID memo tracking, and replay-attack protection.
+- **Scalable**: Docker-ready architecture with resource limiting.
 
-## 🌟 Key Features
-- **Scalable Architecture:** Built on a decentralized network of processing nodes.
-- **Secure Runtime:** Execution of tasks within a sandboxed WebAssembly (Wasm) environment.
-- **Blockchain Incentives:** Transparent reward distribution via the TON (The Open Network) ecosystem.
-- **Low Barrier to Entry:** User-friendly experience within the Telegram ecosystem.
+## Technical Stack
+- **Backend**: Go (Gin, GORM, PostgreSQL, Redis)
+- **Frontend**: Next.js, TypeScript, TonConnect UI
+- **Worker**: Python-based lightweight client
 
-## 🛠 Technology Stack
-- **Core Engine:** High-concurrency Go-based backend.
-- **User Interface:** Modern Next.js application optimized for mobile view.
-- **Data Layer:** Resilient PostgreSQL and Redis infrastructure.
-- **Security:** Industry-standard encryption and container isolation.
-
-## 📅 Project Status
-The platform is currently in the **Private Development Phase**. The source code is closed to protect intellectual property and unique computation algorithms.
-
----
-*GSTD Protocol — Powering the future of decentralized intelligence.*
+## Security Notice
+Mainnet configuration and private keys are managed via environment variables and are NOT included in this repository.

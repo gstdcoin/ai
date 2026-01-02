@@ -1,0 +1,27 @@
+FROM python:3.11-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+RUN pip install --no-cache-dir \
+    requests \
+    urllib3
+
+# Copy worker script
+COPY worker.py /app/worker.py
+
+# Make worker executable
+RUN chmod +x /app/worker.py
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+
+# Run worker
+ENTRYPOINT ["python3", "/app/worker.py"]
+

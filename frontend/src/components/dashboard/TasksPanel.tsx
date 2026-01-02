@@ -1,0 +1,391 @@
+import { useState, useEffect } from 'react';
+import { useTranslation } from 'next-i18next';
+import { useWalletStore } from '../../store/walletStore';
+import { useTonConnectUI } from '@tonconnect/ui-react';
+import TaskDetailsModal from './TaskDetailsModal';
+
+interface Task {
+  task_id: string;
+  task_type: string;
+  status: string;
+  labor_compensation_ton: number;
+  created_at: string;
+  completed_at?: string;
+  assigned_device?: string;
+}
+
+interface TasksPanelProps {
+  onTaskCreated?: () => void;
+  onCompensationClaimed?: () => void;
+}
+
+export default function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
+  const { t } = useTranslation('common');
+  const { address } = useWalletStore();
+  const [tonConnectUI] = useTonConnectUI();
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<'all' | 'my' | 'available'>('all');
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [claimingCompensation, setClaimingCompensation] = useState<string | null>(null);
+
+  const triggerConfetti = () => {
+    // Simple confetti effect using canvas
+    const canvas = document.createElement('canvas');
+    canvas.style.position = 'fixed';
+    canvas.style.top = '0';
+    canvas.style.left = '0';
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    canvas.style.pointerEvents = 'none';
+    canvas.style.zIndex = '9999';
+    document.body.appendChild(canvas);
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const particles: Array<{x: number; y: number; vx: number; vy: number; color: string}> = [];
+    const colors = ['#FFD700', '#FFA500', '#FF6347', '#32CD32', '#1E90FF', '#9370DB'];
+
+    // Create particles
+    for (let i = 0; i < 100; i++) {
+      particles.push({
+        x: canvas.width / 2,
+        y: canvas.height / 2,
+        vx: (Math.random() - 0.5) * 10,
+        vy: (Math.random() - 0.5) * 10 - 5,
+        color: colors[Math.floor(Math.random() * colors.length)],
+      });
+    }
+
+    let animationFrame: number;
+    const animate = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      particles.forEach((particle, index) => {
+        particle.x += particle.vx;
+        particle.y += particle.vy;
+        particle.vy += 0.2; // gravity
+
+        ctx.fillStyle = particle.color;
+        ctx.beginPath();
+        ctx.arc(particle.x, particle.y, 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Remove particles that are off screen
+        if (particle.y > canvas.height + 10) {
+          particles.splice(index, 1);
+        }
+      });
+
+      if (particles.length > 0) {
+        animationFrame = requestAnimationFrame(animate);
+      } else {
+        document.body.removeChild(canvas);
+      }
+    };
+
+    animate();
+
+    // Cleanup after 3 seconds
+    setTimeout(() => {
+      if (canvas.parentNode) {
+        document.body.removeChild(canvas);
+      }
+      if (animationFrame) {
+        cancelAnimationFrame(animationFrame);
+      }
+    }, 3000);
+  };
+
+  const loadTasks = async () => {
+    setLoading(true);
+    try {
+      const endpoint = filter === 'my' 
+        ? `/api/v1/tasks?requester=${address}`
+        : filter === 'available'
+        ? '/api/v1/device/tasks/available'
+        : '/api/v1/tasks';
+      
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${endpoint}`);
+      const data = await response.json();
+      const newTasks = data.tasks || [];
+      
+      // Check for newly completed tasks and trigger confetti
+      if (tasks.length > 0) {
+        newTasks.forEach((newTask: Task) => {
+          const oldTask = tasks.find(t => t.task_id === newTask.task_id);
+          if (oldTask && oldTask.status !== 'completed' && newTask.status === 'completed') {
+            triggerConfetti();
+            if (onTaskCreated) {
+              onTaskCreated();
+            }
+          }
+        });
+      }
+      
+      setTasks(newTasks);
+    } catch (error) {
+      console.error('Error loading tasks:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadTasks();
+    
+    // Poll for task updates every 5 seconds
+    const interval = setInterval(() => {
+      loadTasks();
+    }, 5000);
+    
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter, address]);
+
+  const getStatusColor = (status: string) => {
+    const colors: Record<string, string> = {
+      pending: 'bg-yellow-100 text-yellow-800',
+      assigned: 'bg-blue-100 text-blue-800',
+      executing: 'bg-purple-100 text-purple-800',
+      validating: 'bg-indigo-100 text-indigo-800',
+      validated: 'bg-green-100 text-green-800',
+      completed: 'bg-green-100 text-green-800',
+      failed: 'bg-red-100 text-red-800',
+    };
+    return colors[status] || 'bg-gray-100 text-gray-800';
+  };
+
+  const handleClaimCompensation = async (task: Task) => {
+    if (!address || !task.assigned_device) {
+      alert(t('wallet_required') || 'Wallet address required');
+      return;
+    }
+
+    setClaimingCompensation(task.task_id);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
+      
+      // Get payout intent
+      const intentResponse = await fetch(`${apiUrl}/v1/payments/payout-intent`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          task_id: task.task_id,
+          executor_address: task.assigned_device,
+        }),
+      });
+
+      if (!intentResponse.ok) {
+        throw new Error('Failed to get payout intent');
+      }
+
+      const intent = await intentResponse.json();
+
+      // Build Tact-compatible Cell payload using @ton/core
+      const { beginCell, Address } = await import('@ton/core');
+      
+      // Parse executor address
+      const executorAddress = Address.parse(intent.executor_address);
+      
+      // Convert TON amounts to nanoTON (1 TON = 1e9 nanoTON)
+      const platformFeeNano = BigInt(Math.floor(intent.platform_fee_ton * 1e9));
+      const executorRewardNano = BigInt(Math.floor(intent.executor_reward_ton * 1e9));
+      
+      // Build cell matching escrow.tact Withdraw message structure:
+      // [op_code (32u), executor_address (MsgAddress), platform_fee (Coins), executor_reward (Coins), task_id (Ref->String)]
+      const payloadCell = beginCell()
+        .storeUint(0, 32) // op_code for Withdraw message
+        .storeAddress(executorAddress)
+        .storeCoins(platformFeeNano)
+        .storeCoins(executorRewardNano)
+        .storeRef(
+          beginCell()
+            .storeStringTail(intent.task_id)
+            .endCell()
+        )
+        .endCell();
+      
+      // Convert to Base64 BoC for TonConnect
+      const payloadBase64 = payloadCell.toBoc().toString('base64');
+
+      // Send transaction via TonConnect
+      const result = await tonConnectUI.sendTransaction({
+        messages: [
+          {
+            address: intent.to_address,
+            amount: intent.amount_nano.toString(),
+            payload: payloadBase64,
+          },
+        ],
+        validUntil: Math.floor(Date.now() / 1000) + 300, // 5 minutes from now
+      });
+
+      console.log('Transaction sent:', result);
+      
+      // Trigger haptic feedback
+      if (onCompensationClaimed) {
+        onCompensationClaimed();
+      }
+      
+      alert(t('labor_compensation_claimed_success') || 'Labor compensation claimed successfully!');
+      
+      // Reload tasks
+      loadTasks();
+    } catch (error) {
+      console.error('Failed to claim labor compensation:', error);
+      alert(t('labor_compensation_claim_failed') || 'Failed to claim labor compensation');
+    } finally {
+      setClaimingCompensation(null);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-gray-500">{t('loading')}</div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="mb-6 flex flex-wrap gap-2 sm:gap-4 items-center">
+        <button
+          onClick={() => setFilter('all')}
+          className={`px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm sm:text-base ${
+            filter === 'all' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'
+          }`}
+        >
+          {t('tasks')}
+        </button>
+        {address && (
+          <>
+            <button
+              onClick={() => setFilter('my')}
+              className={`px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm sm:text-base ${
+                filter === 'my' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              {t('my_tasks')}
+            </button>
+            <button
+              onClick={() => setFilter('available')}
+              className={`px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm sm:text-base ${
+                filter === 'available' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              {t('available_tasks')}
+            </button>
+          </>
+        )}
+        <button
+          onClick={loadTasks}
+          disabled={loading}
+          className="ml-auto px-3 sm:px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm sm:text-base flex items-center gap-2 disabled:opacity-50"
+          title={t('refresh') || 'Refresh task list'}
+        >
+          <span>🔄</span>
+          <span className="hidden sm:inline">{t('refresh') || 'Refresh'}</span>
+        </button>
+      </div>
+
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                {t('task_id')}
+              </th>
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">
+                {t('task_type')}
+              </th>
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                {t('status')}
+              </th>
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">
+                {t('labor_compensation')}
+              </th>
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">
+                {t('created_at')}
+              </th>
+              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                {t('actions')}
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {tasks.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                  {t('no_tasks')}
+                </td>
+              </tr>
+            ) : (
+              tasks.map((task) => (
+                <tr key={task.task_id} className="hover:bg-gray-50">
+                  <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
+                    <span className="sm:hidden">{task.task_id.slice(0, 4)}...</span>
+                    <span className="hidden sm:inline">{task.task_id.slice(0, 8)}...</span>
+                  </td>
+                  <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-700 hidden sm:table-cell">
+                    {task.task_type}
+                  </td>
+                  <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(task.status)}`}>
+                      {t(task.status)}
+                    </span>
+                  </td>
+                  <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-700 hidden md:table-cell">
+                    {task.labor_compensation_ton} TON
+                  </td>
+                  <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500 hidden lg:table-cell">
+                    {new Date(task.created_at).toLocaleString()}
+                  </td>
+                  <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm">
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <button 
+                        onClick={() => setSelectedTaskId(task.task_id)}
+                        className="text-primary-600 hover:text-primary-800 text-xs sm:text-sm"
+                      >
+                        {t('view_details')}
+                      </button>
+                      {task.status === 'validated' && task.assigned_device === address && (
+                        <button
+                          onClick={() => handleClaimCompensation(task)}
+                          disabled={claimingCompensation === task.task_id}
+                          className="bg-green-600 text-white px-2 sm:px-3 py-1 rounded hover:bg-green-700 disabled:opacity-50 text-xs sm:text-sm"
+                        >
+                          {claimingCompensation === task.task_id 
+                            ? (t('claiming') || 'Claiming...') 
+                            : (t('claim_compensation') || 'Claim')}
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+        </div>
+      </div>
+
+      {selectedTaskId && (
+        <TaskDetailsModal 
+          taskId={selectedTaskId} 
+          onClose={() => setSelectedTaskId(null)} 
+        />
+      )}
+    </div>
+  );
+}
+
+
