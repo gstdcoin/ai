@@ -6,7 +6,8 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
-RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
+# Install dependencies - use npm install to handle package-lock.json sync issues
+RUN npm install
 
 # Rebuild the source code only when needed
 FROM base AS builder

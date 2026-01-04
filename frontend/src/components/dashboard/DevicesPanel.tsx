@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { useTranslation } from 'next-i18next';
 import { useWalletStore } from '../../store/walletStore';
 import RegisterDeviceModal from './RegisterDeviceModal';
+import EmptyState from '../common/EmptyState';
+import { Server, Plus } from 'lucide-react';
 
 interface Node {
   id: string;
@@ -62,7 +64,10 @@ export default function DevicesPanel() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">{t('loading') || 'Loading...'}</div>
+        <div className="glass-card">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold-900 mx-auto"></div>
+          <p className="text-gray-400 mt-4">{t('loading') || 'Loading...'}</p>
+        </div>
       </div>
     );
   }
@@ -71,72 +76,75 @@ export default function DevicesPanel() {
     <div>
       <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">{t('my_nodes') || 'My Computing Nodes'}</h2>
-          <p className="text-sm sm:text-base text-gray-600 mt-1">
+          <h2 className="text-xl sm:text-2xl font-bold text-white font-display">{t('my_nodes') || 'My Computing Nodes'}</h2>
+          <p className="text-sm sm:text-base text-gray-400 mt-1">
             {t('total_nodes') || 'Total nodes'}: {nodes.length}
           </p>
         </div>
         <button
           onClick={() => setShowRegisterModal(true)}
-          className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors font-medium"
+          className="glass-button-gold min-h-[44px]"
         >
-          {t('register_device') || 'Register Device'}
+          <Plus size={18} />
+          <span>{t('register_device') || 'Register Device'}</span>
         </button>
       </div>
 
       {nodes.length === 0 ? (
-        <div className="bg-white rounded-lg shadow p-12 text-center">
-          <p className="text-gray-500 mb-4">{t('no_nodes') || 'No nodes registered yet'}</p>
-          <button
-            onClick={() => setShowRegisterModal(true)}
-            className="bg-primary-600 text-white px-6 py-2 rounded-lg hover:bg-primary-700 transition-colors"
-          >
-            {t('register_first_device') || 'Register Your First Device'}
-          </button>
-        </div>
+        <EmptyState
+          icon={<Server className="text-gray-400" size={48} />}
+          title={t('no_nodes') || 'No devices registered'}
+          description={t('no_nodes_desc') || 'Register your first computing node to start earning GSTD by processing tasks.'}
+          actionLabel={t('register_first_device') || 'Register Your First Device'}
+          onAction={() => setShowRegisterModal(true)}
+        />
       ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="glass-card overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-white/10">
+              <thead className="bg-white/5">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                     {t('name') || 'Name'}
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden sm:table-cell">
                     {t('node_id') || 'Node ID'}
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                     {t('status') || 'Status'}
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden md:table-cell">
                     {t('specs') || 'Specs'}
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden lg:table-cell">
                     {t('last_seen') || 'Last Seen'}
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                     {t('actions') || 'Actions'}
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="divide-y divide-white/10">
                 {nodes.map((node) => (
-                  <tr key={node.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{node.name}</div>
+                  <tr key={node.id} className="hover:bg-white/5 transition-colors">
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-white">{node.name}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-mono text-gray-500 break-all max-w-xs">
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap hidden sm:table-cell">
+                      <div className="text-sm font-mono text-gray-400 break-all max-w-xs">
                         {node.id}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(node.status)}`}>
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        node.status === 'online' 
+                          ? 'bg-green-500/20 text-green-400' 
+                          : 'bg-gray-500/20 text-gray-400'
+                      }`}>
                         {node.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-300 hidden md:table-cell">
                       {node.cpu_model && (
                         <div>CPU: {node.cpu_model}</div>
                       )}
@@ -144,16 +152,16 @@ export default function DevicesPanel() {
                         <div>RAM: {node.ram_gb} GB</div>
                       )}
                       {!node.cpu_model && !node.ram_gb && (
-                        <span className="text-gray-400">-</span>
+                        <span className="text-gray-500">-</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-400 hidden lg:table-cell">
                       {formatDate(node.last_seen)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm">
                       <button
                         onClick={() => setSelectedNodeId(node.id)}
-                        className="bg-primary-600 text-white px-3 py-1 rounded hover:bg-primary-700 transition-colors text-xs"
+                        className="glass-button text-white text-xs min-h-[32px]"
                       >
                         {t('connect_script') || 'Connect Script'}
                       </button>

@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { useTranslation } from 'next-i18next';
 import { useWalletStore } from '../../store/walletStore';
 import { useTonConnectUI } from '@tonconnect/ui-react';
 import TaskDetailsModal from './TaskDetailsModal';
+import EmptyState from '../common/EmptyState';
+import { ClipboardList } from 'lucide-react';
 
 interface Task {
   task_id: string;
@@ -249,7 +251,10 @@ export default function TasksPanel({ onTaskCreated, onCompensationClaimed }: Tas
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">{t('loading')}</div>
+        <div className="glass-card">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold-900 mx-auto"></div>
+          <p className="text-gray-400 mt-4">{t('loading')}</p>
+        </div>
       </div>
     );
   }
@@ -259,8 +264,10 @@ export default function TasksPanel({ onTaskCreated, onCompensationClaimed }: Tas
       <div className="mb-6 flex flex-wrap gap-2 sm:gap-4 items-center">
         <button
           onClick={() => setFilter('all')}
-          className={`px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm sm:text-base ${
-            filter === 'all' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'
+          className={`px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm sm:text-base min-h-[44px] ${
+            filter === 'all' 
+              ? 'glass-button-gold' 
+              : 'glass-button text-white'
           }`}
         >
           {t('tasks')}
@@ -269,16 +276,20 @@ export default function TasksPanel({ onTaskCreated, onCompensationClaimed }: Tas
           <>
             <button
               onClick={() => setFilter('my')}
-              className={`px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm sm:text-base ${
-                filter === 'my' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'
+              className={`px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm sm:text-base min-h-[44px] ${
+                filter === 'my' 
+                  ? 'glass-button-gold' 
+                  : 'glass-button text-white'
               }`}
             >
               {t('my_tasks')}
             </button>
             <button
               onClick={() => setFilter('available')}
-              className={`px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm sm:text-base ${
-                filter === 'available' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'
+              className={`px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm sm:text-base min-h-[44px] ${
+                filter === 'available' 
+                  ? 'glass-button-gold' 
+                  : 'glass-button text-white'
               }`}
             >
               {t('available_tasks')}
@@ -288,7 +299,7 @@ export default function TasksPanel({ onTaskCreated, onCompensationClaimed }: Tas
         <button
           onClick={loadTasks}
           disabled={loading}
-          className="ml-auto px-3 sm:px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm sm:text-base flex items-center gap-2 disabled:opacity-50"
+          className="ml-auto glass-button text-white disabled:opacity-50"
           title={t('refresh') || 'Refresh task list'}
         >
           <span>🔄</span>
@@ -296,87 +307,105 @@ export default function TasksPanel({ onTaskCreated, onCompensationClaimed }: Tas
         </button>
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                {t('task_id')}
-              </th>
-              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">
-                {t('task_type')}
-              </th>
-              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                {t('status')}
-              </th>
-              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">
-                {t('labor_compensation')}
-              </th>
-              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">
-                {t('created_at')}
-              </th>
-              <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                {t('actions')}
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {tasks.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
-                  {t('no_tasks')}
-                </td>
-              </tr>
-            ) : (
-              tasks.map((task) => (
-                <tr key={task.task_id} className="hover:bg-gray-50">
-                  <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
-                    <span className="sm:hidden">{task.task_id.slice(0, 4)}...</span>
-                    <span className="hidden sm:inline">{task.task_id.slice(0, 8)}...</span>
-                  </td>
-                  <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-700 hidden sm:table-cell">
-                    {task.task_type}
-                  </td>
-                  <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(task.status)}`}>
-                      {t(task.status)}
-                    </span>
-                  </td>
-                  <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-700 hidden md:table-cell">
-                    {task.labor_compensation_ton} TON
-                  </td>
-                  <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500 hidden lg:table-cell">
-                    {new Date(task.created_at).toLocaleString()}
-                  </td>
-                  <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm">
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <button 
-                        onClick={() => setSelectedTaskId(task.task_id)}
-                        className="text-primary-600 hover:text-primary-800 text-xs sm:text-sm"
-                      >
-                        {t('view_details')}
-                      </button>
-                      {task.status === 'validated' && task.assigned_device === address && (
-                        <button
-                          onClick={() => handleClaimCompensation(task)}
-                          disabled={claimingCompensation === task.task_id}
-                          className="bg-green-600 text-white px-2 sm:px-3 py-1 rounded hover:bg-green-700 disabled:opacity-50 text-xs sm:text-sm"
-                        >
-                          {claimingCompensation === task.task_id 
-                            ? (t('claiming') || 'Claiming...') 
-                            : (t('claim_compensation') || 'Claim')}
-                        </button>
-                      )}
-                    </div>
-                  </td>
+      {tasks.length === 0 ? (
+        <EmptyState
+          icon={<ClipboardList className="text-gray-400" size={48} />}
+          title={t('no_tasks') || 'No tasks yet'}
+          description={
+            filter === 'my' 
+              ? t('no_my_tasks_desc') || 'You haven\'t created any tasks yet. Create your first task to get started.'
+              : filter === 'available'
+              ? t('no_available_tasks_desc') || 'No tasks are currently available for execution.'
+              : t('no_tasks_desc') || 'No tasks found. Create a new task to get started.'
+          }
+          actionLabel={filter !== 'available' ? t('create_task') : undefined}
+          onAction={filter !== 'available' ? () => {
+            // Trigger create task - this will be handled by parent
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('openCreateTask'));
+            }
+          } : undefined}
+        />
+      ) : (
+        <div className="glass-card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-white/10">
+              <thead className="bg-white/5">
+                <tr>
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    {t('task_id')}
+                  </th>
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden sm:table-cell">
+                    {t('task_type')}
+                  </th>
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    {t('status')}
+                  </th>
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden md:table-cell">
+                    {t('labor_compensation')}
+                  </th>
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden lg:table-cell">
+                    {t('created_at')}
+                  </th>
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    {t('actions')}
+                  </th>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              </thead>
+              <tbody className="divide-y divide-white/10">
+                {tasks.map((task) => (
+                  <tr key={task.task_id} className="hover:bg-white/5 transition-colors">
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm font-mono text-white">
+                      <span className="sm:hidden">{task.task_id.slice(0, 4)}...</span>
+                      <span className="hidden sm:inline">{task.task_id.slice(0, 8)}...</span>
+                    </td>
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-300 hidden sm:table-cell">
+                      {task.task_type}
+                    </td>
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                        task.status === 'completed' ? 'bg-green-500/20 text-green-400' :
+                        task.status === 'processing' ? 'bg-blue-500/20 text-blue-400' :
+                        task.status === 'queued' ? 'bg-yellow-500/20 text-yellow-400' :
+                        'bg-gray-500/20 text-gray-400'
+                      }`}>
+                        {t(task.status)}
+                      </span>
+                    </td>
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-300 hidden md:table-cell">
+                      {task.labor_compensation_ton} TON
+                    </td>
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-400 hidden lg:table-cell">
+                      {new Date(task.created_at).toLocaleString()}
+                    </td>
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm">
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <button 
+                          onClick={() => setSelectedTaskId(task.task_id)}
+                          className="text-gold-900 hover:text-gold-700 text-xs sm:text-sm font-medium"
+                        >
+                          {t('view_details')}
+                        </button>
+                        {task.status === 'validated' && task.assigned_device === address && (
+                          <button
+                            onClick={() => handleClaimCompensation(task)}
+                            disabled={claimingCompensation === task.task_id}
+                            className="bg-green-500/20 text-green-400 px-2 sm:px-3 py-1 rounded hover:bg-green-500/30 disabled:opacity-50 text-xs sm:text-sm font-medium"
+                          >
+                            {claimingCompensation === task.task_id 
+                              ? (t('claiming') || 'Claiming...') 
+                              : (t('claim_compensation') || 'Claim')}
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
         </div>
       </div>
+      )}
 
       {selectedTaskId && (
         <TaskDetailsModal 
