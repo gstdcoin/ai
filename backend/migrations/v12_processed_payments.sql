@@ -3,12 +3,8 @@
 CREATE TABLE IF NOT EXISTS processed_payments (
     id SERIAL PRIMARY KEY,
     tx_hash VARCHAR(64) NOT NULL UNIQUE,
-    task_id UUID,
-    processed_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    CONSTRAINT fk_processed_payment_task
-        FOREIGN KEY(task_id)
-        REFERENCES tasks(task_id)
-        ON DELETE SET NULL
+    task_id VARCHAR(255),
+    processed_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
 -- Add unique index on tx_hash (redundant but explicit)
