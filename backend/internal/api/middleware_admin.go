@@ -3,6 +3,7 @@ package api
 import (
 	"distributed-computing-platform/internal/config"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -25,8 +26,12 @@ func RequireAdminWallet(tonConfig config.TONConfig) gin.HandlerFunc {
 			return
 		}
 
-		// Verify wallet address matches admin wallet
-		if walletAddress != tonConfig.AdminWallet {
+		// Normalize addresses (remove dashes, convert to uppercase for comparison)
+		normalizedRequest := strings.ToUpper(strings.ReplaceAll(walletAddress, "-", ""))
+		normalizedAdmin := strings.ToUpper(strings.ReplaceAll(tonConfig.AdminWallet, "-", ""))
+
+		// Verify wallet address matches admin wallet (case-insensitive, dash-insensitive)
+		if normalizedRequest != normalizedAdmin {
 			c.JSON(http.StatusForbidden, gin.H{
 				"error": "Access denied. Only admin wallet can access this endpoint",
 			})

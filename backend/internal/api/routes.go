@@ -73,6 +73,14 @@ func SetupRoutes(
 			admin.POST("/withdrawals/:id/approve", approveWithdrawal(db.(*sql.DB), rewardEngine))
 		}
 
+		// Admin commission endpoints (require admin wallet authorization)
+		adminCommissionGroup := v1.Group("/admin/commission")
+		adminCommissionGroup.Use(RequireAdminWallet(tonConfig))
+		{
+			adminCommissionGroup.GET("/balance", getCommissionBalance(paymentService))
+			adminCommissionGroup.GET("/withdraw-intent", getCommissionWithdrawIntent(paymentService, tonConfig))
+		}
+
 		// Wallet
 		v1.GET("/wallet/gstd-balance", getGSTDBalance(tonService, tonConfig))
 		v1.GET("/wallet/efficiency", getEfficiency(tonService, tonConfig))
