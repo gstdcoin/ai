@@ -1,0 +1,14 @@
+# TON Wallet Information
+# Generated: Wed Jan  7 04:50:46 PM UTC 2026
+# 
+# ⚠️  SECURITY: Keep this file secure and delete after copying to .env
+# 
+SEED_PHRASE="word0244 word0057 word0180 word0228 word0054 word0007 word0141 word0008 word0092 word0241 word0149 word0242 word0212 word0182 word0028 word0243 word0182 word0161 word0240 word0009 word0009 word0195 word0019 word0066"
+PRIVATE_KEY=03292fb7d6f5e65c847ab2f58d1b1a219a84563cfe709f0cd498b68b77a884340dedc5afce5ab6f61f6dd313b2ade11f87060a344a581202fbd64b9f809cbb34
+PUBLIC_KEY=0dedc5afce5ab6f61f6dd313b2ade11f87060a344a581202fbd64b9f809cbb34
+WALLET_ADDRESS=EQAMUzvx08vXtBCfEJTgPHAo4AUrZ7tA/qGpxjVh8cyQlY
+
+# .env entries:
+PLATFORM_WALLET_ADDRESS=EQAMUzvx08vXtBCfEJTgPHAo4AUrZ7tA/qGpxjVh8cyQlY
+PLATFORM_WALLET_PRIVATE_KEY=03292fb7d6f5e65c847ab2f58d1b1a219a84563cfe709f0cd498b68b77a884340dedc5afce5ab6f61f6dd313b2ade11f87060a344a581202fbd64b9f809cbb34
+PLATFORM_WALLET_SEED="word0244 word0057 word0180 word0228 word0054 word0007 word0141 word0008 word0092 word0241 word0149 word0242 word0212 word0182 word0028 word0243 word0182 word0161 word0240 word0009 word0009 word0195 word0019 word0066"

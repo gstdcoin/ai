@@ -19,6 +19,12 @@ func createTaskWithPayment(service *services.TaskPaymentService, rateLimiter *se
 			return
 		}
 
+		// Validate wallet address format
+		if !isValidTONAddress(creatorWallet) {
+			c.JSON(400, gin.H{"error": "Invalid wallet address format"})
+			return
+		}
+
 		// Rate limiting: 10 tasks per minute per wallet
 		if rateLimiter != nil && !rateLimiter.Allow(creatorWallet) {
 			c.JSON(http.StatusTooManyRequests, gin.H{
