@@ -1,0 +1,7 @@
+https://blueprint.ton.org/
+
+Используйте Blueprint для деплоя escrow.tact контракта
+
+Параметры инициализации:
+  - owner: ваш админ кошелек
+  - adminWalletAddress: ADMIN_WALLET из .env

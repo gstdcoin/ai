@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"math"
-	"os"
 
 	"distributed-computing-platform/internal/config"
 	"distributed-computing-platform/internal/models"
@@ -34,10 +33,11 @@ func NewRewardEngine(
 	stonFiService *StonFiService,
 	tonConfig config.TONConfig,
 ) *RewardEngine {
-	// Use configured addresses (Mainnet)
-	treasuryWallet := tonConfig.TreasuryWallet
-	if treasuryWallet == "" {
-		treasuryWallet = "EQA--JXG8VSyBJmLMqb2J2t4Pya0TS9SXHh7vHh8Iez25sLp"
+	// Use AdminWallet for receiving 5% commission (not TreasuryWallet)
+	// Admin will manually manage the GSTD/XAUt pool
+	adminWallet := tonConfig.AdminWallet
+	if adminWallet == "" {
+		log.Printf("⚠️  ADMIN_WALLET not configured - commission will not be sent")
 	}
 	
 	xautJettonAddr := tonConfig.XAUtJettonAddress
@@ -45,16 +45,30 @@ func NewRewardEngine(
 		xautJettonAddr = "EQCyD8v6khUUrce9BCvHOaBC9PrvlV9S7D5v67O80p444XAr" // Mainnet XAUt
 	}
 
-	// Initialize jetton transfer service
-	// Note: In production, wallet address and private key should come from secure env vars
-	walletAddr := tonConfig.AdminWallet // Platform wallet with GSTD balance
-	privateKey := getEnv("PLATFORM_WALLET_PRIVATE_KEY", "") // From environment variable
-	jettonTransfer := NewJettonTransferService(
-		tonConfig.APIURL,
-		tonConfig.APIKey,
-		walletAddr,
-		privateKey,
-	)
+	// PULL-MODEL: Platform doesn't need wallet for automatic transfers
+	// Users sign and pay gas fees themselves via TonConnect
+	// Platform wallet is optional - only needed for admin operations (if any)
+	// Workers claim rewards via escrow contract, paying gas fees themselves
+	
+	var jettonTransfer *JettonTransferService
+	walletAddr := tonConfig.PlatformWalletAddress
+	privateKey := tonConfig.PlatformWalletPrivateKey
+	
+	// Only initialize if both are provided (for optional admin operations)
+	if privateKey != "" && walletAddr != "" {
+		jettonTransfer = NewJettonTransferService(
+			tonConfig.APIURL,
+			tonConfig.APIKey,
+			walletAddr,
+			privateKey,
+		)
+		log.Printf("✅ JettonTransferService initialized (optional admin operations)")
+	} else {
+		log.Printf("ℹ️  PULL-MODEL: JettonTransferService not needed - users sign transactions themselves")
+		log.Printf("   Workers claim rewards via escrow contract using TonConnect")
+		log.Printf("   Platform only generates payout intents, users pay gas fees")
+		jettonTransfer = nil
+	}
 
 	return &RewardEngine{
 		db:             db,
@@ -82,21 +96,16 @@ func (re *RewardEngine) DistributeRewards(ctx context.Context, task *models.Task
 	log.Printf("Distributing rewards for task %s: Budget=%.9f, Worker=%.9f, Platform=%.9f",
 		task.TaskID, budget, workerReward, platformFee)
 
-	// Send 95% to worker
-	if err := re.sendGSTDToWorker(ctx, workerWallet, workerReward, task.TaskID); err != nil {
-		log.Printf("Error sending reward to worker %s: %v", workerWallet, err)
-		// Log failed payout for retry
-		if re.payoutRetry != nil {
-			re.payoutRetry.LogFailedPayout(ctx, task.TaskID, "worker", workerWallet, workerReward, err.Error())
-		}
-		// Continue with platform fee even if worker payout fails
-	}
+	// PULL-MODEL: Workers claim rewards themselves via escrow contract
+	// Platform only generates payout intent, workers sign and pay gas fees
+	// No automatic transfers - workers use TonConnect to claim via escrow
+	log.Printf("Reward available for claim: %.9f GSTD to worker %s (task: %s)", 
+		workerReward, workerWallet, task.TaskID)
+	log.Printf("Worker can claim via: POST /api/v1/payments/payout-intent with task_id=%s", task.TaskID)
 
-	// Send 5% to treasury and swap to XAUt
-	if err := re.processPlatformFee(ctx, platformFee, task.TaskID); err != nil {
-		log.Printf("Error processing platform fee: %v", err)
-		return err
-	}
+	// Platform fee is collected when worker claims (handled by escrow contract)
+	// No need to process platform fee separately - escrow contract handles it
+	log.Printf("Platform fee (%.9f GSTD) will be collected when worker claims via escrow", platformFee)
 
 	// Update task with reward information
 	_, err := re.db.ExecContext(ctx, `
@@ -111,9 +120,15 @@ func (re *RewardEngine) DistributeRewards(ctx context.Context, task *models.Task
 	return err
 }
 
-// sendGSTDToWorker sends GSTD jetton to worker wallet
-// SECURITY: Implements withdrawal lock for large payouts and 24-hour aggregation
+// sendGSTDToWorker is DEPRECATED - use pull-model instead
+// Workers claim rewards themselves via escrow contract using TonConnect
+// This function is kept for backward compatibility but does nothing
 func (re *RewardEngine) sendGSTDToWorker(ctx context.Context, workerWallet string, amount float64, taskID string) error {
+	// PULL-MODEL: No automatic transfers
+	// Workers claim rewards via escrow contract using payout intent
+	log.Printf("PULL-MODEL: Worker %s can claim %.9f GSTD for task %s via escrow contract", 
+		workerWallet, amount, taskID)
+	return nil
 	// SECURITY: 24-hour aggregation check to prevent bypass via multiple small tasks
 	var creatorWallet string
 	err := re.db.QueryRowContext(ctx, `
@@ -264,54 +279,14 @@ func (re *RewardEngine) sendGSTDToWorker(ctx context.Context, workerWallet strin
 	return nil
 }
 
-// processPlatformFee sends platform fee to treasury and swaps to XAUt
+// processPlatformFee is DEPRECATED - platform fee is handled by escrow contract
+// When worker claims reward, escrow contract automatically sends platform fee to treasury
+// This function is kept for backward compatibility but does nothing
 func (re *RewardEngine) processPlatformFee(ctx context.Context, amount float64, taskID string) error {
-	log.Printf("Processing platform fee: %.9f GSTD (task: %s)", amount, taskID)
-
-	// Step 1: Send GSTD to treasury wallet
-	log.Printf("Sending %.9f GSTD to treasury %s", amount, re.treasuryWallet)
-
-	// Send GSTD to treasury using JettonTransferService
-	if re.jettonTransfer != nil {
-		amountNano := int64(math.Round(amount * 1e9))
-		comment := fmt.Sprintf("Platform fee: %s", taskID)
-		txHash, err := re.jettonTransfer.SendJettonTransfer(
-			ctx,
-			re.treasuryWallet,
-			re.tonConfig.GSTDJettonAddress,
-			amountNano,
-			comment,
-		)
-		if err != nil {
-			log.Printf("Error sending platform fee to treasury: %v", err)
-			// Continue with swap even if transfer fails (might already be in treasury)
-		} else {
-			log.Printf("✅ Platform fee sent to treasury: tx_hash=%s, amount=%d nanoGSTD",
-				txHash, amountNano)
-		}
-	} else {
-		log.Printf("⚠️  JettonTransferService not available - platform fee not sent")
-	}
-
-	// Step 2: Swap GSTD to XAUt via STON.fi (Mainnet)
-	if re.stonFiService != nil {
-		xautAmount, txHash, err := re.stonFiService.SwapGSTDToXAUt(
-			ctx, 
-			amount, 
-			re.tonConfig.GSTDJettonAddress,
-			re.xautJettonAddr,
-		)
-		if err != nil {
-			log.Printf("Error swapping GSTD to XAUt: %v", err)
-			// Log failed swap for retry
-			if re.payoutRetry != nil {
-				re.payoutRetry.LogFailedPayout(ctx, taskID, "swap", re.treasuryWallet, amount, err.Error())
-			}
-			// Continue to log the accumulation even if swap fails
-		} else {
-			log.Printf("Swapped %.9f GSTD to %.9f XAUt (tx: %s)", amount, xautAmount, txHash)
-		}
-	}
+	// PULL-MODEL: Platform fee is collected automatically by escrow contract
+	// when worker claims reward. No separate processing needed.
+	log.Printf("PULL-MODEL: Platform fee (%.9f GSTD) will be collected by escrow contract when worker claims", amount)
+	return nil
 
 	// Step 3: Log accumulation in Golden Reserve
 	return re.logGoldenReserveAccumulation(ctx, amount, taskID)
@@ -359,10 +334,4 @@ func (re *RewardEngine) createGoldenReserveTable(ctx context.Context) {
 	}
 }
 
-func getEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
-}
 

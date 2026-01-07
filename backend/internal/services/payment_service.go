@@ -33,15 +33,16 @@ type PayoutIntent struct {
 }
 
 // BuildPayoutIntent prepares a TonConnect-compatible pull transaction.
+// PULL-MODEL: Executor signs and pays gas fees, escrow contract releases funds.
 // Does not move funds itself; safe to call repeatedly (idempotent).
 func (s *PaymentService) BuildPayoutIntent(ctx context.Context, taskID string, executorAddress string) (*PayoutIntent, error) {
 	var task models.Task
 	err := s.db.QueryRowContext(ctx, `
-		SELECT task_id, assigned_device, labor_compensation_ton, status
+		SELECT task_id, assigned_device, labor_compensation_ton, status, requester_address
 		FROM tasks
 		WHERE task_id = $1
 	`, taskID).Scan(
-		&task.TaskID, &task.AssignedDevice, &task.LaborCompensationTon, &task.Status,
+		&task.TaskID, &task.AssignedDevice, &task.LaborCompensationTon, &task.Status, &task.RequesterAddress,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("task lookup failed: %w", err)
@@ -61,19 +62,64 @@ func (s *PaymentService) BuildPayoutIntent(ctx context.Context, taskID string, e
 		return nil, fmt.Errorf("invalid reward amount")
 	}
 
-	// Payload comment for contract to parse. Frontend will convert to cell payload for TonConnect.
-	payloadComment := fmt.Sprintf("WITHDRAW|task:%s|exec:%s|fee:%f|reward:%f", taskID, executorAddress, platformFee, executorReward)
+	// PULL-MODEL: Executor pays gas fees (AmountNano = 0.01 TON minimum for contract call)
+	// Escrow contract holds the funds and releases them when executor claims
+	// Frontend will use TonConnect to sign and send this transaction
+	// Executor's wallet pays gas, escrow contract sends executor reward + platform fee
+	
+	// Convert to nanoTON for contract
+	executorRewardNano := int64(executorReward * 1e9)
+	platformFeeNano := int64(platformFee * 1e9)
+	
+	// Minimum gas fee executor needs to pay (0.01 TON)
+	minGasFee := int64(10000000) // 0.01 TON in nanotons
 
 	return &PayoutIntent{
-		ToAddress:       s.tonCfg.ContractAddress,
-		AmountNano:      0, // executor only pays gas; escrow holds funds
-		PayloadComment:  payloadComment,
+		ToAddress:       s.tonCfg.ContractAddress, // Escrow contract address
+		AmountNano:      minGasFee,                  // Executor pays gas (minimum 0.01 TON)
+		PayloadComment:  fmt.Sprintf("WITHDRAW|task:%s|exec:%s|fee:%d|reward:%d", 
+			taskID, executorAddress, platformFeeNano, executorRewardNano),
 		ExecutorReward:  executorReward,
 		PlatformFee:     platformFee,
 		TaskID:          taskID,
 		ExecutorAddress: executorAddress,
 	}, nil
 }
+
+// CommissionBalance represents accumulated platform commission
+type CommissionBalance struct {
+	TotalCommission float64 `json:"total_commission"` // Total accumulated commission in TON
+	PendingTasks    int     `json:"pending_tasks"`     // Number of tasks with pending commission
+	ClaimedTasks    int     `json:"claimed_tasks"`     // Number of tasks with claimed commission
+}
+
+// GetCommissionBalance calculates total accumulated commission for admin
+func (s *PaymentService) GetCommissionBalance(ctx context.Context) (*CommissionBalance, error) {
+	var totalCommission float64
+	var pendingTasks, claimedTasks int
+
+	// Calculate total commission from completed tasks
+	err := s.db.QueryRowContext(ctx, `
+		SELECT 
+			COALESCE(SUM(platform_fee_ton), 0) as total_commission,
+			COUNT(*) FILTER (WHERE executor_payout_status IS NULL OR executor_payout_status = 'pending') as pending_tasks,
+			COUNT(*) FILTER (WHERE executor_payout_status = 'completed') as claimed_tasks
+		FROM tasks
+		WHERE status IN ('validated', 'completed')
+		  AND platform_fee_ton > 0
+	`).Scan(&totalCommission, &pendingTasks, &claimedTasks)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to calculate commission balance: %w", err)
+	}
+
+	return &CommissionBalance{
+		TotalCommission: totalCommission,
+		PendingTasks:    pendingTasks,
+		ClaimedTasks:    claimedTasks,
+	}, nil
+}
+
 
 
 

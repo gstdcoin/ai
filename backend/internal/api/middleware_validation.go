@@ -109,21 +109,82 @@ func ValidateResultSubmission() gin.HandlerFunc {
 }
 
 // isValidTONAddress checks if address is a valid TON address format
+// TON addresses can be in multiple formats:
+// - Raw format: 0:... (48 characters)
+// - User-friendly format: EQ..., UQ..., kQ..., 0Q... (48 characters)
+// - With dashes: EQD...-...-... (user-friendly with dashes)
 func isValidTONAddress(address string) bool {
 	if address == "" {
 		return false
 	}
 	
-	// TON addresses start with 0: or EQ and are 48 characters
-	// Basic validation
-	if len(address) < 10 || len(address) > 48 {
+	// Remove whitespace
+	address = strings.TrimSpace(address)
+	
+	// Remove dashes (user-friendly format with dashes)
+	addressNoDashes := strings.ReplaceAll(address, "-", "")
+	
+	// Check length (TON addresses are 48 characters in raw/base64 format)
+	// Raw format: 0: + 48 hex chars = 50 chars
+	// User-friendly: 48 base64 chars
+	// With dashes: 48 base64 chars + dashes
+	if len(addressNoDashes) < 10 {
 		return false
 	}
 	
-	// Check for valid TON address prefixes
-	validPrefixes := []string{"0:", "EQ", "UQ", "kQ", "0Q"}
+	// Check for raw format (0:...)
+	if strings.HasPrefix(address, "0:") {
+		// Raw format: 0: + 48 hex characters
+		if len(address) >= 50 && len(address) <= 66 {
+			// Check if rest is valid hex
+			hexPart := address[2:]
+			if len(hexPart) >= 48 {
+				// Validate hex characters
+				for _, c := range hexPart {
+					if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+						return false
+					}
+				}
+				return true
+			}
+		}
+	}
+	
+	// Check for user-friendly format (EQ, UQ, kQ, 0Q)
+	validPrefixes := []string{"EQ", "UQ", "kQ", "0Q"}
 	for _, prefix := range validPrefixes {
-		if strings.HasPrefix(address, prefix) {
+		if strings.HasPrefix(addressNoDashes, prefix) {
+			// User-friendly format: 48 base64 characters
+			// Base64url alphabet: A-Z, a-z, 0-9, _, -
+			base64Part := addressNoDashes[len(prefix):]
+			if len(base64Part) >= 44 && len(base64Part) <= 48 {
+				// Validate base64url characters
+				valid := true
+				for _, c := range base64Part {
+					if !((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || 
+						 (c >= '0' && c <= '9') || c == '_' || c == '-') {
+						valid = false
+						break
+					}
+				}
+				if valid {
+					return true
+				}
+			}
+		}
+	}
+	
+	// Also accept addresses that look like TON addresses (more lenient)
+	// If it starts with valid prefix and has reasonable length, accept it
+	// This handles edge cases and different TON address formats
+	if len(addressNoDashes) >= 44 && len(addressNoDashes) <= 66 {
+		for _, prefix := range validPrefixes {
+			if strings.HasPrefix(addressNoDashes, prefix) {
+				return true
+			}
+		}
+		// Also accept raw format without strict hex validation
+		if strings.HasPrefix(address, "0:") {
 			return true
 		}
 	}

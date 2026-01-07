@@ -74,89 +74,149 @@ export default function Home() {
   // 1. Состояние: Кошелек не подключен
   if (!isConnected) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-        <div className="max-w-4xl w-full bg-white rounded-2xl shadow-2xl p-6 sm:p-8 relative">
-          <button 
-            onClick={changeLanguage}
-            className="absolute top-4 right-4 text-sm font-medium text-gray-500 hover:text-primary-600 transition-colors flex items-center gap-1"
-          >
-            🌐 {router.locale === 'ru' ? 'EN' : 'RU'}
-          </button>
-          
-          {/* Hero Section */}
-          <div className="text-center mb-8">
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-3">{t('title')}</h1>
-            <p className="text-base sm:text-lg text-gray-600 mb-6">{t('subtitle')}</p>
+      <div className="min-h-screen bg-sea-50 flex items-center justify-center p-4">
+        <div className="max-w-6xl w-full">
+          {/* Language Switcher */}
+          <div className="flex justify-end mb-4">
+            <button 
+              onClick={changeLanguage}
+              className="text-sm font-medium text-gray-600 hover:text-primary-600 transition-colors flex items-center gap-1 px-3 py-1 rounded-lg hover:bg-white/50"
+            >
+              🌐 {router.locale === 'ru' ? 'EN' : 'RU'}
+            </button>
           </div>
 
-          {/* Wallet Connect */}
-          <div className="mb-8">
-            <WalletConnect />
-          </div>
-
-          {/* Informational Sections */}
-          <div className="space-y-6 mt-8 pt-6 border-t border-gray-100">
-            {/* How it Works */}
-            <section className="bg-blue-50 rounded-xl p-4 sm:p-6">
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-                ⚙️ {t('how_it_works') || 'How it Works'}
-              </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-white p-4 rounded-lg">
-                  <div className="text-2xl mb-2">1️⃣</div>
-                  <h3 className="font-semibold text-gray-900 mb-1 text-sm sm:text-base">{t('step_1_register') || 'Register Device'}</h3>
-                  <p className="text-xs sm:text-sm text-gray-600">{t('step_1_register_desc') || 'Connect your device to the network'}</p>
-                </div>
-                <div className="bg-white p-4 rounded-lg">
-                  <div className="text-2xl mb-2">2️⃣</div>
-                  <h3 className="font-semibold text-gray-900 mb-1 text-sm sm:text-base">{t('step_2_execute') || 'Execute Tasks'}</h3>
-                  <p className="text-xs sm:text-sm text-gray-600">{t('step_2_execute_desc') || 'Process computational tasks'}</p>
-                </div>
-                <div className="bg-white p-4 rounded-lg">
-                  <div className="text-2xl mb-2">3️⃣</div>
-                  <h3 className="font-semibold text-gray-900 mb-1 text-sm sm:text-base">{t('step_3_earn') || 'Earn Compensation'}</h3>
-                  <p className="text-xs sm:text-sm text-gray-600">{t('step_3_earn_desc') || 'Get paid in TON'}</p>
-                </div>
-              </div>
-            </section>
-
-            {/* Business Use Cases */}
-            <section>
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-                💼 {t('business_use_cases') || 'Business Use Cases'}
-              </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-gradient-to-br from-purple-50 to-blue-50 p-4 rounded-lg border border-purple-100">
-                  <div className="text-2xl mb-2">🤖</div>
-                  <h3 className="font-semibold text-gray-900 mb-1 text-sm sm:text-base">{t('ai_verification') || 'AI Verification'}</h3>
-                  <p className="text-xs sm:text-sm text-gray-600">{t('ai_verification_desc') || 'Distributed AI inference'}</p>
-                </div>
-                <div className="bg-gradient-to-br from-green-50 to-teal-50 p-4 rounded-lg border border-green-100">
-                  <div className="text-2xl mb-2">🏛️</div>
-                  <h3 className="font-semibold text-gray-900 mb-1 text-sm sm:text-base">{t('govtech') || 'GovTech'}</h3>
-                  <p className="text-xs sm:text-sm text-gray-600">{t('govtech_desc') || 'Government applications'}</p>
-                </div>
-                <div className="bg-gradient-to-br from-orange-50 to-red-50 p-4 rounded-lg border border-orange-100">
-                  <div className="text-2xl mb-2">🌐</div>
-                  <h3 className="font-semibold text-gray-900 mb-1 text-sm sm:text-base">{t('iot') || 'IoT & Edge'}</h3>
-                  <p className="text-xs sm:text-sm text-gray-600">{t('iot_desc') || 'Edge computing'}</p>
-                </div>
-              </div>
-            </section>
-
-            {/* GSTD Utility */}
-            <section className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-4 sm:p-6 border border-indigo-100">
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 flex items-center gap-2">
-                💎 {t('gstd_utility') || 'GSTD Utility'}
-              </h2>
-              <p className="text-sm sm:text-base text-gray-700 leading-relaxed">
-                <strong>{t('gstd_utility_title') || 'GSTD (Guaranteed Service Time Depth)'}</strong> {t('gstd_utility_desc') || 'is a technical parameter measuring the certainty depth of computational results. Higher GSTD means more validation layers and greater reliability.'}
+          {/* Main Card - Matching Dashboard Style */}
+          <div className="bg-white rounded-2xl shadow-xl p-6 sm:p-8 lg:p-10">
+            {/* Hero Section */}
+            <div className="text-center mb-10">
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-gray-900 mb-4">
+                {t('landing_title') || 'GSTD Platform'}
+              </h1>
+              <p className="text-lg sm:text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed mb-2">
+                {t('landing_subtitle') || 'Децентрализованная платформа распределённых вычислений на блокчейне TON'}
               </p>
+              <p className="text-base text-gray-500 max-w-2xl mx-auto">
+                {t('landing_desc') || 'Создавайте задачи для AI-инференса, валидации и обработки данных. Выполняйте вычисления и получайте вознаграждение в TON.'}
+              </p>
+            </div>
+
+            {/* Wallet Connect */}
+            <div className="mb-10 max-w-md mx-auto">
+              <WalletConnect />
+            </div>
+
+            {/* Key Features - Matching Dashboard Cards Style */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+              <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl p-6 border border-blue-100">
+                <div className="text-3xl mb-3">⚡</div>
+                <h3 className="font-bold text-gray-900 mb-2 text-lg">{t('feature_speed') || 'Быстро'}</h3>
+                <p className="text-sm text-gray-600 leading-relaxed">
+                  {t('feature_speed_desc') || 'Задачи выполняются в среднем за 5 секунд благодаря умному распределению по сети'}
+                </p>
+              </div>
+              <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-100">
+                <div className="text-3xl mb-3">🔒</div>
+                <h3 className="font-bold text-gray-900 mb-2 text-lg">{t('feature_security') || 'Безопасно'}</h3>
+                <p className="text-sm text-gray-600 leading-relaxed">
+                  {t('feature_security_desc') || 'Данные зашифрованы ключом AES-256. Даже сервер не может прочитать ваши данные'}
+                </p>
+              </div>
+              <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 border border-green-100">
+                <div className="text-3xl mb-3">💎</div>
+                <h3 className="font-bold text-gray-900 mb-2 text-lg">{t('feature_gstd') || 'GSTD токен'}</h3>
+                <p className="text-sm text-gray-600 leading-relaxed">
+                  {t('feature_gstd_desc') || 'GSTD — утилити токен, полностью соответствующий регуляторным требованиям MiCA (EU) и SEC (US)'}
+                </p>
+              </div>
+            </div>
+
+            {/* How it Works */}
+            <section className="mb-10">
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6 text-center">
+                {t('how_it_works') || 'Как это работает'}
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                  <div className="text-4xl mb-4 text-center">1️⃣</div>
+                  <h3 className="font-bold text-gray-900 mb-2 text-center">{t('step_1_register') || 'Подключите кошелёк'}</h3>
+                  <p className="text-sm text-gray-600 text-center leading-relaxed">
+                    {t('step_1_register_desc') || 'Подключите TON кошелёк с GSTD токенами для участия в платформе'}
+                  </p>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                  <div className="text-4xl mb-4 text-center">2️⃣</div>
+                  <h3 className="font-bold text-gray-900 mb-2 text-center">{t('step_2_create') || 'Создавайте задачи'}</h3>
+                  <p className="text-sm text-gray-600 text-center leading-relaxed">
+                    {t('step_2_create_desc') || 'Создавайте задачи для AI-инференса, валидации или обработки данных. Можно автоматизировать через API'}
+                  </p>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                  <div className="text-4xl mb-4 text-center">3️⃣</div>
+                  <h3 className="font-bold text-gray-900 mb-2 text-center">{t('step_3_earn') || 'Получайте результаты'}</h3>
+                  <p className="text-sm text-gray-600 text-center leading-relaxed">
+                    {t('step_3_earn_desc') || 'Исполнители выполняют задачи, вы получаете результаты. Исполнители получают вознаграждение в TON'}
+                  </p>
+                </div>
+              </div>
             </section>
+
+            {/* GSTD Token Info */}
+            <section className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-6 sm:p-8 mb-10 border border-indigo-100">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                💎 {t('gstd_token_info') || 'GSTD — Утилити токен'}
+              </h2>
+              <div className="space-y-3 text-gray-700">
+                <p className="leading-relaxed">
+                  <strong>GSTD (Guaranteed Service Time Depth)</strong> — это утилити токен, полностью соответствующий всем регуляторным требованиям:
+                </p>
+                <ul className="list-disc list-inside space-y-2 ml-4">
+                  <li>✅ Соответствует требованиям <strong>MiCA (EU)</strong> для utility токенов</li>
+                  <li>✅ Соответствует требованиям <strong>SEC (US)</strong> для utility токенов</li>
+                  <li>✅ Используется для оплаты вычислительных услуг на платформе</li>
+                  <li>✅ Обеспечение формируется из работы платформы</li>
+                </ul>
+                <p className="mt-4 leading-relaxed">
+                  <strong>Обеспечение токена:</strong> Формируется из работы платформы через пул GSTD/XAUt в сети TON. 
+                  Админ самостоятельно пополняет пул, обеспечивая стабильность токена.
+                </p>
+              </div>
+            </section>
+
+            {/* For Customers & Executors */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+              <div className="bg-blue-50 rounded-xl p-6 border border-blue-100">
+                <h3 className="text-xl font-bold text-gray-900 mb-4">👔 {t('for_customers') || 'Для заказчиков'}</h3>
+                <ul className="space-y-2 text-sm text-gray-700">
+                  <li>✅ Легко создавайте задачи через веб-интерфейс</li>
+                  <li>✅ Автоматизируйте через REST API</li>
+                  <li>✅ Подробная документация для интеграции</li>
+                  <li>✅ Прозрачное ценообразование</li>
+                </ul>
+                <p className="mt-4 text-xs text-gray-600">
+                  {t('api_docs_note') || 'Подробная документация API доступна в разделе "Инструкции" после входа'}
+                </p>
+              </div>
+              <div className="bg-green-50 rounded-xl p-6 border border-green-100">
+                <h3 className="text-xl font-bold text-gray-900 mb-4">⚙️ {t('for_executors') || 'Для исполнителей'}</h3>
+                <ul className="space-y-2 text-sm text-gray-700">
+                  <li>✅ Регистрируйте устройства для выполнения задач</li>
+                  <li>✅ Получайте задачи автоматически</li>
+                  <li>✅ Выводите вознаграждение в TON</li>
+                  <li>✅ Стройте репутацию для приоритетных задач</li>
+                </ul>
+                <p className="mt-4 text-xs text-gray-600">
+                  {t('executor_note') || 'Все транзакции подписываете вы сами через TonConnect'}
+                </p>
+              </div>
+            </div>
 
             {/* Platform About */}
-            <div className="text-center text-xs sm:text-sm text-gray-500 pt-4 border-t border-gray-100">
-              {t('platform_about_short')}
+            <div className="text-center text-sm text-gray-500 pt-6 border-t border-gray-200">
+              <p className="mb-2">{t('platform_about_short')}</p>
+              <p className="text-xs">
+                {t('platform_tech') || 'DePIN сеть на блокчейне TON • WebAssembly • AES-256-GCM • Ed25519'}
+              </p>
             </div>
           </div>
         </div>

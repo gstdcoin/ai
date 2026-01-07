@@ -50,7 +50,7 @@ func main() {
 
 	// Run database migrations
 	migrationService := services.NewMigrationService(db)
-	migrationsDir := "./migrations"
+	migrationsDir := "./backend/migrations"
 	if _, err := os.Stat(migrationsDir); err == nil {
 		log.Println("Running database migrations...")
 		if err := migrationService.RunMigrations(context.Background(), migrationsDir); err != nil {
@@ -84,7 +84,25 @@ func main() {
 	tonService := services.NewTONService(cfg.TON.APIURL, cfg.TON.APIKey)
 	encryptionService := services.NewEncryptionService()
 	entropyService := services.NewEntropyService(db)
+	cacheService := services.NewCacheService(redisClient)
+	walletSecurityService := services.NewWalletSecurityService(db)
 	deviceService := services.NewDeviceService(db)
+	poolMonitorService := services.NewPoolMonitorService(cfg.TON)
+	
+	// Create wallet security log table
+	if err := walletSecurityService.CreateWalletAccessLogTable(context.Background()); err != nil {
+		log.Printf("Warning: Failed to create wallet access log table: %v", err)
+	}
+	
+	// Validate and secure wallet configuration if provided
+	if cfg.TON.PlatformWalletAddress != "" && cfg.TON.PlatformWalletPrivateKey != "" {
+		if err := walletSecurityService.SecureWalletConfig(context.Background(), cfg.TON.PlatformWalletAddress, cfg.TON.PlatformWalletPrivateKey); err != nil {
+			log.Printf("⚠️  Warning: Wallet configuration validation failed: %v", err)
+			log.Printf("   Platform wallet operations may not work correctly")
+		} else {
+			log.Printf("✅ Platform wallet configuration validated and secured")
+		}
+	}
 	trustService := services.NewTrustV3Service(db)
 	assignmentService := services.NewAssignmentService(db, redisClient)
 	paymentService := services.NewPaymentService(db, cfg.TON)
@@ -152,6 +170,7 @@ func main() {
 		db,
 		redisClient,
 		payoutRetryService,
+		poolMonitorService,
 	)
 
 	// Start server

@@ -14,15 +14,15 @@ message Withdraw {
 
 // Escrow contract state
 contract Escrow with Deployable, Ownable {
-    // Platform treasury address (receives fees)
-    treasury: Address;
+    // Admin wallet address (receives 5% platform fee)
+    adminWallet: Address;
     
     // Minimum message value to prevent spam
     minMessageValue: Int as coins = 10000000; // 0.01 TON
     
-    init(owner: Address, treasuryAddress: Address) {
+    init(owner: Address, adminWalletAddress: Address) {
         Ownable.init(owner);
-        self.treasury = treasuryAddress;
+        self.adminWallet = adminWalletAddress;
     }
     
     // Receive TON for task compensation
@@ -44,10 +44,10 @@ contract Escrow with Deployable, Ownable {
         let totalAmount = msg.platformFee + msg.executorReward;
         require(myBalance() >= totalAmount, "Insufficient balance");
         
-        // Send platform fee to treasury
+        // Send platform fee (5%) to admin wallet
         if (msg.platformFee > 0) {
             send(SendParameters{
-                to: self.treasury,
+                to: self.adminWallet,
                 value: msg.platformFee,
                 mode: SendRemainingValue,
                 bounce: false,
@@ -81,10 +81,10 @@ contract Escrow with Deployable, Ownable {
         return myBalance();
     }
     
-    // Update treasury address (only owner)
-    set fun updateTreasury(newTreasury: Address) {
+    // Update admin wallet address (only owner)
+    set fun updateAdminWallet(newAdminWallet: Address) {
         self.requireOwner();
-        self.treasury = newTreasury;
+        self.adminWallet = newAdminWallet;
     }
 }
 

@@ -33,6 +33,7 @@ func SetupRoutes(
 	db interface{},
 	redisClient interface{},
 	payoutRetryService *services.PayoutRetryService,
+	poolMonitorService *services.PoolMonitorService,
 ) {
 	// Initialize ValidationService dependencies
 	validationService.SetDependencies(trustService, entropyService, assignmentService, encryptionService, tonService)
@@ -81,6 +82,17 @@ func SetupRoutes(
 		
 		// Payments
 		v1.POST("/payments/payout-intent", createPayoutIntent(paymentService))
+		
+		// Pool Monitoring
+		v1.GET("/pool/status", getPoolStatus(poolMonitorService))
+
+		// Admin endpoints (require admin wallet authorization)
+		adminGroup := v1.Group("/admin")
+		adminGroup.Use(RequireAdminWallet(tonConfig))
+		{
+			adminGroup.GET("/commission/balance", getCommissionBalance(paymentService))
+			adminGroup.GET("/commission/withdraw-intent", getCommissionWithdrawIntent(paymentService, tonConfig))
+		}
 
 		// Users
 		v1.POST("/users/login", loginUser(userService))
@@ -326,6 +338,76 @@ func getEfficiency(tonService *services.TONService, tonConfig config.TONConfig) 
 			"cost_reduction_percent": breakdown.CostReduction,
 			"final_cost_multiplier":  breakdown.FinalCostMultiplier,
 			"priority_multiplier":    1.0 / breakdown.Efficiency,
+		})
+	}
+}
+
+func getPoolStatus(pms *services.PoolMonitorService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if pms == nil {
+			c.JSON(503, gin.H{"error": "Pool monitor service not available"})
+			return
+		}
+		
+		status, err := pms.GetPoolStatusCached(c.Request.Context())
+		if err != nil {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
+		
+		c.JSON(200, status)
+	}
+}
+
+func getCommissionBalance(service *services.PaymentService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		balance, err := service.GetCommissionBalance(c.Request.Context())
+		if err != nil {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
+		
+		c.JSON(200, balance)
+	}
+}
+
+func getCommissionWithdrawIntent(service *services.PaymentService, tonConfig config.TONConfig) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Get admin wallet from context (set by RequireAdminWallet middleware)
+		adminWallet, exists := c.Get("admin_wallet")
+		if !exists {
+			c.JSON(500, gin.H{"error": "Admin wallet not found in context"})
+			return
+		}
+
+		// Get commission balance
+		balance, err := service.GetCommissionBalance(c.Request.Context())
+		if err != nil {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
+
+		if balance.TotalCommission <= 0 {
+			c.JSON(400, gin.H{"error": "No commission available to withdraw"})
+			return
+		}
+
+		// Generate withdraw intent for admin
+		// Admin will sign this transaction via TonConnect to withdraw commission
+		amountNano := int64(balance.TotalCommission * 1e9)
+		minGasFee := int64(10000000) // 0.01 TON
+
+		// For now, commission is already in admin wallet (sent by escrow contract)
+		// This endpoint just returns the balance information
+		// In future, if commission accumulates elsewhere, we can add actual withdrawal logic
+		
+		c.JSON(200, gin.H{
+			"admin_wallet":      adminWallet,
+			"total_commission":  balance.TotalCommission,
+			"amount_nano":       amountNano,
+			"pending_tasks":     balance.PendingTasks,
+			"claimed_tasks":     balance.ClaimedTasks,
+			"message":           "Commission is automatically sent to admin wallet by escrow contract. Check your wallet balance.",
 		})
 	}
 }
