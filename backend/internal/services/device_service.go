@@ -134,12 +134,14 @@ func (s *DeviceService) UpdateDeviceLastSeen(ctx context.Context, deviceID strin
 
 // GetDeviceTrust retrieves trust score for a device
 func (s *DeviceService) GetDeviceTrust(ctx context.Context, deviceID string, trustScore *float64) error {
+	var reputation float64
 	err := s.db.QueryRowContext(ctx, `
-		SELECT COALESCE(trust_score, 0.1) FROM devices WHERE device_id = $1
-	`, deviceID).Scan(trustScore)
+		SELECT COALESCE(reputation, 0.1) FROM devices WHERE device_id = $1
+	`, deviceID).Scan(&reputation)
 	if err != nil {
 		*trustScore = 0.1 // Default for new devices
 		return err
 	}
+	*trustScore = reputation
 	return nil
 }

@@ -55,12 +55,21 @@ func (s *AssignmentService) AssignTask(ctx context.Context, taskID string, devic
 func (s *AssignmentService) GetAvailableTasks(ctx context.Context, deviceID string, limit int) ([]*models.Task, error) {
 	// 1. Get device trust and region
 	var deviceTrust float64
-	var deviceRegion string
-	err := s.db.QueryRowContext(ctx, "SELECT trust_score, region FROM devices WHERE device_id = $1", deviceID).Scan(&deviceTrust, &deviceRegion)
+	var deviceRegion sql.NullString
+	err := s.db.QueryRowContext(ctx, `
+		SELECT COALESCE(trust_score, reputation, 0.1) as trust, 
+		       COALESCE(region, '') as region 
+		FROM devices WHERE device_id = $1
+	`, deviceID).Scan(&deviceTrust, &deviceRegion)
 	if err != nil {
 		// Fallback for new devices
 		deviceTrust = 0.1
-		deviceRegion = "unknown"
+		deviceRegion = sql.NullString{String: "unknown", Valid: true}
+	}
+	
+	regionStr := "unknown"
+	if deviceRegion.Valid {
+		regionStr = deviceRegion.String
 	}
 
 	// 2. Get available tasks matching device trust and geo-fence
@@ -78,7 +87,7 @@ func (s *AssignmentService) GetAvailableTasks(ctx context.Context, deviceID stri
 		LIMIT $3
 	`
 
-	rows, err := s.db.QueryContext(ctx, query, deviceTrust, deviceRegion, limit)
+	rows, err := s.db.QueryContext(ctx, query, deviceTrust, regionStr, limit)
 	if err != nil {
 		return nil, err
 	}

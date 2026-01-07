@@ -48,6 +48,21 @@ func main() {
 	}
 	defer db.Close()
 
+	// Run database migrations
+	migrationService := services.NewMigrationService(db)
+	migrationsDir := "./migrations"
+	if _, err := os.Stat(migrationsDir); err == nil {
+		log.Println("Running database migrations...")
+		if err := migrationService.RunMigrations(context.Background(), migrationsDir); err != nil {
+			log.Printf("Warning: Failed to run migrations: %v", err)
+			// Don't fail startup if migrations fail - might be permission issues
+		} else {
+			log.Println("✅ Database migrations completed")
+		}
+	} else {
+		log.Printf("Migrations directory not found: %s (skipping migrations)", migrationsDir)
+	}
+
 	// Initialize Redis for queue with retry logic
 	var redisClient *redis.Client
 	for i := 0; i < maxRetries; i++ {

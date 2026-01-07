@@ -16,8 +16,15 @@ wallet_seed.txt
 *_STATUS.md
 *_FINAL.md
 *_COMPLETE.md
+*_ANALYSIS.md
+*_FIXES*.md
+PLATFORM_*.md
+COMPLETE_*.md
+FULL_*.md
 *.tar.gz
 *.log
+docs_backup_*/
+cleanup_*.sh
 
 # Зависимости
 node_modules/
