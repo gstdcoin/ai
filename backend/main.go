@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"log"
 	"os"
 	"time"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"github.com/redis/go-redis/v9"
 )
 
 func main() {
@@ -25,17 +27,41 @@ func main() {
 	// Load configuration
 	cfg := config.Load()
 
-	// Initialize database
-	db, err := database.NewConnection(cfg.Database)
+	// Initialize database with retry logic
+	var db *sql.DB
+	var err error
+	maxRetries := 5
+	retryDelay := 5 * time.Second
+	
+	for i := 0; i < maxRetries; i++ {
+		db, err = database.NewConnection(cfg.Database)
+		if err == nil {
+			break
+		}
+		log.Printf("Failed to connect to database (attempt %d/%d): %v", i+1, maxRetries, err)
+		if i < maxRetries-1 {
+			time.Sleep(retryDelay)
+		}
+	}
 	if err != nil {
-		log.Fatal("Failed to connect to database:", err)
+		log.Fatal("Failed to connect to database after retries:", err)
 	}
 	defer db.Close()
 
-	// Initialize Redis for queue
-	redisClient, err := queue.NewRedisClient(cfg.Redis)
+	// Initialize Redis for queue with retry logic
+	var redisClient *redis.Client
+	for i := 0; i < maxRetries; i++ {
+		redisClient, err = queue.NewRedisClient(cfg.Redis)
+		if err == nil {
+			break
+		}
+		log.Printf("Failed to connect to Redis (attempt %d/%d): %v", i+1, maxRetries, err)
+		if i < maxRetries-1 {
+			time.Sleep(retryDelay)
+		}
+	}
 	if err != nil {
-		log.Fatal("Failed to connect to Redis:", err)
+		log.Fatal("Failed to connect to Redis after retries:", err)
 	}
 	defer redisClient.Close()
 

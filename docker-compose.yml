@@ -69,6 +69,7 @@ services:
         max-size: "10m"
         max-file: "5"
         compress: "true"
+    env_file: .env
     environment:
       DB_HOST: postgres
       DB_PORT: 5432
@@ -78,9 +79,9 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       PORT: 8080
-      TON_API_URL: https://tonapi.io
-      TON_API_KEY: ${TON_API_KEY}
-      TON_NETWORK: ${TON_NETWORK:-testnet}
+      TON_API_URL: ${TON_API_URL:-https://tonapi.io}
+      TON_API_KEY: ${TON_API_KEY:-}
+      TON_NETWORK: ${TON_NETWORK:-mainnet}
       GSTD_JETTON_ADDRESS: ${GSTD_JETTON_ADDRESS:-}
       TON_CONTRACT_ADDRESS: ${TON_CONTRACT_ADDRESS:-}
       GIN_MODE: release
@@ -115,7 +116,7 @@ services:
     expose:
       - "3000"
     environment:
-      NEXT_PUBLIC_API_URL: https://app.gstdtoken.com/api
+      NEXT_PUBLIC_API_URL: https://app.gstdtoken.com
       TON_NETWORK: mainnet
     depends_on:
       - backend
