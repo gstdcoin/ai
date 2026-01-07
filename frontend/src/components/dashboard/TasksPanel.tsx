@@ -3,8 +3,10 @@ import { useTranslation } from 'next-i18next';
 import { useWalletStore } from '../../store/walletStore';
 import { useTonConnectUI } from '@tonconnect/ui-react';
 import TaskDetailsModal from './TaskDetailsModal';
+import WorkerTaskCard from './WorkerTaskCard';
 import EmptyState from '../common/EmptyState';
 import { ClipboardList } from 'lucide-react';
+import { triggerHapticImpact } from '../../lib/telegram';
 
 interface Task {
   task_id: string;
@@ -263,7 +265,10 @@ export default function TasksPanel({ onTaskCreated, onCompensationClaimed }: Tas
     <div>
       <div className="mb-6 flex flex-wrap gap-2 sm:gap-4 items-center">
         <button
-          onClick={() => setFilter('all')}
+          onClick={() => {
+            setFilter('all');
+            triggerHapticImpact('light');
+          }}
           className={`px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm sm:text-base min-h-[44px] ${
             filter === 'all' 
               ? 'glass-button-gold' 
@@ -275,7 +280,10 @@ export default function TasksPanel({ onTaskCreated, onCompensationClaimed }: Tas
         {address && (
           <>
             <button
-              onClick={() => setFilter('my')}
+              onClick={() => {
+                setFilter('my');
+                triggerHapticImpact('light');
+              }}
               className={`px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm sm:text-base min-h-[44px] ${
                 filter === 'my' 
                   ? 'glass-button-gold' 
@@ -285,7 +293,10 @@ export default function TasksPanel({ onTaskCreated, onCompensationClaimed }: Tas
               {t('my_tasks')}
             </button>
             <button
-              onClick={() => setFilter('available')}
+              onClick={() => {
+                setFilter('available');
+                triggerHapticImpact('light');
+              }}
               className={`px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm sm:text-base min-h-[44px] ${
                 filter === 'available' 
                   ? 'glass-button-gold' 
@@ -326,7 +337,24 @@ export default function TasksPanel({ onTaskCreated, onCompensationClaimed }: Tas
             }
           } : undefined}
         />
+      ) : filter === 'available' ? (
+        // Worker Mode: Show cards with START WORK buttons
+        <div className="space-y-4">
+          {tasks.map((task) => (
+            <WorkerTaskCard
+              key={task.task_id}
+              task={task}
+              onTaskCompleted={() => {
+                loadTasks();
+                if (onTaskCreated) {
+                  onTaskCreated();
+                }
+              }}
+            />
+          ))}
+        </div>
       ) : (
+        // Regular table view for other filters
         <div className="glass-card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-white/10">
@@ -381,7 +409,10 @@ export default function TasksPanel({ onTaskCreated, onCompensationClaimed }: Tas
                     <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm">
                       <div className="flex flex-col sm:flex-row gap-2">
                         <button 
-                          onClick={() => setSelectedTaskId(task.task_id)}
+                          onClick={() => {
+                            setSelectedTaskId(task.task_id);
+                            triggerHapticImpact('light');
+                          }}
                           className="text-gold-900 hover:text-gold-700 text-xs sm:text-sm font-medium"
                         >
                           {t('view_details')}

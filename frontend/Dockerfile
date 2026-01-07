@@ -2,12 +2,14 @@ FROM node:20-alpine AS base
 
 # Install dependencies only when needed
 FROM base AS deps
-RUN apk add --no-cache libc6-compat
+RUN apk update && apk add --no-cache libc6-compat || apk add --no-cache gcompat || true
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
 # Install dependencies - use npm install to handle package-lock.json sync issues
-RUN npm install
+# Update @twa-dev/sdk to latest if needed
+RUN npm install && \
+    npm list @twa-dev/sdk || npm install @twa-dev/sdk@latest --save
 
 # Rebuild the source code only when needed
 FROM base AS builder

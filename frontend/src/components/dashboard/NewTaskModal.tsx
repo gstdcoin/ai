@@ -372,10 +372,16 @@ export default function NewTaskModal({ onClose, onTaskCreated }: NewTaskModalPro
             </button>
             <button
               type="submit"
-              disabled={loading || !formData.type || !formData.budget}
-              className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={loading || !formData.type || !formData.budget || !address || !tonConnectUI?.connected}
+              className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed relative group"
+              title={!address || !tonConnectUI?.connected ? (t('connect_wallet_to_create_task') || 'Connect wallet to create task') : ''}
             >
               {loading ? (t('creating') || 'Creating...') : (t('create') || 'Create Task')}
+              {(!address || !tonConnectUI?.connected) && (
+                <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                  {t('connect_wallet_to_create_task') || 'Connect wallet to create task'}
+                </span>
+              )}
             </button>
           </div>
         </form>

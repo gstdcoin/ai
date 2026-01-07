@@ -1,0 +1,26 @@
+# Системные папки Ubuntu
+.*
+!/.gitignore
+!/.dockerignore
+
+# Секреты
+.env*
+*.pem
+*.key
+admin_secret.txt
+wallet_seed.txt
+
+# Временные отчеты и мусор (чистим историю правок)
+*_REPORT.md
+*_SUMMARY.md
+*_STATUS.md
+*_FINAL.md
+*_COMPLETE.md
+*.tar.gz
+*.log
+
+# Зависимости
+node_modules/
+vendor/
+bin/
+.next/

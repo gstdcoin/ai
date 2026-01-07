@@ -30,13 +30,14 @@ export default function Dashboard() {
     if (saved === 'tasks' || saved === 'devices' || saved === 'stats' || saved === 'help') {
       setActiveTab(saved as Tab);
     }
-  }, []);
+  }, []); // Empty dependency array - run only once
 
+  // Save active tab to localStorage - separate effect to avoid cycles
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && activeTab) {
       window.localStorage.setItem('activeTab', activeTab);
     }
-  }, [activeTab]);
+  }, [activeTab]); // Only depends on activeTab changes
 
   const handleLogout = async () => {
     try {
@@ -64,9 +65,11 @@ export default function Dashboard() {
     }
   }, []);
 
+  // Use telegram.ts helper for haptic feedback
   const triggerHaptic = (style: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft' = 'medium') => {
-    if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp?.HapticFeedback) {
-      (window as any).Telegram.WebApp.HapticFeedback.impactOccurred(style);
+    if (typeof window !== 'undefined') {
+      const { triggerHapticImpact } = require('../../lib/telegram');
+      triggerHapticImpact(style);
     }
   };
 

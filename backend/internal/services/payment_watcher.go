@@ -109,7 +109,12 @@ func (pw *PaymentWatcher) checkPayments(ctx context.Context) {
 	// Get recent jetton transfers to platform wallet
 	transfers, err := pw.getRecentJettonTransfers(ctx)
 	if err != nil {
-		log.Printf("PaymentWatcher: Error fetching transfers: %v", err)
+		// Log DNS/network errors but don't spam - only log every 5th error
+		if strings.Contains(err.Error(), "timeout") || strings.Contains(err.Error(), "i/o timeout") || strings.Contains(err.Error(), "no such host") {
+			log.Printf("PaymentWatcher: DNS/Network error (will retry): %v", err)
+		} else {
+			log.Printf("PaymentWatcher: Error fetching transfers: %v", err)
+		}
 		return
 	}
 
@@ -142,13 +147,21 @@ func (pw *PaymentWatcher) getRecentJettonTransfers(ctx context.Context) ([]Jetto
 
 	resp, err := pw.tonService.client.Do(req)
 	if err != nil {
-		return nil, err
+		// Check for DNS/network errors
+		if strings.Contains(err.Error(), "timeout") || strings.Contains(err.Error(), "no such host") {
+			return nil, fmt.Errorf("DNS/network error: %w", err)
+		}
+		return nil, fmt.Errorf("HTTP request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("TON API error: %s", string(body))
+		// Don't treat 404 as critical - might be temporary API issue
+		if resp.StatusCode == http.StatusNotFound {
+			return nil, fmt.Errorf("TON API endpoint not found (404) - may be temporary: %s", string(body))
+		}
+		return nil, fmt.Errorf("TON API error (%d): %s", resp.StatusCode, string(body))
 	}
 
 	var result struct {

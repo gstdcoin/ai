@@ -58,7 +58,7 @@ func SetupRoutes(
 
 		// Stats
 		v1.GET("/stats", getStats(statsService))
-		v1.GET("/stats/public", getPublicStats(db.(*sql.DB), tonService))
+		v1.GET("/stats/public", getPublicStats(db.(*sql.DB), tonService, tonConfig))
 
 		// Admin (protected by AdminAuth middleware)
 		admin := v1.Group("/admin")

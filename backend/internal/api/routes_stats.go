@@ -1,13 +1,16 @@
 package api
 
 import (
+	"context"
 	"database/sql"
+	"distributed-computing-platform/internal/config"
 	"distributed-computing-platform/internal/services"
+	"log"
 
 	"github.com/gin-gonic/gin"
 )
 
-func getPublicStats(db *sql.DB, tonService *services.TONService) gin.HandlerFunc {
+func getPublicStats(db *sql.DB, tonService *services.TONService, tonConfig config.TONConfig) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Get total tasks completed
 		var totalTasksCompleted int
@@ -56,21 +59,30 @@ func getPublicStats(db *sql.DB, tonService *services.TONService) gin.HandlerFunc
 		}
 
 		// Get current XAUt balance from treasury
-		// Treasury wallet: EQA--JXG8VSyBJmLMqb2J2t4Pya0TS9SXHh7vHh8Iez25sLp
+		treasuryWallet := tonConfig.TreasuryWallet
+		if treasuryWallet == "" {
+			treasuryWallet = "EQA--JXG8VSyBJmLMqb2J2t4Pya0TS9SXHh7vHh8Iez25sLp"
+		}
+		
 		var goldenReserveXAUt float64
 		
-		// Try to get from last entry in history
+		// Try to get from last entry in history first (faster)
 		if len(xautHistory) > 0 {
 			if amount, ok := xautHistory[len(xautHistory)-1]["amount"].(float64); ok {
 				goldenReserveXAUt = amount
 			}
 		}
 
-		// If no history, try to get from TonAPI
-		if goldenReserveXAUt == 0 && tonService != nil {
-			// This would require TonAPI call - simplified for now
-			// treasuryWallet := "EQA--JXG8VSyBJmLMqb2J2t4Pya0TS9SXHh7vHh8Iez25sLp"
-			// goldenReserveXAUt, _ = tonService.GetXAUtBalance(context.Background(), treasuryWallet)
+		// If no history or balance is 0, fetch from TonAPI
+		if goldenReserveXAUt == 0 && tonService != nil && tonConfig.XAUtJettonAddress != "" {
+			ctx := context.Background()
+			balance, err := tonService.GetJettonBalance(ctx, treasuryWallet, tonConfig.XAUtJettonAddress)
+			if err != nil {
+				log.Printf("Failed to fetch XAUt balance from TonAPI: %v", err)
+				// Keep 0 if fetch fails, don't break the response
+			} else {
+				goldenReserveXAUt = balance
+			}
 		}
 
 		// Get last 3 swaps for Golden Reserve feed
