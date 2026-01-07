@@ -39,8 +39,9 @@ export default function RegisterDeviceModal({ onClose, onDeviceRegistered }: Reg
         specs.ram = parseInt(formData.ram) || 0;
       }
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
-      const response = await fetch(`${apiUrl}/api/v1/nodes/register?wallet_address=${address}`, {
+      // Treat NEXT_PUBLIC_API_URL as API base (no trailing slash, no /api suffix)
+      const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/+$/, '');
+      const response = await fetch(`${apiBase}/api/v1/nodes/register?wallet_address=${address}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -51,12 +52,24 @@ export default function RegisterDeviceModal({ onClose, onDeviceRegistered }: Reg
         }),
       });
 
+      // Handle non-JSON and error responses gracefully to avoid cryptic JSON parse errors
+      const rawText = await response.text();
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to register device');
+        try {
+          const errorData = JSON.parse(rawText);
+          throw new Error(errorData.error || 'Failed to register device');
+        } catch {
+          throw new Error(rawText || 'Failed to register device');
+        }
       }
 
-      const nodeData = await response.json();
+      let nodeData: any;
+      try {
+        nodeData = JSON.parse(rawText);
+      } catch {
+        throw new Error('Unexpected response from server while registering device');
+      }
       setNodeId(nodeData.id);
       setSuccess(true);
       

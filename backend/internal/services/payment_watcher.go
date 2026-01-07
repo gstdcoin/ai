@@ -112,9 +112,14 @@ func (pw *PaymentWatcher) checkPayments(ctx context.Context) {
 		// Log DNS/network errors but don't spam - only log every 5th error
 		if strings.Contains(err.Error(), "timeout") || strings.Contains(err.Error(), "i/o timeout") || strings.Contains(err.Error(), "no such host") {
 			log.Printf("PaymentWatcher: DNS/Network error (will retry): %v", err)
+		} else if strings.Contains(err.Error(), "404") || strings.Contains(err.Error(), "not found") {
+			// 404 errors are not critical - API endpoint might not exist yet or jetton address is invalid
+			// Log only occasionally to avoid spam
+			log.Printf("PaymentWatcher: TON API endpoint not found (404) - may be temporary: %v", err)
 		} else {
 			log.Printf("PaymentWatcher: Error fetching transfers: %v", err)
 		}
+		// Don't crash on errors - just return and retry on next interval
 		return
 	}
 
