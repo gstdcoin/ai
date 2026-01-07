@@ -37,23 +37,26 @@ func SetupRoutes(
 	// Initialize ValidationService dependencies
 	validationService.SetDependencies(trustService, entropyService, assignmentService, encryptionService, tonService)
 
+	// Add error handler middleware
+	router.Use(ErrorHandler())
+
 	v1 := router.Group("/api/v1")
 	{
 		// Tasks
-		v1.POST("/tasks", createTask(taskService))
+		v1.POST("/tasks", ValidateTaskRequest(), createTask(taskService))
 		v1.GET("/tasks", getTasks(taskService))
 		v1.GET("/tasks/:id", getTask(taskService))
 		v1.GET("/tasks/:id/payment", getTaskWithPayment(taskPaymentService))
 
 		// Devices
-		v1.POST("/devices/register", registerDevice(deviceService))
+		v1.POST("/devices/register", ValidateDeviceRequest(), registerDevice(deviceService))
 		v1.GET("/devices", getDevices(deviceService))
 		v1.GET("/devices/my", getMyDevices(deviceService))
 
 		// Device endpoints
 		v1.GET("/device/tasks/available", getAvailableTasks(assignmentService))
 		v1.POST("/device/tasks/:id/claim", claimTask(assignmentService))
-		v1.POST("/device/tasks/:id/result", submitResult(resultService, validationService))
+		v1.POST("/device/tasks/:id/result", ValidateResultSubmission(), submitResult(resultService, validationService))
 		v1.GET("/device/tasks/:id/result", getTaskResult(resultService))
 
 		// Stats
@@ -202,8 +205,28 @@ func getTasks(service *services.TaskService) gin.HandlerFunc {
 
 func getTask(service *services.TaskService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Implementation
-		c.JSON(200, gin.H{"message": "Not implemented"})
+		taskID := c.Param("id")
+		if taskID == "" {
+			c.JSON(400, gin.H{"error": "task id is required"})
+			return
+		}
+
+		// Get tasks and find the one with matching ID
+		tasks, err := service.GetTasks(c.Request.Context(), nil)
+		if err != nil {
+			c.JSON(500, gin.H{"error": SanitizeError(err)})
+			return
+		}
+
+		// Find task by ID
+		for _, task := range tasks {
+			if task.TaskID == taskID {
+				c.JSON(200, task)
+				return
+			}
+		}
+
+		c.JSON(404, gin.H{"error": "task not found"})
 	}
 }
 

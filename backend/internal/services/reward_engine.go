@@ -6,19 +6,21 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"os"
 
 	"distributed-computing-platform/internal/config"
 	"distributed-computing-platform/internal/models"
 )
 
 type RewardEngine struct {
-	db              *sql.DB
-	tonService      *TONService
-	stonFiService   *StonFiService
-	tonConfig       config.TONConfig
-	treasuryWallet  string
-	xautJettonAddr  string
-	payoutRetry     *PayoutRetryService
+	db                  *sql.DB
+	tonService          *TONService
+	stonFiService       *StonFiService
+	jettonTransfer      *JettonTransferService
+	tonConfig           config.TONConfig
+	treasuryWallet      string
+	xautJettonAddr      string
+	payoutRetry         *PayoutRetryService
 }
 
 // SetPayoutRetry sets the payout retry service
@@ -43,10 +45,22 @@ func NewRewardEngine(
 		xautJettonAddr = "EQCyD8v6khUUrce9BCvHOaBC9PrvlV9S7D5v67O80p444XAr" // Mainnet XAUt
 	}
 
+	// Initialize jetton transfer service
+	// Note: In production, wallet address and private key should come from secure env vars
+	walletAddr := tonConfig.AdminWallet // Platform wallet with GSTD balance
+	privateKey := getEnv("PLATFORM_WALLET_PRIVATE_KEY", "") // From environment variable
+	jettonTransfer := NewJettonTransferService(
+		tonConfig.APIURL,
+		tonConfig.APIKey,
+		walletAddr,
+		privateKey,
+	)
+
 	return &RewardEngine{
 		db:             db,
 		tonService:     tonService,
 		stonFiService:  stonFiService,
+		jettonTransfer: jettonTransfer,
 		tonConfig:      tonConfig,
 		treasuryWallet: treasuryWallet,
 		xautJettonAddr: xautJettonAddr,
@@ -211,18 +225,42 @@ func (re *RewardEngine) sendGSTDToWorker(ctx context.Context, workerWallet strin
 
 	log.Printf("Sending %.9f GSTD to worker %s (task: %s)", amount, workerWallet, taskID)
 
-	// Use TonAPI to send jetton transfer
-	// Note: This is a simplified version - in production, you'd use a wallet service
-	// that can sign and send transactions
-	// For now, we'll log the transaction details
-	log.Printf("Jetton transfer: %d nanoGSTD to %s", amountNano, workerWallet)
+	// Use JettonTransferService to send transfer
+	if re.jettonTransfer != nil {
+		comment := fmt.Sprintf("Task reward: %s", taskID)
+		txHash, err := re.jettonTransfer.SendJettonTransfer(
+			ctx,
+			workerWallet,
+			re.tonConfig.GSTDJettonAddress,
+			amountNano,
+			comment,
+		)
+		if err != nil {
+			log.Printf("Error sending jetton transfer: %v", err)
+			return fmt.Errorf("failed to send jetton transfer: %w", err)
+		}
 
-	// TODO: Implement actual jetton transfer via TonAPI or wallet service
-	// This requires:
-	// 1. Wallet with GSTD balance
-	// 2. Signing capability
-	// 3. Transaction construction for jetton transfers
+		log.Printf("✅ Jetton transfer initiated: tx_hash=%s, amount=%d nanoGSTD, to=%s",
+			txHash, amountNano, workerWallet)
 
+		// Store transaction hash in database for tracking
+		_, err = re.db.ExecContext(ctx, `
+			UPDATE tasks
+			SET executor_payout_tx_hash = $1,
+			    executor_payout_status = 'pending'
+			WHERE task_id = $2
+		`, txHash, taskID)
+		if err != nil {
+			log.Printf("Warning: Failed to update task with tx hash: %v", err)
+		}
+
+		return nil
+	}
+
+	// Fallback: log transfer intent if service not available
+	log.Printf("⚠️  JettonTransferService not available - transfer not sent")
+	log.Printf("   Transfer intent: %d nanoGSTD to %s (task: %s)", amountNano, workerWallet, taskID)
+	
 	return nil
 }
 
@@ -233,8 +271,27 @@ func (re *RewardEngine) processPlatformFee(ctx context.Context, amount float64, 
 	// Step 1: Send GSTD to treasury wallet
 	log.Printf("Sending %.9f GSTD to treasury %s", amount, re.treasuryWallet)
 
-	// TODO: Implement actual jetton transfer to treasury
-	// For now, we'll proceed with the swap logic
+	// Send GSTD to treasury using JettonTransferService
+	if re.jettonTransfer != nil {
+		amountNano := int64(math.Round(amount * 1e9))
+		comment := fmt.Sprintf("Platform fee: %s", taskID)
+		txHash, err := re.jettonTransfer.SendJettonTransfer(
+			ctx,
+			re.treasuryWallet,
+			re.tonConfig.GSTDJettonAddress,
+			amountNano,
+			comment,
+		)
+		if err != nil {
+			log.Printf("Error sending platform fee to treasury: %v", err)
+			// Continue with swap even if transfer fails (might already be in treasury)
+		} else {
+			log.Printf("✅ Platform fee sent to treasury: tx_hash=%s, amount=%d nanoGSTD",
+				txHash, amountNano)
+		}
+	} else {
+		log.Printf("⚠️  JettonTransferService not available - platform fee not sent")
+	}
 
 	// Step 2: Swap GSTD to XAUt via STON.fi (Mainnet)
 	if re.stonFiService != nil {
@@ -303,8 +360,9 @@ func (re *RewardEngine) createGoldenReserveTable(ctx context.Context) {
 }
 
 func getEnv(key, defaultValue string) string {
-	// Simple implementation - in production use os.Getenv
-	// For now, return default
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
 	return defaultValue
 }
 

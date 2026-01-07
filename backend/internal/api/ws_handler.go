@@ -115,13 +115,14 @@ func (h *WSHub) marshalNotification(n *TaskNotification) []byte {
 	return data
 }
 
-// readPump handles messages from the client
+// readPump handles messages from the client with improved error handling
 func (c *WSClient) readPump() {
 	defer func() {
 		c.hub.unregister <- c
 		c.conn.Close()
 	}()
-
+	
+	// Set read deadline
 	c.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 	c.conn.SetPongHandler(func(string) error {
 		c.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
@@ -137,44 +138,52 @@ func (c *WSClient) readPump() {
 			break
 		}
 
-		// Handle incoming messages (e.g., task claims, heartbeats)
+		// Handle message
 		var msg map[string]interface{}
-		if err := json.Unmarshal(message, &msg); err == nil {
-			if msgType, ok := msg["type"].(string); ok {
-				switch msgType {
-				case "claim_task":
-					// Device wants to claim a task
-					if taskID, ok := msg["task_id"].(string); ok {
-						ctx := context.Background()
-						err := c.assignmentService.ClaimTask(ctx, taskID, c.deviceID)
-						if err != nil {
-							errorMsg := fmt.Sprintf(`{"type":"error","message":"%s"}`, err.Error())
-							select {
-							case c.send <- []byte(errorMsg):
-							default:
-								// Channel full, close connection
-								close(c.send)
-							}
-						} else {
-							successMsg := fmt.Sprintf(`{"type":"task_claimed","task_id":"%s"}`, taskID)
-							select {
-							case c.send <- []byte(successMsg):
-							default:
-								// Channel full, close connection
-								close(c.send)
-							}
-						}
+		if err := json.Unmarshal(message, &msg); err != nil {
+			log.Printf("Failed to parse WebSocket message: %v", err)
+			continue
+		}
+
+		// Handle different message types
+		switch msg["type"] {
+		case "claim_task":
+			if taskID, ok := msg["task_id"].(string); ok {
+				// Device wants to claim a task
+				ctx := context.Background()
+				err := c.assignmentService.ClaimTask(ctx, taskID, c.deviceID)
+				if err != nil {
+					errorMsg := fmt.Sprintf(`{"type":"error","message":"%s"}`, err.Error())
+					select {
+					case c.send <- []byte(errorMsg):
+					default:
+						// Channel full, close connection
+						close(c.send)
 					}
-				case "heartbeat":
-					// Respond to heartbeat
-					c.send <- []byte(`{"type":"heartbeat_ack"}`)
+				} else {
+					successMsg := fmt.Sprintf(`{"type":"task_claimed","task_id":"%s"}`, taskID)
+					select {
+					case c.send <- []byte(successMsg):
+					default:
+						// Channel full, close connection
+						close(c.send)
+					}
 				}
 			}
+		case "heartbeat":
+			// Respond to heartbeat
+			select {
+			case c.send <- []byte(`{"type":"heartbeat_ack"}`):
+			default:
+				// Channel full, skip heartbeat response
+			}
+		default:
+			log.Printf("Unknown message type: %v", msg["type"])
 		}
 	}
 }
 
-// writePump handles messages to the client
+// writePump handles messages to the client with improved error handling
 func (c *WSClient) writePump() {
 	ticker := time.NewTicker(54 * time.Second)
 	defer func() {
@@ -207,7 +216,6 @@ func (c *WSClient) writePump() {
 			if err := w.Close(); err != nil {
 				return
 			}
-
 		case <-ticker.C:
 			c.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
