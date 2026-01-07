@@ -64,42 +64,60 @@ export default function WalletConnect() {
   }, [wallet, connect, disconnect, setUser]);
 
   // Check initial connection state and listen for changes (fallback)
+  // Only depend on tonConnectUI to avoid infinite loops
   useEffect(() => {
-    if (tonConnectUI) {
-      console.log('🔧 TonConnectUI initialized');
-      console.log('📱 Connected:', tonConnectUI.connected);
-      console.log('👤 Account:', tonConnectUI.account);
-      
-      // Check if already connected
-      if (tonConnectUI.account) {
-        console.log('✅ TonConnect account found:', tonConnectUI.account);
-        connect(tonConnectUI.account.address);
-        loginUser(tonConnectUI.account.address);
-        setError(null);
-      } else {
-        disconnect();
-      }
+    if (!tonConnectUI) {
+      return;
+    }
 
-      // Listen for status changes
-      const unsubscribe = tonConnectUI.onStatusChange((wallet) => {
-        console.log('🔄 TonConnect status changed:', wallet);
-        if (wallet) {
-          console.log('✅ Wallet connected:', wallet.account);
-          connect(wallet.account.address);
-          loginUser(wallet.account.address);
+    console.log('🔧 TonConnectUI initialized');
+    console.log('📱 Connected:', tonConnectUI.connected);
+    console.log('👤 Account:', tonConnectUI.account);
+    
+    // Check if already connected
+    if (tonConnectUI.account) {
+      const accountAddress = tonConnectUI.account.address;
+      // Only update if address changed to avoid loops
+      if (lastLoggedInAddress.current !== accountAddress) {
+        console.log('✅ TonConnect account found:', accountAddress);
+        connect(accountAddress);
+        loginUser(accountAddress);
+        lastLoggedInAddress.current = accountAddress;
+        setError(null);
+      }
+    } else {
+      if (lastLoggedInAddress.current !== null) {
+        disconnect();
+        lastLoggedInAddress.current = null;
+      }
+    }
+
+    // Listen for status changes
+    const unsubscribe = tonConnectUI.onStatusChange((wallet) => {
+      console.log('🔄 TonConnect status changed:', wallet);
+      if (wallet && wallet.account) {
+        const accountAddress = wallet.account.address;
+        // Only update if address changed
+        if (lastLoggedInAddress.current !== accountAddress) {
+          console.log('✅ Wallet connected:', accountAddress);
+          connect(accountAddress);
+          loginUser(accountAddress);
+          lastLoggedInAddress.current = accountAddress;
           setError(null);
-        } else {
+        }
+      } else {
+        if (lastLoggedInAddress.current !== null) {
           console.log('❌ Wallet disconnected');
           disconnect();
           lastLoggedInAddress.current = null;
         }
-      });
+      }
+    });
 
-      return () => {
-        unsubscribe();
-      };
-    }
-  }, [tonConnectUI, connect, disconnect, setUser]);
+    return () => {
+      unsubscribe();
+    };
+  }, [tonConnectUI]); // Only depend on tonConnectUI to prevent loops
 
   const handleConnect = async () => {
     console.log('🔌 Opening TonConnect modal...');

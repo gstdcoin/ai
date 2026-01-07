@@ -5,7 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -59,8 +62,13 @@ func (s *TONService) GetJettonBalance(ctx context.Context, address string, jetto
 		return 0, ctx.Err()
 	}
 
-	// Используем TON API для получения баланса Jetton
-	url := fmt.Sprintf("%s/v2/jettons/%s/balances?addresses=%s", s.apiURL, jettonAddress, address)
+	// Используем TON API v2 для получения баланса Jetton
+	// Format: /v2/accounts/{address}/jettons?currencies={jettonAddress}
+	// This endpoint returns all jettons for an account, we filter by jettonAddress
+	url := fmt.Sprintf("%s/v2/accounts/%s/jettons?currencies=%s", s.apiURL, address, jettonAddress)
+	
+	log.Printf("GetJettonBalance: Fetching balance for address=%s, jetton=%s", address, jettonAddress)
+	log.Printf("GetJettonBalance: Full URL: %s", url)
 	
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
@@ -76,34 +84,52 @@ func (s *TONService) GetJettonBalance(ctx context.Context, address string, jetto
 
 	resp, err := s.client.Do(req)
 	if err != nil {
+		log.Printf("GetJettonBalance: HTTP request error: %v", err)
 		return 0, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return 0, fmt.Errorf("TON API error: %s", string(body))
+		log.Printf("GetJettonBalance: API error (status %d): %s", resp.StatusCode, string(body))
+		return 0, fmt.Errorf("TON API error (status %d): %s", resp.StatusCode, string(body))
 	}
 
 	var result struct {
 		Balances []struct {
+			Jetton struct {
+				Address string `json:"address"`
+			} `json:"jetton"`
 			Balance string `json:"balance"`
 		} `json:"balances"`
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		log.Printf("GetJettonBalance: JSON decode error: %v", err)
 		return 0, err
 	}
 
 	if len(result.Balances) == 0 {
+		log.Printf("GetJettonBalance: No balances found for address %s", address)
 		return 0, nil
 	}
 
-	// Конвертируем из nano (1e9) в обычные единицы
-	var balance int64
-	fmt.Sscanf(result.Balances[0].Balance, "%d", &balance)
-	
-	return float64(balance) / 1e9, nil
+	// Find the specific jetton balance
+	for _, b := range result.Balances {
+		if strings.EqualFold(b.Jetton.Address, jettonAddress) {
+			balanceNano, err := strconv.ParseInt(b.Balance, 10, 64)
+			if err != nil {
+				log.Printf("GetJettonBalance: Failed to parse balance: %v", err)
+				return 0, fmt.Errorf("failed to parse jetton balance: %w", err)
+			}
+			balance := float64(balanceNano) / 1e9
+			log.Printf("GetJettonBalance: Found balance %.9f for jetton %s", balance, jettonAddress)
+			return balance, nil
+		}
+	}
+
+	log.Printf("GetJettonBalance: Jetton %s not found in balances", jettonAddress)
+	return 0, nil // Jetton not found
 }
 
 // CheckGSTDBalance проверяет наличие GSTD токена (минимум > 0)
