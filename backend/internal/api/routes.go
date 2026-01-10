@@ -6,6 +6,7 @@ import (
 	"distributed-computing-platform/internal/models"
 	"distributed-computing-platform/internal/services"
 	"log"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
@@ -35,9 +36,10 @@ func SetupRoutes(
 	redisClient interface{},
 	payoutRetryService *services.PayoutRetryService,
 	poolMonitorService *services.PoolMonitorService,
+	cacheService *services.CacheService,
 ) {
 	// Initialize ValidationService dependencies
-	validationService.SetDependencies(trustService, entropyService, assignmentService, encryptionService, tonService)
+	validationService.SetDependencies(trustService, entropyService, assignmentService, encryptionService, tonService, cacheService)
 
 	// Add error handler middleware
 	router.Use(ErrorHandler())
@@ -94,6 +96,9 @@ func SetupRoutes(
 		
 		// Pool Monitoring
 		v1.GET("/pool/status", getPoolStatus(poolMonitorService))
+		
+		// Health check endpoint
+		v1.GET("/health", getHealth(db.(*sql.DB), tonService, tonConfig))
 
 		// Users
 		v1.POST("/users/login", loginUser(userService))
@@ -343,6 +348,54 @@ func getEfficiency(tonService *services.TONService, tonConfig config.TONConfig) 
 			"cost_reduction_percent": breakdown.CostReduction,
 			"final_cost_multiplier":  breakdown.FinalCostMultiplier,
 			"priority_multiplier":    1.0 / breakdown.Efficiency,
+		})
+	}
+}
+
+func getHealth(db *sql.DB, tonService *services.TONService, tonConfig config.TONConfig) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+		
+		// Check database connection
+		dbStatus := "connected"
+		if err := db.PingContext(ctx); err != nil {
+			dbStatus = "disconnected"
+			log.Printf("Health check: Database ping failed: %v", err)
+		}
+		
+		// Get contract balance
+		var contractBalance float64 = 0
+		var contractStatus string = "unknown"
+		if tonConfig.ContractAddress != "" {
+			balanceNano, err := tonService.GetContractBalance(ctx, tonConfig.ContractAddress)
+			if err != nil {
+				contractStatus = "error"
+				log.Printf("Health check: Failed to get contract balance: %v", err)
+			} else {
+				contractStatus = "reachable"
+				contractBalance = float64(balanceNano) / 1e9
+			}
+		} else {
+			contractStatus = "not_configured"
+		}
+		
+		// Determine overall health
+		status := "healthy"
+		if dbStatus != "connected" || contractStatus == "error" {
+			status = "unhealthy"
+		}
+		
+		c.JSON(200, gin.H{
+			"status": status,
+			"database": gin.H{
+				"status": dbStatus,
+			},
+			"contract": gin.H{
+				"address": tonConfig.ContractAddress,
+				"status":  contractStatus,
+				"balance_ton": contractBalance,
+			},
+			"timestamp": time.Now().Unix(),
 		})
 	}
 }
