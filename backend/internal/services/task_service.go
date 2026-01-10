@@ -90,11 +90,12 @@ func (s *TaskService) CreateTask(ctx context.Context, requesterAddress string, d
 	taskID := uuid.New().String()
 	descriptor.TaskID = taskID
 
-	// REMOVED: GSTD balance check is not required for task creation
+	// NOTE: GSTD balance check is currently disabled per user request
 	// Users can create tasks without GSTD tokens
-	// Balance check removed per user request - only needed for task creation
-	
-	// Set default balance to 0 (no GSTD tokens)
+	// GSTD balance is set to 0.0, which affects:
+	//   - EGS calculation (gravity score may be lower)
+	//   - Confidence depth calculation (always 1 with balance 0)
+	// If GSTD support is needed in future, restore balance check here
 	gstdBalance := 0.0
 	
 	entropy, _ := s.entropyService.GetEntropy(ctx, descriptor.Operation)

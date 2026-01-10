@@ -13,10 +13,13 @@ import (
 
 // PoolMonitorService monitors GSTD/XAUt pool status
 type PoolMonitorService struct {
-	poolAddress string
-	apiURL      string
-	apiKey      string
-	httpClient  *http.Client
+	poolAddress     string
+	apiURL          string
+	apiKey          string
+	httpClient      *http.Client
+	tonService      *TONService // For getting jetton balances
+	gstdJettonAddr  string
+	xautJettonAddr  string
 }
 
 // PoolStatus represents the current state of the GSTD/XAUt pool
@@ -38,13 +41,20 @@ func NewPoolMonitorService(tonConfig config.TONConfig) *PoolMonitorService {
 	}
 
 	return &PoolMonitorService{
-		poolAddress: poolAddress,
-		apiURL:      tonConfig.APIURL,
-		apiKey:      tonConfig.APIKey,
+		poolAddress:    poolAddress,
+		apiURL:         tonConfig.APIURL,
+		apiKey:         tonConfig.APIKey,
+		gstdJettonAddr: tonConfig.GSTDJettonAddress,
+		xautJettonAddr: tonConfig.XAUtJettonAddress,
 		httpClient: &http.Client{
 			Timeout: 10 * time.Second,
 		},
 	}
+}
+
+// SetTONService sets the TON service for getting jetton balances
+func (pms *PoolMonitorService) SetTONService(tonService *TONService) {
+	pms.tonService = tonService
 }
 
 // GetPoolStatus retrieves current pool status from TON API
@@ -101,11 +111,50 @@ func (pms *PoolMonitorService) GetPoolStatus(ctx context.Context) (*PoolStatus, 
 		ReserveRatio:  0, // Will be calculated from balances
 	}
 
-	// Try to get jetton balances from pool contract
-	// This requires parsing the pool contract state
-	// For STON.fi pools, we'd query the pool contract's jetton wallets
+	// Get real jetton balances from pool contract's jetton wallets
+	if pms.tonService != nil && pms.gstdJettonAddr != "" && pms.xautJettonAddr != "" {
+		// Get GSTD jetton wallet address for the pool
+		gstdWalletAddr, err := pms.tonService.GetJettonWalletAddress(ctx, pms.poolAddress, pms.gstdJettonAddr)
+		if err == nil {
+			// Get GSTD balance
+			gstdBalance, err := pms.tonService.GetJettonBalance(ctx, gstdWalletAddr, pms.gstdJettonAddr)
+			if err == nil {
+				status.GSTDBalance = gstdBalance
+				log.Printf("📊 GSTD balance: %.9f", gstdBalance)
+			} else {
+				log.Printf("⚠️  Failed to get GSTD balance: %v", err)
+			}
+		} else {
+			log.Printf("⚠️  Failed to get GSTD jetton wallet address: %v", err)
+		}
+
+		// Get XAUt jetton wallet address for the pool
+		xautWalletAddr, err := pms.tonService.GetJettonWalletAddress(ctx, pms.poolAddress, pms.xautJettonAddr)
+		if err == nil {
+			// Get XAUt balance
+			xautBalance, err := pms.tonService.GetJettonBalance(ctx, xautWalletAddr, pms.xautJettonAddr)
+			if err == nil {
+				status.XAUtBalance = xautBalance
+				log.Printf("📊 XAUt balance: %.9f", xautBalance)
+			} else {
+				log.Printf("⚠️  Failed to get XAUt balance: %v", err)
+			}
+		} else {
+			log.Printf("⚠️  Failed to get XAUt jetton wallet address: %v", err)
+		}
+
+		// Calculate reserve ratio and total value
+		if status.GSTDBalance > 0 && status.XAUtBalance > 0 {
+			status.ReserveRatio = status.GSTDBalance / status.XAUtBalance
+			// Estimate USD value (XAUt ≈ $2000 per token, simplified)
+			status.TotalValueUSD = status.XAUtBalance * 2000.0
+		}
+	} else {
+		log.Printf("⚠️  TON service or jetton addresses not configured for pool monitoring")
+	}
 	
-	log.Printf("✅ Pool status retrieved: balance=%.2f TON, healthy=%v", balanceTON, status.IsHealthy)
+	log.Printf("✅ Pool status retrieved: balance=%.2f TON, GSTD=%.9f, XAUt=%.9f, healthy=%v", 
+		balanceTON, status.GSTDBalance, status.XAUtBalance, status.IsHealthy)
 
 	return status, nil
 }

@@ -23,6 +23,7 @@ func (s *TimeoutService) CheckTimeouts(ctx context.Context) error {
 	// Find tasks that are assigned but haven't been updated in timeout period
 	timeoutDuration := 5 * time.Minute // 5 minutes timeout for execution
 	
+	// SECURITY: Use parameterized query to prevent SQL injection
 	query := `
 		UPDATE tasks 
 		SET status = 'pending', 
@@ -30,11 +31,11 @@ func (s *TimeoutService) CheckTimeouts(ctx context.Context) error {
 		    assigned_device = NULL,
 		    timeout_at = NULL
 		WHERE status = 'assigned' 
-		  AND (timeout_at < NOW() OR (assigned_at < NOW() - INTERVAL '%d seconds' AND timeout_at IS NULL))
+		  AND (timeout_at < NOW() OR (assigned_at < NOW() - INTERVAL '1 second' * $1 AND timeout_at IS NULL))
 		RETURNING task_id
 	`
 	
-	rows, err := s.db.QueryContext(ctx, fmt.Sprintf(query, int(timeoutDuration.Seconds())))
+	rows, err := s.db.QueryContext(ctx, query, int(timeoutDuration.Seconds()))
 	if err != nil {
 		return err
 	}
