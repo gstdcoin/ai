@@ -17,8 +17,23 @@ import (
 
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
-		return true // Allow all origins in development; restrict in production
+		origin := r.Header.Get("Origin")
+		// In production, check against allowed origins
+		// For now, allow all origins but log for security monitoring
+		if origin != "" {
+			log.Printf("WebSocket connection from origin: %s", origin)
+		}
+		// TODO: Add environment-based origin whitelist for production
+		// allowedOrigins := []string{"https://app.gstdtoken.com", "https://gstdtoken.com"}
+		// for _, allowed := range allowedOrigins {
+		//     if origin == allowed {
+		//         return true
+		//     }
+		// }
+		return true // Allow all origins for now (development mode)
 	},
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
 }
 
 // WSClient represents a WebSocket client (device/worker)
@@ -33,11 +48,13 @@ type WSClient struct {
 
 // WSHub manages WebSocket connections
 type WSHub struct {
-	clients    map[*WSClient]bool
-	broadcast  chan *TaskNotification
-	register   chan *WSClient
-	unregister chan *WSClient
-	mu         sync.RWMutex
+	clients       map[*WSClient]bool
+	broadcast     chan *TaskNotification
+	register      chan *WSClient
+	unregister    chan *WSClient
+	mu            sync.RWMutex
+	redisPubSub   interface{} // *services.RedisPubSubService (avoid circular import)
+	redisMsgChan  <-chan interface{} // Channel for Redis Pub/Sub messages (TaskMessage) - receive-only
 }
 
 // TaskNotification represents a task available for execution
@@ -54,6 +71,95 @@ func NewWSHub() *WSHub {
 		register:   make(chan *WSClient),
 		unregister: make(chan *WSClient),
 	}
+}
+
+// SetRedisPubSub sets the Redis Pub/Sub service and starts subscription
+func (h *WSHub) SetRedisPubSub(redisPubSub interface{}) {
+	h.redisPubSub = redisPubSub
+	
+	// Use type assertion to call Subscribe method
+	// We need to check if it's *services.RedisPubSubService
+	if pubSub, ok := redisPubSub.(*services.RedisPubSubService); ok {
+		msgChan, err := pubSub.Subscribe()
+		if err != nil {
+			log.Printf("❌ Failed to subscribe to Redis Pub/Sub: %v", err)
+			return
+		}
+		
+		h.redisMsgChan = msgChan
+		log.Printf("✅ WSHub subscribed to Redis Pub/Sub channel: gstd_tasks_channel")
+		
+		// Start goroutine to receive messages from Redis
+		go h.handleRedisMessages()
+	} else {
+		log.Printf("⚠️  Redis Pub/Sub service type assertion failed")
+	}
+}
+
+// handleRedisMessages processes messages from Redis Pub/Sub
+func (h *WSHub) handleRedisMessages() {
+	if h.redisMsgChan == nil {
+		return
+	}
+	
+	for msgInterface := range h.redisMsgChan {
+		if msgInterface == nil {
+			continue
+		}
+		
+		// Type assert to get TaskMessage fields
+		// We need to use reflection or type assertion
+		msgMap, ok := msgInterface.(map[string]interface{})
+		if !ok {
+			// Try to unmarshal from JSON if it's a byte slice
+			continue
+		}
+		
+		taskID, _ := msgMap["task_id"].(string)
+		taskType, _ := msgMap["task_type"].(string)
+		status, _ := msgMap["status"].(string)
+		payload, _ := msgMap["payload"].(map[string]interface{})
+		
+		// Only process tasks with 'pending' or 'queued' status
+		if status != "pending" && status != "queued" {
+			continue
+		}
+		
+		log.Printf("📥 Received task from Redis Pub/Sub: %s (status: %s)", taskID, status)
+		
+		// Convert to models.Task
+		task := &models.Task{
+			TaskID:              taskID,
+			TaskType:            taskType,
+			Status:              status,
+			RequesterAddress:    getStringFromPayload(payload, "requester_address"),
+			LaborCompensationTon: getFloatFromPayload(payload, "labor_compensation"),
+			PriorityScore:        getFloatFromPayload(payload, "gravity_score"),
+		}
+		
+		// Extract MinTrustScore if available
+		if minTrust, ok := payload["min_trust_score"].(float64); ok {
+			task.MinTrustScore = minTrust
+		}
+		
+		// Broadcast to local WebSocket clients
+		h.BroadcastTask(task)
+	}
+}
+
+// Helper functions to extract values from payload
+func getStringFromPayload(payload map[string]interface{}, key string) string {
+	if val, ok := payload[key].(string); ok {
+		return val
+	}
+	return ""
+}
+
+func getFloatFromPayload(payload map[string]interface{}, key string) float64 {
+	if val, ok := payload[key].(float64); ok {
+		return val
+	}
+	return 0.0
 }
 
 // Run starts the hub's main loop
@@ -121,7 +227,7 @@ func (c *WSClient) readPump() {
 		c.hub.unregister <- c
 		c.conn.Close()
 	}()
-	
+
 	// Set read deadline
 	c.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 	c.conn.SetPongHandler(func(string) error {
@@ -147,31 +253,31 @@ func (c *WSClient) readPump() {
 
 		// Handle different message types
 		switch msg["type"] {
-		case "claim_task":
+				case "claim_task":
 			if taskID, ok := msg["task_id"].(string); ok {
-				// Device wants to claim a task
-				ctx := context.Background()
-				err := c.assignmentService.ClaimTask(ctx, taskID, c.deviceID)
-				if err != nil {
-					errorMsg := fmt.Sprintf(`{"type":"error","message":"%s"}`, err.Error())
-					select {
-					case c.send <- []byte(errorMsg):
-					default:
-						// Channel full, close connection
-						close(c.send)
+					// Device wants to claim a task
+						ctx := context.Background()
+						err := c.assignmentService.ClaimTask(ctx, taskID, c.deviceID)
+						if err != nil {
+							errorMsg := fmt.Sprintf(`{"type":"error","message":"%s"}`, err.Error())
+							select {
+							case c.send <- []byte(errorMsg):
+							default:
+								// Channel full, close connection
+								close(c.send)
+							}
+						} else {
+							successMsg := fmt.Sprintf(`{"type":"task_claimed","task_id":"%s"}`, taskID)
+							select {
+							case c.send <- []byte(successMsg):
+							default:
+								// Channel full, close connection
+								close(c.send)
+							}
+						}
 					}
-				} else {
-					successMsg := fmt.Sprintf(`{"type":"task_claimed","task_id":"%s"}`, taskID)
-					select {
-					case c.send <- []byte(successMsg):
-					default:
-						// Channel full, close connection
-						close(c.send)
-					}
-				}
-			}
-		case "heartbeat":
-			// Respond to heartbeat
+				case "heartbeat":
+					// Respond to heartbeat
 			select {
 			case c.send <- []byte(`{"type":"heartbeat_ack"}`):
 			default:

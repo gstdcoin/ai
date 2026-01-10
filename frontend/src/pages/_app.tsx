@@ -2,6 +2,8 @@ import type { AppProps } from 'next/app';
 import { appWithTranslation } from 'next-i18next';
 import { TonConnectUIProvider } from '@tonconnect/ui-react';
 import { useEffect } from 'react';
+import { Toaster } from 'sonner';
+import { ErrorBoundary } from '../components/common/ErrorBoundary';
 import { initTelegramWebApp } from '../lib/telegram';
 import '../styles/globals.css';
 
@@ -16,14 +18,21 @@ function App({ Component, pageProps }: AppProps) {
   }, []);
 
   return (
-    <TonConnectUIProvider 
-      manifestUrl={manifestUrl}
-      actionsConfiguration={{
-        twaReturnUrl: 'https://t.me/gstdtoken_bot'
-      }}
-    >
-      <Component {...pageProps} />
-    </TonConnectUIProvider>
+    <ErrorBoundary>
+      <TonConnectUIProvider 
+        manifestUrl={manifestUrl}
+        actionsConfiguration={{
+          twaReturnUrl: 'https://t.me/gstdtoken_bot'
+        }}
+      >
+        <Component {...pageProps} />
+        <Toaster 
+          position="top-right"
+          richColors
+          closeButton
+        />
+      </TonConnectUIProvider>
+    </ErrorBoundary>
   );
 }
 

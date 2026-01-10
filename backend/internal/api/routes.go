@@ -5,6 +5,7 @@ import (
 	"distributed-computing-platform/internal/config"
 	"distributed-computing-platform/internal/models"
 	"distributed-computing-platform/internal/services"
+	"log"
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
@@ -64,9 +65,9 @@ func SetupRoutes(
 		v1.GET("/stats", getStats(statsService))
 		v1.GET("/stats/public", getPublicStats(db.(*sql.DB), tonService, tonConfig))
 
-		// Admin (protected by AdminAuth middleware)
+		// Admin (protected by RequireAdminWallet middleware)
 		admin := v1.Group("/admin")
-		admin.Use(AdminAuth())
+		admin.Use(RequireAdminWallet(tonConfig))
 		{
 			admin.GET("/health", getAdminHealth(db.(*sql.DB), redisClient.(*redis.Client), rewardEngine, payoutRetryService))
 			admin.GET("/withdrawals/pending", getPendingWithdrawals(db.(*sql.DB)))
@@ -93,14 +94,6 @@ func SetupRoutes(
 		
 		// Pool Monitoring
 		v1.GET("/pool/status", getPoolStatus(poolMonitorService))
-
-		// Admin endpoints (require admin wallet authorization)
-		adminGroup := v1.Group("/admin")
-		adminGroup.Use(RequireAdminWallet(tonConfig))
-		{
-			adminGroup.GET("/commission/balance", getCommissionBalance(paymentService))
-			adminGroup.GET("/commission/withdraw-intent", getCommissionWithdrawIntent(paymentService, tonConfig))
-		}
 
 		// Users
 		v1.POST("/users/login", loginUser(userService))
@@ -231,22 +224,17 @@ func getTask(service *services.TaskService) gin.HandlerFunc {
 			return
 		}
 
-		// Get tasks and find the one with matching ID
-		tasks, err := service.GetTasks(c.Request.Context(), nil)
+		// Use GetTaskByID method directly (efficient query by ID)
+		task, err := service.GetTaskByID(c.Request.Context(), taskID)
 		if err != nil {
+			if err == sql.ErrNoRows {
+				c.JSON(404, gin.H{"error": "task not found"})
+				return
+			}
 			c.JSON(500, gin.H{"error": SanitizeError(err)})
 			return
 		}
-
-		// Find task by ID
-		for _, task := range tasks {
-			if task.TaskID == taskID {
-				c.JSON(200, task)
-				return
-			}
-		}
-
-		c.JSON(404, gin.H{"error": "task not found"})
+		c.JSON(200, task)
 	}
 }
 
@@ -303,16 +291,21 @@ func getGSTDBalance(tonService *services.TONService, tonConfig config.TONConfig)
 			return
 		}
 
-		balance, err := tonService.GetJettonBalance(c.Request.Context(), address, tonConfig.GSTDJettonAddress)
+		// Normalize address for TON API (convert raw to user-friendly if needed)
+		normalizedAddress := services.NormalizeAddressForAPI(address)
+
+		balance, err := tonService.GetJettonBalance(c.Request.Context(), normalizedAddress, tonConfig.GSTDJettonAddress)
 		if err != nil {
-			c.JSON(500, gin.H{"error": SanitizeError(err)})
-			return
+			// Don't fail completely - return 0 balance if API fails
+			log.Printf("GetGSTDBalance: Error getting balance: %v, returning 0", err)
+			balance = 0
 		}
 
-		hasGSTD, err := tonService.CheckGSTDBalance(c.Request.Context(), address, tonConfig.GSTDJettonAddress)
+		hasGSTD, err := tonService.CheckGSTDBalance(c.Request.Context(), normalizedAddress, tonConfig.GSTDJettonAddress)
 		if err != nil {
-			c.JSON(500, gin.H{"error": SanitizeError(err)})
-			return
+			// Don't fail completely - assume false if check fails
+			log.Printf("GetGSTDBalance: Error checking balance: %v, assuming false", err)
+			hasGSTD = false
 		}
 
 		c.JSON(200, gin.H{
@@ -330,10 +323,14 @@ func getEfficiency(tonService *services.TONService, tonConfig config.TONConfig) 
 			return
 		}
 
-		balance, err := tonService.GetJettonBalance(c.Request.Context(), address, tonConfig.GSTDJettonAddress)
+		// Normalize address for TON API (convert raw to user-friendly if needed)
+		normalizedAddress := services.NormalizeAddressForAPI(address)
+
+		balance, err := tonService.GetJettonBalance(c.Request.Context(), normalizedAddress, tonConfig.GSTDJettonAddress)
 		if err != nil {
-			c.JSON(500, gin.H{"error": SanitizeError(err)})
-			return
+			// Don't fail completely - return 0 balance if API fails
+			log.Printf("GetEfficiency: Error getting balance: %v, using 0", err)
+			balance = 0
 		}
 
 		// Calculate efficiency
@@ -403,7 +400,6 @@ func getCommissionWithdrawIntent(service *services.PaymentService, tonConfig con
 		// Generate withdraw intent for admin
 		// Admin will sign this transaction via TonConnect to withdraw commission
 		amountNano := int64(balance.TotalCommission * 1e9)
-		minGasFee := int64(10000000) // 0.01 TON
 
 		// For now, commission is already in admin wallet (sent by escrow contract)
 		// This endpoint just returns the balance information

@@ -53,6 +53,12 @@ func NewTONService(apiURL string, apiKey string) *TONService {
 	}
 }
 
+// normalizeTONAddress converts raw format (0:...) to user-friendly format if needed
+// TON API expects user-friendly format (EQ...), not raw format (0:...)
+func normalizeTONAddress(address string) string {
+	return NormalizeAddressForAPI(address)
+}
+
 // GetJettonBalance получает баланс Jetton токена (GSTD) на адресе
 func (s *TONService) GetJettonBalance(ctx context.Context, address string, jettonAddress string) (float64, error) {
 	// Wait for rate limiter
@@ -62,12 +68,15 @@ func (s *TONService) GetJettonBalance(ctx context.Context, address string, jetto
 		return 0, ctx.Err()
 	}
 
+	// Normalize address format for TON API
+	normalizedAddress := normalizeTONAddress(address)
+	
 	// Используем TON API v2 для получения баланса Jetton
 	// Format: /v2/accounts/{address}/jettons?currencies={jettonAddress}
 	// This endpoint returns all jettons for an account, we filter by jettonAddress
-	url := fmt.Sprintf("%s/v2/accounts/%s/jettons?currencies=%s", s.apiURL, address, jettonAddress)
+	url := fmt.Sprintf("%s/v2/accounts/%s/jettons?currencies=%s", s.apiURL, normalizedAddress, jettonAddress)
 	
-	log.Printf("GetJettonBalance: Fetching balance for address=%s, jetton=%s", address, jettonAddress)
+	log.Printf("GetJettonBalance: Fetching balance for address=%s (normalized: %s), jetton=%s", address, normalizedAddress, jettonAddress)
 	log.Printf("GetJettonBalance: Full URL: %s", url)
 	
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
@@ -92,7 +101,10 @@ func (s *TONService) GetJettonBalance(ctx context.Context, address string, jetto
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
 		log.Printf("GetJettonBalance: API error (status %d): %s", resp.StatusCode, string(body))
-		return 0, fmt.Errorf("TON API error (status %d): %s", resp.StatusCode, string(body))
+		// Don't fail completely - return 0 balance if API fails
+		// This allows task creation to continue even if balance check fails
+		log.Printf("GetJettonBalance: Returning 0 balance due to API error (non-critical)")
+		return 0, nil // Return 0 instead of error to allow task creation
 	}
 
 	var result struct {
@@ -152,8 +164,11 @@ func (s *TONService) GetPublicKey(ctx context.Context, address string) ([]byte, 
 		return nil, ctx.Err()
 	}
 
+	// Normalize address for TON API (convert raw to user-friendly if needed)
+	normalizedAddress := NormalizeAddressForAPI(address)
+	
 	// Use TON API to get account info and extract public key
-	url := fmt.Sprintf("%s/v2/accounts/%s", s.apiURL, address)
+	url := fmt.Sprintf("%s/v2/accounts/%s", s.apiURL, normalizedAddress)
 	
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {

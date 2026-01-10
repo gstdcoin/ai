@@ -108,7 +108,7 @@ export default function RegisterDeviceModal({ onClose, onDeviceRegistered }: Reg
                 {nodeId}
               </p>
               <p className="text-xs text-gray-500 mt-2">
-                {t('node_id_instruction') || 'Save this ID - you will need it for your worker script.'}
+                {t('node_id_instruction') || 'Tasks will be processed automatically in your browser. No installation needed!'}
               </p>
             </div>
             <button

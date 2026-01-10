@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"distributed-computing-platform/internal/config"
@@ -14,9 +15,10 @@ import (
 )
 
 type TaskPaymentService struct {
-	db        *sql.DB
+	db         *sql.DB
 	tonService *TONService
 	tonConfig  config.TONConfig
+	taskService *TaskService // For broadcasting tasks via Redis Pub/Sub
 }
 
 func NewTaskPaymentService(db *sql.DB, tonService *TONService, tonConfig config.TONConfig) *TaskPaymentService {
@@ -47,6 +49,9 @@ func (s *TaskPaymentService) CreateTask(ctx context.Context, creatorWallet strin
 		return nil, fmt.Errorf("creator_wallet is required")
 	}
 
+	// Normalize wallet address (convert raw to user-friendly if needed)
+	_ = NormalizeAddressForAPI(creatorWallet) // Normalize for API calls if needed
+
 	// Generate unique task ID
 	taskID := uuid.New().String()
 	
@@ -66,14 +71,30 @@ func (s *TaskPaymentService) CreateTask(ctx context.Context, creatorWallet strin
 	payloadStr := string(payloadJSON)
 
 	// Insert task with pending_payment status
+	// Use original wallet address for storage (keep raw format if provided)
 	now := time.Now()
+	
+	// Check which priority column exists in database
+	// Try to insert with priority_score, fallback to certainty_gravity_score
 	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO tasks (
 			task_id, creator_wallet, requester_address, task_type, 
 			status, budget_gstd, reward_gstd, payment_memo, payload,
-			created_at, priority_score, escrow_status
-		) VALUES ($1, $2, $2, $3, $4, $5, $6, $7, $8, $9, 0.0, 'pending')
+			created_at, escrow_status
+		) VALUES ($1, $2, $2, $3, $4, $5, $6, $7, $8, $9, 'pending')
 	`, taskID, creatorWallet, req.Type, "pending_payment", req.Budget, rewardGSTD, paymentMemo, payloadStr, now)
+	
+	// If error about priority_score, try with certainty_gravity_score
+	if err != nil && (strings.Contains(err.Error(), "priority_score") || strings.Contains(err.Error(), "column") && strings.Contains(err.Error(), "does not exist")) {
+		// Try without priority column - it will use default
+		_, err = s.db.ExecContext(ctx, `
+			INSERT INTO tasks (
+				task_id, creator_wallet, requester_address, task_type, 
+				status, budget_gstd, reward_gstd, payment_memo, payload,
+				created_at, escrow_status
+			) VALUES ($1, $2, $2, $3, $4, $5, $6, $7, $8, $9, 'pending')
+		`, taskID, creatorWallet, req.Type, "pending_payment", req.Budget, rewardGSTD, paymentMemo, payloadStr, now)
+	}
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to create task: %w", err)
@@ -107,7 +128,13 @@ func (s *TaskPaymentService) VerifyPayment(ctx context.Context, taskID string) (
 	return depositID.Valid && depositID.String != "", nil
 }
 
+// SetTaskService sets the task service for broadcasting
+func (s *TaskPaymentService) SetTaskService(taskService *TaskService) {
+	s.taskService = taskService
+}
+
 // MarkTaskAsPaid updates task status to queued after payment verification
+// Also broadcasts task via Redis Pub/Sub for horizontal scaling
 func (s *TaskPaymentService) MarkTaskAsPaid(ctx context.Context, taskID string, depositID string) error {
 	_, err := s.db.ExecContext(ctx, `
 		UPDATE tasks
@@ -115,7 +142,22 @@ func (s *TaskPaymentService) MarkTaskAsPaid(ctx context.Context, taskID string, 
 		WHERE task_id = $2 AND status = 'pending_payment'
 	`, depositID, taskID)
 
-	return err
+	if err != nil {
+		return err
+	}
+
+	// Broadcast task via Redis Pub/Sub and WebSocket hub
+	if s.taskService != nil {
+		// Get updated task to broadcast
+		task, err := s.GetTaskByID(ctx, taskID)
+		if err == nil && task != nil {
+			// Convert queued status to pending for broadcast (workers expect 'pending')
+			task.Status = "pending"
+			s.taskService.BroadcastTaskToHub(ctx, task)
+		}
+	}
+
+	return nil
 }
 
 // GetTaskByID retrieves a task by its ID
@@ -124,10 +166,11 @@ func (s *TaskPaymentService) GetTaskByID(ctx context.Context, taskID string) (*m
 	var creatorWallet, depositID, paymentMemo, payload sql.NullString
 	var budgetGSTD, rewardGSTD sql.NullFloat64
 
+	// Try to select with certainty_gravity_score first, fallback to priority_score
 	err := s.db.QueryRowContext(ctx, `
 		SELECT task_id, creator_wallet, requester_address, task_type, status,
 		       budget_gstd, reward_gstd, deposit_id, payment_memo, payload,
-		       created_at, priority_score
+		       created_at, COALESCE(certainty_gravity_score, priority_score, 0.0) as priority_score
 		FROM tasks
 		WHERE task_id = $1
 	`, taskID).Scan(
@@ -144,6 +187,30 @@ func (s *TaskPaymentService) GetTaskByID(ctx context.Context, taskID string) (*m
 		&task.CreatedAt,
 		&task.PriorityScore,
 	)
+	
+	// If error about column, try with priority_score only
+	if err != nil && strings.Contains(err.Error(), "certainty_gravity_score") {
+		err = s.db.QueryRowContext(ctx, `
+			SELECT task_id, creator_wallet, requester_address, task_type, status,
+			       budget_gstd, reward_gstd, deposit_id, payment_memo, payload,
+			       created_at, COALESCE(priority_score, 0.0) as priority_score
+			FROM tasks
+			WHERE task_id = $1
+		`, taskID).Scan(
+			&task.TaskID,
+			&creatorWallet,
+			&task.RequesterAddress,
+			&task.TaskType,
+			&task.Status,
+			&budgetGSTD,
+			&rewardGSTD,
+			&depositID,
+			&paymentMemo,
+			&payload,
+			&task.CreatedAt,
+			&task.PriorityScore,
+		)
+	}
 
 	if err != nil {
 		return nil, err

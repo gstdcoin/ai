@@ -12,6 +12,7 @@ import { Tab } from '../../types/tabs';
 import { useTonConnectUI } from '@tonconnect/ui-react';
 import SystemStatusWidget from './SystemStatusWidget';
 import TreasuryWidget from './TreasuryWidget';
+import PoolStatusWidget from './PoolStatusWidget';
 import { Plus } from 'lucide-react';
 
 // Lazy load modals for performance
@@ -110,8 +111,11 @@ export default function Dashboard() {
         {/* Main Content */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 pb-20 lg:pb-8">
           <div className="max-w-7xl mx-auto space-y-6">
-            {/* System Status Widget - Always visible */}
-            <TreasuryWidget />
+            {/* System Status Widgets - Always visible */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <TreasuryWidget />
+              <PoolStatusWidget />
+            </div>
             
             <SystemStatusWidget onStatsUpdate={(stats) => {
               // Update Network Temperature and Computational Pressure

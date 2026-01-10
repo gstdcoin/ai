@@ -72,8 +72,8 @@ export default function WorkerTaskCard({ task, onTaskCompleted }: WorkerTaskCard
       });
 
       // Submit result to backend
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
-      const submitResponse = await fetch(`${apiUrl}/api/v1/tasks/worker/submit`, {
+      const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/+$/, '');
+      const submitResponse = await fetch(`${apiBase}/api/v1/tasks/worker/submit`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

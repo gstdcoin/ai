@@ -4,6 +4,8 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, AreaChart, Area
 } from 'recharts';
+import { SkeletonLoader } from '../common/SkeletonLoader';
+import { logger } from '../../lib/logger';
 
 interface Stats {
   processing_tasks: number;
@@ -26,11 +28,12 @@ export default function StatsPanel() {
 
   const loadStats = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/stats`);
+      const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/+$/, '');
+      const response = await fetch(`${apiBase}/api/v1/stats`);
       const data = await response.json();
       setStats(data);
     } catch (error) {
-      console.error('Error loading stats:', error);
+      logger.error('Error loading stats', error);
     } finally {
       setLoading(false);
     }
@@ -38,8 +41,19 @@ export default function StatsPanel() {
 
   if (loading && !stats) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+      <div className="space-y-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="bg-gray-100 rounded-xl p-4 sm:p-6 animate-pulse">
+              <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+              <div className="h-8 bg-gray-200 rounded w-1/2"></div>
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
+          <div className="bg-gray-100 p-4 sm:p-6 rounded-xl animate-pulse h-64"></div>
+          <div className="bg-gray-100 p-4 sm:p-6 rounded-xl animate-pulse h-64"></div>
+        </div>
       </div>
     );
   }
@@ -49,37 +63,43 @@ export default function StatsPanel() {
       label: t('stats_processing'), 
       value: stats?.processing_tasks || 0, 
       color: 'text-blue-600',
-      bg: 'bg-blue-50'
+      bg: 'bg-blue-50',
+      tooltip: undefined
     },
     { 
       label: t('stats_queued'), 
       value: stats?.queued_tasks || 0, 
       color: 'text-yellow-600',
-      bg: 'bg-yellow-50'
+      bg: 'bg-yellow-50',
+      tooltip: undefined
     },
     { 
       label: t('stats_completed'), 
       value: stats?.completed_tasks || 0, 
       color: 'text-green-600',
-      bg: 'bg-green-50'
+      bg: 'bg-green-50',
+      tooltip: undefined
     },
     { 
       label: t('network_temperature'), 
       value: '-', 
       color: 'text-orange-600',
-      bg: 'bg-orange-50'
+      bg: 'bg-orange-50',
+      tooltip: 'Среднее значение entropy_score по всем операциям. Высокая температура = низкая надёжность сети.'
     },
     { 
       label: t('computational_pressure'), 
       value: '-', 
       color: 'text-red-600',
-      bg: 'bg-red-50'
+      bg: 'bg-red-50',
+      tooltip: 'Количество ожидающих задач / Количество активных узлов. Высокое давление = перегрузка сети.'
     },
     { 
       label: t('total_compensation'), 
       value: `${(stats?.total_rewards_ton || 0).toFixed(2)} TON`, 
       color: 'text-indigo-600',
-      bg: 'bg-indigo-50'
+      bg: 'bg-indigo-50',
+      tooltip: undefined
     },
   ];
 
@@ -88,7 +108,11 @@ export default function StatsPanel() {
       {/* Метрики */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
         {statCards.map((card, i) => (
-          <div key={i} className={`${card.bg} rounded-xl p-4 sm:p-6 shadow-sm border border-white/50`}>
+          <div 
+            key={i} 
+            className={`${card.bg} rounded-xl p-4 sm:p-6 shadow-sm border border-white/50 ${card.tooltip ? 'cursor-help' : ''}`}
+            title={card.tooltip}
+          >
             <p className="text-xs sm:text-sm font-medium text-gray-500 mb-1">{card.label}</p>
             <p className={`text-lg sm:text-2xl font-bold ${card.color}`}>{card.value}</p>
           </div>

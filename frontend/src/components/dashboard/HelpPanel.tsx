@@ -50,14 +50,15 @@ export default function HelpPanel() {
             <h3 className="font-bold text-base sm:text-lg mb-3">🤖 {t('automated_api')}</h3>
             <p className="text-sm sm:text-base text-gray-600 mb-4">{t('api_desc')}</p>
             <div className="bg-gray-900 rounded-lg p-3 sm:p-4 font-mono text-xs sm:text-sm text-gray-300 overflow-x-auto">
-              <p className="text-blue-400"># Create task via API</p>
-              <p>curl -X POST https://app.gstdtoken.com/api/v1/tasks \</p>
-              <p>  -H "Content-Type: application/json" \</p>
-              <p>  -d &#123;</p>
-              <p>    "requester_address": "YOUR_WALLET",</p>
-              <p>    "task_type": "inference",</p>
-              <p>    "labor_compensation_ton": 0.5</p>
-              <p>  &#125;</p>
+              <p className="text-green-400"># Create task via API</p>
+              <p className="text-gray-300">curl -X POST https://app.gstdtoken.com/api/v1/tasks/create \</p>
+              <p className="text-gray-300">  -H "Content-Type: application/json" \</p>
+              <p className="text-gray-300">  -d &#123;</p>
+              <p className="text-yellow-300">    "type": "AI_INFERENCE",</p>
+              <p className="text-yellow-300">    "budget": 10.5,</p>
+              <p className="text-yellow-300">    "payload": &#123;"input": "data"&#125;</p>
+              <p className="text-gray-300">  &#125;</p>
+              <p className="text-gray-500 mt-2"># Add ?wallet_address=YOUR_WALLET to URL</p>
             </div>
           </div>
         </div>

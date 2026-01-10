@@ -76,7 +76,7 @@ func NewRewardEngine(
 		stonFiService:  stonFiService,
 		jettonTransfer: jettonTransfer,
 		tonConfig:      tonConfig,
-		treasuryWallet: treasuryWallet,
+		treasuryWallet: tonConfig.AdminWallet, // Use AdminWallet for treasury
 		xautJettonAddr: xautJettonAddr,
 	}
 }
