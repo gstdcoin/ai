@@ -10,7 +10,7 @@
 admin_secret.txt
 wallet_seed.txt
 
-# Временные отчеты и мусор (чистим историю правок)
+# Временные отчеты и мусор
 *_REPORT.md
 *_SUMMARY.md
 *_STATUS.md
@@ -21,10 +21,18 @@ wallet_seed.txt
 PLATFORM_*.md
 COMPLETE_*.md
 FULL_*.md
+DEPLOYMENT_*.md
+ESCROW_DEPLOYMENT_*.md
+ESCROW_COMPILATION_*.md
+MAINNET_*.md
+GITHUB_*.md
+*_CHECKLIST.md
 *.tar.gz
 *.log
 docs_backup_*/
 cleanup_*.sh
+wallet_*.txt
+CONTRACT_DEPLOY_URL.txt
 
 # Зависимости
 node_modules/
