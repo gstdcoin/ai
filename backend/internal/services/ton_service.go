@@ -13,9 +13,10 @@ import (
 )
 
 type TONService struct {
-	apiURL string
-	apiKey string
-	client *http.Client
+	apiURL      string
+	apiKey      string
+	client      *http.Client
+	cacheService *CacheService // Redis cache for public keys
 	// Rate limiter: 10 requests per second
 	rateLimiter chan struct{}
 }
@@ -51,6 +52,11 @@ func NewTONService(apiURL string, apiKey string) *TONService {
 			Timeout: 10 * time.Second,
 		},
 	}
+}
+
+// SetCacheService sets the cache service for public key caching
+func (s *TONService) SetCacheService(cacheService *CacheService) {
+	s.cacheService = cacheService
 }
 
 // normalizeTONAddress converts raw format (0:...) to user-friendly format if needed
@@ -156,16 +162,30 @@ func (s *TONService) CheckGSTDBalance(ctx context.Context, address string, jetto
 }
 
 // GetPublicKey resolves wallet address to public key via TON API
+// Uses Redis cache (24h TTL) to reduce API calls
 func (s *TONService) GetPublicKey(ctx context.Context, address string) ([]byte, error) {
+	// Normalize address for TON API (convert raw to user-friendly if needed)
+	normalizedAddress := NormalizeAddressForAPI(address)
+	
+	// Cache key for public key
+	cacheKey := fmt.Sprintf("ton:pubkey:%s", normalizedAddress)
+	
+	// Try to get from cache first (24 hour TTL)
+	if s.cacheService != nil {
+		var cachedPubKey []byte
+		if err := s.cacheService.Get(ctx, cacheKey, &cachedPubKey); err == nil {
+			if len(cachedPubKey) == 32 {
+				return cachedPubKey, nil
+			}
+		}
+	}
+	
 	// Wait for rate limiter
 	select {
 	case <-s.rateLimiter:
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
-
-	// Normalize address for TON API (convert raw to user-friendly if needed)
-	normalizedAddress := NormalizeAddressForAPI(address)
 	
 	// Use TON API to get account info and extract public key
 	url := fmt.Sprintf("%s/v2/accounts/%s", s.apiURL, normalizedAddress)
@@ -207,6 +227,13 @@ func (s *TONService) GetPublicKey(ctx context.Context, address string) ([]byte, 
 		pubKey := make([]byte, 32)
 		_, err := fmt.Sscanf(result.PublicKey, "%x", &pubKey)
 		if err == nil && len(pubKey) == 32 {
+			// Cache the public key for 24 hours
+			if s.cacheService != nil {
+				if err := s.cacheService.Set(ctx, cacheKey, pubKey, 24*time.Hour); err != nil {
+					// Log but don't fail if caching fails
+					log.Printf("Warning: Failed to cache public key for %s: %v", normalizedAddress, err)
+				}
+			}
 			return pubKey, nil
 		}
 	}
@@ -215,6 +242,176 @@ func (s *TONService) GetPublicKey(ctx context.Context, address string) ([]byte, 
 	// For TON wallets, we may need to query the wallet contract state
 	// This is a simplified version - full implementation may require parsing contract state
 	return nil, fmt.Errorf("public key not found for address %s", address)
+}
+
+// GetJettonWalletAddress gets the jetton wallet address for a given owner and jetton master
+func (s *TONService) GetJettonWalletAddress(ctx context.Context, ownerAddr, jettonMasterAddr string) (string, error) {
+	// Wait for rate limiter
+	select {
+	case <-s.rateLimiter:
+	case <-ctx.Done():
+		return "", ctx.Err()
+	}
+
+	// Normalize addresses
+	normalizedOwner := NormalizeAddressForAPI(ownerAddr)
+	normalizedJetton := NormalizeAddressForAPI(jettonMasterAddr)
+
+	// TON API endpoint: GET /v2/jettons/{jetton_address}/wallets/{owner_address}
+	url := fmt.Sprintf("%s/v2/jettons/%s/wallets/%s", s.apiURL, normalizedJetton, normalizedOwner)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return "", err
+	}
+
+	if s.apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+s.apiKey)
+		req.Header.Set("X-API-Key", s.apiKey)
+	}
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		// If endpoint doesn't exist, return error (don't fallback)
+		return "", fmt.Errorf("failed to get jetton wallet (HTTP %d): %s", resp.StatusCode, string(body))
+	}
+
+	var result struct {
+		Address string `json:"address"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", err
+	}
+
+	return result.Address, nil
+}
+
+// GetContractBalance gets the TON balance of a contract address
+func (s *TONService) GetContractBalance(ctx context.Context, contractAddress string) (int64, error) {
+	// Wait for rate limiter
+	select {
+	case <-s.rateLimiter:
+	case <-ctx.Done():
+		return 0, ctx.Err()
+	}
+
+	// Normalize address format for TON API
+	normalizedAddress := NormalizeAddressForAPI(contractAddress)
+	
+	// Use TON API v2 to get account balance
+	url := fmt.Sprintf("%s/v2/accounts/%s", s.apiURL, normalizedAddress)
+	
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return 0, err
+	}
+
+	// Add API key to header if provided
+	if s.apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+s.apiKey)
+		req.Header.Set("X-API-Key", s.apiKey)
+	}
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return 0, fmt.Errorf("TON API error (status %d): %s", resp.StatusCode, string(body))
+	}
+
+	var result struct {
+		Balance string `json:"balance"`
+		State   string `json:"state"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return 0, err
+	}
+
+	// Parse balance (in nanotons)
+	var balanceNano int64
+	if _, err := fmt.Sscanf(result.Balance, "%d", &balanceNano); err != nil {
+		return 0, fmt.Errorf("failed to parse balance: %w", err)
+	}
+
+	return balanceNano, nil
+}
+
+// GetContractTransactions gets transactions for a contract address
+func (s *TONService) GetContractTransactions(ctx context.Context, contractAddress string, limit int) ([]Transaction, error) {
+	// Wait for rate limiter
+	select {
+	case <-s.rateLimiter:
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+
+	// Normalize address format for TON API
+	normalizedAddress := NormalizeAddressForAPI(contractAddress)
+	
+	// Use TON API v2 to get transactions
+	url := fmt.Sprintf("%s/v2/accounts/%s/transactions?limit=%d", s.apiURL, normalizedAddress, limit)
+	
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// Add API key to header if provided
+	if s.apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+s.apiKey)
+		req.Header.Set("X-API-Key", s.apiKey)
+	}
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("TON API error (status %d): %s", resp.StatusCode, string(body))
+	}
+
+	var result struct {
+		Transactions []Transaction `json:"transactions"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, err
+	}
+
+	return result.Transactions, nil
+}
+
+// Transaction represents a TON blockchain transaction
+type Transaction struct {
+	Hash      string `json:"hash"`
+	LT        string `json:"lt"`
+	QueryID   int64  `json:"query_id,string"`
+	Timestamp int64  `json:"utime"`
+	InMsg     struct {
+		Message string `json:"msg_data"`
+		Comment string `json:"comment"`
+	} `json:"in_msg"`
+	OutMsgs []struct {
+		Destination string `json:"destination"`
+		Value       string `json:"value"`
+		Comment     string `json:"comment"`
+	} `json:"out_msgs"`
+	Success bool `json:"success"`
 }
 
 

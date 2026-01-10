@@ -70,6 +70,10 @@ func NewPaymentWatcher(
 
 // Start begins monitoring for payments
 func (pw *PaymentWatcher) Start(ctx context.Context, interval time.Duration) {
+	if pw.platformWallet == "" {
+		log.Printf("PaymentWatcher: AdminWallet not configured, skipping payment monitoring")
+		return
+	}
 	log.Printf("PaymentWatcher: Starting payment monitoring for wallet %s", pw.platformWallet)
 	
 	ticker := time.NewTicker(interval)

@@ -71,7 +71,23 @@ export default function WorkerTaskCard({ task, onTaskCompleted }: WorkerTaskCard
         message: t('computation_completed') || 'Computation completed!'
       });
 
-      // Submit result to backend
+      // Sign result data with wallet (SECURITY: Required for validation)
+      setProgress({
+        progress: 95,
+        status: 'running',
+        message: t('signing_result') || 'Signing result...'
+      });
+
+      // Import signResultData function
+      const { signResultData } = await import('../../lib/taskWorker');
+      let signature: string;
+      try {
+        signature = await signResultData(task.task_id, result.result, tonConnectUI);
+      } catch (error: any) {
+        throw new Error(t('signature_failed') || `Signature failed: ${error?.message || 'Unknown error'}`);
+      }
+
+      // Submit result to backend with signature
       const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/+$/, '');
       const submitResponse = await fetch(`${apiBase}/api/v1/tasks/worker/submit`, {
         method: 'POST',
@@ -82,6 +98,7 @@ export default function WorkerTaskCard({ task, onTaskCompleted }: WorkerTaskCard
           task_id: task.task_id,
           node_id: address, // Using wallet address as node_id for browser workers
           result: result.result,
+          signature: signature, // SECURITY: Add signature for validation
           execution_time_ms: result.executionTimeMs,
         }),
       });

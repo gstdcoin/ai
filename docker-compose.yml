@@ -1,174 +1,44 @@
 version: '3.8'
-
 services:
   postgres:
     image: postgres:15-alpine
-    restart: unless-stopped
+    container_name: ubuntu_postgres_1
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: distributed_computing
-      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=C"
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=distributed_computing
+    volumes:
+      - ubuntu_postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./scripts/postgres-init.sh:/docker-entrypoint-initdb.d/init.sh:ro
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-    deploy:
-      resources:
-        limits:
-          memory: 2G
-        reservations:
-          memory: 512M
-    command: >
-      postgres
-      -c fsync=on
-      -c synchronous_commit=on
-      -c wal_level=replica
-      -c max_connections=200
-      -c shared_buffers=256MB
-      -c checkpoint_completion_target=0.9
 
   redis:
     image: redis:7-alpine
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    deploy:
-      resources:
-        limits:
-          memory: 512M
-        reservations:
-          memory: 128M
+    container_name: ubuntu_redis_1
 
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    expose:
-      - "8080"
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "5"
-        compress: "true"
-    env_file: .env
+    build: ./backend
+    container_name: ubuntu_backend_1
     environment:
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_USER: postgres
-      DB_PASSWORD: postgres
-      DB_NAME: distributed_computing
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      PORT: 8080
-      TON_API_URL: ${TON_API_URL:-https://tonapi.io}
-      TON_API_KEY: ${TON_API_KEY:-}
-      TON_NETWORK: ${TON_NETWORK:-mainnet}
-      GSTD_JETTON_ADDRESS: ${GSTD_JETTON_ADDRESS:-}
-      TON_CONTRACT_ADDRESS: ${TON_CONTRACT_ADDRESS:-}
-      GIN_MODE: release
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=distributed_computing
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - TON_CONTRACT_ADDRESS=EQAIYlrr3UiMJ9fqI-B4j2nJdiiD7WzyaNL1MX_wiONc4OUi
+      - ADMIN_WALLET=UQCkXFlNRsubUp7Uh7lg_ScUqLCiff1QCLsdQU0a7kphqQED
+      - GSTD_JETTON_ADDRESS=EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO
+      - DB_SSLMODE=disable
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PORT=8080
+    # Remove .env volume mount to avoid conflicts with environment variables
+    # Environment variables from docker-compose.yml take precedence
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/api/v1/stats || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    deploy:
-      resources:
-        limits:
-          memory: 1G
-          cpus: '1.0'
-        reservations:
-          memory: 256M
-    # Use compiled binary from Dockerfile
-    # volumes:
-    #   - ./backend:/app
-    # command: go run main.go
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    expose:
-      - "3000"
-    environment:
-      NEXT_PUBLIC_API_URL: https://app.gstdtoken.com
-      TON_NETWORK: mainnet
-    depends_on:
-      - backend
-    # Health check disabled for frontend - Next.js takes time to start
-    # healthcheck:
-    #   test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:3000', (r) => {process.exit(r.statusCode ? 0 : 1)}).on('error', () => process.exit(1))\" || exit 1"]
-    #   interval: 30s
-    #   timeout: 10s
-    #   retries: 3
-    #   start_period: 90s
-    deploy:
-      resources:
-        limits:
-          memory: 1G
-          cpus: '1.0'
-        reservations:
-          memory: 256M
-    # Volumes disabled for production - using built image
-    # volumes:
-    #   - ./frontend:/app
-    #   - /app/node_modules
-    #   - /app/.next
-
-  nginx:
-    image: nginx:alpine
-    container_name: nginx
-    restart: unless-stopped
+      - postgres
+      - redis
     ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      - ./nginx/ssl:/etc/letsencrypt:ro
-      - ./nginx/certbot:/var/www/certbot:ro
-      - nginx_logs:/var/log/nginx
-    depends_on:
-      - frontend
-      - backend
-    command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
-
-  certbot:
-    image: certbot/certbot
-    container_name: certbot
-    restart: unless-stopped
-    volumes:
-      - ./nginx/ssl:/etc/letsencrypt
-      - ./nginx/certbot:/var/www/certbot
-    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+      - "8080:8080"
 
 volumes:
-  postgres_data:
-  redis_data:
-  nginx_logs:
-
+  ubuntu_postgres_data:

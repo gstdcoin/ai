@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"time"
 )
 
 type ValidationService struct {
@@ -18,6 +19,7 @@ type ValidationService struct {
 	assignmentService *AssignmentService
 	encryption    *EncryptionService
 	tonService    *TONService
+	cacheService  *CacheService
 }
 
 func NewValidationService(db *sql.DB) *ValidationService {
@@ -27,12 +29,13 @@ func NewValidationService(db *sql.DB) *ValidationService {
 }
 
 // SetDependencies sets required services (called after initialization)
-func (s *ValidationService) SetDependencies(trust *TrustV3Service, entropy *EntropyService, assignment *AssignmentService, encryption *EncryptionService, tonService *TONService) {
+func (s *ValidationService) SetDependencies(trust *TrustV3Service, entropy *EntropyService, assignment *AssignmentService, encryption *EncryptionService, tonService *TONService, cacheService *CacheService) {
 	s.trustService = trust
 	s.entropyService = entropy
 	s.assignmentService = assignment
 	s.encryption = encryption
 	s.tonService = tonService
+	s.cacheService = cacheService
 }
 
 // TaskResultSubmission stores a single result submission for comparison
@@ -125,8 +128,43 @@ func (s *ValidationService) ValidateResult(ctx context.Context, taskID string, d
 
 	// Multiple results needed - compare them
 	if len(submissions) < task.RedundancyFactor {
-		// Not enough results yet - wait for more
-		return nil
+		// Check validation timeout (10 minutes max wait)
+		if len(submissions) > 0 {
+			var firstSubmissionTime time.Time
+			if submissions[0].SubmittedAt != "" {
+				firstSubmissionTime, _ = time.Parse(time.RFC3339, submissions[0].SubmittedAt)
+			} else {
+				// If no timestamp, use current time (shouldn't happen, but safety check)
+				firstSubmissionTime = time.Now()
+			}
+			
+			validationTimeout := 10 * time.Minute
+			if time.Since(firstSubmissionTime) > validationTimeout {
+				// Timeout reached - use available results or mark as failed
+				if len(submissions) >= (task.RedundancyFactor+1)/2 {
+					// Have at least majority - proceed with validation using available results
+					// This prevents tasks from hanging indefinitely
+				} else {
+					// Not enough results even after timeout - mark as failed
+					_, err := s.db.ExecContext(ctx, `
+						UPDATE tasks 
+						SET status = 'failed',
+						    updated_at = NOW()
+						WHERE task_id = $1
+					`, taskID)
+					if err != nil {
+						return fmt.Errorf("failed to mark task as failed: %w", err)
+					}
+					return fmt.Errorf("validation timeout: insufficient results after %v", validationTimeout)
+				}
+			} else {
+				// Not enough results yet, but still within timeout - wait for more
+				return nil
+			}
+		} else {
+			// No results yet - wait for more
+			return nil
+		}
 	}
 
 	// Decrypt and compare results
@@ -300,17 +338,17 @@ func (s *ValidationService) verifySignature(ctx context.Context, taskID, deviceI
 	}
 
 	// 2. Resolve wallet address to public key via TON API
+	// SECURITY: No fallback - signature verification is mandatory
 	if s.tonService == nil {
-		// Fallback: if TON service not available, only check format
-		return nil
+		return fmt.Errorf("TON service unavailable - cannot verify signature")
 	}
 
+	// Get public key (with caching support in TONService)
 	pubKey, err := s.tonService.GetPublicKey(ctx, walletAddress)
 	if err != nil {
-		// If public key resolution fails, log but don't fail (may be new wallet)
-		// In production, this should be stricter
-		fmt.Printf("Warning: Failed to resolve public key for device %s: %v\n", deviceID, err)
-		return nil // Allow format check to pass
+		// SECURITY: If public key resolution fails, reject the signature
+		// This prevents malicious workers from submitting invalid signatures when API is down
+		return fmt.Errorf("failed to resolve public key for device %s: %w (signature verification required)", deviceID, err)
 	}
 
 	if len(pubKey) != 32 {
@@ -330,9 +368,40 @@ func (s *ValidationService) verifySignature(ctx context.Context, taskID, deviceI
 }
 
 // assignArbitration assigns task to additional worker for arbitration
+// SECURITY: Limits arbitration attempts to prevent infinite loops
 func (s *ValidationService) assignArbitration(ctx context.Context, taskID, operation string) error {
-	// Reset task to pending for additional worker
-	_, err := s.db.ExecContext(ctx, `
+	// Get current arbitration count
+	var arbitrationCount sql.NullInt64
+	err := s.db.QueryRowContext(ctx, `
+		SELECT arbitration_count FROM tasks WHERE task_id = $1
+	`, taskID).Scan(&arbitrationCount)
+	
+	// If column doesn't exist, it's OK (migration will add it)
+	currentCount := int64(0)
+	if err == nil && arbitrationCount.Valid {
+		currentCount = arbitrationCount.Int64
+	}
+	
+	// Limit arbitration attempts to prevent infinite loops
+	maxArbitrations := 3
+	if currentCount >= int64(maxArbitrations) {
+		// Maximum arbitration attempts reached - mark task as failed
+		_, err := s.db.ExecContext(ctx, `
+			UPDATE tasks 
+			SET status = 'failed',
+			    updated_at = NOW()
+			WHERE task_id = $1
+		`, taskID)
+		if err != nil {
+			return fmt.Errorf("failed to mark task as failed after max arbitrations: %w", err)
+		}
+		return fmt.Errorf("maximum arbitration attempts (%d) reached for task %s", maxArbitrations, taskID)
+	}
+	
+	// Reset task to pending for additional worker and increment arbitration count
+	// Note: If arbitration_count column doesn't exist, this will fail gracefully
+	// Migration should add: ALTER TABLE tasks ADD COLUMN IF NOT EXISTS arbitration_count INTEGER DEFAULT 0;
+	_, err = s.db.ExecContext(ctx, `
 		UPDATE tasks 
 		SET status = 'pending',
 		    assigned_device = NULL,
@@ -341,9 +410,28 @@ func (s *ValidationService) assignArbitration(ctx context.Context, taskID, opera
 		    result_nonce = NULL,
 		    result_proof = NULL,
 		    execution_time_ms = NULL,
-		    result_submitted_at = NULL
+		    result_submitted_at = NULL,
+		    arbitration_count = COALESCE(arbitration_count, 0) + 1
 		WHERE task_id = $1
 	`, taskID)
+	
+	// If column doesn't exist, try without it (for backward compatibility)
+	if err != nil && err.Error() != "" {
+		// Try without arbitration_count column
+		_, err = s.db.ExecContext(ctx, `
+			UPDATE tasks 
+			SET status = 'pending',
+			    assigned_device = NULL,
+			    assigned_at = NULL,
+			    result_data = NULL,
+			    result_nonce = NULL,
+			    result_proof = NULL,
+			    execution_time_ms = NULL,
+			    result_submitted_at = NULL
+			WHERE task_id = $1
+		`, taskID)
+	}
+	
 	return err
 }
 

@@ -24,19 +24,37 @@ func NewAssignmentService(db *sql.DB, queue *redis.Client) *AssignmentService {
 }
 
 // AssignTask assigns a task to a device
+// SECURITY: Uses transaction with FOR UPDATE to prevent race conditions
 func (s *AssignmentService) AssignTask(ctx context.Context, taskID string, deviceID string) error {
-	// Set timeout: task time limit + 2 minutes buffer
-	var timeLimitSec int
-	err := s.db.QueryRowContext(ctx, `
-		SELECT constraints_time_limit_sec FROM tasks WHERE task_id = $1
-	`, taskID).Scan(&timeLimitSec)
+	// Start transaction to prevent race conditions
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Get task with row-level lock (FOR UPDATE) to prevent concurrent assignments
+	var timeLimitSec int
+	var currentStatus string
+	err = tx.QueryRowContext(ctx, `
+		SELECT constraints_time_limit_sec, status 
+		FROM tasks 
+		WHERE task_id = $1
+		FOR UPDATE
+	`, taskID).Scan(&timeLimitSec, &currentStatus)
+	if err != nil {
+		return fmt.Errorf("task not found: %w", err)
+	}
+
+	// Verify task is still pending
+	if currentStatus != "pending" {
+		return fmt.Errorf("task is not available (current status: %s)", currentStatus)
 	}
 
 	timeoutAt := time.Now().Add(time.Duration(timeLimitSec+120) * time.Second)
 
-	_, err = s.db.ExecContext(ctx, `
+	// Update task status atomically
+	result, err := tx.ExecContext(ctx, `
 		UPDATE tasks 
 		SET status = 'assigned',
 		    assigned_device = $1,
@@ -45,7 +63,22 @@ func (s *AssignmentService) AssignTask(ctx context.Context, taskID string, devic
 		WHERE task_id = $3 AND status = 'pending'
 	`, deviceID, timeoutAt, taskID)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to assign task: %w", err)
+	}
+
+	// Verify update actually happened (prevent race conditions)
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to check rows affected: %w", err)
+	}
+	
+	if rowsAffected == 0 {
+		return fmt.Errorf("task assignment failed - task may have been assigned to another worker (race condition prevented)")
+	}
+
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	return nil
