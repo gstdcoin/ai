@@ -3,6 +3,7 @@ import { useTranslation } from 'next-i18next';
 import { useWalletStore } from '../../store/walletStore';
 import { Share2, LogOut } from 'lucide-react';
 import LanguageSwitcher from './LanguageSwitcher';
+import { toast } from '../../lib/toast';
 
 interface HeaderProps {
   onCreateTask: () => void;
@@ -24,7 +25,7 @@ export default React.memo(function Header({ onCreateTask, onLogout }: HeaderProp
       navigator.share({ title: 'GSTD Platform', text: shareText, url: shareUrl });
     } else {
       navigator.clipboard.writeText(shareUrl);
-      alert(t('link_copied') || 'Link copied to clipboard!');
+      toast.success(t('link_copied') || 'Link copied to clipboard!');
     }
   };
 

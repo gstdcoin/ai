@@ -13,6 +13,7 @@ import { useTonConnectUI } from '@tonconnect/ui-react';
 import SystemStatusWidget from './SystemStatusWidget';
 import TreasuryWidget from './TreasuryWidget';
 import PoolStatusWidget from './PoolStatusWidget';
+import { toast } from '../../lib/toast';
 import { Plus } from 'lucide-react';
 
 // Lazy load modals for performance
@@ -86,7 +87,7 @@ export default function Dashboard() {
       navigator.share({ title: 'GSTD Platform', text: shareText, url: shareUrl });
     } else {
       navigator.clipboard.writeText(shareUrl);
-      alert(t('link_copied') || 'Link copied to clipboard!');
+      toast.success(t('link_copied') || 'Link copied to clipboard!');
     }
   };
 
