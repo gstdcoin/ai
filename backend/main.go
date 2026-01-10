@@ -48,9 +48,11 @@ func main() {
 	}
 	defer db.Close()
 
-	// Run database migrations
+	// Run database migrations (if migrations directory exists)
+	// Note: Migrations should be applied manually or via init script
+	// This is a fallback for development
 	migrationService := services.NewMigrationService(db)
-	migrationsDir := "./backend/migrations"
+	migrationsDir := "/app/migrations"
 	if _, err := os.Stat(migrationsDir); err == nil {
 		log.Println("Running database migrations...")
 		if err := migrationService.RunMigrations(context.Background(), migrationsDir); err != nil {
@@ -60,7 +62,19 @@ func main() {
 			log.Println("✅ Database migrations completed")
 		}
 	} else {
-		log.Printf("Migrations directory not found: %s (skipping migrations)", migrationsDir)
+		// Also try ./migrations (for local development)
+		migrationsDir = "./migrations"
+		if _, err := os.Stat(migrationsDir); err == nil {
+			log.Println("Running database migrations from ./migrations...")
+			if err := migrationService.RunMigrations(context.Background(), migrationsDir); err != nil {
+				log.Printf("Warning: Failed to run migrations: %v", err)
+			} else {
+				log.Println("✅ Database migrations completed")
+			}
+		} else {
+			log.Printf("Migrations directory not found (tried /app/migrations and ./migrations) - skipping auto-migrations")
+			log.Printf("Please apply migrations manually: docker exec -i ubuntu_postgres_1 psql -U postgres -d distributed_computing < backend/migrations/v15_payout_tracking.sql")
+		}
 	}
 
 	// Initialize Redis for queue with retry logic
@@ -84,28 +98,40 @@ func main() {
 	tonService := services.NewTONService(cfg.TON.APIURL, cfg.TON.APIKey)
 	encryptionService := services.NewEncryptionService()
 	entropyService := services.NewEntropyService(db)
-	_ = services.NewCacheService(redisClient) // Cache service initialized but not directly used in main
+	cacheService := services.NewCacheService(redisClient) // Cache service for public keys and other data
+	tonService.SetCacheService(cacheService) // Enable caching for TON service
 	walletSecurityService := services.NewWalletSecurityService(db)
 	deviceService := services.NewDeviceService(db)
 	poolMonitorService := services.NewPoolMonitorService(cfg.TON)
+	poolMonitorService.SetTONService(tonService) // Enable real pool balance monitoring
 	
 	// Create wallet security log table
 	if err := walletSecurityService.CreateWalletAccessLogTable(context.Background()); err != nil {
 		log.Printf("Warning: Failed to create wallet access log table: %v", err)
 	}
 	
-	// Validate and secure wallet configuration if provided
-	if cfg.TON.PlatformWalletAddress != "" && cfg.TON.PlatformWalletPrivateKey != "" {
-		if err := walletSecurityService.SecureWalletConfig(context.Background(), cfg.TON.PlatformWalletAddress, cfg.TON.PlatformWalletPrivateKey); err != nil {
-			log.Printf("⚠️  Warning: Wallet configuration validation failed: %v", err)
-			log.Printf("   Platform wallet operations may not work correctly")
+	// SECURITY: Validate and secure wallet configuration if provided
+	// Check that private key is not empty if wallet address is set
+	if cfg.TON.PlatformWalletAddress != "" {
+		if cfg.TON.PlatformWalletPrivateKey == "" {
+			log.Printf("⚠️  Warning: PLATFORM_WALLET_ADDRESS is set but PLATFORM_WALLET_PRIVATE_KEY is empty")
+			log.Printf("   Platform wallet operations will not work without private key")
 		} else {
-			log.Printf("✅ Platform wallet configuration validated and secured")
+			// Validate private key format
+			if err := walletSecurityService.SecureWalletConfig(context.Background(), cfg.TON.PlatformWalletAddress, cfg.TON.PlatformWalletPrivateKey); err != nil {
+				log.Printf("⚠️  Warning: Wallet configuration validation failed: %v", err)
+				log.Printf("   Platform wallet operations may not work correctly")
+			} else {
+				log.Printf("✅ Platform wallet configuration validated and secured")
+			}
 		}
+	} else {
+		log.Printf("ℹ️  PLATFORM_WALLET_ADDRESS not set - using pull-model (users sign transactions)")
 	}
 	trustService := services.NewTrustV3Service(db)
 	assignmentService := services.NewAssignmentService(db, redisClient)
 	paymentService := services.NewPaymentService(db, cfg.TON)
+	paymentService.SetTONService(tonService) // Enable contract balance checks
 	resultService := services.NewResultService(db, encryptionService, paymentService, cfg.TON)
 	validationService := services.NewValidationService(db)
 	taskService := services.NewTaskService(db, redisClient, tonService, cfg.TON)
@@ -146,6 +172,11 @@ func main() {
 
 	// Start payout retry service (check every 15 minutes)
 	go payoutRetryService.Start(ctx)
+	
+	// Initialize PaymentTracker for reconciliation
+	paymentTracker := services.NewPaymentTracker(db, tonService, cfg.TON)
+	// Start payment tracker for reconciliation (check every 2 minutes)
+	go paymentTracker.Start(ctx)
 
 	// Initialize API
 	// Set Gin mode from environment (production should use "release")
@@ -207,6 +238,7 @@ func main() {
 		redisClient,
 		payoutRetryService,
 		poolMonitorService,
+		cacheService,
 	)
 
 	// Start server
