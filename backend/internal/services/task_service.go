@@ -5,7 +5,10 @@ import (
 	"database/sql"
 	"distributed-computing-platform/internal/config"
 	"distributed-computing-platform/internal/models"
+	"fmt"
+	"log"
 	"math"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -21,6 +24,7 @@ type TaskService struct {
 	entropyService    *EntropyService
 	hub               interface{} // *api.WSHub (avoid circular import)
 	redisStreams      *RedisStreamsService
+	redisPubSub       *RedisPubSubService // Redis Pub/Sub for horizontal scaling
 }
 
 func NewTaskService(db *sql.DB, queue *redis.Client, tonService *TONService, tonConfig config.TONConfig) *TaskService {
@@ -33,6 +37,7 @@ func NewTaskService(db *sql.DB, queue *redis.Client, tonService *TONService, ton
 		gravityService:    NewHardenedGravityService(db, queue),
 		entropyService:    NewEntropyService(db),
 		redisStreams:      NewRedisStreamsService(queue),
+		redisPubSub:        NewRedisPubSubService(queue),
 	}
 }
 
@@ -41,18 +46,43 @@ func (s *TaskService) SetHub(hub interface{}) {
 	s.hub = hub
 }
 
+// GetRedisPubSub returns the Redis Pub/Sub service
+func (s *TaskService) GetRedisPubSub() *RedisPubSubService {
+	return s.redisPubSub
+}
+
 // BroadcastTaskToHub broadcasts a task to WebSocket hub when status becomes 'pending'
+// Also publishes to Redis Pub/Sub for horizontal scaling
 func (s *TaskService) BroadcastTaskToHub(ctx context.Context, task *models.Task) {
-	if s.hub == nil {
-		return
+	// Publish to Redis Pub/Sub first (for horizontal scaling)
+	// Publish for both 'pending' and 'queued' status (queued is used in new payment flow)
+	if s.redisPubSub != nil && (task.Status == "pending" || task.Status == "queued") {
+		payload := map[string]interface{}{
+			"task_id":              task.TaskID,
+			"requester_address":    task.RequesterAddress,
+			"task_type":            task.TaskType,
+			"operation":            task.Operation,
+			"labor_compensation":   task.LaborCompensationTon,
+			"gravity_score":        task.PriorityScore,
+			"min_trust_score":      task.MinTrustScore,
+			"redundancy_factor":   task.RedundancyFactor,
+			"confidence_depth":     task.ConfidenceDepth,
+		}
+		if err := s.redisPubSub.PublishTask(ctx, task.TaskID, task.TaskType, task.Status, payload); err != nil {
+			log.Printf("⚠️  Failed to publish task to Redis Pub/Sub: %v", err)
+			// Continue to local hub broadcast even if Redis fails
+		}
 	}
 	
-	// Use type assertion to call BroadcastTask
-	// This avoids circular import between api and services
-	if hub, ok := s.hub.(interface {
-		BroadcastTask(*models.Task)
-	}); ok {
-		hub.BroadcastTask(task)
+	// Also broadcast to local WebSocket hub (for this server instance)
+	if s.hub != nil {
+		// Use type assertion to call BroadcastTask
+		// This avoids circular import between api and services
+		if hub, ok := s.hub.(interface {
+			BroadcastTask(*models.Task)
+		}); ok {
+			hub.BroadcastTask(task)
+		}
 	}
 }
 
@@ -60,7 +90,13 @@ func (s *TaskService) CreateTask(ctx context.Context, requesterAddress string, d
 	taskID := uuid.New().String()
 	descriptor.TaskID = taskID
 
-	gstdBalance, _ := s.tonService.GetJettonBalance(ctx, requesterAddress, s.tonConfig.GSTDJettonAddress)
+	// REMOVED: GSTD balance check is not required for task creation
+	// Users can create tasks without GSTD tokens
+	// Balance check removed per user request - only needed for task creation
+	
+	// Set default balance to 0 (no GSTD tokens)
+	gstdBalance := 0.0
+	
 	entropy, _ := s.entropyService.GetEntropy(ctx, descriptor.Operation)
 
 	// Physics-based Gravity Score (EGS v3)
@@ -83,6 +119,7 @@ func (s *TaskService) CreateTask(ctx context.Context, requesterAddress string, d
 	finalCompensation := s.efficiencyService.CalculateTaskCost(descriptor.Reward.AmountTon, gstdBalance)
 	confidenceDepth := int(math.Floor(1 + math.Log10(1+gstdBalance/10000.0)))
 
+	// Insert task - try with certainty_gravity_score first (priority_score was renamed)
 	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO tasks (
 			task_id, requester_address, task_type, operation, model,
@@ -93,6 +130,25 @@ func (s *TaskService) CreateTask(ctx context.Context, requesterAddress string, d
 	`, taskID, requesterAddress, descriptor.TaskType, descriptor.Operation, descriptor.Model,
 		finalCompensation, gravityScore, "awaiting_escrow",
 		descriptor.MinTrust, descriptor.IsPrivate, confidenceDepth, redundancy, isSpotCheck, entropy)
+	
+	// If error about certainty_gravity_score, try with priority_score
+	if err != nil && (strings.Contains(err.Error(), "certainty_gravity_score") || 
+		(strings.Contains(err.Error(), "column") && strings.Contains(err.Error(), "does not exist"))) {
+		_, err = s.db.ExecContext(ctx, `
+			INSERT INTO tasks (
+				task_id, requester_address, task_type, operation, model,
+				labor_compensation_ton, priority_score, status, created_at,
+				escrow_status, min_trust_score, is_private, confidence_depth, 
+				redundancy_factor, is_spot_check, entropy_snapshot
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), 'awaiting', $9, $10, $11, $12, $13, $14)
+		`, taskID, requesterAddress, descriptor.TaskType, descriptor.Operation, descriptor.Model,
+			finalCompensation, gravityScore, "awaiting_escrow",
+			descriptor.MinTrust, descriptor.IsPrivate, confidenceDepth, redundancy, isSpotCheck, entropy)
+	}
+	
+	if err != nil {
+		return nil, fmt.Errorf("failed to create task: %w", err)
+	}
 
 	task := &models.Task{
 		TaskID:              taskID,
@@ -173,4 +229,37 @@ func (s *TaskService) GetTasks(ctx context.Context, requesterAddress *string) ([
 		tasks = append(tasks, &t)
 	}
 	return tasks, nil
+}
+
+// GetTaskByID retrieves a single task by its ID
+func (s *TaskService) GetTaskByID(ctx context.Context, taskID string) (*models.Task, error) {
+	var t models.Task
+	var gravityScore sql.NullFloat64
+	
+	err := s.db.QueryRowContext(ctx, `
+		SELECT task_id, requester_address, task_type, operation, model,
+		       labor_compensation_ton, 
+		       COALESCE(certainty_gravity_score, priority_score, 0.0) as gravity_score,
+		       status, created_at, completed_at,
+		       escrow_status, confidence_depth, assigned_device, min_trust_score
+		FROM tasks
+		WHERE task_id = $1
+	`, taskID).Scan(
+		&t.TaskID, &t.RequesterAddress, &t.TaskType, &t.Operation, &t.Model,
+		&t.LaborCompensationTon, &gravityScore,
+		&t.Status, &t.CreatedAt, &t.CompletedAt,
+		&t.EscrowStatus, &t.ConfidenceDepth, &t.AssignedDevice, &t.MinTrustScore,
+	)
+	
+	if err != nil {
+		return nil, err
+	}
+	
+	if gravityScore.Valid {
+		t.PriorityScore = gravityScore.Float64
+	} else {
+		t.PriorityScore = 0.0
+	}
+	
+	return &t, nil
 }

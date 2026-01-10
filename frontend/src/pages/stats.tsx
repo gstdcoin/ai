@@ -44,12 +44,13 @@ export default function StatsPage() {
 
   const loadStats = async () => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
-      const response = await fetch(`${apiUrl}/api/v1/stats/public`);
+      const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/+$/, '');
+      const response = await fetch(`${apiBase}/api/v1/stats/public`);
       const data = await response.json();
       setStats(data);
     } catch (error) {
-      console.error('Error loading stats:', error);
+      const { logger } = require('../lib/logger');
+      logger.error('Error loading stats', error);
     } finally {
       setLoading(false);
     }

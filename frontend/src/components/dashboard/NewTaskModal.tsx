@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'next-i18next';
 import { useWalletStore } from '../../store/walletStore';
 import { useTonConnectUI } from '@tonconnect/ui-react';
+import { logger } from '../../lib/logger';
+import { toast } from '../../lib/toast';
+import { createTaskSchema, type CreateTaskFormData } from '../../lib/validation';
 
 interface NewTaskModalProps {
   onClose: () => void;
@@ -24,16 +27,29 @@ export default function NewTaskModal({ onClose, onTaskCreated }: NewTaskModalPro
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<'form' | 'payment' | 'confirming' | 'success'>('form');
   const [taskData, setTaskData] = useState<CreateTaskResponse | null>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    type: string;
+    budget: string;
+    payload: string;
+  }>({
     type: 'AI_INFERENCE',
     budget: '',
     payload: '',
   });
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!address) {
-      setError('Wallet not connected');
+      const errorMsg = 'Wallet not connected';
+      setError(errorMsg);
+      toast.error('Wallet required', 'Please connect your wallet first');
+      return;
+    }
+
+    // Validate form
+    if (!validateForm()) {
+      toast.error('Validation failed', 'Please check the form fields');
       return;
     }
 
@@ -41,22 +57,32 @@ export default function NewTaskModal({ onClose, onTaskCreated }: NewTaskModalPro
     setError(null);
 
     try {
-      const budget = parseFloat(formData.budget);
-      if (isNaN(budget) || budget <= 0) {
-        throw new Error('Budget must be a positive number');
-      }
-
-      let payloadObj = {};
-      if (formData.payload.trim()) {
-        try {
-          payloadObj = JSON.parse(formData.payload);
-        } catch {
-          throw new Error('Invalid JSON in payload');
+      // Проверка баланса GSTD только при создании задания
+      const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/+$/, '');
+      const balanceResponse = await fetch(`${apiBase}/api/v1/wallet/gstd-balance?address=${address}`);
+      
+      // Use the same threshold as backend (0.000001 GSTD)
+      const MIN_GSTD_BALANCE = 0.000001;
+      
+      if (balanceResponse.ok) {
+        const balanceData = await balanceResponse.json();
+        const balance = parseFloat(balanceData.balance) || 0;
+        
+        // Check balance directly - if balance is >= threshold, allow task creation
+        // has_gstd might be false if API check failed, but balance might still be > 0
+        if (balance < MIN_GSTD_BALANCE) {
+          throw new Error(t('gstd_required_for_tasks') || 'You need at least 0.000001 GSTD tokens to create tasks. Please purchase GSTD tokens first.');
         }
+      } else {
+        // If API call fails, log warning but don't block task creation
+        // The backend will handle the actual balance check during task creation
+        logger.warn('Failed to check GSTD balance, but allowing task creation to proceed. Backend will verify balance.');
       }
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
-      const response = await fetch(`${apiUrl}/api/v1/tasks/create?wallet_address=${address}`, {
+      const budget = parseFloat(formData.budget);
+      const payloadObj = formData.payload.trim() ? JSON.parse(formData.payload) : {};
+
+      const response = await fetch(`${apiBase}/api/v1/tasks/create?wallet_address=${address}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -76,11 +102,41 @@ export default function NewTaskModal({ onClose, onTaskCreated }: NewTaskModalPro
       const data: CreateTaskResponse = await response.json();
       setTaskData(data);
       setStep('payment');
+      toast.success('Task created successfully', 'Please complete the payment');
     } catch (err: any) {
-      console.error('Error creating task:', err);
-      setError(err?.message || 'Failed to create task');
+      logger.error('Error creating task', err);
+      const errorMsg = err?.message || 'Failed to create task';
+      setError(errorMsg);
+      toast.error('Failed to create task', errorMsg);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const validateForm = (): boolean => {
+    try {
+      createTaskSchema.parse(formData);
+      setFormErrors({});
+      return true;
+    } catch (error: any) {
+      if (error.errors) {
+        const errors: Record<string, string> = {};
+        error.errors.forEach((err: any) => {
+          if (err.path.length > 0) {
+            errors[err.path[0]] = err.message;
+          }
+        });
+        setFormErrors(errors);
+      }
+      return false;
+    }
+  };
+
+  const handleFormChange = (field: keyof typeof formData, value: string) => {
+    setFormData({ ...formData, [field]: value });
+    // Clear error for this field when user starts typing
+    if (formErrors[field]) {
+      setFormErrors({ ...formErrors, [field]: '' });
     }
   };
 
@@ -98,7 +154,7 @@ export default function NewTaskModal({ onClose, onTaskCreated }: NewTaskModalPro
       // For now, we'll show instructions and start polling for payment confirmation
       // In production, implement proper jetton transfer using @ton/core or similar
       
-      console.log('Payment details:', {
+      logger.debug('Payment details', {
         platform_wallet: taskData.platform_wallet,
         amount: taskData.amount,
         memo: taskData.payment_memo,
@@ -107,8 +163,10 @@ export default function NewTaskModal({ onClose, onTaskCreated }: NewTaskModalPro
       // Start polling for payment confirmation
       // The PaymentWatcher service will detect the payment and update the task status
     } catch (err: any) {
-      console.error('Error initiating payment:', err);
-      setError(err?.message || 'Failed to initiate payment');
+      logger.error('Error initiating payment', err);
+      const errorMsg = err?.message || 'Failed to initiate payment';
+      setError(errorMsg);
+      toast.error('Payment error', errorMsg);
       setStep('payment');
     }
   };
@@ -118,8 +176,8 @@ export default function NewTaskModal({ onClose, onTaskCreated }: NewTaskModalPro
     if (step === 'confirming' && taskData) {
       const interval = setInterval(async () => {
         try {
-          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
-          const response = await fetch(`${apiUrl}/api/v1/tasks/${taskData.task_id}/payment`);
+          const paymentApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+          const response = await fetch(`${paymentApiUrl}/api/v1/tasks/${taskData.task_id}/payment`);
           
           if (response.ok) {
             const task = await response.json();
@@ -132,7 +190,7 @@ export default function NewTaskModal({ onClose, onTaskCreated }: NewTaskModalPro
             }
           }
         } catch (err) {
-          console.error('Error checking task status:', err);
+          logger.error('Error checking task status', err);
         }
       }, 5000); // Check every 5 seconds
 
@@ -259,8 +317,8 @@ export default function NewTaskModal({ onClose, onTaskCreated }: NewTaskModalPro
               </p>
               <ol className="text-xs text-blue-800 list-decimal list-inside space-y-1">
                 <li>{t('payment_step1') || 'Open your TON wallet'}</li>
-                <li>{t('payment_step2') || `Send ${taskData.amount} GSTD to: ${taskData.platform_wallet}`}</li>
-                <li>{t('payment_step3') || `Include this memo in the transaction: ${taskData.payment_memo}`}</li>
+                <li>{t('payment_step2')?.replace('{amount}', taskData.amount.toString())?.replace('{wallet}', taskData.platform_wallet) || `Send ${taskData.amount} GSTD to: ${taskData.platform_wallet}`}</li>
+                <li>{t('payment_step3')?.replace('{memo}', taskData.payment_memo) || `Include this memo in the transaction: ${taskData.payment_memo}`}</li>
                 <li>{t('payment_step4') || 'Click "Confirm Payment" after sending'}</li>
               </ol>
             </div>
@@ -338,10 +396,15 @@ export default function NewTaskModal({ onClose, onTaskCreated }: NewTaskModalPro
               min="0.000000001"
               step="0.000000001"
               value={formData.budget}
-              onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              onChange={(e) => handleFormChange('budget', e.target.value)}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                formErrors.budget ? 'border-red-300' : 'border-gray-300'
+              }`}
               placeholder="10.5"
             />
+            {formErrors.budget && (
+              <p className="mt-1 text-sm text-red-600">{formErrors.budget}</p>
+            )}
           </div>
 
           <div>
@@ -351,14 +414,20 @@ export default function NewTaskModal({ onClose, onTaskCreated }: NewTaskModalPro
             <textarea
               id="payload"
               value={formData.payload}
-              onChange={(e) => setFormData({ ...formData, payload: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent font-mono text-sm"
+              onChange={(e) => handleFormChange('payload', e.target.value)}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent font-mono text-sm ${
+                formErrors.payload ? 'border-red-300' : 'border-gray-300'
+              }`}
               rows={4}
               placeholder='{"input": "data", "model": "gpt-4"}'
             />
-            <p className="text-xs text-gray-500 mt-1">
-              {t('payload_help') || 'Enter valid JSON or leave empty'}
-            </p>
+            {formErrors.payload ? (
+              <p className="mt-1 text-sm text-red-600">{formErrors.payload}</p>
+            ) : (
+              <p className="text-xs text-gray-500 mt-1">
+                {t('payload_help') || 'Enter valid JSON or leave empty'}
+              </p>
+            )}
           </div>
 
           <div className="flex gap-3 pt-4">

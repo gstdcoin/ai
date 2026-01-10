@@ -4,9 +4,11 @@ import { useWalletStore } from '../../store/walletStore';
 import { useTonConnectUI } from '@tonconnect/ui-react';
 import TaskDetailsModal from './TaskDetailsModal';
 import WorkerTaskCard from './WorkerTaskCard';
-import EmptyState from '../common/EmptyState';
+import { EmptyState } from '../common/EmptyState';
 import { ClipboardList } from 'lucide-react';
 import { triggerHapticImpact } from '../../lib/telegram';
+import { logger } from '../../lib/logger';
+import { toast } from '../../lib/toast';
 
 interface Task {
   task_id: string;
@@ -111,10 +113,11 @@ export default function TasksPanel({ onTaskCreated, onCompensationClaimed }: Tas
       const endpoint = filter === 'my' 
         ? `/api/v1/tasks?requester=${address}`
         : filter === 'available'
-        ? '/api/v1/device/tasks/available'
+        ? `/api/v1/device/tasks/available?device_id=${address}` // Use address as device_id for browser workers
         : '/api/v1/tasks';
       
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${endpoint}`);
+      const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/+$/, '');
+      const response = await fetch(`${apiBase}${endpoint}`);
       const data = await response.json();
       const newTasks = data.tasks || [];
       
@@ -133,7 +136,8 @@ export default function TasksPanel({ onTaskCreated, onCompensationClaimed }: Tas
       
       setTasks(newTasks);
     } catch (error) {
-      console.error('Error loading tasks:', error);
+      logger.error('Error loading tasks', error);
+      toast.error('Failed to load tasks', 'Please try refreshing the page');
     } finally {
       setLoading(false);
     }
@@ -166,23 +170,45 @@ export default function TasksPanel({ onTaskCreated, onCompensationClaimed }: Tas
 
   const handleClaimCompensation = async (task: Task) => {
     if (!address || !task.assigned_device) {
-      alert(t('wallet_required') || 'Wallet address required');
+      toast.error('Wallet required', t('wallet_required') || 'Wallet address required');
       return;
     }
 
     setClaimingCompensation(task.task_id);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
+      const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/+$/, '');
+      
+      // Get node wallet address from device_id (node_id)
+      // assigned_device is node_id, need to get wallet_address from nodes table
+      let executorWalletAddress = address; // Default to current user's address
+      
+      if (task.assigned_device) {
+        try {
+          const nodesResponse = await fetch(`${apiBase}/api/v1/nodes/my?wallet_address=${address}`);
+          if (nodesResponse.ok) {
+            const nodesData = await nodesResponse.json();
+            const node = nodesData.nodes?.find((n: any) => n.id === task.assigned_device);
+            if (node?.wallet_address) {
+              executorWalletAddress = node.wallet_address;
+            } else {
+              // If node not found, use current address (backward compatibility)
+              logger.warn('Node not found, using current wallet address', { nodeId: task.assigned_device });
+            }
+          }
+        } catch (err) {
+          logger.warn('Could not fetch node info, using current wallet address', err);
+        }
+      }
       
       // Get payout intent
-      const intentResponse = await fetch(`${apiUrl}/v1/payments/payout-intent`, {
+      const intentResponse = await fetch(`${apiBase}/api/v1/payments/payout-intent`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           task_id: task.task_id,
-          executor_address: task.assigned_device,
+          executor_address: executorWalletAddress,
         }),
       });
 
@@ -231,20 +257,20 @@ export default function TasksPanel({ onTaskCreated, onCompensationClaimed }: Tas
         validUntil: Math.floor(Date.now() / 1000) + 300, // 5 minutes from now
       });
 
-      console.log('Transaction sent:', result);
+      logger.info('Transaction sent', { taskId: task.task_id, result });
       
       // Trigger haptic feedback
       if (onCompensationClaimed) {
         onCompensationClaimed();
       }
       
-      alert(t('labor_compensation_claimed_success') || 'Labor compensation claimed successfully!');
+      toast.success(t('labor_compensation_claimed_success') || 'Labor compensation claimed successfully!');
       
       // Reload tasks
       loadTasks();
     } catch (error) {
-      console.error('Failed to claim labor compensation:', error);
-      alert(t('labor_compensation_claim_failed') || 'Failed to claim labor compensation');
+      logger.error('Failed to claim labor compensation', error);
+      toast.error('Failed to claim compensation', t('labor_compensation_claim_failed') || 'Failed to claim labor compensation');
     } finally {
       setClaimingCompensation(null);
     }
@@ -329,13 +355,19 @@ export default function TasksPanel({ onTaskCreated, onCompensationClaimed }: Tas
               ? t('no_available_tasks_desc') || 'No tasks are currently available for execution.'
               : t('no_tasks_desc') || 'No tasks found. Create a new task to get started.'
           }
-          actionLabel={filter !== 'available' ? t('create_task') : undefined}
-          onAction={filter !== 'available' ? () => {
-            // Trigger create task - this will be handled by parent
-            if (typeof window !== 'undefined') {
-              window.dispatchEvent(new CustomEvent('openCreateTask'));
-            }
-          } : undefined}
+          action={filter !== 'available' ? (
+            <button
+              onClick={() => {
+                // Trigger create task - this will be handled by parent
+                if (typeof window !== 'undefined') {
+                  window.dispatchEvent(new CustomEvent('openCreateTask'));
+                }
+              }}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              {t('create_task') || 'Create Task'}
+            </button>
+          ) : undefined}
         />
       ) : filter === 'available' ? (
         // Worker Mode: Show cards with START WORK buttons

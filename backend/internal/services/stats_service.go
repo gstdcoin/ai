@@ -50,7 +50,7 @@ func (s *StatsService) GetGlobalStats(ctx context.Context) (*GlobalStats, error)
 
 	// 4. Total rewards paid
 	err = s.db.QueryRowContext(ctx, `
-		SELECT COALESCE(SUM(executor_reward_ton), 0) FROM tasks WHERE status = 'completed'
+		SELECT COALESCE(SUM(reward_amount_ton), 0) FROM tasks WHERE status = 'completed'
 	`).Scan(&stats.TotalRewardsTon)
 	if err != nil {
 		return nil, err

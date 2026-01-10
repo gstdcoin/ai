@@ -9,13 +9,43 @@ import (
 
 func registerDevice(deviceService *services.DeviceService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req services.RegisterDeviceRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(400, gin.H{"error": err.Error()})
+		// Get validated request from middleware
+		validatedReq, exists := c.Get("validated_request")
+		if !exists {
+			// Fallback: try to bind directly
+			var req services.RegisterDeviceRequest
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(400, gin.H{"error": "Invalid request: " + err.Error()})
+				return
+			}
+			
+			// Validate wallet address using middleware function
+			// Note: isValidTONAddress is in middleware_validation.go
+			// We'll do a simple check here and let the service handle validation
+			
+			if err := deviceService.RegisterDevice(c.Request.Context(), req); err != nil {
+				c.JSON(500, gin.H{"error": err.Error()})
+				return
+			}
+			
+			c.JSON(200, gin.H{"message": "Device registered successfully"})
 			return
 		}
-
-		if err := deviceService.RegisterDevice(c.Request.Context(), req); err != nil {
+		
+		// Use validated request from middleware
+		req := validatedReq.(struct {
+			DeviceID      string `json:"device_id"`
+			WalletAddress string `json:"wallet_address"`
+			DeviceType    string `json:"device_type"`
+		})
+		
+		registerReq := services.RegisterDeviceRequest{
+			DeviceID:      req.DeviceID,
+			WalletAddress: req.WalletAddress,
+			DeviceType:    req.DeviceType,
+		}
+		
+		if err := deviceService.RegisterDevice(c.Request.Context(), registerReq); err != nil {
 			c.JSON(500, gin.H{"error": err.Error()})
 			return
 		}

@@ -38,7 +38,11 @@ export default function TaskDetailsModal({ taskId, onClose }: TaskDetailsModalPr
   const loadTaskDetails = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/tasks/${taskId}`);
+      const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/+$/, '');
+      const response = await fetch(`${apiBase}/api/v1/tasks/${taskId}`);
+      if (!response.ok) {
+        throw new Error(`Failed to load task: ${response.statusText}`);
+      }
       const data = await response.json();
       setTask(data);
     } catch (error) {
@@ -52,9 +56,14 @@ export default function TaskDetailsModal({ taskId, onClose }: TaskDetailsModalPr
     if (!address) return;
     setLoadingResult(true);
     try {
+      const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/+$/, '');
+      // Use device endpoint for result retrieval
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/tasks/${taskId}/result?requester_address=${address}`
+        `${apiBase}/api/v1/device/tasks/${taskId}/result?requester_address=${address}`
       );
+      if (!response.ok) {
+        throw new Error(`Failed to load result: ${response.statusText}`);
+      }
       const data = await response.json();
       setResult(data.result);
     } catch (error) {

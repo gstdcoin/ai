@@ -9,8 +9,9 @@ import (
 )
 
 type PaymentService struct {
-	db    *sql.DB
-	tonCfg config.TONConfig
+	db         *sql.DB
+	tonCfg     config.TONConfig
+	nodeService *NodeService // For resolving node_id to wallet_address
 }
 
 func NewPaymentService(db *sql.DB, tonCfg config.TONConfig) *PaymentService {
@@ -18,6 +19,11 @@ func NewPaymentService(db *sql.DB, tonCfg config.TONConfig) *PaymentService {
 		db:    db,
 		tonCfg: tonCfg,
 	}
+}
+
+// SetNodeService sets the node service for resolving node IDs to wallet addresses
+func (s *PaymentService) SetNodeService(nodeService *NodeService) {
+	s.nodeService = nodeService
 }
 
 // PayoutIntent describes a TonConnect pull-model transaction executor will sign
@@ -37,12 +43,13 @@ type PayoutIntent struct {
 // Does not move funds itself; safe to call repeatedly (idempotent).
 func (s *PaymentService) BuildPayoutIntent(ctx context.Context, taskID string, executorAddress string) (*PayoutIntent, error) {
 	var task models.Task
+	var assignedDevice sql.NullString
 	err := s.db.QueryRowContext(ctx, `
 		SELECT task_id, assigned_device, labor_compensation_ton, status, requester_address
 		FROM tasks
 		WHERE task_id = $1
 	`, taskID).Scan(
-		&task.TaskID, &task.AssignedDevice, &task.LaborCompensationTon, &task.Status, &task.RequesterAddress,
+		&task.TaskID, &assignedDevice, &task.LaborCompensationTon, &task.Status, &task.RequesterAddress,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("task lookup failed: %w", err)
@@ -52,8 +59,31 @@ func (s *PaymentService) BuildPayoutIntent(ctx context.Context, taskID string, e
 		return nil, fmt.Errorf("task not validated yet")
 	}
 
-	if task.AssignedDevice == nil || *task.AssignedDevice != executorAddress {
-		return nil, fmt.Errorf("executor mismatch")
+	// Verify executor: assigned_device is node_id, need to get wallet_address from nodes table
+	if !assignedDevice.Valid {
+		return nil, fmt.Errorf("task not assigned to any device")
+	}
+
+	// Get wallet address from node_id
+	var nodeWalletAddress string
+	err = s.db.QueryRowContext(ctx, `
+		SELECT wallet_address FROM nodes WHERE id = $1
+	`, assignedDevice.String).Scan(&nodeWalletAddress)
+	if err != nil {
+		// Fallback: if node not found, check if executorAddress matches assigned_device directly
+		// (for backward compatibility or if executorAddress is already node_id)
+		if assignedDevice.String != executorAddress {
+			return nil, fmt.Errorf("executor mismatch: node not found or address mismatch")
+		}
+		// If node not found but addresses match, allow it (backward compatibility)
+		nodeWalletAddress = executorAddress
+	} else {
+		// Normalize addresses for comparison (remove dashes, case-insensitive)
+		normalizedExecutor := normalizeAddress(executorAddress)
+		normalizedNode := normalizeAddress(nodeWalletAddress)
+		if normalizedExecutor != normalizedNode {
+			return nil, fmt.Errorf("executor mismatch: wallet address does not match assigned device")
+		}
 	}
 
 	platformFee := task.LaborCompensationTon * (s.tonCfg.PlatformFeePercent / 100.0)
@@ -84,6 +114,21 @@ func (s *PaymentService) BuildPayoutIntent(ctx context.Context, taskID string, e
 		TaskID:          taskID,
 		ExecutorAddress: executorAddress,
 	}, nil
+}
+
+// normalizeAddress normalizes TON address for comparison (removes dashes, converts to uppercase)
+func normalizeAddress(addr string) string {
+	normalized := ""
+	for _, c := range addr {
+		if c != '-' {
+			if c >= 'a' && c <= 'z' {
+				normalized += string(c - 32) // Convert to uppercase
+			} else {
+				normalized += string(c)
+			}
+		}
+	}
+	return normalized
 }
 
 // CommissionBalance represents accumulated platform commission

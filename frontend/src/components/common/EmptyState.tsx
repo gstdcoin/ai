@@ -1,42 +1,57 @@
-import React, { memo } from 'react';
+import { ReactNode } from 'react';
 import { useTranslation } from 'next-i18next';
-import { Inbox, Plus } from 'lucide-react';
 
 interface EmptyStateProps {
-  icon?: React.ReactNode;
+  icon?: ReactNode;
   title: string;
-  description: string;
-  actionLabel?: string;
-  onAction?: () => void;
+  description?: string;
+  action?: ReactNode;
+  className?: string;
 }
 
-const EmptyState = memo(function EmptyState({ 
-  icon, 
-  title, 
-  description, 
-  actionLabel, 
-  onAction 
-}: EmptyStateProps) {
-  const { t } = useTranslation('common');
-
+export function EmptyState({ icon, title, description, action, className = '' }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-      <div className="glass-card mb-6 p-6 rounded-full">
-        {icon || <Inbox className="text-gray-400" size={48} />}
-      </div>
-      <h3 className="text-xl font-bold text-white mb-2 font-display">{title}</h3>
-      <p className="text-gray-400 mb-6 max-w-md">{description}</p>
-      {onAction && actionLabel && (
-        <button
-          onClick={onAction}
-          className="glass-button-gold"
-        >
-          <Plus size={20} />
-          <span>{actionLabel}</span>
-        </button>
-      )}
+    <div className={`flex flex-col items-center justify-center py-12 px-4 ${className}`}>
+      {icon && <div className="mb-4 text-gray-400">{icon}</div>}
+      <h3 className="text-lg font-semibold text-gray-900 mb-2">{title}</h3>
+      {description && <p className="text-sm text-gray-500 text-center max-w-md mb-4">{description}</p>}
+      {action && <div className="mt-4">{action}</div>}
     </div>
   );
-});
+}
 
-export default EmptyState;
+interface EmptyStatePresetProps {
+  type: 'tasks' | 'devices' | 'results' | 'no-data';
+  action?: ReactNode;
+}
+
+export function EmptyStatePreset({ type, action }: EmptyStatePresetProps) {
+  const { t } = useTranslation('common');
+
+  const presets = {
+    tasks: {
+      icon: '📋',
+      title: t('no_tasks') || 'No tasks',
+      description: t('no_tasks_desc') || 'No tasks found. Create a new task to get started.',
+    },
+    devices: {
+      icon: '📱',
+      title: t('no_nodes') || 'No devices',
+      description: t('no_nodes_desc') || 'Register your first computing node to start earning GSTD.',
+    },
+    results: {
+      icon: '📊',
+      title: 'No results',
+      description: 'No results available yet.',
+    },
+    'no-data': {
+      icon: '📭',
+      title: 'No data',
+      description: 'No data available at this time.',
+    },
+  };
+
+  const preset = presets[type];
+
+  return <EmptyState {...preset} action={action} />;
+}

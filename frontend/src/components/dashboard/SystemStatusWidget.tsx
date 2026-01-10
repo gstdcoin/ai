@@ -36,8 +36,8 @@ export default function SystemStatusWidget({ onStatsUpdate }: SystemStatusWidget
 
   const loadStats = async () => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
-      const response = await fetch(`${apiUrl}/api/v1/stats`, {
+      const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/+$/, '');
+      const response = await fetch(`${apiBase}/api/v1/stats`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -92,7 +92,7 @@ export default function SystemStatusWidget({ onStatsUpdate }: SystemStatusWidget
               </span>
             )}
           </div>
-          {stats && (
+          {stats ? (
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4 mt-4">
               <div>
                 <p className="text-xs text-gray-600 mb-1">{t('processing') || 'Processing'}</p>
@@ -116,6 +116,15 @@ export default function SystemStatusWidget({ onStatsUpdate }: SystemStatusWidget
                   {stats.total_rewards_ton.toFixed(2)} TON
                 </p>
               </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4 mt-4 animate-pulse">
+              {[...Array(5)].map((_, i) => (
+                <div key={i}>
+                  <div className="h-3 bg-gray-200 rounded w-16 mb-2"></div>
+                  <div className="h-6 bg-gray-200 rounded w-12"></div>
+                </div>
+              ))}
             </div>
           )}
         </div>

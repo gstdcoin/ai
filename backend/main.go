@@ -84,7 +84,7 @@ func main() {
 	tonService := services.NewTONService(cfg.TON.APIURL, cfg.TON.APIKey)
 	encryptionService := services.NewEncryptionService()
 	entropyService := services.NewEntropyService(db)
-	cacheService := services.NewCacheService(redisClient)
+	_ = services.NewCacheService(redisClient) // Cache service initialized but not directly used in main
 	walletSecurityService := services.NewWalletSecurityService(db)
 	deviceService := services.NewDeviceService(db)
 	poolMonitorService := services.NewPoolMonitorService(cfg.TON)
@@ -113,6 +113,8 @@ func main() {
 	statsService := services.NewStatsService(db)
 	userService := services.NewUserService(db)
 	nodeService := services.NewNodeService(db)
+	// Enable node_id to wallet_address resolution in payment service
+	paymentService.SetNodeService(nodeService)
 	taskPaymentService := services.NewTaskPaymentService(db, tonService, cfg.TON)
 	paymentWatcher := services.NewPaymentWatcher(db, tonService, cfg.TON, taskPaymentService)
 	stonFiService := services.NewStonFiService(cfg.TON.StonFiRouter)
@@ -127,6 +129,13 @@ func main() {
 
 	// Set task service hub for broadcasting
 	taskService.SetHub(hub)
+	
+	// Set Redis Pub/Sub for horizontal scaling
+	// Each server instance subscribes to Redis channel to receive tasks from other instances
+	hub.SetRedisPubSub(taskService.GetRedisPubSub())
+	
+	// Set task service in payment service for broadcasting when payment is confirmed
+	taskPaymentService.SetTaskService(taskService)
 
 	// Start timeout checker
 	ctx := context.Background()
@@ -142,11 +151,38 @@ func main() {
 	// Set Gin mode from environment (production should use "release")
 	ginMode := os.Getenv("GIN_MODE")
 	if ginMode == "" {
-		ginMode = "debug" // Default to debug for development
+		// Default to release mode for production safety
+		ginMode = "release"
 	}
 	gin.SetMode(ginMode)
 	
 	router := gin.Default()
+	
+	// Add security headers middleware
+	router.Use(func(c *gin.Context) {
+		// Security headers
+		c.Header("X-Content-Type-Options", "nosniff")
+		c.Header("X-Frame-Options", "DENY")
+		c.Header("X-XSS-Protection", "1; mode=block")
+		c.Header("Referrer-Policy", "strict-origin-when-cross-origin")
+		
+		// CORS headers (adjust for production)
+		origin := c.GetHeader("Origin")
+		if origin != "" {
+			c.Header("Access-Control-Allow-Origin", origin)
+			c.Header("Access-Control-Allow-Credentials", "true")
+			c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Wallet-Address")
+		}
+		
+		// Handle preflight requests
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+		
+		c.Next()
+	})
 	api.SetupRoutes(
 		router, 
 		taskService, 

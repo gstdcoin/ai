@@ -63,7 +63,7 @@ export async function fetchWithRetry(
       lastError = error as Error;
 
       // If last attempt, throw
-      if (attempt === opts.maxRetryOptions!.maxRetries) {
+      if (attempt === opts.maxRetries) {
         throw error;
       }
 

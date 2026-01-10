@@ -89,14 +89,24 @@ export default React.memo(function Header({ onCreateTask, onLogout }: HeaderProp
             <div className="flex items-center gap-2">
               <span className="text-lg">🌡️</span>
               <div>
-                <p className="text-xs text-gray-400 uppercase tracking-wider">{t('network_temperature')}</p>
+                <p 
+                  className="text-xs text-gray-400 uppercase tracking-wider cursor-help" 
+                  title="Среднее значение entropy_score по всем операциям. Высокая температура = низкая надёжность сети."
+                >
+                  {t('network_temperature')}
+                </p>
                 <p className="text-lg sm:text-xl font-bold text-orange-400" id="network-temperature">0.00 T</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-lg">⚡</span>
               <div>
-                <p className="text-xs text-gray-400 uppercase tracking-wider">{t('computational_pressure')}</p>
+                <p 
+                  className="text-xs text-gray-400 uppercase tracking-wider cursor-help" 
+                  title="Количество ожидающих задач / Количество активных узлов. Высокое давление = перегрузка сети."
+                >
+                  {t('computational_pressure')}
+                </p>
                 <p className="text-lg sm:text-xl font-bold text-red-400" id="computational-pressure">0.00 P</p>
               </div>
             </div>

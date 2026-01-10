@@ -329,13 +329,13 @@ export async function submitTaskResult(
   executionTimeMs: number,
   tonConnectUI: any
 ): Promise<void> {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
+  const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/+$/, '');
   
   try {
     // Sign the result
     const signature = await signResultData(taskID, result, tonConnectUI);
 
-    const response = await fetch(`${apiUrl}/v1/device/tasks/${taskID}/result`, {
+    const response = await fetch(`${apiBase}/api/v1/device/tasks/${taskID}/result`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

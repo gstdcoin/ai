@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { useWalletStore } from '../../store/walletStore';
+import { logger } from '../../lib/logger';
+import { toast } from '../../lib/toast';
 
 interface CreateTaskModalProps {
   onClose: () => void;
@@ -30,7 +32,8 @@ export default function CreateTaskModal({ onClose, onTaskCreated }: CreateTaskMo
     setLoading(true);
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/tasks`, {
+      const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/+$/, '');
+      const response = await fetch(`${apiBase}/api/v1/tasks`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -56,15 +59,16 @@ export default function CreateTaskModal({ onClose, onTaskCreated }: CreateTaskMo
         if (onTaskCreated) {
           onTaskCreated();
         }
-        alert(t('task_created'));
+        toast.success(t('task_created') || 'Task created successfully');
         onClose();
       } else {
         const error = await response.json();
-        alert(error.message || t('error'));
+        const errorMsg = error.message || t('error') || 'Failed to create task';
+        toast.error('Error', errorMsg);
       }
     } catch (error) {
-      console.error('Error creating task:', error);
-      alert(t('error'));
+      logger.error('Error creating task', error);
+      toast.error('Error', t('error') || 'Failed to create task');
     } finally {
       setLoading(false);
     }

@@ -22,8 +22,8 @@ export default function TreasuryWidget() {
       setError(null);
 
       // Fetch from our backend API (avoids CORS issues)
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
-      const response = await fetch(`${apiUrl}/api/v1/stats/public`);
+      const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/+$/, '');
+      const response = await fetch(`${apiBase}/api/v1/stats/public`);
 
       if (!response.ok) {
         throw new Error('Failed to fetch treasury balance');
