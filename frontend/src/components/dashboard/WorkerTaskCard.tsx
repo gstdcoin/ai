@@ -5,6 +5,7 @@ import { useWalletStore } from '../../store/walletStore';
 import { useTonConnectUI } from '@tonconnect/ui-react';
 import { getTaskRunner, TaskRunnerProgress } from '../../lib/taskRunner';
 import { triggerHapticImpact, triggerHapticNotification } from '../../lib/telegram';
+import { toast } from '../../lib/toast';
 import { Play, CheckCircle2, Loader2 } from 'lucide-react';
 
 interface WorkerTaskCardProps {
@@ -33,7 +34,7 @@ export default function WorkerTaskCard({ task, onTaskCompleted }: WorkerTaskCard
 
   const handleStartWork = async () => {
     if (!address || !tonConnectUI?.connected) {
-      alert(t('connect_wallet_to_work') || 'Please connect your wallet to start working');
+      toast.error(t('connect_wallet_to_work') || 'Please connect your wallet to start working');
       return;
     }
 
@@ -199,15 +200,23 @@ export default function WorkerTaskCard({ task, onTaskCompleted }: WorkerTaskCard
           )}
         </button>
       ) : (
-        <div className="w-full glass-button-gold text-white font-bold py-4 px-6 rounded-lg flex items-center justify-center gap-3 min-h-[56px] bg-green-500/20 border-green-500/50">
-          <CheckCircle2 className="w-5 h-5" />
+        <div 
+          className="w-full glass-button-gold text-white font-bold py-4 px-6 rounded-lg flex items-center justify-center gap-3 min-h-[56px] bg-green-500/20 border-green-500/50"
+          role="status"
+          aria-live="polite"
+        >
+          <CheckCircle2 className="w-5 h-5" aria-hidden="true" />
           <span className="text-lg">{t('task_completed') || 'Task Completed!'}</span>
         </div>
       )}
 
       {/* Status Message */}
       {progress.status === 'error' && (
-        <div className="mt-3 p-3 bg-red-500/20 border border-red-500/50 rounded-lg">
+        <div 
+          className="mt-3 p-3 bg-red-500/20 border border-red-500/50 rounded-lg"
+          role="alert"
+          aria-live="assertive"
+        >
           <p className="text-sm text-red-300">{progress.message}</p>
         </div>
       )}

@@ -292,7 +292,7 @@ export async function executeTask(task: TaskNotification['task']): Promise<any> 
 }
 
 // Sign result data with wallet
-async function signResultData(
+export async function signResultData(
   taskID: string,
   resultData: any,
   tonConnectUI: any
