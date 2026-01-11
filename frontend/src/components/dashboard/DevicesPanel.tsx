@@ -5,6 +5,7 @@ import RegisterDeviceModal from './RegisterDeviceModal';
 import { EmptyState } from '../common/EmptyState';
 import { Server, Plus } from 'lucide-react';
 import { useAutoTaskWorker } from '../../hooks/useAutoTaskWorker';
+import { logger } from '../../lib/logger';
 
 interface Node {
   id: string;
