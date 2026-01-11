@@ -49,7 +49,7 @@ export class TaskWorker {
       this.ws = new WebSocket(url);
 
       this.ws.onopen = () => {
-        console.log('✅ TaskWorker: WebSocket connected');
+        // WebSocket connected
         this.reconnectAttempts = 0;
         // Send heartbeat
         this.sendHeartbeat();
@@ -76,23 +76,23 @@ export class TaskWorker {
             }
           }
         } catch (error) {
-          console.error('TaskWorker: Failed to parse message', error);
+          // Failed to parse message
         }
       };
 
       this.ws.onerror = (error) => {
-        console.error('TaskWorker: WebSocket error', error);
+        // WebSocket error
         if (this.onError) {
           this.onError(new Error('WebSocket connection error'));
         }
       };
 
       this.ws.onclose = () => {
-        console.log('TaskWorker: WebSocket closed, attempting reconnect...');
+        // WebSocket closed, attempting reconnect
         this.reconnect();
       };
     } catch (error) {
-      console.error('TaskWorker: Failed to create WebSocket', error);
+      // Failed to create WebSocket
       if (this.onError) {
         this.onError(error as Error);
       }
@@ -109,7 +109,7 @@ export class TaskWorker {
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++;
       const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000);
-      console.log(`TaskWorker: Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`);
+      // Reconnecting
       setTimeout(() => this.connect(), delay);
     } else {
       console.error('TaskWorker: Max reconnection attempts reached');

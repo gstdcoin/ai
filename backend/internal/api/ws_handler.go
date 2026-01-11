@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"sync"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -18,19 +19,21 @@ import (
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		origin := r.Header.Get("Origin")
-		// In production, check against allowed origins
-		// For now, allow all origins but log for security monitoring
+		// Origin whitelist for production security
+		allowedOrigins := []string{"https://app.gstdtoken.com", "http://localhost:3000", "ws://localhost:3000", "wss://app.gstdtoken.com"}
 		if origin != "" {
 			log.Printf("WebSocket connection from origin: %s", origin)
+			allowed := false
+			for _, allowedOrigin := range allowedOrigins {
+				if origin == allowedOrigin || strings.HasPrefix(origin, allowedOrigin) {
+					allowed = true
+					break
+				}
+			}
+			return allowed
 		}
-		// TODO: Add environment-based origin whitelist for production
-		// allowedOrigins := []string{"https://app.gstdtoken.com", "https://gstdtoken.com"}
-		// for _, allowed := range allowedOrigins {
-		//     if origin == allowed {
-		//         return true
-		//     }
-		// }
-		return true // Allow all origins for now (development mode)
+		// Allow connections without Origin header (some clients don't send it)
+		return true
 	},
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
