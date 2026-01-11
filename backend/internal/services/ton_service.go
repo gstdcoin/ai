@@ -331,18 +331,23 @@ func (s *TONService) GetContractBalance(ctx context.Context, contractAddress str
 	}
 
 	var result struct {
-		Balance string `json:"balance"`
-		State   string `json:"state"`
+		Balance json.Number `json:"balance"`
+		State   string      `json:"state"`
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return 0, err
 	}
 
-	// Parse balance (in nanotons)
-	var balanceNano int64
-	if _, err := fmt.Sscanf(result.Balance, "%d", &balanceNano); err != nil {
-		return 0, fmt.Errorf("failed to parse balance: %w", err)
+	// Parse balance (in nanotons) - json.Number handles both number and string formats
+	balanceNano, err := result.Balance.Int64()
+	if err != nil {
+		// If Int64 fails, try parsing as float64 first (some APIs return decimals)
+		if balanceFloat, floatErr := result.Balance.Float64(); floatErr == nil {
+			balanceNano = int64(balanceFloat)
+		} else {
+			return 0, fmt.Errorf("failed to parse balance: %w", err)
+		}
 	}
 
 	return balanceNano, nil
