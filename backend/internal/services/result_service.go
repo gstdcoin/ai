@@ -7,6 +7,7 @@ import (
 	"distributed-computing-platform/internal/models"
 	"encoding/json"
 	"fmt"
+	"log"
 )
 
 // ResultService handles task results and delivery to requesters
@@ -171,6 +172,14 @@ func (s *ResultService) ProcessPayment(ctx context.Context, taskID string) error
 		WHERE task_id = $3
 	`, platformFee, executorReward, taskID)
 
-	return err
+	if err != nil {
+		return err
+	}
+
+	// Log successful update with reward information
+	log.Printf("✅ Task %s completed: executor_reward_ton=%.9f, platform_fee_ton=%.9f, total_compensation=%.9f",
+		taskID, executorReward, platformFee, task.LaborCompensationTon)
+
+	return nil
 }
 
