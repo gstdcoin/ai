@@ -257,6 +257,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
+      - name: Check SSH secrets
+        run: |
+          if [ -z "${{ secrets.SSH_KEY }}" ]; then
+            echo "❌ SSH_KEY secret is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.SSH_HOST }}" ]; then
+            echo "❌ SSH_HOST secret is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.SSH_USER }}" ]; then
+            echo "❌ SSH_USER secret is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.SSH_KNOWN_HOSTS }}" ]; then
+            echo "❌ SSH_KNOWN_HOSTS secret is not set"
+            exit 1
+          fi
+          echo "✅ All SSH secrets are configured"
+      
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.9.0
         with:
