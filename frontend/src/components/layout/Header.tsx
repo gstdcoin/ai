@@ -33,13 +33,28 @@ export default React.memo(function Header({ onCreateTask, onLogout }: HeaderProp
     <header className="glass-dark border-b border-white/10 sticky top-0 z-30">
       <div className="px-4 sm:px-6 py-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex-1 min-w-0">
-            <h1 className="text-xl sm:text-2xl font-bold text-white font-display">{t('dashboard')}</h1>
-            {address && (
-              <p className="text-xs sm:text-sm text-gray-400 mt-1 truncate font-mono">
-                {address.slice(0, 6)}...{address.slice(-4)}
-              </p>
-            )}
+          <div className="flex-1 min-w-0 flex items-center gap-3">
+            {/* Logo */}
+            <div className="flex-shrink-0">
+              <img 
+                src="/logo-icon.svg" 
+                alt="GSTD Logo" 
+                className="w-10 h-10 sm:w-12 sm:h-12 transition-transform hover:scale-110 duration-300"
+              />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-2xl font-bold text-white font-display flex items-center gap-2">
+                <span className="bg-gradient-to-r from-gold-400 to-gold-600 bg-clip-text text-transparent">
+                  GSTD
+                </span>
+                <span className="text-gray-300">{t('dashboard')}</span>
+              </h1>
+              {address && (
+                <p className="text-xs sm:text-sm text-gray-400 mt-1 truncate font-mono">
+                  {address.slice(0, 6)}...{address.slice(-4)}
+                </p>
+              )}
+            </div>
           </div>
           
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
