@@ -72,8 +72,25 @@ export default function Home() {
           <div className="bg-white rounded-2xl shadow-xl p-6 sm:p-8 lg:p-10">
             {/* Hero Section */}
             <div className="text-center mb-10">
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-gray-900 mb-4">
-                {t('landing_title') || 'GSTD Platform'}
+              {/* Logo */}
+              <div className="flex justify-center mb-6">
+                <div className="relative">
+                  <img 
+                    src="/logo.svg" 
+                    alt="GSTD Logo" 
+                    className="w-24 h-24 sm:w-32 sm:h-32 mx-auto animate-pulse-slow drop-shadow-2xl"
+                    style={{
+                      filter: 'drop-shadow(0 0 20px rgba(255, 215, 0, 0.5))',
+                      animation: 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+                    }}
+                  />
+                </div>
+              </div>
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-gray-900 mb-4 flex items-center justify-center gap-3">
+                <span className="bg-gradient-to-r from-gold-600 via-gold-500 to-gold-400 bg-clip-text text-transparent">
+                  GSTD
+                </span>
+                <span className="text-gray-800">Platform</span>
               </h1>
               <p className="text-lg sm:text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed mb-2">
                 {t('landing_subtitle') || 'Децентрализованная платформа распределённых вычислений на блокчейне TON'}
