@@ -66,11 +66,11 @@ services:
     build:
       context: ./frontend
       args:
-        NEXT_PUBLIC_API_URL: http://localhost:8080/api
+        NEXT_PUBLIC_API_URL: https://app.gstdtoken.com
     container_name: ubuntu_frontend_1
     environment:
       - PORT=3000
-      - NEXT_PUBLIC_API_URL=http://localhost:8080/api
+      - NEXT_PUBLIC_API_URL=https://app.gstdtoken.com
     depends_on:
       - backend
     ports:
@@ -92,3 +92,4 @@ services:
 
 volumes:
   ubuntu_postgres_data:
+  redis_data:

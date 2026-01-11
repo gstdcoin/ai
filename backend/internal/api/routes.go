@@ -43,9 +43,24 @@ func SetupRoutes(
 
 	// Add error handler middleware
 	router.Use(ErrorHandler())
+	
+	// Add rate limiter if Redis is available
+	var rateLimiter *RateLimiter
+	if redisClient != nil {
+		if rc, ok := redisClient.(*redis.Client); ok && rc != nil {
+			rateLimiter = NewRateLimiter(rc)
+			router.Use(rateLimiter.RateLimitMiddleware())
+		}
+	}
 
-	v1 := router.Group("/api/v1")
+	// API versioning
+	api := router.Group("/api")
+	api.Use(APIVersionMiddleware())
+	
+	v1 := api.Group("/v1")
 	{
+		// API version endpoint
+		v1.GET("/version", GetAPIVersion())
 		// Tasks
 		v1.POST("/tasks", ValidateTaskRequest(), createTask(taskService))
 		v1.GET("/tasks", getTasks(taskService))
@@ -103,6 +118,9 @@ func SetupRoutes(
 		// Metrics endpoint (Prometheus format)
 		metricsService := NewMetricsService(db.(*sql.DB), redisClient.(*redis.Client))
 		v1.GET("/metrics", metricsService.GetMetrics())
+		
+		// OpenAPI specification
+		v1.GET("/openapi.json", GetOpenAPISpec())
 
 		// Users
 		v1.POST("/users/login", loginUser(userService))
