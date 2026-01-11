@@ -1,6 +1,6 @@
 import { useTranslation } from 'next-i18next';
 import { useWalletStore } from '../store/walletStore';
-import { useTonConnectUI, useTonWallet } from '@tonconnect/ui-react';
+import { useTonConnectUI, useTonWallet, TonConnectButton } from '@tonconnect/ui-react';
 import { useEffect, useState, useRef } from 'react';
 import { logger } from '../lib/logger';
 import { toast } from '../lib/toast';
@@ -264,6 +264,27 @@ export default function WalletConnect() {
     );
   }
 
+  // If connected, show disconnect option
+  // If connected, show disconnect option
+  if (isConnected && (tonConnectUI?.account || wallet?.account)) {
+    const address = tonConnectUI?.account?.address || wallet?.account?.address;
+    return (
+      <div className="w-full space-y-2">
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+          <p className="text-sm text-green-800">
+            ✅ {t('connected')}: {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Connected'}
+          </p>
+        </div>
+        <button
+          onClick={handleDisconnect}
+          className="w-full bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors"
+        >
+          {t('disconnect')}
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full space-y-2">
       {error && (
@@ -271,17 +292,24 @@ export default function WalletConnect() {
           <p className="text-sm text-red-800">{error}</p>
         </div>
       )}
-      <button
-        onClick={handleConnect}
-        disabled={isInitializing || !tonConnectUI}
-        className="w-full bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {isInitializing ? t('loading') || 'Загрузка...' : (tonConnectUI ? t('connect_wallet') : t('tonconnect_not_ready'))}
-      </button>
+      {/* Use built-in TonConnectButton - it handles all connection logic automatically */}
+      <div className="w-full [&>button]:w-full [&>button]:!bg-primary-600 [&>button]:!text-white [&>button]:!px-6 [&>button]:!py-3 [&>button]:!rounded-lg [&>button]:hover:!bg-primary-700 [&>button]:!transition-colors">
+        <TonConnectButton />
+      </div>
+      {/* Custom button as fallback if needed */}
       {(!tonConnectUI && !isInitializing) && (
-        <p className="text-sm text-gray-500 text-center">
-          {t('tonconnect_not_ready')}
-        </p>
+        <div className="space-y-2">
+          <button
+            onClick={handleConnect}
+            disabled={isInitializing || !tonConnectUI}
+            className="w-full bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isInitializing ? t('loading') || 'Загрузка...' : (tonConnectUI ? t('connect_wallet') : t('tonconnect_not_ready'))}
+          </button>
+          <p className="text-sm text-gray-500 text-center">
+            {t('tonconnect_not_ready')}
+          </p>
+        </div>
       )}
     </div>
   );
