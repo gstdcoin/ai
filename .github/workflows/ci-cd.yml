@@ -134,12 +134,31 @@ jobs:
           go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
           golangci-lint run --timeout=5m --out-format=github-actions || echo "⚠️ Linter found issues (non-blocking)"
       
-      - name: Wait for services
+      - name: Wait for PostgreSQL
         run: |
-          echo "Waiting for PostgreSQL..."
-          timeout 30 bash -c 'until pg_isready -h localhost -p 5432 -U postgres; do sleep 1; done' || true
-          echo "Waiting for Redis..."
-          timeout 30 bash -c 'until redis-cli -h localhost -p 6379 ping; do sleep 1; done' || true
+          echo "Waiting for PostgreSQL to be ready..."
+          for i in {1..30}; do
+            if pg_isready -h localhost -p 5432 -U postgres 2>/dev/null; then
+              echo "✅ PostgreSQL is ready"
+              exit 0
+            fi
+            echo "Attempt $i/30: PostgreSQL not ready yet..."
+            sleep 1
+          done
+          echo "⚠️ PostgreSQL may not be ready, but continuing..."
+      
+      - name: Wait for Redis
+        run: |
+          echo "Waiting for Redis to be ready..."
+          for i in {1..30}; do
+            if redis-cli -h localhost -p 6379 ping 2>/dev/null | grep -q PONG; then
+              echo "✅ Redis is ready"
+              exit 0
+            fi
+            echo "Attempt $i/30: Redis not ready yet..."
+            sleep 1
+          done
+          echo "⚠️ Redis may not be ready, but continuing..."
       
       - name: Run tests
         env:
@@ -153,14 +172,7 @@ jobs:
           REDIS_PORT: 6379
         run: |
           # Run tests without race detector for CI stability
-          go test -v -timeout=3m -coverprofile=coverage.out -covermode=atomic ./... || true
-          
-          # If coverage file exists, upload it
-          if [ -f coverage.out ]; then
-            echo "✅ Coverage file generated"
-          else
-            echo "⚠️ No coverage file generated (tests may have failed)"
-          fi
+          go test -v -timeout=3m -coverprofile=coverage.out -covermode=atomic ./...
       
       - name: Upload coverage
         uses: codecov/codecov-action@v4
