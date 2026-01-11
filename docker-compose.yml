@@ -1,5 +1,12 @@
 version: '3.8'
 
+# Global logging configuration to prevent disk overflow
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 networks:
   gstd-network:
     driver: bridge
@@ -11,6 +18,7 @@ services:
     container_name: ubuntu_postgres_1
     networks:
       - gstd-network
+    logging: *default-logging
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
@@ -34,7 +42,7 @@ services:
     volumes:
       - ubuntu_postgres_data:/var/lib/postgresql/data
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:5432:5432"  # Only accessible from localhost
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -46,6 +54,7 @@ services:
     container_name: ubuntu_redis_1
     networks:
       - gstd-network
+    logging: *default-logging
     command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
@@ -55,6 +64,7 @@ services:
     container_name: ubuntu_backend_1
     networks:
       - gstd-network
+    logging: *default-logging
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/api/v1/health"]
       interval: 30s
@@ -96,6 +106,7 @@ services:
     container_name: ubuntu_frontend_1
     networks:
       - gstd-network
+    logging: *default-logging
     environment:
       - PORT=3000
       - NEXT_PUBLIC_API_URL=https://app.gstdtoken.com
@@ -110,6 +121,7 @@ services:
     container_name: ubuntu_nginx_1
     networks:
       - gstd-network
+    logging: *default-logging
     ports:
       - "80:80"
       - "443:443"
