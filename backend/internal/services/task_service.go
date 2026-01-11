@@ -199,7 +199,7 @@ func (s *TaskService) CreateTask(ctx context.Context, requesterAddress string, d
 func (s *TaskService) GetTasks(ctx context.Context, requesterAddress *string) ([]*models.Task, error) {
 	query := `
 		SELECT task_id, requester_address, task_type, operation, model,
-		       labor_compensation_ton, certainty_gravity_score, status, created_at,
+		       labor_compensation_ton, COALESCE(certainty_gravity_score, priority_score, 0.0) as gravity_score, status, created_at,
 		       escrow_status, confidence_depth
 		FROM tasks
 	`
