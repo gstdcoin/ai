@@ -66,7 +66,8 @@ export default function WalletConnect() {
       disconnect();
       lastLoggedInAddress.current = null;
     }
-  }, [wallet, connect, disconnect, setUser]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wallet, connect, disconnect]);
 
   // Show loading state while TonConnect initializes
   useEffect(() => {
@@ -143,7 +144,7 @@ export default function WalletConnect() {
       const err = 'TonConnectUI не инициализирован';
       logger.error('TonConnectUI not initialized');
       setError(err);
-      toast.error('Connection error', err);
+      toast.error(t('connection_error'), err);
       return;
     }
 
@@ -170,7 +171,7 @@ export default function WalletConnect() {
       toast.info('Wallet disconnected');
     } catch (err) {
       logger.error('Error disconnecting', err);
-      toast.error('Failed to disconnect', 'Please try again');
+      toast.error(t('failed_to_disconnect'), t('please_try_again'));
     }
   };
 
