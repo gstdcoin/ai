@@ -18,6 +18,15 @@ interface Task {
   created_at: string;
   completed_at?: string;
   assigned_device?: string;
+  // Additional fields from backend
+  requester_address?: string;
+  operation?: string;
+  model?: string;
+  priority_score?: number;
+  escrow_status?: string;
+  confidence_depth?: number;
+  executor_reward_ton?: number;
+  platform_fee_ton?: number;
 }
 
 interface TasksPanelProps {
