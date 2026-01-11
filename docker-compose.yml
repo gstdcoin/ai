@@ -1,140 +1,56 @@
 version: '3.8'
 
-# Global logging configuration to prevent disk overflow
-x-logging: &default-logging
-  driver: "json-file"
-  options:
-    max-size: "10m"
-    max-file: "5"
-
-networks:
-  gstd-network:
-    driver: bridge
-    name: gstd-network
-
 services:
-  postgres:
-    image: postgres:15-alpine
-    container_name: ubuntu_postgres_1
-    networks:
-      - gstd-network
-    logging: *default-logging
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=distributed_computing
-      # Performance optimizations
-      - POSTGRES_INITDB_ARGS=--encoding=UTF8 --locale=C
-    command: >
-      postgres
-      -c shared_buffers=256MB
-      -c effective_cache_size=1GB
-      -c maintenance_work_mem=128MB
-      -c checkpoint_completion_target=0.9
-      -c wal_buffers=16MB
-      -c default_statistics_target=100
-      -c random_page_cost=1.1
-      -c effective_io_concurrency=200
-      -c work_mem=4MB
-      -c min_wal_size=1GB
-      -c max_wal_size=4GB
-      -c max_connections=100
-    volumes:
-      - ubuntu_postgres_data:/var/lib/postgresql/data
-    ports:
-      - "127.0.0.1:5432:5432"  # Only accessible from localhost
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  redis:
-    image: redis:7-alpine
-    container_name: ubuntu_redis_1
-    networks:
-      - gstd-network
-    logging: *default-logging
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
-    volumes:
-      - redis_data:/data
-
-  backend:
-    build: ./backend
-    container_name: ubuntu_backend_1
-    networks:
-      - gstd-network
-    logging: *default-logging
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/api/v1/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    environment:
-      # Database credentials - MUST match postgres service
-      - DB_USER=postgres
-      - DB_PASSWORD=postgres
-      - DB_NAME=distributed_computing
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_SSLMODE=disable
-      # Redis configuration
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      # Server configuration
-      - PORT=8080
-      # TON configuration - PRESERVE THESE
-      - TON_CONTRACT_ADDRESS=EQAIYlrr3UiMJ9fqI-B4j2nJdiiD7WzyaNL1MX_wiONc4OUi
-      - ADMIN_WALLET=UQCkXFlNRsubUp7Uh7lg_ScUqLCiff1QCLsdQU0a7kphqQED
-      - GSTD_JETTON_ADDRESS=EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO
-      - TON_API_KEY=6512ff28fd1ffc8e29b7230642e690b410f7c68e15ef74c4e81e17e9f7a65de6
-      - TON_API_URL=https://tonapi.io
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_started
-    ports:
-      - "8080:8080"
-
-  frontend:
-    build:
-      context: ./frontend
-      args:
-        NEXT_PUBLIC_API_URL: https://app.gstdtoken.com
-    container_name: ubuntu_frontend_1
-    networks:
-      - gstd-network
-    logging: *default-logging
-    environment:
-      - PORT=3000
-      - NEXT_PUBLIC_API_URL=https://app.gstdtoken.com
-    depends_on:
-      backend:
-        condition: service_healthy
-    ports:
-      - "3000:3000"
-
-  nginx:
+  gateway:
     image: nginx:alpine
-    container_name: ubuntu_nginx_1
-    networks:
-      - gstd-network
-    logging: *default-logging
+    container_name: gstd_gateway
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      - ./nginx/ssl:/etc/letsencrypt:ro
+      - ./gateway.conf:/etc/nginx/conf.d/default.conf
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    restart: always
     depends_on:
-      frontend:
-        condition: service_started
-      backend:
-        condition: service_healthy
+      - frontend
+      - backend
 
-volumes:
-  ubuntu_postgres_data:
-  redis_data:
+  frontend:
+    image: ubuntu_frontend
+    container_name: ubuntu_frontend_1
+    environment:
+      - NEXT_PUBLIC_API_URL=https://app.gstdtoken.com/api
+    ports:
+      - "3000:3000"
+    restart: always
+
+  backend:
+    image: ubuntu-backend
+    container_name: ubuntu_backend_1
+    network_mode: "host"
+    environment:
+      - POSTGRES_HOST=127.0.0.1
+      - REDIS_HOST=127.0.0.1
+      - SERVER_PORT=8080
+    restart: always
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: ubuntu_postgres_1
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    command: ["postgres", "-c", "listen_addresses=*"]
+    restart: always
+
+  redis:
+    image: redis:alpine
+    container_name: ubuntu_redis_1
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--protected-mode", "no"]
+    restart: always
