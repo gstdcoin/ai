@@ -25,7 +25,7 @@ function App({ Component, pageProps }: AppProps) {
           twaReturnUrl: 'https://t.me/gstdtoken_bot'
         }}
         uiPreferences={{
-          theme: 'DARK',
+          theme: 'dark' as const,
           borderRadius: 'm',
           colorsSet: {
             [0]: {
