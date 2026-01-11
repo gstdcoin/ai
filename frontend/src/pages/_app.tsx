@@ -27,15 +27,7 @@ function App({ Component, pageProps }: AppProps) {
         restoreConnection={true}
         uiPreferences={{
           theme: THEME.DARK,
-          borderRadius: 'm',
-          colorsSet: {
-            [THEME.DARK]: {
-              connectButton: {
-                background: '#FFD700',
-                foreground: '#0a1929'
-              }
-            }
-          }
+          borderRadius: 'm'
         }}
         language="ru"
       >
