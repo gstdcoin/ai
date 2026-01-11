@@ -54,19 +54,18 @@ QFBgc=
 - Если используете другой порт, обновите
 
 #### `SSH_KNOWN_HOSTS` (обновить)
-Выполните на вашем локальном компьютере или на сервере:
+Скопируйте весь блок ниже:
 
-```bash
-ssh-keyscan -H 82.115.48.228
+```
+|1|CGr94GysBSOU1NMyaykF02+7zmU=|klTvscr0LEIDqxEsxHLMdsImSyA= ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINqf/7pvRzFfPGL/Zk7bg1twG3oXTb1TYy8SmRz3ICgL
+|1|Eg0kvOkm1ofDfEZTMoGIWjgSYMA=|ANoo3r13ColU9xyvEzWCu9OJ+1I= ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDiwmuQBLKLmZueew+9pJF82p3ZijOKzjwFgZ9zSRoZx1MwKhLCt0e7Ibftn4qnlw+rC5djT7nuQiyGg7rLpGEk0Y42Fkk5Pwau/g/ShrLZNslGzGgCX+qJOE260hIC+jrZQwb9tR6DcKxNHeEBl2ktCdJLU/IQFkwp40kX+sdRLNAh1Y/l/TsKRwpELPFPGALlIIyLCPbXrCfNek3giSS1IIARil6c1HPZSoQM9d+xIUrJ/GXZ6eLrOiJi7nT9N41WlCy1casBd3SF/HBvSArdZVLvxNYLH8MN/0dBtFok/8a3jg4PQqxXxLkNst3bMC2gAKJ8x9VHvs5K3xNd+wXUcPB3B4f599sWXfT86YN5jFEpk0XeRrO1xCzveQMPIJpbqlHCLrT/vYHp4z/Ai1MX02deWN+Ew7hA04kv0oSKpaVGQJfGYuf12Nrvs8uMfAbf/GQwEDE34s6BQTWJfiSAxZiGpmPLsbHEPwGavOmxkZoWI8ez+erJ+/FtiYTr2Q8=
+|1|f2bSO0PfubMQKlhfprkbzTDIAOk=|Hv8b/34fxWCY8zR/17HG60OACUk= ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBL6Fl2t8jdbv9PIJzPcHqcgh5vF9NY6mpEw1oJ8YPfmCsFc201IXGdqqdwgGuZ3MCpn/1XfxMw1dnQ9RgJitjGI=
 ```
 
-Или с указанием типов ключей:
-
+Или выполните на сервере:
 ```bash
-ssh-keyscan -t rsa,ecdsa,ed25519 82.115.48.228
+./scripts/show-ci-cd-keys.sh
 ```
-
-Скопируйте весь вывод и вставьте в секрет `SSH_KNOWN_HOSTS`.
 
 ## ✅ Проверка подключения
 
