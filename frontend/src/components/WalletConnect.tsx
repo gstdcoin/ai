@@ -55,16 +55,27 @@ export default function WalletConnect() {
 
   // Use useTonWallet hook to detect wallet changes (primary hook as requested)
   useEffect(() => {
-    if (wallet?.account?.address) {
-      logger.debug('Wallet detected', { address: wallet.account.address });
-      connect(wallet.account.address);
-      loginUser(wallet.account.address);
-      setError(null);
-    } else if (wallet === null) {
-      // Wallet disconnected
-      logger.debug('Wallet disconnected');
-      disconnect();
-      lastLoggedInAddress.current = null;
+    if (!wallet) {
+      // Wallet is null - disconnected or not connected yet
+      if (lastLoggedInAddress.current !== null) {
+        logger.debug('Wallet disconnected (useTonWallet)');
+        disconnect();
+        lastLoggedInAddress.current = null;
+      }
+      return;
+    }
+
+    if (wallet.account?.address) {
+      const address = wallet.account.address;
+      logger.debug('Wallet detected via useTonWallet', { address });
+      
+      // Only process if address changed
+      if (lastLoggedInAddress.current !== address) {
+        logger.info('New wallet connected via useTonWallet', { address });
+        connect(address);
+        loginUser(address);
+        setError(null);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wallet, connect, disconnect]);
@@ -83,20 +94,22 @@ export default function WalletConnect() {
   // Only depend on tonConnectUI to avoid infinite loops
   useEffect(() => {
     if (!tonConnectUI) {
+      logger.debug('TonConnectUI not available yet');
       return;
     }
 
     logger.debug('TonConnectUI initialized', { 
       connected: tonConnectUI.connected,
-      hasAccount: !!tonConnectUI.account 
+      hasAccount: !!tonConnectUI.account,
+      accountAddress: tonConnectUI.account?.address 
     });
     
-    // Check if already connected
-    if (tonConnectUI.account) {
+    // Check if already connected on mount
+    if (tonConnectUI.account && tonConnectUI.account.address) {
       const accountAddress = tonConnectUI.account.address;
       // Only update if address changed to avoid loops
       if (lastLoggedInAddress.current !== accountAddress) {
-        logger.info('TonConnect account found', { address: accountAddress });
+        logger.info('TonConnect account found on mount', { address: accountAddress });
         connect(accountAddress);
         loginUser(accountAddress);
         lastLoggedInAddress.current = accountAddress;
@@ -104,27 +117,47 @@ export default function WalletConnect() {
       }
     } else {
       if (lastLoggedInAddress.current !== null) {
+        logger.debug('No account found, clearing state');
         disconnect();
         lastLoggedInAddress.current = null;
       }
     }
 
-    // Listen for status changes
-    const unsubscribe = tonConnectUI.onStatusChange((wallet) => {
-      logger.debug('TonConnect status changed', { hasWallet: !!wallet });
-      if (wallet && wallet.account) {
-        const accountAddress = wallet.account.address;
+    // Listen for status changes - this is the main event handler
+    const unsubscribe = tonConnectUI.onStatusChange((walletInfo) => {
+      logger.debug('TonConnect onStatusChange triggered', { 
+        hasWallet: !!walletInfo,
+        hasAccount: !!(walletInfo?.account),
+        address: walletInfo?.account?.address 
+      });
+      
+      if (walletInfo && walletInfo.account && walletInfo.account.address) {
+        const accountAddress = walletInfo.account.address;
+        logger.info('Wallet connected via onStatusChange', { address: accountAddress });
+        
         // Only update if address changed
         if (lastLoggedInAddress.current !== accountAddress) {
-          logger.info('Wallet connected', { address: accountAddress });
+          logger.info('Processing new wallet connection', { address: accountAddress });
           connect(accountAddress);
           loginUser(accountAddress);
           lastLoggedInAddress.current = accountAddress;
           setError(null);
+          
+          // Close modal if open
+          try {
+            tonConnectUI.closeModal();
+            logger.debug('Modal closed after successful connection');
+          } catch (e) {
+            // Modal might already be closed
+            logger.debug('Modal close attempt (may already be closed)', { error: e });
+          }
+        } else {
+          logger.debug('Wallet address unchanged, skipping', { address: accountAddress });
         }
       } else {
+        // Wallet disconnected
         if (lastLoggedInAddress.current !== null) {
-          logger.info('Wallet disconnected');
+          logger.info('Wallet disconnected via onStatusChange');
           disconnect();
           lastLoggedInAddress.current = null;
         }
@@ -132,6 +165,7 @@ export default function WalletConnect() {
     });
 
     return () => {
+      logger.debug('Cleaning up TonConnect status listener');
       unsubscribe();
     };
   }, [tonConnectUI]); // Only depend on tonConnectUI to prevent loops
@@ -149,14 +183,32 @@ export default function WalletConnect() {
     }
 
     try {
+      // Check if already connected
+      if (tonConnectUI.account) {
+        logger.info('Already connected', { address: tonConnectUI.account.address });
+        const address = tonConnectUI.account.address;
+        connect(address);
+        loginUser(address);
+        return;
+      }
+
       // Open modal
+      logger.debug('Opening connection modal...');
       await tonConnectUI.openModal();
-      logger.debug('Modal opened successfully');
+      logger.debug('Modal opened successfully, waiting for wallet connection...');
+      
+      // Set a timeout to check if connection happened
+      setTimeout(() => {
+        if (!tonConnectUI.account && !isConnected) {
+          logger.warn('No connection after opening modal');
+          // Don't show error immediately, user might still be connecting
+        }
+      }, 10000); // 10 seconds timeout
     } catch (err: any) {
       const errorMsg = err?.message || 'Ошибка открытия модального окна';
       logger.error('Error opening modal', err);
       setError(errorMsg);
-      toast.error('Failed to open wallet', errorMsg);
+      toast.error(t('failed_to_open_wallet'), errorMsg);
     }
   };
 
