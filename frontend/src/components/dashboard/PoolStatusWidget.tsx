@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'next-i18next';
+import { logger } from '../../lib/logger';
 
 interface PoolStatus {
   is_healthy: boolean;
