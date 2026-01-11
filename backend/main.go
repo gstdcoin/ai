@@ -196,14 +196,23 @@ func main() {
 		c.Header("X-Frame-Options", "DENY")
 		c.Header("X-XSS-Protection", "1; mode=block")
 		c.Header("Referrer-Policy", "strict-origin-when-cross-origin")
+		c.Header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+		c.Header("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'")
+		c.Header("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
 		
 		// CORS headers (adjust for production)
 		origin := c.GetHeader("Origin")
+		allowedOrigins := []string{"https://app.gstdtoken.com", "http://localhost:3000"}
 		if origin != "" {
-			c.Header("Access-Control-Allow-Origin", origin)
-			c.Header("Access-Control-Allow-Credentials", "true")
-			c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-			c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Wallet-Address")
+			for _, allowed := range allowedOrigins {
+				if origin == allowed {
+					c.Header("Access-Control-Allow-Origin", origin)
+					c.Header("Access-Control-Allow-Credentials", "true")
+					c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+					c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Wallet-Address")
+					break
+				}
+			}
 		}
 		
 		// Handle preflight requests
