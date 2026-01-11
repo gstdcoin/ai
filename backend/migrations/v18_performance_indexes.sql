@@ -17,8 +17,13 @@ CREATE INDEX IF NOT EXISTS idx_devices_reputation_active ON devices(reputation D
 DO $$ 
 BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'validations') THEN
-        CREATE INDEX IF NOT EXISTS idx_validations_task_device ON validations(task_id, device_id);
-        CREATE INDEX IF NOT EXISTS idx_validations_status ON validations(status);
+        -- Check if columns exist before creating indexes
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'validations' AND column_name = 'task_id') THEN
+            CREATE INDEX IF NOT EXISTS idx_validations_task ON validations(task_id);
+        END IF;
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'validations' AND column_name = 'status') THEN
+            CREATE INDEX IF NOT EXISTS idx_validations_status ON validations(status);
+        END IF;
     END IF;
 END $$;
 
