@@ -139,19 +139,25 @@ func (pw *PaymentWatcher) checkPayments(ctx context.Context) {
 
 // getRecentJettonTransfers fetches recent jetton transfers to the platform wallet
 func (pw *PaymentWatcher) getRecentJettonTransfers(ctx context.Context) ([]JettonTransfer, error) {
-	// Use TonAPI to get jetton transfers
-	// Format: GET /v2/jettons/{jetton_address}/transfers?account={address}&limit=100
-	url := fmt.Sprintf("%s/v2/jettons/%s/transfers?account=%s&limit=100", 
-		pw.tonService.apiURL, pw.jettonAddress, pw.platformWallet)
+	// Use TonAPI v2 to get jetton transfers
+	// Format: GET /v2/accounts/{account_id}/jettons/{jetton_id}/history
+	// First, normalize the platform wallet address for TON API
+	normalizedWallet := NormalizeAddressForAPI(pw.platformWallet)
+	normalizedJetton := NormalizeAddressForAPI(pw.jettonAddress)
+	
+	// TON API v2 endpoint for jetton transfer history
+	url := fmt.Sprintf("%s/v2/accounts/%s/jettons/%s/history?limit=100", 
+		pw.tonService.apiURL, normalizedWallet, normalizedJetton)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
 
+	// Use only X-API-Key header (TonAPI v2 format)
 	if pw.tonService.apiKey != "" {
-		req.Header.Set("Authorization", "Bearer "+pw.tonService.apiKey)
 		req.Header.Set("X-API-Key", pw.tonService.apiKey)
+		// Remove Bearer Authorization to avoid base32 errors
 	}
 
 	resp, err := pw.tonService.client.Do(req)
@@ -173,8 +179,25 @@ func (pw *PaymentWatcher) getRecentJettonTransfers(ctx context.Context) ([]Jetto
 		return nil, fmt.Errorf("TON API error (%d): %s", resp.StatusCode, string(body))
 	}
 
+	// TON API v2 returns different structure - try both formats
 	var result struct {
 		Events []TonAPIJettonTransfer `json:"events"`
+		// Alternative structure for v2
+		History []struct {
+			From struct {
+				Address string `json:"address"`
+			} `json:"from"`
+			To struct {
+				Address string `json:"address"`
+			} `json:"to"`
+			Amount string `json:"amount"`
+			Comment string `json:"comment"`
+			Transaction struct {
+				Hash string `json:"hash"`
+				LT   string `json:"lt"`
+			} `json:"transaction"`
+			Timestamp int64 `json:"timestamp"`
+		} `json:"history"`
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
@@ -183,10 +206,39 @@ func (pw *PaymentWatcher) getRecentJettonTransfers(ctx context.Context) ([]Jetto
 
 	// Filter for incoming transfers (to platform wallet) and convert
 	var transfers []JettonTransfer
-	for _, event := range result.Events {
-		// Only process transfers TO the platform wallet
-		if strings.EqualFold(event.To.Address, pw.platformWallet) {
-			// Convert amount from nanotons to GSTD (assuming 9 decimals)
+	
+	// Process v2 history format (preferred)
+	if len(result.History) > 0 {
+		for _, event := range result.History {
+			// Only process transfers TO the platform wallet
+			if strings.EqualFold(event.To.Address, normalizedWallet) {
+				// Parse amount (in nanotons) and convert to GSTD
+				amountNano, err := strconv.ParseInt(event.Amount, 10, 64)
+				if err != nil {
+					log.Printf("PaymentWatcher: Failed to parse amount: %v", err)
+					continue
+				}
+				amountGSTD := float64(amountNano) / 1e9
+				
+				transfers = append(transfers, JettonTransfer{
+					From:      event.From.Address,
+					To:        event.To.Address,
+					Amount:    fmt.Sprintf("%.9f", amountGSTD),
+					Comment:   event.Comment,
+					TxHash:    event.Transaction.Hash,
+					Timestamp: event.Timestamp,
+				})
+			}
+		}
+		return transfers, nil
+	}
+	
+	// Fallback: Process old events format if history is empty
+	if len(result.Events) > 0 {
+		for _, event := range result.Events {
+			// Only process transfers TO the platform wallet
+			if strings.EqualFold(event.To.Address, pw.platformWallet) {
+				// Convert amount from nanotons to GSTD (assuming 9 decimals)
 			amountNano, err := strconv.ParseInt(event.Amount, 10, 64)
 			if err != nil {
 				continue
