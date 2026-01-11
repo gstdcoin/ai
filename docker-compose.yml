@@ -12,9 +12,6 @@ services:
       - ./certbot/conf:/etc/letsencrypt
       - ./certbot/www:/var/www/certbot
     restart: always
-    depends_on:
-      - frontend
-      - backend
 
   frontend:
     image: ubuntu_frontend
