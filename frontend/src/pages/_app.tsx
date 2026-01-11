@@ -24,6 +24,7 @@ function App({ Component, pageProps }: AppProps) {
         actionsConfiguration={{
           twaReturnUrl: 'https://t.me/gstdtoken_bot'
         }}
+        restoreConnection={true}
         uiPreferences={{
           theme: THEME.DARK,
           borderRadius: 'm',
@@ -36,6 +37,7 @@ function App({ Component, pageProps }: AppProps) {
             }
           }
         }}
+        language="ru"
       >
         <Component {...pageProps} />
         <Toaster 
