@@ -184,11 +184,13 @@ export default function WalletConnect() {
 
     try {
       // Check if already connected
-      if (tonConnectUI.account) {
+      if (tonConnectUI.account && tonConnectUI.account.address) {
         logger.info('Already connected', { address: tonConnectUI.account.address });
         const address = tonConnectUI.account.address;
-        connect(address);
-        loginUser(address);
+        if (lastLoggedInAddress.current !== address) {
+          connect(address);
+          loginUser(address);
+        }
         return;
       }
 
@@ -197,13 +199,30 @@ export default function WalletConnect() {
       await tonConnectUI.openModal();
       logger.debug('Modal opened successfully, waiting for wallet connection...');
       
-      // Set a timeout to check if connection happened
-      setTimeout(() => {
-        if (!tonConnectUI.account && !isConnected) {
-          logger.warn('No connection after opening modal');
-          // Don't show error immediately, user might still be connecting
+      // Show user feedback
+      toast.info(t('scanning_qr'), t('waiting_connection'));
+      
+      // Set up periodic check for connection
+      const checkInterval = setInterval(() => {
+        if (tonConnectUI.account && tonConnectUI.account.address) {
+          const address = tonConnectUI.account.address;
+          logger.info('Connection detected in periodic check', { address });
+          if (lastLoggedInAddress.current !== address) {
+            connect(address);
+            loginUser(address);
+            clearInterval(checkInterval);
+          }
         }
-      }, 10000); // 10 seconds timeout
+      }, 1000); // Check every second
+      
+      // Clear interval after 30 seconds
+      setTimeout(() => {
+        clearInterval(checkInterval);
+        if (!tonConnectUI.account && !isConnected) {
+          logger.warn('No connection detected after 30 seconds');
+          // Don't show error - user might still be connecting
+        }
+      }, 30000);
     } catch (err: any) {
       const errorMsg = err?.message || 'Ошибка открытия модального окна';
       logger.error('Error opening modal', err);
