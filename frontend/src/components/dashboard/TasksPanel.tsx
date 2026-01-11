@@ -27,6 +27,11 @@ interface Task {
   confidence_depth?: number;
   executor_reward_ton?: number;
   platform_fee_ton?: number;
+  executor_payout_status?: string;
+  min_trust_score?: number;
+  is_private?: boolean;
+  redundancy_factor?: number;
+  is_spot_check?: boolean;
 }
 
 interface TasksPanelProps {

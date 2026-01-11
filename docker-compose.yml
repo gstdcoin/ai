@@ -15,7 +15,7 @@ services:
     image: ubuntu_frontend
     container_name: ubuntu_frontend_1
     environment:
-      - NEXT_PUBLIC_API_URL=https://app.gstdtoken.com/api
+      - NEXT_PUBLIC_API_URL=https://app.gstdtoken.com
     ports:
       - "3000:3000"
     restart: always

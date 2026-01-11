@@ -21,6 +21,10 @@ interface TaskDetails {
   execution_time_ms?: number;
   platform_fee_ton?: number;
   executor_reward_ton?: number;
+  priority_score?: number;
+  executor_payout_status?: string;
+  min_trust_score?: number;
+  confidence_depth?: number;
   result?: any;
 }
 
