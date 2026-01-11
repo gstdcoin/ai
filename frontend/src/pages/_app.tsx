@@ -24,6 +24,18 @@ function App({ Component, pageProps }: AppProps) {
         actionsConfiguration={{
           twaReturnUrl: 'https://t.me/gstdtoken_bot'
         }}
+        uiPreferences={{
+          theme: 'DARK',
+          borderRadius: 'm',
+          colorsSet: {
+            [0]: {
+              connectButton: {
+                background: '#FFD700',
+                foreground: '#0a1929'
+              }
+            }
+          }
+        }}
       >
         <Component {...pageProps} />
         <Toaster 

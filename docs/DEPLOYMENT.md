@@ -63,9 +63,13 @@ Set secure values in `.env`:
 
 #### Initial Migration
 ```bash
-# Apply all migrations
-docker-compose exec postgres psql -U postgres -d distributed_computing < backend/migrations/v17_fix_missing_tables_and_columns.sql
-docker-compose exec postgres psql -U postgres -d distributed_computing < backend/migrations/v18_performance_indexes.sql
+# Apply all migrations in order
+docker-compose exec postgres psql -U postgres -d distributed_computing -f /path/to/backend/migrations/v17_fix_missing_tables_and_columns.sql
+docker-compose exec postgres psql -U postgres -d distributed_computing -f /path/to/backend/migrations/v18_performance_indexes.sql
+
+# Or use migration script
+cd backend
+go run main.go migrate  # If migration tool is implemented
 ```
 
 #### Backup Configuration

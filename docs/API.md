@@ -44,22 +44,57 @@ Get Prometheus-compatible metrics.
 
 ### Tasks
 
-#### POST /tasks
-Create a new task.
+#### POST /tasks/create
+Create a new task with payment flow (recommended).
+
+**Query Parameters:**
+- `wallet_address` (required): Wallet address of the task creator
 
 **Request:**
 ```json
 {
-  "task_type": "ai_inference",
+  "type": "AI_INFERENCE",
+  "budget": 10.5,
+  "payload": {
+    "input": "data",
+    "model": "gpt-4"
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "task_id": "uuid",
+  "status": "pending_payment",
+  "payment_memo": "TASK-uuid",
+  "amount": 10.5,
+  "platform_wallet": "EQ..."
+}
+```
+
+**Payment Flow:**
+1. User receives `payment_memo` and `platform_wallet`
+2. User sends GSTD tokens to `platform_wallet` with `payment_memo` in transaction comment
+3. PaymentWatcher detects payment and updates task status to `queued`
+4. Task becomes available for workers
+
+#### POST /tasks
+Create a new task (legacy endpoint, requires escrow deposit).
+
+**Request:**
+```json
+{
+  "requester_address": "EQ...",
+  "task_type": "inference",
   "operation": "image_classification",
   "model": "resnet50",
   "input_source": "hash",
   "input_hash": "abc123...",
-  "constraints_time_limit_sec": 300,
-  "constraints_max_energy_mwh": 100,
+  "time_limit_sec": 300,
+  "max_energy_mwh": 100,
   "labor_compensation_ton": 0.1,
-  "validation_method": "majority",
-  "payload": "{\"key\": \"value\"}"
+  "validation_method": "majority"
 }
 ```
 

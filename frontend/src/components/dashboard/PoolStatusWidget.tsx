@@ -32,7 +32,7 @@ export default function PoolStatusWidget() {
       const data = await response.json();
       setPoolStatus(data);
     } catch (err: any) {
-      console.error('Error loading pool status:', err);
+      logger.error('Error loading pool status', err);
       setPoolStatus(null);
     } finally {
       setLoading(false);

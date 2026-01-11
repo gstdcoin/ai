@@ -203,7 +203,7 @@ async function executeWasm(module: WebAssembly.Module, inputData: any): Promise<
 // Execute a task with real computation logic
 export async function executeTask(task: TaskNotification['task']): Promise<any> {
   const startTime = performance.now();
-  console.log('Executing task:', task.task_id);
+      logger.debug('Executing task', { task_id: task.task_id });
 
   try {
     // 1. Fetch input data from input_source
@@ -233,7 +233,7 @@ export async function executeTask(task: TaskNotification['task']): Promise<any> 
         }
       }
     } catch (error) {
-      console.error('Failed to fetch input data:', error);
+      logger.error('Failed to fetch input data', error);
       throw new Error('Input fetch failed');
     }
 
@@ -280,7 +280,7 @@ export async function executeTask(task: TaskNotification['task']): Promise<any> 
     };
   } catch (error) {
     const executionTime = Math.floor(performance.now() - startTime);
-    console.error('Task execution failed:', error);
+    logger.error('Task execution failed', error);
     
     return {
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -316,7 +316,7 @@ export async function signResultData(
     // Return signature in hex format
     return signature.signature;
   } catch (error) {
-    console.error('Failed to sign result:', error);
+    logger.error('Failed to sign result', error);
     throw new Error('Signature failed');
   }
 }
@@ -353,9 +353,9 @@ export async function submitTaskResult(
       throw new Error(errorData.error || `Failed to submit result: ${response.statusText}`);
     }
 
-    console.log('✅ Task result submitted successfully with signature');
+    logger.info('Task result submitted successfully with signature');
   } catch (error) {
-    console.error('❌ Failed to submit task result:', error);
+    logger.error('Failed to submit task result', error);
     throw error;
   }
 }

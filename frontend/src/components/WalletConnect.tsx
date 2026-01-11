@@ -11,6 +11,7 @@ export default function WalletConnect() {
   const [tonConnectUI] = useTonConnectUI();
   const wallet = useTonWallet();
   const [error, setError] = useState<string | null>(null);
+  const [isInitializing, setIsInitializing] = useState(true);
   const lastLoggedInAddress = useRef<string | null>(null);
 
   // Function to call login API
@@ -66,6 +67,16 @@ export default function WalletConnect() {
       lastLoggedInAddress.current = null;
     }
   }, [wallet, connect, disconnect, setUser]);
+
+  // Show loading state while TonConnect initializes
+  useEffect(() => {
+    // Give TonConnect time to initialize
+    const timer = setTimeout(() => {
+      setIsInitializing(false);
+    }, 2000);
+    
+    return () => clearTimeout(timer);
+  }, []);
 
   // Check initial connection state and listen for changes (fallback)
   // Only depend on tonConnectUI to avoid infinite loops
@@ -190,12 +201,12 @@ export default function WalletConnect() {
       )}
       <button
         onClick={handleConnect}
-        disabled={!tonConnectUI}
+        disabled={isInitializing || !tonConnectUI}
         className="w-full bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {tonConnectUI ? t('connect_wallet') : t('tonconnect_not_ready')}
+        {isInitializing ? t('loading') || 'Загрузка...' : (tonConnectUI ? t('connect_wallet') : t('tonconnect_not_ready'))}
       </button>
-      {!tonConnectUI && (
+      {(!tonConnectUI && !isInitializing) && (
         <p className="text-sm text-gray-500 text-center">
           {t('tonconnect_not_ready')}
         </p>
