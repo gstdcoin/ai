@@ -147,14 +147,51 @@ jobs:
       - uses: actions/checkout@v4
       
       - name: Deploy to server
-        uses: appleboy/ssh-action@v0.1.5
+        uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
+          known_hosts: ${{ secrets.SSH_KNOWN_HOSTS }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          timeout: 300s
           script: |
-            cd /home/ubuntu
-            git pull origin main
-            docker-compose -f docker-compose.prod.yml pull
-            docker-compose -f docker-compose.prod.yml up -d --build
-            docker-compose -f docker-compose.prod.yml exec -T postgres psql -U postgres -d distributed_computing < backend/migrations/v18_performance_indexes.sql || true
+            set -e
+            echo "🚀 Starting deployment..."
+            
+            # Navigate to project directory
+            cd /home/ubuntu || cd /home/${{ secrets.SSH_USER }}
+            
+            # Pull latest code
+            echo "📥 Pulling latest code..."
+            git fetch origin main
+            git reset --hard origin/main
+            
+            # Pull latest Docker images
+            echo "🐳 Pulling Docker images..."
+            docker-compose -f docker-compose.prod.yml pull || true
+            
+            # Apply database migrations
+            echo "📊 Applying database migrations..."
+            for migration in backend/migrations/v*.sql; do
+              if [ -f "$migration" ]; then
+                echo "Applying $migration..."
+                docker-compose -f docker-compose.prod.yml exec -T postgres psql -U postgres -d distributed_computing < "$migration" || true
+              fi
+            done
+            
+            # Deploy using blue-green strategy
+            echo "🔄 Deploying with blue-green strategy..."
+            if [ -f "scripts/blue-green-deploy.sh" ]; then
+              bash scripts/blue-green-deploy.sh
+            else
+              # Fallback to standard deployment
+              docker-compose -f docker-compose.prod.yml up -d --build
+            fi
+            
+            # Health check
+            echo "🏥 Running health check..."
+            sleep 10
+            curl -f http://localhost:8080/api/v1/health || exit 1
+            
+            echo "✅ Deployment completed successfully!"

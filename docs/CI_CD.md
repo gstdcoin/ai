@@ -86,9 +86,11 @@ gunzip < backups/postgres/backup_YYYYMMDD_HHMMSS.sql.gz | \
 ## Configuration
 
 ### GitHub Secrets Required
-- `SSH_HOST`: Production server hostname
-- `SSH_USER`: SSH username
-- `SSH_KEY`: SSH private key
+- `SSH_HOST`: Production server hostname or IP address
+- `SSH_USER`: SSH username (usually `ubuntu` or `root`)
+- `SSH_KEY`: SSH private key (without passphrase)
+- `SSH_KNOWN_HOSTS`: SSH known hosts fingerprints (from `ssh-keyscan`)
+- `SSH_PORT`: SSH port (optional, defaults to 22)
 
 ### Environment Variables
 See `.env.example` for required variables.
