@@ -1,6 +1,6 @@
 import type { AppProps } from 'next/app';
 import { appWithTranslation } from 'next-i18next';
-import { TonConnectUIProvider } from '@tonconnect/ui-react';
+import { TonConnectUIProvider, THEME } from '@tonconnect/ui-react';
 import { useEffect } from 'react';
 import { Toaster } from 'sonner';
 import { ErrorBoundary } from '../components/common/ErrorBoundary';
@@ -25,7 +25,7 @@ function App({ Component, pageProps }: AppProps) {
           twaReturnUrl: 'https://t.me/gstdtoken_bot'
         }}
         uiPreferences={{
-          theme: 'dark' as const,
+          theme: THEME.DARK,
           borderRadius: 'm',
           colorsSet: {
             [0]: {
