@@ -30,10 +30,23 @@ export default function StatsPanel() {
     try {
       const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/+$/, '');
       const response = await fetch(`${apiBase}/api/v1/stats`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
       const data = await response.json();
+      
+      // Handle empty or invalid response
+      if (!data || typeof data !== 'object') {
+        setStats(null);
+        return;
+      }
+      
       setStats(data);
     } catch (error) {
       logger.error('Error loading stats', error);
+      setStats(null);
     } finally {
       setLoading(false);
     }

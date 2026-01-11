@@ -47,11 +47,24 @@ export default function StatsPage() {
     try {
       const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/+$/, '');
       const response = await fetch(`${apiBase}/api/v1/stats/public`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
       const data = await response.json();
+      
+      // Handle empty or invalid response
+      if (!data || typeof data !== 'object') {
+        setStats(null);
+        return;
+      }
+      
       setStats(data);
     } catch (error) {
       const { logger } = require('../lib/logger');
       logger.error('Error loading stats', error);
+      setStats(null);
     } finally {
       setLoading(false);
     }
