@@ -198,8 +198,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          build-args: |
-            ${{ matrix.component == 'frontend' && 'NEXT_PUBLIC_API_URL=https://app.gstdtoken.com' || '' }}
+          build-args: ${{ matrix.component == 'frontend' && 'NEXT_PUBLIC_API_URL=https://app.gstdtoken.com' || '' }}
 
   # Deploy to production
   deploy:
@@ -232,24 +231,26 @@ jobs:
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_PORT: ${{ secrets.SSH_PORT || 22 }}
+          REGISTRY: ${{ env.REGISTRY }}
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
         run: |
           set -e
           echo "🚀 Starting deployment to ${{ github.event.inputs.environment || 'production' }}..."
           
-          # Create deployment script
-          cat > /tmp/deploy.sh << 'DEPLOY_SCRIPT'
+          # Create deployment script with proper variable substitution
+          cat > /tmp/deploy.sh << DEPLOY_SCRIPT
           #!/bin/bash
           set -e
           
           echo "📥 Pulling latest code..."
-          cd /home/ubuntu || cd /home/${{ secrets.SSH_USER }}
+          cd /home/ubuntu || cd /home/${SSH_USER}
           git fetch origin main
           git reset --hard origin/main
           git clean -fd
           
           echo "🐳 Pulling Docker images..."
-          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:main || true
-          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:main || true
+          docker pull ${REGISTRY}/${IMAGE_NAME}-backend:main || true
+          docker pull ${REGISTRY}/${IMAGE_NAME}-frontend:main || true
           
           echo "📊 Checking database connection..."
           docker-compose -f docker-compose.prod.yml exec -T postgres pg_isready -U postgres || echo "⚠️  Database not ready, will retry"
