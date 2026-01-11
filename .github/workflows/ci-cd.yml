@@ -189,7 +189,8 @@ jobs:
             type=sha,prefix={{branch}}-
             type=raw,value=latest,enable={{is_default_branch}}
       
-      - name: Build and push
+      - name: Build and push backend
+        if: matrix.component == 'backend'
         uses: docker/build-push-action@v5
         with:
           context: ./${{ matrix.component }}
@@ -198,7 +199,19 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          build-args: ${{ matrix.component == 'frontend' && 'NEXT_PUBLIC_API_URL=https://app.gstdtoken.com' || '' }}
+      
+      - name: Build and push frontend
+        if: matrix.component == 'frontend'
+        uses: docker/build-push-action@v5
+        with:
+          context: ./${{ matrix.component }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NEXT_PUBLIC_API_URL=https://app.gstdtoken.com
 
   # Deploy to production
   deploy:
