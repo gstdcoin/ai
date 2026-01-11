@@ -28,7 +28,7 @@ function App({ Component, pageProps }: AppProps) {
           theme: THEME.DARK,
           borderRadius: 'm',
           colorsSet: {
-            [0]: {
+            [THEME.DARK]: {
               connectButton: {
                 background: '#FFD700',
                 foreground: '#0a1929'
