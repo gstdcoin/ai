@@ -117,7 +117,7 @@ export default function WorkerTaskCard({ task, onTaskCompleted }: WorkerTaskCard
         onTaskCompleted();
       }
     } catch (error: any) {
-      console.error('Task execution failed:', error);
+      // Task execution failed
       setProgress({
         progress: 0,
         status: 'error',
