@@ -309,6 +309,11 @@
   "for_executors_auto": "Receive tasks automatically",
   "for_executors_withdraw": "Withdraw rewards in TON",
   "for_executors_reputation": "Build reputation for priority tasks",
-  "gstd_required_for_tasks": "You need at least 0.000001 GSTD tokens to create tasks. Please purchase GSTD tokens first."
+  "gstd_required_for_tasks": "You need at least 0.000001 GSTD tokens to create tasks. Please purchase GSTD tokens first.",
+  "login_failed": "Login failed",
+  "connection_error": "Connection error",
+  "failed_to_open_wallet": "Failed to open wallet",
+  "failed_to_disconnect": "Failed to disconnect",
+  "please_try_again": "Please try again"
 }
 
