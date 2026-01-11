@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'next-i18next';
+import { logger } from '../../lib/logger';
 
 interface Stats {
   processing_tasks: number;
