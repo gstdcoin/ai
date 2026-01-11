@@ -5,6 +5,7 @@ import { useTranslation } from 'next-i18next';
 import TreasuryWidget from '../components/dashboard/TreasuryWidget';
 import XAUtChart from '../components/stats/XAUtChart';
 import { TrendingUp, Users, CheckCircle, Coins } from 'lucide-react';
+import { logger } from '../lib/logger';
 
 export const getStaticProps: GetStaticProps = async ({ locale }) => {
   return {

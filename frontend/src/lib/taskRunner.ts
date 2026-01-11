@@ -1,5 +1,6 @@
 // Browser-based Task Runner using Web Workers for computation simulation
 // This simulates real CPU work without blocking the UI
+import { logger } from './logger';
 
 export interface TaskRunnerProgress {
   progress: number; // 0-100
