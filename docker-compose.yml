@@ -1,8 +1,16 @@
 version: '3.8'
+
+networks:
+  gstd-network:
+    driver: bridge
+    name: gstd-network
+
 services:
   postgres:
     image: postgres:15-alpine
     container_name: ubuntu_postgres_1
+    networks:
+      - gstd-network
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
@@ -36,6 +44,8 @@ services:
   redis:
     image: redis:7-alpine
     container_name: ubuntu_redis_1
+    networks:
+      - gstd-network
     command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
@@ -43,24 +53,38 @@ services:
   backend:
     build: ./backend
     container_name: ubuntu_backend_1
+    networks:
+      - gstd-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     environment:
+      # Database credentials - MUST match postgres service
       - DB_USER=postgres
       - DB_PASSWORD=postgres
       - DB_NAME=distributed_computing
       - DB_HOST=postgres
       - DB_PORT=5432
+      - DB_SSLMODE=disable
+      # Redis configuration
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      # Server configuration
+      - PORT=8080
+      # TON configuration - PRESERVE THESE
       - TON_CONTRACT_ADDRESS=EQAIYlrr3UiMJ9fqI-B4j2nJdiiD7WzyaNL1MX_wiONc4OUi
       - ADMIN_WALLET=UQCkXFlNRsubUp7Uh7lg_ScUqLCiff1QCLsdQU0a7kphqQED
       - GSTD_JETTON_ADDRESS=EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO
-      - DB_SSLMODE=disable
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - PORT=8080
       - TON_API_KEY=6512ff28fd1ffc8e29b7230642e690b410f7c68e15ef74c4e81e17e9f7a65de6
       - TON_API_URL=https://tonapi.io
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
     ports:
       - "8080:8080"
 
@@ -70,17 +94,22 @@ services:
       args:
         NEXT_PUBLIC_API_URL: https://app.gstdtoken.com
     container_name: ubuntu_frontend_1
+    networks:
+      - gstd-network
     environment:
       - PORT=3000
       - NEXT_PUBLIC_API_URL=https://app.gstdtoken.com
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     ports:
       - "3000:3000"
 
   nginx:
     image: nginx:alpine
     container_name: ubuntu_nginx_1
+    networks:
+      - gstd-network
     ports:
       - "80:80"
       - "443:443"
@@ -89,8 +118,10 @@ services:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - ./nginx/ssl:/etc/letsencrypt:ro
     depends_on:
-      - frontend
-      - backend
+      frontend:
+        condition: service_started
+      backend:
+        condition: service_healthy
 
 volumes:
   ubuntu_postgres_data:
