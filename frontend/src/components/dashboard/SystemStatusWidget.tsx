@@ -51,13 +51,21 @@ export default function SystemStatusWidget({ onStatsUpdate }: SystemStatusWidget
       }
       
       const data = await response.json();
+      
+      // Handle empty or invalid response
+      if (!data || typeof data !== 'object') {
+        setStats(null);
+        setLoading(false);
+        return;
+      }
+      
       setStats(data);
       setLoading(false);
     } catch (error) {
       logger.error('Error loading stats', error);
       // Set loading to false even on error so UI doesn't show loading forever
+      setStats(null);
       setLoading(false);
-      // Optionally set error state here if needed
     }
   };
 

@@ -274,7 +274,7 @@ export default function WalletConnect() {
         </div>
       )}
       {/* Use built-in TonConnectButton - it handles all connection logic automatically */}
-      <div className="w-full [&>button]:w-full [&>button]:!bg-primary-600 [&>button]:!text-white [&>button]:!px-6 [&>button]:!py-3 [&>button]:!rounded-lg [&>button]:hover:!bg-primary-700 [&>button]:!transition-colors">
+      <div className="w-full flex justify-center [&>button]:!bg-primary-600 [&>button]:!text-white [&>button]:!px-6 [&>button]:!py-3 [&>button]:!rounded-lg [&>button]:hover:!bg-primary-700 [&>button]:!transition-colors">
         <TonConnectButton />
       </div>
       {/* Custom button as fallback if needed */}

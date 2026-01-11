@@ -1,10 +1,12 @@
 import { create } from 'zustand';
 
 interface User {
-  wallet_address: string;
-  balance: number;
-  created_at: string;
-  updated_at: string;
+  wallet_address?: string;
+  address?: string; // Alternative field name from backend
+  balance?: number;
+  trust_score?: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface WalletState {
