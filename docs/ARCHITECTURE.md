@@ -66,26 +66,34 @@ GSTD (Global System for Trusted Distributed Computing) is a DePIN (Decentralized
 ## Data Flow
 
 ### Task Creation Flow
-1. User creates task via frontend
-2. Frontend sends request to backend `/api/v1/tasks/create`
-3. Backend validates request
-4. Task stored in database with `awaiting_escrow` status
-5. User pays via TON wallet
-6. Payment watcher detects payment
-7. Task status changes to `pending`
-8. Task broadcast via WebSocket/Redis Pub/Sub
+1. User creates task via frontend (`NewTaskModal`)
+2. Frontend checks GSTD balance (minimum 0.000001 GSTD)
+3. Frontend sends request to backend `POST /api/v1/tasks/create?wallet_address=EQ...`
+4. Backend validates request and creates task with `pending_payment` status
+5. Backend returns `payment_memo` (format: `TASK-{task_id}`) and `platform_wallet`
+6. User sends GSTD tokens to `platform_wallet` with `payment_memo` in transaction comment
+7. `PaymentWatcher` service detects payment via TON API
+8. Backend verifies payment amount and memo match
+9. Task status changes to `queued`
+10. Task broadcast via WebSocket/Redis Pub/Sub to workers
 
 ### Task Execution Flow
-1. Worker connects via WebSocket
-2. Worker receives available tasks
-3. Worker claims task (status: `assigned`)
-4. Worker executes task locally
-5. Worker submits result with Ed25519 signature
-6. Backend validates signature
-7. Backend validates result (consensus if needed)
-8. Task status: `validated`
-9. Payout intent created
-10. Worker claims reward via escrow contract
+1. Worker connects via WebSocket or polls `/api/v1/tasks/worker/pending`
+2. Worker receives available tasks (status: `pending` or `queued`)
+3. Worker claims task via `POST /api/v1/device/tasks/:id/claim` (status: `assigned`)
+4. Worker executes task locally (browser or device)
+5. Worker signs result with Ed25519 signature using TonConnect
+6. Worker submits result via `POST /api/v1/tasks/worker/submit` with signature
+7. Backend validates Ed25519 signature
+8. Backend validates result (consensus if redundancy > 1)
+9. Task status: `validated` or `completed`
+10. Worker requests payout intent via `POST /api/v1/payments/payout-intent`
+11. Worker receives payout intent with escrow contract address
+12. Worker builds transaction payload using `@ton/core`
+13. Worker signs transaction via TonConnect (pull-model)
+14. Escrow contract automatically distributes:
+    - 95% to worker (executor_reward_ton)
+    - 5% to platform treasury (platform_fee_ton)
 
 ## Security
 

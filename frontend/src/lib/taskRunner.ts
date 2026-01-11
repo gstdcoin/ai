@@ -82,7 +82,7 @@ const workerCode = `
 // Create a blob URL for the worker
 function createWorker(): Worker | null {
   if (typeof Worker === 'undefined') {
-    console.warn('Web Workers not supported');
+    logger.warn('Web Workers not supported');
     return null;
   }
 
@@ -91,7 +91,7 @@ function createWorker(): Worker | null {
     const workerUrl = URL.createObjectURL(blob);
     return new Worker(workerUrl);
   } catch (error) {
-    console.error('Failed to create Web Worker:', error);
+    logger.error('Failed to create Web Worker', error);
     return null;
   }
 }

@@ -46,7 +46,7 @@ export default function TaskDetailsModal({ taskId, onClose }: TaskDetailsModalPr
       const data = await response.json();
       setTask(data);
     } catch (error) {
-      console.error('Error loading task details:', error);
+      logger.error('Error loading task details', error);
     } finally {
       setLoading(false);
     }
@@ -67,7 +67,7 @@ export default function TaskDetailsModal({ taskId, onClose }: TaskDetailsModalPr
       const data = await response.json();
       setResult(data.result);
     } catch (error) {
-      console.error('Error loading result:', error);
+      logger.error('Error loading result', error);
     } finally {
       setLoadingResult(false);
     }

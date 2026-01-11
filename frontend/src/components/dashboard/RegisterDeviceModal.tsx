@@ -77,7 +77,7 @@ export default function RegisterDeviceModal({ onClose, onDeviceRegistered }: Reg
         onDeviceRegistered(nodeData.id);
       }
     } catch (err: any) {
-      console.error('Error registering device:', err);
+      logger.error('Error registering device', err);
       setError(err?.message || 'Failed to register device');
     } finally {
       setLoading(false);

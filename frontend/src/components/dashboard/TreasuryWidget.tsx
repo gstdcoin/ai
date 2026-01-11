@@ -35,7 +35,7 @@ export default function TreasuryWidget() {
       const balance = data.golden_reserve_xaut || 0;
       setXautBalance(balance);
     } catch (err: any) {
-      console.error('Error loading treasury balance:', err);
+      logger.error('Error loading treasury balance', err);
       // Don't show error message, just set balance to 0 for prestige look
       setXautBalance(0);
     } finally {

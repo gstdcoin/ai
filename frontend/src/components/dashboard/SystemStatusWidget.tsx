@@ -53,7 +53,7 @@ export default function SystemStatusWidget({ onStatsUpdate }: SystemStatusWidget
       setStats(data);
       setLoading(false);
     } catch (error) {
-      console.error('Error loading stats:', error);
+      logger.error('Error loading stats', error);
       // Set loading to false even on error so UI doesn't show loading forever
       setLoading(false);
       // Optionally set error state here if needed

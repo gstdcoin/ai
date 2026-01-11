@@ -44,7 +44,7 @@ export default function DevicesPanel() {
       const data = await response.json();
       setNodes(data.nodes || []);
     } catch (error) {
-      console.error('Error loading nodes:', error);
+      logger.error('Error loading nodes', error);
     } finally {
       setLoading(false);
     }

@@ -33,7 +33,7 @@ export function initTelegramWebApp(): WebAppType {
     const telegramWebApp = (window as any).Telegram?.WebApp;
     
     if (!telegramWebApp) {
-      console.warn('Telegram WebApp not available');
+      // Telegram WebApp not available - this is expected in non-Telegram environments
       return {} as WebAppType;
     }
     
@@ -82,10 +82,10 @@ export function initTelegramWebApp(): WebAppType {
       document.documentElement.style.setProperty('--tg-viewport-height', `${webApp.viewportHeight}px`);
     }
 
-    console.log('✅ Telegram WebApp initialized');
+    // Telegram WebApp initialized successfully
     return webApp || ({} as WebAppType);
   } catch (error) {
-    console.error('Failed to initialize Telegram WebApp:', error);
+    // Failed to initialize Telegram WebApp (non-critical)
     return {} as WebAppType;
   }
 }
