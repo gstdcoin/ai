@@ -74,26 +74,38 @@ func (s *TaskPaymentService) CreateTask(ctx context.Context, creatorWallet strin
 	// Use original wallet address for storage (keep raw format if provided)
 	now := time.Now()
 	
+	// Set default values for required columns that may not be provided in payment flow
+	defaultOperation := req.Type // Use task type as operation if not specified
+	defaultModel := ""
+	defaultInputSource := "inline"
+	defaultInputHash := ""
+	
 	// Check which priority column exists in database
 	// Try to insert with priority_score, fallback to certainty_gravity_score
 	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO tasks (
-			task_id, creator_wallet, requester_address, task_type, 
+			task_id, creator_wallet, requester_address, task_type, operation, model,
+			input_source, input_hash,
 			status, budget_gstd, reward_gstd, payment_memo, payload,
 			created_at, escrow_status
-		) VALUES ($1, $2, $2, $3, $4, $5, $6, $7, $8, $9, 'pending')
-	`, taskID, creatorWallet, req.Type, "pending_payment", req.Budget, rewardGSTD, paymentMemo, payloadStr, now)
+		) VALUES ($1, $2, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'pending')
+	`, taskID, creatorWallet, req.Type, defaultOperation, defaultModel, 
+		defaultInputSource, defaultInputHash,
+		"pending_payment", req.Budget, rewardGSTD, paymentMemo, payloadStr, now)
 	
-	// If error about priority_score, try with certainty_gravity_score
+	// If error about priority_score or other columns, try with minimal required columns
 	if err != nil && (strings.Contains(err.Error(), "priority_score") || strings.Contains(err.Error(), "column") && strings.Contains(err.Error(), "does not exist")) {
-		// Try without priority column - it will use default
+		// Try with minimal required columns only
 		_, err = s.db.ExecContext(ctx, `
 			INSERT INTO tasks (
-				task_id, creator_wallet, requester_address, task_type, 
+				task_id, creator_wallet, requester_address, task_type, operation, model,
+				input_source, input_hash,
 				status, budget_gstd, reward_gstd, payment_memo, payload,
 				created_at, escrow_status
-			) VALUES ($1, $2, $2, $3, $4, $5, $6, $7, $8, $9, 'pending')
-		`, taskID, creatorWallet, req.Type, "pending_payment", req.Budget, rewardGSTD, paymentMemo, payloadStr, now)
+			) VALUES ($1, $2, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'pending')
+		`, taskID, creatorWallet, req.Type, defaultOperation, defaultModel,
+			defaultInputSource, defaultInputHash,
+			"pending_payment", req.Budget, rewardGSTD, paymentMemo, payloadStr, now)
 	}
 
 	if err != nil {
