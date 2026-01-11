@@ -99,6 +99,10 @@ func SetupRoutes(
 		
 		// Health check endpoint
 		v1.GET("/health", getHealth(db.(*sql.DB), tonService, tonConfig))
+		
+		// Metrics endpoint (Prometheus format)
+		metricsService := NewMetricsService(db.(*sql.DB), redisClient.(*redis.Client))
+		v1.GET("/metrics", metricsService.GetMetrics())
 
 		// Users
 		v1.POST("/users/login", loginUser(userService))
