@@ -234,25 +234,26 @@ func (pw *PaymentWatcher) getRecentJettonTransfers(ctx context.Context) ([]Jetto
 	}
 	
 	// Fallback: Process old events format if history is empty
-	if len(result.Events) > 0 {
+	if len(transfers) == 0 && len(result.Events) > 0 {
 		for _, event := range result.Events {
 			// Only process transfers TO the platform wallet
 			if strings.EqualFold(event.To.Address, pw.platformWallet) {
 				// Convert amount from nanotons to GSTD (assuming 9 decimals)
-			amountNano, err := strconv.ParseInt(event.Amount, 10, 64)
-			if err != nil {
-				continue
-			}
-			amountGSTD := float64(amountNano) / 1e9
+				amountNano, err := strconv.ParseInt(event.Amount, 10, 64)
+				if err != nil {
+					continue
+				}
+				amountGSTD := float64(amountNano) / 1e9
 
-			transfers = append(transfers, JettonTransfer{
-				From:      event.From.Address,
-				To:        event.To.Address,
-				Amount:    fmt.Sprintf("%.9f", amountGSTD),
-				Comment:   event.Comment,
-				TxHash:    event.Transaction.Hash,
-				Timestamp: event.Timestamp,
-			})
+				transfers = append(transfers, JettonTransfer{
+					From:      event.From.Address,
+					To:        event.To.Address,
+					Amount:    fmt.Sprintf("%.9f", amountGSTD),
+					Comment:   event.Comment,
+					TxHash:    event.Transaction.Hash,
+					Timestamp: event.Timestamp,
+				})
+			}
 		}
 	}
 
