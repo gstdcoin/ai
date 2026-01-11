@@ -246,25 +246,6 @@ export default function WalletConnect() {
     }
   };
 
-  if (isConnected && tonConnectUI?.account) {
-    return (
-      <div className="w-full space-y-2">
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-          <p className="text-sm text-green-800">
-            ✅ {t('connected')}: {tonConnectUI.account.address.slice(0, 6)}...{tonConnectUI.account.address.slice(-4)}
-          </p>
-        </div>
-        <button
-          onClick={handleDisconnect}
-          className="w-full bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors"
-        >
-          {t('disconnect')}
-        </button>
-      </div>
-    );
-  }
-
-  // If connected, show disconnect option
   // If connected, show disconnect option
   if (isConnected && (tonConnectUI?.account || wallet?.account)) {
     const address = tonConnectUI?.account?.address || wallet?.account?.address;
