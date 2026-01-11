@@ -7,6 +7,7 @@ import Dashboard from '../components/dashboard/Dashboard';
 import WalletConnect from '../components/WalletConnect';
 import { useTonConnectUI } from '@tonconnect/ui-react';
 import { useWalletStore } from '../store/walletStore';
+import { logger } from '../lib/logger';
 
 export default function Home() {
   const { t } = useTranslation('common');

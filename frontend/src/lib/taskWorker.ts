@@ -1,5 +1,6 @@
 // Task Worker - Background execution loop for processing tasks
 import { useWalletStore } from '../store/walletStore';
+import { logger } from './logger';
 
 export interface TaskNotification {
   task: {
