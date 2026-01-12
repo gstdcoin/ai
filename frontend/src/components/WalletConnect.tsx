@@ -115,13 +115,26 @@ export default function WalletConnect() {
         throw new Error(`Signature failed: ${signErr?.message || 'Unknown error'}`);
       }
 
-      // Prepare connect_payload object with type field
+      // Create signature object manually to satisfy SDK type requirements
+      // If signature is a string, convert it to object with type field
+      let signatureObj: { signature: string; type: string };
+      if (typeof signature === 'string') {
+        signatureObj = {
+          signature: signature,
+          type: 'test-item', // Required type field for SDK validation
+        };
+      } else {
+        // If already an object, ensure it has type field
+        signatureObj = {
+          signature: (signature as any).signature || signature,
+          type: (signature as any).type || 'test-item',
+        };
+      }
+
+      // Prepare connect_payload object with properly formatted signature
       const connect_payload = {
         wallet_address: walletAddress,
-        signature: {
-          signature: signature,
-          type: 'test-item', // Required type field for validation
-        },
+        signature: signatureObj,
         payload: payload,
         public_key: publicKey,
       };
@@ -131,7 +144,7 @@ export default function WalletConnect() {
         connect_payload: connect_payload,
         // Also include individual fields for backward compatibility
         wallet_address: walletAddress,
-        signature: signature,
+        signature: signatureObj.signature, // Send signature string for backward compatibility
         payload: payload,
         public_key: publicKey,
       };
