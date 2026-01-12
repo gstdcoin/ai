@@ -60,9 +60,16 @@ export default function WalletConnect() {
       try {
         // Use 'as any' to bypass TypeScript type checking for SignDataPayload
         // The actual SDK may use different field names (message/data) depending on version
+        // Add item with ton_proof to satisfy SDK requirements
         const signResult = await tonConnectUI.connector.signData({
           schema: 'v2',
           message: hashBase64,
+          items: [
+            {
+              name: 'ton_proof',
+              payload: hashBase64,
+            }
+          ],
         } as any);
         // Use 'as any' to bypass TypeScript type checking for signResult
         // TonConnect SDK may return different structures depending on version

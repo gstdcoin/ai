@@ -15,16 +15,17 @@ import (
 )
 
 // SignatureData represents the signature structure from TonConnect
-// The 'type' field is optional and may be present in newer TON Connect SDK versions
+// The 'type' field is required by SDK but we initialize it as empty string if not provided
 type SignatureData struct {
 	Signature string `json:"signature" binding:"required"`
-	Type      string `json:"type,omitempty"` // Optional: type field (e.g., "test-item")
+	Type      string `json:"type"` // Required by SDK, but we initialize as empty string if not provided
 }
 
 // ConnectPayload represents the connect_payload structure from frontend
+// Signature can be either a string or an object with signature and optional type fields
 type ConnectPayload struct {
 	WalletAddress string      `json:"wallet_address" binding:"required"`
-	Signature     interface{} `json:"signature"` // Can be string or SignatureData object
+	Signature     interface{} `json:"signature"` // Can be string or SignatureData object (type field is optional)
 	Payload       string      `json:"payload" binding:"required"`
 	PublicKey     string      `json:"public_key,omitempty"`
 }
@@ -42,9 +43,20 @@ func loginUser(service *services.UserService, validator *services.TonConnectVali
 			PublicKey     string      `json:"public_key,omitempty"`
 		}
 
+		// Bind JSON to structured request
 		if err := c.ShouldBindJSON(&req); err != nil {
+			log.Printf("❌ Failed to bind JSON request: %v", err)
 			c.JSON(400, gin.H{"error": "missing required fields: wallet_address, signature, and payload are required"})
 			return
+		}
+
+		// Log received payload for debugging
+		log.Printf("📥 Received login payload: ConnectPayload=%v, WalletAddress=%s, Payload=%s, Signature type=%T", 
+			req.ConnectPayload != nil, req.WalletAddress, req.Payload, req.Signature)
+		
+		if req.ConnectPayload != nil {
+			log.Printf("📦 connect_payload details: WalletAddress=%s, Payload=%s, Signature type=%T, PublicKey=%s",
+				req.ConnectPayload.WalletAddress, req.ConnectPayload.Payload, req.ConnectPayload.Signature, req.ConnectPayload.PublicKey)
 		}
 
 		// Extract data from either connect_payload or individual fields
@@ -78,7 +90,11 @@ func loginUser(service *services.UserService, validator *services.TonConnectVali
 					var sigData SignatureData
 					if err := json.Unmarshal(sigJSON, &sigData); err == nil {
 						signatureStr = sigData.Signature
-						if sigData.Type != "" {
+						// Initialize Type as empty string if not provided (required by SDK)
+						if sigData.Type == "" {
+							sigData.Type = ""
+							log.Printf("📝 Signature type field not provided, initialized as empty string")
+						} else {
 							log.Printf("📝 Signature type field received: %s (ignored in validation)", sigData.Type)
 						}
 					} else {
@@ -92,23 +108,31 @@ func loginUser(service *services.UserService, validator *services.TonConnectVali
 			}
 		} else {
 			// Use individual fields (backward compatibility)
+			log.Printf("📦 Processing individual fields format (backward compatibility)")
 			walletAddress = req.WalletAddress
 			payload = req.Payload
 			publicKey = req.PublicKey
 
+			log.Printf("🔍 Signature type in individual fields: %T, value: %+v", req.Signature, req.Signature)
+
 			// Handle signature - can be string or object
 			switch sig := req.Signature.(type) {
 			case string:
+				log.Printf("✅ Signature is string format")
 				signatureStr = sig
 			case map[string]interface{}:
+				log.Printf("✅ Signature is object format: %+v", sig)
 				if sigVal, ok := sig["signature"].(string); ok {
 					signatureStr = sigVal
 					// Type field is optional, we ignore it if present
 					if typeVal, ok := sig["type"].(string); ok {
 						log.Printf("📝 Signature type field received: %s (ignored in validation)", typeVal)
+					} else {
+						log.Printf("📝 Signature type field not present (optional, OK)")
 					}
 				} else {
-					c.JSON(400, gin.H{"error": "invalid signature format"})
+					log.Printf("❌ Invalid signature format: missing 'signature' field")
+					c.JSON(400, gin.H{"error": "invalid signature format: missing 'signature' field"})
 					return
 				}
 			default:
@@ -118,7 +142,11 @@ func loginUser(service *services.UserService, validator *services.TonConnectVali
 					var sigData SignatureData
 					if err := json.Unmarshal(sigJSON, &sigData); err == nil {
 						signatureStr = sigData.Signature
-						if sigData.Type != "" {
+						// Initialize Type as empty string if not provided (required by SDK)
+						if sigData.Type == "" {
+							sigData.Type = ""
+							log.Printf("📝 Signature type field not provided, initialized as empty string")
+						} else {
 							log.Printf("📝 Signature type field received: %s (ignored in validation)", sigData.Type)
 						}
 					} else {
