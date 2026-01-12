@@ -1,0 +1,11 @@
+0 2 * * * /home/ubuntu/scripts/backup-database.sh >> /home/ubuntu/logs/backup.log 2>&1
+*/5 * * * * /home/ubuntu/scripts/health-check.sh >> /home/ubuntu/logs/health.log 2>&1
+*/15 * * * * /home/ubuntu/scripts/auto-recovery.sh >> /home/ubuntu/logs/recovery.log 2>&1
+0 */6 * * * /home/ubuntu/scripts/auto-rebuild.sh >> /home/ubuntu/logs/auto-rebuild.log 2>&1
+0 2 * * * /home/ubuntu/scripts/backup-database.sh >> /home/ubuntu/logs/backup.log 2>&1
+*/5 * * * * /home/ubuntu/scripts/health-check.sh >> /home/ubuntu/logs/health.log 2>&1
+*/15 * * * * /home/ubuntu/scripts/auto-recovery.sh >> /home/ubuntu/logs/recovery.log 2>&1
+0 */6 * * * /home/ubuntu/scripts/auto-rebuild.sh >> /home/ubuntu/logs/auto-rebuild.log 2>&1
+0 2 * * * /home/ubuntu/scripts/backup-database.sh >> /home/ubuntu/logs/backup.log 2>&1
+*/5 * * * * /home/ubuntu/scripts/health-check.sh >> /home/ubuntu/logs/health.log 2>&1
+*/15 * * * * /home/ubuntu/scripts/auto-recovery.sh >> /home/ubuntu/logs/recovery.log 2>&1
