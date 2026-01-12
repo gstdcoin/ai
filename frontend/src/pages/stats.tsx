@@ -49,22 +49,31 @@ export default function StatsPage() {
       const response = await fetch(`${apiBase}/api/v1/stats/public`);
       
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        // Skip this update cycle if server returns error, don't crash
+        logger.warn(`Stats API returned ${response.status}: ${response.statusText}`);
+        return;
+      }
+      
+      // Check if response is JSON before parsing
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        logger.warn('Stats API returned non-JSON response, skipping');
+        return;
       }
       
       const data = await response.json();
       
       // Handle empty or invalid response
       if (!data || typeof data !== 'object') {
-        setStats(null);
+        // Keep previous stats on invalid response
         return;
       }
       
       setStats(data);
     } catch (error) {
-      const { logger } = require('../lib/logger');
+      // Silently skip this update cycle on error, don't crash the component
       logger.error('Error loading stats', error);
-      setStats(null);
+      // Don't reset stats on error in setInterval - keep previous data
     } finally {
       setLoading(false);
     }

@@ -27,18 +27,29 @@ export default function TreasuryWidget() {
       const response = await fetch(`${apiBase}/api/v1/stats/public`);
 
       if (!response.ok) {
-        throw new Error('Failed to fetch treasury balance');
+        // Skip this update cycle if server returns error, don't crash
+        logger.warn(`Treasury API returned ${response.status}: ${response.statusText}`);
+        return;
+      }
+
+      // Check if response is JSON before parsing
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        logger.warn('Treasury API returned non-JSON response, skipping');
+        return;
       }
 
       const data = await response.json();
       
       // Get golden_reserve_xaut from API response
-      const balance = data.golden_reserve_xaut || 0;
-      setXautBalance(balance);
+      if (data && typeof data === 'object' && 'golden_reserve_xaut' in data) {
+        const balance = data.golden_reserve_xaut || 0;
+        setXautBalance(balance);
+      }
     } catch (err: any) {
+      // Silently skip this update cycle on error, don't crash the component
       logger.error('Error loading treasury balance', err);
-      // Don't show error message, just set balance to 0 for prestige look
-      setXautBalance(0);
+      // Keep previous balance on error
     } finally {
       setLoading(false);
     }
