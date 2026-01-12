@@ -9,6 +9,8 @@ services:
       - ./gateway.conf:/etc/nginx/conf.d/default.conf
       - ./certbot/conf:/etc/letsencrypt
       - ./certbot/www:/var/www/certbot
+    networks:
+      - gstd_network
     restart: always
 
   frontend:
@@ -18,17 +20,27 @@ services:
       - NEXT_PUBLIC_API_URL=https://app.gstdtoken.com
     ports:
       - "3000:3000"
+    networks:
+      - gstd_network
     restart: always
 
   backend:
     image: ubuntu-backend
     container_name: ubuntu_backend_1
-    network_mode: "host"
+    ports:
+      - "8080:8080"
+    expose:
+      - "8080"
     environment:
-      - POSTGRES_HOST=127.0.0.1
-      - REDIS_HOST=127.0.0.1
+      - POSTGRES_HOST=ubuntu_postgres_1
+      - REDIS_HOST=ubuntu_redis_1
       - SERVER_PORT=8080
       - DB_NAME=distributed_computing
+    networks:
+      - gstd_network
+    depends_on:
+      - postgres
+      - redis
     restart: always
 
   postgres:
@@ -41,6 +53,8 @@ services:
       - POSTGRES_DB=distributed_computing
       - POSTGRES_HOST_AUTH_METHOD=trust
     command: ["postgres", "-c", "listen_addresses=*"]
+    networks:
+      - gstd_network
     restart: always
 
   redis:
@@ -49,4 +63,10 @@ services:
     ports:
       - "6379:6379"
     command: ["redis-server", "--protected-mode", "no"]
+    networks:
+      - gstd_network
     restart: always
+
+networks:
+  gstd_network:
+    driver: bridge
