@@ -32,10 +32,15 @@ services:
     expose:
       - "8080"
     environment:
-      - POSTGRES_HOST=ubuntu_postgres_1
-      - REDIS_HOST=ubuntu_redis_1
-      - SERVER_PORT=8080
+      - DB_HOST=ubuntu_postgres_1
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
       - DB_NAME=distributed_computing
+      - DB_SSLMODE=disable
+      - REDIS_HOST=ubuntu_redis_1
+      - REDIS_PORT=6379
+      - SERVER_PORT=8080
     networks:
       - gstd_network
     depends_on:
