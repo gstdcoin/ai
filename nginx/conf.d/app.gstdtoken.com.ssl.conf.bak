@@ -1,0 +1,22 @@
+# Simplified configuration for SSL certificate generation
+# This file is used only during initial SSL setup
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name app.gstdtoken.com;
+
+    # Let's Encrypt challenge
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+        try_files $uri =404;
+    }
+
+    # For all other requests, return 503 during SSL setup
+    location / {
+        return 503;
+    }
+}
+
+
+

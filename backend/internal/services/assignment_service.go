@@ -1,0 +1,195 @@
+package services
+
+import (
+	"context"
+	"database/sql"
+	"distributed-computing-platform/internal/models"
+	"fmt"
+	"log"
+	"time"
+
+	"github.com/redis/go-redis/v9"
+)
+
+// AssignmentService handles task assignment to devices
+type AssignmentService struct {
+	db    *sql.DB
+	queue *redis.Client
+}
+
+func NewAssignmentService(db *sql.DB, queue *redis.Client) *AssignmentService {
+	return &AssignmentService{
+		db:    db,
+		queue: queue,
+	}
+}
+
+// AssignTask assigns a task to a device
+// SECURITY: Uses transaction with FOR UPDATE to prevent race conditions
+func (s *AssignmentService) AssignTask(ctx context.Context, taskID string, deviceID string) error {
+	// Start transaction to prevent race conditions
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Get task with row-level lock (FOR UPDATE) to prevent concurrent assignments
+	var timeLimitSec int
+	var currentStatus string
+	err = tx.QueryRowContext(ctx, `
+		SELECT constraints_time_limit_sec, status 
+		FROM tasks 
+		WHERE task_id = $1
+		FOR UPDATE
+	`, taskID).Scan(&timeLimitSec, &currentStatus)
+	if err != nil {
+		return fmt.Errorf("task not found: %w", err)
+	}
+
+	// Verify task is still pending or timeout (can be reassigned)
+	if currentStatus != "pending" && currentStatus != "timeout" {
+		return fmt.Errorf("task is not available (current status: %s)", currentStatus)
+	}
+
+	timeoutAt := time.Now().Add(time.Duration(timeLimitSec+120) * time.Second)
+
+	// Update task status atomically (allow reassignment from 'pending' or 'timeout')
+	result, err := tx.ExecContext(ctx, `
+		UPDATE tasks 
+		SET status = 'assigned',
+		    assigned_device = $1,
+		    assigned_at = NOW(),
+		    timeout_at = $2
+		WHERE task_id = $3 AND status IN ('pending', 'timeout')
+	`, deviceID, timeoutAt, taskID)
+	if err != nil {
+		return fmt.Errorf("failed to assign task: %w", err)
+	}
+
+	// Verify update actually happened (prevent race conditions)
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to check rows affected: %w", err)
+	}
+	
+	if rowsAffected == 0 {
+		return fmt.Errorf("task assignment failed - task may have been assigned to another worker (race condition prevented)")
+	}
+
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
+}
+
+// GetAvailableTasks returns available tasks for a device
+func (s *AssignmentService) GetAvailableTasks(ctx context.Context, deviceID string, limit int) ([]*models.Task, error) {
+	// 1. Get device trust and region
+	var deviceTrust float64
+	var deviceRegion sql.NullString
+	err := s.db.QueryRowContext(ctx, `
+		SELECT COALESCE(trust_score, reputation, 0.1) as trust, 
+		       COALESCE(region, '') as region 
+		FROM devices WHERE device_id = $1
+	`, deviceID).Scan(&deviceTrust, &deviceRegion)
+	if err != nil {
+		// Fallback for new devices
+		deviceTrust = 0.1
+		deviceRegion = sql.NullString{String: "unknown", Valid: true}
+	}
+	
+	// regionStr removed - not used in query below
+	// regionStr := "unknown"
+	// if deviceRegion.Valid {
+	// 	regionStr = deviceRegion.String
+	// }
+
+	// 2. Get available tasks matching device trust and geo-fence
+	// Use simplified query with only guaranteed columns to avoid SQL errors
+	// If extended columns are needed, they should be added via migrations first
+	query := `
+		SELECT task_id, requester_address, task_type, operation, model,
+		       labor_compensation_ton,
+		       COALESCE(priority_score, 0.0) as priority_score,
+		       status, created_at,
+		       completed_at,
+		       COALESCE(assigned_device, '') as assigned_device,
+		       COALESCE(min_trust_score, 0.0) as min_trust_score
+		FROM tasks
+		WHERE status IN ('pending', 'timeout')
+		  AND COALESCE(min_trust_score, 0.0) <= $1
+		ORDER BY COALESCE(priority_score, 0.0) DESC, created_at ASC
+		FOR UPDATE SKIP LOCKED
+		LIMIT $2
+	`
+
+	rows, err := s.db.QueryContext(ctx, query, deviceTrust, limit)
+	if err != nil {
+		// Log error but return empty array instead of failing
+		log.Printf("GetAvailableTasks: Query error: %v", err)
+		return []*models.Task{}, nil
+	}
+	defer rows.Close()
+
+	var tasks []*models.Task
+	for rows.Next() {
+		var task models.Task
+		var completedAt sql.NullTime
+		var assignedDevice sql.NullString
+		
+		err := rows.Scan(
+			&task.TaskID, &task.RequesterAddress, &task.TaskType, &task.Operation,
+			&task.Model, &task.LaborCompensationTon, &task.PriorityScore,
+			&task.Status, &task.CreatedAt, &completedAt, &assignedDevice, &task.MinTrustScore,
+		)
+		if err != nil {
+			log.Printf("GetAvailableTasks: Scan error: %v", err)
+			continue // Skip invalid rows
+		}
+		
+		// Set optional fields
+		if completedAt.Valid {
+			task.CompletedAt = &completedAt.Time
+		}
+		if assignedDevice.Valid {
+			task.AssignedDevice = &assignedDevice.String
+		}
+		
+		// Set defaults for optional fields that may not exist in DB
+		task.InputSource = ""
+		task.InputHash = ""
+		task.TimeLimitSec = 0
+		task.MaxEnergyMwh = 0
+		task.ValidationMethod = "majority"
+		task.EscrowAddress = ""
+		task.EscrowAmountTon = 0.0
+		task.IsPrivate = false
+		
+		tasks = append(tasks, &task)
+	}
+
+	return tasks, nil
+}
+
+// ClaimTask allows device to claim a task
+func (s *AssignmentService) ClaimTask(ctx context.Context, taskID string, deviceID string) error {
+	// Check if task is still available
+	var status string
+	err := s.db.QueryRowContext(ctx, `
+		SELECT status FROM tasks WHERE task_id = $1
+	`, taskID).Scan(&status)
+	if err != nil {
+		return fmt.Errorf("task not found: %w", err)
+	}
+
+	if status != "pending" && status != "timeout" {
+		return fmt.Errorf("task already assigned (current status: %s)", status)
+	}
+
+	// Assign task
+	return s.AssignTask(ctx, taskID, deviceID)
+}
+

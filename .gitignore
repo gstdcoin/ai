@@ -1,0 +1,21 @@
+# Системные папки окружения (КРИТИЧНО)
+.*
+!.github/
+!.gitignore
+!.dockerignore
+
+# Docker и базы
+postgres_data/
+redis_data/
+certbot/
+
+# Зависимости и сборки
+node_modules/
+.next/
+dist/
+backend/server
+
+# Бэкапы и мусор
+*.sql
+*.log
+*.rdb

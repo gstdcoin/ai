@@ -1,0 +1,11 @@
+node_modules
+.git
+.env
+*.md
+backend/
+frontend/
+contracts/
+scripts/
+*.log
+.DS_Store
+
