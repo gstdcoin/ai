@@ -15,10 +15,10 @@ import (
 )
 
 // SignatureData represents the signature structure from TonConnect
-// The 'type' field is required by SDK but we initialize it as empty string if not provided
+// The 'type' field is required by SDK but we default it to 'test-item' if not provided
 type SignatureData struct {
 	Signature string `json:"signature" binding:"required"`
-	Type      string `json:"type"` // Required by SDK, but we initialize as empty string if not provided
+	Type      string `json:"type"` // No binding:"required" - defaults to 'test-item' if empty
 }
 
 // ConnectPayload represents the connect_payload structure from frontend
@@ -75,10 +75,15 @@ func loginUser(service *services.UserService, validator *services.TonConnectVali
 			case map[string]interface{}:
 				if sigVal, ok := sig["signature"].(string); ok {
 					signatureStr = sigVal
-					// Type field is optional, we ignore it if present
-					if typeVal, ok := sig["type"].(string); ok {
-						log.Printf("📝 Signature type field received: %s (ignored in validation)", typeVal)
+					// Type field: if empty, default to 'test-item' for validation
+					typeVal, hasType := sig["type"].(string)
+					if !hasType || typeVal == "" {
+						typeVal = "test-item"
+						log.Printf("📝 Signature type field not provided or empty, defaulting to 'test-item'")
+					} else {
+						log.Printf("📝 Signature type field received: %s", typeVal)
 					}
+					// Type is logged but not used in signature validation
 				} else {
 					c.JSON(400, gin.H{"error": "invalid signature format in connect_payload"})
 					return
@@ -90,13 +95,14 @@ func loginUser(service *services.UserService, validator *services.TonConnectVali
 					var sigData SignatureData
 					if err := json.Unmarshal(sigJSON, &sigData); err == nil {
 						signatureStr = sigData.Signature
-						// Initialize Type as empty string if not provided (required by SDK)
+						// Type field: if empty, default to 'test-item' for validation
 						if sigData.Type == "" {
-							sigData.Type = ""
-							log.Printf("📝 Signature type field not provided, initialized as empty string")
+							sigData.Type = "test-item"
+							log.Printf("📝 Signature type field not provided, defaulting to 'test-item'")
 						} else {
-							log.Printf("📝 Signature type field received: %s (ignored in validation)", sigData.Type)
+							log.Printf("📝 Signature type field received: %s", sigData.Type)
 						}
+						// Type is logged but not used in signature validation
 					} else {
 						c.JSON(400, gin.H{"error": "signature must be a string or object with signature field"})
 						return
@@ -124,12 +130,15 @@ func loginUser(service *services.UserService, validator *services.TonConnectVali
 				log.Printf("✅ Signature is object format: %+v", sig)
 				if sigVal, ok := sig["signature"].(string); ok {
 					signatureStr = sigVal
-					// Type field is optional, we ignore it if present
-					if typeVal, ok := sig["type"].(string); ok {
-						log.Printf("📝 Signature type field received: %s (ignored in validation)", typeVal)
+					// Type field: if empty, default to 'test-item' for validation
+					typeVal, hasType := sig["type"].(string)
+					if !hasType || typeVal == "" {
+						typeVal = "test-item"
+						log.Printf("📝 Signature type field not provided or empty, defaulting to 'test-item'")
 					} else {
-						log.Printf("📝 Signature type field not present (optional, OK)")
+						log.Printf("📝 Signature type field received: %s", typeVal)
 					}
+					// Type is logged but not used in signature validation
 				} else {
 					log.Printf("❌ Invalid signature format: missing 'signature' field")
 					c.JSON(400, gin.H{"error": "invalid signature format: missing 'signature' field"})
@@ -142,13 +151,14 @@ func loginUser(service *services.UserService, validator *services.TonConnectVali
 					var sigData SignatureData
 					if err := json.Unmarshal(sigJSON, &sigData); err == nil {
 						signatureStr = sigData.Signature
-						// Initialize Type as empty string if not provided (required by SDK)
+						// Type field: if empty, default to 'test-item' for validation
 						if sigData.Type == "" {
-							sigData.Type = ""
-							log.Printf("📝 Signature type field not provided, initialized as empty string")
+							sigData.Type = "test-item"
+							log.Printf("📝 Signature type field not provided, defaulting to 'test-item'")
 						} else {
-							log.Printf("📝 Signature type field received: %s (ignored in validation)", sigData.Type)
+							log.Printf("📝 Signature type field received: %s", sigData.Type)
 						}
+						// Type is logged but not used in signature validation
 					} else {
 						c.JSON(400, gin.H{"error": "signature must be a string or object with signature field"})
 						return
