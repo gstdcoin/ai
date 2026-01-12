@@ -64,6 +64,8 @@ services:
       - POSTGRES_DB=distributed_computing
       - POSTGRES_HOST_AUTH_METHOD=trust
     command: ["postgres", "-c", "listen_addresses=*"]
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     networks:
       - gstd_network
     restart: always
@@ -74,6 +76,8 @@ services:
     ports:
       - "6379:6379"
     command: ["redis-server", "--protected-mode", "no"]
+    volumes:
+      - redis_data:/data
     networks:
       - gstd_network
     restart: always
@@ -81,3 +85,9 @@ services:
 networks:
   gstd_network:
     driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
