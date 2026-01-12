@@ -48,9 +48,9 @@ func (s *StatsService) GetGlobalStats(ctx context.Context) (*GlobalStats, error)
 		return nil, err
 	}
 
-	// 4. Total rewards paid
+	// 4. Total rewards paid (using labor_compensation_ton instead of deprecated reward_amount_ton)
 	err = s.db.QueryRowContext(ctx, `
-		SELECT COALESCE(SUM(reward_amount_ton), 0) FROM tasks WHERE status = 'completed'
+		SELECT COALESCE(SUM(labor_compensation_ton), 0) FROM tasks WHERE status = 'completed'
 	`).Scan(&stats.TotalRewardsTon)
 	if err != nil {
 		return nil, err
