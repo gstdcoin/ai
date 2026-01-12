@@ -28,12 +28,12 @@ func (s *UserService) LoginOrRegister(ctx context.Context, walletAddress string)
 
 	// Try to get existing user
 	err := s.db.QueryRowContext(ctx, `
-		SELECT wallet_address, balance, created_at, updated_at
+		SELECT address, COALESCE(trust_score, 50.0)::float, created_at, COALESCE(last_login, created_at)
 		FROM users
-		WHERE wallet_address = $1
+		WHERE address = $1
 	`, walletAddress).Scan(
 		&user.WalletAddress,
-		&user.Balance,
+		&user.Balance, // Using Balance field to store trust_score temporarily
 		&createdAt,
 		&updatedAt,
 	)
@@ -53,8 +53,8 @@ func (s *UserService) LoginOrRegister(ctx context.Context, walletAddress string)
 	// User doesn't exist, create new user
 	now := time.Now()
 	_, err = s.db.ExecContext(ctx, `
-		INSERT INTO users (wallet_address, balance, created_at, updated_at)
-		VALUES ($1, 0, $2, $2)
+		INSERT INTO users (address, trust_score, created_at, last_login)
+		VALUES ($1, 50.0, $2, $2)
 	`, walletAddress, now)
 	if err != nil {
 		return nil, err
@@ -62,7 +62,7 @@ func (s *UserService) LoginOrRegister(ctx context.Context, walletAddress string)
 
 	user = models.User{
 		WalletAddress: walletAddress,
-		Balance:       0,
+		Balance:       50.0, // Default trust_score
 		CreatedAt:     now,
 		UpdatedAt:     now,
 	}
@@ -76,12 +76,12 @@ func (s *UserService) GetUser(ctx context.Context, walletAddress string) (*model
 	var createdAt, updatedAt time.Time
 
 	err := s.db.QueryRowContext(ctx, `
-		SELECT wallet_address, balance, created_at, updated_at
+		SELECT address, COALESCE(trust_score, 50.0)::float, created_at, COALESCE(last_login, created_at)
 		FROM users
-		WHERE wallet_address = $1
+		WHERE address = $1
 	`, walletAddress).Scan(
 		&user.WalletAddress,
-		&user.Balance,
+		&user.Balance, // Using Balance field to store trust_score
 		&createdAt,
 		&updatedAt,
 	)
