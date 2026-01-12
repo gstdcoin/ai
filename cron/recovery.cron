@@ -1,1 +1,0 @@
-*/15 * * * * /home/ubuntu/scripts/auto-recovery.sh >> /home/ubuntu/logs/recovery.log 2>&1
