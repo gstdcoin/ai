@@ -4,6 +4,7 @@ import { useTonConnectUI, useTonWallet, TonConnectButton } from '@tonconnect/ui-
 import { useEffect, useState, useRef } from 'react';
 import { logger } from '../lib/logger';
 import { toast } from '../lib/toast';
+import { apiPost } from '../lib/apiClient';
 
 export default function WalletConnect() {
   const { t } = useTranslation('common');
@@ -107,101 +108,49 @@ export default function WalletConnect() {
         throw new Error(`Signature failed: ${signErr?.message || 'Unknown error'}`);
       }
 
-      // Prepare request body
-      const requestBody: {
-        wallet_address: string;
-        signature: string;
-        payload: string;
-        public_key?: string;
-      } = {
+      // Prepare connect_payload object with type field
+      const connect_payload = {
+        wallet_address: walletAddress,
+        signature: {
+          signature: signature,
+          type: 'test-item', // Required type field for validation
+        },
+        payload: payload,
+        public_key: publicKey,
+      };
+
+      // Prepare request body with full connect_payload
+      const requestBody = {
+        connect_payload: connect_payload,
+        // Also include individual fields for backward compatibility
         wallet_address: walletAddress,
         signature: signature,
         payload: payload,
+        public_key: publicKey,
       };
-      
-      // Add public key if available
-      if (publicKey) {
-        requestBody.public_key = publicKey;
-        logger.debug('Including public key in login request');
-      }
-
-      // Send login request with signature
-      const apiBase = 'https://app.gstdtoken.com/api/v1';
-      const loginUrl = `${apiBase}/users/login`;
       
       // DEBUG: Log before API call to track if request is sent
       console.log('🚀 [WalletConnect] Sending login/registration request:', {
-        url: loginUrl,
+        url: '/users/login',
         wallet_address: walletAddress,
         has_signature: !!signature,
         has_public_key: !!publicKey,
         payload_length: payload.length,
+        has_connect_payload: !!requestBody.connect_payload,
+        signature_type: connect_payload.signature.type,
         timestamp: new Date().toISOString(),
       });
       
-      logger.debug('Sending login request', {
-        url: loginUrl,
+      logger.debug('Sending login request with connect_payload', {
         wallet_address: walletAddress,
         has_signature: !!signature,
         has_public_key: !!publicKey,
         payload_length: payload.length,
+        signature_type: connect_payload.signature.type,
       });
       
-      const response = await fetch(loginUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-      });
-
-      if (!response.ok) {
-        // Try to get detailed error message
-        let errorMessage = `Login failed: ${response.statusText}`;
-        let errorDetails = '';
-        
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.error || errorMessage;
-          errorDetails = errorData.details || errorData.message || '';
-          
-          // Log full error details to console
-          logger.error('Login failed with detailed error', {
-            status: response.status,
-            statusText: response.statusText,
-            error: errorMessage,
-            details: errorDetails,
-            fullResponse: errorData,
-          });
-          
-          // For 401 errors, show detailed message
-          if (response.status === 401) {
-            console.error('🔐 Authentication Error:', errorMessage);
-            if (errorDetails) {
-              console.error('📋 Error Details:', errorDetails);
-            }
-            console.error('📦 Request Payload:', {
-              wallet_address: walletAddress,
-              payload: payload,
-              has_signature: !!signature,
-              has_public_key: !!publicKey,
-            });
-          }
-        } catch (parseErr) {
-          // If JSON parsing fails, log raw response
-          const textResponse = await response.text().catch(() => 'Unable to read response');
-          logger.error('Failed to parse error response', {
-            status: response.status,
-            rawResponse: textResponse,
-            parseError: parseErr,
-          });
-          console.error('❌ Login Error (Raw Response):', textResponse);
-        }
-        
-        throw new Error(errorMessage + (errorDetails ? `: ${errorDetails}` : ''));
-      }
-
-      const userData = await response.json();
+      // Use apiClient.post to send full connect_payload object
+      const userData = await apiPost('/users/login', requestBody);
       logger.info('User logged in successfully', { walletAddress });
       
       // Handle new response format with session_token
