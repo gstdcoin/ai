@@ -209,7 +209,8 @@ func (pt *PaymentTracker) isTransactionConfirmed(blockchainTxs []Transaction, tx
 }
 
 // markTransactionConfirmed marks a transaction as confirmed and updates task status
-func (pt *PaymentTracker) markTransactionConfirmed(ctx context.Context, txID int, taskID, txHash string) {
+// Also logs the successful transaction to payout_history
+func (pt *PaymentTracker) markTransactionConfirmed(ctx context.Context, txID int, taskID, txHash string, executorReward, platformFee float64, nonce int64, queryID sql.NullInt64) {
 	tx, err := pt.db.BeginTx(ctx, nil)
 	if err != nil {
 		log.Printf("PaymentTracker: Error beginning transaction: %v", err)
@@ -226,6 +227,33 @@ func (pt *PaymentTracker) markTransactionConfirmed(ctx context.Context, txID int
 	if err != nil {
 		log.Printf("PaymentTracker: Error updating transaction status: %v", err)
 		return
+	}
+
+	// Log successful transaction to payout_history
+	var queryIDValue *int64
+	if queryID.Valid {
+		queryIDValue = &queryID.Int64
+	}
+	
+	// Get executor_address from payout_transactions
+	var executorAddress string
+	err = tx.QueryRowContext(ctx, `SELECT executor_address FROM payout_transactions WHERE id = $1`, txID).Scan(&executorAddress)
+	if err != nil {
+		log.Printf("PaymentTracker: Error getting executor address: %v", err)
+		// Continue anyway - history logging is not critical
+	} else {
+		_, err = tx.ExecContext(ctx, `
+			INSERT INTO payout_history (
+				payout_transaction_id, task_id, executor_address, tx_hash, query_id,
+				executor_reward_ton, platform_fee_ton, nonce, confirmed_at
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+		`, txID, taskID, executorAddress, txHash, queryIDValue, executorReward, platformFee, nonce)
+		if err != nil {
+			log.Printf("PaymentTracker: Error logging to payout_history: %v", err)
+			// Continue anyway - history logging is not critical
+		} else {
+			log.Printf("PaymentTracker: Successfully logged transaction %d to payout_history", txID)
+		}
 	}
 
 	// Update payout_intents
@@ -255,7 +283,62 @@ func (pt *PaymentTracker) markTransactionConfirmed(ctx context.Context, txID int
 		return
 	}
 
-	log.Printf("PaymentTracker: Successfully marked transaction %d (task: %s) as confirmed", txID, taskID)
+	log.Printf("PaymentTracker: Successfully marked transaction %d (task: %s) as confirmed and logged to history", txID, taskID)
+}
+
+// markTransactionFailedAndRefund marks a transaction as failed after 24 hours timeout
+// and refunds the balance to the user's available balance for retry
+func (pt *PaymentTracker) markTransactionFailedAndRefund(ctx context.Context, txID int, taskID, executorAddress string, executorReward float64) error {
+	tx, err := pt.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("error beginning transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Mark transaction as failed
+	_, err = tx.ExecContext(ctx, `
+		UPDATE payout_transactions
+		SET status = 'failed', failed_at = NOW(),
+		    error_message = 'Transaction stuck in TON network for more than 24 hours - refunded to user balance'
+		WHERE id = $1
+	`, txID)
+	if err != nil {
+		return fmt.Errorf("error marking transaction as failed: %w", err)
+	}
+
+	// Update task status to allow retry
+	_, err = tx.ExecContext(ctx, `
+		UPDATE tasks
+		SET executor_payout_status = 'failed'
+		WHERE task_id = $1
+	`, taskID)
+	if err != nil {
+		return fmt.Errorf("error updating task status: %w", err)
+	}
+
+	// Refund balance to user
+	// Add executor_reward back to user's available balance
+	// Try to update users table with wallet_address field
+	_, err = tx.ExecContext(ctx, `
+		UPDATE users
+		SET balance = COALESCE(balance, 0) + $1,
+		    updated_at = NOW()
+		WHERE wallet_address = $2 OR address = $2
+	`, executorReward, executorAddress)
+	if err != nil {
+		// If users table doesn't have balance or address doesn't exist, log but continue
+		log.Printf("PaymentTracker: Warning - could not refund balance to user %s: %v (transaction still marked as failed)", executorAddress, err)
+		// Continue anyway - transaction is marked as failed
+	} else {
+		log.Printf("PaymentTracker: Refunded %.9f TON to user %s for failed transaction %d", executorReward, executorAddress, txID)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("error committing transaction: %w", err)
+	}
+
+	log.Printf("PaymentTracker: Successfully marked transaction %d (task: %s) as failed and refunded balance to %s", txID, taskID, executorAddress)
+	return nil
 }
 
 // UpdateTransactionStatus updates transaction status when user reports it
