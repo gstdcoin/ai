@@ -1,3 +1,24 @@
+// @title           GSTD DePIN Platform API
+// @version         1.0
+// @description     API documentation for GSTD Decentralized Physical Infrastructure Network Platform. This API enables distributed computing tasks, worker management, and TON blockchain integration.
+// @termsOfService  https://app.gstdtoken.com/terms
+
+// @contact.name   GSTD Platform Support
+// @contact.url    https://app.gstdtoken.com
+// @contact.email  support@gstdtoken.com
+
+// @license.name  MIT
+// @license.url   https://opensource.org/licenses/MIT
+
+// @host      app.gstdtoken.com
+// @BasePath  /api/v1
+// @schemes   https http
+
+// @securityDefinitions.apikey SessionToken
+// @in header
+// @name X-Session-Token
+// @description Session token obtained from /users/login endpoint
+
 package main
 
 import (

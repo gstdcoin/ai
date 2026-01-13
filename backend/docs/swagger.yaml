@@ -1,3 +1,4 @@
+basePath: /api/v1
 definitions:
   models.Node:
     properties:
@@ -140,8 +141,21 @@ definitions:
       to_address:
         type: string
     type: object
+host: app.gstdtoken.com
 info:
-  contact: {}
+  contact:
+    email: support@gstdtoken.com
+    name: GSTD Platform Support
+    url: https://app.gstdtoken.com
+  description: API documentation for GSTD Decentralized Physical Infrastructure Network
+    Platform. This API enables distributed computing tasks, worker management, and
+    TON blockchain integration.
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: https://app.gstdtoken.com/terms
+  title: GSTD DePIN Platform API
+  version: "1.0"
 paths:
   /nodes/my:
     get:
@@ -385,4 +399,13 @@ paths:
       summary: Get GSTD balance
       tags:
       - Wallet
+schemes:
+- https
+- http
+securityDefinitions:
+  SessionToken:
+    description: Session token obtained from /users/login endpoint
+    in: header
+    name: X-Session-Token
+    type: apiKey
 swagger: "2.0"
