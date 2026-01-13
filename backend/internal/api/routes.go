@@ -69,10 +69,28 @@ func SetupRoutes(
 	{
 		// Public endpoints (no session required)
 		v1.GET("/version", GetAPIVersion())
+		// @Summary Health check
+		// @Description Returns the health status of the API, database, and TON contract
+		// @Tags Public
+		// @Produce json
+		// @Success 200 {object} map[string]interface{} "Service health status"
+		// @Router /health [get]
 		v1.GET("/health", getHealth(db.(*sql.DB), tonService, tonConfig))
+		// @Summary Get public statistics
+		// @Description Returns public platform statistics (no authentication required)
+		// @Tags Public
+		// @Produce json
+		// @Success 200 {object} map[string]interface{} "Public statistics"
+		// @Router /stats/public [get]
 		v1.GET("/stats/public", getPublicStats(db.(*sql.DB), tonService, tonConfig, errorLogger))
 		v1.GET("/openapi.json", GetOpenAPISpec())
 		v1.GET("/network/entropy", getEntropyStats(taskService))
+		// @Summary Get pool status
+		// @Description Returns GSTD/XAUt liquidity pool status
+		// @Tags Public
+		// @Produce json
+		// @Success 200 {object} map[string]interface{} "Pool status"
+		// @Router /pool/status [get]
 		v1.GET("/pool/status", getPoolStatus(poolMonitorService))
 		
 		// Metrics endpoint (Prometheus format) - public
@@ -183,6 +201,18 @@ func getEntropyStats(s *services.TaskService) gin.HandlerFunc {
 	}
 }
 
+// createPayoutIntent creates a payout intent for task execution
+// @Summary Create payout intent
+// @Description Create a payout intent for task executor to claim rewards
+// @Tags Payments
+// @Accept json
+// @Produce json
+// @Security SessionToken
+// @Param request body object true "Payout intent request" example({"task_id":"...","executor_address":"EQ..."})
+// @Success 200 {object} services.PayoutIntent "Payout intent created"
+// @Failure 400 {object} map[string]string "Invalid request"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Router /payments/payout-intent [post]
 func createPayoutIntent(service *services.PaymentService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
@@ -210,6 +240,18 @@ func createPayoutIntent(service *services.PaymentService) gin.HandlerFunc {
 	}
 }
 
+// createTask creates a new computing task
+// @Summary Create task
+// @Description Create a new distributed computing task
+// @Tags Tasks
+// @Accept json
+// @Produce json
+// @Security SessionToken
+// @Param request body object true "Task creation request"
+// @Success 200 {object} models.Task "Task created successfully"
+// @Failure 400 {object} map[string]string "Invalid request"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Router /tasks [post]
 func createTask(service *services.TaskService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
@@ -285,6 +327,17 @@ func getTasks(service *services.TaskService) gin.HandlerFunc {
 	}
 }
 
+// getTask retrieves a specific task by ID
+// @Summary Get task by ID
+// @Description Get detailed information about a specific task
+// @Tags Tasks
+// @Produce json
+// @Security SessionToken
+// @Param id path string true "Task ID"
+// @Success 200 {object} models.Task "Task details"
+// @Failure 400 {object} map[string]string "Task not found"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Router /tasks/{id} [get]
 func getTask(service *services.TaskService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		taskID := c.Param("id")
@@ -348,6 +401,15 @@ func getDevices(service *services.DeviceService) gin.HandlerFunc {
 	}
 }
 
+// getStats retrieves user statistics
+// @Summary Get user statistics
+// @Description Get statistics for the authenticated user
+// @Tags Statistics
+// @Produce json
+// @Security SessionToken
+// @Success 200 {object} map[string]interface{} "User statistics"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Router /stats [get]
 func getStats(service *services.StatsService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Recover from any panics to prevent 500 errors
@@ -395,6 +457,15 @@ func getStats(service *services.StatsService) gin.HandlerFunc {
 	}
 }
 
+// getGSTDBalance retrieves GSTD token balance for the authenticated user
+// @Summary Get GSTD balance
+// @Description Get GSTD token balance from TON blockchain
+// @Tags Wallet
+// @Produce json
+// @Security SessionToken
+// @Success 200 {object} map[string]interface{} "GSTD balance information"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Router /wallet/gstd-balance [get]
 func getGSTDBalance(tonService *services.TONService, tonConfig config.TONConfig) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		address := c.Query("address")
