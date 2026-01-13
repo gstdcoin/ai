@@ -38,7 +38,7 @@ func ValidateSession(redisClient *redis.Client) gin.HandlerFunc {
 		}
 
 		if sessionToken == "" {
-			log.Printf("❌ ValidateSession: No session token provided")
+			log.Printf("❌ ValidateSession: No session token provided for path: %s", c.Request.URL.Path)
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"error": "session token required",
 				"message": "Please login to access this resource",
