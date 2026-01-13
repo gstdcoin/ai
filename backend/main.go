@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"time"
+	"runtime/debug"
 
 	"distributed-computing-platform/internal/api"
 	"distributed-computing-platform/internal/config"
@@ -102,6 +103,27 @@ func createMissingTable(ctx context.Context, db *sql.DB, tableName string) error
 		log.Printf("   Table %s needs to be created manually via migrations", tableName)
 		return nil
 	}
+}
+
+// recoveryMiddleware ensures that any panic in handlers does not crash the server
+// and returns a consistent 500 response instead.
+func recoveryMiddleware(c *gin.Context) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("🔥 PANIC recovered in HTTP handler: %v\n%s", r, debug.Stack())
+
+			// If nothing was written yet, send a generic 500 response
+			if !c.Writer.Written() {
+				c.JSON(500, gin.H{
+					"error": "internal server error",
+				})
+			}
+
+			c.Abort()
+		}
+	}()
+
+	c.Next()
 }
 
 func main() {
@@ -289,7 +311,10 @@ func main() {
 	}
 	gin.SetMode(ginMode)
 	
-	router := gin.Default()
+	// Use a custom Gin engine so we can control middleware order,
+	// including our own panic recovery middleware.
+	router := gin.New()
+	router.Use(gin.Logger(), recoveryMiddleware)
 	
 	// Add security headers middleware
 	router.Use(func(c *gin.Context) {

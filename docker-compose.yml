@@ -16,7 +16,9 @@ services:
       retries: 5
       start_period: 10s
     networks:
-      - gstd_network
+      gstd_network:
+        aliases:
+          - postgres
 
   gstd_redis:
     image: redis:7-alpine
@@ -29,7 +31,9 @@ services:
       retries: 5
       start_period: 10s
     networks:
-      - gstd_network
+      gstd_network:
+        aliases:
+          - redis
 
   backend:
     build: ./backend

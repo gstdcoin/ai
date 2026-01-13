@@ -54,7 +54,17 @@ func loginUser(service *services.UserService, validator *services.TonConnectVali
 		log.Printf("📥 Received login payload: ConnectPayload=%v, WalletAddress=%s, Payload=%s, Signature type=%T", 
 			req.ConnectPayload != nil, req.WalletAddress, req.Payload, req.Signature)
 		
+		// Defensive checks: make sure connect_payload is well-formed before using it
 		if req.ConnectPayload != nil {
+			// If connect_payload is present but critically incomplete, return 400 instead of risking panics deeper in the stack
+			if strings.TrimSpace(req.ConnectPayload.WalletAddress) == "" &&
+				strings.TrimSpace(req.ConnectPayload.Payload) == "" &&
+				req.ConnectPayload.Signature == nil {
+				log.Printf("❌ connect_payload is present but empty or malformed")
+				c.JSON(400, gin.H{"error": "invalid connect_payload: wallet_address, signature and payload are required"})
+				return
+			}
+
 			log.Printf("📦 connect_payload details: WalletAddress=%s, Payload=%s, Signature type=%T, PublicKey=%s",
 				req.ConnectPayload.WalletAddress, req.ConnectPayload.Payload, req.ConnectPayload.Signature, req.ConnectPayload.PublicKey)
 		}
