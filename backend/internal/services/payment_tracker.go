@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log"
 	"strings"
 	"time"
@@ -76,7 +77,8 @@ func (pt *PaymentTracker) reconcilePayments(ctx context.Context) {
 
 	// Get pending transactions from database
 	rows, err := pt.db.QueryContext(ctx, `
-		SELECT id, task_id, executor_address, tx_hash, query_id, status, created_at
+		SELECT id, task_id, executor_address, tx_hash, query_id, status, created_at,
+		       executor_reward_ton, platform_fee_ton, nonce
 		FROM payout_transactions
 		WHERE status IN ('pending', 'sent')
 		ORDER BY created_at ASC
@@ -89,26 +91,33 @@ func (pt *PaymentTracker) reconcilePayments(ctx context.Context) {
 	defer rows.Close()
 
 	var transactions []struct {
-		ID             int
-		TaskID         string
-		ExecutorAddr   string
-		TxHash         sql.NullString
-		QueryID        sql.NullInt64
-		Status         string
-		CreatedAt      time.Time
+		ID               int
+		TaskID           string
+		ExecutorAddr     string
+		TxHash           sql.NullString
+		QueryID          sql.NullInt64
+		Status           string
+		CreatedAt        time.Time
+		ExecutorReward   float64
+		PlatformFee      float64
+		Nonce            int64
 	}
 
 	for rows.Next() {
 		var tx struct {
-			ID             int
-			TaskID         string
-			ExecutorAddr   string
-			TxHash         sql.NullString
-			QueryID        sql.NullInt64
-			Status         string
-			CreatedAt     time.Time
+			ID               int
+			TaskID           string
+			ExecutorAddr     string
+			TxHash           sql.NullString
+			QueryID          sql.NullInt64
+			Status           string
+			CreatedAt        time.Time
+			ExecutorReward   float64
+			PlatformFee      float64
+			Nonce            int64
 		}
-		err := rows.Scan(&tx.ID, &tx.TaskID, &tx.ExecutorAddr, &tx.TxHash, &tx.QueryID, &tx.Status, &tx.CreatedAt)
+		err := rows.Scan(&tx.ID, &tx.TaskID, &tx.ExecutorAddr, &tx.TxHash, &tx.QueryID, &tx.Status, &tx.CreatedAt,
+			&tx.ExecutorReward, &tx.PlatformFee, &tx.Nonce)
 		if err != nil {
 			log.Printf("PaymentTracker: Error scanning transaction: %v", err)
 			continue
@@ -132,32 +141,16 @@ func (pt *PaymentTracker) reconcilePayments(ctx context.Context) {
 
 	// Process each pending transaction
 	for _, dbTx := range transactions {
-		// Check if transaction is older than 20 minutes
-		if time.Since(dbTx.CreatedAt) > 20*time.Minute {
-			// Mark as failed if no transaction found
-			if !dbTx.TxHash.Valid || dbTx.TxHash.String == "" {
-				log.Printf("PaymentTracker: Transaction %d (task: %s) timed out after 20 minutes, marking as failed",
-					dbTx.ID, dbTx.TaskID)
-				
-				_, err := pt.db.ExecContext(ctx, `
-					UPDATE payout_transactions
-					SET status = 'failed', failed_at = NOW(),
-					    error_message = 'Transaction not found in blockchain after 20 minutes'
-					WHERE id = $1
-				`, dbTx.ID)
-				if err != nil {
-					log.Printf("PaymentTracker: Error marking transaction as failed: %v", err)
-				}
-
-				// Update task status to allow retry
-				_, err = pt.db.ExecContext(ctx, `
-					UPDATE tasks
-					SET executor_payout_status = 'failed'
-					WHERE task_id = $1
-				`, dbTx.TaskID)
-				if err != nil {
-					log.Printf("PaymentTracker: Error updating task status: %v", err)
-				}
+		// Check if transaction is older than 24 hours
+		if time.Since(dbTx.CreatedAt) > 24*time.Hour {
+			// Mark as failed if no transaction found or transaction is stuck
+			log.Printf("PaymentTracker: Transaction %d (task: %s) timed out after 24 hours, marking as failed and refunding balance",
+				dbTx.ID, dbTx.TaskID)
+			
+			// Mark transaction as failed and refund balance to user
+			err := pt.markTransactionFailedAndRefund(ctx, dbTx.ID, dbTx.TaskID, dbTx.ExecutorAddr, dbTx.ExecutorReward)
+			if err != nil {
+				log.Printf("PaymentTracker: Error marking transaction as failed and refunding: %v", err)
 			}
 			continue
 		}
@@ -169,7 +162,7 @@ func (pt *PaymentTracker) reconcilePayments(ctx context.Context) {
 				log.Printf("PaymentTracker: Transaction %s confirmed for task %s",
 					dbTx.TxHash.String, dbTx.TaskID)
 				
-				pt.markTransactionConfirmed(ctx, dbTx.ID, dbTx.TaskID, dbTx.TxHash.String)
+				pt.markTransactionConfirmed(ctx, dbTx.ID, dbTx.TaskID, dbTx.TxHash.String, dbTx.ExecutorReward, dbTx.PlatformFee, dbTx.Nonce, dbTx.QueryID)
 				continue
 			}
 		}
@@ -182,7 +175,7 @@ func (pt *PaymentTracker) reconcilePayments(ctx context.Context) {
 					log.Printf("PaymentTracker: Found confirmed transaction by query_id %d for task %s",
 						dbTx.QueryID.Int64, dbTx.TaskID)
 					
-					pt.markTransactionConfirmed(ctx, dbTx.ID, dbTx.TaskID, bcTx.Hash)
+					pt.markTransactionConfirmed(ctx, dbTx.ID, dbTx.TaskID, bcTx.Hash, dbTx.ExecutorReward, dbTx.PlatformFee, dbTx.Nonce, dbTx.QueryID)
 					break
 				}
 			}
@@ -195,7 +188,7 @@ func (pt *PaymentTracker) reconcilePayments(ctx context.Context) {
 					log.Printf("PaymentTracker: Found confirmed transaction by comment for task %s (hash: %s)",
 						dbTx.TaskID, bcTx.Hash)
 					
-					pt.markTransactionConfirmed(ctx, dbTx.ID, dbTx.TaskID, bcTx.Hash)
+					pt.markTransactionConfirmed(ctx, dbTx.ID, dbTx.TaskID, bcTx.Hash, dbTx.ExecutorReward, dbTx.PlatformFee, dbTx.Nonce, dbTx.QueryID)
 					break
 				}
 			}
