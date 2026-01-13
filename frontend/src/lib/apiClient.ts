@@ -84,8 +84,12 @@ export async function apiRequest<T = any>(
   options: RequestInit = {},
   retryOptions?: RetryOptions
 ): Promise<T> {
-  // HARDCODED: Use production API URL for all requests
-  const apiBaseUrl = 'https://app.gstdtoken.com/api/v1';
+  // Base URL: use NEXT_PUBLIC_API_URL with a safe production fallback
+  // Example: NEXT_PUBLIC_API_URL=https://app.gstdtoken.com
+  const rawBase =
+    (process.env.NEXT_PUBLIC_API_URL as string | undefined) ||
+    'https://app.gstdtoken.com';
+  const apiBaseUrl = `${rawBase.replace(/\/+$/, '')}/api/v1`;
   
   // Ensure endpoint starts with / if it doesn't already
   let finalEndpoint = endpoint;
