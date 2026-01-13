@@ -83,8 +83,11 @@ jobs:
               echo "✅ Updated DB_PASSWORD in .env file"
             fi
             
-            echo "🐳 Stopping existing containers..."
-            docker compose down || echo "⚠️  No containers to stop"
+            echo "🐳 Stopping and removing existing containers..."
+            docker compose down --remove-orphans || echo "⚠️  No containers to stop"
+            
+            echo "🧹 Removing any orphaned containers with conflicting names..."
+            docker rm -f gstd_frontend gstd_backend gstd_gateway 2>/dev/null || true
             
             echo "🔄 Rebuilding and starting containers..."
             docker compose up -d --build --remove-orphans
