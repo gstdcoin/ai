@@ -360,14 +360,14 @@ func main() {
 		c.Next()
 	})
 	api.SetupRoutes(
-		router, 
-		taskService, 
-		deviceService, 
-		validationService, 
-		paymentService, 
-		tonService, 
-		cfg.TON, 
-		assignmentService, 
+		router,
+		taskService,
+		deviceService,
+		validationService,
+		paymentService,
+		tonService,
+		cfg.TON,
+		assignmentService,
 		resultService,
 		statsService,
 		trustService,
@@ -386,6 +386,10 @@ func main() {
 		cacheService,
 		errorLogger,
 	)
+
+	// Setup Swagger documentation
+	docs := api.NewDocsHandler()
+	docs.SetupSwagger(router)
 
 	// Start server
 	port := os.Getenv("PORT")

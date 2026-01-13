@@ -20,6 +20,7 @@ type ValidationService struct {
 	encryption    *EncryptionService
 	tonService    *TONService
 	cacheService  *CacheService
+	nodeService   *NodeService // For trust_score updates
 }
 
 func NewValidationService(db *sql.DB) *ValidationService {
@@ -29,13 +30,31 @@ func NewValidationService(db *sql.DB) *ValidationService {
 }
 
 // SetDependencies sets required services (called after initialization)
-func (s *ValidationService) SetDependencies(trust *TrustV3Service, entropy *EntropyService, assignment *AssignmentService, encryption *EncryptionService, tonService *TONService, cacheService *CacheService) {
+func (s *ValidationService) SetDependencies(trust *TrustV3Service, entropy *EntropyService, assignment *AssignmentService, encryption *EncryptionService, tonService *TONService, cacheService *CacheService, nodeService *NodeService) {
 	s.trustService = trust
 	s.entropyService = entropy
 	s.assignmentService = assignment
 	s.encryption = encryption
 	s.tonService = tonService
 	s.cacheService = cacheService
+	s.nodeService = nodeService
+}
+
+// decreaseNodeTrustScore decreases trust_score for a node when validation fails
+func (s *ValidationService) decreaseNodeTrustScore(ctx context.Context, deviceID string, penalty float64) {
+	if s.nodeService == nil {
+		return // NodeService not available
+	}
+	
+	// Get wallet address from device_id (device_id is usually wallet_address)
+	// Try to find node by device_id (which is wallet_address)
+	walletAddress := deviceID // In most cases deviceID is wallet_address
+	
+	// Decrease trust score
+	if err := s.nodeService.DecreaseTrustScore(ctx, walletAddress, penalty); err != nil {
+		// Log error but don't fail validation
+		fmt.Printf("⚠️  Failed to decrease trust_score for node %s: %v\n", walletAddress, err)
+	}
 }
 
 // TaskResultSubmission stores a single result submission for comparison
@@ -231,9 +250,13 @@ func (s *ValidationService) ValidateResult(ctx context.Context, taskID string, d
 				if sub.Signature != "" {
 					// Technical failure - decrease accuracy but keep some trust
 					s.trustService.UpdateTrustVector(ctx, sub.DeviceID, 0.3, 0.5, 0.5)
+					// Also decrease node trust_score (0.05 penalty for technical failure)
+					s.decreaseNodeTrustScore(ctx, sub.DeviceID, 0.05)
 				} else {
 					// Malicious intent - severe penalty
 					s.trustService.UpdateTrustVector(ctx, sub.DeviceID, 0.0, 0.0, 0.0)
+					// Severe penalty for node trust_score (0.2 penalty for malicious intent)
+					s.decreaseNodeTrustScore(ctx, sub.DeviceID, 0.2)
 				}
 			} else {
 				// Correct result - update positively
