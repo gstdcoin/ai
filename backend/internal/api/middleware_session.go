@@ -1,0 +1,104 @@
+package api
+
+import (
+	"fmt"
+	"log"
+	"net/http"
+	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
+)
+
+// ValidateSession validates session token from Redis
+// Session token can be provided in:
+// 1. Cookie: "session_token"
+// 2. Header: "X-Session-Token"
+// 3. Query parameter: "session_token" (for backward compatibility, not recommended)
+func ValidateSession(redisClient *redis.Client) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Skip validation if Redis is not available
+		if redisClient == nil {
+			log.Printf("⚠️  ValidateSession: Redis client not available, skipping session validation")
+			c.Next()
+			return
+		}
+
+		ctx := c.Request.Context()
+
+		// 1. Try to get session_token from cookie
+		sessionToken, err := c.Cookie("session_token")
+		if err != nil || sessionToken == "" {
+			// 2. Try to get from header
+			sessionToken = c.GetHeader("X-Session-Token")
+			if sessionToken == "" {
+				// 3. Try query parameter (for backward compatibility, not recommended)
+				sessionToken = c.Query("session_token")
+			}
+		}
+
+		if sessionToken == "" {
+			log.Printf("❌ ValidateSession: No session token provided")
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error": "session token required",
+				"message": "Please login to access this resource",
+			})
+			c.Abort()
+			return
+		}
+
+		// Check session in Redis
+		sessionKey := fmt.Sprintf("session:%s", sessionToken)
+		exists, err := redisClient.Exists(ctx, sessionKey).Result()
+		if err != nil {
+			log.Printf("❌ ValidateSession: Redis error checking session: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "session validation failed",
+				"message": "Unable to validate session, please try again",
+			})
+			c.Abort()
+			return
+		}
+
+		if exists == 0 {
+			log.Printf("❌ ValidateSession: Session not found or expired: %s", sessionToken[:min(8, len(sessionToken))])
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error": "invalid or expired session",
+				"message": "Your session has expired, please login again",
+			})
+			c.Abort()
+			return
+		}
+
+		// Update last_access timestamp
+		if err := redisClient.HSet(ctx, sessionKey, "last_access", time.Now().Unix()).Err(); err != nil {
+			log.Printf("⚠️  ValidateSession: Failed to update last_access: %v", err)
+			// Continue anyway - not critical
+		}
+
+		// Get wallet_address from session
+		walletAddress, err := redisClient.HGet(ctx, sessionKey, "wallet_address").Result()
+		if err == nil && walletAddress != "" {
+			c.Set("wallet_address", walletAddress)
+			log.Printf("✅ ValidateSession: Session validated for wallet: %s", walletAddress[:min(8, len(walletAddress))])
+		} else {
+			log.Printf("⚠️  ValidateSession: Could not get wallet_address from session: %v", err)
+		}
+
+		// Get user_id from session
+		userID, err := redisClient.HGet(ctx, sessionKey, "user_id").Result()
+		if err == nil && userID != "" {
+			c.Set("user_id", userID)
+		}
+
+		c.Next()
+	}
+}
+
+// min returns the minimum of two integers
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
