@@ -12,6 +12,7 @@
   --color-gold-900: #FFD700;
   
   /* Telegram theme variables (fallback if not in Telegram) */
+  /* These will be overridden by applyTelegramTheme() when Telegram WebApp is available */
   --tg-theme-bg-color: #0a1929;
   --tg-theme-text-color: #ffffff;
   --tg-theme-hint-color: #9ca3af;
@@ -20,6 +21,14 @@
   --tg-theme-button-text-color: #ffffff;
   --tg-theme-secondary-bg-color: #0f2540;
   --tg-viewport-height: 100vh;
+  
+  /* Additional aliases for easier component usage */
+  --tg-bg-color: var(--tg-theme-bg-color);
+  --tg-text-color: var(--tg-theme-text-color);
+  --tg-button-color: var(--tg-theme-button-color);
+  --tg-button-text-color: var(--tg-theme-button-text-color);
+  --tg-primary-button-color: var(--tg-theme-button-color);
+  --tg-primary-button-text-color: var(--tg-theme-button-text-color);
 }
 
 /* Dark theme as default */
@@ -29,8 +38,12 @@ html {
 
 body {
   /* Use Telegram theme colors if available, fallback to default */
-  background-color: var(--tg-theme-bg-color, var(--color-sea-50));
-  color: var(--tg-theme-text-color, #ffffff);
+  /* bg_color from Telegram themeParams has highest priority */
+  background-color: var(--tg-theme-bg-color, var(--tg-bg-color, var(--color-sea-50))) !important;
+  color: var(--tg-theme-text-color, var(--tg-text-color, #ffffff));
+  
+  /* Ensure background color is applied immediately when Telegram theme changes */
+  transition: background-color 0.2s ease, color 0.2s ease;
   font-family: 'Inter', system-ui, sans-serif;
   background-image: 
     radial-gradient(at 0% 0%, rgba(56, 141, 244, 0.1) 0%, transparent 50%),
@@ -102,9 +115,29 @@ html {
   }
 
   /* Telegram-themed button using Telegram button colors */
+  /* button_color and button_text_color from Telegram themeParams */
   .tg-button {
-    background-color: var(--tg-theme-button-color, var(--tg-button-color, #388df4));
-    color: var(--tg-theme-button-text-color, var(--tg-button-text-color, #ffffff));
+    background-color: var(--tg-theme-button-color, var(--tg-button-color, var(--tg-primary-button-color, #388df4))) !important;
+    color: var(--tg-theme-button-text-color, var(--tg-button-text-color, var(--tg-primary-button-text-color, #ffffff))) !important;
+    border: none;
+    border-radius: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    font-weight: 500;
+    font-size: 1rem;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  }
+  
+  /* Primary button class that uses Telegram button colors */
+  .btn-primary {
+    background-color: var(--tg-theme-button-color, var(--tg-button-color, var(--tg-primary-button-color, #005cb3))) !important;
+    color: var(--tg-theme-button-text-color, var(--tg-button-text-color, var(--tg-primary-button-text-color, #ffffff))) !important;
     border: none;
     border-radius: 0.5rem;
     padding: 0.75rem 1.5rem;
@@ -120,20 +153,42 @@ html {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   }
 
-  .tg-button:hover {
+  .tg-button:hover,
+  .btn-primary:hover {
     opacity: 0.9;
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    filter: brightness(0.95);
   }
 
-  .tg-button:active {
+  .tg-button:active,
+  .btn-primary:active {
     transform: translateY(0);
     opacity: 0.8;
+    filter: brightness(0.9);
   }
 
-  .tg-button:disabled {
+  .tg-button:disabled,
+  .btn-primary:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+  
+  /* Primary button styles matching bg-primary-600 pattern */
+  .btn-primary {
+    border: none;
+    border-radius: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+    font-size: 1rem;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   }
 
   .glass-button-gold {

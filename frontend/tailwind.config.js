@@ -36,6 +36,7 @@ module.exports = {
           900: '#FFD700',
         },
         // Legacy primary color mapping
+        // Note: In Telegram WebApp, these will be overridden by Telegram themeParams
         primary: {
           50: '#e6f2ff',
           100: '#b3d9ff',
@@ -43,8 +44,8 @@ module.exports = {
           300: '#4da6ff',
           400: '#1a8cff',
           500: '#0073e6',
-          600: '#005cb3',
-          700: '#004580',
+          600: '#005cb3', // Default button color (overridden by Telegram button_color)
+          700: '#004580', // Default hover color (overridden by Telegram button_color with opacity)
           800: '#002e4d',
           900: '#00171a',
         },
