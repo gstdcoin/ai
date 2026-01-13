@@ -38,86 +38,114 @@ export default function WalletConnect() {
         address: walletAddress,
       });
 
-      // Sign payload with TonConnect
-      if (!tonConnectUI.connector) {
-        throw new Error('TonConnect not connected');
+      // Check if signature is available from wallet.connectItems.tonProof.proof.signature
+      let signature: string | undefined;
+      let publicKey: string | undefined;
+      const walletAny = wallet as any;
+      
+      // Try to get signature from wallet.connectItems.tonProof.proof.signature
+      if (walletAny?.connectItems?.tonProof?.proof?.signature) {
+        const proofSignature = walletAny.connectItems.tonProof.proof.signature;
+        logger.debug('Found signature in wallet.connectItems.tonProof.proof.signature', {
+          signatureType: typeof proofSignature
+        });
+        
+        // Extract signature string from the proof
+        if (typeof proofSignature === 'string') {
+          signature = proofSignature;
+        } else if (proofSignature && typeof proofSignature === 'object' && 'signature' in proofSignature) {
+          signature = proofSignature.signature;
+        }
+        
+        // Try to get public key from proof
+        if (walletAny.connectItems?.tonProof?.proof?.publicKey) {
+          publicKey = walletAny.connectItems.tonProof.proof.publicKey;
+        }
       }
 
-      // TonConnect v2 signs the SHA-256 hash of the payload
-      // Use the same sha256 function as in taskWorker.ts
-      const sha256 = async (message: string): Promise<Uint8Array> => {
-        const msgBuffer = new TextEncoder().encode(message);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-        return new Uint8Array(hashBuffer);
-      };
-      
-      const hashArray = await sha256(payload);
-      
-      // TonConnect v2 expects message as bytes or encoded string.
-      // Convert hash to base64 string for maximum compatibility with SDK types.
-      // Use Array.from to avoid TypeScript iteration issues with Uint8Array
-      const hashBase64 = btoa(Array.from(hashArray).map(b => String.fromCharCode(b)).join(''));
-      
-      // Sign hash with TonConnect v2
-      let signature: string;
-      let publicKey: string | undefined;
-      
-      try {
-        // Use 'as any' to bypass TypeScript type checking for SignDataPayload
-        // The actual SDK may use different field names (message/data) depending on version
-        // Add item with ton_proof to satisfy SDK requirements
-        const signResult = await tonConnectUI.connector.signData({
-          schema: 'v2',
-          message: hashBase64,
-          items: [
-            {
-              name: 'ton_proof',
-              payload: hashBase64,
-            }
-          ],
-        } as any);
-        // Use 'as any' to bypass TypeScript type checking for signResult
-        // TonConnect SDK may return different structures depending on version
-        const resultAny = signResult as any;
-        
-        // TonConnect returns signature as base64 string
-        signature = resultAny.signature;
-        
-        // Try to get public key from multiple sources
-        // 1. From signData response (if available in TonConnect v2)
-        if (resultAny.publicKey) {
-          publicKey = resultAny.publicKey;
-          logger.debug('Public key obtained from signData response', { 
-            publicKey: publicKey?.length > 20 ? publicKey.substring(0, 20) + '...' : publicKey 
-          });
-        } else if (resultAny.signature && resultAny.signature.publicKey) {
-          publicKey = resultAny.signature.publicKey;
-          logger.debug('Public key obtained from signature object', { 
-            publicKey: publicKey?.length > 20 ? publicKey.substring(0, 20) + '...' : publicKey 
-          });
-        } 
-        // 2. From wallet account (TonConnect UI)
-        else if (tonConnectUI.account?.publicKey) {
-          publicKey = tonConnectUI.account.publicKey;
-          logger.debug('Public key obtained from TonConnect UI account', { 
-            publicKey: publicKey?.length > 20 ? publicKey.substring(0, 20) + '...' : publicKey 
-          });
+      // If signature not found in connectItems, use signData API
+      if (!signature) {
+        // Sign payload with TonConnect
+        if (!tonConnectUI.connector) {
+          throw new Error('TonConnect not connected');
         }
-        // 3. From connector wallet (fallback)
-        else {
-          const walletInfo = tonConnectUI.connector?.wallet;
-          if (walletInfo?.account?.publicKey) {
-            publicKey = walletInfo.account.publicKey;
-            logger.debug('Public key obtained from connector wallet', { 
+
+        // TonConnect v2 signs the SHA-256 hash of the payload
+        // Use the same sha256 function as in taskWorker.ts
+        const sha256 = async (message: string): Promise<Uint8Array> => {
+          const msgBuffer = new TextEncoder().encode(message);
+          const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+          return new Uint8Array(hashBuffer);
+        };
+        
+        const hashArray = await sha256(payload);
+        
+        // TonConnect v2 expects message as bytes or encoded string.
+        // Convert hash to base64 string for maximum compatibility with SDK types.
+        // Use Array.from to avoid TypeScript iteration issues with Uint8Array
+        const hashBase64 = btoa(Array.from(hashArray).map(b => String.fromCharCode(b)).join(''));
+        
+        try {
+          // Use 'as any' to bypass TypeScript type checking for SignDataPayload
+          // The actual SDK may use different field names (message/data) depending on version
+          // Add item with ton_proof to satisfy SDK requirements
+          const signResult = await tonConnectUI.connector.signData({
+            schema: 'v2',
+            message: hashBase64,
+            items: [
+              {
+                name: 'ton_proof',
+                payload: hashBase64,
+              }
+            ],
+          } as any);
+          // Use 'as any' to bypass TypeScript type checking for signResult
+          // TonConnect SDK may return different structures depending on version
+          const resultAny = signResult as any;
+          
+          // TonConnect returns signature as base64 string
+          signature = resultAny.signature;
+          
+          // Try to get public key from multiple sources
+          // 1. From signData response (if available in TonConnect v2)
+          if (resultAny.publicKey) {
+            publicKey = resultAny.publicKey;
+            logger.debug('Public key obtained from signData response', { 
               publicKey: publicKey?.length > 20 ? publicKey.substring(0, 20) + '...' : publicKey 
             });
-          } else {
-            logger.warn('Public key not available from TonConnect - backend will fetch from TON API');
+          } else if (resultAny.signature && resultAny.signature.publicKey) {
+            publicKey = resultAny.signature.publicKey;
+            logger.debug('Public key obtained from signature object', { 
+              publicKey: publicKey?.length > 20 ? publicKey.substring(0, 20) + '...' : publicKey 
+            });
+          } 
+          // 2. From wallet account (TonConnect UI)
+          else if (tonConnectUI.account?.publicKey) {
+            publicKey = tonConnectUI.account.publicKey;
+            logger.debug('Public key obtained from TonConnect UI account', { 
+              publicKey: publicKey?.length > 20 ? publicKey.substring(0, 20) + '...' : publicKey 
+            });
           }
+          // 3. From connector wallet (fallback)
+          else {
+            const walletInfo = tonConnectUI.connector?.wallet;
+            if (walletInfo?.account?.publicKey) {
+              publicKey = walletInfo.account.publicKey;
+              logger.debug('Public key obtained from connector wallet', { 
+                publicKey: publicKey?.length > 20 ? publicKey.substring(0, 20) + '...' : publicKey 
+              });
+            } else {
+              logger.warn('Public key not available from TonConnect - backend will fetch from TON API');
+            }
+          }
+        } catch (signErr: any) {
+          logger.error('Failed to sign login payload', signErr);
+          throw new Error(`Signature failed: ${signErr?.message || 'Unknown error'}`);
         }
-      } catch (signErr: any) {
-        logger.error('Failed to sign login payload', signErr);
-        throw new Error(`Signature failed: ${signErr?.message || 'Unknown error'}`);
+      }
+
+      if (!signature) {
+        throw new Error('Signature not available from wallet or signData API');
       }
 
       // Create signature object manually to satisfy SDK type requirements
@@ -153,6 +181,9 @@ export default function WalletConnect() {
         payload: payload,
         public_key: publicKey,
       };
+      
+      // Log request body before sending to backend
+      console.log("SENDING TO BACKEND:", requestBody);
       
       // DEBUG: Log before API call to track if request is sent
       console.log('🚀 [WalletConnect] Sending login/registration request:', {
