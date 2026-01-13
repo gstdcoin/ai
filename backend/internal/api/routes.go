@@ -86,18 +86,20 @@ func SetupRoutes(
 		v1.POST("/users/login", loginUser(userService, tonConnectValidator, redisClientForLogin))
 
 		// Protected endpoints (require session)
-		var sessionMiddleware gin.HandlerFunc
-		if redisClient != nil {
-			if rc, ok := redisClient.(*redis.Client); ok && rc != nil {
-				sessionMiddleware = ValidateSession(rc)
-			}
-		}
+		// TEMPORARILY DISABLED: Session middleware disabled for debugging
+		// var sessionMiddleware gin.HandlerFunc
+		// if redisClient != nil {
+		// 	if rc, ok := redisClient.(*redis.Client); ok && rc != nil {
+		// 		sessionMiddleware = ValidateSession(rc)
+		// 	}
+		// }
 		
 		// Apply session middleware to protected routes
 		protected := v1.Group("")
-		if sessionMiddleware != nil {
-			protected.Use(sessionMiddleware)
-		}
+		// TEMPORARILY DISABLED: Session middleware disabled for debugging
+		// if sessionMiddleware != nil {
+		// 	protected.Use(sessionMiddleware)
+		// }
 		
 		// Tasks (protected)
 		protected.POST("/tasks", ValidateTaskRequest(), createTask(taskService))
