@@ -16,6 +16,16 @@ interface Stats {
   active_devices_count: number;
 }
 
+interface PoolStatus {
+  pool_address: string;
+  gstd_balance: number;
+  xaut_balance: number;
+  total_value_usd: number;
+  last_updated: string;
+  is_healthy: boolean;
+  reserve_ratio: number;
+}
+
 interface TaskCompletionData {
   date: string;
   count: number;
@@ -25,14 +35,17 @@ interface TaskCompletionData {
 export default function StatsPanel() {
   const { t } = useTranslation('common');
   const [stats, setStats] = useState<Stats | null>(null);
+  const [poolStatus, setPoolStatus] = useState<PoolStatus | null>(null);
   const [completionData, setCompletionData] = useState<TaskCompletionData[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadStats();
+    loadPoolStatus();
     loadCompletionData();
     const interval = setInterval(() => {
       loadStats();
+      loadPoolStatus();
       loadCompletionData();
     }, 15000); // Update every 15 seconds (increased from 10)
     return () => clearInterval(interval);
@@ -55,6 +68,30 @@ export default function StatsPanel() {
       // Don't set stats to null on error in setInterval - keep previous data
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadPoolStatus = async () => {
+    try {
+      const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/+$/, '');
+      const response = await fetch(`${apiBase}/api/v1/pool/status`);
+      
+      if (!response.ok) {
+        return;
+      }
+      
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        return;
+      }
+      
+      const data = await response.json();
+      
+      if (data && typeof data === 'object') {
+        setPoolStatus(data);
+      }
+    } catch (error) {
+      logger.error('Error loading pool status', error);
     }
   };
 
@@ -131,6 +168,13 @@ export default function StatsPanel() {
       color: 'text-indigo-600',
       bg: 'bg-indigo-50',
       tooltip: undefined
+    },
+    { 
+      label: t('pool_gstd_balance') || 'Pool GSTD', 
+      value: poolStatus ? `${poolStatus.gstd_balance.toFixed(2)} GSTD` : '-', 
+      color: 'text-purple-600',
+      bg: 'bg-purple-50',
+      tooltip: t('pool_balance_tooltip') || 'GSTD balance in the liquidity pool'
     },
   ];
 

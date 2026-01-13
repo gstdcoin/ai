@@ -31,15 +31,30 @@ interface GlobalStats {
   }>;
 }
 
+interface PoolStatus {
+  pool_address: string;
+  gstd_balance: number;
+  xaut_balance: number;
+  total_value_usd: number;
+  last_updated: string;
+  is_healthy: boolean;
+  reserve_ratio: number;
+}
+
 export default function StatsPage() {
   const { t } = useTranslation('common');
   const [stats, setStats] = useState<GlobalStats | null>(null);
+  const [poolStatus, setPoolStatus] = useState<PoolStatus | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadStats();
+    loadPoolStatus();
     // Refresh every 30 seconds
-    const interval = setInterval(loadStats, 30000);
+    const interval = setInterval(() => {
+      loadStats();
+      loadPoolStatus();
+    }, 30000);
     return () => clearInterval(interval);
   }, []);
 
@@ -76,6 +91,34 @@ export default function StatsPage() {
       // Don't reset stats on error in setInterval - keep previous data
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadPoolStatus = async () => {
+    try {
+      const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/+$/, '');
+      const response = await fetch(`${apiBase}/api/v1/pool/status`);
+      
+      if (!response.ok) {
+        logger.warn(`Pool status API returned ${response.status}: ${response.statusText}`);
+        return;
+      }
+      
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        logger.warn('Pool status API returned non-JSON response, skipping');
+        return;
+      }
+      
+      const data = await response.json();
+      
+      if (!data || typeof data !== 'object') {
+        return;
+      }
+      
+      setPoolStatus(data);
+    } catch (error) {
+      logger.error('Error loading pool status', error);
     }
   };
 
@@ -117,11 +160,28 @@ export default function StatsPage() {
           </div>
         ) : stats ? (
           <div className="space-y-6 lg:space-y-8">
-            {/* Key Metrics */}
+            {/* Key Metrics - DePIN Trust Indicators */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
-              <div className="glass-card">
+              {/* Active Workers */}
+              <div className="glass-card border-green-500/30 bg-green-500/10">
                 <div className="flex items-center gap-3 mb-2">
-                  <CheckCircle className="text-sea-400" size={20} />
+                  <Users className="text-green-400" size={20} />
+                  <div className="text-sm text-gray-400 uppercase tracking-wider">
+                    {t('active_workers') || 'Active Workers'}
+                  </div>
+                </div>
+                <div className="text-3xl font-bold text-white">
+                  {stats.total_workers_paid.toLocaleString()}
+                </div>
+                <div className="text-xs text-gray-400 mt-1">
+                  {t('network_participants') || 'Network participants'}
+                </div>
+              </div>
+
+              {/* Completed Tasks */}
+              <div className="glass-card border-blue-500/30 bg-blue-500/10">
+                <div className="flex items-center gap-3 mb-2">
+                  <CheckCircle className="text-blue-400" size={20} />
                   <div className="text-sm text-gray-400 uppercase tracking-wider">
                     {t('total_tasks_completed') || 'Total Tasks Completed'}
                   </div>
@@ -129,36 +189,30 @@ export default function StatsPage() {
                 <div className="text-3xl font-bold text-white">
                   {stats.total_tasks_completed.toLocaleString()}
                 </div>
-              </div>
-
-              <div className="glass-card">
-                <div className="flex items-center gap-3 mb-2">
-                  <Users className="text-sea-400" size={20} />
-                  <div className="text-sm text-gray-400 uppercase tracking-wider">
-                    {t('total_workers_paid') || 'Total Workers Paid'}
-                  </div>
-                </div>
-                <div className="text-3xl font-bold text-white">
-                  {stats.total_workers_paid.toLocaleString()}
-                </div>
-                <div className="text-sm text-gray-400 mt-1">
-                  {stats.total_gstd_paid.toFixed(2)} GSTD
+                <div className="text-xs text-gray-400 mt-1">
+                  {t('tasks_executed') || 'Tasks executed successfully'}
                 </div>
               </div>
 
+              {/* GSTD Paid */}
               <div className="glass-card border-gold-900/30 bg-gold-900/10">
                 <div className="flex items-center gap-3 mb-2">
                   <Coins className="text-gold-900" size={20} />
                   <div className="text-sm text-gray-400 uppercase tracking-wider">
-                    {t('golden_reserve') || 'Golden Reserve'}
+                    {t('gstd_paid') || 'GSTD Paid Out'}
                   </div>
                 </div>
                 <div className="text-3xl font-bold text-gold-900">
-                  {stats.golden_reserve_xaut.toFixed(6)} XAUt
+                  {stats.total_gstd_paid.toFixed(2)}
                 </div>
                 <div className="text-xs text-gray-400 mt-1">
-                  {t('treasury_backing') || 'Treasury Backing'}
+                  {t('total_rewards') || 'Total rewards distributed'}
                 </div>
+                {poolStatus && poolStatus.gstd_balance > 0 && (
+                  <div className="text-xs text-gray-500 mt-2 pt-2 border-t border-white/10">
+                    {t('pool_balance') || 'Pool'}: {poolStatus.gstd_balance.toFixed(2)} GSTD
+                  </div>
+                )}
               </div>
             </div>
 
