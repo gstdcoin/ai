@@ -4,7 +4,8 @@ import { TonConnectUIProvider, THEME } from '@tonconnect/ui-react';
 import { useEffect, useState } from 'react';
 import { Toaster } from 'sonner';
 import { ErrorBoundary } from '../components/common/ErrorBoundary';
-import { initTelegramWebApp } from '../lib/telegram';
+import { TelegramThemeProvider } from '../components/common/TelegramThemeProvider';
+import { initTelegramWebApp, isTelegramWebApp, getTelegramColorScheme } from '../lib/telegram';
 import '../styles/globals.css';
 
 // Get manifestUrl from environment variable or use fallback
@@ -26,7 +27,16 @@ function App({ Component, pageProps }: AppProps) {
   useEffect(() => {
     // Initialize Telegram WebApp on mount
     if (typeof window !== 'undefined') {
-      initTelegramWebApp();
+      const webApp = initTelegramWebApp();
+      
+      if (webApp) {
+        console.log('✅ Telegram WebApp initialized');
+        console.log('Theme:', webApp.themeParams);
+        console.log('Color scheme:', webApp.colorScheme);
+      } else {
+        console.log('ℹ️ Not running in Telegram WebApp');
+      }
+      
       setIsMounted(true);
       
       // Register Service Worker for PWA
@@ -49,28 +59,35 @@ function App({ Component, pageProps }: AppProps) {
   }
 
   const manifestUrl = getManifestUrl();
+  
+  // Определить тему для TonConnect на основе Telegram
+  const telegramTheme = isTelegramWebApp() 
+    ? (getTelegramColorScheme() === 'light' ? THEME.LIGHT : THEME.DARK)
+    : THEME.DARK;
 
   return (
     <ErrorBoundary>
-      <TonConnectUIProvider 
-        manifestUrl={manifestUrl}
-        actionsConfiguration={{
-          twaReturnUrl: 'https://t.me/gstdtoken_bot'
-        }}
-        restoreConnection={true}
-        uiPreferences={{
-          theme: THEME.DARK,
-          borderRadius: 'm'
-        }}
-        language="ru"
-      >
-        <Component {...pageProps} />
-        <Toaster 
-          position="top-right"
-          richColors
-          closeButton
-        />
-      </TonConnectUIProvider>
+      <TelegramThemeProvider>
+        <TonConnectUIProvider 
+          manifestUrl={manifestUrl}
+          actionsConfiguration={{
+            twaReturnUrl: 'https://t.me/gstdtoken_bot'
+          }}
+          restoreConnection={true}
+          uiPreferences={{
+            theme: telegramTheme,
+            borderRadius: 'm'
+          }}
+          language="ru"
+        >
+          <Component {...pageProps} />
+          <Toaster 
+            position="top-right"
+            richColors
+            closeButton
+          />
+        </TonConnectUIProvider>
+      </TelegramThemeProvider>
     </ErrorBoundary>
   );
 }
