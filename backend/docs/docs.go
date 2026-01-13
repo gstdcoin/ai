@@ -9,7 +9,16 @@ const docTemplate = `{
     "info": {
         "description": "{{escape .Description}}",
         "title": "{{.Title}}",
-        "contact": {},
+        "termsOfService": "https://app.gstdtoken.com/terms",
+        "contact": {
+            "name": "GSTD Platform Support",
+            "url": "https://app.gstdtoken.com",
+            "email": "support@gstdtoken.com"
+        },
+        "license": {
+            "name": "MIT",
+            "url": "https://opensource.org/licenses/MIT"
+        },
         "version": "{{.Version}}"
     },
     "host": "{{.Host}}",
@@ -607,17 +616,25 @@ const docTemplate = `{
                 }
             }
         }
+    },
+    "securityDefinitions": {
+        "SessionToken": {
+            "description": "Session token obtained from /users/login endpoint",
+            "type": "apiKey",
+            "name": "X-Session-Token",
+            "in": "header"
+        }
     }
 }`
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "",
-	Host:             "",
-	BasePath:         "",
-	Schemes:          []string{},
-	Title:            "",
-	Description:      "",
+	Version:          "1.0",
+	Host:             "app.gstdtoken.com",
+	BasePath:         "/api/v1",
+	Schemes:          []string{"https", "http"},
+	Title:            "GSTD DePIN Platform API",
+	Description:      "API documentation for GSTD Decentralized Physical Infrastructure Network Platform. This API enables distributed computing tasks, worker management, and TON blockchain integration.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

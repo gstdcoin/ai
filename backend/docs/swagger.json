@@ -1,8 +1,26 @@
 {
+    "schemes": [
+        "https",
+        "http"
+    ],
     "swagger": "2.0",
     "info": {
-        "contact": {}
+        "description": "API documentation for GSTD Decentralized Physical Infrastructure Network Platform. This API enables distributed computing tasks, worker management, and TON blockchain integration.",
+        "title": "GSTD DePIN Platform API",
+        "termsOfService": "https://app.gstdtoken.com/terms",
+        "contact": {
+            "name": "GSTD Platform Support",
+            "url": "https://app.gstdtoken.com",
+            "email": "support@gstdtoken.com"
+        },
+        "license": {
+            "name": "MIT",
+            "url": "https://opensource.org/licenses/MIT"
+        },
+        "version": "1.0"
     },
+    "host": "app.gstdtoken.com",
+    "basePath": "/api/v1",
     "paths": {
         "/nodes/my": {
             "get": {
@@ -595,6 +613,14 @@
                     "type": "string"
                 }
             }
+        }
+    },
+    "securityDefinitions": {
+        "SessionToken": {
+            "description": "Session token obtained from /users/login endpoint",
+            "type": "apiKey",
+            "name": "X-Session-Token",
+            "in": "header"
         }
     }
 }
