@@ -32,4 +32,5 @@ services:
 
 networks:
   gstd_network:
-    external: true
+    name: ubuntu_gstd_network
+    external: false
