@@ -329,7 +329,12 @@ func main() {
 		
 		// CORS headers (adjust for production)
 		origin := c.GetHeader("Origin")
-		allowedOrigins := []string{"https://app.gstdtoken.com", "http://82.115.48.228", "http://localhost:3000"}
+		allowedOrigins := []string{
+			"https://app.gstdtoken.com",
+			"https://www.gstdtoken.com",
+			"http://82.115.48.228",
+			"http://localhost:3000",
+		}
 		
 		// Always set CORS headers for allowed origins
 		if origin != "" {
@@ -339,7 +344,7 @@ func main() {
 					c.Header("Access-Control-Allow-Credentials", "true")
 					c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 					// CORS: Explicitly allow Authorization and Content-Type headers for mobile device requests
-					c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, X-Wallet-Address, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Range")
+					c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, X-Wallet-Address, X-Session-Token, DNT, User-Agent, X-Requested-With, If-Modified-Since, Cache-Control, Range")
 					c.Header("Access-Control-Expose-Headers", "Content-Length, Content-Range")
 					break
 				}
