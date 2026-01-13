@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'next-i18next';
 import { logger } from '../../lib/logger';
+import { API_BASE_URL } from '../../lib/config';
 
 const TREASURY_WALLET = 'EQA--JXG8VSyBJmLMqb2J2t4Pya0TS9SXHh7vHh8Iez25sLp';
 
@@ -23,7 +24,7 @@ export default function TreasuryWidget() {
       setError(null);
 
       // Fetch from our backend API (avoids CORS issues)
-      const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/+$/, '');
+      const apiBase = API_BASE_URL;
       const response = await fetch(`${apiBase}/api/v1/stats/public`);
 
       if (!response.ok) {

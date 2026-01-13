@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'next-i18next';
 import { logger } from '../../lib/logger';
+import { API_BASE_URL } from '../../lib/config';
 
 interface PoolStatus {
   is_healthy: boolean;
@@ -23,7 +24,7 @@ export default function PoolStatusWidget() {
   const loadPoolStatus = async () => {
     try {
       setLoading(true);
-      const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/+$/, '');
+      const apiBase = API_BASE_URL;
       const response = await fetch(`${apiBase}/api/v1/pool/status`);
 
       if (!response.ok) {
