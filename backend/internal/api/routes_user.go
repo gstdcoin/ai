@@ -31,6 +31,16 @@ type ConnectPayload struct {
 }
 
 // loginUser handles user login with TonConnect signature validation
+// @Summary User login
+// @Description Authenticate user with TON Connect signature and create session
+// @Tags Authentication
+// @Accept json
+// @Produce json
+// @Param request body object true "Login request" example({"wallet_address":"EQ...","signature":"...","payload":"..."})
+// @Success 200 {object} map[string]interface{} "Login successful, returns session_token"
+// @Failure 400 {object} map[string]string "Invalid request"
+// @Failure 401 {object} map[string]string "Signature validation failed"
+// @Router /users/login [post]
 func loginUser(service *services.UserService, validator *services.TonConnectValidator, redisClient *redis.Client) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {

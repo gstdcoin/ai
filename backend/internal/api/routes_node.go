@@ -7,6 +7,18 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// registerNode registers a new computing node
+// @Summary Register node
+// @Description Register a new computing node for the wallet
+// @Tags Nodes
+// @Accept json
+// @Produce json
+// @Security SessionToken
+// @Param request body object true "Node registration request" example({"name":"My Node","specs":{"cpu":"Intel i7","ram":16}})
+// @Success 200 {object} models.Node "Node registered successfully"
+// @Failure 400 {object} map[string]string "Invalid request"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Router /nodes/register [post]
 func registerNode(service *services.NodeService, geoService *services.GeoService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
@@ -59,6 +71,15 @@ func registerNode(service *services.NodeService, geoService *services.GeoService
 	}
 }
 
+// getMyNodes retrieves all nodes owned by the authenticated user
+// @Summary Get my nodes
+// @Description Get list of all nodes registered by the authenticated wallet
+// @Tags Nodes
+// @Produce json
+// @Security SessionToken
+// @Success 200 {object} map[string]interface{} "List of nodes"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Router /nodes/my [get]
 func getMyNodes(service *services.NodeService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		walletAddress := c.Query("wallet_address")
