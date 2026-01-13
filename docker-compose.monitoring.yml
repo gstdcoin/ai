@@ -18,7 +18,7 @@ services:
       - /:/rootfs:ro
     environment:
       - GLANCES_OPT=-w --disable-webui --port 61208
-    command: glances -w --disable-webui --port 61208 --enable-plugin docker
+    command: glances -w --port 61208 --enable-plugin docker
     networks:
       - gstd_network
     deploy:
