@@ -42,7 +42,7 @@ func SetupRoutes(
 	log.Printf("🔧 SetupRoutes: Starting route setup, redisClient type: %T", redisClient)
 	
 	// Initialize ValidationService dependencies
-	validationService.SetDependencies(trustService, entropyService, assignmentService, encryptionService, tonService, cacheService)
+	validationService.SetDependencies(trustService, entropyService, assignmentService, encryptionService, tonService, cacheService, nodeService)
 
 	// Add error handler middleware
 	router.Use(ErrorHandler())
@@ -160,7 +160,8 @@ func SetupRoutes(
 		protected.POST("/payments/payout-intent", createPayoutIntent(paymentService))
 
 		// Nodes (protected)
-		protected.POST("/nodes/register", registerNode(nodeService))
+		geoService := services.NewGeoService()
+		protected.POST("/nodes/register", registerNode(nodeService, geoService))
 		protected.GET("/nodes/my", getMyNodes(nodeService))
 
 		// Task Payment (protected)
