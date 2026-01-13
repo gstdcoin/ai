@@ -1,5 +1,6 @@
 import { useEffect, useState, lazy, Suspense, memo, useCallback } from 'react';
 import { useTranslation } from 'next-i18next';
+import { useRouter } from 'next/router';
 import { useWalletStore } from '../../store/walletStore';
 import Sidebar from '../layout/Sidebar';
 import BottomNav from '../layout/BottomNav';
@@ -21,6 +22,7 @@ const NewTaskModal = lazy(() => import('./NewTaskModal'));
 
 function Dashboard() {
   const { t } = useTranslation('common');
+  const router = useRouter();
   const { address, disconnect } = useWalletStore();
   const [tonConnectUI] = useTonConnectUI();
   const [activeTab, setActiveTab] = useState<Tab>('tasks');
@@ -50,9 +52,7 @@ function Dashboard() {
       // ignore TonConnect disconnect errors
     } finally {
       disconnect();
-      if (typeof window !== 'undefined') {
-        window.location.href = '/';
-      }
+      router.push('/');
     }
   };
 
