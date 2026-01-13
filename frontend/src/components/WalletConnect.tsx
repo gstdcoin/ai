@@ -15,6 +15,11 @@ export default function WalletConnect() {
   const [isInitializing, setIsInitializing] = useState(true);
   const lastLoggedInAddress = useRef<string | null>(null);
 
+  // Check if window is available (SSR safety) - at the beginning of render logic
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
   // Function to call login API with TonConnect signature
   const loginUser = async (walletAddress: string) => {
     // Avoid duplicate calls for the same address

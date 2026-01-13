@@ -7,52 +7,58 @@ import { ErrorBoundary } from '../components/common/ErrorBoundary';
 import { initTelegramWebApp } from '../lib/telegram';
 import '../styles/globals.css';
 
-const manifestUrl = 'https://app.gstdtoken.com/tonconnect-manifest.json';
+// Get manifestUrl from environment variable or use fallback
+const getManifestUrl = (): string => {
+  if (typeof window !== 'undefined') {
+    // Check for environment variable in browser
+    const envUrl = process.env.NEXT_PUBLIC_TONCONNECT_MANIFEST_URL;
+    if (envUrl && envUrl.startsWith('https://')) {
+      return envUrl;
+    }
+  }
+  // Fallback to default HTTPS URL
+  return process.env.NEXT_PUBLIC_TONCONNECT_MANIFEST_URL || 'https://app.gstdtoken.com/tonconnect-manifest.json';
+};
 
 function App({ Component, pageProps }: AppProps) {
-  const [isClient, setIsClient] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
     // Initialize Telegram WebApp on mount
     if (typeof window !== 'undefined') {
       initTelegramWebApp();
-      setIsClient(true);
+      setIsMounted(true);
     }
   }, []);
 
+  // Return null or loader until mounted
+  if (!isMounted) {
+    return null;
+  }
+
+  const manifestUrl = getManifestUrl();
+
   return (
     <ErrorBoundary>
-      {isClient ? (
-        <TonConnectUIProvider 
-          manifestUrl={manifestUrl}
-          actionsConfiguration={{
-            twaReturnUrl: 'https://t.me/gstdtoken_bot'
-          }}
-          restoreConnection={true}
-          uiPreferences={{
-            theme: THEME.DARK,
-            borderRadius: 'm'
-          }}
-          language="ru"
-        >
-          <Component {...pageProps} />
-          <Toaster 
-            position="top-right"
-            richColors
-            closeButton
-          />
-        </TonConnectUIProvider>
-      ) : (
-        // Render without TonConnectUIProvider during SSR
-        <>
-          <Component {...pageProps} />
-          <Toaster 
-            position="top-right"
-            richColors
-            closeButton
-          />
-        </>
-      )}
+      <TonConnectUIProvider 
+        manifestUrl={manifestUrl}
+        actionsConfiguration={{
+          twaReturnUrl: 'https://t.me/gstdtoken_bot'
+        }}
+        restoreConnection={true}
+        uiPreferences={{
+          theme: THEME.DARK,
+          borderRadius: 'm'
+        }}
+        language="ru"
+      >
+        <Component {...pageProps} />
+        <Toaster 
+          position="top-right"
+          richColors
+          closeButton
+        />
+      </TonConnectUIProvider>
     </ErrorBoundary>
   );
 }
