@@ -132,10 +132,14 @@ export function applyTelegramTheme(theme: TelegramThemeParams) {
 
   const root = document.documentElement;
   
-  // Core theme colors
+  // Core theme colors - background is critical
   if (theme.bg_color) {
     root.style.setProperty('--tg-theme-bg-color', theme.bg_color);
     root.style.setProperty('--tg-bg-color', theme.bg_color);
+    // Apply to body background immediately
+    if (typeof document !== 'undefined' && document.body) {
+      document.body.style.backgroundColor = theme.bg_color;
+    }
   }
   if (theme.text_color) {
     root.style.setProperty('--tg-theme-text-color', theme.text_color);
@@ -150,14 +154,17 @@ export function applyTelegramTheme(theme: TelegramThemeParams) {
     root.style.setProperty('--tg-link-color', theme.link_color);
   }
   
-  // Button colors (critical for UI)
+  // Button colors (critical for UI) - applied with higher priority
   if (theme.button_color) {
     root.style.setProperty('--tg-theme-button-color', theme.button_color);
     root.style.setProperty('--tg-button-color', theme.button_color);
+    // Also set as primary button color for Tailwind/component usage
+    root.style.setProperty('--tg-primary-button-color', theme.button_color);
   }
   if (theme.button_text_color) {
     root.style.setProperty('--tg-theme-button-text-color', theme.button_text_color);
     root.style.setProperty('--tg-button-text-color', theme.button_text_color);
+    root.style.setProperty('--tg-primary-button-text-color', theme.button_text_color);
   }
   
   // Background colors
