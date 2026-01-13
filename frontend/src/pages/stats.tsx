@@ -6,6 +6,7 @@ import TreasuryWidget from '../components/dashboard/TreasuryWidget';
 import XAUtChart from '../components/stats/XAUtChart';
 import { TrendingUp, Users, CheckCircle, Coins } from 'lucide-react';
 import { logger } from '../lib/logger';
+import { API_BASE_URL } from '../lib/config';
 
 export const getStaticProps: GetStaticProps = async ({ locale }) => {
   return {
@@ -60,7 +61,7 @@ export default function StatsPage() {
 
   const loadStats = async () => {
     try {
-      const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/+$/, '');
+      const apiBase = API_BASE_URL;
       const response = await fetch(`${apiBase}/api/v1/stats/public`);
       
       if (!response.ok) {
@@ -96,7 +97,7 @@ export default function StatsPage() {
 
   const loadPoolStatus = async () => {
     try {
-      const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/+$/, '');
+      const apiBase = API_BASE_URL;
       const response = await fetch(`${apiBase}/api/v1/pool/status`);
       
       if (!response.ok) {

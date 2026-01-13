@@ -105,7 +105,8 @@ services:
     restart: always
     env_file: .env
     depends_on:
-      - backend
+      gstd_backend:
+        condition: service_healthy
     logging:
       driver: "json-file"
       options:

@@ -7,6 +7,7 @@ import {
 import { SkeletonLoader } from '../common/SkeletonLoader';
 import { logger } from '../../lib/logger';
 import { apiGet } from '../../lib/apiClient';
+import { API_BASE_URL } from '../../lib/config';
 
 interface Stats {
   processing_tasks: number;
@@ -73,7 +74,7 @@ export default function StatsPanel() {
 
   const loadPoolStatus = async () => {
     try {
-      const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/+$/, '');
+      const apiBase = API_BASE_URL;
       const response = await fetch(`${apiBase}/api/v1/pool/status`);
       
       if (!response.ok) {

@@ -3,6 +3,7 @@ import { useTranslation } from 'next-i18next';
 import { useWalletStore } from '../../store/walletStore';
 import { logger } from '../../lib/logger';
 import { toast } from '../../lib/toast';
+import { API_BASE_URL } from '../../lib/config';
 
 interface CreateTaskModalProps {
   onClose: () => void;
@@ -32,7 +33,7 @@ export default function CreateTaskModal({ onClose, onTaskCreated }: CreateTaskMo
     setLoading(true);
 
     try {
-      const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/+$/, '');
+      const apiBase = API_BASE_URL;
       const response = await fetch(`${apiBase}/api/v1/tasks`, {
         method: 'POST',
         headers: {

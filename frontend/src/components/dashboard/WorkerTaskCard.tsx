@@ -5,6 +5,7 @@ import { useWalletStore } from '../../store/walletStore';
 import { useTonConnectUI } from '@tonconnect/ui-react';
 import { getTaskRunner, TaskRunnerProgress } from '../../lib/taskRunner';
 import { triggerHapticImpact, triggerHapticNotification } from '../../lib/telegram';
+import { API_BASE_URL } from '../../lib/config';
 import { toast } from '../../lib/toast';
 import { Play, CheckCircle2, Loader2 } from 'lucide-react';
 
@@ -89,7 +90,7 @@ export default function WorkerTaskCard({ task, onTaskCompleted }: WorkerTaskCard
       }
 
       // Submit result to backend with signature
-      const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/+$/, '');
+      const apiBase = API_BASE_URL;
       const submitResponse = await fetch(`${apiBase}/api/v1/tasks/worker/submit`, {
         method: 'POST',
         headers: {

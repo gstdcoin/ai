@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'next-i18next';
 import { logger } from '../../lib/logger';
+import { API_BASE_URL } from '../../lib/config';
 
 interface Stats {
   processing_tasks: number;
@@ -43,7 +44,7 @@ export default function SystemStatusWidget({ onStatsUpdate }: SystemStatusWidget
 
   const loadStats = async () => {
     try {
-      const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/+$/, '');
+      const apiBase = API_BASE_URL;
       const response = await fetch(`${apiBase}/api/v1/stats`, {
         method: 'GET',
         headers: {
