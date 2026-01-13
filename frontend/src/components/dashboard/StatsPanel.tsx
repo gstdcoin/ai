@@ -6,6 +6,7 @@ import {
 } from 'recharts';
 import { SkeletonLoader } from '../common/SkeletonLoader';
 import { logger } from '../../lib/logger';
+import { apiGet } from '../../lib/apiClient';
 
 interface Stats {
   processing_tasks: number;
@@ -39,23 +40,7 @@ export default function StatsPanel() {
 
   const loadStats = async () => {
     try {
-      const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/+$/, '');
-      const response = await fetch(`${apiBase}/api/v1/stats`);
-      
-      if (!response.ok) {
-        // Skip this update cycle if server returns error, don't crash
-        logger.warn(`Stats API returned ${response.status}: ${response.statusText}`);
-        return;
-      }
-      
-      // Check if response is JSON before parsing
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        logger.warn('Stats API returned non-JSON response, skipping');
-        return;
-      }
-      
-      const data = await response.json();
+      const data = await apiGet<Stats>('/stats');
       
       // Handle empty or invalid response
       if (!data || typeof data !== 'object') {
@@ -64,7 +49,7 @@ export default function StatsPanel() {
       }
       
       setStats(data);
-    } catch (error) {
+    } catch (error: any) {
       // Silently skip this update cycle on error, don't crash the component
       logger.error('Error loading stats', error);
       // Don't set stats to null on error in setInterval - keep previous data
@@ -75,21 +60,7 @@ export default function StatsPanel() {
 
   const loadCompletionData = async () => {
     try {
-      const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/+$/, '');
-      const response = await fetch(`${apiBase}/api/v1/stats/tasks/completion?period=day`);
-      
-      if (!response.ok) {
-        logger.warn(`Task completion API returned ${response.status}: ${response.statusText}`);
-        return;
-      }
-      
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        logger.warn('Task completion API returned non-JSON response, skipping');
-        return;
-      }
-      
-      const data = await response.json();
+      const data = await apiGet<{ data: TaskCompletionData[] }>('/stats/tasks/completion', { period: 'day' });
       
       if (data && data.data && Array.isArray(data.data)) {
         setCompletionData(data.data);

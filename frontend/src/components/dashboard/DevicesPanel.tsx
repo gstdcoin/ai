@@ -6,6 +6,7 @@ import { EmptyState } from '../common/EmptyState';
 import { Server, Plus } from 'lucide-react';
 import { useAutoTaskWorker } from '../../hooks/useAutoTaskWorker';
 import { logger } from '../../lib/logger';
+import { apiGet } from '../../lib/apiClient';
 
 interface Node {
   id: string;
@@ -40,12 +41,11 @@ export default function DevicesPanel() {
     
     setLoading(true);
     try {
-      const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/+$/, '');
-      const response = await fetch(`${apiBase}/api/v1/nodes/my?wallet_address=${address}`);
-      const data = await response.json();
+      const data = await apiGet<{ nodes: Node[] }>('/nodes/my', { wallet_address: address });
       setNodes(data.nodes || []);
     } catch (error) {
       logger.error('Error loading nodes', error);
+      setNodes([]);
     } finally {
       setLoading(false);
     }

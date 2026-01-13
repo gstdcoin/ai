@@ -107,12 +107,26 @@ export async function apiRequest<T = any>(
   
   const url = `${apiBaseUrl}${finalEndpoint}`;
 
+  // Get session token from localStorage
+  let sessionToken: string | null = null;
+  if (typeof window !== 'undefined') {
+    sessionToken = localStorage.getItem('session_token');
+  }
+
+  // Build headers with session token
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+    ...options.headers,
+  };
+
+  // Add session token to headers if available
+  if (sessionToken) {
+    headers['X-Session-Token'] = sessionToken;
+  }
+
   const defaultOptions: RequestInit = {
     credentials: 'include' as RequestCredentials,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
+    headers,
     ...options,
   };
 
