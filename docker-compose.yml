@@ -1,5 +1,5 @@
 services:
-  postgres:
+  gstd_postgres:
     image: postgres:15-alpine
     container_name: gstd_postgres
     restart: always
@@ -10,15 +10,15 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
+      test: ["CMD-SHELL", "pg_isready -U postgres -d distributed_computing"]
+      interval: 5s
       timeout: 5s
       retries: 5
       start_period: 10s
     networks:
       - gstd_network
 
-  redis:
+  gstd_redis:
     image: redis:7-alpine
     container_name: gstd_redis
     restart: always
@@ -36,14 +36,14 @@ services:
     container_name: gstd_backend
     restart: always
     depends_on:
-      postgres:
+      gstd_postgres:
         condition: service_healthy
-      redis:
+      gstd_redis:
         condition: service_healthy
     environment:
-      - DB_HOST=postgres
+      - DB_HOST=gstd_postgres
       - DB_PORT=5432
-      - REDIS_HOST=redis
+      - REDIS_HOST=gstd_redis
       - REDIS_PORT=6379
     env_file: .env
     networks:
