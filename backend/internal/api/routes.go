@@ -39,6 +39,8 @@ func SetupRoutes(
 	cacheService *services.CacheService,
 	errorLogger *services.ErrorLogger,
 ) {
+	log.Printf("🔧 SetupRoutes: Starting route setup, redisClient type: %T", redisClient)
+	
 	// Initialize ValidationService dependencies
 	validationService.SetDependencies(trustService, entropyService, assignmentService, encryptionService, tonService, cacheService)
 
@@ -51,7 +53,12 @@ func SetupRoutes(
 		if rc, ok := redisClient.(*redis.Client); ok && rc != nil {
 			rateLimiter = NewRateLimiter(rc)
 			router.Use(rateLimiter.RateLimitMiddleware())
+			log.Printf("✅ Rate limiter initialized with Redis client")
+		} else {
+			log.Printf("⚠️  Rate limiter: Redis client type assertion failed")
 		}
+	} else {
+		log.Printf("⚠️  Rate limiter: Redis client is nil")
 	}
 
 	// API versioning
@@ -90,13 +97,21 @@ func SetupRoutes(
 		if redisClient != nil {
 			if rc, ok := redisClient.(*redis.Client); ok && rc != nil {
 				sessionMiddleware = ValidateSession(rc)
+				log.Printf("✅ Session middleware initialized and will be applied to protected routes")
+			} else {
+				log.Printf("⚠️  Redis client type assertion failed or is nil")
 			}
+		} else {
+			log.Printf("⚠️  Redis client is nil - session middleware will not be applied")
 		}
 		
 		// Apply session middleware to protected routes
 		protected := v1.Group("")
 		if sessionMiddleware != nil {
 			protected.Use(sessionMiddleware)
+			log.Printf("✅ Session middleware applied to protected group (includes /tasks and /nodes)")
+		} else {
+			log.Printf("⚠️  Session middleware is nil - protected routes will NOT require session")
 		}
 		
 		// Tasks (protected)
