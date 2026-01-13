@@ -19,3 +19,4 @@ backend/server
 *.sql
 *.log
 *.rdb
+restart_log.txt
