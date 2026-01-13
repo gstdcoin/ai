@@ -60,72 +60,19 @@ func SetupRoutes(
 	
 	v1 := api.Group("/v1")
 	{
-		// API version endpoint
+		// Public endpoints (no session required)
 		v1.GET("/version", GetAPIVersion())
-		// Tasks
-		v1.POST("/tasks", ValidateTaskRequest(), createTask(taskService))
-		v1.GET("/tasks", getTasks(taskService))
-		v1.GET("/tasks/:id", getTask(taskService))
-		v1.GET("/tasks/:id/payment", getTaskWithPayment(taskPaymentService))
-
-		// Devices
-		v1.POST("/devices/register", ValidateDeviceRequest(errorLogger), registerDevice(deviceService, errorLogger))
-		v1.GET("/devices", getDevices(deviceService))
-		v1.GET("/devices/my", getMyDevices(deviceService))
-
-		// Device endpoints
-		v1.GET("/device/tasks/available", getAvailableTasks(assignmentService))
-		v1.POST("/device/tasks/:id/claim", claimTask(assignmentService))
-		v1.POST("/device/tasks/:id/result", ValidateResultSubmission(), submitResult(resultService, validationService))
-		v1.GET("/device/tasks/:id/result", getTaskResult(resultService))
-
-		// Stats
-		v1.GET("/stats", getStats(statsService))
+		v1.GET("/health", getHealth(db.(*sql.DB), tonService, tonConfig))
 		v1.GET("/stats/public", getPublicStats(db.(*sql.DB), tonService, tonConfig, errorLogger))
-		v1.GET("/stats/tasks/completion", getTaskCompletionHistory(statsService))
-
-		// Admin (protected by RequireAdminWallet middleware)
-		admin := v1.Group("/admin")
-		admin.Use(RequireAdminWallet(tonConfig))
-		{
-			admin.GET("/health", getAdminHealth(db.(*sql.DB), redisClient.(*redis.Client), rewardEngine, payoutRetryService))
-			admin.GET("/withdrawals/pending", getPendingWithdrawals(db.(*sql.DB)))
-			admin.POST("/withdrawals/:id/approve", approveWithdrawal(db.(*sql.DB), rewardEngine))
-		}
-
-		// Admin commission endpoints (require admin wallet authorization)
-		adminCommissionGroup := v1.Group("/admin/commission")
-		adminCommissionGroup.Use(RequireAdminWallet(tonConfig))
-		{
-			adminCommissionGroup.GET("/balance", getCommissionBalance(paymentService))
-			adminCommissionGroup.GET("/withdraw-intent", getCommissionWithdrawIntent(paymentService, tonConfig))
-		}
-
-		// Wallet
-		v1.GET("/wallet/gstd-balance", getGSTDBalance(tonService, tonConfig))
-		v1.GET("/wallet/efficiency", getEfficiency(tonService, tonConfig))
-
-		// Network
+		v1.GET("/openapi.json", GetOpenAPISpec())
 		v1.GET("/network/entropy", getEntropyStats(taskService))
-		
-		// Payments
-		v1.POST("/payments/payout-intent", createPayoutIntent(paymentService))
-		
-		// Pool Monitoring
 		v1.GET("/pool/status", getPoolStatus(poolMonitorService))
 		
-		// Health check endpoint
-		v1.GET("/health", getHealth(db.(*sql.DB), tonService, tonConfig))
-		
-		// Metrics endpoint (Prometheus format)
+		// Metrics endpoint (Prometheus format) - public
 		metricsService := NewMetricsService(db.(*sql.DB), redisClient.(*redis.Client))
 		v1.GET("/metrics", metricsService.GetMetrics())
 		
-		// OpenAPI specification
-		v1.GET("/openapi.json", GetOpenAPISpec())
-
-		// Users
-		// Create TonConnect validator
+		// Users - login is public
 		tonConnectValidator := services.NewTonConnectValidator(tonService)
 		if errorLogger != nil {
 			tonConnectValidator.SetErrorLogger(errorLogger)
@@ -138,16 +85,75 @@ func SetupRoutes(
 		}
 		v1.POST("/users/login", loginUser(userService, tonConnectValidator, redisClientForLogin))
 
-		// Nodes
-		v1.POST("/nodes/register", registerNode(nodeService))
-		v1.GET("/nodes/my", getMyNodes(nodeService))
+		// Protected endpoints (require session)
+		var sessionMiddleware gin.HandlerFunc
+		if redisClient != nil {
+			if rc, ok := redisClient.(*redis.Client); ok && rc != nil {
+				sessionMiddleware = ValidateSession(rc)
+			}
+		}
+		
+		// Apply session middleware to protected routes
+		protected := v1.Group("")
+		if sessionMiddleware != nil {
+			protected.Use(sessionMiddleware)
+		}
+		
+		// Tasks (protected)
+		protected.POST("/tasks", ValidateTaskRequest(), createTask(taskService))
+		protected.GET("/tasks", getTasks(taskService))
+		protected.GET("/tasks/:id", getTask(taskService))
+		protected.GET("/tasks/:id/payment", getTaskWithPayment(taskPaymentService))
 
-		// Task Payment
-		v1.POST("/tasks/create", createTaskWithPayment(taskPaymentService, taskRateLimiter))
+		// Devices (protected)
+		protected.POST("/devices/register", ValidateDeviceRequest(errorLogger), registerDevice(deviceService, errorLogger))
+		protected.GET("/devices", getDevices(deviceService))
+		protected.GET("/devices/my", getMyDevices(deviceService))
 
-		// Worker endpoints
-		v1.GET("/tasks/worker/pending", getWorkerPendingTasks(taskPaymentService))
-		v1.POST("/tasks/worker/submit", submitWorkerResult(taskPaymentService, rewardEngine))
+		// Device endpoints (protected)
+		protected.GET("/device/tasks/available", getAvailableTasks(assignmentService))
+		protected.POST("/device/tasks/:id/claim", claimTask(assignmentService))
+		protected.POST("/device/tasks/:id/result", ValidateResultSubmission(), submitResult(resultService, validationService))
+		protected.GET("/device/tasks/:id/result", getTaskResult(resultService))
+
+		// Stats (protected, except /stats/public which is public)
+		protected.GET("/stats", getStats(statsService))
+		protected.GET("/stats/tasks/completion", getTaskCompletionHistory(statsService))
+
+		// Admin (protected by session + RequireAdminWallet middleware)
+		admin := protected.Group("/admin")
+		admin.Use(RequireAdminWallet(tonConfig))
+		{
+			admin.GET("/health", getAdminHealth(db.(*sql.DB), redisClient.(*redis.Client), rewardEngine, payoutRetryService))
+			admin.GET("/withdrawals/pending", getPendingWithdrawals(db.(*sql.DB)))
+			admin.POST("/withdrawals/:id/approve", approveWithdrawal(db.(*sql.DB), rewardEngine))
+		}
+
+		// Admin commission endpoints (require session + admin wallet authorization)
+		adminCommissionGroup := protected.Group("/admin/commission")
+		adminCommissionGroup.Use(RequireAdminWallet(tonConfig))
+		{
+			adminCommissionGroup.GET("/balance", getCommissionBalance(paymentService))
+			adminCommissionGroup.GET("/withdraw-intent", getCommissionWithdrawIntent(paymentService, tonConfig))
+		}
+
+		// Wallet (protected)
+		protected.GET("/wallet/gstd-balance", getGSTDBalance(tonService, tonConfig))
+		protected.GET("/wallet/efficiency", getEfficiency(tonService, tonConfig))
+		
+		// Payments (protected)
+		protected.POST("/payments/payout-intent", createPayoutIntent(paymentService))
+
+		// Nodes (protected)
+		protected.POST("/nodes/register", registerNode(nodeService))
+		protected.GET("/nodes/my", getMyNodes(nodeService))
+
+		// Task Payment (protected)
+		protected.POST("/tasks/create", createTaskWithPayment(taskPaymentService, taskRateLimiter))
+
+		// Worker endpoints (protected)
+		protected.GET("/tasks/worker/pending", getWorkerPendingTasks(taskPaymentService))
+		protected.POST("/tasks/worker/submit", submitWorkerResult(taskPaymentService, rewardEngine))
 	}
 
 	// WebSocket endpoint

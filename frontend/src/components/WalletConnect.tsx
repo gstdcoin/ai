@@ -165,12 +165,27 @@ export default function WalletConnect() {
       }
 
       // Prepare connect_payload object with properly formatted signature
-      const connect_payload = {
+      let connect_payload = {
         wallet_address: walletAddress,
         signature: signatureObj,
         payload: payload,
         public_key: publicKey,
       };
+
+      // Принудительная проверка перед отправкой requestBody
+      // Если signature является строкой или объектом без поля type, оборачиваем её
+      if (typeof connect_payload.signature === 'string' || 
+          (typeof connect_payload.signature === 'object' && 
+           connect_payload.signature !== null && 
+           !('type' in connect_payload.signature))) {
+        const signatureValue = typeof connect_payload.signature === 'string' 
+          ? connect_payload.signature 
+          : (connect_payload.signature as any).signature || connect_payload.signature;
+        connect_payload.signature = { 
+          signature: signatureValue, 
+          type: 'test-item' 
+        };
+      }
 
       // Prepare request body with full connect_payload
       const requestBody = {
