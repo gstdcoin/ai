@@ -2,10 +2,17 @@ import { useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { useWalletStore } from '../../store/walletStore';
 import { logger } from '../../lib/logger';
+import { API_BASE_URL } from '../../lib/config';
+import { apiPost } from '../../lib/apiClient';
 
 interface RegisterDeviceModalProps {
   onClose: () => void;
   onDeviceRegistered?: (nodeId: string) => void;
+}
+
+interface DeviceSpecs {
+  cpu?: string;
+  ram?: number;
 }
 
 export default function RegisterDeviceModal({ onClose, onDeviceRegistered }: RegisterDeviceModalProps) {
@@ -32,7 +39,7 @@ export default function RegisterDeviceModal({ onClose, onDeviceRegistered }: Reg
     setError(null);
 
     try {
-      const specs: any = {};
+      const specs: DeviceSpecs = {};
       if (formData.cpu) {
         specs.cpu = formData.cpu;
       }
@@ -40,37 +47,19 @@ export default function RegisterDeviceModal({ onClose, onDeviceRegistered }: Reg
         specs.ram = parseInt(formData.ram) || 0;
       }
 
-      // Treat NEXT_PUBLIC_API_URL as API base (no trailing slash, no /api suffix)
-      const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/+$/, '');
-      const response = await fetch(`${apiBase}/api/v1/nodes/register?wallet_address=${address}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      interface NodeResponse {
+        id: string;
+        [key: string]: unknown;
+      }
+      
+      const nodeData = await apiPost<NodeResponse>(
+        `/nodes/register?wallet_address=${address}`,
+        {
           name: formData.name,
           specs: specs,
-        }),
-      });
-
-      // Handle non-JSON and error responses gracefully to avoid cryptic JSON parse errors
-      const rawText = await response.text();
-
-      if (!response.ok) {
-        try {
-          const errorData = JSON.parse(rawText);
-          throw new Error(errorData.error || 'Failed to register device');
-        } catch {
-          throw new Error(rawText || 'Failed to register device');
         }
-      }
-
-      let nodeData: any;
-      try {
-        nodeData = JSON.parse(rawText);
-      } catch {
-        throw new Error('Unexpected response from server while registering device');
-      }
+      );
+      
       setNodeId(nodeData.id);
       setSuccess(true);
       

@@ -182,7 +182,7 @@ export class TaskRunner {
       };
       
       this.worker.onerror = (error) => {
-        console.error('TaskRunner worker error:', error);
+        logger.error('TaskRunner worker error', error);
         this.isRunning = false;
         this.currentTaskId = null;
       };

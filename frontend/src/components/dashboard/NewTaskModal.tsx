@@ -5,6 +5,8 @@ import { useTonConnectUI } from '@tonconnect/ui-react';
 import { logger } from '../../lib/logger';
 import { toast } from '../../lib/toast';
 import { createTaskSchema, type CreateTaskFormData } from '../../lib/validation';
+import { API_BASE_URL } from '../../lib/config';
+import { apiGet, apiPost } from '../../lib/apiClient';
 
 interface NewTaskModalProps {
   onClose: () => void;
@@ -58,14 +60,11 @@ export default function NewTaskModal({ onClose, onTaskCreated }: NewTaskModalPro
 
     try {
       // Проверка баланса GSTD только при создании задания
-      const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/+$/, '');
-      const balanceResponse = await fetch(`${apiBase}/api/v1/wallet/gstd-balance?address=${address}`);
-      
       // Use the same threshold as backend (0.000001 GSTD)
       const MIN_GSTD_BALANCE = 0.000001;
       
-      if (balanceResponse.ok) {
-        const balanceData = await balanceResponse.json();
+      try {
+        const balanceData = await apiGet<{ balance: string }>(`/wallet/gstd-balance?address=${address}`);
         const balance = parseFloat(balanceData.balance) || 0;
         
         // Check balance directly - if balance is >= threshold, allow task creation
@@ -73,33 +72,23 @@ export default function NewTaskModal({ onClose, onTaskCreated }: NewTaskModalPro
         if (balance < MIN_GSTD_BALANCE) {
           throw new Error(t('gstd_required_for_tasks') || 'You need at least 0.000001 GSTD tokens to create tasks. Please purchase GSTD tokens first.');
         }
-      } else {
+      } catch (balanceErr) {
         // If API call fails, log warning but don't block task creation
         // The backend will handle the actual balance check during task creation
-        logger.warn('Failed to check GSTD balance, but allowing task creation to proceed. Backend will verify balance.');
+        logger.warn('Failed to check GSTD balance, but allowing task creation to proceed. Backend will verify balance.', balanceErr);
       }
 
       const budget = parseFloat(formData.budget);
       const payloadObj = formData.payload.trim() ? JSON.parse(formData.payload) : {};
 
-      const response = await fetch(`${apiBase}/api/v1/tasks/create?wallet_address=${address}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      const data = await apiPost<CreateTaskResponse>(
+        `/tasks/create?wallet_address=${address}`,
+        {
           type: formData.type,
           budget: budget,
           payload: payloadObj,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create task');
-      }
-
-      const data: CreateTaskResponse = await response.json();
+        }
+      );
       setTaskData(data);
       setStep('payment');
       toast.success('Task created successfully', 'Please complete the payment');
@@ -176,18 +165,13 @@ export default function NewTaskModal({ onClose, onTaskCreated }: NewTaskModalPro
     if (step === 'confirming' && taskData) {
       const interval = setInterval(async () => {
         try {
-          const paymentApiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/+$/, '');
-          const response = await fetch(`${paymentApiUrl}/api/v1/tasks/${taskData.task_id}/payment`);
-          
-          if (response.ok) {
-            const task = await response.json();
-            if (task.status === 'queued') {
-              setStep('success');
-              if (onTaskCreated) {
-                onTaskCreated();
-              }
-              clearInterval(interval);
+          const task = await apiGet<{ status: string }>(`/tasks/${taskData.task_id}/payment`);
+          if (task.status === 'queued') {
+            setStep('success');
+            if (onTaskCreated) {
+              onTaskCreated();
             }
+            clearInterval(interval);
           }
         } catch (err) {
           logger.error('Error checking task status', err);

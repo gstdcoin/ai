@@ -198,10 +198,7 @@ export default function WalletConnect() {
       };
       
       // Log request body before sending to backend
-      console.log("SENDING TO BACKEND:", requestBody);
-      
-      // DEBUG: Log before API call to track if request is sent
-      console.log('🚀 [WalletConnect] Sending login/registration request:', {
+      logger.debug('Sending request to backend', {
         url: '/users/login',
         wallet_address: walletAddress,
         has_signature: !!signature,
@@ -209,7 +206,6 @@ export default function WalletConnect() {
         payload_length: payload.length,
         has_connect_payload: !!requestBody.connect_payload,
         signature_type: connect_payload.signature.type,
-        timestamp: new Date().toISOString(),
       });
       
       logger.debug('Sending login request with connect_payload', {
