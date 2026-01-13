@@ -9,6 +9,7 @@ import { ClipboardList } from 'lucide-react';
 import { triggerHapticImpact } from '../../lib/telegram';
 import { logger } from '../../lib/logger';
 import { toast } from '../../lib/toast';
+import { apiGet, apiPost } from '../../lib/apiClient';
 
 interface Task {
   task_id: string;
@@ -138,15 +139,16 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
   const loadTasks = async () => {
     setLoading(true);
     try {
-      const endpoint = filter === 'my' 
-        ? `/api/v1/tasks?requester=${address}`
-        : filter === 'available'
-        ? `/api/v1/device/tasks/available?device_id=${address}` // Use address as device_id for browser workers
-        : '/api/v1/tasks';
+      let data: { tasks: Task[] };
       
-      const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/+$/, '');
-      const response = await fetch(`${apiBase}${endpoint}`);
-      const data = await response.json();
+      if (filter === 'my') {
+        data = await apiGet<{ tasks: Task[] }>(`/tasks`, { requester: address });
+      } else if (filter === 'available') {
+        data = await apiGet<{ tasks: Task[] }>(`/device/tasks/available`, { device_id: address });
+      } else {
+        data = await apiGet<{ tasks: Task[] }>('/tasks');
+      }
+      
       const newTasks = data.tasks || [];
       
       // Check for newly completed tasks and trigger confetti
@@ -223,24 +225,19 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
 
     setClaimingCompensation(task.task_id);
     try {
-      const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/+$/, '');
-      
       // Get node wallet address from device_id (node_id)
       // assigned_device is node_id, need to get wallet_address from nodes table
       let executorWalletAddress = address; // Default to current user's address
       
       if (task.assigned_device) {
         try {
-          const nodesResponse = await fetch(`${apiBase}/api/v1/nodes/my?wallet_address=${address}`);
-          if (nodesResponse.ok) {
-            const nodesData = await nodesResponse.json();
-            const node = nodesData.nodes?.find((n: any) => n.id === task.assigned_device);
-            if (node?.wallet_address) {
-              executorWalletAddress = node.wallet_address;
-            } else {
-              // If node not found, use current address (backward compatibility)
-              logger.warn('Node not found, using current wallet address', { nodeId: task.assigned_device });
-            }
+          const nodesData = await apiGet<{ nodes: Array<{ id: string; wallet_address: string }> }>('/nodes/my', { wallet_address: address });
+          const node = nodesData.nodes?.find((n) => n.id === task.assigned_device);
+          if (node?.wallet_address) {
+            executorWalletAddress = node.wallet_address;
+          } else {
+            // If node not found, use current address (backward compatibility)
+            logger.warn('Node not found, using current wallet address', { nodeId: task.assigned_device });
           }
         } catch (err) {
           logger.warn('Could not fetch node info, using current wallet address', err);
@@ -248,22 +245,20 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
       }
       
       // Get payout intent
-      const intentResponse = await fetch(`${apiBase}/api/v1/payments/payout-intent`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          task_id: task.task_id,
-          executor_address: executorWalletAddress,
-        }),
-      });
-
-      if (!intentResponse.ok) {
-        throw new Error('Failed to get payout intent');
+      interface PayoutIntent {
+        intent: string;
+        executor_address: string;
+        platform_fee_ton: number;
+        executor_reward_ton: number;
+        task_id: string;
+        to_address: string;
+        amount_nano: string;
       }
-
-      const intent = await intentResponse.json();
+      
+      const intent = await apiPost<PayoutIntent>('/payments/payout-intent', {
+        task_id: task.task_id,
+        executor_address: executorWalletAddress,
+      });
 
       // Build Tact-compatible Cell payload using @ton/core
       const { beginCell, Address } = await import('@ton/core');

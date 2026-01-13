@@ -2,6 +2,7 @@ import { useState, useEffect, memo } from 'react';
 import { useTranslation } from 'next-i18next';
 import { useWalletStore } from '../../store/walletStore';
 import { logger } from '../../lib/logger';
+import { apiGet } from '../../lib/apiClient';
 
 interface TaskDetailsModalProps {
   taskId: string;
@@ -43,12 +44,7 @@ function TaskDetailsModal({ taskId, onClose }: TaskDetailsModalProps) {
   const loadTaskDetails = async () => {
     setLoading(true);
     try {
-      const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/+$/, '');
-      const response = await fetch(`${apiBase}/api/v1/tasks/${taskId}`);
-      if (!response.ok) {
-        throw new Error(`Failed to load task: ${response.statusText}`);
-      }
-      const data = await response.json();
+      const data = await apiGet<TaskDetails>(`/tasks/${taskId}`);
       setTask(data);
     } catch (error) {
       logger.error('Error loading task details', error);
@@ -61,16 +57,15 @@ function TaskDetailsModal({ taskId, onClose }: TaskDetailsModalProps) {
     if (!address) return;
     setLoadingResult(true);
     try {
-      const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/+$/, '');
       // Use device endpoint for result retrieval
-      const response = await fetch(
-        `${apiBase}/api/v1/device/tasks/${taskId}/result?requester_address=${address}`
+      const data = await apiGet<{ result: unknown }>(
+        `/device/tasks/${taskId}/result`,
+        { requester_address: address }
       );
-      if (!response.ok) {
-        throw new Error(`Failed to load result: ${response.statusText}`);
+      
+      if (data && data.result) {
+        setResult(data.result);
       }
-      const data = await response.json();
-      setResult(data.result);
     } catch (error) {
       logger.error('Error loading result', error);
     } finally {

@@ -1,6 +1,7 @@
 // Task Worker - Background execution loop for processing tasks
 import { useWalletStore } from '../store/walletStore';
 import { logger } from './logger';
+import { WS_URL, API_BASE_URL } from './config';
 
 export interface TaskNotification {
   task: {
@@ -42,9 +43,7 @@ export class TaskWorker {
   }
 
   connect() {
-    const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/+$/, '');
-    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 
-      (apiUrl.replace('https://', 'wss://').replace('http://', 'ws://') || 'ws://localhost:8080');
+    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || WS_URL;
     const url = `${wsUrl}/ws?device_id=${this.deviceID}`;
 
     try {
@@ -114,7 +113,7 @@ export class TaskWorker {
       // Reconnecting
       setTimeout(() => this.connect(), delay);
     } else {
-      console.error('TaskWorker: Max reconnection attempts reached');
+      logger.error('TaskWorker: Max reconnection attempts reached');
       if (this.onError) {
         this.onError(new Error('Failed to reconnect to WebSocket'));
       }
@@ -163,7 +162,7 @@ async function loadWasmModule(modelUrl: string): Promise<WebAssembly.Module> {
     wasmModuleCache.set(modelUrl, module);
     return module;
   } catch (error) {
-    console.error('Failed to load Wasm module:', error);
+    logger.error('Failed to load Wasm module', error as Error);
     throw error;
   }
 }
@@ -331,7 +330,7 @@ export async function submitTaskResult(
   executionTimeMs: number,
   tonConnectUI: any
 ): Promise<void> {
-  const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080').replace(/\/+$/, '');
+  const apiBase = API_BASE_URL;
   
   try {
     // Sign the result
