@@ -1,4 +1,4 @@
-import { useState, useEffect, memo } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'next-i18next';
 import { useWalletStore } from '../../store/walletStore';
 import RegisterDeviceModal from './RegisterDeviceModal';
@@ -7,6 +7,7 @@ import { Server, Plus } from 'lucide-react';
 import { useAutoTaskWorker } from '../../hooks/useAutoTaskWorker';
 import { logger } from '../../lib/logger';
 import { apiGet } from '../../lib/apiClient';
+import { toast } from '../../lib/toast';
 
 interface Node {
   id: string;
@@ -32,20 +33,34 @@ export default function DevicesPanel() {
 
   useEffect(() => {
     if (address) {
+      // If кошелёк подключён – грузим устройства
       loadNodes();
+    } else {
+      // Если адреса нет – сразу убираем загрузку и очищаем список
+      setNodes([]);
+      setLoading(false);
     }
   }, [address]);
 
   const loadNodes = async () => {
-    if (!address) return;
-    
+    if (!address) {
+      logger.warn('Cannot load nodes: wallet address is not available');
+      return;
+    }
+
     setLoading(true);
     try {
       const data = await apiGet<{ nodes: Node[] }>('/nodes/my', { wallet_address: address });
       setNodes(data.nodes || []);
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Error loading nodes', error);
       setNodes([]);
+      // Показываем понятное сообщение вместо «тихой» ошибки
+      const message = error?.message || 'Failed to load devices';
+      toast.error(
+        t('error') || 'Error',
+        `${t('failed_to_load_devices') || t('connection_error') || 'Failed to load devices'}: ${message}`,
+      );
     } finally {
       setLoading(false);
     }
@@ -64,6 +79,17 @@ export default function DevicesPanel() {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString();
   };
+
+  // Если кошелёк не подключён – показываем понятное сообщение
+  if (!address) {
+    return (
+      <EmptyState
+        icon={<Server className="text-gray-400" size={48} />}
+        title={t('connect_wallet') || 'Connect Wallet'}
+        description={t('connect_wallet_to_work') || 'Please connect your wallet to view and manage devices.'}
+      />
+    );
+  }
 
   if (loading) {
     return (

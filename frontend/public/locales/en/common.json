@@ -224,6 +224,7 @@
   "gstd_fee": "GSTD Fee",
   "xaut_bought": "XAUt Bought",
   "failed_to_load_stats": "Failed to load statistics",
+  "failed_to_load_devices": "Failed to load devices",
   "failed_to_load_tasks": "Failed to load tasks",
   "no_tasks_desc": "No tasks found. Create a new task to get started.",
   "no_my_tasks_desc": "You haven't created any tasks yet. Create your first task to get started.",
@@ -317,6 +318,9 @@
   "connection_error": "Connection error",
   "failed_to_open_wallet": "Failed to open wallet",
   "failed_to_disconnect": "Failed to disconnect",
-  "please_try_again": "Please try again"
+  "please_try_again": "Please try again",
+  "connection_rejected": "Connection rejected. Please try again or use a different connection method (extension/desktop).",
+  "connection_timeout": "Connection timeout. Please try again.",
+  "network_error": "Network error. Please check your internet connection."
 }
 
