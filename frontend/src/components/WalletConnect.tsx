@@ -63,7 +63,7 @@ export default function WalletConnect() {
         }
       }
 
-      // If signature not found in connectItems, use signData API
+      // If signature not found in connectItems, use signData API (TonConnect v2)
       if (!signature) {
         // Sign payload with TonConnect
         if (!tonConnectUI.connector) {
@@ -72,38 +72,29 @@ export default function WalletConnect() {
 
         // TonConnect v2 signs the SHA-256 hash of the payload
         // Use the same sha256 function as in taskWorker.ts
-        const sha256 = async (message: string): Promise<Uint8Array> => {
+        const sha256Hex = async (message: string): Promise<string> => {
           const msgBuffer = new TextEncoder().encode(message);
           const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-          return new Uint8Array(hashBuffer);
+          const hashArray = Array.from(new Uint8Array(hashBuffer));
+          return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
         };
         
-        const hashArray = await sha256(payload);
-        
-        // TonConnect v2 expects message as bytes or encoded string.
-        // Convert hash to base64 string for maximum compatibility with SDK types.
-        // Use Array.from to avoid TypeScript iteration issues with Uint8Array
-        const hashBase64 = btoa(Array.from(hashArray).map(b => String.fromCharCode(b)).join(''));
+        // Для совместимости с taskWorker.ts используем тот же формат:
+        // connector.signData({ data: <hex>, version: 'v2' })
+        const hashHex = await sha256Hex(payload);
         
         try {
-          // Use 'as any' to bypass TypeScript type checking for SignDataPayload
-          // The actual SDK may use different field names (message/data) depending on version
-          // Add item with ton_proof to satisfy SDK requirements
+          // Используем тот же формат SignDataPayload, что и в taskWorker.ts
+          // чтобы избежать ошибок валидации ('type' is required и т.п.)
           const signResult = await tonConnectUI.connector.signData({
-            schema: 'v2',
-            message: hashBase64,
-            items: [
-              {
-                name: 'ton_proof',
-                payload: hashBase64,
-              }
-            ],
-          } as any);
+            data: hashHex,
+            version: 'v2',
+          });
           // Use 'as any' to bypass TypeScript type checking for signResult
           // TonConnect SDK may return different structures depending on version
           const resultAny = signResult as any;
           
-          // TonConnect returns signature as base64 string
+          // TonConnect возвращает подпись (обычно hex- или base64-строка)
           signature = resultAny.signature;
           
           // Try to get public key from multiple sources
@@ -384,13 +375,28 @@ export default function WalletConnect() {
         return;
       }
 
+      // Verify manifest is accessible before opening modal
+      const manifestUrl = process.env.NEXT_PUBLIC_TONCONNECT_MANIFEST_URL || 'https://app.gstdtoken.com/tonconnect-manifest.json';
+      try {
+        const manifestResponse = await fetch(manifestUrl, { method: 'HEAD' });
+        if (!manifestResponse.ok) {
+          logger.warn('TonConnect manifest may not be accessible', { 
+            url: manifestUrl, 
+            status: manifestResponse.status 
+          });
+        }
+      } catch (manifestErr) {
+        logger.warn('Failed to verify TonConnect manifest', manifestErr);
+        // Continue anyway - manifest might be accessible from wallet
+      }
+
       // Open modal
       logger.debug('Opening connection modal...');
       await tonConnectUI.openModal();
       logger.debug('Modal opened successfully, waiting for wallet connection...');
       
       // Show user feedback
-      toast.info(t('scanning_qr'), t('waiting_connection'));
+      toast.info(t('scanning_qr') || 'Scanning QR code', t('waiting_connection') || 'Waiting for connection...');
       
       // Set up periodic check for connection
       const checkInterval = setInterval(() => {
@@ -405,19 +411,30 @@ export default function WalletConnect() {
         }
       }, 1000); // Check every second
       
-      // Clear interval after 30 seconds
+      // Clear interval after 60 seconds (increased timeout)
       setTimeout(() => {
         clearInterval(checkInterval);
         if (!tonConnectUI.account && !isConnected) {
-          logger.warn('No connection detected after 30 seconds');
-          // Don't show error - user might still be connecting
+          logger.warn('No connection detected after 60 seconds');
+          // Don't show error - user might still be connecting or manually retrying
         }
-      }, 30000);
+      }, 60000);
     } catch (err: any) {
       const errorMsg = err?.message || 'Ошибка открытия модального окна';
       logger.error('Error opening modal', err);
-      setError(errorMsg);
-      toast.error(t('failed_to_open_wallet'), errorMsg);
+      
+      // Provide more specific error messages
+      let userFriendlyError = errorMsg;
+      if (errorMsg.includes('rejected') || errorMsg.includes('отклонено')) {
+        userFriendlyError = t('connection_rejected') || 'Подключение отклонено. Пожалуйста, попробуйте снова или используйте другой способ подключения (расширение/десктоп).';
+      } else if (errorMsg.includes('timeout') || errorMsg.includes('таймаут')) {
+        userFriendlyError = t('connection_timeout') || 'Превышено время ожидания. Пожалуйста, попробуйте снова.';
+      } else if (errorMsg.includes('network') || errorMsg.includes('сеть')) {
+        userFriendlyError = t('network_error') || 'Ошибка сети. Проверьте подключение к интернету.';
+      }
+      
+      setError(userFriendlyError);
+      toast.error(t('failed_to_open_wallet') || 'Не удалось открыть кошелёк', userFriendlyError);
     }
   };
 
