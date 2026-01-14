@@ -142,8 +142,20 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
       let data: { tasks: Task[] };
       
       if (filter === 'my') {
+        if (!address) {
+          logger.warn('Cannot load my tasks: address is not available');
+          setTasks([]);
+          setLoading(false);
+          return;
+        }
         data = await apiGet<{ tasks: Task[] }>(`/tasks`, { requester: address });
       } else if (filter === 'available') {
+        if (!address) {
+          logger.warn('Cannot load available tasks: address is not available');
+          setTasks([]);
+          setLoading(false);
+          return;
+        }
         data = await apiGet<{ tasks: Task[] }>(`/device/tasks/available`, { device_id: address });
       } else {
         data = await apiGet<{ tasks: Task[] }>('/tasks');
@@ -172,9 +184,16 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
         // Even if tasks are equal, we still need to update loading state
         setLoading(false);
       }
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Error loading tasks', error);
-      toast.error('Failed to load tasks', 'Please try refreshing the page');
+      const errorMessage = error?.message || error?.data?.error || 'Unknown error';
+      const statusCode = error?.status || 'N/A';
+      toast.error(
+        t('error') || 'Error', 
+        `${t('failed_to_load_tasks') || 'Failed to load tasks'}: ${errorMessage} (${statusCode})`
+      );
+      // Set empty array on error to show empty state instead of infinite loading
+      setTasks([]);
     } finally {
       setLoading(false);
     }
@@ -203,6 +222,14 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter, address, isModalOpen]);
+  
+  // Separate effect to handle address changes for filters that require it
+  useEffect(() => {
+    if ((filter === 'my' || filter === 'available') && !address) {
+      // If filter requires address but we don't have one, switch to 'all'
+      setFilter('all');
+    }
+  }, [filter, address]);
 
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {

@@ -158,9 +158,25 @@ export async function apiRequest<T = any>(
       throw error;
     }
 
-    // Network or other errors
+    // Network or other errors - provide more context
+    const errorMessage = error instanceof Error 
+      ? error.message 
+      : typeof error === 'string' 
+        ? error 
+        : 'Network error';
+    
+    // Check for common network errors and provide more descriptive messages
+    let finalMessage = errorMessage;
+    if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError') || errorMessage.includes('Network request failed')) {
+      finalMessage = 'Failed to connect to server. Please check your internet connection.';
+    } else if (errorMessage.includes('CORS') || errorMessage.includes('Cross-Origin')) {
+      finalMessage = 'CORS error: Server does not allow requests from this domain.';
+    } else if (errorMessage.includes('timeout') || errorMessage.includes('Timeout')) {
+      finalMessage = 'Request timeout. The server took too long to respond.';
+    }
+    
     throw new ApiError(
-      error instanceof Error ? error.message : 'Network error',
+      finalMessage,
       0,
       'Network Error',
       error

@@ -17,7 +17,7 @@ export default function Sidebar({ activeTab, onTabChange, onCreateTask }: Sideba
     { id: 'tasks', label: t('tasks') || 'Tasks', icon: <LayoutDashboard size={20} /> },
     { id: 'devices', label: t('devices') || 'Devices', icon: <Server size={20} /> },
     { id: 'stats', label: t('stats') || 'Stats', icon: <BarChart3 size={20} /> },
-    { id: 'help', label: t('help') || 'Help', icon: <HelpCircle size={20} /> },
+    { id: 'help', label: t('help_center') || t('help') || 'Help', icon: <HelpCircle size={20} /> },
   ];
 
   return (

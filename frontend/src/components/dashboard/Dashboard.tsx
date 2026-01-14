@@ -39,9 +39,24 @@ function Dashboard() {
   // Save active tab to localStorage - separate effect to avoid cycles
   useEffect(() => {
     if (typeof window !== 'undefined' && activeTab) {
-      window.localStorage.setItem('activeTab', activeTab);
+      try {
+        window.localStorage.setItem('activeTab', activeTab);
+      } catch (error) {
+        // Ignore localStorage errors (e.g., in private browsing mode)
+        console.warn('Failed to save active tab to localStorage:', error);
+      }
     }
   }, [activeTab]); // Only depends on activeTab changes
+  
+  // Handle tab change with error handling
+  const handleTabChange = useCallback((tab: Tab) => {
+    try {
+      setActiveTab(tab);
+    } catch (error) {
+      console.error('Error changing tab:', error);
+      toast.error(t('error') || 'Error', 'Failed to switch tab. Please try again.');
+    }
+  }, [t]);
 
   const handleLogout = async () => {
     try {
@@ -97,7 +112,7 @@ function Dashboard() {
       <div className="hidden lg:block">
         <Sidebar 
           activeTab={activeTab} 
-          onTabChange={setActiveTab}
+          onTabChange={handleTabChange}
           onCreateTask={() => setShowNewTask(true)}
         />
       </div>
@@ -157,7 +172,7 @@ function Dashboard() {
 
       {/* Mobile Bottom Navigation */}
       <div className="lg:hidden">
-        <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+        <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
       </div>
 
       {/* Floating Action Button - Unified Task Creation */}
