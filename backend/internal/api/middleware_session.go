@@ -17,10 +17,14 @@ import (
 // 3. Query parameter: "session_token" (for backward compatibility, not recommended)
 func ValidateSession(redisClient *redis.Client) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Skip validation if Redis is not available
+		// If Redis is not available, treat as authentication service failure
 		if redisClient == nil {
-			log.Printf("⚠️  ValidateSession: Redis client not available, skipping session validation")
-			c.Next()
+			log.Printf("❌ ValidateSession: Redis client not available - authentication service unavailable")
+			c.JSON(http.StatusServiceUnavailable, gin.H{
+				"error":   "authentication service unavailable",
+				"message": "Please try again later",
+			})
+			c.Abort()
 			return
 		}
 

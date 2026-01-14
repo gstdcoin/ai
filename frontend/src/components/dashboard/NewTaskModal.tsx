@@ -79,7 +79,21 @@ export default function NewTaskModal({ onClose, onTaskCreated }: NewTaskModalPro
       }
 
       const budget = parseFloat(formData.budget);
-      const payloadObj = formData.payload.trim() ? JSON.parse(formData.payload) : {};
+
+      // Safely parse JSON payload; show user-friendly error on invalid JSON
+      let payloadObj: any = {};
+      if (formData.payload.trim()) {
+        try {
+          payloadObj = JSON.parse(formData.payload);
+        } catch (parseError) {
+          logger.error('Invalid JSON in payload', parseError);
+          toast.error(
+            t('error') || 'Error',
+            t('invalid_json') || 'Invalid JSON in payload field'
+          );
+          return;
+        }
+      }
 
       const data = await apiPost<CreateTaskResponse>(
         `/tasks/create?wallet_address=${address}`,

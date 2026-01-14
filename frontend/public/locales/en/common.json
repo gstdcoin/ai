@@ -319,6 +319,7 @@
   "failed_to_open_wallet": "Failed to open wallet",
   "failed_to_disconnect": "Failed to disconnect",
   "please_try_again": "Please try again",
+  "invalid_json": "Invalid JSON in payload field",
   "connection_rejected": "Connection rejected. Please try again or use a different connection method (extension/desktop).",
   "connection_timeout": "Connection timeout. Please try again.",
   "network_error": "Network error. Please check your internet connection."

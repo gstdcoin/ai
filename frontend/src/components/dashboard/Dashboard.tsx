@@ -134,6 +134,11 @@ function Dashboard() {
             </div>
             
             <SystemStatusWidget onStatsUpdate={useCallback((stats) => {
+              // Protect against SSR: document is not defined on the server
+              if (typeof document === 'undefined') {
+                return;
+              }
+
               // Update Network Temperature and Computational Pressure
               const tempEl = document.getElementById('network-temperature');
               const pressureEl = document.getElementById('computational-pressure');
