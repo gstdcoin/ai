@@ -180,11 +180,11 @@ services:
     build:
       context: ./frontend
       args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://app.gstdtoken.com/api}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://app.gstdtoken.com}
     container_name: gstd_frontend_prod
     environment:
       - PORT=3000
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-https://app.gstdtoken.com/api}
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-https://app.gstdtoken.com}
     depends_on:
       - nginx-lb
     healthcheck:

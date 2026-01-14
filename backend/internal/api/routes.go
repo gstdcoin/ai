@@ -313,8 +313,11 @@ func getTasks(service *services.TaskService) gin.HandlerFunc {
 		tasks, err := service.GetTasks(c.Request.Context(), requesterPtr)
 		if err != nil {
 			log.Printf("Error getting tasks: %v", err)
-			// Return empty array instead of 500 error to prevent frontend crashes
-			c.JSON(200, gin.H{"tasks": []interface{}{}})
+			// Return 500 to signal real backend error instead of silently hiding it
+			c.JSON(500, gin.H{
+				"error":   "failed to load tasks",
+				"message": "Unable to retrieve tasks. Please try again later.",
+			})
 			return
 		}
 

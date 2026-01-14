@@ -144,6 +144,25 @@ export async function apiRequest<T = any>(
 
     // Handle errors
     if (!response.ok) {
+      // Centralized handling for 401 Unauthorized
+      if (response.status === 401) {
+        if (typeof window !== 'undefined') {
+          try {
+            window.localStorage.removeItem('session_token');
+            window.localStorage.removeItem('user');
+          } catch {
+            // ignore storage errors
+          }
+        }
+
+        throw new ApiError(
+          data.error || data.message || 'Session expired. Please login again.',
+          response.status,
+          response.statusText,
+          data
+        );
+      }
+
       throw new ApiError(
         data.error || data.message || `HTTP ${response.status}`,
         response.status,
