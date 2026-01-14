@@ -224,6 +224,7 @@
   "gstd_fee": "GSTD Fee",
   "xaut_bought": "XAUt Bought",
   "failed_to_load_stats": "Failed to load statistics",
+  "failed_to_load_tasks": "Failed to load tasks",
   "no_tasks_desc": "No tasks found. Create a new task to get started.",
   "no_my_tasks_desc": "You haven't created any tasks yet. Create your first task to get started.",
   "no_available_tasks_desc": "No tasks are currently available for execution.",
