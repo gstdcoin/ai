@@ -61,6 +61,14 @@ func SetupRoutes(
 		log.Printf("⚠️  Rate limiter: Redis client is nil")
 	}
 
+	// Services - Initialize ReferralService locally as it was added later
+	// We cast the interface{} db to *sql.DB safely because we know it is *sql.DB from main.go
+	dbConn, ok := db.(*sql.DB)
+	if !ok {
+		log.Fatal("SetupRoutes: db is not *sql.DB")
+	}
+	referralService := services.NewReferralService(dbConn)
+
 	// API versioning
 	api := router.Group("/api")
 	api.Use(APIVersionMiddleware())
@@ -133,6 +141,13 @@ func SetupRoutes(
 			log.Printf("⚠️  Session middleware is nil - protected routes will NOT require session")
 		}
 		
+		// Referrals
+		referrals := protected.Group("/referrals")
+		{
+			referrals.GET("/stats", getReferralStats(referralService, userService))
+			referrals.POST("/apply", applyReferralCode(referralService, userService))
+		}
+
 		// Tasks (protected)
 		protected.POST("/tasks", ValidateTaskRequest(), createTask(taskService))
 		protected.GET("/tasks", getTasks(taskService))

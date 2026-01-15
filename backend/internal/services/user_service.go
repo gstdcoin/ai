@@ -95,3 +95,13 @@ func (s *UserService) GetUser(ctx context.Context, walletAddress string) (*model
 	return &user, nil
 }
 
+
+// GetUserID resolves wallet address to user ID
+func (s *UserService) GetUserID(ctx context.Context, walletAddress string) (int, error) {
+	var id int
+	err := s.db.QueryRowContext(ctx, "SELECT id FROM users WHERE address = $1", walletAddress).Scan(&id)
+	if err != nil {
+		return 0, err
+	}
+	return id, nil
+}
