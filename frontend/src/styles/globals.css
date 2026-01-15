@@ -10,7 +10,7 @@
   --color-sea-500: #24599a;
   --color-sea-900: #388df4;
   --color-gold-900: #FFD700;
-  
+
   /* Telegram theme variables (fallback if not in Telegram) */
   /* These will be overridden by applyTelegramTheme() when Telegram WebApp is available */
   --tg-theme-bg-color: #0a1929;
@@ -21,7 +21,7 @@
   --tg-theme-button-text-color: #ffffff;
   --tg-theme-secondary-bg-color: #0f2540;
   --tg-viewport-height: 100vh;
-  
+
   /* Additional aliases for easier component usage */
   --tg-bg-color: var(--tg-theme-bg-color);
   --tg-text-color: var(--tg-theme-text-color);
@@ -41,16 +41,17 @@ body {
   /* bg_color from Telegram themeParams has highest priority */
   background-color: var(--tg-theme-bg-color, var(--tg-bg-color, var(--color-sea-50))) !important;
   color: var(--tg-theme-text-color, var(--tg-text-color, #ffffff));
-  
+
   /* Ensure background color is applied immediately when Telegram theme changes */
   transition: background-color 0.2s ease, color 0.2s ease;
   font-family: 'Inter', system-ui, sans-serif;
-  background-image: 
+  background-image:
     radial-gradient(at 0% 0%, rgba(56, 141, 244, 0.1) 0%, transparent 50%),
     radial-gradient(at 100% 100%, rgba(255, 215, 0, 0.05) 0%, transparent 50%);
   min-height: 100vh;
   min-height: var(--tg-viewport-height, 100vh);
-  min-height: -webkit-fill-available; /* iOS Safari fix */
+  min-height: -webkit-fill-available;
+  /* iOS Safari fix */
   /* Prevent overscroll/pull-to-refresh */
   overscroll-behavior-y: none;
   -webkit-overflow-scrolling: touch;
@@ -98,23 +99,28 @@ html {
     border: 1px solid rgba(255, 215, 0, 0.3);
     box-shadow: 0 4px 20px rgba(255, 215, 0, 0.3);
   }
+}
 
+@layer components {
 
-  /* Updated glass-card for better Telegram theme integration */
+  /* Updated glass-card for better Telegram theme integration and Cosmic vibe */
   .glass-card {
-    @apply glass rounded-xl shadow-glass;
-    /* Use TG secondary bg color if available, fallback to transparent white for glass effect */
-    background: var(--tg-theme-secondary-bg-color, rgba(255, 255, 255, 0.1));
-    /* Use TG hint color for border if available */
-    border-color: var(--tg-theme-hint-color, rgba(255, 255, 255, 0.18));
-    padding: 1.5rem;
+    @apply relative overflow-hidden rounded-xl border border-white/10 shadow-xl;
+    background: rgba(20, 20, 30, 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
   }
 
+  /* Gradient Buttons */
+  .btn-cosmic {
+    @apply bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-bold shadow-lg shadow-blue-500/20 transition-all active:scale-95;
+  }
 
   .glass-button {
     @apply glass rounded-lg px-4 py-2 font-medium transition-all duration-200;
     @apply hover:bg-white/20 active:scale-95;
-    min-height: 44px; /* Touch target */
+    min-height: 44px;
+    /* Touch target */
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -140,7 +146,7 @@ html {
     transition: all 0.2s ease;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   }
-  
+
   /* Primary button class that uses Telegram button colors */
   .btn-primary {
     background-color: var(--tg-theme-button-color, var(--tg-button-color, var(--tg-primary-button-color, #005cb3))) !important;
@@ -180,7 +186,7 @@ html {
     opacity: 0.5;
     cursor: not-allowed;
   }
-  
+
   /* Primary button styles matching bg-primary-600 pattern */
   .btn-primary {
     border: none;
@@ -253,6 +259,7 @@ a:focus-visible {
   0% {
     background-position: -1000px 0;
   }
+
   100% {
     background-position: 1000px 0;
   }
@@ -260,21 +267,22 @@ a:focus-visible {
 
 .animate-shimmer {
   animation: shimmer 2s infinite linear;
-  background: linear-gradient(
-    to right,
-    rgba(255, 255, 255, 0.1) 0%,
-    rgba(255, 255, 255, 0.2) 50%,
-    rgba(255, 255, 255, 0.1) 100%
-  );
+  background: linear-gradient(to right,
+      rgba(255, 255, 255, 0.1) 0%,
+      rgba(255, 255, 255, 0.2) 50%,
+      rgba(255, 255, 255, 0.1) 100%);
   background-size: 1000px 100%;
 }
 
 /* Modern animations 2024-2025 */
 @keyframes pulse-slow {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 1;
     transform: scale(1);
   }
+
   50% {
     opacity: 0.8;
     transform: scale(1.05);
@@ -282,9 +290,12 @@ a:focus-visible {
 }
 
 @keyframes float {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translateY(0px);
   }
+
   50% {
     transform: translateY(-10px);
   }
@@ -294,18 +305,23 @@ a:focus-visible {
   0% {
     background-position: 0% 50%;
   }
+
   50% {
     background-position: 100% 50%;
   }
+
   100% {
     background-position: 0% 50%;
   }
 }
 
 @keyframes glow-pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
   }
+
   50% {
     box-shadow: 0 0 30px rgba(255, 215, 0, 0.6);
   }
@@ -344,7 +360,7 @@ a:focus-visible {
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 
+  box-shadow:
     0 8px 32px 0 rgba(0, 0, 0, 0.37),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
@@ -366,7 +382,7 @@ a:focus-visible {
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 
+  box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -375,7 +391,7 @@ a:focus-visible {
 .card-modern:hover {
   transform: translateY(-2px);
   border-color: rgba(255, 215, 0, 0.3);
-  box-shadow: 
+  box-shadow:
     0 12px 40px rgba(0, 0, 0, 0.3),
     0 0 20px rgba(255, 215, 0, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);

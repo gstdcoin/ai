@@ -121,7 +121,7 @@ export async function apiRequest<T = any>(
 
   // Add session token to headers if available
   if (sessionToken) {
-    headers['X-Session-Token'] = sessionToken;
+    (headers as any)['X-Session-Token'] = sessionToken;
   }
 
   const defaultOptions: RequestInit = {
@@ -150,8 +150,8 @@ export async function apiRequest<T = any>(
           try {
             window.localStorage.removeItem('session_token');
             window.localStorage.removeItem('user');
-            // Redirect to home page
-            window.location.href = '/';
+            // Reload/Reset session
+            window.location.reload();
           } catch {
             // ignore storage errors
           }

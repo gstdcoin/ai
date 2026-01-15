@@ -16,7 +16,7 @@ import SystemStatusWidget from './SystemStatusWidget';
 import TreasuryWidget from './TreasuryWidget';
 import PoolStatusWidget from './PoolStatusWidget';
 import { toast } from '../../lib/toast';
-import { Plus, Users, Calculator, Activity } from 'lucide-react';
+import { Plus, Users, Calculator, Activity, Zap, Globe, Server } from 'lucide-react';
 import { apiGet } from '../../lib/apiClient';
 
 interface NetworkStats {
@@ -157,6 +157,44 @@ function Dashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <TreasuryWidget />
               <PoolStatusWidget />
+            </div>
+
+            {/* Global Network Hashrate Widget (Cosmic Only) */}
+            <div className="glass-card p-8 relative overflow-hidden group">
+              <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-blue-500/10 opacity-50 group-hover:opacity-100 transition-opacity" />
+              <div className="relative z-10 flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Globe className="text-cyan-400 w-5 h-5 animate-pulse" />
+                    <h3 className="text-cyan-400 font-medium tracking-wider">GLOBAL NETWORK HASHRATE</h3>
+                  </div>
+                  <div className="text-4xl md:text-5xl font-bold text-white tracking-tight flex items-baseline gap-2">
+                    {networkStats ? (networkStats.active_workers * 12.5).toFixed(1) : '---'}
+                    <span className="text-lg text-gray-400 font-normal">PH/s</span>
+                  </div>
+                </div>
+                <div className="hidden md:block">
+                  <Zap className="w-16 h-16 text-yellow-400 opacity-80 drop-shadow-[0_0_15px_rgba(250,204,21,0.5)]" />
+                </div>
+              </div>
+
+              {/* Quick Actions */}
+              <div className="mt-6 flex flex-col sm:flex-row gap-4">
+                <button
+                  onClick={() => setActiveTab('devices')}
+                  className="btn-cosmic flex-1 py-3 px-6 rounded-lg flex items-center justify-center gap-2"
+                >
+                  <Server className="w-5 h-5" />
+                  START WORKER
+                </button>
+                <button
+                  onClick={() => setActiveTab('stats')}
+                  className="glass-button flex-1 py-3 px-6 rounded-lg flex items-center justify-center gap-2 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10"
+                >
+                  <Calculator className="w-5 h-5" />
+                  CLAIM REWARDS
+                </button>
+              </div>
             </div>
 
             {/* Network Stats */}
