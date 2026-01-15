@@ -16,7 +16,7 @@ import SystemStatusWidget from './SystemStatusWidget';
 import TreasuryWidget from './TreasuryWidget';
 import PoolStatusWidget from './PoolStatusWidget';
 import { toast } from '../../lib/toast';
-import { Plus, Users, Calculator, Activity, Zap, Globe, Server } from 'lucide-react';
+import { Plus, Users, Calculator, Activity, Zap, Globe, Server, Wallet, CheckCircle } from 'lucide-react';
 import { apiGet } from '../../lib/apiClient';
 
 interface NetworkStats {
@@ -157,6 +157,32 @@ function Dashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <TreasuryWidget />
               <PoolStatusWidget />
+            </div>
+
+            {/* Financial Overview (New) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="glass-card p-6 flex items-center justify-between relative overflow-hidden">
+                <div className="relative z-10">
+                  <h3 className="text-sm font-medium text-gray-400 mb-1">{t('pending_balance') || 'Pending Balance'}</h3>
+                  <div className="text-2xl font-bold text-white flex items-baseline gap-1">
+                    0.00 <span className="text-sm font-normal text-gray-500">GSTD</span>
+                  </div>
+                </div>
+                <div className="p-3 rounded-full bg-blue-500/10 text-blue-400">
+                  <Wallet className="w-6 h-6" />
+                </div>
+              </div>
+              <div className="glass-card p-6 flex items-center justify-between relative overflow-hidden">
+                <div className="relative z-10">
+                  <h3 className="text-sm font-medium text-gray-400 mb-1">{t('claimed_balance') || 'Claimed Balance'}</h3>
+                  <div className="text-2xl font-bold text-white flex items-baseline gap-1">
+                    0.00 <span className="text-sm font-normal text-gray-500">GSTD</span>
+                  </div>
+                </div>
+                <div className="p-3 rounded-full bg-green-500/10 text-green-400">
+                  <CheckCircle className="w-6 h-6" />
+                </div>
+              </div>
             </div>
 
             {/* Global Network Hashrate Widget (Cosmic Only) */}
