@@ -85,6 +85,7 @@ func SetupRoutes(
 		v1.GET("/stats/public", getPublicStats(db.(*sql.DB), tonService, tonConfig, errorLogger))
 		v1.GET("/openapi.json", GetOpenAPISpec())
 		v1.GET("/network/entropy", getEntropyStats(taskService))
+		v1.GET("/network/stats", getNetworkStats(statsService))
 		// @Summary Get pool status
 		// @Description Returns GSTD/XAUt liquidity pool status
 		// @Tags Public

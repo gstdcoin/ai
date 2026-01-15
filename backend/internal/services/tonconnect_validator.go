@@ -155,50 +155,35 @@ func (v *TonConnectValidator) ValidateSignature(
 	var pubKey []byte
 	var pubKeySource string
 	
+	// 6. Get public key - strictly from TON API
+	// SECURITY: Trusting frontend key (public_key_hex) is disabled to prevent spoofing
+	// We MUST verify the public key belongs to the wallet_address via TON API or state_init
+	
 	if publicKeyHex != "" {
-		// Use public key provided by frontend
-		log.Printf("🔑 Using public key from frontend")
-		pubKeyBytes, err := hex.DecodeString(strings.TrimPrefix(publicKeyHex, "0x"))
-		if err != nil {
-			// Try base64
-			pubKeyBytes, err = base64.StdEncoding.DecodeString(publicKeyHex)
-			if err != nil {
-				log.Printf("❌ Failed to decode provided public key (tried hex and base64): %v", err)
-				return fmt.Errorf("Invalid public key format: %w", err)
-			}
-		}
-		
-		if len(pubKeyBytes) != 32 {
-			log.Printf("❌ Invalid public key length from frontend: expected 32 bytes, got %d", len(pubKeyBytes))
-			return fmt.Errorf("Invalid public key length: expected 32 bytes, got %d", len(pubKeyBytes))
-		}
-		
-		pubKey = pubKeyBytes
-		pubKeySource = "frontend"
-		log.Printf("✅ Public key from frontend: %s (first 16 chars)", hex.EncodeToString(pubKey[:16]))
-	} else {
-		// Fallback to TON API
-		log.Printf("🔑 Fetching public key from TON API for wallet: %s", walletAddress)
-		if v.tonService == nil {
-			log.Printf("❌ TON service unavailable - cannot verify signature")
-			return fmt.Errorf("TON service unavailable - cannot verify signature")
-		}
-
-		pubKeyFromAPI, err := v.tonService.GetPublicKey(ctx, walletAddress)
-		if err != nil {
-			log.Printf("❌ Public key not found: failed to resolve public key for wallet %s: %v", walletAddress, err)
-			return fmt.Errorf("Public key not found: failed to resolve public key for wallet %s: %w", walletAddress, err)
-		}
-
-		if len(pubKeyFromAPI) != 32 {
-			log.Printf("❌ Invalid public key length from API: expected 32 bytes, got %d", len(pubKeyFromAPI))
-			return fmt.Errorf("Invalid public key length: expected 32 bytes, got %d", len(pubKeyFromAPI))
-		}
-		
-		pubKey = pubKeyFromAPI
-		pubKeySource = "TON API"
-		log.Printf("✅ Public key from TON API: %s (first 16 chars)", hex.EncodeToString(pubKey[:16]))
+		log.Printf("⚠️  Ignoring frontend provided public key for security. Fetching from TON API.")
 	}
+
+	// Always fetch from TON API
+	log.Printf("🔑 Fetching public key from TON API for wallet: %s", walletAddress)
+	if v.tonService == nil {
+		log.Printf("❌ TON service unavailable - cannot verify signature")
+		return fmt.Errorf("TON service unavailable - cannot verify signature")
+	}
+
+	pubKeyFromAPI, err := v.tonService.GetPublicKey(ctx, walletAddress)
+	if err != nil {
+		log.Printf("❌ Public key not found: failed to resolve public key for wallet %s: %v", walletAddress, err)
+		return fmt.Errorf("Wallet not initialized or public key not found in blockchain. Please perform at least one transaction to initialize your wallet.")
+	}
+
+	if len(pubKeyFromAPI) != 32 {
+		log.Printf("❌ Invalid public key length from API: expected 32 bytes, got %d", len(pubKeyFromAPI))
+		return fmt.Errorf("Invalid public key length: expected 32 bytes, got %d", len(pubKeyFromAPI))
+	}
+	
+	pubKey = pubKeyFromAPI
+	pubKeySource = "TON API (Strict)"
+	log.Printf("✅ Public key from TON API: %s (first 16 chars)", hex.EncodeToString(pubKey[:16]))
 
 	// 7. Reconstruct message hash: SHA-256(payload)
 	// TonConnect v2 signs the SHA-256 hash of the payload

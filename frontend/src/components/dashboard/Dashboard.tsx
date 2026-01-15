@@ -15,7 +15,14 @@ import SystemStatusWidget from './SystemStatusWidget';
 import TreasuryWidget from './TreasuryWidget';
 import PoolStatusWidget from './PoolStatusWidget';
 import { toast } from '../../lib/toast';
-import { Plus } from 'lucide-react';
+import { Plus, Users, Calculator, Activity } from 'lucide-react';
+import { apiGet } from '../../lib/apiClient';
+
+interface NetworkStats {
+  active_workers: number;
+  total_gstd_paid: number;
+  tasks_24h: number;
+}
 
 // Lazy load modals for performance
 const NewTaskModal = lazy(() => import('./NewTaskModal'));
@@ -47,7 +54,7 @@ function Dashboard() {
       }
     }
   }, [activeTab]); // Only depends on activeTab changes
-  
+
   // Handle tab change with error handling
   const handleTabChange = useCallback((tab: Tab) => {
     try {
@@ -73,13 +80,31 @@ function Dashboard() {
 
   // Telegram WebApp integration
   const [telegramUser, setTelegramUser] = useState<any>(null);
-  
+
   useEffect(() => {
     if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp) {
       const tg = (window as any).Telegram.WebApp;
       tg.ready();
       setTelegramUser(tg.initDataUnsafe?.user || null);
     }
+  }, []);
+
+  const [networkStats, setNetworkStats] = useState<NetworkStats | null>(null);
+
+  // Fetch network stats
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const stats = await apiGet<NetworkStats>('/network/stats');
+        setNetworkStats(stats);
+      } catch (err) {
+        console.error('Failed to fetch network stats:', err);
+      }
+    };
+
+    fetchStats();
+    const interval = setInterval(fetchStats, 60000);
+    return () => clearInterval(interval);
   }, []);
 
   // Use telegram.ts helper for haptic feedback
@@ -93,7 +118,7 @@ function Dashboard() {
   const handleShare = () => {
     const shareText = t('share_text') || 'Join the GSTD Platform - Decentralized AI Inference Network';
     const shareUrl = typeof window !== 'undefined' ? window.location.origin : 'https://app.gstdtoken.com';
-    
+
     if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp) {
       const tg = (window as any).Telegram.WebApp;
       tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`);
@@ -110,16 +135,16 @@ function Dashboard() {
     <div className="flex flex-col lg:flex-row h-screen bg-sea-50 overflow-hidden">
       {/* Desktop Sidebar */}
       <div className="hidden lg:block">
-        <Sidebar 
-          activeTab={activeTab} 
+        <Sidebar
+          activeTab={activeTab}
           onTabChange={handleTabChange}
           onCreateTask={() => setShowNewTask(true)}
         />
       </div>
-      
+
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <Header 
+        <Header
           onCreateTask={() => setShowNewTask(true)}
           onLogout={handleLogout}
         />
@@ -132,8 +157,41 @@ function Dashboard() {
               <TreasuryWidget />
               <PoolStatusWidget />
             </div>
-            
-            <SystemStatusWidget onStatsUpdate={useCallback((stats) => {
+
+            {/* Network Stats */}
+            {networkStats && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="glass-card p-6 flex items-center space-x-4">
+                  <div className="p-3 rounded-full bg-blue-500/10 text-blue-400">
+                    <Users className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-400">Active Workers</h3>
+                    <p className="text-2xl font-bold text-white">{networkStats.active_workers}</p>
+                  </div>
+                </div>
+                <div className="glass-card p-6 flex items-center space-x-4">
+                  <div className="p-3 rounded-full bg-green-500/10 text-green-400">
+                    <Activity className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-400">Tasks (24h)</h3>
+                    <p className="text-2xl font-bold text-white">{networkStats.tasks_24h}</p>
+                  </div>
+                </div>
+                <div className="glass-card p-6 flex items-center space-x-4">
+                  <div className="p-3 rounded-full bg-yellow-500/10 text-yellow-400">
+                    <Calculator className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-400">GSTD Paid</h3>
+                    <p className="text-2xl font-bold text-white">{networkStats.total_gstd_paid.toFixed(2)}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <SystemStatusWidget onStatsUpdate={useCallback((stats: any) => {
               // Protect against SSR: document is not defined on the server
               if (typeof document === 'undefined') {
                 return;
@@ -144,7 +202,7 @@ function Dashboard() {
               const pressureEl = document.getElementById('computational-pressure');
               if (tempEl) {
                 if (stats) {
-                  const temp = stats.processing_tasks > 0 
+                  const temp = stats.processing_tasks > 0
                     ? (stats.processing_tasks / Math.max(stats.active_devices_count, 1)).toFixed(2)
                     : '0.00';
                   tempEl.textContent = `${temp} T`;
@@ -163,10 +221,10 @@ function Dashboard() {
                 }
               }
             }, [])} />
-            
-            {activeTab === 'tasks' && <TasksPanel 
-              onTaskCreated={useCallback(() => triggerHaptic('medium'), [])} 
-              onCompensationClaimed={useCallback(() => triggerHaptic('medium'), [])} 
+
+            {activeTab === 'tasks' && <TasksPanel
+              onTaskCreated={useCallback(() => triggerHaptic('medium'), [])}
+              onCompensationClaimed={useCallback(() => triggerHaptic('medium'), [])}
             />}
             {activeTab === 'devices' && <DevicesPanel />}
             {activeTab === 'stats' && <StatsPanel />}
@@ -194,8 +252,8 @@ function Dashboard() {
         <Suspense fallback={<div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
           <div className="glass-card text-white">Loading...</div>
         </div>}>
-          <NewTaskModal 
-            onClose={() => setShowNewTask(false)} 
+          <NewTaskModal
+            onClose={() => setShowNewTask(false)}
             onTaskCreated={() => {
               triggerHaptic('medium');
               setShowNewTask(false);
