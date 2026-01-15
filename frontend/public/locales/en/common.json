@@ -27,6 +27,7 @@
   "tasks": "Tasks",
   "devices": "Devices",
   "stats": "Statistics",
+  "referrals": "Referrals",
   "settings": "Settings",
   "language": "Language",
   "create_task": "Create Task",
@@ -322,6 +323,14 @@
   "invalid_json": "Invalid JSON in payload field",
   "connection_rejected": "Connection rejected. Please try again or use a different connection method (extension/desktop).",
   "connection_timeout": "Connection timeout. Please try again.",
-  "network_error": "Network error. Please check your internet connection."
+  "network_error": "Network error. Please check your internet connection.",
+  "referral_program": "Referral Program",
+  "referral_desc": "Invite friends and earn 5% of platform fees from their tasks.",
+  "your_referral_code": "Your Referral Code",
+  "copy_link": "Copy Link",
+  "total_referrals": "Total Referrals",
+  "total_earnings": "Total Earnings",
+  "have_invite_code": "Have an Invite Code?",
+  "apply": "Apply",
+  "referral_applied": "Referral code applied successfully!"
 }
-

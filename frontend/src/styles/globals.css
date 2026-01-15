@@ -99,10 +99,17 @@ html {
     box-shadow: 0 4px 20px rgba(255, 215, 0, 0.3);
   }
 
+
+  /* Updated glass-card for better Telegram theme integration */
   .glass-card {
     @apply glass rounded-xl shadow-glass;
+    /* Use TG secondary bg color if available, fallback to transparent white for glass effect */
+    background: var(--tg-theme-secondary-bg-color, rgba(255, 255, 255, 0.1));
+    /* Use TG hint color for border if available */
+    border-color: var(--tg-theme-hint-color, rgba(255, 255, 255, 0.18));
     padding: 1.5rem;
   }
+
 
   .glass-button {
     @apply glass rounded-lg px-4 py-2 font-medium transition-all duration-200;
