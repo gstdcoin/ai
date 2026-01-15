@@ -8,6 +8,7 @@ import Header from '../layout/Header';
 import TasksPanel from './TasksPanel';
 import DevicesPanel from './DevicesPanel';
 import StatsPanel from './StatsPanel';
+import ReferralPanel from './ReferralPanel';
 import HelpPanel from './HelpPanel';
 import { Tab } from '../../types/tabs';
 import { useTonConnectUI } from '@tonconnect/ui-react';
@@ -38,7 +39,7 @@ function Dashboard() {
   // Restore previously selected tab to avoid сброс при обновлении
   useEffect(() => {
     const saved = typeof window !== 'undefined' ? window.localStorage.getItem('activeTab') : null;
-    if (saved === 'tasks' || saved === 'devices' || saved === 'stats' || saved === 'help') {
+    if (saved === 'tasks' || saved === 'devices' || saved === 'stats' || saved === 'referrals' || saved === 'help') {
       setActiveTab(saved as Tab);
     }
   }, []); // Empty dependency array - run only once
@@ -228,6 +229,7 @@ function Dashboard() {
             />}
             {activeTab === 'devices' && <DevicesPanel />}
             {activeTab === 'stats' && <StatsPanel />}
+            {activeTab === 'referrals' && <ReferralPanel />}
             {activeTab === 'help' && <HelpPanel />}
           </div>
         </main>
