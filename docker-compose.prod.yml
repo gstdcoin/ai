@@ -39,6 +39,13 @@ services:
         reservations:
           cpus: '1.0'
           memory: 2G
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        compress: "true"
 
   redis:
     image: redis:7-alpine
@@ -59,6 +66,13 @@ services:
         reservations:
           cpus: '0.5'
           memory: 512M
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        compress: "true"
 
   backend:
     build:
@@ -104,6 +118,13 @@ services:
         delay: 5s
         max_attempts: 3
         window: 120s
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        compress: "true"
     networks:
       - gstd_network
 

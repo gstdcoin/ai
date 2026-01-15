@@ -135,7 +135,8 @@ bash ../scripts/run-tests.sh
 
 ### 📚 Documentation
 
-- [API Documentation](docs/API.md)
+- [User Guide (How to Earn)](docs/USER_GUIDE.md)
+- [Partner API Guide](docs/API_GUIDE.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Deployment Guide](docs/DEPLOYMENT.md)
 - [CI/CD Pipeline](docs/CI_CD.md)
