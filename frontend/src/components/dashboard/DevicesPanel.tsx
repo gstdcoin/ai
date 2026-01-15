@@ -128,7 +128,7 @@ export default function DevicesPanel() {
           action={
             <button
               onClick={() => setShowRegisterModal(true)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="px-4 py-2 glass-button-gold rounded-lg transition-colors min-h-[44px]"
             >
               {t('register_first_device') || 'Register Your First Device'}
             </button>
@@ -197,15 +197,18 @@ export default function DevicesPanel() {
                       {formatDate(node.last_seen)}
                     </td>
                     <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm">
-                      <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        node.status === 'online' 
-                          ? 'bg-green-500/20 text-green-400' 
-                          : 'bg-gray-500/20 text-gray-400'
-                      }`}>
-                        {node.status === 'online' 
-                          ? (t('auto_processing') || 'Auto Processing') 
-                          : (t('offline') || 'Offline')}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(node.id);
+                            toast.success(t('copied') || 'Copied', t('node_id_copied') || 'Node ID copied to clipboard');
+                          }}
+                          className="text-xs glass-button text-white px-2 py-1 rounded"
+                          title={t('copy_node_id') || 'Copy Node ID'}
+                        >
+                          {t('copy') || 'Copy ID'}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

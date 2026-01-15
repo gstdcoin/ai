@@ -2,6 +2,7 @@ import type { AppProps } from 'next/app';
 import { appWithTranslation } from 'next-i18next';
 import { TonConnectUIProvider, THEME } from '@tonconnect/ui-react';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/router';
 import { Toaster } from 'sonner';
 import { ErrorBoundary } from '../components/common/ErrorBoundary';
 import { TelegramThemeProvider } from '../components/common/TelegramThemeProvider';
@@ -23,6 +24,7 @@ const getManifestUrl = (): string => {
 
 function App({ Component, pageProps }: AppProps) {
   const [isMounted, setIsMounted] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     // Initialize Telegram WebApp on mount
@@ -65,6 +67,9 @@ function App({ Component, pageProps }: AppProps) {
     ? (getTelegramColorScheme() === 'light' ? THEME.LIGHT : THEME.DARK)
     : THEME.DARK;
 
+  // Определить язык для TonConnect на основе текущей локали приложения
+  const tonConnectLanguage = router.locale === 'en' ? 'en' : 'ru';
+
   return (
     <ErrorBoundary>
       <TelegramThemeProvider>
@@ -78,7 +83,7 @@ function App({ Component, pageProps }: AppProps) {
             theme: telegramTheme,
             borderRadius: 'm'
           }}
-          language="ru"
+          language={tonConnectLanguage}
         >
           <Component {...pageProps} />
           <Toaster 
