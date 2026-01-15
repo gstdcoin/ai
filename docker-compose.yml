@@ -64,7 +64,7 @@ services:
     container_name: gstd_backend
     restart: always
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     depends_on:
       gstd_postgres:
         condition: service_healthy

@@ -76,6 +76,42 @@ func (s *StatsService) GetGlobalStats(ctx context.Context) (*GlobalStats, error)
 	return stats, nil
 }
 
+type NetworkStats struct {
+	ActiveWorkers    int     `json:"active_workers"`
+	TotalGSTDPaid    float64 `json:"total_gstd_paid"`
+	Tasks24h         int     `json:"tasks_24h"`
+}
+
+func (s *StatsService) GetNetworkStats(ctx context.Context) (*NetworkStats, error) {
+	stats := &NetworkStats{}
+
+	// 1. Total active workers (last 10 mins)
+	err := s.db.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM devices WHERE is_active = true AND last_seen_at > NOW() - INTERVAL '10 minutes'
+	`).Scan(&stats.ActiveWorkers)
+	if err != nil {
+		stats.ActiveWorkers = 0
+	}
+
+	// 2. Total GSTD paid (all time)
+	err = s.db.QueryRowContext(ctx, `
+		SELECT COALESCE(SUM(labor_compensation_ton), 0) FROM tasks WHERE status = 'completed'
+	`).Scan(&stats.TotalGSTDPaid)
+	if err != nil {
+		stats.TotalGSTDPaid = 0
+	}
+
+	// 3. Tasks completed in last 24h
+	err = s.db.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM tasks WHERE status = 'completed' AND completed_at > NOW() - INTERVAL '24 hours'
+	`).Scan(&stats.Tasks24h)
+	if err != nil {
+		stats.Tasks24h = 0
+	}
+
+	return stats, nil
+}
+
 // TaskCompletionData represents task completion statistics over time
 type TaskCompletionData struct {
 	Date  string `json:"date"`

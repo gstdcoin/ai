@@ -54,6 +54,37 @@ func (s *AssignmentService) AssignTask(ctx context.Context, taskID string, devic
 
 	timeoutAt := time.Now().Add(time.Duration(timeLimitSec+120) * time.Second)
 
+	// -------------------------------------------------------------------------
+	// SYBIL ATTACK MITIGATION: Limit max active nodes/tasks per wallet
+	// -------------------------------------------------------------------------
+	// 1. Get wallet address for this device
+	var walletAddress string
+	err = tx.QueryRowContext(ctx, "SELECT wallet_address FROM devices WHERE device_id = $1", deviceID).Scan(&walletAddress)
+	if err != nil {
+		// If fails (e.g. device not found or wallet_address is null), use deviceID as fallback
+		// or proceed (risk of bypass, but prevents bricking if DB inconsistent)
+		walletAddress = deviceID
+	}
+	
+	// 2. Count active assignments for this wallet
+	// We count tasks where the assigned device belongs to the same wallet
+	var activeCount int
+	err = tx.QueryRowContext(ctx, `
+		SELECT COUNT(*) 
+		FROM tasks t
+		JOIN devices d ON t.assigned_device = d.device_id
+		WHERE d.wallet_address = $1 
+		  AND t.status = 'assigned' 
+		  AND t.timeout_at > NOW()
+	`, walletAddress).Scan(&activeCount)
+	
+	// Limit is 3 active tasks per wallet (temporary measure)
+	if err == nil && activeCount >= 3 {
+		log.Printf("⚠️  Rate limit exceeded for wallet %s: %d active tasks (limit 3)", walletAddress, activeCount)
+		return fmt.Errorf("rate limit exceeded: wallet %s has too many active tasks (%d/3). Please complete existing tasks first.", walletAddress, activeCount)
+	}
+	// -------------------------------------------------------------------------
+
 	// Update task status atomically (allow reassignment from 'pending' or 'timeout')
 	result, err := tx.ExecContext(ctx, `
 		UPDATE tasks 

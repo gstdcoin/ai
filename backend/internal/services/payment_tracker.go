@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 	"time"
 
@@ -172,11 +173,51 @@ func (pt *PaymentTracker) reconcilePayments(ctx context.Context) {
 			// Try to find transaction by query_id
 			for _, bcTx := range blockchainTxs {
 				if bcTx.QueryID == dbTx.QueryID.Int64 && bcTx.Success {
-					log.Printf("PaymentTracker: Found confirmed transaction by query_id %d for task %s",
-						dbTx.QueryID.Int64, dbTx.TaskID)
+					log.Printf("PaymentTracker: QueryID matched %d. Verifying details...", dbTx.QueryID.Int64)
 					
-					pt.markTransactionConfirmed(ctx, dbTx.ID, dbTx.TaskID, bcTx.Hash, dbTx.ExecutorReward, dbTx.PlatformFee, dbTx.Nonce, dbTx.QueryID)
-					break
+					// VERIFY DESTINATION AND AMOUNT
+					// 1. Check if ANY output message pays the correct executor
+					// 2. Check if the amount matches explicitly
+					
+					verified := false
+					
+					for _, outMsg := range bcTx.OutMsgs {
+						// Normalize addresses for comparison (function available in same package)
+						outDest := NormalizeAddressForAPI(outMsg.Destination)
+						expectedExecutor := NormalizeAddressForAPI(dbTx.ExecutorAddr)
+						
+						if outDest == expectedExecutor {
+							// Check amount
+							// outMsg.Value is in nanoton string
+							valNano, err := strconv.ParseInt(outMsg.Value, 10, 64)
+							if err != nil {
+								log.Printf("PaymentTracker: Failed to parse output value for tx %s: %v", bcTx.Hash, err)
+								continue
+							}
+							
+							expectedNano := int64(dbTx.ExecutorReward * 1e9)
+							
+							// Allow small diff (e.g. 0.01 TON) or exact match?
+							// Exact match preferred for crypto
+							if valNano == expectedNano {
+								verified = true
+								log.Printf("PaymentTracker: ✅ Verification SUCCESS: To=%s, Amount=%d nano", outDest, valNano)
+								break
+							} else {
+								log.Printf("PaymentTracker: ❌ Verification FAIL: Amount mismatch. Got %d, Expected %d", valNano, expectedNano)
+							}
+						}
+					}
+					
+					if verified {
+						log.Printf("PaymentTracker: Found confirmed transaction by query_id %d for task %s", dbTx.QueryID.Int64, dbTx.TaskID)
+						pt.markTransactionConfirmed(ctx, dbTx.ID, dbTx.TaskID, bcTx.Hash, dbTx.ExecutorReward, dbTx.PlatformFee, dbTx.Nonce, dbTx.QueryID)
+						break
+					} else {
+						log.Printf("PaymentTracker: 🚨 CRITICAL: QueryID %d matched but verification FAILED for task %s! Possible collision or attack.", 
+							dbTx.QueryID.Int64, dbTx.TaskID)
+						// Do NOT confirm the transaction
+					}
 				}
 			}
 		}

@@ -195,3 +195,16 @@ func getTaskCompletionHistory(statsService *services.StatsService) gin.HandlerFu
 	}
 }
 
+func getNetworkStats(statsService *services.StatsService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		stats, err := statsService.GetNetworkStats(c.Request.Context())
+		if err != nil {
+			log.Printf("Error getting network stats: %v", err)
+			c.JSON(500, gin.H{"error": "Failed to fetch network stats"})
+			return
+		}
+		c.JSON(200, stats)
+	}
+}
+
+

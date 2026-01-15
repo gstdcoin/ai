@@ -90,13 +90,13 @@ export async function apiRequest<T = any>(
     (process.env.NEXT_PUBLIC_API_URL as string | undefined) ||
     'https://app.gstdtoken.com';
   const apiBaseUrl = `${rawBase.replace(/\/+$/, '')}/api/v1`;
-  
+
   // Ensure endpoint starts with / if it doesn't already
   let finalEndpoint = endpoint;
   if (!finalEndpoint.startsWith('/')) {
     finalEndpoint = `/${finalEndpoint}`;
   }
-  
+
   // Remove /api/v1 prefix if endpoint already has it (to avoid duplication)
   if (finalEndpoint.startsWith('/api/v1')) {
     finalEndpoint = finalEndpoint.substring(7); // Remove '/api/v1'
@@ -104,7 +104,7 @@ export async function apiRequest<T = any>(
       finalEndpoint = `/${finalEndpoint}`;
     }
   }
-  
+
   const url = `${apiBaseUrl}${finalEndpoint}`;
 
   // Get session token from localStorage
@@ -150,6 +150,8 @@ export async function apiRequest<T = any>(
           try {
             window.localStorage.removeItem('session_token');
             window.localStorage.removeItem('user');
+            // Redirect to home page
+            window.location.href = '/';
           } catch {
             // ignore storage errors
           }
@@ -178,12 +180,12 @@ export async function apiRequest<T = any>(
     }
 
     // Network or other errors - provide more context
-    const errorMessage = error instanceof Error 
-      ? error.message 
-      : typeof error === 'string' 
-        ? error 
+    const errorMessage = error instanceof Error
+      ? error.message
+      : typeof error === 'string'
+        ? error
         : 'Network error';
-    
+
     // Check for common network errors and provide more descriptive messages
     let finalMessage = errorMessage;
     if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError') || errorMessage.includes('Network request failed')) {
@@ -193,7 +195,7 @@ export async function apiRequest<T = any>(
     } else if (errorMessage.includes('timeout') || errorMessage.includes('Timeout')) {
       finalMessage = 'Request timeout. The server took too long to respond.';
     }
-    
+
     throw new ApiError(
       finalMessage,
       0,
