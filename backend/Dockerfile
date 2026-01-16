@@ -9,14 +9,13 @@ WORKDIR /app
 
 # Copy go mod files first for better caching
 COPY go.mod go.sum ./
-COPY .env .
 
 # Download dependencies
 RUN go mod download
 
 # Copy source code
 COPY . .
-COPY .env .
+
 
 # Ensure go.sum is up to date
 RUN go mod tidy
@@ -42,7 +41,6 @@ WORKDIR /app
 # Copy binary from builder
 COPY --from=builder /app/server .
 COPY --from=builder /app/migrations ./migrations
-COPY .env .
 
 # Change ownership
 RUN chown -R appuser:appuser /app
