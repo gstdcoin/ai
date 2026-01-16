@@ -59,10 +59,16 @@ TON_API_KEY=your_api_key
 NEXT_PUBLIC_API_URL=https://app.gstdtoken.com
 ```
 
-#### 3. Run
+#### 3. Run (Clean Install)
 
 ```bash
-docker-compose up -d
+./deploy.sh
+```
+
+Or standard Docker Compose:
+
+```bash
+docker-compose -f docker-compose.prod.yml up -d
 ```
 
 The platform will be available at:
