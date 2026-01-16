@@ -55,13 +55,15 @@ export class ErrorBoundary extends Component<Props, State> {
             <p className="text-gray-600 text-center mb-4">
               We're sorry, but something unexpected happened. Please try refreshing the page.
             </p>
-            {this.state.error && process.env.NODE_ENV === 'development' && (
+            {this.state.error && (
               <details className="mt-4">
                 <summary className="cursor-pointer text-sm text-gray-500 mb-2">
-                  Error details (development only)
+                  Error details
                 </summary>
-                <pre className="text-xs bg-gray-100 p-2 rounded overflow-auto">
+                <pre className="text-xs bg-gray-100 p-2 rounded overflow-auto max-h-40">
                   {this.state.error.toString()}
+                  {'\n\n'}
+                  {this.state.error.stack}
                 </pre>
               </details>
             )}

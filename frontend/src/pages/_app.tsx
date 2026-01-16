@@ -7,6 +7,7 @@ import { Toaster } from 'sonner';
 import { ErrorBoundary } from '../components/common/ErrorBoundary';
 import { TelegramThemeProvider } from '../components/common/TelegramThemeProvider';
 import { initTelegramWebApp, isTelegramWebApp, getTelegramColorScheme } from '../lib/telegram';
+import WalletListener from '../components/common/WalletListener';
 import '../styles/globals.css';
 
 // Get manifestUrl from environment variable or use fallback
@@ -30,7 +31,7 @@ function App({ Component, pageProps }: AppProps) {
     // Initialize Telegram WebApp on mount
     if (typeof window !== 'undefined') {
       const webApp = initTelegramWebApp();
-      
+
       if (webApp) {
         console.log('✅ Telegram WebApp initialized');
         console.log('Theme:', webApp.themeParams);
@@ -38,9 +39,9 @@ function App({ Component, pageProps }: AppProps) {
       } else {
         console.log('ℹ️ Not running in Telegram WebApp');
       }
-      
+
       setIsMounted(true);
-      
+
       // Register Service Worker for PWA
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker
@@ -61,9 +62,9 @@ function App({ Component, pageProps }: AppProps) {
   }
 
   const manifestUrl = getManifestUrl();
-  
+
   // Определить тему для TonConnect на основе Telegram
-  const telegramTheme = isTelegramWebApp() 
+  const telegramTheme = isTelegramWebApp()
     ? (getTelegramColorScheme() === 'light' ? THEME.LIGHT : THEME.DARK)
     : THEME.DARK;
 
@@ -73,7 +74,7 @@ function App({ Component, pageProps }: AppProps) {
   return (
     <ErrorBoundary>
       <TelegramThemeProvider>
-        <TonConnectUIProvider 
+        <TonConnectUIProvider
           manifestUrl={manifestUrl}
           actionsConfiguration={{
             twaReturnUrl: 'https://t.me/gstdtoken_bot'
@@ -85,8 +86,9 @@ function App({ Component, pageProps }: AppProps) {
           }}
           language={tonConnectLanguage}
         >
+          <WalletListener />
           <Component {...pageProps} />
-          <Toaster 
+          <Toaster
             position="top-right"
             richColors
             closeButton
@@ -98,4 +100,3 @@ function App({ Component, pageProps }: AppProps) {
 }
 
 export default appWithTranslation(App);
-

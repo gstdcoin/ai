@@ -74,9 +74,12 @@ func ValidateSession(redisClient *redis.Client) gin.HandlerFunc {
 			return
 		}
 
-		// Update last_access timestamp
-		if err := redisClient.HSet(ctx, sessionKey, "last_access", time.Now().Unix()).Err(); err != nil {
-			log.Printf("⚠️  ValidateSession: Failed to update last_access: %v", err)
+		// Update last_access timestamp and extend TTL (Sliding Session)
+		pipe := redisClient.Pipeline()
+		pipe.HSet(ctx, sessionKey, "last_access", time.Now().Unix())
+		pipe.Expire(ctx, sessionKey, 24*time.Hour)
+		if _, err := pipe.Exec(ctx); err != nil {
+			log.Printf("⚠️  ValidateSession: Failed to update session stats: %v", err)
 			// Continue anyway - not critical
 		}
 

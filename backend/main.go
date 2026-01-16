@@ -301,6 +301,11 @@ func main() {
 	hub := api.NewWSHub()
 	go hub.Run()
 
+	// Ensure Genesis Task exists
+	if err := taskService.EnsureGenesisTask(context.Background()); err != nil {
+		log.Printf("⚠️  Warning: Failed to ensure Genesis Task: %v", err)
+	}
+
 	// Set task service hub for broadcasting
 	taskService.SetHub(hub)
 	
@@ -316,7 +321,7 @@ func main() {
 	go timeoutService.StartTimeoutChecker(ctx, 30*time.Second)
 
 	// Start payment watcher (check every 30 seconds)
-	go paymentWatcher.Start(ctx, 30*time.Second)
+	go paymentWatcher.Start(ctx, 30*time.Second) 
 
 	// Start payout retry service (check every 15 minutes)
 	go payoutRetryService.Start(ctx)
@@ -348,8 +353,10 @@ func main() {
 		c.Header("X-XSS-Protection", "1; mode=block")
 		c.Header("Referrer-Policy", "strict-origin-when-cross-origin")
 		c.Header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
-		c.Header("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'")
-		c.Header("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+		c.Header("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://api.mapbox.com; style-src 'self' 'unsafe-inline' https://api.mapbox.com; img-src 'self' data: https://api.mapbox.com; connect-src 'self' wss: https:; worker-src 'self' blob:;")
+		c.Header("Permissions-Policy", "geolocation=(self), microphone=(), camera=(), payment=(self)")
+		c.Header("Server", "GSTD-Secure-Node")
+		c.Header("X-Powered-By", "GSTD-Core-v1") // Obfuscate real backend
 		
 		// CORS headers (adjust for production)
 		origin := c.GetHeader("Origin")

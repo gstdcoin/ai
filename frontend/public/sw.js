@@ -1,26 +1,21 @@
 // Service Worker for GSTD DePIN Platform PWA
-const CACHE_NAME = 'gstd-depin-v1';
+const CACHE_NAME = 'gstd-depin-v2-elite'; // Bump version to force update
 const urlsToCache = [
-  '/',
-  '/stats',
-  '/dashboard',
+  '/', // Will be cached, but Strategy will handle updates
   '/icon.png',
   '/logo.svg',
 ];
 
 // Install event - cache resources
 self.addEventListener('install', (event) => {
+  self.skipWaiting(); // Force activate immediately
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
         console.log('Service Worker: Caching files');
         return cache.addAll(urlsToCache);
       })
-      .catch((err) => {
-        console.error('Service Worker: Cache failed', err);
-      })
   );
-  self.skipWaiting();
 });
 
 // Activate event - clean up old caches
@@ -40,46 +35,38 @@ self.addEventListener('activate', (event) => {
   return self.clients.claim();
 });
 
-// Fetch event - serve from cache, fallback to network
+// Fetch event - Network First for HTML, Cache First for assets
 self.addEventListener('fetch', (event) => {
   // Skip non-GET requests
-  if (event.request.method !== 'GET') {
-    return;
-  }
+  if (event.request.method !== 'GET') return;
+  // Skip API requests
+  if (event.request.url.includes('/api/')) return;
 
-  // Skip API requests (always use network)
-  if (event.request.url.includes('/api/')) {
-    return;
-  }
+  const isHTML = event.request.destination === 'document';
 
-  event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        // Return cached version or fetch from network
-        return response || fetch(event.request).then((response) => {
-          // Don't cache if not a valid response
-          if (!response || response.status !== 200 || response.type !== 'basic') {
-            return response;
-          }
-
-          // Clone the response
-          const responseToCache = response.clone();
-
-          caches.open(CACHE_NAME)
-            .then((cache) => {
-              cache.put(event.request, responseToCache);
-            });
-
+  if (isHTML) {
+    // Network First for HTML (always try to get latest version)
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          // Update cache with new version
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
           return response;
-        });
-      })
-      .catch(() => {
-        // Fallback for offline
-        if (event.request.destination === 'document') {
-          return caches.match('/');
-        }
-      })
-  );
+        })
+        .catch(() => caches.match(event.request)) // Fallback to cache if offline
+    );
+  } else {
+    // Cache First for other assets (images, fonts, etc)
+    event.respondWith(
+      caches.match(event.request)
+        .then((response) => response || fetch(event.request).then((networkResponse) => {
+          const responseClone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+          return networkResponse;
+        }))
+    );
+  }
 });
 
 // Background sync for offline actions

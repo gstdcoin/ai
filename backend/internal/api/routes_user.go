@@ -2,6 +2,7 @@ package api
 
 import (
 	"crypto/rand"
+	"distributed-computing-platform/internal/config"
 	"distributed-computing-platform/internal/services"
 	"encoding/hex"
 	"encoding/json"
@@ -280,4 +281,47 @@ func generateSessionToken() (string, error) {
 		return "", fmt.Errorf("failed to generate random token: %w", err)
 	}
 	return hex.EncodeToString(bytes), nil
+}
+
+// getUserBalance handles fetching user's TON and GSTD balance
+// @Summary Get user balance
+// @Description Get current TON and GSTD balance from blockchain
+// @Tags User
+// @Produce json
+// @Security ApiKeyAuth
+// @Success 200 {object} map[string]interface{}
+// @Router /users/balance [get]
+func getUserBalance(tonService *services.TONService, tonConfig config.TONConfig) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		walletAddress := c.GetString("user_id")
+		if walletAddress == "" {
+			c.JSON(401, gin.H{"error": "Unauthorized"})
+			return
+		}
+
+		ctx := c.Request.Context()
+
+		// Get TON balance
+		var tonBalance float64 = 0
+		tonNano, err := tonService.GetContractBalance(ctx, walletAddress)
+		if err != nil {
+			log.Printf("Failed to get TON balance for %s: %v", walletAddress, err)
+		} else {
+			tonBalance = float64(tonNano) / 1e9
+		}
+
+		// Get GSTD balance
+		var gstdBalance float64 = 0
+		if tonConfig.GSTDJettonAddress != "" {
+			gstdBalance, err = tonService.GetJettonBalance(ctx, walletAddress, tonConfig.GSTDJettonAddress)
+			if err != nil {
+				log.Printf("Failed to get GSTD balance for %s: %v", walletAddress, err)
+			}
+		}
+
+		c.JSON(200, gin.H{
+			"ton":  tonBalance,
+			"gstd": gstdBalance,
+		})
+	}
 }
