@@ -133,7 +133,7 @@ function Dashboard() {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row h-screen bg-sea-50 overflow-hidden">
+    <div className="flex flex-col lg:flex-row h-screen bg-[#030014] overflow-hidden">
       {/* Desktop Sidebar */}
       <div className="hidden lg:block">
         <Sidebar
@@ -186,41 +186,57 @@ function Dashboard() {
             </div>
 
             {/* Global Network Hashrate Widget (Cosmic Only) */}
-            <div className="glass-card p-8 relative overflow-hidden group">
+            <div className="glass-card p-8 relative overflow-hidden group cursor-pointer" onClick={() => router.push('/network')}>
               <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-blue-500/10 opacity-50 group-hover:opacity-100 transition-opacity" />
               <div className="relative z-10 flex items-center justify-between">
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <Globe className="text-cyan-400 w-5 h-5 animate-pulse" />
-                    <h3 className="text-cyan-400 font-medium tracking-wider">{t('global_network_hashrate')}</h3>
+                    <h3 className="text-cyan-400 font-medium tracking-wider uppercase mb-0">{t('global_network_hashrate') || 'Global Network Hashrate'}</h3>
+                    <div className="text-[10px] bg-cyan-900/50 text-cyan-200 px-2 py-0.5 rounded border border-cyan-500/30 uppercase tracking-widest animate-pulse">Live</div>
                   </div>
-                  <div className="text-4xl md:text-5xl font-bold text-white tracking-tight flex items-baseline gap-2">
+                  <div className="text-4xl md:text-5xl font-bold text-white tracking-tight flex items-baseline gap-2 filter drop-shadow-[0_0_10px_rgba(34,211,238,0.5)]">
                     {networkStats ? (networkStats.active_workers * 12.5).toFixed(1) : '---'}
                     <span className="text-lg text-gray-400 font-normal">PH/s</span>
                   </div>
+                  <div className="mt-2 text-sm text-gray-400 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                    Computing Nodes Online: <span className="text-white font-mono">{networkStats?.active_workers || 0}</span>
+                  </div>
                 </div>
                 <div className="hidden md:block">
-                  <Zap className="w-16 h-16 text-yellow-400 opacity-80 drop-shadow-[0_0_15px_rgba(250,204,21,0.5)]" />
+                  <Globe className="w-24 h-24 text-cyan-400 opacity-20 animate-[spin_10s_linear_infinite]" />
                 </div>
               </div>
 
-              {/* Quick Actions */}
-              <div className="mt-6 flex flex-col sm:flex-row gap-4">
-                <button
-                  onClick={() => setActiveTab('devices')}
-                  className="btn-cosmic flex-1 py-3 px-6 rounded-lg flex items-center justify-center gap-2"
-                >
-                  <Server className="w-5 h-5" />
-                  {t('start_worker')}
-                </button>
-                <button
-                  onClick={() => setActiveTab('stats')}
-                  className="glass-button flex-1 py-3 px-6 rounded-lg flex items-center justify-center gap-2 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10"
-                >
-                  <Calculator className="w-5 h-5" />
-                  {t('claim_rewards')}
-                </button>
+              {/* View Map Action */}
+              <div className="mt-6">
+                <div className="w-full h-1 bg-gray-800 rounded-full overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 w-[70%] animate-[shimmer_2s_infinite]"></div>
+                </div>
+                <div className="flex justify-between text-xs text-gray-500 mt-2 font-mono">
+                  <span>GENESIS_TASK: MAPPING</span>
+                  <span className="text-cyan-400">VIEW GLOBAL MAP →</span>
+                </div>
               </div>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="flex flex-col sm:flex-row gap-4">
+              <button
+                onClick={() => setActiveTab('devices')}
+                className="flex-1 py-4 px-6 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold tracking-wide shadow-lg shadow-cyan-900/20 transition-all transform hover:scale-[1.02] flex items-center justify-center gap-2 border border-white/10"
+              >
+                <Server className="w-5 h-5" />
+                {t('start_worker') || 'CONNECT WORKER'}
+              </button>
+              <button
+                onClick={() => setActiveTab('stats')}
+                className="flex-1 py-4 px-6 rounded-xl bg-white/5 hover:bg-white/10 text-white font-medium border border-white/10 backdrop-blur-md transition-all flex items-center justify-center gap-2"
+              >
+                <Calculator className="w-5 h-5 text-cyan-400" />
+                {t('claim_rewards') || 'CLAIM REWARDS'}
+              </button>
             </div>
 
             {/* Network Stats */}

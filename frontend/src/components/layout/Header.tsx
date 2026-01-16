@@ -17,7 +17,7 @@ export default React.memo(function Header({ onCreateTask, onLogout }: HeaderProp
   const handleShare = () => {
     const shareText = t('share_text') || 'Join the GSTD Platform - Decentralized AI Inference Network';
     const shareUrl = typeof window !== 'undefined' ? window.location.origin : 'https://app.gstdtoken.com';
-    
+
     if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp) {
       const tg = (window as any).Telegram.WebApp;
       tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`);
@@ -36,9 +36,9 @@ export default React.memo(function Header({ onCreateTask, onLogout }: HeaderProp
           <div className="flex-1 min-w-0 flex items-center gap-3">
             {/* Logo */}
             <div className="flex-shrink-0">
-              <img 
-                src="/logo-icon.svg" 
-                alt="GSTD Logo" 
+              <img
+                src="/logo.png"
+                alt="GSTD Logo"
                 className="w-10 h-10 sm:w-12 sm:h-12 transition-transform hover:scale-110 duration-300"
               />
             </div>
@@ -56,7 +56,7 @@ export default React.memo(function Header({ onCreateTask, onLogout }: HeaderProp
               )}
             </div>
           </div>
-          
+
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
             {/* Balances */}
             <div className="flex gap-3 sm:gap-4">
@@ -99,7 +99,7 @@ export default React.memo(function Header({ onCreateTask, onLogout }: HeaderProp
           </div>
         </div>
       </div>
-      
+
       {/* Network Metrics Banner */}
       <div className="px-4 sm:px-6 py-3 bg-gradient-to-r from-orange-500/10 to-red-500/10 border-t border-orange-500/20">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -107,8 +107,8 @@ export default React.memo(function Header({ onCreateTask, onLogout }: HeaderProp
             <div className="flex items-center gap-2">
               <span className="text-lg">🌡️</span>
               <div>
-                <p 
-                  className="text-xs text-gray-400 uppercase tracking-wider cursor-help" 
+                <p
+                  className="text-xs text-gray-400 uppercase tracking-wider cursor-help"
                   title="Среднее значение entropy_score по всем операциям. Высокая температура = низкая надёжность сети."
                 >
                   {t('network_temperature')}
@@ -119,8 +119,8 @@ export default React.memo(function Header({ onCreateTask, onLogout }: HeaderProp
             <div className="flex items-center gap-2">
               <span className="text-lg">⚡</span>
               <div>
-                <p 
-                  className="text-xs text-gray-400 uppercase tracking-wider cursor-help" 
+                <p
+                  className="text-xs text-gray-400 uppercase tracking-wider cursor-help"
                   title="Количество ожидающих задач / Количество активных узлов. Высокое давление = перегрузка сети."
                 >
                   {t('computational_pressure')}

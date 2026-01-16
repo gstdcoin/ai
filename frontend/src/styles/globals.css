@@ -37,17 +37,10 @@ html {
 }
 
 body {
-  /* Use Telegram theme colors if available, fallback to default */
-  /* bg_color from Telegram themeParams has highest priority */
-  background-color: var(--tg-theme-bg-color, var(--tg-bg-color, var(--color-sea-50))) !important;
-  color: var(--tg-theme-text-color, var(--tg-text-color, #ffffff));
-
-  /* Ensure background color is applied immediately when Telegram theme changes */
-  transition: background-color 0.2s ease, color 0.2s ease;
+  /* Solid dark background - no gradients to prevent flickering */
+  background-color: #030014 !important;
+  color: #ffffff;
   font-family: 'Inter', system-ui, sans-serif;
-  background-image:
-    radial-gradient(at 0% 0%, rgba(56, 141, 244, 0.1) 0%, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(255, 215, 0, 0.05) 0%, transparent 50%);
   min-height: 100vh;
   min-height: var(--tg-viewport-height, 100vh);
   min-height: -webkit-fill-available;
@@ -62,7 +55,6 @@ body {
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
-  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 html {

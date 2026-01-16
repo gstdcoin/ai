@@ -6,6 +6,7 @@ import (
 	"distributed-computing-platform/internal/models"
 	"distributed-computing-platform/internal/services"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -83,7 +84,14 @@ func SetupRoutes(
 		// @Produce json
 		// @Success 200 {object} map[string]interface{} "Service health status"
 		// @Router /health [get]
-		v1.GET("/health", getHealth(db.(*sql.DB), tonService, tonConfig))
+		// Cast redisClient to *redis.Client for health handler
+		var rClient *redis.Client
+		if redisClient != nil {
+			if rc, ok := redisClient.(*redis.Client); ok {
+				rClient = rc
+			}
+		}
+		v1.GET("/health", getHealth(db.(*sql.DB), tonService, tonConfig, rClient))
 		// @Summary Get public statistics
 		// @Description Returns public platform statistics (no authentication required)
 		// @Tags Public
@@ -94,6 +102,7 @@ func SetupRoutes(
 		v1.GET("/openapi.json", GetOpenAPISpec())
 		v1.GET("/network/entropy", getEntropyStats(taskService))
 		v1.GET("/network/stats", getNetworkStats(statsService))
+		v1.GET("/network/map", getNetworkMap(db.(*sql.DB)))
 		// @Summary Get pool status
 		// @Description Returns GSTD/XAUt liquidity pool status
 		// @Tags Public
@@ -147,6 +156,9 @@ func SetupRoutes(
 			referrals.GET("/stats", getReferralStats(referralService, userService))
 			referrals.POST("/apply", applyReferralCode(referralService, userService))
 		}
+
+		// User data
+		protected.GET("/users/balance", getUserBalance(tonService, tonConfig))
 
 		// Tasks (protected)
 		protected.POST("/tasks", ValidateTaskRequest(), createTask(taskService))
@@ -549,7 +561,7 @@ func getEfficiency(tonService *services.TONService, tonConfig config.TONConfig) 
 	}
 }
 
-func getHealth(db *sql.DB, tonService *services.TONService, tonConfig config.TONConfig) gin.HandlerFunc {
+func getHealth(db *sql.DB, tonService *services.TONService, tonConfig config.TONConfig, rClient *redis.Client) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		
@@ -560,17 +572,39 @@ func getHealth(db *sql.DB, tonService *services.TONService, tonConfig config.TON
 			log.Printf("Health check: Database ping failed: %v", err)
 		}
 		
-		// Get contract balance
+		// Get contract balance (cached for 2 minutes to avoid rate limits)
 		var contractBalance float64 = 0
 		var contractStatus string = "unknown"
 		if tonConfig.ContractAddress != "" {
-			balanceNano, err := tonService.GetContractBalance(ctx, tonConfig.ContractAddress)
-			if err != nil {
-				contractStatus = "error"
-				log.Printf("Health check: Failed to get contract balance: %v", err)
-			} else {
-				contractStatus = "reachable"
-				contractBalance = float64(balanceNano) / 1e9
+			// Try to get cached balance from Redis
+			cacheKey := "health:contract_balance"
+			cacheHit := false
+			
+			if rClient != nil {
+				if val, err := rClient.Get(ctx, cacheKey).Float64(); err == nil {
+					cacheHit = true
+					contractStatus = "reachable"
+					contractBalance = val
+				}
+			}
+			
+			// If cache miss, fetch from TON API
+			if !cacheHit {
+				balanceNano, err := tonService.GetContractBalance(ctx, tonConfig.ContractAddress)
+				if err != nil {
+					contractStatus = "error"
+					// Don't spam logs with rate limit errors
+					if !strings.Contains(err.Error(), "429") {
+						log.Printf("Health check: Failed to get contract balance: %v", err)
+					}
+				} else {
+					contractStatus = "reachable"
+					contractBalance = float64(balanceNano) / 1e9
+					// Cache for 30 seconds
+					if rClient != nil {
+						rClient.Set(ctx, cacheKey, contractBalance, 30*time.Second)
+					}
+				}
 			}
 		} else {
 			contractStatus = "not_configured"
@@ -578,7 +612,7 @@ func getHealth(db *sql.DB, tonService *services.TONService, tonConfig config.TON
 		
 		// Determine overall health
 		status := "healthy"
-		if dbStatus != "connected" || contractStatus == "error" {
+		if dbStatus != "connected" {
 			status = "unhealthy"
 		}
 		

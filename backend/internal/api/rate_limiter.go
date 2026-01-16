@@ -28,11 +28,13 @@ func NewRateLimiter(redisClient *redis.Client) *RateLimiter {
 		limits:      make(map[string]*EndpointLimit),
 	}
 	
-	// Set default limits
-	rl.limits["/api/v1/tasks"] = &EndpointLimit{Requests: 10, Window: time.Minute}
-	rl.limits["/api/v1/tasks/create"] = &EndpointLimit{Requests: 5, Window: time.Minute}
-	rl.limits["/api/v1/devices/register"] = &EndpointLimit{Requests: 3, Window: time.Minute}
-	rl.limits["/api/v1/admin"] = &EndpointLimit{Requests: 20, Window: time.Minute}
+	// Set default limits - generous for MVP/Demo to avoid 429s
+	rl.limits["/api/v1/tasks"] = &EndpointLimit{Requests: 1000, Window: time.Minute}
+	rl.limits["/api/v1/tasks/create"] = &EndpointLimit{Requests: 200, Window: time.Minute}
+	rl.limits["/api/v1/devices/register"] = &EndpointLimit{Requests: 100, Window: time.Minute}
+	rl.limits["/api/v1/admin"] = &EndpointLimit{Requests: 500, Window: time.Minute}
+	rl.limits["/api/v1/users/balance"] = &EndpointLimit{Requests: 500, Window: time.Minute}
+	rl.limits["/api/v1/network/stats"] = &EndpointLimit{Requests: 500, Window: time.Minute}
 	
 	return rl
 }

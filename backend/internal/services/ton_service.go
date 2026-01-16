@@ -21,18 +21,18 @@ type TONService struct {
 }
 
 func NewTONService(apiURL string, apiKey string) *TONService {
-	// Create rate limiter: allow 10 requests per second
+	// Create rate limiter: allow 100 requests per second (increased from 10 for new API key)
 	// Use buffered channel as token bucket
-	rateLimiter := make(chan struct{}, 10)
+	rateLimiter := make(chan struct{}, 100)
 	
-	// Pre-fill with tokens (all 10 available at start)
-	for i := 0; i < 10; i++ {
+	// Pre-fill with tokens (all 100 available at start)
+	for i := 0; i < 100; i++ {
 		rateLimiter <- struct{}{}
 	}
 	
-	// Refill tokens at rate of 10 per second (1 per 100ms)
+	// Refill tokens at rate of 100 per second (1 per 10ms)
 	go func() {
-		ticker := time.NewTicker(100 * time.Millisecond)
+		ticker := time.NewTicker(10 * time.Millisecond)
 		defer ticker.Stop()
 		for range ticker.C {
 			select {

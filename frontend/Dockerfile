@@ -1,14 +1,17 @@
-FROM node:20-alpine AS base
+FROM node:18-alpine AS base
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 
 # Install dependencies only when needed
 FROM base AS deps
 RUN apk update && apk add --no-cache libc6-compat || apk add --no-cache gcompat || true
 WORKDIR /app
 
-COPY package.json package-lock.json* ./
+COPY package.json ./
 # Install dependencies - use npm install to handle package-lock.json sync issues
 # Update @twa-dev/sdk to latest if needed
-RUN npm install && \
+# Install dependencies - use npm install to handle package-lock.json sync issues
+# Update @twa-dev/sdk to latest if needed
+RUN npm install --legacy-peer-deps && \
     npm list @twa-dev/sdk || npm install @twa-dev/sdk@latest --save
 
 # Rebuild the source code only when needed

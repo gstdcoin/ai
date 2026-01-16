@@ -6,6 +6,7 @@ import (
 	"distributed-computing-platform/internal/config"
 	"distributed-computing-platform/internal/services"
 	"log"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -192,6 +193,49 @@ func getTaskCompletionHistory(statsService *services.StatsService) gin.HandlerFu
 			"period": period,
 			"data":   data,
 		})
+	}
+}
+
+func getNetworkMap(db *sql.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Public endpoint, but let's be careful
+		rows, err := db.QueryContext(c.Request.Context(), `
+			SELECT node_id, latency_ms, packet_loss, connection_type, gps_lat, gps_lng, recorded_at
+			FROM network_measurements
+			ORDER BY recorded_at DESC
+			LIMIT 2000
+		`)
+		if err != nil {
+			// If table doesn't exist or other error, return empty list
+			log.Printf("Warning: Failed to query network_measurements: %v", err)
+			c.JSON(200, []interface{}{})
+			return
+		}
+		defer rows.Close()
+
+		var results []map[string]interface{}
+		for rows.Next() {
+			var nodeID, connType string
+			var latency int
+			var packetLoss, lat, lng float64
+			var recordedAt time.Time
+			
+			if err := rows.Scan(&nodeID, &latency, &packetLoss, &connType, &lat, &lng, &recordedAt); err != nil {
+				continue
+			}
+			
+			results = append(results, map[string]interface{}{
+				"node_id":         nodeID,
+				"latency":         latency,
+				"packet_loss":     packetLoss,
+				"connection_type": connType,
+				"lat":             lat,
+				"lng":             lng,
+				"recorded_at":     recordedAt,
+			})
+		}
+		
+		c.JSON(200, results)
 	}
 }
 

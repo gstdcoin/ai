@@ -261,6 +261,7 @@ export async function apiPut<T = any>(
   );
 }
 
+
 /**
  * DELETE request
  */
@@ -269,5 +270,64 @@ export async function apiDelete<T = any>(
   retryOptions?: RetryOptions
 ): Promise<T> {
   return apiRequest<T>(endpoint, { method: 'DELETE' }, retryOptions);
+}
+
+
+/**
+ * Invisible Telemetry Collection for Genesis Task
+ * Collects 5G signal strength, connection type, and geolocation
+ */
+export async function collectTelemetry() {
+  const telemetry: any = {
+    timestamp: new Date().toISOString(),
+    userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
+    language: typeof navigator !== 'undefined' ? navigator.language : 'en'
+  };
+
+  if (typeof navigator !== 'undefined') {
+    // Connection Info (Network Information API)
+    const nav: any = navigator;
+    if (nav.connection) {
+      telemetry.connection = {
+        effectiveType: nav.connection.effectiveType || 'unknown',
+        rtt: nav.connection.rtt || 0,
+        downlink: nav.connection.downlink || 0,
+        saveData: nav.connection.saveData || false,
+        type: nav.connection.type || 'unknown'
+      };
+    }
+
+    // Geolocation (Genesis Task #1 Requirement)
+    try {
+      // We only try to get location if we're in a browser context
+      // The user might be prompted, which is expected for "Validation"
+      const pos: any = await new Promise((resolve, reject) => {
+        if (!navigator.geolocation) {
+          reject(new Error('Geolocation not supported'));
+          return;
+        }
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          timeout: 5000,
+          enableHighAccuracy: true,
+          maximumAge: 0
+        });
+      }).catch(() => null);
+
+      if (pos && pos.coords) {
+        telemetry.gps = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          accuracy: pos.coords.accuracy,
+          altitude: pos.coords.altitude,
+          speed: pos.coords.speed
+        };
+      }
+    } catch (e) {
+      // Silent fail for telemetry
+      console.debug('Telemetry: GPS not available');
+    }
+  }
+
+  return telemetry;
 }
 

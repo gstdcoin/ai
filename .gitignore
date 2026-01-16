@@ -4,19 +4,32 @@
 !.gitignore
 !.dockerignore
 
-# Docker и базы
+# Docker data
 postgres_data/
 redis_data/
 certbot/
 
-# Зависимости и сборки
+# Dependencies
 node_modules/
 .next/
 dist/
-backend/server
+backend/server/
 
-# Бэкапы и мусор
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Backups and temp files
+backups/
 *.sql
+*.gz
 *.log
 *.rdb
-restart_log.txt
+*.txt
+!docs/*.md
+
+# IDEs
+.vscode/
+.idea/
+.DS_Store

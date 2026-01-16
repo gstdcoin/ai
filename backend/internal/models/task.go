@@ -61,6 +61,17 @@ type TaskDescriptor struct {
 	IsPrivate       bool        `json:"is_private"`
 }
 
+// TaskDefinition is a flexible structure for any type of work
+// It mirrors TaskDescriptor but allows for future extensibility
+type TaskDefinition struct {
+	TaskID          string                 `json:"task_id"`
+	Name            string                 `json:"name"`
+	Type            string                 `json:"type"` // Rendering, Data Scraping, Network Probing
+	Parameters      map[string]interface{} `json:"parameters"`
+	Requirements    map[string]interface{} `json:"requirements"`
+	Reward          Reward                 `json:"reward"`
+}
+
 type InputData struct {
 	Source string `json:"source"`
 	Hash   string `json:"hash"`

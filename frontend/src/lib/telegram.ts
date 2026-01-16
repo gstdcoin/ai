@@ -131,15 +131,16 @@ export function applyTelegramTheme(theme: TelegramThemeParams) {
   if (typeof document === 'undefined') return;
 
   const root = document.documentElement;
-  
+
   // Core theme colors - background is critical
   if (theme.bg_color) {
     root.style.setProperty('--tg-theme-bg-color', theme.bg_color);
     root.style.setProperty('--tg-bg-color', theme.bg_color);
     // Apply to body background immediately
-    if (typeof document !== 'undefined' && document.body) {
-      document.body.style.backgroundColor = theme.bg_color;
-    }
+    // Do not override body background color to preserve Elite Cosmic Design
+    // if (typeof document !== 'undefined' && document.body) {
+    //   document.body.style.backgroundColor = theme.bg_color;
+    // }
   }
   if (theme.text_color) {
     root.style.setProperty('--tg-theme-text-color', theme.text_color);
@@ -153,7 +154,7 @@ export function applyTelegramTheme(theme: TelegramThemeParams) {
     root.style.setProperty('--tg-theme-link-color', theme.link_color);
     root.style.setProperty('--tg-link-color', theme.link_color);
   }
-  
+
   // Button colors (critical for UI) - applied with higher priority
   if (theme.button_color) {
     root.style.setProperty('--tg-theme-button-color', theme.button_color);
@@ -166,7 +167,7 @@ export function applyTelegramTheme(theme: TelegramThemeParams) {
     root.style.setProperty('--tg-button-text-color', theme.button_text_color);
     root.style.setProperty('--tg-primary-button-text-color', theme.button_text_color);
   }
-  
+
   // Background colors
   if (theme.secondary_bg_color) {
     root.style.setProperty('--tg-theme-secondary-bg-color', theme.secondary_bg_color);
@@ -180,7 +181,7 @@ export function applyTelegramTheme(theme: TelegramThemeParams) {
     root.style.setProperty('--tg-theme-section-bg-color', theme.section_bg_color);
     root.style.setProperty('--tg-section-bg-color', theme.section_bg_color);
   }
-  
+
   // Text colors
   if (theme.accent_text_color) {
     root.style.setProperty('--tg-theme-accent-text-color', theme.accent_text_color);
@@ -221,19 +222,19 @@ export function initTelegramWebApp(): TelegramWebApp | null {
   try {
     // Use global Telegram WebApp API (available in Telegram Mini Apps)
     const telegramWebApp = (window as any).Telegram?.WebApp as TelegramWebApp;
-    
+
     if (!telegramWebApp) {
       // Telegram WebApp not available - this is expected in non-Telegram environments
       return null;
     }
-    
+
     webApp = telegramWebApp;
-    
+
     // Ready - notify Telegram that Mini App is ready
     if (webApp.ready) {
       webApp.ready();
     }
-    
+
     // Expand to full screen
     if (webApp.expand) {
       webApp.expand();
@@ -291,11 +292,11 @@ export function getTelegramWebApp(): TelegramWebApp | null {
   if (typeof window === 'undefined') {
     return null;
   }
-  
+
   if (!webApp) {
     webApp = initTelegramWebApp();
   }
-  
+
   return webApp;
 }
 
