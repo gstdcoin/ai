@@ -163,7 +163,7 @@ function Dashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="glass-card p-6 flex items-center justify-between relative overflow-hidden">
                 <div className="relative z-10">
-                  <h3 className="text-sm font-medium text-gray-400 mb-1">{t('pending_balance') || 'Pending Balance'}</h3>
+                  <h3 className="text-sm font-medium text-gray-400 mb-1">{t('pending_balance')}</h3>
                   <div className="text-2xl font-bold text-white flex items-baseline gap-1">
                     0.00 <span className="text-sm font-normal text-gray-500">GSTD</span>
                   </div>
@@ -174,7 +174,7 @@ function Dashboard() {
               </div>
               <div className="glass-card p-6 flex items-center justify-between relative overflow-hidden">
                 <div className="relative z-10">
-                  <h3 className="text-sm font-medium text-gray-400 mb-1">{t('claimed_balance') || 'Claimed Balance'}</h3>
+                  <h3 className="text-sm font-medium text-gray-400 mb-1">{t('claimed_balance')}</h3>
                   <div className="text-2xl font-bold text-white flex items-baseline gap-1">
                     0.00 <span className="text-sm font-normal text-gray-500">GSTD</span>
                   </div>
@@ -192,7 +192,7 @@ function Dashboard() {
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <Globe className="text-cyan-400 w-5 h-5 animate-pulse" />
-                    <h3 className="text-cyan-400 font-medium tracking-wider">GLOBAL NETWORK HASHRATE</h3>
+                    <h3 className="text-cyan-400 font-medium tracking-wider">{t('global_network_hashrate')}</h3>
                   </div>
                   <div className="text-4xl md:text-5xl font-bold text-white tracking-tight flex items-baseline gap-2">
                     {networkStats ? (networkStats.active_workers * 12.5).toFixed(1) : '---'}
@@ -211,14 +211,14 @@ function Dashboard() {
                   className="btn-cosmic flex-1 py-3 px-6 rounded-lg flex items-center justify-center gap-2"
                 >
                   <Server className="w-5 h-5" />
-                  START WORKER
+                  {t('start_worker')}
                 </button>
                 <button
                   onClick={() => setActiveTab('stats')}
                   className="glass-button flex-1 py-3 px-6 rounded-lg flex items-center justify-center gap-2 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10"
                 >
                   <Calculator className="w-5 h-5" />
-                  CLAIM REWARDS
+                  {t('claim_rewards')}
                 </button>
               </div>
             </div>
