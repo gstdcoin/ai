@@ -33,4 +33,4 @@ docker compose -f docker-compose.prod.yml up -d
 echo "✅ Deployment Complete!"
 echo "📡 Checking Health..."
 sleep 10
-curl -I -k https://localhost/api/v1/health || echo "⚠️ Warning: Health check failed, please check logs."
+curl -k -f https://localhost/api/v1/health || echo "⚠️ Warning: Health check failed, please check logs."

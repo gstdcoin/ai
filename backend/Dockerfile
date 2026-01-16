@@ -41,6 +41,7 @@ WORKDIR /app
 
 # Copy binary from builder
 COPY --from=builder /app/server .
+COPY --from=builder /app/migrations ./migrations
 COPY .env .
 
 # Change ownership
