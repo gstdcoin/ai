@@ -9,6 +9,7 @@ import (
 	"log"
 	"math"
 	"strings"
+	"sync"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -23,6 +24,7 @@ type TaskService struct {
 	gravityService    *HardenedGravityService
 	entropyService    *EntropyService
 	hub               interface{} // *api.WSHub (avoid circular import)
+	hubMu             sync.RWMutex // Protects hub from race conditions
 	redisStreams      *RedisStreamsService
 	redisPubSub       *RedisPubSubService // Redis Pub/Sub for horizontal scaling
 	telegramService   *TelegramService
@@ -44,6 +46,8 @@ func NewTaskService(db *sql.DB, queue *redis.Client, tonService *TONService, ton
 
 // SetHub sets the WebSocket hub for broadcasting tasks
 func (s *TaskService) SetHub(hub interface{}) {
+	s.hubMu.Lock()
+	defer s.hubMu.Unlock()
 	s.hub = hub
 }
 
@@ -81,13 +85,18 @@ func (s *TaskService) BroadcastTaskToHub(ctx context.Context, task *models.Task)
 	}
 	
 	// Also broadcast to local WebSocket hub (for this server instance)
-	if s.hub != nil {
+	// Use RWMutex to prevent race conditions
+	s.hubMu.RLock()
+	hub := s.hub
+	s.hubMu.RUnlock()
+	
+	if hub != nil {
 		// Use type assertion to call BroadcastTask
 		// This avoids circular import between api and services
-		if hub, ok := s.hub.(interface {
+		if h, ok := hub.(interface {
 			BroadcastTask(*models.Task)
 		}); ok {
-			hub.BroadcastTask(task)
+			h.BroadcastTask(task)
 		}
 	}
 }

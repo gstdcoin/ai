@@ -10,6 +10,7 @@ import DevicesPanel from './DevicesPanel';
 import StatsPanel from './StatsPanel';
 import ReferralPanel from './ReferralPanel';
 import HelpPanel from './HelpPanel';
+import Marketplace from '../marketplace/Marketplace';
 import { Tab } from '../../types/tabs';
 import { useTonConnectUI } from '@tonconnect/ui-react';
 import SystemStatusWidget from './SystemStatusWidget';
@@ -39,7 +40,7 @@ function Dashboard() {
   // Restore previously selected tab to avoid сброс при обновлении
   useEffect(() => {
     const saved = typeof window !== 'undefined' ? window.localStorage.getItem('activeTab') : null;
-    if (saved === 'tasks' || saved === 'devices' || saved === 'stats' || saved === 'referrals' || saved === 'help') {
+    if (saved === 'tasks' || saved === 'devices' || saved === 'stats' || saved === 'referrals' || saved === 'help' || saved === 'marketplace') {
       setActiveTab(saved as Tab);
     }
   }, []); // Empty dependency array - run only once
@@ -161,26 +162,42 @@ function Dashboard() {
 
             {/* Financial Overview - Wallet Balances */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="glass-card p-6 flex items-center justify-between relative overflow-hidden">
+              <div className="glass-card p-6 flex items-center justify-between relative overflow-hidden group hover:border-blue-500/30 transition-all duration-300">
+                {/* Background decoration */}
+                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/10 to-transparent rounded-full blur-2xl group-hover:opacity-100 opacity-50 transition-opacity" />
                 <div className="relative z-10">
-                  <h3 className="text-sm font-medium text-gray-400 mb-1">{t('ton_balance') || 'TON Balance'}</h3>
-                  <div className="text-2xl font-bold text-white flex items-baseline gap-1">
-                    {tonBalance ? parseFloat(tonBalance).toFixed(4) : '0.0000'} <span className="text-sm font-normal text-gray-500">TON</span>
+                  <h3 className="text-sm font-medium text-gray-400 mb-2 flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+                    {t('ton_balance') || 'TON Balance'}
+                  </h3>
+                  <div className="text-3xl font-bold text-white flex items-baseline gap-2">
+                    <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+                      {tonBalance ? parseFloat(tonBalance).toFixed(4) : '0.0000'}
+                    </span>
+                    <span className="text-base font-normal text-gray-500">TON</span>
                   </div>
                 </div>
-                <div className="p-3 rounded-full bg-blue-500/10 text-blue-400">
-                  <Wallet className="w-6 h-6" />
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-500/10 text-blue-400 border border-blue-500/20">
+                  <Wallet className="w-7 h-7" />
                 </div>
               </div>
-              <div className="glass-card p-6 flex items-center justify-between relative overflow-hidden">
+              <div className="glass-card p-6 flex items-center justify-between relative overflow-hidden group hover:border-gold-900/30 transition-all duration-300">
+                {/* Background decoration */}
+                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-amber-500/10 to-transparent rounded-full blur-2xl group-hover:opacity-100 opacity-50 transition-opacity" />
                 <div className="relative z-10">
-                  <h3 className="text-sm font-medium text-gray-400 mb-1">{t('gstd_balance') || 'GSTD Balance'}</h3>
-                  <div className="text-2xl font-bold text-white flex items-baseline gap-1">
-                    {gstdBalance?.toFixed(2) || '0.00'} <span className="text-sm font-normal text-gray-500">GSTD</span>
+                  <h3 className="text-sm font-medium text-gray-400 mb-2 flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
+                    {t('gstd_balance') || 'GSTD Balance'}
+                  </h3>
+                  <div className="text-3xl font-bold text-white flex items-baseline gap-2">
+                    <span className="bg-gradient-to-r from-yellow-400 to-amber-500 bg-clip-text text-transparent">
+                      {gstdBalance?.toFixed(2) || '0.00'}
+                    </span>
+                    <span className="text-base font-normal text-gray-500">GSTD</span>
                   </div>
                 </div>
-                <div className="p-3 rounded-full bg-green-500/10 text-green-400">
-                  <CheckCircle className="w-6 h-6" />
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-500/20 to-yellow-500/10 text-yellow-400 border border-yellow-500/20">
+                  <CheckCircle className="w-7 h-7" />
                 </div>
               </div>
             </div>
@@ -224,18 +241,26 @@ function Dashboard() {
             {/* Quick Actions */}
             <div className="flex flex-col sm:flex-row gap-4">
               <button
-                onClick={() => setActiveTab('devices')}
-                className="flex-1 py-4 px-6 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold tracking-wide shadow-lg shadow-cyan-900/20 transition-all transform hover:scale-[1.02] flex items-center justify-center gap-2 border border-white/10"
+                onClick={() => {
+                  setActiveTab('devices');
+                  // Trigger haptic feedback
+                  if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp) {
+                    (window as any).Telegram.WebApp.HapticFeedback?.impactOccurred?.('medium');
+                  }
+                }}
+                className="flex-1 py-5 px-6 rounded-2xl bg-gradient-to-r from-blue-600 via-cyan-600 to-blue-600 hover:from-blue-500 hover:via-cyan-500 hover:to-blue-500 text-white font-bold tracking-wide shadow-xl shadow-cyan-900/30 transition-all transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3 border border-white/20 relative overflow-hidden group"
               >
-                <Server className="w-5 h-5" />
-                {t('start_worker') || 'CONNECT WORKER'}
+                {/* Animated shine effect */}
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+                <Server className="w-6 h-6 relative z-10" />
+                <span className="relative z-10 text-lg">{t('start_worker') || 'CONNECT WORKER'}</span>
               </button>
               <button
                 onClick={() => setActiveTab('stats')}
-                className="flex-1 py-4 px-6 rounded-xl bg-white/5 hover:bg-white/10 text-white font-medium border border-white/10 backdrop-blur-md transition-all flex items-center justify-center gap-2"
+                className="flex-1 py-5 px-6 rounded-2xl bg-gradient-to-br from-white/5 to-white/[0.02] hover:from-white/10 hover:to-white/5 text-white font-semibold border border-white/10 hover:border-white/20 backdrop-blur-md transition-all flex items-center justify-center gap-3 group"
               >
-                <Calculator className="w-5 h-5 text-cyan-400" />
-                {t('claim_rewards') || 'CLAIM REWARDS'}
+                <Calculator className="w-6 h-6 text-cyan-400 group-hover:text-cyan-300 transition-colors" />
+                <span className="text-lg">{t('claim_rewards') || 'CLAIM REWARDS'}</span>
               </button>
             </div>
 
@@ -311,6 +336,7 @@ function Dashboard() {
             {activeTab === 'stats' && <StatsPanel />}
             {activeTab === 'referrals' && <ReferralPanel />}
             {activeTab === 'help' && <HelpPanel />}
+            {activeTab === 'marketplace' && <Marketplace />}
           </div>
         </main>
       </div>

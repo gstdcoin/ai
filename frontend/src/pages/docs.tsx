@@ -17,7 +17,7 @@ export default function DocsPage() {
                 <div className="max-w-6xl mx-auto flex justify-between items-center">
                     <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
                         <ArrowLeft className="w-5 h-5" />
-                        <img src="/logo.svg" alt="GSTD" className="w-8 h-8" />
+                        <img src="/logo.png" alt="GSTD" className="w-8 h-8 rounded-full" />
                         <span className="text-lg font-bold">GSTD Docs</span>
                     </Link>
                 </div>

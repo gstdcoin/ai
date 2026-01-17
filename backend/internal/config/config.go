@@ -23,10 +23,11 @@ type DatabaseConfig struct {
 }
 
 type RedisConfig struct {
-	Host     string
-	Port     string
-	Password string
-	DB       int
+	Host           string
+	Port           string
+	Password       string
+	DB             int
+	SessionTTLHours int // Session TTL in hours (default 24)
 }
 
 type TONConfig struct {
@@ -68,10 +69,11 @@ func Load() *Config {
 			SSLMode:  getEnv("DB_SSLMODE", "disable"),
 		},
 		Redis: RedisConfig{
-			Host:     getEnv("REDIS_HOST", "localhost"),
-			Port:     getEnv("REDIS_PORT", "6379"),
-			Password: getEnv("REDIS_PASSWORD", ""),
-			DB:       0,
+			Host:           getEnv("REDIS_HOST", "localhost"),
+			Port:           getEnv("REDIS_PORT", "6379"),
+			Password:       getEnv("REDIS_PASSWORD", ""),
+			DB:             0,
+			SessionTTLHours: getEnvInt("SESSION_TTL_HOURS", 24),
 		},
 		TON: TONConfig{
 			Network:          getEnv("TON_NETWORK", "mainnet"),
@@ -112,6 +114,16 @@ func getEnvFloat(key string, defaultValue float64) float64 {
 	if value := os.Getenv(key); value != "" {
 		var result float64
 		if _, err := fmt.Sscanf(value, "%f", &result); err == nil {
+			return result
+		}
+	}
+	return defaultValue
+}
+
+func getEnvInt(key string, defaultValue int) int {
+	if value := os.Getenv(key); value != "" {
+		var result int
+		if _, err := fmt.Sscanf(value, "%d", &result); err == nil {
 			return result
 		}
 	}
