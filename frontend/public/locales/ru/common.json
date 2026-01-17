@@ -65,5 +65,14 @@
   "ton_balance": "Баланс TON",
   "system_status": "Статус системы",
   "total_paid": "Всего выплачено",
-  "active_nodes": "Активные узлы"
+  "active_nodes": "Активные узлы",
+  "disconnect": "Отключить",
+  "connected": "Подключено",
+  "failed_to_disconnect": "Не удалось отключить",
+  "pending_balance": "Ожидаемый баланс",
+  "claimed_balance": "Полученный баланс",
+  "global_network_hashrate": "Глобальный хешрейт сети",
+  "start_worker": "Запустить воркер",
+  "claim_rewards": "Получить награды",
+  "share_text": "Присоединяйтесь к платформе GSTD - Децентрализованная сеть AI-вычислений"
 }

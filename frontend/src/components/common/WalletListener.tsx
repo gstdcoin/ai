@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { useWalletStore } from '../../store/walletStore';
 import { useTonConnectUI, useTonWallet } from '@tonconnect/ui-react';
 import { logger } from '../../lib/logger';
@@ -13,6 +13,25 @@ export default function WalletListener() {
     // Ref to track login state and prevent duplicates
     const lastLoggedInAddress = useRef<string | null>(null);
     const isLoggingIn = useRef<boolean>(false);
+    const proofRequested = useRef<boolean>(false);
+
+    // Request tonProof on mount
+    useEffect(() => {
+        if (!tonConnectUI || proofRequested.current) return;
+
+        // Generate payload for tonProof
+        const payload = `gstd_auth_${Date.now()}`;
+
+        tonConnectUI.setConnectRequestParameters({
+            state: 'ready',
+            value: {
+                tonProof: payload
+            }
+        });
+
+        proofRequested.current = true;
+        logger.info('TonProof request parameters set', { payload });
+    }, [tonConnectUI]);
 
     // Handle Wallet Connection
     useEffect(() => {
@@ -33,7 +52,7 @@ export default function WalletListener() {
 
             // Prevent duplicate login attempts
             if (isLoggingIn.current) return;
-            if (lastLoggedInAddress.current === rawAddress && isConnected) return; // Already logged in
+            if (lastLoggedInAddress.current === rawAddress && isConnected) return;
 
             isLoggingIn.current = true;
 
@@ -41,48 +60,73 @@ export default function WalletListener() {
                 logger.info('Wallet connected, starting login process', { address: rawAddress });
 
                 // 1. Update store immediately to show UI state
-                // Normalize address if needed or leave raw
                 connect(rawAddress);
 
                 // 2. Prepare payload for backend login
                 const walletAddress = rawAddress;
-                const publicKey = wallet.account.publicKey;
+                const publicKey = wallet.account.publicKey || '';
 
                 // Check for connectItems (proof)
                 let signature = '';
                 let payload = '';
-                let proofItem: any = null;
 
                 if (wallet.connectItems?.tonProof && 'proof' in wallet.connectItems.tonProof) {
-                    proofItem = wallet.connectItems.tonProof;
+                    const proofItem = wallet.connectItems.tonProof;
                     signature = proofItem.proof.signature;
                     payload = proofItem.proof.payload;
+                    logger.info('TonProof found', { hasSignature: !!signature, payloadLength: payload.length });
                 }
 
-                // If no proof, we might skip backend login or generic login?
-                // User requested "connect and execute", so backend session is needed.
-                // If no proof, we can try to restore session or just update UI.
+                // If no proof, try simple login without signature verification
+                // This allows connection but with limited functionality
                 if (!signature) {
-                    logger.warn('No tonProof found. Skipping backend login, UI only.');
-                    lastLoggedInAddress.current = rawAddress;
-                    // Get balance anyway if possible
+                    logger.warn('No tonProof found. Attempting simple login.');
+
+                    // Try simple login - backend should handle this
                     try {
-                        // We can't use /users/balance without session token from login... 
-                        // But maybe previous session exists?
-                        const hasSession = localStorage.getItem('session_token');
-                        if (hasSession) {
-                            const balanceData = await apiGet('/users/balance');
-                            useWalletStore.getState().updateBalance(
-                                (balanceData.ton || "0").toString(),
-                                balanceData.gstd || 0
-                            );
+                        const simplePayload = {
+                            connect_payload: {
+                                wallet_address: walletAddress,
+                                public_key: publicKey,
+                                payload: `gstd_simple_${Date.now()}`,
+                                signature: {
+                                    signature: 'simple_connect',
+                                    type: 'simple'
+                                }
+                            }
+                        };
+
+                        const userData = await apiPost('/users/login', simplePayload);
+
+                        if (userData.user) {
+                            setUser(userData.user);
+                            if (userData.session_token) {
+                                localStorage.setItem('session_token', userData.session_token);
+                            }
+                            localStorage.setItem('user', JSON.stringify(userData.user));
+                            lastLoggedInAddress.current = rawAddress;
+                            toast.success('Wallet connected');
+
+                            // Fetch balance
+                            try {
+                                const balanceData = await apiGet('/users/balance');
+                                useWalletStore.getState().updateBalance(
+                                    (balanceData.ton || "0").toString(),
+                                    balanceData.gstd || 0
+                                );
+                            } catch (e) { /* silent */ }
                         }
-                    } catch (e) { /* silent */ }
+                    } catch (e: any) {
+                        logger.error('Simple login failed', e);
+                        // Still keep UI connected
+                        lastLoggedInAddress.current = rawAddress;
+                    }
+
                     isLoggingIn.current = false;
                     return;
                 }
 
-                // 3. Backend Login
+                // 3. Backend Login with full proof
                 const connect_payload = {
                     wallet_address: walletAddress,
                     public_key: publicKey,
@@ -124,7 +168,6 @@ export default function WalletListener() {
             } catch (err: any) {
                 logger.error('Login failed', err);
                 toast.error('Login failed', err.message);
-                // Don't disconnect immediately, let user retry
             } finally {
                 isLoggingIn.current = false;
             }

@@ -65,5 +65,14 @@
   "ton_balance": "TON Balance",
   "system_status": "System Status",
   "total_paid": "Total Paid",
-  "active_nodes": "Active Nodes"
+  "active_nodes": "Active Nodes",
+  "disconnect": "Disconnect",
+  "connected": "Connected",
+  "failed_to_disconnect": "Failed to disconnect",
+  "pending_balance": "Pending Balance",
+  "claimed_balance": "Claimed Balance",
+  "global_network_hashrate": "Global Network Hashrate",
+  "start_worker": "Start Worker",
+  "claim_rewards": "Claim Rewards",
+  "share_text": "Join the GSTD Platform - Decentralized AI Inference Network"
 }
