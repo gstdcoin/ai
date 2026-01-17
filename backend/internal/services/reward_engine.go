@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"math"
 
 	"distributed-computing-platform/internal/config"
 	"distributed-computing-platform/internal/models"
