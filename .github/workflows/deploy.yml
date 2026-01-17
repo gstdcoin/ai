@@ -83,6 +83,10 @@ jobs:
               echo "✅ Updated DB_PASSWORD in .env file"
             fi
             
+            echo "🔗 Creating docker-compose.yml symlink..."
+            ln -sf docker-compose.prod.yml docker-compose.yml
+            echo "✅ Symlink created"
+            
             echo "🐳 Stopping and removing existing containers..."
             docker compose down --remove-orphans || echo "⚠️  No containers to stop"
             
