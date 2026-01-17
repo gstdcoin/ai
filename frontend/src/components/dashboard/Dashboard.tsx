@@ -31,7 +31,7 @@ const NewTaskModal = lazy(() => import('./NewTaskModal'));
 function Dashboard() {
   const { t } = useTranslation('common');
   const router = useRouter();
-  const { address, disconnect } = useWalletStore();
+  const { address, disconnect, tonBalance, gstdBalance } = useWalletStore();
   const [tonConnectUI] = useTonConnectUI();
   const [activeTab, setActiveTab] = useState<Tab>('tasks');
   const [showNewTask, setShowNewTask] = useState(false);
@@ -159,13 +159,13 @@ function Dashboard() {
               <PoolStatusWidget />
             </div>
 
-            {/* Financial Overview (New) */}
+            {/* Financial Overview - Wallet Balances */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="glass-card p-6 flex items-center justify-between relative overflow-hidden">
                 <div className="relative z-10">
-                  <h3 className="text-sm font-medium text-gray-400 mb-1">{t('pending_balance')}</h3>
+                  <h3 className="text-sm font-medium text-gray-400 mb-1">{t('ton_balance') || 'TON Balance'}</h3>
                   <div className="text-2xl font-bold text-white flex items-baseline gap-1">
-                    0.00 <span className="text-sm font-normal text-gray-500">GSTD</span>
+                    {tonBalance ? parseFloat(tonBalance).toFixed(4) : '0.0000'} <span className="text-sm font-normal text-gray-500">TON</span>
                   </div>
                 </div>
                 <div className="p-3 rounded-full bg-blue-500/10 text-blue-400">
@@ -174,9 +174,9 @@ function Dashboard() {
               </div>
               <div className="glass-card p-6 flex items-center justify-between relative overflow-hidden">
                 <div className="relative z-10">
-                  <h3 className="text-sm font-medium text-gray-400 mb-1">{t('claimed_balance')}</h3>
+                  <h3 className="text-sm font-medium text-gray-400 mb-1">{t('gstd_balance') || 'GSTD Balance'}</h3>
                   <div className="text-2xl font-bold text-white flex items-baseline gap-1">
-                    0.00 <span className="text-sm font-normal text-gray-500">GSTD</span>
+                    {gstdBalance?.toFixed(2) || '0.00'} <span className="text-sm font-normal text-gray-500">GSTD</span>
                   </div>
                 </div>
                 <div className="p-3 rounded-full bg-green-500/10 text-green-400">
