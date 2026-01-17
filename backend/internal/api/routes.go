@@ -216,6 +216,10 @@ func SetupRoutes(
 		// Worker endpoints (protected)
 		protected.GET("/tasks/worker/pending", getWorkerPendingTasks(taskPaymentService))
 		protected.POST("/tasks/worker/submit", submitWorkerResult(taskPaymentService, rewardEngine))
+
+		// Marketplace endpoints (protected)
+		marketplaceHandler := NewMarketplaceHandler(db.(*sql.DB))
+		SetupMarketplaceRoutes(protected, marketplaceHandler)
 	}
 
 	// WebSocket endpoint

@@ -15,7 +15,14 @@ import (
 // 1. Cookie: "session_token"
 // 2. Header: "X-Session-Token"
 // 3. Query parameter: "session_token" (for backward compatibility, not recommended)
-func ValidateSession(redisClient *redis.Client) gin.HandlerFunc {
+// sessionTTL is the session duration (e.g., 24*time.Hour)
+func ValidateSession(redisClient *redis.Client, sessionTTL ...time.Duration) gin.HandlerFunc {
+	// Default TTL is 24 hours
+	ttl := 24 * time.Hour
+	if len(sessionTTL) > 0 && sessionTTL[0] > 0 {
+		ttl = sessionTTL[0]
+	}
+	
 	return func(c *gin.Context) {
 		// If Redis is not available, treat as authentication service failure
 		if redisClient == nil {
@@ -77,7 +84,7 @@ func ValidateSession(redisClient *redis.Client) gin.HandlerFunc {
 		// Update last_access timestamp and extend TTL (Sliding Session)
 		pipe := redisClient.Pipeline()
 		pipe.HSet(ctx, sessionKey, "last_access", time.Now().Unix())
-		pipe.Expire(ctx, sessionKey, 24*time.Hour)
+		pipe.Expire(ctx, sessionKey, ttl)  // Use configurable TTL
 		if _, err := pipe.Exec(ctx); err != nil {
 			log.Printf("⚠️  ValidateSession: Failed to update session stats: %v", err)
 			// Continue anyway - not critical

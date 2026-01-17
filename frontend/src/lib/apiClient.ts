@@ -148,10 +148,25 @@ export async function apiRequest<T = any>(
       if (response.status === 401) {
         if (typeof window !== 'undefined') {
           try {
-            window.localStorage.removeItem('session_token');
-            window.localStorage.removeItem('user');
-            // Reload/Reset session
-            window.location.reload();
+            // Auth Loop Guard: prevent infinite reload loop
+            const AUTH_LOOP_KEY = 'auth_loop_guard';
+            const loopCount = parseInt(sessionStorage.getItem(AUTH_LOOP_KEY) || '0', 10);
+
+            if (loopCount >= 2) {
+              // Max attempts reached - clear guard and redirect to home
+              sessionStorage.removeItem(AUTH_LOOP_KEY);
+              window.localStorage.removeItem('session_token');
+              window.localStorage.removeItem('user');
+              // Redirect to home page instead of reload to break the loop
+              window.location.href = '/';
+            } else {
+              // Increment counter and try again
+              sessionStorage.setItem(AUTH_LOOP_KEY, String(loopCount + 1));
+              window.localStorage.removeItem('session_token');
+              window.localStorage.removeItem('user');
+              // Reload to attempt re-authentication
+              window.location.reload();
+            }
           } catch {
             // ignore storage errors
           }
@@ -272,19 +287,61 @@ export async function apiDelete<T = any>(
   return apiRequest<T>(endpoint, { method: 'DELETE' }, retryOptions);
 }
 
+/**
+ * Telemetry data interface for type safety
+ */
+export interface ITelemetry {
+  timestamp: string;
+  userAgent: string;
+  language: string;
+  connection?: {
+    effectiveType: string;
+    rtt: number;
+    downlink: number;
+    saveData: boolean;
+    type: string;
+  };
+  gps?: {
+    lat: number;
+    lng: number;
+    accuracy: number;
+    altitude: number | null;
+    speed: number | null;
+  };
+  device?: {
+    platform: string;
+    vendor: string;
+    cores: number;
+    memory: number | null;
+  };
+}
+
+// Geolocation throttling to prevent device overheating
+let lastGeoCall = 0;
+let cachedGeoPosition: GeolocationPosition | null = null;
+const GEOLOCATION_COOLDOWN_MS = 60_000; // 1 minute cooldown
 
 /**
  * Invisible Telemetry Collection for Genesis Task
  * Collects 5G signal strength, connection type, and geolocation
+ * Implements throttling to prevent battery drain and device overheating
  */
-export async function collectTelemetry() {
-  const telemetry: any = {
+export async function collectTelemetry(): Promise<ITelemetry> {
+  const telemetry: ITelemetry = {
     timestamp: new Date().toISOString(),
     userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
     language: typeof navigator !== 'undefined' ? navigator.language : 'en'
   };
 
   if (typeof navigator !== 'undefined') {
+    // Device info
+    telemetry.device = {
+      platform: (navigator as any).userAgentData?.platform || navigator.platform || 'unknown',
+      vendor: navigator.vendor || 'unknown',
+      cores: navigator.hardwareConcurrency || 1,
+      memory: (navigator as any).deviceMemory || null
+    };
+
     // Connection Info (Network Information API)
     const nav: any = navigator;
     if (nav.connection) {
@@ -297,30 +354,44 @@ export async function collectTelemetry() {
       };
     }
 
-    // Geolocation (Genesis Task #1 Requirement)
+    // Geolocation (Genesis Task #1 Requirement) with throttling
     try {
-      // We only try to get location if we're in a browser context
-      // The user might be prompted, which is expected for "Validation"
-      const pos: any = await new Promise((resolve, reject) => {
-        if (!navigator.geolocation) {
-          reject(new Error('Geolocation not supported'));
-          return;
-        }
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          timeout: 5000,
-          enableHighAccuracy: true,
-          maximumAge: 0
-        });
-      }).catch(() => null);
+      const now = Date.now();
 
-      if (pos && pos.coords) {
+      // Use cached position if within cooldown period
+      if (cachedGeoPosition && (now - lastGeoCall) < GEOLOCATION_COOLDOWN_MS) {
         telemetry.gps = {
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-          accuracy: pos.coords.accuracy,
-          altitude: pos.coords.altitude,
-          speed: pos.coords.speed
+          lat: cachedGeoPosition.coords.latitude,
+          lng: cachedGeoPosition.coords.longitude,
+          accuracy: cachedGeoPosition.coords.accuracy,
+          altitude: cachedGeoPosition.coords.altitude,
+          speed: cachedGeoPosition.coords.speed
         };
+      } else {
+        // Request fresh position
+        const pos = await new Promise<GeolocationPosition | null>((resolve, reject) => {
+          if (!navigator.geolocation) {
+            reject(new Error('Geolocation not supported'));
+            return;
+          }
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            timeout: 10000,
+            enableHighAccuracy: false, // Use low accuracy to save battery
+            maximumAge: 60000 // Accept cached position up to 1 minute old
+          });
+        }).catch(() => null);
+
+        if (pos && pos.coords) {
+          lastGeoCall = now;
+          cachedGeoPosition = pos;
+          telemetry.gps = {
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            accuracy: pos.coords.accuracy,
+            altitude: pos.coords.altitude,
+            speed: pos.coords.speed
+          };
+        }
       }
     } catch (e) {
       // Silent fail for telemetry
@@ -330,4 +401,3 @@ export async function collectTelemetry() {
 
   return telemetry;
 }
-

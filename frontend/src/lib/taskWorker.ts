@@ -2,6 +2,7 @@
 import { useWalletStore } from '../store/walletStore';
 import { logger } from './logger';
 import { WS_URL, API_BASE_URL } from './config';
+import { collectTelemetry, ITelemetry } from './apiClient';
 
 export interface TaskNotification {
   task: {
@@ -59,7 +60,7 @@ export class TaskWorker {
       this.ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          
+
           if (data.type === 'heartbeat_ack') {
             // Heartbeat response - schedule next heartbeat
             setTimeout(() => this.sendHeartbeat(), 50000);
@@ -156,7 +157,7 @@ async function loadWasmModule(modelUrl: string): Promise<WebAssembly.Module> {
     if (!response.ok) {
       throw new Error(`Failed to load Wasm module: ${response.statusText}`);
     }
-    
+
     const bytes = await response.arrayBuffer();
     const module = await WebAssembly.compile(bytes);
     wasmModuleCache.set(modelUrl, module);
@@ -174,8 +175,8 @@ async function executeWasm(module: WebAssembly.Module, inputData: any): Promise<
     const instance = await WebAssembly.instantiate(module, {
       env: { memory },
       wasi_snapshot_preview1: {
-        proc_exit: () => {},
-        fd_write: () => {},
+        proc_exit: () => { },
+        fd_write: () => { },
       },
     });
 
@@ -204,7 +205,7 @@ async function executeWasm(module: WebAssembly.Module, inputData: any): Promise<
 // Execute a task with real computation logic
 export async function executeTask(task: TaskNotification['task']): Promise<any> {
   const startTime = performance.now();
-      logger.debug('Executing task', { task_id: task.task_id });
+  logger.debug('Executing task', { task_id: task.task_id });
 
   try {
     // 1. Fetch input data from input_source
@@ -213,7 +214,7 @@ export async function executeTask(task: TaskNotification['task']): Promise<any> 
       const inputResponse = await fetch(task.input_source, {
         signal: AbortSignal.timeout(task.constraints_time_limit_sec * 1000),
       });
-      
+
       if (!inputResponse.ok) {
         throw new Error(`Failed to fetch input: ${inputResponse.statusText}`);
       }
@@ -238,10 +239,32 @@ export async function executeTask(task: TaskNotification['task']): Promise<any> 
       throw new Error('Input fetch failed');
     }
 
-    // 2. Run computation based on model type
+    // 2. Run computation based on model/task type
     let result: any;
-    
-    if (task.model && task.model.endsWith('.wasm')) {
+
+    // Special handling for Genesis Task (5G/GPS telemetry collection)
+    if (task.task_type === 'genesis' || task.operation === 'collect_topology' || task.operation === 'topology_validation') {
+      logger.info('Executing Genesis Task - collecting telemetry', { task_id: task.task_id });
+
+      // Collect typed telemetry data
+      const telemetry: ITelemetry = await collectTelemetry();
+
+      result = {
+        operation: task.operation,
+        task_type: 'genesis',
+        telemetry: telemetry,
+        device_id: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
+        timestamp: Date.now(),
+        // Include input data if any (e.g., validation parameters)
+        validation_params: inputData,
+      };
+
+      logger.debug('Genesis telemetry collected', {
+        has_gps: !!telemetry.gps,
+        has_connection: !!telemetry.connection,
+        connection_type: telemetry.connection?.effectiveType
+      });
+    } else if (task.model && task.model.endsWith('.wasm')) {
       // Wasm execution
       try {
         const wasmModule = await loadWasmModule(task.model);
@@ -257,7 +280,6 @@ export async function executeTask(task: TaskNotification['task']): Promise<any> 
       }
     } else {
       // JavaScript function execution (fallback)
-      // For now, use a simple computation
       result = {
         operation: task.operation,
         input: inputData,
@@ -282,7 +304,7 @@ export async function executeTask(task: TaskNotification['task']): Promise<any> 
   } catch (error) {
     const executionTime = Math.floor(performance.now() - startTime);
     logger.error('Task execution failed', error);
-    
+
     return {
       error: error instanceof Error ? error.message : 'Unknown error',
       execution_time_ms: executionTime,
@@ -331,7 +353,7 @@ export async function submitTaskResult(
   tonConnectUI: any
 ): Promise<void> {
   const apiBase = API_BASE_URL;
-  
+
   try {
     // Sign the result
     const signature = await signResultData(taskID, result, tonConnectUI);

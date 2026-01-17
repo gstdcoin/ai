@@ -1,2 +1,1 @@
-export type Tab = 'tasks' | 'devices' | 'stats' | 'referrals' | 'help';
-
+export type Tab = 'tasks' | 'devices' | 'stats' | 'referrals' | 'help' | 'marketplace';

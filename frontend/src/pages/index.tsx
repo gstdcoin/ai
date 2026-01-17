@@ -124,7 +124,7 @@ export default function Home() {
           <div className="max-w-7xl mx-auto flex justify-between items-center">
             <div className="flex items-center gap-3">
               <div className="relative">
-                <img src="/logo.svg" alt="GSTD" className="w-10 h-10" />
+                <img src="/logo.png" alt="GSTD" className="w-10 h-10 rounded-full" />
                 <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-violet-500 blur-lg opacity-50" />
               </div>
               <span className="text-xl font-bold tracking-tight">
@@ -352,7 +352,7 @@ export default function Home() {
           <div className="max-w-6xl mx-auto">
             <div className="flex flex-col lg:flex-row justify-between items-center gap-6">
               <div className="flex items-center gap-3">
-                <img src="/logo.svg" alt="GSTD" className="w-8 h-8" />
+                <img src="/logo.png" alt="GSTD" className="w-8 h-8 rounded-full" />
                 <span className="text-lg font-bold text-white/80">GSTD Platform</span>
               </div>
               <p className="text-gray-500 text-sm text-center lg:text-left">

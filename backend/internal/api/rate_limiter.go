@@ -36,6 +36,11 @@ func NewRateLimiter(redisClient *redis.Client) *RateLimiter {
 	rl.limits["/api/v1/users/balance"] = &EndpointLimit{Requests: 500, Window: time.Minute}
 	rl.limits["/api/v1/network/stats"] = &EndpointLimit{Requests: 500, Window: time.Minute}
 	
+	// Telemetry/Genesis Task endpoints - stricter limits to prevent spam
+	rl.limits["/api/v1/tasks/worker/submit"] = &EndpointLimit{Requests: 60, Window: time.Minute}    // 1 per second max
+	rl.limits["/api/v1/device/tasks/:id/result"] = &EndpointLimit{Requests: 60, Window: time.Minute}
+	rl.limits["/api/v1/telemetry/submit"] = &EndpointLimit{Requests: 30, Window: time.Minute}      // Stricter for raw telemetry
+	
 	return rl
 }
 
