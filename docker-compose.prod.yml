@@ -132,9 +132,10 @@ services:
       - gstd_network
 
   backend-blue:
-    extends:
-      service: backend
-
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: gstd-backend:latest
     environment:
       - DB_USER=${DB_USER:-postgres}
       - DB_PASSWORD=${DB_PASSWORD}
@@ -149,13 +150,40 @@ services:
       - REDIS_PORT=6379
       - PORT=8080
       - DEPLOYMENT_COLOR=blue
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     deploy:
-      replicas: 2
+      replicas: 1
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - gstd_network
 
   backend-green:
-    extends:
-      service: backend
-
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: gstd-backend:latest
     environment:
       - DB_USER=${DB_USER:-postgres}
       - DB_PASSWORD=${DB_PASSWORD}
@@ -170,8 +198,34 @@ services:
       - REDIS_PORT=6379
       - PORT=8080
       - DEPLOYMENT_COLOR=green
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     deploy:
-      replicas: 2
+      replicas: 1
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - gstd_network
 
   nginx-lb:
     image: nginx:alpine

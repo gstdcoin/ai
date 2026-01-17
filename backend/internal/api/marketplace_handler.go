@@ -12,6 +12,7 @@ import (
 
 // MarketplaceHandler handles marketplace API routes
 type MarketplaceHandler struct {
+	db          *sql.DB
 	marketplace *services.MarketplaceService
 	escrow      *services.EscrowService
 }
@@ -21,6 +22,7 @@ func NewMarketplaceHandler(db *sql.DB) *MarketplaceHandler {
 	escrow := services.NewEscrowService(db)
 	marketplace := services.NewMarketplaceService(db, escrow)
 	return &MarketplaceHandler{
+		db:          db,
 		marketplace: marketplace,
 		escrow:      escrow,
 	}
@@ -159,7 +161,7 @@ func (h *MarketplaceHandler) CreateTaskWithEscrow(c *gin.Context) {
 	taskID := generateTaskID()
 	
 	// Insert task into database
-	_, err := h.escrow.GetDB().ExecContext(c.Request.Context(), `
+	_, err := h.db.ExecContext(c.Request.Context(), `
 		INSERT INTO tasks (
 			task_id, requester_address, task_type, operation, status,
 			budget_gstd, difficulty, max_workers, reward_per_worker,
@@ -196,7 +198,7 @@ func (h *MarketplaceHandler) CreateTaskWithEscrow(c *gin.Context) {
 	if err != nil {
 		log.Printf("❌ Failed to create escrow: %v", err)
 		// Rollback task creation
-		h.escrow.GetDB().ExecContext(c.Request.Context(), 
+		h.db.ExecContext(c.Request.Context(), 
 			"DELETE FROM tasks WHERE task_id = $1", taskID)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to lock funds"})
 		return
@@ -455,30 +457,30 @@ func (h *MarketplaceHandler) GetMarketplaceStats(c *gin.Context) {
 	var activeWorkers int
 
 	// Get task counts
-	h.escrow.GetDB().QueryRowContext(ctx, `
+	h.db.QueryRowContext(ctx, `
 		SELECT COUNT(*) FROM tasks
 	`).Scan(&totalTasks)
 
-	h.escrow.GetDB().QueryRowContext(ctx, `
+	h.db.QueryRowContext(ctx, `
 		SELECT COUNT(*) FROM tasks WHERE status IN ('pending', 'queued', 'assigned')
 	`).Scan(&activeTasks)
 
-	h.escrow.GetDB().QueryRowContext(ctx, `
+	h.db.QueryRowContext(ctx, `
 		SELECT COUNT(*) FROM tasks WHERE status = 'completed'
 	`).Scan(&completedTasks)
 
 	// Get volume
-	h.escrow.GetDB().QueryRowContext(ctx, `
+	h.db.QueryRowContext(ctx, `
 		SELECT COALESCE(SUM(total_locked_gstd), 0) FROM task_escrow
 	`).Scan(&totalVolume)
 
 	// Get payouts
-	h.escrow.GetDB().QueryRowContext(ctx, `
+	h.db.QueryRowContext(ctx, `
 		SELECT COALESCE(SUM(amount_gstd), 0) FROM transaction_history WHERE tx_type = 'worker_payout'
 	`).Scan(&totalPayouts)
 
 	// Get active workers
-	h.escrow.GetDB().QueryRowContext(ctx, `
+	h.db.QueryRowContext(ctx, `
 		SELECT COUNT(DISTINCT worker_wallet) FROM worker_ratings WHERE last_task_at > NOW() - INTERVAL '24 hours'
 	`).Scan(&activeWorkers)
 
@@ -513,9 +515,4 @@ func randomString(n int) string {
 func toJSON(v interface{}) []byte {
 	b, _ := json.Marshal(v)
 	return b
-}
-
-// GetDB returns the database connection (for MarketplaceHandler)
-func (s *EscrowService) GetDB() *sql.DB {
-	return s.db
 }
