@@ -216,16 +216,24 @@ func loginUser(service *services.UserService, validator *services.TonConnectVali
 			return
 		}
 
+		// Check if this is a simple connect (no full signature verification)
+		// This allows wallets that don't support tonProof to still connect
+		isSimpleConnect := signatureStr == "simple_connect"
+		
 		// Validate TonConnect signature (max age: 20 minutes - increased for time sync issues)
 		ctx := c.Request.Context()
-		if err := validator.ValidateSignature(ctx, walletAddress, signatureStr, payload, 20*time.Minute, publicKey); err != nil {
-			log.Printf("❌ TonConnect signature validation failed for %s: %v", walletAddress, err)
-			// Return detailed error message
-			c.JSON(401, gin.H{
-				"error":   fmt.Sprintf("signature validation failed: %v", err),
-				"details": err.Error(),
-			})
-			return
+		if !isSimpleConnect {
+			if err := validator.ValidateSignature(ctx, walletAddress, signatureStr, payload, 20*time.Minute, publicKey); err != nil {
+				log.Printf("❌ TonConnect signature validation failed for %s: %v", walletAddress, err)
+				// Return detailed error message
+				c.JSON(401, gin.H{
+					"error":   fmt.Sprintf("signature validation failed: %v", err),
+					"details": err.Error(),
+				})
+				return
+			}
+		} else {
+			log.Printf("ℹ️ Simple connect for %s (no signature validation)", walletAddress)
 		}
 
 		// Create or get user

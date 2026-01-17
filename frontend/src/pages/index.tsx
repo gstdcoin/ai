@@ -172,8 +172,8 @@ export default function Home() {
               </p>
 
               {/* CTA Section */}
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
-                <div className="w-full sm:w-auto max-w-sm">
+              <div className="flex flex-col items-center justify-center gap-4 mb-16 w-full px-4">
+                <div className="w-full max-w-xs sm:max-w-sm mx-auto">
                   <WalletConnect />
                 </div>
                 <a
