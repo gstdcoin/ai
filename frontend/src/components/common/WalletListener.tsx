@@ -109,10 +109,10 @@ export default function WalletListener() {
 
                             // Fetch balance
                             try {
-                                const balanceData = await apiGet('/users/balance');
+                                const balanceData = await apiGet<any>(`/wallet/balance?wallet=${walletAddress}`);
                                 useWalletStore.getState().updateBalance(
-                                    (balanceData.ton || "0").toString(),
-                                    balanceData.gstd || 0
+                                    (balanceData.ton_balance || 0).toString(),
+                                    balanceData.gstd_balance || 0
                                 );
                             } catch (e) { /* silent */ }
                         }
@@ -154,10 +154,10 @@ export default function WalletListener() {
 
                 // 5. Fetch Real Balance
                 try {
-                    const balanceData = await apiGet('/users/balance');
+                    const balanceData = await apiGet<any>(`/wallet/balance?wallet=${rawAddress}`);
                     useWalletStore.getState().updateBalance(
-                        (balanceData.ton || "0").toString(),
-                        balanceData.gstd || 0
+                        (balanceData.ton_balance || 0).toString(),
+                        balanceData.gstd_balance || 0
                     );
                 } catch (e) {
                     logger.error('Failed to fetch balance', e);
@@ -184,10 +184,10 @@ export default function WalletListener() {
 
         const fetchBalance = async () => {
             try {
-                const balanceData = await apiGet('/users/balance');
+                const balanceData = await apiGet<any>(`/wallet/balance?wallet=${state.address}`);
                 useWalletStore.getState().updateBalance(
-                    (balanceData.ton || "0").toString(),
-                    balanceData.gstd || 0
+                    (balanceData.ton_balance || 0).toString(),
+                    balanceData.gstd_balance || 0
                 );
             } catch (e) {
                 // Silent fail for balance refresh (no session or network error)
@@ -218,10 +218,10 @@ function useBalanceRefresh() {
 
         const fetchBalance = async () => {
             try {
-                const balanceData = await apiGet('/users/balance');
+                const balanceData = await apiGet<any>(`/wallet/balance?wallet=${address}`);
                 useWalletStore.getState().updateBalance(
-                    (balanceData.ton || "0").toString(),
-                    balanceData.gstd || 0
+                    (balanceData.ton_balance || 0).toString(),
+                    balanceData.gstd_balance || 0
                 );
             } catch (e) {
                 // Silent fail for balance refresh

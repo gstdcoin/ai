@@ -432,6 +432,8 @@ func main() {
 		poolMonitorService,
 		cacheService,
 		errorLogger,
+		powService,
+		taskOrchestrator,
 	)
 
 	// Setup Swagger documentation

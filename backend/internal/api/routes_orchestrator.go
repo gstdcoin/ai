@@ -3,7 +3,9 @@ package api
 import (
 	"database/sql"
 	"distributed-computing-platform/internal/services"
+	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -14,15 +16,101 @@ type OrchestratorHandler struct {
 	db           *sql.DB
 	orchestrator *services.TaskOrchestrator
 	pow          *services.ProofOfWorkService
+	ton          *services.TONService
 }
 
 // NewOrchestratorHandler creates a new orchestrator handler
-func NewOrchestratorHandler(db *sql.DB, orchestrator *services.TaskOrchestrator, pow *services.ProofOfWorkService) *OrchestratorHandler {
+func NewOrchestratorHandler(db *sql.DB, orchestrator *services.TaskOrchestrator, pow *services.ProofOfWorkService, ton *services.TONService) *OrchestratorHandler {
 	return &OrchestratorHandler{
 		db:           db,
 		orchestrator: orchestrator,
 		pow:          pow,
+		ton:          ton,
 	}
+}
+
+// ... unchanged setup ...
+
+// GetWalletBalance returns wallet balance
+// @Summary Get wallet balance
+// @Description Returns GSTD and TON balance for a wallet
+// @Tags Wallet
+// @Produce json
+// @Param wallet query string true "Wallet address"
+// @Success 200 {object} map[string]interface{}
+// @Router /wallet/balance [get]
+func (h *OrchestratorHandler) GetWalletBalance(c *gin.Context) {
+	wallet := c.Query("wallet")
+	if wallet == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "wallet is required"})
+		return
+	}
+
+	var balance struct {
+		GSTDBalance     float64 `json:"gstd_balance"`
+		TONBalance      float64 `json:"ton_balance"`
+		PendingEarnings float64 `json:"pending_earnings"`
+		PendingPayouts  float64 `json:"pending_payouts"`
+		TotalEarned     float64 `json:"total_earned"`
+		LockedInEscrow  float64 `json:"locked_in_escrow"`
+	}
+
+	// Get pending earnings (completed tasks awaiting payout)
+	h.db.QueryRowContext(c.Request.Context(), `
+		SELECT COALESCE(SUM(reward_gstd), 0)
+		FROM worker_task_assignments
+		WHERE worker_wallet = $1 AND status = 'completed' AND paid_at IS NULL
+	`, wallet).Scan(&balance.PendingEarnings)
+
+	// Get total earned
+	h.db.QueryRowContext(c.Request.Context(), `
+		SELECT COALESCE(SUM(reward_gstd), 0)
+		FROM worker_task_assignments
+		WHERE worker_wallet = $1 AND status = 'completed' AND paid_at IS NOT NULL
+	`, wallet).Scan(&balance.TotalEarned)
+
+	// Also check worker_ratings for historical data
+	var workerEarnings float64
+	h.db.QueryRowContext(c.Request.Context(), `
+		SELECT COALESCE(total_earnings_gstd, 0)
+		FROM worker_ratings
+		WHERE worker_wallet = $1
+	`, wallet).Scan(&workerEarnings)
+	if workerEarnings > balance.TotalEarned {
+		balance.TotalEarned = workerEarnings
+	}
+
+	// Get locked escrow amount
+	h.db.QueryRowContext(c.Request.Context(), `
+		SELECT COALESCE(SUM(total_locked_gstd), 0)
+		FROM task_escrow
+		WHERE creator_wallet = $1 AND status = 'locked'
+	`, wallet).Scan(&balance.LockedInEscrow)
+
+	// Fetch real balances from blockchain if TONService is available
+	if h.ton != nil {
+		// Get TON Balance
+		tonBalNano, err := h.ton.GetContractBalance(c.Request.Context(), wallet)
+		if err == nil {
+			balance.TONBalance = float64(tonBalNano) / 1e9
+		} else {
+			log.Printf("Failed to get TON balance for %s: %v", wallet, err)
+		}
+
+		// Get GSTD Balance
+		// Get GSTD Jetton Address from env or constant
+		gstdAddress := os.Getenv("GSTD_JETTON_ADDRESS")
+		if gstdAddress != "" {
+			gstdBal, err := h.ton.GetJettonBalance(c.Request.Context(), wallet, gstdAddress)
+			if err == nil {
+				balance.GSTDBalance = gstdBal
+			} else {
+				log.Printf("Failed to get GSTD balance for %s: %v", wallet, err)
+			}
+		}
+	}
+
+	c.JSON(http.StatusOK, balance)
 }
 
 // SetupOrchestratorRoutes registers orchestrator and PoW routes
@@ -479,66 +567,3 @@ func (h *OrchestratorHandler) GetClientEscrows(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"escrows": escrows})
 }
 
-// GetWalletBalance returns wallet balance
-// @Summary Get wallet balance
-// @Description Returns GSTD and TON balance for a wallet
-// @Tags Wallet
-// @Produce json
-// @Param wallet query string true "Wallet address"
-// @Success 200 {object} map[string]interface{}
-// @Router /wallet/balance [get]
-func (h *OrchestratorHandler) GetWalletBalance(c *gin.Context) {
-	wallet := c.Query("wallet")
-	if wallet == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "wallet is required"})
-		return
-	}
-
-	var balance struct {
-		GSTDBalance     float64 `json:"gstd_balance"`
-		TONBalance      float64 `json:"ton_balance"`
-		PendingEarnings float64 `json:"pending_earnings"`
-		PendingPayouts  float64 `json:"pending_payouts"`
-		TotalEarned     float64 `json:"total_earned"`
-		LockedInEscrow  float64 `json:"locked_in_escrow"`
-	}
-
-	// Get pending earnings (completed tasks awaiting payout)
-	h.db.QueryRowContext(c.Request.Context(), `
-		SELECT COALESCE(SUM(reward_gstd), 0)
-		FROM worker_task_assignments
-		WHERE worker_wallet = $1 AND status = 'completed' AND paid_at IS NULL
-	`, wallet).Scan(&balance.PendingEarnings)
-
-	// Get total earned
-	h.db.QueryRowContext(c.Request.Context(), `
-		SELECT COALESCE(SUM(reward_gstd), 0)
-		FROM worker_task_assignments
-		WHERE worker_wallet = $1 AND status = 'completed' AND paid_at IS NOT NULL
-	`, wallet).Scan(&balance.TotalEarned)
-
-	// Also check worker_ratings for historical data
-	var workerEarnings float64
-	h.db.QueryRowContext(c.Request.Context(), `
-		SELECT COALESCE(total_earnings_gstd, 0)
-		FROM worker_ratings
-		WHERE worker_wallet = $1
-	`, wallet).Scan(&workerEarnings)
-	if workerEarnings > balance.TotalEarned {
-		balance.TotalEarned = workerEarnings
-	}
-
-	// Get locked escrow amount
-	h.db.QueryRowContext(c.Request.Context(), `
-		SELECT COALESCE(SUM(total_locked_gstd), 0)
-		FROM task_escrow
-		WHERE creator_wallet = $1 AND status = 'locked'
-	`, wallet).Scan(&balance.LockedInEscrow)
-
-	// Note: Real GSTD/TON balance should be fetched from blockchain
-	// This is a placeholder that would be replaced with actual TON API calls
-	balance.GSTDBalance = 0 // Fetched from blockchain in TONService
-	balance.TONBalance = 0  // Fetched from blockchain in TONService
-
-	c.JSON(http.StatusOK, balance)
-}
