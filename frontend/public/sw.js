@@ -1,5 +1,5 @@
 // Service Worker for GSTD DePIN Platform PWA
-const CACHE_NAME = 'gstd-depin-v2-elite'; // Bump version to force update
+const CACHE_NAME = 'gstd-depin-v3-2026-01-18'; // Bump version to force update
 const urlsToCache = [
   '/', // Will be cached, but Strategy will handle updates
   '/icon.png',
