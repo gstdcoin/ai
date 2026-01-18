@@ -1,5 +1,5 @@
 // Service Worker for GSTD DePIN Platform PWA
-const CACHE_NAME = 'gstd-depin-v3-2026-01-18'; // Bump version to force update
+const CACHE_NAME = 'gstd-depin-v4-fixed'; // Fixed cross-origin handling
 const urlsToCache = [
   '/', // Will be cached, but Strategy will handle updates
   '/icon.png',
@@ -37,10 +37,19 @@ self.addEventListener('activate', (event) => {
 
 // Fetch event - Network First for HTML, Cache First for assets
 self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+
   // Skip non-GET requests
   if (event.request.method !== 'GET') return;
+
+  // Skip cross-origin requests (external APIs, TonConnect bridges, etc.)
+  if (url.origin !== self.location.origin) return;
+
   // Skip API requests
-  if (event.request.url.includes('/api/')) return;
+  if (url.pathname.startsWith('/api/')) return;
+
+  // Skip WebSocket and SSE connections
+  if (event.request.headers.get('accept')?.includes('text/event-stream')) return;
 
   const isHTML = event.request.destination === 'document';
 
@@ -49,9 +58,13 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
-          // Update cache with new version
-          const responseClone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+          // Only cache successful responses
+          if (response.ok) {
+            const responseClone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseClone).catch(() => { });
+            });
+          }
           return response;
         })
         .catch(() => caches.match(event.request)) // Fallback to cache if offline
@@ -60,11 +73,24 @@ self.addEventListener('fetch', (event) => {
     // Cache First for other assets (images, fonts, etc)
     event.respondWith(
       caches.match(event.request)
-        .then((response) => response || fetch(event.request).then((networkResponse) => {
-          const responseClone = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
-          return networkResponse;
-        }))
+        .then((response) => {
+          if (response) return response;
+
+          return fetch(event.request).then((networkResponse) => {
+            // Only cache successful responses
+            if (networkResponse.ok) {
+              const responseClone = networkResponse.clone();
+              caches.open(CACHE_NAME).then((cache) => {
+                cache.put(event.request, responseClone).catch(() => { });
+              });
+            }
+            return networkResponse;
+          });
+        })
+        .catch(() => {
+          // Return nothing if both cache and network fail
+          return new Response('', { status: 503, statusText: 'Service Unavailable' });
+        })
     );
   }
 });
