@@ -109,12 +109,43 @@ function Dashboard() {
   }, []);
 
   // Haptic feedback helper
-  const triggerHaptic = (style: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft' = 'medium') => {
+  const triggerHaptic = useCallback((style: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft' = 'medium') => {
     if (typeof window !== 'undefined') {
       const { triggerHapticImpact } = require('../../lib/telegram');
       triggerHapticImpact(style);
     }
-  };
+  }, []);
+
+  // Callbacks for child components - MUST be at top level, not inside JSX
+  const handleStatsUpdate = useCallback((stats: any) => {
+    if (typeof document === 'undefined') return;
+
+    const tempEl = document.getElementById('network-temperature');
+    const pressureEl = document.getElementById('computational-pressure');
+    if (tempEl) {
+      if (stats) {
+        const temp = stats.processing_tasks > 0
+          ? (stats.processing_tasks / Math.max(stats.active_devices_count, 1)).toFixed(2)
+          : '0.00';
+        tempEl.textContent = `${temp} T`;
+      } else {
+        tempEl.textContent = '0.00 T';
+      }
+    }
+    if (pressureEl) {
+      if (stats) {
+        const pressure = stats.completed_tasks > 0
+          ? ((stats.queued_tasks + stats.processing_tasks) / stats.completed_tasks).toFixed(2)
+          : (stats.queued_tasks + stats.processing_tasks).toFixed(2);
+        pressureEl.textContent = `${pressure} P`;
+      } else {
+        pressureEl.textContent = '0.00 P';
+      }
+    }
+  }, []);
+
+  const handleTaskCreated = useCallback(() => triggerHaptic('medium'), [triggerHaptic]);
+  const handleCompensationClaimed = useCallback(() => triggerHaptic('medium'), [triggerHaptic]);
 
   return (
     <div className="flex flex-col lg:flex-row h-screen bg-[#030014] overflow-hidden">
@@ -280,40 +311,13 @@ function Dashboard() {
             )}
 
             <ComponentErrorBoundary name="SystemStatusWidget">
-              <SystemStatusWidget onStatsUpdate={useCallback((stats: any) => {
-                if (typeof document === 'undefined') {
-                  return;
-                }
-
-                const tempEl = document.getElementById('network-temperature');
-                const pressureEl = document.getElementById('computational-pressure');
-                if (tempEl) {
-                  if (stats) {
-                    const temp = stats.processing_tasks > 0
-                      ? (stats.processing_tasks / Math.max(stats.active_devices_count, 1)).toFixed(2)
-                      : '0.00';
-                    tempEl.textContent = `${temp} T`;
-                  } else {
-                    tempEl.textContent = '0.00 T';
-                  }
-                }
-                if (pressureEl) {
-                  if (stats) {
-                    const pressure = stats.completed_tasks > 0
-                      ? ((stats.queued_tasks + stats.processing_tasks) / stats.completed_tasks).toFixed(2)
-                      : (stats.queued_tasks + stats.processing_tasks).toFixed(2);
-                    pressureEl.textContent = `${pressure} P`;
-                  } else {
-                    pressureEl.textContent = '0.00 P';
-                  }
-                }
-              }, [])} />
+              <SystemStatusWidget onStatsUpdate={handleStatsUpdate} />
             </ComponentErrorBoundary>
 
             <ComponentErrorBoundary name="TasksPanel">
               {activeTab === 'tasks' && <TasksPanel
-                onTaskCreated={useCallback(() => triggerHaptic('medium'), [])}
-                onCompensationClaimed={useCallback(() => triggerHaptic('medium'), [])}
+                onTaskCreated={handleTaskCreated}
+                onCompensationClaimed={handleCompensationClaimed}
               />}
             </ComponentErrorBoundary>
 
