@@ -1,7 +1,0 @@
-#!/bin/bash
-URL="https://app.gstdtoken.com/api/v1/health"
-if ! curl -s --head  --request GET "$URL" | grep "200 OK" > /dev/null
-then
-    echo "$(date): Platform down. Restarting..." >> /home/ubuntu/restart_log.txt
-    cd /home/ubuntu && docker compose restart backend gateway
-fi

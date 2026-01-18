@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'next-i18next';
-import { LayoutDashboard, Server, BarChart3, HelpCircle, X, Menu, Users, Store } from 'lucide-react';
+import { LayoutDashboard, Server, BarChart3, HelpCircle, X, Menu, Store } from 'lucide-react';
 import { Tab } from '../../types/tabs';
 
 interface SidebarProps {
@@ -17,9 +17,8 @@ export default function Sidebar({ activeTab, onTabChange, onCreateTask }: Sideba
     { id: 'marketplace', label: t('marketplace') || 'Marketplace', icon: <Store size={20} /> },
     { id: 'tasks', label: t('tasks') || 'Tasks', icon: <LayoutDashboard size={20} /> },
     { id: 'devices', label: t('devices') || 'Devices', icon: <Server size={20} /> },
-    { id: 'stats', label: t('stats') || 'Stats', icon: <BarChart3 size={20} /> },
-    { id: 'referrals', label: t('referrals') || 'Referrals', icon: <Users size={20} /> },
-    { id: 'help', label: t('help_center') || t('help') || 'Help', icon: <HelpCircle size={20} /> },
+    { id: 'stats', label: t('stats') || 'Statistics', icon: <BarChart3 size={20} /> },
+    { id: 'help', label: t('help_center') || 'Help Center', icon: <HelpCircle size={20} /> },
   ];
 
   return (

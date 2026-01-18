@@ -1,1 +1,0 @@
-0 2 * * * /home/ubuntu/scripts/backup-database.sh >> /home/ubuntu/logs/backup.log 2>&1

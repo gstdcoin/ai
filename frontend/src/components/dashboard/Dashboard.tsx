@@ -8,7 +8,6 @@ import Header from '../layout/Header';
 import TasksPanel from './TasksPanel';
 import DevicesPanel from './DevicesPanel';
 import StatsPanel from './StatsPanel';
-import ReferralPanel from './ReferralPanel';
 import HelpPanel from './HelpPanel';
 import Marketplace from '../marketplace/Marketplace';
 import { Tab } from '../../types/tabs';
@@ -17,7 +16,7 @@ import SystemStatusWidget from './SystemStatusWidget';
 import TreasuryWidget from './TreasuryWidget';
 import PoolStatusWidget from './PoolStatusWidget';
 import { toast } from '../../lib/toast';
-import { Plus, Users, Calculator, Activity, Zap, Globe, Server, Wallet, CheckCircle } from 'lucide-react';
+import { Plus, Users, Calculator, Activity, Globe, Server, Wallet, CheckCircle } from 'lucide-react';
 import { apiGet } from '../../lib/apiClient';
 
 interface NetworkStats {
@@ -37,25 +36,24 @@ function Dashboard() {
   const [activeTab, setActiveTab] = useState<Tab>('tasks');
   const [showNewTask, setShowNewTask] = useState(false);
 
-  // Restore previously selected tab to avoid сброс при обновлении
+  // Restore previously selected tab
   useEffect(() => {
     const saved = typeof window !== 'undefined' ? window.localStorage.getItem('activeTab') : null;
-    if (saved === 'tasks' || saved === 'devices' || saved === 'stats' || saved === 'referrals' || saved === 'help' || saved === 'marketplace') {
+    if (saved === 'tasks' || saved === 'devices' || saved === 'stats' || saved === 'help' || saved === 'marketplace') {
       setActiveTab(saved as Tab);
     }
-  }, []); // Empty dependency array - run only once
+  }, []);
 
-  // Save active tab to localStorage - separate effect to avoid cycles
+  // Save active tab to localStorage
   useEffect(() => {
     if (typeof window !== 'undefined' && activeTab) {
       try {
         window.localStorage.setItem('activeTab', activeTab);
       } catch (error) {
-        // Ignore localStorage errors (e.g., in private browsing mode)
         console.warn('Failed to save active tab to localStorage:', error);
       }
     }
-  }, [activeTab]); // Only depends on activeTab changes
+  }, [activeTab]);
 
   // Handle tab change with error handling
   const handleTabChange = useCallback((tab: Tab) => {
@@ -109,27 +107,11 @@ function Dashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  // Use telegram.ts helper for haptic feedback
+  // Haptic feedback helper
   const triggerHaptic = (style: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft' = 'medium') => {
     if (typeof window !== 'undefined') {
       const { triggerHapticImpact } = require('../../lib/telegram');
       triggerHapticImpact(style);
-    }
-  };
-
-  const handleShare = () => {
-    const shareText = t('share_text') || 'Join the GSTD Platform - Decentralized AI Inference Network';
-    const shareUrl = typeof window !== 'undefined' ? window.location.origin : 'https://app.gstdtoken.com';
-
-    if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp) {
-      const tg = (window as any).Telegram.WebApp;
-      tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`);
-      triggerHaptic('light');
-    } else if (navigator.share) {
-      navigator.share({ title: 'GSTD Platform', text: shareText, url: shareUrl });
-    } else {
-      navigator.clipboard.writeText(shareUrl);
-      toast.success(t('link_copied') || 'Link copied to clipboard!');
     }
   };
 
@@ -154,7 +136,7 @@ function Dashboard() {
         {/* Main Content */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 pb-20 lg:pb-8">
           <div className="max-w-7xl mx-auto space-y-6">
-            {/* System Status Widgets - Always visible */}
+            {/* System Status Widgets */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <TreasuryWidget />
               <PoolStatusWidget />
@@ -163,7 +145,6 @@ function Dashboard() {
             {/* Financial Overview - Wallet Balances */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="glass-card p-6 flex items-center justify-between relative overflow-hidden group hover:border-blue-500/30 transition-all duration-300">
-                {/* Background decoration */}
                 <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/10 to-transparent rounded-full blur-2xl group-hover:opacity-100 opacity-50 transition-opacity" />
                 <div className="relative z-10">
                   <h3 className="text-sm font-medium text-gray-400 mb-2 flex items-center gap-2">
@@ -182,7 +163,6 @@ function Dashboard() {
                 </div>
               </div>
               <div className="glass-card p-6 flex items-center justify-between relative overflow-hidden group hover:border-gold-900/30 transition-all duration-300">
-                {/* Background decoration */}
                 <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-amber-500/10 to-transparent rounded-full blur-2xl group-hover:opacity-100 opacity-50 transition-opacity" />
                 <div className="relative z-10">
                   <h3 className="text-sm font-medium text-gray-400 mb-2 flex items-center gap-2">
@@ -202,7 +182,7 @@ function Dashboard() {
               </div>
             </div>
 
-            {/* Global Network Hashrate Widget (Cosmic Only) */}
+            {/* Global Network Hashrate Widget */}
             <div className="glass-card p-8 relative overflow-hidden group cursor-pointer" onClick={() => router.push('/network')}>
               <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-blue-500/10 opacity-50 group-hover:opacity-100 transition-opacity" />
               <div className="relative z-10 flex items-center justify-between">
@@ -218,7 +198,7 @@ function Dashboard() {
                   </div>
                   <div className="mt-2 text-sm text-gray-400 flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                    Computing Nodes Online: <span className="text-white font-mono">{networkStats?.active_workers || 0}</span>
+                    {t('computing_nodes_online') || 'Computing Nodes Online'}: <span className="text-white font-mono">{networkStats?.active_workers || 0}</span>
                   </div>
                 </div>
                 <div className="hidden md:block">
@@ -232,8 +212,8 @@ function Dashboard() {
                   <div className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 w-[70%] animate-[shimmer_2s_infinite]"></div>
                 </div>
                 <div className="flex justify-between text-xs text-gray-500 mt-2 font-mono">
-                  <span>GENESIS_TASK: MAPPING</span>
-                  <span className="text-cyan-400">VIEW GLOBAL MAP →</span>
+                  <span>{t('genesis_task') || 'Genesis Task'}: {t('mapping') || 'Mapping'}</span>
+                  <span className="text-cyan-400">{t('view_global_map') || 'View Global Map'} →</span>
                 </div>
               </div>
             </div>
@@ -243,24 +223,20 @@ function Dashboard() {
               <button
                 onClick={() => {
                   setActiveTab('devices');
-                  // Trigger haptic feedback
-                  if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp) {
-                    (window as any).Telegram.WebApp.HapticFeedback?.impactOccurred?.('medium');
-                  }
+                  triggerHaptic('medium');
                 }}
                 className="flex-1 py-5 px-6 rounded-2xl bg-gradient-to-r from-blue-600 via-cyan-600 to-blue-600 hover:from-blue-500 hover:via-cyan-500 hover:to-blue-500 text-white font-bold tracking-wide shadow-xl shadow-cyan-900/30 transition-all transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3 border border-white/20 relative overflow-hidden group"
               >
-                {/* Animated shine effect */}
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
                 <Server className="w-6 h-6 relative z-10" />
-                <span className="relative z-10 text-lg">{t('start_worker') || 'CONNECT WORKER'}</span>
+                <span className="relative z-10 text-lg">{t('start_worker') || 'Connect Worker'}</span>
               </button>
               <button
                 onClick={() => setActiveTab('stats')}
                 className="flex-1 py-5 px-6 rounded-2xl bg-gradient-to-br from-white/5 to-white/[0.02] hover:from-white/10 hover:to-white/5 text-white font-semibold border border-white/10 hover:border-white/20 backdrop-blur-md transition-all flex items-center justify-center gap-3 group"
               >
                 <Calculator className="w-6 h-6 text-cyan-400 group-hover:text-cyan-300 transition-colors" />
-                <span className="text-lg">{t('claim_rewards') || 'CLAIM REWARDS'}</span>
+                <span className="text-lg">{t('claim_rewards') || 'Claim Rewards'}</span>
               </button>
             </div>
 
@@ -272,7 +248,7 @@ function Dashboard() {
                     <Users className="w-6 h-6" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-medium text-gray-400">Active Workers</h3>
+                    <h3 className="text-sm font-medium text-gray-400">{t('active_workers') || 'Active Workers'}</h3>
                     <p className="text-2xl font-bold text-white">{networkStats.active_workers}</p>
                   </div>
                 </div>
@@ -281,7 +257,7 @@ function Dashboard() {
                     <Activity className="w-6 h-6" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-medium text-gray-400">Tasks (24h)</h3>
+                    <h3 className="text-sm font-medium text-gray-400">{t('stat_tasks') || 'Tasks (24h)'}</h3>
                     <p className="text-2xl font-bold text-white">{networkStats.tasks_24h}</p>
                   </div>
                 </div>
@@ -290,7 +266,7 @@ function Dashboard() {
                     <Calculator className="w-6 h-6" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-medium text-gray-400">GSTD Paid</h3>
+                    <h3 className="text-sm font-medium text-gray-400">{t('stat_paid') || 'GSTD Paid'}</h3>
                     <p className="text-2xl font-bold text-white">{networkStats.total_gstd_paid.toFixed(2)}</p>
                   </div>
                 </div>
@@ -298,12 +274,10 @@ function Dashboard() {
             )}
 
             <SystemStatusWidget onStatsUpdate={useCallback((stats: any) => {
-              // Protect against SSR: document is not defined on the server
               if (typeof document === 'undefined') {
                 return;
               }
 
-              // Update Network Temperature and Computational Pressure
               const tempEl = document.getElementById('network-temperature');
               const pressureEl = document.getElementById('computational-pressure');
               if (tempEl) {
@@ -334,7 +308,6 @@ function Dashboard() {
             />}
             {activeTab === 'devices' && <DevicesPanel />}
             {activeTab === 'stats' && <StatsPanel />}
-            {activeTab === 'referrals' && <ReferralPanel />}
             {activeTab === 'help' && <HelpPanel />}
             {activeTab === 'marketplace' && <Marketplace />}
           </div>
@@ -346,7 +319,7 @@ function Dashboard() {
         <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
       </div>
 
-      {/* Floating Action Button - Unified Task Creation */}
+      {/* Floating Action Button */}
       <button
         onClick={() => setShowNewTask(true)}
         className="floating-action-button"
@@ -358,7 +331,7 @@ function Dashboard() {
       {/* Lazy Loaded Modal */}
       {showNewTask && (
         <Suspense fallback={<div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
-          <div className="glass-card text-white">Loading...</div>
+          <div className="glass-card text-white">{t('loading') || 'Loading...'}</div>
         </div>}>
           <NewTaskModal
             onClose={() => setShowNewTask(false)}
@@ -373,5 +346,4 @@ function Dashboard() {
   );
 }
 
-// Memoize Dashboard to prevent unnecessary re-renders
 export default memo(Dashboard);

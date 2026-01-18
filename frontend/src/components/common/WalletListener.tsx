@@ -177,5 +177,63 @@ export default function WalletListener() {
 
     }, [wallet, isConnected, connect, disconnect, setUser]);
 
+    // Periodic balance refresh every 30 seconds when connected
+    useEffect(() => {
+        const state = useWalletStore.getState();
+        if (!state.isConnected || !state.address) return;
+
+        const fetchBalance = async () => {
+            try {
+                const balanceData = await apiGet('/users/balance');
+                useWalletStore.getState().updateBalance(
+                    (balanceData.ton || "0").toString(),
+                    balanceData.gstd || 0
+                );
+            } catch (e) {
+                // Silent fail for balance refresh (no session or network error)
+            }
+        };
+
+        // Fetch after initial delay (login already fetched first)
+        const timeout = setTimeout(fetchBalance, 10000);
+
+        // Then every 30 seconds
+        const interval = setInterval(fetchBalance, 30000);
+
+        return () => {
+            clearTimeout(timeout);
+            clearInterval(interval);
+        };
+    }, [isConnected]);
+
     return null;
+}
+
+// Helper hook to periodically refresh balance
+function useBalanceRefresh() {
+    const { isConnected, address, updateBalance } = useWalletStore.getState();
+
+    useEffect(() => {
+        if (!isConnected || !address) return;
+
+        const fetchBalance = async () => {
+            try {
+                const balanceData = await apiGet('/users/balance');
+                useWalletStore.getState().updateBalance(
+                    (balanceData.ton || "0").toString(),
+                    balanceData.gstd || 0
+                );
+            } catch (e) {
+                // Silent fail for balance refresh
+            }
+        };
+
+        // Fetch immediately
+        fetchBalance();
+
+        // Then every 30 seconds
+        const interval = setInterval(fetchBalance, 30000);
+
+        return () => clearInterval(interval);
+    }, [isConnected, address]);
 }

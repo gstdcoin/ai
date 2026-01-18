@@ -1,1 +1,0 @@
-*/5 * * * * /home/ubuntu/scripts/health-check.sh >> /home/ubuntu/logs/health.log 2>&1

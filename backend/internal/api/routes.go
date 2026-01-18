@@ -164,6 +164,7 @@ func SetupRoutes(
 		protected.POST("/tasks", ValidateTaskRequest(), createTask(taskService))
 		protected.GET("/tasks", getTasks(taskService))
 		protected.GET("/tasks/:id", getTask(taskService))
+		protected.DELETE("/tasks/:id", deleteTask(db.(*sql.DB)))
 		protected.GET("/tasks/:id/payment", getTaskWithPayment(taskPaymentService))
 
 		// Devices (protected)
@@ -217,9 +218,19 @@ func SetupRoutes(
 		protected.GET("/tasks/worker/pending", getWorkerPendingTasks(taskPaymentService))
 		protected.POST("/tasks/worker/submit", submitWorkerResult(taskPaymentService, rewardEngine))
 
-		// Marketplace endpoints (protected)
+		// Marketplace endpoints - split into public and protected
 		marketplaceHandler := NewMarketplaceHandler(db.(*sql.DB))
-		SetupMarketplaceRoutes(protected, marketplaceHandler)
+		// Public marketplace endpoints (no session required)
+		v1.GET("/marketplace/tasks", marketplaceHandler.GetAvailableTasks)
+		v1.GET("/marketplace/stats", marketplaceHandler.GetMarketplaceStats)
+		v1.GET("/marketplace/funds", marketplaceHandler.GetPlatformFunds)
+		// Protected marketplace endpoints (require session)
+		SetupMarketplaceProtectedRoutes(protected, marketplaceHandler)
+
+		// Initialize and setup Orchestrator routes (PoW, Task Queue, Client Dashboard)
+		orchestratorHandler := NewOrchestratorHandler(db.(*sql.DB), nil, nil)
+		SetupOrchestratorRoutes(v1, orchestratorHandler)
+		log.Printf("✅ Orchestrator routes registered")
 	}
 
 	// WebSocket endpoint
@@ -414,6 +425,87 @@ func getTaskWithPayment(taskPaymentService *services.TaskPaymentService) gin.Han
 		}
 
 		c.JSON(200, task)
+	}
+}
+
+// deleteTask deletes a pending task
+// @Summary Delete task
+// @Description Delete a pending task that hasn't been claimed yet
+// @Tags Tasks
+// @Param id path string true "Task ID"
+// @Success 200 {object} map[string]interface{} "Task deleted"
+// @Failure 400 {object} map[string]string "Task cannot be deleted"
+// @Failure 403 {object} map[string]string "Not authorized"
+// @Failure 404 {object} map[string]string "Task not found"
+// @Router /tasks/{id} [delete]
+func deleteTask(db *sql.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		taskID := c.Param("id")
+		if taskID == "" {
+			c.JSON(400, gin.H{"error": "task id is required"})
+			return
+		}
+
+		walletAddress, exists := c.Get("wallet_address")
+		if !exists {
+			c.JSON(401, gin.H{"error": "wallet address required"})
+			return
+		}
+
+		// Check if task exists and belongs to the user
+		var requesterAddress string
+		var status string
+		err := db.QueryRowContext(c.Request.Context(), `
+			SELECT requester_address, status FROM tasks WHERE task_id = $1
+		`, taskID).Scan(&requesterAddress, &status)
+
+		if err != nil {
+			if err == sql.ErrNoRows {
+				c.JSON(404, gin.H{"error": "task not found"})
+				return
+			}
+			log.Printf("Failed to get task: %v", err)
+			c.JSON(500, gin.H{"error": "failed to get task"})
+			return
+		}
+
+		// Check ownership
+		if requesterAddress != walletAddress.(string) {
+			c.JSON(403, gin.H{"error": "you can only delete your own tasks"})
+			return
+		}
+
+		// Check status - can only delete if pending or queued (not claimed yet)
+		if status != "pending" && status != "queued" {
+			c.JSON(400, gin.H{
+				"error": "cannot delete task",
+				"reason": "task is already " + status + " - can only delete pending or queued tasks",
+			})
+			return
+		}
+
+		// Delete the task
+		result, err := db.ExecContext(c.Request.Context(), 
+			"DELETE FROM tasks WHERE task_id = $1 AND requester_address = $2", taskID, walletAddress)
+		
+		if err != nil {
+			log.Printf("Failed to delete task: %v", err)
+			c.JSON(500, gin.H{"error": "failed to delete task"})
+			return
+		}
+
+		rowsAffected, _ := result.RowsAffected()
+		if rowsAffected == 0 {
+			c.JSON(404, gin.H{"error": "task not found or already deleted"})
+			return
+		}
+
+		log.Printf("Task %s deleted by %s", taskID, walletAddress)
+		c.JSON(200, gin.H{
+			"task_id": taskID,
+			"status":  "deleted",
+			"message": "Task deleted successfully",
+		})
 	}
 }
 
