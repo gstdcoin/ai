@@ -207,9 +207,13 @@ func (o *TaskOrchestrator) ClaimTaskForWorker(ctx context.Context, taskID string
 	}
 	
 	// Remove from pending queue
-	key := "task_queue:pending"
-	if err := o.redis.ZRem(ctx, key, taskID).Err(); err != nil {
+	// Use Result() to get the number of removed elements
+	removed, err := o.redis.ZRem(ctx, key, taskID).Result()
+	if err != nil {
 		return nil, fmt.Errorf("failed to remove task from queue: %w", err)
+	}
+	if removed == 0 {
+		return nil, fmt.Errorf("task already claimed by another worker")
 	}
 	
 	// Add to assigned queue
