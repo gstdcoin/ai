@@ -8,6 +8,9 @@
 postgres_data/
 redis_data/
 certbot/
+nginx/ssl/
+gstd-contracts/build/
+gstd-contracts/temp/
 
 # Dependencies
 node_modules/
