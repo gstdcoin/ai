@@ -209,31 +209,4 @@ export default function WalletListener() {
     return null;
 }
 
-// Helper hook to periodically refresh balance
-function useBalanceRefresh() {
-    const { isConnected, address, updateBalance } = useWalletStore.getState();
 
-    useEffect(() => {
-        if (!isConnected || !address) return;
-
-        const fetchBalance = async () => {
-            try {
-                const balanceData = await apiGet<any>(`/wallet/balance?wallet=${address}`);
-                useWalletStore.getState().updateBalance(
-                    (balanceData.ton_balance || 0).toString(),
-                    balanceData.gstd_balance || 0
-                );
-            } catch (e) {
-                // Silent fail for balance refresh
-            }
-        };
-
-        // Fetch immediately
-        fetchBalance();
-
-        // Then every 30 seconds
-        const interval = setInterval(fetchBalance, 30000);
-
-        return () => clearInterval(interval);
-    }, [isConnected, address]);
-}

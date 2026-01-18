@@ -11,7 +11,7 @@ import (
 
 // ConvertRawToUserFriendly converts TON address from raw format (0:...) to user-friendly format (EQ...)
 // Raw format: 0: + 64 hex characters (workchain:address)
-// User-friendly format: EQ/UQ/kQ/0Q + base64url encoded address
+// User-friendly format: [tag 1b][workchain 1b][account_id 32b][crc 2b] base64url encoded
 func ConvertRawToUserFriendly(rawAddress string) (string, error) {
 	rawAddress = strings.TrimSpace(rawAddress)
 	
@@ -22,78 +22,72 @@ func ConvertRawToUserFriendly(rawAddress string) (string, error) {
 	}
 	
 	// Check if it's raw format
-	if !strings.HasPrefix(rawAddress, "0:") {
+	if !strings.HasPrefix(rawAddress, "0:") && !strings.HasPrefix(rawAddress, "-1:") {
+		// Just return raw if we can't parse it, though likely invalid
 		return rawAddress, fmt.Errorf("address is not in raw format")
 	}
 	
-	// Extract hex part (after "0:")
-	hexPart := rawAddress[2:]
+	// Parse Workchain
+	var workchainByte byte = 0x00
+	hexPart := ""
 	
-	// TON raw address: workchain (0) + account_id (32 bytes = 64 hex chars)
-	// Total hex length should be 64 characters
+	if strings.HasPrefix(rawAddress, "0:") {
+		workchainByte = 0x00
+		hexPart = rawAddress[2:]
+	} else if strings.HasPrefix(rawAddress, "-1:") {
+		workchainByte = 0xff
+		hexPart = rawAddress[3:]
+	}
+	
+	// Normalize hex part
 	if len(hexPart) < 64 {
 		return rawAddress, fmt.Errorf("invalid raw address length: need 64 hex characters, got %d", len(hexPart))
 	}
-	
-	// Take first 64 hex characters (32 bytes)
 	if len(hexPart) > 64 {
 		hexPart = hexPart[:64]
 	}
 	
-	// Decode hex to bytes (32 bytes for account_id)
+	// Perform Hex Decode
 	accountID, err := hex.DecodeString(hexPart)
 	if err != nil {
 		return rawAddress, fmt.Errorf("invalid hex in raw address: %w", err)
 	}
 	
-	if len(accountID) != 32 {
-		return rawAddress, fmt.Errorf("invalid account_id length: expected 32 bytes, got %d", len(accountID))
-	}
+	// Construct the 34-byte data: Tag + Workchain + AccountID
+	// Tag: 0x11 for Bounceable (default), 0x51 for Non-bounceable (UQ)
+	// We use 0x11 (Bounceable) -> starts with EQ for wc 0
+	tag := byte(0x11)
 	
-	// Workchain is 0 (from "0:" prefix)
-	workchain := byte(0)
+	data := make([]byte, 34)
+	data[0] = tag
+	data[1] = workchainByte
+	copy(data[2:], accountID)
 	
-	// Create address cell: workchain (1 byte) + account_id (32 bytes) = 33 bytes
-	addressCell := make([]byte, 33)
-	addressCell[0] = workchain
-	copy(addressCell[1:], accountID)
+	// Calculate CRC16-CCITT (XMODEM)
+	crc := crc16(data)
 	
-	// Encode to base64url (user-friendly format)
-	// TON uses base64url encoding without padding
-	encoded := base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(addressCell)
+	// Append CRC (2 bytes, big-endian)
+	fullData := make([]byte, 36)
+	copy(fullData, data)
+	fullData[34] = byte(crc >> 8)
+	fullData[35] = byte(crc & 0xFF)
 	
-	// TON user-friendly format uses EQ prefix for workchain 0 (bounceable)
-	// Format: EQ + 44 base64url characters = 48 total (33 bytes = 44 base64 chars)
-	prefix := "EQ"
-	
-	// Base64 encoding of 33 bytes = 44 characters (33 * 4/3 = 44)
-	// Ensure we have exactly 44 characters
-	if len(encoded) > 44 {
-		encoded = encoded[:44]
-	} else if len(encoded) < 44 {
-		// Pad with 'A' (base64url safe, represents zero)
-		for len(encoded) < 44 {
-			encoded += "A"
-		}
-	}
-	
-	userFriendly := prefix + encoded
-	
-	// Verify final length is 48 characters
-	if len(userFriendly) != 48 {
-		log.Printf("Warning: Converted address length is %d, expected 48: %s", len(userFriendly), userFriendly)
-		// Adjust to exactly 48 characters
-		if len(userFriendly) > 48 {
-			userFriendly = userFriendly[:48]
-		} else {
-			for len(userFriendly) < 48 {
-				userFriendly += "A"
-			}
-		}
-	}
+	// Base64 URL Encode
+	userFriendly := base64.URLEncoding.EncodeToString(fullData)
 	
 	log.Printf("Converted address: %s -> %s", rawAddress, userFriendly)
 	return userFriendly, nil
+}
+
+// crc16 calculates CRC16-CCITT (XMODEM) for TON address checksum
+func crc16(data []byte) uint16 {
+	var crc uint16 = 0x0000
+	for _, b := range data {
+		x := (crc >> 8) ^ uint16(b)
+		x ^= x >> 4
+		crc = (crc << 8) ^ (x << 12) ^ (x << 5) ^ x
+	}
+	return crc
 }
 
 // ConvertRawToUserFriendlySafe is a safe version that returns original if conversion fails
@@ -108,7 +102,7 @@ func ConvertRawToUserFriendlySafe(rawAddress string) string {
 
 // IsRawFormat checks if address is in raw format
 func IsRawFormat(address string) bool {
-	return strings.HasPrefix(strings.TrimSpace(address), "0:")
+	return strings.HasPrefix(strings.TrimSpace(address), "0:") || strings.HasPrefix(strings.TrimSpace(address), "-1:")
 }
 
 // NormalizeAddressForAPI normalizes address for TON API calls
@@ -123,7 +117,7 @@ func NormalizeAddressForAPI(address string) string {
 	}
 	
 	// If raw format, try to convert
-	if strings.HasPrefix(address, "0:") {
+	if IsRawFormat(address) {
 		converted := ConvertRawToUserFriendlySafe(address)
 		return converted
 	}
@@ -137,4 +131,3 @@ func CalculateAddressHash(address string) string {
 	hash := sha256.Sum256([]byte(address))
 	return hex.EncodeToString(hash[:])
 }
-
