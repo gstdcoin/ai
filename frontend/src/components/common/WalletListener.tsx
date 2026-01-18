@@ -88,7 +88,7 @@ export default function WalletListener() {
                             connect_payload: {
                                 wallet_address: walletAddress,
                                 public_key: publicKey,
-                                payload: `gstd_simple_${Date.now()}`,
+                                payload: `gstd_simple:${Date.now()}`,
                                 signature: {
                                     signature: 'simple_connect',
                                     type: 'simple'
