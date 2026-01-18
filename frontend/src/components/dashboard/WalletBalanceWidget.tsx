@@ -118,7 +118,7 @@ export const WalletBalanceWidget: React.FC = () => {
                         </span>
                     </div>
                     <p className="text-3xl font-bold text-white mt-2">
-                        {balance?.gstd_balance.toLocaleString(undefined, { maximumFractionDigits: 4 }) || '0.0000'}
+                        {(balance?.gstd_balance || 0).toLocaleString(undefined, { maximumFractionDigits: 4 })}
                     </p>
                     <p className="text-sm text-gray-500 mt-1">
                         ≈ ${((balance?.gstd_balance || 0) * 0.01).toFixed(2)} USD
@@ -134,7 +134,7 @@ export const WalletBalanceWidget: React.FC = () => {
                         </span>
                     </div>
                     <p className="text-2xl font-semibold text-white mt-2">
-                        {balance?.ton_balance.toFixed(4) || '0.0000'}
+                        {(balance?.ton_balance || 0).toFixed(4)}
                     </p>
                 </div>
 
@@ -146,7 +146,7 @@ export const WalletBalanceWidget: React.FC = () => {
                             <span className="text-sm text-gray-400">{t('wallet.totalEarned')}</span>
                         </div>
                         <p className="text-xl font-semibold text-green-400">
-                            +{balance?.total_earned.toFixed(4) || '0.0000'}
+                            +{(balance?.total_earned || 0).toFixed(4)}
                         </p>
                     </div>
 
@@ -156,7 +156,7 @@ export const WalletBalanceWidget: React.FC = () => {
                             <span className="text-sm text-gray-400">{t('wallet.pending')}</span>
                         </div>
                         <p className="text-xl font-semibold text-yellow-400">
-                            {balance?.pending_earnings.toFixed(4) || '0.0000'}
+                            {(balance?.pending_earnings || 0).toFixed(4)}
                         </p>
                     </div>
                 </div>
@@ -167,7 +167,7 @@ export const WalletBalanceWidget: React.FC = () => {
                         <div className="flex items-center justify-between">
                             <span className="text-sm text-orange-300">{t('wallet.lockedEscrow')}</span>
                             <span className="text-lg font-semibold text-orange-400">
-                                {balance?.locked_in_escrow.toFixed(4)} GSTD
+                                {(balance?.locked_in_escrow || 0).toFixed(4)} GSTD
                             </span>
                         </div>
                     </div>
@@ -193,9 +193,10 @@ export const TransactionHistory: React.FC = () => {
             const data = await apiGet<{ transactions: Transaction[] }>(
                 `/marketplace/my-transactions?wallet=${address}&limit=50${params}`
             );
-            setTransactions(data.transactions || []);
+            setTransactions(Array.isArray(data.transactions) ? data.transactions : []);
         } catch (error) {
             console.error('Failed to fetch transactions:', error);
+            setTransactions([]);
         } finally {
             setLoading(false);
         }
@@ -312,8 +313,8 @@ export const TransactionHistory: React.FC = () => {
                                         {tx.amount_gstd.toFixed(4)} GSTD
                                     </p>
                                     <span className={`text-xs px-2 py-0.5 rounded-full ${tx.status === 'confirmed'
-                                            ? 'bg-green-500/20 text-green-400'
-                                            : 'bg-yellow-500/20 text-yellow-400'
+                                        ? 'bg-green-500/20 text-green-400'
+                                        : 'bg-yellow-500/20 text-yellow-400'
                                         }`}>
                                         {tx.status}
                                     </span>
@@ -412,7 +413,7 @@ export const WorkerEarnings: React.FC = () => {
                 <div className="bg-gray-900/50 rounded-xl p-4">
                     <p className="text-sm text-gray-400">{t('worker.today')}</p>
                     <p className="text-2xl font-bold text-green-400 mt-1">
-                        +{earnings?.today?.toFixed(4) || '0.0000'}
+                        +{(earnings?.today || 0).toFixed(4)}
                     </p>
                     <p className="text-xs text-gray-500">GSTD</p>
                 </div>
@@ -420,7 +421,7 @@ export const WorkerEarnings: React.FC = () => {
                 <div className="bg-gray-900/50 rounded-xl p-4">
                     <p className="text-sm text-gray-400">{t('worker.thisWeek')}</p>
                     <p className="text-2xl font-bold text-green-400 mt-1">
-                        +{earnings?.week?.toFixed(4) || '0.0000'}
+                        +{(earnings?.week || 0).toFixed(4)}
                     </p>
                     <p className="text-xs text-gray-500">GSTD</p>
                 </div>
@@ -428,7 +429,7 @@ export const WorkerEarnings: React.FC = () => {
                 <div className="bg-gray-900/50 rounded-xl p-4">
                     <p className="text-sm text-gray-400">{t('worker.thisMonth')}</p>
                     <p className="text-2xl font-bold text-green-400 mt-1">
-                        +{earnings?.month?.toFixed(4) || '0.0000'}
+                        +{(earnings?.month || 0).toFixed(4)}
                     </p>
                     <p className="text-xs text-gray-500">GSTD</p>
                 </div>
@@ -436,7 +437,7 @@ export const WorkerEarnings: React.FC = () => {
                 <div className="bg-gray-900/50 rounded-xl p-4">
                     <p className="text-sm text-gray-400">{t('worker.allTime')}</p>
                     <p className="text-2xl font-bold text-white mt-1">
-                        {earnings?.allTime?.toFixed(4) || '0.0000'}
+                        {(earnings?.allTime || 0).toFixed(4)}
                     </p>
                     <p className="text-xs text-gray-500">GSTD</p>
                 </div>
