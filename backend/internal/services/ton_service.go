@@ -66,13 +66,6 @@ func normalizeTONAddress(address string) string {
 
 // GetJettonBalance получает баланс Jetton токена (GSTD) на адресе
 func (s *TONService) GetJettonBalance(ctx context.Context, address string, jettonAddress string) (float64, error) {
-	// Wait for rate limiter
-	select {
-	case <-s.rateLimiter:
-	case <-ctx.Done():
-		return 0, ctx.Err()
-	}
-
 	// Normalize address format for TON API
 	normalizedAddress := normalizeTONAddress(address)
 	
@@ -96,7 +89,50 @@ func (s *TONService) GetJettonBalance(ctx context.Context, address string, jetto
 		req.Header.Set("X-API-Key", s.apiKey)
 	}
 
-	resp, err := s.client.Do(req)
+	var resp *http.Response
+	// Retry loop configuration
+	maxRetries := 3
+	backoff := 500 * time.Millisecond
+
+	for i := 0; i <= maxRetries; i++ {
+		// Wait for rate limiter
+		select {
+		case <-s.rateLimiter:
+		case <-ctx.Done():
+			return 0, ctx.Err()
+		}
+
+		resp, err = s.client.Do(req)
+		
+		// Break if success or non-retriable error (e.g. 404, 400)
+		// We retry on network errors (err != nil), 429 Too Many Requests, and 5xx Server Errors
+		if err == nil {
+			if resp.StatusCode == http.StatusOK {
+				break
+			}
+			if resp.StatusCode < 500 && resp.StatusCode != 429 {
+				break
+			}
+		}
+
+		// Don't sleep after last attempt
+		if i < maxRetries {
+			if resp != nil {
+				resp.Body.Close()
+			}
+			log.Printf("GetJettonBalance: Request failed (attempt %d/%d): %v (Status: %d). Retrying in %v...", 
+				i+1, maxRetries+1, err, func() int { if resp != nil { return resp.StatusCode } return 0 }(), backoff)
+			
+			select {
+			case <-time.After(backoff):
+			case <-ctx.Done():
+				return 0, ctx.Err()
+			}
+			// Exponential backoff
+			backoff *= 2
+		}
+	}
+
 	if err != nil {
 		log.Printf("GetJettonBalance: HTTP request error: %v", err)
 		return 0, err
