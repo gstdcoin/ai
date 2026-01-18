@@ -267,7 +267,7 @@ function Dashboard() {
                   </div>
                   <div>
                     <h3 className="text-sm font-medium text-gray-400">{t('stat_paid') || 'GSTD Paid'}</h3>
-                    <p className="text-2xl font-bold text-white">{networkStats.total_gstd_paid.toFixed(2)}</p>
+                    <p className="text-2xl font-bold text-white">{(networkStats.total_gstd_paid || 0).toFixed(2)}</p>
                   </div>
                 </div>
               </div>

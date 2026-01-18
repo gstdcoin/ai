@@ -138,7 +138,7 @@ export default function SystemStatusWidget({ onStatsUpdate }: SystemStatusWidget
               <div>
                 <p className="text-xs text-gray-600 mb-1">{t('total_compensation') || 'Total Paid'}</p>
                 <p className="text-lg sm:text-xl font-bold text-indigo-600">
-                  {stats.total_rewards_ton.toFixed(2)} TON
+                  {(stats.total_rewards_ton || 0).toFixed(2)} TON
                 </p>
               </div>
             </div>
