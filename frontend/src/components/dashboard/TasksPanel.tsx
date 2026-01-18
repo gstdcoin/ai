@@ -388,6 +388,7 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
     <div>
       <div className="mb-6 flex flex-wrap gap-2 sm:gap-4 items-center">
         <button
+          type="button"
           onClick={() => {
             setFilter('all');
             triggerHapticImpact('light');
@@ -402,6 +403,7 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
         {address && (
           <>
             <button
+              type="button"
               onClick={() => {
                 setFilter('my');
                 triggerHapticImpact('light');
@@ -414,6 +416,7 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
               {t('my_tasks')}
             </button>
             <button
+              type="button"
               onClick={() => {
                 setFilter('available');
                 triggerHapticImpact('light');
@@ -428,6 +431,7 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
           </>
         )}
         <button
+          type="button"
           onClick={loadTasks}
           disabled={loading}
           className="ml-auto glass-button text-white disabled:opacity-50"
@@ -534,6 +538,7 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
                     <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm">
                       <div className="flex flex-col sm:flex-row gap-2">
                         <button
+                          type="button"
                           onClick={() => {
                             setSelectedTaskId(task.task_id);
                             triggerHapticImpact('light');
@@ -544,6 +549,7 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
                         </button>
                         {task.status === 'validated' && task.assigned_device === address && (
                           <button
+                            type="button"
                             onClick={() => handleClaimCompensation(task)}
                             disabled={claimingCompensation === task.task_id}
                             className="bg-green-500/20 text-green-400 px-2 sm:px-3 py-1 rounded hover:bg-green-500/30 disabled:opacity-50 text-xs sm:text-sm font-medium"
@@ -555,6 +561,7 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
                         )}
                         {(task.status === 'pending' || task.status === 'queued') && task.requester_address === address && (
                           <button
+                            type="button"
                             onClick={() => handleDeleteTask(task)}
                             disabled={deletingTask === task.task_id}
                             className="bg-red-500/20 text-red-400 px-2 sm:px-3 py-1 rounded hover:bg-red-500/30 disabled:opacity-50 text-xs sm:text-sm font-medium"

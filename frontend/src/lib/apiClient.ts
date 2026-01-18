@@ -114,8 +114,11 @@ export async function apiRequest<T = any>(
   }
 
   // Build headers with session token
+  // Build headers
+  const method = options.method?.toUpperCase() || 'GET';
   const headers: HeadersInit = {
-    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    ...((method !== 'GET' && method !== 'DELETE') ? { 'Content-Type': 'application/json' } : {}),
     ...options.headers,
   };
 
