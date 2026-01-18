@@ -221,6 +221,7 @@ export default function NewTaskModal({ onClose, onTaskCreated }: NewTaskModalPro
               </p>
             </div>
             <button
+              type="button"
               onClick={onClose}
               className="w-full bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors"
             >
@@ -258,6 +259,7 @@ export default function NewTaskModal({ onClose, onTaskCreated }: NewTaskModalPro
               </p>
             </div>
             <button
+              type="button"
               onClick={onClose}
               className="w-full bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors"
             >
@@ -278,6 +280,7 @@ export default function NewTaskModal({ onClose, onTaskCreated }: NewTaskModalPro
               {t('pay_for_task') || 'Pay for Task'}
             </h2>
             <button
+              type="button"
               onClick={onClose}
               className="text-gray-400 hover:text-gray-600 transition-colors"
             >
