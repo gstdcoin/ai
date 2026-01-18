@@ -62,11 +62,11 @@ export default function NewTaskModal({ onClose, onTaskCreated }: NewTaskModalPro
       // Проверка баланса GSTD только при создании задания
       // Use the same threshold as backend (0.000001 GSTD)
       const MIN_GSTD_BALANCE = 0.000001;
-      
+
       try {
-        const balanceData = await apiGet<{ balance: string }>(`/wallet/gstd-balance?address=${address}`);
-        const balance = parseFloat(balanceData.balance) || 0;
-        
+        const balanceData = await apiGet<{ gstd_balance: number }>(`/wallet/balance?wallet=${address}`);
+        const balance = balanceData.gstd_balance || 0;
+
         // Check balance directly - if balance is >= threshold, allow task creation
         // has_gstd might be false if API check failed, but balance might still be > 0
         if (balance < MIN_GSTD_BALANCE) {
@@ -156,7 +156,7 @@ export default function NewTaskModal({ onClose, onTaskCreated }: NewTaskModalPro
       // Note: Jetton transfers via TonConnect require special handling
       // For now, we'll show instructions and start polling for payment confirmation
       // In production, implement proper jetton transfer using @ton/core or similar
-      
+
       logger.debug('Payment details', {
         platform_wallet: taskData.platform_wallet,
         amount: taskData.amount,
@@ -395,9 +395,8 @@ export default function NewTaskModal({ onClose, onTaskCreated }: NewTaskModalPro
               step="0.000000001"
               value={formData.budget}
               onChange={(e) => handleFormChange('budget', e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-                formErrors.budget ? 'border-red-300' : 'border-gray-300'
-              }`}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${formErrors.budget ? 'border-red-300' : 'border-gray-300'
+                }`}
               placeholder="10.5"
             />
             {formErrors.budget && (
@@ -413,9 +412,8 @@ export default function NewTaskModal({ onClose, onTaskCreated }: NewTaskModalPro
               id="payload"
               value={formData.payload}
               onChange={(e) => handleFormChange('payload', e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent font-mono text-sm ${
-                formErrors.payload ? 'border-red-300' : 'border-gray-300'
-              }`}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent font-mono text-sm ${formErrors.payload ? 'border-red-300' : 'border-gray-300'
+                }`}
               rows={4}
               placeholder='{"input": "data", "model": "gpt-4"}'
             />
