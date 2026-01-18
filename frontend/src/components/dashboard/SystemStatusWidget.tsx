@@ -45,35 +45,35 @@ export default function SystemStatusWidget({ onStatsUpdate }: SystemStatusWidget
   const loadStats = async () => {
     try {
       const apiBase = API_BASE_URL;
-      const response = await fetch(`${apiBase}/api/v1/stats`, {
+      const response = await fetch(`${apiBase}/api/v1/stats/public`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
         cache: 'no-cache',
       });
-      
+
       if (!response.ok) {
         // Skip this update cycle if server returns error, don't crash
         logger.warn(`Stats API returned ${response.status}: ${response.statusText}`);
         return;
       }
-      
+
       // Check if response is JSON before parsing
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
         logger.warn('Stats API returned non-JSON response, skipping');
         return;
       }
-      
+
       const data = await response.json();
-      
+
       // Handle empty or invalid response
       if (!data || typeof data !== 'object') {
         // Keep previous stats on invalid response
         return;
       }
-      
+
       setStats(data);
       setLoading(false);
     } catch (error) {

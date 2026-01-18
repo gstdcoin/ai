@@ -121,7 +121,7 @@ func (s *TONService) GetJettonBalance(ctx context.Context, address string, jetto
 				resp.Body.Close()
 			}
 			log.Printf("GetJettonBalance: Request failed (attempt %d/%d): %v (Status: %d). Retrying in %v...", 
-				i+1, maxRetries+1, err, func() int { if resp != nil { return resp.StatusCode } return 0 }(), backoff)
+				i+1, maxRetries+1, err, func() int { if resp != nil { return resp.StatusCode }; return 0 }(), backoff)
 			
 			select {
 			case <-time.After(backoff):

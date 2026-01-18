@@ -207,6 +207,7 @@ func (o *TaskOrchestrator) ClaimTaskForWorker(ctx context.Context, taskID string
 	}
 	
 	// Remove from pending queue
+	key := "task_queue:pending"
 	// Use Result() to get the number of removed elements
 	removed, err := o.redis.ZRem(ctx, key, taskID).Result()
 	if err != nil {
