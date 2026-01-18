@@ -39,6 +39,8 @@ func SetupRoutes(
 	poolMonitorService *services.PoolMonitorService,
 	cacheService *services.CacheService,
 	errorLogger *services.ErrorLogger,
+	powService *services.ProofOfWorkService,
+	taskOrchestrator *services.TaskOrchestrator,
 ) {
 	log.Printf("🔧 SetupRoutes: Starting route setup, redisClient type: %T", redisClient)
 	
@@ -228,7 +230,7 @@ func SetupRoutes(
 		SetupMarketplaceProtectedRoutes(protected, marketplaceHandler)
 
 		// Initialize and setup Orchestrator routes (PoW, Task Queue, Client Dashboard)
-		orchestratorHandler := NewOrchestratorHandler(db.(*sql.DB), nil, nil)
+		orchestratorHandler := NewOrchestratorHandler(db.(*sql.DB), taskOrchestrator, powService, tonService)
 		SetupOrchestratorRoutes(v1, orchestratorHandler)
 		log.Printf("✅ Orchestrator routes registered")
 	}

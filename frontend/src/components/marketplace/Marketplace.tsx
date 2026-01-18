@@ -67,9 +67,10 @@ export default function Marketplace() {
     const fetchTasks = useCallback(async () => {
         try {
             const response = await apiGet<{ tasks: AvailableTask[] }>('/marketplace/tasks');
-            setTasks(response.tasks || []);
+            setTasks(Array.isArray(response.tasks) ? response.tasks : []);
         } catch (error) {
             console.error('Failed to fetch tasks:', error);
+            setTasks([]);
         }
     }, []);
 
@@ -78,9 +79,10 @@ export default function Marketplace() {
         if (!isConnected) return;
         try {
             const response = await apiGet<{ tasks: any[] }>('/marketplace/my-tasks');
-            setMyTasks(response.tasks || []);
+            setMyTasks(Array.isArray(response.tasks) ? response.tasks : []);
         } catch (error) {
             console.error('Failed to fetch my tasks:', error);
+            setMyTasks([]);
         }
     }, [isConnected]);
 
@@ -89,7 +91,7 @@ export default function Marketplace() {
         if (!isConnected) return;
         try {
             const stats = await apiGet<WorkerStats>('/marketplace/worker/stats');
-            setWorkerStats(stats);
+            if (stats) setWorkerStats(stats);
         } catch (error) {
             console.error('Failed to fetch worker stats:', error);
         }
@@ -99,7 +101,7 @@ export default function Marketplace() {
     const fetchMarketStats = useCallback(async () => {
         try {
             const stats = await apiGet<MarketplaceStats>('/marketplace/stats');
-            setMarketStats(stats);
+            if (stats) setMarketStats(stats);
         } catch (error) {
             console.error('Failed to fetch market stats:', error);
         }
@@ -213,8 +215,8 @@ export default function Marketplace() {
                 <button
                     onClick={() => setActiveTab('jobs')}
                     className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'jobs'
-                            ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white'
-                            : 'bg-white/5 text-gray-400 hover:text-white'
+                        ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white'
+                        : 'bg-white/5 text-gray-400 hover:text-white'
                         }`}
                 >
                     🔍 Job Feed
@@ -222,8 +224,8 @@ export default function Marketplace() {
                 <button
                     onClick={() => setActiveTab('create')}
                     className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'create'
-                            ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white'
-                            : 'bg-white/5 text-gray-400 hover:text-white'
+                        ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white'
+                        : 'bg-white/5 text-gray-400 hover:text-white'
                         }`}
                 >
                     ➕ Create Task
@@ -231,8 +233,8 @@ export default function Marketplace() {
                 <button
                     onClick={() => { setActiveTab('my-tasks'); fetchMyTasks(); }}
                     className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'my-tasks'
-                            ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white'
-                            : 'bg-white/5 text-gray-400 hover:text-white'
+                        ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white'
+                        : 'bg-white/5 text-gray-400 hover:text-white'
                         }`}
                 >
                     📋 My Tasks
@@ -432,10 +434,10 @@ export default function Marketplace() {
                                             type="button"
                                             onClick={() => setTaskForm({ ...taskForm, difficulty: d })}
                                             className={`flex-1 py-2 rounded-lg font-medium capitalize transition-all ${taskForm.difficulty === d
-                                                    ? d === 'easy' ? 'bg-green-500/30 text-green-400 border border-green-500'
-                                                        : d === 'medium' ? 'bg-yellow-500/30 text-yellow-400 border border-yellow-500'
-                                                            : 'bg-red-500/30 text-red-400 border border-red-500'
-                                                    : 'bg-white/5 text-gray-400'
+                                                ? d === 'easy' ? 'bg-green-500/30 text-green-400 border border-green-500'
+                                                    : d === 'medium' ? 'bg-yellow-500/30 text-yellow-400 border border-yellow-500'
+                                                        : 'bg-red-500/30 text-red-400 border border-red-500'
+                                                : 'bg-white/5 text-gray-400'
                                                 }`}
                                         >
                                             {d}
@@ -452,8 +454,8 @@ export default function Marketplace() {
                                         type="button"
                                         onClick={() => setTaskForm({ ...taskForm, geography_type: 'global' })}
                                         className={`flex-1 py-2 rounded-lg ${taskForm.geography_type === 'global'
-                                                ? 'bg-purple-500/30 text-purple-400 border border-purple-500'
-                                                : 'bg-white/5 text-gray-400'
+                                            ? 'bg-purple-500/30 text-purple-400 border border-purple-500'
+                                            : 'bg-white/5 text-gray-400'
                                             }`}
                                     >
                                         🌍 Global
@@ -462,8 +464,8 @@ export default function Marketplace() {
                                         type="button"
                                         onClick={() => setTaskForm({ ...taskForm, geography_type: 'countries' })}
                                         className={`flex-1 py-2 rounded-lg ${taskForm.geography_type === 'countries'
-                                                ? 'bg-purple-500/30 text-purple-400 border border-purple-500'
-                                                : 'bg-white/5 text-gray-400'
+                                            ? 'bg-purple-500/30 text-purple-400 border border-purple-500'
+                                            : 'bg-white/5 text-gray-400'
                                             }`}
                                     >
                                         🎯 Specific Countries
