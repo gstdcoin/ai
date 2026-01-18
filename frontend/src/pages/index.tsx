@@ -57,10 +57,6 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [isConnected]);
 
-  const changeLanguage = () => {
-    router.push(router.pathname, router.asPath, { locale: router.locale === 'ru' ? 'en' : 'ru' });
-  };
-
   // Prevent flashing of landing page while checking connection
   const [checkingSession, setCheckingSession] = useState(true);
 
@@ -71,6 +67,10 @@ export default function Home() {
     }, 1000); // 1 second buffer
     return () => clearTimeout(timer);
   }, []);
+
+  const changeLanguage = () => {
+    router.push(router.pathname, router.asPath, { locale: router.locale === 'ru' ? 'en' : 'ru' });
+  };
 
   // Connected - Show Dashboard
   if (isConnected) {
