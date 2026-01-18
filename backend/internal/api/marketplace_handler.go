@@ -28,7 +28,8 @@ func NewMarketplaceHandler(db *sql.DB) *MarketplaceHandler {
 	}
 }
 
-// SetupMarketplaceRoutes registers marketplace routes
+// SetupMarketplaceRoutes registers all marketplace routes (legacy, deprecated)
+// Use SetupMarketplaceProtectedRoutes for protected endpoints only
 func SetupMarketplaceRoutes(router *gin.RouterGroup, handler *MarketplaceHandler) {
 	marketplace := router.Group("/marketplace")
 	{
@@ -40,6 +41,7 @@ func SetupMarketplaceRoutes(router *gin.RouterGroup, handler *MarketplaceHandler
 		marketplace.POST("/tasks/create", handler.CreateTaskWithEscrow)
 		marketplace.POST("/tasks/:id/claim", handler.ClaimTask)
 		marketplace.POST("/tasks/:id/complete", handler.CompleteTask)
+		marketplace.DELETE("/tasks/:id", handler.DeleteTask)
 		marketplace.GET("/tasks/:id/receipts", handler.GetTaskReceipts)
 		
 		// Worker endpoints
@@ -52,6 +54,28 @@ func SetupMarketplaceRoutes(router *gin.RouterGroup, handler *MarketplaceHandler
 		
 		// Platform stats
 		marketplace.GET("/funds", handler.GetPlatformFunds)
+	}
+}
+
+// SetupMarketplaceProtectedRoutes registers only protected marketplace routes
+// Public routes (/tasks, /stats, /funds) should be registered separately without session middleware
+func SetupMarketplaceProtectedRoutes(router *gin.RouterGroup, handler *MarketplaceHandler) {
+	marketplace := router.Group("/marketplace")
+	{
+		// Protected endpoints (require wallet via session middleware)
+		marketplace.POST("/tasks/create", handler.CreateTaskWithEscrow)
+		marketplace.POST("/tasks/:id/claim", handler.ClaimTask)
+		marketplace.POST("/tasks/:id/complete", handler.CompleteTask)
+		marketplace.DELETE("/tasks/:id", handler.DeleteTask)
+		marketplace.GET("/tasks/:id/receipts", handler.GetTaskReceipts)
+		
+		// Worker endpoints
+		marketplace.GET("/worker/stats", handler.GetWorkerStats)
+		marketplace.GET("/worker/earnings", handler.GetWorkerEarnings)
+		
+		// Creator endpoints
+		marketplace.GET("/my-tasks", handler.GetMyTasks)
+		marketplace.GET("/my-transactions", handler.GetMyTransactions)
 	}
 }
 
@@ -495,6 +519,83 @@ func (h *MarketplaceHandler) GetMarketplaceStats(c *gin.Context) {
 		"total_payouts":   totalPayouts,
 		"active_workers":  activeWorkers,
 		"platform_funds":  funds,
+	})
+}
+
+// DeleteTask allows creators to delete their pending tasks
+// @Summary Delete a task
+// @Description Creator can delete their own task if it hasn't been claimed yet
+// @Tags Marketplace
+// @Param id path string true "Task ID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]string
+// @Failure 403 {object} map[string]string
+// @Router /marketplace/tasks/{id} [delete]
+func (h *MarketplaceHandler) DeleteTask(c *gin.Context) {
+	taskID := c.Param("id")
+	walletAddress, exists := c.Get("wallet_address")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "wallet address required"})
+		return
+	}
+
+	// Check if task exists and belongs to the user
+	var requesterAddress string
+	var status string
+	err := h.db.QueryRowContext(c.Request.Context(), `
+		SELECT requester_address, status FROM tasks WHERE task_id = $1
+	`, taskID).Scan(&requesterAddress, &status)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusNotFound, gin.H{"error": "task not found"})
+			return
+		}
+		log.Printf("❌ Failed to get task: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get task"})
+		return
+	}
+
+	// Check ownership
+	if requesterAddress != walletAddress.(string) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "you can only delete your own tasks"})
+		return
+	}
+
+	// Check status - can only delete if pending or queued (not claimed yet)
+	if status != "pending" && status != "queued" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "cannot delete task",
+			"reason": "task is already " + status + " - can only delete pending or queued tasks",
+		})
+		return
+	}
+
+	// Delete escrow record first (if exists)
+	_, _ = h.db.ExecContext(c.Request.Context(), 
+		"DELETE FROM task_escrow WHERE task_id = $1", taskID)
+
+	// Delete the task
+	result, err := h.db.ExecContext(c.Request.Context(), 
+		"DELETE FROM tasks WHERE task_id = $1 AND requester_address = $2", taskID, walletAddress)
+	
+	if err != nil {
+		log.Printf("❌ Failed to delete task: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete task"})
+		return
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "task not found or already deleted"})
+		return
+	}
+
+	log.Printf("✅ Task %s deleted by %s", taskID, walletAddress)
+	c.JSON(http.StatusOK, gin.H{
+		"task_id": taskID,
+		"status":  "deleted",
+		"message": "Task deleted successfully",
 	})
 }
 

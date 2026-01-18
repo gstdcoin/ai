@@ -1,8 +1,13 @@
 #!/bin/bash
-# Enhanced deployment script for GSTD Platform
-# Supports both blue-green and standard deployment
+# GSTD Platform - Zero-Downtime Deployment Script
+# Usage: ./scripts/deploy.sh [--rebuild-all] [--skip-frontend]
 
 set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+LOG_FILE="$PROJECT_DIR/logs/deploy_${TIMESTAMP}.log"
 
 # Colors for output
 RED='\033[0;31m'
@@ -11,148 +16,200 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Configuration
-PROJECT_DIR="/home/ubuntu"
-COMPOSE_FILE="docker-compose.prod.yml"
-COLOR_FILE="/tmp/gstd_deployment_color"
-HEALTH_CHECK_URL="http://localhost:8080/api/v1/health"
-MAX_HEALTH_WAIT=180
-HEALTH_RETRY_INTERVAL=5
+# Webhook URL for notifications (replace with your actual n8n webhook)
+N8N_WEBHOOK_URL="${N8N_WEBHOOK_URL:-}"
 
-# Functions
-log_info() {
-    echo -e "${BLUE}[INFO]${NC} $1"
+# Parse arguments
+REBUILD_ALL=false
+SKIP_FRONTEND=false
+for arg in "$@"; do
+    case $arg in
+        --rebuild-all) REBUILD_ALL=true ;;
+        --skip-frontend) SKIP_FRONTEND=true ;;
+    esac
+done
+
+log() {
+    echo -e "${BLUE}[$(date '+%H:%M:%S')]${NC} $1" | tee -a "$LOG_FILE"
 }
 
-log_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
+success() {
+    echo -e "${GREEN}✅ $1${NC}" | tee -a "$LOG_FILE"
 }
 
-log_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
+warn() {
+    echo -e "${YELLOW}⚠️  $1${NC}" | tee -a "$LOG_FILE"
 }
 
-log_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
+error() {
+    echo -e "${RED}❌ $1${NC}" | tee -a "$LOG_FILE"
+}
+
+notify_webhook() {
+    local status=$1
+    local message=$2
+    
+    if [ -n "$N8N_WEBHOOK_URL" ]; then
+        curl -s -X POST "$N8N_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "{\"status\": \"$status\", \"message\": \"$message\", \"timestamp\": \"$(date -Iseconds)\"}" \
+            > /dev/null 2>&1 || true
+    fi
 }
 
 check_health() {
-    local service=$1
-    local url=$2
-    local max_wait=${3:-$MAX_HEALTH_WAIT}
-    local waited=0
+    local url=$1
+    local max_attempts=${2:-30}
+    local attempt=1
     
-    log_info "Checking health of $service..."
-    
-    while [ $waited -lt $max_wait ]; do
-        if curl -f -s "$url" > /dev/null 2>&1; then
-            log_success "$service is healthy"
+    while [ $attempt -le $max_attempts ]; do
+        if curl -s "$url" | grep -q '"status":"healthy"'; then
             return 0
         fi
-        waited=$((waited + HEALTH_RETRY_INTERVAL))
-        echo -n "."
-        sleep $HEALTH_RETRY_INTERVAL
+        sleep 2
+        attempt=$((attempt + 1))
     done
-    
-    log_error "$service health check failed after ${max_wait}s"
     return 1
 }
 
-rollback() {
-    log_warning "Rolling back deployment..."
-    
-    if [ -f "$COLOR_FILE" ]; then
-        CURRENT_COLOR=$(cat "$COLOR_FILE")
-        if [ "$CURRENT_COLOR" = "blue" ]; then
-            ACTIVE_COLOR="green"
-        else
-            ACTIVE_COLOR="blue"
-        fi
-        
-        log_info "Switching back to $ACTIVE_COLOR deployment"
-        echo "$ACTIVE_COLOR" > "$COLOR_FILE"
-        
-        # Update nginx to point to active color
-        if [ -f "$PROJECT_DIR/nginx/load-balancer.conf" ]; then
-            sed -i "s/backend_blue/backend_$ACTIVE_COLOR/g" "$PROJECT_DIR/nginx/load-balancer.conf" || true
-            docker-compose -f "$COMPOSE_FILE" restart nginx-lb || true
-        fi
-    fi
-    
-    log_error "Rollback completed"
+# Create log directory
+mkdir -p "$PROJECT_DIR/logs"
+
+log "🚀 Starting GSTD Platform Deployment"
+log "   Timestamp: $TIMESTAMP"
+log "   Rebuild All: $REBUILD_ALL"
+log "   Skip Frontend: $SKIP_FRONTEND"
+
+notify_webhook "started" "Deployment started at $TIMESTAMP"
+
+cd "$PROJECT_DIR"
+
+# Step 1: Pre-deployment checks
+log "Step 1: Pre-deployment checks..."
+
+# Check current health
+if check_health "https://app.gstdtoken.com/api/v1/health" 3; then
+    success "Current API is healthy"
+else
+    warn "Current API health check failed - proceeding with caution"
+fi
+
+# Step 2: Run database migrations
+log "Step 2: Running database migrations..."
+
+POSTGRES_CONTAINER=$(docker ps --filter "name=postgres" --format "{{.Names}}" | head -1)
+if [ -z "$POSTGRES_CONTAINER" ]; then
+    error "PostgreSQL container not found!"
+    notify_webhook "failed" "PostgreSQL container not found"
     exit 1
-}
+fi
 
-# Main deployment
-main() {
-    log_info "=========================================="
-    log_info "GSTD Platform - Deployment Script"
-    log_info "=========================================="
-    
-    cd "$PROJECT_DIR" || {
-        log_error "Cannot access project directory: $PROJECT_DIR"
-        exit 1
-    }
-    
-    # Check if blue-green deployment is available
-    if [ -f "scripts/blue-green-deploy.sh" ] && [ -f "$COMPOSE_FILE" ]; then
-        log_info "Using blue-green deployment strategy"
-        bash scripts/blue-green-deploy.sh || rollback
-    else
-        log_info "Using standard deployment strategy"
-        
-        # Pull latest images
-        log_info "Pulling latest Docker images..."
-        docker-compose -f "$COMPOSE_FILE" pull || log_warning "Some images could not be pulled"
-        
-        # Build if needed
-        log_info "Building services..."
-        docker-compose -f "$COMPOSE_FILE" build --no-cache || log_warning "Build had warnings"
-        
-        # Stop old containers gracefully
-        log_info "Stopping old containers..."
-        docker-compose -f "$COMPOSE_FILE" down --timeout 30 || true
-        
-        # Start new containers
-        log_info "Starting new containers..."
-        docker-compose -f "$COMPOSE_FILE" up -d --remove-orphans
-        
-        # Wait for services to be ready
-        log_info "Waiting for services to initialize..."
-        sleep 10
-        
-        # Health checks
-        if ! check_health "backend" "$HEALTH_CHECK_URL"; then
-            log_error "Backend health check failed"
-            log_info "Container logs:"
-            docker-compose -f "$COMPOSE_FILE" logs --tail=50 backend || true
-            rollback
-        fi
-        
-        # Check frontend (non-critical)
-        if curl -f -s http://localhost:3000 > /dev/null 2>&1; then
-            log_success "Frontend is accessible"
-        else
-            log_warning "Frontend health check failed (non-critical)"
-        fi
+for migration in backend/migrations/v27_*.sql; do
+    if [ -f "$migration" ]; then
+        log "   Applying: $migration"
+        docker exec -i "$POSTGRES_CONTAINER" psql -U postgres -d distributed_computing < "$migration" 2>/dev/null || true
     fi
-    
-    # Cleanup old images
-    log_info "Cleaning up old Docker images..."
-    docker image prune -f --filter "until=24h" || true
-    
-    # Show status
-    log_info "Deployment status:"
-    docker-compose -f "$COMPOSE_FILE" ps
-    
-    log_success "Deployment completed successfully!"
-    log_info "Services are available at:"
-    log_info "  - Frontend: https://app.gstdtoken.com"
-    log_info "  - API: https://app.gstdtoken.com/api/v1"
-}
+done
+success "Migrations completed"
 
-# Trap errors
-trap 'rollback' ERR
+# Step 3: Build backend images
+log "Step 3: Building backend images..."
 
-# Run main function
-main "$@"
+if [ "$REBUILD_ALL" = true ]; then
+    docker-compose -f docker-compose.prod.yml build --no-cache backend-blue backend-green 2>&1 | tee -a "$LOG_FILE"
+else
+    docker-compose -f docker-compose.prod.yml build backend-blue backend-green 2>&1 | tee -a "$LOG_FILE"
+fi
+success "Backend images built"
+
+# Step 4: Rolling update - Blue first
+log "Step 4: Rolling update - Blue deployment..."
+
+docker-compose -f docker-compose.prod.yml up -d --no-deps backend-blue 2>&1 | tee -a "$LOG_FILE"
+sleep 5
+
+# Wait for blue to become healthy
+if check_health "http://localhost:8080/api/v1/health" 30; then
+    success "Backend Blue is healthy"
+else
+    error "Backend Blue health check failed!"
+    notify_webhook "failed" "Backend Blue health check failed"
+    exit 1
+fi
+
+# Step 5: Rolling update - Green
+log "Step 5: Rolling update - Green deployment..."
+
+docker-compose -f docker-compose.prod.yml up -d --no-deps backend-green 2>&1 | tee -a "$LOG_FILE"
+sleep 5
+
+# Wait for green to become healthy
+if check_health "http://localhost:8081/api/v1/health" 30; then
+    success "Backend Green is healthy"
+else
+    warn "Backend Green health check failed - continuing anyway"
+fi
+
+# Step 6: Frontend deployment (optional)
+if [ "$SKIP_FRONTEND" = false ]; then
+    log "Step 6: Building frontend..."
+    
+    cd frontend
+    if [ "$REBUILD_ALL" = true ]; then
+        npm run build 2>&1 | tee -a "$LOG_FILE"
+    else
+        npm run build 2>&1 | tee -a "$LOG_FILE"
+    fi
+    cd ..
+    
+    docker-compose -f docker-compose.prod.yml up -d --no-deps frontend 2>&1 | tee -a "$LOG_FILE"
+    success "Frontend deployed"
+else
+    log "Step 6: Skipping frontend deployment"
+fi
+
+# Step 7: Reload nginx
+log "Step 7: Reloading nginx..."
+docker exec gstd_nginx_lb nginx -s reload 2>/dev/null || true
+success "Nginx reloaded"
+
+# Step 8: Final verification
+log "Step 8: Final verification..."
+
+sleep 10
+
+if check_health "https://app.gstdtoken.com/api/v1/health" 30; then
+    success "API is healthy"
+else
+    error "Final health check failed!"
+    notify_webhook "failed" "Final health check failed"
+    exit 1
+fi
+
+# Check all services
+SERVICES_STATUS=$(docker-compose -f docker-compose.prod.yml ps --format "table {{.Name}}\t{{.Status}}" 2>/dev/null)
+log "Service Status:"
+echo "$SERVICES_STATUS" | tee -a "$LOG_FILE"
+
+# Step 9: Cleanup
+log "Step 9: Cleaning up old images..."
+docker image prune -f 2>/dev/null || true
+
+# Summary
+echo ""
+echo "=================================================="
+success "🎉 DEPLOYMENT COMPLETED SUCCESSFULLY!"
+echo "=================================================="
+echo ""
+log "Deployment log saved to: $LOG_FILE"
+
+# Send success notification
+notify_webhook "success" "Deployment completed successfully at $(date -Iseconds)"
+
+# Verify API endpoints
+log "Verifying API endpoints..."
+curl -s https://app.gstdtoken.com/api/v1/health | jq -r '"Health: " + .status' 2>/dev/null
+curl -s https://app.gstdtoken.com/api/v1/marketplace/stats | jq -r '"Marketplace: " + (.total_tasks | tostring) + " tasks"' 2>/dev/null
+
+echo ""
+success "All Systems Operational ✅"

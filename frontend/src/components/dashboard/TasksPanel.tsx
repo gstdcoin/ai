@@ -9,7 +9,7 @@ import { ClipboardList } from 'lucide-react';
 import { triggerHapticImpact } from '../../lib/telegram';
 import { logger } from '../../lib/logger';
 import { toast } from '../../lib/toast';
-import { apiGet, apiPost } from '../../lib/apiClient';
+import { apiGet, apiPost, apiDelete } from '../../lib/apiClient';
 
 interface Task {
   task_id: string;
@@ -49,6 +49,7 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
   const [filter, setFilter] = useState<'all' | 'my' | 'available'>('all');
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [claimingCompensation, setClaimingCompensation] = useState<string | null>(null);
+  const [deletingTask, setDeletingTask] = useState<string | null>(null);
 
   const triggerConfetti = () => {
     // Simple confetti effect using canvas
@@ -68,7 +69,7 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    const particles: Array<{x: number; y: number; vx: number; vy: number; color: string}> = [];
+    const particles: Array<{ x: number; y: number; vx: number; vy: number; color: string }> = [];
     const colors = ['#FFD700', '#FFA500', '#FF6347', '#32CD32', '#1E90FF', '#9370DB'];
 
     // Create particles
@@ -140,7 +141,7 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
     setLoading(true);
     try {
       let data: { tasks: Task[] };
-      
+
       if (filter === 'my') {
         if (!address) {
           logger.warn('Cannot load my tasks: address is not available');
@@ -160,9 +161,9 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
       } else {
         data = await apiGet<{ tasks: Task[] }>('/tasks');
       }
-      
+
       const newTasks = data.tasks || [];
-      
+
       // Check for newly completed tasks and trigger confetti
       if (tasks.length > 0) {
         newTasks.forEach((newTask: Task) => {
@@ -175,7 +176,7 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
           }
         });
       }
-      
+
       // Only update state if tasks actually changed to prevent unnecessary re-renders
       // Use shallow comparison to avoid re-renders when data is the same
       if (!tasksEqual(tasks, newTasks)) {
@@ -189,7 +190,7 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
       const errorMessage = error?.message || error?.data?.error || 'Unknown error';
       const statusCode = error?.status || 'N/A';
       toast.error(
-        t('error') || 'Error', 
+        t('error') || 'Error',
         `${t('failed_to_load_tasks') || 'Failed to load tasks'}: ${errorMessage} (${statusCode})`
       );
       // Set empty array on error to show empty state instead of infinite loading
@@ -201,16 +202,16 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
 
   // Pause polling when modal is open
   const isModalOpen = selectedTaskId !== null;
-  
+
   useEffect(() => {
     // Don't start polling if modal is open
     if (isModalOpen) {
       return;
     }
-    
+
     // Load tasks immediately
     loadTasks();
-    
+
     // Poll for task updates every 12 seconds (increased from 5)
     const interval = setInterval(() => {
       // Double-check modal is still closed before loading
@@ -218,11 +219,11 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
         loadTasks();
       }
     }, 12000); // Increased to 12 seconds
-    
+
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter, address, isModalOpen]);
-  
+
   // Separate effect to handle address changes for filters that require it
   useEffect(() => {
     if ((filter === 'my' || filter === 'available') && !address) {
@@ -255,7 +256,7 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
       // Get node wallet address from device_id (node_id)
       // assigned_device is node_id, need to get wallet_address from nodes table
       let executorWalletAddress = address; // Default to current user's address
-      
+
       if (task.assigned_device) {
         try {
           const nodesData = await apiGet<{ nodes: Array<{ id: string; wallet_address: string }> }>('/nodes/my', { wallet_address: address });
@@ -270,7 +271,7 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
           logger.warn('Could not fetch node info, using current wallet address', err);
         }
       }
-      
+
       // Get payout intent
       interface PayoutIntent {
         intent: string;
@@ -281,7 +282,7 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
         to_address: string;
         amount_nano: string;
       }
-      
+
       const intent = await apiPost<PayoutIntent>('/payments/payout-intent', {
         task_id: task.task_id,
         executor_address: executorWalletAddress,
@@ -289,14 +290,14 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
 
       // Build Tact-compatible Cell payload using @ton/core
       const { beginCell, Address } = await import('@ton/core');
-      
+
       // Parse executor address
       const executorAddress = Address.parse(intent.executor_address);
-      
+
       // Convert TON amounts to nanoTON (1 TON = 1e9 nanoTON)
       const platformFeeNano = BigInt(Math.floor(intent.platform_fee_ton * 1e9));
       const executorRewardNano = BigInt(Math.floor(intent.executor_reward_ton * 1e9));
-      
+
       // Build cell matching escrow.tact Withdraw message structure:
       // [op_code (32u), executor_address (MsgAddress), platform_fee (Coins), executor_reward (Coins), task_id (Ref->String)]
       const payloadCell = beginCell()
@@ -310,7 +311,7 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
             .endCell()
         )
         .endCell();
-      
+
       // Convert to Base64 BoC for TonConnect
       const payloadBase64 = payloadCell.toBoc().toString('base64');
 
@@ -327,14 +328,14 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
       });
 
       logger.info('Transaction sent', { taskId: task.task_id, result });
-      
+
       // Trigger haptic feedback
       if (onCompensationClaimed) {
         onCompensationClaimed();
       }
-      
+
       toast.success(t('labor_compensation_claimed_success') || 'Labor compensation claimed successfully!');
-      
+
       // Reload tasks
       loadTasks();
     } catch (error) {
@@ -344,6 +345,33 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
       setClaimingCompensation(null);
     }
   };
+
+  const handleDeleteTask = async (task: Task) => {
+    if (!address) {
+      toast.error(t('error') || 'Error', t('wallet_required') || 'Wallet address required');
+      return;
+    }
+
+    // Confirm deletion
+    if (!window.confirm(t('delete_task_confirm') || 'Are you sure you want to delete this task?')) {
+      return;
+    }
+
+    setDeletingTask(task.task_id);
+    try {
+      await apiDelete(`/tasks/${task.task_id}`);
+      toast.success(t('task_deleted') || 'Task deleted successfully');
+      triggerHapticImpact('medium');
+      loadTasks();
+    } catch (error: any) {
+      logger.error('Failed to delete task', error);
+      const errorMessage = error?.message || error?.data?.error || 'Unknown error';
+      toast.error(t('failed_to_delete_task') || 'Failed to delete task', errorMessage);
+    } finally {
+      setDeletingTask(null);
+    }
+  };
+
 
   if (loading) {
     return (
@@ -364,11 +392,10 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
             setFilter('all');
             triggerHapticImpact('light');
           }}
-          className={`px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm sm:text-base min-h-[44px] ${
-            filter === 'all' 
-              ? 'glass-button-gold' 
-              : 'glass-button text-white'
-          }`}
+          className={`px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm sm:text-base min-h-[44px] ${filter === 'all'
+            ? 'glass-button-gold'
+            : 'glass-button text-white'
+            }`}
         >
           {t('tasks')}
         </button>
@@ -379,11 +406,10 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
                 setFilter('my');
                 triggerHapticImpact('light');
               }}
-              className={`px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm sm:text-base min-h-[44px] ${
-                filter === 'my' 
-                  ? 'glass-button-gold' 
-                  : 'glass-button text-white'
-              }`}
+              className={`px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm sm:text-base min-h-[44px] ${filter === 'my'
+                ? 'glass-button-gold'
+                : 'glass-button text-white'
+                }`}
             >
               {t('my_tasks')}
             </button>
@@ -392,11 +418,10 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
                 setFilter('available');
                 triggerHapticImpact('light');
               }}
-              className={`px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm sm:text-base min-h-[44px] ${
-                filter === 'available' 
-                  ? 'glass-button-gold' 
-                  : 'glass-button text-white'
-              }`}
+              className={`px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm sm:text-base min-h-[44px] ${filter === 'available'
+                ? 'glass-button-gold'
+                : 'glass-button text-white'
+                }`}
             >
               {t('available_tasks')}
             </button>
@@ -418,11 +443,11 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
           icon={<ClipboardList className="text-gray-400" size={48} />}
           title={t('no_tasks') || 'No tasks yet'}
           description={
-            filter === 'my' 
+            filter === 'my'
               ? t('no_my_tasks_desc') || 'You haven\'t created any tasks yet. Create your first task to get started.'
               : filter === 'available'
-              ? t('no_available_tasks_desc') || 'No tasks are currently available for execution.'
-              : t('no_tasks_desc') || 'No tasks found. Create a new task to get started.'
+                ? t('no_available_tasks_desc') || 'No tasks are currently available for execution.'
+                : t('no_tasks_desc') || 'No tasks found. Create a new task to get started.'
           }
           action={filter !== 'available' ? (
             <button
@@ -492,12 +517,11 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
                       {task.task_type}
                     </td>
                     <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                        task.status === 'completed' ? 'bg-green-500/20 text-green-400' :
+                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${task.status === 'completed' ? 'bg-green-500/20 text-green-400' :
                         task.status === 'processing' ? 'bg-blue-500/20 text-blue-400' :
-                        task.status === 'queued' ? 'bg-yellow-500/20 text-yellow-400' :
-                        'bg-gray-500/20 text-gray-400'
-                      }`}>
+                          task.status === 'queued' ? 'bg-yellow-500/20 text-yellow-400' :
+                            'bg-gray-500/20 text-gray-400'
+                        }`}>
                         {t(task.status)}
                       </span>
                     </td>
@@ -509,7 +533,7 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
                     </td>
                     <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm">
                       <div className="flex flex-col sm:flex-row gap-2">
-                        <button 
+                        <button
                           onClick={() => {
                             setSelectedTaskId(task.task_id);
                             triggerHapticImpact('light');
@@ -524,23 +548,34 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
                             disabled={claimingCompensation === task.task_id}
                             className="bg-green-500/20 text-green-400 px-2 sm:px-3 py-1 rounded hover:bg-green-500/30 disabled:opacity-50 text-xs sm:text-sm font-medium"
                           >
-                            {claimingCompensation === task.task_id 
-                              ? (t('claiming') || 'Claiming...') 
+                            {claimingCompensation === task.task_id
+                              ? (t('claiming') || 'Claiming...')
                               : (t('claim_compensation') || 'Claim')}
+                          </button>
+                        )}
+                        {(task.status === 'pending' || task.status === 'queued') && task.requester_address === address && (
+                          <button
+                            onClick={() => handleDeleteTask(task)}
+                            disabled={deletingTask === task.task_id}
+                            className="bg-red-500/20 text-red-400 px-2 sm:px-3 py-1 rounded hover:bg-red-500/30 disabled:opacity-50 text-xs sm:text-sm font-medium"
+                          >
+                            {deletingTask === task.task_id
+                              ? '...'
+                              : (t('delete_task') || 'Delete')}
                           </button>
                         )}
                       </div>
                     </td>
                   </tr>
                 ))}
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
       )}
 
       {selectedTaskId && (
-        <TaskDetailsModal 
+        <TaskDetailsModal
           taskId={selectedTaskId}
           onClose={() => setSelectedTaskId(null)}
         />
@@ -552,8 +587,8 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
 // Memoize TasksPanel to prevent unnecessary re-renders
 // Only re-render if props change
 export default memo(TasksPanel, (prevProps, nextProps) => {
-  return prevProps.onTaskCreated === nextProps.onTaskCreated && 
-         prevProps.onCompensationClaimed === nextProps.onCompensationClaimed;
+  return prevProps.onTaskCreated === nextProps.onTaskCreated &&
+    prevProps.onCompensationClaimed === nextProps.onCompensationClaimed;
 });
 
 // Memoized WorkerTaskCard to prevent unnecessary re-renders

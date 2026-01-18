@@ -13,7 +13,7 @@ cd "$PROJECT_ROOT"
 MIGRATIONS_DIR="backend/migrations"
 DB_NAME="distributed_computing"
 DB_USER="postgres"
-DB_CONTAINER="ubuntu_postgres_1"
+DB_CONTAINER="gstd_postgres_prod"
 
 # Colors for output
 GREEN='\033[0;32m'

@@ -1,1 +1,0 @@
-0 */6 * * * /home/ubuntu/scripts/auto-rebuild.sh >> /home/ubuntu/logs/auto-rebuild.log 2>&1

@@ -297,6 +297,15 @@ func main() {
 	rewardEngine.SetPayoutRetry(payoutRetryService)
 	taskRateLimiter := services.NewRateLimiter(10, 1*time.Minute) // 10 tasks per minute per wallet
 
+	// Initialize Proof-of-Work service
+	powService := services.NewProofOfWorkService(db)
+	log.Println("✅ Proof-of-Work service initialized")
+	
+	// Initialize Task Orchestrator
+	taskOrchestrator := services.NewTaskOrchestrator(db, redisClient)
+	taskOrchestrator.SetPoWService(powService)
+	log.Println("✅ Task Orchestrator initialized")
+
 	// Initialize WebSocket hub
 	hub := api.NewWSHub()
 	go hub.Run()
@@ -330,6 +339,13 @@ func main() {
 	paymentTracker := services.NewPaymentTracker(db, tonService, cfg.TON)
 	// Start payment tracker for reconciliation (check every 2 minutes)
 	go paymentTracker.Start(ctx)
+
+	// Start Task Orchestrator background processes
+	go taskOrchestrator.Start(ctx)
+
+	// Store services for API handlers (will be used in routes)
+	_ = powService       // Used in orchestrator routes
+	_ = taskOrchestrator // Used in orchestrator routes
 
 	// Initialize API
 	// Set Gin mode from environment (production should use "release")

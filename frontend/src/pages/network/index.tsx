@@ -1,10 +1,37 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
 import Head from 'next/head';
-import dynamic from 'next/dynamic';
 import { apiGet } from '@/lib/apiClient';
 
-// Dynamic import for Map to avoid SSR issues
-const Map = dynamic(() => import('react-map-gl'), { ssr: false });
+// Simple CSS-based world map visualization (no external dependencies)
+const WorldMapBackground = () => (
+    <svg
+        viewBox="0 0 1000 500"
+        className="absolute inset-0 w-full h-full opacity-20"
+        preserveAspectRatio="xMidYMid slice"
+    >
+        {/* Simplified world map outlines */}
+        <defs>
+            <linearGradient id="mapGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style={{ stopColor: '#0ea5e9', stopOpacity: 0.3 }} />
+                <stop offset="100%" style={{ stopColor: '#8b5cf6', stopOpacity: 0.3 }} />
+            </linearGradient>
+        </defs>
+        {/* Grid lines */}
+        {Array.from({ length: 18 }).map((_, i) => (
+            <line key={`v-${i}`} x1={i * 56} y1="0" x2={i * 56} y2="500" stroke="#22d3ee" strokeWidth="0.5" opacity="0.2" />
+        ))}
+        {Array.from({ length: 9 }).map((_, i) => (
+            <line key={`h-${i}`} x1="0" y1={i * 56} x2="1000" y2={i * 56} stroke="#22d3ee" strokeWidth="0.5" opacity="0.2" />
+        ))}
+        {/* Continents simplified outlines */}
+        <ellipse cx="200" cy="200" rx="80" ry="60" fill="url(#mapGradient)" /> {/* NA */}
+        <ellipse cx="250" cy="320" rx="40" ry="80" fill="url(#mapGradient)" /> {/* SA */}
+        <ellipse cx="480" cy="180" rx="60" ry="50" fill="url(#mapGradient)" /> {/* EU */}
+        <ellipse cx="520" cy="280" rx="70" ry="80" fill="url(#mapGradient)" /> {/* AF */}
+        <ellipse cx="700" cy="200" rx="100" ry="70" fill="url(#mapGradient)" /> {/* AS */}
+        <ellipse cx="850" cy="380" rx="50" ry="40" fill="url(#mapGradient)" /> {/* AU */}
+    </svg>
+);
 
 interface NetworkPoint {
     node_id: string;
@@ -106,26 +133,17 @@ export default function NetworkMapPage() {
 
             {/* Map Container */}
             <div className="w-full h-screen z-10 relative">
-                <Map
-                    initialViewState={{
-                        longitude: 0,
-                        latitude: 20,
-                        zoom: 1.5
-                    }}
-                    style={{ width: '100%', height: '100%' }}
-                    mapStyle="mapbox://styles/mapbox/dark-v11"
-                    mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || "pk.eyJ1IjoiZGVtb3VzZXIiLCJhIjoiY2x4eTh5eG15MGR3ZDJxcXEzM2F5dG5wOSJ9.SAMPLE_TOKEN"}
-                >
-                    {/* Render simple HTML dots for points inside Map optionally or outside if using overlay */}
-                </Map>
+                <WorldMapBackground />
 
-                {/* Fallback visualization if map doesn't load or token missing (simulated grid) */}
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20 bg-[url('/grid-pattern.png')] bg-repeat" style={{ display: loading ? 'flex' : 'none' }}>
-                    <div className="text-center">
-                        <p className="mb-2">Mapbox Token Required for 3D View</p>
-                        <div className="w-64 h-64 border border-cyan-500/30 rounded-full animate-ping mx-auto" />
+                {/* Loading indicator */}
+                {loading && (
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="text-center">
+                            <div className="w-16 h-16 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin mx-auto mb-4" />
+                            <p className="text-gray-400">Loading network data...</p>
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {/* Render simple HTML dots for points if map is not interactive (simplified view) */}
                 {points.map((p, i) => (
