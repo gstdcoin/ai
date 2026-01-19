@@ -362,6 +362,7 @@ func (h *MarketplaceHandler) GetWorkerStats(c *gin.Context) {
 
 	stats, err := h.marketplace.GetWorkerStats(c.Request.Context(), walletAddress.(string))
 	if err != nil {
+		log.Printf("❌ GetWorkerStats failed for wallet %s: %v", walletAddress.(string), err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
