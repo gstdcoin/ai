@@ -281,7 +281,7 @@ func (s *MarketplaceService) GetWorkerStats(ctx context.Context, workerWallet st
 			avg_execution_time_ms,
 			last_task_at
 		FROM worker_ratings
-		WHERE wallet_address = $1
+		WHERE worker_wallet = $1
 	`, workerWallet).Scan(
 		&stats.WalletAddress,
 		&stats.TotalTasksCompleted,
