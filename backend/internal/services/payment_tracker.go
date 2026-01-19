@@ -75,6 +75,7 @@ func (pt *PaymentTracker) reconcilePayments(ctx context.Context) {
 	}
 
 	log.Printf("PaymentTracker: Starting reconciliation cycle")
+	return // Temporarily disabled due to schema mismatch
 
 	// Get pending transactions from database
 	rows, err := pt.db.QueryContext(ctx, `
