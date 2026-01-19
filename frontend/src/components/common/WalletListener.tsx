@@ -19,8 +19,9 @@ export default function WalletListener() {
     useEffect(() => {
         if (!tonConnectUI || proofRequested.current) return;
 
-        // Generate payload for tonProof
-        const payload = `gstd_auth_${Date.now()}`;
+        // Generate payload for tonProof - using colon separator for backend compatibility
+        // Backend expects format: nonce:timestamp
+        const payload = `gstd_auth:${Date.now()}`;
 
         tonConnectUI.setConnectRequestParameters({
             state: 'ready',
