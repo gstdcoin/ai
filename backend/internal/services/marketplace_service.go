@@ -274,7 +274,7 @@ func (s *MarketplaceService) GetWorkerStats(ctx context.Context, workerWallet st
 	
 	err := s.db.QueryRowContext(ctx, `
 		SELECT 
-			wallet_address,
+			worker_wallet,
 			total_tasks_completed,
 			total_earnings_gstd,
 			reliability_score,
