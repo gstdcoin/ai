@@ -69,6 +69,17 @@ func (s *TONService) GetJettonBalance(ctx context.Context, address string, jetto
 	// Normalize address format for TON API
 	normalizedAddress := normalizeTONAddress(address)
 	
+	// Cache key
+	cacheKey := fmt.Sprintf("ton:balance:%s:%s", normalizedAddress, jettonAddress)
+	
+	// Try cache first (1 minute TTL)
+	if s.cacheService != nil {
+		var cachedBalance float64
+		if err := s.cacheService.Get(ctx, cacheKey, &cachedBalance); err == nil {
+			return cachedBalance, nil
+		}
+	}
+	
 	// Используем TON API v2 для получения баланса Jetton
 	// Format: /v2/accounts/{address}/jettons?currencies={jettonAddress}
 	// This endpoint returns all jettons for an account, we filter by jettonAddress
@@ -185,12 +196,19 @@ func (s *TONService) GetJettonBalance(ctx context.Context, address string, jetto
 				balanceNano = balanceNanoInt
 			}
 			balance := float64(balanceNano) / 1e9
+			// Cache the result
+			if s.cacheService != nil {
+				s.cacheService.Set(ctx, cacheKey, balance, 60*time.Second)
+			}
 			log.Printf("GetJettonBalance: Found balance %.9f for jetton %s", balance, jettonAddress)
 			return balance, nil
 		}
 	}
 
 	log.Printf("GetJettonBalance: Jetton %s not found in balances", jettonAddress)
+	if s.cacheService != nil {
+		s.cacheService.Set(ctx, cacheKey, 0.0, 60*time.Second)
+	}
 	return 0, nil // Jetton not found
 }
 
