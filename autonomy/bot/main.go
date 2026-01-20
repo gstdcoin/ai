@@ -163,6 +163,31 @@ func main() {
 			// Using deepseek-v3 
 			model := "deepseek-v3"
 			
+			// Dynamic Model Selection (Hotfix)
+			func() {
+				prefs := []string{"deepseek-v3", "deepseek-r1:671b", "deepseek-r1", "deepseek-r1:70b", "qwen2.5-coder:32b", "qwen2.5-coder", "llama3.3"}
+				
+				req, _ := http.NewRequest("GET", ollamaHost+"/api/tags", nil)
+				if ollamaKey != "" { req.Header.Set("Authorization", "Bearer "+ollamaKey) }
+				
+				client := http.Client{Timeout: 5 * time.Second}
+				resp, err := client.Do(req)
+				if err == nil {
+					defer resp.Body.Close()
+					var res struct { Models []struct { Name string `json:"name"` } `json:"models"` }
+					if json.NewDecoder(resp.Body).Decode(&res) == nil {
+						available := make(map[string]bool)
+						for _, m := range res.Models { available[m.Name] = true }
+						for _, p := range prefs {
+							if available[p] { 
+								model = p
+								return
+							}
+						}
+					}
+				}
+			}()
+			
 			reqBody, _ := json.Marshal(map[string]interface{}{
 				"model":  model,
 				"prompt": prompt,
