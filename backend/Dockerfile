@@ -27,18 +27,18 @@ RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor -a -installsuffix cgo \
     -o server ./main.go
 
 # Stage 2: Runtime
-# FROM alpine:latest
-FROM gstd-backend:latest
+FROM alpine:latest
+# FROM gstd-backend:latest
 
 USER root
 
 
 # Install CA certificates for HTTPS requests
-# RUN apk --no-cache add ca-certificates tzdata
+RUN apk --no-cache add ca-certificates tzdata
 
 # Create non-root user
-# RUN addgroup -g 1000 appuser && \
-#    adduser -D -u 1000 -G appuser appuser
+RUN addgroup -g 1000 appuser && \
+    adduser -D -u 1000 -G appuser appuser
 
 WORKDIR /app
 
