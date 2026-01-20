@@ -83,6 +83,10 @@ func main() {
 		return nil
 	}
 
+	// --- State ---
+	var cloudCooldownUntil time.Time
+	localOllamaHost := "http://gstd_ollama:11434"
+
 	// --- Handlers ---
 
 	b.Handle("/start", func(c tele.Context) error {
@@ -143,9 +147,76 @@ func main() {
 		})
 	})
 
-	// /logs_ai (Cloud Optimized)
+	// /ask <query> - Hybrid Intelligence
+	b.Handle("/ask", func(c tele.Context) error {
+		args := c.Args()
+		if len(args) == 0 { return c.Send("Usage: /ask <query>") }
+		prompt := strings.Join(args, " ")
+		
+		// Routing Logic
+		useCloud := false
+		if strings.Contains(strings.ToLower(prompt), "code") || strings.Contains(strings.ToLower(prompt), "architect") {
+			useCloud = true
+		}
+		
+		targetHost := localOllamaHost
+		targetModel := "llama3" // Default Local
+		mode := "🔋 Local (Llama-3)"
+		
+		if useCloud {
+			if time.Now().Before(cloudCooldownUntil) {
+				useCloud = false
+				targetHost = localOllamaHost
+				mode = "🔋 Local (Fallback)"
+				c.Send("⏳ **Cloud Cooling.** Falling back to Local.")
+			} else {
+				targetHost = ollamaHost
+				targetModel = "deepseek-v3"
+				mode = "🌩️ Cloud (DeepSeek)"
+			}
+		}
+		
+		return runAsync(c, fmt.Sprintf("Thinking (%s)...", mode), func() (string, error) {
+			reqBody, _ := json.Marshal(map[string]interface{}{
+				"model":  targetModel,
+				"prompt": prompt,
+				"stream": false,
+			})
+			
+			req, _ := http.NewRequest("POST", targetHost+"/api/generate", bytes.NewBuffer(reqBody))
+			req.Header.Set("Content-Type", "application/json")
+			if useCloud && ollamaKey != "" { req.Header.Set("Authorization", "Bearer "+ollamaKey) }
+			
+			client := http.Client{Timeout: 60 * time.Second}
+			if !useCloud { client.Timeout = 120 * time.Second } 
+			
+			resp, err := client.Do(req)
+			if err != nil {
+				if useCloud { cloudCooldownUntil = time.Now().Add(5 * time.Minute) }
+				return "", fmt.Errorf("AI Error: %v", err)
+			}
+			defer resp.Body.Close()
+			
+			if resp.StatusCode != 200 {
+				if useCloud { cloudCooldownUntil = time.Now().Add(5 * time.Minute) }
+				body, _ := io.ReadAll(resp.Body)
+				return "", fmt.Errorf("API Error %d: %s", resp.StatusCode, string(body))
+			}
+			
+			var result map[string]interface{}
+			json.NewDecoder(resp.Body).Decode(&result)
+			return fmt.Sprintf("**%s Answer:**\n\n%s", mode, result["response"]), nil
+		})
+	})
+
+	// /logs_ai (Cloud Optimized + Smart Cooling)
 	b.Handle("/logs_ai", func(c tele.Context) error {
 		if c.Sender().ID != AdminID { return nil }
+		
+		if time.Now().Before(cloudCooldownUntil) {
+			return c.Send(fmt.Sprintf("⏳ **Cloud Cooling (Smart Pulse).**\n\nSystem is resting to save quota.\nTry again in %v.", time.Until(cloudCooldownUntil).Round(time.Second)))
+		}
+
 		return runAsync(c, "Analyzing logs with DeepSeek-V3 (Cloud)...", func() (string, error) {
 			ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 			defer cancel()
@@ -158,7 +229,7 @@ func main() {
 			}
 
 			// 2. Prepare AI Request
-			prompt := fmt.Sprintf("Analyze these system logs for critical errors, security warnings, or recurring failures. Summarize in 3 bullet points. If clean, say so.\n\nLOGS:\n%s", string(logs))
+			prompt := fmt.Sprintf("Analyze these system logs for critical errors. Summarize in 3 bullet points.\n\nLOGS:\n%s", string(logs))
 			
 			// Using deepseek-v3 
 			model := "deepseek-v3"
@@ -202,14 +273,16 @@ func main() {
 			
 			resp, err := http.DefaultClient.Do(req)
 			if err != nil {
-				return "", fmt.Errorf("Cloud Connection Error: %v", err)
+				cloudCooldownUntil = time.Now().Add(5 * time.Minute)
+				return "", fmt.Errorf("Cloud Connection Error (Cooling Triggered): %v", err)
 			}
 			defer resp.Body.Close()
 
 			body, _ := io.ReadAll(resp.Body)
 			
 			if resp.StatusCode != 200 {
-				return "", fmt.Errorf("API Error %d: %s", resp.StatusCode, string(body))
+				cloudCooldownUntil = time.Now().Add(5 * time.Minute)
+				return "", fmt.Errorf("API Error %d (Cooling Triggered): %s", resp.StatusCode, string(body))
 			}
 
 			var result map[string]interface{}
