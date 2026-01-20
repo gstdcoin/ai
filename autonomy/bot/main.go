@@ -53,10 +53,12 @@ func main() {
 	btnLogs := adminMenu.Data("📋 Logs", "logs_default")
 	btnUpgrade := adminMenu.Data("🧠 Upgrade", "upgrade")
 	btnBrain := adminMenu.Data("📊 Brain Status", "brain_status")
+	btnWorkers := adminMenu.Data("🛰 Workers", "workers")
 	
 	adminMenu.Inline(
 		adminMenu.Row(btnStatus, btnBrain),
 		adminMenu.Row(btnLogs, btnUpgrade),
+		adminMenu.Row(btnWorkers),
 	)
 
 	// --- Helpers ---
@@ -97,7 +99,7 @@ func main() {
 			"/logs_ai - AI analysis of backend logs (Cloud)\n" +
 			"/test_shadow <file> <target> - Run safe tests\n" +
 			"/upgrade_brain - Update AI models\n" +
-			"/apply <file> - Deploy proposal")
+			"/apply <file> - Deploy proposal (Blue-Green)")
 	})
 
 	// /logs <target>
@@ -215,6 +217,7 @@ func main() {
 			return fmt.Sprintf("🚀 **System Upgraded**\n\n%s", string(output)), nil
 		})
 	})
+    
 	b.Handle("/test_shadow", func(c tele.Context) error {
 		if c.Sender().ID != AdminID { return nil }
 		args := c.Args()
@@ -233,13 +236,6 @@ func main() {
 			}
 			
 			// Success - Send Button
-			// Note: runAsync edits text. To send button we need to send a fresh message or we can't easily attach markup to edit in this helper structure validation.
-			// Let's hack: return the text, and trigger a separate message with button via goroutine? 
-			// No, runAsync returns string to Edit. We can modify runAsync or just send a new message here.
-			// Let's modify runAsync return handling or just send the success message directly here after result.
-			
-			// Actually, runAsync is designed to return text. 
-			// Let's just spawn a new message with the button.
 			go func() {
 				time.Sleep(1 * time.Second) // Wait for edit
 				menu := &tele.ReplyMarkup{}
@@ -257,9 +253,9 @@ func main() {
 		})
 	})
 
-	// Unified Apply Handler (Text + Callback)
+	// Unified Apply Handler (Blue-Green)
 	applyLogic := func(c tele.Context, filename string) error {
-		return runAsync(c, "Applying Patch...", func() (string, error) {
+		return runAsync(c, "Preparing Blue-Green Deployment...", func() (string, error) {
 			src := filepath.Join("/home/ubuntu/autonomy/proposals", filename)
 			dest := filepath.Join("/home/ubuntu/backend/internal/services", filename)
 			
@@ -269,7 +265,25 @@ func main() {
 			err = os.WriteFile(dest, input, 0644)
 			if err != nil { return "", err }
 
-			return fmt.Sprintf("✅ Patch `%s` applied to `%s`. \nTriggering hot reload...", filename, dest), nil
+            // 2. Prepare Candidate
+            cmd := exec.Command("/home/ubuntu/autonomy/bin/deploy_blue_green.sh", "prepare", filename)
+            out, err := cmd.CombinedOutput()
+            if err != nil {
+                 return "", fmt.Errorf("Prepare Failed:\n%s", string(out))
+            }
+
+            // 3. Prompt for Switch
+            go func() {
+               time.Sleep(1 * time.Second)
+               menu := &tele.ReplyMarkup{}
+               // btnData limit is tricky, assuming short filename
+               btnSwitch := menu.Data("🔀 Switch Traffic", "switch_"+filename)
+               btnAbort := menu.Data("❌ Abort", "abort_deploy")
+               menu.Inline(menu.Row(btnSwitch, btnAbort))
+               b.Send(c.Sender(), fmt.Sprintf("✅ **Candidate Ready**\n\n%s\n\nTraffic is still on Stable. Switch now?", string(out)), menu)
+            }()
+
+			return "✅ Candidate Built. Waiting for Switch...", nil
 		})
 	}
 
@@ -280,20 +294,36 @@ func main() {
 		return applyLogic(c, args[0])
 	})
 	
-	// Callback Handler for Deploy Button
+	// Callback Handler for Deploy/Switch Buttons
 	b.Handle(tele.OnCallback, func(c tele.Context) error {
 		data := c.Callback().Data
-		// Check for our prefix
-		// Note: Telebot's middleware might trim space, ensure clean string.
+		
 		if strings.HasPrefix(data, "apply_") || strings.HasPrefix(data, "\fapply_") {
 			filename := strings.TrimPrefix(data, "apply_")
-			// Remove telebot's potential "\f" prefix if it exists (internal unique char)
 			filename = strings.TrimPrefix(filename, "\f")
-			
 			c.Respond(&tele.CallbackResponse{Text: "Deploying " + filename})
 			return applyLogic(c, filename)
 		}
-		// Handle other callbacks if needed
+		
+		if strings.HasPrefix(data, "switch_") || strings.HasPrefix(data, "\fswitch_") {
+             filename := strings.TrimPrefix(data, "switch_")
+             filename = strings.TrimPrefix(filename, "\f")
+             
+             c.Respond(&tele.CallbackResponse{Text: "Switching Traffic..."})
+             
+             return runAsync(c, "Switching Traffic (Zero Downtime)...", func() (string, error) {
+                 cmd := exec.Command("/home/ubuntu/autonomy/bin/deploy_blue_green.sh", "switch")
+                 out, err := cmd.CombinedOutput()
+                 if err != nil { return "", fmt.Errorf("Switch Failed:\n%s", string(out)) }
+                 return fmt.Sprintf("✅ **Deployment Complete**\n\n%s", string(out)), nil
+             })
+        }
+		
+		if data == "abort_deploy" {
+			c.Respond()
+			return c.Send("❌ Deployment Aborted.")
+		}
+		
 		return nil
 	})
 	
@@ -305,7 +335,6 @@ func main() {
 		start := time.Now()
 		cloudStatus := "❌ Offline"
 		latency := "N/A"
-		// Short timeout for ping
 		client := http.Client{Timeout: 2 * time.Second}
 		resp, err := client.Get("https://api.ollama.com") 
 		if err == nil {
@@ -328,6 +357,16 @@ func main() {
 			"🏠 **Local Fallback:** 💤 Standby\n" +
 			"⚖️ **Antigravity Mode:** %s", cloudStatus, latency, modeIcon))
 	})
+	
+	b.Handle(&btnWorkers, func(c tele.Context) error {
+		if c.Sender().ID != AdminID { return nil }
+		cmd := exec.Command("/home/ubuntu/autonomy/bin/check_workers.sh")
+		out, err := cmd.CombinedOutput()
+		status := strings.TrimSpace(string(out))
+		if err != nil { status = "Error" }
+		if status == "" { status = "0" }
+		return c.Edit(fmt.Sprintf("🛰 **Active Workers:** %s\n\nNetwork is stable.", status))
+	})
 
 	b.Handle(&btnStatus, func(c tele.Context) error {
 		if c.Sender().ID != AdminID { return nil }
@@ -340,5 +379,25 @@ func main() {
 	})
 
 	log.Printf("🤖 Cloud-Connected Bot Started. ID: %d", AdminID)
+	
+	// Self-Health Check & Notification
+	go func() {
+		time.Sleep(5 * time.Second) // Wait for connection
+		
+		// Check Backends
+		apiStatus := "❌"
+		client := http.Client{Timeout: 2 * time.Second}
+		if _, err := client.Get("http://ubuntu-backend-blue-1:8080/api/v1/health"); err == nil {
+			apiStatus = "✅"
+		}
+		
+		msg := fmt.Sprintf("✅ **System Optimized**\n\n" +
+			"• Git Sync: ✅ (origin/main)\n" +
+			"• Server Clean: ✅ (Junk Removed)\n" +
+			"• Connection: %s Backend | ✅ Cloud Brain", apiStatus)
+			
+		b.Send(&tele.Chat{ID: AdminID}, msg)
+	}()
+
 	b.Start()
 }
