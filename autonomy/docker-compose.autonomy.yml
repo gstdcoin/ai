@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  watchtower:
+    image: containrrr/watchtower
+    container_name: gstd_watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WATCHTOWER_NOTIFICATIONS=shoutrrr
+      - WATCHTOWER_NOTIFICATION_URL=telegram://8306755226:AAEfG2-BZ1Xo9hPex7-igz_WzHEscJOOk-U@telegram?channels=5700385228
+    command: --interval 3600 --cleanup
+    restart: always
+
+  vector:
+    image: timberio/vector:latest-alpine
+    container_name: gstd_vector
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./vector/vector.toml:/etc/vector/vector.toml:ro
+    depends_on:
+      - n8n
+    restart: always
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: gstd_ollama
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 6G
+
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: gstd_n8n
+    restart: always
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_HOST=n8n.gstdtoken.com
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=https
+      - NODE_ENV=production
+      - WEBHOOK_URL=https://n8n.gstdtoken.com/
+      - OLLAMA_HOST=https://api.ollama.com
+      - OLLAMA_API_KEY=3010cb48437e419fa97fa354f809dae8.NV9cjek-htbaddBb9wpU3MH9
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /home/ubuntu/backend:/data/backend:ro
+      - /home/ubuntu/autonomy/proposals:/data/proposals
+    networks:
+      - ubuntu_gstd_network
+
+networks:
+  ubuntu_gstd_network:
+    external: true
+
+volumes:
+  n8n_data:
+  ollama_data:
