@@ -7,10 +7,13 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
+      - DOCKER_API_VERSION=1.45
       - WATCHTOWER_NOTIFICATIONS=shoutrrr
       - WATCHTOWER_NOTIFICATION_URL=telegram://8306755226:AAEfG2-BZ1Xo9hPex7-igz_WzHEscJOOk-U@telegram?channels=5700385228
     command: --interval 3600 --cleanup
     restart: always
+    networks:
+      - ubuntu_gstd_network
 
   vector:
     image: timberio/vector:latest-alpine
@@ -21,6 +24,8 @@ services:
     depends_on:
       - n8n
     restart: always
+    networks:
+      - ubuntu_gstd_network
 
   ollama:
     image: ollama/ollama:latest
@@ -32,6 +37,26 @@ services:
       resources:
         limits:
           memory: 6G
+    networks:
+      - ubuntu_gstd_network
+
+  bot:
+    image: golang:1.24
+    container_name: gstd_bot
+    working_dir: /app
+    volumes:
+      - ./bot:/app
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ../backend:/home/ubuntu/backend
+      - ./proposals:/home/ubuntu/autonomy/proposals
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-8306755226:AAEfG2-BZ1Xo9hPex7-igz_WzHEscJOOk-U}
+      - OLLAMA_HOST=https://api.ollama.com
+      - OLLAMA_API_KEY=3010cb48437e419fa97fa354f809dae8.NV9cjek-htbaddBb9wpU3MH9
+    command: sh -c "go mod tidy && go run main.go"
+    restart: always
+    networks:
+      - ubuntu_gstd_network
 
   n8n:
     image: n8nio/n8n:latest
