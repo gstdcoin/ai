@@ -13,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/xssnick/tonutils-go/ton/wallet"
 )
 
 // TonConnectPayload represents the payload structure from TonConnect
@@ -151,39 +153,59 @@ func (v *TonConnectValidator) ValidateSignature(
 		return fmt.Errorf("Invalid signature length: expected 64 bytes, got %d", len(sigBytes))
 	}
 
-	// 6. Get public key - prefer provided key, fallback to TON API
 	var pubKey []byte
 	var pubKeySource string
+	var verifiedOffline bool
 	
-	// 6. Get public key - strictly from TON API
-	// SECURITY: Trusting frontend key (public_key_hex) is disabled to prevent spoofing
-	// We MUST verify the public key belongs to the wallet_address via TON API or state_init
-	
+	// 6. Get public key 
+	// FIRST try to verify the provided public key against the address (Offline)
+	// This allows uninitialized wallets to login securely
 	if publicKeyHex != "" {
-		log.Printf("⚠️  Ignoring frontend provided public key for security. Fetching from TON API.")
+		pkBytes, err := hex.DecodeString(publicKeyHex)
+		if err == nil && len(pkBytes) == 32 {
+			log.Printf("Keys: Verifying provided public key offline...")
+			if v.verifyPublicKeyOffline(pkBytes, walletAddress) {
+				pubKey = pkBytes
+				pubKeySource = "Frontend (Verified Offline)"
+				verifiedOffline = true
+				log.Printf("✅ Public key verified offline against address! Skipping API call.")
+			} else {
+				log.Printf("⚠️  Frontend public key provided but does not match wallet address (tried v3r2, v4r2). Ignoring.")
+			}
+		} else {
+			log.Printf("⚠️  Invalid public key hex format provided")
+		}
+	} else {
+		log.Printf("ℹ️  No public key provided by frontend, will fetch from API")
 	}
 
-	// Always fetch from TON API
-	log.Printf("🔑 Fetching public key from TON API for wallet: %s", walletAddress)
-	if v.tonService == nil {
-		log.Printf("❌ TON service unavailable - cannot verify signature")
-		return fmt.Errorf("TON service unavailable - cannot verify signature")
-	}
-
-	pubKeyFromAPI, err := v.tonService.GetPublicKey(ctx, walletAddress)
-	if err != nil {
-		log.Printf("❌ Public key not found: failed to resolve public key for wallet %s: %v", walletAddress, err)
-		return fmt.Errorf("Wallet not initialized or public key not found in blockchain. Please perform at least one transaction to initialize your wallet.")
-	}
-
-	if len(pubKeyFromAPI) != 32 {
-		log.Printf("❌ Invalid public key length from API: expected 32 bytes, got %d", len(pubKeyFromAPI))
-		return fmt.Errorf("Invalid public key length: expected 32 bytes, got %d", len(pubKeyFromAPI))
-	}
+	if !verifiedOffline {
+		if publicKeyHex != "" {
+			log.Printf("⚠️  Offline verification failed or key ignored. Fetching from TON API.")
+		}
 	
-	pubKey = pubKeyFromAPI
-	pubKeySource = "TON API (Strict)"
-	log.Printf("✅ Public key from TON API: %s (first 16 chars)", hex.EncodeToString(pubKey[:16]))
+		// Always fetch from TON API if not verified offline
+		log.Printf("🔑 Fetching public key from TON API for wallet: %s", walletAddress)
+		if v.tonService == nil {
+			log.Printf("❌ TON service unavailable - cannot verify signature")
+			return fmt.Errorf("TON service unavailable - cannot verify signature")
+		}
+
+		pubKeyFromAPI, err := v.tonService.GetPublicKey(ctx, walletAddress)
+		if err != nil {
+			log.Printf("❌ Public key not found: failed to resolve public key for wallet %s: %v", walletAddress, err)
+			return fmt.Errorf("Wallet not initialized or public key not found in blockchain. Please perform at least one transaction to initialize your wallet.")
+		}
+
+		if len(pubKeyFromAPI) != 32 {
+			log.Printf("❌ Invalid public key length from API: expected 32 bytes, got %d", len(pubKeyFromAPI))
+			return fmt.Errorf("Invalid public key length: expected 32 bytes, got %d", len(pubKeyFromAPI))
+		}
+		
+		pubKey = pubKeyFromAPI
+		pubKeySource = "TON API (Strict)"
+		log.Printf("✅ Public key from TON API: %s (first 16 chars)", hex.EncodeToString(pubKey[:16]))
+	}
 
 	// 7. Reconstruct message hash: SHA-256(payload)
 	// TonConnect v2 signs the SHA-256 hash of the payload
@@ -239,4 +261,32 @@ func GenerateLoginPayload(nonce string) string {
 	// Return as JSON string
 	jsonData, _ := json.Marshal(payload)
 	return string(jsonData)
+}
+
+// verifyPublicKeyOffline checks if the provided public key corresponds to the wallet address
+// It checks standard wallet versions (v3r2, v4r2) with default subwallet ID
+func (v *TonConnectValidator) verifyPublicKeyOffline(pubKey []byte, walletAddress string) bool {
+	// 1. Check V4R2 (Most common for Tonkeeper)
+	addrV4, err := wallet.AddressFromPubKey(pubKey, wallet.V4R2, wallet.DefaultSubwallet)
+	if err == nil {
+		v4Str := addrV4.String()
+		// Normalize both addresses to ensure fair comparison
+		// Use services.NormalizeAddressForAPI which handles the logic
+		if NormalizeAddressForAPI(v4Str) == NormalizeAddressForAPI(walletAddress) {
+			log.Printf("✅ Matches V4R2 wallet address")
+			return true
+		}
+	}
+
+	// 2. Check V3R2 (Legacy/Standard)
+	addrV3, err := wallet.AddressFromPubKey(pubKey, wallet.V3R2, wallet.DefaultSubwallet)
+	if err == nil {
+		v3Str := addrV3.String()
+		if NormalizeAddressForAPI(v3Str) == NormalizeAddressForAPI(walletAddress) {
+			log.Printf("✅ Matches V3R2 wallet address")
+			return true
+		}
+	}
+
+	return false
 }

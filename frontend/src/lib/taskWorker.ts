@@ -338,7 +338,6 @@ export async function signResultData(
       const signature = await tonConnectUI.connector.signData({
         type: 'text', // Try explicit type
         data: hash,
-        version: 'v2',
       });
       signatureHex = signature.signature;
     } catch (signError) {
@@ -369,23 +368,14 @@ export async function submitTaskResult(
     // Sign the result
     const signature = await signResultData(taskID, result, tonConnectUI);
 
-    const response = await fetch(`${apiBase}/api/v1/device/tasks/${taskID}/result`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        device_id: deviceID,
-        result: result,
-        proof: signature,
-        execution_time_ms: executionTimeMs,
-      }),
+    // Use apiPost to automatically include session token
+    const { apiPost } = await import('./apiClient');
+    await apiPost(`/device/tasks/${taskID}/result`, {
+      device_id: deviceID,
+      result: result,
+      proof: signature,
+      execution_time_ms: executionTimeMs,
     });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Failed to submit result: ${response.statusText}`);
-    }
 
     logger.info('Task result submitted successfully with signature');
   } catch (error) {

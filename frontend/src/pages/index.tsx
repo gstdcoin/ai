@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { GetStaticProps } from 'next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useTranslation } from 'next-i18next';
@@ -5,10 +6,9 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import Dashboard from '../components/dashboard/Dashboard';
 import WalletConnect from '../components/WalletConnect';
-import { useTonConnectUI } from '@tonconnect/ui-react';
+// Removed unused useTonConnectUI import
 import { useWalletStore } from '../store/walletStore';
-import { logger } from '../lib/logger';
-import { GSTD_CONTRACT_ADDRESS, ADMIN_WALLET_ADDRESS, API_BASE_URL } from '../lib/config';
+import { GSTD_CONTRACT_ADDRESS, API_BASE_URL } from '../lib/config';
 import { Zap, Shield, Globe, ArrowRight, Users, Activity, Coins, Code, BookOpen, Terminal } from 'lucide-react';
 
 interface NetworkStats {
@@ -21,8 +21,8 @@ interface NetworkStats {
 export default function Home() {
   const { t } = useTranslation('common');
   const router = useRouter();
-  const { isConnected, disconnect } = useWalletStore();
-  const [tonConnectUI] = useTonConnectUI();
+  const { isConnected } = useWalletStore();
+  // Unused tonConnectUI removed
   const [networkStats, setNetworkStats] = useState<NetworkStats | null>(null);
   const [isClient, setIsClient] = useState(false);
 
@@ -124,7 +124,7 @@ export default function Home() {
           <div className="max-w-7xl mx-auto flex justify-between items-center">
             <div className="flex items-center gap-3">
               <div className="relative">
-                <img src="/logo.png" alt="GSTD" className="w-10 h-10 rounded-full" />
+                <Image src="/logo.png" alt="GSTD" width={40} height={40} className="rounded-full" />
                 <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-violet-500 blur-lg opacity-50" />
               </div>
               <span className="text-xl font-bold tracking-tight">
@@ -352,7 +352,7 @@ export default function Home() {
           <div className="max-w-6xl mx-auto">
             <div className="flex flex-col lg:flex-row justify-between items-center gap-6">
               <div className="flex items-center gap-3">
-                <img src="/logo.png" alt="GSTD" className="w-8 h-8 rounded-full" />
+                <Image src="/logo.png" alt="GSTD" width={32} height={32} className="rounded-full" />
                 <span className="text-lg font-bold text-white/80">GSTD Platform</span>
               </div>
               <p className="text-gray-500 text-sm text-center lg:text-left">

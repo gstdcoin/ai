@@ -7,12 +7,16 @@ import (
 	"io"
 	"net/http"
 	"testing"
-	"time"
+	"os"
 )
 
-const (
-	BaseURL = "http://localhost:8080/api/v1"
-)
+var BaseURL = "http://ubuntu-backend-blue-1:8080/api/v1"
+
+func init() {
+	if url := os.Getenv("API_URL"); url != "" {
+		BaseURL = url
+	}
+}
 
 type LoginResponse struct {
 	SessionToken string `json:"session_token"`

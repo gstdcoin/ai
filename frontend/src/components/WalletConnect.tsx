@@ -6,7 +6,9 @@ import { logger } from '../lib/logger';
 
 export default function WalletConnect() {
   const { t } = useTranslation('common');
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { isConnected, disconnect } = useWalletStore();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [tonConnectUI] = useTonConnectUI();
   const wallet = useTonWallet();
 

@@ -35,7 +35,7 @@ const (
 func (el *ErrorLogger) Log(ctx context.Context, errorType string, message string, severity ErrorSeverity, extras map[string]interface{}) error {
 	var err error
 	if message != "" {
-		err = fmt.Errorf(message)
+		err = fmt.Errorf("%s", message)
 	}
 	return el.LogError(ctx, errorType, err, severity, extras)
 }
