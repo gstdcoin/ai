@@ -55,7 +55,7 @@ export default function WorkerTaskCard({ task, onTaskCompleted }: WorkerTaskCard
 
     try {
       const taskRunner = getTaskRunner();
-      
+
       // Run task computation (10 seconds simulation)
       const result = await taskRunner.runTask(
         task.task_id,
@@ -90,30 +90,22 @@ export default function WorkerTaskCard({ task, onTaskCompleted }: WorkerTaskCard
       }
 
       // Submit result to backend with signature
-      const apiBase = API_BASE_URL;
-      const submitResponse = await fetch(`${apiBase}/api/v1/tasks/worker/submit`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          task_id: task.task_id,
-          node_id: address, // Using wallet address as node_id for browser workers
-          result: result.result,
-          signature: signature, // SECURITY: Add signature for validation
-          execution_time_ms: result.executionTimeMs,
-        }),
+      // Use apiPost to automatically include session token
+      const { apiPost } = await import('../../lib/apiClient');
+      await apiPost('/tasks/worker/submit', {
+        task_id: task.task_id,
+        node_id: address, // Using wallet address as node_id for browser workers
+        result: result.result,
+        signature: signature, // SECURITY: Add signature for validation
+        execution_time_ms: result.executionTimeMs,
       });
 
-      if (!submitResponse.ok) {
-        const errorData = await submitResponse.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to submit task result');
-      }
+
 
       // Success!
       setIsCompleted(true);
       triggerHapticNotification('success');
-      
+
       if (onTaskCompleted) {
         onTaskCompleted();
       }
@@ -201,7 +193,7 @@ export default function WorkerTaskCard({ task, onTaskCompleted }: WorkerTaskCard
           )}
         </button>
       ) : (
-        <div 
+        <div
           className="w-full glass-button-gold text-white font-bold py-4 px-6 rounded-lg flex items-center justify-center gap-3 min-h-[56px] bg-green-500/20 border-green-500/50"
           role="status"
           aria-live="polite"
@@ -213,7 +205,7 @@ export default function WorkerTaskCard({ task, onTaskCompleted }: WorkerTaskCard
 
       {/* Status Message */}
       {progress.status === 'error' && (
-        <div 
+        <div
           className="mt-3 p-3 bg-red-500/20 border border-red-500/50 rounded-lg"
           role="alert"
           aria-live="assertive"

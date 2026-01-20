@@ -1,9 +1,9 @@
-FROM node:18-alpine AS base
+FROM node:20 AS base
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 
 # Install dependencies only when needed
 FROM base AS deps
-RUN apk update && apk add --no-cache libc6-compat || apk add --no-cache gcompat || true
+# RUN apk update && apk add --no-cache libc6-compat || apk add --no-cache gcompat || true
 WORKDIR /app
 
 COPY package.json ./
@@ -11,13 +11,13 @@ COPY package.json ./
 # Update @twa-dev/sdk to latest if needed
 # Install dependencies - use npm install to handle package-lock.json sync issues
 # Update @twa-dev/sdk to latest if needed
-RUN npm install --legacy-peer-deps && \
-    npm list @twa-dev/sdk || npm install @twa-dev/sdk@latest --save
+# RUN npm install --legacy-peer-deps && \
+#     npm list @twa-dev/sdk || npm install @twa-dev/sdk@latest --save
 
 # Rebuild the source code only when needed
 FROM base AS builder
 WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+# COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 ARG NEXT_PUBLIC_API_URL
@@ -34,10 +34,12 @@ ENV NODE_ENV production
 ENV NEXT_TELEMETRY_DISABLED 1
 
 # Install wget for healthcheck
-RUN apk add --no-cache wget
+# RUN apk add --no-cache wget
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+# RUN addgroup --system --gid 1001 nodejs
+# RUN adduser --system --uid 1001 nextjs
+RUN groupadd -g 1001 -r nodejs
+RUN useradd -u 1001 -r -g nodejs nextjs
 
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./

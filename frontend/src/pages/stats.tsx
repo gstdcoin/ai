@@ -1,4 +1,4 @@
-import { useState, useEffect, memo } from 'react';
+import { useState, useEffect } from 'react';
 import { GetStaticProps } from 'next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useTranslation } from 'next-i18next';
@@ -63,28 +63,28 @@ export default function StatsPage() {
     try {
       const apiBase = API_BASE_URL;
       const response = await fetch(`${apiBase}/api/v1/stats/public`);
-      
+
       if (!response.ok) {
         // Skip this update cycle if server returns error, don't crash
         logger.warn(`Stats API returned ${response.status}: ${response.statusText}`);
         return;
       }
-      
+
       // Check if response is JSON before parsing
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
         logger.warn('Stats API returned non-JSON response, skipping');
         return;
       }
-      
+
       const data = await response.json();
-      
+
       // Handle empty or invalid response
       if (!data || typeof data !== 'object') {
         // Keep previous stats on invalid response
         return;
       }
-      
+
       setStats(data);
     } catch (error) {
       // Silently skip this update cycle on error, don't crash the component
@@ -99,24 +99,24 @@ export default function StatsPage() {
     try {
       const apiBase = API_BASE_URL;
       const response = await fetch(`${apiBase}/api/v1/pool/status`);
-      
+
       if (!response.ok) {
         logger.warn(`Pool status API returned ${response.status}: ${response.statusText}`);
         return;
       }
-      
+
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
         logger.warn('Pool status API returned non-JSON response, skipping');
         return;
       }
-      
+
       const data = await response.json();
-      
+
       if (!data || typeof data !== 'object') {
         return;
       }
-      
+
       setPoolStatus(data);
     } catch (error) {
       logger.error('Error loading pool status', error);
@@ -241,7 +241,7 @@ export default function StatsPage() {
                   {t('last_swaps') || 'Last Golden Reserve Contributions'}
                 </h2>
                 <div className="space-y-3">
-                  {stats.last_swaps.map((swap: any, index: number) => (
+                  {stats.last_swaps.map((swap, index: number) => (
                     <div key={index} className="glass-dark rounded-lg p-4 hover:bg-white/5 transition-colors">
                       <div className="flex flex-col sm:flex-row justify-between items-start gap-3">
                         <div className="flex-1">

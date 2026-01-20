@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { useEffect, useState, useMemo, useRef } from 'react';
 import Head from 'next/head';
 import { apiGet } from '@/lib/apiClient';
@@ -124,9 +125,9 @@ export default function NetworkMapPage() {
                     </div>
 
                     <div className="pointer-events-auto">
-                        <a href="/" className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm transition-all backdrop-blur-md">
+                        <Link href="/" className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm transition-all backdrop-blur-md">
                             ← Back to Dashboard
-                        </a>
+                        </Link>
                     </div>
                 </div>
             </div>

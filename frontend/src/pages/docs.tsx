@@ -1,14 +1,13 @@
 import { GetStaticProps } from 'next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useTranslation } from 'next-i18next';
-import { useRouter } from 'next/router';
 import Link from 'next/link';
-import { ArrowLeft, Terminal, Code, BookOpen, Zap, Shield, Users, Coins } from 'lucide-react';
+import Image from 'next/image';
+import { ArrowLeft, Terminal, Code, BookOpen, Zap, Shield } from 'lucide-react';
 import { GSTD_CONTRACT_ADDRESS, ADMIN_WALLET_ADDRESS, API_BASE_URL } from '../lib/config';
 
 export default function DocsPage() {
     const { t } = useTranslation('common');
-    const router = useRouter();
 
     return (
         <div className="min-h-screen bg-[#030014] text-white">
@@ -17,7 +16,7 @@ export default function DocsPage() {
                 <div className="max-w-6xl mx-auto flex justify-between items-center">
                     <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
                         <ArrowLeft className="w-5 h-5" />
-                        <img src="/logo.png" alt="GSTD" className="w-8 h-8 rounded-full" />
+                        <Image src="/logo.png" alt="GSTD" width={32} height={32} className="rounded-full" />
                         <span className="text-lg font-bold">GSTD Docs</span>
                     </Link>
                 </div>

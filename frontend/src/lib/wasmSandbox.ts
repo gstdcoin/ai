@@ -175,52 +175,50 @@ export class WasmSandbox {
      * Creates sandboxed imports for WASM module
      */
     private createSandboxedImports(): SandboxedImports {
-        const self = this;
-
         return {
             env: {
                 log_string: (ptr: number, len: number) => {
-                    if (!self.memory) return;
-                    const bytes = new Uint8Array(self.memory.buffer, ptr, len);
+                    if (!this.memory) return;
+                    const bytes = new Uint8Array(this.memory.buffer, ptr, len);
                     const msg = new TextDecoder().decode(bytes);
-                    self.logs.push(msg);
+                    this.logs.push(msg);
                     // Limit log size
-                    if (self.logs.length > 1000) self.logs.shift();
+                    if (this.logs.length > 1000) this.logs.shift();
                 },
 
                 log_number: (value: number) => {
-                    self.logs.push(String(value));
+                    this.logs.push(String(value));
                 },
 
                 get_time_ms: () => {
-                    return Math.floor(performance.now() - self.startTime);
+                    return Math.floor(performance.now() - this.startTime);
                 },
 
                 get_input_length: () => {
-                    return self.inputBuffer.length;
+                    return this.inputBuffer.length;
                 },
 
                 get_input_byte: (index: number) => {
-                    if (index < 0 || index >= self.inputBuffer.length) return 0;
-                    return self.inputBuffer[index];
+                    if (index < 0 || index >= this.inputBuffer.length) return 0;
+                    return this.inputBuffer[index];
                 },
 
                 set_output_length: (len: number) => {
-                    self.outputLength = Math.min(len, self.outputBuffer.length);
+                    this.outputLength = Math.min(len, this.outputBuffer.length);
                 },
 
                 set_output_byte: (index: number, value: number) => {
-                    if (index >= 0 && index < self.outputBuffer.length) {
-                        self.outputBuffer[index] = value;
+                    if (index >= 0 && index < this.outputBuffer.length) {
+                        this.outputBuffer[index] = value;
                     }
                 },
 
                 get_random: () => {
                     // Deterministic PRNG (xorshift)
-                    self.randomSeed ^= self.randomSeed << 13;
-                    self.randomSeed ^= self.randomSeed >> 17;
-                    self.randomSeed ^= self.randomSeed << 5;
-                    return (self.randomSeed >>> 0) / 4294967296;
+                    this.randomSeed ^= this.randomSeed << 13;
+                    this.randomSeed ^= this.randomSeed >> 17;
+                    this.randomSeed ^= this.randomSeed << 5;
+                    return (this.randomSeed >>> 0) / 4294967296;
                 },
             },
 
