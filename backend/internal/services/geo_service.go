@@ -6,13 +6,49 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"net/http"
 	"time"
 )
 
-// GeoService handles IP geolocation
+// GeoService handles IP geolocation and GPS validation
 type GeoService struct {
 	httpClient *http.Client
+}
+
+// CalculateDistance calculates the distance between two points in km using Haversine formula
+func (s *GeoService) CalculateDistance(lat1, lon1, lat2, lon2 float64) float64 {
+	const EarthRadiusKm = 6371.0
+	dLat := (lat2 - lat1) * (math.Pi / 180.0)
+	dLon := (lon2 - lon1) * (math.Pi / 180.0)
+
+	a := math.Sin(dLat/2)*math.Sin(dLat/2) +
+		math.Cos(lat1*(math.Pi/180.0))*math.Cos(lat2*(math.Pi/180.0))*
+			math.Sin(dLon/2)*math.Sin(dLon/2)
+	c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
+
+	return EarthRadiusKm * c
+}
+
+// CheckSpoofing verifies if the movement speed is realistic (< 1000 km/h)
+func (s *GeoService) CheckSpoofing(lat1, lon1, lat2, lon2 float64, timeDiff time.Duration) (bool, float64) {
+	if timeDiff <= 0 {
+		// If no time passed but distance > 1km, it's suspicious
+		dist := s.CalculateDistance(lat1, lon1, lat2, lon2)
+		if dist > 1.0 {
+			return true, 10000.0 // Arbitrary high speed
+		}
+		return false, 0
+	}
+
+	dist := s.CalculateDistance(lat1, lon1, lat2, lon2)
+	speed := dist / timeDiff.Hours()
+
+	if speed > 1000.0 {
+		return true, speed
+	}
+
+	return false, speed
 }
 
 func NewGeoService() *GeoService {

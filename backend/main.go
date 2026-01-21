@@ -434,6 +434,7 @@ func main() {
 		errorLogger,
 		powService,
 		taskOrchestrator,
+		telegramService,
 	)
 
 	// Setup Swagger documentation
