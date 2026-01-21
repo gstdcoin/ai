@@ -98,20 +98,4 @@ func (s *UserService) GetUser(ctx context.Context, walletAddress string) (*model
 
 // GetUserID resolves wallet address to a pseudo user ID (hash)
 // Since users table uses wallet_address as primary key, we generate a stable int from it
-func (s *UserService) GetUserID(ctx context.Context, walletAddress string) (int, error) {
-	// Check user exists
-	var addr string
-	err := s.db.QueryRowContext(ctx, "SELECT wallet_address FROM users WHERE wallet_address = $1", walletAddress).Scan(&addr)
-	if err != nil {
-		return 0, err
-	}
-	// Generate stable int from address (simple hash)
-	hash := 0
-	for _, c := range walletAddress {
-		hash = hash*31 + int(c)
-	}
-	if hash < 0 {
-		hash = -hash
-	}
-	return hash, nil
-}
+// GetUserID removed as it relied on unstable hash generation - use wallet_address as PK

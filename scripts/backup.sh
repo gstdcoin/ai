@@ -8,7 +8,7 @@
 set -euo pipefail
 
 # Configuration
-BACKUP_DIR="/home/ubuntu/backups"
+BACKUP_DIR="/home/ubuntu/autonomy/backups"
 RETENTION_DAYS=14  # Keep backups for 14 days
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_FILE="${BACKUP_DIR}/postgres_backup_${TIMESTAMP}.sql.gz"

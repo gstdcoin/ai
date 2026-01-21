@@ -150,3 +150,51 @@
 ⚠️  No GEO Service activity or initialization found in logs.
 
 ---
+## 🛡️ GSTD Security Audit - 2026-01-21 16:00:01
+
+### 💎 TON Service Check
+2026/01/21 15:48:00 Migration v10_failed_payouts.sql already applied, skipping
+2026/01/21 15:48:00 Warning: Failed to run migrations: failed to execute migration v24_referral_system.sql: migration SQL error: pq: column "id" referenced in foreign key constraint does not exist
+2026/01/21 15:48:05 Health check: Failed to get contract balance: TON API error (status 401): {"error":"illegal base32 data at input byte 3"}
+2026/01/21 15:48:17 Health check: Failed to get contract balance: TON API error (status 401): {"error":"illegal base32 data at input byte 3"}
+2026/01/21 15:48:27 Health check: Failed to get contract balance: TON API error (status 401): {"error":"illegal base32 data at input byte 3"}
+2026/01/21 15:48:35 Health check: Failed to get contract balance: TON API error (status 401): {"error":"illegal base32 data at input byte 3"}
+2026/01/21 15:48:37 Health check: Failed to get contract balance: TON API error (status 401): {"error":"illegal base32 data at input byte 3"}
+2026/01/21 15:48:47 Health check: Failed to get contract balance: TON API error (status 401): {"error":"illegal base32 data at input byte 3"}
+2026/01/21 15:48:57 Health check: Failed to get contract balance: TON API error (status 401): {"error":"illegal base32 data at input byte 3"}
+2026/01/21 15:49:05 Health check: Failed to get contract balance: TON API error (status 401): {"error":"illegal base32 data at input byte 3"}
+2026/01/21 15:49:07 Health check: Failed to get contract balance: TON API error (status 401): {"error":"illegal base32 data at input byte 3"}
+2026/01/21 15:49:18 Health check: Failed to get contract balance: TON API error (status 401): {"error":"illegal base32 data at input byte 3"}
+2026/01/21 15:49:28 Health check: Failed to get contract balance: TON API error (status 401): {"error":"illegal base32 data at input byte 3"}
+2026/01/21 15:49:35 Health check: Failed to get contract balance: TON API error (status 401): {"error":"illegal base32 data at input byte 3"}
+2026/01/21 15:49:38 Health check: Failed to get contract balance: TON API error (status 401): {"error":"illegal base32 data at input byte 3"}
+2026/01/21 15:49:48 Health check: Failed to get contract balance: TON API error (status 401): {"error":"illegal base32 data at input byte 3"}
+2026/01/21 15:49:58 Health check: Failed to get contract balance: TON API error (status 401): {"error":"illegal base32 data at input byte 3"}
+2026/01/21 15:50:05 Health check: Failed to get contract balance: TON API error (status 401): {"error":"illegal base32 data at input byte 3"}
+2026/01/21 15:50:08 Health check: Failed to get contract balance: TON API error (status 401): {"error":"illegal base32 data at input byte 3"}
+2026/01/21 15:50:08 Health check: Failed to get contract balance: TON API error (status 401): {"error":"illegal base32 data at input byte 3"}
+
+### 🌍 GEO Service Check
+✅ GEO Service is running correctly (found 1 log entries).
+
+---
+## 🛡️ GSTD Security Audit - 2026-01-21 17:00:01
+
+### 💎 TON Service Check
+2026/01/21 16:03:59 Migration v10_failed_payouts.sql already applied, skipping
+2026/01/21 16:03:59 Warning: Failed to run migrations: failed to execute migration v24_referral_system.sql: migration SQL error: pq: column "id" referenced in foreign key constraint does not exist
+
+### 🌍 GEO Service Check
+✅ GEO Service is running correctly (found 1 log entries).
+
+---
+## 🛡️ GSTD Security Audit - 2026-01-21 18:00:01
+
+### 💎 TON Service Check
+2026/01/21 17:21:10 Migration v10_failed_payouts.sql already applied, skipping
+2026/01/21 17:21:10 Warning: Failed to run migrations: failed to execute migration v24_referral_system.sql: migration SQL error: pq: column "id" referenced in foreign key constraint does not exist
+
+### 🌍 GEO Service Check
+✅ GEO Service is running correctly (found 1 log entries).
+
+---

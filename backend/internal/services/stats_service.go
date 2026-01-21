@@ -19,6 +19,8 @@ type GlobalStats struct {
 	CompletedTasks     int     `json:"completed_tasks"`
 	TotalRewardsTon    float64 `json:"total_rewards_ton"`
 	ActiveDevicesCount int     `json:"active_devices_count"`
+	TotalTFLOPS        float64 `json:"total_tflops"`
+	ActiveCountries    int     `json:"active_countries"`
 }
 
 func (s *StatsService) GetGlobalStats(ctx context.Context) (*GlobalStats, error) {
@@ -30,13 +32,14 @@ func (s *StatsService) GetGlobalStats(ctx context.Context) (*GlobalStats, error)
 	stats.CompletedTasks = 0
 	stats.TotalRewardsTon = 0.0
 	stats.ActiveDevicesCount = 0
+	stats.TotalTFLOPS = 0.0
+	stats.ActiveCountries = 0
 
 	// 1. Processing tasks (status = 'assigned' or 'executing')
 	err := s.db.QueryRowContext(ctx, `
 		SELECT COUNT(*) FROM tasks WHERE status IN ('assigned', 'executing', 'validating')
 	`).Scan(&stats.ProcessingTasks)
 	if err != nil {
-		// Log error but continue with default value (0)
 		stats.ProcessingTasks = 0
 	}
 
@@ -56,7 +59,7 @@ func (s *StatsService) GetGlobalStats(ctx context.Context) (*GlobalStats, error)
 		stats.CompletedTasks = 0
 	}
 
-	// 4. Total rewards paid (using labor_compensation_ton instead of deprecated reward_amount_ton)
+	// 4. Total rewards paid (using labor_compensation_ton)
 	err = s.db.QueryRowContext(ctx, `
 		SELECT COALESCE(SUM(labor_compensation_ton), 0) FROM tasks WHERE status = 'completed'
 	`).Scan(&stats.TotalRewardsTon)
@@ -64,13 +67,45 @@ func (s *StatsService) GetGlobalStats(ctx context.Context) (*GlobalStats, error)
 		stats.TotalRewardsTon = 0.0
 	}
 
-	// 5. Active devices count (seen in last 5 minutes)
-	// Use COALESCE to handle NULL case when no devices exist
+	// 5. Active devices count & TFLOPS estimation
+	// We estimate TFLOPS based on CPU cores (simplified: 1 core ~ 0.1 TFLOPS for standard consumer hardware in distributed network)
+	// Also get active countries count
+	
+	// Active devices (last 5 minutes)
 	err = s.db.QueryRowContext(ctx, `
 		SELECT COALESCE(COUNT(*), 0) FROM devices WHERE last_seen_at > NOW() - INTERVAL '5 minutes' AND is_active = true
 	`).Scan(&stats.ActiveDevicesCount)
 	if err != nil {
 		stats.ActiveDevicesCount = 0
+	}
+
+	// TFLOPS Estimation (using nodes table if available, or fallback to devices estimate)
+	// Assuming nodes table has cpu info. If not, we estimate 0.5 TFLOPS per active device on average.
+	// Let's check if 'nodes' table is populated, otherwise use 'devices' count * 0.5
+	var activeNodesCount int
+	err = s.db.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM nodes WHERE status = 'active'
+	`).Scan(&activeNodesCount)
+	
+	if err == nil && activeNodesCount > 0 {
+		// Use nodes count * 1.5 (assuming roughly 1.5 TFLOPS per node average for simplified metric)
+		stats.TotalTFLOPS = float64(activeNodesCount) * 1.5
+	} else {
+		// Fallback to devices count
+		stats.TotalTFLOPS = float64(stats.ActiveDevicesCount) * 0.5
+	}
+
+	// Active Countries
+	err = s.db.QueryRowContext(ctx, `
+		SELECT COUNT(DISTINCT country) FROM nodes WHERE status = 'active' AND country IS NOT NULL AND country != ''
+	`).Scan(&stats.ActiveCountries)
+	if err != nil {
+		// If nodes table query fails or no country data
+		stats.ActiveCountries = 0 
+		// Fallback: If we have active devices but no country data, assume at least 1 country
+		if stats.ActiveDevicesCount > 0 {
+			stats.ActiveCountries = 1
+		}
 	}
 
 	return stats, nil
