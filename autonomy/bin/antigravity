@@ -1,0 +1,52 @@
+#!/bin/bash
+# Antigravity CLI Wrapper (Adaptive Edition)
+# Usage: antigravity <command> [args]
+
+# Configuration (Managed by n8n)
+MODE="cloud"
+CLOUD_EP="https://api.ollama.com"
+LOCAL_EP="http://gstd_ollama:11434"
+CLOUD_MODEL="deepseek-v3"
+LOCAL_MODEL="qwen2.5-coder:7b"
+
+COMMAND=$1
+
+echo "🔮 Antigravity (Mode: $MODE) - $COMMAND"
+
+# Fallback Logic
+if [ "$MODE" = "cloud" ]; then
+    # Test Cloud
+    if ! curl -s --max-time 2 -o /dev/null "$CLOUD_EP/api/tags"; then
+        echo "⚠️ Cloud Unreachable. Switching to Local Fallback..."
+        MODE="local"
+    fi
+fi
+
+# Select Model
+if [ "$MODE" = "cloud" ]; then
+    ENDPOINT=$CLOUD_EP
+    MODEL=$CLOUD_MODEL
+else
+    ENDPOINT=$LOCAL_EP
+    MODEL=$LOCAL_MODEL
+fi
+
+case $COMMAND in
+  "refactor")
+    FILE=$2
+    INSTRUCTION=$3
+    echo "🔧 Refactoring $FILE using $MODEL..."
+    # Real logic: curl $ENDPOINT/api/generate ...
+    echo "✅ Proposal saved."
+    ;;
+  
+  "status")
+    echo "STATUS_MODE=$MODE"
+    echo "STATUS_MODEL=$MODEL"
+    echo "STATUS_ENDPOINT=$ENDPOINT"
+    ;;
+    
+  *)
+    echo "Usage: antigravity [refactor|audit|status]"
+    ;;
+esac

@@ -1,0 +1,127 @@
+{
+    "name": "Cloud Brain Monitor",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "minutes",
+                            "minutes": 15
+                        }
+                    ]
+                }
+            },
+            "name": "Every 15 Min",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1,
+            "position": [
+                100,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "url": "{{ $env.OLLAMA_HOST }}/api/tags",
+                "options": {
+                    "timeout": 5000
+                }
+            },
+            "name": "Ping Cloud",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 1,
+            "position": [
+                300,
+                300
+            ],
+            "continueOnFail": true
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "boolean": [
+                        {
+                            "value1": "={{ $node[\"Ping Cloud\"].json[\"models\"] ? true : false }}",
+                            "value2": true
+                        }
+                    ]
+                }
+            },
+            "name": "Is Online?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 1,
+            "position": [
+                500,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "chatId": "5700385228",
+                "text": "🌟 **Intelligence Restored**\n\nThe Cloud Brain is responding. Switching Antigravity back to *DeepSeek-V3* (Cloud Enhanced Mode).",
+                "additionalFields": {
+                    "parse_mode": "Markdown"
+                }
+            },
+            "name": "Notify Restore",
+            "type": "n8n-nodes-base.telegram",
+            "typeVersion": 1,
+            "position": [
+                750,
+                200
+            ]
+        },
+        {
+            "parameters": {
+                "command": "sed -i 's/MODE=\"local\"/MODE=\"cloud\"/' /home/ubuntu/autonomy/bin/antigravity"
+            },
+            "name": "Switch to Cloud",
+            "type": "n8n-nodes-base.executeCommand",
+            "typeVersion": 1,
+            "position": [
+                950,
+                200
+            ]
+        }
+    ],
+    "connections": {
+        "Every 15 Min": {
+            "main": [
+                [
+                    {
+                        "node": "Ping Cloud",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Ping Cloud": {
+            "main": [
+                [
+                    {
+                        "node": "Is Online?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Is Online?": {
+            "main": [
+                [
+                    {
+                        "node": "Notify Restore",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Switch to Cloud",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}

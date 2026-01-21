@@ -1,0 +1,134 @@
+{
+    "name": "GSTD News & Trends Scout",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "hours",
+                            "hours": 12
+                        }
+                    ]
+                }
+            },
+            "name": "Twice Daily Trigger",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1,
+            "position": [
+                250,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "url": "https://ton.org/blog/rss.xml",
+                "options": {}
+            },
+            "name": "Fetch TON Blog",
+            "type": "n8n-nodes-base.rssFeedRead",
+            "typeVersion": 1,
+            "position": [
+                450,
+                200
+            ]
+        },
+        {
+            "parameters": {
+                "modelId": "mistral-nemo",
+                "promptType": "define",
+                "text": "Analyze these recent headlines for GSTD Platform relevance (TON blockchain, 5G, Distributed Computing):\n\n{{ $json.title }}\n{{ $json.contentSnippet }}\n\nReturn 'ACTION_REQUIRED' if we need to update our code (e.g. new fees, protocol change), otherwise 'INFO'.",
+                "options": {}
+            },
+            "name": "AI Analyst",
+            "type": "@n8n/n8n-nodes-langchain.chainLlm",
+            "typeVersion": 1,
+            "position": [
+                700,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "string": [
+                        {
+                            "value1": "={{ $json.text }}",
+                            "operation": "contains",
+                            "value2": "ACTION_REQUIRED"
+                        }
+                    ]
+                }
+            },
+            "name": "Is Critical?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 1,
+            "position": [
+                900,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "chatId": "5700385228",
+                "text": "📰 **Tech Radar Alert**\n\nThe AI Analyst found a relevant update:\n{{ $json.title }}\n\nAnalysis: {{ $json.text }}",
+                "additionalFields": {
+                    "parse_mode": "Markdown"
+                }
+            },
+            "name": "Notify Admin",
+            "type": "n8n-nodes-base.telegram",
+            "typeVersion": 1.1,
+            "position": [
+                1100,
+                300
+            ]
+        }
+    ],
+    "connections": {
+        "Twice Daily Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "Fetch TON Blog",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Fetch TON Blog": {
+            "main": [
+                [
+                    {
+                        "node": "AI Analyst",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "AI Analyst": {
+            "main": [
+                [
+                    {
+                        "node": "Is Critical?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Is Critical?": {
+            "main": [
+                [
+                    {
+                        "node": "Notify Admin",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}
