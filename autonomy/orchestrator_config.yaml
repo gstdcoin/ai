@@ -1,0 +1,55 @@
+agent_name: "GSTD_Autonomy_Agent"
+version: "1.0.0"
+
+# API Endpoints for System Monitoring and Control
+api_config:
+  base_url: "http://ubuntu-backend-blue-1:8080/api/v1"
+  external_url: "https://app.gstdtoken.com/api/v1"
+
+monitored_endpoints:
+  - name: "System Health"
+    endpoint: "/health"
+    method: "GET"
+    interval_seconds: 60
+    description: "Checks if core services (DB, Redis) are reachable"
+
+  - name: "Task Queue Stats"
+    endpoint: "/orchestrator/stats"
+    method: "GET"
+    interval_seconds: 120
+    description: "Monitors pending, assigned, and completed tasks"
+
+  - name: "Worker Nodes"
+    endpoint: "/nodes"
+    method: "GET"
+    interval_seconds: 300
+    description: "List of active worker nodes and their status"
+
+  - name: "Escrow Balance"
+    endpoint: "/wallet/balance"
+    method: "GET"
+    interval_seconds: 3600
+    description: "Checks the platform wallet balance for automated refills"
+
+# Alerts and Triggers configuration for n8n
+triggers:
+  - condition: "health_status != 'healthy'"
+    action: "notify_telegram_admin"
+    severity: "critical"
+
+  - condition: "pending_tasks > 1000"
+    action: "suggest_scaling"
+    severity: "warning"
+
+  - condition: "escrow_balance < 100"
+    action: "notify_telegram_admin"
+    severity: "warning"
+
+# Integration settings
+ollama:
+  model: "qwen2.5-coder:7b"
+  role: "system_architect"
+  capabilities:
+    - "log_analysis"
+    - "code_review_suggestions"
+    - "scaling_recommendations"

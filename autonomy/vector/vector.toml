@@ -1,0 +1,19 @@
+[sources.docker]
+type = "docker_logs"
+include_containers = ["ubuntu-backend-blue-1", "gstd_bot", "gstd_n8n"]
+
+[transforms.filter_errors]
+type = "filter"
+inputs = ["docker"]
+condition = '''
+  contains(downcase(.message), "error") || 
+  contains(downcase(.message), "fatal") || 
+  contains(downcase(.message), "panic")
+'''
+
+[sinks.n8n_webhook]
+type = "http"
+inputs = ["filter_errors"]
+uri = "http://gstd_n8n:5678/webhook/log_alert"
+encoding.codec = "json"
+method = "post"

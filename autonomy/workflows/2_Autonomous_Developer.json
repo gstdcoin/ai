@@ -1,0 +1,81 @@
+{
+    "name": "Autonomous Developer (Evolution)",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "days",
+                            "days": 1
+                        }
+                    ]
+                }
+            },
+            "name": "Daily Trigger",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1,
+            "position": [
+                250,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "modelId": "qwen2.5-coder:7b",
+                "promptType": "define",
+                "text": "You are the Lead Developer of GSTD (Global Shared Tokenized Distributed). \n\nYour task:\n1. Select a random file from `/data/backend/internal/services/`.\n2. Analyze it for performance bottlenecks, security vulnerabilities, or code quality issues.\n3. If improvements are found, write the optimized code to a new file in `/data/proposals/` named `optimization_<timestamp>.go`.\n4. Output a summary of your findings to be sent to the admin.",
+                "options": {
+                    "systemMessage": "You are an expert Golang Architect specialized in distributed systems."
+                }
+            },
+            "name": "AI Architect",
+            "type": "@n8n/n8n-nodes-langchain.chainLlm",
+            "typeVersion": 1,
+            "position": [
+                500,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "chatId": "5700385228",
+                "text": "🚀 **Evolution Update**\n\nAI Architect has a new proposal:\n\n{{ $json.text }}\n\nCheck `/autonomy/proposals` to review code.",
+                "additionalFields": {
+                    "parse_mode": "Markdown"
+                }
+            },
+            "name": "Notify Admin",
+            "type": "n8n-nodes-base.telegram",
+            "typeVersion": 1.1,
+            "position": [
+                800,
+                300
+            ]
+        }
+    ],
+    "connections": {
+        "Daily Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "AI Architect",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "AI Architect": {
+            "main": [
+                [
+                    {
+                        "node": "Notify Admin",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}

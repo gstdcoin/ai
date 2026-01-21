@@ -1,0 +1,51 @@
+#!/bin/bash
+# Antigravity Shadow Test Runner
+# Creates a temporary build environment to validate proposals
+
+PROPOSAL_FILE=$1
+TARGET_FILE=$2
+
+if [ -z "$PROPOSAL_FILE" ] || [ -z "$TARGET_FILE" ]; then
+  echo "Usage: shadow_test <proposal_file> <target_rel_path>"
+  exit 1
+fi
+
+echo "🌑 Initiating Shadow Copy Test..."
+
+SHADOW_DIR="/tmp/shadow_build_$(date +%s)"
+SRC_DIR="/home/ubuntu/backend"
+
+# 1. Create Shadow Copy
+echo "   - Cloning codebase to $SHADOW_DIR..."
+cp -r $SRC_DIR $SHADOW_DIR
+
+# 2. Apply Proposal
+echo "   - Injecting proposal: $PROPOSAL_FILE -> $TARGET_FILE"
+cp "/home/ubuntu/autonomy/proposals/$PROPOSAL_FILE" "$SHADOW_DIR/$TARGET_FILE"
+
+# 3. Compile Test
+echo "   - Attempting compilation..."
+# We use the golang container to build the shadow copy
+docker run --rm -v $SHADOW_DIR:/app -w /app golang:1.24 go build ./...
+
+if [ $? -eq 0 ]; then
+  echo "✅ Compilation SUCCESS."
+  
+  # 4. Unit Test (Optional: run specific tests if needed)
+  echo "   - Running unit tests..."
+  docker run --rm --network ubuntu_gstd_network -v $SHADOW_DIR:/app -w /app golang:1.24 go test ./...
+  
+  if [ $? -eq 0 ]; then
+    echo "✅ Tests PASSED."
+    rm -rf $SHADOW_DIR
+    exit 0
+  else
+    echo "❌ Tests FAILED."
+    rm -rf $SHADOW_DIR
+    exit 1
+  fi
+else
+  echo "❌ Compilation FAILED."
+  rm -rf $SHADOW_DIR
+  exit 1
+fi

@@ -1,0 +1,238 @@
+{
+    "name": "GSTD Health & Finance Guardian",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "minutes",
+                            "minutes": 15
+                        }
+                    ]
+                }
+            },
+            "name": "Schedule (15m)",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1,
+            "position": [
+                250,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "url": "http://gstd_nginx_lb/api/v1/health",
+                "options": {
+                    "timeout": 5000
+                }
+            },
+            "name": "Check Health API",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                450,
+                300
+            ],
+            "continueOnFail": true
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "boolean": [
+                        {
+                            "value1": "={{ $json.status }}",
+                            "value2": "healthy"
+                        }
+                    ]
+                }
+            },
+            "name": "Is Healthy?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 1,
+            "position": [
+                650,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "chatId": "5700385228",
+                "text": "🚨 **CRITICAL ALERT**\n\nBackend Health Check Failed!\nRestarting services...\n\nError: {{$json}}",
+                "additionalFields": {
+                    "parse_mode": "Markdown"
+                }
+            },
+            "name": "Alert: Health Fail",
+            "type": "n8n-nodes-base.telegram",
+            "typeVersion": 1.1,
+            "position": [
+                850,
+                100
+            ]
+        },
+        {
+            "parameters": {
+                "command": "docker restart ubuntu-backend-blue-1 ubuntu-backend-green-1"
+            },
+            "name": "Docker Restart",
+            "type": "n8n-nodes-base.executeCommand",
+            "typeVersion": 1,
+            "position": [
+                1050,
+                100
+            ]
+        },
+        {
+            "parameters": {
+                "chatId": "5700385228",
+                "text": "✅ Services Restarted. Re-checking in 15m.",
+                "additionalFields": {
+                    "parse_mode": "Markdown"
+                }
+            },
+            "name": "Notify Restart",
+            "type": "n8n-nodes-base.telegram",
+            "typeVersion": 1.1,
+            "position": [
+                1250,
+                100
+            ]
+        },
+        {
+            "parameters": {
+                "url": "http://gstd_nginx_lb/api/v1/wallet/balance",
+                "options": {}
+            },
+            "name": "Check Wallet Balance",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                850,
+                400
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "number": [
+                        {
+                            "value1": "={{ $json.balance_ton }}",
+                            "operation": "smaller",
+                            "value2": 5
+                        }
+                    ]
+                }
+            },
+            "name": "Is Low Balance?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 1,
+            "position": [
+                1050,
+                400
+            ]
+        },
+        {
+            "parameters": {
+                "chatId": "5700385228",
+                "text": "💰 **FINANCE ALERT**\n\nContract Liquidity Low!\nBalance: {{ $json.balance_ton }} TON\n\nPlease refill the escrow contract immediately to prevent worker churn.",
+                "additionalFields": {
+                    "parse_mode": "Markdown"
+                }
+            },
+            "name": "Alert: Low Balance",
+            "type": "n8n-nodes-base.telegram",
+            "typeVersion": 1.1,
+            "position": [
+                1250,
+                300
+            ]
+        }
+    ],
+    "connections": {
+        "Schedule (15m)": {
+            "main": [
+                [
+                    {
+                        "node": "Check Health API",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Check Health API": {
+            "main": [
+                [
+                    {
+                        "node": "Is Healthy?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Is Healthy?": {
+            "main": [
+                [
+                    {
+                        "node": "Check Wallet Balance",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Alert: Health Fail",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Alert: Health Fail": {
+            "main": [
+                [
+                    {
+                        "node": "Docker Restart",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Docker Restart": {
+            "main": [
+                [
+                    {
+                        "node": "Notify Restart",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Check Wallet Balance": {
+            "main": [
+                [
+                    {
+                        "node": "Is Low Balance?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Is Low Balance?": {
+            "main": [
+                [
+                    {
+                        "node": "Alert: Low Balance",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}
