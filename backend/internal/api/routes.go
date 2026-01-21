@@ -41,6 +41,7 @@ func SetupRoutes(
 	errorLogger *services.ErrorLogger,
 	powService *services.ProofOfWorkService,
 	taskOrchestrator *services.TaskOrchestrator,
+	telegramService *services.TelegramService,
 ) {
 	log.Printf("🔧 SetupRoutes: Starting route setup, redisClient type: %T", redisClient)
 	
@@ -210,7 +211,7 @@ func SetupRoutes(
 
 		// Nodes (protected)
 		geoService := services.NewGeoService()
-		protected.POST("/nodes/register", registerNode(nodeService, geoService))
+		protected.POST("/nodes/register", registerNode(nodeService, geoService, telegramService))
 		protected.GET("/nodes/my", getMyNodes(nodeService))
 
 		// Task Payment (protected)

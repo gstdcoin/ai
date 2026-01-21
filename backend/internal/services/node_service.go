@@ -20,8 +20,8 @@ func NewNodeService(db *sql.DB) *NodeService {
 	return &NodeService{db: db}
 }
 
-// RegisterNode registers a new computing node for a wallet
-func (s *NodeService) RegisterNode(ctx context.Context, walletAddress string, name string, specs map[string]interface{}, country *string) (*models.Node, error) {
+// RegisterNode registers or updates a computing node for a wallet
+func (s *NodeService) RegisterNode(ctx context.Context, walletAddress string, name string, specs map[string]interface{}, country *string, lat, lon *float64, isSpoofing bool) (*models.Node, error) {
 	if walletAddress == "" {
 		return nil, errors.New("wallet_address is required")
 	}
@@ -29,8 +29,9 @@ func (s *NodeService) RegisterNode(ctx context.Context, walletAddress string, na
 		return nil, errors.New("name is required")
 	}
 
-	// Generate unique node ID
-	nodeID := uuid.New().String()
+	// Try to find existing node for this wallet
+	existing, err := s.GetNodeByWalletAddress(ctx, walletAddress)
+	isUpdate := err == nil && existing != nil
 
 	// Extract specs
 	var cpuModel *string
@@ -50,33 +51,56 @@ func (s *NodeService) RegisterNode(ctx context.Context, walletAddress string, na
 	}
 
 	now := time.Now()
+	status := "online"
+	if isSpoofing {
+		status = "suspended"
+	}
+
+	var nodeID string
+	if isUpdate {
+		nodeID = existing.ID
+	} else {
+		nodeID = uuid.New().String()
+	}
+
 	node := &models.Node{
 		ID:            nodeID,
 		WalletAddress: walletAddress,
 		Name:          name,
-		Status:        "offline",
+		Status:        status,
 		CPUModel:      cpuModel,
 		RAMGB:         ramGB,
-		TrustScore:    1.0, // Default trust score
+		TrustScore:    1.0,
 		Country:       country,
+		Latitude:      lat,
+		Longitude:     lon,
+		IsSpoofing:    isSpoofing,
 		LastSeen:      now,
 		CreatedAt:     now,
 		UpdatedAt:     now,
 	}
 
-	// Set default trust_score to 1.0
-	trustScore := 1.0
-	if node.TrustScore > 0 {
-		trustScore = node.TrustScore
+	if isUpdate {
+		node.CreatedAt = existing.CreatedAt
+		node.TrustScore = existing.TrustScore
+		
+		_, err = s.db.ExecContext(ctx, `
+			UPDATE nodes 
+			SET name = $1, status = $2, cpu_model = $3, ram_gb = $4, country = $5, 
+			    latitude = $6, longitude = $7, is_spoofing = $8, last_seen = $9, updated_at = $10
+			WHERE wallet_address = $11
+		`, node.Name, node.Status, node.CPUModel, node.RAMGB, node.Country, 
+		   node.Latitude, node.Longitude, node.IsSpoofing, node.LastSeen, node.UpdatedAt, walletAddress)
+	} else {
+		_, err = s.db.ExecContext(ctx, `
+			INSERT INTO nodes (id, wallet_address, name, status, cpu_model, ram_gb, trust_score, country, latitude, longitude, is_spoofing, last_seen, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+		`, node.ID, node.WalletAddress, node.Name, node.Status, node.CPUModel, node.RAMGB, node.TrustScore, node.Country, 
+		   node.Latitude, node.Longitude, node.IsSpoofing, node.LastSeen, node.CreatedAt, node.UpdatedAt)
 	}
 
-	_, err := s.db.ExecContext(ctx, `
-		INSERT INTO nodes (id, wallet_address, name, status, cpu_model, ram_gb, trust_score, country, last_seen, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-	`, node.ID, node.WalletAddress, node.Name, node.Status, node.CPUModel, node.RAMGB, trustScore, node.Country, node.LastSeen, node.CreatedAt, node.UpdatedAt)
-
 	if err != nil {
-		return nil, fmt.Errorf("failed to register node: %w", err)
+		return nil, fmt.Errorf("failed to register/update node: %w", err)
 	}
 
 	return node, nil
@@ -89,7 +113,7 @@ func (s *NodeService) GetMyNodes(ctx context.Context, walletAddress string) ([]*
 	}
 
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT id, wallet_address, name, status, cpu_model, ram_gb, trust_score, country, last_seen, created_at, updated_at
+		SELECT id, wallet_address, name, status, cpu_model, ram_gb, trust_score, country, latitude, longitude, is_spoofing, last_seen, created_at, updated_at
 		FROM nodes
 		WHERE wallet_address = $1
 		ORDER BY created_at DESC
@@ -103,6 +127,7 @@ func (s *NodeService) GetMyNodes(ctx context.Context, walletAddress string) ([]*
 	for rows.Next() {
 		var node models.Node
 		var country sql.NullString
+		var lat, lon sql.NullFloat64
 		err := rows.Scan(
 			&node.ID,
 			&node.WalletAddress,
@@ -112,12 +137,21 @@ func (s *NodeService) GetMyNodes(ctx context.Context, walletAddress string) ([]*
 			&node.RAMGB,
 			&node.TrustScore,
 			&country,
+			&lat,
+			&lon,
+			&node.IsSpoofing,
 			&node.LastSeen,
 			&node.CreatedAt,
 			&node.UpdatedAt,
 		)
 		if country.Valid {
 			node.Country = &country.String
+		}
+		if lat.Valid {
+			node.Latitude = &lat.Float64
+		}
+		if lon.Valid {
+			node.Longitude = &lon.Float64
 		}
 		if err != nil {
 			continue
@@ -152,9 +186,10 @@ func (s *NodeService) DecreaseTrustScore(ctx context.Context, walletAddress stri
 func (s *NodeService) GetNodeByWalletAddress(ctx context.Context, walletAddress string) (*models.Node, error) {
 	var node models.Node
 	var country sql.NullString
+	var lat, lon sql.NullFloat64
 	
 	err := s.db.QueryRowContext(ctx, `
-		SELECT id, wallet_address, name, status, cpu_model, ram_gb, trust_score, country, last_seen, created_at, updated_at
+		SELECT id, wallet_address, name, status, cpu_model, ram_gb, trust_score, country, latitude, longitude, is_spoofing, last_seen, created_at, updated_at
 		FROM nodes
 		WHERE wallet_address = $1
 		LIMIT 1
@@ -167,6 +202,9 @@ func (s *NodeService) GetNodeByWalletAddress(ctx context.Context, walletAddress 
 		&node.RAMGB,
 		&node.TrustScore,
 		&country,
+		&lat,
+		&lon,
+		&node.IsSpoofing,
 		&node.LastSeen,
 		&node.CreatedAt,
 		&node.UpdatedAt,
@@ -178,6 +216,12 @@ func (s *NodeService) GetNodeByWalletAddress(ctx context.Context, walletAddress 
 	
 	if country.Valid {
 		node.Country = &country.String
+	}
+	if lat.Valid {
+		node.Latitude = &lat.Float64
+	}
+	if lon.Valid {
+		node.Longitude = &lon.Float64
 	}
 	
 	return &node, nil
