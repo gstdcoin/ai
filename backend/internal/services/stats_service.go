@@ -78,6 +78,10 @@ func (s *StatsService) GetGlobalStats(ctx context.Context) (*GlobalStats, error)
 	if err != nil {
 		stats.ActiveDevicesCount = 0
 	}
+	
+	// Eco Certification Bonus Logic:
+	// We count nodes that are eco_certified to display in the UI / Marketing
+	// This is implicitly handled by ActiveDevicesCount for now but could be split if requested.
 
 	// TFLOPS Estimation (using nodes table if available, or fallback to devices estimate)
 	// Assuming nodes table has cpu info. If not, we estimate 0.5 TFLOPS per active device on average.
