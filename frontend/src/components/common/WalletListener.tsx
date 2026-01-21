@@ -110,10 +110,10 @@ export default function WalletListener() {
 
                             // Fetch balance
                             try {
-                                const balanceData = await apiGet<any>(`/wallet/balance?wallet=${walletAddress}`);
+                                const balanceData = await apiGet<any>('/users/balance');
                                 useWalletStore.getState().updateBalance(
-                                    (balanceData.ton_balance || 0).toString(),
-                                    balanceData.gstd_balance || 0
+                                    (balanceData.ton || 0).toString(),
+                                    balanceData.gstd || 0
                                 );
                             } catch (e) { /* silent */ }
                         }
@@ -155,10 +155,10 @@ export default function WalletListener() {
 
                 // 5. Fetch Real Balance
                 try {
-                    const balanceData = await apiGet<any>(`/wallet/balance?wallet=${rawAddress}`);
+                    const balanceData = await apiGet<any>('/users/balance');
                     useWalletStore.getState().updateBalance(
-                        (balanceData.ton_balance || 0).toString(),
-                        balanceData.gstd_balance || 0
+                        (balanceData.ton || 0).toString(),
+                        balanceData.gstd || 0
                     );
                 } catch (e) {
                     logger.error('Failed to fetch balance', e);
@@ -185,10 +185,10 @@ export default function WalletListener() {
 
         const fetchBalance = async () => {
             try {
-                const balanceData = await apiGet<any>(`/wallet/balance?wallet=${state.address}`);
+                const balanceData = await apiGet<any>('/users/balance');
                 useWalletStore.getState().updateBalance(
-                    (balanceData.ton_balance || 0).toString(),
-                    balanceData.gstd_balance || 0
+                    (balanceData.ton || 0).toString(),
+                    balanceData.gstd || 0
                 );
             } catch (e) {
                 // Silent fail for balance refresh (no session or network error)
