@@ -10,7 +10,7 @@ services:
       - DOCKER_API_VERSION=1.45
       - WATCHTOWER_NOTIFICATIONS=shoutrrr
       - WATCHTOWER_NOTIFICATION_URL=telegram://8306755226:AAEfG2-BZ1Xo9hPex7-igz_WzHEscJOOk-U@telegram?channels=5700385228
-    command: --interval 3600 --cleanup
+    command: --interval 3600 --cleanup --label-enable
     restart: always
     networks:
       - ubuntu_gstd_network
