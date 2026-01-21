@@ -61,6 +61,8 @@ func (s *TaskPaymentService) CreateTask(ctx context.Context, creatorWallet strin
 	paymentMemo := fmt.Sprintf("TASK-%s", taskID)
 
 	// Calculate reward (budget minus platform fee)
+	// GSTD Price Policy: Fixed at $0.02/hr equivalent in GSTD per Compute Unit
+	// This is ~52% cheaper than AWS t3.medium
 	platformFee := req.Budget * (s.tonConfig.PlatformFeePercent / 100.0)
 	rewardGSTD := req.Budget - platformFee
 
