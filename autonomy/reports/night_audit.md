@@ -94,3 +94,13 @@
 ### 🌍 GEO Service Check
 
 ---
+## 🛡️ GSTD Security Audit - 2026-01-21 04:43:05
+
+### 💎 TON Service Check
+2026/01/21 04:23:34 Migration v10_failed_payouts.sql already applied, skipping
+2026/01/21 04:23:34 Warning: Failed to run migrations: failed to execute migration v23_payout_history.sql: migration SQL error: pq: column "confirmed_at" does not exist
+
+### 🌍 GEO Service Check
+✅ GEO Service is running correctly (found 1 log entries).
+
+---

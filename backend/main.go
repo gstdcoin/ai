@@ -329,8 +329,8 @@ func main() {
 	ctx := context.Background()
 	go timeoutService.StartTimeoutChecker(ctx, 30*time.Second)
 
-	// Start payment watcher (check every 30 seconds)
-	go paymentWatcher.Start(ctx, 30*time.Second) 
+	// Start payment watcher (check every 60 seconds to respect TON API Free Tier)
+	go paymentWatcher.Start(ctx, 60*time.Second) 
 
 	// Start payout retry service (check every 15 minutes)
 	go payoutRetryService.Start(ctx)

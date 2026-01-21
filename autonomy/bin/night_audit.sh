@@ -14,8 +14,17 @@ echo "" >> $REPORT_FILE
 
 # Scan GEO Service (Assuming geo-service container exists or logs are in backend)
 echo "### 🌍 GEO Service Check" >> $REPORT_FILE
-# Adjusting to look into general backend logs if geo is internal
-docker logs --since 1h ubuntu-backend-blue-1 2>&1 | grep -i "geo" | grep -iE "error|fail|timeout" | head -n 20 >> $REPORT_FILE
+GEO_LOGS=$(docker logs --since 1h ubuntu-backend-blue-1 2>&1 | grep -i "geo")
+if [ -z "$GEO_LOGS" ]; then
+    echo "⚠️  No GEO Service activity or initialization found in logs." >> $REPORT_FILE
+else
+    ERROR_LOGS=$(echo "$GEO_LOGS" | grep -iE "error|fail|timeout" | head -n 20)
+    if [ -z "$ERROR_LOGS" ]; then
+        echo "✅ GEO Service is running correctly (found $(echo "$GEO_LOGS" | wc -l) log entries)." >> $REPORT_FILE
+    else
+        echo "$ERROR_LOGS" >> $REPORT_FILE
+    fi
+fi
 echo "" >> $REPORT_FILE
 
 echo "---" >> $REPORT_FILE

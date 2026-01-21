@@ -1,0 +1,22 @@
+# GSTD AI Gate Configuration
+# Strategies:
+# - local: Use local Ollama (Qwen2.5-Coder)
+# - cloud: Use Google Gemini / Antigravity Proxy
+# - hybrid: Local for routine, Cloud for complex tasks
+
+gatekeeper:
+  default_strategy: hybrid
+  routing:
+    routine_tasks: local
+    complex_analysis: cloud
+    database_fixes: cloud
+
+local_brain:
+  model: qwen2.5-coder:7b
+  endpoint: http://localhost:11434
+
+cloud_brain:
+  provider: antigravity_proxy
+  primary_model: gemini-2.0-flash-exp
+  failover_model: qwen-72b-instruct
+  cooldown_period: 300s # 5 minutes cooldown after error

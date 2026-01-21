@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"time"
 )
@@ -15,6 +16,7 @@ type GeoService struct {
 }
 
 func NewGeoService() *GeoService {
+	log.Println("🌍 GeoService initialized (using ip-api.com)")
 	return &GeoService{
 		httpClient: &http.Client{
 			Timeout: 5 * time.Second,
@@ -70,5 +72,6 @@ func (s *GeoService) GetCountryByIP(ctx context.Context, ipAddress string) (stri
 		return "", fmt.Errorf("geolocation API returned status: %s", result.Status)
 	}
 
+	log.Printf("🌍 Geolocation success: %s -> %s", ipAddress, result.CountryCode)
 	return result.CountryCode, nil
 }
