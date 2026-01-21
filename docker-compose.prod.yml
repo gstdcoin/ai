@@ -98,6 +98,7 @@ services:
       - REDIS_PORT=6379
       - PORT=8080
       - DEPLOYMENT_COLOR=blue
+    env_file: .env
     depends_on:
       postgres:
         condition: service_healthy
@@ -149,6 +150,7 @@ services:
       - REDIS_PORT=6379
       - PORT=8080
       - DEPLOYMENT_COLOR=green
+    env_file: .env
     depends_on:
       postgres:
         condition: service_healthy
