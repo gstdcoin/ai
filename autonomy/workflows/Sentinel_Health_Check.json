@@ -1,0 +1,129 @@
+{
+    "name": "Sentinel Health Check",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "minutes",
+                            "minutes": 15
+                        }
+                    ]
+                }
+            },
+            "name": "Schedule",
+            "type": "n8n-nodes-base.schedule",
+            "typeVersion": 1,
+            "position": [
+                250,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "url": "http://gstd_nginx_lb/api/v1/health",
+                "options": {}
+            },
+            "name": "Check Health",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 1,
+            "position": [
+                450,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "number": [
+                        {
+                            "value1": "={{$json[\"responseCode\"]}}",
+                            "operation": "notEqual",
+                            "value2": 200
+                        }
+                    ]
+                }
+            },
+            "name": "If Failed",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 1,
+            "position": [
+                650,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "command": "cd /home/ubuntu && docker compose -f docker-compose.prod.yml restart backend-blue backend-green"
+            },
+            "name": "Restart Backend",
+            "type": "n8n-nodes-base.executeCommand",
+            "typeVersion": 1,
+            "position": [
+                850,
+                200
+            ]
+        },
+        {
+            "parameters": {
+                "chatId": "5700385228",
+                "text": "⚠️ GSTD Sentinel: Backend health check failed. Restarting services...",
+                "additionalFields": {}
+            },
+            "name": "Notify Telegram",
+            "type": "n8n-nodes-base.telegram",
+            "typeVersion": 1,
+            "position": [
+                850,
+                400
+            ],
+            "credentials": {
+                "telegramApi": {
+                    "id": "1",
+                    "name": "GSTD Bot"
+                }
+            }
+        }
+    ],
+    "connections": {
+        "Schedule": {
+            "main": [
+                [
+                    {
+                        "node": "Check Health",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Check Health": {
+            "main": [
+                [
+                    {
+                        "node": "If Failed",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "If Failed": {
+            "main": [
+                [
+                    {
+                        "node": "Restart Backend",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Notify Telegram",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}

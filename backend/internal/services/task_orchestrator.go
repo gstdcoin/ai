@@ -475,8 +475,8 @@ func (o *TaskOrchestrator) updateTaskAssignment(ctx context.Context, taskID, wor
 	_, err := o.db.ExecContext(ctx, `
 		UPDATE tasks SET 
 			status = 'assigned',
-			assigned_node = $1,
-			assigned_node_id = $1,
+			executor_address = $1,
+			assigned_at = NOW(),
 			updated_at = NOW()
 		WHERE task_id = $2
 	`, workerWallet, taskID)
@@ -614,11 +614,11 @@ func (o *TaskOrchestrator) monitorWorkerCapacity(ctx context.Context) {
 		case <-ticker.C:
 			// Query active task counts per worker
 			rows, err := o.db.QueryContext(ctx, `
-				SELECT assigned_node, COUNT(*) 
+				SELECT executor_address, COUNT(*) 
 				FROM tasks 
 				WHERE status = 'assigned' 
-				AND assigned_node IS NOT NULL
-				GROUP BY assigned_node
+				AND executor_address IS NOT NULL
+				GROUP BY executor_address
 			`)
 			if err != nil {
 				continue

@@ -25,14 +25,7 @@ func getReferralStats(referralService *services.ReferralService, userService *se
 		}
 		walletAddress := walletRaw.(string)
 
-		userID, err := userService.GetUserID(c.Request.Context(), walletAddress)
-		if err != nil {
-			log.Printf("Failed to resolve user ID for wallet %s: %v", walletAddress, err)
-			c.JSON(500, gin.H{"error": "Failed to resolve user"})
-			return
-		}
-
-		stats, err := referralService.GetUserStats(c.Request.Context(), userID)
+		stats, err := referralService.GetUserStats(c.Request.Context(), walletAddress)
 		if err != nil {
 			log.Printf("Failed to get referral stats: %v", err)
 			c.JSON(500, gin.H{"error": "Failed to get stats"})
@@ -58,7 +51,7 @@ func applyReferralCode(referralService *services.ReferralService, userService *s
 	return func(c *gin.Context) {
 		walletRaw, exists := c.Get("wallet_address")
 		if !exists {
-			c.JSON(401, gin.H{"error": "Unauthorized"})
+			c.JSON(410, gin.H{"error": "Unauthorized"})
 			return
 		}
 		walletAddress := walletRaw.(string)
@@ -71,13 +64,7 @@ func applyReferralCode(referralService *services.ReferralService, userService *s
 			return
 		}
 
-		userID, err := userService.GetUserID(c.Request.Context(), walletAddress)
-		if err != nil {
-			c.JSON(500, gin.H{"error": "Failed to resolve user"})
-			return
-		}
-
-		err = referralService.ApplyReferralCode(c.Request.Context(), userID, req.Code)
+		err := referralService.ApplyReferralCode(c.Request.Context(), walletAddress, req.Code)
 		if err != nil {
 			// Determine if it's a "known" logic error or internal
 			// Simple heuristics for now

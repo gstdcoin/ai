@@ -157,10 +157,42 @@ func getPublicStats(db *sql.DB, tonService *services.TONService, tonConfig confi
 			}
 		}
 
+
+		// Get active countries
+		var activeCountries int
+		if err := db.QueryRow(`
+			SELECT COUNT(DISTINCT country) FROM nodes WHERE status = 'active' AND country IS NOT NULL AND country != ''
+		`).Scan(&activeCountries); err != nil {
+			log.Printf("Error getting active countries: %v", err)
+			activeCountries = 0
+		}
+		// Fallback if 0 but we have paid workers (likely country data missing)
+		if activeCountries == 0 && totalWorkersPaid > 0 {
+			activeCountries = 1
+		}
+
+		// Estimate TFLOPS (Active Nodes * 1.5)
+		var activeNodesCount int
+		var totalTFLOPS float64
+		if err := db.QueryRow(`
+			SELECT COUNT(*) FROM nodes WHERE status = 'active'
+		`).Scan(&activeNodesCount); err != nil {
+			activeNodesCount = 0
+		}
+		
+		if activeNodesCount > 0 {
+			totalTFLOPS = float64(activeNodesCount) * 1.5
+		} else if totalWorkersPaid > 0 {
+			// Fallback estimate if nodes table empty
+			totalTFLOPS = float64(totalWorkersPaid) * 0.5
+		}
+
 		c.JSON(200, gin.H{
 			"total_tasks_completed": totalTasksCompleted,
 			"total_workers_paid":    totalWorkersPaid,
 			"total_gstd_paid":       totalGSTDPaid.Float64,
+			"total_tflops":          totalTFLOPS,
+			"active_countries":      activeCountries,
 			"golden_reserve_xaut":   goldenReserveXAUt,
 			"xaut_history":          xautHistory,
 			"system_status":         "Operational",
