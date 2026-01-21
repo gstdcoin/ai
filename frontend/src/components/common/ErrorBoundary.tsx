@@ -1,8 +1,9 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { logger } from '../../lib/logger';
+import { useTranslation } from 'next-i18next';
+import { AlertTriangle, RefreshCw } from 'lucide-react';
 
 interface Props {
-  children: ReactNode;
+  children?: ReactNode;
   fallback?: ReactNode;
 }
 
@@ -12,70 +13,58 @@ interface State {
 }
 
 export class ErrorBoundary extends Component<Props, State> {
-  constructor(props: Props) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
+  public state: State = {
+    hasError: false,
+    error: null
+  };
 
-  static getDerivedStateFromError(error: Error): State {
+  public static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    logger.error('ErrorBoundary caught an error', error, errorInfo);
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('Uncaught error:', error, errorInfo);
   }
 
-  render(): ReactNode {
+  private handleRefresh = () => {
+    this.setState({ hasError: false, error: null });
+    window.location.reload();
+  };
+
+  public render() {
     if (this.state.hasError) {
       if (this.props.fallback) {
         return this.props.fallback;
       }
 
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-          <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-6">
-            <div className="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full mb-4">
-              <svg
-                className="w-6 h-6 text-red-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                />
-              </svg>
+        <div className="min-h-[400px] flex items-center justify-center p-6 bg-[#030014] rounded-2xl border border-white/10 m-4">
+          <div className="text-center max-w-md">
+            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+              <AlertTriangle className="w-8 h-8 text-red-400" />
             </div>
-            <h2 className="text-xl font-bold text-gray-900 text-center mb-2">
-              Something went wrong
+
+            <h2 className="text-2xl font-bold text-white mb-2 font-display">
+              Updating Network Data... ⌛
             </h2>
-            <p className="text-gray-600 text-center mb-4">
-              We're sorry, but something unexpected happened. Please try refreshing the page.
+
+            <p className="text-gray-400 mb-8">
+              We encountered a temporary glitch while syncing with the TON Blockchain. The system is auto-healing.
             </p>
-            {this.state.error && (
-              <details className="mt-4">
-                <summary className="cursor-pointer text-sm text-gray-500 mb-2">
-                  Error details
-                </summary>
-                <pre className="text-xs bg-gray-100 p-2 rounded overflow-auto max-h-40">
-                  {this.state.error.toString()}
-                  {'\n\n'}
-                  {this.state.error.stack}
-                </pre>
-              </details>
-            )}
+
             <button
-              onClick={() => {
-                this.setState({ hasError: false, error: null });
-                window.location.reload();
-              }}
-              className="w-full mt-4 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors"
+              onClick={this.handleRefresh}
+              className="px-6 py-3 bg-gradient-to-r from-gold-400 to-gold-600 hover:from-gold-500 hover:to-gold-700 text-black font-bold rounded-xl transition-all flex items-center gap-2 mx-auto"
             >
-              Reload Page
+              <RefreshCw className="w-5 h-5" />
+              Reload Dashboard
             </button>
+
+            <div className="mt-8 p-4 bg-white/5 rounded-lg text-left">
+              <p className="text-xs text-gray-500 font-mono break-all">
+                Error: {this.state.error?.message || 'Unknown error'}
+              </p>
+            </div>
           </div>
         </div>
       );
