@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'next-i18next';
-import { 
+import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, AreaChart, Area
 } from 'recharts';
@@ -10,6 +10,7 @@ import { apiGet } from '../../lib/apiClient';
 import { API_BASE_URL } from '../../lib/config';
 import { toast } from '../../lib/toast';
 import { RefreshCw } from 'lucide-react';
+import InvestmentSavingsWidget from './InvestmentSavingsWidget';
 
 interface Stats {
   processing_tasks: number;
@@ -57,13 +58,13 @@ export default function StatsPanel() {
   const loadStats = async () => {
     try {
       const data = await apiGet<Stats>('/stats');
-      
+
       // Handle empty or invalid response
       if (!data || typeof data !== 'object') {
         setStats(null);
         return;
       }
-      
+
       setStats(data);
     } catch (error: any) {
       logger.error('Error loading stats', error);
@@ -81,7 +82,7 @@ export default function StatsPanel() {
   const loadPoolStatus = async () => {
     try {
       const data = await apiGet<PoolStatus>('/pool/status');
-      
+
       if (data && typeof data === 'object') {
         setPoolStatus(data);
       }
@@ -94,7 +95,7 @@ export default function StatsPanel() {
   const loadCompletionData = async () => {
     try {
       const data = await apiGet<{ data: TaskCompletionData[] }>('/stats/tasks/completion', { period: 'day' });
-      
+
       if (data && data.data && Array.isArray(data.data)) {
         setCompletionData(data.data);
       }
@@ -137,57 +138,57 @@ export default function StatsPanel() {
   }
 
   const statCards = [
-    { 
-      label: t('stats_processing'), 
-      value: stats?.processing_tasks || 0, 
+    {
+      label: t('stats_processing'),
+      value: stats?.processing_tasks || 0,
       color: 'text-blue-400',
       borderColor: 'border-blue-500/30',
       bgColor: 'bg-blue-500/10',
       tooltip: undefined
     },
-    { 
-      label: t('stats_queued'), 
-      value: stats?.queued_tasks || 0, 
+    {
+      label: t('stats_queued'),
+      value: stats?.queued_tasks || 0,
       color: 'text-yellow-400',
       borderColor: 'border-yellow-500/30',
       bgColor: 'bg-yellow-500/10',
       tooltip: undefined
     },
-    { 
-      label: t('stats_completed'), 
-      value: stats?.completed_tasks || 0, 
+    {
+      label: t('stats_completed'),
+      value: stats?.completed_tasks || 0,
       color: 'text-green-400',
       borderColor: 'border-green-500/30',
       bgColor: 'bg-green-500/10',
       tooltip: undefined
     },
-    { 
-      label: t('network_temperature'), 
-      value: stats ? ((stats.processing_tasks / Math.max(stats.active_devices_count, 1)).toFixed(2)) : '-', 
+    {
+      label: t('network_temperature'),
+      value: stats ? ((stats.processing_tasks / Math.max(stats.active_devices_count, 1)).toFixed(2)) : '-',
       color: 'text-orange-400',
       borderColor: 'border-orange-500/30',
       bgColor: 'bg-orange-500/10',
       tooltip: t('network_temperature_tooltip') || 'Среднее значение entropy_score по всем операциям. Высокая температура = низкая надёжность сети.'
     },
-    { 
-      label: t('computational_pressure'), 
-      value: stats ? ((stats.queued_tasks + stats.processing_tasks) / Math.max(stats.completed_tasks, 1)).toFixed(2) : '-', 
+    {
+      label: t('computational_pressure'),
+      value: stats ? ((stats.queued_tasks + stats.processing_tasks) / Math.max(stats.completed_tasks, 1)).toFixed(2) : '-',
       color: 'text-red-400',
       borderColor: 'border-red-500/30',
       bgColor: 'bg-red-500/10',
       tooltip: t('computational_pressure_tooltip') || 'Количество ожидающих задач / Количество активных узлов. Высокое давление = перегрузка сети.'
     },
-    { 
-      label: t('total_compensation'), 
-      value: `${(stats?.total_rewards_ton || 0).toFixed(2)} TON`, 
+    {
+      label: t('total_compensation'),
+      value: `${(stats?.total_rewards_ton || 0).toFixed(2)} TON`,
       color: 'text-indigo-400',
       borderColor: 'border-indigo-500/30',
       bgColor: 'bg-indigo-500/10',
       tooltip: undefined
     },
-    { 
-      label: t('pool_gstd_balance') || 'Pool GSTD', 
-      value: poolStatus ? `${poolStatus.gstd_balance.toFixed(2)} GSTD` : '-', 
+    {
+      label: t('pool_gstd_balance') || 'Pool GSTD',
+      value: poolStatus ? `${poolStatus.gstd_balance.toFixed(2)} GSTD` : '-',
       color: 'text-purple-400',
       borderColor: 'border-purple-500/30',
       bgColor: 'bg-purple-500/10',
@@ -219,8 +220,8 @@ export default function StatsPanel() {
       {/* Метрики */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-7 gap-3 sm:gap-4">
         {statCards.map((card, i) => (
-          <div 
-            key={i} 
+          <div
+            key={i}
             className={`glass-card ${card.borderColor} ${card.bgColor} rounded-xl p-4 sm:p-6 border ${card.tooltip ? 'cursor-help' : ''}`}
             title={card.tooltip}
           >
@@ -228,6 +229,11 @@ export default function StatsPanel() {
             <p className={`text-lg sm:text-2xl font-bold ${card.color}`}>{card.value}</p>
           </div>
         ))}
+      </div>
+
+      {/* Investment Savings Widget */}
+      <div className="mb-8">
+        <InvestmentSavingsWidget />
       </div>
 
       {/* Графики выполненных задач */}
@@ -242,11 +248,11 @@ export default function StatsPanel() {
                   tasks: item.count,
                 }))}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.1)" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 12}} />
-                  <YAxis axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 12}} />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'rgba(0, 0, 0, 0.8)', 
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'rgba(0, 0, 0, 0.8)',
                       border: '1px solid rgba(255, 255, 255, 0.1)',
                       borderRadius: '8px',
                       color: '#fff'
@@ -273,12 +279,12 @@ export default function StatsPanel() {
                   ton: item.ton,
                 }))}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.1)" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 12}} />
-                  <YAxis axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 12}} />
-                  <Tooltip 
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} />
+                  <Tooltip
                     formatter={(value: any) => `${value.toFixed(6)} TON`}
-                    contentStyle={{ 
-                      backgroundColor: 'rgba(0, 0, 0, 0.8)', 
+                    contentStyle={{
+                      backgroundColor: 'rgba(0, 0, 0, 0.8)',
                       border: '1px solid rgba(255, 255, 255, 0.1)',
                       borderRadius: '8px',
                       color: '#fff'

@@ -27,7 +27,7 @@ export default function DevicesPanel() {
   const [nodes, setNodes] = useState<Node[]>([]);
   const [loading, setLoading] = useState(true);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
-  
+
   // Auto-start task workers for all registered nodes
   useAutoTaskWorker(nodes);
 
@@ -155,6 +155,9 @@ export default function DevicesPanel() {
                   <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden lg:table-cell">
                     {t('last_seen') || 'Last Seen'}
                   </th>
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden lg:table-cell">
+                    Eco-Label
+                  </th>
                   <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                     {t('actions') || 'Actions'}
                   </th>
@@ -172,13 +175,12 @@ export default function DevicesPanel() {
                       </div>
                     </td>
                     <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        node.status === 'online' 
-                          ? 'bg-green-500/20 text-green-400' 
-                          : 'bg-gray-500/20 text-gray-400'
-                      }`}>
-                        {node.status === 'online' 
-                          ? (t('auto_processing') || 'Auto Processing') 
+                      <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${node.status === 'online'
+                        ? 'bg-green-500/20 text-green-400'
+                        : 'bg-gray-500/20 text-gray-400'
+                        }`}>
+                        {node.status === 'online'
+                          ? (t('auto_processing') || 'Auto Processing')
                           : (t('offline') || 'Offline')}
                       </span>
                     </td>
@@ -195,6 +197,11 @@ export default function DevicesPanel() {
                     </td>
                     <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-400 hidden lg:table-cell">
                       {formatDate(node.last_seen)}
+                    </td>
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap hidden lg:table-cell">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        Eco-Proof
+                      </span>
                     </td>
                     <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm">
                       <div className="flex items-center gap-2">

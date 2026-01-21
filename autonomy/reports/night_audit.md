@@ -198,3 +198,14 @@
 ✅ GEO Service is running correctly (found 1 log entries).
 
 ---
+## 🛡️ GSTD Security Audit - 2026-01-21 19:00:01
+
+### 💎 TON Service Check
+2026/01/21 18:56:30 Migration v10_failed_payouts.sql already applied, skipping
+2026/01/21 18:56:30 Migration v33_recreate_failed_payouts.sql already applied, skipping
+2026/01/21 18:56:30 Warning: Failed to run migrations: failed to execute migration v4_2_final_hardening.sql: migration SQL error: pq: column "certainty_gravity_score" of relation "tasks" already exists
+
+### 🌍 GEO Service Check
+✅ GEO Service is running correctly (found 2 log entries).
+
+---
