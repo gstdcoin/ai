@@ -51,7 +51,7 @@ export default function WalletConnect() {
   // Default: Show TonConnect Button
   return (
     <div id="ton-connect-button-root" className="w-full flex flex-col items-center justify-center">
-      <TonConnectButton className="!w-full !max-w-[320px] mx-auto [&>button]:!w-full [&>button]:!justify-center [&>button]:!h-14 [&>button]:!text-lg [&>button]:!rounded-xl [&>button]:!bg-gradient-to-r [&>button]:!from-blue-600 [&>button]:!to-cyan-500 [&>button]:!shadow-lg [&>button]:!shadow-blue-500/25" />
+      <TonConnectButton className="mx-auto" />
     </div>
   );
 }
