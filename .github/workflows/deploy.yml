@@ -86,9 +86,7 @@ jobs:
             git pull origin main || git pull origin master
             
             echo "🔐 Updating Secrets..."
-            # Update .env atomically
             if [ -f .env ]; then
-                # Safe replacement using temporary file approach not strictly needed if we just append or use sed carefully
                 sed -i '/^DB_PASSWORD=/d' .env
                 echo "DB_PASSWORD='${DB_PASSWORD}'" >> .env
             else
@@ -97,20 +95,22 @@ jobs:
             
             ln -sf docker-compose.prod.yml docker-compose.yml
             
-            echo "🔄 Updating Images..."
-            $DOCKER_CMD compose pull
-            
             echo "♻️  Resetting Containers..."
             $DOCKER_CMD compose down --remove-orphans
             
-            echo "🚀 Starting Services..."
+            # Aggressive cleanup of potential zombies
+            $DOCKER_CMD rm -f gstd_nginx_lb gstd_postgres_prod gstd_redis_prod 2>/dev/null || true
+            
+            echo "🚀 Building and Starting Services..."
+            # --build forces rebuild of local images. 
+            # We removed 'compose pull' because it fails on local images.
             $DOCKER_CMD compose up -d --build --remove-orphans
             
             echo "🧹 Deep Cleaning..."
             $DOCKER_CMD image prune -af
             
             echo "✅ Health Check..."
-            sleep 5
+            sleep 10
             $DOCKER_CMD compose ps
             
           REMOTE_EXEC
