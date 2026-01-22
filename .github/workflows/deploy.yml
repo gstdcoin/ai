@@ -17,23 +17,12 @@ jobs:
       - name: Determine Server Config
         id: server_config
         run: |
-          # IP Logic
           if [ -n "${{ secrets.SERVER_IP }}" ]; then
              echo "IP=${{ secrets.SERVER_IP }}" >> $GITHUB_OUTPUT
           elif [ -n "${{ secrets.SSH_HOST }}" ]; then
              echo "IP=${{ secrets.SSH_HOST }}" >> $GITHUB_OUTPUT
           else
              echo "::error::server ip secret incorrect"
-             exit 1
-          fi
-          
-          # Key Logic
-          if [ -n "${{ secrets.SSH_PRIVATE_KEY }}" ]; then
-             echo "HAS_KEY=true" >> $GITHUB_OUTPUT
-          elif [ -n "${{ secrets.SSH_KEY }}" ]; then
-             echo "HAS_KEY=true" >> $GITHUB_OUTPUT
-          else
-             echo "::error::ssh key secret incorrect"
              exit 1
           fi
 
@@ -60,29 +49,23 @@ jobs:
         run: |
           set -e
           
-          # 1. Prepare Environment File Content Securely
-          # We define content here to avoid exposing auth in process list
+          # Prepare Environment File Securely
           cat << EOF > env_update_script.sh
             export DB_PASSWORD='${DB_PASSWORD}'
           EOF
           
-          # 2. Upload Env Script
           scp -o StrictHostKeyChecking=no env_update_script.sh ${SSH_USER}@${SERVER_IP}:/tmp/deploy_env_vars.sh
           
-          # 3. Execute Remote Deployment
           ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SERVER_IP} "bash -s" << 'REMOTE_EXEC'
             set -e
             
-            # --- Load Password ---
             source /tmp/deploy_env_vars.sh
             rm -f /tmp/deploy_env_vars.sh
             
-            # --- Path Setup ---
             TARGET_DIR="/home/ubuntu"
             cd $TARGET_DIR || cd /home/${USER} || { echo "❌ Directory not found"; exit 1; }
             
-            # --- Permission Fix (Crucial for Git) ---
-            # If previous runs used sudo, files might be root-owned. reclaim them.
+            # --- Permission Fix ---
             if sudo -n true 2>/dev/null; then
                sudo chown -R $USER:$USER .
             fi
@@ -93,40 +76,40 @@ jobs:
                 if sudo docker ps >/dev/null 2>&1; then
                     DOCKER_CMD="sudo docker"
                 else
-                    echo "❌ Docker not accessible"
+                    echo "❌ Docker permission error"
                     exit 1
                 fi
             fi
             
-            # --- Git Sync ---
             echo "📥 Syncing Code..."
             git stash >/dev/null 2>&1 || true
             git pull origin main || git pull origin master
             
-            # --- Env File Update Atomic ---
             echo "🔐 Updating Secrets..."
-            # Preserve other vars, update DB_PASSWORD
-            touch .env
-            if grep -q "DB_PASSWORD=" .env; then
-                sed -i "s|^DB_PASSWORD=.*|DB_PASSWORD='${DB_PASSWORD}'|" .env
-            else
+            # Update .env atomically
+            if [ -f .env ]; then
+                # Safe replacement using temporary file approach not strictly needed if we just append or use sed carefully
+                sed -i '/^DB_PASSWORD=/d' .env
                 echo "DB_PASSWORD='${DB_PASSWORD}'" >> .env
+            else
+                echo "DB_PASSWORD='${DB_PASSWORD}'" > .env
             fi
             
-            # Link Config
             ln -sf docker-compose.prod.yml docker-compose.yml
             
-            # --- Deployment ---
+            echo "🔄 Updating Images..."
+            $DOCKER_CMD compose pull
+            
             echo "♻️  Resetting Containers..."
             $DOCKER_CMD compose down --remove-orphans
             
             echo "🚀 Starting Services..."
             $DOCKER_CMD compose up -d --build --remove-orphans
             
-            echo "🧹 Cleaning up..."
-            $DOCKER_CMD image prune -f
+            echo "🧹 Deep Cleaning..."
+            $DOCKER_CMD image prune -af
             
-            echo "✅ Status Check:"
+            echo "✅ Health Check..."
             sleep 5
             $DOCKER_CMD compose ps
             
