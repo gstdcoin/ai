@@ -9,20 +9,17 @@ FROM golang:1.24 AS builder
 WORKDIR /app
 
 # Copy go mod files first for better caching
-# COPY go.mod go.sum ./
+COPY go.mod go.sum ./
 
 # Download dependencies
-# RUN go mod download
+RUN go mod download
 
-# Copy source code (including vendor directory)
+# Copy source code
 COPY . .
-
-# Ensure go.sum is up to date
-# RUN go mod tidy
 
 # Build the application
 # CGO_ENABLED=0 for static binary, -ldflags for smaller binary
-RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor -a -installsuffix cgo \
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo \
     -ldflags '-extldflags "-static" -w -s' \
     -o server ./main.go
 
