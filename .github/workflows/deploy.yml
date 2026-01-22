@@ -16,14 +16,28 @@ jobs:
       
       - name: Check SSH secrets
         run: |
-          if [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ]; then
-            echo "❌ SSH_PRIVATE_KEY secret is not set"
+          # Check for SSH_PRIVATE_KEY
+          if [ -n "${{ secrets.SSH_PRIVATE_KEY }}" ]; then
+            echo "✅ SSH_PRIVATE_KEY is set"
+          elif [ -n "${{ secrets.SSH_KEY }}" ]; then
+            echo "⚠️ SSH_PRIVATE_KEY not set, but SSH_KEY found. Will try to use it."
+            echo "SSH_PRIVATE_KEY_ACTUAL=${{ secrets.SSH_KEY }}" >> $GITHUB_ENV
+          else
+            echo "❌ SSH_PRIVATE_KEY (or SSH_KEY) secret is not set"
             exit 1
           fi
-          if [ -z "${{ secrets.SERVER_IP }}" ]; then
-            echo "❌ SERVER_IP secret is not set"
-            exit 1
+          
+          # Check for SERVER_IP
+          if [ -n "${{ secrets.SERVER_IP }}" ]; then
+             echo "✅ SERVER_IP is set"
+          elif [ -n "${{ secrets.SSH_HOST }}" ]; then
+             echo "⚠️ SERVER_IP not set, but SSH_HOST found. Will try to use it."
+             echo "SERVER_IP_ACTUAL=${{ secrets.SSH_HOST }}" >> $GITHUB_ENV
+          else
+             echo "❌ SERVER_IP (or SSH_HOST) secret is not set"
+             exit 1
           fi
+          
           if [ -z "${{ secrets.SSH_USER }}" ]; then
             echo "❌ SSH_USER secret is not set"
             exit 1
@@ -32,22 +46,31 @@ jobs:
             echo "❌ DB_PASSWORD secret is not set"
             exit 1
           fi
-          echo "✅ All secrets are configured"
-      
+
+      - name: Set environment variables
+        run: |
+          # Set defaults if not set by previous step fallback
+          if [ -z "$SSH_PRIVATE_KEY_ACTUAL" ]; then
+            echo "SSH_PRIVATE_KEY_ACTUAL=${{ secrets.SSH_PRIVATE_KEY }}" >> $GITHUB_ENV
+          fi
+          if [ -z "$SERVER_IP_ACTUAL" ]; then
+            echo "SERVER_IP_ACTUAL=${{ secrets.SERVER_IP }}" >> $GITHUB_ENV
+          fi
+
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.9.0
         with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          ssh-private-key: ${{ env.SSH_PRIVATE_KEY_ACTUAL }}
       
       - name: Add server to known hosts
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H ${{ env.SERVER_IP_ACTUAL }} >> ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
       
       - name: Deploy to server
         env:
-          SERVER_IP: ${{ secrets.SERVER_IP }}
+          SERVER_IP: ${{ env.SERVER_IP_ACTUAL }}
           SSH_USER: ${{ secrets.SSH_USER }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
         run: |
@@ -55,12 +78,24 @@ jobs:
           echo "🚀 Starting deployment to production server..."
           
           # Deploy script that runs on the server
-          # Pass DB_PASSWORD as environment variable through SSH
           ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SERVER_IP} "DB_PASSWORD='${DB_PASSWORD}' bash -s" << 'DEPLOY_SCRIPT'
             set -e
             
+            # --- Permission Check ---
+            SUDO=""
+            if ! docker ps >/dev/null 2>&1; then
+                if sudo docker ps >/dev/null 2>&1; then
+                    echo "⚠️  User does not have docker permissions. Using sudo."
+                    SUDO="sudo"
+                else
+                    echo "❌ User cannot run docker (tried with and without sudo)."
+                    exit 1
+                fi
+            fi
+            
             echo "📁 Changing to project directory..."
-            cd /home/ubuntu || { echo "❌ Project directory not found"; exit 1; }
+            # Try home dir, fallback only if needed
+            cd /home/ubuntu || cd /home/${USER} || { echo "❌ Project directory not found"; exit 1; }
             
             echo "💾 Stashing local changes (if any)..."
             git stash || echo "⚠️  No local changes to stash"
@@ -69,56 +104,55 @@ jobs:
             git pull origin main || git pull origin master || { echo "❌ Git pull failed"; exit 1; }
             
             echo "🔐 Setting up database password in environment..."
-            # Create or update .env file with DB_PASSWORD
             if [ ! -f .env ]; then
               echo "DB_PASSWORD=${DB_PASSWORD}" > .env
-              echo "✅ Created .env file"
             else
-              # Update DB_PASSWORD in existing .env file
               if grep -q "^DB_PASSWORD=" .env; then
                 sed -i "s|^DB_PASSWORD=.*|DB_PASSWORD=${DB_PASSWORD}|" .env
               else
                 echo "DB_PASSWORD=${DB_PASSWORD}" >> .env
               fi
-              echo "✅ Updated DB_PASSWORD in .env file"
             fi
             
             echo "🔗 Creating docker-compose.yml symlink..."
             ln -sf docker-compose.prod.yml docker-compose.yml
-            echo "✅ Symlink created"
             
             echo "🐳 Stopping and removing existing containers..."
-            docker compose down --remove-orphans || echo "⚠️  No containers to stop"
+            $SUDO docker compose down --remove-orphans || echo "⚠️  No containers to stop"
             
-            echo "🧹 Removing any orphaned containers with conflicting names..."
-            docker rm -f gstd_frontend gstd_backend gstd_gateway 2>/dev/null || true
+            echo "🧹 Removing any orphaned containers..."
+            $SUDO docker rm -f gstd_frontend gstd_backend gstd_gateway 2>/dev/null || true
             
             echo "🔄 Rebuilding and starting containers..."
-            docker compose up -d --build --remove-orphans
+            $SUDO docker compose up -d --build --remove-orphans
             
             echo "🧹 Pruning unused Docker images..."
-            docker image prune -f
+            $SUDO docker image prune -f
             
             echo "⏳ Waiting for services to start..."
             sleep 10
             
             echo "📊 Checking container status..."
-            docker compose ps
+            $SUDO docker compose ps
             
             echo "✅ Deployment completed successfully!"
           DEPLOY_SCRIPT
       
       - name: Verify deployment
         env:
-          SERVER_IP: ${{ secrets.SERVER_IP }}
+          SERVER_IP: ${{ env.SERVER_IP_ACTUAL }}
           SSH_USER: ${{ secrets.SSH_USER }}
         run: |
           echo "🔍 Verifying deployment..."
           ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SERVER_IP} << 'VERIFY_SCRIPT'
-            cd /home/ubuntu
+            cd /home/ubuntu || cd /home/${USER}
+            
+            SUDO=""
+            if ! docker ps >/dev/null 2>&1; then sudo docker ps >/dev/null 2>&1 && SUDO="sudo"; fi
+            
             echo "📊 Container status:"
-            docker compose ps
+            $SUDO docker compose ps
             echo ""
             echo "📋 Recent logs (last 20 lines):"
-            docker compose logs --tail=20 || true
+            $SUDO docker compose logs --tail=20 || true
           VERIFY_SCRIPT
