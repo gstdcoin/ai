@@ -28,5 +28,8 @@
         "@ton/tolk-js": ">=1.0.0",
         "@tact-lang/compiler": ">=1.6.13 <2.0.0",
         "@ton-community/func-js": ">=0.10.0"
+    },
+    "overrides": {
+        "lodash": "^4.17.21"
     }
 }
