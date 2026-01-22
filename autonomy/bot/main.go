@@ -124,7 +124,20 @@ func main() {
 			ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 			defer cancel()
 			
-			cmd := exec.CommandContext(ctx, "docker", "logs", "--tail", "50", target)
+			// Try reading from file first if target is backend (often more reliable for production logs)
+			if target == "ubuntu-backend-blue-1" || target == "gstd_backend" {
+				// Check if /var/log/gstd/backend.log exists
+				if _, err := os.Stat("/var/log/gstd/backend.log"); err == nil {
+					cmd := exec.CommandContext(ctx, "tail", "-n", "100", "/var/log/gstd/backend.log")
+					output, err := cmd.CombinedOutput()
+					if err == nil {
+						return fmt.Sprintf("📋 **File Logs (%s):**\n```\n%s\n```", target, string(output)), nil
+					}
+				}
+			}
+
+			// Fallback to Docker logs
+			cmd := exec.CommandContext(ctx, "docker", "logs", "--tail", "100", target)
 			output, err := cmd.CombinedOutput()
 			if err != nil {
 				return "", fmt.Errorf("Docker Error: %v\n%s", err, string(output))

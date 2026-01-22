@@ -46,7 +46,7 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
   const [tonConnectUI] = useTonConnectUI();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'my' | 'available'>('all');
+  const [filter, setFilter] = useState<'all' | 'my' | 'available'>('available');
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [claimingCompensation, setClaimingCompensation] = useState<string | null>(null);
   const [deletingTask, setDeletingTask] = useState<string | null>(null);

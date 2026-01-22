@@ -124,7 +124,7 @@ export interface TelegramWebApp {
 type WebAppType = TelegramWebApp | null;
 
 let webApp: WebAppType = null;
-let themeChangeHandlers: Set<() => void> = new Set();
+const themeChangeHandlers: Set<() => void> = new Set();
 
 // Apply Telegram theme to CSS variables
 export function applyTelegramTheme(theme: TelegramThemeParams) {

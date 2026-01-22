@@ -284,7 +284,7 @@ function Dashboard() {
               <div className="flex flex-col sm:flex-row gap-4">
                 <button
                   onClick={() => {
-                    setActiveTab('devices');
+                    setActiveTab('tasks');
                     triggerHaptic('medium');
                   }}
                   className="flex-1 py-6 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 via-green-600 to-emerald-600 hover:from-emerald-500 hover:via-green-500 hover:to-emerald-500 text-white font-bold tracking-wide shadow-xl shadow-green-900/30 transition-all transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-4 border border-white/20 relative overflow-hidden group"
@@ -293,7 +293,7 @@ function Dashboard() {
                   <Server className="w-8 h-8 relative z-10" />
                   <div className="text-left relative z-10">
                     <span className="block text-xl uppercase tracking-wider">Start Mining</span>
-                    <span className="text-xs font-normal opacity-80">Connect Device & Earn</span>
+                    <span className="text-xs font-normal opacity-80">Process Active Tasks</span>
                   </div>
                 </button>
                 <button
