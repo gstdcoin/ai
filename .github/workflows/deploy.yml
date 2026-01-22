@@ -14,26 +14,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Check SSH secrets
+      - name: Determine Server IP
+        id: server_addr
         run: |
-          # Robust Secret Checking with Fallbacks
-          if [ -n "${{ secrets.SSH_PRIVATE_KEY }}" ]; then
-            echo "✅ SSH_PRIVATE_KEY is set"
-            echo "SSH_PRIVATE_KEY_ACTUAL=${{ secrets.SSH_PRIVATE_KEY }}" >> $GITHUB_ENV
-          elif [ -n "${{ secrets.SSH_KEY }}" ]; then
-            echo "⚠️ Using SSH_KEY fallback"
-            echo "SSH_PRIVATE_KEY_ACTUAL=${{ secrets.SSH_KEY }}" >> $GITHUB_ENV
-          else
-            echo "❌ No SSH Key found (SSH_PRIVATE_KEY or SSH_KEY)"
-            exit 1
-          fi
-          
+          # Robust logic to find the correct Server IP secret
           if [ -n "${{ secrets.SERVER_IP }}" ]; then
-             echo "✅ SERVER_IP is set"
-             echo "SERVER_IP_ACTUAL=${{ secrets.SERVER_IP }}" >> $GITHUB_ENV
+             echo "IP=${{ secrets.SERVER_IP }}" >> $GITHUB_OUTPUT
+             echo "✅ Using SERVER_IP"
           elif [ -n "${{ secrets.SSH_HOST }}" ]; then
+             echo "IP=${{ secrets.SSH_HOST }}" >> $GITHUB_OUTPUT
              echo "⚠️ Using SSH_HOST fallback"
-             echo "SERVER_IP_ACTUAL=${{ secrets.SSH_HOST }}" >> $GITHUB_ENV
           else
              echo "❌ No Server IP found (SERVER_IP or SSH_HOST)"
              exit 1
@@ -42,66 +32,96 @@ jobs:
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.9.0
         with:
-          ssh-private-key: ${{ env.SSH_PRIVATE_KEY_ACTUAL }}
+          # Pass ALL potential keys. The action handles empty lines/vars gracefully.
+          # This avoids the "echo >> GITHUB_ENV" bug which corrupts multiline private keys.
+          ssh-private-key: |
+            ${{ secrets.SSH_PRIVATE_KEY }}
+            ${{ secrets.SSH_KEY }}
       
+      - name: Add server to known hosts
+        env:
+          SERVER_IP: ${{ steps.server_addr.outputs.IP }}
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "$SERVER_IP" >> ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
       - name: Deploy to server
         env:
-          SERVER_IP: ${{ env.SERVER_IP_ACTUAL }}
+          SERVER_IP: ${{ steps.server_addr.outputs.IP }}
           SSH_USER: ${{ secrets.SSH_USER }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
         run: |
           set -e
-          echo "🚀 Starting Deployment..."
+          echo "🚀 Starting Deployment to $SERVER_IP..."
           
-          ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SERVER_IP} "DB_PASSWORD='${DB_PASSWORD}' bash -s" << 'DEPLOY_SCRIPT'
+          # Safe injection of DB_PASSWORD using a temporary env file on remote
+          # We use a heredoc passed to cat to avoid command line argument exposure/escaping issues
+          ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SERVER_IP} "cat > /tmp/deploy_env.sh" << EOF
+          export DB_PASSWORD='${DB_PASSWORD}'
+          EOF
+          
+          ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SERVER_IP} "bash -s" << 'DEPLOY_SCRIPT'
             set -e
             
-            # 1. Permission Check & Sudo Config
+            # Load secrets safely
+            source /tmp/deploy_env.sh
+            rm -f /tmp/deploy_env.sh
+            
+            # --- Permission Check ---
             SUDO=""
             if ! docker ps >/dev/null 2>&1; then
                 if sudo docker ps >/dev/null 2>&1; then
                     SUDO="sudo"
-                    echo "⚠️  Using sudo for Docker commands"
+                    echo "⚠️  Using sudo for Docker"
                 else
-                    echo "❌ Docker permission denied (even with sudo)"
+                    echo "❌ Docker permission denied"
                     exit 1
                 fi
             fi
             
-            # 2. Directory Safety
+            # --- Paths ---
             cd /home/ubuntu || { echo "❌ /home/ubuntu not found"; exit 1; }
             
-            # 3. Code Sync
-            echo "📥 Syncing code..."
-            git stash || true
+            # --- Update Code ---
+            echo "📥 Pulling code..."
+            git stash >/dev/null 2>&1 || true
             git pull origin main || git pull origin master || { echo "❌ Git pull failed"; exit 1; }
             
-            # 4. Env Config
+            # --- Update Env ---
             echo "🔐 Updating .env..."
+            # Safely replace or append password
             if [ -f .env ]; then
-                sed -i "s|^DB_PASSWORD=.*|DB_PASSWORD=${DB_PASSWORD}|" .env || echo "DB_PASSWORD=${DB_PASSWORD}" >> .env
+                # Use temp file for safe sed
+                cp .env .env.tmp
+                if grep -q "^DB_PASSWORD=" .env.tmp; then
+                    # Escape special chars in password for sed if needed, primarily / 
+                    # Simpler strategy: grep -v then append
+                    grep -v "^DB_PASSWORD=" .env.tmp > .env || true
+                fi
+                echo "DB_PASSWORD=${DB_PASSWORD}" >> .env
+                rm -f .env.tmp
             else
                 echo "DB_PASSWORD=${DB_PASSWORD}" > .env
             fi
+            
             ln -sf docker-compose.prod.yml docker-compose.yml
             
-            # 5. Cleanup & Restart (The Fix)
-            echo "♻️  Restarting services..."
+            # --- Restart ---
+            echo "♻️  Recreating containers..."
             $SUDO docker compose down --remove-orphans
             
-            # Clean orphans forcefully
+            # Force cleanup of specific containers ensures no name conflicts
             $SUDO docker rm -f gstd_frontend gstd_backend gstd_gateway 2>/dev/null || true
             
-            # Prune before build if space is low (optional smart check, but we do it always for cleanliness)
-            echo "🧹 Pruning old images..."
+            # Clean images
             $SUDO docker image prune -f
             
-            # Build and Up
-            echo "🚀 Booting up..."
+            # Start
             $SUDO docker compose up -d --build --remove-orphans
             
-            # 6. Verification
-            echo "⏳ Verifying health..."
+            # Verify
+            echo "⏳ Waiting for health status..."
             sleep 10
             $SUDO docker compose ps
             
