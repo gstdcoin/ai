@@ -204,6 +204,12 @@ services:
       timeout: 5s
       retries: 3
     restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        compress: "true"
     deploy:
       resources:
         limits:
@@ -229,6 +235,12 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        compress: "true"
     deploy:
       replicas: 2
       resources:

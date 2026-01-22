@@ -118,6 +118,22 @@ func SetupRoutes(
 		metricsService := NewMetricsService(db.(*sql.DB), redisClient.(*redis.Client))
 		v1.GET("/metrics", metricsService.GetMetrics())
 		
+
+		// Telegram Webhook
+		v1.POST("/telegram/webhook", func(c *gin.Context) {
+			body, err := c.GetRawData()
+			if err != nil {
+				c.JSON(400, gin.H{"error": "failed to read body"})
+				return
+			}
+			// Process in background or synchronously? Synchronous is fine for now as it just sends a request.
+			// But keep it fast.
+			if err := telegramService.ProcessWebhook(c.Request.Context(), body); err != nil {
+				log.Printf("Telegram webhook error: %v", err)
+			}
+			c.Status(200)
+		})
+
 		// Users - login is public
 		tonConnectValidator := services.NewTonConnectValidator(tonService)
 		if errorLogger != nil {
@@ -210,7 +226,7 @@ func SetupRoutes(
 		protected.POST("/payments/payout-intent", createPayoutIntent(paymentService))
 
 		// Nodes (protected)
-		geoService := services.NewGeoService()
+		geoService := services.NewGeoService(rClient)
 		protected.POST("/nodes/register", registerNode(nodeService, geoService, telegramService))
 		protected.GET("/nodes/my", getMyNodes(nodeService))
 

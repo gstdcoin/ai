@@ -16,12 +16,12 @@ jobs:
       
       - name: Check SSH secrets
         run: |
-          if [ -z "${{ secrets.SSH_KEY }}" ]; then
-            echo "❌ SSH_KEY secret is not set"
+          if [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ]; then
+            echo "❌ SSH_PRIVATE_KEY secret is not set"
             exit 1
           fi
-          if [ -z "${{ secrets.SSH_HOST }}" ]; then
-            echo "❌ SSH_HOST secret is not set"
+          if [ -z "${{ secrets.SERVER_IP }}" ]; then
+            echo "❌ SERVER_IP secret is not set"
             exit 1
           fi
           if [ -z "${{ secrets.SSH_USER }}" ]; then
@@ -37,17 +37,17 @@ jobs:
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.9.0
         with:
-          ssh-private-key: ${{ secrets.SSH_KEY }}
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
       
       - name: Add server to known hosts
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
       
       - name: Deploy to server
         env:
-          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SERVER_IP: ${{ secrets.SERVER_IP }}
           SSH_USER: ${{ secrets.SSH_USER }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
         run: |
@@ -56,11 +56,11 @@ jobs:
           
           # Deploy script that runs on the server
           # Pass DB_PASSWORD as environment variable through SSH
-          ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} "DB_PASSWORD='${DB_PASSWORD}' bash -s" << 'DEPLOY_SCRIPT'
+          ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SERVER_IP} "DB_PASSWORD='${DB_PASSWORD}' bash -s" << 'DEPLOY_SCRIPT'
             set -e
             
             echo "📁 Changing to project directory..."
-            cd /home/ubuntu || cd /home/${USER} || { echo "❌ Project directory not found"; exit 1; }
+            cd /home/ubuntu || { echo "❌ Project directory not found"; exit 1; }
             
             echo "💾 Stashing local changes (if any)..."
             git stash || echo "⚠️  No local changes to stash"
@@ -96,6 +96,9 @@ jobs:
             echo "🔄 Rebuilding and starting containers..."
             docker compose up -d --build --remove-orphans
             
+            echo "🧹 Pruning unused Docker images..."
+            docker image prune -f
+            
             echo "⏳ Waiting for services to start..."
             sleep 10
             
@@ -107,12 +110,12 @@ jobs:
       
       - name: Verify deployment
         env:
-          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SERVER_IP: ${{ secrets.SERVER_IP }}
           SSH_USER: ${{ secrets.SSH_USER }}
         run: |
           echo "🔍 Verifying deployment..."
-          ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} << 'VERIFY_SCRIPT'
-            cd /home/ubuntu || cd /home/${USER}
+          ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SERVER_IP} << 'VERIFY_SCRIPT'
+            cd /home/ubuntu
             echo "📊 Container status:"
             docker compose ps
             echo ""

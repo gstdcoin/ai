@@ -9,11 +9,13 @@ import (
 	"math"
 	"net/http"
 	"time"
-)
 
+	"github.com/redis/go-redis/v9"
+)
 // GeoService handles IP geolocation and GPS validation
 type GeoService struct {
 	httpClient *http.Client
+	redisClient *redis.Client
 }
 
 // CalculateDistance calculates the distance between two points in km using Haversine formula
@@ -51,17 +53,19 @@ func (s *GeoService) CheckSpoofing(lat1, lon1, lat2, lon2 float64, timeDiff time
 	return false, speed
 }
 
-func NewGeoService() *GeoService {
-	log.Println("🌍 GeoService initialized (using ip-api.com)")
+func NewGeoService(redisClient *redis.Client) *GeoService {
+	log.Println("🌍 GeoService initialized (using ip-api.com with Redis cache)")
 	return &GeoService{
 		httpClient: &http.Client{
 			Timeout: 5 * time.Second,
 		},
+		redisClient: redisClient,
 	}
 }
 
 // GetCountryByIP determines country code from IP address using free API
 // Uses ip-api.com (free tier: 45 requests/minute)
+// Caches results in Redis for 24 hours
 func (s *GeoService) GetCountryByIP(ctx context.Context, ipAddress string) (string, error) {
 	if ipAddress == "" {
 		return "", fmt.Errorf("IP address is required")
@@ -70,6 +74,15 @@ func (s *GeoService) GetCountryByIP(ctx context.Context, ipAddress string) (stri
 	// Skip localhost and private IPs
 	if ipAddress == "127.0.0.1" || ipAddress == "::1" || ipAddress == "localhost" {
 		return "", nil // Return empty for localhost
+	}
+
+	// Check cache first
+	cacheKey := fmt.Sprintf("geo:ip:%s", ipAddress)
+	if s.redisClient != nil {
+		country, err := s.redisClient.Get(ctx, cacheKey).Result()
+		if err == nil && country != "" {
+			return country, nil
+		}
 	}
 
 	// Use ip-api.com free API (no API key required)
@@ -106,6 +119,13 @@ func (s *GeoService) GetCountryByIP(ctx context.Context, ipAddress string) (stri
 
 	if result.Status != "success" {
 		return "", fmt.Errorf("geolocation API returned status: %s", result.Status)
+	}
+
+	// Cache result for 24 hours
+	if s.redisClient != nil {
+		if err := s.redisClient.Set(ctx, cacheKey, result.CountryCode, 24*time.Hour).Err(); err != nil {
+			log.Printf("⚠️ Failed to cache geoip result: %v", err)
+		}
 	}
 
 	log.Printf("🌍 Geolocation success: %s -> %s", ipAddress, result.CountryCode)

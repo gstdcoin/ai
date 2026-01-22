@@ -22,6 +22,7 @@ type RegisterDeviceRequest struct {
 }
 
 func (s *DeviceService) RegisterDevice(ctx context.Context, req RegisterDeviceRequest) error {
+	// Update is_active and LAST SEEN
 	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO devices (
 			device_id, wallet_address, device_type, 
