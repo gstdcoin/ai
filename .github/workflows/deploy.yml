@@ -14,116 +14,120 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Determine Server IP
-        id: server_addr
+      - name: Determine Server Config
+        id: server_config
         run: |
-          # Robust logic to find the correct Server IP secret
+          # IP Logic
           if [ -n "${{ secrets.SERVER_IP }}" ]; then
              echo "IP=${{ secrets.SERVER_IP }}" >> $GITHUB_OUTPUT
-             echo "✅ Using SERVER_IP"
           elif [ -n "${{ secrets.SSH_HOST }}" ]; then
              echo "IP=${{ secrets.SSH_HOST }}" >> $GITHUB_OUTPUT
-             echo "⚠️ Using SSH_HOST fallback"
           else
-             echo "❌ No Server IP found (SERVER_IP or SSH_HOST)"
+             echo "::error::server ip secret incorrect"
+             exit 1
+          fi
+          
+          # Key Logic
+          if [ -n "${{ secrets.SSH_PRIVATE_KEY }}" ]; then
+             echo "HAS_KEY=true" >> $GITHUB_OUTPUT
+          elif [ -n "${{ secrets.SSH_KEY }}" ]; then
+             echo "HAS_KEY=true" >> $GITHUB_OUTPUT
+          else
+             echo "::error::ssh key secret incorrect"
              exit 1
           fi
 
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.9.0
         with:
-          # Pass ALL potential keys. The action handles empty lines/vars gracefully.
-          # This avoids the "echo >> GITHUB_ENV" bug which corrupts multiline private keys.
           ssh-private-key: |
             ${{ secrets.SSH_PRIVATE_KEY }}
             ${{ secrets.SSH_KEY }}
       
-      - name: Add server to known hosts
+      - name: Add to Known Hosts
         env:
-          SERVER_IP: ${{ steps.server_addr.outputs.IP }}
+          SERVER_IP: ${{ steps.server_config.outputs.IP }}
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -H "$SERVER_IP" >> ~/.ssh/known_hosts
+          ssh-keyscan -H -t rsa,ed25519 "$SERVER_IP" >> ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
-      - name: Deploy to server
+      - name: Deploy
         env:
-          SERVER_IP: ${{ steps.server_addr.outputs.IP }}
+          SERVER_IP: ${{ steps.server_config.outputs.IP }}
           SSH_USER: ${{ secrets.SSH_USER }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
         run: |
           set -e
-          echo "🚀 Starting Deployment to $SERVER_IP..."
           
-          # Safe injection of DB_PASSWORD using a temporary env file on remote
-          # We use a heredoc passed to cat to avoid command line argument exposure/escaping issues
-          ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SERVER_IP} "cat > /tmp/deploy_env.sh" << EOF
-          export DB_PASSWORD='${DB_PASSWORD}'
+          # 1. Prepare Environment File Content Securely
+          # We define content here to avoid exposing auth in process list
+          cat << EOF > env_update_script.sh
+            export DB_PASSWORD='${DB_PASSWORD}'
           EOF
           
-          ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SERVER_IP} "bash -s" << 'DEPLOY_SCRIPT'
+          # 2. Upload Env Script
+          scp -o StrictHostKeyChecking=no env_update_script.sh ${SSH_USER}@${SERVER_IP}:/tmp/deploy_env_vars.sh
+          
+          # 3. Execute Remote Deployment
+          ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SERVER_IP} "bash -s" << 'REMOTE_EXEC'
             set -e
             
-            # Load secrets safely
-            source /tmp/deploy_env.sh
-            rm -f /tmp/deploy_env.sh
+            # --- Load Password ---
+            source /tmp/deploy_env_vars.sh
+            rm -f /tmp/deploy_env_vars.sh
             
-            # --- Permission Check ---
-            SUDO=""
+            # --- Path Setup ---
+            TARGET_DIR="/home/ubuntu"
+            cd $TARGET_DIR || cd /home/${USER} || { echo "❌ Directory not found"; exit 1; }
+            
+            # --- Permission Fix (Crucial for Git) ---
+            # If previous runs used sudo, files might be root-owned. reclaim them.
+            if sudo -n true 2>/dev/null; then
+               sudo chown -R $USER:$USER .
+            fi
+            
+            # --- Docker Permission Check ---
+            DOCKER_CMD="docker"
             if ! docker ps >/dev/null 2>&1; then
                 if sudo docker ps >/dev/null 2>&1; then
-                    SUDO="sudo"
-                    echo "⚠️  Using sudo for Docker"
+                    DOCKER_CMD="sudo docker"
                 else
-                    echo "❌ Docker permission denied"
+                    echo "❌ Docker not accessible"
                     exit 1
                 fi
             fi
             
-            # --- Paths ---
-            cd /home/ubuntu || { echo "❌ /home/ubuntu not found"; exit 1; }
-            
-            # --- Update Code ---
-            echo "📥 Pulling code..."
+            # --- Git Sync ---
+            echo "📥 Syncing Code..."
             git stash >/dev/null 2>&1 || true
-            git pull origin main || git pull origin master || { echo "❌ Git pull failed"; exit 1; }
+            git pull origin main || git pull origin master
             
-            # --- Update Env ---
-            echo "🔐 Updating .env..."
-            # Safely replace or append password
-            if [ -f .env ]; then
-                # Use temp file for safe sed
-                cp .env .env.tmp
-                if grep -q "^DB_PASSWORD=" .env.tmp; then
-                    # Escape special chars in password for sed if needed, primarily / 
-                    # Simpler strategy: grep -v then append
-                    grep -v "^DB_PASSWORD=" .env.tmp > .env || true
-                fi
-                echo "DB_PASSWORD=${DB_PASSWORD}" >> .env
-                rm -f .env.tmp
+            # --- Env File Update Atomic ---
+            echo "🔐 Updating Secrets..."
+            # Preserve other vars, update DB_PASSWORD
+            touch .env
+            if grep -q "DB_PASSWORD=" .env; then
+                sed -i "s|^DB_PASSWORD=.*|DB_PASSWORD='${DB_PASSWORD}'|" .env
             else
-                echo "DB_PASSWORD=${DB_PASSWORD}" > .env
+                echo "DB_PASSWORD='${DB_PASSWORD}'" >> .env
             fi
             
+            # Link Config
             ln -sf docker-compose.prod.yml docker-compose.yml
             
-            # --- Restart ---
-            echo "♻️  Recreating containers..."
-            $SUDO docker compose down --remove-orphans
+            # --- Deployment ---
+            echo "♻️  Resetting Containers..."
+            $DOCKER_CMD compose down --remove-orphans
             
-            # Force cleanup of specific containers ensures no name conflicts
-            $SUDO docker rm -f gstd_frontend gstd_backend gstd_gateway 2>/dev/null || true
+            echo "🚀 Starting Services..."
+            $DOCKER_CMD compose up -d --build --remove-orphans
             
-            # Clean images
-            $SUDO docker image prune -f
+            echo "🧹 Cleaning up..."
+            $DOCKER_CMD image prune -f
             
-            # Start
-            $SUDO docker compose up -d --build --remove-orphans
+            echo "✅ Status Check:"
+            sleep 5
+            $DOCKER_CMD compose ps
             
-            # Verify
-            echo "⏳ Waiting for health status..."
-            sleep 10
-            $SUDO docker compose ps
-            
-            echo "✅ DEPLOY SUCCESS"
-          DEPLOY_SCRIPT
+          REMOTE_EXEC
