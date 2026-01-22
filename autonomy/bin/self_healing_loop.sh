@@ -52,13 +52,54 @@ restart_service() {
     fi
 }
 
+
+# --- Sentinel 2.0 Upgrade: Resource Monitoring ---
+check_resources() {
+    # Check Docker Container Memory Usage
+    # We filter for our containers and check if any is above 80% usage
+    # This is a bit complex in bash without jq, so we use a simplified approach
+    
+    # Check Redis Memory specifically
+    if [ $(command -v redis-cli) ]; then
+        REDIS_MEM_USED=$(redis-cli info memory | grep used_memory_rss: | cut -d: -f2 | tr -d '\r')
+        # 800MB limit (approx 838860800 bytes)
+        if [ "$REDIS_MEM_USED" -gt 838860800 ]; then
+             log "⚠️ Redis memory high (${REDIS_MEM_USED} bytes). Initiating safe cleanup..."
+             redis-cli MEMORY PURGE
+             # If extremely high, maybe flush partial? For now, PURGE is safe.
+             notify "⚠️ **Sentinel**: Redis memory purge executed."
+        fi
+    fi
+    
+    # Check System Memory
+    FREE_MEM_PCT=$(free | grep Mem | awk '{print $4/$2 * 100.0}')
+    # If free memory < 10%
+    if (( $(echo "$FREE_MEM_PCT < 10.0" | bc -l) )); then
+        log "⚠️ System memory critical (Free: ${FREE_MEM_PCT}%). Clearing system caches."
+        sync; echo 3 > /proc/sys/vm/drop_caches
+        notify "⚠️ **Sentinel**: System cache cleared due to low memory."
+    fi
+}
+
+report_status() {
+    # Send hourly heartbeat if stable
+    MINUTE=$(date +%M)
+    if [ "$MINUTE" == "00" ]; then
+        ONLINE_NODES=$(psql -U postgres -h localhost -d distributed_computing -t -c "SELECT count(*) FROM nodes WHERE status='online';" 2>/dev/null || echo "?")
+        notify "✅ **System Stable**\nResources: OK\nNodes Online: ${ONLINE_NODES//[[:space:]]/}"
+    fi
+}
+
 # Main Loop
-log "🛡️ Sentinel Self-Healing Loop Started"
-notify "🛡️ **Sentinel Active**\n\nMonitoring system health..."
+log "🛡️ Sentinel v2.0 Started (Zero Failure Mode)"
+notify "🛡️ **Sentinel v2.0 Active**"
 
 while true; do
     if ! check_health; then
         restart_service
+    else
+        check_resources
+        report_status
     fi
     sleep 60
 done
