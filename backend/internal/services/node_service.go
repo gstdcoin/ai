@@ -226,4 +226,36 @@ func (s *NodeService) GetNodeByWalletAddress(ctx context.Context, walletAddress 
 	
 	return &node, nil
 }
-
+// UpdateHeartbeat updates the last_seen timestamp and ensures status is 'online'
+func (s *NodeService) UpdateHeartbeat(ctx context.Context, walletAddress string) error {
+	result, err := s.db.ExecContext(ctx, `
+		UPDATE nodes 
+		SET last_seen = NOW(), 
+		    status = 'online',
+		    updated_at = NOW()
+		WHERE wallet_address = $1
+	`, walletAddress)
+	if err != nil {
+		return err
+	}
+	
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	
+	if rows == 0 {
+		return errors.New("node not found")
+	}
+	
+	// Also update devices table if exists
+	// We ignore error here as device record might not exist individually
+	s.db.ExecContext(ctx, `
+		UPDATE devices
+		SET last_seen_at = NOW(),
+		    is_active = true
+		WHERE wallet_address = $1
+	`, walletAddress)
+	
+	return nil
+}
