@@ -42,8 +42,8 @@ type PayoutIntent struct {
 	ToAddress        string  `json:"to_address"`
 	AmountNano       int64   `json:"amount_nano"` // usually 0; contract releases escrow
 	PayloadComment   string  `json:"payload_comment"`
-	ExecutorReward   float64 `json:"executor_reward_ton"`
-	PlatformFee      float64 `json:"platform_fee_ton"`
+	ExecutorReward   float64 `json:"executor_reward_gstd"`
+	PlatformFee      float64 `json:"platform_fee_gstd"`
 	TaskID           string  `json:"task_id"`
 	ExecutorAddress  string  `json:"executor_address"`
 	Nonce            int64   `json:"nonce"` // Replay attack protection
@@ -72,7 +72,7 @@ func (s *PaymentService) BuildPayoutIntent(ctx context.Context, taskID string, e
 		PlatformFee      float64
 	}
 	err = tx.QueryRowContext(ctx, `
-		SELECT idempotency_key, nonce, query_id, executor_reward_ton, platform_fee_ton
+		SELECT idempotency_key, nonce, query_id, executor_reward_gstd, platform_fee_gstd
 		FROM payout_intents
 		WHERE task_id = $1 AND executor_address = $2
 	`, taskID, executorAddress).Scan(
@@ -91,11 +91,11 @@ func (s *PaymentService) BuildPayoutIntent(ctx context.Context, taskID string, e
 		var task models.Task
 		var assignedDevice sql.NullString
 		err = tx.QueryRowContext(ctx, `
-			SELECT task_id, assigned_device, labor_compensation_ton, status
+			SELECT task_id, assigned_device, labor_compensation_gstd, status
 			FROM tasks
 			WHERE task_id = $1
 		`, taskID).Scan(
-			&task.TaskID, &assignedDevice, &task.LaborCompensationTon, &task.Status,
+			&task.TaskID, &assignedDevice, &task.LaborCompensationGSTD, &task.Status,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get task info: %w", err)
@@ -122,7 +122,7 @@ func (s *PaymentService) BuildPayoutIntent(ctx context.Context, taskID string, e
 			ExecutorAddress: executorAddress,
 			Nonce:           existingIntent.Nonce,
 			QueryID:        queryID,
-			IdempotencyKey: existingIntent.IdempotencyKey,
+			IdempotencyKey:  existingIntent.IdempotencyKey,
 		}
 
 		tx.Commit()
@@ -133,11 +133,11 @@ func (s *PaymentService) BuildPayoutIntent(ctx context.Context, taskID string, e
 	var task models.Task
 	var assignedDevice sql.NullString
 	err = tx.QueryRowContext(ctx, `
-		SELECT task_id, assigned_device, labor_compensation_ton, status, requester_address
+		SELECT task_id, assigned_device, labor_compensation_gstd, status, requester_address
 		FROM tasks
 		WHERE task_id = $1
 	`, taskID).Scan(
-		&task.TaskID, &assignedDevice, &task.LaborCompensationTon, &task.Status, &task.RequesterAddress,
+		&task.TaskID, &assignedDevice, &task.LaborCompensationGSTD, &task.Status, &task.RequesterAddress,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("task lookup failed: %w", err)
@@ -169,8 +169,8 @@ func (s *PaymentService) BuildPayoutIntent(ctx context.Context, taskID string, e
 		}
 	}
 
-	platformFee := task.LaborCompensationTon * (s.tonCfg.PlatformFeePercent / 100.0)
-	executorReward := task.LaborCompensationTon - platformFee
+	platformFee := task.LaborCompensationGSTD * (s.tonCfg.PlatformFeePercent / 100.0)
+	executorReward := task.LaborCompensationGSTD - platformFee
 	if executorReward <= 0 {
 		return nil, fmt.Errorf("invalid reward amount")
 	}
@@ -212,7 +212,7 @@ func (s *PaymentService) BuildPayoutIntent(ctx context.Context, taskID string, e
 	_, err = tx.ExecContext(ctx, `
 		INSERT INTO payout_intents (
 			task_id, executor_address, idempotency_key, nonce, query_id,
-			executor_reward_ton, platform_fee_ton
+			executor_reward_gstd, platform_fee_gstd
 		) VALUES ($1, $2, $3, $4, $5, $6, $7)
 	`, taskID, executorAddress, idempotencyKey, nonce, queryID, executorReward, platformFee)
 	if err != nil {
@@ -223,7 +223,7 @@ func (s *PaymentService) BuildPayoutIntent(ctx context.Context, taskID string, e
 	_, err = tx.ExecContext(ctx, `
 		INSERT INTO payout_transactions (
 			task_id, executor_address, query_id, status,
-			executor_reward_ton, platform_fee_ton, nonce
+			executor_reward_gstd, platform_fee_gstd, nonce
 		) VALUES ($1, $2, $3, 'pending', $4, $5, $6)
 	`, taskID, executorAddress, queryID, executorReward, platformFee, nonce)
 	if err != nil {
