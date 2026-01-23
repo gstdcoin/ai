@@ -10,6 +10,7 @@ gatekeeper:
     routine_tasks: local
     complex_analysis: cloud
     database_fixes: cloud
+    mobile_optimization: cloud # Force cloud for complex architectural changes
 
 local_brain:
   model: qwen2.5-coder:7b

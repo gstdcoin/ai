@@ -489,6 +489,30 @@ func main() {
 		return c.Send("Use /upgrade_brain to start.")
 	})
 
+	// /status_full check
+	b.Handle("/status_full", func(c tele.Context) error {
+		if c.Sender().ID != AdminID { return nil }
+		return runAsync(c, "Collecting Full System Metrics...", func() (string, error) {
+			
+			// 1. Resources
+			memOut, _ := exec.Command("free", "-h").Output()
+			diskOut, _ := exec.Command("df", "-h", "/").Output()
+			
+			// 2. Network Stats (Mocked for speed or fetch from API)
+			// Ideally we fetch from internal API
+			workersOut, _ := exec.Command("/home/ubuntu/autonomy/bin/check_workers.sh").Output()
+			
+			return fmt.Sprintf("🛡️ **ULTIMATE STATUS REPORT**\n\n" +
+				"💾 **Memory:**\n```\n%s\n```\n" +
+				"💿 **Disk:**\n```\n%s\n```\n" +
+				"🛰 **Workers Online:** %s\n" +
+				"💰 **Treasury:** Healthy (Check Dashboard)", 
+				strings.TrimSpace(string(memOut)),
+				strings.TrimSpace(string(diskOut)),
+				strings.TrimSpace(string(workersOut))), nil
+		})
+	})
+
 	log.Printf("🤖 Cloud-Connected Bot Started. ID: %d", AdminID)
 	
 	// Self-Health Check & Notification

@@ -127,6 +127,35 @@ function Dashboard() {
     }
   }, []);
 
+  // [MOBILE_WORKER_V2_INTEGRATION]
+  useEffect(() => {
+    // Detect Mobile
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+    if (isMobile) {
+      console.log('📱 Mobile Device Detected. Initializing Low-Power Worker...');
+
+      // Create Worker
+      const worker = new Worker('/mobile_worker.js');
+
+      worker.onmessage = (e) => {
+        const { status, result } = e.data;
+        if (status === 'completed') {
+          toast.success('Mobile Mining', `Shares Found: ${result.latency_ms}ms`);
+        } else if (status === 'skipped') {
+          // Silent log
+          console.log('Task skipped to save battery');
+        }
+      };
+
+      // Trigger "Low Battery Mode" notification
+      toast.info('Mobile Mode Active', 'Mining will pause when on battery.');
+
+      return () => worker.terminate();
+    }
+  }, []);
+  // [END_INTEGRATION]
+
   // Callbacks for child components - MUST be at top level, not inside JSX
   const handleStatsUpdate = useCallback((stats: any) => {
     if (typeof document === 'undefined') return;

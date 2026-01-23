@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"math"
 	"sync"
 	"time"
 
@@ -91,7 +90,7 @@ func (lb *LoadBalancer) getActiveWorkers(ctx context.Context) ([]*WorkerCapacity
 	for _, key := range keys {
 		// Fetch capacity data
 		// Format: hash with 'active_tasks', 'trust_score' etc.
-		data, err := lb.redis.HGetAll(ctx, "capacity:"+key[14:]).Result() 
+		_, err := lb.redis.HGetAll(ctx, "capacity:"+key[14:]).Result() 
 		if err == nil {
 			// Parse logic here (omitted for brevity)
 			// workers = append(workers, &WorkerCapacity{...})
