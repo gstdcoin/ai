@@ -31,12 +31,12 @@ This task type allows users to train a personalized AI model (LoRA) based on a s
 7.  **Delivery:** User receives the images and the model file.
 
 ## Pricing Model
-- **Cost to User:** $5.00 (paid in TON/GSTD)
-- **Worker Reward:** $4.50 equivalent in GSTD
-- **Platform Fee:** $0.50 (10%)
+- **Cost to User:** ~250 GSTD (Market Equivalent of $5.00)
+- **Worker Reward:** 225 GSTD
+- **Platform Fee:** 25 GSTD (burned or treasury)
 
 ## Immediate "Pay-to-Play" Implementation
 To launch this immediately:
-1.  **Frontend:** Add "Create AI Avatar" button.
+1.  **Frontend:** Add "Create AI Avatar" button (Price: GSTD only).
 2.  **Backend:** Add `AI_LORA_TRAINING` to permitted task types.
-3.  **Marketing:** "Create your Pro Headshot for 5 TON".
+3.  **Marketing:** "Create your Pro Headshot for 250 GSTD".
