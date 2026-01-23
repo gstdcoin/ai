@@ -13,7 +13,7 @@ services:
     command: --interval 3600 --cleanup --label-enable
     restart: always
     networks:
-      - ubuntu_gstd_network
+      - gstd_network
 
   vector:
     image: timberio/vector:latest-alpine
@@ -25,7 +25,7 @@ services:
       - n8n
     restart: always
     networks:
-      - ubuntu_gstd_network
+      - gstd_network
 
   ollama:
     image: ollama/ollama:latest
@@ -38,7 +38,7 @@ services:
         limits:
           memory: 6G
     networks:
-      - ubuntu_gstd_network
+      - gstd_network
 
   bot:
     build:
@@ -54,12 +54,13 @@ services:
       - ./proposals:/home/ubuntu/autonomy/proposals
     environment:
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-8306755226:AAEfG2-BZ1Xo9hPex7-igz_WzHEscJOOk-U}
-      - OLLAMA_HOST=https://api.ollama.com
+      - OLLAMA_HOST=http://gstd_ollama:11434
       - OLLAMA_API_KEY=3010cb48437e419fa97fa354f809dae8.NV9cjek-htbaddBb9wpU3MH9
+      - API_URL=http://backend-blue:8080
     command: sh -c "go mod tidy && go run main.go"
     restart: always
     networks:
-      - ubuntu_gstd_network
+      - gstd_network
 
   n8n:
     image: n8nio/n8n:latest
@@ -73,7 +74,7 @@ services:
       - N8N_PROTOCOL=https
       - NODE_ENV=production
       - WEBHOOK_URL=https://n8n.gstdtoken.com/
-      - OLLAMA_HOST=https://api.ollama.com
+      - OLLAMA_HOST=http://gstd_ollama:11434
       - OLLAMA_API_KEY=3010cb48437e419fa97fa354f809dae8.NV9cjek-htbaddBb9wpU3MH9
     volumes:
       - n8n_data:/home/node/.n8n
@@ -81,10 +82,10 @@ services:
       - /home/ubuntu/backend:/data/backend:ro
       - /home/ubuntu/autonomy/proposals:/data/proposals
     networks:
-      - ubuntu_gstd_network
+      - gstd_network
 
 networks:
-  ubuntu_gstd_network:
+  gstd_network:
     external: true
 
 volumes:
