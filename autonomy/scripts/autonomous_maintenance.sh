@@ -70,7 +70,18 @@ else
     log "✅ System Health API is operational."
 fi
 
-# 3. Database Maintenance (Autonomy)
+# 3. Bot Status Check
+check_container "gstd_bot"
+
+# 4. Log Maintenance
+clean_logs() {
+    log "🧹 Checking log sizes..."
+    # Find docker logs > 1GB and truncate them
+    find /var/lib/docker/containers/ -type f -name "*.log" -size +1G -exec sh -c 'echo "Truncating large log: {}"; > {}' \;
+}
+clean_logs
+
+# 5. Database Maintenance (Autonomy)
 # Run vacuum if needed (simplified) - avoid running in transaction block issues
 # docker exec gstd_postgres_prod psql -U postgres -d distributed_computing -c "VACUUM ANALYZE tasks;" 2>/dev/null
 
