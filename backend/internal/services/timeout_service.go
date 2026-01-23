@@ -34,7 +34,7 @@ func (s *TimeoutService) CheckTimeouts(ctx context.Context) error {
 	// Return both task_id and assigned_device for logging
 	query := `
 		UPDATE tasks 
-		SET status = 'timeout', 
+		SET status = 'queued', 
 		    assigned_at = NULL,
 		    assigned_device = NULL,
 		    timeout_at = NULL

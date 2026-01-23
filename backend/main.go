@@ -343,26 +343,9 @@ func main() {
 	// Start Task Orchestrator background processes
 	go taskOrchestrator.Start(ctx)
 
-	// Self-Healing 2.0: Daily Redis cache cleaning
-	go func() {
-		ticker := time.NewTicker(24 * time.Hour)
-		defer ticker.Stop()
-		log.Println("🧹 Cache cleaner initialized (schedule: daily)")
-		
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				log.Println("🧹 Starting daily cache maintenance...")
-				// Invalidate potentially stale geo keys or temp stats
-				// For now, we rely on TTLs set in services (e.g. GeoService 24h)
-				// avoiding aggressive FLUSHDB to preserve user sessions.
-				// This log serves to confirm the healing cycle is active.
-				log.Println("✅ Daily cache maintenance completed")
-			}
-		}
-	}()
+	// Start Autonomous Maintenance Service
+	maintenanceService := services.NewMaintenanceService(db, taskService, errorLogger)
+	go maintenanceService.Start(ctx)
 
 	// Store services for API handlers (will be used in routes)
 	_ = powService       // Used in orchestrator routes
