@@ -80,7 +80,7 @@ func (s *MarketplaceService) GetAvailableTasks(ctx context.Context, workerWallet
 			t.task_type, 
 			COALESCE(t.operation, 'compute') as operation,
 			COALESCE(t.difficulty, 'medium') as difficulty,
-			COALESCE(t.reward_per_worker, t.labor_compensation_ton, 0) as reward,
+			COALESCE(t.reward_per_worker, t.labor_compensation_gstd, 0) as reward,
 			COALESCE(t.estimated_time_sec, 30) as estimated_time,
 			t.requester_address,
 			COALESCE(t.geography::text, '{"type":"global"}') as geography,
@@ -99,7 +99,7 @@ func (s *MarketplaceService) GetAvailableTasks(ctx context.Context, workerWallet
 		      WHERE wta.task_id = t.task_id AND wta.worker_wallet = $2
 		  )
 		ORDER BY 
-			t.labor_compensation_ton DESC,
+			t.labor_compensation_gstd DESC,
 			t.created_at ASC
 		LIMIT 50
 	`, trustScore, workerWallet)
@@ -321,7 +321,7 @@ func (s *MarketplaceService) GetMyTasks(ctx context.Context, creatorWallet strin
 			t.task_type,
 			COALESCE(t.operation, 'compute') as operation,
 			t.status,
-			COALESCE(t.budget_gstd, t.labor_compensation_ton, 0) as budget,
+			COALESCE(t.budget_gstd, t.labor_compensation_gstd, 0) as budget,
 			COALESCE(t.max_workers, 1) as max_workers,
 			COALESCE(t.workers_completed, 0) as workers_completed,
 			t.created_at,

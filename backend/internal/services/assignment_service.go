@@ -143,7 +143,7 @@ func (s *AssignmentService) GetAvailableTasks(ctx context.Context, deviceID stri
 	// If extended columns are needed, they should be added via migrations first
 	query := `
 		SELECT task_id, requester_address, task_type, operation, model,
-		       labor_compensation_ton,
+		       labor_compensation_gstd,
 		       COALESCE(priority_score, 0.0) as priority_score,
 		       status, created_at,
 		       completed_at,
@@ -173,7 +173,7 @@ func (s *AssignmentService) GetAvailableTasks(ctx context.Context, deviceID stri
 		
 		err := rows.Scan(
 			&task.TaskID, &task.RequesterAddress, &task.TaskType, &task.Operation,
-			&task.Model, &task.LaborCompensationTon, &task.PriorityScore,
+			&task.Model, &task.LaborCompensationGSTD, &task.PriorityScore,
 			&task.Status, &task.CreatedAt, &completedAt, &assignedDevice, &task.MinTrustScore,
 		)
 		if err != nil {
@@ -196,7 +196,7 @@ func (s *AssignmentService) GetAvailableTasks(ctx context.Context, deviceID stri
 		task.MaxEnergyMwh = 0
 		task.ValidationMethod = "majority"
 		task.EscrowAddress = ""
-		task.EscrowAmountTon = 0.0
+		task.EscrowAmountGSTD = 0.0
 		task.IsPrivate = false
 		
 		tasks = append(tasks, &task)

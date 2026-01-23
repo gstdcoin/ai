@@ -7,7 +7,7 @@ interface Stats {
   processing_tasks: number;
   queued_tasks: number;
   completed_tasks: number;
-  total_rewards_ton: number;
+  total_rewards_gstd: number;
   active_devices_count: number;
 }
 
@@ -112,9 +112,9 @@ export default function SystemStatusWidget({ onStatsUpdate }: SystemStatusWidget
               {t('system_status') || 'System Status'}
               {!loading && (
                 <span className={`px-2 py-0.5 rounded text-[10px] uppercase tracking-wider font-bold border ${getStatusText() === 'Idle' ? 'bg-gray-500/20 text-gray-400 border-gray-500/30' :
-                    getStatusText() === 'Nominal' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
-                      getStatusText() === 'Elevated' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
-                        'bg-red-500/20 text-red-400 border-red-500/30'
+                  getStatusText() === 'Nominal' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
+                    getStatusText() === 'Elevated' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
+                      'bg-red-500/20 text-red-400 border-red-500/30'
                   }`}>
                   {getStatusText()}
                 </span>
@@ -146,7 +146,7 @@ export default function SystemStatusWidget({ onStatsUpdate }: SystemStatusWidget
               <div className="p-3 rounded-lg bg-white/5 border border-white/5">
                 <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">{t('total_compensation') || 'Paid'}</p>
                 <p className="text-xl font-bold text-indigo-400 font-mono">
-                  {(stats.total_rewards_ton || 0).toFixed(0)} <span className="text-xs text-gray-500">TON</span>
+                  {(stats.total_rewards_gstd || 0).toFixed(0)} <span className="text-xs text-gray-500">GSTD</span>
                 </p>
               </div>
             </div>

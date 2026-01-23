@@ -82,12 +82,12 @@ func submitWorkerResult(
 		if taskPaymentService.GetTelegramService() != nil {
 			// Get task details for notification
 			var taskType string
-			var rewardTON float64
+			var rewardGSTD float64
 			taskPaymentService.GetDB().QueryRowContext(c.Request.Context(), `
-				SELECT task_type, COALESCE(labor_compensation_ton, 0)
+				SELECT task_type, COALESCE(labor_compensation_gstd, 0)
 				FROM tasks
 				WHERE task_id = $1
-			`, req.TaskID).Scan(&taskType, &rewardTON)
+			`, req.TaskID).Scan(&taskType, &rewardGSTD)
 
 			go func() {
 				// Use background context for async notification
@@ -97,7 +97,7 @@ func submitWorkerResult(
 					req.TaskID,
 					taskType,
 					walletAddress,
-					rewardTON,
+					rewardGSTD,
 				); err != nil {
 					// Log error but don't fail the response
 					fmt.Printf("Failed to send Telegram notification for completed task: %v\n", err)

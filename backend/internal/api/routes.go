@@ -348,7 +348,7 @@ func createTask(service *services.TaskService) gin.HandlerFunc {
 			InputHash        string                      `json:"input_hash"`
 			TimeLimitSec     int                         `json:"time_limit_sec"`
 			MaxEnergyMwh     int                         `json:"max_energy_mwh"`
-			LaborCompensationTon float64                     `json:"labor_compensation_ton"`
+			LaborCompensationGSTD float64                     `json:"labor_compensation_gstd"`
 			ValidationMethod string                      `json:"validation_method"`
 		}
 
@@ -370,7 +370,7 @@ func createTask(service *services.TaskService) gin.HandlerFunc {
 				MaxEnergyMwh: req.MaxEnergyMwh,
 			},
 			Reward: models.Reward{
-				AmountTon: req.LaborCompensationTon,
+				AmountGSTD: req.LaborCompensationGSTD,
 			},
 			Validation: req.ValidationMethod,
 			MinTrust: c.GetFloat64("min_trust"), // Optional from middleware or query
@@ -589,7 +589,7 @@ func getStats(service *services.StatsService) gin.HandlerFunc {
 					"processing_tasks":    0,
 					"queued_tasks":         0,
 					"completed_tasks":      0,
-					"total_rewards_ton":    0.0,
+					"total_rewards_gstd":   0.0,
 					"active_devices_count": 0,
 				})
 			}
@@ -603,7 +603,7 @@ func getStats(service *services.StatsService) gin.HandlerFunc {
 				"processing_tasks":    0,
 				"queued_tasks":         0,
 				"completed_tasks":      0,
-				"total_rewards_ton":    0.0,
+				"total_rewards_gstd":   0.0,
 				"active_devices_count": 0,
 			})
 			return
@@ -616,7 +616,7 @@ func getStats(service *services.StatsService) gin.HandlerFunc {
 				"processing_tasks":    0,
 				"queued_tasks":         0,
 				"completed_tasks":      0,
-				"total_rewards_ton":    0.0,
+				"total_rewards_gstd":   0.0,
 				"active_devices_count": 0,
 			})
 			return

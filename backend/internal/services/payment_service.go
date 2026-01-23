@@ -284,12 +284,12 @@ func (s *PaymentService) GetCommissionBalance(ctx context.Context) (*CommissionB
 	// Calculate total commission from completed tasks
 	err := s.db.QueryRowContext(ctx, `
 		SELECT 
-			COALESCE(SUM(platform_fee_ton), 0) as total_commission,
+			COALESCE(SUM(platform_fee_gstd), 0) as total_commission,
 			COUNT(*) FILTER (WHERE executor_payout_status IS NULL OR executor_payout_status = 'pending') as pending_tasks,
 			COUNT(*) FILTER (WHERE executor_payout_status = 'completed') as claimed_tasks
 		FROM tasks
 		WHERE status IN ('validated', 'completed')
-		  AND platform_fee_ton > 0
+		  AND platform_fee_gstd > 0
 	`).Scan(&totalCommission, &pendingTasks, &claimedTasks)
 
 	if err != nil {

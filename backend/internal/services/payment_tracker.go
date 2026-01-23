@@ -80,7 +80,7 @@ func (pt *PaymentTracker) reconcilePayments(ctx context.Context) {
 	// Get pending transactions from database
 	rows, err := pt.db.QueryContext(ctx, `
 		SELECT id, task_id, executor_address, tx_hash, query_id, status, created_at,
-		       executor_reward_ton, platform_fee_ton, nonce
+		       executor_reward_gstd, platform_fee_gstd, nonce
 		FROM payout_transactions
 		WHERE status IN ('pending', 'sent')
 		ORDER BY created_at ASC
@@ -287,7 +287,7 @@ func (pt *PaymentTracker) markTransactionConfirmed(ctx context.Context, txID int
 		_, err = tx.ExecContext(ctx, `
 			INSERT INTO payout_history (
 				payout_transaction_id, task_id, executor_address, tx_hash, query_id,
-				executor_reward_ton, platform_fee_ton, nonce, confirmed_at
+				executor_reward_gstd, platform_fee_gstd, nonce, confirmed_at
 			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
 		`, txID, taskID, executorAddress, txHash, queryIDValue, executorReward, platformFee, nonce)
 		if err != nil {
@@ -372,7 +372,7 @@ func (pt *PaymentTracker) markTransactionFailedAndRefund(ctx context.Context, tx
 		log.Printf("PaymentTracker: Warning - could not refund balance to user %s: %v (transaction still marked as failed)", executorAddress, err)
 		// Continue anyway - transaction is marked as failed
 	} else {
-		log.Printf("PaymentTracker: Refunded %.9f TON to user %s for failed transaction %d", executorReward, executorAddress, txID)
+		log.Printf("PaymentTracker: Refunded %.9f GSTD to user %s for failed transaction %d", executorReward, executorAddress, txID)
 	}
 
 	if err := tx.Commit(); err != nil {

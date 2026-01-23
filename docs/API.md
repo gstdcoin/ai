@@ -30,7 +30,7 @@ Get platform health status.
   },
   "contract": {
     "address": "EQAIYlrr3UiMJ9fqI-B4j2nJdiiD7WzyaNL1MX_wiONc4OUi",
-    "balance_ton": 0.786691287,
+    "balance_gstd": 0.786691287,
     "status": "reachable"
   },
   "timestamp": 1768119044
@@ -93,7 +93,7 @@ Create a new task (legacy endpoint, requires escrow deposit).
   "input_hash": "abc123...",
   "time_limit_sec": 300,
   "max_energy_mwh": 100,
-  "labor_compensation_ton": 0.1,
+  "labor_compensation_gstd": 0.1,
   "validation_method": "majority"
 }
 ```
@@ -121,7 +121,7 @@ Get list of tasks.
       "task_id": "uuid",
       "task_type": "ai_inference",
       "status": "pending",
-      "labor_compensation_ton": 0.1,
+      "labor_compensation_gstd": 0.1,
       "created_at": "2026-01-11T12:00:00Z"
     }
   ]
@@ -137,7 +137,7 @@ Get task by ID.
   "task_id": "uuid",
   "task_type": "ai_inference",
   "status": "pending",
-  "labor_compensation_ton": 0.1,
+  "labor_compensation_gstd": 0.1,
   "created_at": "2026-01-11T12:00:00Z"
 }
 ```
@@ -202,9 +202,9 @@ Create payout intent for completed task.
   "payout_intent": {
     "task_id": "uuid",
     "executor_address": "UQ...",
-    "executor_reward_ton": 0.095,
-    "platform_fee_ton": 0.005,
-    "total_ton": 0.1
+    "executor_reward_gstd": 0.095,
+    "platform_fee_gstd": 0.005,
+    "total_gstd": 0.1
   }
 }
 ```

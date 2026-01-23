@@ -73,7 +73,7 @@ export default function DocsPage() {
                                 </li>
                                 <li className="flex gap-3">
                                     <span className="w-6 h-6 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-sm font-bold flex-shrink-0">3</span>
-                                    <span>Pay task budget in TON</span>
+                                    <span>Pay task budget in GSTD</span>
                                 </li>
                                 <li className="flex gap-3">
                                     <span className="w-6 h-6 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-sm font-bold flex-shrink-0">4</span>
@@ -99,7 +99,7 @@ export default function DocsPage() {
                                 </li>
                                 <li className="flex gap-3">
                                     <span className="w-6 h-6 rounded-full bg-violet-500/20 text-violet-400 flex items-center justify-center text-sm font-bold flex-shrink-0">4</span>
-                                    <span>Withdraw your earnings in TON</span>
+                                    <span>Withdraw your earnings in GSTD</span>
                                 </li>
                             </ol>
                         </div>
@@ -134,7 +134,7 @@ export default function DocsPage() {
     "prompt": "Your prompt here",
     "max_tokens": 100
   },
-  "budget_ton": 0.5,
+  "budget_gstd": 0.5,
   "priority": 10
 }`}</code>
                             </pre>

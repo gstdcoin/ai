@@ -22,7 +22,7 @@ func ValidateTaskRequest() gin.HandlerFunc {
 			InputHash        string  `json:"input_hash" binding:"max=255"`
 			TimeLimitSec     int     `json:"time_limit_sec" binding:"required,min=1,max=300"`
 			MaxEnergyMwh     int     `json:"max_energy_mwh" binding:"required,min=1,max=1000"`
-			LaborCompensationTon float64 `json:"labor_compensation_ton" binding:"required,min=0.001"`
+			LaborCompensationGSTD float64 `json:"labor_compensation_gstd" binding:"required,min=0.001"`
 			ValidationMethod string  `json:"validation_method" binding:"required,oneof=reference majority ai_check human"`
 		}
 

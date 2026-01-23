@@ -30,7 +30,7 @@ func (s *DistributionService) ProcessTaskCompletion(ctx context.Context, taskID 
 	var requester string
 
 	err := s.db.QueryRowContext(ctx, `
-		SELECT status, escrow_status, labor_compensation_ton, requester_address 
+		SELECT status, escrow_status, labor_compensation_gstd, requester_address 
 		FROM tasks WHERE task_id = $1
 	`, taskID).Scan(&status, &escrowStatus, &rewardAmount, &requester)
 	if err != nil {
@@ -83,8 +83,8 @@ func (s *DistributionService) ProcessTaskCompletion(ctx context.Context, taskID 
 		UPDATE tasks 
 		SET status = 'completed',
 		    escrow_status = 'distributed',
-		    platform_fee_ton = $1,
-		    executor_reward_ton = $2,
+		    platform_fee_gstd = $1,
+		    executor_reward_gstd = $2,
 		    completed_at = NOW()
 		WHERE task_id = $3
 	`, platformFee, netRewardPool, taskID)
@@ -99,7 +99,7 @@ func (s *DistributionService) HandleRefund(ctx context.Context, taskID string) e
 	var requester string
 
 	err := s.db.QueryRowContext(ctx, `
-		SELECT escrow_status, labor_compensation_ton, requester_address 
+		SELECT escrow_status, labor_compensation_gstd, requester_address 
 		FROM tasks WHERE task_id = $1
 	`, taskID).Scan(&escrowStatus, &rewardAmount, &requester)
 	if err != nil {

@@ -110,8 +110,8 @@ func (re *RewardEngine) DistributeRewards(ctx context.Context, task *models.Task
 	_, err := re.db.ExecContext(ctx, `
 		UPDATE tasks
 		SET reward_gstd = $1,
-		    platform_fee_ton = $2,
-		    executor_reward_ton = $3,
+		    platform_fee_gstd = $2,
+		    executor_reward_gstd = $3,
 		    updated_at = NOW()
 		WHERE task_id = $4
 	`, workerReward, platformFee, workerReward, task.TaskID)
