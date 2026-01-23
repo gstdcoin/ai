@@ -667,3 +667,63 @@
 ⚠️  No GEO Service activity or initialization found in logs.
 
 ---
+## 🛡️ GSTD Security Audit - 2026-01-23 10:00:01
+
+### 💎 TON Service Check
+2026/01/23 09:20:42 Migration v10_failed_payouts.sql already applied, skipping
+2026/01/23 09:20:42 Migration v33_recreate_failed_payouts.sql already applied, skipping
+2026/01/23 09:20:42 Warning: Failed to run migrations: failed to execute migration v36_final_optimization.sql: migration SQL error: pq: VACUUM cannot run inside a transaction block
+2026/01/23 09:27:18 ⚠️  Failed to parse payload as JSON, trying simple format: invalid character 'g' looking for beginning of value
+2026/01/23 09:27:18 ❌ TonConnect signature validation failed for 0:a45c594d46cb9b529ed487b960fd2714a8b0a27dfd5008bb1d414d1aee4a61a9: Invalid signature: Ed25519 verification failed
+2026/01/23 09:27:18 ⚠️  Failed to get GSTD jetton wallet address (using 0): failed to get jetton wallet (HTTP 404): 404 page not found
+2026/01/23 09:27:18 ⚠️  Failed to get XAUt jetton wallet address (using 0): failed to get jetton wallet (HTTP 404): 404 page not found
+2026/01/23 09:27:19 ⚠️  Failed to get GSTD jetton wallet address (using 0): failed to get jetton wallet (HTTP 404): 404 page not found
+2026/01/23 09:27:19 ⚠️  Failed to get XAUt jetton wallet address (using 0): failed to get jetton wallet (HTTP 404): 404 page not found
+2026/01/23 09:27:20 ⚠️  Failed to get GSTD jetton wallet address (using 0): failed to get jetton wallet (HTTP 404): 404 page not found
+2026/01/23 09:27:20 ⚠️  Failed to get XAUt jetton wallet address (using 0): failed to get jetton wallet (HTTP 404): 404 page not found
+2026/01/23 09:27:20 GetJettonBalance: Request failed (attempt 1/4): Get "https://tonapi.io/v2/accounts/EQCkXFlNRsubUp7Uh7lg_ScUqLCiff1QCLsdQU0a7kphqVzG/jettons?currencies=EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO": context canceled (Status: 0). Retrying in 500ms...
+2026/01/23 09:27:20 Failed to get GSTD balance for 0:a45c594d46cb9b529ed487b960fd2714a8b0a27dfd5008bb1d414d1aee4a61a9: context canceled
+2026/01/23 09:27:21 ⚠️  Pool status error (returning safe default): API returned status 429
+2026/01/23 09:27:21 Failed to get TON balance for 0:a45c594d46cb9b529ed487b960fd2714a8b0a27dfd5008bb1d414d1aee4a61a9: TON API error (status 429): {"error":"rate limit: free tier"}
+2026/01/23 09:27:21 GetJettonBalance: Request failed (attempt 1/4): <nil> (Status: 429). Retrying in 500ms...
+2026/01/23 09:27:21 GetJettonBalance: Request failed (attempt 1/4): <nil> (Status: 429). Retrying in 500ms...
+2026/01/23 09:27:22 GetJettonBalance: Request failed (attempt 2/4): <nil> (Status: 429). Retrying in 1s...
+2026/01/23 09:27:22 GetJettonBalance: Request failed (attempt 2/4): <nil> (Status: 429). Retrying in 1s...
+2026/01/23 09:27:25 ⚠️  Failed to get GSTD jetton wallet address (using 0): failed to get jetton wallet (HTTP 404): 404 page not found
+
+### 🌍 GEO Service Check
+✅ GEO Service is running correctly (found 3 log entries).
+
+---
+## 🛡️ GSTD Security Audit - 2026-01-23 11:00:02
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-01-23 12:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-01-23 13:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-01-23 14:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
