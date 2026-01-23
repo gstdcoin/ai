@@ -426,7 +426,7 @@ func (o *TaskOrchestrator) getTaskDetails(ctx context.Context, taskID string) (*
 	// Fall back to database
 	task := &TaskQueueItem{TaskID: taskID}
 	err = o.db.QueryRowContext(ctx, `
-		SELECT task_type, operation, priority, reward_per_worker, min_trust_score, geography, pow_difficulty
+		SELECT task_type, operation, priority, labor_compensation_gstd, min_trust_score, geography, pow_difficulty
 		FROM tasks WHERE task_id = $1
 	`, taskID).Scan(
 		&task.TaskType, &task.Operation, &task.Priority, &task.RewardGSTD,
@@ -562,7 +562,7 @@ func (o *TaskOrchestrator) refreshQueue(ctx context.Context) {
 		case <-ticker.C:
 			// Sync pending tasks from database to Redis
 			rows, err := o.db.QueryContext(ctx, `
-				SELECT task_id, task_type, operation, priority, reward_per_worker, 
+				SELECT task_id, task_type, operation, priority, labor_compensation_gstd, 
 					   created_at, min_trust_score, geography, COALESCE(pow_difficulty, 16)
 				FROM tasks 
 				WHERE status IN ('pending', 'queued') 

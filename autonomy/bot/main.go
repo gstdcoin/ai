@@ -313,7 +313,15 @@ func main() {
 		})
 	})
 
-	// --- Decentralized Bounty Protocol (DBP) Implementtaion ---
+	// --- Decentralized Bounty Protocol (DBP) - REAL INTEGRATION ---
+	
+	type CreateTaskRequest struct {
+		Type        string  `json:"type"`
+		Operation   string  `json:"operation"`
+		RewardGSTD  float64 `json:"reward_gstd"`
+		Description string  `json:"description"`
+		Priority    int     `json:"priority"`
+	}
 
 	// /bounty [Reward_GSTD] [Description]
 	b.Handle("/bounty", func(c tele.Context) error {
@@ -322,83 +330,115 @@ func main() {
 			return c.Send("Usage: `/bounty [Reward_GSTD] [Task Description]`\nExample: `/bounty 500 Create a 3D model of a futuristic car`")
 		}
 
-		reward := args[0]
+		rewardStr := args[0]
+		var reward float64
+		if _, err := fmt.Sscanf(rewardStr, "%f", &reward); err != nil {
+			return c.Send("❌ Invalid reward amount. Must be a number.")
+		}
+		
 		description := strings.Join(args[1:], " ")
 
-		// 1. Validate Reward
-		// Ideally check if user has enough GSTD + gas
-		
-		return runAsync(c, "creating bounty task...", func() (string, error) {
+		return runAsync(c, "Creating bounty task via GSTD Network...", func() (string, error) {
 			
-			// 2. AI Refinement (Concierge)
-			prompt := fmt.Sprintf("Act as technical project manager. convert this user request into a strict technical specification for a decentralized worker node. output JSON only. Request: %s", description)
+			// 1. Prepare Request to Backend
+			backendURL := os.Getenv("API_URL")
+			if backendURL == "" { backendURL = "http://ubuntu-backend-blue-1:8080" }
 			
-			// Call AI (Simplified local call or cloud)
-			// For prototype we mock the refinement or use simple text
+			payload := CreateTaskRequest{
+				Type:        "BOUNTY",
+				Operation:   "custom_request",
+				RewardGSTD:  reward,
+				Description: description,
+				Priority:    2, // High priority
+			}
 			
-			taskID := fmt.Sprintf("TASK-%d", time.Now().Unix())
+			bodyBytes, _ := json.Marshal(payload)
 			
-			// 3. Create Task in DB (via Backend API)
-			// Simulate API call to POST /api/v1/tasks
-			// Payload: {type: "BOUNTY", reward_gstd: reward, description: RefinedDesc, ...}
+			// 2. Execute Request (Simulating Auth for now as System Admin)
+			// In production, each user should have a linked wallet and sign the request.
+			// Here the BOt acts as a proxy for the user.
+			req, _ := http.NewRequest("POST", backendURL+"/api/v1/tasks", bytes.NewBuffer(bodyBytes))
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("X-Telegram-User", fmt.Sprintf("%d", c.Sender().ID)) // Context propagation
 			
-			return fmt.Sprintf("✅ **Bounty Created Successfully**\n\n" +
+			client := http.Client{Timeout: 10 * time.Second}
+			resp, err := client.Do(req)
+			if err != nil {
+				return "", fmt.Errorf("Backend connection failed: %v", err)
+			}
+			defer resp.Body.Close()
+			
+			respBody, _ := io.ReadAll(resp.Body)
+			
+			if resp.StatusCode != 201 && resp.StatusCode != 200 {
+				return "", fmt.Errorf("Backend Error (%d): %s", resp.StatusCode, string(respBody))
+			}
+			
+			// 3. Parse Response
+			var taskResp struct {
+				TaskID string `json:"task_id"`
+				Status string `json:"status"`
+			}
+			if err := json.Unmarshal(respBody, &taskResp); err != nil {
+				// Fallback if structure differs
+				taskResp.TaskID = "TASK-ID-UNKNOWN" 
+			}
+
+			return fmt.Sprintf("✅ **Bounty Published to Network**\n\n" +
 				"🆔 **Task ID:** `%s`\n" +
-				"💰 **Locked Reward:** %s GSTD\n" +
+				"💰 **Locked Reward:** %.2f GSTD\n" +
 				"📝 **Specification:**\n> %s\n\n" +
-				"Broadcasted to Workers Network via P2P Feed.", taskID, reward, description), nil
+				"Status: %s\nWaiting for worker pickup...", taskResp.TaskID, reward, description, taskResp.Status), nil
 		})
 	})
 
-    // /my_tasks - Check status of created bounties
+    // /my_tasks - Real fetch from Backend
     b.Handle("/my_tasks", func(c tele.Context) error {
-        // Fetch tasks where creator_id = user_id
-        return c.Send("📋 **Your Active Bounties**\n\n" +
-            "1. `TASK-1737642011` | 500 GSTD | 🟢 IN_PROGRESS (Node: `worker-x92`)\n" +
-            "2. `TASK-1737645522` | 150 GSTD | 🟡 PENDING_EXECUTION")
+        backendURL := os.Getenv("API_URL")
+		if backendURL == "" { backendURL = "http://ubuntu-backend-blue-1:8080" }
+		
+		// Fetch logic... (Simplified for this iteration to focus on creation)
+		return c.Send("📋 **Your Active Bounties**\n\nQuerying Blockchain State...\n(Feature pending Backend User Auth Link)")
     })
-
-    // /take_task [TaskID] - For Workers (Telegram Interface for simple workers)
+    
+    // /take_task (Real Logic)
     b.Handle("/take_task", func(c tele.Context) error {
         args := c.Args()
         if len(args) < 1 { return c.Send("Usage: `/take_task [ID]`") }
         taskID := args[0]
         
-        // 1. Check Collateral
-        // "Checking wallet for 10% Stake..."
-        
-        return c.Send(fmt.Sprintf("🔒 **Stake Required**\n\nTo take task `%s`, you must lock **50 GSTD** collateral.\n\n" +
-            "If you fail or provide bad result, this stake will be burned.\n" +
-            "Do you agree?", taskID), &tele.ReplyMarkup{
+        return c.Send(fmt.Sprintf("🔒 **Stake Required**\n\nTask: `%s`\nCollateral: 10%% of Reward\n\nDo you accept the risk?", taskID), &tele.ReplyMarkup{
             InlineKeyboard: [][]tele.InlineButton{{
-                tele.InlineButton{Text: "✅ Lock & Start", Data: "confirm_take_"+taskID},
+                tele.InlineButton{Text: "✅ Confirm & Lock", Data: "confirm_take_"+taskID},
             }},
         })
     })
 
-    // Callback for taking task
+    // Callback for taking task (Real Backend Call)
     b.Handle(tele.OnCallback, func(c tele.Context) error {
         data := c.Callback().Data
         if strings.HasPrefix(data, "confirm_take_") {
             taskID := strings.TrimPrefix(data, "confirm_take_")
-            c.Respond(&tele.CallbackResponse{Text: "Stake Locked. Timer Started."})
-            return c.Edit(fmt.Sprintf("🚀 **Task %s Started!**\n\nYou have 24 hours to submit result via `/submit_task %s [Link]`.", taskID, taskID))
+			
+			// Call Backend to assign task
+			backendURL := os.Getenv("API_URL")
+			if backendURL == "" { backendURL = "http://ubuntu-backend-blue-1:8080" }
+			
+			req, _ := http.NewRequest("POST", fmt.Sprintf("%s/api/v1/tasks/%s/assign", backendURL, taskID), nil)
+			req.Header.Set("X-Telegram-Worker", fmt.Sprintf("%d", c.Sender().ID))
+			
+			client := http.Client{Timeout: 5 * time.Second}
+			resp, err := client.Do(req)
+			
+			if err != nil || (resp.StatusCode != 200 && resp.StatusCode != 201) {
+				c.Respond(&tele.CallbackResponse{Text: "❌ Failed to take task. Maybe already taken?"})
+				return nil
+			}
+			
+            c.Respond(&tele.CallbackResponse{Text: "Stake Locked. You are the executor."})
+            return c.Edit(fmt.Sprintf("🚀 **Task %s Started!**\n\nYou are now the official executor.\nSubmit result via `/submit_task %s [Link]`.", taskID, taskID))
         }
         return nil
-    })
-
-    // /submit_task [TaskID] [Link/File]
-    b.Handle("/submit_task", func(c tele.Context) error {
-        args := c.Args()
-        if len(args) < 2 { return c.Send("Usage: `/submit_task [ID] [Result Link]`") }
-        
-        return runAsync(c, "Validating Result (AI Arbitrator)...", func() (string, error) {
-            // 1. AI Analysis of the link/file
-            // 2. Schema Validation
-            
-            // Mock Success
-            return "✅ **Submission Received**\n\nAI Validation: **PASS (Score: 98/100)**\n\nFunds (Reward + Stake) will be released to your wallet in 60 seconds.", nil
-        })
     })
 	b.Handle("/upgrade_brain", func(c tele.Context) error {
 		if c.Sender().ID != AdminID { return nil }
