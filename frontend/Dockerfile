@@ -11,13 +11,13 @@ COPY package.json ./
 # Update @twa-dev/sdk to latest if needed
 # Install dependencies - use npm install to handle package-lock.json sync issues
 # Update @twa-dev/sdk to latest if needed
-# RUN npm install --legacy-peer-deps && \
-#     npm list @twa-dev/sdk || npm install @twa-dev/sdk@latest --save
+RUN npm install --legacy-peer-deps && \
+    npm list @twa-dev/sdk || npm install @twa-dev/sdk@latest --save
 
 # Rebuild the source code only when needed
 FROM base AS builder
 WORKDIR /app
-# COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 ARG NEXT_PUBLIC_API_URL

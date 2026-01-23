@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-01-23T09:00:01Z",
+  "generated_at": "2026-01-23T14:00:02Z",
   "status": "healthy",
   "network": {
-    "active_nodes": 1,
+    "active_nodes": 0,
     "active_devices": 0,
-    "estimated_tflops": 1.5,
+    "estimated_tflops": 0,
     "active_countries": "None"
   },
   "audit": {
