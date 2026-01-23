@@ -20,6 +20,7 @@ import { toast } from '../../lib/toast';
 import { Plus, Users, Calculator, Activity, Globe, Server, Wallet, CheckCircle } from 'lucide-react';
 import { apiGet } from '../../lib/apiClient';
 import { ComponentErrorBoundary } from '../common/ComponentErrorBoundary';
+import { workerService } from '../../services/WorkerService';
 
 interface NetworkStats {
   active_workers: number;
@@ -37,6 +38,15 @@ function Dashboard() {
   const [tonConnectUI] = useTonConnectUI();
   const [activeTab, setActiveTab] = useState<Tab>('tasks');
   const [showNewTask, setShowNewTask] = useState(false);
+  const [isMining, setIsMining] = useState(false);
+
+  // Subscribe to worker service state
+  useEffect(() => {
+    const unsub = workerService.subscribe((state) => {
+      setIsMining(state === 'running' || state === 'igniting');
+    });
+    return unsub;
+  }, []);
 
   // Restore previously selected tab
   useEffect(() => {
@@ -75,6 +85,7 @@ function Dashboard() {
     } catch {
       // ignore TonConnect disconnect errors
     } finally {
+      workerService.terminate();
       disconnect();
       router.push('/');
     }
@@ -109,16 +120,6 @@ function Dashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  // Fetch balance on address change
-  useEffect(() => {
-    // We can assume walletStore handles balance fetching internally, 
-    // but here we can trigger a manual refresh if needed or check if the store is synced.
-    // For now, let's just log the change. In a real app, we might call a refetch action.
-    if (address) {
-      console.log('Address changed, balance should update via walletStore logic');
-    }
-  }, [address]);
-
   // Haptic feedback helper
   const triggerHaptic = useCallback((style: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft' = 'medium') => {
     if (typeof window !== 'undefined') {
@@ -127,34 +128,18 @@ function Dashboard() {
     }
   }, []);
 
-  // [MOBILE_WORKER_V2_INTEGRATION]
-  useEffect(() => {
-    // Detect Mobile
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-
-    if (isMobile) {
-      console.log('📱 Mobile Device Detected. Initializing Low-Power Worker...');
-
-      // Create Worker
-      const worker = new Worker('/mobile_worker.js');
-
-      worker.onmessage = (e) => {
-        const { status, result } = e.data;
-        if (status === 'completed') {
-          toast.success('Mobile Mining', `Shares Found: ${result.latency_ms}ms`);
-        } else if (status === 'skipped') {
-          // Silent log
-          console.log('Task skipped to save battery');
-        }
-      };
-
-      // Trigger "Low Battery Mode" notification
-      toast.info('Mobile Mode Active', 'Mining will pause when on battery.');
-
-      return () => worker.terminate();
+  // Handle Mining Toggle
+  const handleToggleMining = useCallback(() => {
+    if (isMining) {
+      workerService.pause();
+      toast.info('Mining Paused', 'Worker stopped processing tasks.');
+    } else {
+      workerService.ignite();
+      // Toast handled by service
     }
-  }, []);
-  // [END_INTEGRATION]
+    triggerHaptic('heavy');
+  }, [isMining, triggerHaptic]);
+
 
   // Callbacks for child components - MUST be at top level, not inside JSX
   const handleStatsUpdate = useCallback((stats: any) => {
@@ -309,20 +294,20 @@ function Dashboard() {
                 </div>
               </div>
 
-              {/* Quick Actions - Simplified */}
+              {/* ACTION BUTTONS */}
               <div className="flex flex-col sm:flex-row gap-4">
                 <button
-                  onClick={() => {
-                    setActiveTab('tasks');
-                    triggerHaptic('medium');
-                  }}
-                  className="flex-1 py-6 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 via-green-600 to-emerald-600 hover:from-emerald-500 hover:via-green-500 hover:to-emerald-500 text-white font-bold tracking-wide shadow-xl shadow-green-900/30 transition-all transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-4 border border-white/20 relative overflow-hidden group"
+                  onClick={handleToggleMining}
+                  className={`flex-1 py-6 px-6 rounded-2xl font-bold tracking-wide shadow-xl transition-all transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-4 border border-white/20 relative overflow-hidden group ${isMining
+                      ? 'bg-gradient-to-r from-red-600 via-rose-600 to-red-600 hover:from-red-500 shadow-red-900/30'
+                      : 'bg-gradient-to-r from-emerald-600 via-green-600 to-emerald-600 hover:from-emerald-500 shadow-green-900/30'
+                    }`}
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-                  <Server className="w-8 h-8 relative z-10" />
+                  {isMining ? <Activity className="w-8 h-8 relative z-10 animate-pulse" /> : <Server className="w-8 h-8 relative z-10" />}
                   <div className="text-left relative z-10">
-                    <span className="block text-xl uppercase tracking-wider">Start Mining</span>
-                    <span className="text-xs font-normal opacity-80">Process Active Tasks</span>
+                    <span className="block text-xl uppercase tracking-wider">{isMining ? 'Stop Mining' : 'Start Mining'}</span>
+                    <span className="text-xs font-normal opacity-80">{isMining ? 'Processing Tasks...' : 'Process Active Tasks'}</span>
                   </div>
                 </button>
                 <button
@@ -335,38 +320,6 @@ function Dashboard() {
               </div>
 
               {/* Network Stats */}
-              {networkStats && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="glass-card p-6 flex items-center space-x-4">
-                    <div className="p-3 rounded-full bg-blue-500/10 text-blue-400">
-                      <Users className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-400">{t('active_workers') || 'Active Workers'}</h3>
-                      <p className="text-2xl font-bold text-white">{networkStats.active_workers}</p>
-                    </div>
-                  </div>
-                  <div className="glass-card p-6 flex items-center space-x-4">
-                    <div className="p-3 rounded-full bg-green-500/10 text-green-400">
-                      <Activity className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-400">{t('stat_tasks') || 'Tasks (24h)'}</h3>
-                      <p className="text-2xl font-bold text-white">{networkStats.tasks_24h}</p>
-                    </div>
-                  </div>
-                  <div className="glass-card p-6 flex items-center space-x-4">
-                    <div className="p-3 rounded-full bg-yellow-500/10 text-yellow-400">
-                      <Calculator className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-400">{t('stat_paid') || 'GSTD Paid'}</h3>
-                      <p className="text-2xl font-bold text-white">{(networkStats.total_gstd_paid || 0).toFixed(2)}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
               <ComponentErrorBoundary name="SystemStatusWidget">
                 <SystemStatusWidget onStatsUpdate={handleStatsUpdate} />
               </ComponentErrorBoundary>
