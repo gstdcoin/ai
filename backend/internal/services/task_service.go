@@ -139,7 +139,7 @@ func (s *TaskService) CreateTask(ctx context.Context, requesterAddress string, d
 	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO tasks (
 			task_id, requester_address, task_type, operation, model,
-			labor_compensation_ton, certainty_gravity_score, status, created_at,
+			labor_compensation_gstd, certainty_gravity_score, status, created_at,
 			escrow_status, min_trust_score, is_private, confidence_depth, 
 			redundancy_factor, is_spot_check, entropy_snapshot
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), 'awaiting', $9, $10, $11, $12, $13, $14)
@@ -153,7 +153,7 @@ func (s *TaskService) CreateTask(ctx context.Context, requesterAddress string, d
 		_, err = s.db.ExecContext(ctx, `
 			INSERT INTO tasks (
 				task_id, requester_address, task_type, operation, model,
-				labor_compensation_ton, priority_score, status, created_at,
+				labor_compensation_gstd, priority_score, status, created_at,
 				escrow_status, min_trust_score, is_private, confidence_depth, 
 				redundancy_factor, is_spot_check, entropy_snapshot
 			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), 'awaiting', $9, $10, $11, $12, $13, $14)
@@ -169,7 +169,7 @@ func (s *TaskService) CreateTask(ctx context.Context, requesterAddress string, d
 	task := &models.Task{
 		TaskID:              taskID,
 		RequesterAddress:    requesterAddress,
-		LaborCompensationTon: finalCompensation,
+		LaborCompensationGSTD: finalCompensation,
 		PriorityScore:        gravityScore,
 		Status:              "awaiting_escrow",
 		MinTrustScore:       descriptor.MinTrust,
@@ -230,7 +230,7 @@ func (s *TaskService) CreateTask(ctx context.Context, requesterAddress string, d
 func (s *TaskService) GetTasks(ctx context.Context, requesterAddress *string) ([]*models.Task, error) {
 	query := `
 		SELECT task_id, requester_address, task_type, operation, model,
-		       labor_compensation_ton, COALESCE(priority_score, 0.0) as gravity_score, status, created_at,
+		       labor_compensation_gstd, COALESCE(priority_score, 0.0) as gravity_score, status, created_at,
 		       COALESCE(escrow_status, 'none') as escrow_status, COALESCE(confidence_depth, 0) as confidence_depth
 		FROM tasks
 	`
@@ -252,7 +252,7 @@ func (s *TaskService) GetTasks(ctx context.Context, requesterAddress *string) ([
 		var t models.Task
 		err := rows.Scan(
 			&t.TaskID, &t.RequesterAddress, &t.TaskType, &t.Operation, &t.Model,
-			&t.LaborCompensationTon, &t.PriorityScore, &t.Status, &t.CreatedAt,
+			&t.LaborCompensationGSTD, &t.PriorityScore, &t.Status, &t.CreatedAt,
 			&t.EscrowStatus, &t.ConfidenceDepth,
 		)
 		if err != nil {
@@ -272,7 +272,7 @@ func (s *TaskService) GetTaskByID(ctx context.Context, taskID string) (*models.T
 	
 	err := s.db.QueryRowContext(ctx, `
 		SELECT task_id, requester_address, task_type, operation, model,
-		       labor_compensation_ton, 
+		       labor_compensation_gstd, 
 		       COALESCE(priority_score, 0.0) as gravity_score,
 		       status, created_at, 
 		       assigned_at, completed_at, timeout_at,
@@ -284,7 +284,7 @@ func (s *TaskService) GetTaskByID(ctx context.Context, taskID string) (*models.T
 		WHERE task_id = $1
 	`, taskID).Scan(
 		&t.TaskID, &t.RequesterAddress, &t.TaskType, &t.Operation, &t.Model,
-		&t.LaborCompensationTon, &gravityScore,
+		&t.LaborCompensationGSTD, &gravityScore,
 		&t.Status, &t.CreatedAt,
 		&assignedAt, &completedAt, &timeoutAt,
 		&t.EscrowStatus, &t.ConfidenceDepth, &assignedDevice, &t.MinTrustScore,

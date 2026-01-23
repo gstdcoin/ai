@@ -15,7 +15,7 @@ type Task struct {
 	InputHash           string     `json:"input_hash" db:"input_hash"`
 	TimeLimitSec        int        `json:"time_limit_sec" db:"constraints_time_limit_sec"`
 	MaxEnergyMwh        int        `json:"max_energy_mwh" db:"constraints_max_energy_mwh"`
-	LaborCompensationTon float64    `json:"labor_compensation_ton" db:"labor_compensation_ton"`
+	LaborCompensationGSTD float64    `json:"labor_compensation_gstd" db:"labor_compensation_gstd"`
 	BudgetGSTD          *float64   `json:"budget_gstd,omitempty" db:"budget_gstd"`
 	RewardGSTD          *float64   `json:"reward_gstd,omitempty" db:"reward_gstd"`
 	DepositID           *string   `json:"deposit_id,omitempty" db:"deposit_id"`
@@ -28,15 +28,15 @@ type Task struct {
 	AssignedAt          *time.Time `json:"assigned_at" db:"assigned_at"`
 	CompletedAt         *time.Time `json:"completed_at" db:"completed_at"`
 	EscrowAddress       string     `json:"escrow_address" db:"escrow_address"`
-	EscrowAmountTon     float64    `json:"escrow_amount_ton" db:"escrow_amount_ton"`
+	EscrowAmountGSTD    float64    `json:"escrow_amount_gstd" db:"escrow_amount_gstd"`
 	AssignedDevice      *string    `json:"assigned_device" db:"assigned_device"`
 	ResultData          *string    `json:"result_data" db:"result_data"`
 	ResultNonce         *string    `json:"result_nonce" db:"result_nonce"`
 	ResultProof         *string    `json:"result_proof" db:"result_proof"`
 	ExecutionTimeMs     *int       `json:"execution_time_ms" db:"execution_time_ms"`
 	ResultSubmittedAt   *time.Time `json:"result_submitted_at" db:"result_submitted_at"`
-	PlatformFeeTon      *float64   `json:"platform_fee_ton" db:"platform_fee_ton"`
-	ExecutorRewardTon   *float64   `json:"executor_reward_ton" db:"executor_reward_ton"`
+	PlatformFeeGSTD     *float64   `json:"platform_fee_gstd" db:"platform_fee_gstd"`
+	ExecutorRewardGSTD  *float64   `json:"executor_reward_gstd" db:"executor_reward_gstd"`
 	TimeoutAt           *time.Time `json:"timeout_at" db:"timeout_at"`
 	EscrowStatus        string     `json:"escrow_status" db:"escrow_status"`
 	MinTrustScore       float64    `json:"min_trust_score" db:"min_trust_score"`
@@ -83,7 +83,7 @@ type Constraints struct {
 }
 
 type Reward struct {
-	AmountTon float64 `json:"amount_ton"`
+	AmountGSTD float64 `json:"amount_gstd"`
 }
 
 
