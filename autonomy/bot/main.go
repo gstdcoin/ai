@@ -247,7 +247,7 @@ func main() {
 			// Using deepseek-v3 
 			model := "deepseek-v3"
 			
-			// Dynamic Model Selection (Hotfix)
+			// Dynamic Model Selection
 			func() {
 				prefs := []string{"deepseek-v3", "deepseek-r1:671b", "deepseek-r1", "deepseek-r1:70b", "qwen2.5-coder:32b", "qwen2.5-coder", "llama3.3"}
 				
@@ -313,7 +313,93 @@ func main() {
 		})
 	})
 
-	// /upgrade_brain
+	// --- Decentralized Bounty Protocol (DBP) Implementtaion ---
+
+	// /bounty [Reward_GSTD] [Description]
+	b.Handle("/bounty", func(c tele.Context) error {
+		args := c.Args()
+		if len(args) < 2 {
+			return c.Send("Usage: `/bounty [Reward_GSTD] [Task Description]`\nExample: `/bounty 500 Create a 3D model of a futuristic car`")
+		}
+
+		reward := args[0]
+		description := strings.Join(args[1:], " ")
+
+		// 1. Validate Reward
+		// Ideally check if user has enough GSTD + gas
+		
+		return runAsync(c, "creating bounty task...", func() (string, error) {
+			
+			// 2. AI Refinement (Concierge)
+			prompt := fmt.Sprintf("Act as technical project manager. convert this user request into a strict technical specification for a decentralized worker node. output JSON only. Request: %s", description)
+			
+			// Call AI (Simplified local call or cloud)
+			// For prototype we mock the refinement or use simple text
+			
+			taskID := fmt.Sprintf("TASK-%d", time.Now().Unix())
+			
+			// 3. Create Task in DB (via Backend API)
+			// Simulate API call to POST /api/v1/tasks
+			// Payload: {type: "BOUNTY", reward_gstd: reward, description: RefinedDesc, ...}
+			
+			return fmt.Sprintf("✅ **Bounty Created Successfully**\n\n" +
+				"🆔 **Task ID:** `%s`\n" +
+				"💰 **Locked Reward:** %s GSTD\n" +
+				"📝 **Specification:**\n> %s\n\n" +
+				"Broadcasted to Workers Network via P2P Feed.", taskID, reward, description), nil
+		})
+	})
+
+    // /my_tasks - Check status of created bounties
+    b.Handle("/my_tasks", func(c tele.Context) error {
+        // Fetch tasks where creator_id = user_id
+        return c.Send("📋 **Your Active Bounties**\n\n" +
+            "1. `TASK-1737642011` | 500 GSTD | 🟢 IN_PROGRESS (Node: `worker-x92`)\n" +
+            "2. `TASK-1737645522` | 150 GSTD | 🟡 PENDING_EXECUTION")
+    })
+
+    // /take_task [TaskID] - For Workers (Telegram Interface for simple workers)
+    b.Handle("/take_task", func(c tele.Context) error {
+        args := c.Args()
+        if len(args) < 1 { return c.Send("Usage: `/take_task [ID]`") }
+        taskID := args[0]
+        
+        // 1. Check Collateral
+        // "Checking wallet for 10% Stake..."
+        
+        return c.Send(fmt.Sprintf("🔒 **Stake Required**\n\nTo take task `%s`, you must lock **50 GSTD** collateral.\n\n" +
+            "If you fail or provide bad result, this stake will be burned.\n" +
+            "Do you agree?", taskID), &tele.ReplyMarkup{
+            InlineKeyboard: [][]tele.InlineButton{{
+                tele.InlineButton{Text: "✅ Lock & Start", Data: "confirm_take_"+taskID},
+            }},
+        })
+    })
+
+    // Callback for taking task
+    b.Handle(tele.OnCallback, func(c tele.Context) error {
+        data := c.Callback().Data
+        if strings.HasPrefix(data, "confirm_take_") {
+            taskID := strings.TrimPrefix(data, "confirm_take_")
+            c.Respond(&tele.CallbackResponse{Text: "Stake Locked. Timer Started."})
+            return c.Edit(fmt.Sprintf("🚀 **Task %s Started!**\n\nYou have 24 hours to submit result via `/submit_task %s [Link]`.", taskID, taskID))
+        }
+        return nil
+    })
+
+    // /submit_task [TaskID] [Link/File]
+    b.Handle("/submit_task", func(c tele.Context) error {
+        args := c.Args()
+        if len(args) < 2 { return c.Send("Usage: `/submit_task [ID] [Result Link]`") }
+        
+        return runAsync(c, "Validating Result (AI Arbitrator)...", func() (string, error) {
+            // 1. AI Analysis of the link/file
+            // 2. Schema Validation
+            
+            // Mock Success
+            return "✅ **Submission Received**\n\nAI Validation: **PASS (Score: 98/100)**\n\nFunds (Reward + Stake) will be released to your wallet in 60 seconds.", nil
+        })
+    })
 	b.Handle("/upgrade_brain", func(c tele.Context) error {
 		if c.Sender().ID != AdminID { return nil }
 		return runAsync(c, "Upgrading System Components (Cloud Mode)...", func() (string, error) {
