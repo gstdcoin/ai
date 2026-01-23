@@ -59,3 +59,24 @@ else
         send_telegram "❌ GSTD Sentinel: Recovery FAILED! Manual intervention required."
     fi
 fi
+
+# Check Bot Health
+BOT_STATUS=$(docker inspect -f '{{.State.Status}}' gstd_bot 2>/dev/null)
+
+if [ "$BOT_STATUS" != "running" ]; then
+    log "⚠️ ALERT: Bot container is $BOT_STATUS. Restarting..."
+    docker restart gstd_bot
+    send_telegram "🤖 GSTD Sentinel: Bot was down. Autonomous restart triggered."
+fi
+
+# 🛡️ File Integrity Check (Zero Trust)
+CRITICAL_FILE="/home/ubuntu/backend/internal/api/routes.go"
+# Known good hash (This should be updated on deploy, for now we check if file exists and size > 0)
+if [ -s "$CRITICAL_FILE" ]; then
+    # In a real scenario, we would compare against a stored hash
+    # CURRENT_HASH=$(md5sum "$CRITICAL_FILE" | awk '{print $1}')
+    # if [ "$CURRENT_HASH" != "$KNOWN_HASH" ]; then send_telegram "🚨 SECURITY ALERT: Core file modified!"; fi
+    : # pass
+else
+    send_telegram "🚨 CRITICAL: Core system file missing!"
+fi

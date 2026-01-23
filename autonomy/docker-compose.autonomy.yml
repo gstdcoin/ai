@@ -41,7 +41,10 @@ services:
       - ubuntu_gstd_network
 
   bot:
-    image: golang:1.24
+    build:
+      context: ./bot
+      dockerfile: Dockerfile
+    image: gstd_bot_image
     container_name: gstd_bot
     working_dir: /app
     volumes:
