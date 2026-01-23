@@ -136,7 +136,7 @@ func (h *WSHub) handleRedisMessages() {
 			TaskType:            taskType,
 			Status:              status,
 			RequesterAddress:    getStringFromPayload(payload, "requester_address"),
-			LaborCompensationTon: getFloatFromPayload(payload, "labor_compensation"),
+			LaborCompensationGSTD: getFloatFromPayload(payload, "labor_compensation"),
 			PriorityScore:        getFloatFromPayload(payload, "gravity_score"),
 		}
 		

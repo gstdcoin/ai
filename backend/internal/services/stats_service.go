@@ -30,7 +30,7 @@ func (s *StatsService) GetGlobalStats(ctx context.Context) (*GlobalStats, error)
 	stats.ProcessingTasks = 0
 	stats.QueuedTasks = 0
 	stats.CompletedTasks = 0
-	stats.TotalRewardsTon = 0.0
+	stats.TotalRewardsGSTD = 0.0
 	stats.ActiveDevicesCount = 0
 	stats.TotalTFLOPS = 0.0
 	stats.ActiveCountries = 0

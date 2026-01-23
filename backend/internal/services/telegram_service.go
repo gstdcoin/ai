@@ -78,18 +78,18 @@ func (s *TelegramService) SendMessage(ctx context.Context, text string) error {
 }
 
 // NotifyNewTask sends a notification about a new task
-func (s *TelegramService) NotifyNewTask(ctx context.Context, taskID, taskType, requester string, rewardTON float64) error {
+func (s *TelegramService) NotifyNewTask(ctx context.Context, taskID, taskType, requester string, rewardGSTD float64) error {
 	message := fmt.Sprintf(
 		"🆕 <b>Новая задача создана</b>\n\n"+
 			"📋 <b>Тип:</b> %s\n"+
 			"🆔 <b>ID:</b> <code>%s</code>\n"+
 			"👤 <b>Создатель:</b> <code>%s</code>\n"+
-			"💰 <b>Награда:</b> %.6f TON\n"+
+			"💰 <b>Награда:</b> %.6f GSTD\n"+
 			"⏰ <b>Время:</b> %s",
 		taskType,
 		taskID,
 		requester,
-		rewardTON,
+		rewardGSTD,
 		time.Now().Format("2006-01-02 15:04:05"),
 	)
 
@@ -97,18 +97,18 @@ func (s *TelegramService) NotifyNewTask(ctx context.Context, taskID, taskType, r
 }
 
 // NotifyTaskCompleted sends a notification about a completed task
-func (s *TelegramService) NotifyTaskCompleted(ctx context.Context, taskID, taskType, executor string, rewardTON float64) error {
+func (s *TelegramService) NotifyTaskCompleted(ctx context.Context, taskID, taskType, executor string, rewardGSTD float64) error {
 	message := fmt.Sprintf(
 		"✅ <b>Задача выполнена</b>\n\n"+
 			"📋 <b>Тип:</b> %s\n"+
 			"🆔 <b>ID:</b> <code>%s</code>\n"+
 			"👷 <b>Исполнитель:</b> <code>%s</code>\n"+
-			"💰 <b>Награда:</b> %.6f TON\n"+
+			"💰 <b>Награда:</b> %.6f GSTD\n"+
 			"⏰ <b>Время:</b> %s",
 		taskType,
 		taskID,
 		executor,
-		rewardTON,
+		rewardGSTD,
 		time.Now().Format("2006-01-02 15:04:05"),
 	)
 
