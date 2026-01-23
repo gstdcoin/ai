@@ -72,7 +72,7 @@ func (s *TaskService) BroadcastTaskToHub(ctx context.Context, task *models.Task)
 			"requester_address":    task.RequesterAddress,
 			"task_type":            task.TaskType,
 			"operation":            task.Operation,
-			"labor_compensation":   task.LaborCompensationTon,
+			"labor_compensation":   task.LaborCompensationGSTD,
 			"gravity_score":        task.PriorityScore,
 			"min_trust_score":      task.MinTrustScore,
 			"redundancy_factor":   task.RedundancyFactor,
@@ -116,7 +116,7 @@ func (s *TaskService) CreateTask(ctx context.Context, requesterAddress string, d
 	entropy, _ := s.entropyService.GetEntropy(ctx, descriptor.Operation)
 
 	// Physics-based Gravity Score (EGS v3)
-	gravityScore := s.gravityService.CalculateEGS(descriptor.Reward.AmountTon, gstdBalance, entropy)
+	gravityScore := s.gravityService.CalculateEGS(descriptor.Reward.AmountGSTD, gstdBalance, entropy)
 
 	// Dynamic Redundancy Factor
 	redundancy := s.gravityService.CalculateDynamicRedundancy(entropy, 0.9)
@@ -132,7 +132,7 @@ func (s *TaskService) CreateTask(ctx context.Context, requesterAddress string, d
 		redundancy = 3
 	}
 
-	finalCompensation := s.efficiencyService.CalculateTaskCost(descriptor.Reward.AmountTon, gstdBalance)
+	finalCompensation := s.efficiencyService.CalculateTaskCost(descriptor.Reward.AmountGSTD, gstdBalance)
 	confidenceDepth := int(math.Floor(1 + math.Log10(1+gstdBalance/10000.0)))
 
 	// Insert task - try with certainty_gravity_score first (priority_score was renamed)
