@@ -99,7 +99,7 @@ func (s *TaskPaymentService) SubmitWorkerResult(
 	// Get task with row-level lock (FOR UPDATE) to prevent concurrent submissions
 	var task models.Task
 	var creatorWallet, depositID, paymentMemo, payload sql.NullString
-	var budgetGSTD, rewardGSTD sql.NullFloat64
+	var budgetScan, rewardScan sql.NullFloat64
 	var currentStatus string
 	var assignedDevice sql.NullString
 
@@ -116,8 +116,8 @@ func (s *TaskPaymentService) SubmitWorkerResult(
 		&task.RequesterAddress,
 		&task.TaskType,
 		&currentStatus,
-		&budgetGSTD,
-		&rewardGSTD,
+		&budgetScan,
+		&rewardScan,
 		&depositID,
 		&paymentMemo,
 		&payload,
@@ -240,11 +240,11 @@ func (s *TaskPaymentService) SubmitWorkerResult(
 	if creatorWallet.Valid {
 		task.CreatorWallet = &creatorWallet.String
 	}
-	if budgetGSTD.Valid {
-		task.BudgetGSTD = &budgetGSTD.Float64
+	if budgetScan.Valid {
+		task.BudgetGSTD = &budgetScan.Float64
 	}
-	if rewardGSTD.Valid {
-		task.RewardGSTD = &rewardGSTD.Float64
+	if rewardScan.Valid {
+		task.RewardGSTD = &rewardScan.Float64
 	}
 	task.Status = "completed"
 
@@ -266,10 +266,10 @@ func (s *TaskPaymentService) SubmitWorkerResult(
 	if taskType == "" {
 		taskType = "unknown"
 	}
-	rewardTON := task.LaborCompensationTon
-	if rewardTON == 0 && task.RewardGSTD != nil {
-		// Fallback to GSTD reward if TON reward not available
-		rewardTON = *task.RewardGSTD
+	rewardGSTD := task.LaborCompensationGSTD
+	if rewardGSTD == 0 && task.RewardGSTD != nil {
+		// Fallback to GSTD reward if not available
+		rewardGSTD = *task.RewardGSTD
 	}
 	
 	// Get telegram service from TaskPaymentService if available
