@@ -14,14 +14,14 @@ interface TaskDetails {
   task_type: string;
   status: string;
   escrow_status: string;
-  labor_compensation_ton: number;
+  labor_compensation_gstd: number;
   created_at: string;
   assigned_at?: string;
   completed_at?: string;
   assigned_device?: string;
   execution_time_ms?: number;
-  platform_fee_ton?: number;
-  executor_reward_ton?: number;
+  platform_fee_gstd?: number;
+  executor_reward_gstd?: number;
   priority_score?: number;
   executor_payout_status?: string;
   min_trust_score?: number;
@@ -62,7 +62,7 @@ function TaskDetailsModal({ taskId, onClose }: TaskDetailsModalProps) {
         `/device/tasks/${taskId}/result`,
         { requester_address: address }
       );
-      
+
       if (data && data.result) {
         setResult(data.result);
       }
@@ -127,11 +127,10 @@ function TaskDetailsModal({ taskId, onClose }: TaskDetailsModalProps) {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 {t('escrow_status')}
               </label>
-              <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                task.escrow_status === 'locked' ? 'bg-green-100 text-green-800' :
-                task.escrow_status === 'awaiting' ? 'bg-yellow-100 text-yellow-800' :
-                'bg-gray-100 text-gray-800'
-              }`}>
+              <span className={`px-3 py-1 rounded-full text-sm font-semibold ${task.escrow_status === 'locked' ? 'bg-green-100 text-green-800' :
+                  task.escrow_status === 'awaiting' ? 'bg-yellow-100 text-yellow-800' :
+                    'bg-gray-100 text-gray-800'
+                }`}>
                 {t(task.escrow_status)}
               </span>
             </div>
@@ -155,7 +154,7 @@ function TaskDetailsModal({ taskId, onClose }: TaskDetailsModalProps) {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 {t('labor_compensation')}
               </label>
-              <div className="text-sm text-gray-600">{task.labor_compensation_ton} TON</div>
+              <div className="text-sm text-gray-600">{task.labor_compensation_gstd} GSTD</div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -189,21 +188,21 @@ function TaskDetailsModal({ taskId, onClose }: TaskDetailsModalProps) {
           )}
 
           {/* Выплаты */}
-          {task.platform_fee_ton && task.executor_reward_ton && (
+          {task.platform_fee_gstd && task.executor_reward_gstd && (
             <div className="border-t pt-4">
               <h3 className="font-semibold mb-2">{t('payment_breakdown')}</h3>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span>{t('executor_compensation') || t('executor_reward')}:</span>
-                  <span className="font-medium">{task.executor_reward_ton} TON</span>
+                  <span className="font-medium">{task.executor_reward_gstd} GSTD</span>
                 </div>
                 <div className="flex justify-between">
                   <span>{t('platform_fee')}:</span>
-                  <span className="font-medium">{task.platform_fee_ton} TON</span>
+                  <span className="font-medium">{task.platform_fee_gstd} GSTD</span>
                 </div>
                 <div className="flex justify-between font-semibold border-t pt-2">
                   <span>{t('total')}:</span>
-                  <span>{task.labor_compensation_ton} TON</span>
+                  <span>{task.labor_compensation_gstd} GSTD</span>
                 </div>
               </div>
             </div>

@@ -16,7 +16,7 @@ interface Stats {
   processing_tasks: number;
   queued_tasks: number;
   completed_tasks: number;
-  total_rewards_ton: number;
+  total_rewards_gstd: number;
   active_devices_count: number;
 }
 
@@ -33,7 +33,7 @@ interface PoolStatus {
 interface TaskCompletionData {
   date: string;
   count: number;
-  ton: number;
+  gstd: number;
 }
 
 export default function StatsPanel() {
@@ -180,7 +180,7 @@ export default function StatsPanel() {
     },
     {
       label: t('total_compensation'),
-      value: `${(stats?.total_rewards_ton || 0).toFixed(2)} TON`,
+      value: `${(stats?.total_rewards_gstd || 0).toFixed(2)} GSTD`,
       color: 'text-indigo-400',
       borderColor: 'border-indigo-500/30',
       bgColor: 'bg-indigo-500/10',
@@ -276,13 +276,13 @@ export default function StatsPanel() {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={completionData.map(item => ({
                   name: new Date(item.date).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }),
-                  ton: item.ton,
+                  gstd: item.gstd,
                 }))}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.1)" />
                   <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} />
                   <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} />
                   <Tooltip
-                    formatter={(value: any) => `${value.toFixed(6)} TON`}
+                    formatter={(value: any) => `${value.toFixed(6)} GSTD`}
                     contentStyle={{
                       backgroundColor: 'rgba(0, 0, 0, 0.8)',
                       border: '1px solid rgba(255, 255, 255, 0.1)',
@@ -290,7 +290,7 @@ export default function StatsPanel() {
                       color: '#fff'
                     }}
                   />
-                  <Bar dataKey="ton" fill="#fbbf24" radius={[4, 4, 0, 0]} barSize={30} />
+                  <Bar dataKey="gstd" fill="#fbbf24" radius={[4, 4, 0, 0]} barSize={30} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (

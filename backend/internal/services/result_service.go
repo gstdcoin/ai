@@ -43,10 +43,10 @@ func (s *ResultService) SubmitResult(ctx context.Context, req SubmitResultReques
 	var task models.Task
 	var assignedDevice sql.NullString
 	err := s.db.QueryRowContext(ctx, `
-		SELECT task_id, requester_address, status, assigned_device, labor_compensation_ton
+		SELECT task_id, requester_address, status, assigned_device, labor_compensation_gstd
 		FROM tasks WHERE task_id = $1
 	`, req.TaskID).Scan(
-		&task.TaskID, &task.RequesterAddress, &task.Status, &assignedDevice, &task.LaborCompensationTon,
+		&task.TaskID, &task.RequesterAddress, &task.Status, &assignedDevice, &task.LaborCompensationGSTD,
 	)
 	if err != nil {
 		return fmt.Errorf("task not found: %w", err)
@@ -148,10 +148,10 @@ func (s *ResultService) ProcessPayment(ctx context.Context, taskID string) error
 	var task models.Task
 	var assignedDevice sql.NullString
 	err := s.db.QueryRowContext(ctx, `
-		SELECT task_id, requester_address, assigned_device, labor_compensation_ton, status
+		SELECT task_id, requester_address, assigned_device, labor_compensation_gstd, status
 		FROM tasks WHERE task_id = $1
 	`, taskID).Scan(
-		&task.TaskID, &task.RequesterAddress, &assignedDevice, &task.LaborCompensationTon, &task.Status,
+		&task.TaskID, &task.RequesterAddress, &assignedDevice, &task.LaborCompensationGSTD, &task.Status,
 	)
 	if err != nil {
 		return err
@@ -167,8 +167,8 @@ func (s *ResultService) ProcessPayment(ctx context.Context, taskID string) error
 	}
 
 	// Calculate platform fee
-	platformFee := task.LaborCompensationTon * (s.tonConfig.PlatformFeePercent / 100.0)
-	executorReward := task.LaborCompensationTon - platformFee
+	platformFee := task.LaborCompensationGSTD * (s.tonConfig.PlatformFeePercent / 100.0)
+	executorReward := task.LaborCompensationGSTD - platformFee
 
 	// Payments are handled via pull-model (executor claims via escrow contract)
 	// No direct payment processing needed here - executor calls BuildPayoutIntent and claims via TonConnect
@@ -179,8 +179,8 @@ func (s *ResultService) ProcessPayment(ctx context.Context, taskID string) error
 		UPDATE tasks 
 		SET status = 'completed',
 		    completed_at = NOW(),
-		    platform_fee_ton = $1,
-		    executor_reward_ton = $2
+		    platform_fee_gstd = $1,
+		    executor_reward_gstd = $2
 		WHERE task_id = $3
 	`, platformFee, executorReward, taskID)
 
@@ -189,8 +189,8 @@ func (s *ResultService) ProcessPayment(ctx context.Context, taskID string) error
 	}
 
 	// Log successful update with reward information
-	log.Printf("✅ Task %s completed: executor_reward_ton=%.9f, platform_fee_ton=%.9f, total_compensation=%.9f",
-		taskID, executorReward, platformFee, task.LaborCompensationTon)
+	log.Printf("✅ Task %s completed: executor_reward_gstd=%.9f, platform_fee_gstd=%.9f, total_compensation=%.9f",
+		taskID, executorReward, platformFee, task.LaborCompensationGSTD)
 
 	return nil
 }

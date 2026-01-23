@@ -22,7 +22,7 @@ export default function CreateTaskModal({ onClose, onTaskCreated }: CreateTaskMo
     input_hash: '',
     time_limit_sec: 5,
     max_energy_mwh: 10,
-    labor_compensation_ton: 0.05,
+    labor_compensation_gstd: 0.05,
     validation_method: 'majority',
     min_trust: 0.1,
     is_private: false,
@@ -48,7 +48,7 @@ export default function CreateTaskModal({ onClose, onTaskCreated }: CreateTaskMo
           input_hash: formData.input_hash,
           time_limit_sec: formData.time_limit_sec,
           max_energy_mwh: formData.max_energy_mwh,
-          labor_compensation_ton: formData.labor_compensation_ton,
+          labor_compensation_gstd: formData.labor_compensation_gstd,
           validation_method: formData.validation_method,
           min_trust: formData.min_trust,
           is_private: formData.is_private
@@ -162,14 +162,14 @@ export default function CreateTaskModal({ onClose, onTaskCreated }: CreateTaskMo
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              {t('labor_compensation')} (TON)
+              {t('labor_compensation')} (GSTD)
             </label>
             <input
               type="number"
               step="0.001"
               min="0.01"
-              value={formData.labor_compensation_ton}
-              onChange={(e) => setFormData({ ...formData, labor_compensation_ton: parseFloat(e.target.value) })}
+              value={formData.labor_compensation_gstd}
+              onChange={(e) => setFormData({ ...formData, labor_compensation_gstd: parseFloat(e.target.value) })}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
               required
             />

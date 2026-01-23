@@ -273,7 +273,7 @@ export default function Home() {
                 <ul className="space-y-4 mb-6">
                   {[
                     t('creator_1') || 'Create tasks via Web UI, REST API, or SDK',
-                    t('creator_2') || 'Pay only for completed work in TON',
+                    t('creator_2') || 'Pay only for completed work in GSTD',
                     t('creator_3') || 'Real-time status and result delivery',
                     t('creator_4') || 'Cryptographic proof of execution',
                   ].map((item, i) => (
@@ -301,7 +301,7 @@ export default function Home() {
                   {[
                     t('worker_1') || 'Register any device as computing node',
                     t('worker_2') || 'Automatic task assignment based on capability',
-                    t('worker_3') || 'Instant withdrawals in TON',
+                    t('worker_3') || 'Instant withdrawals in GSTD',
                     t('worker_4') || 'Build reputation for premium tasks',
                   ].map((item, i) => (
                     <li key={i} className="flex items-start gap-3 text-gray-300">

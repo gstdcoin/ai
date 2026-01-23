@@ -17,7 +17,7 @@ type GlobalStats struct {
 	ProcessingTasks    int     `json:"processing_tasks"`
 	QueuedTasks        int     `json:"queued_tasks"`
 	CompletedTasks     int     `json:"completed_tasks"`
-	TotalRewardsTon    float64 `json:"total_rewards_ton"`
+	TotalRewardsGSTD   float64 `json:"total_rewards_gstd"`
 	ActiveDevicesCount int     `json:"active_devices_count"`
 	TotalTFLOPS        float64 `json:"total_tflops"`
 	ActiveCountries    int     `json:"active_countries"`
@@ -59,12 +59,12 @@ func (s *StatsService) GetGlobalStats(ctx context.Context) (*GlobalStats, error)
 		stats.CompletedTasks = 0
 	}
 
-	// 4. Total rewards paid (using labor_compensation_ton)
+	// 4. Total rewards paid (using labor_compensation_gstd)
 	err = s.db.QueryRowContext(ctx, `
-		SELECT COALESCE(SUM(labor_compensation_ton), 0) FROM tasks WHERE status = 'completed'
-	`).Scan(&stats.TotalRewardsTon)
+		SELECT COALESCE(SUM(labor_compensation_gstd), 0) FROM tasks WHERE status = 'completed'
+	`).Scan(&stats.TotalRewardsGSTD)
 	if err != nil {
-		stats.TotalRewardsTon = 0.0
+		stats.TotalRewardsGSTD = 0.0
 	}
 
 	// 5. Active devices count & TFLOPS estimation
@@ -134,7 +134,7 @@ func (s *StatsService) GetNetworkStats(ctx context.Context) (*NetworkStats, erro
 
 	// 2. Total GSTD paid (all time)
 	err = s.db.QueryRowContext(ctx, `
-		SELECT COALESCE(SUM(labor_compensation_ton), 0) FROM tasks WHERE status = 'completed'
+		SELECT COALESCE(SUM(labor_compensation_gstd), 0) FROM tasks WHERE status = 'completed'
 	`).Scan(&stats.TotalGSTDPaid)
 	if err != nil {
 		stats.TotalGSTDPaid = 0
@@ -155,7 +155,7 @@ func (s *StatsService) GetNetworkStats(ctx context.Context) (*NetworkStats, erro
 type TaskCompletionData struct {
 	Date  string `json:"date"`
 	Count int    `json:"count"`
-	TON   float64 `json:"ton"`
+	GSTD  float64 `json:"gstd"`
 }
 
 // GetTaskCompletionHistory returns task completion data grouped by time period
@@ -175,7 +175,7 @@ func (s *StatsService) GetTaskCompletionHistory(ctx context.Context, period stri
 			SELECT 
 				TO_CHAR(completed_at, 'YYYY-MM-DD HH24:00') as date,
 				COUNT(*) as count,
-				COALESCE(SUM(labor_compensation_ton), 0) as ton
+				COALESCE(SUM(labor_compensation_gstd), 0) as gstd
 			FROM tasks
 			WHERE status = 'completed' 
 				AND completed_at > NOW() - INTERVAL '24 hours'
@@ -188,7 +188,7 @@ func (s *StatsService) GetTaskCompletionHistory(ctx context.Context, period stri
 			SELECT 
 				TO_CHAR(completed_at, 'YYYY-MM-DD') as date,
 				COUNT(*) as count,
-				COALESCE(SUM(labor_compensation_ton), 0) as ton
+				COALESCE(SUM(labor_compensation_gstd), 0) as gstd
 			FROM tasks
 			WHERE status = 'completed' 
 				AND completed_at > NOW() - INTERVAL '30 days'
@@ -201,7 +201,7 @@ func (s *StatsService) GetTaskCompletionHistory(ctx context.Context, period stri
 			SELECT 
 				TO_CHAR(DATE_TRUNC('week', completed_at), 'YYYY-MM-DD') as date,
 				COUNT(*) as count,
-				COALESCE(SUM(labor_compensation_ton), 0) as ton
+				COALESCE(SUM(labor_compensation_gstd), 0) as gstd
 			FROM tasks
 			WHERE status = 'completed' 
 				AND completed_at > NOW() - INTERVAL '12 weeks'
@@ -214,7 +214,7 @@ func (s *StatsService) GetTaskCompletionHistory(ctx context.Context, period stri
 			SELECT 
 				TO_CHAR(completed_at, 'YYYY-MM-DD') as date,
 				COUNT(*) as count,
-				COALESCE(SUM(labor_compensation_ton), 0) as ton
+				COALESCE(SUM(labor_compensation_gstd), 0) as gstd
 			FROM tasks
 			WHERE status = 'completed' 
 				AND completed_at > NOW() - INTERVAL '30 days'
@@ -232,7 +232,7 @@ func (s *StatsService) GetTaskCompletionHistory(ctx context.Context, period stri
 
 	for rows.Next() {
 		var item TaskCompletionData
-		if err := rows.Scan(&item.Date, &item.Count, &item.TON); err != nil {
+		if err := rows.Scan(&item.Date, &item.Count, &item.GSTD); err != nil {
 			// Skip invalid rows but continue processing
 			continue
 		}

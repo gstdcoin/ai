@@ -257,7 +257,7 @@ func GetOpenAPISpec() gin.HandlerFunc {
               "address": {
                 "type": "string"
               },
-              "balance_ton": {
+              "balance_gstd": {
                 "type": "number"
               },
               "status": {
@@ -284,7 +284,7 @@ func GetOpenAPISpec() gin.HandlerFunc {
             "type": "string",
             "enum": ["pending", "assigned", "executing", "validating", "completed", "failed"]
           },
-          "labor_compensation_ton": {
+          "labor_compensation_gstd": {
             "type": "number"
           },
           "created_at": {
@@ -295,7 +295,7 @@ func GetOpenAPISpec() gin.HandlerFunc {
       },
       "CreateTaskRequest": {
         "type": "object",
-        "required": ["task_type", "operation", "labor_compensation_ton"],
+        "required": ["task_type", "operation", "labor_compensation_gstd"],
         "properties": {
           "task_type": {
             "type": "string"
@@ -309,7 +309,7 @@ func GetOpenAPISpec() gin.HandlerFunc {
           "input_source": {
             "type": "string"
           },
-          "labor_compensation_ton": {
+          "labor_compensation_gstd": {
             "type": "number",
             "minimum": 0.001
           },

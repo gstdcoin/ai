@@ -53,7 +53,7 @@ Content-Type: application/json
     "prompt": "Your prompt here",
     "max_tokens": 100
   },
-  "budget_ton": 0.5,
+  "budget_gstd": 0.5,
   "priority": 10,
   "min_trust_score": 0.8
 }

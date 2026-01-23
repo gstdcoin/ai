@@ -14,7 +14,7 @@ export interface TaskNotification {
     input_hash: string;
     constraints_time_limit_sec: number;
     constraints_max_energy_mwh: number;
-    labor_compensation_ton: number;
+    labor_compensation_gstd: number;
     min_trust_score: number;
     redundancy_factor: number;
   };

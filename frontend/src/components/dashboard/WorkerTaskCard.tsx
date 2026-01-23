@@ -14,7 +14,7 @@ interface WorkerTaskCardProps {
     task_id: string;
     task_type: string;
     status: string;
-    labor_compensation_ton: number;
+    labor_compensation_gstd: number;
     created_at: string;
     payload?: any;
   };
@@ -147,7 +147,7 @@ export default function WorkerTaskCard({ task, onTaskCompleted }: WorkerTaskCard
           </div>
           <div className="text-right ml-4">
             <p className="text-sm font-semibold text-gold-900">
-              {task.labor_compensation_ton.toFixed(6)} TON
+              {task.labor_compensation_gstd.toFixed(6)} GSTD
             </p>
             <p className="text-xs text-gray-400">{t('reward')}</p>
           </div>

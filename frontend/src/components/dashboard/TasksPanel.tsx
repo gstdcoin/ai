@@ -15,7 +15,7 @@ interface Task {
   task_id: string;
   task_type: string;
   status: string;
-  labor_compensation_ton: number;
+  labor_compensation_gstd: number;
   created_at: string;
   completed_at?: string;
   assigned_device?: string;
@@ -26,8 +26,8 @@ interface Task {
   priority_score?: number;
   escrow_status?: string;
   confidence_depth?: number;
-  executor_reward_ton?: number;
-  platform_fee_ton?: number;
+  executor_reward_gstd?: number;
+  platform_fee_gstd?: number;
   executor_payout_status?: string;
   min_trust_score?: number;
   is_private?: boolean;
@@ -276,8 +276,8 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
       interface PayoutIntent {
         intent: string;
         executor_address: string;
-        platform_fee_ton: number;
-        executor_reward_ton: number;
+        platform_fee_gstd: number;
+        executor_reward_gstd: number;
         task_id: string;
         to_address: string;
         amount_nano: string;
@@ -294,9 +294,9 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
       // Parse executor address
       const executorAddress = Address.parse(intent.executor_address);
 
-      // Convert TON amounts to nanoTON (1 TON = 1e9 nanoTON)
-      const platformFeeNano = BigInt(Math.floor(intent.platform_fee_ton * 1e9));
-      const executorRewardNano = BigInt(Math.floor(intent.executor_reward_ton * 1e9));
+      // Convert GSTD amounts to nano (1 token = 1e9 nano)
+      const platformFeeNano = BigInt(Math.floor(intent.platform_fee_gstd * 1e9));
+      const executorRewardNano = BigInt(Math.floor(intent.executor_reward_gstd * 1e9));
 
       // Build cell matching escrow.tact Withdraw message structure:
       // [op_code (32u), executor_address (MsgAddress), platform_fee (Coins), executor_reward (Coins), task_id (Ref->String)]
@@ -530,7 +530,7 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
                       </span>
                     </td>
                     <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-300 hidden md:table-cell">
-                      {task.labor_compensation_ton} TON
+                      {task.labor_compensation_gstd} GSTD
                     </td>
                     <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-400 hidden lg:table-cell">
                       {new Date(task.created_at).toLocaleString()}
@@ -604,7 +604,7 @@ const MemoizedWorkerTaskCard = memo(WorkerTaskCard, (prevProps, nextProps) => {
   return (
     prevProps.task.task_id === nextProps.task.task_id &&
     prevProps.task.status === nextProps.task.status &&
-    prevProps.task.labor_compensation_ton === nextProps.task.labor_compensation_ton &&
+    prevProps.task.labor_compensation_gstd === nextProps.task.labor_compensation_gstd &&
     JSON.stringify(prevProps.task.payload) === JSON.stringify(nextProps.task.payload)
   );
 });
