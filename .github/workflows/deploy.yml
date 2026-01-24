@@ -59,18 +59,14 @@ jobs:
           ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SERVER_IP} "bash -s" << 'REMOTE_EXEC'
             set -e
             
+            # --- 1. SETUP & CONFIG ---
             source /tmp/deploy_env_vars.sh
             rm -f /tmp/deploy_env_vars.sh
             
             TARGET_DIR="/home/ubuntu"
-            cd $TARGET_DIR || cd /home/${USER} || { echo "❌ Directory not found"; exit 1; }
+            cd $TARGET_DIR || { echo "❌ Directory not found"; exit 1; }
             
-            # --- Permission Fix ---
-            if sudo -n true 2>/dev/null; then
-               sudo chown -R $USER:$USER .
-            fi
-            
-            # --- Docker Permission Check ---
+            # Docker Command Detection
             DOCKER_CMD="docker"
             if ! docker ps >/dev/null 2>&1; then
                 if sudo docker ps >/dev/null 2>&1; then
@@ -81,36 +77,58 @@ jobs:
                 fi
             fi
             
-            echo "📥 Syncing Code..."
-            git stash >/dev/null 2>&1 || true
-            git pull origin main || git pull origin master
+            echo "📥 Syncing Code (Immortal Mode)..."
+            # 2. HARD SYNC (The "Reset" Strategy)
+            git fetch --all
+            # Backup .env safely
+            cp .env .env.backup 2>/dev/null || true
+            git reset --hard origin/main
+            git clean -fd
+            mv .env.backup .env 2>/dev/null || true
             
             echo "🔐 Updating Secrets..."
-            if [ -f .env ]; then
+            if [ ! -f .env ]; then
+                echo "DB_PASSWORD='${DB_PASSWORD}'" > .env
+            else
                 sed -i '/^DB_PASSWORD=/d' .env
                 echo "DB_PASSWORD='${DB_PASSWORD}'" >> .env
-            else
-                echo "DB_PASSWORD='${DB_PASSWORD}'" > .env
             fi
             
+            # Ensure prod config is active
             ln -sf docker-compose.prod.yml docker-compose.yml
             
-            echo "♻️  Resetting Containers..."
-            $DOCKER_CMD compose down --remove-orphans
+            echo "🕵️  Config Check..."
+            # 3. CONFIG VALIDATION
+            if ! $DOCKER_CMD compose config > /dev/null; then
+                echo "❌ Invalid Docker Compose Configuration"
+                exit 1
+            fi
             
-            # Aggressive cleanup of potential zombies
-            $DOCKER_CMD rm -f gstd_nginx_lb gstd_postgres_prod gstd_redis_prod 2>/dev/null || true
-            
-            echo "🚀 Building and Starting Services..."
-            # --build forces rebuild of local images. 
-            # We removed 'compose pull' because it fails on local images.
+            echo "🚀 Deployment (V2 Plugin)..."
+            # 4. STARTUP (V2 Logic)
             $DOCKER_CMD compose up -d --build --remove-orphans
             
-            echo "🧹 Deep Cleaning..."
-            $DOCKER_CMD image prune -af
+            echo "🧹 Cleanup..."
+            # 5. GARBAGE COLLECTION
+            $DOCKER_CMD image prune -f
             
             echo "✅ Health Check..."
-            sleep 10
-            $DOCKER_CMD compose ps
+            # 6. VERIFICATION
+            sleep 15
+            # We assume containers are marked 'healthy' by docker-compose healthchecks
+            if $DOCKER_CMD compose ps | grep -q "healthy"; then
+               echo "DEPLOY SUCCESS: Systems are healthy! 🚀"
+               $DOCKER_CMD compose ps
+            else
+               echo "⚠️  Health Check Pending or Failed. Checking API..."
+               # Fallback: Try hitting the API internally
+               if $DOCKER_CMD compose exec -T ubuntu-backend-blue-1 wget -qO- http://localhost:8080/api/v1/health | grep -q "healthy"; then
+                   echo "API is Responsive via internal check."
+               else
+                   echo "❌ DEPLOY FAILED: System unhealthy."
+                   $DOCKER_CMD compose logs --tail=20
+                   exit 1
+               fi
+            fi
             
           REMOTE_EXEC
