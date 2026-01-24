@@ -6,6 +6,7 @@ import (
 	"distributed-computing-platform/internal/models"
 	"distributed-computing-platform/internal/services"
 	"log"
+	"net/http"
 	"strings"
 	"time"
 
@@ -67,6 +68,12 @@ func SetupRoutes(
 
 	// Add error handler middleware
 	router.Use(ErrorHandler())
+
+    // LIMIT PAYLOAD SIZE (Security)
+    router.Use(func(c *gin.Context) {
+        c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 2 * 1024 * 1024) // 2MB Limit
+        c.Next()
+    })
 	
 	// Add rate limiter if Redis is available
 	var rateLimiter *RateLimiter

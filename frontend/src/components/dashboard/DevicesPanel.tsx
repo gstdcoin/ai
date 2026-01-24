@@ -3,6 +3,7 @@ import { useTranslation } from 'next-i18next';
 import { useWalletStore } from '../../store/walletStore';
 import RegisterDeviceModal from './RegisterDeviceModal';
 import { EmptyState } from '../common/EmptyState';
+import { SkeletonTable } from '../common/SkeletonLoader';
 import { Server, Plus } from 'lucide-react';
 import { useAutoTaskWorker } from '../../hooks/useAutoTaskWorker';
 import { logger } from '../../lib/logger';
@@ -93,11 +94,8 @@ export default function DevicesPanel() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="glass-card">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold-900 mx-auto"></div>
-          <p className="text-gray-400 mt-4">{t('loading') || 'Loading...'}</p>
-        </div>
+      <div className="glass-card overflow-hidden">
+        <SkeletonTable rows={5} />
       </div>
     );
   }
@@ -146,7 +144,7 @@ export default function DevicesPanel() {
                   <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden sm:table-cell">
                     {t('node_id') || 'Node ID'}
                   </th>
-                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden sm:table-cell">
                     {t('status') || 'Status'}
                   </th>
                   <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden md:table-cell">
@@ -174,7 +172,7 @@ export default function DevicesPanel() {
                         {node.id}
                       </div>
                     </td>
-                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap hidden sm:table-cell">
                       <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${node.status === 'online'
                         ? 'bg-green-500/20 text-green-400'
                         : 'bg-gray-500/20 text-gray-400'

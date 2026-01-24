@@ -135,36 +135,74 @@ func (s *TaskService) CreateTask(ctx context.Context, requesterAddress string, d
 	finalCompensation := s.efficiencyService.CalculateTaskCost(descriptor.Reward.AmountGSTD, gstdBalance)
 	confidenceDepth := int(math.Floor(1 + math.Log10(1+gstdBalance/10000.0)))
 
-	// Insert task - try with certainty_gravity_score first (priority_score was renamed)
-	_, err := s.db.ExecContext(ctx, `
+    // REAL ESCROW LOGIC (Atomic Transaction)
+    tx, err := s.db.BeginTx(ctx, nil)
+    if err != nil {
+        return nil, fmt.Errorf("failed to begin transaction: %w", err)
+    }
+    defer tx.Rollback()
+
+    // 1. Deduct from User Balance & Add to Escrow
+    // Check if user has enough funds (cost + fee)
+    // Assuming totalCost and platformFee are calculated elsewhere or need to be added here.
+    // For now, using descriptor.Reward.AmountGSTD as the base cost.
+    // The instruction implies `totalCost` and `platformFee` variables exist or should be defined.
+    // Let's define them based on the previous logic.
+    platformFee := descriptor.Reward.AmountGSTD * 0.05 // 5% platform fee
+    totalCost := descriptor.Reward.AmountGSTD + platformFee
+
+    res, err := tx.ExecContext(ctx, `
+        UPDATE users 
+        SET gstd_balance = gstd_balance - $1, 
+            gstd_escrow_balance = COALESCE(gstd_escrow_balance, 0) + $1
+        WHERE wallet_address = $2 AND gstd_balance >= $1
+    `, totalCost, requesterAddress)
+    if err != nil {
+        return nil, fmt.Errorf("failed to process escrow: %w", err)
+    }
+    
+    rows, _ := res.RowsAffected()
+    if rows == 0 {
+        return nil, fmt.Errorf("INSUFFICIENT FUNDS: You need %.4f GSTD (Budget + 5%% Fee) to create this task.", totalCost)
+    }
+
+	// 2. Insert task
+	_, err = tx.ExecContext(ctx, `
 		INSERT INTO tasks (
 			task_id, requester_address, task_type, operation, model,
-			labor_compensation_gstd, certainty_gravity_score, status, created_at,
+			labor_compensation_gstd, platform_fee_gstd, certainty_gravity_score, status, created_at,
 			escrow_status, min_trust_score, is_private, confidence_depth, 
 			redundancy_factor, is_spot_check, entropy_snapshot
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), 'awaiting', $9, $10, $11, $12, $13, $14)
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'awaiting_escrow', NOW(), 'locked', $9, $10, $11, $12, $13, $14)
 	`, taskID, requesterAddress, descriptor.TaskType, descriptor.Operation, descriptor.Model,
-		finalCompensation, gravityScore, "awaiting_escrow",
+		descriptor.Reward.AmountGSTD, platformFee, gravityScore,
 		descriptor.MinTrust, descriptor.IsPrivate, confidenceDepth, redundancy, isSpotCheck, entropy)
 	
-	// If error about certainty_gravity_score, try with priority_score
+    // Retry with 'priority_score' if 'certainty_gravity_score' fails (DB Schema Compatibility)
 	if err != nil && (strings.Contains(err.Error(), "certainty_gravity_score") || 
 		(strings.Contains(err.Error(), "column") && strings.Contains(err.Error(), "does not exist"))) {
-		_, err = s.db.ExecContext(ctx, `
+		_, err = tx.ExecContext(ctx, `
 			INSERT INTO tasks (
 				task_id, requester_address, task_type, operation, model,
-				labor_compensation_gstd, priority_score, status, created_at,
+				labor_compensation_gstd, platform_fee_gstd, priority_score, status, created_at,
 				escrow_status, min_trust_score, is_private, confidence_depth, 
 				redundancy_factor, is_spot_check, entropy_snapshot
-			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), 'awaiting', $9, $10, $11, $12, $13, $14)
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'awaiting_escrow', NOW(), 'locked', $9, $10, $11, $12, $13, $14)
 		`, taskID, requesterAddress, descriptor.TaskType, descriptor.Operation, descriptor.Model,
-			finalCompensation, gravityScore, "awaiting_escrow",
+			descriptor.Reward.AmountGSTD, platformFee, gravityScore,
 			descriptor.MinTrust, descriptor.IsPrivate, confidenceDepth, redundancy, isSpotCheck, entropy)
 	}
-	
-	if err != nil {
-		return nil, fmt.Errorf("failed to create task: %w", err)
-	}
+
+    if err != nil {
+        return nil, fmt.Errorf("failed to create task record: %w", err)
+    }
+
+    if err := tx.Commit(); err != nil {
+        return nil, fmt.Errorf("failed to commit transaction: %w", err)
+    }
+
+    log.Printf("💰 Task %s Created: Deducted %.4f GSTD from %s. Status: ESCROW_LOCKED", 
+        taskID, totalCost, requesterAddress)
 
 	task := &models.Task{
 		TaskID:              taskID,

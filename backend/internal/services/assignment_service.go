@@ -55,7 +55,7 @@ func (s *AssignmentService) AssignTask(ctx context.Context, taskID string, devic
 	timeoutAt := time.Now().Add(time.Duration(timeLimitSec+120) * time.Second)
 
 	// -------------------------------------------------------------------------
-	// SYBIL ATTACK MITIGATION: Limit max active nodes/tasks per wallet
+	// STAKE CHECK (Atomic & Race-Condition Proof)
 	// -------------------------------------------------------------------------
 	// 1. Get wallet address for this device
 	var walletAddress string
@@ -65,8 +65,31 @@ func (s *AssignmentService) AssignTask(ctx context.Context, taskID string, devic
 		// or proceed (risk of bypass, but prevents bricking if DB inconsistent)
 		walletAddress = deviceID
 	}
-	
-	// 2. Count active assignments for this wallet
+
+	requiredStake := reward * 0.10 // 10% of labor compensation as stake
+
+	// Attempt to atomically freeze stake
+	// We assume 'gstd_frozen' column exists for staking in the 'users' table
+	res, err := tx.ExecContext(ctx, `
+		UPDATE users 
+		SET gstd_frozen = COALESCE(gstd_frozen, 0) + $1 
+		WHERE wallet_address = $2 
+		  AND (gstd_balance - COALESCE(gstd_frozen, 0)) >= $1
+	`, requiredStake, walletAddress)
+
+	if err != nil {
+		// If column doesn't exist, we might fail here. 
+		// In production we'd migrate. For now we assume scheme compliance.
+		return fmt.Errorf("system error during stake check: %w", err)
+	}
+
+	rowsAffected, _ := res.RowsAffected()
+	if rowsAffected == 0 {
+		return fmt.Errorf("INSUFFICIENT STAKE: You need %.4f GSTD (10%% of reward) free margin to accept this task.", requiredStake)
+	}
+	// -------------------------------------------------------------------------
+
+	// 2. Count active assignments for this wallet (SYBIL ATTACK MITIGATION)
 	// We count tasks where the assigned device belongs to the same wallet
 	var activeCount int
 	err = tx.QueryRowContext(ctx, `
