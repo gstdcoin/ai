@@ -37,12 +37,13 @@ func (s *AssignmentService) AssignTask(ctx context.Context, taskID string, devic
 	// Get task with row-level lock (FOR UPDATE) to prevent concurrent assignments
 	var timeLimitSec int
 	var currentStatus string
+	var reward float64
 	err = tx.QueryRowContext(ctx, `
-		SELECT constraints_time_limit_sec, status 
+		SELECT constraints_time_limit_sec, status, labor_compensation_gstd
 		FROM tasks 
 		WHERE task_id = $1
 		FOR UPDATE
-	`, taskID).Scan(&timeLimitSec, &currentStatus)
+	`, taskID).Scan(&timeLimitSec, &currentStatus, &reward)
 	if err != nil {
 		return fmt.Errorf("task not found: %w", err)
 	}
@@ -109,7 +110,8 @@ func (s *AssignmentService) AssignTask(ctx context.Context, taskID string, devic
 	// -------------------------------------------------------------------------
 
 	// Update task status atomically (allow reassignment from 'pending' or 'timeout')
-	result, err := tx.ExecContext(ctx, `
+	var result sql.Result
+	result, err = tx.ExecContext(ctx, `
 		UPDATE tasks 
 		SET status = 'assigned',
 		    assigned_device = $1,
