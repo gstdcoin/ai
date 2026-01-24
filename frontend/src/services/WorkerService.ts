@@ -12,12 +12,45 @@ class WorkerService {
     private ws: WebSocket | null = null;
     private heartbeatInterval: any = null;
     private lastHeartbeatAck: number = 0;
-    private deviceId: string = 'web-worker-' + Math.random().toString(36).substring(7);
+    private retryCount: number = 0;
+    private pendingQueue: any[] = [];
 
     constructor() {
         if (typeof window !== 'undefined') {
+            // Load pending results
+            try {
+                const saved = localStorage.getItem('gstd_pending_results');
+                if (saved) this.pendingQueue = JSON.parse(saved);
+            } catch (e) { console.error('Failed to load pending results', e); }
+
             this.initWorker();
         }
+    }
+
+    private saveToQueue(payload: any) {
+        this.pendingQueue.push(payload);
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('gstd_pending_results', JSON.stringify(this.pendingQueue));
+        }
+        console.log(`[Resilience] Result saved to Queue. Total pending: ${this.pendingQueue.length}`);
+        toast.info('Network Issue: Result Queued for Upload');
+    }
+
+    private processQueue() {
+        if (this.pendingQueue.length === 0 || !this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+
+        console.log(`[Resilience] Processing Queue (${this.pendingQueue.length} items)...`);
+
+        // Clone and clear to prevent loops, will re-add failures
+        const batch = [...this.pendingQueue];
+        this.pendingQueue = [];
+        localStorage.setItem('gstd_pending_results', '[]');
+
+        batch.forEach(payload => {
+            this.ws?.send(JSON.stringify(payload));
+        });
+
+        toast.success(`Synced ${batch.length} offline results!`);
     }
 
     private initWorker() {
@@ -31,6 +64,13 @@ class WorkerService {
                 if (status === 'completed') {
                     console.log('[Mining Loop] Step 4: Hashing Completed', result);
 
+                    // Add Success Sound (Optional)
+                    try {
+                        const audio = new Audio('/sounds/coin.mp3');
+                        audio.volume = 0.5;
+                        audio.play().catch(() => { }); // Ignore interaction errors
+                    } catch (e) { }
+
                     // DEPIN INNOVATION: Proof of Connectivity & ZK Reporting
                     // We generate a "proof" hash locally to verify work integrity
                     const proofHash = btoa(result.latency_ms + '-' + Math.random());
@@ -40,18 +80,24 @@ class WorkerService {
                         latency: result.latency_ms,
                         reward: 0.00001
                     });
-                    // Forward result to backend via WS if connected
+
+                    const payload = {
+                        type: 'task_completed',
+                        result: result,
+                        proof: {
+                            hash: proofHash,
+                            connectivity_score: navigator.onLine ? 1.0 : 0.0,
+                            timestamp: Date.now()
+                        }
+                    };
+
+                    // Resilience Logic
                     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-                        this.ws.send(JSON.stringify({
-                            type: 'task_completed',
-                            result: result,
-                            proof: {
-                                hash: proofHash,
-                                connectivity_score: navigator.onLine ? 1.0 : 0.0,
-                                timestamp: Date.now()
-                            }
-                        }));
+                        this.ws.send(JSON.stringify(payload));
+                    } else {
+                        this.saveToQueue(payload);
                     }
+
                 } else if (status === 'skipped') {
                     console.log('Worker skipped task:', reason);
                 }
@@ -95,7 +141,9 @@ class WorkerService {
 
         this.ws.onopen = () => {
             console.log('[Mining Loop] Socket Connected ✅');
+            this.retryCount = 0; // Reset backoff
             this.startHeartbeat();
+            this.processQueue();
         };
 
         this.ws.onmessage = (event) => {
@@ -107,15 +155,27 @@ class WorkerService {
             } catch (e) { console.error(e); }
         };
 
+        const handleReconnect = () => {
+            if (this.state === 'paused') return;
+
+            const delay = Math.min(1000 * (2 ** this.retryCount), 30000); // Max 30s
+            console.log(`[Mining Loop] Reconnecting in ${delay}ms...`);
+            this.retryCount++;
+
+            setTimeout(() => {
+                if (this.state !== 'paused') this.connectWebSocket();
+            }, delay);
+        };
+
         this.ws.onerror = (e) => {
             console.error('[Mining Loop] Socket Error', e);
-            this.state = 'error';
-            this.notifyState();
-            toast.error('Connection Failed: Retrying...');
+            if (this.retryCount === 0) toast.error('Connection Lost. Reconnecting...');
+            handleReconnect();
         };
 
         this.ws.onclose = () => {
             console.log('[Mining Loop] Socket Closed');
+            handleReconnect();
         };
     }
 
@@ -126,8 +186,8 @@ class WorkerService {
         this.heartbeatInterval = setInterval(() => {
             if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
 
-            // Check for timeout
-            if (Date.now() - this.lastHeartbeatAck > 10000) {
+            // Check for timeout (Extended for Mobile Stability)
+            if (Date.now() - this.lastHeartbeatAck > 60000) {
                 console.error('Heartbeat Timeout! Backend not responding.');
                 this.state = 'error';
                 this.notifyState();

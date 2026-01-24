@@ -210,8 +210,9 @@ function Dashboard() {
               </div>
 
               {/* Financial Overview - Wallet Balances */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div className="glass-card p-6 flex items-center justify-between relative overflow-hidden group hover:border-blue-500/30 transition-all duration-300">
+                  {/* TON Balance Card Content (Existing) */}
                   <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/10 to-transparent rounded-full blur-2xl group-hover:opacity-100 opacity-50 transition-opacity" />
                   <div className="relative z-10">
                     <h3 className="text-sm font-medium text-gray-400 mb-2 flex items-center gap-2">
@@ -229,12 +230,14 @@ function Dashboard() {
                     <Wallet className="w-7 h-7" />
                   </div>
                 </div>
+
                 <div className="glass-card p-6 flex items-center justify-between relative overflow-hidden group hover:border-gold-900/30 transition-all duration-300">
+                  {/* GSTD Balance Card Content (Existing) */}
                   <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-amber-500/10 to-transparent rounded-full blur-2xl group-hover:opacity-100 opacity-50 transition-opacity" />
                   <div className="relative z-10">
                     <h3 className="text-sm font-medium text-gray-400 mb-2 flex items-center gap-2">
                       <div className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
-                      {t('gstd_balance') || 'GSTD Balance'} (Your Earnings)
+                      {t('gstd_balance') || 'GSTD Balance'}
                     </h3>
                     <div className="text-3xl font-bold text-white flex items-baseline gap-2">
                       <span className="bg-gradient-to-r from-yellow-400 to-amber-500 bg-clip-text text-transparent">
@@ -247,9 +250,29 @@ function Dashboard() {
                     <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-500/20 to-yellow-500/10 text-yellow-400 border border-yellow-500/20 self-end">
                       <CheckCircle className="w-7 h-7" />
                     </div>
-                    <button className="text-xs px-2 py-1 bg-gold-900/20 text-gold-400 rounded border border-gold-900/30 hover:bg-gold-900/40">
-                      Claim to Wallet
-                    </button>
+                  </div>
+                </div>
+
+                {/* Referral Widget (New) */}
+                <div
+                  className="glass-card p-6 flex items-center justify-between relative overflow-hidden group hover:border-purple-500/30 transition-all duration-300 cursor-pointer"
+                  onClick={() => setActiveTab('help')}
+                >
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-500/10 to-transparent rounded-full blur-2xl group-hover:opacity-100 opacity-50 transition-opacity" />
+                  <div className="relative z-10">
+                    <h3 className="text-sm font-medium text-gray-400 mb-2 flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
+                      Your Network
+                    </h3>
+                    <div className="text-3xl font-bold text-white flex items-baseline gap-2">
+                      <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                        Active
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Earn 5% from referrals</p>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-500/20 to-pink-500/10 text-purple-400 border border-purple-500/20">
+                    <Users className="w-7 h-7" />
                   </div>
                 </div>
               </div>
@@ -299,8 +322,8 @@ function Dashboard() {
                 <button
                   onClick={handleToggleMining}
                   className={`flex-1 py-6 px-6 rounded-2xl font-bold tracking-wide shadow-xl transition-all transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-4 border border-white/20 relative overflow-hidden group ${isMining
-                      ? 'bg-gradient-to-r from-red-600 via-rose-600 to-red-600 hover:from-red-500 shadow-red-900/30'
-                      : 'bg-gradient-to-r from-emerald-600 via-green-600 to-emerald-600 hover:from-emerald-500 shadow-green-900/30'
+                    ? 'bg-gradient-to-r from-red-600 via-rose-600 to-red-600 hover:from-red-500 shadow-red-900/30'
+                    : 'bg-gradient-to-r from-emerald-600 via-green-600 to-emerald-600 hover:from-emerald-500 shadow-green-900/30'
                     }`}
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />

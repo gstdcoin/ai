@@ -5,6 +5,7 @@ import { useTonConnectUI } from '@tonconnect/ui-react';
 import TaskDetailsModal from './TaskDetailsModal';
 import WorkerTaskCard from './WorkerTaskCard';
 import { EmptyState } from '../common/EmptyState';
+import { SkeletonTable } from '../common/SkeletonLoader';
 import { ClipboardList } from 'lucide-react';
 import { triggerHapticImpact } from '../../lib/telegram';
 import { logger } from '../../lib/logger';
@@ -375,11 +376,8 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="glass-card">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold-900 mx-auto"></div>
-          <p className="text-gray-400 mt-4">{t('loading')}</p>
-        </div>
+      <div className="glass-card overflow-hidden">
+        <SkeletonTable rows={5} />
       </div>
     );
   }

@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -19,12 +20,12 @@ import (
 
 // Configuration
 const (
-	AdminID      = 5700385228
 	DefaultToken = "8306755226:AAEfG2-BZ1Xo9hPex7-igz_WzHEscJOOk-U"
 	BackendURL   = "http://ubuntu-backend-blue-1:8080"
 )
 
 var (
+    AdminID int64 = 5700385228 // Default fallback
 	SystemPrompt = `You are the specific AI Assistant for GSTD (Global Standard DePIN).
 	Architecture:
 	- Frontend: Next.js + Tailwind (Glassmorphism)
@@ -41,6 +42,13 @@ func main() {
 	if token == "" {
 		token = DefaultToken
 	}
+    
+    // Load Admin ID
+    if envID := os.Getenv("ADMIN_ID"); envID != "" {
+        if id, err := strconv.ParseInt(envID, 10, 64); err == nil {
+            AdminID = id
+        }
+    }
 
 	// AI Config
 	ollamaHost := os.Getenv("OLLAMA_HOST") // Cloud/Remote Ollama
@@ -197,12 +205,36 @@ func main() {
 
 	// --- Handlers ---
 
+	// /start - Login or Referral
 	b.Handle("/start", func(c tele.Context) error {
+        args := c.Args()
+        payload := ""
+        if len(args) > 0 {
+            payload = args[0]
+        }
+
 		if c.Sender().ID == AdminID {
 			return c.Send("👋 **GSTD Command Center (Admin)**\nSystem ready.", adminMenu)
 		}
-		return c.Send("👋 **Welcome Miner**\nMake money with your device.", userMenu)
+        
+        txt := "👋 **Welcome Miner**\nMake money with your device."
+        if payload != "" {
+            // Logic to track referral click (analytics)
+            txt += fmt.Sprintf("\n\n🔗 Invited by: %s", payload)
+        }
+        
+		return c.Send(txt, userMenu)
 	})
+
+    // /ref - Viral Growth Command
+    b.Handle("/ref", func(c tele.Context) error {
+        refLink := fmt.Sprintf("https://t.me/%s?start=ref_%d", c.Bot().Me.Username, c.Sender().ID)
+        
+        // Mock stats (Real stats would query Backend API)
+        msg := fmt.Sprintf("🚀 **Viral Expansion**\n\nInvite friends and earn **1%%** of their lifetime rewards!\n\n🔗 **Your Link:**\n`%s`\n\n📊 **Stats:**\nInvited: 0\nEarned: 0.00 GSTD", refLink)
+        
+        return c.Send(msg, tele.ModeMarkdown)
+    })
 
     // --- ADMIN HANDLERS ---
     b.Handle(&btnStats, func(c tele.Context) error {
