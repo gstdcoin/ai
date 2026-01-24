@@ -178,9 +178,7 @@ export default function Home() {
                   {/* Hero Wallet Connect removed as it is now in header */}
                 </div>
                 <a
-                  href="/docs/INVESTMENT_COMPARISON.md"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  href="/docs"
                   className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-white font-medium mx-auto"
                 >
                   <BookOpen className="w-5 h-5" />
