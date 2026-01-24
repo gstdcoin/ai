@@ -5,7 +5,7 @@ import { useTonConnectUI } from '@tonconnect/ui-react';
 import { logger } from '../../lib/logger';
 import { toast } from '../../lib/toast';
 import { createTaskSchema, type CreateTaskFormData } from '../../lib/validation';
-import { API_BASE_URL } from '../../lib/config';
+import { API_BASE_URL, ADMIN_WALLET_ADDRESS, ESCROW_CONTRACT_ADDRESS } from '../../lib/config';
 import { apiGet, apiPost } from '../../lib/apiClient';
 
 interface NewTaskModalProps {
@@ -153,67 +153,81 @@ export default function NewTaskModal({ onClose, onTaskCreated }: NewTaskModalPro
     setError(null);
 
     try {
-      // 1. Get Platform's Jetton Wallet Address
-      const jettonData = await apiGet<{ address: string }>(`/wallet/jetton-address?owner=${taskData.platform_wallet}`);
-      const platformJettonWallet = jettonData.address;
+      // 1. Calculate split amounts (95% reward, 5% fee)
+      const rewardAmount = taskData.amount * 0.95;
+      const feeAmount = taskData.amount * 0.05;
 
-      if (!platformJettonWallet) {
-        throw new Error('Could not resolve platform jetton wallet');
+      // 2. Get Jetton Wallet Addresses for recipients
+      // We need to resolve the specific Jetton wallet addresses for both recipients
+      const [rewardJettonData, feeJettonData] = await Promise.all([
+        apiGet<{ address: string }>(`/wallet/jetton-address?owner=${ESCROW_CONTRACT_ADDRESS}`),
+        apiGet<{ address: string }>(`/wallet/jetton-address?owner=${ADMIN_WALLET_ADDRESS}`)
+      ]);
+
+      const rewardJettonWallet = rewardJettonData.address;
+      const feeJettonWallet = feeJettonData.address;
+
+      if (!rewardJettonWallet || !feeJettonWallet) {
+        throw new Error('Could not resolve jetton wallets for payment recipients');
       }
 
-      logger.debug('Initiating payment', {
-        platform_wallet: platformJettonWallet,
-        amount: taskData.amount,
+      logger.debug('Initiating split payment', {
+        reward_recipient: ESCROW_CONTRACT_ADDRESS,
+        reward_amount: rewardAmount,
+        fee_recipient: ADMIN_WALLET_ADDRESS,
+        fee_amount: feeAmount,
         memo: taskData.payment_memo,
       });
 
-      // 2. Build TonConnect Transaction
+      // 3. Build TonConnect Transaction with two messages
       const { beginCell, Address } = await import('@ton/core');
 
-      // Amount in nanos (GSTD has 9 decimals)
-      const amountNano = BigInt(Math.round(taskData.amount * 1e9));
+      // Helper to create Jetton transfer payload
+      const createTransferPayload = (recipientOwner: string, amount: number, memo: string) => {
+        // Amount in nanos (GSTD has 9 decimals)
+        const amountNano = BigInt(Math.round(amount * 1e9));
 
-      // Jetton Transfer Payload:
-      // op: 0xf8a7ea5 (transfer)
-      // query_id: uint64
-      // amount: Coins
-      // destination: MsgAddress (Platform OWNER wallet)
-      // response_destination: MsgAddress (Sender)
-      // custom_payload: Maybe none
-      // forward_amount: Coins (small for notification)
-      // forward_payload: Memo/Comment
-      const payloadCell = beginCell()
-        .storeUint(0xf8a7ea5, 32) // op::transfer
-        .storeUint(0, 64)       // query_id
-        .storeCoins(amountNano)
-        .storeAddress(Address.parse(taskData.platform_wallet)) // Destination owner
-        .storeAddress(Address.parse(address!))                 // Response destination
-        .storeBit(0)                                          // No custom payload
-        .storeCoins(BigInt(1))                                // Forward amount (1 nano)
-        .storeBit(1)                                          // We have forward payload (comment)
-        .storeRef(
-          beginCell()
-            .storeUint(0, 32)                                 // Comment prefix
-            .storeStringTail(taskData.payment_memo)
-            .endCell()
-        )
-        .endCell();
+        return beginCell()
+          .storeUint(0xf8a7ea5, 32) // op::transfer
+          .storeUint(0, 64)       // query_id
+          .storeCoins(amountNano)
+          .storeAddress(Address.parse(recipientOwner)) // Destination owner
+          .storeAddress(Address.parse(address!))                 // Response destination
+          .storeBit(0)                                          // No custom payload
+          .storeCoins(BigInt(1))                                // Forward amount (1 nano)
+          .storeBit(1)                                          // We have forward payload (comment)
+          .storeRef(
+            beginCell()
+              .storeUint(0, 32)                                 // Comment prefix
+              .storeStringTail(memo)
+              .endCell()
+          )
+          .endCell()
+          .toBoc()
+          .toString('base64');
+      };
 
-      const boc = payloadCell.toBoc().toString('base64');
+      const rewardBoc = createTransferPayload(ESCROW_CONTRACT_ADDRESS, rewardAmount, taskData.payment_memo);
+      const feeBoc = createTransferPayload(ADMIN_WALLET_ADDRESS, feeAmount, `${taskData.payment_memo}-FEE`);
 
-      // 3. Send via TonConnect
+      // 4. Send via TonConnect (Multiple messages)
       await tonConnectUI.sendTransaction({
         validUntil: Math.floor(Date.now() / 1000) + 600, // 10 minutes
         messages: [
           {
-            address: platformJettonWallet, // To platform's jetton wallet!
+            address: rewardJettonWallet, // Index 0: Reward to Escrow
             amount: "50000000",           // 0.05 TON for gas
-            payload: boc,
+            payload: rewardBoc,
+          },
+          {
+            address: feeJettonWallet,    // Index 1: Fee to Admin
+            amount: "50000000",           // 0.05 TON for gas
+            payload: feeBoc,
           }
         ]
       });
 
-      logger.info('Payment transaction sent', { task_id: taskData.task_id });
+      logger.info('Split payment transaction sent', { task_id: taskData.task_id });
       // The step is already 'confirming', useEffect will start polling
     } catch (err: any) {
       logger.error('Error initiating payment', err);

@@ -7,7 +7,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"strings"
 	"time"
 )
 
@@ -80,13 +79,11 @@ func (s *TONService) GetJettonBalance(ctx context.Context, address string, jetto
 		}
 	}
 	
-	// Используем TON API v2 для получения баланса Jetton
-	// Format: /v2/accounts/{address}/jettons?currencies={jettonAddress}
-	// This endpoint returns all jettons for an account, we filter by jettonAddress
-	url := fmt.Sprintf("%s/v2/accounts/%s/jettons?currencies=%s", s.apiURL, normalizedAddress, jettonAddress)
+	// Используем TON API v2 для получения баланса конкретного Jetton
+	// Direct endpoint for a single jetton balance
+	url := fmt.Sprintf("%s/v2/accounts/%s/jettons/%s", s.apiURL, normalizedAddress, jettonAddress)
 	
-	log.Printf("GetJettonBalance: Fetching balance for address=%s (normalized: %s), jetton=%s", address, normalizedAddress, jettonAddress)
-	log.Printf("GetJettonBalance: Full URL: %s", url)
+	log.Printf("GetJettonBalance: Fetching specific balance for address=%s, jetton=%s", normalizedAddress, jettonAddress)
 	
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
@@ -96,17 +93,14 @@ func (s *TONService) GetJettonBalance(ctx context.Context, address string, jetto
 	// Add API key to header if provided
 	if s.apiKey != "" {
 		req.Header.Set("Authorization", "Bearer "+s.apiKey)
-		// Alternative: some APIs use X-API-Key header
 		req.Header.Set("X-API-Key", s.apiKey)
 	}
 
 	var resp *http.Response
-	// Retry loop configuration
 	maxRetries := 3
 	backoff := 500 * time.Millisecond
 
 	for i := 0; i <= maxRetries; i++ {
-		// Wait for rate limiter
 		select {
 		case <-s.rateLimiter:
 		case <-ctx.Done():
@@ -114,9 +108,6 @@ func (s *TONService) GetJettonBalance(ctx context.Context, address string, jetto
 		}
 
 		resp, err = s.client.Do(req)
-		
-		// Break if success or non-retriable error (e.g. 404, 400)
-		// We retry on network errors (err != nil), 429 Too Many Requests, and 5xx Server Errors
 		if err == nil {
 			if resp.StatusCode == http.StatusOK {
 				break
@@ -126,90 +117,55 @@ func (s *TONService) GetJettonBalance(ctx context.Context, address string, jetto
 			}
 		}
 
-		// Don't sleep after last attempt
 		if i < maxRetries {
 			if resp != nil {
 				resp.Body.Close()
 			}
-			log.Printf("GetJettonBalance: Request failed (attempt %d/%d): %v (Status: %d). Retrying in %v...", 
-				i+1, maxRetries+1, err, func() int { if resp != nil { return resp.StatusCode }; return 0 }(), backoff)
-			
-			select {
-			case <-time.After(backoff):
-			case <-ctx.Done():
-				return 0, ctx.Err()
-			}
-			// Exponential backoff
+			time.Sleep(backoff)
 			backoff *= 2
 		}
 	}
 
 	if err != nil {
-		log.Printf("GetJettonBalance: HTTP request error: %v", err)
 		return 0, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusNotFound {
+			// Account has no such jetton wallet, balance is 0
+			return 0, nil
+		}
 		body, _ := io.ReadAll(resp.Body)
-		log.Printf("GetJettonBalance: API error (status %d): %s", resp.StatusCode, string(body))
-		// Don't fail completely - return 0 balance if API fails
-		// This allows task creation to continue even if balance check fails
-		log.Printf("GetJettonBalance: Returning 0 balance due to API error (non-critical)")
-		return 0, nil // Return 0 instead of error to allow task creation
+		log.Printf("GetJettonBalance: API error (%d): %s", resp.StatusCode, string(body))
+		return 0, nil 
 	}
 
 	var result struct {
-		Balances []struct {
-			Jetton struct {
-				Address string `json:"address"`
-			} `json:"jetton"`
-			Balance json.Number `json:"balance"` // Use json.Number to handle both string and number formats
-		} `json:"balances"`
+		Balance json.Number `json:"balance"`
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		log.Printf("GetJettonBalance: JSON decode error: %v", err)
 		return 0, err
 	}
 
-	if len(result.Balances) == 0 {
-		log.Printf("GetJettonBalance: No balances found for address %s", address)
-		return 0, nil
-	}
-
-	// Find the specific jetton balance
-	for _, b := range result.Balances {
-		if strings.EqualFold(b.Jetton.Address, jettonAddress) {
-			// Parse balance (in nanotons) - json.Number handles both number and string formats
-			var balanceNano int64
-			balanceNanoInt, err := b.Balance.Int64()
-			if err != nil {
-				// If Int64 fails, try parsing as float64 first (some APIs return decimals)
-				if balanceFloat, floatErr := b.Balance.Float64(); floatErr == nil {
-					balanceNano = int64(balanceFloat)
-				} else {
-					log.Printf("GetJettonBalance: Failed to parse balance: %v", err)
-					return 0, fmt.Errorf("failed to parse jetton balance: %w", err)
-				}
-			} else {
-				balanceNano = balanceNanoInt
-			}
-			balance := float64(balanceNano) / 1e9
-			// Cache the result
-			if s.cacheService != nil {
-				s.cacheService.Set(ctx, cacheKey, balance, 60*time.Second)
-			}
-			log.Printf("GetJettonBalance: Found balance %.9f for jetton %s", balance, jettonAddress)
-			return balance, nil
+	balanceNano, err := result.Balance.Int64()
+	if err != nil {
+		if balanceFloat, floatErr := result.Balance.Float64(); floatErr == nil {
+			balanceNano = int64(balanceFloat)
+		} else {
+			return 0, nil
 		}
 	}
 
-	log.Printf("GetJettonBalance: Jetton %s not found in balances", jettonAddress)
+	balance := float64(balanceNano) / 1e9
+
+	// Cache the result
 	if s.cacheService != nil {
-		s.cacheService.Set(ctx, cacheKey, 0.0, 60*time.Second)
+		s.cacheService.Set(ctx, cacheKey, balance, 60*time.Second)
 	}
-	return 0, nil // Jetton not found
+
+	return balance, nil
 }
 
 // CheckGSTDBalance проверяет наличие GSTD токена (минимум > 0)

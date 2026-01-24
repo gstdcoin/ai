@@ -944,3 +944,59 @@ Error response from daemon: No such container: ubuntu-backend-blue-1
 ⚠️  No GEO Service activity or initialization found in logs.
 
 ---
+## 🛡️ GSTD Security Audit - 2026-01-24 15:00:01
+
+### 💎 TON Service Check
+2026/01/24 14:58:31 Migration v10_failed_payouts.sql already applied, skipping
+2026/01/24 14:58:31 Warning: Failed to run migrations: failed to execute migration v16_gstd_currency_shift.sql: pq: unexpected transaction status idle
+2026/01/24 14:59:23 ⚠️  Failed to parse payload as JSON, trying simple format: invalid character 'g' looking for beginning of value
+2026/01/24 14:59:23 ❌ TonConnect signature validation failed for 0:a45c594d46cb9b529ed487b960fd2714a8b0a27dfd5008bb1d414d1aee4a61a9: Invalid signature: Ed25519 verification failed
+2026/01/24 14:59:23 GetAvailableTasks: Scan error: sql: Scan error on column index 3, name "operation": converting NULL to string is unsupported
+2026/01/24 14:59:23 GetAvailableTasks: Scan error: sql: Scan error on column index 3, name "operation": converting NULL to string is unsupported
+2026/01/24 14:59:23 GetAvailableTasks: Scan error: sql: Scan error on column index 3, name "operation": converting NULL to string is unsupported
+2026/01/24 14:59:23 ⚠️  Failed to get GSTD jetton wallet address (using 0): failed to get jetton wallet (HTTP 404): {"error":"account 0:3ef895c6f154b204998b32a6f6276b783f26b44d2f525c787bbc787c21ecf6e6 has no jetton wallet 0:efe9c616f673622a337737097c0fa0018d4887d6061f59519985f3fbfbdb59b2"}
+2026/01/24 14:59:24 ⚠️  Failed to get XAUt jetton wallet address (using 0): failed to get jetton wallet (HTTP 400): {"error":"can't decode address EQCyD8v6khUUrce9BCvHOaBC9PrvlV9S7D5v67O80p444XAr"}
+2026/01/24 14:59:24 ⚠️  Failed to get GSTD jetton wallet address (using 0): failed to get jetton wallet (HTTP 404): {"error":"account 0:3ef895c6f154b204998b32a6f6276b783f26b44d2f525c787bbc787c21ecf6e6 has no jetton wallet 0:efe9c616f673622a337737097c0fa0018d4887d6061f59519985f3fbfbdb59b2"}
+2026/01/24 14:59:24 ⚠️  Failed to get XAUt jetton wallet address (using 0): failed to get jetton wallet (HTTP 400): {"error":"can't decode address EQCyD8v6khUUrce9BCvHOaBC9PrvlV9S7D5v67O80p444XAr"}
+2026/01/24 14:59:24 Failed to get TON balance for 0:a45c594d46cb9b529ed487b960fd2714a8b0a27dfd5008bb1d414d1aee4a61a9: TON API error (status 429): {"error":"rate limit: free tier"}
+2026/01/24 14:59:24 GetJettonBalance: Request failed (attempt 1/4): <nil> (Status: 429). Retrying in 500ms...
+2026/01/24 14:59:25 Failed to get GSTD balance for 0:a45c594d46cb9b529ed487b960fd2714a8b0a27dfd5008bb1d414d1aee4a61a9: context canceled
+2026/01/24 14:59:25 GetJettonBalance: Request failed (attempt 1/4): <nil> (Status: 429). Retrying in 500ms...
+2026/01/24 14:59:25 ⚠️  Pool status error (returning safe default): API returned status 429
+2026/01/24 14:59:25 Failed to get TON balance for 0:a45c594d46cb9b529ed487b960fd2714a8b0a27dfd5008bb1d414d1aee4a61a9: TON API error (status 429): {"error":"rate limit: free tier"}
+2026/01/24 14:59:26 GetJettonBalance: Request failed (attempt 1/4): <nil> (Status: 429). Retrying in 500ms...
+2026/01/24 14:59:26 Failed to get GSTD balance for 0:a45c594d46cb9b529ed487b960fd2714a8b0a27dfd5008bb1d414d1aee4a61a9: context canceled
+2026/01/24 14:59:26 GetJettonBalance: Request failed (attempt 2/4): <nil> (Status: 429). Retrying in 1s...
+
+### 🌍 GEO Service Check
+✅ GEO Service is running correctly (found 1 log entries).
+
+---
+## 🛡️ GSTD Security Audit - 2026-01-24 16:00:01
+
+### 💎 TON Service Check
+2026/01/24 15:00:02 GetAvailableTasks: Scan error: sql: Scan error on column index 3, name "operation": converting NULL to string is unsupported
+2026/01/24 15:00:02 GetAvailableTasks: Scan error: sql: Scan error on column index 3, name "operation": converting NULL to string is unsupported
+2026/01/24 15:00:02 GetAvailableTasks: Scan error: sql: Scan error on column index 3, name "operation": converting NULL to string is unsupported
+2026/01/24 15:00:14 GetAvailableTasks: Scan error: sql: Scan error on column index 3, name "operation": converting NULL to string is unsupported
+2026/01/24 15:00:14 GetAvailableTasks: Scan error: sql: Scan error on column index 3, name "operation": converting NULL to string is unsupported
+2026/01/24 15:00:14 GetAvailableTasks: Scan error: sql: Scan error on column index 3, name "operation": converting NULL to string is unsupported
+2026/01/24 15:00:26 GetAvailableTasks: Scan error: sql: Scan error on column index 3, name "operation": converting NULL to string is unsupported
+2026/01/24 15:00:26 GetAvailableTasks: Scan error: sql: Scan error on column index 3, name "operation": converting NULL to string is unsupported
+2026/01/24 15:00:26 GetAvailableTasks: Scan error: sql: Scan error on column index 3, name "operation": converting NULL to string is unsupported
+2026/01/24 15:00:26 ⚠️  Failed to get GSTD jetton wallet address (using 0): failed to get jetton wallet (HTTP 404): {"error":"account 0:3ef895c6f154b204998b32a6f6276b783f26b44d2f525c787bbc787c21ecf6e6 has no jetton wallet 0:efe9c616f673622a337737097c0fa0018d4887d6061f59519985f3fbfbdb59b2"}
+2026/01/24 15:00:26 ⚠️  Failed to get XAUt jetton wallet address (using 0): failed to get jetton wallet (HTTP 400): {"error":"can't decode address EQCyD8v6khUUrce9BCvHOaBC9PrvlV9S7D5v67O80p444XAr"}
+2026/01/24 15:00:38 GetAvailableTasks: Scan error: sql: Scan error on column index 3, name "operation": converting NULL to string is unsupported
+2026/01/24 15:00:38 GetAvailableTasks: Scan error: sql: Scan error on column index 3, name "operation": converting NULL to string is unsupported
+2026/01/24 15:00:38 GetAvailableTasks: Scan error: sql: Scan error on column index 3, name "operation": converting NULL to string is unsupported
+2026/01/24 15:00:50 GetAvailableTasks: Scan error: sql: Scan error on column index 3, name "operation": converting NULL to string is unsupported
+2026/01/24 15:00:50 GetAvailableTasks: Scan error: sql: Scan error on column index 3, name "operation": converting NULL to string is unsupported
+2026/01/24 15:00:50 GetAvailableTasks: Scan error: sql: Scan error on column index 3, name "operation": converting NULL to string is unsupported
+2026/01/24 15:00:56 ⚠️  Failed to get GSTD jetton wallet address (using 0): failed to get jetton wallet (HTTP 404): {"error":"account 0:3ef895c6f154b204998b32a6f6276b783f26b44d2f525c787bbc787c21ecf6e6 has no jetton wallet 0:efe9c616f673622a337737097c0fa0018d4887d6061f59519985f3fbfbdb59b2"}
+2026/01/24 15:00:56 ⚠️  Failed to get XAUt jetton wallet address (using 0): failed to get jetton wallet (HTTP 400): {"error":"can't decode address EQCyD8v6khUUrce9BCvHOaBC9PrvlV9S7D5v67O80p444XAr"}
+2026/01/24 15:01:02 GetAvailableTasks: Scan error: sql: Scan error on column index 3, name "operation": converting NULL to string is unsupported
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
