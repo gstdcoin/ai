@@ -211,7 +211,10 @@
   "what_is_gstd_desc": "GSTD represents the guaranteed level of service quality and result validation.",
   "how_gstd_works": "How GSTD Works",
   "how_gstd_works_desc": "When you create a task, you specify a minimum GSTD requirement. The network ensures your task is validated accordingly.",
-  
+  "depin_network_status": "Real-time DePIN network metrics",
+  "your_network": "Your Network",
+  "active": "Active",
+  "earn_referral_bonus": "Earn 5% from referrals",
   "wallet": {
     "balance": "Wallet Balance",
     "realTime": "Real-time balance",
@@ -228,7 +231,6 @@
     "noTransactions": "No transactions yet",
     "exportCSV": "Export to CSV"
   },
-  
   "client": {
     "dashboard": "Client Dashboard",
     "manageYourTasks": "Manage your tasks and escrows",
@@ -267,7 +269,6 @@
     "refundRequested": "Refund requested successfully",
     "refundFailed": "Failed to request refund"
   },
-  
   "worker": {
     "earnings": "Your Earnings",
     "earningsSubtitle": "Track your earnings over time",
@@ -277,7 +278,6 @@
     "allTime": "All Time",
     "tasksCompleted": "Tasks Completed"
   },
-  
   "common": {
     "refresh": "Refresh"
   }
