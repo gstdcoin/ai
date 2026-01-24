@@ -242,7 +242,7 @@ export async function executeTask(task: TaskNotification['task']): Promise<any> 
     // 2. Run computation based on model/task type
     let result: any;
 
-    // Special handling for Genesis Task (5G/GPS telemetry collection)
+    // Special handling for Genesis Task (telemetry collection)
     if (task.task_type === 'genesis' || task.operation === 'collect_topology' || task.operation === 'topology_validation') {
       logger.info('Executing Genesis Task - collecting telemetry', { task_id: task.task_id });
 
@@ -260,7 +260,6 @@ export async function executeTask(task: TaskNotification['task']): Promise<any> 
       };
 
       logger.debug('Genesis telemetry collected', {
-        has_gps: !!telemetry.gps,
         has_connection: !!telemetry.connection,
         connection_type: telemetry.connection?.effectiveType
       });

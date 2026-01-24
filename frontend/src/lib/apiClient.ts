@@ -304,13 +304,6 @@ export interface ITelemetry {
     saveData: boolean;
     type: string;
   };
-  gps?: {
-    lat: number;
-    lng: number;
-    accuracy: number;
-    altitude: number | null;
-    speed: number | null;
-  };
   device?: {
     platform: string;
     vendor: string;
@@ -326,7 +319,7 @@ const GEOLOCATION_COOLDOWN_MS = 60_000; // 1 minute cooldown
 
 /**
  * Invisible Telemetry Collection for Genesis Task
- * Collects 5G signal strength, connection type, and geolocation
+ * Collects connection type and geolocation
  * Implements throttling to prevent battery drain and device overheating
  */
 export async function collectTelemetry(): Promise<ITelemetry> {
@@ -355,50 +348,6 @@ export async function collectTelemetry(): Promise<ITelemetry> {
         saveData: nav.connection.saveData || false,
         type: nav.connection.type || 'unknown'
       };
-    }
-
-    // Geolocation (Genesis Task #1 Requirement) with throttling
-    try {
-      const now = Date.now();
-
-      // Use cached position if within cooldown period
-      if (cachedGeoPosition && (now - lastGeoCall) < GEOLOCATION_COOLDOWN_MS) {
-        telemetry.gps = {
-          lat: cachedGeoPosition.coords.latitude,
-          lng: cachedGeoPosition.coords.longitude,
-          accuracy: cachedGeoPosition.coords.accuracy,
-          altitude: cachedGeoPosition.coords.altitude,
-          speed: cachedGeoPosition.coords.speed
-        };
-      } else {
-        // Request fresh position
-        const pos = await new Promise<GeolocationPosition | null>((resolve, reject) => {
-          if (!navigator.geolocation) {
-            reject(new Error('Geolocation not supported'));
-            return;
-          }
-          navigator.geolocation.getCurrentPosition(resolve, reject, {
-            timeout: 10000,
-            enableHighAccuracy: false, // Use low accuracy to save battery
-            maximumAge: 60000 // Accept cached position up to 1 minute old
-          });
-        }).catch(() => null);
-
-        if (pos && pos.coords) {
-          lastGeoCall = now;
-          cachedGeoPosition = pos;
-          telemetry.gps = {
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
-            accuracy: pos.coords.accuracy,
-            altitude: pos.coords.altitude,
-            speed: pos.coords.speed
-          };
-        }
-      }
-    } catch (e) {
-      // Silent fail for telemetry
-      console.debug('Telemetry: GPS not available');
     }
   }
 

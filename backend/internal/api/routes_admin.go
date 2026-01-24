@@ -215,6 +215,11 @@ func approveWithdrawal(db *sql.DB, rewardEngine *services.RewardEngine) gin.Hand
 		if rewardGSTD.Valid {
 			task.RewardGSTD = &rewardGSTD.Float64
 		}
+		if taskStatus != "completed" {
+			c.JSON(400, gin.H{"error": fmt.Sprintf("cannot approve withdrawal for task in status %s - must be 'completed'", taskStatus)})
+			return
+		}
+
 		task.Status = "completed"
 
 		// Trigger payout in background

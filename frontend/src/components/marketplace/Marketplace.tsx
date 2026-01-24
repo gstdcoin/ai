@@ -129,6 +129,9 @@ export default function Marketplace() {
         setClaimingTask(taskId);
         try {
             await apiPost('/marketplace/tasks/' + taskId + '/claim', {});
+            // Set as active task for mining
+            const { workerService } = await import('../../services/WorkerService');
+            workerService.targetTaskId = taskId;
             // Remove from list
             setTasks(prev => prev.filter(t => t.task_id !== taskId));
             // Haptic feedback
@@ -378,7 +381,7 @@ export default function Marketplace() {
                                     onChange={(e) => setTaskForm({ ...taskForm, task_type: e.target.value })}
                                     className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white"
                                 >
-                                    <option value="network_survey">📡 Network Survey (5G/GPS)</option>
+                                    <option value="network_survey">📡 Network Survey</option>
                                     <option value="js_script">📜 JavaScript Script</option>
                                     <option value="wasm_binary">⚙️ WASM Binary</option>
                                 </select>

@@ -14,21 +14,6 @@ export default React.memo(function Header({ onCreateTask, onLogout }: HeaderProp
   const { t } = useTranslation('common');
   const { address, tonBalance, gstdBalance } = useWalletStore();
 
-  const handleShare = () => {
-    const shareText = t('share_text') || 'Join the GSTD Platform - Decentralized AI Inference Network';
-    const shareUrl = typeof window !== 'undefined' ? window.location.origin : 'https://app.gstdtoken.com';
-
-    if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp) {
-      const tg = (window as any).Telegram.WebApp;
-      tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`);
-    } else if (navigator.share) {
-      navigator.share({ title: 'GSTD Platform', text: shareText, url: shareUrl });
-    } else {
-      navigator.clipboard.writeText(shareUrl);
-      toast.success(t('link_copied') || 'Link copied to clipboard!');
-    }
-  };
-
   return (
     <header className="glass-dark border-b border-white/10 sticky top-0 z-30">
       <div className="px-4 sm:px-6 py-4">
@@ -77,15 +62,6 @@ export default React.memo(function Header({ onCreateTask, onLogout }: HeaderProp
             {/* Actions */}
             <div className="flex items-center gap-2 flex-wrap">
               <LanguageSwitcher />
-              <button
-                onClick={handleShare}
-                className="glass-button text-white touch-manipulation"
-                aria-label={t('share') || 'Share'}
-                type="button"
-              >
-                <Share2 size={18} />
-                <span className="hidden sm:inline">{t('share') || 'Share'}</span>
-              </button>
               <button
                 onClick={onLogout}
                 className="glass-button text-white touch-manipulation"
