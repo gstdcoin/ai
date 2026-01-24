@@ -5,10 +5,21 @@ import { logger } from '../../lib/logger';
 import { toast } from '../../lib/toast';
 import { apiPost, apiGet } from '../../lib/apiClient';
 
+import { useRouter } from 'next/router'; // Added router import
+
 export default function WalletListener() {
+    const router = useRouter();
     const { isConnected, disconnect, connect, setUser } = useWalletStore();
     const [tonConnectUI] = useTonConnectUI();
     const wallet = useTonWallet();
+
+    // Sync TonConnectUI language with Next.js router locale
+    useEffect(() => {
+        if (tonConnectUI) {
+            const lang = router.locale === 'ru' ? 'ru' : 'en';
+            tonConnectUI.uiOptions = { language: lang };
+        }
+    }, [router.locale, tonConnectUI]);
 
     // Ref to track login state and prevent duplicates
     const lastLoggedInAddress = useRef<string | null>(null);
