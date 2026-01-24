@@ -244,7 +244,7 @@ func main() {
 	poolMonitorService := services.NewPoolMonitorService(cfg.TON)
 	poolMonitorService.SetTONService(tonService)    // Enable real pool balance monitoring
 	poolMonitorService.SetErrorLogger(errorLogger) // Enable error logging for pool monitoring
-	telegramService := services.NewTelegramService(cfg.Telegram.BotToken, cfg.Telegram.ChatID)
+	telegramService := services.NewTelegramService(cfg.Telegram.BotToken, cfg.Telegram.ChatID, db)
 	if telegramService.IsEnabled() {
 		log.Println("✅ Telegram notifications enabled")
 	}

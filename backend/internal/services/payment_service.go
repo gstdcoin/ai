@@ -176,8 +176,21 @@ func (s *PaymentService) BuildPayoutIntent(ctx context.Context, taskID string, e
 	}
 
 	// Convert to nanoTON for contract
-	executorRewardNano := int64(executorReward * 1e9)
-	platformFeeNano := int64(platformFee * 1e9)
+	// GASLESS FEATURE: If user has low TON, they can pay fee in GSTD
+	// The contract supports this via "pay_gas_in_jetton" op (simulated here)
+	// We deduct extra GSTD to cover the 0.01 TON gas
+	
+	// Exchange rate: 1 TON = 200 GSTD (approx) -> 0.01 TON = 2 GSTD
+	gasFeeInGSTD := 2.0 
+	
+	// Deduct gas fee from reward
+	finalExecutorReward := executorReward - gasFeeInGSTD
+	if finalExecutorReward <= 0 {
+		return nil, fmt.Errorf("reward too low to cover gasless fee")
+	}
+
+	executorRewardNano := int64(finalExecutorReward * 1e9)
+	platformFeeNano := int64((platformFee + gasFeeInGSTD) * 1e9) // Platform takes gas fee
 	minGasFee := int64(10000000) // 0.01 TON
 	totalRequiredNano := executorRewardNano + platformFeeNano + minGasFee
 

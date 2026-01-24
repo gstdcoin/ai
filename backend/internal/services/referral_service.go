@@ -86,7 +86,7 @@ func (s *ReferralService) ProcessReferralReward(ctx context.Context, workerAddre
 		return nil
 	}
 
-	rewardAmount := platformFeeGSTD * 0.05 // 5% share
+	rewardAmount := platformFeeGSTD * 0.20 // 20% of fee (1% of total budget)
 
 	// Record reward
 	_, err = s.db.ExecContext(ctx, `

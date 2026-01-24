@@ -12,6 +12,7 @@ import (
 type MarketplaceService struct {
 	db            *sql.DB
 	escrowService *EscrowService
+	referral      *ReferralService
 }
 
 // AvailableTask represents a task in the marketplace
@@ -58,10 +59,11 @@ type TaskReceipt struct {
 	GoldReserveGSTD  float64 `json:"gold_reserve_gstd"`
 }
 
-func NewMarketplaceService(db *sql.DB, escrowService *EscrowService) *MarketplaceService {
+func NewMarketplaceService(db *sql.DB, escrowService *EscrowService, referral *ReferralService) *MarketplaceService {
 	return &MarketplaceService{
 		db:            db,
 		escrowService: escrowService,
+		referral:      referral,
 	}
 }
 
@@ -135,10 +137,11 @@ func (s *MarketplaceService) ClaimTask(ctx context.Context, taskID, workerWallet
 	// Check if task is available
 	var status string
 	var maxWorkers, workersCompleted int
+	var reward float64
 	err := s.db.QueryRowContext(ctx, `
-		SELECT status, COALESCE(max_workers, 1), COALESCE(workers_completed, 0)
+		SELECT status, COALESCE(max_workers, 1), COALESCE(workers_completed, 0), COALESCE(reward_per_worker, labor_compensation_gstd, 0)
 		FROM tasks WHERE task_id = $1
-	`, taskID).Scan(&status, &maxWorkers, &workersCompleted)
+	`, taskID).Scan(&status, &maxWorkers, &workersCompleted, &reward)
 	
 	if err != nil {
 		return fmt.Errorf("task not found: %w", err)
@@ -152,12 +155,44 @@ func (s *MarketplaceService) ClaimTask(ctx context.Context, taskID, workerWallet
 		return fmt.Errorf("task is fully assigned")
 	}
 
-	// Create assignment
+	// Calculate stake based on worker level
+	var level string
+	err = s.db.QueryRowContext(ctx, "SELECT COALESCE(level, 'Bronze') FROM worker_ratings WHERE worker_wallet = $1", workerWallet).Scan(&level)
+	if err != nil {
+		level = "Bronze" // Default
+	}
+
+	stakePercent := 0.10 // Default Bronze 10%
+	switch level {
+	case "Silver":
+		stakePercent = 0.07 // 7%
+	case "Gold":
+		stakePercent = 0.05 // 5%
+	case "Diamond":
+		stakePercent = 0.01 // 1%
+	}
+
+	stakeAmount := reward * stakePercent
+
+	// Deduct stake from worker balance (check sufficiency)
+	res, err := s.db.ExecContext(ctx, `
+		UPDATE users SET balance = balance - $1 
+		WHERE wallet_address = $2 AND balance >= $1
+	`, stakeAmount, workerWallet)
+	if err != nil {
+		return fmt.Errorf("failed to deduct stake: %w", err)
+	}
+	rows, _ := res.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("insufficient balance for stake (required: %.6f GSTD)", stakeAmount)
+	}
+
+	// Create assignment with stake info
 	_, err = s.db.ExecContext(ctx, `
-		INSERT INTO worker_task_assignments (task_id, worker_wallet, device_id, status)
-		VALUES ($1, $2, $3, 'assigned')
+		INSERT INTO worker_task_assignments (task_id, worker_wallet, device_id, status, stake_amount_gstd)
+		VALUES ($1, $2, $3, 'assigned', $4)
 		ON CONFLICT (task_id, worker_wallet) DO NOTHING
-	`, taskID, workerWallet, deviceID)
+	`, taskID, workerWallet, deviceID, stakeAmount)
 
 	if err != nil {
 		return fmt.Errorf("failed to create assignment: %w", err)
@@ -176,8 +211,18 @@ func (s *MarketplaceService) ClaimTask(ctx context.Context, taskID, workerWallet
 
 // CompleteTask marks a task as completed and triggers payout
 func (s *MarketplaceService) CompleteTask(ctx context.Context, taskID, workerWallet string, executionTimeMs int, qualityScore float64, resultData []byte) (*TaskReceipt, error) {
-	// Update assignment
+	// Refund stake to worker
 	_, err := s.db.ExecContext(ctx, `
+		UPDATE users 
+		SET balance = balance + (SELECT COALESCE(stake_amount_gstd, 0) FROM worker_task_assignments WHERE task_id = $1 AND worker_wallet = $2)
+		WHERE wallet_address = $2
+	`, taskID, workerWallet)
+	if err != nil {
+		log.Printf("⚠️  Failed to refund stake for task %s: %v", taskID, err)
+	}
+
+	// Update assignment
+	_, err = s.db.ExecContext(ctx, `
 		UPDATE worker_task_assignments SET
 			status = 'completed',
 			completed_at = NOW(),
@@ -205,6 +250,34 @@ func (s *MarketplaceService) CompleteTask(ctx context.Context, taskID, workerWal
 	platformFee := tx.AmountGSTD / 0.95 * 0.05
 	devFund := platformFee * 0.40
 	goldReserve := platformFee * 0.60
+
+	// GAMIFICATION: Award XP (100 per task) and check for Level Up
+	_, err = s.db.ExecContext(ctx, `
+		INSERT INTO worker_ratings (worker_wallet, xp, level)
+		VALUES ($1, 100, 'Bronze')
+		ON CONFLICT (worker_wallet) DO UPDATE SET 
+			xp = worker_ratings.xp + 100,
+			level = CASE 
+				WHEN worker_ratings.xp + 100 >= 10000 THEN 'Diamond'
+				WHEN worker_ratings.xp + 100 >= 2000 THEN 'Gold'
+				WHEN worker_ratings.xp + 100 >= 500  THEN 'Silver'
+				ELSE 'Bronze'
+			END,
+			total_tasks_completed = worker_ratings.total_tasks_completed + 1,
+			total_earnings_gstd = worker_ratings.total_earnings_gstd + $2,
+			last_task_at = NOW()
+	`, workerWallet, tx.AmountGSTD)
+	if err != nil {
+		log.Printf("⚠️  Failed to award XP for task %s: %v", taskID, err)
+	}
+
+	// REFERRAL: Process reward for referrer (1% of total project volume)
+	if s.referral != nil {
+		// platformFee already represents 5%. referral logic takes 20% of that (which is 1% of total)
+		if err := s.referral.ProcessReferralReward(ctx, workerWallet, taskID, platformFee); err != nil {
+			log.Printf("⚠️  Failed to process referral reward for task %s: %v", taskID, err)
+		}
+	}
 
 	// Create receipt
 	receipt := &TaskReceipt{

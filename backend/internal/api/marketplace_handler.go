@@ -15,16 +15,18 @@ type MarketplaceHandler struct {
 	db          *sql.DB
 	marketplace *services.MarketplaceService
 	escrow      *services.EscrowService
+	referral    *services.ReferralService
 }
 
 // NewMarketplaceHandler creates a new marketplace handler
-func NewMarketplaceHandler(db *sql.DB) *MarketplaceHandler {
+func NewMarketplaceHandler(db *sql.DB, referral *services.ReferralService) *MarketplaceHandler {
 	escrow := services.NewEscrowService(db)
-	marketplace := services.NewMarketplaceService(db, escrow)
+	marketplace := services.NewMarketplaceService(db, escrow, referral)
 	return &MarketplaceHandler{
 		db:          db,
 		marketplace: marketplace,
 		escrow:      escrow,
+		referral:    referral,
 	}
 }
 

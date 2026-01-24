@@ -262,7 +262,7 @@ func SetupRoutes(
 		protected.POST("/tasks/worker/submit", submitWorkerResult(taskPaymentService, rewardEngine))
 
 		// Marketplace endpoints - split into public and protected
-		marketplaceHandler := NewMarketplaceHandler(db.(*sql.DB))
+		marketplaceHandler := NewMarketplaceHandler(db.(*sql.DB), referralService)
 		// Public marketplace endpoints (no session required)
 		v1.GET("/marketplace/tasks", marketplaceHandler.GetAvailableTasks)
 		v1.GET("/marketplace/stats", marketplaceHandler.GetMarketplaceStats)
