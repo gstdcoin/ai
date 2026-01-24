@@ -27,6 +27,8 @@ self.onmessage = async (e) => {
             return;
         }
 
+        console.log(`[Worker] Received Task: ${task.id}`);
+        console.log(`[Worker] State: Processing...`);
         console.log(`🚀 Processing Mobile Task: ${task.id}`);
         // Simulate ONNX Runtime execution
         const result = await runInference(task.model, task.input);

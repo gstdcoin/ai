@@ -71,7 +71,16 @@ else
 fi
 
 # 3. Bot Status Check
+# 3. Bot Status Check
 check_container "gstd_bot"
+
+# 3.5 AI Model Status Check (Autonomy)
+if ! curl -s --connect-timeout 5 http://gstd_ollama:11434/api/tags > /dev/null; then
+    log "🧠 AI Brain (Ollama) is unresponsive. Restarting..."
+    docker restart gstd_ollama
+else
+    log "🧠 AI Brain is active."
+fi
 
 # 4. Log Maintenance
 clean_logs() {
