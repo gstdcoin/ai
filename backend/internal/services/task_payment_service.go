@@ -31,9 +31,11 @@ func NewTaskPaymentService(db *sql.DB, tonService *TONService, tonConfig config.
 }
 
 type CreateTaskRequest struct {
-	Type    string                 `json:"type" binding:"required"`
-	Budget  float64                `json:"budget" binding:"required"`
-	Payload map[string]interface{} `json:"payload"`
+	Type        string                 `json:"type" binding:"required"`
+	Budget      float64                `json:"budget" binding:"required"`
+	Payload     map[string]interface{} `json:"payload"`
+	InputSource string                 `json:"input_source"`
+	InputHash   string                 `json:"input_hash"`
 }
 
 type CreateTaskResponse struct {
@@ -80,8 +82,11 @@ func (s *TaskPaymentService) CreateTask(ctx context.Context, creatorWallet strin
 	// Set default values for required columns that may not be provided in payment flow
 	defaultOperation := req.Type // Use task type as operation if not specified
 	defaultModel := ""
-	defaultInputSource := "inline"
-	defaultInputHash := ""
+	defaultInputSource := req.InputSource
+	if defaultInputSource == "" {
+		defaultInputSource = "inline"
+	}
+	defaultInputHash := req.InputHash
 	
 	// Check which priority column exists in database
 	// Try to insert with priority_score, fallback to certainty_gravity_score

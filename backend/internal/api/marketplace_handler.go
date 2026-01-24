@@ -95,6 +95,7 @@ type CreateTaskRequest struct {
 		Countries []string `json:"countries"`
 	} `json:"geography"`
 	InputSource string `json:"input_source"`
+	InputHash   string `json:"input_hash"`
 	Model       string `json:"model"`
 }
 
@@ -192,17 +193,17 @@ func (h *MarketplaceHandler) CreateTaskWithEscrow(c *gin.Context) {
 			task_id, requester_address, task_type, operation, status,
 			budget_gstd, difficulty, max_workers, reward_per_worker,
 			estimated_time_sec, min_trust_score, geography,
-			input_source, model, created_at
+			input_source, input_hash, model, created_at
 		) VALUES (
 			$1, $2, $3, $4, 'pending',
 			$5, $6, $7, $8,
 			$9, $10, $11,
-			$12, $13, NOW()
+			$12, $13, $14, NOW()
 		)
 	`, taskID, walletAddress, req.TaskType, req.Operation,
 		req.BudgetGSTD, req.Difficulty, req.MaxWorkers, rewardPerWorker,
 		req.EstimatedTimeSec, req.MinTrustScore, toJSON(geography),
-		req.InputSource, req.Model)
+		req.InputSource, req.InputHash, req.Model)
 
 	if err != nil {
 		log.Printf("❌ Failed to create task: %v", err)
