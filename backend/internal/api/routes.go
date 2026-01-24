@@ -692,7 +692,10 @@ func getJettonAddress(tonService *services.TONService, tonConfig config.TONConfi
 			return
 		}
 
-		c.JSON(200, gin.H{"address": address})
+		// Normalize to user-friendly format (EQ...) for TonConnect SDK
+		normalizedAddress := services.NormalizeAddressForAPI(address)
+
+		c.JSON(200, gin.H{"address": normalizedAddress})
 	}
 }
 
