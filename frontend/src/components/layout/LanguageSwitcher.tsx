@@ -5,13 +5,18 @@ import { Globe } from 'lucide-react';
 
 export default function LanguageSwitcher() {
   const router = useRouter();
-  const { t } = useTranslation('common');
+  const { t, i18n } = useTranslation('common');
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
-  const changeLanguage = (locale: string) => {
-    router.push(router.pathname, router.asPath, { locale });
+  const changeLanguage = async (locale: string) => {
+    // Instant switch via i18next
+    if (i18n && i18n.changeLanguage) {
+      await i18n.changeLanguage(locale);
+    }
+    // Update URL without full reload
+    router.push(router.pathname, router.asPath, { locale, scroll: false, shallow: true });
     setIsOpen(false);
   };
 
@@ -53,12 +58,12 @@ export default function LanguageSwitcher() {
           {currentLocale === 'ru' ? 'RU' : 'EN'}
         </span>
       </button>
-      
+
       {isOpen && (
         <div
           ref={menuRef}
           className="absolute right-0 sm:right-0 left-auto sm:left-auto top-full mt-2 z-50 glass-dark rounded-lg shadow-glass overflow-hidden min-w-[120px] max-w-[200px]"
-          style={{ 
+          style={{
             right: '0',
             left: 'auto',
             transform: 'translateX(0)'
