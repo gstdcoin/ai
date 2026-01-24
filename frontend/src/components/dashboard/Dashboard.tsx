@@ -26,6 +26,9 @@ interface NetworkStats {
   active_workers: number;
   total_gstd_paid: number;
   tasks_24h: number;
+  temperature: number;
+  pressure: number;
+  total_hashrate: number;
 }
 
 // Lazy load modals for performance
@@ -110,13 +113,21 @@ function Dashboard() {
       try {
         const stats = await apiGet<NetworkStats>('/network/stats');
         setNetworkStats(stats);
+
+        // Sync header metrics from network stats
+        if (typeof document !== 'undefined') {
+          const tempEl = document.getElementById('network-temperature');
+          const pressureEl = document.getElementById('computational-pressure');
+          if (tempEl) tempEl.textContent = `${stats.temperature.toFixed(2)} T`;
+          if (pressureEl) pressureEl.textContent = `${stats.pressure.toFixed(2)} P`;
+        }
       } catch (err) {
         console.error('Failed to fetch network stats:', err);
       }
     };
 
     fetchStats();
-    const interval = setInterval(fetchStats, 60000);
+    const interval = setInterval(fetchStats, 10000); // 10s for more "Live" feel
     return () => clearInterval(interval);
   }, []);
 
@@ -149,8 +160,8 @@ function Dashboard() {
     const pressureEl = document.getElementById('computational-pressure');
     if (tempEl) {
       if (stats) {
-        const temp = stats.processing_tasks > 0
-          ? (stats.processing_tasks / Math.max(stats.active_devices_count, 1)).toFixed(2)
+        const temp = stats.active_devices_count > 0
+          ? (stats.processing_tasks / stats.active_devices_count).toFixed(2)
           : '0.00';
         tempEl.textContent = `${temp} T`;
       } else {
@@ -161,13 +172,60 @@ function Dashboard() {
       if (stats) {
         const pressure = stats.completed_tasks > 0
           ? ((stats.queued_tasks + stats.processing_tasks) / stats.completed_tasks).toFixed(2)
-          : (stats.queued_tasks + stats.processing_tasks).toFixed(2);
+          : (stats.queued_tasks + stats.processing_tasks || 0.00).toFixed(2);
         pressureEl.textContent = `${pressure} P`;
       } else {
         pressureEl.textContent = '0.00 P';
       }
     }
   }, []);
+
+  const [isClaimingRewards, setIsClaimingRewards] = useState(false);
+
+  const handleClaimRewards = useCallback(async () => {
+    if (!address) {
+      toast.error('Connect Wallet', 'Please connect your wallet to claim rewards.');
+      return;
+    }
+
+    setIsClaimingRewards(true);
+    try {
+      // 1. Try to claim target task if it was just completed
+      const targetId = workerService.targetTaskId;
+
+      // 2. Fetch all tasks to find completed but unpaid ones
+      const response = await apiGet<{ tasks: any[] }>('/marketplace/my-tasks');
+      const myCreatedTasks = response.tasks || [];
+
+      // We actually want completed tasks where we are the WORKER
+      // Let's check available tasks which might include our claimed ones
+      const availableResponse = await apiGet<{ tasks: any[] }>('/marketplace/tasks');
+      const allTasks = availableResponse.tasks || [];
+
+      // Try to payout by targetId first
+      if (targetId) {
+        try {
+          await apiPost(`/marketplace/tasks/${targetId}/payout`, {});
+          toast.success('Rewards Claimed!', `Sent for task ${targetId.slice(0, 8)}`);
+          workerService.targetTaskId = null;
+          setIsClaimingRewards(false);
+          return;
+        } catch (e) {
+          // Fallback to searching
+        }
+      }
+
+      toast.info('Searching rewards...', 'Checking for claimable tasks');
+      // For now, if targetId didn't work, we tell user to check Tasks panel
+      setActiveTab('tasks');
+
+    } catch (err: any) {
+      console.error('Claim failed:', err);
+      toast.error('Claim Failed', err.message || 'No rewards ready to claim yet.');
+    } finally {
+      setIsClaimingRewards(false);
+    }
+  }, [address]);
 
   const handleTaskCreated = useCallback(() => triggerHaptic('medium'), [triggerHaptic]);
   const handleCompensationClaimed = useCallback(() => triggerHaptic('medium'), [triggerHaptic]);
@@ -288,7 +346,7 @@ function Dashboard() {
                       <div className="text-[10px] bg-cyan-900/50 text-cyan-200 px-2 py-0.5 rounded border border-cyan-500/30 uppercase tracking-widest animate-pulse">Live</div>
                     </div>
                     <div className="text-4xl md:text-5xl font-bold text-white tracking-tight flex items-baseline gap-2 filter drop-shadow-[0_0_10px_rgba(34,211,238,0.5)]">
-                      {networkStats ? (networkStats.active_workers * 12.5).toFixed(1) : '---'}
+                      {networkStats ? (networkStats.total_hashrate > 0 ? networkStats.total_hashrate.toFixed(1) : (networkStats.active_workers * 12.5).toFixed(1)) : '---'}
                       <span className="text-lg text-gray-400 font-normal">PH/s</span>
                     </div>
                     <div className="mt-2 text-sm text-gray-400 flex items-center gap-2">
@@ -334,11 +392,12 @@ function Dashboard() {
                   </div>
                 </button>
                 <button
-                  onClick={() => setActiveTab('stats')}
-                  className="flex-1 py-6 px-6 rounded-2xl bg-gradient-to-br from-white/5 to-white/[0.02] hover:from-white/10 hover:to-white/5 text-white font-semibold border border-white/10 hover:border-white/20 backdrop-blur-md transition-all flex items-center justify-center gap-3 group"
+                  onClick={handleClaimRewards}
+                  disabled={isClaimingRewards}
+                  className="flex-1 py-6 px-6 rounded-2xl bg-gradient-to-br from-white/5 to-white/[0.02] hover:from-white/10 hover:to-white/5 text-white font-semibold border border-white/10 hover:border-white/20 backdrop-blur-md transition-all flex items-center justify-center gap-3 group disabled:opacity-50"
                 >
-                  <Calculator className="w-6 h-6 text-cyan-400 group-hover:text-cyan-300 transition-colors" />
-                  <span className="text-lg">{t('claim_rewards') || 'Claim Rewards'}</span>
+                  <Calculator className={`w-6 h-6 text-cyan-400 group-hover:text-cyan-300 transition-colors ${isClaimingRewards ? 'animate-spin' : ''}`} />
+                  <span className="text-lg">{isClaimingRewards ? 'Claiming...' : (t('claim_rewards') || 'Claim Rewards')}</span>
                 </button>
               </div>
 

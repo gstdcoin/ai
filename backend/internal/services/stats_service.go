@@ -116,17 +116,20 @@ func (s *StatsService) GetGlobalStats(ctx context.Context) (*GlobalStats, error)
 }
 
 type NetworkStats struct {
-	ActiveWorkers    int     `json:"active_workers"`
-	TotalGSTDPaid    float64 `json:"total_gstd_paid"`
-	Tasks24h         int     `json:"tasks_24h"`
+	ActiveWorkers int     `json:"active_workers"`
+	TotalGSTDPaid float64 `json:"total_gstd_paid"`
+	Tasks24h      int     `json:"tasks_24h"`
+	Temperature   float64 `json:"temperature"`
+	Pressure      float64 `json:"pressure"`
+	TotalHashrate float64 `json:"total_hashrate"`
 }
 
 func (s *StatsService) GetNetworkStats(ctx context.Context) (*NetworkStats, error) {
 	stats := &NetworkStats{}
 
-	// 1. Total active workers (last 10 mins)
+	// 1. Total active workers (last 30 seconds for "Live" status)
 	err := s.db.QueryRowContext(ctx, `
-		SELECT COUNT(*) FROM devices WHERE is_active = true AND last_seen_at > NOW() - INTERVAL '10 minutes'
+		SELECT COUNT(*) FROM devices WHERE is_active = true AND last_seen_at > NOW() - INTERVAL '30 seconds'
 	`).Scan(&stats.ActiveWorkers)
 	if err != nil {
 		stats.ActiveWorkers = 0
@@ -146,6 +149,40 @@ func (s *StatsService) GetNetworkStats(ctx context.Context) (*NetworkStats, erro
 	`).Scan(&stats.Tasks24h)
 	if err != nil {
 		stats.Tasks24h = 0
+	}
+
+	// 4. Calculate Netork Temperature (Average Entropy Score)
+	err = s.db.QueryRowContext(ctx, `
+		SELECT COALESCE(AVG(entropy_score), 0.1) FROM operation_entropy
+	`).Scan(&stats.Temperature)
+	if err != nil {
+		stats.Temperature = 0.1
+	}
+
+	// 5. Calculate Computational Pressure (Queued + Processing) / ActiveNodes
+	var pendingTasks int
+	err = s.db.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM tasks WHERE status IN ('pending', 'queued', 'assigned', 'executing')
+	`).Scan(&pendingTasks)
+	
+	activeNodes := stats.ActiveWorkers
+	if activeNodes == 0 {
+		// Try to count from nodes table if devices is 0
+		s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM nodes WHERE last_seen_at > NOW() - INTERVAL '30 seconds'").Scan(&activeNodes)
+	}
+
+	if activeNodes > 0 {
+		stats.Pressure = float64(pendingTasks) / float64(activeNodes)
+	} else {
+		stats.Pressure = float64(pendingTasks)
+	}
+
+	// 6. Total Hashrate (Sum of current_hashrate from active nodes)
+	err = s.db.QueryRowContext(ctx, `
+		SELECT COALESCE(SUM(current_hashrate), 0) FROM nodes WHERE last_seen_at > NOW() - INTERVAL '30 seconds'
+	`).Scan(&stats.TotalHashrate)
+	if err != nil {
+		stats.TotalHashrate = 0
 	}
 
 	return stats, nil

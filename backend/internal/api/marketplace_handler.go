@@ -78,6 +78,9 @@ func SetupMarketplaceProtectedRoutes(router *gin.RouterGroup, handler *Marketpla
 		// Creator endpoints
 		marketplace.GET("/my-tasks", handler.GetMyTasks)
 		marketplace.GET("/my-transactions", handler.GetMyTransactions)
+
+		// Payout
+		marketplace.POST("/tasks/:id/payout", handler.PayoutTask)
 	}
 }
 
@@ -600,6 +603,32 @@ func (h *MarketplaceHandler) DeleteTask(c *gin.Context) {
 		"task_id": taskID,
 		"status":  "deleted",
 		"message": "Task deleted successfully",
+	})
+}
+
+// PayoutTask triggers reward distribution for a completed task
+func (h *MarketplaceHandler) PayoutTask(c *gin.Context) {
+	taskID := c.Param("id")
+	walletAddress, exists := c.Get("wallet_address")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "wallet address required"})
+		return
+	}
+
+	// Release funds (default quality 100% for manual claim if already validated/completed)
+	tx, err := h.escrow.ReleaseToWorker(c.Request.Context(), taskID, walletAddress.(string), 1.0)
+	if err != nil {
+		log.Printf("❌ Payout failed for task %s, wallet %s: %v", taskID, walletAddress, err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "payout failed: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"task_id":      taskID,
+		"status":       "paid",
+		"tx_id":        tx.TxID,
+		"amount_gstd": tx.AmountGSTD,
+		"message":      "Rewards distributed successfully",
 	})
 }
 

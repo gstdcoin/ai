@@ -14,6 +14,8 @@ class WorkerService {
     private lastHeartbeatAck: number = 0;
     private retryCount: number = 0;
     private pendingQueue: any[] = [];
+    private deviceId: string = 'browser-' + Math.random().toString(36).substring(7);
+    public targetTaskId: string | null = null;
 
     constructor() {
         if (typeof window !== 'undefined') {
@@ -113,8 +115,12 @@ class WorkerService {
         }
     }
 
-    public ignite() {
-        if (this.state === 'running') return;
+    public ignite(taskId?: string) {
+        if (this.state === 'running' && !taskId) return;
+
+        if (taskId) {
+            this.targetTaskId = taskId;
+        }
 
         if (!this.worker) this.initWorker();
 
@@ -129,7 +135,7 @@ class WorkerService {
             if (this.state === 'error') return;
             this.state = 'running';
             this.notifyState();
-            toast.success('GSTD Mining Ignited: Processing Tasks');
+            toast.success(this.targetTaskId ? `Processing Task: ${this.targetTaskId}` : 'GSTD Mining Ignited: Processing Tasks');
             this.startTaskLoop();
         }, 1000);
     }
@@ -208,9 +214,10 @@ class WorkerService {
 
             const task = {
                 type: 'inference',
-                id: Math.random().toString(36).substring(7),
+                id: this.targetTaskId || Math.random().toString(36).substring(7),
+                is_targeted: !!this.targetTaskId,
                 model: 'mobilenet_v2',
-                priority: 'normal', // Let battery saver logic work
+                priority: 'normal',
                 input: new Float32Array(100)
             };
 

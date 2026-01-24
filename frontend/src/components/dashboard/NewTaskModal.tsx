@@ -218,11 +218,13 @@ export default function NewTaskModal({ onClose, onTaskCreated }: NewTaskModalPro
             address: rewardJettonWallet, // Index 0: Reward to Escrow
             amount: "50000000",           // 0.05 TON for gas
             payload: rewardBoc,
+            bounce: false,
           },
           {
             address: feeJettonWallet,    // Index 1: Fee to Admin
             amount: "50000000",           // 0.05 TON for gas
             payload: feeBoc,
+            bounce: false,
           }
         ]
       });

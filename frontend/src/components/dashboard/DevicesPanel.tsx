@@ -173,14 +173,19 @@ export default function DevicesPanel() {
                       </div>
                     </td>
                     <td className="px-3 sm:px-6 py-4 whitespace-nowrap hidden sm:table-cell">
-                      <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${node.status === 'online'
-                        ? 'bg-green-500/20 text-green-400'
-                        : 'bg-gray-500/20 text-gray-400'
-                        }`}>
-                        {node.status === 'online'
-                          ? (t('auto_processing') || 'Auto Processing')
-                          : (t('offline') || 'Offline')}
-                      </span>
+                      {(() => {
+                        const isOnline = (new Date().getTime() - new Date(node.last_seen).getTime()) < 30000;
+                        return (
+                          <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${isOnline
+                            ? 'bg-green-500/20 text-green-400'
+                            : 'bg-gray-500/20 text-gray-400'
+                            }`}>
+                            {isOnline
+                              ? (t('online') || 'Online')
+                              : (t('offline') || 'Offline')}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-300 hidden md:table-cell">
                       {node.cpu_model && (

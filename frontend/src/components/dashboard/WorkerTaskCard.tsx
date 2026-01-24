@@ -43,6 +43,10 @@ export default function WorkerTaskCard({ task, onTaskCompleted }: WorkerTaskCard
       return;
     }
 
+    // Set as active task for mining
+    const { workerService } = await import('../../services/WorkerService');
+    workerService.targetTaskId = task.task_id;
+
     // Haptic feedback on button press
     triggerHapticImpact('medium');
 
