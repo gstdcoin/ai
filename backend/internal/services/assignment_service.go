@@ -124,7 +124,7 @@ func (s *AssignmentService) AssignTask(ctx context.Context, taskID string, devic
 	}
 
 	// Verify update actually happened (prevent race conditions)
-	rowsAffected, err := result.RowsAffected()
+	rowsAffected, err = result.RowsAffected()
 	if err != nil {
 		return fmt.Errorf("failed to check rows affected: %w", err)
 	}
