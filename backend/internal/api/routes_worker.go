@@ -58,7 +58,7 @@ func submitWorkerResult(
 			return
 		}
 
-		// Verify node exists
+		// Verify node exists OR allow wallet-as-node
 		var walletAddress string
 		err := taskPaymentService.GetDB().QueryRowContext(c.Request.Context(), `
 			SELECT wallet_address
@@ -67,8 +67,14 @@ func submitWorkerResult(
 		`, req.NodeID).Scan(&walletAddress)
 
 		if err != nil {
-			c.JSON(404, gin.H{"error": "node not found"})
-			return
+			// Support browser workers: if node lookup fails, check if NodeID is a valid wallet address
+			// and treat it as the wallet address itself.
+			if len(req.NodeID) >= 48 { // Basic TON address length check
+				walletAddress = req.NodeID
+			} else {
+				c.JSON(404, gin.H{"error": "node not found"})
+				return
+			}
 		}
 
 		// Submit result and trigger reward distribution

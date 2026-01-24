@@ -146,20 +146,26 @@ func (s *TaskPaymentService) SubmitWorkerResult(
 	}
 
 	// SECURITY: Verify node_id exists and matches wallet
-	var nodeWalletAddress string
-	err = tx.QueryRowContext(ctx, `
-		SELECT wallet_address
-		FROM nodes
-		WHERE id = $1
-	`, nodeID).Scan(&nodeWalletAddress)
+	// OR if doing browser mining, NodeID might be the Wallet Address itself
+	if nodeID == walletAddress {
+		// Browser worker mode - direct wallet attribution
+		// No need to query nodes table if we already verified walletAddress matches NodeID
+	} else {
+		var nodeWalletAddress string
+		err = tx.QueryRowContext(ctx, `
+			SELECT wallet_address
+			FROM nodes
+			WHERE id = $1
+		`, nodeID).Scan(&nodeWalletAddress)
 
-	if err != nil {
-		return fmt.Errorf("node %s not found or invalid", nodeID)
-	}
+		if err != nil {
+			return fmt.Errorf("node %s not found or invalid", nodeID)
+		}
 
-	// SECURITY: Verify wallet address matches
-	if nodeWalletAddress != walletAddress {
-		return fmt.Errorf("wallet address mismatch: node belongs to different wallet")
+		// SECURITY: Verify wallet address matches
+		if nodeWalletAddress != walletAddress {
+			return fmt.Errorf("wallet address mismatch: node belongs to different wallet")
+		}
 	}
 
 	// SPECIAL HANDLING: GENESIS_MAP (Task ID: GENESIS_MAP)

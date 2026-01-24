@@ -320,14 +320,14 @@ function Dashboard() {
                   <div className="relative z-10">
                     <h3 className="text-sm font-medium text-gray-400 mb-2 flex items-center gap-2">
                       <div className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
-                      Your Network
+                      {t('your_network') || 'Your Network'}
                     </h3>
                     <div className="text-3xl font-bold text-white flex items-baseline gap-2">
                       <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                        Active
+                        {t('active') || 'Active'}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">Earn 5% from referrals</p>
+                    <p className="text-xs text-gray-500 mt-1">{t('earn_referral_bonus') || 'Earn 5% from referrals'}</p>
                   </div>
                   <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-500/20 to-pink-500/10 text-purple-400 border border-purple-500/20">
                     <Users className="w-7 h-7" />

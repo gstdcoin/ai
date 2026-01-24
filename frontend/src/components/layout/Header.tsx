@@ -85,7 +85,7 @@ export default React.memo(function Header({ onCreateTask, onLogout }: HeaderProp
               <div>
                 <p
                   className="text-xs text-gray-400 uppercase tracking-wider cursor-help"
-                  title="Среднее значение entropy_score по всем операциям. Высокая температура = низкая надёжность сети."
+                  title={t('network_temperature_tooltip') || 'Average entropy score across operations.'}
                 >
                   {t('network_temperature')}
                 </p>
@@ -97,7 +97,7 @@ export default React.memo(function Header({ onCreateTask, onLogout }: HeaderProp
               <div>
                 <p
                   className="text-xs text-gray-400 uppercase tracking-wider cursor-help"
-                  title="Количество ожидающих задач / Количество активных узлов. Высокое давление = перегрузка сети."
+                  title={t('computational_pressure_tooltip') || 'Queued tasks / Active nodes.'}
                 >
                   {t('computational_pressure')}
                 </p>
