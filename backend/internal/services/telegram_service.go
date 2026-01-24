@@ -3,10 +3,12 @@ package services
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -17,11 +19,14 @@ type TelegramService struct {
 	apiURL    string
 	httpClient *http.Client
 	enabled   bool
+	db        *sql.DB
 }
 
 // NewTelegramService creates a new Telegram service
 // If botToken or chatID is empty, the service will be disabled (no errors, just silent)
-func NewTelegramService(botToken, chatID string) *TelegramService {
+// NewTelegramService creates a new Telegram service
+// If botToken or chatID is empty, the service will be disabled (no errors, just silent)
+func NewTelegramService(botToken, chatID string, db *sql.DB) *TelegramService {
 	enabled := botToken != "" && chatID != ""
 	if !enabled {
 		log.Println("⚠️  Telegram notifications disabled (missing bot token or chat ID)")
@@ -35,6 +40,7 @@ func NewTelegramService(botToken, chatID string) *TelegramService {
 			Timeout: 10 * time.Second,
 		},
 		enabled: enabled,
+		db:      db,
 	}
 }
 
@@ -159,8 +165,8 @@ func (s *TelegramService) ProcessWebhook(ctx context.Context, body []byte) error
 	}
     
     // Auto-reply to /start as well
-    if update.Message.Text == "/start" {
-        return s.sendWelcome(ctx, update.Message.Chat.ID)
+    if strings.HasPrefix(update.Message.Text, "/start") {
+        return s.sendWelcome(ctx, update.Message.Chat.ID, update.Message.Text, update.Message.From.ID)
     }
 
 	return nil
@@ -186,9 +192,47 @@ func (s *TelegramService) sendDashboardLink(ctx context.Context, chatID int64) e
     return s.sendWithKeyboard(ctx, chatID, message, keyboard)
 }
 
-func (s *TelegramService) sendWelcome(ctx context.Context, chatID int64) error {
-    message := "👋 <b>Welcome to GSTD!</b>\n\nUse /dashboard to access your mining console."
-    return s.sendWithKeyboard(ctx, chatID, message, nil)
+func (s *TelegramService) sendWelcome(ctx context.Context, chatID int64, text string, telegramID int64) error {
+	var welcomeExtras string
+	
+	// Check for referral code
+	parts := strings.Split(text, " ")
+	if len(parts) > 1 && parts[1] != "" {
+		refCode := parts[1]
+		// Store pending referral
+		if s.db != nil {
+			_, err := s.db.ExecContext(ctx, `
+				INSERT INTO pending_referrals (telegram_id, referral_code) 
+				VALUES ($1, $2)
+				ON CONFLICT (telegram_id) DO UPDATE SET referral_code = $2
+			`, telegramID, refCode)
+			
+			if err != nil {
+				log.Printf("Failed to save pending referral: %v", err)
+			} else {
+				log.Printf("Saved pending referral for TG %d: %s", telegramID, refCode)
+				welcomeExtras = fmt.Sprintf("\n\n🤝 <b>Referral Applied!</b>\nYou were invited by code: <code>%s</code>", refCode)
+			}
+		}
+	}
+
+    message := "👋 <b>Welcome to GSTD!</b>\n\nUse /dashboard to access your mining console." + welcomeExtras
+	
+	// Add button directly
+	keyboard := map[string]interface{}{
+        "inline_keyboard": [][]map[string]interface{}{
+            {
+                {
+                    "text": "🚀 Open Dashboard",
+                    "web_app": map[string]interface{}{
+                        "url": "https://app.gstdtoken.com",
+                    },
+                },
+            },
+        },
+    }
+	
+    return s.sendWithKeyboard(ctx, chatID, message, keyboard)
 }
 
 // sendWithKeyboard sends a message with an inline keyboard to a specific chat

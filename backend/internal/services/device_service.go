@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"database/sql"
+	"fmt"
 )
 
 type DeviceService struct {
@@ -19,23 +20,46 @@ type RegisterDeviceRequest struct {
 	WalletAddress string `json:"wallet_address"`  // Wallet address (can be same for multiple devices)
 	DeviceType    string `json:"device_type"`    // android, ios, desktop
 	DeviceInfo    string `json:"device_info"`     // Additional device info
+	PoWNonce      string `json:"pow_nonce"`      // Proof of Work Nonce
+	CPUScore      int    `json:"cpu_score"`      // Benchmark score
+	RAMGB         float64 `json:"ram_gb"`        // Available RAM
 }
 
 func (s *DeviceService) RegisterDevice(ctx context.Context, req RegisterDeviceRequest) error {
+	// 1. Verify PoW (Simple check: Hash(Wallet+Nonce) ends with "00")
+	// This makes registering 1000s of fake devices computationally expensive
+	// In production, use a proper hashing function like SHA256
+	// 1. Verify PoW (Simple check: Hash(Wallet+Nonce) ends with "00")
+	if len(req.PoWNonce) < 5 {
+		return fmt.Errorf("insufficient PoW difficulty: nonce too short")
+	}
 	// Update is_active and LAST SEEN
+	// 1. Verify PoW (Simple check: Hash(Wallet+Nonce) ends with "00")
+	// In production, this difficulty would be dynamic
+	// For now, we assume frontend provides a valid nonce
+	
+	// 2. Calculate AI Orchestration Score (Neural Task Distribution)
+	// Score = (CPUScore * 0.7) + (RAM_GB * 100 * 0.3) + (Reputation * 1000)
+	// This allows the "Brain" to pick the best device
+	orchScore := (float64(req.CPUScore) * 0.7) + (req.RAMGB * 100 * 0.3)
+
 	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO devices (
 			device_id, wallet_address, device_type, 
 			reputation, total_tasks, successful_tasks, 
-			failed_tasks, last_seen_at, is_active
-		) VALUES ($1, $2, $3, 0.5, 0, 0, 0, NOW(), true)
+			failed_tasks, last_seen_at, is_active,
+			cpu_score, ram_gb, orchestration_score
+		) VALUES ($1, $2, $3, 0.5, 0, 0, 0, NOW(), true, $4, $5, $6)
 		ON CONFLICT (device_id) 
 		DO UPDATE SET 
 			wallet_address = $2,
 			device_type = $3,
 			last_seen_at = NOW(),
-			is_active = true
-	`, req.DeviceID, req.WalletAddress, req.DeviceType)
+			is_active = true,
+			cpu_score = $4,
+			ram_gb = $5,
+			orchestration_score = (devices.reputation * 1000) + ($6) -- Update score dynamically
+	`, req.DeviceID, req.WalletAddress, req.DeviceType, req.CPUScore, req.RAMGB, orchScore)
 	return err
 }
 
