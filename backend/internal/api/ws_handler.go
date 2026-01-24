@@ -204,6 +204,7 @@ func (h *WSHub) Run() {
 
 // BroadcastTask notifies all eligible clients about a new task
 func (h *WSHub) BroadcastTask(task *models.Task) {
+	log.Printf("📢 Broadcasting task %s to WebSocket clients", task.TaskID)
 	notification := &TaskNotification{
 		Task:      task,
 		Timestamp: time.Now(),

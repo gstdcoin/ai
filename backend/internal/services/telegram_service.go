@@ -80,6 +80,7 @@ func (s *TelegramService) SendMessage(ctx context.Context, text string) error {
 		return fmt.Errorf("telegram API returned status %d", resp.StatusCode)
 	}
 
+	log.Printf("✅ Telegram message sent to chat %s", s.chatID)
 	return nil
 }
 

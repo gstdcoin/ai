@@ -175,7 +175,7 @@ func (s *AssignmentService) GetAvailableTasks(ctx context.Context, deviceID stri
 		       COALESCE(assigned_device, '') as assigned_device,
 		       COALESCE(min_trust_score, 0.0) as min_trust_score
 		FROM tasks
-		WHERE status IN ('pending', 'timeout')
+		WHERE status IN ('pending', 'queued', 'timeout')
 		  AND COALESCE(min_trust_score, 0.0) <= $1
 		ORDER BY COALESCE(priority_score, 0.0) DESC, created_at ASC
 		FOR UPDATE SKIP LOCKED

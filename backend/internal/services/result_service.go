@@ -16,6 +16,7 @@ type ResultService struct {
 	encryption  *EncryptionService
 	payment     *PaymentService
 	tonConfig   config.TONConfig
+	telegram    *TelegramService
 }
 
 func NewResultService(db *sql.DB, encryption *EncryptionService, payment *PaymentService, tonConfig config.TONConfig) *ResultService {
@@ -25,6 +26,10 @@ func NewResultService(db *sql.DB, encryption *EncryptionService, payment *Paymen
 		payment:    payment,
 		tonConfig:  tonConfig,
 	}
+}
+
+func (s *ResultService) SetTelegramService(telegram *TelegramService) {
+	s.telegram = telegram
 }
 
 // SubmitResult submits a task result from device
@@ -108,6 +113,17 @@ func (s *ResultService) SubmitResult(ctx context.Context, req SubmitResultReques
 				return fmt.Errorf("validation failed and revert failed: validation=%v, revert=%w", err, revertErr)
 			}
 			return fmt.Errorf("validation failed: %w", err)
+		}
+
+		// Check if task is validated (redundancy met)
+		var status string
+		err := s.db.QueryRowContext(ctx, "SELECT status FROM tasks WHERE task_id = $1", req.TaskID).Scan(&status)
+		if err == nil && status == "validated" {
+			// Process payment immediately
+			if err := s.ProcessPayment(ctx, req.TaskID); err != nil {
+				log.Printf("⚠️  Failed to process payment for task %s: %v", req.TaskID, err)
+				// Don't return error to device, as task is valid. Payment will be retried by reconciler.
+			}
 		}
 	}
 
@@ -194,6 +210,19 @@ func (s *ResultService) ProcessPayment(ctx context.Context, taskID string) error
         s.db.QueryRowContext(ctx, "SELECT wallet_address FROM nodes WHERE id = $1", assignedDevice.String).Scan(&workerWallet)
         
         if workerWallet != "" {
+            // 0. Release Stake
+            var stakeAmount float64
+            s.db.QueryRowContext(ctx, "SELECT COALESCE(stake_amount_gstd, 0) FROM worker_task_assignments WHERE task_id = $1 AND worker_wallet = $2", taskID, workerWallet).Scan(&stakeAmount)
+            // Fallback to tasks table if not found (direct assignment)
+            if stakeAmount == 0 {
+                 s.db.QueryRowContext(ctx, "SELECT COALESCE(stake_amount_gstd, 0) FROM tasks WHERE task_id = $1", taskID).Scan(&stakeAmount)
+            }
+
+            if stakeAmount > 0 {
+                s.db.ExecContext(ctx, "UPDATE users SET gstd_frozen = GREATEST(0, gstd_frozen - $1) WHERE wallet_address = $2", stakeAmount, workerWallet)
+                log.Printf("🔓 Released stake %.4f GSTD for Worker %s", stakeAmount, workerWallet)
+            }
+
             // 1. Credit Worker
             s.db.ExecContext(ctx, "UPDATE users SET gstd_balance = gstd_balance + $1 WHERE wallet_address = $2", executorReward, workerWallet)
             log.Printf("💰 Credited %.4f GSTD to Worker %s", executorReward, workerWallet)
@@ -226,6 +255,24 @@ func (s *ResultService) ProcessPayment(ctx context.Context, taskID string) error
 	// Log successful update with reward information
 	log.Printf("✅ Task %s completed: executor_reward_gstd=%.9f, platform_fee_gstd=%.9f, total_compensation=%.9f",
 		taskID, executorReward, platformFee, task.LaborCompensationGSTD)
+
+	// Send Telegram notification
+	if s.telegram != nil {
+		go func() {
+			bgCtx := context.Background()
+			var taskType string
+			s.db.QueryRowContext(bgCtx, "SELECT task_type FROM tasks WHERE task_id = $1", taskID).Scan(&taskType)
+			
+			executor := ""
+			if assignedDevice.Valid {
+				s.db.QueryRowContext(bgCtx, "SELECT wallet_address FROM nodes WHERE id = $1", assignedDevice.String).Scan(&executor)
+			}
+
+			if err := s.telegram.NotifyTaskCompleted(bgCtx, taskID, taskType, executor, executorReward); err != nil {
+				log.Printf("Failed to send Telegram notification for completed task: %v", err)
+			}
+		}()
+	}
 
 	return nil
 }

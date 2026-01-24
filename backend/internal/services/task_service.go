@@ -173,7 +173,7 @@ func (s *TaskService) CreateTask(ctx context.Context, requesterAddress string, d
 			labor_compensation_gstd, platform_fee_gstd, certainty_gravity_score, status, created_at,
 			escrow_status, min_trust_score, is_private, confidence_depth, 
 			redundancy_factor, is_spot_check, entropy_snapshot
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'awaiting_escrow', NOW(), 'locked', $9, $10, $11, $12, $13, $14)
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', NOW(), 'locked', $9, $10, $11, $12, $13, $14)
 	`, taskID, requesterAddress, descriptor.TaskType, descriptor.Operation, descriptor.Model,
 		descriptor.Reward.AmountGSTD, platformFee, gravityScore,
 		descriptor.MinTrust, descriptor.IsPrivate, confidenceDepth, redundancy, isSpotCheck, entropy)
@@ -187,7 +187,7 @@ func (s *TaskService) CreateTask(ctx context.Context, requesterAddress string, d
 				labor_compensation_gstd, platform_fee_gstd, priority_score, status, created_at,
 				escrow_status, min_trust_score, is_private, confidence_depth, 
 				redundancy_factor, is_spot_check, entropy_snapshot
-			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'awaiting_escrow', NOW(), 'locked', $9, $10, $11, $12, $13, $14)
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', NOW(), 'locked', $9, $10, $11, $12, $13, $14)
 		`, taskID, requesterAddress, descriptor.TaskType, descriptor.Operation, descriptor.Model,
 			descriptor.Reward.AmountGSTD, platformFee, gravityScore,
 			descriptor.MinTrust, descriptor.IsPrivate, confidenceDepth, redundancy, isSpotCheck, entropy)
@@ -201,7 +201,7 @@ func (s *TaskService) CreateTask(ctx context.Context, requesterAddress string, d
         return nil, fmt.Errorf("failed to commit transaction: %w", err)
     }
 
-    log.Printf("💰 Task %s Created: Deducted %.4f GSTD from %s. Status: ESCROW_LOCKED", 
+    log.Printf("💰 Task %s Created: Deducted %.4f GSTD from %s. Status: PENDING (ESCROW_LOCKED)", 
         taskID, totalCost, requesterAddress)
 
 	task := &models.Task{
@@ -209,7 +209,7 @@ func (s *TaskService) CreateTask(ctx context.Context, requesterAddress string, d
 		RequesterAddress:    requesterAddress,
 		LaborCompensationGSTD: finalCompensation,
 		PriorityScore:        gravityScore,
-		Status:              "awaiting_escrow",
+		Status:              "pending",
 		MinTrustScore:       descriptor.MinTrust,
 		IsPrivate:           descriptor.IsPrivate,
 		RedundancyFactor:    redundancy,

@@ -153,18 +153,68 @@ export default function NewTaskModal({ onClose, onTaskCreated }: NewTaskModalPro
     setError(null);
 
     try {
-      // Note: Jetton transfers via TonConnect require special handling
-      // For now, we'll show instructions and start polling for payment confirmation
-      // In production, implement proper jetton transfer using @ton/core or similar
+      // 1. Get Platform's Jetton Wallet Address
+      const jettonData = await apiGet<{ address: string }>(`/wallet/jetton-address?owner=${taskData.platform_wallet}`);
+      const platformJettonWallet = jettonData.address;
 
-      logger.debug('Payment details', {
-        platform_wallet: taskData.platform_wallet,
+      if (!platformJettonWallet) {
+        throw new Error('Could not resolve platform jetton wallet');
+      }
+
+      logger.debug('Initiating payment', {
+        platform_wallet: platformJettonWallet,
         amount: taskData.amount,
         memo: taskData.payment_memo,
       });
 
-      // Start polling for payment confirmation
-      // The PaymentWatcher service will detect the payment and update the task status
+      // 2. Build TonConnect Transaction
+      const { beginCell, Address } = await import('@ton/core');
+
+      // Amount in nanos (GSTD has 9 decimals)
+      const amountNano = BigInt(Math.round(taskData.amount * 1e9));
+
+      // Jetton Transfer Payload:
+      // op: 0xf8a7ea5 (transfer)
+      // query_id: uint64
+      // amount: Coins
+      // destination: MsgAddress (Platform OWNER wallet)
+      // response_destination: MsgAddress (Sender)
+      // custom_payload: Maybe none
+      // forward_amount: Coins (small for notification)
+      // forward_payload: Memo/Comment
+      const payloadCell = beginCell()
+        .storeUint(0xf8a7ea5, 32) // op::transfer
+        .storeUint(0, 64)       // query_id
+        .storeCoins(amountNano)
+        .storeAddress(Address.parse(taskData.platform_wallet)) // Destination owner
+        .storeAddress(Address.parse(address!))                 // Response destination
+        .storeBit(0)                                          // No custom payload
+        .storeCoins(BigInt(1))                                // Forward amount (1 nano)
+        .storeBit(1)                                          // We have forward payload (comment)
+        .storeRef(
+          beginCell()
+            .storeUint(0, 32)                                 // Comment prefix
+            .storeStringTail(taskData.payment_memo)
+            .endCell()
+        )
+        .endCell();
+
+      const boc = payloadCell.toBoc().toString('base64');
+
+      // 3. Send via TonConnect
+      await tonConnectUI.sendTransaction({
+        validUntil: Math.floor(Date.now() / 1000) + 600, // 10 minutes
+        messages: [
+          {
+            address: platformJettonWallet, // To platform's jetton wallet!
+            amount: "50000000",           // 0.05 TON for gas
+            payload: boc,
+          }
+        ]
+      });
+
+      logger.info('Payment transaction sent', { task_id: taskData.task_id });
+      // The step is already 'confirming', useEffect will start polling
     } catch (err: any) {
       logger.error('Error initiating payment', err);
       const errorMsg = err?.message || 'Failed to initiate payment';

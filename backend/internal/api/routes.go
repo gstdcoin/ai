@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
 	"github.com/redis/go-redis/v9"
 	"github.com/gin-contrib/gzip"
 )
@@ -245,6 +246,7 @@ func SetupRoutes(
 		// Wallet (protected)
 		protected.GET("/wallet/gstd-balance", getGSTDBalance(tonService, tonConfig))
 		protected.GET("/wallet/efficiency", getEfficiency(tonService, tonConfig))
+		protected.GET("/wallet/jetton-address", getJettonAddress(tonService, tonConfig))
 		
 		// Payments (protected)
 		protected.POST("/payments/payout-intent", createPayoutIntent(paymentService))
@@ -359,7 +361,7 @@ func createTask(service *services.TaskService) gin.HandlerFunc {
 			ValidationMethod string                      `json:"validation_method"`
 		}
 
-		if err := c.ShouldBindJSON(&req); err != nil {
+		if err := c.ShouldBindBodyWith(&req, binding.JSON); err != nil {
 			c.JSON(400, gin.H{"error": SanitizeError(err)})
 			return
 		}
@@ -671,6 +673,26 @@ func getGSTDBalance(tonService *services.TONService, tonConfig config.TONConfig)
 			"balance":  balance,
 			"has_gstd": hasGSTD,
 		})
+	}
+}
+
+func getJettonAddress(tonService *services.TONService, tonConfig config.TONConfig) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		owner := c.Query("owner")
+		if owner == "" {
+			c.JSON(400, gin.H{"error": "owner parameter is required"})
+			return
+		}
+
+		jettonMaster := c.DefaultQuery("jetton", tonConfig.GSTDJettonAddress)
+
+		address, err := tonService.GetJettonWalletAddress(c.Request.Context(), owner, jettonMaster)
+		if err != nil {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(200, gin.H{"address": address})
 	}
 }
 
