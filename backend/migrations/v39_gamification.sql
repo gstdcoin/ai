@@ -1,6 +1,6 @@
 -- v39_gamification.sql
 -- Add level and XP to worker_ratings
-ALTER TABLE worker_ratings ADD COLUMN IF NOT EXISTS level VARCHAR(20) DEFAULT 'Bronze';
+ALTER TABLE worker_ratings ADD COLUMN IF NOT EXISTS level TEXT DEFAULT 'Bronze';
 ALTER TABLE worker_ratings ADD COLUMN IF NOT EXISTS xp INTEGER DEFAULT 0;
 
 -- Create index for leaderboard

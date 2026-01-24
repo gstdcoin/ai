@@ -319,8 +319,8 @@ func (s *TONService) GetJettonWalletAddress(ctx context.Context, ownerAddr, jett
 	normalizedOwner := NormalizeAddressForAPI(ownerAddr)
 	normalizedJetton := NormalizeAddressForAPI(jettonMasterAddr)
 
-	// TON API endpoint: GET /v2/jettons/{jetton_address}/wallets/{owner_address}
-	url := fmt.Sprintf("%s/v2/jettons/%s/wallets/%s", s.apiURL, normalizedJetton, normalizedOwner)
+	// TON API endpoint: GET /v2/accounts/{owner_address}/jettons/{jetton_address}
+	url := fmt.Sprintf("%s/v2/accounts/%s/jettons/%s", s.apiURL, normalizedOwner, normalizedJetton)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
@@ -345,14 +345,16 @@ func (s *TONService) GetJettonWalletAddress(ctx context.Context, ownerAddr, jett
 	}
 
 	var result struct {
-		Address string `json:"address"`
+		WalletAddress struct {
+			Address string `json:"address"`
+		} `json:"wallet_address"`
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return "", err
 	}
 
-	return result.Address, nil
+	return result.WalletAddress.Address, nil
 }
 
 // GetContractBalance gets the TON balance of a contract address

@@ -6,6 +6,7 @@ import (
 	"log"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
 )
 
 func registerDevice(deviceService *services.DeviceService, errorLogger *services.ErrorLogger) gin.HandlerFunc {
@@ -221,7 +222,8 @@ func submitResult(resultService *services.ResultService, validationService *serv
 		var req services.SubmitResultRequest
 		req.TaskID = taskID
 
-		if err := c.ShouldBindJSON(&req); err != nil {
+		if err := c.ShouldBindBodyWith(&req, binding.JSON); err != nil {
+			log.Printf("submitResult: Binding error: %v", err)
 			c.JSON(400, gin.H{"error": err.Error()})
 			return
 		}

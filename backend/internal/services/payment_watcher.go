@@ -179,80 +179,55 @@ func (pw *PaymentWatcher) getRecentJettonTransfers(ctx context.Context) ([]Jetto
 		return nil, fmt.Errorf("TON API error (%d): %s", resp.StatusCode, string(body))
 	}
 
-	// TON API v2 returns different structure - try both formats
+	// TON API v2 returns a list of Events, each containing Actions
 	var result struct {
-		Events []TonAPIJettonTransfer `json:"events"`
-		// Alternative structure for v2
-		History []struct {
-			From struct {
-				Address string `json:"address"`
-			} `json:"from"`
-			To struct {
-				Address string `json:"address"`
-			} `json:"to"`
-			Amount string `json:"amount"`
-			Comment string `json:"comment"`
-			Transaction struct {
-				Hash string `json:"hash"`
-				LT   string `json:"lt"`
-			} `json:"transaction"`
-			Timestamp int64 `json:"timestamp"`
-		} `json:"history"`
+		Events []struct {
+			EventID   string `json:"event_id"`
+			Timestamp int64  `json:"timestamp"`
+			Actions   []struct {
+				Type           string `json:"type"`
+				JettonTransfer *struct {
+					Sender struct {
+						Address string `json:"address"`
+					} `json:"sender"`
+					Recipient struct {
+						Address string `json:"address"`
+					} `json:"recipient"`
+					Amount  string `json:"amount"`
+					Comment string `json:"comment"`
+				} `json:"jetton_transfer"`
+			} `json:"actions"`
+		} `json:"events"`
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, err
 	}
 
-	// Filter for incoming transfers (to platform wallet) and convert
 	var transfers []JettonTransfer
-	
-	// Process v2 history format (preferred)
-	if len(result.History) > 0 {
-		for _, event := range result.History {
-			// Only process transfers TO the platform wallet
-			if strings.EqualFold(event.To.Address, normalizedWallet) {
-				// Parse amount (in nanotons) and convert to GSTD
-				amountNano, err := strconv.ParseInt(event.Amount, 10, 64)
-				if err != nil {
-					log.Printf("PaymentWatcher: Failed to parse amount: %v", err)
-					continue
-				}
-				amountGSTD := float64(amountNano) / 1e9
-				
-				transfers = append(transfers, JettonTransfer{
-					From:      event.From.Address,
-					To:        event.To.Address,
-					Amount:    fmt.Sprintf("%.9f", amountGSTD),
-					Comment:   event.Comment,
-					TxHash:    event.Transaction.Hash,
-					Timestamp: event.Timestamp,
-				})
-			}
-		}
-		return transfers, nil
-	}
-	
-	// Fallback: Process old events format if history is empty
-	if len(transfers) == 0 && len(result.Events) > 0 {
-		for _, event := range result.Events {
-			// Only process transfers TO the platform wallet
-			if strings.EqualFold(event.To.Address, pw.platformWallet) {
-				// Convert amount from nanotons to GSTD (assuming 9 decimals)
-				amountNano, err := strconv.ParseInt(event.Amount, 10, 64)
-				if err != nil {
-					continue
-				}
-				amountGSTD := float64(amountNano) / 1e9
+	for _, event := range result.Events {
+		for _, action := range event.Actions {
+			if action.Type == "JettonTransfer" && action.JettonTransfer != nil {
+				transfer := action.JettonTransfer
+				// Only process transfers TO the platform wallet
+				if strings.EqualFold(transfer.Recipient.Address, normalizedWallet) {
+					// Parse amount (in nanotons) and convert to GSTD
+					amountNano, err := strconv.ParseInt(transfer.Amount, 10, 64)
+					if err != nil {
+						log.Printf("PaymentWatcher: Failed to parse amount: %v", err)
+						continue
+					}
+					amountGSTD := float64(amountNano) / 1e9
 
-				transfers = append(transfers, JettonTransfer{
-					From:      event.From.Address,
-					To:        event.To.Address,
-					Amount:    fmt.Sprintf("%.9f", amountGSTD),
-					Comment:   event.Comment,
-					TxHash:    event.Transaction.Hash,
-					Timestamp: event.Timestamp,
-				})
+					transfers = append(transfers, JettonTransfer{
+						From:      transfer.Sender.Address,
+						To:        transfer.Recipient.Address,
+						Amount:    fmt.Sprintf("%.9f", amountGSTD),
+						Comment:   transfer.Comment,
+						TxHash:    event.EventID, // Use EventID as TxHash for tracking
+						Timestamp: event.Timestamp,
+					})
+				}
 			}
 		}
 	}

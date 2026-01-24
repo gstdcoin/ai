@@ -918,3 +918,29 @@ Error response from daemon: No such container: ubuntu-backend-blue-1
 ⚠️  No GEO Service activity or initialization found in logs.
 
 ---
+## 🛡️ GSTD Security Audit - 2026-01-24 10:00:01
+
+### 💎 TON Service Check
+2026/01/24 09:45:47 Migration v10_failed_payouts.sql already applied, skipping
+2026/01/24 09:45:47 Warning: Failed to run migrations: failed to execute migration v16_gstd_currency_shift.sql: pq: unexpected transaction status idle
+
+### 🌍 GEO Service Check
+✅ GEO Service is running correctly (found 1 log entries).
+
+---
+## 🛡️ GSTD Security Audit - 2026-01-24 11:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-01-24 12:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---

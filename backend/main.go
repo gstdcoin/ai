@@ -281,6 +281,7 @@ func main() {
 	validationService := services.NewValidationService(db)
 	taskService := services.NewTaskService(db, redisClient, tonService, cfg.TON)
 	taskService.SetTelegramService(telegramService) // Enable Telegram notifications for new tasks
+	resultService.SetTelegramService(telegramService) // Enable Telegram notifications for completed tasks
 	timeoutService := services.NewTimeoutService(db)
 	timeoutService.SetErrorLogger(errorLogger) // Enable error logging for timeouts
 	statsService := services.NewStatsService(db)

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
 )
 
 // ValidateTaskRequest validates task creation request
@@ -26,7 +27,8 @@ func ValidateTaskRequest() gin.HandlerFunc {
 			ValidationMethod string  `json:"validation_method" binding:"required,oneof=reference majority ai_check human"`
 		}
 
-		if err := c.ShouldBindJSON(&req); err != nil {
+		if err := c.ShouldBindBodyWith(&req, binding.JSON); err != nil {
+			log.Printf("ValidateTaskRequest Error: %v. Req: %+v", err, req)
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error": "Invalid request: " + sanitizeValidationError(err),
 			})
@@ -108,13 +110,15 @@ func ValidateResultSubmission() gin.HandlerFunc {
 			ExecutionTimeMs int    `json:"execution_time_ms" binding:"required,min=0,max=300000"`
 		}
 
-		if err := c.ShouldBindJSON(&req); err != nil {
+		if err := c.ShouldBindBodyWith(&req, binding.JSON); err != nil {
+			log.Printf("ValidateResultSubmission: Binding error: %v", err)
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error": "Invalid request: " + sanitizeValidationError(err),
 			})
 			c.Abort()
 			return
 		}
+
 
 		// Validate proof format (hex or base64)
 		if len(req.Proof) < 64 {
