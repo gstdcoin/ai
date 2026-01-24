@@ -8,11 +8,36 @@ import { toast } from '../../lib/toast';
 interface HeaderProps {
   onCreateTask: () => void;
   onLogout: () => void;
+  isPublic?: boolean;
 }
 
-export default React.memo(function Header({ onCreateTask, onLogout }: HeaderProps) {
+export default React.memo(function Header({ onCreateTask, onLogout, isPublic = false }: HeaderProps) {
   const { t } = useTranslation('common');
   const { address, tonBalance, gstdBalance } = useWalletStore();
+
+  if (isPublic) {
+    return (
+      <header className="glass-dark border-b border-white/10 sticky top-0 z-30">
+        <div className="px-4 sm:px-6 py-4 flex items-center justify-between">
+          <a href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+            <div className="flex-shrink-0">
+              <img src="/logo.png" alt="GSTD Logo" className="w-10 h-10" />
+            </div>
+            <h1 className="text-xl font-bold text-white font-display">
+              <span className="bg-gradient-to-r from-gold-400 to-gold-600 bg-clip-text text-transparent">GSTD</span>
+              <span className="text-gray-300 ml-2">Documentation</span>
+            </h1>
+          </a>
+          <div className="flex items-center gap-4">
+            <LanguageSwitcher />
+            <a href="/" className="text-sm font-medium text-white/70 hover:text-white transition-colors">
+              Back to Platform
+            </a>
+          </div>
+        </div>
+      </header>
+    );
+  }
 
   return (
     <header className="glass-dark border-b border-white/10 sticky top-0 z-30">
