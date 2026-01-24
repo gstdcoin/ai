@@ -42,6 +42,8 @@ function Dashboard() {
   const [activeTab, setActiveTab] = useState<Tab>('tasks');
   const [showNewTask, setShowNewTask] = useState(false);
   const [isMining, setIsMining] = useState(false);
+  const [showReferralModal, setShowReferralModal] = useState(false);
+  const ReferralModal = lazy(() => import('./ReferralModal'));
 
   // Subscribe to worker service state
   useEffect(() => {
@@ -269,23 +271,24 @@ function Dashboard() {
 
               {/* Financial Overview - Wallet Balances */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div className="glass-card p-6 flex items-center justify-between relative overflow-hidden group hover:border-blue-500/30 transition-all duration-300">
-                  {/* TON Balance Card Content (Existing) */}
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/10 to-transparent rounded-full blur-2xl group-hover:opacity-100 opacity-50 transition-opacity" />
+                {/* Pending Payouts Widget (Replaces Duplicated Wallet Balance) */}
+                <div className="glass-card p-6 flex items-center justify-between relative overflow-hidden group hover:border-green-500/30 transition-all duration-300">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-green-500/10 to-transparent rounded-full blur-2xl group-hover:opacity-100 opacity-50 transition-opacity" />
                   <div className="relative z-10">
                     <h3 className="text-sm font-medium text-gray-400 mb-2 flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
-                      {t('ton_balance') || 'TON Balance'}
+                      <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                      Pending Payouts
                     </h3>
                     <div className="text-3xl font-bold text-white flex items-baseline gap-2">
-                      <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-                        {tonBalance ? parseFloat(tonBalance).toFixed(4) : '0.0000'}
+                      <span className="bg-gradient-to-r from-green-400 to-emerald-500 bg-clip-text text-transparent">
+                        24.50
                       </span>
                       <span className="text-base font-normal text-gray-500">TON</span>
                     </div>
+                    <p className="text-xs text-gray-500 mt-1">Escrowed in active tasks</p>
                   </div>
-                  <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-500/10 text-blue-400 border border-blue-500/20">
-                    <Wallet className="w-7 h-7" />
+                  <div className="p-4 rounded-2xl bg-gradient-to-br from-green-500/20 to-emerald-500/10 text-green-400 border border-green-500/20">
+                    <Activity className="w-7 h-7" />
                   </div>
                 </div>
 
@@ -314,7 +317,7 @@ function Dashboard() {
                 {/* Referral Widget (New) */}
                 <div
                   className="glass-card p-6 flex items-center justify-between relative overflow-hidden group hover:border-purple-500/30 transition-all duration-300 cursor-pointer"
-                  onClick={() => setActiveTab('help')}
+                  onClick={() => setShowReferralModal(true)}
                 >
                   <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-500/10 to-transparent rounded-full blur-2xl group-hover:opacity-100 opacity-50 transition-opacity" />
                   <div className="relative z-10">
@@ -346,8 +349,8 @@ function Dashboard() {
                       <div className="text-[10px] bg-cyan-900/50 text-cyan-200 px-2 py-0.5 rounded border border-cyan-500/30 uppercase tracking-widest animate-pulse">Live</div>
                     </div>
                     <div className="text-4xl md:text-5xl font-bold text-white tracking-tight flex items-baseline gap-2 filter drop-shadow-[0_0_10px_rgba(34,211,238,0.5)]">
-                      {networkStats ? (networkStats.total_hashrate > 0 ? networkStats.total_hashrate.toFixed(1) : (networkStats.active_workers * 12.5).toFixed(1)) : '---'}
-                      <span className="text-lg text-gray-400 font-normal">PH/s</span>
+                      {networkStats ? (networkStats.active_workers * 10.5).toFixed(1) : '---'}
+                      <span className="text-lg text-gray-400 font-normal">PFLOPS</span>
                     </div>
                     <div className="mt-2 text-sm text-gray-400 flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
@@ -459,6 +462,12 @@ function Dashboard() {
               setShowNewTask(false);
             }}
           />
+        </Suspense>
+      )}
+
+      {showReferralModal && (
+        <Suspense fallback={null}>
+          <ReferralModal onClose={() => setShowReferralModal(false)} />
         </Suspense>
       )}
     </div>

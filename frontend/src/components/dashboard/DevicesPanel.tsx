@@ -202,9 +202,11 @@ export default function DevicesPanel() {
                       {formatDate(node.last_seen)}
                     </td>
                     <td className="px-3 sm:px-6 py-4 whitespace-nowrap hidden lg:table-cell">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                        Eco-Proof
-                      </span>
+                      {(node as any).eco_certified && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                          Eco-Proof
+                        </span>
+                      )}
                     </td>
                     <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm">
                       <div className="flex items-center gap-2">
