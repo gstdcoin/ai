@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-01-24T14:00:01Z",
+  "generated_at": "2026-01-24T16:00:01Z",
   "status": "healthy",
   "network": {
     "active_nodes": 0,
-    "active_devices": 1,
+    "active_devices": 0,
     "estimated_tflops": 0,
     "active_countries": "None"
   },

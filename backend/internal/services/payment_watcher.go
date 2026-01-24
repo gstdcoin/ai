@@ -62,7 +62,7 @@ func NewPaymentWatcher(
 		tonService:        tonService,
 		tonConfig:         tonConfig,
 		taskPaymentService: taskPaymentService,
-		platformWallet:    tonConfig.AdminWallet,
+		platformWallet:    tonConfig.ContractAddress, // Monitor Escrow for reward payment (95%)
 		jettonAddress:     tonConfig.GSTDJettonAddress,
 		stopChan:          make(chan struct{}),
 	}
@@ -71,10 +71,10 @@ func NewPaymentWatcher(
 // Start begins monitoring for payments
 func (pw *PaymentWatcher) Start(ctx context.Context, interval time.Duration) {
 	if pw.platformWallet == "" {
-		log.Printf("PaymentWatcher: AdminWallet not configured, skipping payment monitoring")
+		log.Printf("PaymentWatcher: ContractAddress not configured, skipping payment monitoring")
 		return
 	}
-	log.Printf("PaymentWatcher: Starting payment monitoring for wallet %s", pw.platformWallet)
+	log.Printf("PaymentWatcher: Starting payment monitoring for Escrow wallet %s", pw.platformWallet)
 	
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
@@ -258,7 +258,8 @@ func (pw *PaymentWatcher) processTransfer(ctx context.Context, transfer JettonTr
 	}
 
 	// Verify amount matches (with small tolerance for rounding)
-	expectedAmount := *task.BudgetGSTD
+	// We monitor Escrow, so we expect the Reward amount (95% of budget)
+	expectedAmount := *task.RewardGSTD
 	receivedAmount, err := strconv.ParseFloat(transfer.Amount, 64)
 	if err != nil {
 		return fmt.Errorf("invalid amount format: %w", err)
