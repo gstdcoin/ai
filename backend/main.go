@@ -241,7 +241,7 @@ func main() {
 	// Initialize ErrorLogger for centralized error logging
 	errorLogger := services.NewErrorLogger(db)
 
-	poolMonitorService := services.NewPoolMonitorService(cfg.TON)
+	poolMonitorService := services.NewPoolMonitorService(cfg.TON, db)
 	poolMonitorService.SetTONService(tonService)    // Enable real pool balance monitoring
 	poolMonitorService.SetErrorLogger(errorLogger) // Enable error logging for pool monitoring
 	telegramService := services.NewTelegramService(cfg.Telegram.BotToken, cfg.Telegram.ChatID, db)
@@ -347,6 +347,9 @@ func main() {
 	// Start Autonomous Maintenance Service
 	maintenanceService := services.NewMaintenanceService(db, taskService, errorLogger)
 	go maintenanceService.Start(ctx)
+    
+    // Start Pool Monitor Service (Gold Reserve Oracle)
+    go poolMonitorService.Start(ctx)
 
 	// Store services for API handlers (will be used in routes)
 	_ = powService       // Used in orchestrator routes

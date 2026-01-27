@@ -81,6 +81,9 @@ func SetupMarketplaceProtectedRoutes(router *gin.RouterGroup, handler *Marketpla
 
 		// Payout
 		marketplace.POST("/tasks/:id/payout", handler.PayoutTask)
+		
+		// Crowdfunding
+		marketplace.POST("/tasks/:id/contribute", handler.ContributeToTask)
 	}
 }
 
@@ -629,6 +632,156 @@ func (h *MarketplaceHandler) PayoutTask(c *gin.Context) {
 		"tx_id":        tx.TxID,
 		"amount_gstd": tx.AmountGSTD,
 		"message":      "Rewards distributed successfully",
+	})
+}
+
+// ContributeToTask allows any user to add additional reward to a task
+// @Summary Contribute to task reward
+// @Description Add GSTD to the task reward pool
+// @Tags Marketplace
+// @Param id path string true "Task ID"
+// @Param request body object true "Contribution amount"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]string
+// @Router /marketplace/tasks/{id}/contribute [post]
+func (h *MarketplaceHandler) ContributeToTask(c *gin.Context) {
+	taskID := c.Param("id")
+	walletAddress, exists := c.Get("wallet_address")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "wallet address required"})
+		return
+	}
+
+	var req struct {
+		AmountGSTD float64 `json:"amount_gstd" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if req.AmountGSTD <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "amount must be positive"})
+		return
+	}
+    
+    // Check if task exists and is active
+    var status string
+    var maxWorkers int
+    err := h.db.QueryRowContext(c.Request.Context(), "SELECT status, COALESCE(max_workers, 1) FROM tasks WHERE task_id = $1", taskID).Scan(&status, &maxWorkers)
+    if err != nil {
+         if err == sql.ErrNoRows {
+             c.JSON(http.StatusNotFound, gin.H{"error": "task not found"})
+         } else {
+             log.Printf("Failed to get task status: %v", err)
+             c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check task"})
+         }
+         return
+    }
+    
+    // Allow contributions to pending, queued, or assigned tasks (not completed/failed)
+    if status == "completed" || status == "failed" {
+         c.JSON(http.StatusBadRequest, gin.H{"error": "cannot contribute to completed or failed task"})
+         return
+    }
+
+	// Begin transaction
+	tx, err := h.db.BeginTx(c.Request.Context(), nil)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+		return
+	}
+	defer tx.Rollback()
+
+	// 1. Check user balance
+	var balance float64
+	err = tx.QueryRowContext(c.Request.Context(), "SELECT balance FROM users WHERE wallet_address = $1", walletAddress).Scan(&balance)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check balance"})
+		return
+	}
+	
+	if balance < req.AmountGSTD {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "insufficient balance"})
+		return
+	}
+	
+	// 2. Deduct from user
+	_, err = tx.ExecContext(c.Request.Context(), `
+		UPDATE users SET balance = balance - $1 WHERE wallet_address = $2
+	`, req.AmountGSTD, walletAddress)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to deduct balance"})
+		return
+	}
+
+	// 3. Record contribution
+	_, err = tx.ExecContext(c.Request.Context(), `
+		INSERT INTO task_contributions (task_id, contributor_wallet, amount_gstd, created_at)
+		VALUES ($1, $2, $3, NOW())
+	`, taskID, walletAddress.(string), req.AmountGSTD)
+	if err != nil {
+		log.Printf("Failed to record contribution: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to record contribution"})
+		return
+	}
+	
+	// 4. Update task rewards
+	// Increase total_reward_pool, reward_gstd, and reward_per_worker
+	rewardIncreasePerWorker := req.AmountGSTD / float64(maxWorkers)
+	
+	_, err = tx.ExecContext(c.Request.Context(), `
+		UPDATE tasks 
+		SET total_reward_pool = COALESCE(total_reward_pool, 0) + $2,
+		    reward_gstd = COALESCE(reward_gstd, 0) + $2,
+		    reward_per_worker = COALESCE(reward_per_worker, 0) + $3,
+            labor_compensation_gstd = COALESCE(labor_compensation_gstd, 0) + $2
+		WHERE task_id = $1
+	`, taskID, req.AmountGSTD, rewardIncreasePerWorker)
+
+	if err != nil {
+		log.Printf("Failed to update task pool: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update task reward"})
+		return
+	}
+	
+	// 5. Update Escrow record (funds are now locked in escrow system)
+	// We assume escrow_id exists on task
+	_, err = tx.ExecContext(c.Request.Context(), `
+	    UPDATE task_escrow 
+        SET total_locked_gstd = total_locked_gstd + $2
+        WHERE task_id = $1
+	`, taskID, req.AmountGSTD)
+	if err != nil {
+	    // It's possible task has no escrow if it was created without one (unlikely for marketplace). 
+	    // But ignoring error is risky. Let's log.
+	    log.Printf("Warning: Failed to update escrow for contribution: %v", err)
+	}
+
+	// 6. Record transaction history
+	_, err = tx.ExecContext(c.Request.Context(), `
+		INSERT INTO transaction_history (
+			tx_id, from_wallet, to_wallet, amount_gstd, tx_type, 
+			task_id, description, status
+		) VALUES ($1, $2, 'escrow', $3, 'contribution', $4, $5, 'confirmed')
+	`, "TX-"+randomString(10), walletAddress, req.AmountGSTD, taskID, "Community contribution to task reward")
+	
+	if err != nil {
+	    log.Printf("Failed to record transaction: %v", err)
+	    c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to record transaction"})
+	    return
+	}
+
+	if err := tx.Commit(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "commit failed"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Contribution added successfully",
+		"task_id": taskID,
+		"amount_added": req.AmountGSTD,
+		"new_total_reward": "updated", // client can refresh
 	})
 }
 

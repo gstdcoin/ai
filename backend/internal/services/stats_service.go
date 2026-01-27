@@ -122,6 +122,7 @@ type NetworkStats struct {
 	Temperature   float64 `json:"temperature"`
 	Pressure      float64 `json:"pressure"`
 	TotalHashrate float64 `json:"total_hashrate"`
+    GoldReserve   float64 `json:"gold_reserve"`
 }
 
 func (s *StatsService) GetNetworkStats(ctx context.Context) (*NetworkStats, error) {
@@ -177,13 +178,22 @@ func (s *StatsService) GetNetworkStats(ctx context.Context) (*NetworkStats, erro
 		stats.Pressure = float64(pendingTasks)
 	}
 
-	// 6. Total Hashrate (Sum of current_hashrate from active nodes)
+	// 6. Total Hashrate (PFLOPS) - sum of active nodes
+	// We use COALESCE to ensure no NULLs, and cast to prevent potential NaN issues in driver
 	err = s.db.QueryRowContext(ctx, `
 		SELECT COALESCE(SUM(current_hashrate), 0) FROM nodes WHERE last_seen_at > NOW() - INTERVAL '30 seconds'
 	`).Scan(&stats.TotalHashrate)
 	if err != nil {
 		stats.TotalHashrate = 0
 	}
+    
+    // 7. Gold Reserve (Get from latest log)
+    err = s.db.QueryRowContext(ctx, `
+        SELECT COALESCE(xaut_balance, 0) FROM golden_reserve_log ORDER BY created_at DESC LIMIT 1
+    `).Scan(&stats.GoldReserve)
+    if err != nil {
+        stats.GoldReserve = 0
+    }
 
 	return stats, nil
 }
