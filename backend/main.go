@@ -345,7 +345,7 @@ func main() {
 	go taskOrchestrator.Start(ctx)
 
 	// Start Autonomous Maintenance Service
-	maintenanceService := services.NewMaintenanceService(db, taskService, errorLogger)
+	maintenanceService := services.NewMaintenanceService(db, taskService, errorLogger, telegramService)
 	go maintenanceService.Start(ctx)
     
     // Start Pool Monitor Service (Gold Reserve Oracle)
