@@ -1638,3 +1638,15 @@ Error response from daemon: No such container: ubuntu-backend-blue-1
 ⚠️  No GEO Service activity or initialization found in logs.
 
 ---
+## 🛡️ GSTD Security Audit - 2026-01-27 19:00:01
+
+### 💎 TON Service Check
+2026/01/27 18:46:41 Migration v10_failed_payouts.sql already applied, skipping
+2026/01/27 18:46:41 Warning: Failed to run migrations: failed to execute migration v16_gstd_currency_shift.sql: pq: unexpected transaction status idle
+2026/01/27 18:46:41 ⚠️  Failed to get GSTD jetton wallet address (using 0): failed to get jetton wallet (HTTP 404): {"error":"account 0:3ef895c6f154b204998b32a6f6276b783f26b44d2f525c787bbc787c21ecf6e6 has no jetton wallet 0:efe9c616f673622a337737097c0fa0018d4887d6061f59519985f3fbfbdb59b2"}
+2026/01/27 18:46:42 ⚠️  Failed to get XAUt jetton wallet address (using 0): failed to get jetton wallet (HTTP 400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+
+### 🌍 GEO Service Check
+✅ GEO Service is running correctly (found 1 log entries).
+
+---

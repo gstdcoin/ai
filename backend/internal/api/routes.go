@@ -5,6 +5,7 @@ import (
 	"distributed-computing-platform/internal/config"
 	"distributed-computing-platform/internal/models"
 	"distributed-computing-platform/internal/services"
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -45,6 +46,7 @@ func SetupRoutes(
 	powService *services.ProofOfWorkService,
 	taskOrchestrator *services.TaskOrchestrator,
 	telegramService *services.TelegramService,
+	lendingService *services.LendingService,
 ) {
 	log.Printf("🔧 SetupRoutes: Starting route setup, redisClient type: %T", redisClient)
 	
@@ -250,6 +252,7 @@ func SetupRoutes(
 		
 		// Payments (protected)
 		protected.POST("/payments/payout-intent", createPayoutIntent(paymentService))
+		protected.GET("/lending/quote", getLoanQuote(lendingService))
 
 		// Nodes (protected)
 		geoService := services.NewGeoService(rClient)
@@ -882,3 +885,38 @@ func getCommissionWithdrawIntent(service *services.PaymentService, tonConfig con
 	}
 }
 
+
+// getLoanQuote calculates loan terms
+// getLoanQuote calculates loan terms
+// @Summary Get loan quote
+// @Description Calculate loan terms (LTV, APR) for GSTD collateral
+// @Tags Finance
+// @Produce json
+// @Security SessionToken
+// @Param amount_gstd query number true "GSTD Amount"
+// @Success 200 {object} services.LoanOffer "Loan offer"
+// @Failure 400 {object} map[string]string "Invalid request"
+// @Router /lending/quote [get]
+func getLoanQuote(service *services.LendingService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		amountStr := c.Query("amount_gstd")
+		if amountStr == "" {
+			c.JSON(400, gin.H{"error": "amount_gstd is required"})
+			return
+		}
+		
+		var amount float64
+		if _, err := fmt.Sscanf(amountStr, "%f", &amount); err != nil {
+			c.JSON(400, gin.H{"error": "invalid amount format"})
+			return
+		}
+
+		offer, err := service.CalculateLoanTerms(amount)
+		if err != nil {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(200, offer)
+	}
+}
