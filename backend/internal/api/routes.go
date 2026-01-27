@@ -141,6 +141,8 @@ func SetupRoutes(
 		// @Router /pool/status [get]
 		v1.GET("/pool/status", getPoolStatus(poolMonitorService))
 		
+		v1.GET("/lending/quote", getLoanQuote(lendingService))
+		
 		// Metrics endpoint (Prometheus format) - public
 		metricsService := NewMetricsService(db.(*sql.DB), redisClient.(*redis.Client))
 		v1.GET("/metrics", metricsService.GetMetrics())
@@ -252,7 +254,6 @@ func SetupRoutes(
 		
 		// Payments (protected)
 		protected.POST("/payments/payout-intent", createPayoutIntent(paymentService))
-		protected.GET("/lending/quote", getLoanQuote(lendingService))
 
 		// Nodes (protected)
 		geoService := services.NewGeoService(rClient)
