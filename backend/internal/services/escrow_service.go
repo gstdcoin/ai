@@ -61,8 +61,8 @@ func NewEscrowService(db *sql.DB) *EscrowService {
 	return &EscrowService{
 		db:           db,
 		platformFee:  0.05, // 5%
-		devFundShare: 0.40, // 40% of platform fee = 2%
-		goldShare:    0.60, // 60% of platform fee = 3%
+		devFundShare: 0.50, // 50% of platform fee
+		goldShare:    0.50, // 50% of platform fee
 	}
 }
 

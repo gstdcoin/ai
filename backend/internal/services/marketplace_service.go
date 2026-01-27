@@ -246,10 +246,10 @@ func (s *MarketplaceService) CompleteTask(ctx context.Context, taskID, workerWal
 	// Get escrow details for receipt
 	escrow, _ := s.escrowService.GetEscrowByTask(ctx, taskID)
 
-	// Calculate fee breakdown
+	// Calculate fee breakdown (50/50 split)
 	platformFee := tx.AmountGSTD / 0.95 * 0.05
-	devFund := platformFee * 0.40
-	goldReserve := platformFee * 0.60
+	devFund := platformFee * 0.50
+	goldReserve := platformFee * 0.50
 
 	// GAMIFICATION: Award XP (100 per task) and check for Level Up
 	_, err = s.db.ExecContext(ctx, `
@@ -491,8 +491,8 @@ func (s *MarketplaceService) GetTaskReceipts(ctx context.Context, taskID string)
 
 		r.ReceiptID = fmt.Sprintf("RCP-%s-%s", r.TaskID[:8], r.WorkerWallet[:8])
 		r.PlatformFeeGSTD = r.RewardGSTD / 0.95 * 0.05
-		r.DevFundGSTD = r.PlatformFeeGSTD * 0.40
-		r.GoldReserveGSTD = r.PlatformFeeGSTD * 0.60
+		r.DevFundGSTD = r.PlatformFeeGSTD * 0.50
+		r.GoldReserveGSTD = r.PlatformFeeGSTD * 0.50
 
 		receipts = append(receipts, r)
 	}

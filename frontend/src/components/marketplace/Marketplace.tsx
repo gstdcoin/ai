@@ -316,45 +316,86 @@ export default function Marketplace() {
                         </div>
                     ) : (
                         <div className="space-y-3">
-                            {tasks.map(task => (
-                                <div key={task.task_id} className="glass-card p-4 hover:border-purple-500/50 transition-all">
-                                    <div className="flex items-center justify-between mb-3">
-                                        <div className="flex items-center gap-3">
-                                            <span className="text-2xl">
-                                                {task.task_type === 'network_survey' ? '📡' :
-                                                    task.task_type === 'js_script' ? '📜' : '⚙️'}
-                                            </span>
-                                            <div>
-                                                <div className="font-semibold">{task.operation || task.task_type}</div>
-                                                <div className="text-xs text-gray-400">
-                                                    <span className={getDifficultyColor(task.difficulty)}>{task.difficulty}</span>
-                                                    {' • '}{task.geography}
+                            {tasks.map(task => {
+                                // Determine if task is "hot" (boosted - reward > budget/workers)
+                                // Assuming we don't have total_reward_pool in AvailableTask, we can check if individual reward > budget/max_workers * 0.95 (standard)
+                                const baseReward = (task.reward_gstd * 0.95);
+                                const isHot = baseReward > 50 || task.workers_needed > 10; // Simple logic for now or add 'is_boosted' from API
+
+                                return (
+                                    <div key={task.task_id} className={`glass-card p-4 hover:border-purple-500/50 transition-all ${isHot ? 'border-amber-500/30' : ''}`}>
+                                        {isHot && (
+                                            <div className="absolute -top-2 -right-2 px-2 py-0.5 bg-gradient-to-r from-amber-500 to-orange-500 rounded-full text-[10px] font-bold text-black shadow-lg shadow-orange-500/20 animate-pulse">
+                                                🔥 HOT
+                                            </div>
+                                        )}
+                                        <div className="flex items-center justify-between mb-3">
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-2xl">
+                                                    {task.task_type === 'network_survey' ? '📡' :
+                                                        task.task_type === 'js_script' ? '📜' : '⚙️'}
+                                                </span>
+                                                <div>
+                                                    <div className="font-semibold">{task.operation || task.task_type}</div>
+                                                    <div className="text-xs text-gray-400">
+                                                        <span className={getDifficultyColor(task.difficulty)}>{task.difficulty}</span>
+                                                        {' • '}{task.geography}
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                        <div className="text-right">
-                                            <div className="text-lg font-bold text-green-400">
-                                                {(task.reward_gstd * 0.95).toFixed(4)} GSTD
+                                            <div className="text-right">
+                                                <div className="text-lg font-bold text-green-400">
+                                                    {(task.reward_gstd * 0.95).toFixed(4)} GSTD
+                                                </div>
+                                                <div className="text-xs text-gray-400">~{task.estimated_time_sec}s</div>
                                             </div>
-                                            <div className="text-xs text-gray-400">~{task.estimated_time_sec}s</div>
                                         </div>
-                                    </div>
 
-                                    <div className="flex items-center justify-between">
-                                        <div className="text-xs text-gray-500">
-                                            {task.workers_completed}/{task.workers_needed} workers
-                                            {task.min_trust_score > 0 && ` • Min trust: ${(task.min_trust_score * 100).toFixed(0)}%`}
+                                        <div className="flex items-center justify-between">
+                                            <div className="text-xs text-gray-500">
+                                                {task.workers_completed}/{task.workers_needed} workers
+                                                {task.min_trust_score > 0 && ` • Min trust: ${(task.min_trust_score * 100).toFixed(0)}%`}
+                                            </div>
+                                            <button
+                                                onClick={() => handleClaimTask(task.task_id)}
+                                                disabled={!isConnected || claimingTask === task.task_id}
+                                                className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-green-500/25 transition-all"
+                                            >
+                                                {claimingTask === task.task_id ? '⏳' : '⚡'} Claim
+                                            </button>
+                                            <button
+                                                onClick={async () => {
+                                                    if (!isConnected) return;
+                                                    const amountStr = prompt('Enter amount of GSTD to contribute to this task reward pool:', '1.0');
+                                                    if (!amountStr) return;
+                                                    const amount = parseFloat(amountStr);
+                                                    if (isNaN(amount) || amount <= 0) {
+                                                        alert('Invalid amount');
+                                                        return;
+                                                    }
+
+                                                    try {
+                                                        await apiPost(`/marketplace/tasks/${task.task_id}/contribute`, { amount_gstd: amount });
+                                                        alert('Contribution successful! Reward pool increased.');
+                                                        fetchTasks(); // Refresh list
+                                                        if (window.Telegram?.WebApp?.HapticFeedback) {
+                                                            window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+                                                        }
+                                                    } catch (e: any) {
+                                                        console.error(e);
+                                                        alert('Contribution failed: ' + (e.response?.data?.error || e.message));
+                                                    }
+                                                }}
+                                                disabled={!isConnected}
+                                                className="ml-2 px-3 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg font-medium text-sm disabled:opacity-50 hover:shadow-lg hover:shadow-purple-500/25 transition-all"
+                                                title="Add rewards to this task (Crowdfunding)"
+                                            >
+                                                🚀 Boost
+                                            </button>
                                         </div>
-                                        <button
-                                            onClick={() => handleClaimTask(task.task_id)}
-                                            disabled={!isConnected || claimingTask === task.task_id}
-                                            className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-green-500/25 transition-all"
-                                        >
-                                            {claimingTask === task.task_id ? '⏳' : '⚡'} Claim
-                                        </button>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </div>

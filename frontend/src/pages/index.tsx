@@ -16,6 +16,8 @@ interface NetworkStats {
   total_gstd_paid: number;
   tasks_24h: number;
   total_tasks: number;
+  total_hashrate: number;
+  gold_reserve: number;
 }
 
 export default function Home() {
@@ -189,10 +191,10 @@ export default function Home() {
               {/* Stats Grid */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 max-w-4xl mx-auto">
                 {[
-                  { value: networkStats?.active_workers || '—', label: t('stat_workers') || 'Active Workers', icon: Users, color: 'cyan' },
+                  { value: networkStats?.total_hashrate ? `${networkStats.total_hashrate.toFixed(1)} PFLOPS` : '—', label: t('stat_hashrate') || 'Network Power', icon: Zap, color: 'cyan' },
                   { value: networkStats?.tasks_24h || '—', label: t('stat_tasks') || 'Tasks (24h)', icon: Activity, color: 'violet' },
                   { value: networkStats?.total_gstd_paid?.toFixed(0) || '—', label: t('stat_paid') || 'GSTD Paid', icon: Coins, color: 'emerald' },
-                  { value: '<5s', label: t('stat_latency') || 'Avg Latency', icon: Zap, color: 'amber' },
+                  { value: networkStats?.gold_reserve ? `${networkStats.gold_reserve.toFixed(2)} XAUt` : '—', label: t('stat_gold') || 'Gold Reserve', icon: Shield, color: 'amber' },
                 ].map((stat, i) => (
                   <div key={i} className="relative group">
                     <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-violet-500/10 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />

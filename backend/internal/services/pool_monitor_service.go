@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+    "database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -21,6 +22,7 @@ type PoolMonitorService struct {
 	gstdJettonAddr  string
 	xautJettonAddr  string
 	errorLogger     *ErrorLogger // For logging errors to database
+	db              *sql.DB      // For logging golden reserve history
 }
 
 // PoolStatus represents the current state of the GSTD/XAUt pool
@@ -35,7 +37,7 @@ type PoolStatus struct {
 }
 
 // NewPoolMonitorService creates a new pool monitor service
-func NewPoolMonitorService(tonConfig config.TONConfig) *PoolMonitorService {
+func NewPoolMonitorService(tonConfig config.TONConfig, db *sql.DB) *PoolMonitorService {
 	poolAddress := tonConfig.PoolAddress
 	if poolAddress == "" {
 		poolAddress = "EQA--JXG8VSyBJmLMqb2J2t4Pya0TS9SXHh7vHh8Iez25sLp" // Default pool address
@@ -47,6 +49,7 @@ func NewPoolMonitorService(tonConfig config.TONConfig) *PoolMonitorService {
 		apiKey:         tonConfig.APIKey,
 		gstdJettonAddr: tonConfig.GSTDJettonAddress,
 		xautJettonAddr: tonConfig.XAUtJettonAddress,
+		db:             db,
 		httpClient: &http.Client{
 			Timeout: 10 * time.Second,
 		},
@@ -225,3 +228,51 @@ func (pms *PoolMonitorService) IsPoolHealthy(ctx context.Context) (bool, error) 
 	return status.IsHealthy && status.GSTDBalance > 0 && status.XAUtBalance > 0, nil
 }
 
+// Start begins the monitoring loop
+func (pms *PoolMonitorService) Start(ctx context.Context) {
+    if pms.db == nil {
+        log.Println("⚠️ PoolMonitorService: DB not initialized (skipping background logging)")
+        return
+    }
+
+    ticker := time.NewTicker(24 * time.Hour)
+    
+    // Initial update
+    pms.updateAndLog(ctx)
+
+    go func() {
+        for {
+            select {
+            case <-ticker.C:
+                pms.updateAndLog(ctx)
+            case <-ctx.Done():
+                ticker.Stop()
+                return
+            }
+        }
+    }()
+}
+
+// updateAndLog fetches status and logs to DB
+func (pms *PoolMonitorService) updateAndLog(ctx context.Context) {
+    status, err := pms.GetPoolStatus(ctx)
+    if err != nil {
+        log.Printf("❌ PoolMonitor: Failed to get status: %v", err)
+        return
+    }
+
+    // Log to golden_reserve_log table
+    _, err = pms.db.ExecContext(ctx, `
+        INSERT INTO golden_reserve_log (
+            pool_address, gstd_balance, xaut_balance, 
+            total_value_usd, reserve_ratio, is_healthy
+        ) VALUES ($1, $2, $3, $4, $5, $6)
+    `, status.PoolAddress, status.GSTDBalance, status.XAUtBalance, 
+       status.TotalValueUSD, status.ReserveRatio, status.IsHealthy)
+
+    if err != nil {
+        log.Printf("❌ PoolMonitor: Failed to log to DB: %v", err)
+    } else {
+        log.Printf("✅ PoolMonitor: Gold Reserve updated in DB (XAUt: %.6f)", status.XAUtBalance)
+    }
+}

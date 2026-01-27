@@ -26,8 +26,11 @@ struct TaskDeposit {
 
 // Escrow contract state
 contract Escrow with Deployable, Ownable {
-    // Platform treasury address (receives fees)
+    // Platform treasury address (receives 50% of fees)
     treasury: Address;
+    
+    // Gold Pool address (receives 50% of fees)
+    goldPool: Address;
     
     // Minimum message value to prevent spam
     minMessageValue: Int as coins = 10000000; // 0.01 TON
@@ -38,9 +41,10 @@ contract Escrow with Deployable, Ownable {
     // Nonce tracking for replay attack protection: address -> nonce
     nonces: Map<Address, Int> = emptyMap();
     
-    init(owner: Address, treasuryAddress: Address) {
+    init(owner: Address, treasuryAddress: Address, goldPoolAddress: Address) {
         Ownable.init(owner);
         self.treasury = treasuryAddress;
+        self.goldPool = goldPoolAddress;
     }
     
     // Receive TON for task compensation
@@ -114,12 +118,25 @@ contract Escrow with Deployable, Ownable {
         updatedDeposit.platformFee = msg.platformFee;
         self.taskDeposits.set(msg.taskId, updatedDeposit);
         
-        // Send platform fee to treasury
+        // Send fees (50/50 split)
         if (msg.platformFee > 0) {
+            let halfFee: Int = msg.platformFee / 2;
+            let remainder: Int = msg.platformFee % 2;
+            
+            // 1. Send 50% to Gold Pool
+            send(SendParameters{
+                to: self.goldPool,
+                value: halfFee, 
+                mode: 1, // Pay transfer fees separately
+                bounce: false,
+                body: emptyCell()
+            });
+
+            // 2. Send 50% + remainder to Treasury
             send(SendParameters{
                 to: self.treasury,
-                value: msg.platformFee,
-                mode: SendRemainingValue,
+                value: halfFee + remainder,
+                mode: 1, // Pay transfer fees separately
                 bounce: false,
                 body: emptyCell()
             });
@@ -130,7 +147,7 @@ contract Escrow with Deployable, Ownable {
             send(SendParameters{
                 to: msg.executorAddress,
                 value: msg.executorReward,
-                mode: SendRemainingValue,
+                mode: 1, // Pay transfer fees separately
                 bounce: false,
                 body: emptyCell()
             });
@@ -140,7 +157,7 @@ contract Escrow with Deployable, Ownable {
         send(SendParameters{
             to: sender,
             value: 0,
-            mode: SendRemainingValue,
+            mode: 128, // Carry all remaining balance
             bounce: false,
             body: emptyCell()
         });
