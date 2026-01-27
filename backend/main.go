@@ -297,6 +297,7 @@ func main() {
 	payoutRetryService := services.NewPayoutRetryService(db, rewardEngine)
 	rewardEngine.SetPayoutRetry(payoutRetryService)
 	taskRateLimiter := services.NewRateLimiter(10, 1*time.Minute) // 10 tasks per minute per wallet
+	lendingService := services.NewLendingService(db)
 
 	// Initialize Proof-of-Work service
 	powService := services.NewProofOfWorkService(db)
@@ -443,6 +444,7 @@ func main() {
 		powService,
 		taskOrchestrator,
 		telegramService,
+		lendingService,
 	)
 
 	// Setup Swagger documentation
