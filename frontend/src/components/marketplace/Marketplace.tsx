@@ -333,7 +333,9 @@ export default function Marketplace() {
                                             <div className="flex items-center gap-3">
                                                 <span className="text-2xl">
                                                     {task.task_type === 'network_survey' ? '📡' :
-                                                        task.task_type === 'js_script' ? '📜' : '⚙️'}
+                                                        task.task_type === 'js_script' ? '📜' :
+                                                            task.task_type === 'ai_inference' ? '🧠' :
+                                                                task.task_type === 'scientific_simulation' ? '🧬' : '⚙️'}
                                                 </span>
                                                 <div>
                                                     <div className="font-semibold">{task.operation || task.task_type}</div>
@@ -425,8 +427,37 @@ export default function Marketplace() {
                                     <option value="network_survey">📡 Network Survey</option>
                                     <option value="js_script">📜 JavaScript Script</option>
                                     <option value="wasm_binary">⚙️ WASM Binary</option>
+                                    <option value="ai_inference">🧠 AI Inference (LLM/GenAI)</option>
+                                    <option value="scientific_simulation">🧬 Scientific Simulation (Protein/Climate)</option>
                                 </select>
                             </div>
+
+                            {/* Dynamic Fields based on Type */}
+                            {taskForm.task_type === 'ai_inference' && (
+                                <div>
+                                    <label className="block text-sm text-gray-400 mb-1">Model Name (HuggingFace ID)</label>
+                                    <input
+                                        type="text"
+                                        placeholder="e.g. meta-llama/Llama-2-7b-chat-hf"
+                                        className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white"
+                                        onChange={(e) => setTaskForm({ ...taskForm, operation: `inference:${e.target.value}` })}
+                                    />
+                                </div>
+                            )}
+
+                            {taskForm.task_type === 'scientific_simulation' && (
+                                <div>
+                                    <label className="block text-sm text-gray-400 mb-1">Simulation Type</label>
+                                    <select
+                                        className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white"
+                                        onChange={(e) => setTaskForm({ ...taskForm, operation: e.target.value })}
+                                    >
+                                        <option value="protein_folding">🧬 Protein Folding</option>
+                                        <option value="climate_modeling">🌍 Climate Modeling</option>
+                                        <option value="astrophysics">🚀 Astrophysics Simulation</option>
+                                    </select>
+                                </div>
+                            )}
 
                             {/* Budget */}
                             <div>
