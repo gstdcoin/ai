@@ -59,6 +59,9 @@ type TaskDescriptor struct {
 	MinTrust        float64     `json:"min_trust"`
 	AllowedRegions  []string    `json:"allowed_regions"`
 	IsPrivate       bool        `json:"is_private"`
+	IsBoinc         bool        `json:"is_boinc"`
+	BoincProjectURL string      `json:"boinc_project_url,omitempty"`
+	BoincBatchID    int         `json:"boinc_batch_id,omitempty"`
 }
 
 // TaskDefinition is a flexible structure for any type of work

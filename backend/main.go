@@ -298,6 +298,8 @@ func main() {
 	rewardEngine.SetPayoutRetry(payoutRetryService)
 	taskRateLimiter := services.NewRateLimiter(10, 1*time.Minute) // 10 tasks per minute per wallet
 	lendingService := services.NewLendingService(db)
+	boincService := services.NewBoincService(db)
+	log.Println("✅ BOINC Integration service initialized")
 
 	// Initialize Proof-of-Work service
 	powService := services.NewProofOfWorkService(db)
@@ -351,6 +353,9 @@ func main() {
     
     // Start Pool Monitor Service (Gold Reserve Oracle)
     go poolMonitorService.Start(ctx)
+
+	// Start BOINC task poller
+	go boincService.PollAndFinalizeBoincTasks(ctx)
 
 	// Store services for API handlers (will be used in routes)
 	_ = powService       // Used in orchestrator routes
@@ -445,6 +450,7 @@ func main() {
 		taskOrchestrator,
 		telegramService,
 		lendingService,
+		boincService,
 	)
 
 	// Setup Swagger documentation

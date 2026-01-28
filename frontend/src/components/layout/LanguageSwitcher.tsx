@@ -10,17 +10,16 @@ export default function LanguageSwitcher() {
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
-  const changeLanguage = async (locale: string) => {
-    // Instant switch via i18next
-    if (i18n && i18n.changeLanguage) {
-      await i18n.changeLanguage(locale);
-    }
-    // Update URL without full reload
-    router.push(router.pathname, router.asPath, { locale, scroll: false, shallow: true });
+  const changeLanguage = (locale: string) => {
+    if (!router || !locale) return;
+
+    // Update URL with full navigation to trigger next-i18next reload
+    const { pathname, asPath, query } = router;
+    router.push({ pathname, query }, asPath, { locale, scroll: false });
     setIsOpen(false);
   };
 
-  const currentLocale = router.locale || 'en';
+  const currentLocale = router.locale || 'ru';
 
   // Close menu when clicking outside
   useEffect(() => {

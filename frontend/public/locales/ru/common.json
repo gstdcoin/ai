@@ -214,5 +214,15 @@
   "depin_network_status": "Метрики DePIN сети в реальном времени",
   "your_network": "Ваша сеть",
   "active": "Актив",
-  "earn_referral_bonus": "Получайте 5% от рефералов"
+  "earn_referral_bonus": "Получайте 5% от рефералов",
+  "boinc_bridge": "BOINC Мост",
+  "boinc_bridge_desc": "Переносите научные вычислительные задачи из проектов BOINC в сеть GSTD.",
+  "boinc_project_url": "URL проекта",
+  "boinc_account_key": "Ключ аккаунта (Authenticator)",
+  "boinc_app_name": "Имя приложения",
+  "boinc_command_line": "Аргументы командной строки",
+  "bridge_task": "Перенести в BOINC",
+  "boinc_bridged_successfully": "Задача успешно перенесена в BOINC",
+  "boinc_stats_active": "Активные научные задачи",
+  "boinc_stats_reward": "Награды за научные вычисления"
 }
