@@ -280,5 +280,15 @@
   },
   "common": {
     "refresh": "Refresh"
-  }
+  },
+  "boinc_bridge": "BOINC Bridge",
+  "boinc_bridge_desc": "Bridge scientific computing tasks from BOINC projects to GSTD network.",
+  "boinc_project_url": "Project URL",
+  "boinc_account_key": "Account Key (Authenticator)",
+  "boinc_app_name": "Application Name",
+  "boinc_command_line": "Command Line Arguments",
+  "bridge_task": "Bridge to BOINC",
+  "boinc_bridged_successfully": "BOINC task bridged successfully",
+  "boinc_stats_active": "Active Scientific Tasks",
+  "boinc_stats_reward": "Scientific Computing Rewards"
 }

@@ -1928,3 +1928,31 @@ Error response from daemon: No such container: ubuntu-backend-blue-1
 2026/01/28 17:52:23 ⚠️  Failed to determine country for IP 172.18.0.1: geolocation API returned status: fail
 
 ---
+## 🛡️ GSTD Security Audit - 2026-01-28 19:00:01
+
+### 💎 TON Service Check
+2026/01/28 18:46:47 Migration v10_failed_payouts.sql already applied, skipping
+2026/01/28 18:46:47 Migration v33_recreate_failed_payouts.sql already applied, skipping
+2026/01/28 18:46:47 Warning: Failed to run migrations: failed to execute migration v36_final_optimization.sql: migration SQL error: pq: column "labor_compensation_ton" does not exist
+2026/01/28 18:46:48 Migration v10_failed_payouts.sql already applied, skipping
+2026/01/28 18:46:48 Migration v33_recreate_failed_payouts.sql already applied, skipping
+2026/01/28 18:46:48 Warning: Failed to run migrations: failed to execute migration v36_final_optimization.sql: migration SQL error: pq: column "labor_compensation_ton" does not exist
+2026/01/28 18:46:48 Migration v10_failed_payouts.sql already applied, skipping
+2026/01/28 18:46:48 Migration v33_recreate_failed_payouts.sql already applied, skipping
+2026/01/28 18:46:48 Warning: Failed to run migrations: failed to execute migration v36_final_optimization.sql: migration SQL error: pq: column "labor_compensation_ton" does not exist
+2026/01/28 18:46:49 Migration v10_failed_payouts.sql already applied, skipping
+2026/01/28 18:46:49 Migration v33_recreate_failed_payouts.sql already applied, skipping
+2026/01/28 18:46:49 Warning: Failed to run migrations: failed to execute migration v36_final_optimization.sql: migration SQL error: pq: column "labor_compensation_ton" does not exist
+2026/01/28 18:46:50 Migration v10_failed_payouts.sql already applied, skipping
+2026/01/28 18:46:50 Migration v33_recreate_failed_payouts.sql already applied, skipping
+2026/01/28 18:46:50 Warning: Failed to run migrations: failed to execute migration v36_final_optimization.sql: migration SQL error: pq: column "labor_compensation_ton" does not exist
+2026/01/28 18:46:52 Migration v10_failed_payouts.sql already applied, skipping
+2026/01/28 18:46:52 Migration v33_recreate_failed_payouts.sql already applied, skipping
+2026/01/28 18:46:52 Warning: Failed to run migrations: failed to execute migration v36_final_optimization.sql: migration SQL error: pq: column "labor_compensation_ton" does not exist
+2026/01/28 18:46:56 Migration v10_failed_payouts.sql already applied, skipping
+2026/01/28 18:46:56 Migration v33_recreate_failed_payouts.sql already applied, skipping
+
+### 🌍 GEO Service Check
+✅ GEO Service is running correctly (found 78 log entries).
+
+---

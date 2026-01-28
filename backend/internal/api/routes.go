@@ -47,6 +47,7 @@ func SetupRoutes(
 	taskOrchestrator *services.TaskOrchestrator,
 	telegramService *services.TelegramService,
 	lendingService *services.LendingService,
+	boincService *services.BoincService,
 ) {
 	log.Printf("🔧 SetupRoutes: Starting route setup, redisClient type: %T", redisClient)
 	
@@ -281,7 +282,9 @@ func SetupRoutes(
 		SetupOrchestratorRoutes(v1, orchestratorHandler)
 		log.Printf("✅ Orchestrator routes registered")
 
-
+		// BOINC Integration
+		RegisterBoincRoutes(protected, boincService, taskService)
+		log.Printf("✅ BOINC routes registered")
 	}
 
 	// WebSocket endpoint
@@ -801,6 +804,10 @@ func getHealth(db *sql.DB, tonService *services.TONService, tonConfig config.TON
 				"address": tonConfig.ContractAddress,
 				"status":  contractStatus,
 				"balance_ton": contractBalance,
+			},
+			"boinc": gin.H{
+				"status": "active",
+				"bridge_enabled": true,
 			},
 			"timestamp": time.Now().Unix(),
 		})

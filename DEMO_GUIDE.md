@@ -45,6 +45,12 @@
 6. Result submitted with cryptographic proof
 7. Reward credited to worker
 
+### 6. BOINC Bridge (Scientific Computing)
+1. Go to "Marketplace" → "BOINC Bridge" tab
+2. Fill in BOINC project details (URL, Auth Key)
+3. Submit and pay for scientific task
+4. Platform bridging starts - status updates from Rosetta/SETI/etc.
+
 ---
 
 ## 🔑 API Test Commands
@@ -115,6 +121,7 @@ curl -X POST https://app.gstdtoken.com/api/v1/tasks/create \
 | Database | ✅ Connected |
 | Redis | ✅ Connected |
 | Smart Contract | ✅ Reachable (0.67 TON) |
+| BOINC Bridge | ✅ Active |
 | SSL Certificate | ✅ Valid until March 2026 |
 | CI/CD | ✅ Auto-deploys on push |
 
@@ -129,6 +136,7 @@ curl -X POST https://app.gstdtoken.com/api/v1/tasks/create \
 5. **Referral System** - Earn from referrals
 6. **Multi-language** - English/Russian support
 7. **Blue/Green Deploy** - Zero-downtime updates
+8. **BOINC Bridge** - Support scientific research (Rosetta@home, etc.)
 
 ---
 

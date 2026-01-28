@@ -172,11 +172,13 @@ func (s *TaskService) CreateTask(ctx context.Context, requesterAddress string, d
 			task_id, requester_address, task_type, operation, model,
 			labor_compensation_gstd, platform_fee_gstd, certainty_gravity_score, status, created_at,
 			escrow_status, min_trust_score, is_private, confidence_depth, 
-			redundancy_factor, is_spot_check, entropy_snapshot
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', NOW(), 'locked', $9, $10, $11, $12, $13, $14)
+			redundancy_factor, is_spot_check, entropy_snapshot,
+			is_boinc, boinc_project_url, boinc_batch_id
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', NOW(), 'locked', $9, $10, $11, $12, $13, $14, $15, $16, $17)
 	`, taskID, requesterAddress, descriptor.TaskType, descriptor.Operation, descriptor.Model,
 		descriptor.Reward.AmountGSTD, platformFee, gravityScore,
-		descriptor.MinTrust, descriptor.IsPrivate, confidenceDepth, redundancy, isSpotCheck, entropy)
+		descriptor.MinTrust, descriptor.IsPrivate, confidenceDepth, redundancy, isSpotCheck, entropy,
+		descriptor.IsBoinc, descriptor.BoincProjectURL, descriptor.BoincBatchID)
 	
     // Retry with 'priority_score' if 'certainty_gravity_score' fails (DB Schema Compatibility)
 	if err != nil && (strings.Contains(err.Error(), "certainty_gravity_score") || 
@@ -186,11 +188,13 @@ func (s *TaskService) CreateTask(ctx context.Context, requesterAddress string, d
 				task_id, requester_address, task_type, operation, model,
 				labor_compensation_gstd, platform_fee_gstd, priority_score, status, created_at,
 				escrow_status, min_trust_score, is_private, confidence_depth, 
-				redundancy_factor, is_spot_check, entropy_snapshot
-			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', NOW(), 'locked', $9, $10, $11, $12, $13, $14)
+				redundancy_factor, is_spot_check, entropy_snapshot,
+				is_boinc, boinc_project_url, boinc_batch_id
+			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', NOW(), 'locked', $9, $10, $11, $12, $13, $14, $15, $16, $17)
 		`, taskID, requesterAddress, descriptor.TaskType, descriptor.Operation, descriptor.Model,
 			descriptor.Reward.AmountGSTD, platformFee, gravityScore,
-			descriptor.MinTrust, descriptor.IsPrivate, confidenceDepth, redundancy, isSpotCheck, entropy)
+			descriptor.MinTrust, descriptor.IsPrivate, confidenceDepth, redundancy, isSpotCheck, entropy,
+			descriptor.IsBoinc, descriptor.BoincProjectURL, descriptor.BoincBatchID)
 	}
 
     if err != nil {
