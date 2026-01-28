@@ -58,9 +58,15 @@ func (s *AssignmentService) AssignTask(ctx context.Context, taskID string, devic
 	// -------------------------------------------------------------------------
 	// STAKE CHECK (Atomic & Race-Condition Proof)
 	// -------------------------------------------------------------------------
-	// 1. Get wallet address for this device
+	// 1. Get wallet address for this device/node
 	var walletAddress string
-	err = tx.QueryRowContext(ctx, "SELECT wallet_address FROM devices WHERE device_id = $1", deviceID).Scan(&walletAddress)
+	// Try nodes table first
+	err = tx.QueryRowContext(ctx, "SELECT wallet_address FROM nodes WHERE id = $1", deviceID).Scan(&walletAddress)
+	if err != nil {
+		// Try devices table
+		err = tx.QueryRowContext(ctx, "SELECT wallet_address FROM devices WHERE device_id = $1", deviceID).Scan(&walletAddress)
+	}
+	
 	if err != nil {
 		// If fails (e.g. device not found or wallet_address is null), use deviceID as fallback
 		// or proceed (risk of bypass, but prevents bricking if DB inconsistent)
@@ -143,18 +149,27 @@ func (s *AssignmentService) AssignTask(ctx context.Context, taskID string, devic
 
 // GetAvailableTasks returns available tasks for a device
 func (s *AssignmentService) GetAvailableTasks(ctx context.Context, deviceID string, limit int) ([]*models.Task, error) {
-	// 1. Get device trust and region
+	// 1. Get device trust and region from nodes table
 	var deviceTrust float64
 	var deviceRegion sql.NullString
 	err := s.db.QueryRowContext(ctx, `
-		SELECT COALESCE(trust_score, reputation, 0.1) as trust, 
-		       COALESCE(region, '') as region 
-		FROM devices WHERE device_id = $1
+		SELECT COALESCE(trust_score, 1.0) as trust, 
+		       COALESCE(country, '') as region 
+		FROM nodes WHERE id = $1
 	`, deviceID).Scan(&deviceTrust, &deviceRegion)
 	if err != nil {
-		// Fallback for new devices
-		deviceTrust = 0.1
-		deviceRegion = sql.NullString{String: "unknown", Valid: true}
+        // Try devices table as fallback (legacy)
+        err = s.db.QueryRowContext(ctx, `
+            SELECT COALESCE(trust_score, 0.1) as trust, 
+                   COALESCE(region, '') as region 
+            FROM devices WHERE device_id = $1
+        `, deviceID).Scan(&deviceTrust, &deviceRegion)
+        
+        if err != nil {
+            // Fallback for new/unknown devices
+            deviceTrust = 0.1
+            deviceRegion = sql.NullString{String: "unknown", Valid: true}
+        }
 	}
 	
 	// regionStr removed - not used in query below

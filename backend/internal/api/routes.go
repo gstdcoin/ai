@@ -280,6 +280,8 @@ func SetupRoutes(
 		orchestratorHandler := NewOrchestratorHandler(db.(*sql.DB), taskOrchestrator, powService, tonService)
 		SetupOrchestratorRoutes(v1, orchestratorHandler)
 		log.Printf("✅ Orchestrator routes registered")
+
+
 	}
 
 	// WebSocket endpoint
