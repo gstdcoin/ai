@@ -286,7 +286,7 @@ func main() {
 	timeoutService.SetErrorLogger(errorLogger) // Enable error logging for timeouts
 	statsService := services.NewStatsService(db)
 	userService := services.NewUserService(db)
-	nodeService := services.NewNodeService(db)
+	nodeService := services.NewNodeService(db, redisClient)
 	// Enable node_id to wallet_address resolution in payment service
 	paymentService.SetNodeService(nodeService)
 	taskPaymentService := services.NewTaskPaymentService(db, tonService, cfg.TON)
@@ -451,6 +451,7 @@ func main() {
 		telegramService,
 		lendingService,
 		boincService,
+		maintenanceService,
 	)
 
 	// Setup Swagger documentation

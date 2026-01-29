@@ -136,3 +136,47 @@ func getMyNodes(service *services.NodeService) gin.HandlerFunc {
 	}
 }
 
+// getPublicNodes retrieves public location data for all online nodes
+func getPublicNodes(service *services.NodeService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		nodes, err := service.GetPublicActiveNodes(c.Request.Context())
+		if err != nil {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(200, gin.H{"nodes": nodes})
+	}
+}
+
+// UpdateHeartbeat handles worker heartbeat with battery and signal info
+func UpdateHeartbeat(service *services.NodeService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req struct {
+			WalletAddress string `json:"wallet" binding:"required"`
+			Battery       int    `json:"battery"`
+			Signal        int    `json:"signal"`
+		}
+
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(400, gin.H{"error": err.Error()})
+			return
+		}
+
+		err := service.UpdateHealthStats(c.Request.Context(), req.WalletAddress, req.Battery, req.Signal)
+		if err != nil {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(200, gin.H{"status": "ok", "timestamp": time.Now().Unix()})
+	}
+}
+
+// SetupNodeRoutes registers node-related routes
+func SetupNodeRoutes(group *gin.RouterGroup, service *services.NodeService, geoService *services.GeoService, telegramService *services.TelegramService) {
+	group.POST("/nodes/register", registerNode(service, geoService, telegramService))
+	group.GET("/nodes/my", getMyNodes(service))
+	group.GET("/nodes/public", getPublicNodes(service))
+	group.POST("/nodes/heartbeat", UpdateHeartbeat(service))
+}
+

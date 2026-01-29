@@ -10,14 +10,16 @@ import (
 	"distributed-computing-platform/internal/models"
 
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 )
 
 type NodeService struct {
-	db *sql.DB
+	db    *sql.DB
+	redis *redis.Client
 }
 
-func NewNodeService(db *sql.DB) *NodeService {
-	return &NodeService{db: db}
+func NewNodeService(db *sql.DB, rdb *redis.Client) *NodeService {
+	return &NodeService{db: db, redis: rdb}
 }
 
 // RegisterNode registers or updates a computing node for a wallet
@@ -70,7 +72,7 @@ func (s *NodeService) RegisterNode(ctx context.Context, walletAddress string, na
 		Status:        status,
 		CPUModel:      cpuModel,
 		RAMGB:         ramGB,
-		TrustScore:    1.0,
+		TrustScore:    0.3,
 		Country:       country,
 		Latitude:      lat,
 		Longitude:     lon,
@@ -239,6 +241,20 @@ func (s *NodeService) UpdateHeartbeat(ctx context.Context, walletAddress string)
 		return err
 	}
 	
+	// Update Redis capacity/health stats for Load Balancer
+	if s.redis != nil {
+		detailsKey := fmt.Sprintf("capacity:%s", walletAddress)
+		onlineKey := fmt.Sprintf("worker:online:%s", walletAddress)
+		
+		// Set online status in Redis with 90s TTL
+		s.redis.Set(ctx, onlineKey, "online", 90*time.Second)
+		
+		// Update basic health stats in Redis if we want to add more, 
+		// but usually done via explicit UpdateHealthStats call.
+		// For now just refresh last_seen.
+		s.redis.HSet(ctx, detailsKey, "last_seen", time.Now().Format(time.RFC3339))
+	}
+	
 	rows, err := result.RowsAffected()
 	if err != nil {
 		return err
@@ -258,4 +274,59 @@ func (s *NodeService) UpdateHeartbeat(ctx context.Context, walletAddress string)
 	`, walletAddress)
 	
 	return nil
+}
+
+// GetPublicActiveNodes returns basic info about all online nodes for the map
+func (s *NodeService) GetPublicActiveNodes(ctx context.Context) ([]map[string]interface{}, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT id, status, latitude, longitude
+		FROM nodes
+		WHERE status = 'online' AND latitude IS NOT NULL AND longitude IS NOT NULL
+		LIMIT 100
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var nodes []map[string]interface{}
+	for rows.Next() {
+		var id, status string
+		var lat, lon float64
+		if err := rows.Scan(&id, &status, &lat, &lon); err != nil {
+			continue
+		}
+		nodes = append(nodes, map[string]interface{}{
+			"id":     id,
+			"status": status,
+			"lat":    lat,
+			"lon":    lon,
+		})
+	}
+	return nodes, nil
+}
+
+// UpdateHealthStats updates worker health metrics in Redis for the Load Balancer
+func (s *NodeService) UpdateHealthStats(ctx context.Context, walletAddress string, battery int, signal int) error {
+	if s.redis == nil {
+		return nil
+	}
+
+	detailsKey := fmt.Sprintf("capacity:%s", walletAddress)
+	onlineKey := fmt.Sprintf("worker:online:%s", walletAddress)
+
+	// Refresh online status
+	s.redis.Set(ctx, onlineKey, "online", 90*time.Second)
+
+	// Update health metrics
+	err := s.redis.HSet(ctx, detailsKey, map[string]interface{}{
+		"battery_level":  battery,
+		"signal_quality": signal,
+		"last_seen":      time.Now().Format(time.RFC3339),
+	}).Err()
+
+	// Also update DB last_seen
+	s.UpdateHeartbeat(ctx, walletAddress)
+
+	return err
 }

@@ -12,6 +12,7 @@ class WebSocketClient {
     private isConnected = false;
     private pingInterval: NodeJS.Timeout | null = null;
     private token: string | null = null;
+    private lastEventTimestamp: number = 0;
 
     constructor(url: string) {
         this.url = url;
@@ -43,7 +44,14 @@ class WebSocketClient {
                 this.reconnectAttempts = 0;
                 this.flushQueue();
                 this.startHeartbeat();
-                toast.dismiss('ws-error'); // Clear any sticky error toasts
+
+                // State Recovery: Request missed events since last disconnect
+                if (this.lastEventTimestamp > 0) {
+                    console.log(`📡 Requesting event replay since ${new Date(this.lastEventTimestamp).toISOString()}`);
+                    this.send('replay_events', { since: this.lastEventTimestamp });
+                }
+
+                toast.dismiss('ws-error');
                 toast.success('Real-time connection established');
                 this.emit('connection_status', { status: 'connected' });
             };
@@ -51,6 +59,9 @@ class WebSocketClient {
             this.ws.onmessage = (event) => {
                 try {
                     const message = JSON.parse(event.data);
+                    // Update timestamp for state recovery
+                    this.lastEventTimestamp = Date.now();
+
                     // Handle heartbeat pong
                     if (message.type === 'pong') return;
 

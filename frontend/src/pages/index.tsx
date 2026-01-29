@@ -6,6 +6,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import Dashboard from '../components/dashboard/Dashboard';
 import WalletConnect from '../components/WalletConnect';
+import { NetworkMap } from '../components/dashboard/NetworkMap';
 // Removed unused useTonConnectUI import
 import { useWalletStore } from '../store/walletStore';
 import { GSTD_CONTRACT_ADDRESS, API_BASE_URL } from '../lib/config';
@@ -57,6 +58,20 @@ export default function Home() {
     if (!isConnected) fetchStats();
     const interval = setInterval(fetchStats, 60000);
     return () => clearInterval(interval);
+  }, [isConnected]);
+
+  const [publicNodes, setPublicNodes] = useState<any[]>([]);
+  useEffect(() => {
+    const fetchNodes = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/v1/nodes/public`);
+        if (res.ok) {
+          const data = await res.json();
+          setPublicNodes(data.nodes || []);
+        }
+      } catch { }
+    };
+    if (!isConnected) fetchNodes();
   }, [isConnected]);
 
   // Prevent flashing of landing page while checking connection
@@ -175,17 +190,23 @@ export default function Home() {
               </p>
 
               {/* CTA Section */}
-              <div className="flex flex-col items-center justify-center gap-4 mb-16 w-full px-4">
-                <div className="w-full max-w-xs sm:max-w-sm mx-auto">
-                  {/* Hero Wallet Connect removed as it is now in header */}
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16 w-full px-4">
+                <div className="flex gap-2">
+                  <a
+                    href="/docs?type=technical"
+                    className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-violet-600/20 border border-violet-500/30 hover:bg-violet-600/30 transition-all text-white font-medium"
+                  >
+                    <Terminal className="w-5 h-5" />
+                    {router.locale === 'ru' ? 'Тех-Стек' : 'Tech Stack'}
+                  </a>
+                  <a
+                    href="/docs?type=investment"
+                    className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-white font-medium"
+                  >
+                    <BookOpen className="w-5 h-5" />
+                    {router.locale === 'ru' ? 'Инвесторам' : 'Investors'}
+                  </a>
                 </div>
-                <a
-                  href="/docs"
-                  className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-white font-medium mx-auto"
-                >
-                  <BookOpen className="w-5 h-5" />
-                  {t('read_docs') || 'Investment Comparison Deck'}
-                </a>
               </div>
 
               {/* Stats Grid */}
@@ -319,7 +340,39 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Token Section */}
+        {/* Network Proof Section */}
+        <section className="py-24 px-6 lg:px-12 border-t border-white/5">
+          <div className="max-w-6xl mx-auto">
+            <div className="grid lg:grid-cols-2 gap-12 items-center">
+              <div>
+                <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6">
+                  {router.locale === 'ru' ? 'Доказательство Глобальной Связности' : 'Proof of Global Connectivity'}
+                </h2>
+                <p className="text-gray-400 mb-8 leading-relaxed">
+                  {router.locale === 'ru'
+                    ? 'В отличие от централизованных облаков, GSTD работает на базе реальных физических устройств по всему миру. Каждый узел проходит проверку через Genesis Task, подтверждая свою задержку и местоположение.'
+                    : 'Unlike centralized clouds, GSTD is powered by real physical devices worldwide. Every node is verified via the Genesis Task, proving its latency and location with cryptographic certainty.'}
+                </p>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.2)]">1</div>
+                    <span className="text-gray-300 font-medium">{router.locale === 'ru' ? 'Верифицированная телеметрия' : 'Verified Telemetry'}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-violet-500/20 flex items-center justify-center text-violet-400">2</div>
+                    <span className="text-gray-300 font-medium">{router.locale === 'ru' ? 'Геолокация узлов в реальном времени' : 'Real-time Node Geolocation'}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="relative">
+                <div className="absolute inset-0 bg-blue-500/10 blur-[100px] rounded-full" />
+                <div className="relative transform hover:scale-[1.02] transition-transform duration-500">
+                  <NetworkMap nodes={publicNodes} />
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
         <section id="docs" className="py-24 px-6 lg:px-12 border-t border-white/5">
           <div className="max-w-4xl mx-auto">
             <div className="p-8 lg:p-12 rounded-3xl bg-gradient-to-br from-violet-500/5 via-fuchsia-500/5 to-cyan-500/5 border border-white/10">

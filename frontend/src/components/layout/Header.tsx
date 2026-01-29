@@ -4,6 +4,8 @@ import { useWalletStore } from '../../store/walletStore';
 import { Share2, LogOut } from 'lucide-react';
 import LanguageSwitcher from './LanguageSwitcher';
 import { toast } from '../../lib/toast';
+import { Tooltip } from '../ui/Tooltip';
+import { wsClient } from '../../lib/websocket';
 
 interface HeaderProps {
   onCreateTask: () => void;
@@ -14,6 +16,16 @@ interface HeaderProps {
 export default React.memo(function Header({ onCreateTask, onLogout, isPublic = false }: HeaderProps) {
   const { t } = useTranslation('common');
   const { address, tonBalance, gstdBalance } = useWalletStore();
+  const [isWsConnected, setIsWsConnected] = React.useState(false);
+
+  React.useEffect(() => {
+    const checkConn = () => {
+      setIsWsConnected(wsClient.isConnected());
+    };
+    checkConn();
+    const interval = setInterval(checkConn, 2000);
+    return () => clearInterval(interval);
+  }, []);
 
   if (isPublic) {
     return (
@@ -45,12 +57,13 @@ export default React.memo(function Header({ onCreateTask, onLogout, isPublic = f
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex-1 min-w-0 flex items-center gap-3">
             {/* Logo */}
-            <div className="flex-shrink-0">
+            <div className="flex-shrink-0 relative">
               <img
                 src="/logo.png"
                 alt="GSTD Logo"
                 className="w-10 h-10 sm:w-12 sm:h-12 transition-transform hover:scale-110 duration-300"
               />
+              <div className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-gray-900 ${isWsConnected ? 'bg-green-500 shadow-[0_0_8px_#22c55e]' : 'bg-red-500 animate-pulse'}`} />
             </div>
             <div className="min-w-0">
               <h1 className="text-xl sm:text-2xl font-bold text-white font-display flex items-center gap-2">
@@ -105,30 +118,29 @@ export default React.memo(function Header({ onCreateTask, onLogout, isPublic = f
       <div className="px-4 sm:px-6 py-3 bg-gradient-to-r from-orange-500/10 to-red-500/10 border-t border-orange-500/20">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-4 sm:gap-6">
-            <div className="flex items-center gap-2">
-              <span className="text-lg">🌡️</span>
-              <div>
-                <p
-                  className="text-xs text-gray-400 uppercase tracking-wider cursor-help"
-                  title={t('network_temperature_tooltip') || 'Average entropy score across operations.'}
-                >
-                  {t('network_temperature')}
-                </p>
-                <p className="text-lg sm:text-xl font-bold text-orange-400" id="network-temperature">0.00 T</p>
+            <Tooltip content={t('network_temperature_tooltip')}>
+              <div className="flex items-center gap-2">
+                <span className="text-lg">🌡️</span>
+                <div>
+                  <p className="text-xs text-gray-400 font-mono tracking-tighter uppercase whitespace-nowrap">
+                    {t('network_temperature')}
+                  </p>
+                  <p className="text-lg sm:text-xl font-bold text-orange-400" id="network-temperature">0.00 T</p>
+                </div>
               </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-lg">⚡</span>
-              <div>
-                <p
-                  className="text-xs text-gray-400 uppercase tracking-wider cursor-help"
-                  title={t('computational_pressure_tooltip') || 'Queued tasks / Active nodes.'}
-                >
-                  {t('computational_pressure')}
-                </p>
-                <p className="text-lg sm:text-xl font-bold text-red-400" id="computational-pressure">0.00 P</p>
+            </Tooltip>
+
+            <Tooltip content={t('computational_pressure_tooltip')}>
+              <div className="flex items-center gap-2">
+                <span className="text-lg">⚡</span>
+                <div>
+                  <p className="text-xs text-gray-400 font-mono tracking-tighter uppercase whitespace-nowrap">
+                    {t('computational_pressure')}
+                  </p>
+                  <p className="text-lg sm:text-xl font-bold text-red-400" id="computational-pressure">0.00 P</p>
+                </div>
               </div>
-            </div>
+            </Tooltip>
           </div>
           <p className="text-xs text-gray-400 italic">
             {t('depin_network_status') || 'Real-time DePIN network metrics'}

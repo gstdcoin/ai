@@ -210,6 +210,22 @@ func (s *MaintenanceService) sendDailyBriefing(ctx context.Context) {
 	s.telegramService.SendMessage(ctx, strings.Join(msg, "\n"))
 }
 
+// GetAutonomyStats returns metrics about the autonomous maintenance system
+func (s *MaintenanceService) GetAutonomyStats(ctx context.Context) (map[string]interface{}, error) {
+	var selfHealedTasks int
+	s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM error_logs WHERE message LIKE '%Self-Healing%'").Scan(&selfHealedTasks)
+
+	var activeMaintenance bool = true
+
+	return map[string]interface{}{
+		"status":              "active",
+		"self_healed_tasks":   selfHealedTasks,
+		"maintenance_active": activeMaintenance,
+		"last_cycle":         time.Now().Format(time.RFC3339),
+		"briefing_enabled":   s.telegramService != nil,
+	}, nil
+}
+
 func (s *MaintenanceService) sendAlert(ctx context.Context, message string) {
 	if s.telegramService != nil {
 		s.telegramService.SendMessage(ctx, message)

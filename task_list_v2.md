@@ -6,26 +6,17 @@
 - **CI/CD Pipeline:** Fully automated blue-green deployment via GitHub Actions.
 - **Security:** Lodash vulnerability patched (frontend/contracts).
 - **Core:** Task Orchestrator, PoW Verification, WASM Sandbox foundation.
-- **UI:** Universal "Start Mining" trigger, Marketplace Integration.
+- **Load Balancing (P0):** Robust reputation-weighted worker selection implemented.
+  - Round-robin with trust weights.
+  - Active capacity checking before assignment.
+- **Retry Engine (P1):** Exponential backoff (1s/5s/30s) and instant offline re-assignment active.
+  - Dead Letter Queue for permanently failed tasks.
+- **UI:** Universal "Start Mining" trigger, Marketplace Integration, Science Bridge Dashboard.
 - **Bot:** Self-healing sentinel active.
 
 ## 🚀 Phase 2: World-Class Platform Features (Remaining)
 
-### 1. Robust worker Load Balancing (P0)
-- **Goal:** Ensure no worker is overloaded and tasks are distributed by reputation.
-- **File:** `backend/internal/services/load_balancer.go`
-- **Missing:**
-  - Round-robin with trust weights.
-  - Active capacity checking before assignment.
-
-### 2. Task Retry Engine (P1)
-- **Goal:** Never lose a task. If a worker fails/timeouts, reassign instantly.
-- **File:** `backend/internal/services/retry_engine.go`
-- **Missing:**
-  - Exponential backoff (1s, 5s, 30s).
-  - Dead Letter Queue for permanently failed tasks.
-
-### 3. Client Dashboard Expansion (P1)
+### 1. Client Dashboard Expansion (P1)
 - **Goal:** Give clients full visibility into their spend and task progress.
 - **File:** `frontend/src/components/dashboard/ClientDashboard.tsx`
 - **Missing:**

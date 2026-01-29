@@ -2,6 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'next-i18next';
 import { useWalletStore } from '../../store/walletStore';
 import { apiGet, apiPost } from '../../lib/apiClient';
+import {
+    Search, Plus, ClipboardList, Zap, Info, TrendingUp, Users,
+    ArrowRight, Globe, Shield, Activity, Sparkles, Filter
+} from 'lucide-react';
 
 interface AvailableTask {
     task_id: string;
@@ -245,70 +249,50 @@ export default function Marketplace() {
     return (
         <div className="space-y-6">
             {/* Tab Navigation */}
-            <div className="flex gap-2 border-b border-white/10 pb-2">
-                <button
-                    onClick={() => setActiveTab('jobs')}
-                    className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'jobs'
-                        ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white'
-                        : 'bg-white/5 text-gray-400 hover:text-white'
-                        }`}
-                >
-                    🔍 Job Feed
-                </button>
-                <button
-                    onClick={() => setActiveTab('create')}
-                    className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'create'
-                        ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white'
-                        : 'bg-white/5 text-gray-400 hover:text-white'
-                        }`}
-                >
-                    ➕ Create Task
-                </button>
-                <button
-                    onClick={() => { setActiveTab('my-tasks'); fetchMyTasks(); }}
-                    className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'my-tasks'
-                        ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white'
-                        : 'bg-white/5 text-gray-400 hover:text-white'
-                        }`}
-                >
-                    📋 {t('my_tasks')}
-                </button>
-                <button
-                    onClick={() => setActiveTab('boinc')}
-                    className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'boinc'
-                        ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white'
-                        : 'bg-white/5 text-gray-400 hover:text-white'
-                        }`}
-                >
-                    🧬 {t('boinc_bridge')}
-                </button>
+            <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide">
+                {[
+                    { id: 'jobs', icon: Search, label: 'Job Feed' },
+                    { id: 'create', icon: Plus, label: 'Create Task' },
+                    { id: 'my-tasks', icon: ClipboardList, label: t('my_tasks') },
+                    { id: 'boinc', icon: Activity, label: t('boinc_bridge') }
+                ].map((tab) => (
+                    <button
+                        key={tab.id}
+                        onClick={() => {
+                            setActiveTab(tab.id as any);
+                            if (tab.id === 'my-tasks') fetchMyTasks();
+                        }}
+                        className={`px-5 py-2.5 rounded-xl font-medium transition-all duration-300 flex items-center gap-2 whitespace-nowrap ${activeTab === tab.id
+                            ? tab.id === 'boinc'
+                                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20'
+                                : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/20'
+                            : 'bg-gray-800/50 text-gray-400 hover:text-white hover:bg-gray-700/50 border border-gray-700/50'
+                            }`}
+                    >
+                        <tab.icon className="w-4 h-4" />
+                        <span>{tab.label}</span>
+                    </button>
+                ))}
             </div>
 
             {/* Marketplace Stats */}
-            {
-                marketStats && (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="glass-card p-4 text-center">
-                            <div className="text-2xl font-bold text-purple-400">{marketStats.active_tasks}</div>
-                            <div className="text-xs text-gray-400">Active Jobs</div>
+            {marketStats && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {[
+                        { label: 'Active Jobs', value: marketStats.active_tasks, icon: Zap, color: 'text-blue-400' },
+                        { label: 'Workers Online', value: marketStats.active_workers, icon: Users, color: 'text-green-400' },
+                        { label: 'GSTD Paid Out', value: marketStats.total_payouts.toFixed(2), icon: TrendingUp, color: 'text-indigo-400' },
+                        { label: 'Platform Fund', value: ((marketStats.platform_funds?.dev_fund || 0) + (marketStats.platform_funds?.gold_reserve || 0)).toFixed(2), icon: Shield, color: 'text-amber-400' }
+                    ].map((stat, idx) => (
+                        <div key={idx} className="bg-gray-900/40 backdrop-blur-md rounded-2xl p-4 border border-gray-700/50 flex flex-col items-center justify-center group overflow-hidden relative">
+                            <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${stat.color.replace('text', 'from')} to-transparent opacity-0 group-hover:opacity-100 transition-opacity`} />
+                            <stat.icon className={`w-5 h-5 ${stat.color} mb-2 opacity-80 group-hover:scale-110 transition-transform`} />
+                            <div className="text-xl font-bold text-white font-mono">{stat.value}</div>
+                            <div className="text-[10px] uppercase tracking-wider text-gray-500 font-medium">{stat.label}</div>
                         </div>
-                        <div className="glass-card p-4 text-center">
-                            <div className="text-2xl font-bold text-green-400">{marketStats.active_workers}</div>
-                            <div className="text-xs text-gray-400">Workers Online</div>
-                        </div>
-                        <div className="glass-card p-4 text-center">
-                            <div className="text-2xl font-bold text-blue-400">{marketStats.total_payouts.toFixed(2)}</div>
-                            <div className="text-xs text-gray-400">GSTD Paid Out</div>
-                        </div>
-                        <div className="glass-card p-4 text-center">
-                            <div className="text-2xl font-bold text-yellow-400">
-                                {((marketStats.platform_funds?.dev_fund || 0) + (marketStats.platform_funds?.gold_reserve || 0)).toFixed(2)}
-                            </div>
-                            <div className="text-xs text-gray-400">Platform Fund</div>
-                        </div>
-                    </div>
-                )
-            }
+                    ))}
+                </div>
+            )}
 
             {/* Worker Stats (if connected) */}
             {
@@ -362,83 +346,103 @@ export default function Marketplace() {
                         ) : (
                             <div className="space-y-3">
                                 {tasks.map(task => {
-                                    // Determine if task is "hot" (boosted - reward > budget/workers)
-                                    // Assuming we don't have total_reward_pool in AvailableTask, we can check if individual reward > budget/max_workers * 0.95 (standard)
                                     const baseReward = (task.reward_gstd * 0.95);
-                                    const isHot = baseReward > 50 || task.workers_needed > 10; // Simple logic for now or add 'is_boosted' from API
+                                    const isHot = baseReward > 50 || task.workers_needed > 10;
 
                                     return (
-                                        <div key={task.task_id} className={`glass-card p-4 hover:border-purple-500/50 transition-all ${isHot ? 'border-amber-500/30' : ''}`}>
+                                        <div key={task.task_id} className={`group relative bg-gray-900/40 backdrop-blur-md rounded-2xl p-5 border transition-all duration-300 hover:shadow-2xl hover:shadow-blue-500/10 ${isHot ? 'border-amber-500/30' : 'border-gray-700/50 hover:border-blue-500/50'}`}>
+                                            {/* Mesh Gradient Background */}
+                                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.05)_0%,transparent_50%)] pointer-events-none" />
+
                                             {isHot && (
-                                                <div className="absolute -top-2 -right-2 px-2 py-0.5 bg-gradient-to-r from-amber-500 to-orange-500 rounded-full text-[10px] font-bold text-black shadow-lg shadow-orange-500/20 animate-pulse">
-                                                    🔥 HOT
+                                                <div className="absolute -top-2.5 -right-2.5 px-3 py-1 bg-gradient-to-br from-amber-400 via-orange-500 to-red-600 rounded-lg text-[10px] font-black text-white shadow-xl flex items-center gap-1.5 animate-bounce-subtle z-10">
+                                                    <Sparkles className="w-3 h-3" />
+                                                    PREMIUM REWARD
                                                 </div>
                                             )}
-                                            <div className="flex items-center justify-between mb-3">
-                                                <div className="flex items-center gap-3">
-                                                    <span className="text-2xl">
+
+                                            <div className="flex items-start justify-between relative z-1">
+                                                <div className="flex gap-4">
+                                                    <div className="w-14 h-14 bg-gray-800 rounded-xl flex items-center justify-center text-3xl shadow-inner group-hover:scale-110 transition-transform duration-500">
                                                         {task.task_type === 'network_survey' ? '📡' :
                                                             task.task_type === 'js_script' ? '📜' :
                                                                 task.task_type === 'ai_inference' ? '🧠' :
                                                                     task.task_type === 'scientific_simulation' ? '🧬' : '⚙️'}
-                                                    </span>
+                                                    </div>
                                                     <div>
-                                                        <div className="font-semibold">{task.operation || task.task_type}</div>
-                                                        <div className="text-xs text-gray-400">
-                                                            <span className={getDifficultyColor(task.difficulty)}>{task.difficulty}</span>
-                                                            {' • '}{task.geography}
+                                                        <h4 className="text-lg font-bold text-white group-hover:text-blue-400 transition-colors">{task.operation || task.task_type}</h4>
+                                                        <div className="flex items-center gap-3 mt-1">
+                                                            <span className={`flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border ${task.difficulty === 'easy' ? 'bg-green-500/10 border-green-500/30 text-green-400' :
+                                                                    task.difficulty === 'medium' ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400' :
+                                                                        'bg-red-500/10 border-red-500/30 text-red-400'
+                                                                }`}>
+                                                                <Activity className="w-3 h-3" />
+                                                                {task.difficulty.toUpperCase()}
+                                                            </span>
+                                                            <span className="flex items-center gap-1 text-[10px] text-gray-500 bg-gray-800/50 px-2 py-0.5 rounded-full">
+                                                                <Globe className="w-3 h-3" />
+                                                                {task.geography}
+                                                            </span>
                                                         </div>
                                                     </div>
                                                 </div>
                                                 <div className="text-right">
-                                                    <div className="text-lg font-bold text-green-400">
-                                                        {(task.reward_gstd * 0.95).toFixed(4)} GSTD
+                                                    <div className="flex items-baseline justify-end gap-1.5">
+                                                        <span className="text-2xl font-black text-white group-hover:text-blue-400 transition-colors">
+                                                            {(task.reward_gstd * 0.95).toFixed(3)}
+                                                        </span>
+                                                        <span className="text-xs font-bold text-gray-500">GSTD</span>
                                                     </div>
-                                                    <div className="text-xs text-gray-400">~{task.estimated_time_sec}s</div>
+                                                    <div className="text-xs text-gray-500 mt-1 font-mono">≈ $ {((task.reward_gstd * 0.95) * 6.5).toFixed(2)}</div>
                                                 </div>
                                             </div>
 
-                                            <div className="flex items-center justify-between">
-                                                <div className="text-xs text-gray-500">
-                                                    {task.workers_completed}/{task.workers_needed} workers
-                                                    {task.min_trust_score > 0 && ` • Min trust: ${(task.min_trust_score * 100).toFixed(0)}%`}
+                                            <div className="mt-6 pt-4 border-t border-gray-800/50 flex items-center justify-between">
+                                                <div className="flex gap-4">
+                                                    <div className="space-y-1">
+                                                        <div className="text-[10px] text-gray-500 uppercase tracking-tighter">Availability</div>
+                                                        <div className="text-xs text-gray-300 flex items-center gap-1.5">
+                                                            <div className="w-24 h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                                                                <div
+                                                                    className="h-full bg-blue-500 rounded-full"
+                                                                    style={{ width: `${(task.workers_completed / task.workers_needed) * 100}%` }}
+                                                                />
+                                                            </div>
+                                                            {task.workers_completed}/{task.workers_needed}
+                                                        </div>
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <div className="text-[10px] text-gray-500 uppercase tracking-tighter">Estimated Time</div>
+                                                        <div className="text-xs text-gray-300 font-mono">~{task.estimated_time_sec}s</div>
+                                                    </div>
                                                 </div>
-                                                <button
-                                                    onClick={() => handleClaimTask(task.task_id)}
-                                                    disabled={!isConnected || claimingTask === task.task_id}
-                                                    className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-green-500/25 transition-all"
-                                                >
-                                                    {claimingTask === task.task_id ? '⏳' : '⚡'} Claim
-                                                </button>
-                                                <button
-                                                    onClick={async () => {
-                                                        if (!isConnected) return;
-                                                        const amountStr = prompt('Enter amount of GSTD to contribute to this task reward pool:', '1.0');
-                                                        if (!amountStr) return;
-                                                        const amount = parseFloat(amountStr);
-                                                        if (isNaN(amount) || amount <= 0) {
-                                                            alert('Invalid amount');
-                                                            return;
-                                                        }
 
-                                                        try {
-                                                            await apiPost(`/marketplace/tasks/${task.task_id}/contribute`, { amount_gstd: amount });
-                                                            alert('Contribution successful! Reward pool increased.');
-                                                            fetchTasks(); // Refresh list
-                                                            if (window.Telegram?.WebApp?.HapticFeedback) {
-                                                                window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
-                                                            }
-                                                        } catch (e: any) {
-                                                            console.error(e);
-                                                            alert('Contribution failed: ' + (e.response?.data?.error || e.message));
-                                                        }
-                                                    }}
-                                                    disabled={!isConnected}
-                                                    className="ml-2 px-3 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg font-medium text-sm disabled:opacity-50 hover:shadow-lg hover:shadow-purple-500/25 transition-all"
-                                                    title="Add rewards to this task (Crowdfunding)"
-                                                >
-                                                    🚀 Boost
-                                                </button>
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        onClick={() => handleClaimTask(task.task_id)}
+                                                        disabled={!isConnected || claimingTask === task.task_id}
+                                                        className="px-6 py-2 bg-white text-black rounded-xl font-bold text-xs hover:bg-blue-500 hover:text-white transition-all duration-300 disabled:opacity-50"
+                                                    >
+                                                        {claimingTask === task.task_id ? 'WAITING...' : 'CLAIM TASK'}
+                                                    </button>
+                                                    <button
+                                                        onClick={async () => {
+                                                            if (!isConnected) return;
+                                                            const amountStr = prompt('Crowdfund this task:', '1.0');
+                                                            if (!amountStr) return;
+                                                            const amount = parseFloat(amountStr);
+                                                            if (isNaN(amount) || amount <= 0) return;
+                                                            try {
+                                                                await apiPost(`/marketplace/tasks/${task.task_id}/contribute`, { amount_gstd: amount });
+                                                                fetchTasks();
+                                                            } catch (e) { }
+                                                        }}
+                                                        className="p-2 border border-blue-500/30 text-blue-400 rounded-xl hover:bg-blue-500/10 transition-colors"
+                                                        title="Boost Reward"
+                                                    >
+                                                        <Zap className="w-5 h-5 fill-blue-500/20" />
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                     );

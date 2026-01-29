@@ -17,7 +17,8 @@ import SystemStatusWidget from './SystemStatusWidget';
 import TreasuryWidget from './TreasuryWidget';
 import PoolStatusWidget from './PoolStatusWidget';
 import { toast } from '../../lib/toast';
-import { Plus, Users, Calculator, Activity, Globe, Server, Wallet, CheckCircle } from 'lucide-react';
+import { Plus, Users, Calculator, Activity, Globe, Server, Wallet, CheckCircle, Beaker } from 'lucide-react';
+import BoincProgressWidget from './BoincProgressWidget';
 import { apiGet } from '../../lib/apiClient';
 import { ComponentErrorBoundary } from '../common/ComponentErrorBoundary';
 import { workerService } from '../../services/WorkerService';
@@ -268,6 +269,11 @@ function Dashboard() {
                   <PoolStatusWidget />
                 </ComponentErrorBoundary>
               </div>
+
+              {/* BOINC Progress (Science Bridge) */}
+              <ComponentErrorBoundary name="BoincProgressWidget">
+                <BoincProgressWidget />
+              </ComponentErrorBoundary>
 
               {/* Financial Overview - Wallet Balances */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

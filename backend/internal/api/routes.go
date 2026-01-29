@@ -48,6 +48,7 @@ func SetupRoutes(
 	telegramService *services.TelegramService,
 	lendingService *services.LendingService,
 	boincService *services.BoincService,
+	maintenanceService *services.MaintenanceService,
 ) {
 	log.Printf("🔧 SetupRoutes: Starting route setup, redisClient type: %T", redisClient)
 	
@@ -143,6 +144,7 @@ func SetupRoutes(
 		v1.GET("/pool/status", getPoolStatus(poolMonitorService))
 		
 		v1.GET("/lending/quote", getLoanQuote(lendingService))
+		v1.GET("/network/autonomy", getAutonomyStats(maintenanceService))
 		
 		// Metrics endpoint (Prometheus format) - public
 		metricsService := NewMetricsService(db.(*sql.DB), redisClient.(*redis.Client))
@@ -258,8 +260,7 @@ func SetupRoutes(
 
 		// Nodes (protected)
 		geoService := services.NewGeoService(rClient)
-		protected.POST("/nodes/register", registerNode(nodeService, geoService, telegramService))
-		protected.GET("/nodes/my", getMyNodes(nodeService))
+		SetupNodeRoutes(protected, nodeService, geoService, telegramService)
 
 		// Task Payment (protected)
 		protected.POST("/tasks/create", createTaskWithPayment(taskPaymentService, taskRateLimiter))
@@ -289,6 +290,17 @@ func SetupRoutes(
 
 	// WebSocket endpoint
 	router.GET("/ws", HandleWebSocket(hub, deviceService, assignmentService))
+}
+
+func getAutonomyStats(service *services.MaintenanceService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		stats, err := service.GetAutonomyStats(c.Request.Context())
+		if err != nil {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(200, stats)
+	}
 }
 
 func isMobile(ua string) bool {
