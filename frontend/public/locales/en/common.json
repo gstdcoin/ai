@@ -238,10 +238,27 @@
     "completed": "Completed",
     "totalSpent": "Total Spent",
     "lockedEscrow": "Locked Escrow",
+    "spendTrend": "Spending Trend",
+    "economicEfficiency": "Economic Office",
+    "projectedSavings": "Projected Savings",
+    "savingsTooltip": "Estimated savings compared to traditional cloud providers (AWS/Nvidia).",
+    "cloudCostComparison": "Cloud Cost Comparison",
+    "gstdCost": "GSTD Cost",
+    "traditionalCloud": "Commercial Cloud",
     "tabs": {
       "overview": "Overview",
       "tasks": "My Tasks",
-      "escrow": "Escrow"
+      "escrow": "Escrow",
+      "economics": "Economics"
+    },
+    "liveActivity": "Live Activity",
+    "globalNetwork": "Global Network",
+    "activeNodes": "Active Nodes",
+    "tooltips": {
+      "totalTasks": "Total number of tasks created by this account",
+      "completed": "Tasks successfully completed by the network",
+      "totalSpent": "Total volume of GSTD paid for computing power",
+      "lockedEscrow": "Budget of active tasks, securely protected in the smart contract"
     },
     "activeTasks": "Active Tasks",
     "noActiveTasks": "No active tasks",

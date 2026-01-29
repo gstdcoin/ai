@@ -17,6 +17,7 @@ type TaskOrchestrator struct {
 	db           *sql.DB
 	redis        *redis.Client
 	powService   *ProofOfWorkService
+	loadBalancer *LoadBalancer
 	mutex        sync.RWMutex
 	
 	// Configuration
@@ -85,6 +86,7 @@ func NewTaskOrchestrator(db *sql.DB, redis *redis.Client) *TaskOrchestrator {
 		taskQueue:         make(chan *TaskQueueItem, 1000),
 		resultQueue:       make(chan *TaskResult, 1000),
 		stopChan:          make(chan struct{}),
+		loadBalancer:      NewLoadBalancer(db, redis),
 	}
 	
 	return orch
@@ -110,6 +112,9 @@ func (o *TaskOrchestrator) Start(ctx context.Context) {
 	
 	// Start worker capacity monitor
 	go o.monitorWorkerCapacity(ctx)
+
+	// Start assigned task health monitor (Instant Re-assignment Logic)
+	go o.monitorAssignedTasks(ctx)
 	
 	log.Println("✅ TaskOrchestrator started")
 }
@@ -313,10 +318,15 @@ func (o *TaskOrchestrator) RetryTask(ctx context.Context, taskID string, reason 
 		return o.markTaskFailed(ctx, taskID, reason)
 	}
 	
-	// Calculate backoff delay
+	// Calculate backoff delay (Standard: 1s, 5s, 30s)
 	backoffDelay := o.retryBackoff[task.RetryCount]
 	if task.RetryCount >= len(o.retryBackoff) {
 		backoffDelay = o.retryBackoff[len(o.retryBackoff)-1]
+	}
+
+	// SPECIAL CASE: If worker went offline, re-assign INSTANTLY (backoff = 0)
+	if reason == "worker_offline" {
+		backoffDelay = 0
 	}
 	
 	// Update retry count
@@ -325,14 +335,17 @@ func (o *TaskOrchestrator) RetryTask(ctx context.Context, taskID string, reason 
 	
 	// Schedule retry after delay
 	go func() {
-		time.Sleep(backoffDelay)
+		if backoffDelay > 0 {
+			time.Sleep(backoffDelay)
+		}
 		
-		// Re-enqueue with higher priority
-		task.Priority = max(1, task.Priority-1) // Increase priority
+		// Re-enqueue with increased priority (lower score)
+		task.Priority = max(1, task.Priority-1) 
 		if err := o.EnqueueTask(context.Background(), task); err != nil {
 			log.Printf("Failed to re-enqueue task %s: %v", taskID, err)
 		}
-		log.Printf("🔄 Task %s re-queued for retry %d/%d", taskID, task.RetryCount, o.maxRetries)
+		log.Printf("🔄 Task %s re-queued (Delay: %v, Reason: %s) Retry %d/%d", 
+			taskID, backoffDelay, reason, task.RetryCount, o.maxRetries)
 	}()
 	
 	// Update database
@@ -440,34 +453,76 @@ func (o *TaskOrchestrator) getTaskDetails(ctx context.Context, taskID string) (*
 	return task, nil
 }
 
-// workerMeetsRequirements checks if worker can handle task
+// workerMeetsRequirements checks if worker can handle task using LoadBalancer logic
 func (o *TaskOrchestrator) workerMeetsRequirements(worker *WorkerInfo, task *TaskQueueItem) bool {
-	// Trust score check
-	if worker.TrustScore < task.MinTrustScore {
+	req := TaskRequirements{
+		MinTrust:      task.MinTrustScore,
+		RequiredCPU:   task.RequiredCPU,
+		RequiredRAMGB: task.RequiredRAMGB,
+		IsHeavy:       task.TaskType == "boinc" || task.TaskType == "ai_training",
+	}
+
+	// 1. Core constraints
+	if worker.ActiveTasks >= worker.MaxCapacity {
 		return false
 	}
-	
-	// CPU check
-	if task.RequiredCPU > 0 && worker.CPUCores < task.RequiredCPU {
+	if worker.TrustScore < req.MinTrust {
 		return false
 	}
-	
-	// RAM check
-	if task.RequiredRAMGB > 0 && worker.RAMGB < task.RequiredRAMGB {
-		return false
+
+	// 2. Heavy task specific: BOINC requires verified stability and trust > 0.8
+	if req.IsHeavy {
+		if worker.TrustScore < 0.8 {
+			return false
+		}
+		// If worker was seen more than 2 minutes ago, don't give them a heavy task
+		if time.Since(worker.LastSeen) > 2*time.Minute {
+			return false
+		}
 	}
-	
-	// Geography check (simplified)
-	if task.Geography != "" && task.Geography != "{\"type\": \"global\"}" {
-		// TODO: Parse geography JSON and check country
-	}
-	
-	// Don't reassign to same worker on retry
+
+	// 3. Don't reassign to same worker on retry
 	if task.LastAssignedTo == worker.WalletAddress && task.RetryCount > 0 {
 		return false
 	}
 	
 	return true
+}
+
+// monitorAssignedTasks checks for tasks stuck on offline workers
+func (o *TaskOrchestrator) monitorAssignedTasks(ctx context.Context) {
+	ticker := time.NewTicker(15 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-o.stopChan:
+			return
+		case <-ticker.C:
+			// Find tasks where assigned worker is offline
+			rows, err := o.db.QueryContext(ctx, `
+				SELECT t.task_id, t.executor_address 
+				FROM tasks t
+				JOIN nodes n ON t.executor_address = n.wallet_address
+				WHERE t.status = 'assigned' 
+				AND n.last_seen < NOW() - INTERVAL '45 seconds'
+			`)
+			if err != nil {
+				continue
+			}
+
+			for rows.Next() {
+				var taskID, executor string
+				if err := rows.Scan(&taskID, &executor); err == nil {
+					log.Printf("🚨 Worker %s offline. Re-assigning task %s immediately.", executor[:12], taskID)
+					o.RetryTask(ctx, taskID, "worker_offline")
+				}
+			}
+			rows.Close()
+		}
+	}
 }
 
 // updateTaskAssignment updates task status in database

@@ -11,6 +11,7 @@ import { API_BASE_URL } from '../../lib/config';
 import { toast } from '../../lib/toast';
 import { RefreshCw } from 'lucide-react';
 import InvestmentSavingsWidget from './InvestmentSavingsWidget';
+import SystemHealth from './SystemHealth';
 
 interface Stats {
   processing_tasks: number;
@@ -229,6 +230,11 @@ export default function StatsPanel() {
             <p className={`text-lg sm:text-2xl font-bold ${card.color}`}>{card.value}</p>
           </div>
         ))}
+      </div>
+
+      {/* System Health Autonomy Widget */}
+      <div className="mb-8">
+        <SystemHealth />
       </div>
 
       {/* Investment Savings Widget */}

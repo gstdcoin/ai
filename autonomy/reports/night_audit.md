@@ -1956,3 +1956,304 @@ Error response from daemon: No such container: ubuntu-backend-blue-1
 ✅ GEO Service is running correctly (found 78 log entries).
 
 ---
+## 🛡️ GSTD Security Audit - 2026-01-28 20:00:01
+
+### 💎 TON Service Check
+2026/01/28 19:21:21 Migration v10_failed_payouts.sql already applied, skipping
+2026/01/28 19:21:21 Migration v33_recreate_failed_payouts.sql already applied, skipping
+2026/01/28 19:21:21 Warning: Failed to run migrations: failed to execute migration v36_final_optimization.sql: migration SQL error: pq: column "labor_compensation_ton" does not exist
+2026/01/28 19:21:21 ⚠️  Failed to get GSTD jetton wallet address (using 0): failed to get jetton wallet (HTTP 404): {"error":"account 0:3ef895c6f154b204998b32a6f6276b783f26b44d2f525c787bbc787c21ecf6e6 has no jetton wallet 0:efe9c616f673622a337737097c0fa0018d4887d6061f59519985f3fbfbdb59b2"}
+2026/01/28 19:21:21 ⚠️  Failed to get XAUt jetton wallet address (using 0): failed to get jetton wallet (HTTP 400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/01/28 19:22:08 ⚠️  Failed to parse payload as JSON, trying simple format: invalid character 'g' looking for beginning of value
+2026/01/28 19:22:08 ❌ TonConnect signature validation failed for 0:a45c594d46cb9b529ed487b960fd2714a8b0a27dfd5008bb1d414d1aee4a61a9: Invalid signature: Ed25519 verification failed
+2026/01/28 19:22:08 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/01/28 19:22:08 ⚠️  Failed to get GSTD jetton wallet address (using 0): failed to get jetton wallet (HTTP 404): {"error":"account 0:3ef895c6f154b204998b32a6f6276b783f26b44d2f525c787bbc787c21ecf6e6 has no jetton wallet 0:efe9c616f673622a337737097c0fa0018d4887d6061f59519985f3fbfbdb59b2"}
+2026/01/28 19:22:08 ⚠️  Failed to get XAUt jetton wallet address (using 0): failed to get jetton wallet (HTTP 400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/01/28 19:22:09 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/01/28 19:22:09 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/01/28 19:22:09 ⚠️  Failed to get GSTD jetton wallet address (using 0): failed to get jetton wallet (HTTP 404): {"error":"account 0:3ef895c6f154b204998b32a6f6276b783f26b44d2f525c787bbc787c21ecf6e6 has no jetton wallet 0:efe9c616f673622a337737097c0fa0018d4887d6061f59519985f3fbfbdb59b2"}
+2026/01/28 19:22:09 ⚠️  Failed to get XAUt jetton wallet address (using 0): failed to get jetton wallet (HTTP 400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/01/28 19:22:10 ⚠️  Pool status error (returning safe default): API returned status 429
+2026/01/28 19:22:10 Failed to get GSTD balance for 0:a45c594d46cb9b529ed487b960fd2714a8b0a27dfd5008bb1d414d1aee4a61a9: context canceled
+2026/01/28 19:22:11 ⚠️  Pool status error (returning safe default): API returned status 429
+2026/01/28 19:22:12 ⚠️  Pool status error (returning safe default): API returned status 429
+2026/01/28 19:22:12 Failed to get GSTD balance for 0:a45c594d46cb9b529ed487b960fd2714a8b0a27dfd5008bb1d414d1aee4a61a9: context canceled
+2026/01/28 19:22:13 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+
+### 🌍 GEO Service Check
+✅ GEO Service is running correctly (found 2 log entries).
+
+---
+## 🛡️ GSTD Security Audit - 2026-01-28 21:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-01-28 22:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-01-28 23:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-01-29 00:00:01
+
+### 💎 TON Service Check
+2026/01/28 23:03:21 PaymentWatcher: Error fetching transfers: HTTP request failed: Get "https://tonapi.io/v2/accounts/EQAIYlrr3UiMJ9fqI-B4j2nJdiiD7WzyaNL1MX_wiONc4OUi/jettons/EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO/history?limit=100": read tcp 172.18.0.5:53060->172.64.153.168:443: read: connection reset by peer
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-01-29 01:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-01-29 02:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-01-29 03:00:01
+
+### 💎 TON Service Check
+2026/01/29 02:19:52 Health check: Failed to get contract balance: Get "https://tonapi.io/v2/accounts/EQAIYlrr3UiMJ9fqI-B4j2nJdiiD7WzyaNL1MX_wiONc4OUi": read tcp 172.18.0.5:55118->104.18.34.88:443: read: connection reset by peer
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-01-29 04:00:01
+
+### 💎 TON Service Check
+2026/01/29 03:57:47 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/01/29 03:57:47 ⚠️  Failed to get GSTD jetton wallet address (using 0): failed to get jetton wallet (HTTP 404): {"error":"account 0:3ef895c6f154b204998b32a6f6276b783f26b44d2f525c787bbc787c21ecf6e6 has no jetton wallet 0:efe9c616f673622a337737097c0fa0018d4887d6061f59519985f3fbfbdb59b2"}
+2026/01/29 03:57:47 ⚠️  Failed to get XAUt jetton wallet address (using 0): failed to get jetton wallet (HTTP 400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/01/29 03:57:47 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/01/29 03:58:02 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/01/29 03:58:17 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/01/29 03:58:17 ⚠️  Failed to get GSTD jetton wallet address (using 0): failed to get jetton wallet (HTTP 404): {"error":"account 0:3ef895c6f154b204998b32a6f6276b783f26b44d2f525c787bbc787c21ecf6e6 has no jetton wallet 0:efe9c616f673622a337737097c0fa0018d4887d6061f59519985f3fbfbdb59b2"}
+2026/01/29 03:58:17 ⚠️  Failed to get XAUt jetton wallet address (using 0): failed to get jetton wallet (HTTP 400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/01/29 03:58:17 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/01/29 03:58:32 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/01/29 03:58:47 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/01/29 03:58:47 ⚠️  Failed to get GSTD jetton wallet address (using 0): failed to get jetton wallet (HTTP 404): {"error":"account 0:3ef895c6f154b204998b32a6f6276b783f26b44d2f525c787bbc787c21ecf6e6 has no jetton wallet 0:efe9c616f673622a337737097c0fa0018d4887d6061f59519985f3fbfbdb59b2"}
+2026/01/29 03:58:47 ⚠️  Failed to get XAUt jetton wallet address (using 0): failed to get jetton wallet (HTTP 400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/01/29 03:58:47 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/01/29 03:59:02 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/01/29 03:59:11 WebSocket error: websocket: close 1005 (no status)
+2026/01/29 03:59:11 WebSocket error: websocket: close 1005 (no status)
+2026/01/29 03:59:11 ⚠️  Failed to get GSTD jetton wallet address (using 0): failed to get jetton wallet (HTTP 404): {"error":"account 0:3ef895c6f154b204998b32a6f6276b783f26b44d2f525c787bbc787c21ecf6e6 has no jetton wallet 0:efe9c616f673622a337737097c0fa0018d4887d6061f59519985f3fbfbdb59b2"}
+2026/01/29 03:59:11 ⚠️  Failed to get XAUt jetton wallet address (using 0): failed to get jetton wallet (HTTP 400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/01/29 03:59:17 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-01-29 05:00:01
+
+### 💎 TON Service Check
+2026/01/29 04:00:02 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/01/29 04:00:17 ⚠️  Failed to get GSTD jetton wallet address (using 0): failed to get jetton wallet (HTTP 404): {"error":"account 0:3ef895c6f154b204998b32a6f6276b783f26b44d2f525c787bbc787c21ecf6e6 has no jetton wallet 0:efe9c616f673622a337737097c0fa0018d4887d6061f59519985f3fbfbdb59b2"}
+2026/01/29 04:00:17 ⚠️  Failed to get XAUt jetton wallet address (using 0): failed to get jetton wallet (HTTP 400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/01/29 04:00:17 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/01/29 04:00:17 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-01-29 06:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-01-29 07:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-01-29 08:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-01-29 09:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-01-29 10:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-01-29 11:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-01-29 12:00:01
+
+### 💎 TON Service Check
+2026/01/29 11:54:14 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/01/29 11:54:14 ⚠️  Failed to get GSTD jetton wallet address (using 0): failed to get jetton wallet (HTTP 404): {"error":"account 0:3ef895c6f154b204998b32a6f6276b783f26b44d2f525c787bbc787c21ecf6e6 has no jetton wallet 0:efe9c616f673622a337737097c0fa0018d4887d6061f59519985f3fbfbdb59b2"}
+2026/01/29 11:54:14 ⚠️  Failed to get XAUt jetton wallet address (using 0): failed to get jetton wallet (HTTP 400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/01/29 11:54:14 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/01/29 11:54:29 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/01/29 11:54:44 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/01/29 11:54:44 ⚠️  Failed to get GSTD jetton wallet address (using 0): failed to get jetton wallet (HTTP 404): {"error":"account 0:3ef895c6f154b204998b32a6f6276b783f26b44d2f525c787bbc787c21ecf6e6 has no jetton wallet 0:efe9c616f673622a337737097c0fa0018d4887d6061f59519985f3fbfbdb59b2"}
+2026/01/29 11:54:44 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/01/29 11:54:44 ⚠️  Failed to get XAUt jetton wallet address (using 0): failed to get jetton wallet (HTTP 400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/01/29 11:54:59 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/01/29 11:55:14 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/01/29 11:55:14 ⚠️  Failed to get GSTD jetton wallet address (using 0): failed to get jetton wallet (HTTP 404): {"error":"account 0:3ef895c6f154b204998b32a6f6276b783f26b44d2f525c787bbc787c21ecf6e6 has no jetton wallet 0:efe9c616f673622a337737097c0fa0018d4887d6061f59519985f3fbfbdb59b2"}
+2026/01/29 11:55:14 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/01/29 11:55:14 ⚠️  Failed to get XAUt jetton wallet address (using 0): failed to get jetton wallet (HTTP 400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/01/29 11:55:29 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-01-29 13:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-01-29 14:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-01-29 15:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-01-29 16:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-01-29 17:00:01
+
+### 💎 TON Service Check
+2026/01/29 16:53:27 Migration v10_failed_payouts.sql already applied, skipping
+2026/01/29 16:53:27 Migration v33_recreate_failed_payouts.sql already applied, skipping
+2026/01/29 16:53:27 Warning: Failed to run migrations: failed to execute migration v36_final_optimization.sql: migration SQL error: pq: column "labor_compensation_ton" does not exist
+2026/01/29 16:53:37 PaymentWatcher: Error fetching transfers: HTTP request failed: Get "https://tonapi.io/v2/accounts/EQAIYlrr3UiMJ9fqI-B4j2nJdiiD7WzyaNL1MX_wiONc4OUi/jettons/EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO/history?limit=100": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+2026/01/29 16:53:37 ❌ PoolMonitor: Failed to get status: failed to fetch pool status: Get "https://tonapi.io/v2/accounts/EQA--JXG8VSyBJmLMqb2J2t4Pya0TS9SXHh7vHh8Iez25sLp": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+2026/01/29 16:54:12 Health check: Failed to get contract balance: Get "https://tonapi.io/v2/accounts/EQAIYlrr3UiMJ9fqI-B4j2nJdiiD7WzyaNL1MX_wiONc4OUi": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+2026/01/29 16:54:37 PaymentWatcher: Error fetching transfers: HTTP request failed: Get "https://tonapi.io/v2/accounts/EQAIYlrr3UiMJ9fqI-B4j2nJdiiD7WzyaNL1MX_wiONc4OUi/jettons/EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO/history?limit=100": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+2026/01/29 16:54:52 Health check: Failed to get contract balance: Get "https://tonapi.io/v2/accounts/EQAIYlrr3UiMJ9fqI-B4j2nJdiiD7WzyaNL1MX_wiONc4OUi": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+2026/01/29 16:55:32 Health check: Failed to get contract balance: Get "https://tonapi.io/v2/accounts/EQAIYlrr3UiMJ9fqI-B4j2nJdiiD7WzyaNL1MX_wiONc4OUi": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+2026/01/29 16:55:32 PaymentWatcher: DNS/Network error (will retry): DNS/network error: Get "https://tonapi.io/v2/accounts/EQAIYlrr3UiMJ9fqI-B4j2nJdiiD7WzyaNL1MX_wiONc4OUi/jettons/EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO/history?limit=100": dial tcp: lookup tonapi.io on 127.0.0.11:53: read udp 127.0.0.1:53577->127.0.0.11:53: i/o timeout
+2026/01/29 16:55:47 Health check: Failed to get contract balance: Get "https://tonapi.io/v2/accounts/EQAIYlrr3UiMJ9fqI-B4j2nJdiiD7WzyaNL1MX_wiONc4OUi": context canceled
+2026/01/29 16:56:12 Health check: Failed to get contract balance: Get "https://tonapi.io/v2/accounts/EQAIYlrr3UiMJ9fqI-B4j2nJdiiD7WzyaNL1MX_wiONc4OUi": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+2026/01/29 16:56:37 PaymentWatcher: Error fetching transfers: HTTP request failed: Get "https://tonapi.io/v2/accounts/EQAIYlrr3UiMJ9fqI-B4j2nJdiiD7WzyaNL1MX_wiONc4OUi/jettons/EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO/history?limit=100": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+2026/01/29 16:56:48 Health check: Failed to get contract balance: Get "https://tonapi.io/v2/accounts/EQAIYlrr3UiMJ9fqI-B4j2nJdiiD7WzyaNL1MX_wiONc4OUi": context canceled
+2026/01/29 16:56:53 Health check: Failed to get contract balance: Get "https://tonapi.io/v2/accounts/EQAIYlrr3UiMJ9fqI-B4j2nJdiiD7WzyaNL1MX_wiONc4OUi": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+2026/01/29 16:57:33 Health check: Failed to get contract balance: Get "https://tonapi.io/v2/accounts/EQAIYlrr3UiMJ9fqI-B4j2nJdiiD7WzyaNL1MX_wiONc4OUi": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+2026/01/29 16:57:33 PaymentWatcher: DNS/Network error (will retry): DNS/network error: Get "https://tonapi.io/v2/accounts/EQAIYlrr3UiMJ9fqI-B4j2nJdiiD7WzyaNL1MX_wiONc4OUi/jettons/EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO/history?limit=100": dial tcp: lookup tonapi.io on 127.0.0.11:53: read udp 127.0.0.1:57217->127.0.0.11:53: i/o timeout
+2026/01/29 16:57:47 Health check: Failed to get contract balance: Get "https://tonapi.io/v2/accounts/EQAIYlrr3UiMJ9fqI-B4j2nJdiiD7WzyaNL1MX_wiONc4OUi": context canceled
+2026/01/29 16:58:13 Health check: Failed to get contract balance: Get "https://tonapi.io/v2/accounts/EQAIYlrr3UiMJ9fqI-B4j2nJdiiD7WzyaNL1MX_wiONc4OUi": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+2026/01/29 16:58:37 PaymentWatcher: Error fetching transfers: HTTP request failed: Get "https://tonapi.io/v2/accounts/EQAIYlrr3UiMJ9fqI-B4j2nJdiiD7WzyaNL1MX_wiONc4OUi/jettons/EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO/history?limit=100": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+
+### 🌍 GEO Service Check
+✅ GEO Service is running correctly (found 2 log entries).
+
+---
+## 🛡️ GSTD Security Audit - 2026-01-29 18:00:01
+
+### 💎 TON Service Check
+2026/01/29 17:44:54 Migration v10_failed_payouts.sql already applied, skipping
+2026/01/29 17:44:54 Migration v33_recreate_failed_payouts.sql already applied, skipping
+2026/01/29 17:44:54 Warning: Failed to run migrations: failed to execute migration v36_final_optimization.sql: migration SQL error: pq: column "labor_compensation_ton" does not exist
+2026/01/29 17:44:55 ⚠️  Failed to get GSTD jetton wallet address (using 0): failed to get jetton wallet (HTTP 404): {"error":"account 0:3ef895c6f154b204998b32a6f6276b783f26b44d2f525c787bbc787c21ecf6e6 has no jetton wallet 0:efe9c616f673622a337737097c0fa0018d4887d6061f59519985f3fbfbdb59b2"}
+2026/01/29 17:44:55 ⚠️  Failed to get XAUt jetton wallet address (using 0): failed to get jetton wallet (HTTP 400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/01/29 17:56:44 ⚠️  Failed to get GSTD jetton wallet address (using 0): failed to get jetton wallet (HTTP 404): {"error":"account 0:3ef895c6f154b204998b32a6f6276b783f26b44d2f525c787bbc787c21ecf6e6 has no jetton wallet 0:efe9c616f673622a337737097c0fa0018d4887d6061f59519985f3fbfbdb59b2"}
+2026/01/29 17:56:44 ⚠️  Failed to get XAUt jetton wallet address (using 0): Get "https://tonapi.io/v2/accounts/EQA--JXG8VSyBJmLMqb2J2t4Pya0TS9SXHh7vHh8Iez25sLp/jettons/EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa": context canceled
+2026/01/29 17:56:46 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/01/29 17:56:46 ⚠️  Failed to get GSTD jetton wallet address (using 0): failed to get jetton wallet (HTTP 429): {"error":"rate limit: free tier"}
+2026/01/29 17:56:46 ⚠️  Failed to get XAUt jetton wallet address (using 0): failed to get jetton wallet (HTTP 429): {"error":"rate limit: free tier"}
+2026/01/29 17:56:48 Failed to get TON balance for 0:a45c594d46cb9b529ed487b960fd2714a8b0a27dfd5008bb1d414d1aee4a61a9: TON API error (status 429): {"error":"rate limit: free tier"}
+2026/01/29 17:56:49 Failed to get TON balance for 0:a45c594d46cb9b529ed487b960fd2714a8b0a27dfd5008bb1d414d1aee4a61a9: TON API error (status 429): {"error":"rate limit: free tier"}
+2026/01/29 17:56:49 Failed to get GSTD balance for 0:a45c594d46cb9b529ed487b960fd2714a8b0a27dfd5008bb1d414d1aee4a61a9: context canceled
+2026/01/29 17:57:18 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/01/29 17:57:19 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/01/29 17:57:46 ⚠️  Failed to get GSTD jetton wallet address (using 0): failed to get jetton wallet (HTTP 404): {"error":"account 0:3ef895c6f154b204998b32a6f6276b783f26b44d2f525c787bbc787c21ecf6e6 has no jetton wallet 0:efe9c616f673622a337737097c0fa0018d4887d6061f59519985f3fbfbdb59b2"}
+2026/01/29 17:57:46 ⚠️  Failed to get XAUt jetton wallet address (using 0): failed to get jetton wallet (HTTP 400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/01/29 17:57:47 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/01/29 17:58:01 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+
+### 🌍 GEO Service Check
+✅ GEO Service is running correctly (found 2 log entries).
+
+---
+## 🛡️ GSTD Security Audit - 2026-01-29 19:00:01
+
+### 💎 TON Service Check
+2026/01/29 18:26:38 ⚠️  Failed to get GSTD jetton wallet address (using 0): failed to get jetton wallet (HTTP 404): {"error":"account 0:3ef895c6f154b204998b32a6f6276b783f26b44d2f525c787bbc787c21ecf6e6 has no jetton wallet 0:efe9c616f673622a337737097c0fa0018d4887d6061f59519985f3fbfbdb59b2"}
+2026/01/29 18:26:38 ⚠️  Failed to get XAUt jetton wallet address (using 0): failed to get jetton wallet (HTTP 400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/01/29 18:26:38 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/01/29 18:26:39 ⚠️  Pool status error (returning safe default): API returned status 429
+2026/01/29 18:27:09 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/01/29 18:27:09 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/01/29 18:27:42 WebSocket error: websocket: close 1005 (no status)
+2026/01/29 18:27:57 ⚠️  Pool status error (returning safe default): API returned status 429
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---

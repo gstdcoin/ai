@@ -98,6 +98,7 @@ services:
       - REDIS_PORT=6379
       - PORT=8080
       - DEPLOYMENT_COLOR=blue
+      - BOINC_MASTER_KEY=${BOINC_MASTER_KEY}
     env_file: .env
     depends_on:
       postgres:
@@ -150,6 +151,7 @@ services:
       - REDIS_PORT=6379
       - PORT=8080
       - DEPLOYMENT_COLOR=green
+      - BOINC_MASTER_KEY=${BOINC_MASTER_KEY}
     env_file: .env
     depends_on:
       postgres:

@@ -58,6 +58,7 @@ func createBoincTask(boincService *services.BoincService, taskService *services.
 			IsBoinc: true,
 			BoincProjectURL: req.ProjectURL,
 			BoincBatchID: batchID,
+			BoincAccountKey: req.AccountKey,
 		}
 		
 		task, err := taskService.CreateTask(c.Request.Context(), c.GetString("user_address"), &mockDescriptor)
@@ -77,10 +78,11 @@ func createBoincTask(boincService *services.BoincService, taskService *services.
 
 func getBoincStats(boincService *services.BoincService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Mock stats for now
-		c.JSON(http.StatusOK, gin.H{
-			"active_boinc_tasks": 124,
-			"total_boinc_reward": 4500.5,
-		})
+		stats, err := boincService.GetBoincStats(c.Request.Context())
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, stats)
 	}
 }

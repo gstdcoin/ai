@@ -137,6 +137,7 @@ func SetupOrchestratorRoutes(router *gin.RouterGroup, handler *OrchestratorHandl
 	{
 		client.GET("/stats", handler.GetClientStats)
 		client.GET("/escrows", handler.GetClientEscrows)
+		client.GET("/history/spend", handler.GetClientSpendHistory)
 	}
 
 	// Wallet routes
@@ -565,5 +566,57 @@ func (h *OrchestratorHandler) GetClientEscrows(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"escrows": escrows})
+}
+
+// GetClientSpendHistory returns daily spending history for a client
+// @Summary Get client spend history
+// @Description Returns daily spending data for the last 30 days
+// @Tags Client
+// @Produce json
+// @Param wallet query string true "Client wallet"
+// @Success 200 {object} []map[string]interface{}
+// @Router /client/history/spend [get]
+func (h *OrchestratorHandler) GetClientSpendHistory(c *gin.Context) {
+	wallet := c.Query("wallet")
+	if wallet == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "wallet is required"})
+		return
+	}
+
+	// Group spending by day for the last 30 days
+	rows, err := h.db.QueryContext(c.Request.Context(), `
+		SELECT 
+			TO_CHAR(created_at, 'YYYY-MM-DD') as date,
+			COALESCE(SUM(budget_gstd), 0) as amount
+		FROM tasks 
+		WHERE (requester_address = $1 OR creator_wallet = $1)
+		AND created_at > NOW() - INTERVAL '30 days'
+		GROUP BY date
+		ORDER BY date ASC
+	`, wallet)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	var history []map[string]interface{}
+	for rows.Next() {
+		var date string
+		var amount float64
+		if err := rows.Scan(&date, &amount); err != nil {
+			continue
+		}
+		history = append(history, map[string]interface{}{
+			"date":   date,
+			"amount": amount,
+		})
+	}
+
+	if history == nil {
+		history = []map[string]interface{}{}
+	}
+
+	c.JSON(http.StatusOK, history)
 }
 

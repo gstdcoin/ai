@@ -58,6 +58,8 @@ type WSHub struct {
 	mu            sync.RWMutex
 	redisPubSub   interface{} // *services.RedisPubSubService (avoid circular import)
 	redisMsgChan  <-chan interface{} // Channel for Redis Pub/Sub messages (TaskMessage) - receive-only
+	eventBuffer   []*TaskNotification
+	bufferSize    int
 }
 
 // TaskNotification represents a task available for execution
@@ -69,10 +71,12 @@ type TaskNotification struct {
 // NewWSHub creates a new WebSocket hub
 func NewWSHub() *WSHub {
 	return &WSHub{
-		clients:    make(map[*WSClient]bool),
-		broadcast:  make(chan *TaskNotification, 256),
-		register:   make(chan *WSClient),
-		unregister: make(chan *WSClient),
+		clients:     make(map[*WSClient]bool),
+		broadcast:   make(chan *TaskNotification, 256),
+		register:    make(chan *WSClient),
+		unregister:  make(chan *WSClient),
+		bufferSize:  100, // Keep last 100 events
+		eventBuffer: make([]*TaskNotification, 0, 100),
 	}
 }
 
@@ -185,6 +189,14 @@ func (h *WSHub) Run() {
 			log.Printf("Client unregistered: %s", client.deviceID)
 
 		case notification := <-h.broadcast:
+			h.mu.Lock()
+			// Update buffer
+			h.eventBuffer = append(h.eventBuffer, notification)
+			if len(h.eventBuffer) > h.bufferSize {
+				h.eventBuffer = h.eventBuffer[1:]
+			}
+			h.mu.Unlock()
+
 			h.mu.RLock()
 			// Filter clients by trust score
 			for client := range h.clients {
@@ -257,31 +269,47 @@ func (c *WSClient) readPump() {
 
 		// Handle different message types
 		switch msg["type"] {
-				case "claim_task":
+		case "claim_task":
 			if taskID, ok := msg["task_id"].(string); ok {
-					// Device wants to claim a task
-						ctx := context.Background()
-						err := c.assignmentService.ClaimTask(ctx, taskID, c.deviceID)
-						if err != nil {
-							errorMsg := fmt.Sprintf(`{"type":"error","message":"%s"}`, err.Error())
-							select {
-							case c.send <- []byte(errorMsg):
-							default:
-								// Channel full, close connection
-								close(c.send)
-							}
-						} else {
-							successMsg := fmt.Sprintf(`{"type":"task_claimed","task_id":"%s"}`, taskID)
-							select {
-							case c.send <- []byte(successMsg):
-							default:
-								// Channel full, close connection
-								close(c.send)
-							}
+				// Device wants to claim a task
+				ctx := context.Background()
+				err := c.assignmentService.ClaimTask(ctx, taskID, c.deviceID)
+				if err != nil {
+					errorMsg := fmt.Sprintf(`{"type":"error","message":"%s"}`, err.Error())
+					select {
+					case c.send <- []byte(errorMsg):
+					default:
+						// Channel full, close connection
+						close(c.send)
+					}
+				} else {
+					successMsg := fmt.Sprintf(`{"type":"task_claimed","task_id":"%s"}`, taskID)
+					select {
+					case c.send <- []byte(successMsg):
+					default:
+						// Channel full, close connection
+						close(c.send)
+					}
+				}
+			}
+		case "replay_events":
+			if since, ok := msg["since"].(float64); ok {
+				sinceTime := time.Unix(int64(since/1000), 0)
+				log.Printf("📦 Replaying events for %s since %v", c.deviceID, sinceTime)
+
+				c.hub.mu.RLock()
+				for _, notification := range c.hub.eventBuffer {
+					if notification.Timestamp.After(sinceTime) {
+						select {
+						case c.send <- c.hub.marshalNotification(notification):
+						default:
 						}
 					}
-				case "heartbeat":
-					// Respond to heartbeat
+				}
+				c.hub.mu.RUnlock()
+			}
+		case "heartbeat":
+			// Respond to heartbeat
 			select {
 			case c.send <- []byte(`{"type":"heartbeat_ack"}`):
 			default:

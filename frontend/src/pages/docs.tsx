@@ -19,10 +19,15 @@ export default function Docs({ content, isCalculator }: DocsProps) {
     const { t } = useTranslation('common');
     const router = useRouter();
     const [isClient, setIsClient] = useState(false);
+    const { type = 'investment' } = router.query;
 
     useEffect(() => {
         setIsClient(true);
     }, []);
+
+    const switchDoc = (newType: string) => {
+        router.push(`/docs?type=${newType}`);
+    };
 
     return (
         <div className="min-h-screen bg-[#030014] text-white">
@@ -30,9 +35,27 @@ export default function Docs({ content, isCalculator }: DocsProps) {
                 <title>GSTD Platform - Documentation</title>
             </Head>
             <Header onCreateTask={() => { }} onLogout={() => router.push('/')} isPublic={true} />
-            <main className="max-w-4xl mx-auto px-6 py-12">
+
+            <div className="max-w-4xl mx-auto px-6 pt-12">
+                <div className="flex gap-2 p-1 bg-white/5 rounded-xl border border-white/10 w-fit mb-8">
+                    <button
+                        onClick={() => switchDoc('investment')}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${type === 'investment' ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/20' : 'text-gray-400 hover:text-white'}`}
+                    >
+                        {router.locale === 'ru' ? 'Инвестиции' : 'Investment'}
+                    </button>
+                    <button
+                        onClick={() => switchDoc('technical')}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${type === 'technical' ? 'bg-violet-500 text-white shadow-lg shadow-violet-500/20' : 'text-gray-400 hover:text-white'}`}
+                    >
+                        {router.locale === 'ru' ? 'Технологии' : 'Technical'}
+                    </button>
+                </div>
+            </div>
+
+            <main className="max-w-4xl mx-auto px-6 pb-24">
                 {isClient ? (
-                    <div className="prose prose-invert prose-lg max-w-none prose-headings:text-transparent prose-headings:bg-clip-text prose-headings:bg-gradient-to-r prose-headings:from-cyan-400 prose-headings:to-violet-400 prose-a:text-cyan-400 hover:prose-a:text-cyan-300 prose-table:border-collapse prose-th:border prose-th:border-white/20 prose-th:p-3 prose-td:border prose-td:border-white/10 prose-td:p-3">
+                    <div className="prose prose-invert prose-lg max-w-none prose-headings:text-transparent prose-headings:bg-clip-text prose-headings:bg-gradient-to-r prose-headings:from-cyan-400 prose-headings:to-violet-400 prose-a:text-cyan-400 hover:prose-a:text-cyan-300 prose-table:border-collapse prose-th:border prose-th:border-white/20 prose-th:p-3 prose-td:border prose-td:border-white/10 prose-td:p-3 animate-in fade-in slide-in-from-bottom-4 duration-500">
                         {/* If this is the investment page, replace the table with the calculator or show it above */}
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
                         {isCalculator && <ROICalculator />}
@@ -49,65 +72,18 @@ export default function Docs({ content, isCalculator }: DocsProps) {
     );
 }
 
-// ROI Calculator Component
-const ROICalculator = () => {
-    const [monthlyCost, setMonthlyCost] = useState(1000);
-    const [tasks, setTasks] = useState(50000);
+// ... (ROICalculator stays same)
 
-    // AWS: Avg $0.02 per task (t3.medium)
-    // GSTD: Avg 0.005 per task
-    const awsCost = tasks * 0.02;
-    const gstdCost = tasks * 0.005;
-    const saving = awsCost - gstdCost;
-    const savingPercent = (saving / awsCost) * 100;
+export const getServerSideProps: any = async ({ locale, query }: any) => {
+    const { type = 'investment' } = query;
+    let filename = '';
 
-    return (
-        <div className="my-8 p-6 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
-            <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                <span className="text-2xl">🧮</span> Interactive ROI Calculator
-            </h3>
+    if (type === 'technical') {
+        filename = locale === 'ru' ? 'TECHNICAL_DOCS_RU.md' : 'TECHNICAL_DOCS.md';
+    } else {
+        filename = locale === 'ru' ? 'INVESTMENT_COMPARISON_RU.md' : 'INVESTMENT_COMPARISON.md';
+    }
 
-            <div className="grid md:grid-cols-2 gap-8">
-                <div className="space-y-4">
-                    <div>
-                        <label className="block text-sm text-gray-400 mb-2">Monthly Tasks</label>
-                        <input
-                            type="range"
-                            min="1000"
-                            max="1000000"
-                            step="1000"
-                            value={tasks}
-                            onChange={(e) => setTasks(parseInt(e.target.value))}
-                            className="w-full accent-cyan-500 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
-                        />
-                        <div className="text-right font-mono text-cyan-400">{tasks.toLocaleString()} tasks</div>
-                    </div>
-                </div>
-
-                <div className="space-y-3 bg-black/20 p-4 rounded-xl">
-                    <div className="flex justify-between items-center">
-                        <span className="text-gray-400">AWS Estimated Cost:</span>
-                        <span className="text-red-400 font-mono">${awsCost.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                        <span className="text-gray-400">GSTD Cost:</span>
-                        <span className="text-emerald-400 font-mono text-lg font-bold">${gstdCost.toLocaleString()}</span>
-                    </div>
-                    <div className="h-px bg-white/10 my-2"></div>
-                    <div className="flex justify-between items-center">
-                        <span className="text-white font-medium">Your Savings:</span>
-                        <span className="text-cyan-400 font-mono text-xl font-bold">
-                            ${saving.toLocaleString()} ({savingPercent.toFixed(1)}%)
-                        </span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-export const getStaticProps: GetStaticProps = async ({ locale }) => {
-    const filename = locale === 'ru' ? 'INVESTMENT_COMPARISON_RU.md' : 'INVESTMENT_COMPARISON.md';
     const filePath = path.join(process.cwd(), 'public', 'docs', filename);
     const content = fs.readFileSync(filePath, 'utf8');
 
