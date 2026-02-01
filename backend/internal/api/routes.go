@@ -267,6 +267,11 @@ func SetupRoutes(
 		// Task Payment (protected)
 		protected.POST("/tasks/create", createTaskWithPayment(taskPaymentService, taskRateLimiter))
 
+		// Market Operations (protected) - Helps agents interact with DEX
+		marketHandler := NewMarketHandler(db.(*sql.DB))
+		protected.GET("/market/quote", marketHandler.GetSwapQuote)
+		protected.POST("/market/swap", marketHandler.PrepareSwapTransaction)
+
 		// Worker endpoints (protected)
 		protected.GET("/tasks/worker/pending", getWorkerPendingTasks(taskPaymentService))
 		protected.POST("/tasks/worker/submit", submitWorkerResult(taskPaymentService, rewardEngine))

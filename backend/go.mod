@@ -34,7 +34,6 @@ require (
 	github.com/go-openapi/jsonpointer v0.22.4 // indirect
 	github.com/go-openapi/jsonreference v0.21.4 // indirect
 	github.com/go-openapi/spec v0.22.3 // indirect
-	github.com/go-openapi/swag v0.25.4 // indirect
 	github.com/go-openapi/swag/conv v0.25.4 // indirect
 	github.com/go-openapi/swag/jsonname v0.25.4 // indirect
 	github.com/go-openapi/swag/jsonutils v0.25.4 // indirect
@@ -47,11 +46,10 @@ require (
 	github.com/go-playground/validator/v10 v10.30.1 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/goccy/go-yaml v1.19.2 // indirect
-	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
+	github.com/kr/text v0.2.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
-	github.com/mailru/easyjson v0.9.1 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
@@ -71,18 +69,16 @@ require (
 	golang.org/x/text v0.33.0 // indirect
 	golang.org/x/tools v0.41.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 // Force secure versions for all dependencies (mitigate CVEs)
 replace (
-	golang.org/x/net => golang.org/x/net v0.49.0
-	golang.org/x/crypto => golang.org/x/crypto v0.47.0
-	golang.org/x/text => golang.org/x/text v0.33.0
-	gopkg.in/yaml.v3 => gopkg.in/yaml.v3 v3.0.1
 	github.com/gin-gonic/gin => github.com/gin-gonic/gin v1.11.0
+	golang.org/x/crypto => golang.org/x/crypto v0.47.0
+	golang.org/x/net => golang.org/x/net v0.49.0
+	golang.org/x/text => golang.org/x/text v0.33.0
 	// Fix for old protobuf in indirect deps
 	google.golang.org/protobuf => google.golang.org/protobuf v1.36.11
+	gopkg.in/yaml.v3 => gopkg.in/yaml.v3 v3.0.1
 )
