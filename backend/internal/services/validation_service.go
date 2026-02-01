@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"crypto/ed25519"
-	"crypto/sha256"
 	"database/sql"
 	"encoding/base64"
 	"encoding/hex"
