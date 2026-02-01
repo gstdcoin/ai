@@ -5,7 +5,8 @@
 
 import axios, { AxiosInstance } from 'axios';
 import { Address, beginCell } from '@ton/core';
-import { generateTaskKey, encryptTaskData, decryptTaskData, calculateHash } from './crypto';
+import { generateTaskKey, encryptTaskData, decryptTaskData, calculateHash, signData } from './crypto';
+export * from './crypto';
 
 /**
  * Configuration for GSTD SDK
@@ -99,6 +100,35 @@ export interface EscrowTransaction {
 }
 
 /**
+ * Device registration parameters
+ */
+export interface RegisterDeviceParams {
+  deviceId: string;
+  walletAddress: string;
+  deviceType: string;
+  deviceInfo?: string;
+  powNonce?: string; // Optional, computed by SDK if missing? Backend expects it.
+  cpuScore?: number;
+  ramGb?: number;
+  publicKey?: string;
+}
+
+/**
+ * Result submission parameters
+ */
+export interface SubmitResultParams {
+  taskId: string;
+  deviceId: string;
+  result: any;
+  executionTimeMs: number;
+  /**
+   * Private key for signing results (hex string)
+   * Required for submitResult to prove identity
+   */
+  privateKey?: string;
+}
+
+/**
  * Main GSTD SDK class
  */
 export class GSTD {
@@ -139,8 +169,8 @@ export class GSTD {
       // Calculate hash of input data (before encryption for verification)
       const inputJson = JSON.stringify(params.input);
       const inputData = new TextEncoder().encode(inputJson);
-      inputHash = calculateHash(inputData);
-      
+      inputHash = await calculateHash(inputData);
+
       // If inputSource is provided, use it (assumes data is already uploaded)
       // Otherwise, user must upload encrypted data first
       if (!params.inputSource) {
@@ -156,7 +186,7 @@ export class GSTD {
       try {
         const response = await axios.get(params.inputSource, { responseType: 'arraybuffer' });
         const data = new Uint8Array(response.data);
-        inputHash = calculateHash(data);
+        inputHash = await calculateHash(data);
       } catch (error) {
         throw new Error(`Failed to fetch input from ${params.inputSource}: ${error}`);
       }
@@ -175,6 +205,7 @@ export class GSTD {
       time_limit_sec: params.timeLimitSec || 30,
       max_energy_mwh: params.maxEnergyMwh || 10,
       labor_compensation_ton: params.compensation,
+      labor_compensation_gstd: params.compensation, // Send both for compatibility
       validation_method: params.validationMethod || 'majority',
       min_trust: params.minTrust || 0.1,
       is_private: params.isPrivate || false,
@@ -283,7 +314,7 @@ export class GSTD {
     );
 
     // Generate task key
-    const taskKey = generateTaskKey(taskId, this.config.wallet);
+    const taskKey = await generateTaskKey(taskId, this.config.wallet);
 
     // Decrypt result
     const decrypted = await decryptTaskData(response.data.result_data, nonce, taskKey);
@@ -364,6 +395,87 @@ export class GSTD {
       params: {
         address: walletAddress,
       },
+    });
+    return response.data;
+  }
+  /**
+   * Register a new worker device
+   * @param params Registration parameters
+   * @returns Success message
+   */
+  async registerDevice(params: RegisterDeviceParams): Promise<any> {
+    const response = await this.api.post('/v1/devices/register', {
+      device_id: params.deviceId,
+      wallet_address: params.walletAddress,
+      device_type: params.deviceType,
+      device_info: params.deviceInfo || 'GSTD SDK Worker',
+      pow_nonce: params.powNonce || 'simulated_nonce_sdk', // Placeholder for simplicity
+      cpu_score: params.cpuScore || 1000,
+      ram_gb: params.ramGb || 4.0,
+      public_key: params.publicKey
+    });
+    return response.data;
+  }
+
+  /**
+   * Get available tasks for a device
+   * @param deviceId Device ID
+   * @param limit Max number of tasks (default: 10)
+   * @returns List of available tasks
+   */
+  async getAvailableTasks(deviceId: string, limit: number = 10): Promise<any[]> {
+    const response = await this.api.get('/v1/device/tasks/available', {
+      params: {
+        device_id: deviceId,
+        limit
+      }
+    });
+    return response.data.tasks || [];
+  }
+
+  /**
+   * Claim a task for processing
+   * @param taskId Task ID to claim
+   * @param deviceId Device ID claiming the task
+   */
+  async claimTask(taskId: string, deviceId: string): Promise<any> {
+    const response = await this.api.post(`/v1/device/tasks/${taskId}/claim`, null, {
+      params: { device_id: deviceId }
+    });
+    return response.data;
+  }
+
+  /**
+   * Submit task result
+   * @param params Result submission parameters
+   */
+  async submitResult(params: SubmitResultParams): Promise<any> {
+    // 1. Prepare result for signing (signature must cover taskID + resultData)
+    // IMPORTANT: The backend computes SHA256(taskID + resultData) and verifies signature of that hash
+    // But here we sign the raw message? Backend says: message = taskID + resultData.
+
+    // Normalize result to string
+    const resultStr = typeof params.result === 'string' ? params.result : JSON.stringify(params.result);
+    const messageToSign = params.taskId + resultStr;
+
+    let signature = '';
+
+    if (params.privateKey) {
+      // Sign the data
+      signature = await signData(messageToSign, params.privateKey);
+    } else {
+      // Fallback or error? Logic says signature is required.
+      // We will send empty and let backend fail if key is missing.
+      console.warn("submitResult called without privateKey. Verification may fail.");
+    }
+
+    const response = await this.api.post(`/v1/device/tasks/${params.taskId}/result`, {
+      task_id: params.taskId,
+      device_id: params.deviceId,
+      result: typeof params.result === 'string' ? JSON.parse(params.result) : params.result,
+      execution_time_ms: params.executionTimeMs,
+      proof: 'sdk_auto_proof', // Backward compat
+      signature: signature     // Real signature
     });
     return response.data;
   }

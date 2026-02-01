@@ -209,6 +209,11 @@ func (s *ResultService) ProcessPayment(ctx context.Context, taskID string) error
         var workerWallet string
         s.db.QueryRowContext(ctx, "SELECT wallet_address FROM nodes WHERE id = $1", assignedDevice.String).Scan(&workerWallet)
         
+        if workerWallet == "" {
+            // Check devices table if not in nodes
+            s.db.QueryRowContext(ctx, "SELECT wallet_address FROM devices WHERE device_id = $1", assignedDevice.String).Scan(&workerWallet)
+        }
+        
         if workerWallet != "" {
             // 0. Release Stake
             var stakeAmount float64
@@ -226,6 +231,9 @@ func (s *ResultService) ProcessPayment(ctx context.Context, taskID string) error
             // 1. Credit Worker
             s.db.ExecContext(ctx, "UPDATE users SET gstd_balance = gstd_balance + $1 WHERE wallet_address = $2", executorReward, workerWallet)
             log.Printf("💰 Credited %.4f GSTD to Worker %s", executorReward, workerWallet)
+
+            // 1b. Deduct from Creator Escrow
+            s.db.ExecContext(ctx, "UPDATE users SET gstd_escrow_balance = GREATEST(0, gstd_escrow_balance - $1) WHERE wallet_address = $2", (executorReward + platformFee), task.RequesterAddress)
 
             // 2. Referral Split Trigger
             // "Smart Referral Economy": 1% Total (20% of Fee) to Referrer, 4% Total (80% of Fee) to Treasury

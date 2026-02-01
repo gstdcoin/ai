@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
 	"time"
 )
 
@@ -131,17 +132,26 @@ func (s *ValidationService) ValidateResult(ctx context.Context, taskID string, d
 		submissions = append(submissions, sub)
 	}
 
-	// Verify signatures for all submissions
-	for _, sub := range submissions {
-		if err := s.verifySignature(ctx, taskID, sub.DeviceID, sub.ResultData, sub.Signature); err != nil {
+	// Decrypt and verify signatures for all submissions
+	results := make([][]byte, len(submissions))
+	for i, sub := range submissions {
+		taskKey := s.encryption.GenerateTaskKey(taskID, task.RequesterAddress)
+		decrypted, err := s.encryption.DecryptTaskData(sub.ResultData, sub.ResultNonce, taskKey)
+		if err != nil {
+			return fmt.Errorf("failed to decrypt result from device %s: %w", sub.DeviceID, err)
+		}
+		results[i] = decrypted
+
+		if err := s.verifySignature(ctx, taskID, sub.DeviceID, string(decrypted), sub.Signature); err != nil {
 			// Signature verification failed - mark as malicious intent
-			// Decrease trust significantly for malicious intent
 			if s.trustService != nil {
 				s.trustService.UpdateTrustVector(ctx, sub.DeviceID, 0.0, 0.0, 0.0)
 			}
 			return fmt.Errorf("signature verification failed for device %s: %w", sub.DeviceID, err)
 		}
 	}
+
+	log.Printf("ValidateResult: TaskID: %s, Redundancy: %d, Submissions: %d", taskID, task.RedundancyFactor, len(submissions))
 
 	// If redundancy_factor = 1, validate immediately
 	if task.RedundancyFactor == 1 {
@@ -193,17 +203,6 @@ func (s *ValidationService) ValidateResult(ctx context.Context, taskID string, d
 			// No results yet - wait for more
 			return nil
 		}
-	}
-
-	// Decrypt and compare results
-	results := make([][]byte, 0, len(submissions))
-	for _, sub := range submissions {
-		taskKey := s.encryption.GenerateTaskKey(taskID, task.RequesterAddress)
-		decrypted, err := s.encryption.DecryptTaskData(sub.ResultData, sub.ResultNonce, taskKey)
-		if err != nil {
-			return fmt.Errorf("failed to decrypt result from device %s: %w", sub.DeviceID, err)
-		}
-		results = append(results, decrypted)
 	}
 
 	// Compare results (simple JSON comparison for now)
@@ -369,34 +368,47 @@ func (s *ValidationService) verifySignature(ctx context.Context, taskID, deviceI
 		return fmt.Errorf("device not found: %w", err)
 	}
 
-	// 2. Resolve wallet address to public key via TON API
-	// SECURITY: No fallback - signature verification is mandatory
-	if s.tonService == nil {
-		return fmt.Errorf("TON service unavailable - cannot verify signature")
-	}
-
-	// Get public key (with caching support in TONService)
-	pubKey, err := s.tonService.GetPublicKey(ctx, walletAddress)
+	pubKey, err := s.getPublicKeyForDevice(ctx, deviceID, walletAddress)
 	if err != nil {
-		// SECURITY: If public key resolution fails, reject the signature
-		// This prevents malicious workers from submitting invalid signatures when API is down
-		return fmt.Errorf("failed to resolve public key for device %s: %w (signature verification required)", deviceID, err)
+		return err
 	}
 
-	if len(pubKey) != 32 {
-		return fmt.Errorf("invalid public key length: expected 32 bytes, got %d", len(pubKey))
-	}
-
-	// 3. Reconstruct message hash: SHA-256(taskID + resultData)
+	// 3. Reconstruct message: taskID + resultData
 	message := taskID + resultData
-	hash := sha256.Sum256([]byte(message))
 
-	// 4. Verify Ed25519 signature with public key and message hash
-	if !ed25519.Verify(pubKey, hash[:], sigBytes) {
+	// 4. Verify Ed25519 signature with public key and message
+	if !ed25519.Verify(pubKey, []byte(message), sigBytes) {
+		log.Printf("verifySignature: FAILED verification for device %s, message: %s", deviceID, message)
 		return fmt.Errorf("signature verification failed")
 	}
 
 	return nil
+}
+
+// getPublicKeyForDevice resolves public key for a device
+func (s *ValidationService) getPublicKeyForDevice(ctx context.Context, deviceID, walletAddress string) ([]byte, error) {
+	// Try DB first (Autonomous Agent Identity)
+	var dbPubKey sql.NullString
+	s.db.QueryRowContext(ctx, `
+		SELECT public_key FROM devices WHERE device_id = $1
+	`, deviceID).Scan(&dbPubKey)
+	
+	if dbPubKey.Valid && dbPubKey.String != "" {
+		pubKey, err := hex.DecodeString(dbPubKey.String)
+		if err == nil && len(pubKey) == 32 {
+			return pubKey, nil
+		}
+	}
+
+	// Fallback to TON API (Standard Wallets)
+	if s.tonService != nil {
+		pubKey, err := s.tonService.GetPublicKey(ctx, walletAddress)
+		if err == nil && len(pubKey) == 32 {
+			return pubKey, nil
+		}
+	}
+
+	return nil, fmt.Errorf("public key not found for device %s (identity verification required)", deviceID)
 }
 
 // assignArbitration assigns task to additional worker for arbitration

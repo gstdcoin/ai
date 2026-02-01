@@ -263,4 +263,51 @@ func (s *AssignmentService) ClaimTask(ctx context.Context, taskID string, device
 	// Assign task
 	return s.AssignTask(ctx, taskID, deviceID)
 }
+// GetTasksByDevice returns tasks currently assigned to a device
+func (s *AssignmentService) GetTasksByDevice(ctx context.Context, deviceID string) ([]*models.Task, error) {
+	query := `
+		SELECT task_id, requester_address, task_type, operation, model,
+		       labor_compensation_gstd,
+		       COALESCE(priority_score, 0.0) as priority_score,
+		       status, created_at,
+		       completed_at,
+		       COALESCE(assigned_device, '') as assigned_device,
+		       COALESCE(min_trust_score, 0.0) as min_trust_score
+		FROM tasks
+		WHERE assigned_device = $1 AND status = 'assigned'
+		ORDER BY assigned_at DESC
+	`
 
+	rows, err := s.db.QueryContext(ctx, query, deviceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var tasks []*models.Task
+	for rows.Next() {
+		var task models.Task
+		var completedAt sql.NullTime
+		var assignedDevice sql.NullString
+		
+		err := rows.Scan(
+			&task.TaskID, &task.RequesterAddress, &task.TaskType, &task.Operation,
+			&task.Model, &task.LaborCompensationGSTD, &task.PriorityScore,
+			&task.Status, &task.CreatedAt, &completedAt, &assignedDevice, &task.MinTrustScore,
+		)
+		if err != nil {
+			continue
+		}
+		
+		if completedAt.Valid {
+			task.CompletedAt = &completedAt.Time
+		}
+		if assignedDevice.Valid {
+			task.AssignedDevice = &assignedDevice.String
+		}
+		
+		tasks = append(tasks, &task)
+	}
+
+	return tasks, nil
+}

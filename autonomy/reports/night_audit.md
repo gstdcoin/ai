@@ -2257,3 +2257,84 @@ Error response from daemon: No such container: ubuntu-backend-blue-1
 ⚠️  No GEO Service activity or initialization found in logs.
 
 ---
+## 🛡️ GSTD Security Audit - 2026-02-01 07:00:01
+
+### 💎 TON Service Check
+2026/02/01 06:52:01 Migration v10_failed_payouts.sql already applied, skipping
+2026/02/01 06:52:01 Migration v33_recreate_failed_payouts.sql already applied, skipping
+2026/02/01 06:52:01 Warning: Failed to run migrations: failed to execute migration v36_final_optimization.sql: migration SQL error: pq: column "labor_compensation_ton" does not exist (42703)
+2026/02/01 06:52:02 ⚠️  Failed to get GSTD jetton wallet address (using 0): failed to get jetton wallet (HTTP 404): {"error":"account 0:3ef895c6f154b204998b32a6f6276b783f26b44d2f525c787bbc787c21ecf6e6 has no jetton wallet 0:efe9c616f673622a337737097c0fa0018d4887d6061f59519985f3fbfbdb59b2"}
+2026/02/01 06:52:02 ⚠️  Failed to get XAUt jetton wallet address (using 0): failed to get jetton wallet (HTTP 400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+
+### 🌍 GEO Service Check
+✅ GEO Service is running correctly (found 2 log entries).
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-01 08:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-01 09:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-01 10:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-01 11:00:01
+
+### 💎 TON Service Check
+2026/02/01 10:47:01 Warning: failed to cleanup expired PoW challenges: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/01 10:47:01 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/01 10:47:11 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+redis: 2026/02/01 10:47:12 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup redis on 127.0.0.11:53: no such host
+redis: 2026/02/01 10:47:13 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup redis on 127.0.0.11:53: no such host
+redis: 2026/02/01 10:47:14 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup redis on 127.0.0.11:53: no such host
+redis: 2026/02/01 10:47:15 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup redis on 127.0.0.11:53: no such host
+redis: 2026/02/01 10:47:15 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup redis on 127.0.0.11:53: no such host
+redis: 2026/02/01 10:47:16 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup redis on 127.0.0.11:53: no such host
+redis: 2026/02/01 10:47:17 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup redis on 127.0.0.11:53: no such host
+redis: 2026/02/01 10:47:18 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup redis on 127.0.0.11:53: no such host
+2026/02/01 10:47:31 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/01 10:47:48 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+redis: 2026/02/01 10:47:49 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup redis on 127.0.0.11:53: no such host
+redis: 2026/02/01 10:47:50 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup redis on 127.0.0.11:53: no such host
+redis: 2026/02/01 10:47:50 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup redis on 127.0.0.11:53: no such host
+redis: 2026/02/01 10:47:51 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup redis on 127.0.0.11:53: no such host
+redis: 2026/02/01 10:47:52 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup redis on 127.0.0.11:53: no such host
+redis: 2026/02/01 10:47:53 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup redis on 127.0.0.11:53: no such host
+redis: 2026/02/01 10:47:54 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup redis on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-01 12:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-01 13:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---

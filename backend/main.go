@@ -327,10 +327,6 @@ func main() {
 	hub := api.NewWSHub()
 	go hub.Run()
 
-	// Ensure Genesis Task exists
-	if err := taskService.EnsureGenesisTask(context.Background()); err != nil {
-		log.Printf("⚠️  Warning: Failed to ensure Genesis Task: %v", err)
-	}
 
 	// Set task service hub for broadcasting
 	taskService.SetHub(hub)
