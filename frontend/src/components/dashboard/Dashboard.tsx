@@ -371,17 +371,6 @@ function Dashboard() {
                     <Globe className="w-24 h-24 text-cyan-400 opacity-20 animate-[spin_10s_linear_infinite]" />
                   </div>
                 </div>
-
-                {/* View Map Action */}
-                <div className="mt-6">
-                  <div className="w-full h-1 bg-gray-800 rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 w-[70%] animate-[shimmer_2s_infinite]"></div>
-                  </div>
-                  <div className="flex justify-between text-xs text-gray-500 mt-2 font-mono">
-                    <span>{t('genesis_task') || 'Genesis Task'}: {t('mapping') || 'Mapping'}</span>
-                    <span className="text-cyan-400">{t('view_global_map') || 'View Global Map'} →</span>
-                  </div>
-                </div>
               </div>
 
               {/* ACTION BUTTONS */}
