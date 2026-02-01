@@ -9,7 +9,7 @@ class WebSocketClient {
     private maxReconnectAttempts = 10;
     private handlers: Map<string, Set<MessageHandler>> = new Map();
     private messageQueue: string[] = [];
-    private isConnected = false;
+    private _isConnected = false;
     private pingInterval: NodeJS.Timeout | null = null;
     private token: string | null = null;
     private lastEventTimestamp: number = 0;
@@ -21,7 +21,7 @@ class WebSocketClient {
     public setToken(token: string) {
         this.token = token;
         // If connected, reconnect with new token
-        if (this.isConnected) {
+        if (this._isConnected) {
             this.disconnect();
             this.connect();
         }
@@ -40,7 +40,7 @@ class WebSocketClient {
 
             this.ws.onopen = () => {
                 console.log('✅ WebSocket Connected');
-                this.isConnected = true;
+                this._isConnected = true;
                 this.reconnectAttempts = 0;
                 this.flushQueue();
                 this.startHeartbeat();
@@ -87,9 +87,9 @@ class WebSocketClient {
     }
 
     private handleDisconnect(reason: string) {
-        if (!this.isConnected) return; // Already handling
+        if (!this._isConnected) return; // Already handling
 
-        this.isConnected = false;
+        this._isConnected = false;
         this.stopHeartbeat();
         this.emit('connection_status', { status: 'disconnected', reason });
 
@@ -149,13 +149,17 @@ class WebSocketClient {
         // Also emit to wildcard listeners if needed
     }
 
+    public isConnected(): boolean {
+        return this._isConnected;
+    }
+
     public disconnect() {
         this.stopHeartbeat();
         if (this.ws) {
             this.ws.close();
             this.ws = null;
         }
-        this.isConnected = false;
+        this._isConnected = false;
     }
 }
 

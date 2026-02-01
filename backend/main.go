@@ -310,6 +310,19 @@ func main() {
 	taskOrchestrator.SetPoWService(powService)
 	log.Println("✅ Task Orchestrator initialized")
 
+	// Initialize Sovereign Compute Bridge (MoltBot integration)
+	escrowService := services.NewEscrowService(db)
+	bridgeEncryptKey := os.Getenv("BRIDGE_ENCRYPTION_KEY")
+	if bridgeEncryptKey == "" {
+		bridgeEncryptKey = "default-gstd-bridge-key-32bytes!" // Default for dev
+	}
+	genesisNodeEndpoint := os.Getenv("GENESIS_NODE_ENDPOINT")
+	sovereignBridge := services.NewSovereignBridgeService(
+		db, redisClient, escrowService, nodeService, stonFiService,
+		bridgeEncryptKey, genesisNodeEndpoint,
+	)
+	log.Println("✅ Sovereign Compute Bridge initialized")
+
 	// Initialize WebSocket hub
 	hub := api.NewWSHub()
 	go hub.Run()
@@ -452,6 +465,7 @@ func main() {
 		lendingService,
 		boincService,
 		maintenanceService,
+		sovereignBridge,
 	)
 
 	// Setup Swagger documentation

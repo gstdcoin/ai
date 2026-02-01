@@ -49,6 +49,7 @@ func SetupRoutes(
 	lendingService *services.LendingService,
 	boincService *services.BoincService,
 	maintenanceService *services.MaintenanceService,
+	sovereignBridge *services.SovereignBridgeService,
 ) {
 	log.Printf("🔧 SetupRoutes: Starting route setup, redisClient type: %T", redisClient)
 	
@@ -286,6 +287,9 @@ func SetupRoutes(
 		// BOINC Integration
 		RegisterBoincRoutes(protected, boincService, taskService)
 		log.Printf("✅ BOINC routes registered")
+
+		// Sovereign Compute Bridge (MoltBot integration)
+		SetupBridgeRoutes(v1, sovereignBridge)
 	}
 
 	// WebSocket endpoint

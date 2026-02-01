@@ -4,10 +4,8 @@ import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useTranslation } from 'next-i18next';
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
-import Dashboard from '../components/dashboard/Dashboard';
 import WalletConnect from '../components/WalletConnect';
 import { NetworkMap } from '../components/dashboard/NetworkMap';
-// Removed unused useTonConnectUI import
 import { useWalletStore } from '../store/walletStore';
 import { GSTD_CONTRACT_ADDRESS, API_BASE_URL } from '../lib/config';
 import { Zap, Shield, Globe, ArrowRight, Users, Activity, Coins, Code, BookOpen, Terminal } from 'lucide-react';
@@ -89,9 +87,19 @@ export default function Home() {
     router.push(router.pathname, router.asPath, { locale: router.locale === 'ru' ? 'en' : 'ru' });
   };
 
-  // Connected - Show Dashboard
+  // Connected - Redirect to Dashboard
+  useEffect(() => {
+    if (isConnected && !checkingSession) {
+      router.push('/dashboard');
+    }
+  }, [isConnected, checkingSession, router]);
+
   if (isConnected) {
-    return <Dashboard />;
+    return (
+      <div className="min-h-screen bg-[#030014] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-violet-500 opacity-50"></div>
+      </div>
+    );
   }
 
   // Loading state
