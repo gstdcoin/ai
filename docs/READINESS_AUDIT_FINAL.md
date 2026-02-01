@@ -29,6 +29,8 @@ The GSTD platform has undergone a comprehensive upgrade and security audit. The 
 ### ✅ Sovereign Compute Bridge (MoltBot Integration)
 - **Discovery**: Optimized SQL queries with `status='online'` partial indexes.
 - **Liquidity**: "Invisible Swap" logic implemented (checks DB balance first, simulates swap).
+- **Autonomous Economics**: Dynamic Pricing based on network demand (Temperature Multiplier).
+- **Hybrid Intelligence**: SDK decides Local vs Grid execution based on device CPU/RAM & Task Complexity.
 - **Zero-Config**: MoltBot SDK (`gstd-sdk/moltbot`) allows fully autonomous operation.
 - **Scalability**: Database connection pool increased to 250 connections.
 
