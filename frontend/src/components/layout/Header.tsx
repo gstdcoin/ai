@@ -102,15 +102,7 @@ export default React.memo(function Header({ onCreateTask, onLogout, isPublic = f
             {/* Actions */}
             <div className="flex items-center gap-2 flex-wrap">
               <LanguageSwitcher />
-              <button
-                onClick={() => router.push('/')}
-                className="glass-button text-white touch-manipulation"
-                aria-label={t('home') || 'Home'}
-                type="button"
-              >
-                <Home size={18} />
-                <span className="hidden sm:inline">{t('home') || 'Home'}</span>
-              </button>
+
               <button
                 onClick={onLogout}
                 className="glass-button text-white touch-manipulation"

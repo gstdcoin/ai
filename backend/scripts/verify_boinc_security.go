@@ -12,37 +12,14 @@ func main() {
 	
 	security := services.NewBoincSecurityService()
 	
-	testKey := "boinc_account_key_123456789"
-	fmt.Printf("Original Key: %s\n", testKey)
+	// Test key
+	testKey := "test-key"
 	
 	encrypted, err := security.EncryptAccountKey(testKey)
 	if err != nil {
 		fmt.Printf("Encryption Error: %v\n", err)
 		return
 	}
-	fmt.Printf("Encrypted Key (Base64): %s\n", encrypted)
-	
-	decryptedBytes, err := security.DecryptAccountKey(encrypted)
-	if err != nil {
-		fmt.Printf("Decryption Error: %v\n", err)
-		return
-	}
-	decrypted := string(decryptedBytes)
-	fmt.Printf("Decrypted Key: %s\n", decrypted)
-	
-	if testKey == decrypted {
-		fmt.Println("✅ Encryption/Decryption Cycle: SUCCESS")
-	} else {
-		fmt.Println("❌ Encryption/Decryption Cycle: FAILED")
-	}
-	
-	// Test memory clearing
-	security.ClearMemory(decryptedBytes)
-	for _, b := range decryptedBytes {
-		if b != 0 {
-			fmt.Println("❌ Memory Clearing: FAILED")
-			return
-		}
-	}
-	fmt.Println("✅ Memory Clearing: SUCCESS")
+	// Print ONLY the encrypted key so I can copy it
+	fmt.Print(encrypted)
 }
