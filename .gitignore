@@ -36,3 +36,4 @@ backups/
 .vscode/
 .idea/
 .DS_Store
+go/

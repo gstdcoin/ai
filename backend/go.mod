@@ -72,5 +72,17 @@ require (
 	golang.org/x/tools v0.41.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
+)
+
+// Force secure versions for all dependencies (mitigate CVEs)
+replace (
+	golang.org/x/net => golang.org/x/net v0.49.0
+	golang.org/x/crypto => golang.org/x/crypto v0.47.0
+	golang.org/x/text => golang.org/x/text v0.33.0
+	gopkg.in/yaml.v3 => gopkg.in/yaml.v3 v3.0.1
+	github.com/gin-gonic/gin => github.com/gin-gonic/gin v1.11.0
+	// Fix for old protobuf in indirect deps
+	google.golang.org/protobuf => google.golang.org/protobuf v1.36.11
 )
