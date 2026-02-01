@@ -1,7 +1,8 @@
 import React from 'react';
 import { useTranslation } from 'next-i18next';
 import { useWalletStore } from '../../store/walletStore';
-import { Share2, LogOut } from 'lucide-react';
+import { Share2, LogOut, Home } from 'lucide-react';
+import { useRouter } from 'next/router';
 import LanguageSwitcher from './LanguageSwitcher';
 import { toast } from '../../lib/toast';
 import { Tooltip } from '../ui/Tooltip';
@@ -15,6 +16,7 @@ interface HeaderProps {
 
 export default React.memo(function Header({ onCreateTask, onLogout, isPublic = false }: HeaderProps) {
   const { t } = useTranslation('common');
+  const router = useRouter();
   const { address, tonBalance, gstdBalance } = useWalletStore();
   const [isWsConnected, setIsWsConnected] = React.useState(false);
 
@@ -100,6 +102,15 @@ export default React.memo(function Header({ onCreateTask, onLogout, isPublic = f
             {/* Actions */}
             <div className="flex items-center gap-2 flex-wrap">
               <LanguageSwitcher />
+              <button
+                onClick={() => router.push('/')}
+                className="glass-button text-white touch-manipulation"
+                aria-label={t('home') || 'Home'}
+                type="button"
+              >
+                <Home size={18} />
+                <span className="hidden sm:inline">{t('home') || 'Home'}</span>
+              </button>
               <button
                 onClick={onLogout}
                 className="glass-button text-white touch-manipulation"
