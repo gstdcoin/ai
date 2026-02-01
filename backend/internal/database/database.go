@@ -25,8 +25,9 @@ func NewConnection(cfg config.DatabaseConfig) (*sql.DB, error) {
 	}
 
 	// Set connection pool settings for scalability
-	db.SetMaxOpenConns(100)
-	db.SetMaxIdleConns(10)
+	// Increased for 1000+ concurrent MoltBots
+	db.SetMaxOpenConns(250)
+	db.SetMaxIdleConns(50)
 	db.SetConnMaxLifetime(0)
 
 	return db, nil
