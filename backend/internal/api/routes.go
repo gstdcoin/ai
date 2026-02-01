@@ -220,14 +220,15 @@ func SetupRoutes(
 		protected.GET("/tasks/:id/payment", getTaskWithPayment(taskPaymentService))
 
 		// Devices (protected)
-		protected.POST("/devices/register", ValidateDeviceRequest(errorLogger), registerDevice(deviceService, errorLogger))
+		protected.POST("/devices/register", registerDevice(deviceService, errorLogger))
 		protected.GET("/devices", getDevices(deviceService))
 		protected.GET("/devices/my", getMyDevices(deviceService))
 
 		// Device endpoints (protected)
 		protected.GET("/device/tasks/available", getAvailableTasks(assignmentService))
+		protected.GET("/device/tasks/my", getMyTasks(assignmentService))
 		protected.POST("/device/tasks/:id/claim", claimTask(assignmentService))
-		protected.POST("/device/tasks/:id/result", ValidateResultSubmission(), submitResult(resultService, validationService))
+		protected.POST("/device/tasks/:id/result", submitResult(resultService, validationService))
 		protected.GET("/device/tasks/:id/result", getTaskResult(resultService))
 
 		// Stats (protected, except /stats/public which is public)

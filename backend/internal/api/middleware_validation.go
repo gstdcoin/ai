@@ -19,7 +19,7 @@ func ValidateTaskRequest() gin.HandlerFunc {
 			TaskType         string  `json:"task_type" binding:"required,oneof=inference human validation agent"`
 			Operation        string  `json:"operation" binding:"required,min=1,max=50"`
 			Model            string  `json:"model" binding:"max=100"`
-			InputSource      string  `json:"input_source" binding:"required,oneof=ipfs http inline"`
+			InputSource      string  `json:"input_source" binding:"required,min=1"`
 			InputHash        string  `json:"input_hash" binding:"max=255"`
 			TimeLimitSec     int     `json:"time_limit_sec" binding:"required,min=1,max=300"`
 			MaxEnergyMwh     int     `json:"max_energy_mwh" binding:"required,min=1,max=1000"`

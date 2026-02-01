@@ -1,0 +1,17 @@
+
+version: '3.8'
+
+services:
+  mcp-server:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - GSTD_WALLET=${GSTD_WALLET}
+      - GSTD_API_URL=https://app.gstdtoken.com/api
+      - GSTD_API_KEY=${GSTD_API_KEY}
+      - AGENT_PRIVATE_KEY=${AGENT_PRIVATE_KEY}
+    restart: always
+
+# Note: To expose to the internet, use a reverse proxy or ngrok:
+# ngrok http 3000

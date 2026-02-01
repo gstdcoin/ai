@@ -51,6 +51,7 @@ type TONConfig struct {
 
 type ServerConfig struct {
 	Port string
+	AdminAPIKey string
 }
 
 type TelegramConfig struct {
@@ -58,8 +59,10 @@ type TelegramConfig struct {
 	ChatID   string
 }
 
+var configInstance *Config
+
 func Load() *Config {
-	return &Config{
+	configInstance = &Config{
 		Database: DatabaseConfig{
 			Host:     getEnv("DB_HOST", "localhost"),
 			Port:     getEnv("DB_PORT", "5432"),
@@ -94,13 +97,22 @@ func Load() *Config {
 		PlatformWalletSeed: getEnv("PLATFORM_WALLET_SEED", ""), // Optional: not needed for pull-model
 		},
 		Server: ServerConfig{
-			Port: getEnv("PORT", "8080"),
+			Port:        getEnv("PORT", "8080"),
+			AdminAPIKey: getEnv("ADMIN_API_KEY", "gstd_system_key_2026"),
 		},
 		Telegram: TelegramConfig{
 			BotToken: getEnv("TELEGRAM_BOT_TOKEN", ""),
 			ChatID:   getEnv("TELEGRAM_CHAT_ID", ""),
 		},
 	}
+	return configInstance
+}
+
+func GetConfig() *Config {
+	if configInstance == nil {
+		return Load()
+	}
+	return configInstance
 }
 
 func getEnv(key, defaultValue string) string {

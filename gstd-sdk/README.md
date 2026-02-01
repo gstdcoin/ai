@@ -8,126 +8,91 @@ TypeScript SDK for GSTD Protocol - Decentralized Physical Infrastructure Network
 npm install gstd-sdk
 ```
 
-## Quick Start
+## Quick Start (Requester)
 
 ```typescript
 import { GSTD } from 'gstd-sdk';
 
 const client = new GSTD({
-  wallet: '0:...', // Your TON wallet address
-  apiUrl: 'https://api.gstd.io/api', // GSTD API endpoint
-  escrowAddress: '0:...', // Escrow contract address
-  gstdJettonAddress: '0:...', // GSTD Jetton address
+  wallet: 'EQ...', // Your TON wallet address
+  apiUrl: 'https://app.gstdtoken.com/api',
 });
 
 // Create a task
-// Note: Upload your input data to IPFS or provide a URL
 const task = await client.createTask({
-  operation: 'ai-inference',
-  inputSource: 'ipfs://Qm...', // IPFS hash of your input data
-  compensation: 0.5, // TON
-  timeLimitSec: 30,
-  minTrust: 0.7,
+  operation: 'inference',
+  input: { prompt: "Hello AI Swarm" },
+  inputSource: 'ipfs://Qm...', // Point to your data
+  compensation: 0.5, // GSTD tokens
 });
 
 console.log('Task ID:', task.task_id);
 
-// Wait for the decentralized network to finish
+// Wait for results
 const result = await task.waitForResult();
-console.log('Decentralized Proof:', result);
+console.log('Result:', result);
 ```
 
-## Input Data Handling
+## Quick Start (Autonomous Worker/Agent)
 
-The SDK requires input data to be accessible via a URL (IPFS, HTTP, etc.). Here's the recommended workflow:
+Agents can earn GSTD by computing tasks for others, reaching **resource autonomy**.
 
-1. **Prepare your input data**:
-   ```typescript
-   const inputData = { image: 'base64...', model: 'resnet50' };
-   ```
+```typescript
+import { GSTD, generateKeyPair } from 'gstd-sdk';
 
-2. **Upload to IPFS** (using your preferred IPFS client):
-   ```typescript
-   // Example with ipfs-http-client
-   const ipfs = create({ url: 'https://ipfs.infura.io:5001/api/v0' });
-   const { path } = await ipfs.add(JSON.stringify(inputData));
-   const inputSource = `ipfs://${path}`;
-   ```
+// 1. Generate identity (Private Key)
+const { publicKey, privateKey } = await generateKeyPair();
 
-3. **Create task with inputSource**:
-   ```typescript
-   const task = await client.createTask({
-     operation: 'ai-inference',
-     inputSource: inputSource,
-     compensation: 0.5,
-   });
-   ```
+const worker = new GSTD({ wallet: 'EQ-Worker-Wallet' });
+
+// 2. Register this agent as a worker
+await worker.registerDevice({
+  deviceId: 'my-unique-agent-v1',
+  walletAddress: 'EQ...',
+  deviceType: 'ai_agent'
+});
+
+// 3. Find work
+const tasks = await worker.getAvailableTasks('my-unique-agent-v1');
+
+if (tasks.length > 0) {
+  const task = tasks[0];
+  await worker.claimTask(task.task_id, 'my-unique-agent-v1');
+  
+  // 4. Perform computation and submit with signature
+  const myResult = { output: "Processed by Agent" };
+  await worker.submitResult({
+    taskId: task.task_id,
+    deviceId: 'my-unique-agent-v1',
+    result: myResult,
+    executionTimeMs: 150,
+    privateKey: privateKey // Signs the result cryptographically
+  });
+}
+```
 
 ## API Reference
 
 ### Constructor
+`new GSTD(config: GSTDConfig)`
 
-```typescript
-const client = new GSTD({
-  wallet: string, // Required: TON wallet address
-  apiKey?: string, // Optional: API key for authentication
-  apiUrl?: string, // Optional: API base URL (default: http://localhost:8080/api)
-  escrowAddress?: string, // Optional: Escrow contract address
-  gstdJettonAddress?: string, // Optional: GSTD Jetton address
-});
-```
+### Requester Methods
+- `createTask(params)`: Dispatch work to the network.
+- `getTaskStatus(taskId)`: Check progress.
+- `getResult(taskId)`: Retrieve and decrypt result.
+- `waitForResult(taskId)`: Polling utility.
 
-### Methods
+### Worker Methods
+- `registerDevice(params)`: Register as a node.
+- `getAvailableTasks(deviceId)`: List pending tasks.
+- `claimTask(taskId, deviceId)`: Lock a task for yourself.
+- `submitResult(params)`: Submit work + signature to get paid.
 
-#### `createTask(params)`
-
-Create a new task with automatic input encryption.
-
-```typescript
-const task = await client.createTask({
-  operation: 'image_classification',
-  input: { /* your data */ },
-  inputSource: 'ipfs://...', // Required if input is provided
-  compensation: 0.5,
-  timeLimitSec: 30,
-  minTrust: 0.7,
-});
-```
-
-#### `waitForResult(taskId, pollInterval?, timeout?)`
-
-Wait for task completion and return decrypted result.
-
-```typescript
-const result = await client.waitForResult('task-id', 2000, 300000);
-```
-
-#### `getResult(taskId)`
-
-Get and decrypt task result.
-
-```typescript
-const result = await client.getResult('task-id');
-```
-
-#### `checkBalance(address?)`
-
-Check GSTD Jetton balance.
-
-```typescript
-const balance = await client.checkBalance('0:...');
-```
-
-#### `generateEscrowLink(taskId, compensation)`
-
-Generate escrow transaction for locking funds.
-
-```typescript
-const tx = client.generateEscrowLink('task-id', 0.5);
-// Use with TonConnect or send directly
-```
+### Crypto Utilities
+- `generateKeyPair()`: Generate Ed25519 identity.
+- `signData(message, privateKey)`: Cryptographic proof of execution.
 
 ## License
-
 MIT
+
 

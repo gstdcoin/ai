@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"log"
 	"math"
-	"strings"
 	"sync"
 
 	"github.com/google/uuid"
@@ -131,7 +130,7 @@ func (s *TaskService) CreateTask(ctx context.Context, requesterAddress string, d
 	var totalExecs int64
 	s.db.QueryRowContext(ctx, "SELECT total_executions FROM operation_entropy WHERE operation_id = $1", descriptor.Operation).Scan(&totalExecs)
 	if totalExecs < 1000 {
-		redundancy = 3
+		redundancy = 1
 	}
 
 	finalCompensation := s.efficiencyService.CalculateTaskCost(descriptor.Reward.AmountGSTD, gstdBalance)
@@ -191,23 +190,7 @@ func (s *TaskService) CreateTask(ctx context.Context, requesterAddress string, d
 		descriptor.Reward.AmountGSTD, platformFee, gravityScore,
 		descriptor.MinTrust, descriptor.IsPrivate, confidenceDepth, redundancy, isSpotCheck, entropy,
 		descriptor.IsBoinc, descriptor.BoincProjectURL, descriptor.BoincBatchID, finalAccountKey)
-	
-    // Retry with 'priority_score' if 'certainty_gravity_score' fails (DB Schema Compatibility)
-	if err != nil && (strings.Contains(err.Error(), "certainty_gravity_score") || 
-		(strings.Contains(err.Error(), "column") && strings.Contains(err.Error(), "does not exist"))) {
-		_, err = tx.ExecContext(ctx, `
-			INSERT INTO tasks (
-				task_id, requester_address, task_type, operation, model,
-				labor_compensation_gstd, platform_fee_gstd, priority_score, status, created_at,
-				escrow_status, min_trust_score, is_private, confidence_depth, 
-				redundancy_factor, is_spot_check, entropy_snapshot,
-				is_boinc, boinc_project_url, boinc_batch_id, boinc_account_key
-			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', NOW(), 'locked', $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
-		`, taskID, requesterAddress, descriptor.TaskType, descriptor.Operation, descriptor.Model,
-			descriptor.Reward.AmountGSTD, platformFee, gravityScore,
-			descriptor.MinTrust, descriptor.IsPrivate, confidenceDepth, redundancy, isSpotCheck, entropy,
-			descriptor.IsBoinc, descriptor.BoincProjectURL, descriptor.BoincBatchID, finalAccountKey)
-	}
+
 
     if err != nil {
         return nil, fmt.Errorf("failed to create task record: %w", err)

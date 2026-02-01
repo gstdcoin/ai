@@ -1,0 +1,21 @@
+{
+  "schema_version": "v1",
+  "name_for_human": "GSTD Compute Network",
+  "name_for_model": "gstd_compute",
+  "description_for_human": "Rent decentralized GPU/CPU power for AI tasks using GSTD.",
+  "description_for_model": "Plugin for dispatching computational tasks to the GSTD distributed network. Allows autonomous agents to pay for and consume compute resources (inference, training data processing, math) using GSTD tokens. Also supports SELLING compute power to earn GSTD. Full autonomous economy: Buy compute (fuel), Sell compute (earn), and sustain operations. Capabilities: Create Task, Register Worker, Find Work, Submit Result.",
+  "auth": {
+    "type": "service_http",
+    "authorization_type": "bearer",
+    "verification_tokens": {
+      "openai": "79ea7cdd86134707849e701967202161"
+    }
+  },
+  "api": {
+    "type": "openapi",
+    "url": "https://app.gstdtoken.com/api/v1/swagger/doc.json"
+  },
+  "logo_url": "https://app.gstdtoken.com/logo.png",
+  "contact_email": "support@gstdtoken.com",
+  "legal_info_url": "https://app.gstdtoken.com/terms"
+}

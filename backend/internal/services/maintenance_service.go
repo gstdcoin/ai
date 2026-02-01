@@ -39,13 +39,12 @@ func (s *MaintenanceService) Start(ctx context.Context) {
 	pruneTicker := time.NewTicker(24 * time.Hour)      // Daily cleanup
 	briefingTicker := time.NewTicker(24 * time.Hour)   // Daily Report
 	repairTicker := time.NewTicker(30 * time.Minute)   // Frequent repairs
-	genesisTicker := time.NewTicker(1 * time.Hour)     // Ensure genesis task
 	monitorTicker := time.NewTicker(15 * time.Minute)  // System Health Pulse
 
 	defer pruneTicker.Stop()
 	defer briefingTicker.Stop()
 	defer repairTicker.Stop()
-	defer genesisTicker.Stop()
+
 	defer monitorTicker.Stop()
 
 	// Initial run
@@ -62,8 +61,7 @@ func (s *MaintenanceService) Start(ctx context.Context) {
 		case <-repairTicker.C:
 			s.repairStuckTasks(ctx)
 			s.updateDeviceActivity(ctx)
-		case <-genesisTicker.C:
-			s.ensureSystemIntegrity(ctx)
+
 		case <-monitorTicker.C:
 			s.monitorSystemHealth(ctx)
 		}
@@ -75,7 +73,7 @@ func (s *MaintenanceService) performMaintenance(ctx context.Context) {
 	s.pruneOldData(ctx)
 	s.repairStuckTasks(ctx)
 	s.updateDeviceActivity(ctx)
-	s.ensureSystemIntegrity(ctx)
+
 }
 
 func (s *MaintenanceService) pruneOldData(ctx context.Context) {
@@ -151,11 +149,6 @@ func (s *MaintenanceService) updateDeviceActivity(ctx context.Context) {
 }
 
 func (s *MaintenanceService) ensureSystemIntegrity(ctx context.Context) {
-	if s.taskService != nil {
-		if err := s.taskService.EnsureGenesisTask(ctx); err != nil {
-			log.Printf("   ❌ Genesis Task check failed: %v", err)
-		}
-	}
 	s.db.ExecContext(ctx, "UPDATE tasks SET labor_compensation_gstd = 0.001 WHERE labor_compensation_gstd IS NULL OR labor_compensation_gstd <= 0")
 }
 

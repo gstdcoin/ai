@@ -1,0 +1,21 @@
+{
+    "name": "gstd-mcp-server",
+    "version": "1.0.0",
+    "description": "MCP Server for GSTD Compute Network",
+    "type": "module",
+    "main": "build/index.js",
+    "scripts": {
+        "build": "tsc",
+        "start": "node build/index.js",
+        "dev": "tsc --watch"
+    },
+    "dependencies": {
+        "@modelcontextprotocol/sdk": "^0.6.0",
+        "zod": "^3.23.8",
+        "gstd-sdk": "file:../../gstd-sdk"
+    },
+    "devDependencies": {
+        "typescript": "^5.3.3",
+        "@types/node": "^20.11.5"
+    }
+}

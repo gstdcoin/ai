@@ -162,48 +162,6 @@ func (s *TaskPaymentService) SubmitWorkerResult(
 		return fmt.Errorf("wallet address mismatch: node belongs to different wallet")
 	}
 
-	// SPECIAL HANDLING: GENESIS_MAP (Task ID: GENESIS_MAP)
-	// This is a continuous task for network probing. It does not complete.
-	if taskID == "GENESIS_MAP" {
-		var probeResult struct {
-			Latency        int     `json:"latency"`
-			PacketLoss     float64 `json:"packet_loss"`
-			ConnectionType string  `json:"connection_type"`
-			GPS            struct {
-				Lat float64 `json:"lat"`
-				Lng float64 `json:"lng"`
-			} `json:"gps_coords"`
-		}
-		
-		if err := json.Unmarshal(result, &probeResult); err != nil {
-			// If parsing fails, try case insensitive or different structure? 
-			// For now, allow partial failure or just log error
-			fmt.Printf("Warning: Failed to parse GENESIS_MAP result: %v\n", err)
-		}
-
-		_, err = tx.ExecContext(ctx, `
-			INSERT INTO network_measurements (
-				node_id, latency_ms, packet_loss, connection_type, gps_lat, gps_lng
-			) VALUES ($1, $2, $3, $4, $5, $6)
-		`, nodeID, probeResult.Latency, probeResult.PacketLoss, probeResult.ConnectionType, probeResult.GPS.Lat, probeResult.GPS.Lng)
-
-		if err != nil {
-			return fmt.Errorf("failed to save network measurement: %w", err)
-		}
-
-		if err := tx.Commit(); err != nil {
-			return fmt.Errorf("failed to commit transaction: %w", err)
-		}
-
-		// Don't distribute rewards automatically for pings (to avoid draining).
-		// Marketplace Logic: In a full production run, we would distribute rewards here.
-		// For the Alpha/Demo, we accrue them to a pending ledger to prevent wallet drain from bots.
-		// A 5% platform commission is calculated and reserved on the pending balance.
-		// log.Printf("Genesis Probe accepted from %s. Reward pending (minus 5%% fee).", nodeID)
-		
-		// Return success.
-		return nil
-	}
 
 	// Update task status to completed and store result (atomic operation with WHERE status check)
 	resultStr := string(result)

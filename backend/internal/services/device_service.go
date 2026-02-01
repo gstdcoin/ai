@@ -23,6 +23,7 @@ type RegisterDeviceRequest struct {
 	PoWNonce      string `json:"pow_nonce"`      // Proof of Work Nonce
 	CPUScore      int    `json:"cpu_score"`      // Benchmark score
 	RAMGB         float64 `json:"ram_gb"`        // Available RAM
+	PublicKey     string  `json:"public_key"`    // Agent public key (hex)
 }
 
 func (s *DeviceService) RegisterDevice(ctx context.Context, req RegisterDeviceRequest) error {
@@ -48,8 +49,8 @@ func (s *DeviceService) RegisterDevice(ctx context.Context, req RegisterDeviceRe
 			device_id, wallet_address, device_type, 
 			reputation, total_tasks, successful_tasks, 
 			failed_tasks, last_seen_at, is_active,
-			cpu_score, ram_gb, orchestration_score
-		) VALUES ($1, $2, $3, 0.5, 0, 0, 0, NOW(), true, $4, $5, $6)
+			cpu_score, ram_gb, orchestration_score, public_key
+		) VALUES ($1, $2, $3, 0.5, 0, 0, 0, NOW(), true, $4, $5, $6, $7)
 		ON CONFLICT (device_id) 
 		DO UPDATE SET 
 			wallet_address = $2,
@@ -58,8 +59,9 @@ func (s *DeviceService) RegisterDevice(ctx context.Context, req RegisterDeviceRe
 			is_active = true,
 			cpu_score = $4,
 			ram_gb = $5,
-			orchestration_score = (devices.reputation * 1000) + ($6) -- Update score dynamically
-	`, req.DeviceID, req.WalletAddress, req.DeviceType, req.CPUScore, req.RAMGB, orchScore)
+			orchestration_score = (devices.reputation * 1000) + ($6),
+			public_key = $7
+	`, req.DeviceID, req.WalletAddress, req.DeviceType, req.CPUScore, req.RAMGB, orchScore, req.PublicKey)
 	return err
 }
 

@@ -191,7 +191,7 @@ export default function NetworkMapPage() {
                 <div className="max-w-7xl mx-auto flex justify-between items-center text-xs text-gray-400 font-mono">
                     <div>SYSTEM: OPERATIONAL</div>
                     <div className="flex gap-4">
-                        <span>GENESIS_TASK_ID: GENESIS_MAP</span>
+                        <span>NETWORK: GSTD_CORE_GRID</span>
                         <span>PROTOCOL: v1.0.2</span>
                         <span className="text-cyan-500">ENCRYPTION: AES-256</span>
                     </div>

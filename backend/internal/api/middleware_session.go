@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
+	"distributed-computing-platform/internal/config"
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 )
@@ -49,10 +51,29 @@ func ValidateSession(redisClient *redis.Client, sessionTTL ...time.Duration) gin
 		}
 
 		if sessionToken == "" {
+			// 4. Try Master API Key (for autonomous bots)
+			apiKey := c.GetHeader("X-GSTD-API-KEY")
+			authHeader := c.GetHeader("Authorization")
+			if strings.HasPrefix(authHeader, "Bearer ") {
+				apiKey = strings.TrimPrefix(authHeader, "Bearer ")
+			}
+
+			masterKey := config.GetConfig().Server.AdminAPIKey
+			if apiKey != "" && apiKey == masterKey {
+				// Use a dedicated wallet for the Master Key or extract from header
+				targetWallet := c.GetHeader("X-GSTD-Target-Wallet")
+				if targetWallet == "" {
+					targetWallet = "EQ_GENESIS_BOOTSTRAP_WALLET" // Default
+				}
+				c.Set("wallet_address", targetWallet)
+				c.Next()
+				return
+			}
+
 			log.Printf("❌ ValidateSession: No session token provided for path: %s", c.Request.URL.Path)
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"error": "session token required",
-				"message": "Please login to access this resource",
+				"message": "Please login or provide a valid API Key (Bearer token) to access this resource",
 			})
 			c.Abort()
 			return

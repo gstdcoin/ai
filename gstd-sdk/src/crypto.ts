@@ -4,6 +4,12 @@
  */
 
 import { sha256 } from '@ton/crypto';
+import { sign } from '@ton/crypto'; // Assuming @ton/crypto exports sign/verify for ed25519 or we use another library
+// Let's verify what @ton/crypto exports. It usually exports `sign` which is Ed25519.
+// If not, we might need `nacl` or similar. But `sign` is standard in @ton/crypto.
+// Wait, checking package.json... @ton/crypto 3.2.0.
+// It has `sign(message: Buffer, secretKey: Buffer): Buffer`.
+// And `keyPairFromSeed`.
 
 // Detect environment
 const isNode = typeof process !== 'undefined' && process.versions?.node;
@@ -33,9 +39,9 @@ function getCrypto(): any {
  * Generate a task encryption key from taskID and requester address
  * Matches backend: SHA-256(taskID + requesterAddress)
  */
-export function generateTaskKey(taskID: string, requesterAddress: string): Uint8Array {
+export async function generateTaskKey(taskID: string, requesterAddress: string): Promise<Uint8Array> {
   const seed = taskID + requesterAddress;
-  return sha256(seed);
+  return sha256(seed as any);
 }
 
 /**
@@ -50,7 +56,7 @@ export async function encryptTaskData(
   const data = typeof plaintext === 'string' ? new TextEncoder().encode(plaintext) : plaintext;
 
   // Derive AES key from provided key (SHA-256 hash)
-  const keyHash = sha256(key);
+  const keyHash = await sha256(key as any);
   const aesKey = keyHash.slice(0, 32); // AES-256 requires 32 bytes
 
   const cryptoApi = getCrypto();
@@ -115,7 +121,7 @@ export async function decryptTaskData(
   const nonceBytes = base64ToBuffer(nonce);
 
   // Derive AES key
-  const keyHash = sha256(key);
+  const keyHash = await sha256(key as any);
   const aesKey = keyHash.slice(0, 32);
 
   const cryptoApi = getCrypto();
@@ -160,9 +166,9 @@ export async function decryptTaskData(
 /**
  * Calculate SHA-256 hash of input data
  */
-export function calculateHash(data: Uint8Array | string): string {
+export async function calculateHash(data: Uint8Array | string): Promise<string> {
   const input = typeof data === 'string' ? new TextEncoder().encode(data) : data;
-  const hash = sha256(input);
+  const hash = await sha256(input as any);
   return Array.from(hash)
     .map(b => b.toString(16).padStart(2, '0'))
     .join('');
@@ -191,3 +197,56 @@ function base64ToBuffer(base64: string): Uint8Array {
   return Uint8Array.from(binary, c => c.charCodeAt(0));
 }
 
+
+/**
+ * Sign data using Ed25519 (for result verification)
+ * @param message Data to sign (string or Uint8Array)
+ * @param privateKey Private key (Uint8Array or hex string)
+ * @returns Hex-encoded signature
+ */
+export async function signData(message: string | Uint8Array, privateKey: string | Uint8Array): Promise<string> {
+  // Convert message to buffer
+  const msgBuffer = typeof message === 'string'
+    ? Buffer.from(message, 'utf-8')
+    : Buffer.from(message);
+
+  // Convert private key to buffer
+  let keyBuffer: Buffer;
+  if (typeof privateKey === 'string') {
+    keyBuffer = Buffer.from(privateKey, 'hex');
+  } else {
+    keyBuffer = Buffer.from(privateKey);
+  }
+
+  // Use @ton/crypto sign
+  // Dynamic import to avoid issues in some environments? No, we used named import.
+  // We need to make sure we import `sign` from @ton/crypto.
+  // If named import fails during build, we will fix it.
+  const signature = await import('@ton/crypto').then(m => m.sign(msgBuffer, keyBuffer));
+  return signature.toString('hex');
+}
+
+/**
+ * Generate a new random keypair (for agents)
+ * @returns { publicKey: string, privateKey: string } (hex encoded)
+ */
+export async function generateKeyPair(): Promise<{ publicKey: string; privateKey: string }> {
+  // Use @ton/crypto
+  const crypto = await import('@ton/crypto');
+  const seed = await getRandomBytes(32);
+  const keypair = await crypto.keyPairFromSeed(seed);
+  return {
+    publicKey: keypair.publicKey.toString('hex'),
+    privateKey: keypair.secretKey.toString('hex')
+  };
+}
+
+async function getRandomBytes(length: number): Promise<Buffer> {
+  if (nodeCrypto) {
+    return nodeCrypto.randomBytes(length);
+  }
+  const cryptoApi = getCrypto();
+  const bytes = new Uint8Array(length);
+  cryptoApi.getRandomValues(bytes);
+  return Buffer.from(bytes);
+}
