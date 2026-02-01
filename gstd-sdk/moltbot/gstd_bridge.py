@@ -562,6 +562,49 @@ class GSTDBridge:
     # HIGH-LEVEL API - One-shot execution
     # =========================================================================
     
+    def should_offload(self, complexity_score: int, gpu_required: bool = False) -> bool:
+        """
+        Hybrid Intelligence: Decide whether to execute globally (GSTD) or locally.
+        
+        Args:
+            complexity_score: 1-10 rating of task difficulty
+            gpu_required: Whether GPU is absolutely required
+            
+        Returns:
+            True (Offload to GSTD) or False (Process Locally)
+        """
+        # 1. Critical complexity -> Always offload
+        if complexity_score >= 8:
+            logger.info("🧠 Task complexity high (8+), offloading to GSTD Grid")
+            return True
+            
+        # 2. GPU Requirement Check
+        # If we need GPU but don't have it locally (mock check), offload
+        # In real MoltBot, check torch.cuda.is_available()
+        if gpu_required:
+            # Assume mobile device doesn't have powerful GPU for inference
+            return True
+            
+        # 3. Resource Awareness (Battery/CPU)
+        try:
+            import psutil
+            cpu = psutil.cpu_percent()
+            ram = psutil.virtual_memory().percent
+            
+            if cpu > 75.0 or ram > 85.0:
+                logger.info(f"🔋 Local resources constrained (CPU {cpu}%), conserving battery -> Offload")
+                return True
+        except ImportError:
+            pass # No psutil, ignore resource check
+            
+        # 4. Low complexity -> Keep local
+        if complexity_score <= 3:
+            logger.info("⚡ Task simple, processing on-device edge compute")
+            return False
+            
+        # Default: Offload mid-range tasks to ensure best experience
+        return True
+
     async def execute(
         self,
         task_type: str,
@@ -569,34 +612,26 @@ class GSTDBridge:
         capabilities: List[str] = None,
         max_budget_gstd: float = 10.0,
         timeout_seconds: int = 300,
-        wait_for_result: bool = True
-    ) -> BridgeTask:
+        wait_for_result: bool = True,
+        complexity: int = 5,
+        smart_offload: bool = False
+    ) -> Optional[BridgeTask]:
         """
-        Execute a task end-to-end.
-        
-        This is the simplest API - just call this with your task and get results.
-        Handles worker finding, liquidity, submission, and result waiting automatically.
-        
-        Example:
-            result = await bridge.execute(
-                task_type="inference",
-                payload={"prompt": "Hello AI!"},
-                max_budget_gstd=5.0
-            )
-            print(result.result_data)
+        Execute a task with optional Hybrid Intelligence.
         
         Args:
-            task_type: Type of task
-            payload: Task payload
-            capabilities: Required capabilities
-            max_budget_gstd: Maximum budget
-            timeout_seconds: Timeout
-            wait_for_result: Whether to wait for completion
-            
-        Returns:
-            Completed task with results
+            complexity: estimated complexity (1-10) for decision engine
+            smart_offload: if True, will check should_offload() before submitting.
+                           If returns False (Run Local), this method returns None (caller handles local).
         """
-        # Submit task
+        # Hybrid Intelligence Check
+        if smart_offload:
+            gpu_needed = capabilities and "gpu" in [c.lower() for c in capabilities]
+            if not self.should_offload(complexity, gpu_needed):
+                logger.info("🏠 SVM Decision: Execute Locally")
+                return None # Signal to caller to run locally
+        
+        # Submit task to grid
         task = await self.submit_task(
             task_type=task_type,
             payload=payload,
@@ -615,30 +650,37 @@ class GSTDBridge:
     # CONVENIENCE METHODS
     # =========================================================================
     
-    async def render(self, prompt: str, **kwargs) -> BridgeTask:
+    async def render(self, prompt: str, **kwargs) -> Optional[BridgeTask]:
         """Convenience method for render tasks"""
         return await self.execute(
             task_type="render",
             payload={"prompt": prompt, **kwargs},
             capabilities=["gpu"],
+            complexity=7, # Rendering is usually heavy
+            smart_offload=kwargs.get("smart_offload", True),
             **kwargs
         )
     
-    async def inference(self, prompt: str, model: str = "llama3", **kwargs) -> BridgeTask:
+    async def inference(self, prompt: str, model: str = "llama3", **kwargs) -> Optional[BridgeTask]:
         """Convenience method for inference tasks"""
+        complexity = 9 if "70b" in model else 5 # 70b -> high complexity
         return await self.execute(
             task_type="inference",
             payload={"prompt": prompt, "model": model, **kwargs},
             capabilities=["gpu", "inference"],
+            complexity=complexity,
+            smart_offload=kwargs.get("smart_offload", True),
             **kwargs
         )
     
-    async def compute(self, code: str, runtime: str = "python", **kwargs) -> BridgeTask:
+    async def compute(self, code: str, runtime: str = "python", **kwargs) -> Optional[BridgeTask]:
         """Convenience method for compute tasks"""
         return await self.execute(
             task_type="compute",
             payload={"code": code, "runtime": runtime, **kwargs},
             capabilities=["docker"],
+            complexity=4,
+            smart_offload=kwargs.get("smart_offload", True),
             **kwargs
         )
 

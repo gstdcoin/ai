@@ -318,11 +318,11 @@ func (s *SovereignBridgeService) countCapabilityMatch(have, need []string) int {
 	return count
 }
 
-// calculateWorkerPrice determines GSTD price per unit based on capabilities
+// calculateWorkerPrice determines GSTD price per unit based on capabilities and NETWORK DEMAND
 func (s *SovereignBridgeService) calculateWorkerPrice(caps []string, reputation float64) float64 {
 	basePrice := 0.1 // Base price per compute unit
 
-	// GPU premium
+	// 1. Capability Premium
 	for _, c := range caps {
 		switch strings.ToLower(c) {
 		case "gpu":
@@ -334,12 +334,45 @@ func (s *SovereignBridgeService) calculateWorkerPrice(caps []string, reputation 
 		}
 	}
 
-	// Reputation discount
+	// 2. Reputation Discount
 	if reputation > 0.9 {
-		basePrice *= 0.9 // 10% discount for top workers
+		basePrice *= 0.9 // 10% discount for trusted workers
 	}
 
+	// 3. Network Demand Multiplier (Autonomous Pricing)
+	// If Demand (Pending Tasks) > Supply (Active Workers), price increases
+	demandMultiplier := s.getDemandMultiplier()
+	basePrice *= demandMultiplier
+
 	return basePrice
+}
+
+// getDemandMultiplier calculates price multiplier based on network load
+func (s *SovereignBridgeService) getDemandMultiplier() float64 {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	// Get active workers (cached in Redis usually provided by background jobs, but for now quick DB/Redis check)
+	// We use a simplified check here to avoid heavy DB load in pricing loop
+	// Ideal implementation: use cached "network_temperature"
+	
+	val, err := s.redis.Get(ctx, "bridge:network_stats:temperature").Float64()
+	if err == nil && val > 0 {
+		// Temperature ranges 0.0 to 10.0+
+		// 0.5 (cool) -> x1.0
+		// 1.0 (balanced) -> x1.0
+		// 2.0 (high load) -> x1.5
+		// 5.0 (congestion) -> x3.0
+		if val < 1.0 {
+			return 1.0
+		}
+		if val > 5.0 {
+			return 3.0
+		}
+		return 1.0 + (val-1.0)*0.5
+	}
+
+	return 1.0 // Default neutral
 }
 
 // createReservation creates a temporary worker reservation
