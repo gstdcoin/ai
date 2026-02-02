@@ -302,7 +302,7 @@ func SetupRoutes(
 		SetupBridgeRoutes(v1, sovereignBridge)
 		
 		// Knowledge / Hive Memory
-		SetupKnowledgeRoutes(v1, knowledgeService)
+		SetupKnowledgeRoutes(protected, knowledgeService)
 	}
 
 	// WebSocket endpoint
