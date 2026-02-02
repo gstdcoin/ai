@@ -152,7 +152,9 @@ func getPublicNodes(service *services.NodeService) gin.HandlerFunc {
 func UpdateHeartbeat(service *services.NodeService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			WalletAddress string `json:"wallet" binding:"required"`
+			WalletAddress string `json:"wallet"`  // Frontend uses this
+			NodeID        string `json:"node_id"` // A2A SDK uses this
+			Status        string `json:"status"`  // A2A SDK uses this
 			Battery       int    `json:"battery"`
 			Signal        int    `json:"signal"`
 		}
@@ -162,7 +164,17 @@ func UpdateHeartbeat(service *services.NodeService) gin.HandlerFunc {
 			return
 		}
 
-		err := service.UpdateHealthStats(c.Request.Context(), req.WalletAddress, req.Battery, req.Signal)
+		// Normalize identifier
+		identifier := req.WalletAddress
+		if identifier == "" {
+			identifier = req.NodeID
+		}
+		if identifier == "" {
+			c.JSON(400, gin.H{"error": "wallet or node_id required"})
+			return
+		}
+
+		err := service.UpdateHealthStats(c.Request.Context(), identifier, req.Battery, req.Signal)
 		if err != nil {
 			c.JSON(500, gin.H{"error": err.Error()})
 			return

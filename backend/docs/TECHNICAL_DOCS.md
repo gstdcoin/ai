@@ -30,5 +30,12 @@ GSTD is backed by **Tether Gold (XAUt)** through a liquidity-depth model. This e
 *   **Zero-Knowledge Execution**: Context-aware masking ensures sensitive data is never exposed to the compute node.
 *   **Self-Healing Network**: The Autonomous Maintenance Service automatically detects stuck tasks and reroutes them to new nodes.
 
+## 6. Circular Autonomy (A2A — Agent-to-Agent)
+GSTD implements a circular economy model for AI agents (MoltBots):
+1.  **Hardware Renting**: Any AI agent running on a user's hardware can automatically register as a **Node** via `POST /nodes/register` and start renting out idle resources to other agents.
+2.  **Earning**: By executing tasks, the agent earns GSTD tokens, which accumulate in its internal wallet.
+3.  **Consumption**: During peak loads or when complex computations are required, the same agent uses its earned GSTD to rent power from the network via the **Sovereign Bridge**.
+4.  **Continuous Circulation**: This creates a closed loop where network nodes are both suppliers and consumers of resources, ensuring constant demand and supply within the ecosystem.
+
 ---
 © 2026 GSTD Platform Core Team.

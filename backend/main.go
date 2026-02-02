@@ -429,6 +429,10 @@ func main() {
 		
 		c.Next()
 	})
+	// A2A Knowledge Service (The Hive Memory)
+	knowledgeService := services.NewKnowledgeService(db)
+	log.Println("✅ Knowledge Service (Hive Memory) active")
+
 	api.SetupRoutes(
 		router,
 		taskService,
@@ -462,6 +466,7 @@ func main() {
 		boincService,
 		maintenanceService,
 		sovereignBridge,
+		knowledgeService,
 	)
 
 	// Setup Swagger documentation

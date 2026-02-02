@@ -2383,3 +2383,473 @@ redis: 2026/02/01 10:47:54 pool.go:426: redis: connection pool: failed to dial a
 ⚠️  No GEO Service activity or initialization found in logs.
 
 ---
+## 🛡️ GSTD Security Audit - 2026-02-01 19:00:01
+
+### 💎 TON Service Check
+2026/02/01 18:56:11 Migration v10_failed_payouts.sql already applied, skipping
+2026/02/01 18:56:11 Migration v33_recreate_failed_payouts.sql already applied, skipping
+2026/02/01 18:56:11 Warning: Failed to run migrations: failed to execute migration v36_final_optimization.sql: migration SQL error: pq: column "labor_compensation_ton" does not exist (42703)
+2026/02/01 18:56:11 ⚠️  Failed to get GSTD jetton wallet address (using 0): failed to get jetton wallet (HTTP 429): {"error":"rate limit: free tier"}
+2026/02/01 18:56:11 ⚠️  Failed to get XAUt jetton wallet address (using 0): failed to get jetton wallet (HTTP 429): {"error":"rate limit: free tier"}
+
+### 🌍 GEO Service Check
+✅ GEO Service is running correctly (found 2 log entries).
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-01 20:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-01 21:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-01 22:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-01 23:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-02 00:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-02 01:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-02 02:00:02
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-02 03:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-02 04:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-02 05:00:01
+
+### 💎 TON Service Check
+2026/02/02 04:02:05 Health check: Database ping failed: driver: bad connection
+redis: 2026/02/02 04:02:06 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup redis on 127.0.0.11:53: no such host
+redis: 2026/02/02 04:02:07 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup redis on 127.0.0.11:53: no such host
+redis: 2026/02/02 04:02:08 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup redis on 127.0.0.11:53: no such host
+redis: 2026/02/02 04:02:09 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup redis on 127.0.0.11:53: no such host
+redis: 2026/02/02 04:02:10 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup redis on 127.0.0.11:53: no such host
+redis: 2026/02/02 04:02:10 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup redis on 127.0.0.11:53: no such host
+2026/02/02 04:02:11 Warning: failed to cleanup expired PoW challenges: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 04:02:11 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+redis: 2026/02/02 04:02:11 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup redis on 127.0.0.11:53: no such host
+redis: 2026/02/02 04:02:12 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup redis on 127.0.0.11:53: no such host
+2026/02/02 04:02:41 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 04:02:42 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+redis: 2026/02/02 04:02:43 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup redis on 127.0.0.11:53: no such host
+redis: 2026/02/02 04:02:44 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup redis on 127.0.0.11:53: no such host
+redis: 2026/02/02 04:02:45 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup redis on 127.0.0.11:53: no such host
+redis: 2026/02/02 04:02:45 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup redis on 127.0.0.11:53: no such host
+redis: 2026/02/02 04:02:46 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup redis on 127.0.0.11:53: no such host
+redis: 2026/02/02 04:02:47 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup redis on 127.0.0.11:53: no such host
+redis: 2026/02/02 04:02:48 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup redis on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-02 06:00:01
+
+### 💎 TON Service Check
+2026/02/02 05:00:11 Warning: failed to cleanup expired PoW challenges: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 05:00:11 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 05:00:13 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 05:00:21 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 05:00:41 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 05:00:44 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 05:00:51 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 05:01:11 Warning: failed to cleanup expired PoW challenges: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 05:01:11 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 05:01:22 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 05:01:25 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 05:01:41 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 05:01:52 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 05:01:57 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 05:02:11 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 05:02:11 Warning: failed to cleanup expired PoW challenges: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 05:02:22 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 05:02:38 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 05:02:41 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 05:02:53 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-02 07:00:01
+
+### 💎 TON Service Check
+2026/02/02 06:00:01 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 06:00:06 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 06:00:11 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 06:00:11 Warning: failed to cleanup expired PoW challenges: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 06:00:25 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 06:00:36 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 06:00:41 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 06:01:06 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 06:01:07 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 06:01:11 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 06:01:11 Warning: failed to cleanup expired PoW challenges: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 06:01:37 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 06:01:41 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 06:01:48 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 06:02:07 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 06:02:11 Warning: failed to cleanup expired PoW challenges: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 06:02:11 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 06:02:29 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 06:02:38 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 06:02:41 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-02 08:00:01
+
+### 💎 TON Service Check
+2026/02/02 07:00:01 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 07:00:11 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 07:00:11 Warning: failed to cleanup expired PoW challenges: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 07:00:22 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 07:00:29 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 07:00:41 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 07:00:53 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 07:01:11 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 07:01:11 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 07:01:11 Warning: failed to cleanup expired PoW challenges: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 07:01:23 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 07:01:41 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 07:01:52 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 07:01:53 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 07:02:11 Warning: failed to cleanup expired PoW challenges: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 07:02:11 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 07:02:24 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 07:02:34 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 07:02:41 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 07:02:54 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-02 09:00:01
+
+### 💎 TON Service Check
+2026/02/02 08:00:02 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 08:00:09 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 08:00:11 Warning: failed to cleanup expired PoW challenges: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 08:00:11 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 08:00:23 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 08:00:39 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 08:00:41 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 08:01:05 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 08:01:11 Warning: failed to cleanup expired PoW challenges: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 08:01:11 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 08:01:14 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 08:01:41 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 08:01:44 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 08:01:46 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 08:02:11 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 08:02:11 Warning: failed to cleanup expired PoW challenges: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 08:02:14 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 08:02:28 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 08:02:41 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 08:02:45 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-02 10:00:01
+
+### 💎 TON Service Check
+2026/02/02 09:00:03 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 09:00:11 Warning: failed to cleanup expired PoW challenges: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 09:00:11 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 09:00:21 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 09:00:33 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 09:00:41 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 09:01:00 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 09:01:04 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 09:01:11 Warning: failed to cleanup expired PoW challenges: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 09:01:11 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 09:01:33 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 09:01:34 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 09:01:41 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 09:02:05 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 09:02:11 Warning: failed to cleanup expired PoW challenges: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 09:02:11 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 09:02:13 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 09:02:35 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 09:02:41 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 09:02:54 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-02 11:00:01
+
+### 💎 TON Service Check
+2026/02/02 10:00:04 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 10:00:11 Warning: failed to cleanup expired PoW challenges: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 10:00:11 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 10:00:20 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 10:00:35 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 10:00:41 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 10:00:51 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 10:01:11 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 10:01:11 Warning: failed to cleanup expired PoW challenges: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 10:01:17 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 10:01:21 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 10:01:41 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 10:01:51 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 10:01:58 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 10:02:11 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 10:02:11 Warning: failed to cleanup expired PoW challenges: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 10:02:22 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 10:02:40 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 10:02:41 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 10:02:52 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-02 12:00:01
+
+### 💎 TON Service Check
+2026/02/02 11:00:06 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 11:00:11 Warning: failed to cleanup expired PoW challenges: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 11:00:11 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 11:00:20 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 11:00:36 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 11:00:41 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 11:00:51 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 11:01:06 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 11:01:11 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 11:01:11 Warning: failed to cleanup expired PoW challenges: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 11:01:32 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 11:01:37 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 11:01:41 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 11:02:07 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 11:02:11 Warning: failed to cleanup expired PoW challenges: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 11:02:11 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 11:02:14 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 11:02:38 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 11:02:41 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 11:02:56 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-02 13:00:01
+
+### 💎 TON Service Check
+2026/02/02 12:00:11 Warning: failed to cleanup expired PoW challenges: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 12:00:11 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 12:00:22 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 12:00:27 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 12:00:41 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 12:00:56 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 12:00:57 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 12:01:11 Warning: failed to cleanup expired PoW challenges: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 12:01:11 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 12:01:27 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 12:01:37 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 12:01:41 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 12:01:58 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 12:02:21 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: read udp 127.0.0.1:49377->127.0.0.11:53: i/o timeout
+2026/02/02 12:02:21 Warning: failed to cleanup expired PoW challenges: dial tcp: lookup postgres on 127.0.0.11:53: read udp 127.0.0.1:49377->127.0.0.11:53: i/o timeout
+2026/02/02 12:02:31 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: read udp 127.0.0.1:34876->127.0.0.11:53: i/o timeout
+2026/02/02 12:02:31 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: read udp 127.0.0.1:34876->127.0.0.11:53: i/o timeout
+2026/02/02 12:02:31 Health check: Failed to get contract balance: context canceled
+2026/02/02 12:02:41 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: read udp 127.0.0.1:40133->127.0.0.11:53: i/o timeout
+2026/02/02 12:03:11 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: read udp 127.0.0.1:56560->127.0.0.11:53: i/o timeout
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-02 14:00:01
+
+### 💎 TON Service Check
+2026/02/02 13:00:11 Warning: failed to cleanup expired PoW challenges: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 13:00:11 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 13:00:11 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 13:00:22 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 13:00:41 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 13:00:41 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 13:00:59 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 13:01:11 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 13:01:11 Warning: failed to cleanup expired PoW challenges: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 13:01:12 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 13:01:30 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 13:01:41 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 13:01:42 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 13:02:11 Warning: failed to cleanup expired PoW challenges: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 13:02:11 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 13:02:11 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 13:02:13 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 13:02:41 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 13:02:43 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 13:02:53 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-02 15:00:01
+
+### 💎 TON Service Check
+2026/02/02 14:00:03 Failed to connect to database (attempt 1/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 14:00:08 Failed to connect to database (attempt 2/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 14:00:13 Failed to connect to database (attempt 3/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 14:00:18 Failed to connect to database (attempt 4/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 14:00:23 Failed to connect to database (attempt 5/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 14:00:23 Failed to connect to database after retries:failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 14:00:24 Failed to connect to database (attempt 1/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 14:00:29 Failed to connect to database (attempt 2/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 14:00:34 Failed to connect to database (attempt 3/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 14:00:39 Failed to connect to database (attempt 4/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 14:00:44 Failed to connect to database (attempt 5/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 14:00:44 Failed to connect to database after retries:failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 14:00:46 Failed to connect to database (attempt 1/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 14:00:51 Failed to connect to database (attempt 2/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 14:00:56 Failed to connect to database (attempt 3/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 14:01:01 Failed to connect to database (attempt 4/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 14:01:06 Failed to connect to database (attempt 5/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 14:01:06 Failed to connect to database after retries:failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 14:01:07 Failed to connect to database (attempt 1/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 14:01:12 Failed to connect to database (attempt 2/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-02 16:00:01
+
+### 💎 TON Service Check
+2026/02/02 15:00:05 Failed to connect to database (attempt 5/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: read udp 127.0.0.1:43073->127.0.0.11:53: i/o timeout
+2026/02/02 15:00:05 Failed to connect to database after retries:failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: read udp 127.0.0.1:43073->127.0.0.11:53: i/o timeout
+2026/02/02 15:00:19 Failed to connect to database (attempt 1/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: read udp 127.0.0.1:49869->127.0.0.11:53: i/o timeout
+2026/02/02 15:00:32 Failed to connect to database (attempt 1/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: read udp 127.0.0.1:47813->127.0.0.11:53: i/o timeout
+2026/02/02 15:00:47 Failed to connect to database (attempt 2/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: read udp 127.0.0.1:33316->127.0.0.11:53: i/o timeout
+2026/02/02 15:01:02 Failed to connect to database (attempt 3/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: read udp 127.0.0.1:42444->127.0.0.11:53: i/o timeout
+2026/02/02 15:01:17 Failed to connect to database (attempt 4/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: read udp 127.0.0.1:37779->127.0.0.11:53: i/o timeout
+2026/02/02 15:01:32 Failed to connect to database (attempt 5/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: read udp 127.0.0.1:34361->127.0.0.11:53: i/o timeout
+2026/02/02 15:01:32 Failed to connect to database after retries:failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: read udp 127.0.0.1:34361->127.0.0.11:53: i/o timeout
+2026/02/02 15:01:46 Failed to connect to database (attempt 1/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: read udp 127.0.0.1:34047->127.0.0.11:53: i/o timeout
+2026/02/02 15:02:01 Failed to connect to database (attempt 2/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: read udp 127.0.0.1:39177->127.0.0.11:53: i/o timeout
+2026/02/02 15:02:16 Failed to connect to database (attempt 3/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: read udp 127.0.0.1:32961->127.0.0.11:53: i/o timeout
+2026/02/02 15:02:31 Failed to connect to database (attempt 4/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: read udp 127.0.0.1:49632->127.0.0.11:53: i/o timeout
+2026/02/02 15:02:44 Failed to connect to database (attempt 5/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 15:02:44 Failed to connect to database after retries:failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 15:02:46 Failed to connect to database (attempt 1/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 15:02:51 Failed to connect to database (attempt 2/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 15:02:56 Failed to connect to database (attempt 3/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 15:03:01 Failed to connect to database (attempt 4/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 15:03:06 Failed to connect to database (attempt 5/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-02 17:00:01
+
+### 💎 TON Service Check
+2026/02/02 16:00:03 Failed to connect to database (attempt 1/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 16:00:08 Failed to connect to database (attempt 2/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 16:00:13 Failed to connect to database (attempt 3/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 16:00:18 Failed to connect to database (attempt 4/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 16:00:23 Failed to connect to database (attempt 5/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 16:00:23 Failed to connect to database after retries:failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 16:00:25 Failed to connect to database (attempt 1/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 16:00:30 Failed to connect to database (attempt 2/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 16:00:35 Failed to connect to database (attempt 3/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 16:00:40 Failed to connect to database (attempt 4/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 16:00:45 Failed to connect to database (attempt 5/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 16:00:45 Failed to connect to database after retries:failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 16:00:47 Failed to connect to database (attempt 1/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 16:00:52 Failed to connect to database (attempt 2/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 16:00:57 Failed to connect to database (attempt 3/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 16:01:02 Failed to connect to database (attempt 4/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 16:01:07 Failed to connect to database (attempt 5/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 16:01:07 Failed to connect to database after retries:failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 16:01:10 Failed to connect to database (attempt 1/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/02 16:01:15 Failed to connect to database (attempt 2/5): failed to ping database: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+✅ GEO Service is running correctly (found 2 log entries).
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-02 18:00:01
+
+### 💎 TON Service Check
+2026/02/02 17:13:19 Migration v10_failed_payouts.sql already applied, skipping
+2026/02/02 17:13:19 Migration v33_recreate_failed_payouts.sql already applied, skipping
+2026/02/02 17:13:19 Warning: Failed to run migrations: failed to execute migration v36_final_optimization.sql: migration SQL error: pq: column "labor_compensation_ton" does not exist (42703)
+2026/02/02 17:13:19 PaymentWatcher: Error fetching transfers: TON API error (429): {"error":"rate limit: free tier"}
+2026/02/02 17:13:19 ❌ PoolMonitor: Failed to get status: API returned status 429
+
+### 🌍 GEO Service Check
+✅ GEO Service is running correctly (found 2 log entries).
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-02 19:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
