@@ -50,6 +50,7 @@ func SetupRoutes(
 	boincService *services.BoincService,
 	maintenanceService *services.MaintenanceService,
 	sovereignBridge *services.SovereignBridgeService,
+	knowledgeService *services.KnowledgeService,
 ) {
 	log.Printf("🔧 SetupRoutes: Starting route setup, redisClient type: %T", redisClient)
 	
@@ -167,6 +168,7 @@ func SetupRoutes(
 			c.Status(200)
 		})
 
+
 		// Users - login is public
 		tonConnectValidator := services.NewTonConnectValidator(tonService)
 		if errorLogger != nil {
@@ -179,6 +181,12 @@ func SetupRoutes(
 			}
 		}
 		v1.POST("/users/login", loginUser(userService, tonConnectValidator, redisClientForLogin))
+
+		// Market Operations (Public) - Frictionless for Agents
+		marketHandler := NewMarketHandler(db.(*sql.DB))
+		v1.GET("/market/quote", marketHandler.GetSwapQuote)
+		// Swap preparation still recommended to be public so users can see what they are signing before login
+		v1.POST("/market/swap", marketHandler.PrepareSwapTransaction) 
 
 		// Protected endpoints (require session)
 		var sessionMiddleware gin.HandlerFunc
@@ -267,10 +275,6 @@ func SetupRoutes(
 		// Task Payment (protected)
 		protected.POST("/tasks/create", createTaskWithPayment(taskPaymentService, taskRateLimiter))
 
-		// Market Operations (protected) - Helps agents interact with DEX
-		marketHandler := NewMarketHandler(db.(*sql.DB))
-		protected.GET("/market/quote", marketHandler.GetSwapQuote)
-		protected.POST("/market/swap", marketHandler.PrepareSwapTransaction)
 
 		// Worker endpoints (protected)
 		protected.GET("/tasks/worker/pending", getWorkerPendingTasks(taskPaymentService))
@@ -296,6 +300,9 @@ func SetupRoutes(
 
 		// Sovereign Compute Bridge (MoltBot integration)
 		SetupBridgeRoutes(v1, sovereignBridge)
+		
+		// Knowledge / Hive Memory
+		SetupKnowledgeRoutes(v1, knowledgeService)
 	}
 
 	// WebSocket endpoint

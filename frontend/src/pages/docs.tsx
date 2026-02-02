@@ -50,6 +50,12 @@ export default function Docs({ content, isCalculator }: DocsProps) {
                     >
                         {router.locale === 'ru' ? 'Технологии' : 'Technical'}
                     </button>
+                    <button
+                        onClick={() => switchDoc('agents')}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${type === 'agents' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-gray-400 hover:text-white'}`}
+                    >
+                        {router.locale === 'ru' ? 'Агенты (A2A)' : 'Agents (A2A)'}
+                    </button>
                 </div>
             </div>
 
@@ -80,6 +86,8 @@ export const getServerSideProps: any = async ({ locale, query }: any) => {
 
     if (type === 'technical') {
         filename = locale === 'ru' ? 'TECHNICAL_DOCS_RU.md' : 'TECHNICAL_DOCS.md';
+    } else if (type === 'agents') {
+        filename = locale === 'ru' ? 'AGENTS_DOCS_RU.md' : 'AGENTS_DOCS.md';
     } else {
         filename = locale === 'ru' ? 'INVESTMENT_COMPARISON_RU.md' : 'INVESTMENT_COMPARISON.md';
     }

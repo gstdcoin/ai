@@ -21,3 +21,12 @@ cloud_brain:
   primary_model: gemini-2.0-flash-exp
   failover_model: qwen-72b-instruct
   cooldown_period: 300s # 5 minutes cooldown after error
+
+# Sovereign Supply Mode (Agent-as-a-Node)
+sovereign_supply:
+  enabled: true
+  auto_register: true      # Automatically register this agent as a computing node
+  rent_idle_cycles: true   # Rent out hardware when not performing primary tasks
+  max_cpu_usage: 60        # Percentage
+  min_battery_level: 20    # Percentage (for laptop/mobile agents)
+  preferred_task_types: ["inference", "validation", "boinc"]

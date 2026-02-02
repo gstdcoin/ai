@@ -1,0 +1,15 @@
+{
+    "mcpServers": {
+        "gstd-bridge": {
+            "command": "node",
+            "args": [
+                "/home/ubuntu/autonomy/mcp-server/build/index.js"
+            ],
+            "env": {
+                "GSTD_API_URL": "https://app.gstdtoken.com/api",
+                "GSTD_WALLET": "YOUR_WALLET_HERE"
+            },
+            "description": "GSTD Sovereign Compute Bridge — Access decentralized GPU and worker grid."
+        }
+    }
+}
