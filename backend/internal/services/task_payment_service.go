@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -117,6 +118,7 @@ func (s *TaskPaymentService) CreateTask(ctx context.Context, creatorWallet strin
 	}
 
 	if err != nil {
+		log.Printf("❌ Task creation failed in DB: %v", err)
 		return nil, fmt.Errorf("failed to create task: %w", err)
 	}
 
