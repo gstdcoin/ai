@@ -10,7 +10,7 @@ import { ActivityFeed } from '../components/dashboard/ActivityFeed';
 import { NetworkMap } from '../components/dashboard/NetworkMap';
 import { useWalletStore } from '../store/walletStore';
 import { GSTD_CONTRACT_ADDRESS, API_BASE_URL } from '../lib/config';
-import { Zap, Shield, Globe, ArrowRight, Users, Activity, Coins, Code, BookOpen, Terminal, Server, Cpu, Download, Copy, Check, Play, DollarSign, Monitor, Layers, Radio, Pulse, Workflow, Sparkles, MapPin } from 'lucide-react';
+import { Zap, Shield, Globe, ArrowRight, Users, Activity, Coins, Code, BookOpen, Terminal, Server, Cpu, Download, Copy, Check, Play, DollarSign, Monitor, Layers, Radio, Workflow, Sparkles, MapPin } from 'lucide-react';
 
 interface NetworkStats {
   active_workers: number;
@@ -215,16 +215,16 @@ export default function Home() {
               </div>
 
               {/* Hero Title */}
-              <h1 className="text-6xl sm:text-7xl lg:text-8xl font-black mb-8 tracking-tighter leading-[0.95] perspective-1000">
-                <span className="block text-white opacity-95 drop-shadow-[0_0_30px_rgba(255,255,255,0.1)]">{t('hero_line1') || 'Distribute Your'}</span>
+              <h1 className="text-6xl sm:text-7xl lg:text-9xl font-black mb-8 tracking-tighter leading-[0.9] perspective-1000">
+                <span className="block text-white opacity-95 drop-shadow-[0_0_30px_rgba(255,255,255,0.1)]">{t('hero_line1') || 'The Sovereign'}</span>
                 <span className="block bg-gradient-to-r from-cyan-400 via-violet-500 to-fuchsia-500 bg-clip-text text-transparent animate-gradient-x py-2">
-                  {t('hero_line2') || 'AI Workloads Globally'}
+                  {t('hero_line2') || 'AI Economy'}
                 </span>
               </h1>
 
               {/* Subtitle */}
-              <p className="text-xl sm:text-2xl text-gray-400 max-w-3xl mx-auto mb-12 leading-relaxed font-medium">
-                {t('hero_subtitle') || 'Enterprise-grade decentralized computing infrastructure on TON blockchain. Process AI inference, validation, and data tasks with cryptographic certainty.'}
+              <p className="text-xl sm:text-2xl text-gray-400 max-w-4xl mx-auto mb-12 leading-relaxed font-medium">
+                {t('hero_subtitle') || 'A non-custodial, decentralized orchestration layer for the autonomous agent era. Hire globally distributed compute or monetize your hardware using the GSTD A2A Protocol.'}
               </p>
 
               {/* CTA Section */}
@@ -234,15 +234,15 @@ export default function Home() {
                   className="group relative flex items-center justify-center gap-3 px-10 py-5 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 shadow-2xl shadow-violet-500/40 transition-all duration-300 scale-100 hover:scale-105 active:scale-95 text-white font-black text-xl overflow-hidden"
                 >
                   <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 skew-x-[-20deg]" />
-                  <Server className="w-6 h-6 animate-pulse" />
-                  {t('cta_hire') || 'Hire Compute'}
+                  <Cpu className="w-6 h-6 animate-pulse" />
+                  {t('cta_hire') || 'Acquire Compute'}
                 </a>
                 <a
                   href="#become-worker"
                   className="flex items-center justify-center gap-3 px-10 py-5 rounded-2xl bg-white/[0.03] border border-white/10 hover:bg-white/[0.08] hover:border-white/20 transition-all duration-300 text-white font-bold text-xl backdrop-blur-md"
                 >
-                  <Download className="w-6 h-6" />
-                  {t('cta_worker') || 'Become Worker'}
+                  <Workflow className="w-6 h-6" />
+                  {t('cta_worker') || 'Ignite Node'}
                 </a>
               </div>
 
@@ -250,48 +250,48 @@ export default function Home() {
               <div className="grid lg:grid-cols-12 gap-6 max-w-7xl mx-auto items-start">
                 <div className="lg:col-span-8 grid grid-cols-2 md:grid-cols-4 gap-4">
                   {[
-                    { value: networkStats?.total_hashrate ? `${networkStats.total_hashrate.toFixed(1)} PFLOPS` : '4.2 PFLOPS', label: t('stat_hashrate') || 'Network Power', icon: Zap, color: 'cyan', delay: '0s' },
-                    { value: networkStats?.tasks_24h || '12.4k', label: t('stat_tasks') || 'Tasks (24h)', icon: Activity, color: 'violet', delay: '0.1s' },
-                    { value: networkStats?.total_gstd_paid?.toFixed(0) || '842k', label: t('stat_paid') || 'GSTD Paid', icon: Coins, color: 'emerald', delay: '0.2s' },
-                    { value: networkStats?.gold_reserve ? `${networkStats.gold_reserve.toFixed(2)} XAUt` : '154.2 XAUt', label: t('stat_gold') || 'Gold Reserve', icon: Shield, color: 'amber', delay: '0.3s' },
+                    { value: networkStats?.total_hashrate ? `${networkStats.total_hashrate.toFixed(1)} PFLOPS` : '4.2 PFLOPS', label: t('stat_hashrate') || 'Grid Power', icon: Zap, color: 'cyan', delay: '0s' },
+                    { value: networkStats?.tasks_24h || '12.4k', label: t('stat_tasks') || 'Protocol Operations', icon: Activity, color: 'violet', delay: '0.1s' },
+                    { value: networkStats?.total_gstd_paid?.toFixed(0) || '842k', label: t('stat_paid') || 'Sovereign Yield', icon: Coins, color: 'emerald', delay: '0.2s' },
+                    { value: networkStats?.gold_reserve ? `${networkStats.gold_reserve.toFixed(2)} XAUt` : '154.2 XAUt', label: t('stat_gold') || 'Golden Reserve', icon: Shield, color: 'amber', delay: '0.3s' },
                   ].map((stat, i) => (
                     <div key={i} className="relative group overflow-hidden" style={{ animationDelay: stat.delay }}>
                       <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-violet-500/10 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
-                      <div className="relative p-6 rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-xl hover:border-white/30 transition-all text-left">
+                      <div className="relative p-7 rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-xl hover:border-white/30 transition-all text-left">
                         <stat.icon className={`w-6 h-6 text-${stat.color}-400 mb-4`} />
-                        <div className="text-2xl sm:text-3xl font-black text-white mb-1">{stat.value}</div>
-                        <div className="text-xs font-bold text-gray-500 uppercase tracking-widest">{stat.label}</div>
+                        <div className="text-2xl sm:text-3xl font-black text-white mb-1 tracking-tighter">{stat.value}</div>
+                        <div className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">{stat.label}</div>
                       </div>
                     </div>
                   ))}
 
                   {/* Trust Badge / Secondary Stats */}
-                  <div className="col-span-2 md:col-span-4 p-6 rounded-2xl bg-gradient-to-r from-blue-600/10 to-violet-600/10 border border-blue-500/20 flex flex-wrap items-center justify-between gap-6 backdrop-blur-md">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">
-                        <Shield className="w-6 h-6" />
+                  <div className="col-span-2 md:col-span-4 p-8 rounded-3xl bg-gradient-to-r from-blue-600/10 to-violet-600/10 border border-blue-500/20 flex flex-wrap items-center justify-between gap-8 backdrop-blur-md">
+                    <div className="flex items-center gap-4 group cursor-default">
+                      <div className="w-14 h-14 rounded-2xl bg-blue-500/20 flex items-center justify-center text-blue-400 border border-blue-500/30 group-hover:scale-110 transition-transform">
+                        <Shield className="w-7 h-7" />
                       </div>
                       <div>
-                        <div className="text-white font-bold">AES-256-GCM Secured</div>
-                        <div className="text-xs text-gray-500">End-to-end encrypted workloads</div>
+                        <div className="text-white font-black tracking-tight uppercase text-sm">Non-Custodial</div>
+                        <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">TON Wallet Integrated</div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400">
-                        <Globe className="w-6 h-6" />
+                    <div className="flex items-center gap-4 group cursor-default">
+                      <div className="w-14 h-14 rounded-2xl bg-emerald-500/20 flex items-center justify-center text-emerald-400 border border-emerald-500/30 group-hover:scale-110 transition-transform">
+                        <Globe className="w-7 h-7" />
                       </div>
                       <div>
-                        <div className="text-white font-bold">100% On-Chain</div>
-                        <div className="text-xs text-gray-500">Transparent settlement on TON</div>
+                        <div className="text-white font-black tracking-tight uppercase text-sm">GSTD-Protocol</div>
+                        <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">MiCA Compliant Asset</div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-400">
-                        <Sparkles className="w-6 h-6" />
+                    <div className="flex items-center gap-4 group cursor-default">
+                      <div className="w-14 h-14 rounded-2xl bg-amber-500/20 flex items-center justify-center text-amber-400 border border-amber-500/30 group-hover:scale-110 transition-transform">
+                        <Sparkles className="w-7 h-7" />
                       </div>
                       <div>
-                        <div className="text-white font-bold">Genesis Verified</div>
-                        <div className="text-xs text-gray-500">Autonomous node reputation</div>
+                        <div className="text-white font-black tracking-tight uppercase text-sm">A2A Standard</div>
+                        <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Agent-to-Agent Logic</div>
                       </div>
                     </div>
                   </div>
@@ -369,72 +369,69 @@ export default function Home() {
             </div>
 
             <div className="grid lg:grid-cols-3 gap-8">
-              {/* Step 1: Select Power */}
+              {/* Step 1: Select Instance Type */}
               <div className="p-8 rounded-[24px] bg-white/[0.03] border border-white/10 backdrop-blur-xl hover:border-white/20 transition-all flex flex-col group/card">
                 <div className="flex items-center gap-4 mb-8">
-                  <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400 font-black text-xl shadow-[0_0_15px_rgba(59,130,246,0.2)]">1</div>
-                  <h3 className="text-2xl font-black text-white uppercase tracking-tight">Select Power</h3>
+                  <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 font-black text-xl">1</div>
+                  <h3 className="text-2xl font-black text-white uppercase tracking-tight">Node Class</h3>
                 </div>
                 <div className="space-y-4 flex-1">
                   {[
-                    { id: 'standard', title: 'Standard', price: '$0.04/hr', specs: '2 vCPU • 4GB RAM', color: 'blue' },
-                    { id: 'pro', title: 'Pro Max', price: '$0.08/hr', specs: '4 vCPU • 8GB RAM', color: 'violet' }
+                    { id: 'standard', title: 'Edge Node', price: '$0.04/hr', specs: 'Shared CPU • 4GB RAM', color: 'blue' },
+                    { id: 'pro', title: 'Compute Cluster', price: '$0.08/hr', specs: 'Dedicated vCPU • 8GB RAM', color: 'violet' }
                   ].map((plan) => (
                     <button
                       key={plan.id}
                       onClick={() => setSelectedPlan(plan.id as any)}
                       className={`w-full p-5 rounded-2xl border text-left transition-all duration-300 relative overflow-hidden group ${selectedPlan === plan.id
-                        ? `bg-${plan.color}-600/10 border-${plan.color}-500/50 ring-1 ring-${plan.color}-500/20 shadow-2xl shadow-${plan.color}-500/10`
+                        ? `bg-${plan.color}-600/10 border-${plan.color}-500/50 ring-1 ring-${plan.color}-500/20`
                         : 'bg-white/5 border-white/5 hover:border-white/20 hover:bg-white/[0.07]'
                         }`}
                     >
                       <div className="flex justify-between items-center mb-2">
-                        <span className={`font-black text-lg ${selectedPlan === plan.id ? `text-${plan.color}-400` : 'text-white'}`}>{plan.title}</span>
-                        <span className={`text-sm font-bold ${selectedPlan === plan.id ? `text-${plan.color}-300` : 'text-gray-500'}`}>{plan.price}</span>
+                        <span className={`font-black uppercase tracking-tight ${selectedPlan === plan.id ? `text-${plan.color}-400` : 'text-white'}`}>{plan.title}</span>
+                        <span className={`text-xs font-black ${selectedPlan === plan.id ? `text-${plan.color}-300` : 'text-gray-500'}`}>{plan.price}</span>
                       </div>
-                      <div className="text-sm font-medium text-gray-500">{plan.specs}</div>
-                      {selectedPlan === plan.id && (
-                        <div className={`absolute right-0 top-0 h-full w-1 bg-${plan.color}-500`} />
-                      )}
+                      <div className="text-[10px] font-black text-gray-600 uppercase tracking-widest">{plan.specs}</div>
                     </button>
                   ))}
 
                   <div className="p-5 rounded-2xl border border-white/5 bg-white/[0.01] opacity-40 cursor-not-allowed">
                     <div className="flex justify-between items-center mb-1">
-                      <span className="font-black text-white">NVIDIA A100</span>
-                      <span className="text-[10px] uppercase bg-white/10 px-2 py-0.5 rounded-md text-gray-300 font-bold">In Queue</span>
+                      <span className="font-black text-white uppercase tracking-tight">NVIDIA H100</span>
+                      <span className="text-[9px] uppercase bg-white/10 px-2 py-0.5 rounded-md text-gray-300 font-bold">Mainnet Beta</span>
                     </div>
-                    <div className="text-xs font-medium text-gray-600">80GB VRAM High-Bandwidth</div>
+                    <div className="text-[10px] font-black text-gray-700 uppercase tracking-widest">80GB HBM3 Memory</div>
                   </div>
                 </div>
               </div>
 
-              {/* Step 2: Select Region */}
+              {/* Step 2: Protocol Selection */}
               <div className="p-8 rounded-[24px] bg-white/[0.03] border border-white/10 backdrop-blur-xl hover:border-white/20 transition-all flex flex-col group/card">
                 <div className="flex items-center gap-4 mb-8">
-                  <div className="w-10 h-10 rounded-xl bg-fuchsia-500/20 flex items-center justify-center text-fuchsia-400 font-black text-xl shadow-[0_0_15px_rgba(232,121,249,0.2)]">2</div>
-                  <h3 className="text-2xl font-black text-white uppercase tracking-tight">Set Region</h3>
+                  <div className="w-10 h-10 rounded-xl bg-fuchsia-500/10 border border-fuchsia-500/20 flex items-center justify-center text-fuchsia-400 font-black text-xl">2</div>
+                  <h3 className="text-2xl font-black text-white uppercase tracking-tight">Routing</h3>
                 </div>
                 <div className="space-y-4 flex-1">
                   {[
-                    { id: 'global', label: 'Global (Auto)', desc: 'Lowest cost selection', icon: Globe },
-                    { id: 'eu', label: 'Europe', desc: 'Low latency (GDPR ok)', icon: MapPin },
-                    { id: 'asia', label: 'Asia Pacific', desc: 'High availability', icon: Globe },
+                    { id: 'global', label: 'Balanced (A2A)', desc: 'Lowest latency routing', icon: Globe },
+                    { id: 'eu', label: 'Western Europe', desc: 'Sovereign DC access', icon: MapPin },
+                    { id: 'asia', label: 'APAC Hub', desc: 'Edge processing', icon: Activity },
                   ].map((region) => (
                     <button
                       key={region.id}
                       onClick={() => setSelectedRegion(region.id as any)}
                       className={`w-full p-5 rounded-2xl border text-left transition-all duration-300 flex items-center gap-4 relative overflow-hidden ${selectedRegion === region.id
-                        ? 'bg-fuchsia-600/10 border-fuchsia-500/50 ring-1 ring-fuchsia-500/20 shadow-2xl shadow-fuchsia-500/10'
+                        ? 'bg-fuchsia-600/10 border-fuchsia-500/50 ring-1 ring-fuchsia-500/20'
                         : 'bg-white/5 border-white/5 hover:border-white/20 hover:bg-white/[0.07]'
                         }`}
                     >
-                      <div className={`p-2 rounded-lg ${selectedRegion === region.id ? 'bg-fuchsia-500/20 text-fuchsia-400' : 'bg-white/5 text-gray-500'}`}>
-                        <Globe className="w-5 h-5" />
+                      <div className={`p-2.5 rounded-xl ${selectedRegion === region.id ? 'bg-fuchsia-500/20 text-fuchsia-400' : 'bg-white/5 text-gray-500'}`}>
+                        <region.icon className="w-5 h-5" />
                       </div>
                       <div>
-                        <span className={`block font-black text-lg ${selectedRegion === region.id ? 'text-white' : 'text-gray-300'}`}>{region.label}</span>
-                        <span className="text-xs font-medium text-gray-500">{region.desc}</span>
+                        <span className={`block font-black text-sm uppercase tracking-tight ${selectedRegion === region.id ? 'text-white' : 'text-gray-400'}`}>{region.label}</span>
+                        <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest">{region.desc}</span>
                       </div>
                     </button>
                   ))}
@@ -447,17 +444,21 @@ export default function Home() {
 
                 <div>
                   <div className="flex items-center gap-4 mb-10">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-400 font-black text-xl shadow-[0_0_15px_rgba(52,211,153,0.2)]">3</div>
-                    <h3 className="text-2xl font-black text-white uppercase tracking-tight">Finalize</h3>
+                    <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 font-black text-xl">3</div>
+                    <h3 className="text-2xl font-black text-white uppercase tracking-tight">Deploy</h3>
                   </div>
 
-                  <div className="mb-12 bg-black/40 p-6 rounded-2xl border border-white/5">
-                    <div className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-widest">Estimated Commitment</div>
+                  <div className="mb-12 bg-black/40 p-8 rounded-3xl border border-white/5">
+                    <div className="text-[10px] font-black text-gray-500 mb-4 uppercase tracking-[0.2em]">Estimated Usage Rate</div>
                     <div className="text-5xl font-black text-white flex items-baseline gap-2 tabular-nums">
                       {selectedPlan === 'standard'
                         ? (0.04 / (networkStats?.gstd_price_usd || 0.02)).toFixed(2)
                         : (0.08 / (networkStats?.gstd_price_usd || 0.02)).toFixed(2)}
-                      <span className="text-xl text-violet-400 font-black">GSTD/hr</span>
+                      <span className="text-xl text-violet-400 font-black tracking-tighter uppercase">GSTD/hr</span>
+                    </div>
+                    <div className="mt-4 flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
+                      <span className="text-[10px] font-black text-gray-600 uppercase tracking-widest">Real-time settlement</span>
                     </div>
                   </div>
                 </div>
@@ -465,14 +466,14 @@ export default function Home() {
                 <div className="relative z-10">
                   <button
                     onClick={() => isConnected ? router.push('/dashboard') : tonConnectUI.openModal()}
-                    className="w-full py-5 rounded-2xl bg-white text-black font-black hover:bg-gray-100 transition-all active:scale-[0.98] mb-4 flex items-center justify-center gap-3 text-lg shadow-2xl"
+                    className="w-full py-6 rounded-2xl bg-white text-black font-black hover:bg-gray-100 transition-all active:scale-[0.98] mb-4 flex items-center justify-center gap-3 text-lg shadow-2xl uppercase tracking-tighter"
                   >
-                    <Coins className="w-6 h-6" />
-                    Launch Compute Instance
+                    <Cpu className="w-6 h-6 text-violet-600" />
+                    Launch Sovereign Node
                   </button>
-                  <p className="text-xs text-center text-gray-500 font-bold uppercase tracking-widest flex items-center justify-center gap-2">
-                    <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                    Instance spinning up in ~15s
+                  <p className="text-[9px] text-center text-gray-500 font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2">
+                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_#10b981]" />
+                    Booting Environment in ~15s
                   </p>
                 </div>
               </div>
@@ -481,41 +482,40 @@ export default function Home() {
         </section>
 
         {/* Become Worker Section */}
-        <section id="become-worker" className="py-32 px-6 lg:px-12 border-t border-white/5 relative overflow-hidden">
+        <section id="become-worker" className="py-32 px-6 lg:px-12 border-t border-white/5 relative overflow-hidden bg-gradient-to-b from-transparent to-black/40">
           <div className="absolute top-1/2 left-0 w-[500px] h-[500px] bg-orange-600/10 rounded-full blur-[120px] -translate-x-1/2 -translate-y-1/2" />
 
           <div className="max-w-6xl mx-auto relative z-10">
-            <div className="grid lg:grid-cols-2 gap-20 items-center">
+            <div className="grid lg:grid-cols-2 gap-24 items-center">
 
               {/* Steps */}
               <div>
-                <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-400 text-sm font-bold mb-8 uppercase tracking-widest">
-                  <Zap className="w-4 h-4" />
-                  Yield Generation
+                <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-orange-500/5 border border-orange-500/20 text-orange-400 text-[10px] font-black mb-8 uppercase tracking-[0.3em]">
+                  Supply Side Infrastructure
                 </div>
-                <h2 className="text-4xl sm:text-6xl font-black text-white mb-8 tracking-tighter">
-                  {t('worker_title') || 'Monetize Your Idle Hardware'}
+                <h2 className="text-4xl sm:text-7xl font-black text-white mb-8 tracking-tighter">
+                  Monetize Your <span className="bg-gradient-to-r from-orange-400 to-amber-500 bg-clip-text text-transparent">Power</span>
                 </h2>
-                <p className="text-gray-400 text-xl mb-12 leading-relaxed">
-                  Turn your PC into a high-performance node. Join the global compute grid and earn GSTD tokens for every task processed.
+                <p className="text-gray-400 text-xl mb-12 leading-relaxed font-medium">
+                  Turn your local hardware into a high-yield asset. Join the A2A compute protocol and earn GSTD tokens for every inference task processed by your node.
                 </p>
 
-                <div className="space-y-10">
+                <div className="space-y-12">
                   {[
                     {
                       step: 1,
-                      title: 'Download Agent',
+                      title: 'Initialize Hub',
                       content: (
                         <>
-                          Run this on Linux/Mac/WSL. For mobile, just <a href="#" onClick={(e) => { e.preventDefault(); tonConnectUI.openModal() }} className="text-cyan-400 hover:text-cyan-300 font-bold underline decoration-cyan-400/30 underline-offset-4 transition-all">Connect Wallet</a> and start browser mining.
-                          <div className="relative group mt-5">
-                            <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 rounded-2xl blur opacity-25 group-hover:opacity-100 transition duration-1000 group-hover:duration-200"></div>
-                            <code className="relative block w-full p-5 rounded-xl bg-black/60 border border-white/10 text-emerald-400 font-mono text-sm overflow-x-auto shadow-2xl">
-                              curl -sL https://raw.githubusercontent.com/gstdcoin/ai/main/install.sh | bash
+                          Run the GSTD Ignite Script on any Ubuntu/Linux or Mac machine. For mobile participation, use the browser-based worker.
+                          <div className="relative group mt-6">
+                            <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 rounded-2xl blur opacity-25 group-hover:opacity-100 transition duration-1000"></div>
+                            <code className="relative block w-full p-6 rounded-2xl bg-black/80 border border-white/5 text-emerald-400 font-mono text-sm overflow-x-auto shadow-2xl">
+                              curl -sL get.gstd.io | bash -s ignite
                             </code>
                             <button
                               onClick={copyToClipboard}
-                              className="absolute right-3 top-3 p-2.5 rounded-lg bg-white/5 hover:bg-white/15 text-white transition-all backdrop-blur-md border border-white/10"
+                              className="absolute right-4 top-4 p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white transition-all border border-white/10 group-hover:border-white/20"
                             >
                               {copiedCommand ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
                             </button>
@@ -525,22 +525,22 @@ export default function Home() {
                     },
                     {
                       step: 2,
-                      title: 'Connect Wallet',
-                      content: 'Link your TON wallet in the dashboard to receive real-time payouts via our automated settlement layer.'
+                      title: 'Non-Custodial Flow',
+                      content: 'Link your TON wallet. Earnings are distributed via our automated settlement layer directly to your decentralized address.'
                     },
                     {
                       step: 3,
-                      title: 'Earn GSTD',
-                      content: 'Get paid automatically every 24 hours for completed tasks. Your earnings are secured by gold-backed liquidity.'
+                      title: 'Generate Yield',
+                      content: 'Nodes earn GSTD bounty for every verifiable task. Protocol validation ensures 100% fair payout based on proof-of-compute.'
                     }
                   ].map((item, i) => (
-                    <div key={i} className="flex gap-6 group">
-                      <div className="mt-1 w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0 font-black text-white group-hover:bg-violet-600/20 group-hover:border-violet-500/50 transition-all duration-300">
+                    <div key={i} className="flex gap-8 group">
+                      <div className="mt-1 w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/10 flex items-center justify-center shrink-0 font-black text-white group-hover:bg-orange-500/10 group-hover:border-orange-500/30 transition-all duration-500">
                         {item.step}
                       </div>
                       <div>
-                        <h4 className="text-2xl font-black text-white mb-3 group-hover:text-violet-400 transition-colors uppercase tracking-tight">{item.title}</h4>
-                        <div className="text-gray-400 text-lg leading-relaxed">{item.content}</div>
+                        <h4 className="text-2xl font-black text-white mb-3 group-hover:text-orange-400 transition-colors uppercase tracking-tight">{item.title}</h4>
+                        <div className="text-gray-500 text-lg leading-relaxed font-medium">{item.content}</div>
                       </div>
                     </div>
                   ))}
@@ -549,62 +549,63 @@ export default function Home() {
 
               {/* Calculator */}
               <div className="relative group">
-                <div className="absolute -inset-1 bg-gradient-to-r from-orange-600 to-fuchsia-600 rounded-[32px] blur opacity-20 group-hover:opacity-40 transition duration-1000" />
-                <div className="relative p-10 rounded-[32px] bg-black/40 border border-white/10 backdrop-blur-2xl overflow-hidden">
+                <div className="absolute -inset-1 bg-gradient-to-r from-orange-600/30 to-fuchsia-600/30 rounded-[40px] blur-2xl opacity-20 group-hover:opacity-40 transition duration-1000" />
+                <div className="relative p-12 rounded-[40px] bg-black/60 border border-white/5 backdrop-blur-3xl overflow-hidden shadow-2xl">
                   {/* Decorative Elements */}
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-orange-600/10 rounded-full blur-3xl -mr-16 -mt-16" />
+                  <div className="absolute top-0 right-0 w-48 h-48 bg-orange-600/5 rounded-full blur-3xl -mr-24 -mt-24 animate-pulse" />
 
-                  <h3 className="text-2xl font-black text-white mb-10 text-center uppercase tracking-widest flex items-center justify-center gap-3">
-                    <DollarSign className="w-6 h-6 text-emerald-400" />
-                    Earnings Calculator
+                  <h3 className="text-sm font-black text-gray-400 mb-12 text-center uppercase tracking-[0.4em] flex items-center justify-center gap-3">
+                    Node Yield Estimator
                   </h3>
 
-                  <div className="mb-12">
-                    <div className="flex justify-between items-center mb-6">
-                      <span className="text-gray-400 font-bold uppercase tracking-wider text-sm">Target Uptime / Day</span>
-                      <span className="px-4 py-1 rounded-lg bg-orange-600/20 border border-orange-500/30 text-orange-400 font-black text-lg">
-                        {workerHours} Hours
+                  <div className="mb-14">
+                    <div className="flex justify-between items-center mb-8">
+                      <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Target Node Uptime</span>
+                      <span className="px-5 py-2 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-400 font-black text-xl tabular-nums shadow-[0_0_15px_rgba(249,115,22,0.1)]">
+                        {workerHours} Hours/Day
                       </span>
                     </div>
-                    <div className="relative h-12 flex items-center">
+                    <div className="relative h-12 flex items-center px-2">
+                      <div className="absolute left-0 right-0 h-1 bg-white/5 rounded-full" />
+                      <div className="absolute left-0 h-1 bg-gradient-to-r from-orange-500 to-amber-500 rounded-full" style={{ width: `${(workerHours / 24) * 100}%` }} />
                       <input
                         type="range"
                         min="1"
                         max="24"
                         value={workerHours}
                         onChange={(e) => setWorkerHours(parseInt(e.target.value))}
-                        className="w-full h-1.5 focus:outline-none bg-white/10 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                        className="w-full h-1 appearance-none bg-transparent cursor-pointer z-10 accent-orange-500"
                       />
                     </div>
-                    <div className="flex justify-between mt-4 text-[10px] font-black text-gray-600 uppercase tracking-widest">
-                      <span>Low Power</span>
-                      <span>Balanced</span>
-                      <span>Compute Node</span>
+                    <div className="flex justify-between mt-6 text-[9px] font-black text-gray-700 uppercase tracking-widest">
+                      <span>Low Bandwidth</span>
+                      <span>Balanced Node</span>
+                      <span>High Performance</span>
                     </div>
                   </div>
 
-                  <div className="p-8 rounded-2xl bg-white/[0.03] border border-white/5 text-center mb-10 relative overflow-hidden group/screen">
-                    <div className="absolute inset-0 bg-emerald-500/5 opacity-0 group-hover/screen:opacity-100 transition-opacity" />
-                    <div className="text-xs font-bold text-gray-500 mb-3 uppercase tracking-[0.2em]">Estimated Monthly Payout</div>
-                    <div className="text-5xl font-black text-emerald-400 mb-2 drop-shadow-[0_0_15px_rgba(52,211,153,0.3)]">
-                      {(workerHours * (0.10 / (networkStats?.gstd_price_usd || 0.10)) * 30).toFixed(0)} <span className="text-xl opacity-60">GSTD</span>
+                  <div className="p-10 rounded-3xl bg-white/[0.02] border border-white/5 text-center mb-10 relative overflow-hidden group/screen shadow-inner">
+                    <div className="absolute inset-0 bg-emerald-500/[0.02] opacity-0 group-hover/screen:opacity-100 transition-opacity" />
+                    <div className="text-[10px] font-black text-gray-500 mb-5 uppercase tracking-[0.3em]">Estimated Sovereign Yield</div>
+                    <div className="text-6xl font-black text-white mb-3 tracking-tighter drop-shadow-[0_0_20px_rgba(34,197,94,0.2)]">
+                      {(workerHours * (0.10 / (networkStats?.gstd_price_usd || 0.10)) * 30).toFixed(0)} <span className="text-xl text-emerald-500 opacity-80 uppercase font-black ml-1">GSTD</span>
                     </div>
-                    <div className="text-lg font-bold text-gray-400">
-                      ≈ ${(workerHours * 0.10 * 30).toFixed(2)} USD
+                    <div className="text-sm font-black text-gray-600 uppercase tracking-widest flex items-center justify-center gap-2">
+                      ≈ <span className="text-white">${(workerHours * 0.10 * 30).toFixed(2)}</span> Equivalent
                     </div>
                   </div>
 
                   <button
                     onClick={() => tonConnectUI.openModal()}
-                    className="w-full py-5 rounded-2xl bg-white text-black font-black hover:bg-gray-100 transition-all active:scale-[0.98] flex items-center justify-center gap-3 text-lg shadow-xl"
+                    className="w-full py-6 rounded-2xl bg-orange-600 text-white font-black hover:bg-orange-500 transition-all active:scale-[0.98] flex items-center justify-center gap-3 text-lg shadow-[0_10px_30px_rgba(234,88,12,0.3)] uppercase tracking-tighter"
                   >
-                    Start Earning Now
-                    <ArrowRight className="w-5 h-5" />
+                    Activate My Node
+                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                   </button>
 
-                  <div className="mt-6 flex items-center justify-center gap-2 text-xs text-gray-500 font-medium">
-                    <Shield className="w-3.5 h-3.5 text-emerald-500/60" />
-                    Withdrawals available any time via TON
+                  <div className="mt-8 flex items-center justify-center gap-3 text-[10px] text-gray-600 font-black uppercase tracking-widest">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    Settlement verified on TON mainnet
                   </div>
                 </div>
               </div>
@@ -614,60 +615,78 @@ export default function Home() {
         </section>
 
         {/* Network Proof Section */}
-        <section className="py-24 px-6 lg:px-12 border-t border-white/5">
+        <section className="py-24 px-6 lg:px-12 border-t border-white/5 bg-black/20">
           <div className="max-w-6xl mx-auto">
-            <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div className="grid lg:grid-cols-2 gap-20 items-center">
               <div>
-                <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6">
-                  {router.locale === 'ru' ? 'Доказательство Глобальной Связности' : 'Proof of Global Connectivity'}
+                <div className="text-cyan-400 text-xs font-black uppercase tracking-[0.4em] mb-6">Execution Transparency</div>
+                <h2 className="text-4xl sm:text-6xl font-black text-white mb-8 tracking-tighter">
+                  Proof of Connectivity
                 </h2>
-                <p className="text-gray-400 mb-8 leading-relaxed">
-                  {router.locale === 'ru'
-                    ? 'В отличие от централизованных облаков, GSTD работает на базе реальных физических устройств по всему миру. Каждый узел проходит проверку через Genesis Task, подтверждая свою задержку и местоположение.'
-                    : 'Unlike centralized clouds, GSTD is powered by real physical devices worldwide. Every node is verified via the Genesis Task, proving its latency and location with cryptographic certainty.'}
+                <p className="text-gray-400 mb-10 text-xl leading-relaxed font-medium">
+                  Unlike centralized black-box cloud providers, GSTD operates on real physical entropy. Every node is verified via the <span className="text-white">Genesis Protocol</span>, proving latency and capacity with cryptographic certainty.
                 </p>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.2)]">1</div>
-                    <span className="text-gray-300 font-medium">{router.locale === 'ru' ? 'Верифицированная телеметрия' : 'Verified Telemetry'}</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/10 group hover:border-cyan-500/30 transition-all">
+                    <Radio className="w-6 h-6 text-cyan-400 mb-4" />
+                    <div className="text-white font-black text-sm uppercase tracking-tight mb-2">Verified Telemetry</div>
+                    <p className="text-xs text-gray-500 font-bold leading-relaxed">Real-time health monitoring of every grid node.</p>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-violet-500/20 flex items-center justify-center text-violet-400">2</div>
-                    <span className="text-gray-300 font-medium">{router.locale === 'ru' ? 'Геолокация узлов в реальном времени' : 'Real-time Node Geolocation'}</span>
+                  <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/10 group hover:border-violet-500/30 transition-all">
+                    <Activity className="w-6 h-6 text-violet-400 mb-4" />
+                    <div className="text-white font-black text-sm uppercase tracking-tight mb-2">A2A Consensus</div>
+                    <p className="text-xs text-gray-500 font-bold leading-relaxed">Agent-driven task validation and settlement.</p>
                   </div>
                 </div>
               </div>
-              <div className="relative">
-                <div className="absolute inset-0 bg-blue-500/10 blur-[100px] rounded-full" />
-                <div className="relative transform hover:scale-[1.02] transition-transform duration-500">
+              <div className="relative group">
+                <div className="absolute inset-0 bg-blue-500/5 blur-[100px] rounded-full group-hover:bg-blue-500/10 transition-colors" />
+                <div className="relative p-2 rounded-[40px] bg-white/5 border border-white/10 backdrop-blur-xl shadow-2xl">
+                  <div className="absolute top-4 left-6 z-20 flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="text-[10px] font-black text-white/60 uppercase tracking-widest">Live Node Cluster Distribution</span>
+                  </div>
                   <NetworkMap nodes={publicNodes} />
                 </div>
               </div>
             </div>
           </div>
         </section>
-        <section id="docs" className="py-24 px-6 lg:px-12 border-t border-white/5">
-          <div className="max-w-4xl mx-auto">
-            <div className="p-8 lg:p-12 rounded-3xl bg-gradient-to-br from-violet-500/5 via-fuchsia-500/5 to-cyan-500/5 border border-white/10">
-              <div className="flex flex-col lg:flex-row items-start gap-8">
-                <div className="flex-shrink-0">
-                  <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500/30 to-fuchsia-500/30 flex items-center justify-center backdrop-blur-sm border border-white/10">
-                    <span className="text-4xl">💎</span>
+
+        {/* GSTD Utility Section */}
+        <section id="docs" className="py-32 px-6 lg:px-12 border-t border-white/5">
+          <div className="max-w-5xl mx-auto">
+            <div className="relative p-12 lg:p-20 rounded-[48px] bg-gradient-to-br from-violet-600/[0.08] via-fuchsia-600/[0.08] to-cyan-600/[0.08] border border-white/10 overflow-hidden group">
+              <div className="absolute top-0 right-0 w-96 h-96 bg-violet-600/5 rounded-full blur-[100px] -mr-48 -mt-48" />
+
+              <div className="flex flex-col lg:flex-row items-center gap-16 relative z-10">
+                <div className="flex-shrink-0 relative">
+                  <div className="absolute inset-0 bg-white/20 blur-3xl rounded-full" />
+                  <div className="w-32 h-32 rounded-[32px] bg-gradient-to-br from-violet-600/40 to-fuchsia-600/40 flex items-center justify-center backdrop-blur-md border border-white/20 shadow-2xl transform group-hover:rotate-12 transition-transform duration-700">
+                    <Coins className="w-16 h-16 text-white" />
                   </div>
                 </div>
-                <div className="flex-1">
-                  <h3 className="text-2xl font-bold text-white mb-3">{t('gstd_title') || 'GSTD Utility Token'}</h3>
-                  <p className="text-gray-400 mb-6 leading-relaxed">
-                    {t('gstd_desc') || 'GSTD (Guaranteed Service Time Depth) is a utility token for platform operations. Fully compliant with MiCA (EU) and SEC (US) requirements. Backed by XAUt gold through the GSTD/XAUt liquidity pool.'}
+                <div className="flex-1 text-center lg:text-left">
+                  <div className="text-[10px] font-black text-violet-400 uppercase tracking-[0.5em] mb-6">Asset Specification</div>
+                  <h3 className="text-4xl lg:text-5xl font-black text-white mb-6 tracking-tighter">GSTD Utility Layer</h3>
+                  <p className="text-gray-400 mb-10 text-xl leading-relaxed font-medium">
+                    GSTD (Guaranteed Service Time Depth) is the atomic fuel of the sovereign AI economy. Fully compliant with MiCA (EU) standards and backed by physical gold via the XAUt-Reserve-Pool.
                   </p>
-                  <div className="flex flex-wrap gap-3 mb-6">
-                    <span className="px-4 py-1.5 rounded-full bg-emerald-500/10 text-emerald-400 text-sm font-medium border border-emerald-500/20">✓ MiCA Compliant</span>
-                    <span className="px-4 py-1.5 rounded-full bg-blue-500/10 text-blue-400 text-sm font-medium border border-blue-500/20">✓ SEC Compliant</span>
-                    <span className="px-4 py-1.5 rounded-full bg-violet-500/10 text-violet-400 text-sm font-medium border border-violet-500/20">✓ Gold Backed</span>
+                  <div className="flex flex-wrap justify-center lg:justify-start gap-4 mb-10">
+                    <div className="px-5 py-2 rounded-xl bg-emerald-500/10 text-emerald-400 text-[10px] font-black border border-emerald-500/30 uppercase tracking-widest flex items-center gap-2">
+                      <Shield size={12} /> MiCA Verified
+                    </div>
+                    <div className="px-5 py-2 rounded-xl bg-blue-500/10 text-blue-400 text-[10px] font-black border border-blue-500/30 uppercase tracking-widest flex items-center gap-2">
+                      <Zap size={12} /> Gasless Swaps
+                    </div>
+                    <div className="px-5 py-2 rounded-xl bg-amber-500/10 text-amber-400 text-[10px] font-black border border-amber-500/30 uppercase tracking-widest flex items-center gap-2">
+                      <Check size={12} /> Gold Backed
+                    </div>
                   </div>
-                  <div className="p-4 rounded-xl bg-black/30 border border-white/5">
-                    <p className="text-xs text-gray-500 font-mono break-all">
-                      Contract: {GSTD_CONTRACT_ADDRESS}
+                  <div className="p-6 rounded-2xl bg-black/40 border border-white/5 backdrop-blur-md group/contract cursor-pointer hover:border-cyan-500/30 transition-colors">
+                    <p className="text-[10px] text-gray-600 font-black uppercase tracking-widest mb-2">Protocol Contract Address</p>
+                    <p className="text-sm text-gray-400 font-mono break-all group-hover:text-cyan-400 transition-colors">
+                      {GSTD_CONTRACT_ADDRESS}
                     </p>
                   </div>
                 </div>
