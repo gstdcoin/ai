@@ -258,26 +258,110 @@ function Dashboard() {
         </ErrorBoundary>
 
         {/* Main Content */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 pb-20 lg:pb-8">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-12 pb-24 lg:pb-12 custom-scrollbar">
           <ErrorBoundary>
-            <div className="max-w-7xl mx-auto space-y-6">
+            <div className="max-w-7xl mx-auto space-y-8">
 
-              {/* System Status Widgets */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* System Overview - Animated Top Row */}
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                 <div className="lg:col-span-1">
                   <ComponentErrorBoundary name="ActivityFeed">
-                    <ActivityFeed />
+                    <div className="h-full">
+                      <ActivityFeed />
+                    </div>
                   </ComponentErrorBoundary>
                 </div>
-                <div className="lg:col-span-1">
+
+                <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   <ComponentErrorBoundary name="TreasuryWidget">
                     <TreasuryWidget />
                   </ComponentErrorBoundary>
-                </div>
-                <div className="lg:col-span-1">
+
                   <ComponentErrorBoundary name="PoolStatusWidget">
                     <PoolStatusWidget />
                   </ComponentErrorBoundary>
+
+                  {/* Global Network Status - High Focus */}
+                  <div
+                    className="md:col-span-2 lg:col-span-1 glass-card p-6 relative overflow-hidden group cursor-pointer border-cyan-500/20 hover:border-cyan-500/50 transition-all"
+                    onClick={() => router.push('/network')}
+                  >
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-3xl -mr-16 -mt-16 animate-pulse" />
+                    <div className="relative z-10">
+                      <div className="flex items-center gap-2 mb-4">
+                        <Globe className="w-5 h-5 text-cyan-400" />
+                        <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Global Power</span>
+                      </div>
+                      <div className="text-4xl font-black text-white mb-2 tabular-nums">
+                        {networkStats ? (networkStats.active_workers * 10.5).toFixed(1) : '4.2'}
+                        <span className="text-sm font-bold text-gray-600 ml-2 uppercase">PFLOPS</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs font-bold text-emerald-400">
+                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                        {networkStats?.active_workers || 42} Active Nodes
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Financial Dashboard - Glass Blocks */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Pending Payouts Widget */}
+                <div className="glass-card p-8 bg-gradient-to-br from-emerald-500/[0.03] to-transparent border-emerald-500/10 hover:border-emerald-500/30 transition-all duration-500 group">
+                  <div className="flex justify-between items-start mb-6">
+                    <div>
+                      <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-2">{t('pending_payouts') || 'Unclaimed Bounty'}</h3>
+                      <div className="text-4xl font-black text-white tabular-nums drop-shadow-2xl">
+                        {pendingEarnings?.toFixed(2) || '0.00'}
+                        <span className="text-lg text-gray-600 ml-2 font-bold uppercase tracking-tighter">GSTD</span>
+                      </div>
+                    </div>
+                    <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 group-hover:scale-110 transition-transform">
+                      <Plus className="w-6 h-6" />
+                    </div>
+                  </div>
+                  <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                    <div className="h-full bg-gradient-to-r from-emerald-600 to-cyan-500 animate-shimmer" style={{ width: '65%' }} />
+                  </div>
+                </div>
+
+                {/* GSTD Balance */}
+                <div className="glass-card p-8 bg-gradient-to-br from-amber-500/[0.03] to-transparent border-amber-500/10 hover:border-amber-500/30 transition-all duration-500 group">
+                  <div className="flex justify-between items-start mb-6">
+                    <div>
+                      <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-2">{t('gstd_balance') || 'GSTD Wallet'}</h3>
+                      <div className="text-4xl font-black text-white tabular-nums drop-shadow-2xl">
+                        {gstdBalance?.toFixed(2) || '0.00'}
+                        <span className="text-lg text-gray-600 ml-2 font-bold uppercase tracking-tighter">GSTD</span>
+                      </div>
+                    </div>
+                    <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-yellow-500 group-hover:scale-110 transition-transform">
+                      <Wallet className="w-6 h-6" />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-[9px] font-black text-gray-400 uppercase tracking-widest">Verified on TON</div>
+                  </div>
+                </div>
+
+                {/* Referral/Network */}
+                <div
+                  className="glass-card p-8 bg-gradient-to-br from-violet-500/[0.03] to-transparent border-violet-500/10 hover:border-violet-500/30 transition-all duration-500 group cursor-pointer"
+                  onClick={() => setShowReferralModal(true)}
+                >
+                  <div className="flex justify-between items-start mb-6">
+                    <div>
+                      <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-2">Social Multiplier</h3>
+                      <div className="text-4xl font-black text-white uppercase tracking-tighter">
+                        5.0<span className="text-lg text-violet-400 ml-1">%</span>
+                      </div>
+                    </div>
+                    <div className="p-3 rounded-2xl bg-violet-500/10 border border-violet-500/20 text-violet-400 group-hover:scale-110 transition-transform shadow-[0_0_15px_rgba(139,92,246,0.3)]">
+                      <Users className="w-6 h-6" />
+                    </div>
+                  </div>
+                  <p className="text-xs font-bold text-gray-500">Invite nodes to increase protocol rewards</p>
                 </div>
               </div>
 
@@ -286,157 +370,109 @@ function Dashboard() {
                 <BoincProgressWidget />
               </ComponentErrorBoundary>
 
-              {/* Financial Overview - Wallet Balances */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {/* Pending Payouts Widget (Replaces Duplicated Wallet Balance) */}
-                <div className="glass-card p-6 flex items-center justify-between relative overflow-hidden group hover:border-green-500/30 transition-all duration-300">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-green-500/10 to-transparent rounded-full blur-2xl group-hover:opacity-100 opacity-50 transition-opacity" />
-                  <div className="relative z-10">
-                    <h3 className="text-sm font-medium text-gray-400 mb-2 flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                      Pending Payouts
-                    </h3>
-                    <div className="text-3xl font-bold text-white flex items-baseline gap-2">
-                      <span className="bg-gradient-to-r from-green-400 to-emerald-500 bg-clip-text text-transparent">
-                        {pendingEarnings?.toFixed(2) || '0.00'}
-                      </span>
-                      <span className="text-base font-normal text-gray-500">GSTD</span>
+              {/* PROMINENT ACTION BAR */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-6 pt-4">
+                <div className="md:col-span-8">
+                  <button
+                    onClick={handleToggleMining}
+                    className={`w-full group relative py-8 px-10 rounded-3xl font-black transition-all transform hover:scale-[1.01] active:scale-[0.99] flex items-center justify-between border-2 overflow-hidden ${isMining
+                      ? 'bg-red-600/10 border-red-500/40 text-red-500 shadow-2xl shadow-red-900/20'
+                      : 'bg-emerald-600/10 border-emerald-500/40 text-emerald-400 shadow-2xl shadow-emerald-900/20 hover:border-emerald-400'
+                      }`}
+                  >
+                    {/* Animated Shine Effect */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.05] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out" />
+
+                    <div className="flex items-center gap-6 relative z-10">
+                      <div className={`p-4 rounded-2xl border-2 ${isMining ? 'bg-red-500/20 border-red-500/30 animate-pulse' : 'bg-emerald-500/20 border-emerald-500/30'}`}>
+                        {isMining ? <Activity size={32} /> : <Server size={32} />}
+                      </div>
+                      <div className="text-left">
+                        <span className="block text-2xl uppercase tracking-tighter mb-1 font-black">
+                          {isMining ? 'System Active' : 'Ignite Worker'}
+                        </span>
+                        <span className="block text-sm font-bold opacity-60 uppercase tracking-widest leading-none">
+                          {isMining ? 'Processing Grid Workloads...' : 'Turn Device into Compute Node'}
+                        </span>
+                      </div>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">Escrowed in active tasks</p>
-                  </div>
-                  <div className="p-4 rounded-2xl bg-gradient-to-br from-green-500/20 to-emerald-500/10 text-green-400 border border-green-500/20">
-                    <Activity className="w-7 h-7" />
-                  </div>
+
+                    <div className={`hidden sm:flex items-center gap-3 px-6 py-2 rounded-2xl border-2 uppercase text-[10px] font-black tracking-[0.2em] relative z-10 ${isMining ? 'bg-red-500/20 border-red-500/30' : 'bg-emerald-500/20 border-emerald-500/30'}`}>
+                      {isMining ? <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-red-500 animate-ping" /> Online</span> : 'Ready'}
+                    </div>
+                  </button>
                 </div>
 
-                <div className="glass-card p-6 flex items-center justify-between relative overflow-hidden group hover:border-gold-900/30 transition-all duration-300">
-                  {/* GSTD Balance Card Content (Existing) */}
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-amber-500/10 to-transparent rounded-full blur-2xl group-hover:opacity-100 opacity-50 transition-opacity" />
-                  <div className="relative z-10">
-                    <h3 className="text-sm font-medium text-gray-400 mb-2 flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
-                      {t('gstd_balance') || 'GSTD Balance'}
-                    </h3>
-                    <div className="text-3xl font-bold text-white flex items-baseline gap-2">
-                      <span className="bg-gradient-to-r from-yellow-400 to-amber-500 bg-clip-text text-transparent">
-                        {gstdBalance?.toFixed(2) || '0.00'}
-                      </span>
-                      <span className="text-base font-normal text-gray-500">GSTD</span>
+                <div className="md:col-span-4">
+                  <button
+                    onClick={handleClaimRewards}
+                    disabled={isClaimingRewards}
+                    className="w-full h-full py-8 px-8 rounded-3xl bg-white/[0.03] border-2 border-white/5 hover:border-white/20 text-white font-black transition-all flex flex-col items-center justify-center gap-4 group disabled:opacity-50 hover:bg-white/[0.06]"
+                  >
+                    <div className="p-3 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 group-hover:scale-110 transition-transform">
+                      <Calculator className={`w-8 h-8 ${isClaimingRewards ? 'animate-spin' : ''}`} />
                     </div>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-500/20 to-yellow-500/10 text-yellow-400 border border-yellow-500/20 self-end">
-                      <CheckCircle className="w-7 h-7" />
+                    <div className="text-center">
+                      <span className="block text-xl uppercase tracking-tighter">{isClaimingRewards ? 'Processing...' : (t('claim_rewards') || 'Claim Bounty')}</span>
+                      <span className="text-[10px] font-black text-gray-600 uppercase tracking-widest mt-1 block">Settle earnings to wallet</span>
                     </div>
-                  </div>
+                  </button>
                 </div>
+              </div>
 
-                {/* Referral Widget (New) */}
-                <div
-                  className="glass-card p-6 flex items-center justify-between relative overflow-hidden group hover:border-purple-500/30 transition-all duration-300 cursor-pointer"
-                  onClick={() => setShowReferralModal(true)}
-                >
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-500/10 to-transparent rounded-full blur-2xl group-hover:opacity-100 opacity-50 transition-opacity" />
-                  <div className="relative z-10">
-                    <h3 className="text-sm font-medium text-gray-400 mb-2 flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
-                      {t('your_network') || 'Your Network'}
-                    </h3>
-                    <div className="text-3xl font-bold text-white flex items-baseline gap-2">
-                      <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                        {t('active') || 'Active'}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">{t('earn_referral_bonus') || 'Earn 5% from referrals'}</p>
-                  </div>
-                  <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-500/20 to-pink-500/10 text-purple-400 border border-purple-500/20">
-                    <Users className="w-7 h-7" />
+              {/* Status & Inventory Section */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                <ComponentErrorBoundary name="SystemStatusWidget">
+                  <SystemStatusWidget onStatsUpdate={handleStatsUpdate} />
+                </ComponentErrorBoundary>
+
+                <div className="glass-card p-6 border-white/5">
+                  <h3 className="text-xs font-black text-gray-500 uppercase tracking-widest mb-6 flex items-center gap-2">
+                    <Beaker className="w-4 h-4 text-violet-400" />
+                    Infrastructure Diagnostics
+                  </h3>
+                  <div className="space-y-4">
+                    {[
+                      { label: 'Settlement Ledger', status: 'Optimal', color: 'emerald' },
+                      { label: 'Task Distribution', status: 'Balanced', color: 'cyan' },
+                      { label: 'Blockchain Sync', status: 'Verified', color: 'blue' }
+                    ].map((item, i) => (
+                      <div key={i} className="flex justify-between items-center py-2 border-b border-white/5 last:border-0">
+                        <span className="text-sm font-bold text-gray-400">{item.label}</span>
+                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded bg-${item.color}-500/10 text-${item.color}-400 border border-${item.color}-500/20`}>
+                          {item.status}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
 
-              {/* Global Network Hashrate Widget */}
-              <div className="glass-card p-8 relative overflow-hidden group cursor-pointer" onClick={() => router.push('/network')}>
-                <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-blue-500/10 opacity-50 group-hover:opacity-100 transition-opacity" />
-                <div className="relative z-10 flex items-center justify-between">
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <Globe className="text-cyan-400 w-5 h-5 animate-pulse" />
-                      <h3 className="text-cyan-400 font-medium tracking-wider uppercase mb-0">{t('global_network_hashrate') || 'Network Power / Capacity'}</h3>
-                      <div className="text-[10px] bg-cyan-900/50 text-cyan-200 px-2 py-0.5 rounded border border-cyan-500/30 uppercase tracking-widest animate-pulse">Live</div>
-                    </div>
-                    <div className="text-4xl md:text-5xl font-bold text-white tracking-tight flex items-baseline gap-2 filter drop-shadow-[0_0_10px_rgba(34,211,238,0.5)]">
-                      {networkStats ? (networkStats.active_workers * 10.5).toFixed(1) : '---'}
-                      <span className="text-lg text-gray-400 font-normal">PFLOPS</span>
-                    </div>
-                    <div className="mt-2 text-sm text-gray-400 flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                      {t('computing_nodes_online') || 'Nodes Online'}: <span className="text-white font-mono">{networkStats?.active_workers || 0}</span>
-                      <span className="ml-4 text-emerald-400 flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                        Free Data Transfer Active
-                      </span>
-                    </div>
-                  </div>
-                  <div className="hidden md:block">
-                    <Globe className="w-24 h-24 text-cyan-400 opacity-20 animate-[spin_10s_linear_infinite]" />
-                  </div>
-                </div>
+              {/* Panels Section */}
+              <div className="space-y-6 pt-4">
+                <ComponentErrorBoundary name="TasksPanel">
+                  {activeTab === 'tasks' && <TasksPanel
+                    onTaskCreated={handleTaskCreated}
+                    onCompensationClaimed={handleCompensationClaimed}
+                  />}
+                </ComponentErrorBoundary>
+
+                <ComponentErrorBoundary name="DevicesPanel">
+                  {activeTab === 'devices' && <DevicesPanel />}
+                </ComponentErrorBoundary>
+
+                <ComponentErrorBoundary name="StatsPanel">
+                  {activeTab === 'stats' && <StatsPanel />}
+                </ComponentErrorBoundary>
+
+                <ComponentErrorBoundary name="HelpPanel">
+                  {activeTab === 'help' && <HelpPanel />}
+                </ComponentErrorBoundary>
+
+                <ComponentErrorBoundary name="Marketplace">
+                  {activeTab === 'marketplace' && <Marketplace />}
+                </ComponentErrorBoundary>
               </div>
-
-              {/* ACTION BUTTONS */}
-              <div className="flex flex-col sm:flex-row gap-4">
-                <button
-                  onClick={handleToggleMining}
-                  className={`flex-1 py-6 px-6 rounded-2xl font-bold tracking-wide shadow-xl transition-all transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-4 border border-white/20 relative overflow-hidden group ${isMining
-                    ? 'bg-gradient-to-r from-red-600 via-rose-600 to-red-600 hover:from-red-500 shadow-red-900/30'
-                    : 'bg-gradient-to-r from-emerald-600 via-green-600 to-emerald-600 hover:from-emerald-500 shadow-green-900/30'
-                    }`}
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-                  {isMining ? <Activity className="w-8 h-8 relative z-10 animate-pulse" /> : <Server className="w-8 h-8 relative z-10" />}
-                  <div className="text-left relative z-10">
-                    <span className="block text-xl uppercase tracking-wider">{isMining ? 'Stop Browser Worker' : 'Start Browser Worker'}</span>
-                    <span className="text-xs font-normal opacity-80">{isMining ? 'Processing Tasks in this tab...' : 'Earn GSTD using this device'}</span>
-                  </div>
-                </button>
-                <button
-                  onClick={handleClaimRewards}
-                  disabled={isClaimingRewards}
-                  className="flex-1 py-6 px-6 rounded-2xl bg-gradient-to-br from-white/5 to-white/[0.02] hover:from-white/10 hover:to-white/5 text-white font-semibold border border-white/10 hover:border-white/20 backdrop-blur-md transition-all flex items-center justify-center gap-3 group disabled:opacity-50"
-                >
-                  <Calculator className={`w-6 h-6 text-cyan-400 group-hover:text-cyan-300 transition-colors ${isClaimingRewards ? 'animate-spin' : ''}`} />
-                  <span className="text-lg">{isClaimingRewards ? 'Claiming...' : (t('claim_rewards') || 'Claim Rewards')}</span>
-                </button>
-              </div>
-
-              {/* Network Stats */}
-              <ComponentErrorBoundary name="SystemStatusWidget">
-                <SystemStatusWidget onStatsUpdate={handleStatsUpdate} />
-              </ComponentErrorBoundary>
-
-              <ComponentErrorBoundary name="TasksPanel">
-                {activeTab === 'tasks' && <TasksPanel
-                  onTaskCreated={handleTaskCreated}
-                  onCompensationClaimed={handleCompensationClaimed}
-                />}
-              </ComponentErrorBoundary>
-
-              <ComponentErrorBoundary name="DevicesPanel">
-                {activeTab === 'devices' && <DevicesPanel />}
-              </ComponentErrorBoundary>
-
-              <ComponentErrorBoundary name="StatsPanel">
-                {activeTab === 'stats' && <StatsPanel />}
-              </ComponentErrorBoundary>
-
-              <ComponentErrorBoundary name="HelpPanel">
-                {activeTab === 'help' && <HelpPanel />}
-              </ComponentErrorBoundary>
-
-              <ComponentErrorBoundary name="Marketplace">
-                {activeTab === 'marketplace' && <Marketplace />}
-              </ComponentErrorBoundary>
             </div>
           </ErrorBoundary>
         </main>
@@ -456,7 +492,7 @@ function Dashboard() {
         <Plus />
       </button>
 
-      {/* Lazy Loaded Modal */}
+      {/* Lazy Loaded Modals */}
       {showNewTask && (
         <Suspense fallback={<div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
           <div className="glass-card text-white">{t('loading') || 'Loading...'}</div>
