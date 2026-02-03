@@ -440,6 +440,9 @@ func main() {
 	pricingService := services.NewPricingService(db)
 	log.Println("✅ Pricing Service (Dynamic Economy) active")
 
+	invoiceService := services.NewInvoiceService(db)
+	log.Println("✅ Invoice Service (Settlement Layer) active")
+
 	api.SetupRoutes(
 		router,
 		taskService,
@@ -475,6 +478,7 @@ func main() {
 		sovereignBridge,
 		knowledgeService,
 		pricingService,
+		invoiceService,
 	)
 
 	// Setup Swagger documentation
