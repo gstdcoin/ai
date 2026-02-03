@@ -22,6 +22,8 @@ import BoincProgressWidget from './BoincProgressWidget';
 import { apiGet } from '../../lib/apiClient';
 import { ComponentErrorBoundary } from '../common/ComponentErrorBoundary';
 import { workerService } from '../../services/WorkerService';
+import { InstallPwaPrompt } from '../common/InstallPwaPrompt';
+import { ActivityFeed } from './ActivityFeed';
 
 interface NetworkStats {
   active_workers: number;
@@ -261,13 +263,22 @@ function Dashboard() {
             <div className="max-w-7xl mx-auto space-y-6">
 
               {/* System Status Widgets */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <ComponentErrorBoundary name="TreasuryWidget">
-                  <TreasuryWidget />
-                </ComponentErrorBoundary>
-                <ComponentErrorBoundary name="PoolStatusWidget">
-                  <PoolStatusWidget />
-                </ComponentErrorBoundary>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-1">
+                  <ComponentErrorBoundary name="ActivityFeed">
+                    <ActivityFeed />
+                  </ComponentErrorBoundary>
+                </div>
+                <div className="lg:col-span-1">
+                  <ComponentErrorBoundary name="TreasuryWidget">
+                    <TreasuryWidget />
+                  </ComponentErrorBoundary>
+                </div>
+                <div className="lg:col-span-1">
+                  <ComponentErrorBoundary name="PoolStatusWidget">
+                    <PoolStatusWidget />
+                  </ComponentErrorBoundary>
+                </div>
               </div>
 
               {/* BOINC Progress (Science Bridge) */}
@@ -385,8 +396,8 @@ function Dashboard() {
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
                   {isMining ? <Activity className="w-8 h-8 relative z-10 animate-pulse" /> : <Server className="w-8 h-8 relative z-10" />}
                   <div className="text-left relative z-10">
-                    <span className="block text-xl uppercase tracking-wider">{isMining ? 'Stop Mining' : 'Start Mining'}</span>
-                    <span className="text-xs font-normal opacity-80">{isMining ? 'Processing Tasks...' : 'Process Active Tasks'}</span>
+                    <span className="block text-xl uppercase tracking-wider">{isMining ? 'Stop Browser Worker' : 'Start Browser Worker'}</span>
+                    <span className="text-xs font-normal opacity-80">{isMining ? 'Processing Tasks in this tab...' : 'Earn GSTD using this device'}</span>
                   </div>
                 </button>
                 <button
@@ -465,6 +476,8 @@ function Dashboard() {
           <ReferralModal onClose={() => setShowReferralModal(false)} />
         </Suspense>
       )}
+
+      <InstallPwaPrompt />
     </div>
   );
 }

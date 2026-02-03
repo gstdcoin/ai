@@ -2962,3 +2962,32 @@ Error response from daemon: No such container: ubuntu-backend-blue-1
 ✅ GEO Service is running correctly (found 2 log entries).
 
 ---
+## 🛡️ GSTD Security Audit - 2026-02-03 11:00:01
+
+### 💎 TON Service Check
+2026/02/03 10:10:01 Migration v10_failed_payouts.sql already applied, skipping
+2026/02/03 10:10:01 Migration v33_recreate_failed_payouts.sql already applied, skipping
+2026/02/03 10:10:01 Warning: Failed to run migrations: failed to execute migration v36_final_optimization.sql: migration SQL error: pq: VACUUM cannot run inside a transaction block (25001)
+2026/02/03 10:44:24 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/02/03 10:44:24 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+
+### 🌍 GEO Service Check
+✅ GEO Service is running correctly (found 2 log entries).
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-03 12:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-03 13:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
