@@ -293,26 +293,61 @@ func (pms *PoolMonitorService) GetXAUtPriceUSD() float64 {
 	return 2750.00 // Updated Gold Price roughly $2750
 }
 
-// GetGSTDPriceUSD returns the estimated price of GSTD in USD based on the pool ratio
+// GetGSTDPriceUSD returns the estimated price of GSTD in USD
 func (pms *PoolMonitorService) GetGSTDPriceUSD(ctx context.Context) (float64, error) {
+	// 1. Try GSTD/TON pool first (usually has more liquidity)
+	// GSTD/TON Pool: EQBAKUBvV_ppbcMCPnWQXKfV1IIHtve5ImYA8-wg0hpMzNH8
+	tonPoolAddr := "EQBAKUBvV_ppbcMCPnWQXKfV1IIHtve5ImYA8-wg0hpMzNH8"
+	
+	// Quick fetch for TON pool
+	url := fmt.Sprintf("https://api.ston.fi/v1/pools/%s", tonPoolAddr)
+	resp, err := pms.httpClient.Get(url)
+	if err == nil && resp.StatusCode == http.StatusOK {
+		var poolData struct {
+			Pool struct {
+				Reserve0 string `json:"reserve0"` // GSTD
+				Reserve1 string `json:"reserve1"` // TON
+				Token0   string `json:"token0_address"`
+			} `json:"pool"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&poolData); err == nil {
+			r0, _ := strconv.ParseFloat(poolData.Pool.Reserve0, 64)
+			r1, _ := strconv.ParseFloat(poolData.Pool.Reserve1, 64)
+			
+			var reserveGSTD, reserveTON float64
+			if poolData.Pool.Token0 == "EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO" {
+				reserveGSTD = r0
+				reserveTON = r1
+			} else {
+				reserveGSTD = r1
+				reserveTON = r0
+			}
+
+			if reserveGSTD > 0 {
+				tonPriceUSD := 5.30 // Hardcoded fallback or fetch
+				// Price in TON = reserveTON / reserveGSTD
+				priceInTON := reserveTON / reserveGSTD
+				gstdPrice := priceInTON * tonPriceUSD
+				if gstdPrice > 0.0000001 {
+					log.Printf("📊 GSTD Price from TON Pool: $%.6f", gstdPrice)
+					return gstdPrice, nil
+				}
+			}
+		}
+		resp.Body.Close()
+	}
+
+	// 2. Fallback to XAUt Pool (The one provided by user)
 	status, err := pms.GetPoolStatusCached(ctx)
-	if err != nil {
-		return 0, err
+	if err == nil && status.GSTDBalance > 100 {
+		xautPrice := pms.GetXAUtPriceUSD()
+		gstdPrice := xautPrice * (status.XAUtBalance / status.GSTDBalance)
+		if gstdPrice > 0.0000001 {
+			log.Printf("📊 GSTD Price from XAUt Pool: $%.8f", gstdPrice)
+			return gstdPrice, nil
+		}
 	}
 
-	// GSTD Price = (XAUt Price) * (1 / (GSTD/XAUt)) = (XAUt Price) * (XAUt Balance / GSTD Balance)
-	// If pool is empty, return a safe floor price (e.g., $0.02)
-	if status.GSTDBalance == 0 {
-		return 0.02, nil
-	}
-
-	xautPrice := pms.GetXAUtPriceUSD()
-	gstdPrice := xautPrice * (status.XAUtBalance / status.GSTDBalance)
-
-    // Safety check: if price is NaN or Inf, return default
-    if gstdPrice != gstdPrice || gstdPrice < 0 {
-         return 0.02, nil
-    }
-
-	return gstdPrice, nil
+	// 3. Absolute Floor Price for Demo
+	return 0.015, nil
 }

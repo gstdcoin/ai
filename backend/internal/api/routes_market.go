@@ -56,7 +56,11 @@ func (h *MarketHandler) PrepareSwapTransaction(c *gin.Context) {
 	}
 
 	amountIn := int64(req.AmountTON * 1e9)
-	quote, _ := h.stonFiService.GetSwapQuote(c.Request.Context(), amountIn, "TON", "GSTD_ADDR")
+	quote, err := h.stonFiService.GetSwapQuote(c.Request.Context(), amountIn, "TON", "GSTD_ADDR")
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Failed to get real swap quote: " + err.Error()})
+		return
+	}
 	
 	// Payload for agent to sign
 	payload, err := h.stonFiService.BuildSwapPayload(c.Request.Context(), req.WalletAddress, quote, amountIn)
