@@ -1,5 +1,6 @@
 
 const { default: createGSTD } = require('../gstd-sdk/dist/index.js');
+const axios = require('axios');
 
 // Configuration
 const GENESIS_WALLET = "EQAIYlrr3UiMJ9fqI-B4j2nJdiiD7WzyaNL1MX_wiONc4OUi";
@@ -15,21 +16,14 @@ async function runGenesisBot() {
     console.log(`💼 Wallet: ${GENESIS_WALLET}`);
 
     const gstd = createGSTD({
-        wallet: GENESIS_WALLET,
         apiUrl: API_URL,
-        apiKey: API_KEY
+        apiKey: API_KEY,
+        wallet: GENESIS_WALLET
     });
 
-    let taskCount = 0;
-
-    const dispatch = async () => {
-        taskCount++;
-        console.log(`\n[${new Date().toISOString()}] 🚀 Dispatching Genesis Task #${taskCount}...`);
-
+    setInterval(async () => {
         try {
-            // 0. CHECK BALANCE & REFILL IF NEEDED (The "Buying Logic")
-            // We use axios directly for the simulation endpoint as it's not in standard SDK yet
-            const axios = require('axios');
+            // 0. CHECK BALANCE & REFILL IF NEEDED
             try {
                 const balanceRes = await axios.get(`${API_URL}/v1/wallet/gstd-balance?address=${GENESIS_WALLET}`, {
                     headers: { 'Authorization': `Bearer ${API_KEY}` }
@@ -39,18 +33,27 @@ async function runGenesisBot() {
                 console.log(`💰 Current Balance: ${balance.toFixed(2)} GSTD`);
 
                 if (balance < 100) {
-                    console.log("📉 Balance Critical (< 100 GSTD). Initiating Market Buy on STON.fi (Simulated)...");
-                    const swapRes = await axios.post(`${API_URL}/v1/market/swap`, {
-                        wallet_address: GENESIS_WALLET,
-                        amount_ton: 10 // Swap 10 TON for 500 GSTD
-                    }, {
-                        headers: { 'Authorization': `Bearer ${API_KEY}` }
-                    });
-                    console.log(`✅ MARKET BUY EXECUTED: Swapped 10 TON for ${swapRes.data.received_gstd} GSTD`);
+                    console.log("📉 Balance Critical (< 100 GSTD). Initiating Market Buy on STON.fi...");
+                    try {
+                        const swapRes = await axios.post(`${API_URL}/v1/market/swap`, {
+                            wallet_address: GENESIS_WALLET,
+                            amount_ton: 10
+                        }, { headers: { 'X-Admin-Key': API_KEY } });
+
+                        if (swapRes.data && swapRes.data.received_gstd) {
+                            const amountOut = swapRes.data.received_gstd;
+                            console.log(`✅ MARKET BUY EXECUTED: Swapped 10 TON for ${amountOut.toLocaleString()} GSTD`);
+                        }
+                    } catch (swapErr) {
+                        console.log(`⚠️ Failed to execute market buy: ${swapErr.message}`);
+                    }
                 }
             } catch (balErr) {
                 console.warn(`⚠️ Failed to check market balance: ${balErr.message}`);
             }
+
+            // 1. DISPATCH TASK
+            console.log(`\n[${new Date().toISOString()}] 🚀 Dispatching Genesis Task...`);
 
             const task = await gstd.createTask({
                 operation: "verification_job",
@@ -61,24 +64,16 @@ async function runGenesisBot() {
                     timestamp: Date.now(),
                     node_id: "genesis_sentinel"
                 },
-                inputSource: "ipfs://genesis_data_placeholder"
+                inputSource: "https://gstd.io/health_check",
+                validation: "consensus"
             });
 
             console.log(`✅ Task Created successfully! ID: ${task.task_id}`);
+
         } catch (error) {
-            console.error(`❌ Failed to create task: ${error.message}`);
-            if (error.response) {
-                console.error(`   Status Code: ${error.response.status}`);
-                console.error(`   Body: ${JSON.stringify(error.response.data)}`);
-            }
+            console.error("❌ Error in Genesis Bot loop:", error.message);
         }
-    };
-
-    // Initial run
-    await dispatch();
-
-    // Repeat 
-    setInterval(dispatch, INTERVAL_MS);
+    }, INTERVAL_MS);
 }
 
 runGenesisBot().catch(console.error);

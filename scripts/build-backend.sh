@@ -22,7 +22,7 @@ fi
 
 # Build backend
 echo "Building backend..."
-docker-compose build --no-cache backend
+docker-compose build --no-cache backend-blue backend-green
 
 echo "=== Done ==="
 

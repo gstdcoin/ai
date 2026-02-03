@@ -164,7 +164,8 @@ func (s *StonFiService) GetSwapQuote(ctx context.Context, amountIn int64, tokenI
 	// For TON -> GSTD (where TON="TON" and GSTD="GSTD_ADDR")
 	
 	// Real API Call Attempt
-	url := fmt.Sprintf("%s/v1/quote?tokenIn=%s&tokenOut=%s&amountIn=%d",
+	// Try standard quote first
+	url := fmt.Sprintf("%s/v1/reverse_quote?offer_address=%s&ask_address=%s&units=%d&slippage_tolerance=0.01",
 		s.apiURL, tokenIn, tokenOut, amountIn)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
@@ -173,38 +174,162 @@ func (s *StonFiService) GetSwapQuote(ctx context.Context, amountIn int64, tokenI
 		if err == nil {
 			defer resp.Body.Close()
 			if resp.StatusCode == http.StatusOK {
-				var quote SwapQuote
-				if err := json.NewDecoder(resp.Body).Decode(&quote); err == nil {
-					return &quote, nil
+				var quoteResponse struct {
+					OfferUnits string `json:"offer_units"`
+					AskUnits   string `json:"ask_units"`
+					PriceImpact string `json:"price_impact"`
+				}
+				if err := json.NewDecoder(resp.Body).Decode(&quoteResponse); err == nil {
+					return &SwapQuote{
+						AmountOut:    quoteResponse.AskUnits,
+						MinAmountOut: quoteResponse.AskUnits, 
+						PriceImpact:  quoteResponse.PriceImpact,
+					}, nil
 				}
 			}
 		}
 	}
 
-	// Simulation Fallback (since GSTD pool isn't on mainnet yet)
-	// Price: 1 TON = 50 GSTD
-	// Simulation Fallback: calculate price based on Pool Monitoring if available
-	priceRatio := 50.0 // Default fallback (1 TON = 50 GSTD)
+	// Fallback to Direct Pool Calculation (Low Liquidity Mode)
+	// We check which pool to query based on tokens
+	var poolUrl string
+	var isGSTD, isXAUt, isDirectPair bool
+
+	// Pool Addresses
+	const (
+		Pool_GSTD_TON = "EQBAKUBvV_ppbcMCPnWQXKfV1IIHtve5ImYA8-wg0hpMzNH8"
+		Pool_XAUT_GSTD = "EQA--JXG8VSyBJmLMqb2J2t4Pya0TS9SXHh7vHh8Iez25sLp"
+	)
+
+	// Token Addresses
+	const (
+		Token_TON   = "TON"
+		Token_GSTD  = "EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO"
+		Token_XAUT  = "EQA1R_LuQCLHlMgOo1S4G7Y7W1cd0FrAkbA10Zq7rddKxi9k" // From Pool Data
+		// Note: Keep legacy XAUt address check if needed, but prioritized pool data
+	)
+
+	// GSTD/TON Pool logic
+	if (tokenIn == Token_TON && tokenOut == Token_GSTD) || 
+	   (tokenOut == Token_TON && tokenIn == Token_GSTD) ||
+       (tokenOut == "GSTD_ADDR" || tokenIn == "GSTD_ADDR") { 
+		poolUrl = "https://api.ston.fi/v1/pools/" + Pool_GSTD_TON
+		isGSTD = true
+	} 
 	
-	if s.poolMonitor != nil {
-		// 1 GSTD = $PriceUSD
-		// 1 TON ~= $5.50 (hardcoded for now, ideal: get from Oracle)
-		gstdPrice, err := s.poolMonitor.GetGSTDPriceUSD(ctx)
-		if err == nil && gstdPrice > 0 {
-			tonPrice := 5.50 
-			priceRatio = tonPrice / gstdPrice // e.g. 5.50 / 0.11 = 50 GSTD per TON
-		}
+	// XAUT/GSTD Direct Pool logic
+	// Check against known XAUt address OR the legacy one from config
+	isXautIn := (tokenIn == Token_XAUT || tokenIn == "EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV_Riwa854wa")
+	isXautOut := (tokenOut == Token_XAUT || tokenOut == "EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV_Riwa854wa")
+	
+	if (isXautIn && tokenOut == Token_GSTD) || (isXautOut && tokenIn == Token_GSTD) {
+		poolUrl = "https://api.ston.fi/v1/pools/" + Pool_XAUT_GSTD
+		isXAUt = true
+		isDirectPair = true
 	}
 
-	amountOut := float64(amountIn) * priceRatio
-	minOut := amountOut * 0.99
+	if poolUrl == "" {
+		return nil, fmt.Errorf("no known pool for %s -> %s", tokenIn, tokenOut)
+	}
+
+	reqPool, err := http.NewRequestWithContext(ctx, "GET", poolUrl, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create pool request: %w", err)
+	}
+
+	respPool, err := s.client.Do(reqPool)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch pool reserves: %w", err)
+	}
+	defer respPool.Body.Close()
+
+	if respPool.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("pool API error: %d", respPool.StatusCode)
+	}
+
+	var poolData struct {
+		Pool struct {
+			Reserve0 string `json:"reserve0"` 
+			Reserve1 string `json:"reserve1"` 
+			Token0   string `json:"token0_address"`
+			Token1   string `json:"token1_address"`
+		} `json:"pool"`
+	}
+
+	if err := json.NewDecoder(respPool.Body).Decode(&poolData); err != nil {
+		return nil, fmt.Errorf("failed to decode pool data: %w", err)
+	}
 	
-	log.Printf("⚠️ Using Simulated STON.fi Quote for %s -> %s", tokenIn, tokenOut)
+	var reserveIn, reserveOut float64
+	var r0, r1 float64
 	
+	r0, _ = strconv.ParseFloat(poolData.Pool.Reserve0, 64)
+	r1, _ = strconv.ParseFloat(poolData.Pool.Reserve1, 64)
+
+	// Determine matching logic
+	// We need to match tokenIn to Token0 or Token1
+	
+	matchedIn := false
+	
+	// Normalization for comparison (handle aliases)
+	actualTokenIn := tokenIn
+	if tokenIn == "TON" { actualTokenIn = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c" } 
+	// If input was "GSTD_ADDR", map to actual
+	if tokenIn == "GSTD_ADDR" { actualTokenIn = Token_GSTD }
+	
+	// If using aliases for XAUt in request but pool has real address
+	if isXautIn { actualTokenIn = poolData.Pool.Token0 } // Slight hack: if we know it's the XAUt pool pair, we can deduce.
+	
+	// Better logic:
+	if actualTokenIn == poolData.Pool.Token0 {
+		matchedIn = true
+	} else if actualTokenIn == poolData.Pool.Token1 {
+		matchedIn = false
+	} else {
+		// Fallback for Aliases (if TokenIn didn't exactly match pool addresses but we selected the pool correctly)
+		// e.g. tokenIn="TON" (alias) vs pool token="EQ...M9c"
+		if tokenIn == "TON" && (poolData.Pool.Token0 == "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c") {
+			matchedIn = true
+		} else if isXautIn {
+             // If we are in XAUT pool, and input was XAUT, assume it matches the non-GSTD token
+             if poolData.Pool.Token0 != Token_GSTD { matchedIn = true } else { matchedIn = false }
+		} else if isGSTD && !isDirectPair {
+             // GSTD/TON pool
+             if tokenIn == "TON" {
+                 // Check if Token0 is TON
+                 if poolData.Pool.Token0 == "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c" { matchedIn = true } else { matchedIn = false }
+             } else {
+                 // Input is GSTD
+                 if poolData.Pool.Token0 == Token_GSTD { matchedIn = true } else { matchedIn = false }
+             }
+        }
+	}
+
+	if matchedIn {
+		reserveIn = r0
+		reserveOut = r1
+	} else {
+		reserveIn = r1
+		reserveOut = r0
+	}
+	
+	amtInFloat := float64(amountIn)
+	// Output = (ReserveOut * AmountIn) / (ReserveIn + AmountIn)
+	// Add 99.7% fee consideration? (30 protocol + 20 lp fee?) usually 0.3%
+	// Standard Constant Product with fee: Out = (Ry * x * 0.997) / (Rx + x * 0.997)
+	amountOut := (reserveOut * amtInFloat) / (reserveIn + amtInFloat)
+	
+	targetName := "Unknown"
+	if isGSTD { targetName = "GSTD" }
+	if isXAUt { targetName = "XAUt" }
+    if isDirectPair { targetName = "GSTD/XAUt" }
+
+	log.Printf("✅ Direct Pool Swap (%s): In %.2f -> Out %.2f (Reserves: %.0f / %.0f)", targetName, amtInFloat/1e9, amountOut/1e9, reserveIn, reserveOut)
+
 	return &SwapQuote{
-		AmountOut: strconv.FormatInt(int64(amountOut), 10),
-		MinAmountOut: strconv.FormatInt(int64(minOut), 10),
-		PriceImpact: "0.01",
+		AmountOut:    fmt.Sprintf("%.0f", amountOut),
+		MinAmountOut: fmt.Sprintf("%.0f", amountOut*0.95), 
+		PriceImpact:  "0.05",
 	}, nil
 }
 
