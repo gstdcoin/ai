@@ -35,6 +35,14 @@ func (s *NodeService) RegisterNode(ctx context.Context, walletAddress string, na
 	existing, err := s.GetNodeByWalletAddress(ctx, walletAddress)
 	isUpdate := err == nil && existing != nil
 
+	// Ensure user exists (for autonomous agents using API Key without prior login)
+	// We ignore specific error here as constraint violation means user exists
+	_, _ = s.db.ExecContext(ctx, `
+		INSERT INTO users (wallet_address, created_at, updated_at) 
+		VALUES ($1, NOW(), NOW()) 
+		ON CONFLICT (wallet_address) DO NOTHING
+	`, walletAddress)
+
 	// Extract specs
 	var cpuModel *string
 	var ramGB *int

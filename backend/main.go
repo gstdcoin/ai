@@ -285,6 +285,7 @@ func main() {
 	timeoutService := services.NewTimeoutService(db)
 	timeoutService.SetErrorLogger(errorLogger) // Enable error logging for timeouts
 	statsService := services.NewStatsService(db)
+	statsService.SetPoolMonitor(poolMonitorService)
 	userService := services.NewUserService(db)
 	nodeService := services.NewNodeService(db, redisClient)
 	// Enable node_id to wallet_address resolution in payment service
@@ -293,11 +294,13 @@ func main() {
 	taskPaymentService.SetTelegramService(telegramService) // Enable Telegram notifications for completed tasks
 	paymentWatcher := services.NewPaymentWatcher(db, tonService, cfg.TON, taskPaymentService)
 	stonFiService := services.NewStonFiService(cfg.TON.StonFiRouter)
+	stonFiService.SetPoolMonitor(poolMonitorService)
 	rewardEngine := services.NewRewardEngine(db, tonService, stonFiService, cfg.TON)
 	payoutRetryService := services.NewPayoutRetryService(db, rewardEngine)
 	rewardEngine.SetPayoutRetry(payoutRetryService)
 	taskRateLimiter := services.NewRateLimiter(10, 1*time.Minute) // 10 tasks per minute per wallet
 	lendingService := services.NewLendingService(db)
+	lendingService.SetPoolMonitor(poolMonitorService)
 	boincService := services.NewBoincService(db)
 	log.Println("✅ BOINC Integration service initialized")
 

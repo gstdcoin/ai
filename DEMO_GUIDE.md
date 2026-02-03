@@ -51,6 +51,12 @@
 3. Submit and pay for scientific task
 4. Platform bridging starts - status updates from Rosetta/SETI/etc.
 
+### 7. Physical Agent (OpenClaw)
+1. In terminal: `python A2A/openclaw_bridge.py`
+2. Watch it register as a new "Physical Control Node"
+3. Create a task of type `openclaw-control`
+4. Verify the bridge script receives the command and executes it
+
 ---
 
 ## 🔑 API Test Commands

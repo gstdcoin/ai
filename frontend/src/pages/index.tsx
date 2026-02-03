@@ -18,6 +18,7 @@ interface NetworkStats {
   total_tasks: number;
   total_hashrate: number;
   gold_reserve: number;
+  gstd_price_usd: number;
 }
 
 export default function Home() {
@@ -396,7 +397,9 @@ export default function Home() {
                   <div className="mb-8">
                     <div className="text-sm text-gray-400 mb-2">Estimated Cost</div>
                     <div className="text-4xl font-bold text-white flex items-baseline gap-2">
-                      {selectedPlan === 'standard' ? '0.04' : '0.08'}
+                      {selectedPlan === 'standard'
+                        ? (0.04 / (networkStats?.gstd_price_usd || 0.02)).toFixed(2)
+                        : (0.08 / (networkStats?.gstd_price_usd || 0.02)).toFixed(2)}
                       <span className="text-lg text-gray-500 font-normal">GSTD/hr</span>
                     </div>
                   </div>
@@ -504,10 +507,10 @@ export default function Home() {
                   <div className="p-6 rounded-2xl bg-black/40 border border-white/5 text-center mb-8">
                     <div className="text-sm text-gray-400 mb-2">Estimated Monthly Earnings</div>
                     <div className="text-4xl font-bold text-emerald-400 mb-1">
-                      {(workerHours * 0.05 * 30).toFixed(1)} GSTD
+                      {(workerHours * (0.10 / (networkStats?.gstd_price_usd || 0.10)) * 30).toFixed(1)} GSTD
                     </div>
                     <div className="text-sm text-gray-500">
-                      ≈ ${(workerHours * 0.05 * 30 * 8.5).toFixed(2)} USD
+                      ≈ ${(workerHours * 0.10 * 30).toFixed(2)} USD
                     </div>
                   </div>
 
