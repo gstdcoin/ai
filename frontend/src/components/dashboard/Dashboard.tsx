@@ -38,7 +38,7 @@ const NewTaskModal = lazy(() => import('./NewTaskModal'));
 function Dashboard() {
   const { t } = useTranslation('common');
   const router = useRouter();
-  const { address, disconnect, tonBalance, gstdBalance } = useWalletStore();
+  const { address, disconnect, tonBalance, gstdBalance, pendingEarnings } = useWalletStore();
   const [tonConnectUI] = useTonConnectUI();
   const [activeTab, setActiveTab] = useState<Tab>('tasks');
   const [showNewTask, setShowNewTask] = useState(false);
@@ -287,9 +287,9 @@ function Dashboard() {
                     </h3>
                     <div className="text-3xl font-bold text-white flex items-baseline gap-2">
                       <span className="bg-gradient-to-r from-green-400 to-emerald-500 bg-clip-text text-transparent">
-                        24.50
+                        {pendingEarnings?.toFixed(2) || '0.00'}
                       </span>
-                      <span className="text-base font-normal text-gray-500">TON</span>
+                      <span className="text-base font-normal text-gray-500">GSTD</span>
                     </div>
                     <p className="text-xs text-gray-500 mt-1">Escrowed in active tasks</p>
                   </div>

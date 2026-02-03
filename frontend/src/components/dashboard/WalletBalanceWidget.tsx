@@ -60,6 +60,9 @@ export const WalletBalanceWidget: React.FC = () => {
         try {
             const data = await apiGet<WalletBalance>(`/wallet/balance?wallet=${address}`);
             setBalance(data);
+            if (data) {
+                updateBalance(data.ton_balance.toString(), data.gstd_balance, data.pending_earnings);
+            }
         } catch (error) {
             console.error('Failed to fetch balance:', error);
         } finally {

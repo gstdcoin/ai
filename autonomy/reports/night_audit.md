@@ -2951,3 +2951,14 @@ Error response from daemon: No such container: ubuntu-backend-blue-1
 ⚠️  No GEO Service activity or initialization found in logs.
 
 ---
+## 🛡️ GSTD Security Audit - 2026-02-03 08:00:01
+
+### 💎 TON Service Check
+2026/02/03 07:51:00 Migration v10_failed_payouts.sql already applied, skipping
+2026/02/03 07:51:00 Migration v33_recreate_failed_payouts.sql already applied, skipping
+2026/02/03 07:51:00 Warning: Failed to run migrations: failed to execute migration v36_final_optimization.sql: migration SQL error: pq: column "labor_compensation_ton" does not exist (42703)
+
+### 🌍 GEO Service Check
+✅ GEO Service is running correctly (found 2 log entries).
+
+---

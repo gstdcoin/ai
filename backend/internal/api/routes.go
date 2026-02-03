@@ -52,6 +52,7 @@ func SetupRoutes(
 	sovereignBridge *services.SovereignBridgeService,
 	knowledgeService *services.KnowledgeService,
 	pricingService *services.PricingService,
+	invoiceService *services.InvoiceService,
 ) {
 	log.Printf("🔧 SetupRoutes: Starting route setup, redisClient type: %T", redisClient)
 	
@@ -318,6 +319,9 @@ func SetupRoutes(
 			}
 			c.JSON(200, gin.H{"suggested_budget": suggested, "currency": "GSTD"})
 		})
+
+		// Invoices (Settlement Layer)
+		SetupInvoiceRoutes(protected, invoiceService)
 	}
 
 	// WebSocket endpoint

@@ -15,6 +15,7 @@ interface WalletState {
   address: string | null;
   tonBalance: string | null;
   gstdBalance: number | null;
+  pendingEarnings: number | null;
   user: User | null;
   // Worker state persistence for TWA
   workerActive: boolean;
@@ -77,9 +78,10 @@ export const useWalletStore = create<WalletState>()(
         isConnected: !!address,
         lastActiveTimestamp: address ? Date.now() : null
       }),
-      updateBalance: (ton: string, gstd: string | number) => set({
+      updateBalance: (ton: string, gstd: string | number, pending?: number) => set({
         tonBalance: ton,
-        gstdBalance: Number(gstd)
+        gstdBalance: Number(gstd),
+        pendingEarnings: pending !== undefined ? pending : null
       }),
       setUser: (user: User | null) => set({ user }),
       setWorkerActive: (active: boolean) => set({

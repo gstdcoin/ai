@@ -127,8 +127,9 @@ type NetworkStats struct {
 	Temperature   float64 `json:"temperature"`
 	Pressure      float64 `json:"pressure"`
 	TotalHashrate float64 `json:"total_hashrate"`
-    GoldReserve   float64 `json:"gold_reserve"`
-	GSTDPriceUSD  float64 `json:"gstd_price_usd"`
+    GoldReserve       float64 `json:"gold_reserve"`
+	GoldenReserveXAUt float64 `json:"golden_reserve_xaut"`
+	GSTDPriceUSD      float64 `json:"gstd_price_usd"`
 }
 
 func (s *StatsService) GetNetworkStats(ctx context.Context) (*NetworkStats, error) {
@@ -200,6 +201,8 @@ func (s *StatsService) GetNetworkStats(ctx context.Context) (*NetworkStats, erro
 	if err != nil {
         stats.GoldReserve = 0
     }
+    // Populate GoldenReserveXAUt from GoldReserve for consistency
+    stats.GoldenReserveXAUt = stats.GoldReserve
 
 	if s.poolMonitor != nil {
 		price, err := s.poolMonitor.GetGSTDPriceUSD(ctx)

@@ -60,6 +60,7 @@ export default function Marketplace() {
     const [marketStats, setMarketStats] = useState<MarketplaceStats | null>(null);
     const [loading, setLoading] = useState(false);
     const [claimingTask, setClaimingTask] = useState<string | null>(null);
+    const [priceUSD, setPriceUSD] = useState<number>(6.5); // Default fallback
 
     // Task creation form
     const [taskForm, setTaskForm] = useState({
@@ -113,8 +114,14 @@ export default function Marketplace() {
         try {
             const stats = await apiGet<MarketplaceStats>('/marketplace/stats');
             if (stats) setMarketStats(stats);
+
+            // Also fetch price from network stats
+            const netStats = await apiGet<any>('/network/stats');
+            if (netStats && netStats.gstd_price_usd) {
+                setPriceUSD(netStats.gstd_price_usd);
+            }
         } catch (error) {
-            console.error('Failed to fetch market stats:', error);
+            console.error('Failed to fetch stats:', error);
         }
     }, []);
 
@@ -373,8 +380,8 @@ export default function Marketplace() {
                                                         <h4 className="text-lg font-bold text-white group-hover:text-blue-400 transition-colors">{task.operation || task.task_type}</h4>
                                                         <div className="flex items-center gap-3 mt-1">
                                                             <span className={`flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border ${task.difficulty === 'easy' ? 'bg-green-500/10 border-green-500/30 text-green-400' :
-                                                                    task.difficulty === 'medium' ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400' :
-                                                                        'bg-red-500/10 border-red-500/30 text-red-400'
+                                                                task.difficulty === 'medium' ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400' :
+                                                                    'bg-red-500/10 border-red-500/30 text-red-400'
                                                                 }`}>
                                                                 <Activity className="w-3 h-3" />
                                                                 {task.difficulty.toUpperCase()}
@@ -393,7 +400,7 @@ export default function Marketplace() {
                                                         </span>
                                                         <span className="text-xs font-bold text-gray-500">GSTD</span>
                                                     </div>
-                                                    <div className="text-xs text-gray-500 mt-1 font-mono">≈ $ {((task.reward_gstd * 0.95) * 6.5).toFixed(2)}</div>
+                                                    <div className="text-xs text-gray-500 mt-1 font-mono">≈ $ {((task.reward_gstd * 0.95) * priceUSD).toFixed(2)}</div>
                                                 </div>
                                             </div>
 
