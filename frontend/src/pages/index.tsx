@@ -171,14 +171,29 @@ export default function Home() {
                 <span className="text-white/80 ml-1">Platform</span>
               </span>
             </div>
-            <div className="flex items-center gap-4">
-              <button
-                onClick={changeLanguage}
-                className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-sm font-medium"
-              >
-                {router.locale === 'ru' ? 'EN' : 'RU'}
-              </button>
-              <WalletConnect />
+
+            <div className="flex items-center gap-6">
+              <nav className="hidden md:flex items-center gap-6 mr-2">
+                <a href="/docs?type=investment" className="text-sm font-medium text-gray-400 hover:text-white transition-colors">
+                  {t('nav_invest') || 'Invest'}
+                </a>
+                <a href="/docs?type=technical" className="text-sm font-medium text-gray-400 hover:text-white transition-colors">
+                  {t('nav_tech') || 'Technology'}
+                </a>
+                <a href="/docs?type=agents" className="text-sm font-medium text-gray-400 hover:text-white transition-colors">
+                  {t('nav_agents') || 'Agents'}
+                </a>
+              </nav>
+
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={changeLanguage}
+                  className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-sm font-medium"
+                >
+                  {router.locale === 'ru' ? 'EN' : 'RU'}
+                </button>
+                <WalletConnect />
+              </div>
             </div>
           </div>
         </header>
@@ -445,10 +460,12 @@ export default function Home() {
                     <div className="mt-1 w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center shrink-0 font-bold text-white">1</div>
                     <div>
                       <h4 className="text-xl font-bold text-white mb-2">Download Agent</h4>
-                      <p className="text-gray-400 mb-4">Run this one-liner in your terminal (Linux/Mac/WSL)</p>
+                      <p className="text-gray-400 mb-4">
+                        Run this on Linux/Mac/WSL. For mobile, just <a href="#" onClick={(e) => { e.preventDefault(); tonConnectUI.openModal() }} className="text-cyan-400 hover:underline">Connect Wallet</a> and start browser mining/worker.
+                      </p>
                       <div className="relative group">
                         <code className="block w-full p-4 rounded-xl bg-black/50 border border-white/10 text-emerald-400 font-mono text-sm overflow-x-auto">
-                          curl -sL get.gstd.io | bash
+                          curl -sL https://raw.githubusercontent.com/gstdcoin/ai/main/install.sh | bash
                         </code>
                         <button
                           onClick={copyToClipboard}
