@@ -382,6 +382,7 @@ func main() {
 	// Use a custom Gin engine so we can control middleware order,
 	// including our own panic recovery middleware.
 	router := gin.New()
+	router.SetTrustedProxies(nil)
 	router.Use(gin.Logger(), recoveryMiddleware)
 	
 	// Add security headers middleware
@@ -433,6 +434,9 @@ func main() {
 	knowledgeService := services.NewKnowledgeService(db)
 	log.Println("✅ Knowledge Service (Hive Memory) active")
 
+	pricingService := services.NewPricingService(db)
+	log.Println("✅ Pricing Service (Dynamic Economy) active")
+
 	api.SetupRoutes(
 		router,
 		taskService,
@@ -467,6 +471,7 @@ func main() {
 		maintenanceService,
 		sovereignBridge,
 		knowledgeService,
+		pricingService,
 	)
 
 	// Setup Swagger documentation

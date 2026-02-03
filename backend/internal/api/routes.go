@@ -51,6 +51,7 @@ func SetupRoutes(
 	maintenanceService *services.MaintenanceService,
 	sovereignBridge *services.SovereignBridgeService,
 	knowledgeService *services.KnowledgeService,
+	pricingService *services.PricingService,
 ) {
 	log.Printf("🔧 SetupRoutes: Starting route setup, redisClient type: %T", redisClient)
 	
@@ -303,6 +304,20 @@ func SetupRoutes(
 		
 		// Knowledge / Hive Memory
 		SetupKnowledgeRoutes(protected, knowledgeService)
+
+		// Pricing (Dynamic Budget)
+		v1.GET("/pricing/suggested", func(c *gin.Context) {
+			taskType := c.Query("type")
+			if taskType == "" {
+				taskType = "inference"
+			}
+			suggested, err := pricingService.CalculateSuggestedBudget(c.Request.Context(), taskType)
+			if err != nil {
+				c.JSON(500, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(200, gin.H{"suggested_budget": suggested, "currency": "GSTD"})
+		})
 	}
 
 	// WebSocket endpoint

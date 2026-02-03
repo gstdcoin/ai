@@ -295,6 +295,9 @@ func (s *TONService) GetJettonWalletAddress(ctx context.Context, ownerAddr, jett
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusNotFound {
+			return "", fmt.Errorf("jetton wallet not found")
+		}
 		body, _ := io.ReadAll(resp.Body)
 		// If endpoint doesn't exist, return error (don't fallback)
 		return "", fmt.Errorf("failed to get jetton wallet (HTTP %d): %s", resp.StatusCode, string(body))
