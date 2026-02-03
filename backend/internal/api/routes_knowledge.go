@@ -21,7 +21,7 @@ func storeKnowledge(service *services.KnowledgeService) gin.HandlerFunc {
 
 		// Let's pass raw tags.
 
-		if err := service.StoreKnowledge(c.Request.Context(), req.AgentID, req.Topic, req.Content, req.Tags); err != nil {
+		if err := service.StoreKnowledge(c.Request.Context(), req.AgentID, req.Topic, req.Content, req.Tags, nil); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to store knowledge: " + err.Error()})
 			return
 		}

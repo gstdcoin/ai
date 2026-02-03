@@ -23,12 +23,9 @@ func NewKnowledgeService(db *sql.DB) *KnowledgeService {
 	return &KnowledgeService{db: db}
 }
 
-func (s *KnowledgeService) StoreKnowledge(ctx context.Context, agentID, topic, content string, tags []string) error {
-	query := `INSERT INTO agent_knowledge (agent_id, topic, content, tags) VALUES ($1, $2, $3, $4)`
-	// Convert tags to postgres array format if needed, or rely on driver. 
-	// pq driver handles []string mostly, but we'll see.
-	// For simplicity using simple join or proper driver support.
-	_, err := s.db.ExecContext(ctx, query, agentID, topic, content, tags)
+func (s *KnowledgeService) StoreKnowledge(ctx context.Context, agentID, topic, content string, tags []string, embedding []byte) error {
+	query := `INSERT INTO agent_knowledge (agent_id, topic, content, tags, embedding) VALUES ($1, $2, $3, $4, $5)`
+	_, err := s.db.ExecContext(ctx, query, agentID, topic, content, tags, embedding)
 	return err
 }
 

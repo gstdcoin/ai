@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"distributed-computing-platform/internal/config"
@@ -169,7 +170,11 @@ func (pms *PoolMonitorService) GetPoolStatus(ctx context.Context) (*PoolStatus, 
 			}
 		} else {
 			// Log error but continue with 0 balance (non-critical)
-			log.Printf("⚠️  Failed to get GSTD jetton wallet address (using 0): %v", err)
+			if err.Error() == "jetton wallet not found" {
+				log.Printf("ℹ️  Pool has no GSTD jetton wallet (balance is 0)")
+			} else {
+				log.Printf("⚠️  Failed to get GSTD jetton wallet address (using 0): %v", err)
+			}
 			status.GSTDBalance = 0
 		}
 
@@ -192,7 +197,11 @@ func (pms *PoolMonitorService) GetPoolStatus(ctx context.Context) (*PoolStatus, 
 			}
 		} else {
 			// Log error but continue with 0 balance (non-critical)
-			log.Printf("⚠️  Failed to get XAUt jetton wallet address (using 0): %v", err)
+			if err.Error() == "jetton wallet not found" || strings.Contains(err.Error(), "can't decode address") {
+				log.Printf("ℹ️  Pool has no XAUt jetton wallet (balance is 0) or address format mismatch")
+			} else {
+				log.Printf("⚠️  Failed to get XAUt jetton wallet address (using 0): %v", err)
+			}
 			status.XAUtBalance = 0
 		}
 
