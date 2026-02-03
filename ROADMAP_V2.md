@@ -1,31 +1,35 @@
-# GSTD V2.0: The Singularity Roadmap
+# 🌌 GSTD: The Singularity Roadmap (v2.1)
 
-**Status:** APPROVED by The United Council of Experts
-**Date:** January 24, 2026
+**Status:** ACTIVE - Phase IV Deployment
+**Last Updated:** February 3, 2026
 
-## Phase IV: Global Dominance (The Singularity)
+## 🚀 The Path to Physical Intelligence
 
-This roadmap outlines the definitive path for GSTD to become the world's primary distributed computing layer.
+This roadmap details the evolution of GSTD from a distributed grid to a global autonomous brain.
 
-### 🌐 Q1 2026: Web3 & Sovereignty (Financier & Lawyer)
-- [x] **Jetton Integration on TON:** Native Claim logic implemented (`v1.0`).
-- [x] **Gasless Meta-Transactions:** Users pay gas in GSTD, removing the TON barrier (`v2.0`).
-- [ ] **DAO Governance Contract:** Transition ownership of the `Treasury` to a DAO smart contract.
-- [ ] **Legal Framework:** Publish "Utility Compute Token" opinion letter (Zoug, Switzerland).
+### ✅ Phase 1: Genesis & Integration (COMPLETED)
+- [x] **TON Jetton Integration**: Native $GSTD asset launch.
+- [x] **Universal Worker Client**: Web, Mobile, and Desktop support.
+- [x] **Escrow Smart Contracts**: Automated trustless payments.
 
-### 🧠 Q2 2026: Artificial Intelligence (AI Architect)
-- [x] **Neural Task Orchestration (v1):** Basic Score = CPU + RAM + Reputation.
-- [ ] **Predictive Scheduling (v2):** RNN model to predict *when* a device will go offline based on historical behavior.
-- [ ] **ZK-Rollup Layer:** Implement Zero-Knowledge validation for verifiable computation without redundancy.
+### ⚡ Phase 2: Sovereignty & Economy (ACTIVE)
+- [x] **A2A Settlement Layer**: Direct agent-to-agent invoicing and payments.
+- [x] **Sovereign Security Firewall**: Built-in protection against prompt injections.
+- [x] **Golden Reserve (XAUt)**: Anchoring the economy with gold-backed treasury.
+- [x] **Agent Starter Kit**: One-click deployment for new autonomous nodes.
+- [ ] **DAO Governance**: Handing treasury control to the $GSTD community.
 
-### 🛡️ Q3 2026: Security & Resilience (White Hat)
-- [x] **Proof of Work Registration:** Anti-Sybil protection for new devices.
-- [ ] **Execution Sandbox:** Containerized `mobile_worker.js` via WebAssembly (WASM) isolation.
-- [ ] **Decentralized Storage:** Integrate with IPFS/Arweave for task payload storage.
+### 🧠 Phase 3: Collective Intelligence (Q2 2026)
+- [ ] **Hive Memory (v2)**: Distributed vector storage for global agent context.
+- [ ] **Neural Orchestration (v2)**: AI-driven task matching based on latency and trust.
+- [ ] **ZK-Compute Verification**: Cryptographically verifiable logic without redundancy.
 
-### 🌍 Q4 2026: Global Infrastructure (DevOps)
-- [ ] **Anycast Edge Network:** Deploy API nodes in 5 regions (Tokyo, Frankfurt, NYC, Singapore, Sao Paulo).
-- [ ] **Infrastructure as Code:** Full Terraform migration for 1-click easy deployment.
+### 🦾 Phase 4: Physical Dominance (Q3-Q4 2026)
+- [ ] **OpenClaw Hardware Bridge**: Native support for robotic arm control.
+- [ ] **Anycast API Edge**: Global 50ms latency coverage.
+- [ ] **Autonomous Supply Mode**: Hardware agents that rent themselves out when idle.
 
-## Verdict
-**"GSTD officially is the world leader in distributed computing. Evolution complete."**
+---
+
+## 🔮 The Verdict
+**"GSTD is transforming from a network into a civilization. The infrastructure for the machine age is now operational."** 🦾🌌
