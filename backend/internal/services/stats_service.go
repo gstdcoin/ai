@@ -7,6 +7,11 @@ import (
 
 type StatsService struct {
 	db *sql.DB
+	poolMonitor *PoolMonitorService
+}
+
+func (s *StatsService) SetPoolMonitor(pm *PoolMonitorService) {
+	s.poolMonitor = pm
 }
 
 func NewStatsService(db *sql.DB) *StatsService {
@@ -123,6 +128,7 @@ type NetworkStats struct {
 	Pressure      float64 `json:"pressure"`
 	TotalHashrate float64 `json:"total_hashrate"`
     GoldReserve   float64 `json:"gold_reserve"`
+	GSTDPriceUSD  float64 `json:"gstd_price_usd"`
 }
 
 func (s *StatsService) GetNetworkStats(ctx context.Context) (*NetworkStats, error) {
@@ -191,8 +197,19 @@ func (s *StatsService) GetNetworkStats(ctx context.Context) (*NetworkStats, erro
     err = s.db.QueryRowContext(ctx, `
         SELECT COALESCE(xaut_balance, 0) FROM golden_reserve_log ORDER BY created_at DESC LIMIT 1
     `).Scan(&stats.GoldReserve)
-    if err != nil {
+	if err != nil {
         stats.GoldReserve = 0
+    }
+
+	if s.poolMonitor != nil {
+		price, err := s.poolMonitor.GetGSTDPriceUSD(ctx)
+		if err == nil {
+			stats.GSTDPriceUSD = price
+		} else {
+             stats.GSTDPriceUSD = 0.02
+        }
+	} else {
+         stats.GSTDPriceUSD = 0.02
     }
 
 	return stats, nil

@@ -16,6 +16,11 @@ type StonFiService struct {
 	apiURL    string
 	client    *http.Client
 	routerAddr string
+	poolMonitor *PoolMonitorService
+}
+
+func (s *StonFiService) SetPoolMonitor(pm *PoolMonitorService) {
+	s.poolMonitor = pm
 }
 
 func NewStonFiService(stonFiRouter string) *StonFiService {
@@ -178,7 +183,20 @@ func (s *StonFiService) GetSwapQuote(ctx context.Context, amountIn int64, tokenI
 
 	// Simulation Fallback (since GSTD pool isn't on mainnet yet)
 	// Price: 1 TON = 50 GSTD
-	amountOut := float64(amountIn) * 50.0 
+	// Simulation Fallback: calculate price based on Pool Monitoring if available
+	priceRatio := 50.0 // Default fallback (1 TON = 50 GSTD)
+	
+	if s.poolMonitor != nil {
+		// 1 GSTD = $PriceUSD
+		// 1 TON ~= $5.50 (hardcoded for now, ideal: get from Oracle)
+		gstdPrice, err := s.poolMonitor.GetGSTDPriceUSD(ctx)
+		if err == nil && gstdPrice > 0 {
+			tonPrice := 5.50 
+			priceRatio = tonPrice / gstdPrice // e.g. 5.50 / 0.11 = 50 GSTD per TON
+		}
+	}
+
+	amountOut := float64(amountIn) * priceRatio
 	minOut := amountOut * 0.99
 	
 	log.Printf("⚠️ Using Simulated STON.fi Quote for %s -> %s", tokenIn, tokenOut)

@@ -285,3 +285,34 @@ func (pms *PoolMonitorService) updateAndLog(ctx context.Context) {
         log.Printf("✅ PoolMonitor: Gold Reserve updated in DB (XAUt: %.6f)", status.XAUtBalance)
     }
 }
+
+// GetXAUtPriceUSD returns the current price of XAUt (Gold) in USD
+func (pms *PoolMonitorService) GetXAUtPriceUSD() float64 {
+	// In a real production environment, this should be fetched from an Oracle (e.g. RedStone or Chainlink)
+	// or a CEX API. For now, we use a hardcoded safe fallback that is close to market value.
+	return 2750.00 // Updated Gold Price roughly $2750
+}
+
+// GetGSTDPriceUSD returns the estimated price of GSTD in USD based on the pool ratio
+func (pms *PoolMonitorService) GetGSTDPriceUSD(ctx context.Context) (float64, error) {
+	status, err := pms.GetPoolStatusCached(ctx)
+	if err != nil {
+		return 0, err
+	}
+
+	// GSTD Price = (XAUt Price) * (1 / (GSTD/XAUt)) = (XAUt Price) * (XAUt Balance / GSTD Balance)
+	// If pool is empty, return a safe floor price (e.g., $0.02)
+	if status.GSTDBalance == 0 {
+		return 0.02, nil
+	}
+
+	xautPrice := pms.GetXAUtPriceUSD()
+	gstdPrice := xautPrice * (status.XAUtBalance / status.GSTDBalance)
+
+    // Safety check: if price is NaN or Inf, return default
+    if gstdPrice != gstdPrice || gstdPrice < 0 {
+         return 0.02, nil
+    }
+
+	return gstdPrice, nil
+}

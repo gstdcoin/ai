@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"database/sql"
 	"math"
 )
@@ -8,6 +9,11 @@ import (
 // LendingService calculates loan terms based on Gold Reserve backing
 type LendingService struct {
 	db *sql.DB
+	poolMonitor *PoolMonitorService
+}
+
+func (s *LendingService) SetPoolMonitor(pm *PoolMonitorService) {
+	s.poolMonitor = pm
 }
 
 type LoanOffer struct {
@@ -35,12 +41,17 @@ func (s *LendingService) CalculateLoanTerms(gstdAmount float64) (*LoanOffer, err
 	
 	// Real implementation: Fetch from golden_reserve_log
 	// If empty, fallback to safe defaults for calculation
-	goldPriceUSD := 2350.00 // Standard XAUt/Gold price reference
-	
-	// Calculate GSTD Value
-	// In a real DePIN, GSTD value is algorithmic. Here we assume 1 GSTD = 1 USD for calculation baseline if no market data
-	// OR use the pool ratio if available. 
-	gstdPriceUSD := 1.0 // Placeholder if no pool data found
+	// Real implementation: Fetch from golden_reserve_log or PoolMonitor
+	goldPriceUSD := 2350.00
+	gstdPriceUSD := 1.0
+
+	if s.poolMonitor != nil {
+		goldPriceUSD = s.poolMonitor.GetXAUtPriceUSD()
+		price, err := s.poolMonitor.GetGSTDPriceUSD(context.Background())
+		if err == nil {
+			gstdPriceUSD = price
+		}
+	}
 	
 	// Apply "The Golden Rule": LTV 60%
 	ltv := 0.60

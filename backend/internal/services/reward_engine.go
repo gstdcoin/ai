@@ -105,6 +105,11 @@ func (re *RewardEngine) DistributeRewards(ctx context.Context, task *models.Task
 	// Platform fee is collected when worker claims (handled by escrow contract)
 	// No need to process platform fee separately - escrow contract handles it
 	log.Printf("Platform fee (%.9f GSTD) will be collected when worker claims via escrow", platformFee)
+	
+	// Log accumulation in Golden Reserve (accounting purposes)
+	if err := re.logGoldenReserveAccumulation(ctx, platformFee, task.TaskID); err != nil {
+		log.Printf("Warning: Failed to log golden reserve accumulation: %v", err)
+	}
 
 	// Update task with reward information
 	_, err := re.db.ExecContext(ctx, `
@@ -175,10 +180,10 @@ func (re *RewardEngine) createGoldenReserveTable(ctx context.Context) {
 			task_id VARCHAR(255) NOT NULL,
 			gstd_amount DECIMAL(18, 9) NOT NULL,
 			treasury_wallet VARCHAR(48) NOT NULL,
-			timestamp TIMESTAMP NOT NULL DEFAULT NOW(),
-			INDEX idx_task_id (task_id),
-			INDEX idx_timestamp (timestamp DESC)
-		)
+			timestamp TIMESTAMP NOT NULL DEFAULT NOW()
+		);
+		CREATE INDEX IF NOT EXISTS idx_golden_reserve_task_id ON golden_reserve_log(task_id);
+		CREATE INDEX IF NOT EXISTS idx_golden_reserve_timestamp ON golden_reserve_log(timestamp DESC);
 	`)
 	if err != nil {
 		log.Printf("Error creating golden_reserve_log table: %v", err)
