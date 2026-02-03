@@ -141,6 +141,24 @@ export const WalletBalanceWidget: React.FC = () => {
                     </p>
                 </div>
 
+                {/* Actions */}
+                <div className="grid grid-cols-2 gap-3">
+                    <button
+                        onClick={() => toast.info('Bridge Coming Soon', 'Direct GSTD/XAUt bridge will be available in Phase 2.')}
+                        className="py-2.5 px-4 rounded-xl bg-orange-500/10 text-orange-400 hover:bg-orange-500/20 border border-orange-500/20 transition-all font-medium text-sm flex items-center justify-center gap-2"
+                    >
+                        <RefreshCw className="w-4 h-4" />
+                        Bridge / Swap
+                    </button>
+                    <button
+                        onClick={() => window.open('https://tonviewer.com/' + address, '_blank')}
+                        className="py-2.5 px-4 rounded-xl bg-gray-700/30 text-gray-300 hover:bg-gray-700/50 border border-gray-600/30 transition-all font-medium text-sm flex items-center justify-center gap-2"
+                    >
+                        <ExternalLink className="w-4 h-4" />
+                        Explorer
+                    </button>
+                </div>
+
                 {/* Stats Row */}
                 <div className="grid grid-cols-2 gap-4">
                     <div className="bg-gray-800/30 rounded-xl p-4">
