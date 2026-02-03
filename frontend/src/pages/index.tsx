@@ -465,15 +465,22 @@ export default function Home() {
 
                 <div className="relative z-10">
                   <button
-                    onClick={() => isConnected ? router.push('/dashboard') : tonConnectUI.openModal()}
+                    onClick={() => {
+                      if (!isConnected) {
+                        tonConnectUI.openModal();
+                      } else {
+                        // Simple buy & launch logic: if connected, trigger small deposit or go to dashboard
+                        router.push('/dashboard?action=deposit');
+                      }
+                    }}
                     className="w-full py-6 rounded-2xl bg-white text-black font-black hover:bg-gray-100 transition-all active:scale-[0.98] mb-4 flex items-center justify-center gap-3 text-lg shadow-2xl uppercase tracking-tighter"
                   >
                     <Cpu className="w-6 h-6 text-violet-600" />
-                    Launch Sovereign Node
+                    {t('cta_hire_launch') || 'Launch Sovereign Node'}
                   </button>
                   <p className="text-[9px] text-center text-gray-500 font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2">
                     <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_#10b981]" />
-                    Booting Environment in ~15s
+                    {t('booting_node') || 'Booting Environment in ~15s'}
                   </p>
                 </div>
               </div>
