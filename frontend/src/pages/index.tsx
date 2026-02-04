@@ -102,12 +102,11 @@ export default function Home() {
     router.push(router.pathname, router.asPath, { locale: router.locale === 'ru' ? 'en' : 'ru' });
   };
 
-  // Connected - Redirect to Dashboard
-  useEffect(() => {
-    if (isConnected && !checkingSession) {
-      router.push('/dashboard');
-    }
-  }, [isConnected, checkingSession, router]);
+  /* 
+   * Removed automatic redirect to dashboard.
+   * User can navigate manually via the 'Launch' or 'Dashboard' buttons.
+   */
+
 
   if (isConnected) {
     return (

@@ -1,7 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'next-i18next';
 import { useWalletStore } from '../../store/walletStore';
-import { Share2, LogOut, Home } from 'lucide-react';
+import { Share2, LogOut, Home, Activity, Server } from 'lucide-react';
 import { useRouter } from 'next/router';
 import LanguageSwitcher from './LanguageSwitcher';
 import { toast } from '../../lib/toast';
