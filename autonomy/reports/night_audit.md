@@ -3336,3 +3336,45 @@ redis: 2026/02/03 20:08:30 pool.go:426: redis: connection pool: failed to dial a
 ✅ GEO Service is running correctly (found 2 log entries).
 
 ---
+## 🛡️ GSTD Security Audit - 2026-02-04 19:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-04 20:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-04 21:00:01
+
+### 💎 TON Service Check
+2026/02/04 20:46:00 PaymentWatcher: Error fetching transfers: TON API error (429): {"error":"rate limit: free tier"}
+2026/02/04 20:46:26 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/02/04 20:46:41 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/02/04 20:47:11 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/02/04 20:47:26 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/02/04 20:47:58 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/02/04 20:48:56 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/02/04 20:49:58 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/02/04 20:50:59 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/02/04 20:51:59 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/02/04 20:52:59 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/02/04 20:54:12 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/02/04 20:54:26 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/02/04 20:54:56 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/02/04 20:55:59 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/02/04 20:55:59 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/02/04 20:56:59 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/02/04 20:58:58 GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
