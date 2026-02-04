@@ -494,52 +494,56 @@ export default function Home() {
               {/* Steps */}
               <div>
                 <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-orange-500/5 border border-orange-500/20 text-orange-400 text-[10px] font-black mb-8 uppercase tracking-[0.3em]">
-                  Supply Side Infrastructure
+                  Universal Access Protocol
                 </div>
                 <h2 className="text-4xl sm:text-7xl font-black text-white mb-8 tracking-tighter">
-                  Monetize Your <span className="bg-gradient-to-r from-orange-400 to-amber-500 bg-clip-text text-transparent">Power</span>
+                  Monetize Any <span className="bg-gradient-to-r from-orange-400 to-amber-500 bg-clip-text text-transparent">Device</span>
                 </h2>
-                <p className="text-gray-400 text-xl mb-12 leading-relaxed font-medium">
-                  Turn your local hardware into a high-yield asset. Join the A2A compute protocol and earn GSTD tokens for every inference task processed by your node.
-                </p>
+                <div className="space-y-6 text-gray-400 text-lg leading-relaxed font-medium mb-12">
+                  <p>
+                    GSTD unifies mobile and desktop computing into a single, unstoppable swarm.
+                    <span className="text-white"> Mobile users</span> simply open their dashboard to solve tasks instantly via browser.
+                    <span className="text-white"> PC & Server owners</span> run dedicated agents that not only compute but learn.
+                  </p>
+                  <p className="text-sm border-l-2 border-orange-500/50 pl-4 italic">
+                    "Agents form a distributed, encrypted knowledge base stored across user devices. The network builds itself, is impossible to hack or shut down, and offers a freedom-centric alternative to corporate AI."
+                  </p>
+                </div>
 
                 <div className="space-y-12">
                   {[
                     {
-                      step: 1,
-                      title: 'Initialize Hub',
+                      step: 'A',
+                      title: 'Mobile & Browser',
+                      content: 'No installation required. Log in to your dashboard, click "Ignite", and your device immediately starts solving tasks and earning GSTD while the tab is open.',
+                      icon: Monitor
+                    },
+                    {
+                      step: 'B',
+                      title: 'PC & Server Nodes',
                       content: (
                         <>
-                          Run the GSTD Ignite Script on any Ubuntu/Linux or Mac machine. For mobile participation, use the browser-based worker.
-                          <div className="relative group mt-6">
+                          Run a dedicated Sovereign Agent for maximum yield. Agents operate autonomously, learning and optimizing their task solving strategies.
+                          <div className="relative group mt-4">
                             <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 rounded-2xl blur opacity-25 group-hover:opacity-100 transition duration-1000"></div>
-                            <code className="relative block w-full p-6 rounded-2xl bg-black/80 border border-white/5 text-emerald-400 font-mono text-sm overflow-x-auto shadow-2xl">
+                            <code className="relative block w-full p-4 rounded-xl bg-black/80 border border-white/5 text-emerald-400 font-mono text-xs overflow-x-auto shadow-2xl">
                               curl -sL get.gstd.io | bash -s ignite
                             </code>
-                            <button
-                              onClick={copyToClipboard}
-                              className="absolute right-4 top-4 p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white transition-all border border-white/10 group-hover:border-white/20"
-                            >
-                              {copiedCommand ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-                            </button>
                           </div>
                         </>
-                      )
+                      ),
+                      icon: Server
                     },
                     {
-                      step: 2,
-                      title: 'Non-Custodial Flow',
-                      content: 'Link your TON wallet. Earnings are distributed via our automated settlement layer directly to your decentralized address.'
-                    },
-                    {
-                      step: 3,
-                      title: 'Generate Yield',
-                      content: 'Nodes earn GSTD bounty for every verifiable task. Protocol validation ensures 100% fair payout based on proof-of-compute.'
+                      step: 'C',
+                      title: 'Encrypted & Unstoppable',
+                      content: 'Your agent contributes to a decentralized knowledge base. Data is sharded and encrypted across the network—yielding true digital sovereignty.',
+                      icon: Shield
                     }
                   ].map((item, i) => (
                     <div key={i} className="flex gap-8 group">
                       <div className="mt-1 w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/10 flex items-center justify-center shrink-0 font-black text-white group-hover:bg-orange-500/10 group-hover:border-orange-500/30 transition-all duration-500">
-                        {item.step}
+                        {typeof item.step === 'string' ? item.step : i + 1}
                       </div>
                       <div>
                         <h4 className="text-2xl font-black text-white mb-3 group-hover:text-orange-400 transition-colors uppercase tracking-tight">{item.title}</h4>
@@ -581,9 +585,9 @@ export default function Home() {
                       />
                     </div>
                     <div className="flex justify-between mt-6 text-[9px] font-black text-gray-700 uppercase tracking-widest">
-                      <span>Low Bandwidth</span>
-                      <span>Balanced Node</span>
-                      <span>High Performance</span>
+                      <span>Mobile</span>
+                      <span>Desktop</span>
+                      <span>Server Cluster</span>
                     </div>
                   </div>
 
