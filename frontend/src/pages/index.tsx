@@ -6,7 +6,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useTonConnectUI } from '@tonconnect/ui-react';
 import WalletConnect from '../components/WalletConnect';
-import { ActivityFeed } from '../components/dashboard/ActivityFeed';
+
 import { NetworkMap } from '../components/dashboard/NetworkMap';
 import { useWalletStore } from '../store/walletStore';
 import { GSTD_CONTRACT_ADDRESS, API_BASE_URL } from '../lib/config';
@@ -247,8 +247,8 @@ export default function Home() {
               </div>
 
               {/* Stats & Activity Grid */}
-              <div className="grid lg:grid-cols-12 gap-6 max-w-7xl mx-auto items-start">
-                <div className="lg:col-span-8 grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="max-w-5xl mx-auto">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {[
                     { value: networkStats?.total_hashrate ? `${networkStats.total_hashrate.toFixed(1)} PFLOPS` : '4.2 PFLOPS', label: t('stat_hashrate') || 'Grid Power', icon: Zap, color: 'cyan', delay: '0s' },
                     { value: networkStats?.tasks_24h || '12.4k', label: t('stat_tasks') || 'Protocol Operations', icon: Activity, color: 'violet', delay: '0.1s' },
@@ -295,10 +295,6 @@ export default function Home() {
                       </div>
                     </div>
                   </div>
-                </div>
-
-                <div className="lg:col-span-4">
-                  <ActivityFeed />
                 </div>
               </div>
             </div>
