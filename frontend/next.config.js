@@ -5,7 +5,16 @@ const nextConfig = {
   reactStrictMode: true,
   i18n,
   images: {
-    domains: ['localhost', 'app.gstdtoken.com'],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'app.gstdtoken.com',
+      },
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+      },
+    ],
   },
   env: {
     API_URL: process.env.API_URL || 'https://app.gstdtoken.com',
@@ -19,12 +28,9 @@ const nextConfig = {
   generateEtags: false,
   // Output standalone for Docker
   output: 'standalone',
-  // Ignore TypeScript and ESLint errors during build
+  // Ignore TypeScript errors during build (eslint config removed as it is deprecated in next.config.js)
   typescript: {
     ignoreBuildErrors: true,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
   },
   // PWA configuration
   async headers() {
