@@ -316,7 +316,8 @@ func (s *TaskService) GetTaskByID(ctx context.Context, taskID string) (*models.T
 		       COALESCE(escrow_status, 'none') as escrow_status, 
 		       COALESCE(confidence_depth, 0) as confidence_depth, 
 		       assigned_device, 
-		       COALESCE(min_trust_score, 0.0) as min_trust_score
+		       COALESCE(min_trust_score, 0.0) as min_trust_score,
+		       result_data
 		FROM tasks
 		WHERE task_id = $1
 	`, taskID).Scan(
@@ -325,6 +326,7 @@ func (s *TaskService) GetTaskByID(ctx context.Context, taskID string) (*models.T
 		&t.Status, &t.CreatedAt,
 		&assignedAt, &completedAt, &timeoutAt,
 		&t.EscrowStatus, &t.ConfidenceDepth, &assignedDevice, &t.MinTrustScore,
+		&t.ResultData,
 	)
 	
 	if err != nil {

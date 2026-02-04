@@ -100,7 +100,7 @@ func (s *TaskPaymentService) CreateTask(ctx context.Context, creatorWallet strin
 		) VALUES ($1, $2, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'pending')
 	`, taskID, creatorWallet, req.Type, defaultOperation, defaultModel, 
 		defaultInputSource, defaultInputHash,
-		"pending_payment", req.Budget, rewardGSTD, paymentMemo, payloadStr, now)
+		"queued", req.Budget, rewardGSTD, paymentMemo, payloadStr, now)
 	
 	// If error about priority_score or other columns, try with minimal required columns
 	if err != nil && (strings.Contains(err.Error(), "priority_score") || strings.Contains(err.Error(), "column") && strings.Contains(err.Error(), "does not exist")) {
@@ -114,7 +114,7 @@ func (s *TaskPaymentService) CreateTask(ctx context.Context, creatorWallet strin
 			) VALUES ($1, $2, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'pending')
 		`, taskID, creatorWallet, req.Type, defaultOperation, defaultModel,
 			defaultInputSource, defaultInputHash,
-			"pending_payment", req.Budget, rewardGSTD, paymentMemo, payloadStr, now)
+			"queued", req.Budget, rewardGSTD, paymentMemo, payloadStr, now)
 	}
 
 	if err != nil {
@@ -124,7 +124,7 @@ func (s *TaskPaymentService) CreateTask(ctx context.Context, creatorWallet strin
 
 	return &CreateTaskResponse{
 		TaskID:         taskID,
-		Status:         "pending_payment",
+		Status:         "queued",
 		PaymentMemo:    paymentMemo,
 		Amount:         req.Budget,
 		PlatformWallet: s.tonConfig.AdminWallet,

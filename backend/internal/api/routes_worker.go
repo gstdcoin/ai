@@ -23,7 +23,7 @@ func getWorkerPendingTasks(taskPaymentService *services.TaskPaymentService) gin.
 		err := taskPaymentService.GetDB().QueryRowContext(c.Request.Context(), `
 			SELECT wallet_address
 			FROM nodes
-			WHERE id = $1
+			WHERE id = $1 OR wallet_address = $1
 		`, nodeID).Scan(&walletAddress)
 
 		if err != nil {
