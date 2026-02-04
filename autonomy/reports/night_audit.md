@@ -2999,3 +2999,124 @@ Error response from daemon: No such container: ubuntu-backend-blue-1
 ⚠️  No GEO Service activity or initialization found in logs.
 
 ---
+## 🛡️ GSTD Security Audit - 2026-02-03 20:00:01
+
+### 💎 TON Service Check
+2026/02/03 19:14:44 Health check: Failed to get contract balance: Get "https://tonapi.io/v2/accounts/EQAIYlrr3UiMJ9fqI-B4j2nJdiiD7WzyaNL1MX_wiONc4OUi": dial tcp: lookup tonapi.io on 127.0.0.11:53: server misbehaving
+2026/02/03 19:14:54 PaymentWatcher: Error fetching transfers: HTTP request failed: Get "https://tonapi.io/v2/accounts/EQAIYlrr3UiMJ9fqI-B4j2nJdiiD7WzyaNL1MX_wiONc4OUi/jettons/EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO/history?limit=100": dial tcp: lookup tonapi.io on 127.0.0.11:53: server misbehaving
+2026/02/03 19:15:54 PaymentWatcher: Error fetching transfers: HTTP request failed: Get "https://tonapi.io/v2/accounts/EQAIYlrr3UiMJ9fqI-B4j2nJdiiD7WzyaNL1MX_wiONc4OUi/jettons/EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO/history?limit=100": dial tcp: lookup tonapi.io on 127.0.0.11:53: server misbehaving
+2026/02/03 19:16:54 PaymentWatcher: Error fetching transfers: HTTP request failed: Get "https://tonapi.io/v2/accounts/EQAIYlrr3UiMJ9fqI-B4j2nJdiiD7WzyaNL1MX_wiONc4OUi/jettons/EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO/history?limit=100": dial tcp: lookup tonapi.io on 127.0.0.11:53: server misbehaving
+2026/02/03 19:17:54 PaymentWatcher: Error fetching transfers: HTTP request failed: Get "https://tonapi.io/v2/accounts/EQAIYlrr3UiMJ9fqI-B4j2nJdiiD7WzyaNL1MX_wiONc4OUi/jettons/EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO/history?limit=100": dial tcp: lookup tonapi.io on 127.0.0.11:53: server misbehaving
+2026/02/03 19:18:54 PaymentWatcher: Error fetching transfers: HTTP request failed: Get "https://tonapi.io/v2/accounts/EQAIYlrr3UiMJ9fqI-B4j2nJdiiD7WzyaNL1MX_wiONc4OUi/jettons/EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO/history?limit=100": dial tcp: lookup tonapi.io on 127.0.0.11:53: server misbehaving
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-03 21:00:01
+
+### 💎 TON Service Check
+2026/02/03 20:07:46 Warning: failed to cleanup expired PoW challenges: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/03 20:07:46 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/03 20:07:53 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+redis: 2026/02/03 20:07:53 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup redis on 127.0.0.11:53: no such host
+redis: 2026/02/03 20:07:54 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup redis on 127.0.0.11:53: no such host
+redis: 2026/02/03 20:07:55 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup redis on 127.0.0.11:53: no such host
+redis: 2026/02/03 20:07:56 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup redis on 127.0.0.11:53: no such host
+redis: 2026/02/03 20:07:57 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup redis on 127.0.0.11:53: no such host
+redis: 2026/02/03 20:07:57 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup redis on 127.0.0.11:53: no such host
+redis: 2026/02/03 20:07:58 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup redis on 127.0.0.11:53: no such host
+redis: 2026/02/03 20:07:59 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup redis on 127.0.0.11:53: no such host
+2026/02/03 20:08:07 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+redis: 2026/02/03 20:08:08 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup redis on 127.0.0.11:53: no such host
+redis: 2026/02/03 20:08:09 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup redis on 127.0.0.11:53: no such host
+redis: 2026/02/03 20:08:10 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup redis on 127.0.0.11:53: no such host
+redis: 2026/02/03 20:08:11 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup redis on 127.0.0.11:53: no such host
+redis: 2026/02/03 20:08:12 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup redis on 127.0.0.11:53: no such host
+2026/02/03 20:08:16 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/03 20:08:29 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+redis: 2026/02/03 20:08:30 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup redis on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-03 22:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-03 23:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-04 00:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-04 01:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-04 02:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-04 03:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-04 04:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-04 05:00:01
+
+### 💎 TON Service Check
+2026/02/04 04:15:03 Migration v10_failed_payouts.sql already applied, skipping
+2026/02/04 04:15:03 Migration v33_recreate_failed_payouts.sql already applied, skipping
+2026/02/04 04:15:03 Warning: Failed to run migrations: failed to execute migration v36_final_optimization.sql: migration SQL error: pq: VACUUM cannot run inside a transaction block (25001)
+2026/02/04 04:15:03 ❌ PoolMonitor: Failed to get status: API returned status 429
+2026/02/04 04:30:02 Migration v10_failed_payouts.sql already applied, skipping
+2026/02/04 04:30:02 Migration v33_recreate_failed_payouts.sql already applied, skipping
+2026/02/04 04:30:02 Warning: Failed to run migrations: failed to execute migration v36_final_optimization.sql: migration SQL error: pq: VACUUM cannot run inside a transaction block (25001)
+2026/02/04 04:30:03 ⚠️  Failed to get GSTD jetton wallet address (using 0): failed to get jetton wallet (HTTP 429): {"error":"rate limit: free tier"}
+2026/02/04 04:30:03 ⚠️  Failed to get XAUt jetton wallet address (using 0): failed to get jetton wallet (HTTP 429): {"error":"rate limit: free tier"}
+2026/02/04 04:45:03 Migration v10_failed_payouts.sql already applied, skipping
+2026/02/04 04:45:03 Migration v33_recreate_failed_payouts.sql already applied, skipping
+2026/02/04 04:45:03 Warning: Failed to run migrations: failed to execute migration v36_final_optimization.sql: migration SQL error: pq: VACUUM cannot run inside a transaction block (25001)
+2026/02/04 04:45:03 PaymentWatcher: Error fetching transfers: TON API error (429): {"error":"rate limit: free tier"}
+2026/02/04 04:45:03 ⚠️  Failed to get GSTD jetton wallet address (using 0): failed to get jetton wallet (HTTP 429): {"error":"rate limit: free tier"}
+2026/02/04 04:45:03 ⚠️  Failed to get XAUt jetton wallet address (using 0): failed to get jetton wallet (HTTP 429): {"error":"rate limit: free tier"}
+
+### 🌍 GEO Service Check
+✅ GEO Service is running correctly (found 6 log entries).
+
+---
