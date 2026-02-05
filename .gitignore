@@ -32,6 +32,9 @@ backups/
 *.txt
 !docs/*.md
 
+# Nested Repos
+A2A/
+
 # IDEs
 .vscode/
 .idea/

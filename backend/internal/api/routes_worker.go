@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"distributed-computing-platform/internal/services"
 
 	"github.com/gin-gonic/gin"
@@ -31,8 +32,11 @@ func getWorkerPendingTasks(taskPaymentService *services.TaskPaymentService) gin.
 			return
 		}
 
-		// Get pending tasks (queued status)
-		tasks, err := taskPaymentService.GetPendingTasks(c.Request.Context())
+		// Get pending tasks (queued status) with pagination
+		limit, _ := strconv.Atoi(c.DefaultQuery("limit", "100"))
+		offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+
+		tasks, err := taskPaymentService.GetPendingTasks(c.Request.Context(), limit, offset)
 		if err != nil {
 			c.JSON(500, gin.H{"error": err.Error()})
 			return

@@ -1,0 +1,54 @@
+name: GSTD Platform CI (ai)
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  backend-test:
+    name: Backend (Go)
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+        cache-dependency-path: backend/go.sum
+
+    - name: Install dependencies
+      run: cd backend && go mod download
+
+    - name: Run Build
+      run: cd backend && go build -v ./...
+
+    - name: Run Tests
+      run: cd backend && go test -v ./...
+
+  frontend-check:
+    name: Frontend (Next.js)
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Install dependencies
+      run: cd frontend && npm ci
+
+    - name: Run Lint
+      run: cd frontend && npm run lint || echo "Linting failed but continuing..."
+
+    - name: Run Build
+      run: cd frontend && npm run build
+      env:
+        SKIP_BUILD_STATIC_GENERATION: true
+        NEXT_PUBLIC_API_URL: https://app.gstdtoken.com

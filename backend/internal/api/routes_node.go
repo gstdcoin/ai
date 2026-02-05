@@ -4,6 +4,7 @@ import (
 	"distributed-computing-platform/internal/services"
 	"fmt"
 	"log"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -136,10 +137,13 @@ func getMyNodes(service *services.NodeService) gin.HandlerFunc {
 	}
 }
 
-// getPublicNodes retrieves public location data for all online nodes
+// getPublicNodes retrieves public location data for all online nodes with pagination
 func getPublicNodes(service *services.NodeService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		nodes, err := service.GetPublicActiveNodes(c.Request.Context())
+		limit, _ := strconv.Atoi(c.DefaultQuery("limit", "100"))
+		offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+
+		nodes, err := service.GetPublicActiveNodes(c.Request.Context(), limit, offset)
 		if err != nil {
 			c.JSON(500, gin.H{"error": err.Error()})
 			return

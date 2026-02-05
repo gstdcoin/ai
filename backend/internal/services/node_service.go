@@ -284,14 +284,19 @@ func (s *NodeService) UpdateHeartbeat(ctx context.Context, walletAddress string)
 	return nil
 }
 
-// GetPublicActiveNodes returns basic info about all online nodes for the map
-func (s *NodeService) GetPublicActiveNodes(ctx context.Context) ([]map[string]interface{}, error) {
+// GetPublicActiveNodes returns basic info about all online nodes with pagination support
+func (s *NodeService) GetPublicActiveNodes(ctx context.Context, limit, offset int) ([]map[string]interface{}, error) {
+	if limit <= 0 || limit > 500 {
+		limit = 100 // Default/Max limit for public map to prevent DB strain
+	}
+	
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT id, status, latitude, longitude
 		FROM nodes
 		WHERE status = 'online' AND latitude IS NOT NULL AND longitude IS NOT NULL
-		LIMIT 100
-	`)
+		ORDER BY last_seen DESC
+		LIMIT $1 OFFSET $2
+	`, limit, offset)
 	if err != nil {
 		return nil, err
 	}
