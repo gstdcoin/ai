@@ -385,7 +385,8 @@ func main() {
 	// Use a custom Gin engine so we can control middleware order,
 	// including our own panic recovery middleware.
 	router := gin.New()
-	router.SetTrustedProxies(nil)
+	// TRUST DOCKER PROXIES (Allows ClientIP() to get real user IP from X-Forwarded-For)
+	router.SetTrustedProxies([]string{"127.0.0.1", "172.16.0.0/12", "192.168.0.0/16", "10.0.0.0/8"})
 	router.Use(gin.Logger(), recoveryMiddleware)
 	
 	// Add security headers middleware
