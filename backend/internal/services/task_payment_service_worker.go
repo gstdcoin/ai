@@ -14,17 +14,21 @@ func (s *TaskPaymentService) GetDB() *sql.DB {
 	return s.db
 }
 
-// GetPendingTasks retrieves all tasks with 'queued' status
-func (s *TaskPaymentService) GetPendingTasks(ctx context.Context) ([]*models.Task, error) {
+// GetPendingTasks retrieves all tasks with 'queued' status with pagination
+func (s *TaskPaymentService) GetPendingTasks(ctx context.Context, limit, offset int) ([]*models.Task, error) {
+	if limit <= 0 || limit > 1000 {
+		limit = 100
+	}
+	
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT task_id, creator_wallet, requester_address, task_type, status,
 		       budget_gstd, reward_gstd, deposit_id, payment_memo, payload,
 		       created_at, priority_score
 		FROM tasks
 		WHERE status = 'queued'
-		ORDER BY created_at ASC
-		LIMIT 100
-	`)
+		ORDER BY priority_score DESC, created_at ASC
+		LIMIT $1 OFFSET $2
+	`, limit, offset)
 	if err != nil {
 		return nil, err
 	}
