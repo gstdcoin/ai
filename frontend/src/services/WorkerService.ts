@@ -62,6 +62,7 @@ class WorkerService {
 
             this.worker.onmessage = (event) => {
                 const { status, result, reason } = event.data;
+                this.processingTask = false; // Reset Backpressure
 
                 if (status === 'completed') {
                     console.log('[Mining Loop] Step 4: Hashing Completed', result);
@@ -206,11 +207,28 @@ class WorkerService {
         }, 3000); // Heartbeat every 3s
     }
 
+    private processingTask: boolean = false;
+    private lastTaskTime: number = 0;
+
     private startTaskLoop() {
         if (this.taskLoop) clearInterval(this.taskLoop);
 
         this.taskLoop = setInterval(() => {
             if (this.state !== 'running' || !this.worker) return;
+
+            // BACKPRESSURE: Don't overload the worker on slow mobile devices
+            if (this.processingTask) {
+                // If task stuck for > 30s, reset it
+                if (Date.now() - this.lastTaskTime > 30000) {
+                    console.warn('[Mining Loop] Task Timeout - Resetting Backpressure');
+                    this.processingTask = false;
+                } else {
+                    return; // Wait for current task
+                }
+            }
+
+            this.processingTask = true;
+            this.lastTaskTime = Date.now();
 
             const task = {
                 type: 'inference',
@@ -222,7 +240,7 @@ class WorkerService {
             };
 
             this.worker.postMessage(task);
-        }, 2000); // Send a task every 2 seconds
+        }, 1000); // Check every second, but backpressure controls actual flow
     }
 
     public pause() {
