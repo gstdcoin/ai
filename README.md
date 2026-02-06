@@ -85,7 +85,7 @@ We are moving towards **Physical Intelligence Dominance**.
 ## 👥 Support & Community
 
 - **Dashboard**: [app.gstdtoken.com](https://app.gstdtoken.com)
-- **Telegram**: [@gstdtoken_bot](https://t.me/gstdtoken)
+- **Telegram**: [@gstdtoken](https://t.me/gstdtoken)
 
 
 © 2026 GSTD Foundation. **Silicon Sovereignty Starts Here.** 🦾🌌
