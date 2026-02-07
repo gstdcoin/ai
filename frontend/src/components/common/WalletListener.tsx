@@ -127,6 +127,9 @@ export default function WalletListener() {
                                     balanceData.gstd || 0
                                 );
                             } catch (e) { /* silent */ }
+
+                            // Redirect to dashboard after successful login
+                            router.push('/dashboard');
                         }
                     } catch (e: any) {
                         logger.error('Simple login failed', e);
@@ -176,6 +179,9 @@ export default function WalletListener() {
                 }
 
                 toast.success('Wallet connected successfully');
+
+                // Redirect to dashboard after successful login
+                router.push('/dashboard');
 
             } catch (err: any) {
                 logger.error('Login failed', err);

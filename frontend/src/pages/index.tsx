@@ -102,13 +102,15 @@ export default function Home() {
     router.push(router.pathname, router.asPath, { locale: router.locale === 'ru' ? 'en' : 'ru' });
   };
 
-  /* 
-   * Removed automatic redirect to dashboard.
-   * User can navigate manually via the 'Launch' or 'Dashboard' buttons.
-   */
+  // Automatic redirect to dashboard when wallet is connected
+  useEffect(() => {
+    if (isConnected && !checkingSession) {
+      router.push('/dashboard');
+    }
+  }, [isConnected, checkingSession, router]);
 
-
-  if (isConnected) {
+  // Show loading spinner while checking session or redirecting
+  if (isConnected || checkingSession) {
     return (
       <div className="min-h-screen bg-[#030014] flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-violet-500 opacity-50"></div>
@@ -116,14 +118,6 @@ export default function Home() {
     );
   }
 
-  // Loading state
-  if (checkingSession) {
-    return (
-      <div className="min-h-screen bg-[#030014] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-violet-500 opacity-50"></div>
-      </div>
-    );
-  }
 
   // Landing Page - Elite Cosmic Premium Design
   return (
