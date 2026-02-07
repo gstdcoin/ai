@@ -444,6 +444,37 @@ func main() {
 	invoiceService := services.NewInvoiceService(db)
 	log.Println("✅ Invoice Service (Settlement Layer) active")
 
+	// ========================================================================
+	// GROWTH SYSTEM SERVICES (1M User Strategy)
+	// ========================================================================
+	
+	// Welcome Bonus Service (1.0 GSTD welcome, 0.1 daily faucet, 0.5 agent bootstrap)
+	welcomeBonusService := services.NewWelcomeBonusService(db)
+	log.Println("✅ Welcome Bonus Service active")
+
+	// Burn Service (5% deflationary mechanism)
+	burnService := services.NewBurnService(db)
+	log.Println("✅ Burn Service (5% Deflation) active")
+
+	// Multi-Level Referral Service (3 levels: 5%/2%/1%)
+	multiLevelReferralService := services.NewMultiLevelReferralService(db)
+	log.Println("✅ Multi-Level Referral Service (3 levels) active")
+
+	// Agent Marketplace Service (Airbnb for AI Agents)
+	agentMarketplaceService := services.NewAgentMarketplaceService(db, burnService, multiLevelReferralService)
+	log.Println("✅ Agent Marketplace Service active")
+
+	// Growth System Handler (combines all growth services)
+	growthHandler := api.NewGrowthSystemHandler(
+		db,
+		welcomeBonusService,
+		burnService,
+		multiLevelReferralService,
+		agentMarketplaceService,
+	)
+	_ = growthHandler // Will be used after SetupRoutes
+
+
 	api.SetupRoutes(
 		router,
 		taskService,
