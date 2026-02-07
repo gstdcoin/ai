@@ -5,7 +5,7 @@ import { apiGet, apiPost } from '../../lib/apiClient';
 import {
     Search, Sparkles, Star, Zap, ShoppingCart,
     Bot, Cpu, ShieldCheck, Globe, Filter,
-    ChevronRight, ExternalLink, Info
+    ChevronRight, ExternalLink, Info, Activity, Plus
 } from 'lucide-react';
 import { toast } from '../../lib/toast';
 
