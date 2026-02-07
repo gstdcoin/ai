@@ -5,12 +5,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -174,8 +172,11 @@ func main() {
 
         reqCloud, _ := http.NewRequest("POST", targetUrl, bytes.NewBuffer(reqBody))
         reqCloud.Header.Set("Content-Type", "application/json")
-        if deepSeekKey != "" { reqCloud.Header.Set("Authorization", "Bearer "+deepSeekKey) }
-        else if ollamaKey != "" { reqCloud.Header.Set("Authorization", "Bearer "+ollamaKey) }
+        if deepSeekKey != "" { 
+            reqCloud.Header.Set("Authorization", "Bearer "+deepSeekKey) 
+        } else if ollamaKey != "" { 
+            reqCloud.Header.Set("Authorization", "Bearer "+ollamaKey) 
+        }
 
         client := http.Client{Timeout: 30 * time.Second}
         respCloud, err := client.Do(reqCloud)
