@@ -65,8 +65,8 @@ func SetupGrowthRoutes(v1 *gin.RouterGroup, protected *gin.RouterGroup, h *Growt
 		bonus.POST("/welcome", h.ClaimWelcomeBonus)
 	}
 
-	// Agent Bootstrap (public — for SDK agents)
-	v1.POST("/tokens/agent/bootstrap", h.BootstrapAgent)
+	// Agent Bootstrap endpoint moved to onboarding_handler.go to avoid conflicts
+	// The GrowthSystemHandler.BootstrapAgent method is available but not routed directly
 
 	// Burn Statistics (public — transparency)
 	burn := v1.Group("/burn")
@@ -91,13 +91,13 @@ func SetupGrowthRoutes(v1 *gin.RouterGroup, protected *gin.RouterGroup, h *Growt
 	// PROTECTED ROUTES (require session)
 	// ========================================================================
 
-	// Referrals (protected)
-	referrals := protected.Group("/referrals")
+	// Multi-Level Referrals - NEW endpoints only (stats/apply already in routes.go)
+	referralsMl := protected.Group("/referrals/ml")
 	{
-		referrals.GET("/stats", h.GetReferralStats)
-		referrals.POST("/generate", h.GenerateReferralCode)
-		referrals.POST("/apply", h.ApplyReferralCode)
-		referrals.POST("/claim", h.ClaimReferralRewards)
+		referralsMl.GET("/stats", h.GetReferralStats)      // Multi-level stats
+		referralsMl.POST("/generate", h.GenerateReferralCode)
+		referralsMl.POST("/apply", h.ApplyReferralCode)    // Apply with multi-level tracking
+		referralsMl.POST("/claim", h.ClaimReferralRewards) // Claim multi-level rewards
 	}
 
 	// Agent Marketplace (protected operations)

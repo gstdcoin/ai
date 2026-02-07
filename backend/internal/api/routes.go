@@ -53,6 +53,11 @@ func SetupRoutes(
 	knowledgeService *services.KnowledgeService,
 	pricingService *services.PricingService,
 	invoiceService *services.InvoiceService,
+	// Growth System Services
+	welcomeBonusService *services.WelcomeBonusService,
+	burnService *services.BurnService,
+	multiLevelReferralService *services.MultiLevelReferralService,
+	agentMarketplaceService *services.AgentMarketplaceService,
 ) {
 	log.Printf("🔧 SetupRoutes: Starting route setup, redisClient type: %T", redisClient)
 	
@@ -323,11 +328,21 @@ func SetupRoutes(
 		// Invoices (Settlement Layer)
 		SetupInvoiceRoutes(protected, invoiceService)
 
-		// ===== ONBOARDING & TOKEN ACQUISITION =====
-		// These endpoints make platform entry incredibly simple
+		// ===== GROWTH SYSTEM & ONBOARDING =====
+		// Integrated 1M user strategy: Bonus, Burn, Multi-level Referrals & Marketplace
+		growthHandler := NewGrowthSystemHandler(
+			db.(*sql.DB),
+			welcomeBonusService,
+			burnService,
+			multiLevelReferralService,
+			agentMarketplaceService,
+		)
+		SetupGrowthRoutes(v1, protected, growthHandler)
+
+		// Legacy onboarding handler (for basic flows compatibility)
 		onboardingHandler := NewOnboardingHandler()
 		onboardingHandler.RegisterRoutes(v1)
-		log.Printf("✅ Onboarding & Token Acquisition routes registered")
+		log.Printf("✅ Growth System & Onboarding routes registered")
 	}
 
 	// WebSocket endpoint

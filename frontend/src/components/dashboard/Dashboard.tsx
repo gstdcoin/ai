@@ -24,6 +24,10 @@ import { ComponentErrorBoundary } from '../common/ComponentErrorBoundary';
 import { workerService } from '../../services/WorkerService';
 import { InstallPwaPrompt } from '../common/InstallPwaPrompt';
 import { ActivityFeed } from './ActivityFeed';
+import AgentMarketplace from '../agents/AgentMarketplace';
+import ReferralPanel from '../referrals/ReferralPanel';
+import BurnStatsWidget from './BurnStatsWidget';
+import WelcomeBonusWidget from './WelcomeBonusWidget';
 
 interface NetworkStats {
   active_workers: number;
@@ -59,7 +63,7 @@ function Dashboard() {
   // Restore previously selected tab
   useEffect(() => {
     const saved = typeof window !== 'undefined' ? window.localStorage.getItem('activeTab') : null;
-    if (saved === 'tasks' || saved === 'devices' || saved === 'stats' || saved === 'help' || saved === 'marketplace') {
+    if (saved === 'tasks' || saved === 'devices' || saved === 'stats' || saved === 'help' || saved === 'marketplace' || saved === 'agents' || saved === 'referrals') {
       setActiveTab(saved as Tab);
     }
   }, []);
@@ -281,6 +285,14 @@ function Dashboard() {
                     <PoolStatusWidget />
                   </ComponentErrorBoundary>
 
+                  <ComponentErrorBoundary name="BurnStatsWidget">
+                    <BurnStatsWidget />
+                  </ComponentErrorBoundary>
+
+                  <ComponentErrorBoundary name="WelcomeBonusWidget">
+                    <WelcomeBonusWidget />
+                  </ComponentErrorBoundary>
+
                   {/* Global Network Status - High Focus */}
                   <div
                     className="md:col-span-2 lg:col-span-1 glass-card p-6 relative overflow-hidden group cursor-pointer border-cyan-500/20 hover:border-cyan-500/50 transition-all"
@@ -471,6 +483,14 @@ function Dashboard() {
 
                 <ComponentErrorBoundary name="Marketplace">
                   {activeTab === 'marketplace' && <Marketplace />}
+                </ComponentErrorBoundary>
+
+                <ComponentErrorBoundary name="AgentMarketplace">
+                  {activeTab === 'agents' && <AgentMarketplace />}
+                </ComponentErrorBoundary>
+
+                <ComponentErrorBoundary name="ReferralPanel">
+                  {activeTab === 'referrals' && <ReferralPanel />}
                 </ComponentErrorBoundary>
               </div>
             </div>
