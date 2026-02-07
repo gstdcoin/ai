@@ -40,3 +40,6 @@ A2A/
 .idea/
 .DS_Store
 go/
+venv/
+__pycache__/
+*.pyc

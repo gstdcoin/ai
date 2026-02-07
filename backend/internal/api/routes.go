@@ -322,6 +322,12 @@ func SetupRoutes(
 
 		// Invoices (Settlement Layer)
 		SetupInvoiceRoutes(protected, invoiceService)
+
+		// ===== ONBOARDING & TOKEN ACQUISITION =====
+		// These endpoints make platform entry incredibly simple
+		onboardingHandler := NewOnboardingHandler()
+		onboardingHandler.RegisterRoutes(v1)
+		log.Printf("✅ Onboarding & Token Acquisition routes registered")
 	}
 
 	// WebSocket endpoint
