@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'next-i18next';
-import { LayoutDashboard, Server, BarChart3, HelpCircle, Store } from 'lucide-react';
+import { LayoutDashboard, Server, BarChart3, HelpCircle, Store, Bot, Users } from 'lucide-react';
 import { Tab } from '../../types/tabs';
 
 interface BottomNavProps {
@@ -12,11 +12,11 @@ export default function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
   const { t } = useTranslation('common');
 
   const tabs: Array<{ id: Tab; label: string; icon: React.ReactNode }> = [
-    { id: 'marketplace', label: t('marketplace') || 'Market', icon: <Store size={18} /> },
+    { id: 'marketplace', label: t('market') || 'Market', icon: <Store size={18} /> },
+    { id: 'agents', label: t('agents') || 'Agents', icon: <Bot size={18} /> },
     { id: 'tasks', label: t('tasks') || 'Tasks', icon: <LayoutDashboard size={18} /> },
+    { id: 'referrals', label: t('referrals') || 'Referrals', icon: <Users size={18} /> },
     { id: 'devices', label: t('devices') || 'Devices', icon: <Server size={18} /> },
-    { id: 'stats', label: t('stats') || 'Stats', icon: <BarChart3 size={18} /> },
-    { id: 'help', label: t('help') || 'Help', icon: <HelpCircle size={18} /> },
   ];
 
   return (

@@ -3808,3 +3808,31 @@ redis: 2026/02/03 20:08:30 pool.go:426: redis: connection pool: failed to dial a
 ⚠️  No GEO Service activity or initialization found in logs.
 
 ---
+## 🛡️ GSTD Security Audit - 2026-02-07 23:00:01
+
+### 💎 TON Service Check
+2026/02/07 22:55:59 Migration v10_failed_payouts.sql already applied, skipping
+2026/02/07 22:55:59 Migration v33_recreate_failed_payouts.sql already applied, skipping
+2026/02/07 22:55:59 Warning: Failed to run migrations: failed to execute migration v36_final_optimization.sql: migration SQL error: pq: VACUUM cannot run inside a transaction block (25001)
+2026/02/07 22:56:01 Migration v10_failed_payouts.sql already applied, skipping
+2026/02/07 22:56:01 Migration v33_recreate_failed_payouts.sql already applied, skipping
+2026/02/07 22:56:01 Warning: Failed to run migrations: failed to execute migration v36_final_optimization.sql: migration SQL error: pq: VACUUM cannot run inside a transaction block (25001)
+2026/02/07 22:56:03 Migration v10_failed_payouts.sql already applied, skipping
+2026/02/07 22:56:03 Migration v33_recreate_failed_payouts.sql already applied, skipping
+2026/02/07 22:56:03 Warning: Failed to run migrations: failed to execute migration v36_final_optimization.sql: migration SQL error: pq: VACUUM cannot run inside a transaction block (25001)
+2026/02/07 22:56:05 Migration v10_failed_payouts.sql already applied, skipping
+2026/02/07 22:56:05 Migration v33_recreate_failed_payouts.sql already applied, skipping
+2026/02/07 22:56:05 Warning: Failed to run migrations: failed to execute migration v36_final_optimization.sql: migration SQL error: pq: VACUUM cannot run inside a transaction block (25001)
+2026/02/07 22:56:07 Migration v10_failed_payouts.sql already applied, skipping
+2026/02/07 22:56:07 Migration v33_recreate_failed_payouts.sql already applied, skipping
+2026/02/07 22:56:07 Warning: Failed to run migrations: failed to execute migration v36_final_optimization.sql: migration SQL error: pq: VACUUM cannot run inside a transaction block (25001)
+2026/02/07 22:56:09 Migration v10_failed_payouts.sql already applied, skipping
+2026/02/07 22:56:09 Migration v33_recreate_failed_payouts.sql already applied, skipping
+2026/02/07 22:56:09 Warning: Failed to run migrations: failed to execute migration v36_final_optimization.sql: migration SQL error: pq: VACUUM cannot run inside a transaction block (25001)
+2026/02/07 22:56:12 Migration v10_failed_payouts.sql already applied, skipping
+2026/02/07 22:56:12 Migration v33_recreate_failed_payouts.sql already applied, skipping
+
+### 🌍 GEO Service Check
+✅ GEO Service is running correctly (found 26 log entries).
+
+---

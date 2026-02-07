@@ -514,18 +514,12 @@ func main() {
 		knowledgeService,
 		pricingService,
 		invoiceService,
+		// Growth System Services
+		welcomeBonusService,
+		burnService,
+		multiLevelReferralService,
+		agentMarketplaceService,
 	)
-
-	// ========================================================================
-	// GROWTH SYSTEM ROUTES (1M User Strategy)
-	// Register growth routes on the same API groups as main routes
-	// ========================================================================
-	v1 := router.Group("/api/v1")
-	protected := v1.Group("")
-	// Note: protected routes should ideally use the same session middleware
-	// For now, growth routes have their own auth handling where needed
-	api.SetupGrowthRoutes(v1, protected, growthHandler)
-	log.Println("✅ Growth System Routes registered (Telegram, Bonus, Burn, Marketplace, Referrals)")
 
 	// Setup Swagger documentation
 	docs := api.NewDocsHandler()
