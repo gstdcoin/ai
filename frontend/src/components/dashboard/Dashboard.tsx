@@ -293,12 +293,12 @@ function Dashboard() {
                         <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Global Power</span>
                       </div>
                       <div className="text-4xl font-black text-white mb-2 tabular-nums">
-                        {networkStats ? (networkStats.active_workers * 10.5).toFixed(1) : '4.2'}
+                        {networkStats ? (networkStats.active_workers * 10.5).toFixed(1) : '—'}
                         <span className="text-sm font-bold text-gray-600 ml-2 uppercase">PFLOPS</span>
                       </div>
                       <div className="flex items-center gap-2 text-xs font-bold text-emerald-400">
                         <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                        {networkStats?.active_workers || 42} Active Nodes
+                        {networkStats?.active_workers ?? '—'} Active Nodes
                       </div>
                     </div>
                   </div>
