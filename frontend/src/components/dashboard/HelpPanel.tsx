@@ -253,6 +253,56 @@ export default function HelpPanel() {
           </div>
         )}
       </section>
+
+      {/* Contact & Support */}
+      <section className="mt-8">
+        <h2 className="text-xl sm:text-2xl font-bold text-white mb-6 flex items-center gap-2">
+          📞 {t('help_contact') || 'Contact & Support'}
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <a
+            href="https://t.me/goldstandardcoin"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="glass-card border-blue-500/30 bg-blue-500/10 p-6 rounded-xl hover:bg-blue-500/20 transition-all group"
+          >
+            <div className="text-3xl mb-3">💬</div>
+            <h3 className="font-bold text-lg text-white mb-2 group-hover:text-blue-400 transition-colors">Telegram</h3>
+            <p className="text-sm text-gray-300">@goldstandardcoin</p>
+            <p className="text-xs text-gray-500 mt-2">Community chat & support</p>
+          </a>
+          <a
+            href="https://twitter.com/gstdtoken"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="glass-card border-gray-500/30 bg-gray-500/10 p-6 rounded-xl hover:bg-gray-500/20 transition-all group"
+          >
+            <div className="text-3xl mb-3">𝕏</div>
+            <h3 className="font-bold text-lg text-white mb-2 group-hover:text-gray-300 transition-colors">X (Twitter)</h3>
+            <p className="text-sm text-gray-300">@gstdtoken</p>
+            <p className="text-xs text-gray-500 mt-2">News & announcements</p>
+          </a>
+          <a
+            href="https://github.com/gstdcoin"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="glass-card border-violet-500/30 bg-violet-500/10 p-6 rounded-xl hover:bg-violet-500/20 transition-all group"
+          >
+            <div className="text-3xl mb-3">🐙</div>
+            <h3 className="font-bold text-lg text-white mb-2 group-hover:text-violet-400 transition-colors">GitHub</h3>
+            <p className="text-sm text-gray-300">@gstdcoin</p>
+            <p className="text-xs text-gray-500 mt-2">SDKs, agents & documentation</p>
+          </a>
+        </div>
+        <div className="mt-6 p-4 glass-card border-emerald-500/30 bg-emerald-500/10 rounded-xl">
+          <p className="text-sm text-gray-300">
+            <span className="font-bold text-emerald-400">Official Website:</span>{' '}
+            <a href="https://gstdtoken.com" target="_blank" rel="noopener noreferrer" className="text-emerald-300 hover:underline">
+              gstdtoken.com
+            </a>
+          </p>
+        </div>
+      </section>
     </div>
   );
 }

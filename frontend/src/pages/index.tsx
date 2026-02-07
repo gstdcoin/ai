@@ -249,10 +249,10 @@ export default function Home() {
               <div className="max-w-5xl mx-auto">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {[
-                    { value: networkStats?.total_hashrate ? `${networkStats.total_hashrate.toFixed(1)} PFLOPS` : '4.2 PFLOPS', label: t('stat_hashrate') || 'Grid Power', icon: Zap, color: 'cyan', delay: '0s' },
-                    { value: networkStats?.tasks_24h || '12.4k', label: t('stat_tasks') || 'Protocol Operations', icon: Activity, color: 'violet', delay: '0.1s' },
-                    { value: networkStats?.total_gstd_paid?.toFixed(0) || '842k', label: t('stat_paid') || 'Sovereign Yield', icon: Coins, color: 'emerald', delay: '0.2s' },
-                    { value: networkStats?.gold_reserve ? `${networkStats.gold_reserve.toFixed(2)} XAUt` : '154.2 XAUt', label: t('stat_gold') || 'Golden Reserve', icon: Shield, color: 'amber', delay: '0.3s' },
+                    { value: networkStats?.total_hashrate ? `${networkStats.total_hashrate.toFixed(1)} PFLOPS` : '—', label: t('stat_hashrate') || 'Grid Power', icon: Zap, color: 'cyan', delay: '0s' },
+                    { value: networkStats?.tasks_24h ? networkStats.tasks_24h.toLocaleString() : '—', label: t('stat_tasks') || 'Protocol Operations', icon: Activity, color: 'violet', delay: '0.1s' },
+                    { value: networkStats?.total_gstd_paid ? networkStats.total_gstd_paid.toFixed(0) : '—', label: t('stat_paid') || 'Sovereign Yield', icon: Coins, color: 'emerald', delay: '0.2s' },
+                    { value: networkStats?.gold_reserve ? `${networkStats.gold_reserve.toFixed(2)} XAUt` : '—', label: t('stat_gold') || 'Golden Reserve', icon: Shield, color: 'amber', delay: '0.3s' },
                   ].map((stat, i) => (
                     <div key={i} className="relative group overflow-hidden" style={{ animationDelay: stat.delay }}>
                       <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-violet-500/10 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -702,16 +702,64 @@ export default function Home() {
         </section>
 
         {/* Footer */}
-        <footer className="py-12 px-6 lg:px-12 border-t border-white/5">
+        <footer className="py-16 px-6 lg:px-12 border-t border-white/5 bg-black/40">
           <div className="max-w-6xl mx-auto">
-            <div className="flex flex-col lg:flex-row justify-between items-center gap-6">
-              <div className="flex items-center gap-3">
-                <Image src="/logo.png" alt="GSTD" width={32} height={32} className="rounded-full" />
-                <span className="text-lg font-bold text-white/80">GSTD Platform</span>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
+              {/* Brand */}
+              <div className="md:col-span-2">
+                <div className="flex items-center gap-3 mb-4">
+                  <Image src="/logo.png" alt="GSTD" width={40} height={40} className="rounded-full" />
+                  <span className="text-xl font-bold text-white">GSTD Platform</span>
+                </div>
+                <p className="text-gray-500 text-sm leading-relaxed mb-6">
+                  Global Supercomputer with Gold Backing. First DePIN network on TON that turns your device power into gold.
+                </p>
+                <div className="flex gap-4">
+                  <a href="https://t.me/goldstandardcoin" target="_blank" rel="noopener noreferrer"
+                    className="px-4 py-2 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 text-sm font-medium hover:bg-blue-500/20 transition-colors">
+                    Telegram
+                  </a>
+                  <a href="https://twitter.com/gstdtoken" target="_blank" rel="noopener noreferrer"
+                    className="px-4 py-2 rounded-lg bg-gray-500/10 border border-gray-500/20 text-gray-400 text-sm font-medium hover:bg-gray-500/20 transition-colors">
+                    X (Twitter)
+                  </a>
+                  <a href="https://github.com/gstdcoin" target="_blank" rel="noopener noreferrer"
+                    className="px-4 py-2 rounded-lg bg-gray-500/10 border border-gray-500/20 text-gray-400 text-sm font-medium hover:bg-gray-500/20 transition-colors">
+                    GitHub
+                  </a>
+                </div>
               </div>
-              <p className="text-gray-500 text-sm text-center lg:text-left">
-                © 2026 GSTD Platform • DePIN • TON Blockchain • AES-256-GCM • Ed25519
+
+              {/* Quick Links */}
+              <div>
+                <h4 className="text-sm font-bold text-white uppercase tracking-wider mb-4">Quick Links</h4>
+                <ul className="space-y-3 text-sm">
+                  <li><a href="https://gstdtoken.com/token" className="text-gray-500 hover:text-white transition-colors">Token Info</a></li>
+                  <li><a href="https://gstdtoken.com/buy" className="text-gray-500 hover:text-white transition-colors">Buy GSTD</a></li>
+                  <li><a href="https://gstdtoken.com/roadmap" className="text-gray-500 hover:text-white transition-colors">Roadmap</a></li>
+                  <li><a href="/docs" className="text-gray-500 hover:text-white transition-colors">Documentation</a></li>
+                </ul>
+              </div>
+
+              {/* Legal */}
+              <div>
+                <h4 className="text-sm font-bold text-white uppercase tracking-wider mb-4">Legal</h4>
+                <ul className="space-y-3 text-sm">
+                  <li><a href="https://gstdtoken.com/legal" className="text-gray-500 hover:text-white transition-colors">Privacy Policy</a></li>
+                  <li><a href="https://gstdtoken.com/legal" className="text-gray-500 hover:text-white transition-colors">Terms of Service</a></li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
+              <p className="text-gray-600 text-sm">
+                © 2026 GSTD Token. All rights reserved.
               </p>
+              <div className="flex items-center gap-4 text-xs text-gray-600">
+                <span className="flex items-center gap-1"><Shield size={12} /> MiCA Compliant</span>
+                <span className="flex items-center gap-1"><Zap size={12} /> TON Blockchain</span>
+                <span className="flex items-center gap-1"><Globe size={12} /> DePIN Network</span>
+              </div>
             </div>
           </div>
         </footer>
