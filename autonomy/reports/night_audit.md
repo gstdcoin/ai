@@ -3966,3 +3966,118 @@ redis: 2026/02/08 04:01:42 pool.go:426: redis: connection pool: failed to dial a
 ⚠️  No GEO Service activity or initialization found in logs.
 
 ---
+## 🛡️ GSTD Security Audit - 2026-02-08 08:00:01
+
+### 💎 TON Service Check
+2026/02/08 07:00:01 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/08 07:00:11 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/08 07:00:19 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/08 07:00:31 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/08 07:00:42 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/08 07:00:49 Warning: failed to cleanup expired PoW challenges: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/08 07:00:49 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/08 07:01:12 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/08 07:01:12 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/08 07:01:19 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/08 07:01:43 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/08 07:01:49 PayoutRetryService: Error querying failed payouts: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/08 07:01:49 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/08 07:01:49 Warning: failed to cleanup expired PoW challenges: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/08 07:01:53 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/08 07:02:13 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/08 07:02:19 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/08 07:02:35 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/08 07:02:43 Health check: Database ping failed: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+2026/02/08 07:02:49 Error refreshing queue: dial tcp: lookup postgres on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-08 09:00:01
+
+### 💎 TON Service Check
+2026/02/08 08:09:06 Migration v10_failed_payouts.sql already applied, skipping
+2026/02/08 08:09:06 Migration v33_recreate_failed_payouts.sql already applied, skipping
+2026/02/08 08:09:06 Warning: Failed to run migrations: failed to execute migration v36_final_optimization.sql: migration SQL error: pq: VACUUM cannot run inside a transaction block (25001)
+2026/02/08 08:15:03 Migration v10_failed_payouts.sql already applied, skipping
+2026/02/08 08:15:03 Migration v33_recreate_failed_payouts.sql already applied, skipping
+2026/02/08 08:15:03 Warning: Failed to run migrations: failed to execute migration v36_final_optimization.sql: migration SQL error: pq: VACUUM cannot run inside a transaction block (25001)
+2026/02/08 08:30:04 Migration v10_failed_payouts.sql already applied, skipping
+2026/02/08 08:30:04 Migration v33_recreate_failed_payouts.sql already applied, skipping
+2026/02/08 08:30:04 Warning: Failed to run migrations: failed to execute migration v36_final_optimization.sql: migration SQL error: pq: VACUUM cannot run inside a transaction block (25001)
+2026/02/08 08:30:05 ⚠️  Failed to get XAUt jetton wallet address (using 0): failed to get jetton wallet (HTTP 429): {"error":"rate limit: free tier"}
+2026/02/08 08:45:02 Migration v10_failed_payouts.sql already applied, skipping
+2026/02/08 08:45:02 Migration v33_recreate_failed_payouts.sql already applied, skipping
+2026/02/08 08:45:02 Warning: Failed to run migrations: failed to execute migration v36_final_optimization.sql: migration SQL error: pq: VACUUM cannot run inside a transaction block (25001)
+2026/02/08 08:45:03 ⚠️  Failed to get XAUt jetton wallet address (using 0): failed to get jetton wallet (HTTP 429): {"error":"rate limit: free tier"}
+
+### 🌍 GEO Service Check
+✅ GEO Service is running correctly (found 8 log entries).
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-08 10:00:01
+
+### 💎 TON Service Check
+2026/02/08 09:00:02 Migration v10_failed_payouts.sql already applied, skipping
+2026/02/08 09:00:02 Migration v33_recreate_failed_payouts.sql already applied, skipping
+2026/02/08 09:00:02 Warning: Failed to run migrations: failed to execute migration v36_final_optimization.sql: migration SQL error: pq: VACUUM cannot run inside a transaction block (25001)
+2026/02/08 09:00:03 ⚠️  Failed to get GSTD jetton wallet address (using 0): failed to get jetton wallet (HTTP 429): {"error":"rate limit: free tier"}
+2026/02/08 09:00:03 ⚠️  Failed to get XAUt jetton wallet address (using 0): failed to get jetton wallet (HTTP 429): {"error":"rate limit: free tier"}
+2026/02/08 09:15:03 Migration v10_failed_payouts.sql already applied, skipping
+2026/02/08 09:15:03 Migration v33_recreate_failed_payouts.sql already applied, skipping
+2026/02/08 09:15:03 Warning: Failed to run migrations: failed to execute migration v36_final_optimization.sql: migration SQL error: pq: VACUUM cannot run inside a transaction block (25001)
+2026/02/08 09:15:04 PaymentWatcher: Error fetching transfers: TON API error (429): {"error":"rate limit: free tier"}
+2026/02/08 09:15:04 ❌ PoolMonitor: Failed to get status: API returned status 429
+2026/02/08 09:30:23 Migration v10_failed_payouts.sql already applied, skipping
+2026/02/08 09:30:23 Migration v33_recreate_failed_payouts.sql already applied, skipping
+2026/02/08 09:30:23 Warning: Failed to run migrations: failed to execute migration v36_final_optimization.sql: migration SQL error: pq: VACUUM cannot run inside a transaction block (25001)
+2026/02/08 09:45:02 Migration v10_failed_payouts.sql already applied, skipping
+2026/02/08 09:45:02 Migration v33_recreate_failed_payouts.sql already applied, skipping
+2026/02/08 09:45:02 Warning: Failed to run migrations: failed to execute migration v36_final_optimization.sql: migration SQL error: pq: VACUUM cannot run inside a transaction block (25001)
+2026/02/08 09:45:03 ⚠️  Failed to get XAUt jetton wallet address (using 0): failed to get jetton wallet (HTTP 429): {"error":"rate limit: free tier"}
+
+### 🌍 GEO Service Check
+✅ GEO Service is running correctly (found 8 log entries).
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-08 11:00:02
+
+### 💎 TON Service Check
+2026/02/08 10:00:03 Migration v10_failed_payouts.sql already applied, skipping
+2026/02/08 10:00:03 Migration v33_recreate_failed_payouts.sql already applied, skipping
+2026/02/08 10:00:03 Warning: Failed to run migrations: failed to execute migration v36_final_optimization.sql: migration SQL error: pq: VACUUM cannot run inside a transaction block (25001)
+2026/02/08 10:00:03 ⚠️  Failed to get GSTD jetton wallet address (using 0): failed to get jetton wallet (HTTP 429): {"error":"rate limit: free tier"}
+2026/02/08 10:00:03 ⚠️  Failed to get XAUt jetton wallet address (using 0): failed to get jetton wallet (HTTP 429): {"error":"rate limit: free tier"}
+2026/02/08 10:46:43 Migration v10_failed_payouts.sql already applied, skipping
+2026/02/08 10:46:43 Migration v33_recreate_failed_payouts.sql already applied, skipping
+2026/02/08 10:46:43 Warning: Failed to run migrations: failed to execute migration v36_final_optimization.sql: migration SQL error: pq: VACUUM cannot run inside a transaction block (25001)
+2026/02/08 10:46:44 ⚠️  Failed to get GSTD jetton wallet address (using 0): failed to get jetton wallet (HTTP 429): {"error":"rate limit: free tier"}
+2026/02/08 10:46:44 ⚠️  Failed to get XAUt jetton wallet address (using 0): failed to get jetton wallet (HTTP 429): {"error":"rate limit: free tier"}
+
+### 🌍 GEO Service Check
+✅ GEO Service is running correctly (found 4 log entries).
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-08 12:00:01
+
+### 💎 TON Service Check
+2026/02/08 11:06:30 Migration v10_failed_payouts.sql already applied, skipping
+2026/02/08 11:06:30 Migration v33_recreate_failed_payouts.sql already applied, skipping
+2026/02/08 11:06:30 Warning: Failed to run migrations: failed to execute migration v36_final_optimization.sql: migration SQL error: pq: VACUUM cannot run inside a transaction block (25001)
+2026/02/08 11:06:38 Health check: Failed to get contract balance: Get "https://tonapi.io/v2/accounts/EQAIYlrr3UiMJ9fqI-B4j2nJdiiD7WzyaNL1MX_wiONc4OUi": dial tcp: lookup tonapi.io on 127.0.0.11:53: server misbehaving
+2026/02/08 11:06:38 ❌ PoolMonitor: Failed to get status: failed to fetch pool status: Get "https://tonapi.io/v2/accounts/EQA--JXG8VSyBJmLMqb2J2t4Pya0TS9SXHh7vHh8Iez25sLp": dial tcp: lookup tonapi.io on 127.0.0.11:53: server misbehaving
+2026/02/08 11:06:38 PaymentWatcher: Error fetching transfers: HTTP request failed: Get "https://tonapi.io/v2/accounts/EQAIYlrr3UiMJ9fqI-B4j2nJdiiD7WzyaNL1MX_wiONc4OUi/jettons/EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO/history?limit=100": dial tcp: lookup tonapi.io on 127.0.0.11:53: server misbehaving
+
+### 🌍 GEO Service Check
+✅ GEO Service is running correctly (found 2 log entries).
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-08 13:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---

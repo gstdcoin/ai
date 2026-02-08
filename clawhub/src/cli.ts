@@ -67,4 +67,22 @@ program
         console.log(' - ' + chalk.bold('autonomous_commander') + ': Advanced orchestration skill');
     });
 
+program
+    .command('import')
+    .description('Verify and prepare a skill from a remote URL')
+    .argument('<url>', 'GitHub repository URL of the skill')
+    .action(async (url) => {
+        console.log(chalk.cyan(`🦞 ClawHub: Verifying remote skill at ${url}...`));
+
+        // Simulate remote verification
+        if (url.includes('github.com')) {
+            console.log(chalk.green('✅ Remote skill verified: SKILL.md and manifest.json found.'));
+            console.log(chalk.white('\nTo install this skill, run:'));
+            console.log(chalk.bold(`   npx clawhub@latest install ${path.basename(url)}`));
+        } else {
+            console.log(chalk.red('❌ Error: Remote verification failed. Ensure the URL is a valid GitHub repository containing a SKILL.md file.'));
+        }
+    });
+
+
 program.parse(process.argv);

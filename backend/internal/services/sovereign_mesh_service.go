@@ -2,8 +2,6 @@ package services
 
 import (
 	"context"
-	"fmt"
-	"time"
 	"crypto/sha256"
 	"encoding/hex"
 	"github.com/redis/go-redis/v9"
