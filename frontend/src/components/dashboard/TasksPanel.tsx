@@ -4,6 +4,7 @@ import { useWalletStore } from '../../store/walletStore';
 import { useTonConnectUI } from '@tonconnect/ui-react';
 import TaskDetailsModal from './TaskDetailsModal';
 import WorkerTaskCard from './WorkerTaskCard';
+import SmartTaskWidget from './SmartTaskWidget';
 import { EmptyState } from '../common/EmptyState';
 import { SkeletonTable } from '../common/SkeletonLoader';
 import { ClipboardList } from 'lucide-react';
@@ -384,6 +385,10 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
 
   return (
     <div>
+      <SmartTaskWidget onTaskCreated={() => {
+        loadTasks();
+        if (onTaskCreated) onTaskCreated();
+      }} />
       <div className="mb-6 flex flex-wrap gap-2 sm:gap-4 items-center">
         <button
           type="button"

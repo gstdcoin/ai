@@ -21,15 +21,6 @@ export default function SystemStatusWidget({ onStatsUpdate }: SystemStatusWidget
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
 
-  useEffect(() => {
-    loadStats();
-    const interval = setInterval(() => {
-      loadStats();
-      setLastUpdate(new Date());
-    }, 15000); // Update every 15 seconds (increased from 10)
-    return () => clearInterval(interval);
-  }, []);
-
   // Use ref to avoid re-creating callback on every render
   const onStatsUpdateRef = useRef(onStatsUpdate);
   useEffect(() => {
@@ -84,6 +75,15 @@ export default function SystemStatusWidget({ onStatsUpdate }: SystemStatusWidget
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadStats();
+    const interval = setInterval(() => {
+      loadStats();
+      setLastUpdate(new Date());
+    }, 15000); // Update every 15 seconds (increased from 10)
+    return () => clearInterval(interval);
+  }, []);
 
   const getStatusColor = () => {
     if (!stats) return 'border-white/10';
