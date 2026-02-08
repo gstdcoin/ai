@@ -137,41 +137,42 @@ export default function WorkerTaskCard({ task, onTaskCompleted }: WorkerTaskCard
   }, [task.task_id]);
 
   return (
-    <div className="glass-card border-gold-900/30 bg-gold-900/10 p-4 sm:p-6 mb-4">
+    <div className="glass-card border-violet-500/30 bg-violet-500/10 p-4 sm:p-6 mb-4 relative overflow-hidden group">
+      <div className="absolute top-0 right-0 w-32 h-32 bg-violet-500/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-violet-500/10 transition-colors" />
+
       {/* Task Info */}
-      <div className="mb-4">
+      <div className="mb-4 relative z-10">
         <div className="flex items-start justify-between mb-2">
           <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-bold text-white font-display mb-1">
+            <h3 className="text-lg font-black text-white uppercase tracking-tight mb-1">
               {task.task_type}
             </h3>
-            <p className="text-xs text-gray-400 font-mono truncate">
-              {t('task_id')}: {task.task_id.slice(0, 8)}...{task.task_id.slice(-6)}
+            <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest">
+              NODE_ID: {task.task_id.slice(0, 8)}...{task.task_id.slice(-6)}
             </p>
           </div>
           <div className="text-right ml-4">
-            <p className="text-sm font-semibold text-gold-900">
-              {task.labor_compensation_gstd.toFixed(6)} GSTD
+            <p className="text-xl font-black text-violet-400 tabular-nums">
+              {task.labor_compensation_gstd.toFixed(6)}
             </p>
-            <p className="text-xs text-gray-400">{t('reward')}</p>
+            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{t('reward') || 'Bounty (GSTD)'}</p>
           </div>
         </div>
       </div>
 
       {/* Progress Bar */}
       {progress.status !== 'idle' && (
-        <div className="mb-4">
+        <div className="mb-6 relative z-10">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-gray-300">{progress.message}</span>
-            <span className="text-sm font-semibold text-gold-900">{progress.progress}%</span>
+            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest animate-pulse">{progress.message}</span>
+            <span className="text-xs font-black text-violet-400">{progress.progress}%</span>
           </div>
-          <div className="glass-dark h-3 rounded-full overflow-hidden">
+          <div className="h-2 bg-black/40 rounded-full overflow-hidden border border-white/5">
             <div
-              className="h-full bg-gradient-to-r from-gold-900/50 to-gold-900 transition-all duration-300 ease-out relative"
+              className="h-full bg-gradient-to-r from-violet-600 via-fuchsia-500 to-cyan-400 transition-all duration-300 ease-out relative"
               style={{ width: `${progress.progress}%` }}
             >
-              {/* Shimmer effect */}
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer"></div>
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
             </div>
           </div>
         </div>
@@ -182,28 +183,29 @@ export default function WorkerTaskCard({ task, onTaskCompleted }: WorkerTaskCard
         <button
           onClick={handleStartWork}
           disabled={isRunning || !address || !tonConnectUI?.connected}
-          className="w-full glass-button-gold text-white font-bold py-4 px-6 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 min-h-[56px] hover:scale-[1.02] active:scale-[0.98]"
+          className="w-full relative h-[60px] bg-white/[0.03] border-2 border-white/5 rounded-2xl overflow-hidden group/btn hover:border-violet-500/50 transition-all active:scale-[0.98] disabled:opacity-30"
         >
-          {isRunning ? (
-            <>
-              <Loader2 className="w-5 h-5 animate-spin" />
-              <span>{t('working') || 'Working...'}</span>
-            </>
-          ) : (
-            <>
-              <Play className="w-5 h-5" fill="currentColor" />
-              <span className="text-lg">{t('start_work') || 'START WORK'}</span>
-            </>
-          )}
+          <div className="absolute inset-0 bg-gradient-to-r from-violet-600/10 to-fuchsia-600/10 opacity-0 group-hover/btn:opacity-100 transition-opacity" />
+          <div className="relative z-10 flex items-center justify-center gap-3">
+            {isRunning ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin text-violet-400" />
+                <span className="text-sm font-black text-white uppercase tracking-widest">{t('working') || 'Executing Core...'}</span>
+              </>
+            ) : (
+              <>
+                <Play className="w-4 h-4 text-violet-400" fill="currentColor" />
+                <span className="text-sm font-black text-white uppercase tracking-widest">{t('start_work') || 'Compute Task'}</span>
+              </>
+            )}
+          </div>
         </button>
       ) : (
         <div
-          className="w-full glass-button-gold text-white font-bold py-4 px-6 rounded-lg flex items-center justify-center gap-3 min-h-[56px] bg-green-500/20 border-green-500/50"
-          role="status"
-          aria-live="polite"
+          className="w-full h-[60px] bg-emerald-500/10 border-2 border-emerald-500/30 rounded-2xl flex items-center justify-center gap-3"
         >
-          <CheckCircle2 className="w-5 h-5" aria-hidden="true" />
-          <span className="text-lg">{t('task_completed') || 'Task Completed!'}</span>
+          <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+          <span className="text-sm font-black text-emerald-400 uppercase tracking-widest">{t('task_completed') || 'Verified'}</span>
         </div>
       )}
 

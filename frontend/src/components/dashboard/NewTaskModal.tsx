@@ -4,9 +4,10 @@ import { useWalletStore } from '../../store/walletStore';
 import { useTonConnectUI } from '@tonconnect/ui-react';
 import { logger } from '../../lib/logger';
 import { toast } from '../../lib/toast';
-import { createTaskSchema, type CreateTaskFormData } from '../../lib/validation';
-import { API_BASE_URL, ADMIN_WALLET_ADDRESS, ESCROW_CONTRACT_ADDRESS } from '../../lib/config';
+import { createTaskSchema } from '../../lib/validation';
+import { ESCROW_CONTRACT_ADDRESS, ADMIN_WALLET_ADDRESS } from '../../lib/config';
 import { apiGet, apiPost } from '../../lib/apiClient';
+import { X, Cpu, DollarSign, Terminal, CheckCircle, Clock, ArrowRight, Shield, Zap } from 'lucide-react';
 
 interface NewTaskModalProps {
   onClose: () => void;
@@ -29,11 +30,7 @@ export default function NewTaskModal({ onClose, onTaskCreated }: NewTaskModalPro
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<'form' | 'payment' | 'confirming' | 'success'>('form');
   const [taskData, setTaskData] = useState<CreateTaskResponse | null>(null);
-  const [formData, setFormData] = useState<{
-    type: string;
-    budget: string;
-    payload: string;
-  }>({
+  const [formData, setFormData] = useState({
     type: 'AI_INFERENCE',
     budget: '',
     payload: '',
@@ -43,54 +40,24 @@ export default function NewTaskModal({ onClose, onTaskCreated }: NewTaskModalPro
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!address) {
-      const errorMsg = 'Wallet not connected';
-      setError(errorMsg);
-      toast.error('Wallet required', 'Please connect your wallet first');
+      toast.error('Connect Wallet', 'Please connect your wallet first');
       return;
     }
 
-    // Validate form
-    if (!validateForm()) {
-      toast.error('Validation failed', 'Please check the form fields');
-      return;
-    }
+    if (!validateForm()) return;
 
     setLoading(true);
     setError(null);
 
     try {
-      // Проверка баланса GSTD только при создании задания
-      // Use the same threshold as backend (0.000001 GSTD)
-      const MIN_GSTD_BALANCE = 0.000001;
-
-      try {
-        const balanceData = await apiGet<{ gstd_balance: number }>(`/wallet/balance?wallet=${address}`);
-        const balance = balanceData.gstd_balance || 0;
-
-        // Check balance directly - if balance is >= threshold, allow task creation
-        // has_gstd might be false if API check failed, but balance might still be > 0
-        if (balance < MIN_GSTD_BALANCE) {
-          throw new Error(t('gstd_required_for_tasks') || 'You need at least 0.000001 GSTD tokens to create tasks. Please purchase GSTD tokens first.');
-        }
-      } catch (balanceErr) {
-        // If API call fails, log warning but don't block task creation
-        // The backend will handle the actual balance check during task creation
-        logger.warn('Failed to check GSTD balance, but allowing task creation to proceed. Backend will verify balance.', balanceErr);
-      }
-
       const budget = parseFloat(formData.budget);
 
-      // Safely parse JSON payload; show user-friendly error on invalid JSON
       let payloadObj: any = {};
       if (formData.payload.trim()) {
         try {
           payloadObj = JSON.parse(formData.payload);
-        } catch (parseError) {
-          logger.error('Invalid JSON in payload', parseError);
-          toast.error(
-            t('error') || 'Error',
-            t('invalid_json') || 'Invalid JSON in payload field'
-          );
+        } catch (err) {
+          toast.error('Invalid JSON', 'Please check your payload format');
           return;
         }
       }
@@ -105,12 +72,10 @@ export default function NewTaskModal({ onClose, onTaskCreated }: NewTaskModalPro
       );
       setTaskData(data);
       setStep('payment');
-      toast.success('Task created successfully', 'Please complete the payment');
+      toast.success('Task Provisioned', 'Awaiting payment on TON');
     } catch (err: any) {
-      logger.error('Error creating task', err);
-      const errorMsg = err?.message || 'Failed to create task';
-      setError(errorMsg);
-      toast.error('Failed to create task', errorMsg);
+      setError(err?.message || 'Failed to create task');
+      toast.error('Provisioning Failed', err?.message);
     } finally {
       setLoading(false);
     }
@@ -122,403 +87,253 @@ export default function NewTaskModal({ onClose, onTaskCreated }: NewTaskModalPro
       setFormErrors({});
       return true;
     } catch (error: any) {
-      if (error.errors) {
-        const errors: Record<string, string> = {};
-        error.errors.forEach((err: any) => {
-          if (err.path.length > 0) {
-            errors[err.path[0]] = err.message;
-          }
-        });
-        setFormErrors(errors);
-      }
+      const errors: Record<string, string> = {};
+      error.errors?.forEach((err: any) => {
+        if (err.path?.[0]) errors[err.path[0]] = err.message;
+      });
+      setFormErrors(errors);
       return false;
     }
   };
 
-  const handleFormChange = (field: keyof typeof formData, value: string) => {
-    setFormData({ ...formData, [field]: value });
-    // Clear error for this field when user starts typing
-    if (formErrors[field]) {
-      setFormErrors({ ...formErrors, [field]: '' });
-    }
-  };
-
   const handlePayment = async () => {
-    if (!tonConnectUI || !taskData) {
-      setError('TonConnect not available');
-      return;
-    }
-
+    if (!tonConnectUI || !taskData) return;
     setStep('confirming');
-    setError(null);
-
     try {
-      // 1. Calculate split amounts (95% reward, 5% fee)
       const rewardAmount = taskData.amount * 0.95;
       const feeAmount = taskData.amount * 0.05;
 
-      // 2. Get Jetton Wallet Addresses for recipients
-      // We need to resolve the specific Jetton wallet addresses for both recipients
-      const [rewardJettonData, feeJettonData] = await Promise.all([
+      const [rewardJD, feeJD] = await Promise.all([
         apiGet<{ address: string }>(`/wallet/jetton-address?owner=${ESCROW_CONTRACT_ADDRESS}`),
         apiGet<{ address: string }>(`/wallet/jetton-address?owner=${ADMIN_WALLET_ADDRESS}`)
       ]);
 
-      const rewardJettonWallet = rewardJettonData.address;
-      const feeJettonWallet = feeJettonData.address;
-
-      if (!rewardJettonWallet || !feeJettonWallet) {
-        throw new Error('Could not resolve jetton wallets for payment recipients');
-      }
-
-      logger.debug('Initiating split payment', {
-        reward_recipient: ESCROW_CONTRACT_ADDRESS,
-        reward_amount: rewardAmount,
-        fee_recipient: ADMIN_WALLET_ADDRESS,
-        fee_amount: feeAmount,
-        memo: taskData.payment_memo,
-      });
-
-      // 3. Build TonConnect Transaction with two messages
       const { beginCell, Address } = await import('@ton/core');
-
-      // Helper to create Jetton transfer payload
-      const createTransferPayload = (recipientOwner: string, amount: number, memo: string) => {
-        // Amount in nanos (GSTD has 9 decimals)
-        const amountNano = BigInt(Math.round(amount * 1e9));
-
+      const createBoc = (dest: string, amt: number, memo: string) => {
         return beginCell()
-          .storeUint(0xf8a7ea5, 32) // op::transfer
-          .storeUint(0, 64)       // query_id
-          .storeCoins(amountNano)
-          .storeAddress(Address.parse(recipientOwner)) // Destination owner
-          .storeAddress(Address.parse(address!))                 // Response destination
-          .storeBit(0)                                          // No custom payload
-          .storeCoins(BigInt(1))                                // Forward amount (1 nano)
-          .storeBit(1)                                          // We have forward payload (comment)
-          .storeRef(
-            beginCell()
-              .storeUint(0, 32)                                 // Comment prefix
-              .storeStringTail(memo)
-              .endCell()
-          )
-          .endCell()
-          .toBoc()
-          .toString('base64');
+          .storeUint(0xf8a7ea5, 32)
+          .storeUint(0, 64)
+          .storeCoins(BigInt(Math.round(amt * 1e9)))
+          .storeAddress(Address.parse(dest))
+          .storeAddress(Address.parse(address!))
+          .storeBit(0)
+          .storeCoins(BigInt(1))
+          .storeBit(1)
+          .storeRef(beginCell().storeUint(0, 32).storeStringTail(memo).endCell())
+          .endCell().toBoc().toString('base64');
       };
 
-      const rewardBoc = createTransferPayload(ESCROW_CONTRACT_ADDRESS, rewardAmount, taskData.payment_memo);
-      const feeBoc = createTransferPayload(ADMIN_WALLET_ADDRESS, feeAmount, `${taskData.payment_memo}-FEE`);
-
-      // 4. Send via TonConnect (Multiple messages)
       await tonConnectUI.sendTransaction({
-        validUntil: Math.floor(Date.now() / 1000) + 600, // 10 minutes
+        validUntil: Math.floor(Date.now() / 1000) + 600,
         messages: [
-          {
-            address: rewardJettonWallet, // Index 0: Reward to Escrow
-            amount: "50000000",           // 0.05 TON for gas
-            payload: rewardBoc,
-            bounce: false,
-          },
-          {
-            address: feeJettonWallet,    // Index 1: Fee to Admin
-            amount: "50000000",           // 0.05 TON for gas
-            payload: feeBoc,
-            bounce: false,
-          }
+          { address: rewardJD.address, amount: "50000000", payload: createBoc(ESCROW_CONTRACT_ADDRESS, rewardAmount, taskData.payment_memo) },
+          { address: feeJD.address, amount: "50000000", payload: createBoc(ADMIN_WALLET_ADDRESS, feeAmount, `${taskData.payment_memo}-FEE`) }
         ]
       });
-
-      logger.info('Split payment transaction sent', { task_id: taskData.task_id });
-      // The step is already 'confirming', useEffect will start polling
     } catch (err: any) {
-      logger.error('Error initiating payment', err);
-      const errorMsg = err?.message || 'Failed to initiate payment';
-      setError(errorMsg);
-      toast.error('Payment error', errorMsg);
+      toast.error('Payment Reverted', err?.message);
       setStep('payment');
     }
   };
 
-  // Poll for payment confirmation
   useEffect(() => {
     if (step === 'confirming' && taskData) {
       const interval = setInterval(async () => {
         try {
           const task = await apiGet<{ status: string }>(`/tasks/${taskData.task_id}/payment`);
-          if (task.status === 'queued') {
+          if (task.status === 'queued' || task.status === 'pending' || task.status === 'active') {
             setStep('success');
-            if (onTaskCreated) {
-              onTaskCreated();
-            }
+            onTaskCreated?.();
             clearInterval(interval);
           }
-        } catch (err) {
-          logger.error('Error checking task status', err);
-        }
-      }, 5000); // Check every 5 seconds
-
+        } catch (e) { }
+      }, 5000);
       return () => clearInterval(interval);
     }
-  }, [step, taskData?.task_id, address]); // Removed onTaskCreated to prevent infinite loop
-
-  if (step === 'success' && taskData) {
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-          <div className="text-center">
-            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
-              <svg className="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              {t('task_created') || 'Task Created Successfully!'}
-            </h3>
-            <p className="text-sm text-gray-500 mb-4">
-              {t('payment_confirmed') || 'Your payment has been confirmed and the task is now queued.'}
-            </p>
-            <div className="bg-gray-50 rounded-lg p-4 mb-4">
-              <p className="text-xs text-gray-600 mb-1 font-semibold">
-                {t('task_id') || 'Task ID'}:
-              </p>
-              <p className="text-sm font-mono text-gray-900 break-all">
-                {taskData.task_id}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="w-full bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors"
-            >
-              {t('close') || 'Close'}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (step === 'confirming') {
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-          <div className="text-center">
-            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 mb-4">
-              <svg className="animate-spin h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              {t('waiting_confirmation') || 'Waiting for Blockchain Confirmation'}
-            </h3>
-            <p className="text-sm text-gray-500 mb-4">
-              {t('confirming_payment') || 'Please wait while we confirm your payment on the blockchain...'}
-            </p>
-            <div className="bg-gray-50 rounded-lg p-4 mb-4">
-              <p className="text-xs text-gray-600 mb-1">
-                {t('task_id') || 'Task ID'}: {taskData?.task_id}
-              </p>
-              <p className="text-xs text-gray-600">
-                {t('amount') || 'Amount'}: {taskData?.amount} GSTD
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="w-full bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors"
-            >
-              {t('close') || 'Close'} (Task will continue processing)
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (step === 'payment' && taskData) {
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-gray-900">
-              {t('pay_for_task') || 'Pay for Task'}
-            </h2>
-            <button
-              type="button"
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-
-          {error && (
-            <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3">
-              <p className="text-sm text-red-800">{error}</p>
-            </div>
-          )}
-
-          <div className="space-y-4 mb-6">
-            <div className="bg-gray-50 rounded-lg p-4">
-              <div className="flex justify-between mb-2">
-                <span className="text-sm text-gray-600">{t('task_id') || 'Task ID'}:</span>
-                <span className="text-sm font-mono text-gray-900">{taskData.task_id}</span>
-              </div>
-              <div className="flex justify-between mb-2">
-                <span className="text-sm text-gray-600">{t('amount') || 'Amount'}:</span>
-                <span className="text-sm font-semibold text-gray-900">{taskData.amount} GSTD</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">{t('payment_memo') || 'Payment Memo'}:</span>
-                <span className="text-sm font-mono text-gray-900">{taskData.payment_memo}</span>
-              </div>
-            </div>
-
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-              <p className="text-xs text-blue-800 font-semibold mb-2">
-                {t('payment_instruction_title') || 'Payment Instructions:'}
-              </p>
-              <ol className="text-xs text-blue-800 list-decimal list-inside space-y-1">
-                <li>{t('payment_step1') || 'Open your TON wallet'}</li>
-                <li>{t('payment_step2')?.replace('{amount}', taskData.amount.toString())?.replace('{wallet}', taskData.platform_wallet) || `Send ${taskData.amount} GSTD to: ${taskData.platform_wallet}`}</li>
-                <li>{t('payment_step3')?.replace('{memo}', taskData.payment_memo) || `Include this memo in the transaction: ${taskData.payment_memo}`}</li>
-                <li>{t('payment_step4') || 'Click "Confirm Payment" after sending'}</li>
-              </ol>
-            </div>
-          </div>
-
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={() => setStep('form')}
-              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              {t('back') || 'Back'}
-            </button>
-            <button
-              onClick={handlePayment}
-              className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-            >
-              {t('confirm_payment') || 'Confirm Payment'}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  }, [step, taskData, onTaskCreated]);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-gray-900">
-            {t('create_task') || 'Create New Task'}
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
+      <div className="relative w-full max-w-xl bg-[#0a0a0b] border border-white/10 rounded-[32px] overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)]">
 
-        {error && (
-          <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3">
-            <p className="text-sm text-red-800">{error}</p>
-          </div>
-        )}
+        {/* Animated Background Orbs */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-violet-600/10 rounded-full blur-[100px] -mr-32 -mt-32" />
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-cyan-500/10 rounded-full blur-[100px] -ml-32 -mb-32" />
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="type" className="block text-sm font-medium text-gray-700 mb-1">
-              {t('task_type') || 'Task Type'} *
-            </label>
-            <select
-              id="type"
-              required
-              value={formData.type}
-              onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            >
-              <option value="AI_INFERENCE">AI_INFERENCE</option>
-              <option value="DATA_PROCESSING">DATA_PROCESSING</option>
-              <option value="COMPUTATION">COMPUTATION</option>
-            </select>
-          </div>
-
-          <div>
-            <label htmlFor="budget" className="block text-sm font-medium text-gray-700 mb-1">
-              {t('budget_gstd') || 'Budget (GSTD)'} *
-            </label>
-            <input
-              type="number"
-              id="budget"
-              required
-              min="0.000000001"
-              step="0.000000001"
-              value={formData.budget}
-              onChange={(e) => handleFormChange('budget', e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${formErrors.budget ? 'border-red-300' : 'border-gray-300'
-                }`}
-              placeholder="10.5"
-            />
-            {formErrors.budget && (
-              <p className="mt-1 text-sm text-red-600">{formErrors.budget}</p>
-            )}
-          </div>
-
-          <div>
-            <label htmlFor="payload" className="block text-sm font-medium text-gray-700 mb-1">
-              {t('payload') || 'Payload (JSON)'} (Optional)
-            </label>
-            <textarea
-              id="payload"
-              value={formData.payload}
-              onChange={(e) => handleFormChange('payload', e.target.value)}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent font-mono text-sm ${formErrors.payload ? 'border-red-300' : 'border-gray-300'
-                }`}
-              rows={4}
-              placeholder='{"input": "data", "model": "gpt-4"}'
-            />
-            {formErrors.payload ? (
-              <p className="mt-1 text-sm text-red-600">{formErrors.payload}</p>
-            ) : (
-              <p className="text-xs text-gray-500 mt-1">
-                {t('payload_help') || 'Enter valid JSON or leave empty'}
+        <div className="relative z-10 flex flex-col max-h-[90vh]">
+          {/* Header */}
+          <div className="flex items-center justify-between p-8 border-b border-white/5 bg-white/[0.02]">
+            <div>
+              <h2 className="text-2xl font-black text-white uppercase tracking-tight flex items-center gap-3">
+                <Zap className="text-yellow-400 w-6 h-6" />
+                {t('create_task') || 'Deploy Task'}
+              </h2>
+              <p className="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] mt-1">
+                GSTD Distributed Execution Layer
               </p>
-            )}
+            </div>
+            <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-2xl transition-colors text-gray-500 hover:text-white">
+              <X size={24} />
+            </button>
           </div>
 
-          <div className="flex gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-              disabled={loading}
-            >
-              {t('cancel') || 'Cancel'}
-            </button>
-            <button
-              type="submit"
-              disabled={loading || !formData.type || !formData.budget || !address || !tonConnectUI?.connected}
-              className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed relative group"
-              title={!address || !tonConnectUI?.connected ? (t('connect_wallet_to_create_task') || 'Connect wallet to create task') : ''}
-            >
-              {loading ? (t('creating') || 'Creating...') : (t('create') || 'Create Task')}
-              {(!address || !tonConnectUI?.connected) && (
-                <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                  {t('connect_wallet_to_create_task') || 'Connect wallet to create task'}
-                </span>
-              )}
-            </button>
+          <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+            {step === 'form' && (
+              <form onSubmit={handleSubmit} className="space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                      <Terminal size={12} className="text-violet-400" />
+                      Protocol Action
+                    </label>
+                    <select
+                      value={formData.type}
+                      onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                      className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-4 text-white font-bold appearance-none hover:bg-white/10 transition-colors focus:ring-2 focus:ring-violet-500/40 outline-none"
+                    >
+                      <option value="AI_INFERENCE">Neural Inference</option>
+                      <option value="DATA_PROCESSING">Cluster Transform</option>
+                      <option value="COMPUTATION">Raw Compute</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                      <DollarSign size={12} className="text-emerald-400" />
+                      Labor Budget
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        step="0.1"
+                        placeholder="0.0"
+                        value={formData.budget}
+                        onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
+                        className={`w-full h-14 bg-white/5 border ${formErrors.budget ? 'border-red-500/50' : 'border-white/10'} rounded-2xl px-4 pr-16 text-white font-mono text-lg transition-colors focus:ring-2 focus:ring-emerald-500/40 outline-none`}
+                      />
+                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-black text-gray-500">GSTD</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                    <Cpu size={12} className="text-cyan-400" />
+                    Task Payload (JSON Payload)
+                  </label>
+                  <textarea
+                    value={formData.payload}
+                    rows={6}
+                    onChange={(e) => setFormData({ ...formData, payload: e.target.value })}
+                    placeholder='{ "model": "mobilenet_v3", "input": "...", "verification": "zk_proof" }'
+                    className="w-full bg-black/40 border border-white/5 rounded-2xl p-6 text-emerald-400 font-mono text-sm focus:ring-2 focus:ring-cyan-500/40 outline-none placeholder:text-gray-800"
+                  />
+                </div>
+
+                <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-violet-500/10 flex items-center justify-center text-violet-400">
+                      <Shield size={24} />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-black text-white uppercase tracking-tight">Trust Verification</h4>
+                      <p className="text-[10px] text-gray-600 font-bold uppercase tracking-widest mt-1">
+                        Task will be verified by 3 independent agents [PoC: 0.99]
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full h-16 bg-white text-black rounded-2xl font-black text-lg hover:bg-gray-200 transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3 uppercase tracking-tighter"
+                >
+                  {loading ? <Clock className="animate-spin" /> : <ArrowRight />}
+                  Provision Distributed Node
+                </button>
+              </form>
+            )}
+
+            {step === 'payment' && taskData && (
+              <div className="space-y-8 py-4">
+                <div className="text-center mb-8">
+                  <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-emerald-500/20 text-emerald-400">
+                    <CheckCircle size={40} />
+                  </div>
+                  <h3 className="text-2xl font-black text-white uppercase tracking-tight">Task Provisioned</h3>
+                  <p className="text-gray-500 text-sm mt-2">ID: {taskData.task_id}</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/5">
+                    <label className="text-[9px] font-black text-gray-600 uppercase tracking-[0.2em] block mb-2">Total Amount</label>
+                    <div className="text-2xl font-black text-white tabular-nums">{taskData.amount.toFixed(2)} GSTD</div>
+                  </div>
+                  <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/5">
+                    <label className="text-[9px] font-black text-gray-600 uppercase tracking-[0.2em] block mb-2">Platform Fee</label>
+                    <div className="text-2xl font-black text-violet-400 tabular-nums">5.0%</div>
+                  </div>
+                </div>
+
+                <div className="p-8 rounded-3xl bg-blue-600/10 border border-blue-500/20 relative overflow-hidden group">
+                  <div className="relative z-10 flex items-center gap-6">
+                    <Shield className="text-blue-400 w-10 h-10" />
+                    <div>
+                      <h4 className="text-white font-black text-lg uppercase tracking-tight">Non-Custodial Escrow</h4>
+                      <p className="text-gray-400 text-xs">Funds will be locked in the contract until the agent provides a verified PoC result.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={handlePayment}
+                  className="w-full h-16 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white rounded-2xl font-black text-lg hover:shadow-[0_0_30px_rgba(139,92,246,0.3)] transition-all active:scale-[0.98] flex items-center justify-center gap-3 uppercase tracking-tighter"
+                >
+                  Confirm Payment via TON
+                </button>
+              </div>
+            )}
+
+            {step === 'confirming' && (
+              <div className="py-20 text-center space-y-8">
+                <div className="relative w-24 h-24 mx-auto">
+                  <div className="absolute inset-0 bg-cyan-500/20 rounded-full blur-xl animate-pulse" />
+                  <div className="relative w-24 h-24 rounded-full border-4 border-white/5 border-t-cyan-500 animate-spin" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black text-white uppercase tracking-tight">Synchronizing Ledger</h3>
+                  <p className="text-gray-500 text-sm mt-3 leading-relaxed">
+                    Awaiting blockchain confirmation. Your task will be instantly available in the Hive Mesh once verified.
+                  </p>
+                </div>
+                <div className="p-4 bg-white/5 rounded-2xl border border-white/5 font-mono text-[10px] text-gray-600">
+                  NETWORK_STATUS: AWAITING_BOC_CONFIRMATION
+                </div>
+              </div>
+            )}
+
+            {step === 'success' && (
+              <div className="py-12 text-center space-y-8">
+                <div className="w-24 h-24 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center mx-auto shadow-[0_0_50px_rgba(16,185,129,0.3)]">
+                  <CheckCircle size={48} className="text-white" />
+                </div>
+                <div>
+                  <h3 className="text-3xl font-black text-white uppercase tracking-tighter">TASK DEPLOYED</h3>
+                  <p className="text-gray-500 font-medium mt-3">
+                    Your task is now being processed by globally distributed agents.
+                  </p>
+                </div>
+                <button
+                  onClick={onClose}
+                  className="px-12 h-14 bg-white/5 border border-white/10 rounded-2xl text-white font-black hover:bg-white/10 transition-all uppercase tracking-widest text-xs"
+                >
+                  Return to Dashboard
+                </button>
+              </div>
+            )}
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );

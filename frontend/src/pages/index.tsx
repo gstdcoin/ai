@@ -68,7 +68,7 @@ export default function Home() {
   const [workerHours, setWorkerHours] = useState(24);
 
   const copyToClipboard = () => {
-    navigator.clipboard.writeText('curl -sL get.gstd.io | bash');
+    navigator.clipboard.writeText('curl -sL get.gstdtoken.com | bash');
     setCopiedCommand(true);
     setTimeout(() => setCopiedCommand(false), 2000);
   };
@@ -586,7 +586,7 @@ export default function Home() {
                           <div className="relative group mt-4">
                             <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 rounded-2xl blur opacity-25 group-hover:opacity-100 transition duration-1000"></div>
                             <code className="relative block w-full p-4 rounded-xl bg-black/80 border border-white/5 text-emerald-400 font-mono text-xs overflow-x-auto shadow-2xl">
-                              curl -sL get.gstd.io | bash -s ignite
+                              curl -sL get.gstdtoken.com | bash -s ignite
                             </code>
                           </div>
                         </>

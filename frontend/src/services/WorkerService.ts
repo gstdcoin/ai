@@ -252,12 +252,16 @@ class WorkerService {
     public subscribe(callback: (state: WorkerState) => void) {
         this.subscribers.push(callback);
         callback(this.state); // Initial state
-        return () => this.subscribers = this.subscribers.filter(cb => cb !== callback);
+        return () => {
+            this.subscribers = this.subscribers.filter(cb => cb !== callback);
+        };
     }
 
     public subscribeStats(callback: WorkerCallback) {
         this.statsSubscribers.push(callback);
-        return () => this.statsSubscribers = this.statsSubscribers.filter(cb => cb !== callback);
+        return () => {
+            this.statsSubscribers = this.statsSubscribers.filter(cb => cb !== callback);
+        };
     }
 
     private notifyState() {
