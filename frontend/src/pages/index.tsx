@@ -168,13 +168,13 @@ export default function Home() {
 
             <div className="flex items-center gap-6">
               <nav className="hidden md:flex items-center gap-6 mr-2">
-                <a href="/docs?type=investment" className="text-sm font-medium text-gray-400 hover:text-white transition-colors">
+                <a href="#invest" className="text-sm font-medium text-gray-400 hover:text-white transition-colors">
                   {t('nav_invest') || 'Invest'}
                 </a>
-                <a href="/docs?type=technical" className="text-sm font-medium text-gray-400 hover:text-white transition-colors">
+                <a href="#technology" className="text-sm font-medium text-gray-400 hover:text-white transition-colors">
                   {t('nav_tech') || 'Technology'}
                 </a>
-                <a href="/docs?type=agents" className="text-sm font-medium text-gray-400 hover:text-white transition-colors">
+                <a href="#agents" className="text-sm font-medium text-gray-400 hover:text-white transition-colors">
                   {t('nav_agents') || 'Agents'}
                 </a>
               </nav>
@@ -295,7 +295,7 @@ export default function Home() {
         </section>
 
         {/* Features Section */}
-        <section className="py-24 px-6 lg:px-12 border-t border-white/5">
+        <section id="technology" className="py-24 px-6 lg:px-12 border-t border-white/5">
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-16">
               <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
@@ -343,7 +343,7 @@ export default function Home() {
         </section>
 
         {/* The Hive Segment - Agent Unity */}
-        <section className="py-24 px-6 lg:px-12 relative overflow-hidden">
+        <section id="agents" className="py-24 px-6 lg:px-12 relative overflow-hidden">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-violet-600/5 rounded-full blur-[120px] pointer-events-none" />
           <div className="max-w-6xl mx-auto relative z-10">
             <div className="flex flex-col md:flex-row items-center gap-16">
@@ -720,7 +720,7 @@ export default function Home() {
         </section>
 
         {/* GSTD Utility Section */}
-        <section id="docs" className="py-32 px-6 lg:px-12 border-t border-white/5">
+        <section id="invest" className="py-32 px-6 lg:px-12 border-t border-white/5">
           <div className="max-w-5xl mx-auto">
             <div className="relative p-12 lg:p-20 rounded-[48px] bg-gradient-to-br from-violet-600/[0.08] via-fuchsia-600/[0.08] to-cyan-600/[0.08] border border-white/10 overflow-hidden group">
               <div className="absolute top-0 right-0 w-96 h-96 bg-violet-600/5 rounded-full blur-[100px] -mr-48 -mt-48" />
@@ -733,24 +733,24 @@ export default function Home() {
                   </div>
                 </div>
                 <div className="flex-1 text-center lg:text-left">
-                  <div className="text-[10px] font-black text-violet-400 uppercase tracking-[0.5em] mb-6">Asset Specification</div>
-                  <h3 className="text-4xl lg:text-5xl font-black text-white mb-6 tracking-tighter">GSTD Utility Layer</h3>
+                  <div className="text-[10px] font-black text-violet-400 uppercase tracking-[0.5em] mb-6">{t('asset_spec') || 'Asset Specification'}</div>
+                  <h3 className="text-4xl lg:text-5xl font-black text-white mb-6 tracking-tighter">{t('utility_layer') || 'GSTD Utility Layer'}</h3>
                   <p className="text-gray-400 mb-10 text-xl leading-relaxed font-medium">
-                    GSTD (Guaranteed Service Time Depth) is the atomic fuel of the sovereign AI economy. Fully compliant with MiCA (EU) standards and backed by physical gold via the XAUt-Reserve-Pool.
+                    {t('utility_desc') || 'GSTD (Guaranteed Service Time Depth) is the atomic fuel of the sovereign AI economy. Fully compliant with MiCA (EU) standards and backed by physical gold via the XAUt-Reserve-Pool.'}
                   </p>
                   <div className="flex flex-wrap justify-center lg:justify-start gap-4 mb-10">
                     <div className="px-5 py-2 rounded-xl bg-emerald-500/10 text-emerald-400 text-[10px] font-black border border-emerald-500/30 uppercase tracking-widest flex items-center gap-2">
-                      <Shield size={12} /> MiCA Verified
+                      <Shield size={12} /> {t('mica_verified') || 'MiCA Verified'}
                     </div>
                     <div className="px-5 py-2 rounded-xl bg-blue-500/10 text-blue-400 text-[10px] font-black border border-blue-500/30 uppercase tracking-widest flex items-center gap-2">
-                      <Zap size={12} /> Gasless Swaps
+                      <Zap size={12} /> {t('gasless_swaps') || 'Gasless Swaps'}
                     </div>
                     <div className="px-5 py-2 rounded-xl bg-amber-500/10 text-amber-400 text-[10px] font-black border border-amber-500/30 uppercase tracking-widest flex items-center gap-2">
-                      <Check size={12} /> Gold Backed
+                      <Check size={12} /> {t('gold_backed') || 'Gold Backed'}
                     </div>
                   </div>
                   <div className="p-6 rounded-2xl bg-black/40 border border-white/5 backdrop-blur-md group/contract cursor-pointer hover:border-cyan-500/30 transition-colors">
-                    <p className="text-[10px] text-gray-600 font-black uppercase tracking-widest mb-2">Protocol Contract Address</p>
+                    <p className="text-[10px] text-gray-600 font-black uppercase tracking-widest mb-2">{t('protocol_contract') || 'Protocol Contract Address'}</p>
                     <p className="text-sm text-gray-400 font-mono break-all group-hover:text-cyan-400 transition-colors">
                       {GSTD_CONTRACT_ADDRESS}
                     </p>
