@@ -21,11 +21,13 @@ type ValidationService struct {
 	tonService    *TONService
 	cacheService  *CacheService
 	nodeService   *NodeService // For trust_score updates
+	zkLayer       *ZKVerificationLayer
 }
 
 func NewValidationService(db *sql.DB) *ValidationService {
 	return &ValidationService{
-		db: db,
+		db:      db,
+		zkLayer: &ZKVerificationLayer{},
 	}
 }
 
@@ -147,6 +149,13 @@ func (s *ValidationService) ValidateResult(ctx context.Context, taskID string, d
 				s.trustService.UpdateTrustVector(ctx, sub.DeviceID, 0.0, 0.0, 0.0)
 			}
 			return fmt.Errorf("signature verification failed for device %s: %w", sub.DeviceID, err)
+		}
+
+		// ZK-Signal Verification: Mathematically prove the work matches the claim
+		if !s.zkLayer.ValidateProof(taskID, string(decrypted), sub.Signature) {
+			log.Printf("⚠️  ZK-Signal Compromised: Device %s provided invalid computational proof.", sub.DeviceID)
+			s.trustService.UpdateTrustVector(ctx, sub.DeviceID, 0.0, 0.0, 0.0)
+			return fmt.Errorf("ZK proof verification failed for device %s", sub.DeviceID)
 		}
 	}
 

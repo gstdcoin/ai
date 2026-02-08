@@ -28,6 +28,8 @@ import AgentMarketplace from '../agents/AgentMarketplace';
 import ReferralPanel from '../referrals/ReferralPanel';
 import BurnStatsWidget from './BurnStatsWidget';
 import WelcomeBonusWidget from './WelcomeBonusWidget';
+import { NeuralBridge } from './NeuralBridge';
+import { GenesisRegistryWidget } from './GenesisRegistryWidget';
 
 interface NetworkStats {
   active_workers: number;
@@ -316,6 +318,15 @@ function Dashboard() {
                   </div>
                 </div>
               </div>
+
+              {/* Neural Synthesis Layer */}
+              <ComponentErrorBoundary name="NeuralBridge">
+                <NeuralBridge />
+              </ComponentErrorBoundary>
+
+              <ComponentErrorBoundary name="GenesisRegistry">
+                <GenesisRegistryWidget />
+              </ComponentErrorBoundary>
 
               {/* Financial Dashboard - Glass Blocks */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

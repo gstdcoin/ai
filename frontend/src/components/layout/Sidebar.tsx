@@ -65,7 +65,7 @@ export default function Sidebar({ activeTab, onTabChange, onCreateTask }: Sideba
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 p-4 space-y-2">
+          <nav className="flex-1 p-4 space-y-2 overflow-y-auto scrollbar-hide">
             {tabs.map((tab) => (
               <button
                 key={tab.id}

@@ -3836,3 +3836,17 @@ redis: 2026/02/03 20:08:30 pool.go:426: redis: connection pool: failed to dial a
 ✅ GEO Service is running correctly (found 26 log entries).
 
 ---
+## 🛡️ GSTD Security Audit - 2026-02-08 00:00:01
+
+### 💎 TON Service Check
+2026/02/07 23:31:49 Migration v10_failed_payouts.sql already applied, skipping
+2026/02/07 23:31:49 Migration v33_recreate_failed_payouts.sql already applied, skipping
+2026/02/07 23:31:49 Warning: Failed to run migrations: failed to execute migration v36_final_optimization.sql: migration SQL error: pq: VACUUM cannot run inside a transaction block (25001)
+2026/02/07 23:31:50 PaymentWatcher: Error fetching transfers: TON API error (429): {"error":"rate limit: free tier"}
+2026/02/07 23:31:50 ⚠️  Failed to get GSTD jetton wallet address (using 0): failed to get jetton wallet (HTTP 429): {"error":"rate limit: free tier"}
+2026/02/07 23:31:50 ⚠️  Failed to get XAUt jetton wallet address (using 0): failed to get jetton wallet (HTTP 429): {"error":"rate limit: free tier"}
+
+### 🌍 GEO Service Check
+✅ GEO Service is running correctly (found 2 log entries).
+
+---

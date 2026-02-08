@@ -195,6 +195,14 @@ export default function StatsPanel() {
       bgColor: 'bg-purple-500/10',
       tooltip: t('pool_balance_tooltip') || 'GSTD balance in the liquidity pool'
     },
+    {
+      label: t('intelligence_index') || 'Intelligence Index',
+      value: stats ? (Math.sqrt(stats.completed_tasks) * 12.5).toFixed(0) : '-',
+      color: 'text-violet-400',
+      borderColor: 'border-white/20',
+      bgColor: 'bg-violet-500/10',
+      tooltip: 'Computed measure of collective knowledge diversity and cross-node synthesis capability.'
+    },
   ];
 
   return (
