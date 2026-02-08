@@ -69,7 +69,8 @@ func SetupRoutes(
 	if rc, ok := redisClient.(*redis.Client); ok {
 		genesisRedis = rc
 	}
-	genesisService := services.NewGenesisService(db.(*sql.DB), welcomeBonusService, genesisRedis)
+	genesisService := services.NewGenesisService(db.(*sql.DB), welcomeBonusService, genesisRedis, sovereignBridge)
+	genesisService.StartMoltInstructor(context.Background())
 	genesisHandler := NewGenesisHandler(genesisService, nodeService)
 	SetupGenesisRoutes(router.Group("/api/v1"), genesisHandler)
 	// Initialize ValidationService dependencies
