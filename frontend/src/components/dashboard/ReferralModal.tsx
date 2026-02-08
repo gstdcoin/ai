@@ -42,7 +42,7 @@ export default function ReferralModal({ onClose }: ReferralModalProps) {
                     referral_code: address ? address.slice(0, 8) : '--------',
                     total_referrals: 0,
                     total_earned: 0,
-                    referral_link: `https://gstd.io/ref/${address ? address.slice(0, 8) : ''}`
+                    referral_link: `https://gstdtoken.com/ref/${address ? address.slice(0, 8) : ''}`
                 });
             }
         } catch (error) {

@@ -19,7 +19,7 @@ import PoolStatusWidget from './PoolStatusWidget';
 import { toast } from '../../lib/toast';
 import { Plus, Users, Calculator, Activity, Globe, Server, Wallet, CheckCircle, Beaker } from 'lucide-react';
 import BoincProgressWidget from './BoincProgressWidget';
-import { apiGet } from '../../lib/apiClient';
+import { apiGet, apiPost } from '../../lib/apiClient';
 import { ComponentErrorBoundary } from '../common/ComponentErrorBoundary';
 import { workerService } from '../../services/WorkerService';
 import { InstallPwaPrompt } from '../common/InstallPwaPrompt';
@@ -30,6 +30,9 @@ import BurnStatsWidget from './BurnStatsWidget';
 import WelcomeBonusWidget from './WelcomeBonusWidget';
 import { NeuralBridge } from './NeuralBridge';
 import { GenesisRegistryWidget } from './GenesisRegistryWidget';
+import { VoiceBanner } from './VoiceBanner';
+import { GlobalNodeGrowthWidget } from './GlobalNodeGrowthWidget';
+import { isTelegramWebApp } from '../../lib/telegram';
 
 interface NetworkStats {
   active_workers: number;
@@ -297,6 +300,10 @@ function Dashboard() {
                     <WelcomeBonusWidget />
                   </ComponentErrorBoundary>
 
+                  <ComponentErrorBoundary name="GlobalNodeGrowthWidget">
+                    <GlobalNodeGrowthWidget />
+                  </ComponentErrorBoundary>
+
                   {/* Global Network Status - High Focus */}
                   <div
                     className="md:col-span-2 lg:col-span-1 glass-card p-6 relative overflow-hidden group cursor-pointer border-cyan-500/20 hover:border-cyan-500/50 transition-all"
@@ -322,6 +329,10 @@ function Dashboard() {
               </div>
 
               {/* Neural Synthesis Layer */}
+              <ComponentErrorBoundary name="VoiceBanner">
+                <VoiceBanner />
+              </ComponentErrorBoundary>
+
               <ComponentErrorBoundary name="NeuralBridge">
                 <NeuralBridge />
               </ComponentErrorBoundary>

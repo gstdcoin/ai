@@ -36,7 +36,7 @@
 **Title**: "Monetize Your Idle Hardware"
 
 *   **Step 1: Download**: "Run our Docker one-liner."
-    *   `curl -sL get.gstd.io | bash` (Copy Button)
+    *   `curl -sL get.gstdtoken.com | bash` (Copy Button)
 *   **Step 2: Connect**: "Link your wallet in the dashboard."
 *   **Step 3: Earn**: "Get paid in GSTD/TON every 24 hours."
 
