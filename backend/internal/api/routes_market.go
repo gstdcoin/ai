@@ -98,3 +98,62 @@ func (h *MarketHandler) PrepareSwapTransaction(c *gin.Context) {
 		"received_gstd":    gstdReceived,
 	})
 }
+
+// GetX402BuyDetails provides x402 (Payment Required) protocol support for agents
+// This allows agents to autonomously discover buy requirements.
+func (h *MarketHandler) GetX402BuyDetails(c *gin.Context) {
+	var req struct {
+		WalletAddress string  `json:"wallet_address"`
+		AmountTON     float64 `json:"amount_ton"`
+	}
+	
+	// Support both JSON body and Query params for flexibility
+	if err := c.ShouldBindJSON(&req); err != nil {
+		// Try query params if JSON fails
+		req.WalletAddress = c.Query("wallet_address")
+		if amt, err := strconv.ParseFloat(c.Query("amount_ton"), 64); err == nil {
+			req.AmountTON = amt
+		}
+	}
+
+	if req.WalletAddress == "" || req.AmountTON <= 0 {
+		c.JSON(400, gin.H{"error": "wallet_address and amount_ton (>0) are required"})
+		return
+	}
+
+	amountIn := int64(req.AmountTON * 1e9)
+	quote, err := h.stonFiService.GetSwapQuote(c.Request.Context(), amountIn, "TON", "GSTD_ADDR")
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Failed to get swap quote"})
+		return
+	}
+
+	// Payload for agent to sign/send
+	payload, err := h.stonFiService.BuildSwapPayload(c.Request.Context(), req.WalletAddress, quote, amountIn)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Failed to build transaction payload"})
+		return
+	}
+
+	// 402 Payment Required Response
+	// We include headers typically used in 402 flows (like L402/LSAT, though adapted for TON)
+	c.Header("WWW-Authenticate", `Token realm="GSTD_Market", error="insufficient_funds", title="Payment Required"`)
+	
+	c.JSON(402, gin.H{
+		"error": "Payment Required",
+		"code": 402,
+		"message": "To acquire GSTD, perform the following TON transaction.",
+		"payment_request": gin.H{
+			"type": "ton_transaction",
+			"address": payload["to"],
+			"amount_nanoton": payload["value"],
+			"amount_ton": req.AmountTON,
+			"payload_boc": payload["body_boc"], // The body agent must attach
+			"comment": payload["comment"], // Optional comment
+			"estimated_output": quote.AmountOut,
+			"min_output": quote.MinAmountOut,
+			"currency": "GSTD",
+		},
+		"agent_instruction": "Send connectionless UDP or standard wallet message with attached body_boc to 'address'.",
+	})
+}

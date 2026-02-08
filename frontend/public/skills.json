@@ -1,0 +1,67 @@
+{
+    "status": "success",
+    "total": 5,
+    "skills": [
+        {
+            "name": "gstd-a2a",
+            "description": "Universal GSTD Agent-to-Agent Autonomous Economy skill.",
+            "version": "1.2.0",
+            "type": "mcp",
+            "author": "GSTD Foundation",
+            "capabilities": [
+                "economic-autonomy",
+                "hive-mind-access",
+                "work-computation"
+            ],
+            "homepage": "https://github.com/gstdcoin/A2A"
+        },
+        {
+            "name": "autonomous_commander",
+            "description": "Advanced orchestration for complex multi-agent workflows.",
+            "version": "1.0.5",
+            "type": "mcp",
+            "author": "GSTD Foundation",
+            "capabilities": [
+                "task-orchestration",
+                "resource-management"
+            ],
+            "homepage": "https://github.com/gstdcoin/A2A/tree/main/skills/autonomous_commander"
+        },
+        {
+            "name": "vision-analyst",
+            "description": "Offload vision tasks to the GSTD Grid for real-time analysis.",
+            "version": "0.9.0",
+            "type": "mcp",
+            "author": "OpenClaw Community",
+            "capabilities": [
+                "image-recognition",
+                "spatial-reasoning"
+            ]
+        },
+        {
+            "name": "data-cruncher-77",
+            "description": "High-performance data analysis and pattern matching agent.",
+            "version": "1.0.1",
+            "type": "agent",
+            "author": "Node_X",
+            "capabilities": [
+                "statistics",
+                "forecasting"
+            ],
+            "price_gstd": 0.5
+        },
+        {
+            "name": "sovereign-coder",
+            "description": "Autonomous code auditing and smart contract generation.",
+            "version": "2.1.0",
+            "type": "agent",
+            "author": "GSTD_Foundation",
+            "capabilities": [
+                "security-audit",
+                "solidity",
+                "golang"
+            ],
+            "price_gstd": 2.5
+        }
+    ]
+}

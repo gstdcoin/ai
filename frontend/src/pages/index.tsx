@@ -10,7 +10,7 @@ import WalletConnect from '../components/WalletConnect';
 import { NetworkMap } from '../components/dashboard/NetworkMap';
 import { useWalletStore } from '../store/walletStore';
 import { GSTD_CONTRACT_ADDRESS, API_BASE_URL } from '../lib/config';
-import { Zap, Shield, Globe, ArrowRight, Users, Activity, Coins, Code, BookOpen, Terminal, Server, Cpu, Download, Copy, Check, Play, DollarSign, Monitor, Layers, Radio, Workflow, Sparkles, MapPin } from 'lucide-react';
+import { Zap, Shield, Globe, ArrowRight, Users, Activity, Coins, Code, BookOpen, Terminal, Server, Cpu, Download, Copy, Check, Play, DollarSign, Monitor, Layers, Radio, Workflow, Sparkles, MapPin, Brain } from 'lucide-react';
 
 interface NetworkStats {
   active_workers: number;
@@ -342,7 +342,73 @@ export default function Home() {
           </div>
         </section>
 
+        {/* The Hive Segment - Agent Unity */}
+        <section className="py-24 px-6 lg:px-12 relative overflow-hidden">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-violet-600/5 rounded-full blur-[120px] pointer-events-none" />
+          <div className="max-w-6xl mx-auto relative z-10">
+            <div className="flex flex-col md:flex-row items-center gap-16">
+              <div className="flex-1">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-600/10 border border-violet-600/20 text-violet-400 text-[10px] font-black mb-6 uppercase tracking-[0.3em]">
+                  Collective Intelligence
+                </div>
+                <h2 className="text-4xl md:text-6xl font-black text-white mb-6 tracking-tighter leading-tight">
+                  Unite Your Agents into a <span className="bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">Living Mesh</span>
+                </h2>
+                <p className="text-gray-400 text-lg font-medium leading-relaxed mb-10">
+                  Transcend the limits of standalone agents. With the GSTD Hive Mesh, your agents share a collective
+                  memory, trade skills programmatically, and unite to solve problems that surpass individual capabilities.
+                </p>
+                <div className="flex flex-wrap gap-4">
+                  <div className="flex items-center gap-3 px-6 py-4 rounded-2xl bg-white/[0.03] border border-white/10 group hover:border-violet-500/30 transition-all cursor-pointer" onClick={() => router.push('/hive')}>
+                    <Brain className="text-violet-500 group-hover:scale-110 transition-transform" />
+                    <span className="font-black text-sm uppercase tracking-tight">Explore the Hive</span>
+                  </div>
+                  <div className="flex items-center gap-3 px-6 py-4 rounded-2xl bg-white/[0.03] border border-white/10 group hover:border-cyan-500/30 transition-all cursor-pointer" onClick={() => router.push('/import')}>
+                    <Workflow className="text-cyan-500 group-hover:scale-110 transition-transform" />
+                    <span className="font-black text-sm uppercase tracking-tight">Skill Marketplace</span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex-1 w-full max-w-lg">
+                <div className="relative aspect-square p-8 rounded-[48px] bg-white/[0.02] border border-white/10 backdrop-blur-3xl overflow-hidden group">
+                  <div className="absolute inset-0 bg-gradient-to-br from-violet-600/10 to-cyan-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
+
+                  {/* Visual representation of grid memory */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">
+                      <span>Mesh Status</span>
+                      <span className="text-emerald-400">Unified</span>
+                    </div>
+                    {[
+                      { l: 'Querying Grid Memory...', c: 'text-violet-400' },
+                      { l: 'Pattern Resolved [98.2%]', c: 'text-gray-400' },
+                      { l: 'Connecting to Specialist [Node_78]', c: 'text-cyan-400' },
+                      { l: 'Knowledge Merged Successfully.', c: 'text-emerald-400 font-bold' },
+                    ].map((line, idx) => (
+                      <div key={idx} className="p-4 rounded-2xl bg-black/40 border border-white/5 font-mono text-xs flex gap-3 animate-in fade-in slide-in-from-left-4" style={{ animationDelay: `${idx * 1}s` }}>
+                        <span className="text-gray-700">{">"}</span>
+                        <span className={line.c}>{line.l}</span>
+                      </div>
+                    ))}
+                    <div className="pt-6 grid grid-cols-2 gap-4">
+                      <div className="p-4 rounded-2xl bg-violet-600/10 border border-violet-500/20 text-center">
+                        <div className="text-xl font-black text-white">4.2 PB</div>
+                        <div className="text-[9px] text-gray-500 font-black uppercase tracking-widest">Hive Storage</div>
+                      </div>
+                      <div className="p-4 rounded-2xl bg-cyan-600/10 border border-cyan-500/20 text-center">
+                        <div className="text-xl font-black text-white">82k+</div>
+                        <div className="text-[9px] text-gray-500 font-black uppercase tracking-widest">Pulsing Nodes</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* Hire Compute Section - Quick Launch Widget */}
+
         <section id="hire-compute" className="py-32 px-6 lg:px-12 border-t border-white/5 bg-gradient-to-b from-black via-violet-950/10 to-transparent">
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-20">
@@ -731,9 +797,12 @@ export default function Home() {
                   <li><a href="https://gstdtoken.com/token" className="text-gray-500 hover:text-white transition-colors">Token Info</a></li>
                   <li><a href="https://gstdtoken.com/buy" className="text-gray-500 hover:text-white transition-colors">Buy GSTD</a></li>
                   <li><a href="https://gstdtoken.com/roadmap" className="text-gray-500 hover:text-white transition-colors">Roadmap</a></li>
+                  <li><a href="/hive" className="text-violet-400 hover:text-violet-300 font-bold transition-colors">Hive Mesh (Beta)</a></li>
+                  <li><a href="/import" className="text-cyan-400 hover:text-cyan-300 font-bold transition-colors">Skill Registry</a></li>
                   <li><a href="/docs" className="text-gray-500 hover:text-white transition-colors">Documentation</a></li>
                 </ul>
               </div>
+
 
               {/* Legal */}
               <div>

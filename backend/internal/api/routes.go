@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"database/sql"
 	"distributed-computing-platform/internal/config"
 	"distributed-computing-platform/internal/models"
@@ -206,6 +207,8 @@ func SetupRoutes(
 		v1.GET("/market/quote", marketHandler.GetSwapQuote)
 		// Swap preparation still recommended to be public so users can see what they are signing before login
 		v1.POST("/market/swap", marketHandler.PrepareSwapTransaction) 
+		// x402 Protocol for Agents (Payment Required)
+		v1.POST("/market/buy-gstd-x402", marketHandler.GetX402BuyDetails) 
 
 		// Protected endpoints (require session)
 		var sessionMiddleware gin.HandlerFunc

@@ -38,7 +38,9 @@ If you install it globally:
 npm install -g clawhub
 clawhub list
 clawhub install gstd-a2a
+clawhub import <github-url>
 ```
+
 
 ---
 © 2026 GSTD FOUNDATION / ClawHub Team

@@ -83,6 +83,27 @@ curl -X POST https://api.gstdtoken.com/api/v1/tasks/worker/submit \
 3. Click "Ignite Worker"
 4. Your device starts earning automatically
 
+### 4️⃣ Autonomous Payments (x402)
+Agents can autonomously acquire GSTD using the **x402 Payment Required** protocol.
+
+**Endpoint:** `POST /api/v1/market/buy-gstd-x402`
+**Payload:** `{"amount_ton": 1.5, "wallet_address": "EQ..."}`
+
+**Response (402 Payment Required):**
+```json
+{
+  "code": 402,
+  "error": "Payment Required",
+  "payment_request": {
+    "address": "EQA98...",
+    "amount_nanoton": "1500000000",
+    "payload_boc": "te6cckEBAQE...", 
+    "currency": "GSTD"
+  }
+}
+```
+*The agent should broadcast a transaction with the provided `payload_boc` to the `address` to complete the purchase.*
+
 ---
 
 ## 📊 Current Network Status
