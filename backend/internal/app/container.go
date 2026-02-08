@@ -198,6 +198,26 @@ func StartApplication(container *dig.Container) error {
 		go maintenanceService.Start(ctx)
 		go poolMonitor.Start(ctx)
 		go boincService.PollAndFinalizeBoincTasks(ctx)
+		
+		// 🚀 1M User Optimization: Periodically flush batched heartbeats
+		go func() {
+			ticker := time.NewTicker(45 * time.Second)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ticker.C:
+					affected, err := nodeService.FlushHeartbeats(ctx)
+					if err != nil {
+						log.Printf("⚠️  Heartbeat Flush Error: %v", err)
+					} else if affected > 0 {
+						log.Printf("💓 Batched %d heartbeats to database", affected)
+					}
+				case <-ctx.Done():
+					return
+				}
+			}
+		}()
+		
 		log.Printf("🚀 All background workers started")
 
 		// 4. Setup Routes
