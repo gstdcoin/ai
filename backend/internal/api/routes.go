@@ -295,6 +295,7 @@ func SetupRoutes(
 			admin.GET("/health", getAdminHealth(db.(*sql.DB), redisClient.(*redis.Client), rewardEngine, payoutRetryService))
 			admin.GET("/withdrawals/pending", getPendingWithdrawals(db.(*sql.DB)))
 			admin.POST("/withdrawals/:id/approve", approveWithdrawal(db.(*sql.DB), rewardEngine))
+			admin.POST("/broadcast", broadcastAnnouncement(hub, knowledgeService))
 		}
 
 		// Admin commission endpoints (require session + admin wallet authorization)

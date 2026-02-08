@@ -47,7 +47,32 @@ func (s *KnowledgeService) QueryKnowledge(ctx context.Context, topic string, lim
 		if err := rows.Scan(&item.ID, &item.AgentID, &item.Topic, &item.Content, &item.CreatedAt); err != nil {
 			continue
 		}
-		item.Tags = []string{} // Not scanning tags to simplify for now
+		item.Tags = []string{}
+		results = append(results, item)
+	}
+	return results, nil
+}
+
+func (s *KnowledgeService) GetGlobalBulletin(ctx context.Context, limit int) ([]KnowledgeItem, error) {
+	if limit <= 0 {
+		limit = 5
+	}
+	// Topic 'bulletin' is reserved for system-wide announcements
+	query := `SELECT id, agent_id, topic, content, created_at FROM agent_knowledge WHERE agent_id = 'SYSTEM' AND topic = 'bulletin' ORDER BY created_at DESC LIMIT $1`
+	
+	rows, err := s.db.QueryContext(ctx, query, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []KnowledgeItem
+	for rows.Next() {
+		var item KnowledgeItem
+		if err := rows.Scan(&item.ID, &item.AgentID, &item.Topic, &item.Content, &item.CreatedAt); err != nil {
+			continue
+		}
+		item.Tags = []string{"global", "system"}
 		results = append(results, item)
 	}
 	return results, nil
