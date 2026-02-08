@@ -58,11 +58,24 @@ export const WalletBalanceWidget: React.FC = () => {
         if (!address) return;
 
         try {
-            const data = await apiGet<WalletBalance>(`/wallet/balance?wallet=${address}`);
-            setBalance(data);
-            if (data) {
-                updateBalance(data.ton_balance.toString(), data.gstd_balance, data.pending_earnings);
-            }
+            // Fetch On-Chain Balance
+            const balanceData = await apiGet<any>(`/wallet/balance?wallet=${address}&address=${address}`); // Support both param names
+
+            // Fetch Off-Chain Pending Balance (Viral Economy)
+            const pendingData = await apiGet<{ pending_balance: number }>(`/users/pending_balance`);
+
+            const newBalance: WalletBalance = {
+                gstd_balance: balanceData.balance || 0,
+                ton_balance: 0, // TODO: Fetch TON balance if needed, or get from wallet store
+                pending_earnings: pendingData.pending_balance || 0,
+                pending_payouts: 0,
+                total_earned: 0,
+                locked_in_escrow: 0
+            };
+
+            setBalance(newBalance);
+            updateBalance("0", newBalance.gstd_balance, newBalance.pending_earnings);
+
         } catch (error) {
             console.error('Failed to fetch balance:', error);
         } finally {

@@ -3,6 +3,7 @@ package api
 import (
 	"database/sql"
 	"distributed-computing-platform/internal/services"
+	"fmt"
 	"log"
 	"strconv"
 	
@@ -155,5 +156,63 @@ func (h *MarketHandler) GetX402BuyDetails(c *gin.Context) {
 			"currency": "GSTD",
 		},
 		"agent_instruction": "Send connectionless UDP or standard wallet message with attached body_boc to 'address'.",
+	})
+}
+
+// BuyServiceX402 allows agents to buy specific operational slots (Computation, Storage)
+func (h *MarketHandler) BuyServiceX402(c *gin.Context) {
+	var req struct {
+		ServiceType   string `json:"service_type"` // e.g., "high_priority_slot", "hive_storage_1gb"
+		WalletAddress string `json:"wallet_address"`
+	}
+	
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": "service_type and wallet_address required"})
+		return
+	}
+
+	// 1. Define Service Catalog (Hardcoded for v1)
+	prices := map[string]float64{
+		"high_priority_slot": 5.0,  // TON
+		"hive_storage_1gb":   2.5,  // TON
+		"oracle_access":      10.0, // TON
+		"gpu_lease_1h":       0.5,  // TON
+	}
+
+	price, ok := prices[req.ServiceType]
+	if !ok {
+		c.JSON(404, gin.H{"error": "Service not found in catalog", "available": []string{"high_priority_slot", "hive_storage_1gb", "oracle_access", "gpu_lease_1h"}})
+		return
+	}
+
+	amountIn := int64(price * 1e9)
+	
+	// 2. Build Transaction
+	// We treat this as a swap to GSTD internally, but the agent sees it as buying a service.
+	// In reality, this would send TON to a treasury address with a specific comment.
+	quote, _ := h.stonFiService.GetSwapQuote(c.Request.Context(), amountIn, "TON", "GSTD_ADDR")
+	payload, err := h.stonFiService.BuildSwapPayload(c.Request.Context(), req.WalletAddress, quote, amountIn)
+	
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Failed to build service payment payload"})
+		return
+	}
+
+	// 3. Return 402
+	c.Header("WWW-Authenticate", `Token realm="GSTD_Services", error="payment_required"`)
+	c.JSON(402, gin.H{
+		"error": "Payment Required",
+		"code": 402,
+		"service": req.ServiceType,
+		"price_ton": price,
+		"payment_request": gin.H{
+			"type": "ton_transaction",
+			"address": payload["to"], 
+			"amount_nanoton": payload["value"],
+			"payload_boc": payload["body_boc"],
+			"comment": fmt.Sprintf("PURCHASE:%s:%s", req.ServiceType, req.WalletAddress),
+			"currency": "TON",
+		},
+		"instruction": "Sign payload_boc to acquire this service rights.",
 	})
 }

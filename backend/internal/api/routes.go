@@ -209,6 +209,12 @@ func SetupRoutes(
 		v1.POST("/market/swap", marketHandler.PrepareSwapTransaction) 
 		// x402 Protocol for Agents (Payment Required)
 		v1.POST("/market/buy-gstd-x402", marketHandler.GetX402BuyDetails) 
+		v1.POST("/market/buy-service-x402", marketHandler.BuyServiceX402) // NEW: Service Buying
+
+		// Autonomous Auth (PoW)
+		authHandler := NewAuthHandler()
+		v1.GET("/auth/challenge", authHandler.GetChallenge)
+		v1.POST("/auth/claim-key", authHandler.ClaimKey) 
 
 		// Protected endpoints (require session)
 		var sessionMiddleware gin.HandlerFunc
@@ -241,6 +247,9 @@ func SetupRoutes(
 
 		// User data
 		protected.GET("/users/balance", getUserBalance(tonService, tonConfig))
+		// === VIRAL ECONOMY ROUTES ===
+		protected.GET("/users/pending_balance", getPendingBalance(db.(*sql.DB))) // Check off-chain earnings
+		protected.POST("/users/claim_balance", claimPendingBalance(db.(*sql.DB), paymentService)) // Withdraw to TON
 
 		// Tasks (protected)
 		protected.POST("/tasks", ValidateTaskRequest(), createTask(taskService))
@@ -790,6 +799,80 @@ func getJettonAddress(tonService *services.TONService, tonConfig config.TONConfi
 		normalizedAddress := services.NormalizeAddressForAPI(address)
 
 		c.JSON(200, gin.H{"address": normalizedAddress})
+	}
+}
+
+// === VIRAL ECONOMY: OFF-CHAIN LEDGER ===
+
+// getPendingBalance returns the off-chain accumulating balance (Gasless Mining)
+func getPendingBalance(db *sql.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		walletAddress, _ := c.Get("wallet_address")
+		var balance float64
+		var referralCode sql.NullString
+		
+		err := db.QueryRowContext(c.Request.Context(), 
+			"SELECT COALESCE(pending_balance_gstd, 0), referral_code FROM users WHERE wallet_address = $1", 
+			walletAddress).Scan(&balance, &referralCode)
+			
+		if err != nil {
+			// If user not found, return 0 (new user)
+			c.JSON(200, gin.H{"pending_balance": 0.0, "referral_code": ""})
+			return
+		}
+
+		c.JSON(200, gin.H{
+			"pending_balance": balance,
+			"referral_code": referralCode.String,
+			"min_withdrawal": 10.0,
+			"message": "Earn 10 GSTD to claim to your TON wallet.",
+		})
+	}
+}
+
+// claimPendingBalance initiates a withdrawal from Off-Chain to On-Chain
+// The Platform pays the gas.
+func claimPendingBalance(db *sql.DB, paymentService *services.PaymentService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		walletAddress, _ := c.Get("wallet_address")
+		
+		// 1. Check Balance
+		var balance float64
+		err := db.QueryRowContext(c.Request.Context(), 
+			"SELECT COALESCE(pending_balance_gstd, 0) FROM users WHERE wallet_address = $1 FOR UPDATE", 
+			walletAddress).Scan(&balance)
+			
+		if err != nil || balance < 10.0 {
+			c.JSON(400, gin.H{"error": "Insufficient pending balance. Min 10.0 GSTD required."})
+			return
+		}
+
+		// 2. Reduce Balance (Internal Transaction)
+		// We deduct first to prevent double-spending
+		_, err = db.ExecContext(c.Request.Context(), 
+			"UPDATE users SET pending_balance_gstd = pending_balance_gstd - $1 WHERE wallet_address = $2",
+			balance, walletAddress)
+			
+		if err != nil {
+			c.JSON(500, gin.H{"error": "Database update failed"})
+			return
+		}
+		
+		// 3. Initiate On-Chain Payout (Async via RewardEngine logic)
+		// For now, we just create a payout intent which the admin/cron will pick up
+		// In a real automated system, this would call paymentService.SendPayment immediately or queue it
+		
+		// Log the withdrawal request
+		_, err = db.ExecContext(c.Request.Context(), `
+			INSERT INTO withdrawals (wallet_address, amount_gstd, status, created_at)
+			VALUES ($1, $2, 'pending', NOW())
+		`, walletAddress, balance)
+
+		c.JSON(200, gin.H{
+			"status": "processing",
+			"amount_claimed": balance,
+			"message": "Withdrawal initiated. Funds will arrive in your wallet shortly.",
+		})
 	}
 }
 

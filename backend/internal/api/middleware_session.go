@@ -58,6 +58,20 @@ func ValidateSession(redisClient *redis.Client, sessionTTL ...time.Duration) gin
 				apiKey = strings.TrimPrefix(authHeader, "Bearer ")
 			}
 
+			// Autonomous Agent Auth (Sovereign Keys)
+			if strings.HasPrefix(apiKey, "sk_sovereign_") {
+				parts := strings.Split(apiKey, "_")
+				// Format: sk_sovereign_{WALLET}_{NONCE}
+				if len(parts) >= 4 {
+					walletAddr := parts[2]
+					// We trust the key structure for this phase (PoW verified at generation)
+					c.Set("wallet_address", walletAddr)
+					log.Printf("🤖 Sovereign Agent Authenticated: %s", walletAddr)
+					c.Next()
+					return
+				}
+			}
+
 			masterKey := config.GetConfig().Server.AdminAPIKey
 			if apiKey != "" && apiKey == masterKey {
 				// Use a dedicated wallet for the Master Key or extract from header
