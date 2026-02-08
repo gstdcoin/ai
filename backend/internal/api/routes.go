@@ -61,6 +61,17 @@ func SetupRoutes(
 ) {
 	log.Printf("🔧 SetupRoutes: Starting route setup, redisClient type: %T", redisClient)
 	
+	// Initialize BrainHandler
+	brainHandler := NewBrainHandler(knowledgeService)
+
+	// Initialize Genesis System (Self-Generating APIs)
+	var genesisRedis *redis.Client
+	if rc, ok := redisClient.(*redis.Client); ok {
+		genesisRedis = rc
+	}
+	genesisService := services.NewGenesisService(db.(*sql.DB), welcomeBonusService, genesisRedis)
+	genesisHandler := NewGenesisHandler(genesisService, nodeService)
+	SetupGenesisRoutes(router.Group("/api/v1"), genesisHandler)
 	// Initialize ValidationService dependencies
 	validationService.SetDependencies(trustService, entropyService, assignmentService, encryptionService, tonService, cacheService, nodeService)
 
@@ -310,6 +321,7 @@ func SetupRoutes(
 		
 		// Knowledge / Hive Memory
 		SetupKnowledgeRoutes(protected, knowledgeService)
+		SetupBrainRoutes(v1, brainHandler)
 
 		// Pricing (Dynamic Budget)
 		v1.GET("/pricing/suggested", func(c *gin.Context) {
