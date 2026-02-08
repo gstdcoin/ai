@@ -255,13 +255,15 @@ function Dashboard() {
       </div>
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <ErrorBoundary>
-          <Header
-            onCreateTask={() => setShowNewTask(true)}
-            onLogout={handleLogout}
-          />
-        </ErrorBoundary>
+        {/* Header - Hidden in Telegram WebApp to maximize screen space */}
+        {!isTelegramWebApp() && (
+          <ErrorBoundary>
+            <Header
+              onCreateTask={() => setShowNewTask(true)}
+              onLogout={handleLogout}
+            />
+          </ErrorBoundary>
+        )}
 
         {/* Main Content */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-12 pb-24 lg:pb-12 custom-scrollbar">

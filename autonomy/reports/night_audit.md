@@ -4116,3 +4116,18 @@ redis: 2026/02/08 04:01:42 pool.go:426: redis: connection pool: failed to dial a
 ⚠️  No GEO Service activity or initialization found in logs.
 
 ---
+## 🛡️ GSTD Security Audit - 2026-02-08 19:00:01
+
+### 💎 TON Service Check
+2026/02/08 18:44:18 Migration v10_failed_payouts.sql already applied, skipping
+2026/02/08 18:44:18 Migration v33_recreate_failed_payouts.sql already applied, skipping
+2026/02/08 18:44:18 Warning: Failed to run migrations: failed to execute migration v36_final_optimization.sql: migration SQL error: pq: VACUUM cannot run inside a transaction block (25001)
+2026/02/08 18:44:19 PaymentWatcher: Error fetching transfers: TON API error (429): {"error":"rate limit: free tier"}
+2026/02/08 18:44:19 ❌ PoolMonitor: Failed to get status: API returned status 429
+2026/02/08 18:45:46 ⚠️  Failed to parse payload as JSON, trying simple format: invalid character 'g' looking for beginning of value
+2026/02/08 18:45:46 ❌ TonConnect signature validation failed for 0:a45c594d46cb9b529ed487b960fd2714a8b0a27dfd5008bb1d414d1aee4a61a9: Invalid signature: Ed25519 verification failed
+
+### 🌍 GEO Service Check
+✅ GEO Service is running correctly (found 2 log entries).
+
+---

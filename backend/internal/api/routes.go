@@ -116,6 +116,20 @@ func SetupRoutes(
 		log.Printf("⚠️  Rate limiter: Redis client is nil")
 	}
 
+	// [DYNAMIC_CONFIG_START]
+	// Public configuration endpoint for frontend
+	router.GET("/api/v1/config", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"contract_address": tonConfig.ContractAddress,
+			"gstd_jetton":      tonConfig.GSTDJettonAddress,
+			"admin_wallet":     tonConfig.AdminWallet,
+			"escrow_contract":  tonConfig.ContractAddress, // Escrow is the main contract
+			"network":          tonConfig.Network,
+			"api_url":          tonConfig.APIURL,
+		})
+	})
+	// [DYNAMIC_CONFIG_END]
+
 	// Services - Initialize ReferralService locally as it was added later
 	// We cast the interface{} db to *sql.DB safely because we know it is *sql.DB from main.go
 	dbConn, ok := db.(*sql.DB)
