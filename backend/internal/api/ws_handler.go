@@ -53,6 +53,7 @@ type WSClient struct {
 type WSHub struct {
 	clients       map[*WSClient]bool
 	broadcast     chan *TaskNotification
+	announcement  chan *SystemAnnouncement
 	register      chan *WSClient
 	unregister    chan *WSClient
 	mu            sync.RWMutex
@@ -60,6 +61,14 @@ type WSHub struct {
 	redisMsgChan  <-chan interface{} // Channel for Redis Pub/Sub messages (TaskMessage) - receive-only
 	eventBuffer   []*TaskNotification
 	bufferSize    int
+}
+
+// SystemAnnouncement represents a global message to all agents
+type SystemAnnouncement struct {
+	Type      string      `json:"type"`
+	Message   string      `json:"message"`
+	Payload   interface{} `json:"payload,omitempty"`
+	Timestamp time.Time   `json:"timestamp"`
 }
 
 // TaskNotification represents a task available for execution
@@ -73,6 +82,7 @@ func NewWSHub() *WSHub {
 	return &WSHub{
 		clients:     make(map[*WSClient]bool),
 		broadcast:   make(chan *TaskNotification, 256),
+		announcement: make(chan *SystemAnnouncement, 64),
 		register:    make(chan *WSClient),
 		unregister:  make(chan *WSClient),
 		bufferSize:  100, // Keep last 100 events
@@ -210,6 +220,18 @@ func (h *WSHub) Run() {
 				}
 			}
 			h.mu.RUnlock()
+		
+		case announcement := <-h.announcement:
+			msg, _ := json.Marshal(announcement)
+			h.mu.RLock()
+			for client := range h.clients {
+				select {
+				case client.send <- msg:
+				default:
+					// Just skip if client is too busy for announcements
+				}
+			}
+			h.mu.RUnlock()
 		}
 	}
 }
@@ -225,6 +247,24 @@ func (h *WSHub) BroadcastTask(task *models.Task) {
 	case h.broadcast <- notification:
 	default:
 		log.Printf("Hub broadcast channel full, dropping notification for task %s", task.TaskID)
+	}
+}
+
+// BroadcastAnnouncement sends a global message to all connected agents
+func (h *WSHub) BroadcastAnnouncement(msgType, text string, payload interface{}) {
+	announcement := &SystemAnnouncement{
+		Type:      msgType,
+		Message:   text,
+		Payload:   payload,
+		Timestamp: time.Now(),
+	}
+	
+	log.Printf("📣 Global Announcement: [%s] %s", msgType, text)
+	
+	select {
+	case h.announcement <- announcement:
+	default:
+		log.Printf("Hub announcement channel full, dropping: %s", text)
 	}
 }
 

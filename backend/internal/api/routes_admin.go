@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
+	"time"
 )
 
 func getAdminHealth(
@@ -236,6 +237,35 @@ func approveWithdrawal(db *sql.DB, rewardEngine *services.RewardEngine) gin.Hand
 			"withdrawal_id": withdrawalID,
 			"task_id": taskID.String,
 			"amount_gstd": amountGSTD,
+		})
+	}
+}
+
+// broadcastAnnouncement sends a global message to all connected agents via WebSocket hub
+// and stores it in the Knowledge Base as a bulletin.
+func broadcastAnnouncement(hub *WSHub, ks *services.KnowledgeService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req struct {
+			Type    string      `json:"type" binding:"required"`
+			Message string      `json:"message" binding:"required"`
+			Payload interface{} `json:"payload"`
+		}
+
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(400, gin.H{"error": err.Error()})
+			return
+		}
+
+		// 1. WebSocket Broadcast (Immediate)
+		hub.BroadcastAnnouncement(req.Type, req.Message, req.Payload)
+
+		// 2. Persistent Storage (The Hive Memory)
+		_ = ks.StoreKnowledge(c.Request.Context(), "SYSTEM", "bulletin", req.Message, []string{req.Type, "global"}, nil)
+
+		c.JSON(200, gin.H{
+			"status": "success",
+			"message": "Announcement broadcasted and synchronized to the Hive Memory",
+			"timestamp": time.Now(),
 		})
 	}
 }
