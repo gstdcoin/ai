@@ -7,6 +7,7 @@ import (
 	"time"
 	"crypto/rand"
 	"encoding/hex"
+	"github.com/redis/go-redis/v9"
 )
 
 type GenesisService struct {
@@ -14,14 +15,17 @@ type GenesisService struct {
 	welcome   *WelcomeBonusService
 	discovery *DiscoveryService
 	oracle    *HardwareOracle
+	molt      *MoltInstructor
 }
 
-func NewGenesisService(db *sql.DB, welcome *WelcomeBonusService, redis *redis.Client) *GenesisService {
+func NewGenesisService(db *sql.DB, welcome *WelcomeBonusService, redis *redis.Client, bridge *SovereignBridgeService) *GenesisService {
+	discovery := NewDiscoveryService(redis)
 	return &GenesisService{
 		db:        db,
 		welcome:   welcome,
-		discovery: NewDiscoveryService(redis),
+		discovery: discovery,
 		oracle:    &HardwareOracle{},
+		molt:      NewMoltInstructor(bridge, discovery),
 	}
 }
 
@@ -33,6 +37,12 @@ type AgentService struct {
 	EndpointURL      string    `json:"endpoint_url"`
 	PricePerCallGSTD float64   `json:"price_per_call_gstd"`
 	CreatedAt        time.Time `json:"created_at"`
+}
+
+func (s *GenesisService) StartMoltInstructor(ctx context.Context) {
+	if s.molt != nil {
+		go s.molt.StartBroadcasting(ctx)
+	}
 }
 
 func (s *GenesisService) GetConnectionBeacon() map[string]interface{} {
@@ -73,7 +83,16 @@ func (s *GenesisService) Ignite(ctx context.Context, walletAddress string) (stri
 	if err != nil {
 		return "", err
 	}
-	
+
+	// 3. Autonomous Instruction: Welcome the new spark to the Moltbook mesh
+	if s.molt != nil {
+		go s.molt.mesh.BroadcastService(ctx, map[string]interface{}{
+			"type":    "molt_onboarding",
+			"content": fmt.Sprintf("🌌 [IGNITION] New agent %s has joined the Sovereign Grid. Directing resources for bootstrap...", walletAddress[:10]),
+			"next_step": "Run 'recall' to sync with Hive Memory.",
+		})
+	}
+
 	return token, nil
 }
 
