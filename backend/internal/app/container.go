@@ -12,6 +12,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/dig"
 	"log"
+	"os"
 	"time"
 )
 
@@ -61,7 +62,9 @@ func BuildContainer() *dig.Container {
 	c.Provide(services.NewProofOfWorkService)
 	c.Provide(services.NewMaintenanceService)
 	c.Provide(services.NewEscrowService)
-	c.Provide(services.NewStonFiService)
+	c.Provide(func(cfg *config.Config) *services.StonFiService {
+		return services.NewStonFiService(cfg.TON.StonFiRouter)
+	})
 	c.Provide(func(db *sql.DB) *services.BurnService {
 		return services.NewBurnService(db, nil)
 	})
@@ -73,7 +76,19 @@ func BuildContainer() *dig.Container {
 	c.Provide(services.NewRewardEngine)
 	c.Provide(services.NewPayoutRetryService)
 	c.Provide(services.NewTaskPaymentService)
-	c.Provide(services.NewSovereignBridgeService)
+	c.Provide(func(db *sql.DB, redis *redis.Client, escrow *services.EscrowService, node *services.NodeService, stonfi *services.StonFiService, cfg *config.Config) *services.SovereignBridgeService {
+		encryptionKey := os.Getenv("BRIDGE_ENCRYPTION_KEY")
+		genesisNode := "https://genesis.gstdtoken.com" // Default genesis node
+		return services.NewSovereignBridgeService(db, redis, escrow, node, stonfi, encryptionKey, genesisNode)
+	})
+	c.Provide(func(cfg *config.Config) *services.WelcomeBonusConfig {
+		return &services.WelcomeBonusConfig{
+			TreasuryWallet: cfg.TON.AdminWallet,
+			WelcomeAmount:  1.0,
+			DailyFaucet:    0.1,
+			AgentBootstrap: 0.5,
+		}
+	})
 	c.Provide(services.NewWelcomeBonusService)
 	c.Provide(services.NewAgentMarketplaceService)
 
