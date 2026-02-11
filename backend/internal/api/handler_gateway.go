@@ -115,6 +115,7 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 		"claude-3-haiku":   "qwen2.5-coder:7b",
 		"gstd-sovereign":   "qwen2.5-coder:32b",
 		"gstd-fast":        "qwen2.5-coder:7b",
+		"gstd-creative":    "llama3.1:8b",
 		"gstd-ultra":       "llama3.3:70b",
 	}
 
@@ -663,6 +664,7 @@ func (h *GatewayHandler) ListModels(c *gin.Context) {
 		{"id": "llama3.1:8b", "object": "model", "owned_by": "gstd-sovereign", "created": time.Now().Unix()},
 		{"id": "llama3.3:70b", "object": "model", "owned_by": "gstd-sovereign", "created": time.Now().Unix()},
 		{"id": "gstd-fast", "object": "model", "owned_by": "gstd-sovereign", "created": time.Now().Unix()},
+		{"id": "gstd-creative", "object": "model", "owned_by": "gstd-sovereign", "created": time.Now().Unix()},
 		{"id": "gstd-sovereign", "object": "model", "owned_by": "gstd-sovereign", "created": time.Now().Unix()},
 		{"id": "gstd-ultra", "object": "model", "owned_by": "gstd-sovereign", "created": time.Now().Unix()},
 	}
