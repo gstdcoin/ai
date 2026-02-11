@@ -65,6 +65,15 @@ A2A/
 .windsurf-server/
 .antigravity-server/
 .codeium/
+.gemini/
+.vibe-kanban/
+
+# Utility / scratch files (not part of platform)
+find_idle_agents.py
+genesis_ignite.py
+load-balancer.conf.updated
+api.gstdtoken.com.conf
+test-project/
 
 # System / User config (never commit)
 .bash_history
