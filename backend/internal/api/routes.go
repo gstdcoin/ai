@@ -48,7 +48,7 @@ func SetupRoutes(
 	taskOrchestrator *services.TaskOrchestrator,
 	telegramService *services.TelegramService,
 	lendingService *services.LendingService,
-	boincService *services.BoincService,
+
 	maintenanceService *services.MaintenanceService,
 	sovereignBridge *services.SovereignBridgeService,
 	knowledgeService *services.KnowledgeService,
@@ -59,11 +59,15 @@ func SetupRoutes(
 	burnService *services.BurnService,
 	multiLevelReferralService *services.MultiLevelReferralService,
 	agentMarketplaceService *services.AgentMarketplaceService,
+	apiKeyService *services.APIKeyService,
 ) {
 	log.Printf("🔧 SetupRoutes: Starting route setup, redisClient type: %T", redisClient)
 	
 	// Initialize BrainHandler
 	brainHandler := NewBrainHandler(knowledgeService)
+
+	// Initialize Gateway/API Key Handler
+	gatewayHandler := NewGatewayHandler(apiKeyService, taskService, db.(*sql.DB))
 
 	// Initialize Genesis System (Self-Generating APIs)
 	var genesisRedis *redis.Client
@@ -260,7 +264,10 @@ func SetupRoutes(
 		}
 
 		// User data
-		protected.GET("/users/balance", getUserBalance(tonService, tonConfig))
+		protected.GET("/users/balance", getUserBalance(tonService, tonConfig, db.(*sql.DB)))
+		protected.GET("/users/keys", gatewayHandler.GetUserKeys)
+		protected.POST("/users/keys", gatewayHandler.CreateUserKey)
+
 		// === VIRAL ECONOMY ROUTES ===
 		protected.GET("/users/pending_balance", getPendingBalance(db.(*sql.DB))) // Check off-chain earnings
 		protected.POST("/users/claim_balance", claimPendingBalance(db.(*sql.DB), paymentService)) // Withdraw to TON
@@ -340,9 +347,7 @@ func SetupRoutes(
 		SetupOrchestratorRoutes(v1, orchestratorHandler)
 		log.Printf("✅ Orchestrator routes registered")
 
-		// BOINC Integration
-		RegisterBoincRoutes(protected, boincService, taskService)
-		log.Printf("✅ BOINC routes registered")
+
 
 		// Sovereign Compute Bridge (MoltBot integration)
 		SetupBridgeRoutes(v1, sovereignBridge)
@@ -382,6 +387,14 @@ func SetupRoutes(
 		// Legacy onboarding handler (for basic flows compatibility)
 		onboardingHandler := NewOnboardingHandler()
 		onboardingHandler.RegisterRoutes(v1)
+
+		// Global Gateway (OpenAI Compatible) - Sovereign AI Inference
+		v1.POST("/chat/completions", gatewayHandler.HandleChatCompletions)
+		v1.GET("/models", gatewayHandler.ListModels)
+		// For Cursor/Other tools that expect /v1/chat/completions directly at root or /v1
+		router.POST("/v1/chat/completions", gatewayHandler.HandleChatCompletions)
+		router.GET("/v1/models", gatewayHandler.ListModels)
+
 		log.Printf("✅ Growth System & Onboarding routes registered")
 	}
 
@@ -988,9 +1001,10 @@ func getHealth(db *sql.DB, tonService *services.TONService, tonConfig config.TON
 				"status":  contractStatus,
 				"balance_ton": contractBalance,
 			},
-			"boinc": gin.H{
+			"sovereign_ai": gin.H{
 				"status": "active",
-				"bridge_enabled": true,
+				"ollama_enabled": true,
+				"models": []string{"qwen2.5-coder:7b", "llama3.1:8b"},
 			},
 			"timestamp": time.Now().Unix(),
 		})

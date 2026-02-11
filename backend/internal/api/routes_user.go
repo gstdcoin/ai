@@ -2,6 +2,7 @@ package api
 
 import (
 	"crypto/rand"
+	"database/sql"
 	"distributed-computing-platform/internal/config"
 	"distributed-computing-platform/internal/services"
 	"encoding/hex"
@@ -299,7 +300,7 @@ func generateSessionToken() (string, error) {
 // @Security ApiKeyAuth
 // @Success 200 {object} map[string]interface{}
 // @Router /users/balance [get]
-func getUserBalance(tonService *services.TONService, tonConfig config.TONConfig) gin.HandlerFunc {
+func getUserBalance(tonService *services.TONService, tonConfig config.TONConfig, db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		walletAddress := c.GetString("user_id")
 		if walletAddress == "" {
@@ -327,9 +328,15 @@ func getUserBalance(tonService *services.TONService, tonConfig config.TONConfig)
 			}
 		}
 
+		// Get internal balance from DB
+		var internalBalance float64
+		_ = db.QueryRowContext(ctx, "SELECT COALESCE(balance, 0) FROM users WHERE wallet_address = $1", walletAddress).Scan(&internalBalance)
+
 		c.JSON(200, gin.H{
-			"ton":  tonBalance,
-			"gstd": gstdBalance,
+			"ton":              tonBalance,
+			"gstd_on_chain":    gstdBalance,
+			"gstd":             gstdBalance + internalBalance,
+			"balance_internal": internalBalance,
 		})
 	}
 }

@@ -1,45 +1,87 @@
-# Системные папки окружения (КРИТИЧНО)
-.*
-!.github/
-!.gitignore
-!.dockerignore
+# ============================================================================
+# GSTD Platform - .gitignore
+# ============================================================================
+
+# Environment & Secrets (CRITICAL)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*_secret*
+*_private*
 
 # Docker data
 postgres_data/
 redis_data/
+ollama_data/
 certbot/
 nginx/ssl/
-gstd-contracts/build/
-gstd-contracts/temp/
 
-# Dependencies
+# Build artifacts
 node_modules/
 .next/
 dist/
-backend/server/
-
-# Environment and secrets
-.env
-.env.*
-!.env.example
-
-# Backups and temp files
-backups/
-*.sql
-*.gz
+out/
+backend/server
+backend/backend.log
 *.log
-*.rdb
-*.txt
-!docs/*.md
 
-# Nested Repos
-A2A/
+# Contract build artifacts
+gstd-contracts/build/
+gstd-contracts/temp/
 
-# IDEs
-.vscode/
-.idea/
-.DS_Store
+# Dependencies & cache
 go/
 venv/
 __pycache__/
 *.pyc
+.cache/
+
+# IDE
+.vscode/
+.idea/
+.DS_Store
+
+# OS
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Backups & temp files
+backups/
+*.sql.gz
+*.rdb
+*.backup*
+*.bak
+
+# Nested repos (managed separately)
+A2A/
+
+# Cursor & IDE servers
+.cursor/
+.cursor-server/
+.windsurf-server/
+.antigravity-server/
+.codeium/
+
+# System / User config (never commit)
+.bash_history
+.bashrc
+.profile
+.git-credentials
+.gitconfig
+.ssh/
+.npm/
+.nvm/
+.cargo/
+.rustup/
+.docker/
+.config/
+.local/
+.venv/
+.history
+.selected_editor
+.sudo_as_admin_successful
+.wget-hsts

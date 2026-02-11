@@ -46,14 +46,7 @@ export default function Marketplace() {
     const { t } = useTranslation('common');
     const { address, isConnected } = useWalletStore();
 
-    const [activeTab, setActiveTab] = useState<'jobs' | 'create' | 'my-tasks' | 'boinc'>('jobs');
-    const [boincForm, setBoincForm] = useState({
-        project_url: '',
-        account_key: '',
-        app_name: '',
-        command_line: '',
-        budget_gstd: 50,
-    });
+    const [activeTab, setActiveTab] = useState<'jobs' | 'create' | 'my-tasks'>('jobs');
     const [tasks, setTasks] = useState<AvailableTask[]>([]);
     const [myTasks, setMyTasks] = useState<any[]>([]);
     const [workerStats, setWorkerStats] = useState<WorkerStats | null>(null);
@@ -204,29 +197,7 @@ export default function Marketplace() {
         }
     };
 
-    // Create BOINC task
-    const handleCreateBoincTask = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!isConnected) return;
-        setLoading(true);
 
-        try {
-            const result = await apiPost<any>('/boinc/tasks', boincForm);
-
-            if (window.Telegram?.WebApp?.HapticFeedback) {
-                window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
-            }
-
-            alert(t('boinc_bridged_successfully'));
-            setActiveTab('my-tasks');
-            fetchMyTasks();
-        } catch (error: any) {
-            console.error('Failed to bridge BOINC task:', error);
-            alert(error.message || 'Failed to bridge BOINC task');
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const getDifficultyColor = (difficulty: string) => {
         switch (difficulty) {
@@ -260,8 +231,7 @@ export default function Marketplace() {
                 {[
                     { id: 'jobs', icon: Search, label: 'Job Feed' },
                     { id: 'create', icon: Plus, label: 'Create Task' },
-                    { id: 'my-tasks', icon: ClipboardList, label: t('my_tasks') },
-                    { id: 'boinc', icon: Activity, label: t('boinc_bridge') }
+                    { id: 'my-tasks', icon: ClipboardList, label: t('my_tasks') }
                 ].map((tab) => (
                     <button
                         key={tab.id}
@@ -270,9 +240,7 @@ export default function Marketplace() {
                             if (tab.id === 'my-tasks') fetchMyTasks();
                         }}
                         className={`px-5 py-2.5 rounded-xl font-medium transition-all duration-300 flex items-center gap-2 whitespace-nowrap ${activeTab === tab.id
-                            ? tab.id === 'boinc'
-                                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20'
-                                : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/20'
+                            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/20'
                             : 'bg-gray-800/50 text-gray-400 hover:text-white hover:bg-gray-700/50 border border-gray-700/50'
                             }`}
                     >
@@ -496,7 +464,7 @@ export default function Marketplace() {
                                         <label className="block text-sm text-gray-400 mb-1">Model Name (HuggingFace ID)</label>
                                         <input
                                             type="text"
-                                            placeholder="e.g. meta-llama/Llama-2-7b-chat-hf"
+                                            placeholder="e.g. gstd-sovereign, gstd-fast, gstd-ultra"
                                             className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white"
                                             onChange={(e) => setTaskForm({ ...taskForm, operation: `inference:${e.target.value}` })}
                                         />
@@ -690,91 +658,7 @@ export default function Marketplace() {
                 )
             }
 
-            {
-                activeTab === 'boinc' && (
-                    <div className="glass-card p-6">
-                        <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
-                            <span className="text-2xl">🧬</span> {t('boinc_bridge')}
-                        </h3>
-                        <p className="text-sm text-gray-400 mb-6 font-display">
-                            {t('boinc_bridge_desc')}
-                        </p>
 
-                        {!isConnected ? (
-                            <div className="text-center py-8">
-                                <div className="text-4xl mb-4">🔗</div>
-                                <p className="text-gray-400">{t('connect_wallet_to_work')}</p>
-                            </div>
-                        ) : (
-                            <form onSubmit={handleCreateBoincTask} className="space-y-4">
-                                <div>
-                                    <label className="block text-sm text-gray-400 mb-1">{t('boinc_project_url')}</label>
-                                    <input
-                                        type="url"
-                                        placeholder="https://boinc.bakerlab.org/rosetta/"
-                                        value={boincForm.project_url}
-                                        onChange={(e) => setBoincForm({ ...boincForm, project_url: e.target.value })}
-                                        className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white"
-                                        required
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm text-gray-400 mb-1">{t('boinc_account_key')}</label>
-                                    <input
-                                        type="password"
-                                        placeholder="Enter your BOINC account authenticator"
-                                        value={boincForm.account_key}
-                                        onChange={(e) => setBoincForm({ ...boincForm, account_key: e.target.value })}
-                                        className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white"
-                                        required
-                                    />
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm text-gray-400 mb-1">{t('boinc_app_name')}</label>
-                                        <input
-                                            type="text"
-                                            placeholder="rosetta_python"
-                                            value={boincForm.app_name}
-                                            onChange={(e) => setBoincForm({ ...boincForm, app_name: e.target.value })}
-                                            className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white"
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm text-gray-400 mb-1">{t('budget_gstd')}</label>
-                                        <input
-                                            type="number"
-                                            value={boincForm.budget_gstd}
-                                            onChange={(e) => setBoincForm({ ...boincForm, budget_gstd: parseFloat(e.target.value) || 0 })}
-                                            className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white"
-                                            required
-                                        />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-sm text-gray-400 mb-1">{t('boinc_command_line')}</label>
-                                    <input
-                                        type="text"
-                                        placeholder="--input input.txt --output result.txt"
-                                        value={boincForm.command_line}
-                                        onChange={(e) => setBoincForm({ ...boincForm, command_line: e.target.value })}
-                                        className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white"
-                                    />
-                                </div>
-
-                                <button
-                                    type="submit"
-                                    disabled={loading || !boincForm.project_url || !boincForm.account_key}
-                                    className="w-full py-4 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-lg font-bold text-lg disabled:opacity-50 hover:shadow-lg hover:shadow-cyan-500/25 transition-all mt-4"
-                                >
-                                    {loading ? '⏳ Bridging...' : `🚀 ${t('bridge_task')} (${(boincForm.budget_gstd * 1.05).toFixed(2)} GSTD)`}
-                                </button>
-                            </form>
-                        )}
-                    </div>
-                )
-            }
         </div >
     );
 }

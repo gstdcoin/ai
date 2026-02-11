@@ -3,10 +3,7 @@ package services
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"log"
-	"strconv"
-	"strings"
 	"time"
 
 	"distributed-computing-platform/internal/config"
@@ -75,8 +72,11 @@ func (pt *PaymentTracker) reconcilePayments(ctx context.Context) {
 	}
 
 	log.Printf("PaymentTracker: Starting reconciliation cycle")
-	return // Temporarily disabled due to schema mismatch
+	// Temporarily disabled due to schema mismatch — re-enable when payout_transactions table exists
+}
 
+/* TODO: Re-enable reconciliation when schema is fixed
+func (pt *PaymentTracker) reconcileDisabled(ctx context.Context) {
 	// Get pending transactions from database
 	rows, err := pt.db.QueryContext(ctx, `
 		SELECT id, task_id, executor_address, tx_hash, query_id, status, created_at,
@@ -392,3 +392,4 @@ func (pt *PaymentTracker) UpdateTransactionStatus(ctx context.Context, taskID, t
 	`, status, txHash, taskID)
 	return err
 }
+*/

@@ -27,7 +27,6 @@ type TaskService struct {
 	redisStreams      *RedisStreamsService
 	redisPubSub       *RedisPubSubService // Redis Pub/Sub for horizontal scaling
 	telegramService   *TelegramService
-	boincSecurity     *BoincSecurityService
 }
 
 func NewTaskService(db *sql.DB, queue *redis.Client, tonService *TONService, tonConfig config.TONConfig) *TaskService {
@@ -41,7 +40,6 @@ func NewTaskService(db *sql.DB, queue *redis.Client, tonService *TONService, ton
 		entropyService:    NewEntropyService(db),
 		redisStreams:      NewRedisStreamsService(queue),
 		redisPubSub:        NewRedisPubSubService(queue),
-		boincSecurity:     NewBoincSecurityService(),
 	}
 }
 
@@ -168,15 +166,6 @@ func (s *TaskService) CreateTask(ctx context.Context, requesterAddress string, d
     }
 
 
-	// Handle BOINC encryption if needed
-	finalAccountKey := descriptor.BoincAccountKey
-	if descriptor.IsBoinc && finalAccountKey != "" {
-		encrypted, err := s.boincSecurity.EncryptAccountKey(finalAccountKey)
-		if err == nil {
-			finalAccountKey = encrypted
-		}
-	}
-
 	// 2. Insert task
 	_, err = tx.ExecContext(ctx, `
 		INSERT INTO tasks (
@@ -184,12 +173,13 @@ func (s *TaskService) CreateTask(ctx context.Context, requesterAddress string, d
 			labor_compensation_gstd, platform_fee_gstd, certainty_gravity_score, status, created_at,
 			escrow_status, min_trust_score, is_private, confidence_depth, 
 			redundancy_factor, is_spot_check, entropy_snapshot,
-			is_boinc, boinc_project_url, boinc_batch_id, boinc_account_key
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', NOW(), 'locked', $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+			is_boinc, boinc_project_url, boinc_batch_id, boinc_account_key,
+			payload
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', NOW(), 'locked', $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
 	`, taskID, requesterAddress, descriptor.TaskType, descriptor.Operation, descriptor.Model,
 		descriptor.Reward.AmountGSTD, platformFee, gravityScore,
 		descriptor.MinTrust, descriptor.IsPrivate, confidenceDepth, redundancy, isSpotCheck, entropy,
-		descriptor.IsBoinc, descriptor.BoincProjectURL, descriptor.BoincBatchID, finalAccountKey)
+		false, "", 0, "", descriptor.Input.Data)
 
 
     if err != nil {

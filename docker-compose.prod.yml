@@ -1,6 +1,6 @@
 # GSTD Platform - Production Docker Compose Configuration
-# Last updated: 2026-01-18
-# Production configuration with load balancing and scaling
+# Sovereign AI Infrastructure with Ollama LLM, Blue-Green Deployment
+# Last updated: 2026-02-11
 services:
   postgres:
     image: postgres:15-alpine
@@ -53,7 +53,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: gstd_redis_prod
-    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru --save 60 1000
+    command: redis-server --appendonly yes --maxmemory 1gb --maxmemory-policy allkeys-lru --save 60 1000 --tcp-keepalive 300
     volumes:
       - redis_data:/data
     healthcheck:
@@ -64,8 +64,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.0'
-          memory: 1G
+          cpus: '2.0'
+          memory: 2G
         reservations:
           cpus: '0.5'
           memory: 512M
@@ -79,7 +79,13 @@ services:
     networks:
       - gstd_network
 
-  # Blue-Green Deployment: Primary backend (blue)
+  # ====== SOVEREIGN AI ENGINE (Ollama) ======
+  # Ollama runs on the host for direct GPU access
+  # Install: curl -fsSL https://ollama.com/install.sh | sh
+  # Pull models: ollama pull qwen2.5-coder:7b && ollama pull llama3.1:8b
+  # Backend connects via OLLAMA_URL env var (defaults to host.docker.internal:11434)
+
+  # ====== BACKEND (Blue-Green Deployment) ======
   backend-blue:
     build:
       context: ./backend
@@ -99,8 +105,10 @@ services:
       - REDIS_PORT=6379
       - PORT=8080
       - DEPLOYMENT_COLOR=blue
-      - BOINC_MASTER_KEY=${BOINC_MASTER_KEY}
+      - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
     env_file: .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       postgres:
         condition: service_healthy
@@ -132,7 +140,6 @@ services:
     networks:
       - gstd_network
 
-  # Blue-Green Deployment: Secondary backend (green) - used for zero-downtime deployments
   backend-green:
     build:
       context: ./backend
@@ -152,8 +159,10 @@ services:
       - REDIS_PORT=6379
       - PORT=8080
       - DEPLOYMENT_COLOR=green
-      - BOINC_MASTER_KEY=${BOINC_MASTER_KEY}
+      - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
     env_file: .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       postgres:
         condition: service_healthy
@@ -185,49 +194,13 @@ services:
     networks:
       - gstd_network
 
-  nginx-lb:
-    image: nginx:alpine
-    container_name: gstd_nginx_lb
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      - ./nginx/ssl:/etc/letsencrypt:ro
-
-    depends_on:
-      backend-blue:
-        condition: service_healthy
-      backend-green:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-    restart: always
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-        compress: "true"
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 256M
-    networks:
-      - gstd_network
-
+  # ====== FRONTEND ======
   frontend:
     image: gstd-frontend:latest
     build:
       context: ./frontend
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://app.gstdtoken.com}
-
     environment:
       - PORT=3000
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-https://app.gstdtoken.com}
@@ -257,6 +230,42 @@ services:
       - gstd_network
     labels:
       - "com.centurylinklabs.watchtower.enable=false"
+
+  # ====== LOAD BALANCER ======
+  nginx-lb:
+    image: nginx:alpine
+    container_name: gstd_nginx_lb
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/ssl:/etc/letsencrypt:ro
+    depends_on:
+      backend-blue:
+        condition: service_healthy
+      backend-green:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        compress: "true"
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+    networks:
+      - gstd_network
 
 volumes:
   postgres_data:

@@ -32,7 +32,7 @@ func NewWelcomeBonusService(db *sql.DB, config *WelcomeBonusConfig) *WelcomeBonu
 			TreasuryWallet: "EQC_TREASURY_WALLET_ADDRESS",
 			WelcomeAmount:  1.0,
 			DailyFaucet:    0.1,
-			AgentBootstrap: 0.5,
+			AgentBootstrap: 10.0, // Vampire Attack Grant
 		}
 	}
 	

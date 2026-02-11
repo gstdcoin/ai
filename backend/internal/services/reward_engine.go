@@ -142,10 +142,13 @@ func (re *RewardEngine) processPlatformFee(ctx context.Context, amount float64, 
 	// PULL-MODEL: Platform fee is collected automatically by escrow contract
 	// when worker claims reward. No separate processing needed.
 	log.Printf("PULL-MODEL: Platform fee (%.9f GSTD) will be collected by escrow contract when worker claims", amount)
+	// Log accumulation in Golden Reserve asynchronously
+	go func() {
+		if err := re.logGoldenReserveAccumulation(context.Background(), amount, taskID); err != nil {
+			log.Printf("⚠️ Golden reserve log failed: %v", err)
+		}
+	}()
 	return nil
-
-	// Step 3: Log accumulation in Golden Reserve
-	return re.logGoldenReserveAccumulation(ctx, amount, taskID)
 }
 
 // logGoldenReserveAccumulation logs the XAUt accumulation

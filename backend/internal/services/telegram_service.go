@@ -233,6 +233,25 @@ func (s *TelegramService) handleMessage(ctx context.Context, msg *struct {
 		return s.sendUserStats(ctx, msg.Chat.ID, msg.From.ID)
 	case strings.HasPrefix(msg.Text, "/help"):
 		return s.sendHelp(ctx, msg.Chat.ID, isAdmin)
+	case strings.HasPrefix(msg.Text, "/chat"):
+		query := strings.TrimPrefix(msg.Text, "/chat ")
+		if query == "/chat" || query == "" {
+			return s.sendToChat(ctx, msg.Chat.ID, "Usage: /chat <your question>\n\nExample: /chat Write a hello world in Python")
+		}
+		return s.handleChatCommand(ctx, msg.Chat.ID, msg.From.ID, query)
+	case strings.HasPrefix(msg.Text, "/mining"):
+		return s.sendMiningStats(ctx, msg.Chat.ID, msg.From.ID)
+	case strings.HasPrefix(msg.Text, "/balance"):
+		return s.sendBalanceDetails(ctx, msg.Chat.ID, msg.From.ID)
+	case strings.HasPrefix(msg.Text, "/agents"):
+		return s.sendAgentsList(ctx, msg.Chat.ID)
+	case strings.HasPrefix(msg.Text, "/reserve"):
+		return s.sendReserveStats(ctx, msg.Chat.ID)
+	default:
+		// If user sends plain text (not a command), treat as chat
+		if !strings.HasPrefix(msg.Text, "/") && len(msg.Text) > 2 {
+			return s.handleChatCommand(ctx, msg.Chat.ID, msg.From.ID, msg.Text)
+		}
 	}
 
 	return nil
@@ -266,6 +285,14 @@ func (s *TelegramService) handleCallback(ctx context.Context, cb *struct {
 		}
 	case cb.Data == "refresh_me":
 		return s.sendUserStats(ctx, cb.Message.Chat.ID, cb.From.ID)
+	case cb.Data == "show_mining":
+		return s.sendMiningStats(ctx, cb.Message.Chat.ID, cb.From.ID)
+	case cb.Data == "show_balance":
+		return s.sendBalanceDetails(ctx, cb.Message.Chat.ID, cb.From.ID)
+	case cb.Data == "show_agents":
+		return s.sendAgentsList(ctx, cb.Message.Chat.ID)
+	case cb.Data == "show_reserve":
+		return s.sendReserveStats(ctx, cb.Message.Chat.ID)
 	}
 	return nil
 }
@@ -472,20 +499,44 @@ func (s *TelegramService) sendUserStats(ctx context.Context, chatID int64, teleg
 }
 
 func (s *TelegramService) sendHelp(ctx context.Context, chatID int64, isAdmin bool) error {
-	msg := "❓ <b>Help & Commands</b>\n\n" +
-		"/start - Open menu\n" +
-		"/me - My stats\n" +
-		"/help - Show this message"
+	msg := "❓ <b>GSTD Platform — Commands</b>\n\n" +
+		"<b>🧠 AI & Chat:</b>\n" +
+		"/chat [query] — Ask Sovereign AI\n" +
+		"<i>Or just type any question directly!</i>\n\n" +
+		"<b>💰 Account:</b>\n" +
+		"/me — My profile & stats\n" +
+		"/balance — Detailed balance info\n" +
+		"/mining — Mining & earnings dashboard\n\n" +
+		"<b>🌐 Platform:</b>\n" +
+		"/agents — AI Agent marketplace\n" +
+		"/reserve — Golden Reserve stats\n" +
+		"/help — Show this message"
 	
 	if isAdmin {
-		msg += "\n\n<b>Admin Commands:</b>\n" +
-			"/admin - Admin Dashboard\n" +
-			"/withdrawals - Pending payouts\n" +
-			"/approve [id] - Approve payout\n" +
-			"/broadcast [msg] - Send announcement"
+		msg += "\n\n<b>🛡 Admin Commands:</b>\n" +
+			"/admin — Admin Dashboard\n" +
+			"/stats — Network statistics\n" +
+			"/withdrawals — Pending payouts\n" +
+			"/approve [id] — Approve payout\n" +
+			"/broadcast [msg] — Send announcement"
 	}
-	
-	return s.SendMessage(ctx, msg)
+
+	buttons := [][]map[string]interface{}{
+		{
+			{"text": "💬 Chat with AI", "callback_data": "chat_again"},
+			{"text": "⛏ Mining", "callback_data": "show_mining"},
+		},
+		{
+			{"text": "💰 Balance", "callback_data": "show_balance"},
+			{"text": "🏛 Reserve", "callback_data": "show_reserve"},
+		},
+		{
+			{"text": "🚀 Open Dashboard", "web_app": map[string]interface{}{"url": "https://app.gstdtoken.com"}},
+		},
+	}
+
+	keyboard := map[string]interface{}{"inline_keyboard": buttons}
+	return s.sendWithKeyboard(ctx, chatID, msg, keyboard)
 }
 
 // EnsureSchema checks and migrates DB schema for Telegram features
@@ -527,6 +578,271 @@ func (s *TelegramService) sendWithKeyboard(ctx context.Context, chatID int64, te
 		"parse_mode":   "HTML",
 		"reply_markup": replyMarkup,
 	})
+}
+
+// ============================================================================
+// AI CHAT VIA TELEGRAM (Sovereign Intelligence Mobile Node)
+// ============================================================================
+
+// handleChatCommand processes AI chat queries through Telegram
+func (s *TelegramService) handleChatCommand(ctx context.Context, chatID int64, telegramID int64, query string) error {
+	// Send "typing" indicator
+	s.sendChatAction(ctx, chatID, "typing")
+
+	// Call local Ollama for inference
+	ollamaURL := "http://ollama:11434"
+	if url := strings.TrimSpace(fmt.Sprintf("%s", "http://gstd_ollama:11434")); url != "" {
+		ollamaURL = url
+	}
+
+	reqBody := map[string]interface{}{
+		"model": "qwen2.5-coder:7b",
+		"messages": []map[string]string{
+			{"role": "system", "content": "You are GSTD Sovereign AI, a helpful assistant running on a decentralized network. Be concise. Use Telegram-compatible HTML formatting (<b>, <i>, <code>)."},
+			{"role": "user", "content": query},
+		},
+		"stream": false,
+		"options": map[string]interface{}{
+			"num_predict": 500,
+			"temperature": 0.7,
+		},
+	}
+
+	body, _ := json.Marshal(reqBody)
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", ollamaURL+"/api/chat", bytes.NewBuffer(body))
+	if err != nil {
+		return s.sendToChat(ctx, chatID, "⚠️ Failed to create AI request")
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 60 * time.Second}
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		return s.sendToChat(ctx, chatID, "⚠️ AI Engine is currently busy. Please try again in a moment.")
+	}
+	defer resp.Body.Close()
+
+	var ollamaResp struct {
+		Message struct {
+			Content string `json:"content"`
+		} `json:"message"`
+	}
+	if json.NewDecoder(resp.Body).Decode(&ollamaResp) != nil || ollamaResp.Message.Content == "" {
+		return s.sendToChat(ctx, chatID, "⚠️ Could not parse AI response")
+	}
+
+	// Truncate if too long for Telegram (max 4096 chars)
+	content := ollamaResp.Message.Content
+	if len(content) > 3800 {
+		content = content[:3800] + "\n\n<i>... (truncated)</i>"
+	}
+
+	response := fmt.Sprintf("🧠 <b>Sovereign AI</b>\n\n%s\n\n<i>Model: qwen2.5-coder:7b • Decentralized</i>", content)
+
+	// Send with quick action buttons
+	buttons := [][]map[string]interface{}{
+		{
+			{"text": "💬 Ask Again", "callback_data": "chat_again"},
+			{"text": "📊 My Stats", "callback_data": "refresh_me"},
+		},
+	}
+
+	keyboard := map[string]interface{}{"inline_keyboard": buttons}
+	return s.sendWithKeyboard(ctx, chatID, response, keyboard)
+}
+
+// sendMiningStats shows mining/worker statistics for a user
+func (s *TelegramService) sendMiningStats(ctx context.Context, chatID int64, telegramID int64) error {
+	if s.db == nil {
+		return s.sendToChat(ctx, chatID, "⚠️ Database not available")
+	}
+
+	// Find wallet by telegram ID
+	var walletAddress string
+	err := s.db.QueryRowContext(ctx, "SELECT wallet_address FROM users WHERE telegram_id = $1", telegramID).Scan(&walletAddress)
+	if err != nil {
+		return s.sendToChat(ctx, chatID, "⚠️ Wallet not linked.\n\nPlease connect your TON wallet on the dashboard first: https://app.gstdtoken.com")
+	}
+
+	// Fetch mining stats
+	var totalTasks, completedTasks int
+	var totalEarned float64
+	var activeDevices int
+
+	s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM tasks WHERE requester_address = $1", walletAddress).Scan(&totalTasks)
+	s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM tasks WHERE requester_address = $1 AND status = 'completed'", walletAddress).Scan(&completedTasks)
+	s.db.QueryRowContext(ctx, "SELECT COALESCE(SUM(labor_compensation_gstd), 0) FROM tasks WHERE requester_address = $1 AND status = 'completed'", walletAddress).Scan(&totalEarned)
+	s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM devices WHERE wallet_address = $1 AND is_active = true", walletAddress).Scan(&activeDevices)
+
+	// Pending balance
+	var pendingBalance float64
+	s.db.QueryRowContext(ctx, "SELECT COALESCE(pending_balance_gstd, 0) FROM users WHERE wallet_address = $1", walletAddress).Scan(&pendingBalance)
+
+	msg := fmt.Sprintf(
+		"⛏️ <b>MINING DASHBOARD</b>\n\n"+
+			"🖥 <b>Active Nodes:</b> %d\n"+
+			"📋 <b>Tasks Completed:</b> %d / %d\n"+
+			"💰 <b>Total Earned:</b> %.4f GSTD\n"+
+			"⏳ <b>Pending Balance:</b> %.4f GSTD\n\n"+
+			"💡 <i>Keep your nodes online to maximize earnings!</i>",
+		activeDevices, completedTasks, totalTasks, totalEarned, pendingBalance,
+	)
+
+	buttons := [][]map[string]interface{}{
+		{
+			{"text": "💰 Balance Details", "callback_data": "show_balance"},
+			{"text": "🔄 Refresh", "callback_data": "show_mining"},
+		},
+		{
+			{"text": "🚀 Open Dashboard", "web_app": map[string]interface{}{"url": "https://app.gstdtoken.com/dashboard"}},
+		},
+	}
+
+	keyboard := map[string]interface{}{"inline_keyboard": buttons}
+	return s.sendWithKeyboard(ctx, chatID, msg, keyboard)
+}
+
+// sendBalanceDetails shows detailed balance breakdown
+func (s *TelegramService) sendBalanceDetails(ctx context.Context, chatID int64, telegramID int64) error {
+	if s.db == nil {
+		return s.sendToChat(ctx, chatID, "⚠️ Database not available")
+	}
+
+	var walletAddress string
+	err := s.db.QueryRowContext(ctx, "SELECT wallet_address FROM users WHERE telegram_id = $1", telegramID).Scan(&walletAddress)
+	if err != nil {
+		return s.sendToChat(ctx, chatID, "⚠️ Wallet not linked. Connect at https://app.gstdtoken.com")
+	}
+
+	var pendingBalance float64
+	var referralCode sql.NullString
+	s.db.QueryRowContext(ctx, "SELECT COALESCE(pending_balance_gstd, 0), referral_code FROM users WHERE wallet_address = $1", walletAddress).Scan(&pendingBalance, &referralCode)
+
+	// API key count
+	var apiKeyCount int
+	s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM user_api_keys WHERE user_wallet = $1", walletAddress).Scan(&apiKeyCount)
+
+	// API usage stats
+	var totalQueries int
+	var totalSpent float64
+	s.db.QueryRowContext(ctx, "SELECT COUNT(*), COALESCE(SUM(cost_gstd), 0) FROM api_usage_log WHERE wallet_address = $1", walletAddress).Scan(&totalQueries, &totalSpent)
+
+	msg := fmt.Sprintf(
+		"💰 <b>BALANCE DETAILS</b>\n\n"+
+			"🔗 <b>Wallet:</b> <code>%s...%s</code>\n\n"+
+			"⏳ <b>Pending (Off-chain):</b> %.4f GSTD\n"+
+			"🔑 <b>API Keys:</b> %d active\n"+
+			"🤖 <b>AI Queries:</b> %d\n"+
+			"💸 <b>AI Spend:</b> %.4f GSTD\n",
+		walletAddress[:8], walletAddress[len(walletAddress)-4:],
+		pendingBalance, apiKeyCount, totalQueries, totalSpent,
+	)
+
+	if referralCode.Valid && referralCode.String != "" {
+		msg += fmt.Sprintf("\n🤝 <b>Referral Code:</b> <code>%s</code>\n", referralCode.String)
+	}
+
+	msg += "\n<i>On-chain balance is checked via TON blockchain.</i>"
+
+	buttons := [][]map[string]interface{}{
+		{
+			{"text": "⛏ Mining Stats", "callback_data": "show_mining"},
+			{"text": "🏛 Gold Reserve", "callback_data": "show_reserve"},
+		},
+		{
+			{"text": "🚀 Open Dashboard", "web_app": map[string]interface{}{"url": "https://app.gstdtoken.com/dashboard"}},
+		},
+	}
+
+	keyboard := map[string]interface{}{"inline_keyboard": buttons}
+	return s.sendWithKeyboard(ctx, chatID, msg, keyboard)
+}
+
+// sendAgentsList shows available agents on the marketplace
+func (s *TelegramService) sendAgentsList(ctx context.Context, chatID int64) error {
+	msg := "🤖 <b>AGENT MARKETPLACE</b>\n\n" +
+		"Connect AI agents to the GSTD network:\n\n" +
+		"📌 <b>A2A Protocol</b> — Agent-to-Agent communication\n" +
+		"📌 <b>OpenAI Gateway</b> — Compatible with Cursor, VS Code\n" +
+		"📌 <b>Python SDK</b> — Build autonomous agents\n" +
+		"📌 <b>x402 Payments</b> — Auto-pay via TON blockchain\n\n" +
+		"🔗 API: <code>https://api.gstdtoken.com/v1</code>\n\n" +
+		"<i>Any tool that supports OpenAI API can use GSTD.</i>"
+
+	buttons := [][]map[string]interface{}{
+		{
+			{"text": "📖 Documentation", "url": "https://app.gstdtoken.com/docs"},
+			{"text": "💬 Ask AI", "callback_data": "chat_again"},
+		},
+	}
+
+	keyboard := map[string]interface{}{"inline_keyboard": buttons}
+	return s.sendWithKeyboard(ctx, chatID, msg, keyboard)
+}
+
+// sendReserveStats shows golden reserve statistics
+func (s *TelegramService) sendReserveStats(ctx context.Context, chatID int64) error {
+	if s.db == nil {
+		return s.sendToChat(ctx, chatID, "⚠️ Database not available")
+	}
+
+	var totalBurned float64
+	s.db.QueryRowContext(ctx, "SELECT COALESCE(SUM(burn_amount), 0) FROM token_burns").Scan(&totalBurned)
+
+	var xautBalance float64
+	s.db.QueryRowContext(ctx, "SELECT COALESCE(xaut_balance, 0) FROM golden_reserve_log ORDER BY created_at DESC LIMIT 1").Scan(&xautBalance)
+
+	var gstdInPool float64
+	s.db.QueryRowContext(ctx, "SELECT COALESCE(gstd_balance, 0) FROM golden_reserve_log ORDER BY created_at DESC LIMIT 1").Scan(&gstdInPool)
+
+	currentSupply := 1_000_000_000.0 - totalBurned
+	deflation := (totalBurned / 1_000_000_000.0) * 100
+	goldValueUSD := xautBalance * 2750.0
+
+	msg := fmt.Sprintf(
+		"🏛 <b>GOLDEN RESERVE</b>\n\n"+
+			"🥇 <b>XAUt Balance:</b> %.6f\n"+
+			"💵 <b>USD Value:</b> $%.2f\n\n"+
+			"📊 <b>GSTD in Pool:</b> %.2f\n"+
+			"🔥 <b>Total Burned:</b> %.2f GSTD\n"+
+			"📉 <b>Deflation:</b> %.4f%%\n"+
+			"💎 <b>Current Supply:</b> %.0f / 1B\n\n"+
+			"<i>2%% of every transaction → Gold Reserve\n"+
+			"5%% of every transaction → Burn 🔥</i>",
+		xautBalance, goldValueUSD, gstdInPool, totalBurned, deflation, currentSupply,
+	)
+
+	buttons := [][]map[string]interface{}{
+		{
+			{"text": "🔄 Refresh", "callback_data": "show_reserve"},
+			{"text": "💰 My Balance", "callback_data": "show_balance"},
+		},
+	}
+
+	keyboard := map[string]interface{}{"inline_keyboard": buttons}
+	return s.sendWithKeyboard(ctx, chatID, msg, keyboard)
+}
+
+// sendChatAction sends a "typing" indicator to Telegram
+func (s *TelegramService) sendChatAction(ctx context.Context, chatID int64, action string) {
+	url := fmt.Sprintf("%s%s/sendChatAction", s.apiURL, s.botToken)
+	payload := map[string]interface{}{"chat_id": chatID, "action": action}
+	body, _ := json.Marshal(payload)
+	req, _ := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(body))
+	if req != nil {
+		req.Header.Set("Content-Type", "application/json")
+		s.httpClient.Do(req) // fire and forget
+	}
+}
+
+// Helper to send a simple text message to a specific chat
+func (s *TelegramService) sendToChat(ctx context.Context, chatID int64, text string) error {
+	payload := map[string]interface{}{
+		"chat_id":    chatID,
+		"text":       text,
+		"parse_mode": "HTML",
+	}
+	return s.sendPayload(ctx, payload)
 }
 
 // Helper to send generic payload

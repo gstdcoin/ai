@@ -55,7 +55,7 @@ export default function SmartTaskWidget({ onTaskCreated }: SmartTaskWidgetProps)
                 workers,
                 payload: {
                     prompt: prompt,
-                    model: isAi ? 'llama-3-8b' : 'standard-cpu',
+                    model: isAi ? 'gstd-sovereign' : 'standard-cpu',
                     parameters: {
                         temperature: 0.7,
                         max_tokens: 1000

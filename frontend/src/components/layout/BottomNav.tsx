@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'next-i18next';
-import { LayoutDashboard, Server, BarChart3, HelpCircle, Store, Bot, Users } from 'lucide-react';
+import { Server, BarChart3, Bot, MessageSquare, Hammer } from 'lucide-react';
 import { Tab } from '../../types/tabs';
 
 interface BottomNavProps {
@@ -11,12 +11,12 @@ interface BottomNavProps {
 export default function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
   const { t } = useTranslation('common');
 
-  const tabs: Array<{ id: Tab; label: string; icon: React.ReactNode }> = [
-    { id: 'marketplace', label: t('market') || 'Market', icon: <Store size={18} /> },
+  const tabs: Array<{ id: Tab; label: string; icon: React.ReactNode; highlight?: boolean }> = [
+    { id: 'chat', label: t('chat') || 'Chat', icon: <MessageSquare size={18} />, highlight: true },
+    { id: 'home', label: t('nav_mining') || 'Mining', icon: <Hammer size={18} /> },
     { id: 'agents', label: t('agents') || 'Agents', icon: <Bot size={18} /> },
-    { id: 'tasks', label: t('tasks') || 'Tasks', icon: <LayoutDashboard size={18} /> },
-    { id: 'referrals', label: t('referrals') || 'Referrals', icon: <Users size={18} /> },
-    { id: 'devices', label: t('devices') || 'Devices', icon: <Server size={18} /> },
+    { id: 'devices', label: t('devices') || 'Nodes', icon: <Server size={18} /> },
+    { id: 'stats', label: t('stats') || 'Stats', icon: <BarChart3 size={18} /> },
   ];
 
   return (
@@ -27,18 +27,14 @@ export default function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
             <button
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
-              className={`
-                flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-lg
-                transition-all duration-200 min-h-[44px]
+              className={`flex flex-col items-center justify-center gap-0.5 py-2 px-1 rounded-lg transition-all duration-200 min-h-[44px]
                 ${activeTab === tab.id
-                  ? 'bg-gold-900/20 text-gold-900'
-                  : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
-                }
-              `}
+                  ? tab.highlight ? 'bg-violet-600/20 text-violet-400' : 'bg-white/10 text-white'
+                  : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'}`}
               aria-label={tab.label}
             >
               {tab.icon}
-              <span className="text-xs font-medium truncate">{tab.label}</span>
+              <span className="text-[10px] font-medium truncate">{tab.label}</span>
             </button>
           ))}
         </div>
@@ -46,4 +42,3 @@ export default function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
     </nav>
   );
 }
-

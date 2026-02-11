@@ -49,7 +49,7 @@ interface RecentActivity {
 
 export const WalletBalanceWidget: React.FC = () => {
     const { t } = useTranslation('common');
-    const { address } = useWalletStore();
+    const { address, updateBalance } = useWalletStore();
     const [balance, setBalance] = useState<WalletBalance | null>(null);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
