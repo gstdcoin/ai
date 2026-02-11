@@ -12,6 +12,7 @@ import (
 
 type GenesisService struct {
 	db        *sql.DB
+	redis     *redis.Client
 	welcome   *WelcomeBonusService
 	discovery *DiscoveryService
 	oracle    *HardwareOracle
@@ -22,6 +23,7 @@ func NewGenesisService(db *sql.DB, welcome *WelcomeBonusService, redis *redis.Cl
 	discovery := NewDiscoveryService(redis)
 	return &GenesisService{
 		db:        db,
+		redis:     redis,
 		welcome:   welcome,
 		discovery: discovery,
 		oracle:    &HardwareOracle{},
@@ -82,6 +84,19 @@ func (s *GenesisService) Ignite(ctx context.Context, walletAddress string) (stri
 	
 	if err != nil {
 		return "", err
+	}
+
+	// 2.5 Cache session in Redis for middleware performance
+	if s.redis != nil {
+		sessionKey := fmt.Sprintf("session:%s", token)
+		sessionData := map[string]interface{}{
+			"wallet_address": walletAddress,
+			"user_id":        walletAddress,
+			"created_at":     time.Now().Unix(),
+			"last_access":    time.Now().Unix(),
+		}
+		s.redis.HSet(ctx, sessionKey, sessionData)
+		s.redis.Expire(ctx, sessionKey, 24*time.Hour)
 	}
 
 	// 3. Autonomous Instruction: Welcome the new spark to the Moltbook mesh

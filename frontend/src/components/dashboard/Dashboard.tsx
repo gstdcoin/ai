@@ -11,14 +11,14 @@ import DevicesPanel from './DevicesPanel';
 import StatsPanel from './StatsPanel';
 import HelpPanel from './HelpPanel';
 import Marketplace from '../marketplace/Marketplace';
+import ChatPanel from './ChatPanel';
 import { Tab } from '../../types/tabs';
 import { useTonConnectUI } from '@tonconnect/ui-react';
 import SystemStatusWidget from './SystemStatusWidget';
 import TreasuryWidget from './TreasuryWidget';
 import PoolStatusWidget from './PoolStatusWidget';
 import { toast } from '../../lib/toast';
-import { Plus, Users, Calculator, Activity, Globe, Server, Wallet, CheckCircle, Beaker } from 'lucide-react';
-import BoincProgressWidget from './BoincProgressWidget';
+import { Plus, Users, Calculator, Activity, Globe, Server, Wallet, CheckCircle } from 'lucide-react';
 import { apiGet, apiPost } from '../../lib/apiClient';
 import { ComponentErrorBoundary } from '../common/ComponentErrorBoundary';
 import { workerService } from '../../services/WorkerService';
@@ -28,11 +28,13 @@ import AgentMarketplace from '../agents/AgentMarketplace';
 import ReferralPanel from '../referrals/ReferralPanel';
 import BurnStatsWidget from './BurnStatsWidget';
 import WelcomeBonusWidget from './WelcomeBonusWidget';
+import GoldenReservePanel from './GoldenReservePanel';
 import { NeuralBridge } from './NeuralBridge';
 import { GenesisRegistryWidget } from './GenesisRegistryWidget';
 import { VoiceBanner } from './VoiceBanner';
 import { GlobalNodeGrowthWidget } from './GlobalNodeGrowthWidget';
 import { isTelegramWebApp } from '../../lib/telegram';
+import { SovereignSwitch } from '../SovereignSwitch';
 
 interface NetworkStats {
   active_workers: number;
@@ -51,11 +53,22 @@ function Dashboard() {
   const router = useRouter();
   const { address, disconnect, tonBalance, gstdBalance, pendingEarnings } = useWalletStore();
   const [tonConnectUI] = useTonConnectUI();
-  const [activeTab, setActiveTab] = useState<Tab>('tasks');
+  const [activeTab, setActiveTab] = useState<Tab>('chat');
   const [showNewTask, setShowNewTask] = useState(false);
   const [isMining, setIsMining] = useState(false);
   const [showReferralModal, setShowReferralModal] = useState(false);
   const ReferralModal = lazy(() => import('./ReferralModal'));
+
+  // Check for pending chat from landing page
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const pending = window.sessionStorage.getItem('pending_chat');
+      if (pending) {
+        setActiveTab('chat');
+        window.sessionStorage.removeItem('pending_chat');
+      }
+    }
+  }, []);
 
   // Subscribe to worker service state
   useEffect(() => {
@@ -68,7 +81,7 @@ function Dashboard() {
   // Restore previously selected tab
   useEffect(() => {
     const saved = typeof window !== 'undefined' ? window.localStorage.getItem('activeTab') : null;
-    if (saved === 'tasks' || saved === 'devices' || saved === 'stats' || saved === 'help' || saved === 'marketplace' || saved === 'agents' || saved === 'referrals') {
+    if (saved === 'home' || saved === 'chat' || saved === 'tasks' || saved === 'devices' || saved === 'stats' || saved === 'help' || saved === 'marketplace' || saved === 'agents' || saved === 'referrals') {
       setActiveTab(saved as Tab);
     }
   }, []);
@@ -128,7 +141,6 @@ function Dashboard() {
         const stats = await apiGet<NetworkStats>('/network/stats');
         setNetworkStats(stats);
 
-        // Sync header metrics from network stats
         if (typeof document !== 'undefined') {
           const tempEl = document.getElementById('network-temperature');
           const pressureEl = document.getElementById('computational-pressure');
@@ -141,7 +153,7 @@ function Dashboard() {
     };
 
     fetchStats();
-    const interval = setInterval(fetchStats, 10000); // 10s for more "Live" feel
+    const interval = setInterval(fetchStats, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -160,13 +172,11 @@ function Dashboard() {
       toast.info('Mining Paused', 'Worker stopped processing tasks.');
     } else {
       workerService.ignite();
-      // Toast handled by service
     }
     triggerHaptic('heavy');
   }, [isMining, triggerHaptic]);
 
-
-  // Callbacks for child components - MUST be at top level, not inside JSX
+  // Callbacks for child components
   const handleStatsUpdate = useCallback((stats: any) => {
     if (typeof document === 'undefined') return;
 
@@ -204,19 +214,14 @@ function Dashboard() {
 
     setIsClaimingRewards(true);
     try {
-      // 1. Try to claim target task if it was just completed
       const targetId = workerService.targetTaskId;
 
-      // 2. Fetch all tasks to find completed but unpaid ones
       const response = await apiGet<{ tasks: any[] }>('/marketplace/my-tasks');
       const myCreatedTasks = response.tasks || [];
 
-      // We actually want completed tasks where we are the WORKER
-      // Let's check available tasks which might include our claimed ones
       const availableResponse = await apiGet<{ tasks: any[] }>('/marketplace/tasks');
       const allTasks = availableResponse.tasks || [];
 
-      // Try to payout by targetId first
       if (targetId) {
         try {
           await apiPost(`/marketplace/tasks/${targetId}/payout`, {});
@@ -230,9 +235,7 @@ function Dashboard() {
       }
 
       toast.info('Searching rewards...', 'Checking for claimable tasks');
-      // For now, if targetId didn't work, we tell user to check Tasks panel
       setActiveTab('tasks');
-
     } catch (err: any) {
       console.error('Claim failed:', err);
       toast.error('Claim Failed', err.message || 'No rewards ready to claim yet.');
@@ -258,7 +261,7 @@ function Dashboard() {
       </div>
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header - Hidden in Telegram WebApp to maximize screen space */}
+        {/* Header */}
         {!isTelegramWebApp() && (
           <ErrorBoundary>
             <Header
@@ -269,253 +272,185 @@ function Dashboard() {
         )}
 
         {/* Main Content */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-12 pb-24 lg:pb-12 custom-scrollbar">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 pb-28 lg:pb-8 custom-scrollbar">
           <ErrorBoundary>
-            <div className="max-w-7xl mx-auto space-y-8">
+            <div className="max-w-7xl mx-auto">
+              <div className="max-w-4xl mx-auto">
 
-              {/* System Overview - Animated Top Row */}
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                <div className="lg:col-span-1">
-                  <ComponentErrorBoundary name="ActivityFeed">
-                    <div className="h-full">
-                      <ActivityFeed />
-                    </div>
+                {/* CHAT TAB - Primary Feature */}
+                {activeTab === 'chat' && (
+                  <ComponentErrorBoundary name="ChatPanel">
+                    <ChatPanel />
                   </ComponentErrorBoundary>
-                </div>
+                )}
 
-                <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  <ComponentErrorBoundary name="TreasuryWidget">
-                    <TreasuryWidget />
-                  </ComponentErrorBoundary>
+                {/* HOME / OVERVIEW TAB */}
+                {activeTab === 'home' && (
+                  <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                    {/* IDENTITY & MODE SWITCH */}
+                    <div className="flex flex-col items-center justify-center p-2 rounded-3xl bg-white/[0.02] border border-white/5 backdrop-blur-xl">
+                      <ComponentErrorBoundary name="SovereignSwitch">
+                        <SovereignSwitch className="w-full" />
+                      </ComponentErrorBoundary>
+                    </div>
 
-                  <ComponentErrorBoundary name="PoolStatusWidget">
-                    <PoolStatusWidget />
-                  </ComponentErrorBoundary>
+                    {/* PRIMARY ACTIONS */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Worker Control */}
+                      <button
+                        onClick={handleToggleMining}
+                        className={`group relative p-8 rounded-[2rem] font-black transition-all transform active:scale-95 flex items-center justify-between border-2 overflow-hidden ${isMining
+                          ? 'bg-red-500/10 border-red-500/20 text-red-400 shadow-[0_0_40px_rgba(239,68,68,0.1)]'
+                          : 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400 hover:border-cyan-400/40 shadow-[0_0_40px_rgba(34,211,238,0.1)]'
+                          }`}
+                      >
+                        <div className="flex items-center gap-5 relative z-10">
+                          <div className={`p-4 rounded-2xl border ${isMining ? 'bg-red-500/20 border-red-500/30 animate-pulse' : 'bg-cyan-500/20 border-cyan-500/30'}`}>
+                            {isMining ? <Activity size={28} /> : <Server size={28} />}
+                          </div>
+                          <div className="text-left">
+                            <span className="block text-2xl uppercase tracking-tighter font-black">
+                              {isMining ? 'Online' : 'Ignite'}
+                            </span>
+                            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest block mt-1">Platform Node</span>
+                          </div>
+                        </div>
+                        <div className={`flex items-center gap-2 px-4 py-1.5 rounded-full border text-[10px] font-black tracking-widest uppercase ${isMining ? 'bg-red-500/20 border-red-500/30' : 'bg-cyan-500/20 border-cyan-500/30'}`}>
+                          {isMining ? 'Stop' : 'Start'}
+                        </div>
+                      </button>
 
-                  <ComponentErrorBoundary name="BurnStatsWidget">
-                    <BurnStatsWidget />
-                  </ComponentErrorBoundary>
-
-                  <ComponentErrorBoundary name="WelcomeBonusWidget">
-                    <WelcomeBonusWidget />
-                  </ComponentErrorBoundary>
-
-                  <ComponentErrorBoundary name="GlobalNodeGrowthWidget">
-                    <GlobalNodeGrowthWidget />
-                  </ComponentErrorBoundary>
-
-                  {/* Global Network Status - High Focus */}
-                  <div
-                    className="md:col-span-2 lg:col-span-1 glass-card p-6 relative overflow-hidden group cursor-pointer border-cyan-500/20 hover:border-cyan-500/50 transition-all"
-                    onClick={() => router.push('/network')}
-                  >
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-3xl -mr-16 -mt-16 animate-pulse" />
-                    <div className="relative z-10">
-                      <div className="flex items-center gap-2 mb-4">
-                        <Globe className="w-5 h-5 text-cyan-400" />
-                        <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Global Power</span>
+                      {/* Pending Rewards */}
+                      <div className="glass-card p-8 bg-gradient-to-br from-emerald-500/[0.05] to-transparent border-emerald-500/20 flex flex-col justify-between">
+                        <div className="flex justify-between items-start mb-6">
+                          <div>
+                            <h3 className="text-[10px] font-black text-emerald-500/60 uppercase tracking-[0.2em] mb-1">Unclaimed</h3>
+                            <div className="text-4xl font-black text-white tabular-nums tracking-tighter">
+                              {pendingEarnings?.toFixed(2) || '0.00'}
+                              <span className="text-[10px] text-gray-600 ml-1.5 font-bold">GSTD</span>
+                            </div>
+                          </div>
+                          <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                            <Calculator size={24} />
+                          </div>
+                        </div>
+                        <button
+                          onClick={handleClaimRewards}
+                          disabled={isClaimingRewards}
+                          className="w-full py-3.5 rounded-2xl bg-emerald-500 text-black text-xs font-black uppercase tracking-widest transition-all hover:bg-emerald-400 active:scale-95 disabled:opacity-50"
+                        >
+                          {isClaimingRewards ? '...' : 'Settle Rewards'}
+                        </button>
                       </div>
-                      <div className="text-4xl font-black text-white mb-2 tabular-nums">
-                        {networkStats ? (networkStats.active_workers * 10.5).toFixed(1) : '—'}
-                        <span className="text-sm font-bold text-gray-600 ml-2 uppercase">PFLOPS</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-xs font-bold text-emerald-400">
-                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                        {networkStats?.active_workers ?? '—'} Active Nodes
+                    </div>
+
+                    {/* QUICK STATS & ACTIVITY */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <ComponentErrorBoundary name="ActivityFeed">
+                        <ActivityFeed />
+                      </ComponentErrorBoundary>
+
+                      <div className="space-y-4">
+                        <div className="glass-card p-6 border-white/5 flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <div className="p-3 rounded-xl bg-blue-500/10 text-blue-400">
+                              <Wallet size={20} />
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-gray-500 font-black uppercase tracking-widest block mb-0.5">Wallet</span>
+                              <span className="text-xl font-black text-white tabular-nums">{gstdBalance?.toFixed(2) || '0.00'} GSTD</span>
+                            </div>
+                          </div>
+                          <CheckCircle className="text-emerald-500 w-4 h-4" />
+                        </div>
+
+                        <div
+                          className="glass-card p-6 border-white/5 flex items-center justify-between cursor-pointer hover:bg-white/[0.03] transition-colors"
+                          onClick={() => setShowReferralModal(true)}
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="p-3 rounded-xl bg-violet-500/10 text-violet-400">
+                              <Users size={20} />
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-gray-500 font-black uppercase tracking-widest block mb-0.5">Yield Mult</span>
+                              <span className="text-xl font-black text-white tabular-nums">1.25x</span>
+                            </div>
+                          </div>
+                          <button className="text-[10px] font-black text-violet-400 border border-violet-500/20 px-3 py-1 rounded-lg hover:bg-violet-500/10">+</button>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              </div>
+                )}
 
-              {/* Neural Synthesis Layer */}
-              <ComponentErrorBoundary name="VoiceBanner">
-                <VoiceBanner />
-              </ComponentErrorBoundary>
+                {/* OTHER TABS */}
+                <div className="animate-in fade-in duration-500">
+                  {activeTab === 'tasks' && (
+                    <ComponentErrorBoundary name="TasksPanel">
+                      <TasksPanel onTaskCreated={handleTaskCreated} onCompensationClaimed={handleCompensationClaimed} />
+                    </ComponentErrorBoundary>
+                  )}
 
-              <ComponentErrorBoundary name="NeuralBridge">
-                <NeuralBridge />
-              </ComponentErrorBoundary>
-
-              <ComponentErrorBoundary name="GenesisRegistry">
-                <GenesisRegistryWidget />
-              </ComponentErrorBoundary>
-
-              {/* Financial Dashboard - Glass Blocks */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Pending Payouts Widget */}
-                <div className="glass-card p-8 bg-gradient-to-br from-emerald-500/[0.03] to-transparent border-emerald-500/10 hover:border-emerald-500/30 transition-all duration-500 group">
-                  <div className="flex justify-between items-start mb-6">
-                    <div>
-                      <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-2">{t('pending_payouts') || 'Unclaimed Bounty'}</h3>
-                      <div className="text-4xl font-black text-white tabular-nums drop-shadow-2xl">
-                        {pendingEarnings?.toFixed(2) || '0.00'}
-                        <span className="text-lg text-gray-600 ml-2 font-bold uppercase tracking-tighter">GSTD</span>
+                  {activeTab === 'stats' && (
+                    <div className="space-y-8">
+                      {/* Golden Reserve - Hero Widget */}
+                      <ComponentErrorBoundary name="GoldenReservePanel">
+                        <GoldenReservePanel />
+                      </ComponentErrorBoundary>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <ComponentErrorBoundary name="TreasuryWidget">
+                          <TreasuryWidget />
+                        </ComponentErrorBoundary>
+                        <ComponentErrorBoundary name="PoolStatusWidget">
+                          <PoolStatusWidget />
+                        </ComponentErrorBoundary>
+                        <ComponentErrorBoundary name="BurnStatsWidget">
+                          <BurnStatsWidget />
+                        </ComponentErrorBoundary>
+                        <ComponentErrorBoundary name="GlobalNodeGrowthWidget">
+                          <GlobalNodeGrowthWidget />
+                        </ComponentErrorBoundary>
                       </div>
+                      <ComponentErrorBoundary name="SystemStatusWidget">
+                        <SystemStatusWidget onStatsUpdate={handleStatsUpdate} />
+                      </ComponentErrorBoundary>
+                      <ComponentErrorBoundary name="StatsPanel">
+                        <StatsPanel />
+                      </ComponentErrorBoundary>
                     </div>
-                    <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 group-hover:scale-110 transition-transform">
-                      <Plus className="w-6 h-6" />
-                    </div>
-                  </div>
-                  <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-emerald-600 to-cyan-500 animate-shimmer" style={{ width: '65%' }} />
-                  </div>
+                  )}
+
+                  {activeTab === 'devices' && (
+                    <ComponentErrorBoundary name="DevicesPanel">
+                      <DevicesPanel />
+                    </ComponentErrorBoundary>
+                  )}
+
+                  {activeTab === 'marketplace' && (
+                    <ComponentErrorBoundary name="Marketplace">
+                      <Marketplace />
+                    </ComponentErrorBoundary>
+                  )}
+
+                  {activeTab === 'agents' && (
+                    <ComponentErrorBoundary name="AgentMarketplace">
+                      <AgentMarketplace />
+                    </ComponentErrorBoundary>
+                  )}
+
+                  {activeTab === 'referrals' && (
+                    <ComponentErrorBoundary name="ReferralPanel">
+                      <ReferralPanel />
+                    </ComponentErrorBoundary>
+                  )}
+
+                  {activeTab === 'help' && (
+                    <ComponentErrorBoundary name="HelpPanel">
+                      <HelpPanel />
+                    </ComponentErrorBoundary>
+                  )}
                 </div>
-
-                {/* GSTD Balance */}
-                <div className="glass-card p-8 bg-gradient-to-br from-amber-500/[0.03] to-transparent border-amber-500/10 hover:border-amber-500/30 transition-all duration-500 group">
-                  <div className="flex justify-between items-start mb-6">
-                    <div>
-                      <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-2">{t('gstd_balance') || 'GSTD Wallet'}</h3>
-                      <div className="text-4xl font-black text-white tabular-nums drop-shadow-2xl">
-                        {gstdBalance?.toFixed(2) || '0.00'}
-                        <span className="text-lg text-gray-600 ml-2 font-bold uppercase tracking-tighter">GSTD</span>
-                      </div>
-                    </div>
-                    <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-yellow-500 group-hover:scale-110 transition-transform">
-                      <Wallet className="w-6 h-6" />
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-[9px] font-black text-gray-400 uppercase tracking-widest">Verified on TON</div>
-                  </div>
-                </div>
-
-                {/* Referral/Network */}
-                <div
-                  className="glass-card p-8 bg-gradient-to-br from-violet-500/[0.03] to-transparent border-violet-500/10 hover:border-violet-500/30 transition-all duration-500 group cursor-pointer"
-                  onClick={() => setShowReferralModal(true)}
-                >
-                  <div className="flex justify-between items-start mb-6">
-                    <div>
-                      <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-2">Social Multiplier</h3>
-                      <div className="text-4xl font-black text-white uppercase tracking-tighter">
-                        5.0<span className="text-lg text-violet-400 ml-1">%</span>
-                      </div>
-                    </div>
-                    <div className="p-3 rounded-2xl bg-violet-500/10 border border-violet-500/20 text-violet-400 group-hover:scale-110 transition-transform shadow-[0_0_15px_rgba(139,92,246,0.3)]">
-                      <Users className="w-6 h-6" />
-                    </div>
-                  </div>
-                  <p className="text-xs font-bold text-gray-500">Invite nodes to increase protocol rewards</p>
-                </div>
-              </div>
-
-              {/* BOINC Progress (Science Bridge) */}
-              <ComponentErrorBoundary name="BoincProgressWidget">
-                <BoincProgressWidget />
-              </ComponentErrorBoundary>
-
-              {/* PROMINENT ACTION BAR */}
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-6 pt-4">
-                <div className="md:col-span-8">
-                  <button
-                    onClick={handleToggleMining}
-                    className={`w-full group relative py-8 px-10 rounded-3xl font-black transition-all transform hover:scale-[1.01] active:scale-[0.99] flex items-center justify-between border-2 overflow-hidden ${isMining
-                      ? 'bg-red-600/10 border-red-500/40 text-red-500 shadow-2xl shadow-red-900/20'
-                      : 'bg-emerald-600/10 border-emerald-500/40 text-emerald-400 shadow-2xl shadow-emerald-900/20 hover:border-emerald-400'
-                      }`}
-                  >
-                    {/* Animated Shine Effect */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.05] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out" />
-
-                    <div className="flex items-center gap-6 relative z-10">
-                      <div className={`p-4 rounded-2xl border-2 ${isMining ? 'bg-red-500/20 border-red-500/30 animate-pulse' : 'bg-emerald-500/20 border-emerald-500/30'}`}>
-                        {isMining ? <Activity size={32} /> : <Server size={32} />}
-                      </div>
-                      <div className="text-left">
-                        <span className="block text-2xl uppercase tracking-tighter mb-1 font-black">
-                          {isMining ? 'System Active' : 'Ignite Worker'}
-                        </span>
-                        <span className="block text-sm font-bold opacity-60 uppercase tracking-widest leading-none">
-                          {isMining ? 'Processing Grid Workloads...' : 'Turn Device into Compute Node'}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className={`hidden sm:flex items-center gap-3 px-6 py-2 rounded-2xl border-2 uppercase text-[10px] font-black tracking-[0.2em] relative z-10 ${isMining ? 'bg-red-500/20 border-red-500/30' : 'bg-emerald-500/20 border-emerald-500/30'}`}>
-                      {isMining ? <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-red-500 animate-ping" /> Online</span> : 'Ready'}
-                    </div>
-                  </button>
-                </div>
-
-                <div className="md:col-span-4">
-                  <button
-                    onClick={handleClaimRewards}
-                    disabled={isClaimingRewards}
-                    className="w-full h-full py-8 px-8 rounded-3xl bg-white/[0.03] border-2 border-white/5 hover:border-white/20 text-white font-black transition-all flex flex-col items-center justify-center gap-4 group disabled:opacity-50 hover:bg-white/[0.06]"
-                  >
-                    <div className="p-3 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 group-hover:scale-110 transition-transform">
-                      <Calculator className={`w-8 h-8 ${isClaimingRewards ? 'animate-spin' : ''}`} />
-                    </div>
-                    <div className="text-center">
-                      <span className="block text-xl uppercase tracking-tighter">{isClaimingRewards ? 'Processing...' : (t('claim_rewards') || 'Claim Bounty')}</span>
-                      <span className="text-[10px] font-black text-gray-600 uppercase tracking-widest mt-1 block">Settle earnings to wallet</span>
-                    </div>
-                  </button>
-                </div>
-              </div>
-
-              {/* Status & Inventory Section */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-                <ComponentErrorBoundary name="SystemStatusWidget">
-                  <SystemStatusWidget onStatsUpdate={handleStatsUpdate} />
-                </ComponentErrorBoundary>
-
-                <div className="glass-card p-6 border-white/5">
-                  <h3 className="text-xs font-black text-gray-500 uppercase tracking-widest mb-6 flex items-center gap-2">
-                    <Beaker className="w-4 h-4 text-violet-400" />
-                    Infrastructure Diagnostics
-                  </h3>
-                  <div className="space-y-4">
-                    {[
-                      { label: 'Settlement Ledger', status: 'Optimal', color: 'emerald' },
-                      { label: 'Task Distribution', status: 'Balanced', color: 'cyan' },
-                      { label: 'Blockchain Sync', status: 'Verified', color: 'blue' }
-                    ].map((item, i) => (
-                      <div key={i} className="flex justify-between items-center py-2 border-b border-white/5 last:border-0">
-                        <span className="text-sm font-bold text-gray-400">{item.label}</span>
-                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded bg-${item.color}-500/10 text-${item.color}-400 border border-${item.color}-500/20`}>
-                          {item.status}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Panels Section */}
-              <div className="space-y-6 pt-4">
-                <ComponentErrorBoundary name="TasksPanel">
-                  {activeTab === 'tasks' && <TasksPanel
-                    onTaskCreated={handleTaskCreated}
-                    onCompensationClaimed={handleCompensationClaimed}
-                  />}
-                </ComponentErrorBoundary>
-
-                <ComponentErrorBoundary name="DevicesPanel">
-                  {activeTab === 'devices' && <DevicesPanel />}
-                </ComponentErrorBoundary>
-
-                <ComponentErrorBoundary name="StatsPanel">
-                  {activeTab === 'stats' && <StatsPanel />}
-                </ComponentErrorBoundary>
-
-                <ComponentErrorBoundary name="HelpPanel">
-                  {activeTab === 'help' && <HelpPanel />}
-                </ComponentErrorBoundary>
-
-                <ComponentErrorBoundary name="Marketplace">
-                  {activeTab === 'marketplace' && <Marketplace />}
-                </ComponentErrorBoundary>
-
-                <ComponentErrorBoundary name="AgentMarketplace">
-                  {activeTab === 'agents' && <AgentMarketplace />}
-                </ComponentErrorBoundary>
-
-                <ComponentErrorBoundary name="ReferralPanel">
-                  {activeTab === 'referrals' && <ReferralPanel />}
-                </ComponentErrorBoundary>
               </div>
             </div>
           </ErrorBoundary>
@@ -527,13 +462,13 @@ function Dashboard() {
         <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
       </div>
 
-      {/* Floating Action Button */}
+      {/* Floating Action Button - positioned above bottom nav on mobile */}
       <button
         onClick={() => setShowNewTask(true)}
-        className="floating-action-button"
+        className="fixed right-4 bottom-20 lg:bottom-6 z-40 w-12 h-12 rounded-full bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-600/30 flex items-center justify-center transition-all active:scale-90"
         aria-label={t('create_task')}
       >
-        <Plus />
+        <Plus size={20} />
       </button>
 
       {/* Lazy Loaded Modals */}

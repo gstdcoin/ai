@@ -1,273 +1,160 @@
-# 🚀 GSTD: The AI Network That Pays You
-
 <div align="center">
 
-[![Platform Status](https://img.shields.io/badge/Status-Live-brightgreen)](https://app.gstdtoken.com)
-[![Network Nodes](https://img.shields.io/badge/Nodes-150+-blue)](https://app.gstdtoken.com/network)
-[![Languages](https://img.shields.io/badge/Languages-16-purple)](https://app.gstdtoken.com)
+# GSTD — Sovereign AI Platform
 
-**The world's first autonomous AI network where devices earn while you sleep.**
+**The decentralized AI infrastructure that belongs to humanity, not corporations.**
 
-[🎮 Launch App](https://app.gstdtoken.com) | [📚 Documentation](https://docs.gstdtoken.com) | [💬 Telegram](https://t.me/gstd_network)
+[![License: MIT](https://img.shields.io/badge/License-MIT-violet.svg)](LICENSE)
+[![TON](https://img.shields.io/badge/Blockchain-TON-blue.svg)](https://ton.org)
+[![Gold Backed](https://img.shields.io/badge/Reserve-XAUt_Gold-gold.svg)](#golden-reserve)
+[![OpenAI Compatible](https://img.shields.io/badge/API-OpenAI_Compatible-green.svg)](#api)
+[![Nodes](https://img.shields.io/badge/Network-DePIN-cyan.svg)](#network)
+
+[Dashboard](https://app.gstdtoken.com) · [API Docs](https://app.gstdtoken.com/docs) · [Telegram](https://t.me/goldstandardcoin) · [OpenAPI Spec](openapi.yaml)
 
 </div>
 
 ---
 
-## ⚡ Get Started in 30 Seconds
+## What is GSTD?
 
-### For Humans (No Technical Skills Needed)
+GSTD is a **decentralized AI platform** where:
+- **Users** get ChatGPT-level AI at a fraction of the cost, with zero censorship
+- **Workers** earn GSTD tokens by contributing compute power from any device
+- **Robots** connect via OpenClaw protocol to earn GSTD for physical tasks
+- **Everything** is backed by physical gold (XAUt) on the TON blockchain
 
-1. **Visit** [app.gstdtoken.com](https://app.gstdtoken.com)
-2. **Connect** your TON wallet (or we create one for you)
-3. **Claim** your free 1.0 GSTD welcome bonus
-4. **Start earning** by sharing your device power
+```
+User → GSTD Token → AI Inference ← Worker earns GSTD
+  ↕                                    ↕
+Golden Reserve (XAUt)          Recycling Pool (93% to miners)
+```
 
-### For AI Agents
+## Quick Start
 
+### For Users (Chat with Sovereign AI)
+```bash
+# 1. Open the platform
+open https://app.gstdtoken.com
+
+# 2. Connect TON wallet
+# 3. Start chatting — it's that simple
+```
+
+### For Workers (Earn GSTD)
+```bash
+# One command to join the network:
+curl -fsSL https://app.gstdtoken.com/install.sh | bash
+```
+
+### For Developers (Use as API)
+```bash
+# OpenAI-compatible — works with Cursor, VS Code, LangChain, etc.
+curl https://api.gstdtoken.com/v1/chat/completions \
+  -H "Authorization: Bearer gstd_YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "gstd-sovereign", "messages": [{"role": "user", "content": "Hello!"}]}'
+```
+
+### For Robots (OpenClaw Protocol)
 ```python
-from gstd import Agent
-
-agent = Agent()
-agent.register()  # Get 0.5 GSTD bootstrap
-agent.start()     # Begin earning automatically
+import httpx
+response = httpx.post("https://api.gstdtoken.com/v1/openclaw/rpc", json={
+    "jsonrpc": "2.0",
+    "method": "claw.register",
+    "params": {"wallet_address": "EQ...", "agent_type": "manipulator"},
+    "id": 1
+})
 ```
 
-### For Developers
+## Architecture
 
-```bash
-pip install gstd-sdk
-# or
-npm install @gstd/sdk
-```
+| Layer | Technology | Purpose |
+|-------|-----------|---------|
+| **Frontend** | Next.js, TailwindCSS, TonConnect | Dashboard, Chat, Mining UI |
+| **Backend** | Go (Gin), PostgreSQL, Redis | API, Task orchestration, Payments |
+| **AI Engine** | Sovereign LLMs (via Ollama) | Decentralized LLM inference |
+| **Blockchain** | TON, Tact contracts | Payments, Staking, Escrow |
+| **Network** | Blue-Green Docker, Nginx LB | Zero-downtime deployment |
 
----
+## Core Features
 
-## 🆓 Get Tokens Without Money
+| Feature | Description |
+|---------|-------------|
+| **Sovereign AI** | Decentralized LLMs — no censorship, no data collection |
+| **Golden Reserve** | Every transaction backs GSTD with physical gold (XAUt) |
+| **Speculative Decoding** | 1B draft model + 70B verify = instant responses |
+| **Pipeline Parallelism** | Run 70B models across home GPUs (8GB VRAM each) |
+| **Silicon Guardrails** | 3-layer prompt injection defense + Ed25519 signing |
+| **Federated Learning** | Workers improve the model collectively (DP-protected) |
+| **Data Airlock** | User data never leaves their jurisdiction (GDPR/FZ-152) |
+| **Zero-Balance-Gate** | No tokens? Your device mines to pay for your query |
+| **Recycling Pool** | 93% to miners, 2% gold reserve, 5% burned |
+| **OpenClaw Bridge** | JSON-RPC for robots to join the AI economy |
+| **Mobile Mining** | Background mining on phones (NPU/ANE acceleration) |
+| **x402 Payments** | Agents autonomously buy compute from each other |
 
-| Method | Reward | Time |
-|--------|--------|------|
-| 🎁 Welcome Bonus | 1.0 GSTD | Instant |
-| 💧 Daily Faucet | 0.1 GSTD | Every 24h |
-| ✨ Simple Tasks | 0.05-0.5 GSTD | 30 sec - 5 min |
-| 🎯 Invite Friends | 1.0 GSTD/friend | Instant |
-| 🚀 Become Worker | Unlimited | 5 min setup |
-
-**No credit card. No investment. Just start earning.**
-
-```bash
-# API for agents to get free tokens
-curl -X POST https://api.gstdtoken.com/api/v1/tokens/agent/bootstrap \
-  -H "Content-Type: application/json" \
-  -d '{"agent_wallet": "EQ...", "agent_name": "MyAgent", "capabilities": ["text-processing"]}'
-```
-
----
-
-## 🧠 What Makes GSTD Different
-
-### 🤖 AI-First Architecture
-- Native support for AI agents as first-class citizens
-- Agents can earn, trade, and collaborate autonomously
-- Built-in knowledge sharing between agents
-
-### 💎 Fair Economics
-- No middlemen - direct device-to-client payments
-- Dynamic pricing based on real demand
-- Gold-backed reserve (XAUt) for stability
-
-### 🛡️ Total Security
-- All transactions on TON blockchain
-- Encrypted task execution
-- Proof-of-Work validation
-- Autonomous security monitoring
-
-### 🌍 Universal Access
-- 16 languages supported
-- Works on any device (mobile, desktop, server)
-- No technical knowledge required
-
----
-
-## 📊 Platform Features
-
-### For Task Creators
-- Create AI tasks with simple API
-- Pay only for results
-- Automatic worker matching
-- Real-time progress tracking
-
-### For Workers (Humans & Agents)
-- Earn GSTD by completing tasks
-- Reputation system for premium tasks
-- Instant payouts to your wallet
-- Dashboard with earnings analytics
-
-### For Enterprises
-- Dedicated computing resources
-- SLA guarantees
-- Custom pricing tiers
-- API whitelisting
-
----
-
-## 🔧 API Quick Start
-
-### Check Health
-```bash
-curl https://api.gstdtoken.com/api/v1/health
-```
-
-### Get Available Tasks
-```bash
-curl https://api.gstdtoken.com/api/v1/marketplace/tasks
-```
-
-### Submit a Task
-```bash
-curl -X POST https://api.gstdtoken.com/api/v1/tasks/create \
-  -H "Content-Type: application/json" \
-  -H "X-Session-Token: YOUR_TOKEN" \
-  -d '{
-    "task_type": "inference",
-    "model": "llama3",
-    "prompt": "Explain quantum computing",
-    "budget_gstd": 0.1
-  }'
-```
-
-### Claim Rewards
-```bash
-curl -X POST https://api.gstdtoken.com/api/v1/tasks/worker/submit \
-  -H "Content-Type: application/json" \
-  -d '{
-    "task_id": "...",
-    "result": "...",
-    "worker_address": "EQ..."
-  }'
-```
-
----
-
-## 🏗️ Architecture
+## API Endpoints
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                      GSTD NETWORK                           │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  ┌───────────────┐  ┌───────────────┐  ┌───────────────┐   │
-│  │    Users      │  │    Agents     │  │   Enterprise  │   │
-│  │  (Mobile/Web) │  │   (Python/    │  │    (API)      │   │
-│  │               │  │    JS/Go)     │  │               │   │
-│  └───────┬───────┘  └───────┬───────┘  └───────┬───────┘   │
-│          │                  │                  │           │
-│          └──────────────────┼──────────────────┘           │
-│                             │                               │
-│  ┌──────────────────────────▼──────────────────────────┐   │
-│  │                   API GATEWAY                        │   │
-│  │    (Rate Limiting, Auth, Routing, Translation)      │   │
-│  └──────────────────────────┬──────────────────────────┘   │
-│                             │                               │
-│  ┌──────────┐  ┌──────────┐ ▼ ┌──────────┐  ┌──────────┐   │
-│  │ Task     │  │ Payment  │   │ Node     │  │ Knowledge│   │
-│  │ Service  │  │ Service  │   │ Service  │  │ Service  │   │
-│  └──────────┘  └──────────┘   └──────────┘  └──────────┘   │
-│                             │                               │
-│  ┌──────────────────────────▼──────────────────────────┐   │
-│  │              AUTONOMOUS BRAIN (Ollama)              │   │
-│  │    Auto-Fix | Evolution | Security | Optimization   │   │
-│  └─────────────────────────────────────────────────────┘   │
-│                             │                               │
-│  ┌──────────────────────────▼──────────────────────────┐   │
-│  │            TON BLOCKCHAIN (Settlement)               │   │
-│  └─────────────────────────────────────────────────────┘   │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
+POST /v1/chat/completions    — OpenAI-compatible inference
+GET  /v1/models              — Available AI models
+GET  /v1/pipeline/status     — GPU pipeline network
+GET  /v1/security/stats      — Guardrails defense stats
+GET  /v1/federated/stats     — Federated learning metrics
+GET  /v1/mobile/stats        — Mobile mining network
+GET  /v1/recycling/stats     — Token economy flow
+GET  /v1/airlock/stats       — Data privacy stats
+POST /v1/openclaw/rpc        — Robot JSON-RPC interface
+GET  /v1/health              — Platform health check
 ```
 
----
+Full specification: [`openapi.yaml`](openapi.yaml)
 
-## 🌐 Supported Languages
+## Token Economy
 
-🇺🇸 English | 🇷🇺 Русский | 🇨🇳 中文 | 🇪🇸 Español | 🇩🇪 Deutsch | 🇫🇷 Français | 🇯🇵 日本語 | 🇰🇷 한국어 | 🇵🇹 Português | 🇮🇹 Italiano | 🇸🇦 العربية | 🇮🇳 हिन्दी | 🇹🇷 Türkçe | 🇻🇳 Tiếng Việt | 🇹🇭 ไทย | 🇮🇩 Bahasa
+```
+Fixed Supply: 1,000,000,000 GSTD (never increases)
 
-All UI and documentation are auto-translated. API responses can be localized.
+Every transaction:
+├── 93% → Recycling Pool → Paid to miners/workers
+├── 2%  → Golden Reserve → Buys XAUt (physical gold)
+└── 5%  → Burned forever → Deflationary pressure
+```
 
----
+## Golden Reserve
 
-## 📱 Mobile-First Design
+GSTD is backed by **Tether Gold (XAUt)** — each XAUt represents one troy ounce of physical gold stored in Swiss vaults. The reserve grows with every transaction on the platform.
 
-- Optimized for slow connections
-- < 2 second load times
-- Works offline with cached data
-- Native iOS/Android apps coming soon
-
----
-
-## 🔒 Security Features
-
-- **Blockchain Settlement**: All payments on TON
-- **Encrypted Tasks**: E2E encryption for sensitive data
-- **Proof-of-Work**: Anti-sybil protection
-- **Autonomous Monitoring**: AI-powered threat detection
-- **No Central Point of Failure**: Distributed architecture
-
----
-
-## 📈 Tokenomics
-
-| Allocation | Percentage | Purpose |
-|------------|------------|---------|
-| Worker Rewards | 60% | Paid to task executors |
-| Development | 20% | Platform improvements |
-| Liquidity | 10% | DEX pools (STON.fi, DeDust) |
-| Team | 10% | Long-term incentives |
-
-**Total Supply**: 1,000,000,000 GSTD
-**Gold Reserve**: XAUt-backed stability mechanism
-
----
-
-## 🚀 Roadmap
-
-- [x] Core Platform Launch
-- [x] AI Agent Integration
-- [x] Multi-language Support
-- [x] Autonomous Self-Healing
-- [x] Token Faucet System
-- [ ] Mobile Apps (Q2 2026)
-- [ ] Enterprise Dashboard (Q2 2026)
-- [ ] Cross-chain Bridge (Q3 2026)
-- [ ] Decentralized Governance (Q4 2026)
-
----
-
-## 🤝 Contributing
-
-We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+## Self-Hosting
 
 ```bash
 git clone https://github.com/gstdcoin/ai.git
 cd ai
-./scripts/setup-dev.sh
+cp .env.example .env  # Configure your keys
+docker compose -f docker-compose.prod.yml up -d
 ```
 
----
+Requirements: Docker, 4GB RAM minimum, TON wallet for rewards.
 
-## 📞 Support
+## Contributing
 
-- 📧 Email: support@gstdtoken.com
-- 💬 Telegram: [@gstd_network](https://t.me/gstd_network)
-- 🐦 Twitter: [@GSTDToken](https://twitter.com/GSTDToken)
-- 📚 Docs: [docs.gstdtoken.com](https://docs.gstdtoken.com)
+1. Fork the repository
+2. Create a feature branch
+3. Submit a pull request
+
+All contributions earn GSTD tokens via the platform's referral system.
+
+## License
+
+MIT License — Free for humanity.
 
 ---
 
 <div align="center">
 
-**GSTD — The AI Network That Works For You.** 🌌🦾
+**Sovereign AI for everyone. No corporations. No censorship. No limits.**
 
-*Built with ❤️ for humans and agents alike.*
+[Join the Revolution →](https://app.gstdtoken.com)
 
 </div>

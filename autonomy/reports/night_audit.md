@@ -4506,3 +4506,1173 @@ redis: 2026/02/09 04:03:59 pool.go:426: redis: connection pool: failed to dial a
 ⚠️  No GEO Service activity or initialization found in logs.
 
 ---
+## 🛡️ GSTD Security Audit - 2026-02-09 16:00:01
+
+### 💎 TON Service Check
+2026/02/09 15:46:31 pool_monitor_service.go:270: ❌ PoolMonitor: Failed to get status: API returned status 429
+2026/02/09 15:46:31 payment_watcher.go:124: PaymentWatcher: Error fetching transfers: TON API error (429): {"error":"rate limit: free tier"}
+
+### 🌍 GEO Service Check
+✅ GEO Service is running correctly (found 1 log entries).
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-09 17:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-09 18:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-09 19:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-09 20:00:01
+
+### 💎 TON Service Check
+2026/02/09 19:57:31 payment_watcher.go:124: PaymentWatcher: Error fetching transfers: TON API error (429): {"error":"rate limit: free tier"}
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-09 21:00:01
+
+### 💎 TON Service Check
+2026/02/09 20:11:31 payment_watcher.go:124: PaymentWatcher: Error fetching transfers: TON API error (429): {"error":"rate limit: free tier"}
+2026/02/09 20:43:16 ton_service.go:140: GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/02/09 20:43:52 routes.go:934: Health check: Database ping failed: driver: bad connection
+redis: 2026/02/09 20:43:53 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/09 20:43:53 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/09 20:43:53 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/09 20:43:54 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/09 20:43:54 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/09 20:43:55 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/09 20:43:55 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/09 20:43:55 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/09 20:43:55 middleware_session.go:100: ❌ ValidateSession: Redis error checking session: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/09 20:43:56 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/09 20:43:57 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/09 20:43:57 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/09 20:43:58 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/09 20:44:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+redis: 2026/02/09 20:44:16 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/09 20:44:17 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/09 20:44:18 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-09 22:00:01
+
+### 💎 TON Service Check
+2026/02/09 21:05:20 ton_service.go:140: GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/02/09 21:12:30 tonconnect_validator.go:73: ⚠️  Failed to parse payload as JSON, trying simple format: invalid character 'g' looking for beginning of value
+2026/02/09 21:12:30 tonconnect_validator.go:184: ⚠️  Offline verification failed or key ignored. Fetching from TON API.
+2026/02/09 21:12:30 tonconnect_validator.go:196: ❌ Public key not found: failed to resolve public key for wallet 0:aa7a466d7a5c198a52d1ab5364dbb6ea23623a7df60ede060381eb3bef7ed30d: public key not found for address 0:aa7a466d7a5c198a52d1ab5364dbb6ea23623a7df60ede060381eb3bef7ed30d
+2026/02/09 21:12:30 routes_user.go:227: ❌ TonConnect signature validation failed for 0:aa7a466d7a5c198a52d1ab5364dbb6ea23623a7df60ede060381eb3bef7ed30d: Wallet not initialized or public key not found in blockchain. Please perform at least one transaction to initialize your wallet.
+2026/02/09 21:14:56 ton_service.go:140: GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/02/09 21:18:12 marketplace_handler.go:215: ❌ Failed to create task: pq: duplicate key value violates unique constraint "tasks_pkey" (23505)
+2026/02/09 21:18:34 marketplace_handler.go:215: ❌ Failed to create task: pq: duplicate key value violates unique constraint "tasks_pkey" (23505)
+2026/02/09 21:18:50 marketplace_handler.go:215: ❌ Failed to create task: pq: duplicate key value violates unique constraint "tasks_pkey" (23505)
+2026/02/09 21:18:53 marketplace_handler.go:215: ❌ Failed to create task: pq: duplicate key value violates unique constraint "tasks_pkey" (23505)
+2026/02/09 21:19:47 ws_handler.go:298: WebSocket error: websocket: close 1005 (no status)
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-09 23:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-10 00:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-10 01:00:01
+
+### 💎 TON Service Check
+2026/02/10 00:20:31 payment_watcher.go:124: PaymentWatcher: Error fetching transfers: HTTP request failed: Get "https://tonapi.io/v2/accounts/EQAIYlrr3UiMJ9fqI-B4j2nJdiiD7WzyaNL1MX_wiONc4OUi/jettons/EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO/history?limit=100": read tcp 172.18.0.8:53540->172.64.153.168:443: read: connection reset by peer
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-10 02:00:01
+
+### 💎 TON Service Check
+2026/02/10 01:23:02 ws_handler.go:298: WebSocket error: websocket: close 1005 (no status)
+2026/02/10 01:23:06 ws_handler.go:298: WebSocket error: websocket: close 1005 (no status)
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-10 03:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-10 04:00:01
+
+### 💎 TON Service Check
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-10 05:00:01
+
+### 💎 TON Service Check
+redis: 2026/02/10 04:00:46 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/10 04:00:47 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 04:00:47 routes.go:934: Health check: Database ping failed: driver: bad connection
+redis: 2026/02/10 04:00:48 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/10 04:00:48 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/10 04:00:49 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 04:00:49 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/10 04:00:49 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/10 04:00:50 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/10 04:00:51 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/10 04:00:52 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/10 04:00:52 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/10 04:00:53 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 04:01:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 04:01:03 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+redis: 2026/02/10 04:01:04 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/10 04:01:05 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/10 04:01:06 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/10 04:01:06 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/10 04:01:07 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-10 06:00:01
+
+### 💎 TON Service Check
+2026/02/10 05:00:01 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod: i/o timeout
+2026/02/10 05:00:09 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: server misbehaving
+2026/02/10 05:00:29 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: server misbehaving
+2026/02/10 05:00:37 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: server misbehaving
+2026/02/10 05:00:37 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: server misbehaving
+2026/02/10 05:00:37 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: server misbehaving
+2026/02/10 05:00:46 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod: i/o timeout
+2026/02/10 05:00:57 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: server misbehaving
+2026/02/10 05:00:57 routes.go:960: Health check: Failed to get contract balance: context canceled
+2026/02/10 05:01:09 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: server misbehaving
+2026/02/10 05:01:09 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: server misbehaving
+2026/02/10 05:01:29 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: server misbehaving
+2026/02/10 05:01:31 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod: i/o timeout
+2026/02/10 05:01:39 payout_retry_service.go:66: PayoutRetryService: Error querying failed payouts: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: server misbehaving
+2026/02/10 05:01:39 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: server misbehaving
+2026/02/10 05:01:39 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: server misbehaving
+2026/02/10 05:01:47 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: server misbehaving
+2026/02/10 05:02:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 05:02:04 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 05:02:16 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-10 07:00:01
+
+### 💎 TON Service Check
+2026/02/10 06:00:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 06:00:01 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 06:00:11 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 06:00:21 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 06:00:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 06:00:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 06:00:42 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 06:00:46 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 06:00:51 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 06:01:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 06:01:21 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 06:01:24 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 06:01:31 payout_retry_service.go:66: PayoutRetryService: Error querying failed payouts: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 06:01:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 06:01:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 06:01:31 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 06:01:52 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 06:02:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 06:02:05 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 06:02:16 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-10 08:00:01
+
+### 💎 TON Service Check
+2026/02/10 07:00:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 07:00:01 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 07:00:05 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 07:00:21 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 07:00:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 07:00:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 07:00:35 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 07:00:46 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 07:00:54 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 07:01:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 07:01:06 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 07:01:31 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 07:01:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 07:01:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 07:01:31 payout_retry_service.go:66: PayoutRetryService: Error querying failed payouts: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 07:01:36 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 07:01:36 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 07:02:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 07:02:06 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 07:02:16 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-10 09:00:01
+
+### 💎 TON Service Check
+2026/02/10 08:00:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 08:00:01 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 08:00:01 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 08:00:01 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 08:00:27 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 08:00:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 08:00:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 08:00:32 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 08:00:46 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 08:01:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 08:01:02 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 08:01:09 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 08:01:31 payout_retry_service.go:66: PayoutRetryService: Error querying failed payouts: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 08:01:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 08:01:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 08:01:31 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 08:01:33 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 08:01:50 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 08:02:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 08:02:03 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-10 10:00:01
+
+### 💎 TON Service Check
+2026/02/10 09:00:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 09:00:01 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 09:00:01 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 09:00:05 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 09:00:26 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 09:00:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 09:00:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 09:00:35 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 09:00:46 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 09:01:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 09:01:05 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 09:01:08 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 09:01:31 payout_retry_service.go:66: PayoutRetryService: Error querying failed payouts: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 09:01:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 09:01:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 09:01:31 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 09:01:36 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 09:01:49 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 09:02:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 09:02:06 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-10 11:00:01
+
+### 💎 TON Service Check
+2026/02/10 10:00:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 10:00:01 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 10:00:15 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 10:00:21 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 10:00:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 10:00:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 10:00:46 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 10:00:46 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 10:00:52 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 10:01:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 10:01:07 middleware_session.go:100: ❌ ValidateSession: Redis error checking session: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 10:01:22 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 10:01:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 10:01:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 10:01:31 payout_retry_service.go:66: PayoutRetryService: Error querying failed payouts: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 10:01:31 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 10:01:48 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 10:01:52 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 10:02:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 10:02:16 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-10 12:00:01
+
+### 💎 TON Service Check
+2026/02/10 11:00:01 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 11:00:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 11:00:06 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 11:00:07 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 11:00:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 11:00:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 11:00:37 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 11:00:38 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 11:00:46 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 11:01:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 11:01:08 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 11:01:08 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 11:01:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 11:01:31 payout_retry_service.go:66: PayoutRetryService: Error querying failed payouts: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 11:01:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 11:01:31 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 11:01:39 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 11:01:49 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 11:02:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 11:02:09 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-10 13:00:01
+
+### 💎 TON Service Check
+2026/02/10 12:00:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 12:00:01 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 12:00:14 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 12:00:23 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 12:00:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 12:00:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 12:00:45 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 12:00:46 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 12:00:54 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 12:01:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 12:01:24 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 12:01:27 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 12:01:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 12:01:31 payout_retry_service.go:66: PayoutRetryService: Error querying failed payouts: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 12:01:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 12:01:31 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 12:01:55 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 12:02:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 12:02:08 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 12:02:16 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-10 14:00:01
+
+### 💎 TON Service Check
+2026/02/10 13:00:01 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 13:00:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 13:00:03 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 13:00:09 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 13:00:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 13:00:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 13:00:35 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 13:00:39 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 13:00:46 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 13:01:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 13:01:10 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 13:01:16 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 13:01:31 payout_retry_service.go:66: PayoutRetryService: Error querying failed payouts: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 13:01:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 13:01:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 13:01:31 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 13:01:40 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 13:01:58 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 13:02:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 13:02:11 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-10 15:00:01
+
+### 💎 TON Service Check
+2026/02/10 14:00:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 14:00:01 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 14:00:21 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 14:00:25 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 14:00:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 14:00:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 14:00:46 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 14:00:55 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 14:00:56 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 14:01:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 14:01:26 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 14:01:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 14:01:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 14:01:31 payout_retry_service.go:66: PayoutRetryService: Error querying failed payouts: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 14:01:31 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 14:01:38 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 14:01:56 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 14:02:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 14:02:16 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 14:02:19 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-10 16:00:01
+
+### 💎 TON Service Check
+2026/02/10 15:00:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 15:00:01 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 15:00:01 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 15:00:11 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 15:00:26 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 15:00:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 15:00:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 15:00:41 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 15:00:46 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 15:01:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 15:01:07 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 15:01:12 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 15:01:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 15:01:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 15:01:31 payout_retry_service.go:66: PayoutRetryService: Error querying failed payouts: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 15:01:31 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 15:01:42 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 15:01:49 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 15:02:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 15:02:13 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-10 17:00:01
+
+### 💎 TON Service Check
+2026/02/10 16:00:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 16:00:01 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 16:00:21 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 16:00:27 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 16:00:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 16:00:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 16:00:46 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 16:00:58 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 16:01:00 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 16:01:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 16:01:28 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 16:01:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 16:01:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 16:01:31 payout_retry_service.go:66: PayoutRetryService: Error querying failed payouts: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 16:01:31 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 16:01:41 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 16:01:58 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 16:02:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 16:02:16 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 16:02:23 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-10 18:00:01
+
+### 💎 TON Service Check
+2026/02/10 17:00:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 17:00:01 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 17:00:17 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 17:00:21 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 17:00:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 17:00:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 17:00:46 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 17:00:48 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 17:01:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 17:01:03 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 17:01:18 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 17:01:31 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 17:01:31 payout_retry_service.go:66: PayoutRetryService: Error querying failed payouts: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 17:01:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 17:01:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 17:01:44 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 17:01:48 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 17:02:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 17:02:15 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 17:02:16 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-10 19:00:01
+
+### 💎 TON Service Check
+2026/02/10 18:00:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 18:00:01 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 18:00:03 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 18:00:13 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 18:00:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 18:00:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 18:00:33 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 18:00:44 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 18:00:46 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 18:01:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 18:01:04 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 18:01:26 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 18:01:31 payout_retry_service.go:66: PayoutRetryService: Error querying failed payouts: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 18:01:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 18:01:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 18:01:31 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 18:01:34 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 18:02:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 18:02:05 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 18:02:07 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-10 20:00:01
+
+### 💎 TON Service Check
+2026/02/10 19:00:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 19:00:01 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 19:00:19 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 19:00:22 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 19:00:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 19:00:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 19:00:46 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 19:00:50 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 19:00:58 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 19:01:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 19:01:20 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 19:01:29 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 19:01:31 payout_retry_service.go:66: PayoutRetryService: Error querying failed payouts: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 19:01:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 19:01:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 19:01:31 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 19:01:51 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 19:02:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 19:02:11 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 19:02:16 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-10 21:00:01
+
+### 💎 TON Service Check
+2026/02/10 20:00:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 20:00:01 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 20:00:01 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 20:00:05 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 20:00:30 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 20:00:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 20:00:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 20:00:36 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 20:00:46 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 20:01:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 20:01:06 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 20:01:12 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 20:01:31 payout_retry_service.go:66: PayoutRetryService: Error querying failed payouts: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 20:01:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 20:01:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 20:01:31 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 20:01:36 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 20:01:53 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 20:02:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 20:02:07 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-10 22:00:02
+
+### 💎 TON Service Check
+2026/02/10 21:00:12 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 21:00:22 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 21:00:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 21:00:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 21:00:44 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 21:00:46 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 21:00:52 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 21:01:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 21:01:23 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 21:01:25 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 21:01:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 21:01:31 payout_retry_service.go:66: PayoutRetryService: Error querying failed payouts: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 21:01:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 21:01:31 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 21:01:53 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 21:02:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 21:02:07 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 21:02:16 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 21:02:23 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 21:02:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-10 23:00:01
+
+### 💎 TON Service Check
+2026/02/10 22:00:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 22:00:01 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 22:00:07 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 22:00:13 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 22:00:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 22:00:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 22:00:37 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 22:00:44 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 22:00:46 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 22:01:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 22:01:08 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 22:01:26 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 22:01:31 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 22:01:31 payout_retry_service.go:66: PayoutRetryService: Error querying failed payouts: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 22:01:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 22:01:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 22:01:38 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 22:02:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 22:02:07 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 22:02:09 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-11 00:00:01
+
+### 💎 TON Service Check
+2026/02/10 23:00:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 23:00:01 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 23:00:03 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 23:00:23 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 23:00:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 23:00:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 23:00:34 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 23:00:46 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 23:00:53 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 23:01:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 23:01:07 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 23:01:24 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 23:01:31 payout_retry_service.go:66: PayoutRetryService: Error querying failed payouts: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 23:01:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 23:01:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 23:01:31 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/10 23:01:47 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 23:01:54 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 23:02:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/10 23:02:16 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-11 01:00:01
+
+### 💎 TON Service Check
+2026/02/11 00:00:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 00:00:01 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/11 00:00:08 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 00:00:22 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 00:00:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 00:00:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 00:00:39 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 00:00:46 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/11 00:00:56 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 00:01:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 00:01:09 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 00:01:31 payout_retry_service.go:66: PayoutRetryService: Error querying failed payouts: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 00:01:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 00:01:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 00:01:31 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/11 00:01:37 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 00:01:39 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 00:02:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 00:02:10 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 00:02:16 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-11 02:00:01
+
+### 💎 TON Service Check
+2026/02/11 01:00:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 01:00:01 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/11 01:00:05 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 01:00:24 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 01:00:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 01:00:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 01:00:36 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 01:00:46 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/11 01:00:54 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 01:01:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 01:01:17 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 01:01:25 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 01:01:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 01:01:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 01:01:31 payout_retry_service.go:66: PayoutRetryService: Error querying failed payouts: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 01:01:31 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/11 01:01:55 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 01:01:59 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 01:02:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 01:02:16 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-11 03:00:01
+
+### 💎 TON Service Check
+2026/02/11 02:00:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 02:00:01 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/11 02:00:03 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 02:00:09 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 02:00:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 02:00:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 02:00:35 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 02:00:39 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 02:00:46 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/11 02:01:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 02:01:09 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 02:01:16 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 02:01:31 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/11 02:01:31 payout_retry_service.go:66: PayoutRetryService: Error querying failed payouts: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 02:01:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 02:01:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 02:01:40 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 02:01:57 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 02:02:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 02:02:10 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-11 04:00:01
+
+### 💎 TON Service Check
+2026/02/11 03:00:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 03:00:01 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/11 03:00:22 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 03:00:24 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 03:00:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 03:00:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 03:00:45 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 03:00:46 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/11 03:00:54 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 03:01:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 03:01:25 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 03:01:27 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 03:01:31 payout_retry_service.go:66: PayoutRetryService: Error querying failed payouts: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 03:01:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 03:01:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 03:01:31 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/11 03:01:55 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 03:02:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 03:02:08 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 03:02:16 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-11 05:00:01
+
+### 💎 TON Service Check
+2026/02/11 04:00:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 04:00:01 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/11 04:00:01 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 04:00:10 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 04:00:21 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 04:00:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 04:00:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 04:00:40 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 04:00:46 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/11 04:00:47 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 04:01:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 04:01:11 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 04:01:29 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 04:01:31 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/11 04:01:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 04:01:31 payout_retry_service.go:66: PayoutRetryService: Error querying failed payouts: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 04:01:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 04:01:41 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 04:02:00 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 04:02:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-11 06:00:01
+
+### 💎 TON Service Check
+2026/02/11 05:00:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 05:00:01 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/11 05:00:21 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 05:00:26 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 05:00:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 05:00:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 05:00:46 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/11 05:00:56 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 05:00:59 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 05:01:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 05:01:26 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 05:01:30 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 05:01:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 05:01:31 payout_retry_service.go:66: PayoutRetryService: Error querying failed payouts: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 05:01:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 05:01:31 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/11 05:01:57 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 05:02:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 05:02:12 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 05:02:16 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-11 07:00:01
+
+### 💎 TON Service Check
+2026/02/11 06:00:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 06:00:01 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/11 06:00:01 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 06:00:11 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 06:00:29 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 06:00:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 06:00:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 06:00:41 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 06:00:46 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/11 06:01:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 06:01:11 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 06:01:11 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 06:01:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 06:01:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 06:01:31 payout_retry_service.go:66: PayoutRetryService: Error querying failed payouts: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 06:01:31 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/11 06:01:42 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 06:01:52 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 06:02:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 06:02:12 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-11 08:00:01
+
+### 💎 TON Service Check
+2026/02/11 07:00:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 07:00:01 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/11 07:00:01 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 07:00:22 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 07:00:27 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 07:00:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 07:00:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 07:00:46 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/11 07:00:57 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 07:01:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 07:01:01 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 07:01:27 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 07:01:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 07:01:31 payout_retry_service.go:66: PayoutRetryService: Error querying failed payouts: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 07:01:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 07:01:31 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/11 07:01:43 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 07:01:58 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 07:02:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 07:02:16 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-11 09:00:01
+
+### 💎 TON Service Check
+2026/02/11 08:00:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 08:00:01 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/11 08:00:01 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 08:00:12 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 08:00:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 08:00:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 08:00:32 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 08:00:42 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 08:00:46 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/11 08:01:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 08:01:13 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 08:01:13 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 08:01:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 08:01:31 payout_retry_service.go:66: PayoutRetryService: Error querying failed payouts: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 08:01:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 08:01:31 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/11 08:01:43 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 08:01:55 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 08:02:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 08:02:14 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-11 10:00:01
+
+### 💎 TON Service Check
+2026/02/11 09:00:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 09:00:01 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/11 09:00:01 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 09:00:13 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 09:00:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 09:00:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 09:00:31 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 09:00:45 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 09:00:46 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/11 09:01:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 09:01:02 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 09:01:26 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 09:01:31 payout_retry_service.go:66: PayoutRetryService: Error querying failed payouts: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 09:01:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 09:01:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 09:01:31 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/11 09:01:32 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 09:02:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 09:02:02 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 09:02:08 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-11 11:00:01
+
+### 💎 TON Service Check
+2026/02/11 10:00:01 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 10:00:01 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/11 10:00:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 10:00:17 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 10:00:22 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 10:00:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 10:00:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 10:00:46 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/11 10:00:47 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 10:00:52 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 10:01:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 10:01:18 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 10:01:31 payout_retry_service.go:66: PayoutRetryService: Error querying failed payouts: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 10:01:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 10:01:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 10:01:31 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/11 10:01:34 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 10:01:48 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 10:02:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 10:02:15 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-11 12:00:01
+
+### 💎 TON Service Check
+2026/02/11 11:00:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 11:00:01 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/11 11:00:07 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 11:00:21 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 11:00:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 11:00:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 11:00:38 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 11:00:46 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/11 11:01:00 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 11:01:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 11:01:08 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 11:01:31 payout_retry_service.go:66: PayoutRetryService: Error querying failed payouts: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 11:01:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 11:01:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 11:01:31 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/11 11:01:38 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 11:01:41 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 11:02:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 11:02:09 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 11:02:16 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-11 13:00:01
+
+### 💎 TON Service Check
+2026/02/11 12:00:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 12:00:01 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/11 12:00:21 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 12:00:23 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 12:00:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 12:00:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 12:00:46 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/11 12:00:53 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 12:00:53 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 12:01:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 12:01:24 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 12:01:31 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 12:01:31 payout_retry_service.go:66: PayoutRetryService: Error querying failed payouts: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 12:01:31 pow_service.go:344: Warning: failed to cleanup expired PoW challenges: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 12:01:31 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/11 12:01:34 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 12:01:54 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 12:02:01 task_orchestrator.go:629: Error refreshing queue: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+2026/02/11 12:02:16 container.go:226: ⚠️  Heartbeat Flush Error: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/11 12:02:16 routes.go:934: Health check: Database ping failed: dial tcp: lookup gstd_postgres_prod on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-11 14:00:01
+
+### 💎 TON Service Check
+redis: 2026/02/11 13:00:02 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/11 13:00:03 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/11 13:00:04 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/11 13:00:05 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/11 13:00:05 main.go:37: ❌ Failed to start application: could not build arguments for function "distributed-computing-platform/internal/app".StartApplication.func1 (/app/internal/app/container.go:140): failed to build *services.CacheService: could not build arguments for function "distributed-computing-platform/internal/services".NewCacheService (/app/internal/services/cache_service.go:18): failed to build *redis.Client: received non-nil error from function "distributed-computing-platform/internal/app".BuildContainer.func4 (/app/internal/app/container.go:36): dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/11 13:00:06 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/11 13:00:07 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/11 13:00:08 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/11 13:00:09 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/11 13:00:09 main.go:37: ❌ Failed to start application: could not build arguments for function "distributed-computing-platform/internal/app".StartApplication.func1 (/app/internal/app/container.go:140): failed to build *services.CacheService: could not build arguments for function "distributed-computing-platform/internal/services".NewCacheService (/app/internal/services/cache_service.go:18): failed to build *redis.Client: received non-nil error from function "distributed-computing-platform/internal/app".BuildContainer.func4 (/app/internal/app/container.go:36): dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/11 13:00:11 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/11 13:00:13 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/11 13:00:14 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/11 13:00:15 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/11 13:00:16 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/11 13:00:16 main.go:37: ❌ Failed to start application: could not build arguments for function "distributed-computing-platform/internal/app".StartApplication.func1 (/app/internal/app/container.go:140): failed to build *services.CacheService: could not build arguments for function "distributed-computing-platform/internal/services".NewCacheService (/app/internal/services/cache_service.go:18): failed to build *redis.Client: received non-nil error from function "distributed-computing-platform/internal/app".BuildContainer.func4 (/app/internal/app/container.go:36): dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/11 13:00:18 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/11 13:00:19 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/11 13:00:20 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/11 13:00:21 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-11 15:00:01
+
+### 💎 TON Service Check
+redis: 2026/02/11 14:00:03 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/11 14:00:04 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/11 14:00:04 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/11 14:00:05 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/11 14:00:05 main.go:37: ❌ Failed to start application: could not build arguments for function "distributed-computing-platform/internal/app".StartApplication.func1 (/app/internal/app/container.go:140): failed to build *services.CacheService: could not build arguments for function "distributed-computing-platform/internal/services".NewCacheService (/app/internal/services/cache_service.go:18): failed to build *redis.Client: received non-nil error from function "distributed-computing-platform/internal/app".BuildContainer.func4 (/app/internal/app/container.go:36): dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/11 14:00:08 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/11 14:00:09 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/11 14:00:10 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/11 14:00:12 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/11 14:00:13 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/11 14:00:13 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/11 14:00:14 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/11 14:00:14 main.go:37: ❌ Failed to start application: could not build arguments for function "distributed-computing-platform/internal/app".StartApplication.func1 (/app/internal/app/container.go:140): failed to build *services.CacheService: could not build arguments for function "distributed-computing-platform/internal/services".NewCacheService (/app/internal/services/cache_service.go:18): failed to build *redis.Client: received non-nil error from function "distributed-computing-platform/internal/app".BuildContainer.func4 (/app/internal/app/container.go:36): dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/11 14:00:17 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/11 14:00:18 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/11 14:00:19 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/11 14:00:20 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+2026/02/11 14:00:20 main.go:37: ❌ Failed to start application: could not build arguments for function "distributed-computing-platform/internal/app".StartApplication.func1 (/app/internal/app/container.go:140): failed to build *services.CacheService: could not build arguments for function "distributed-computing-platform/internal/services".NewCacheService (/app/internal/services/cache_service.go:18): failed to build *redis.Client: received non-nil error from function "distributed-computing-platform/internal/app".BuildContainer.func4 (/app/internal/app/container.go:36): dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/11 14:00:23 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+redis: 2026/02/11 14:00:24 pool.go:426: redis: connection pool: failed to dial after 5 attempts: dial tcp: lookup gstd_redis_prod on 127.0.0.11:53: no such host
+
+### 🌍 GEO Service Check
+✅ GEO Service is running correctly (found 1 log entries).
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-11 16:00:01
+
+### 💎 TON Service Check
+2026/02/11 15:47:34 main.go:18: ℹ️  No .env file found or error loading it: open .env: no such file or directory
+2026/02/11 15:47:34 payment_watcher.go:124: PaymentWatcher: Error fetching transfers: TON API error (429): {"error":"rate limit: free tier"}
+2026/02/11 15:47:34 pool_monitor_service.go:270: ❌ PoolMonitor: Failed to get status: API returned status 429
+
+### 🌍 GEO Service Check
+✅ GEO Service is running correctly (found 1 log entries).
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-11 17:00:01
+
+### 💎 TON Service Check
+2026/02/11 16:48:15 main.go:18: ℹ️  No .env file found or error loading it: open .env: no such file or directory
+2026/02/11 16:48:16 pool_monitor_service.go:270: ❌ PoolMonitor: Failed to get status: API returned status 429
+2026/02/11 16:58:51 ton_service.go:140: GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/02/11 16:58:52 ton_service.go:140: GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+
+### 🌍 GEO Service Check
+✅ GEO Service is running correctly (found 1 log entries).
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-11 18:00:01
+
+### 💎 TON Service Check
+2026/02/11 17:11:05 tonconnect_validator.go:73: ⚠️  Failed to parse payload as JSON, trying simple format: invalid character 'g' looking for beginning of value
+2026/02/11 17:11:05 tonconnect_validator.go:184: ⚠️  Offline verification failed or key ignored. Fetching from TON API.
+2026/02/11 17:11:05 tonconnect_validator.go:196: ❌ Public key not found: failed to resolve public key for wallet 0:aa7a466d7a5c198a52d1ab5364dbb6ea23623a7df60ede060381eb3bef7ed30d: public key not found for address 0:aa7a466d7a5c198a52d1ab5364dbb6ea23623a7df60ede060381eb3bef7ed30d
+2026/02/11 17:11:05 routes_user.go:228: ❌ TonConnect signature validation failed for 0:aa7a466d7a5c198a52d1ab5364dbb6ea23623a7df60ede060381eb3bef7ed30d: Wallet not initialized or public key not found in blockchain. Please perform at least one transaction to initialize your wallet.
+2026/02/11 17:12:09 ton_service.go:140: GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/02/11 17:12:09 ton_service.go:140: GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/02/11 17:12:16 payment_watcher.go:124: PaymentWatcher: Error fetching transfers: TON API error (429): {"error":"rate limit: free tier"}
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---
+## 🛡️ GSTD Security Audit - 2026-02-11 19:00:01
+
+### 💎 TON Service Check
+2026/02/11 18:09:39 ws_handler.go:298: WebSocket error: websocket: close 1005 (no status)
+2026/02/11 18:09:40 ton_service.go:140: GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+2026/02/11 18:09:55 ton_service.go:140: GetJettonBalance: API error (400): {"error":"can't decode address EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV-Riwa854wa"}
+
+### 🌍 GEO Service Check
+⚠️  No GEO Service activity or initialization found in logs.
+
+---

@@ -119,12 +119,16 @@ export default function WalletListener() {
                             lastLoggedInAddress.current = rawAddress;
                             toast.success('Wallet connected');
 
-                            // Fetch balance
+                            // Fetch balance + pending earnings
                             try {
-                                const balanceData = await apiGet<any>('/users/balance');
+                                const [balanceData, pendingData] = await Promise.all([
+                                    apiGet<any>('/users/balance'),
+                                    apiGet<any>('/users/pending_balance').catch(() => ({ pending_balance: 0 })),
+                                ]);
                                 useWalletStore.getState().updateBalance(
                                     (balanceData.ton || 0).toString(),
-                                    balanceData.gstd || 0
+                                    balanceData.gstd || 0,
+                                    pendingData.pending_balance || 0
                                 );
                             } catch (e) { /* silent */ }
 
@@ -167,12 +171,16 @@ export default function WalletListener() {
                 localStorage.setItem('user', JSON.stringify(userData.user || userData));
                 lastLoggedInAddress.current = rawAddress;
 
-                // 5. Fetch Real Balance
+                // 5. Fetch Real Balance + Pending Earnings
                 try {
-                    const balanceData = await apiGet<any>('/users/balance');
+                    const [balanceData, pendingData] = await Promise.all([
+                        apiGet<any>('/users/balance'),
+                        apiGet<any>('/users/pending_balance').catch(() => ({ pending_balance: 0 })),
+                    ]);
                     useWalletStore.getState().updateBalance(
                         (balanceData.ton || 0).toString(),
-                        balanceData.gstd || 0
+                        balanceData.gstd || 0,
+                        pendingData.pending_balance || 0
                     );
                 } catch (e) {
                     logger.error('Failed to fetch balance', e);
@@ -202,10 +210,14 @@ export default function WalletListener() {
 
         const fetchBalance = async () => {
             try {
-                const balanceData = await apiGet<any>('/users/balance');
+                const [balanceData, pendingData] = await Promise.all([
+                    apiGet<any>('/users/balance'),
+                    apiGet<any>('/users/pending_balance').catch(() => ({ pending_balance: 0 })),
+                ]);
                 useWalletStore.getState().updateBalance(
                     (balanceData.ton || 0).toString(),
-                    balanceData.gstd || 0
+                    balanceData.gstd || 0,
+                    pendingData.pending_balance || 0
                 );
             } catch (e) {
                 // Silent fail for balance refresh (no session or network error)

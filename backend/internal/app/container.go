@@ -58,7 +58,7 @@ func BuildContainer() *dig.Container {
 	c.Provide(services.NewPricingService)
 	c.Provide(services.NewInvoiceService)
 	c.Provide(services.NewLendingService)
-	c.Provide(services.NewBoincService)
+
 	c.Provide(services.NewProofOfWorkService)
 	c.Provide(services.NewMaintenanceService)
 	c.Provide(services.NewEscrowService)
@@ -86,11 +86,22 @@ func BuildContainer() *dig.Container {
 			TreasuryWallet: cfg.TON.AdminWallet,
 			WelcomeAmount:  1.0,
 			DailyFaucet:    0.1,
-			AgentBootstrap: 0.5,
+			AgentBootstrap: 10.0, // Vampire Attack Grant
 		}
 	})
 	c.Provide(services.NewWelcomeBonusService)
 	c.Provide(services.NewAgentMarketplaceService)
+	c.Provide(services.NewAPIKeyService)
+	c.Provide(services.NewPipelineParallelismService)
+	c.Provide(services.NewGuardrailsService)
+	c.Provide(services.NewFederatedEngineService)
+	c.Provide(services.NewMobileComputeService)
+	c.Provide(services.NewZeroBalanceGateService)
+	c.Provide(services.NewRecyclingPoolService)
+	c.Provide(services.NewKVCacheService)
+	c.Provide(services.NewZKComputeProofService)
+	c.Provide(services.NewDataAirlockService)
+	c.Provide(services.NewOpenClawBridgeService)
 
 	c.Provide(func(cfg *config.Config) *services.TONService {
 		return services.NewTONService(cfg.TON.APIURL, cfg.TON.APIKey)
@@ -167,7 +178,7 @@ func StartApplication(container *dig.Container) error {
 		taskOrchestrator *services.TaskOrchestrator,
 		telegramService *services.TelegramService,
 		lendingService *services.LendingService,
-		boincService *services.BoincService,
+
 		maintenanceService *services.MaintenanceService,
 		sovereignBridge *services.SovereignBridgeService,
 		knowledgeService *services.KnowledgeService,
@@ -181,6 +192,16 @@ func StartApplication(container *dig.Container) error {
 		timeoutService *services.TimeoutService,
 		userService *services.UserService,
 		stonFiService *services.StonFiService,
+		apiKeyService *services.APIKeyService,
+		pipelineService *services.PipelineParallelismService,
+		guardrailsService *services.GuardrailsService,
+		federatedEngine *services.FederatedEngineService,
+		mobileCompute *services.MobileComputeService,
+		zbGateService *services.ZeroBalanceGateService,
+		recyclingPool *services.RecyclingPoolService,
+		kvCacheService *services.KVCacheService,
+		dataAirlock *services.DataAirlockService,
+		openClawBridge *services.OpenClawBridgeService,
 	) {
 		// 1. Cross-dependency wiring
 		tonService.SetCacheService(cacheService)
@@ -212,7 +233,7 @@ func StartApplication(container *dig.Container) error {
 		go taskOrchestrator.Start(ctx)
 		go maintenanceService.Start(ctx)
 		go poolMonitor.Start(ctx)
-		go boincService.PollAndFinalizeBoincTasks(ctx)
+
 		
 		// 🚀 1M User Optimization: Periodically flush batched heartbeats
 		go func() {
@@ -266,7 +287,7 @@ func StartApplication(container *dig.Container) error {
 			taskOrchestrator,
 			telegramService,
 			lendingService,
-			boincService,
+
 			maintenanceService,
 			sovereignBridge,
 			knowledgeService,
@@ -276,7 +297,21 @@ func StartApplication(container *dig.Container) error {
 			burnService,
 			multiLevelReferralService,
 			agentMarketplaceService,
+			apiKeyService,
 		)
+
+		// 4b. Modular routes (registered separately for clean architecture)
+		v1Group := router.Group("/api/v1")
+		protectedGroup := router.Group("/api/v1")
+		api.SetupPipelineRoutes(v1Group, protectedGroup, pipelineService)
+		api.SetupSovereignRoutes(v1Group, protectedGroup,
+			guardrailsService, federatedEngine, mobileCompute,
+			zbGateService, recyclingPool, kvCacheService,
+			dataAirlock, openClawBridge)
+
+		// Wire guardrails into gateway handler
+		gatewayHandler := api.NewGatewayHandler(apiKeyService, taskService, db)
+		gatewayHandler.SetGuardrails(guardrailsService)
 
 		// 5. Start Server
 		port := cfg.Server.Port

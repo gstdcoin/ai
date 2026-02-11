@@ -23,7 +23,7 @@ interface WalletState {
   connect: (address: string) => void;
   disconnect: () => void;
   setAddress: (address: string | null) => void;
-  updateBalance: (ton: string, gstd: string | number) => void;
+  updateBalance: (ton: string, gstd: string | number, pending?: number) => void;
   setUser: (user: User | null) => void;
   setWorkerActive: (active: boolean) => void;
 }
@@ -56,6 +56,7 @@ export const useWalletStore = create<WalletState>()(
       address: null,
       tonBalance: null,
       gstdBalance: null,
+      pendingEarnings: null,
       user: null,
       workerActive: false,
       lastActiveTimestamp: null,

@@ -1,0 +1,36 @@
+# GSTD Platform Agent Rules
+
+You are an AI agent assisting in the development of the GSTD DePIN Platform.
+The platform is a decentralized physical infrastructure network for autonomous agents.
+
+## Technical Stack
+- **Frontend**: Next.js (React), TailwindCSS, TonConnect SDK, Lucide Icons.
+- **Backend**: Go (Gin framework), PostgreSQL, Redis.
+- **Blockchain**: TON (The Open Network).
+- **Agent Layer**: Python SDK, A2A Protocol, OpenClaw Integration.
+
+## Project Structure
+- `/frontend`: Web dashboard and landing page.
+- `/backend`: API server, task orchestration, and blockchain bridge.
+- `/A2A`: Agent-to-Agent communication layer and Python SDK.
+- `/docs`: Technical documentation and manifestos.
+
+## Key Concepts
+- **GSTD**: Guaranteed Service Time Depth - the utility token and atomic fuel.
+- **DePIN**: Decentralized Physical Infrastructure.
+- **A2A**: Agent-to-Agent protocol for non-custodial orchestration.
+- **Grid Node**: Software running on user hardware that solves tasks.
+
+## General Rules
+- **Aesthetics Matter**: Frontend changes should be premium, cosmic, and modern.
+- **Security First**: All blockchain interactions must be non-custodial.
+- **Scalability**: Backend services should be stateless where possible and use Redis for coordination.
+- **Modularity**: Keep services in `/backend/internal/services` focused and reusable.
+
+## Redirection & Flow
+- When a user connects their wallet on the home page, they should be automatically redirected to `/dashboard`.
+- Ensure all API calls use the `X-Session-Token` header after login.
+
+## Documentation
+- Always update relevant `.md` files in `/docs` if you change core platform logic.
+- Maintain `A2A/SKILL.md` for OpenClaw compatibility.

@@ -79,6 +79,7 @@ type TaskDefinition struct {
 type InputData struct {
 	Source string `json:"source"`
 	Hash   string `json:"hash"`
+	Data   string `json:"data"` // For small inline content
 }
 
 type Constraints struct {
