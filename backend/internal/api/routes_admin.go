@@ -273,6 +273,29 @@ func broadcastAnnouncement(hub *WSHub, ks *services.KnowledgeService) gin.Handle
 	}
 }
 
+// telegramNotifyAudit sends an audit/notification message to the admin via Telegram.
+// Called by night_audit.sh or other cron scripts. Requires X-Admin-API-Key.
+func telegramNotifyAudit(telegramService *services.TelegramService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var body struct {
+			Message string `json:"message"`
+			Event   string `json:"event"`
+		}
+		if err := c.ShouldBindJSON(&body); err != nil {
+			body.Message = "Night audit completed"
+			body.Event = "audit"
+		}
+		msg := fmt.Sprintf("🛡️ <b>GSTD Audit</b>\n\n%s", body.Message)
+		if body.Event != "" {
+			msg = fmt.Sprintf("🛡️ <b>GSTD %s</b>\n\n%s", body.Event, body.Message)
+		}
+		if err := telegramService.NotifyAdmin(c.Request.Context(), msg); err != nil {
+			log.Printf("telegramNotifyAudit: %v", err)
+		}
+		c.JSON(200, gin.H{"status": "sent"})
+	}
+}
+
 // syncGSTDBalances syncs all user GSTD balances from on-chain to database.
 // Admin-only endpoint. Also supports X-Admin-API-Key for cron/automation.
 func syncGSTDBalances(db *sql.DB, tonService *services.TONService, tonConfig config.TONConfig) gin.HandlerFunc {

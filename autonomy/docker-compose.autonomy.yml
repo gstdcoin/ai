@@ -53,10 +53,11 @@ services:
       - ../backend:/home/ubuntu/backend
       - ./proposals:/home/ubuntu/autonomy/proposals
     environment:
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-8306755226:AAEfG2-BZ1Xo9hPex7-igz_WzHEscJOOk-U}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-8306755226:AAF8nzfixha-_l5tUZfVbiCqOHJB-rtojIQ}
+      - ADMIN_ID=${TELEGRAM_CHAT_ID:-5700385228}
       - OLLAMA_HOST=http://gstd_ollama:11434
       - OLLAMA_API_KEY=3010cb48437e419fa97fa354f809dae8.NV9cjek-htbaddBb9wpU3MH9
-      - API_URL=http://backend-blue:8080
+      - API_URL=http://ubuntu-backend-blue-1:8080
     command: sh -c "go mod tidy && go run main.go"
     restart: always
     networks:
@@ -87,6 +88,7 @@ services:
 networks:
   gstd_network:
     external: true
+    name: ubuntu_gstd_network
 
 volumes:
   n8n_data:

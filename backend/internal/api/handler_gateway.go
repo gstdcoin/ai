@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"distributed-computing-platform/internal/services"
 
@@ -31,12 +32,14 @@ func NewGatewayHandler(apiKeyService *services.APIKeyService, taskService *servi
 	if ollamaURL == "" {
 		ollamaURL = "http://host.docker.internal:11434"
 	}
+	// 90s timeout for LLM generation (Qwen can take time)
+	ollamaClient := &http.Client{Timeout: 90 * time.Second}
 	return &GatewayHandler{
 		apiKeyService: apiKeyService,
 		taskService:   taskService,
 		db:            db,
 		ollamaURL:     ollamaURL,
-		client:        &http.Client{Timeout: 120 * 2},
+		client:        ollamaClient,
 	}
 }
 

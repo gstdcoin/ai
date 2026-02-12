@@ -1,5 +1,9 @@
 #!/bin/bash
 # GSTD Nightly Security Audit Script
+if [ -f /home/ubuntu/.env ]; then
+  ADMIN_API_KEY=$(grep '^ADMIN_API_KEY=' /home/ubuntu/.env 2>/dev/null | cut -d= -f2-)
+  TELEGRAM_CHAT_ID=$(grep '^TELEGRAM_CHAT_ID=' /home/ubuntu/.env 2>/dev/null | cut -d= -f2-)
+fi
 REPORT_FILE="/home/ubuntu/autonomy/reports/night_audit.md"
 TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 
@@ -29,3 +33,12 @@ echo "" >> $REPORT_FILE
 
 echo "---" >> $REPORT_FILE
 echo "Audit cycle complete."
+
+# Notify admin via Telegram
+if [ -n "$ADMIN_API_KEY" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
+    SUMMARY=$(tail -n 30 "$REPORT_FILE" | head -n 25)
+    curl -s -X POST "https://app.gstdtoken.com/api/v1/internal/telegram/notify-audit" \
+        -H "Content-Type: application/json" \
+        -H "X-Admin-API-Key: $ADMIN_API_KEY" \
+        -d "{\"event\":\"Night Audit\",\"message\":\"$(echo "$SUMMARY" | sed 's/"/\\"/g' | tr '\n' ' ' | head -c 3000)\"}" > /dev/null 2>&1 || true
+fi

@@ -199,8 +199,8 @@ func SetupRoutes(
 		internal.Use(RequireAdminAPIKey())
 		{
 			internal.POST("/sync-gstd-balances", syncGSTDBalances(db.(*sql.DB), tonService, tonConfig))
+			internal.POST("/telegram/notify-audit", telegramNotifyAudit(telegramService))
 		}
-		
 
 		// Telegram Webhook
 		v1.POST("/telegram/webhook", func(c *gin.Context) {
