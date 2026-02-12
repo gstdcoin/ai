@@ -4,12 +4,15 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
+	"time"
+
+	"distributed-computing-platform/internal/config"
 	"distributed-computing-platform/internal/models"
 	"distributed-computing-platform/internal/services"
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
-	"time"
 )
 
 func getAdminHealth(
@@ -266,6 +269,70 @@ func broadcastAnnouncement(hub *WSHub, ks *services.KnowledgeService) gin.Handle
 			"status": "success",
 			"message": "Announcement broadcasted and synchronized to the Hive Memory",
 			"timestamp": time.Now(),
+		})
+	}
+}
+
+// syncGSTDBalances syncs all user GSTD balances from on-chain to database.
+// Admin-only endpoint. Also supports X-Admin-API-Key for cron/automation.
+func syncGSTDBalances(db *sql.DB, tonService *services.TONService, tonConfig config.TONConfig) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if tonConfig.GSTDJettonAddress == "" {
+			c.JSON(400, gin.H{"error": "GSTD_JETTON_ADDRESS is not configured"})
+			return
+		}
+
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 25*time.Minute)
+		defer cancel()
+
+		rows, err := db.QueryContext(ctx, `
+			SELECT DISTINCT wallet_address
+			FROM users
+			WHERE wallet_address IS NOT NULL AND wallet_address <> ''
+		`)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "failed to query users: " + err.Error()})
+			return
+		}
+		defer rows.Close()
+
+		var totalUsers, updated int
+		for rows.Next() {
+			var addr string
+			if err := rows.Scan(&addr); err != nil {
+				log.Printf("syncGSTDBalances: skip scan %v", err)
+				continue
+			}
+			totalUsers++
+
+			balance, err := tonService.GetJettonBalance(ctx, addr, tonConfig.GSTDJettonAddress)
+			if err != nil {
+				log.Printf("syncGSTDBalances: failed balance for %s: %v", addr, err)
+				continue
+			}
+
+			_, err = db.ExecContext(ctx, `
+				UPDATE users
+				SET gstd_balance = $1, gstd_escrow_balance = 0, gstd_frozen = 0, updated_at = NOW()
+				WHERE wallet_address = $2
+			`, balance, addr)
+			if err != nil {
+				log.Printf("syncGSTDBalances: failed update for %s: %v", addr, err)
+				continue
+			}
+			updated++
+		}
+
+		if err := rows.Err(); err != nil {
+			c.JSON(500, gin.H{"error": "row iteration: " + err.Error()})
+			return
+		}
+
+		c.JSON(200, gin.H{
+			"status":         "success",
+			"users_scanned":  totalUsers,
+			"users_updated":  updated,
+			"jetton_address": tonConfig.GSTDJettonAddress,
 		})
 	}
 }

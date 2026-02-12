@@ -298,6 +298,7 @@ func StartApplication(container *dig.Container) error {
 			multiLevelReferralService,
 			agentMarketplaceService,
 			apiKeyService,
+			guardrailsService,
 		)
 
 		// 4b. Modular routes (registered separately for clean architecture)
@@ -308,10 +309,6 @@ func StartApplication(container *dig.Container) error {
 			guardrailsService, federatedEngine, mobileCompute,
 			zbGateService, recyclingPool, kvCacheService,
 			dataAirlock, openClawBridge)
-
-		// Wire guardrails into gateway handler
-		gatewayHandler := api.NewGatewayHandler(apiKeyService, taskService, db)
-		gatewayHandler.SetGuardrails(guardrailsService)
 
 		// 5. Start Server
 		port := cfg.Server.Port

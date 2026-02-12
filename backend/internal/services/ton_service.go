@@ -57,6 +57,19 @@ func (s *TONService) SetCacheService(cacheService *CacheService) {
 	s.cacheService = cacheService
 }
 
+// JettonMinterInfo describes basic on-chain information about a jetton master
+// contract (minter): total supply and metadata. This is read directly from
+// TON API and is used as the source of truth for GSTD.
+type JettonMinterInfo struct {
+	Address     string                 `json:"address"`
+	TotalSupply float64                `json:"total_supply"` // human-readable (9 decimals)
+	Symbol      string                 `json:"symbol"`
+	Name        string                 `json:"name"`
+	Image       string                 `json:"image"`
+	Decimals    int                    `json:"decimals"`
+	Raw         map[string]interface{} `json:"raw"` // full payload for debugging
+}
+
 // normalizeTONAddress converts raw format (0:...) to user-friendly format if needed
 // TON API expects user-friendly format (EQ...), not raw format (0:...)
 func normalizeTONAddress(address string) string {
@@ -166,6 +179,102 @@ func (s *TONService) GetJettonBalance(ctx context.Context, address string, jetto
 	}
 
 	return balance, nil
+}
+
+// GetJettonMinterInfo fetches total supply and metadata for a jetton master
+// (e.g. GSTD) directly from the blockchain via TON API v2.
+func (s *TONService) GetJettonMinterInfo(ctx context.Context, jettonMasterAddr string) (*JettonMinterInfo, error) {
+	if jettonMasterAddr == "" {
+		return nil, fmt.Errorf("jetton master address is empty")
+	}
+
+	normalized := NormalizeAddressForAPI(jettonMasterAddr)
+
+	// Basic in-memory cache via CacheService (5 minutes)
+	cacheKey := fmt.Sprintf("ton:jetton:minter:%s", normalized)
+	if s.cacheService != nil {
+		var cached JettonMinterInfo
+		if err := s.cacheService.Get(ctx, cacheKey, &cached); err == nil && cached.Address != "" {
+			return &cached, nil
+		}
+	}
+
+	// TON API v2: GET /v2/jettons/{address}
+	url := fmt.Sprintf("%s/v2/jettons/%s", s.apiURL, normalized)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	if s.apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+s.apiKey)
+		req.Header.Set("X-API-Key", s.apiKey)
+	}
+
+	// Respect rate limiter
+	select {
+	case <-s.rateLimiter:
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("TON API jetton error (status %d): %s", resp.StatusCode, string(body))
+	}
+
+	// TonAPI jetton schema (simplified)
+	var raw map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
+		return nil, err
+	}
+
+	meta, _ := raw["metadata"].(map[string]interface{})
+	symbol, _ := meta["symbol"].(string)
+	name, _ := meta["name"].(string)
+	image, _ := meta["image"].(string)
+
+	decimals := 9
+	if d, ok := raw["decimals"].(float64); ok {
+		decimals = int(d)
+	}
+
+	var totalSupplyFloat float64
+	switch v := raw["total_supply"].(type) {
+	case float64:
+		totalSupplyFloat = v
+	case string:
+		if n, err := json.Number(v).Int64(); err == nil {
+			totalSupplyFloat = float64(n)
+		}
+	}
+
+	// Convert from nano units to human-readable using decimals
+	for i := 0; i < decimals; i++ {
+		totalSupplyFloat /= 10
+	}
+
+	info := &JettonMinterInfo{
+		Address:     normalized,
+		TotalSupply: totalSupplyFloat,
+		Symbol:      symbol,
+		Name:        name,
+		Image:       image,
+		Decimals:    decimals,
+		Raw:         raw,
+	}
+
+	if s.cacheService != nil {
+		_ = s.cacheService.Set(ctx, cacheKey, info, 5*time.Minute)
+	}
+
+	return info, nil
 }
 
 // CheckGSTDBalance проверяет наличие GSTD токена (минимум > 0)

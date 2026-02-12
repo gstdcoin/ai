@@ -52,12 +52,14 @@ export const WalletBalanceWidget: React.FC = () => {
     const { address, updateBalance } = useWalletStore();
     const [balance, setBalance] = useState<WalletBalance | null>(null);
     const [loading, setLoading] = useState(true);
-    const [refreshing, setRefreshing] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<'pending' | 'ok' | 'error'>('pending');
 
     const fetchBalance = useCallback(async () => {
         if (!address) return;
 
         try {
+      setSyncStatus('pending');
             // Fetch On-Chain Balance
             const balanceData = await apiGet<any>(`/wallet/balance?wallet=${address}&address=${address}`); // Support both param names
 
@@ -75,9 +77,11 @@ export const WalletBalanceWidget: React.FC = () => {
 
             setBalance(newBalance);
             updateBalance("0", newBalance.gstd_balance, newBalance.pending_earnings);
+      setSyncStatus('ok');
 
         } catch (error) {
             console.error('Failed to fetch balance:', error);
+      setSyncStatus('error');
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -112,13 +116,32 @@ export const WalletBalanceWidget: React.FC = () => {
                     </div>
                     <div>
                         <h3 className="text-lg font-semibold text-white">{t('wallet.balance')}</h3>
-                        <p className="text-sm text-gray-400">{t('wallet.realTime')}</p>
+              <p className="text-sm text-gray-400 flex items-center gap-2">
+                {t('wallet.realTime')}
+                <span className="inline-flex items-center gap-1 text-[11px] font-medium">
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      syncStatus === 'ok'
+                        ? 'bg-emerald-400 shadow-[0_0_6px_#34d399]'
+                        : syncStatus === 'error'
+                        ? 'bg-red-500 animate-pulse'
+                        : 'bg-yellow-400 animate-pulse'
+                    }`}
+                  />
+                  {syncStatus === 'ok'
+                    ? (t('wallet.onChainConfirmed') || 'On-chain confirmed')
+                    : syncStatus === 'error'
+                    ? (t('wallet.outOfSync') || 'Out of sync, retry')
+                    : (t('wallet.syncing') || 'Syncing…')}
+                </span>
+              </p>
                     </div>
                 </div>
                 <button
                     onClick={handleRefresh}
                     disabled={refreshing}
-                    className="p-2 rounded-lg bg-gray-700/50 hover:bg-gray-600/50 transition-colors disabled:opacity-50"
+            className="p-2 rounded-lg bg-gray-700/50 hover:bg-gray-600/50 transition-colors disabled:opacity-50"
+            title={t('wallet.forceSync') || 'Force Sync (re-query blockchain)'}
                 >
                     <RefreshCw className={`w-4 h-4 text-gray-400 ${refreshing ? 'animate-spin' : ''}`} />
                 </button>
