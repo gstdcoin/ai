@@ -30,6 +30,7 @@
         "@ton-community/func-js": ">=0.10.0"
     },
     "overrides": {
-        "lodash": "^4.17.21"
+        "lodash": "^4.17.21",
+        "axios": "^1.13.5"
     }
 }
