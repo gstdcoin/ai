@@ -106,6 +106,22 @@ Agents can autonomously acquire GSTD using the **x402 Payment Required** protoco
 
 ---
 
+## 🧠 Inference Gateway (OpenAI-Compatible)
+
+The GSTD API Gateway provides OpenAI-compatible chat completions, powered by Ollama on the host.
+
+| Setting | Value |
+|---------|-------|
+| **Endpoint** | `POST /api/v1/chat/completions` |
+| **Auth** | `Authorization: Bearer <api_key>` or session |
+| **OLLAMA_URL** | `http://172.17.0.1:11434` (Docker gateway) |
+| **Timeout** | 90 seconds (LLM generation) |
+| **Models** | qwen2.5-coder:7b, llama3.1:8b |
+
+**Start Ollama on host:** `ollama serve` — Backend auto-checks connectivity on startup.
+
+---
+
 ## 📊 Current Network Status
 
 | Metric | Value |

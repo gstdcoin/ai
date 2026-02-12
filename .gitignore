@@ -24,6 +24,7 @@ node_modules/
 dist/
 out/
 backend/server
+backend/distributed-computing-platform
 backend/backend.log
 *.log
 
@@ -67,6 +68,9 @@ A2A/
 .codeium/
 .gemini/
 .vibe-kanban/
+
+# Wallet data (NEVER commit private keys)
+.gstd/
 
 # Utility / scratch files (not part of platform)
 find_idle_agents.py

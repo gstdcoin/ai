@@ -315,6 +315,8 @@ func SetupRoutes(
 			admin.POST("/withdrawals/:id/approve", approveWithdrawal(db.(*sql.DB), rewardEngine))
 			admin.POST("/broadcast", broadcastAnnouncement(hub, knowledgeService))
 			admin.POST("/sync-gstd-balances", syncGSTDBalances(db.(*sql.DB), tonService, tonConfig))
+			admin.POST("/seed-global-resonance", seedGlobalResonanceTask(db.(*sql.DB), tonConfig))
+			admin.POST("/seed-open-grid-manifesto", seedOpenGridManifestoTask(db.(*sql.DB), tonConfig))
 		}
 
 		// Admin commission endpoints (require session + admin wallet authorization)
@@ -366,6 +368,10 @@ func SetupRoutes(
 		
 		// Knowledge / Hive Memory
 		SetupKnowledgeRoutes(protected, knowledgeService)
+		// Public: GRID IS THINKING ticker (resonance quotes, no auth)
+		v1.GET("/knowledge/resonance", getResonanceQuotes(knowledgeService))
+		// Public: FREE AI TOOLS BY GSTD GRID (code snippets from agents)
+		v1.GET("/knowledge/grid-tools", getGridTools(knowledgeService))
 		SetupBrainRoutes(v1, brainHandler)
 
 		// Pricing (Dynamic Budget)

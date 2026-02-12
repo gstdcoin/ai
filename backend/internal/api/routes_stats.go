@@ -158,10 +158,10 @@ func getPublicStats(db *sql.DB, tonService *services.TONService, tonConfig confi
 		}
 
 
-		// Get active countries
+		// Get active countries (nodes use status='online')
 		var activeCountries int
 		if err := db.QueryRow(`
-			SELECT COUNT(DISTINCT country) FROM nodes WHERE status = 'active' AND country IS NOT NULL AND country != ''
+			SELECT COUNT(DISTINCT country) FROM nodes WHERE status = 'online' AND country IS NOT NULL AND country != ''
 		`).Scan(&activeCountries); err != nil {
 			log.Printf("Error getting active countries: %v", err)
 			activeCountries = 0
@@ -171,11 +171,11 @@ func getPublicStats(db *sql.DB, tonService *services.TONService, tonConfig confi
 			activeCountries = 1
 		}
 
-		// Estimate TFLOPS (Active Nodes * 1.5)
+		// Estimate TFLOPS (Online Nodes * 1.5)
 		var activeNodesCount int
 		var totalTFLOPS float64
 		if err := db.QueryRow(`
-			SELECT COUNT(*) FROM nodes WHERE status = 'active'
+			SELECT COUNT(*) FROM nodes WHERE status = 'online' AND last_seen > NOW() - INTERVAL '5 minutes'
 		`).Scan(&activeNodesCount); err != nil {
 			activeNodesCount = 0
 		}

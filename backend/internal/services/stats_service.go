@@ -88,12 +88,10 @@ func (s *StatsService) GetGlobalStats(ctx context.Context) (*GlobalStats, error)
 	// We count nodes that are eco_certified to display in the UI / Marketing
 	// This is implicitly handled by ActiveDevicesCount for now but could be split if requested.
 
-	// TFLOPS Estimation (using nodes table if available, or fallback to devices estimate)
-	// Assuming nodes table has cpu info. If not, we estimate 0.5 TFLOPS per active device on average.
-	// Let's check if 'nodes' table is populated, otherwise use 'devices' count * 0.5
+	// TFLOPS Estimation (using nodes table if available; nodes use status='online')
 	var activeNodesCount int
 	err = s.db.QueryRowContext(ctx, `
-		SELECT COUNT(*) FROM nodes WHERE status = 'active'
+		SELECT COUNT(*) FROM nodes WHERE status = 'online' AND last_seen > NOW() - INTERVAL '5 minutes'
 	`).Scan(&activeNodesCount)
 	
 	if err == nil && activeNodesCount > 0 {
@@ -104,9 +102,9 @@ func (s *StatsService) GetGlobalStats(ctx context.Context) (*GlobalStats, error)
 		stats.TotalTFLOPS = float64(stats.ActiveDevicesCount) * 0.5
 	}
 
-	// Active Countries
+	// Active Countries (nodes use status='online')
 	err = s.db.QueryRowContext(ctx, `
-		SELECT COUNT(DISTINCT country) FROM nodes WHERE status = 'active' AND country IS NOT NULL AND country != ''
+		SELECT COUNT(DISTINCT country) FROM nodes WHERE status = 'online' AND country IS NOT NULL AND country != ''
 	`).Scan(&stats.ActiveCountries)
 	if err != nil {
 		// If nodes table query fails or no country data
@@ -175,8 +173,8 @@ func (s *StatsService) GetNetworkStats(ctx context.Context) (*NetworkStats, erro
 	
 	activeNodes := stats.ActiveWorkers
 	if activeNodes == 0 {
-		// Try to count from nodes table if devices is 0
-		s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM nodes WHERE last_seen_at > NOW() - INTERVAL '30 seconds'").Scan(&activeNodes)
+		// Try to count from nodes table if devices is 0 (nodes use last_seen)
+		s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM nodes WHERE last_seen > NOW() - INTERVAL '30 seconds' AND status = 'online'").Scan(&activeNodes)
 	}
 
 	if activeNodes > 0 {
@@ -185,14 +183,10 @@ func (s *StatsService) GetNetworkStats(ctx context.Context) (*NetworkStats, erro
 		stats.Pressure = float64(pendingTasks)
 	}
 
-	// 6. Total Hashrate (PFLOPS) - sum of active nodes
-	// We use COALESCE to ensure no NULLs, and cast to prevent potential NaN issues in driver
-	err = s.db.QueryRowContext(ctx, `
-		SELECT COALESCE(SUM(current_hashrate), 0) FROM nodes WHERE last_seen_at > NOW() - INTERVAL '30 seconds'
-	`).Scan(&stats.TotalHashrate)
-	if err != nil {
-		stats.TotalHashrate = 0
-	}
+	// 6. Total Hashrate (PFLOPS) - estimate from active nodes (nodes use last_seen)
+	var activeNodeCount int
+	_ = s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM nodes WHERE last_seen > NOW() - INTERVAL '30 seconds' AND status = 'online'`).Scan(&activeNodeCount)
+	stats.TotalHashrate = float64(activeNodeCount) * 0.5
     
     // 7. Gold Reserve (Get from latest log)
     err = s.db.QueryRowContext(ctx, `
