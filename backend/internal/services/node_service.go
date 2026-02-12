@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"distributed-computing-platform/internal/models"
@@ -236,6 +237,49 @@ func (s *NodeService) GetNodeByWalletAddress(ctx context.Context, walletAddress 
 	
 	return &node, nil
 }
+
+// GetNodeByID gets a node by its UUID (for heartbeat wallet resolution)
+func (s *NodeService) GetNodeByID(ctx context.Context, nodeID string) (*models.Node, error) {
+	var node models.Node
+	var country sql.NullString
+	var lat, lon sql.NullFloat64
+
+	err := s.db.QueryRowContext(ctx, `
+		SELECT id, wallet_address, name, status, cpu_model, ram_gb, trust_score, country, latitude, longitude, is_spoofing, last_seen, created_at, updated_at
+		FROM nodes
+		WHERE id = $1
+		LIMIT 1
+	`, nodeID).Scan(
+		&node.ID,
+		&node.WalletAddress,
+		&node.Name,
+		&node.Status,
+		&node.CPUModel,
+		&node.RAMGB,
+		&node.TrustScore,
+		&country,
+		&lat,
+		&lon,
+		&node.IsSpoofing,
+		&node.LastSeen,
+		&node.CreatedAt,
+		&node.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	if country.Valid {
+		node.Country = &country.String
+	}
+	if lat.Valid {
+		node.Latitude = &lat.Float64
+	}
+	if lon.Valid {
+		node.Longitude = &lon.Float64
+	}
+	return &node, nil
+}
+
 // UpdateHeartbeat updates the last_seen timestamp. 
 // OPTIMIZED: Uses Redis-first approach for 1M+ user scale, batching DB updates.
 func (s *NodeService) UpdateHeartbeat(ctx context.Context, walletAddress string) error {
@@ -348,14 +392,24 @@ func (s *NodeService) GetPublicActiveNodes(ctx context.Context, limit, offset in
 	return nodes, nil
 }
 
-// UpdateHealthStats updates worker health metrics in Redis for the Load Balancer
-func (s *NodeService) UpdateHealthStats(ctx context.Context, walletAddress string, battery int, signal int) error {
+// UpdateHealthStats updates worker health metrics in Redis for the Load Balancer.
+// Performs immediate DB update so nodes are visible in Dashboard right away.
+// identifier can be wallet_address or node id (UUID).
+func (s *NodeService) UpdateHealthStats(ctx context.Context, identifier string, battery int, signal int) error {
+	// 1. Immediate DB update — nodes visible in Dashboard without waiting for FlushHeartbeats
+	// Try wallet_address first; if identifier looks like UUID (contains hyphens), try by id
+	if len(identifier) == 36 && strings.Contains(identifier, "-") {
+		_, _ = s.db.ExecContext(ctx, `UPDATE nodes SET last_seen = NOW(), status = 'online', updated_at = NOW() WHERE id = $1`, identifier)
+	} else {
+		_, _ = s.db.ExecContext(ctx, `UPDATE nodes SET last_seen = NOW(), status = 'online', updated_at = NOW() WHERE wallet_address = $1`, identifier)
+	}
+
 	if s.redis == nil {
 		return nil
 	}
 
-	detailsKey := fmt.Sprintf("capacity:%s", walletAddress)
-	onlineKey := fmt.Sprintf("worker:online:%s", walletAddress)
+	detailsKey := fmt.Sprintf("capacity:%s", identifier)
+	onlineKey := fmt.Sprintf("worker:online:%s", identifier)
 
 	// Refresh online status
 	s.redis.Set(ctx, onlineKey, "online", 90*time.Second)
@@ -367,8 +421,6 @@ func (s *NodeService) UpdateHealthStats(ctx context.Context, walletAddress strin
 		"last_seen":      time.Now().Format(time.RFC3339),
 	}).Err()
 
-	// Also update DB last_seen
-	s.UpdateHeartbeat(ctx, walletAddress)
-
+	s.UpdateHeartbeat(ctx, identifier)
 	return err
 }

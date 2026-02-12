@@ -152,13 +152,14 @@ func getPublicNodes(service *services.NodeService) gin.HandlerFunc {
 	}
 }
 
-// UpdateHeartbeat handles worker heartbeat with battery and signal info
+// UpdateHeartbeat handles worker heartbeat with battery and signal info.
+// Accepts wallet (direct) or node_id (resolved to wallet). Wallet is preferred for immediate DB update.
 func UpdateHeartbeat(service *services.NodeService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			WalletAddress string `json:"wallet"`  // Frontend uses this
-			NodeID        string `json:"node_id"` // A2A SDK uses this
-			Status        string `json:"status"`  // A2A SDK uses this
+			WalletAddress string `json:"wallet"`  // Frontend / A2A SDK — preferred for DB update
+			NodeID        string `json:"node_id"` // A2A SDK uses UUID
+			Status        string `json:"status"`
 			Battery       int    `json:"battery"`
 			Signal        int    `json:"signal"`
 		}
@@ -168,8 +169,16 @@ func UpdateHeartbeat(service *services.NodeService) gin.HandlerFunc {
 			return
 		}
 
-		// Normalize identifier
+		// Prefer wallet for immediate nodes table update; fallback to node_id resolution
 		identifier := req.WalletAddress
+		if identifier == "" && req.NodeID != "" {
+			// Try to resolve node_id (UUID) to wallet_address for DB update
+			if node, err := service.GetNodeByID(c.Request.Context(), req.NodeID); err == nil && node != nil {
+				identifier = node.WalletAddress
+			} else {
+				identifier = req.NodeID
+			}
+		}
 		if identifier == "" {
 			identifier = req.NodeID
 		}

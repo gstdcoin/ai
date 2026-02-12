@@ -40,6 +40,23 @@ services:
     networks:
       - gstd_network
 
+  agent:
+    build:
+      context: ../A2A
+      dockerfile: Dockerfile
+    image: gstd_agent_image
+    container_name: gstd_agent
+    volumes:
+      - gstd_agent_data:/data
+    environment:
+      - GSTD_API_URL=${GSTD_API_URL:-https://app.gstdtoken.com}
+      - GSTD_API_KEY=${GSTD_API_KEY:-}
+      - GSTD_WALLET_PATH=/data/.gstd/wallet.json
+      - GSTD_VERBOSE=true
+    restart: always
+    networks:
+      - gstd_network
+
   bot:
     build:
       context: ./bot
@@ -53,10 +70,10 @@ services:
       - ../backend:/home/ubuntu/backend
       - ./proposals:/home/ubuntu/autonomy/proposals
     environment:
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-8306755226:AAF8nzfixha-_l5tUZfVbiCqOHJB-rtojIQ}
-      - ADMIN_ID=${TELEGRAM_CHAT_ID:-5700385228}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - ADMIN_ID=${TELEGRAM_CHAT_ID}
       - OLLAMA_HOST=http://gstd_ollama:11434
-      - OLLAMA_API_KEY=3010cb48437e419fa97fa354f809dae8.NV9cjek-htbaddBb9wpU3MH9
+      - OLLAMA_API_KEY=${OLLAMA_API_KEY}
       - API_URL=http://ubuntu-backend-blue-1:8080
     command: sh -c "go mod tidy && go run main.go"
     restart: always
@@ -76,7 +93,7 @@ services:
       - NODE_ENV=production
       - WEBHOOK_URL=https://n8n.gstdtoken.com/
       - OLLAMA_HOST=http://gstd_ollama:11434
-      - OLLAMA_API_KEY=3010cb48437e419fa97fa354f809dae8.NV9cjek-htbaddBb9wpU3MH9
+      - OLLAMA_API_KEY=${OLLAMA_API_KEY}
     volumes:
       - n8n_data:/home/node/.n8n
       - /var/run/docker.sock:/var/run/docker.sock
@@ -93,3 +110,4 @@ networks:
 volumes:
   n8n_data:
   ollama_data:
+  gstd_agent_data:

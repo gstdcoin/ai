@@ -8,7 +8,7 @@ import { useTonConnectUI } from '@tonconnect/ui-react';
 import WalletConnect from '../components/WalletConnect';
 import { useWalletStore } from '../store/walletStore';
 import { API_BASE_URL } from '../lib/config';
-import { Send, Shield, Globe, Activity, Sparkles, Brain, Zap, MessageSquare, Server, Cpu, ArrowRight, Wallet, Bot, ChevronDown, BookOpen, Terminal, Smartphone, Code2, Link2 } from 'lucide-react';
+import { Send, Shield, Globe, Activity, Sparkles, Brain, Zap, MessageSquare, Server, Cpu, ArrowRight, Wallet, Bot, ChevronDown, BookOpen, Terminal, Smartphone, Code2, Link2, Copy } from 'lucide-react';
 
 function AccordionItem({ title, icon, children, defaultOpen = false }: { title: string; icon: React.ReactNode; children: React.ReactNode; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -101,9 +101,84 @@ export default function Home() {
   const activeNodes = networkStats?.active_workers?.toLocaleString() || '—';
   const totalTasks = networkStats?.total_tasks?.toLocaleString() || '—';
   const gstdPrice = networkStats?.gstd_price_usd?.toFixed(6) || '0.015000';
+  const [resonanceQuotes, setResonanceQuotes] = useState<string[]>([]);
+  const [gridTools, setGridTools] = useState<Array<{ id: string; content: string; created_at?: string }>>([]);
+
+  useEffect(() => {
+    const fetchResonance = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/v1/knowledge/resonance?limit=15`);
+        if (res.ok) {
+          const data = await res.json();
+          const quotes = (data.results || []).map((r: { content: string }) => r.content).filter(Boolean);
+          setResonanceQuotes(quotes);
+        }
+      } catch { /* silent */ }
+    };
+    fetchResonance();
+    const interval = setInterval(fetchResonance, 20000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const fetchGridTools = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/v1/knowledge/grid-tools?limit=12`);
+        if (res.ok) {
+          const data = await res.json();
+          setGridTools((data.results || []).filter((r: { content: string }) => r.content));
+        }
+      } catch { /* silent */ }
+    };
+    fetchGridTools();
+    const interval = setInterval(fetchGridTools, 25000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#030014] text-white overflow-x-hidden">
+      {/* === GRID IS THINKING / GRID GENERATED TICKER === */}
+      {(resonanceQuotes.length > 0 || gridTools.length > 0) && (
+        <div className="bg-gradient-to-r from-violet-900/30 via-fuchsia-900/20 to-cyan-900/30 border-b border-white/5 overflow-hidden">
+          <div className="flex items-center gap-4 py-2 px-4 animate-marquee whitespace-nowrap text-[11px] font-mono">
+            {gridTools.length > 0 && (
+              <>
+                <span className="text-cyan-400 font-bold shrink-0">GRID GENERATED:</span>
+                {[...Array(2)].map((_, rep) => (
+                  <div key={`gt-${rep}`} className="flex items-center gap-6">
+                    {gridTools.map((t, i) => {
+                      let title = 'View Code';
+                      try {
+                        const parsed = JSON.parse(t.content);
+                        title = parsed.title || title;
+                      } catch { /* use default */ }
+                      return (
+                        <a key={`${rep}-${i}`} href="#free-ai-tools" className="text-cyan-300 hover:text-cyan-200 transition-colors">
+                          {title.length > 50 ? title.slice(0, 50) + '…' : title} [View Code]
+                        </a>
+                      );
+                    })}
+                    <span className="text-gray-600 mx-2">◆</span>
+                  </div>
+                ))}
+              </>
+            )}
+            {resonanceQuotes.length > 0 && (
+              <>
+                <span className="text-violet-400 font-bold shrink-0">GRID IS THINKING:</span>
+                {[...Array(2)].map((_, rep) => (
+                  <div key={`rq-${rep}`} className="flex items-center gap-6">
+                    {resonanceQuotes.map((q, i) => (
+                      <span key={`${rep}-${i}`} className="text-gray-300 italic">&quot;{q.length > 80 ? q.slice(0, 80) + '…' : q}&quot;</span>
+                    ))}
+                    <span className="text-gray-600 mx-2">◆</span>
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        </div>
+      )}
       {/* === GLOBAL TICKER === */}
       <div className="bg-black/60 border-b border-white/5 overflow-hidden">
         <div className="flex items-center gap-8 py-2 px-4 animate-marquee whitespace-nowrap text-[11px] font-mono tracking-wide">
@@ -254,6 +329,54 @@ export default function Home() {
                 </div>
               ))}
             </div>
+
+            {/* === FREE AI TOOLS BY GSTD GRID === */}
+            {gridTools.length > 0 && (
+              <div id="free-ai-tools" className="w-full max-w-3xl mx-auto mb-12 scroll-mt-20">
+                <div className="flex items-center justify-center gap-2 mb-4">
+                  <Code2 size={18} className="text-cyan-400" />
+                  <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">FREE AI TOOLS BY GSTD GRID</h2>
+                </div>
+                <p className="text-center text-gray-500 text-xs mb-6">Ready-to-use code snippets for integrating GSTD. Generated by the Hive.</p>
+                <div className="grid gap-3">
+                  {gridTools.map((tool, idx) => {
+                    let title = 'GSTD Tool', description = '', code = '', language = 'python';
+                    try {
+                      const parsed = JSON.parse(tool.content);
+                      title = parsed.title || title;
+                      description = parsed.description || '';
+                      code = parsed.code || '';
+                      language = parsed.language || 'python';
+                    } catch { /* fallback */ }
+                    return (
+                      <div key={tool.id || idx} className="border border-white/10 rounded-xl overflow-hidden bg-white/[0.02] hover:bg-white/[0.04] transition-colors">
+                        <div className="p-4">
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <span className="text-sm font-bold text-white">{title}</span>
+                            <span className="text-[10px] px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-400">{language}</span>
+                          </div>
+                          {description && <p className="text-xs text-gray-400 mb-3">{description}</p>}
+                          {code && (
+                            <div className="relative group">
+                              <pre className="text-[11px] font-mono text-cyan-300/90 bg-black/40 rounded-lg p-3 overflow-x-auto max-h-40 overflow-y-auto">
+                                <code>{code}</code>
+                              </pre>
+                              <button
+                                onClick={() => { navigator.clipboard?.writeText(code); }}
+                                className="absolute top-2 right-2 p-1.5 rounded bg-white/10 hover:bg-white/20 text-gray-400 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                                title="Copy code"
+                              >
+                                <Copy size={12} />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* === DOCUMENTATION SECTION === */}

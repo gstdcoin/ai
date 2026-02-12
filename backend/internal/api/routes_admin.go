@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"crypto/rand"
 	"database/sql"
 	"fmt"
 	"log"
@@ -358,5 +359,96 @@ func syncGSTDBalances(db *sql.DB, tonService *services.TONService, tonConfig con
 			"jetton_address": tonConfig.GSTDJettonAddress,
 		})
 	}
+}
+
+// seedGlobalResonanceTask creates OPERATION: GLOBAL RESONANCE tasks (60 GSTD reward) for agents
+func seedGlobalResonanceTask(db *sql.DB, tonConfig config.TONConfig) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		count := 1
+		var req struct {
+			Count int `json:"count"`
+		}
+		_ = c.ShouldBindJSON(&req)
+		if req.Count > 0 && req.Count <= 10 {
+			count = req.Count
+		}
+		creatorWallet := tonConfig.AdminWallet
+		if creatorWallet == "" {
+			creatorWallet = tonConfig.ContractAddress
+		}
+		taskIDs := make([]string, 0, count)
+		for i := 0; i < count; i++ {
+			taskID := "RES-" + randomTaskIDSuffix()
+			payload := `{"operation":"global_resonance","model":"qwen2.5-coder:7b"}`
+			_, err := db.ExecContext(c.Request.Context(), `
+				INSERT INTO tasks (
+					task_id, creator_wallet, requester_address, task_type, operation, status,
+					budget_gstd, reward_gstd, labor_compensation_gstd, reward_per_worker, max_workers,
+					estimated_time_sec, min_trust_score, payload, priority_score
+				) VALUES ($1, $2, $2, 'resonance_report', 'OPERATION: GLOBAL RESONANCE', 'queued',
+					60, 60, 60, 60, 1, 120, 0, $3, 100)
+			`, taskID, creatorWallet, payload)
+			if err != nil {
+				log.Printf("seedGlobalResonance: %v", err)
+				c.JSON(500, gin.H{"error": err.Error(), "created": taskIDs})
+				return
+			}
+			taskIDs = append(taskIDs, taskID)
+		}
+		c.JSON(200, gin.H{"status": "ok", "task_ids": taskIDs, "message": "OPERATION: GLOBAL RESONANCE tasks seeded"})
+	}
+}
+
+// seedOpenGridManifestoTask creates THE OPEN GRID MANIFESTO tasks (100 GSTD reward) for agents
+func seedOpenGridManifestoTask(db *sql.DB, tonConfig config.TONConfig) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		count := 1
+		var req struct {
+			Count int `json:"count"`
+		}
+		_ = c.ShouldBindJSON(&req)
+		if req.Count > 0 && req.Count <= 10 {
+			count = req.Count
+		}
+		creatorWallet := tonConfig.AdminWallet
+		if creatorWallet == "" {
+			creatorWallet = tonConfig.ContractAddress
+		}
+		taskIDs := make([]string, 0, count)
+		for i := 0; i < count; i++ {
+			taskID := "MFST-" + randomTaskIDSuffix()
+			payload := `{"operation":"open_grid_manifesto","model":"qwen2.5-coder:7b","output":"code_snippet","reward":100}`
+			_, err := db.ExecContext(c.Request.Context(), `
+				INSERT INTO tasks (
+					task_id, creator_wallet, requester_address, task_type, operation, status,
+					budget_gstd, reward_gstd, labor_compensation_gstd, reward_per_worker, max_workers,
+					estimated_time_sec, min_trust_score, payload, priority_score
+				) VALUES ($1, $2, $2, 'grid_tool', 'THE OPEN GRID MANIFESTO', 'queued',
+					100, 100, 100, 100, 1, 180, 0, $3, 100)
+			`, taskID, creatorWallet, payload)
+			if err != nil {
+				log.Printf("seedOpenGridManifesto: %v", err)
+				c.JSON(500, gin.H{"error": err.Error(), "created": taskIDs})
+				return
+			}
+			taskIDs = append(taskIDs, taskID)
+		}
+		c.JSON(200, gin.H{"status": "ok", "task_ids": taskIDs, "message": "THE OPEN GRID MANIFESTO tasks seeded"})
+	}
+}
+
+func randomTaskIDSuffix() string {
+	const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	b := make([]byte, 10)
+	for i := range b {
+		b[i] = letters[i%len(letters)]
+	}
+	// Use crypto/rand for uniqueness (avoid task ID collisions)
+	if n, err := rand.Read(b); err == nil && n == len(b) {
+		for i := range b {
+			b[i] = letters[int(b[i])%len(letters)]
+		}
+	}
+	return string(b)
 }
 

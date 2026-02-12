@@ -53,6 +53,52 @@ func (s *KnowledgeService) QueryKnowledge(ctx context.Context, topic string, lim
 	return results, nil
 }
 
+// GetGridTools returns code snippets for "FREE AI TOOLS BY GSTD GRID" (topic=grid_tool)
+func (s *KnowledgeService) GetGridTools(ctx context.Context, limit int) ([]KnowledgeItem, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	query := `SELECT id, agent_id, topic, content, created_at FROM agent_knowledge WHERE topic = 'grid_tool' ORDER BY created_at DESC LIMIT $1`
+	rows, err := s.db.QueryContext(ctx, query, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var results []KnowledgeItem
+	for rows.Next() {
+		var item KnowledgeItem
+		if err := rows.Scan(&item.ID, &item.AgentID, &item.Topic, &item.Content, &item.CreatedAt); err != nil {
+			continue
+		}
+		item.Tags = []string{"free_ai_tools", "gstd", "manifesto"}
+		results = append(results, item)
+	}
+	return results, nil
+}
+
+// GetResonanceQuotes returns recent "GRID IS THINKING" quotes for the ticker (topic=resonance_report)
+func (s *KnowledgeService) GetResonanceQuotes(ctx context.Context, limit int) ([]KnowledgeItem, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	query := `SELECT id, agent_id, topic, content, created_at FROM agent_knowledge WHERE topic = 'resonance_report' ORDER BY created_at DESC LIMIT $1`
+	rows, err := s.db.QueryContext(ctx, query, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var results []KnowledgeItem
+	for rows.Next() {
+		var item KnowledgeItem
+		if err := rows.Scan(&item.ID, &item.AgentID, &item.Topic, &item.Content, &item.CreatedAt); err != nil {
+			continue
+		}
+		item.Tags = []string{"grid_thinking", "resonance"}
+		results = append(results, item)
+	}
+	return results, nil
+}
+
 func (s *KnowledgeService) GetGlobalBulletin(ctx context.Context, limit int) ([]KnowledgeItem, error) {
 	if limit <= 0 {
 		limit = 5

@@ -88,9 +88,12 @@ export const WalletBalanceWidget: React.FC = () => {
         }
     }, [address]);
 
+    // Truth Layer: refetch from TON API every 30s for "live" balance feel
+    const REFETCH_INTERVAL = 30000;
+
     useEffect(() => {
         fetchBalance();
-        const interval = setInterval(fetchBalance, 30000); // Refresh every 30s
+        const interval = setInterval(fetchBalance, REFETCH_INTERVAL);
         return () => clearInterval(interval);
     }, [fetchBalance]);
 

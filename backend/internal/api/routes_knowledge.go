@@ -2,8 +2,10 @@ package api
 
 import (
 	"distributed-computing-platform/internal/services"
-	"github.com/gin-gonic/gin"
 	"net/http"
+	"strconv"
+
+	"github.com/gin-gonic/gin"
 )
 func storeKnowledge(service *services.KnowledgeService) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -48,7 +50,38 @@ func queryKnowledge(service *services.KnowledgeService) gin.HandlerFunc {
 	}
 }
 
+func getResonanceQuotes(service *services.KnowledgeService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		limit := 20
+		if l, err := strconv.Atoi(c.DefaultQuery("limit", "20")); err == nil && l > 0 && l <= 50 {
+			limit = l
+		}
+		results, err := service.GetResonanceQuotes(c.Request.Context(), limit)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"results": results})
+	}
+}
+
+func getGridTools(service *services.KnowledgeService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		limit := 15
+		if l, err := strconv.Atoi(c.DefaultQuery("limit", "15")); err == nil && l > 0 && l <= 50 {
+			limit = l
+		}
+		results, err := service.GetGridTools(c.Request.Context(), limit)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"results": results})
+	}
+}
+
 func SetupKnowledgeRoutes(group *gin.RouterGroup, service *services.KnowledgeService) {
 	group.POST("/knowledge/store", storeKnowledge(service))
 	group.GET("/knowledge/query", queryKnowledge(service))
+	// /knowledge/resonance and /knowledge/grid-tools are registered publicly in routes.go
 }
