@@ -200,6 +200,8 @@ func SetupRoutes(
 		{
 			internal.POST("/sync-gstd-balances", syncGSTDBalances(db.(*sql.DB), tonService, tonConfig))
 			internal.POST("/telegram/notify-audit", telegramNotifyAudit(telegramService))
+			internal.POST("/seed-open-grid-manifesto", seedOpenGridManifestoTask(db.(*sql.DB), tonConfig))
+			internal.POST("/seed-global-resonance", seedGlobalResonanceTask(db.(*sql.DB), tonConfig))
 		}
 
 		// Telegram Webhook
