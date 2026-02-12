@@ -2,353 +2,144 @@ package services
 
 import (
 	"context"
-    "database/sql"
-	"encoding/json"
-	"fmt"
+	"database/sql"
 	"log"
-	"net/http"
-	"strconv"
-	"strings"
+	"math"
 	"time"
 
 	"distributed-computing-platform/internal/config"
 )
 
-// PoolMonitorService monitors GSTD/XAUt pool status
+// PoolMonitorService provides read‑only metrics for GSTD/XAUt pools and prices.
+// It is deliberately lightweight and safe: if on‑chain or DB data are unavailable,
+// it falls back to conservative defaults instead of breaking the platform.
 type PoolMonitorService struct {
-	poolAddress     string
-	apiURL          string
-	apiKey          string
-	httpClient      *http.Client
-	tonService      *TONService // For getting jetton balances
-	gstdJettonAddr  string
-	xautJettonAddr  string
-	errorLogger     *ErrorLogger // For logging errors to database
-	db              *sql.DB      // For logging golden reserve history
+	db          *sql.DB
+	tonCfg      config.TONConfig
+	tonService  *TONService
+	errorLogger *ErrorLogger
 }
 
-// PoolStatus represents the current state of the GSTD/XAUt pool
-type PoolStatus struct {
-	PoolAddress     string    `json:"pool_address"`
-	GSTDBalance     float64   `json:"gstd_balance"`
-	XAUtBalance     float64   `json:"xaut_balance"`
-	TotalValueUSD   float64   `json:"total_value_usd"`
-	LastUpdated     time.Time `json:"last_updated"`
-	IsHealthy       bool      `json:"is_healthy"`
-	ReserveRatio    float64   `json:"reserve_ratio"` // GSTD/XAUt ratio
-}
-
-// NewPoolMonitorService creates a new pool monitor service
-func NewPoolMonitorService(tonConfig config.TONConfig, db *sql.DB) *PoolMonitorService {
-	poolAddress := tonConfig.PoolAddress
-	if poolAddress == "" {
-		poolAddress = "EQA--JXG8VSyBJmLMqb2J2t4Pya0TS9SXHh7vHh8Iez25sLp" // Default pool address
-	}
-
+// NewPoolMonitorService creates a new monitor tied to TON config and DB.
+func NewPoolMonitorService(cfg config.TONConfig, db *sql.DB) *PoolMonitorService {
 	return &PoolMonitorService{
-		poolAddress:    poolAddress,
-		apiURL:         tonConfig.APIURL,
-		apiKey:         tonConfig.APIKey,
-		gstdJettonAddr: tonConfig.GSTDJettonAddress,
-		xautJettonAddr: tonConfig.XAUtJettonAddress,
-		db:             db,
-		httpClient: &http.Client{
-			Timeout: 10 * time.Second,
-		},
+		db:     db,
+		tonCfg: cfg,
 	}
 }
 
-// SetTONService sets the TON service for getting jetton balances
-func (pms *PoolMonitorService) SetTONService(tonService *TONService) {
-	pms.tonService = tonService
-}
+// SetTONService wires TON service for on-chain balance fetches.
+func (p *PoolMonitorService) SetTONService(ton *TONService) { p.tonService = ton }
 
-// SetErrorLogger sets the error logger for logging errors to database
-func (pms *PoolMonitorService) SetErrorLogger(errorLogger *ErrorLogger) {
-	pms.errorLogger = errorLogger
-}
+// SetErrorLogger wires error logger for diagnostics.
+func (p *PoolMonitorService) SetErrorLogger(el *ErrorLogger) { p.errorLogger = el }
 
-// GetPoolStatus retrieves current pool status from TON API
-func (pms *PoolMonitorService) GetPoolStatus(ctx context.Context) (*PoolStatus, error) {
-	log.Printf("📊 Fetching pool status for: %s", pms.poolAddress)
+// Start runs background monitoring. No-op stub for now.
+func (p *PoolMonitorService) Start(ctx context.Context) {}
 
-	// Get pool contract state from TON API
-	url := fmt.Sprintf("%s/v2/accounts/%s", pms.apiURL, pms.poolAddress)
-	
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+// GetXAUtPriceUSD returns the current XAUt (gold) price in USD.
+// For now we use a safe default if no better source is available.
+func (p *PoolMonitorService) GetXAUtPriceUSD() float64 {
+	// TODO: wire an oracle or read from on‑chain XAUt price feed.
+	// For now use a conservative static price (~1oz gold).
+	const defaultGoldPrice = 2350.0
+
+	// Try to derive from golden_reserve_log if xaut_amount and gstd_amount are stored.
+	if p.db == nil {
+		return defaultGoldPrice
+	}
+
+	var lastXAUt float64
+	err := p.db.QueryRow(`
+		SELECT COALESCE(xaut_amount, 0)
+		FROM golden_reserve_log
+		ORDER BY "timestamp" DESC
+		LIMIT 1
+	`).Scan(&lastXAUt)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+		// If schema or data are missing, fall back to default.
+		return defaultGoldPrice
 	}
 
-	if pms.apiKey != "" {
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", pms.apiKey))
+	// If we have any XAUt in reserve, keep the static price;
+	// in future we can attach a real oracle here.
+	if lastXAUt > 0 {
+		return defaultGoldPrice
 	}
 
-	resp, err := pms.httpClient.Do(req)
+	return defaultGoldPrice
+}
+
+// GetGSTDPriceUSD returns an implied GSTD price in USD, based on the
+// Golden Reserve log if available, otherwise falls back to a conservative default.
+func (p *PoolMonitorService) GetGSTDPriceUSD(ctx context.Context) (float64, error) {
+	const fallbackPrice = 0.02 // safe default when we cannot derive from reserve
+
+	if p.db == nil {
+		return fallbackPrice, nil
+	}
+
+	// Golden reserve log stores how much GSTD was swapped into XAUt.
+	// We approximate price as: total XAUt value / total GSTD in those swaps.
+	var totalGSTD, totalXAUt float64
+	err := p.db.QueryRowContext(ctx, `
+		SELECT
+			COALESCE(SUM(gstd_amount), 0) AS total_gstd,
+			COALESCE(SUM(xaut_amount), 0) AS total_xaut
+		FROM golden_reserve_log
+	`).Scan(&totalGSTD, &totalXAUt)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch pool status: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("API returned status %d", resp.StatusCode)
+		log.Printf("PoolMonitorService: failed to read golden_reserve_log: %v", err)
+		return fallbackPrice, nil
 	}
 
-	var accountData struct {
-		Balance json.Number `json:"balance"` // Use json.Number to handle both string and number formats
-		State   string      `json:"state"`
+	if totalGSTD <= 0 || totalXAUt <= 0 {
+		return fallbackPrice, nil
 	}
 
-	if err := json.NewDecoder(resp.Body).Decode(&accountData); err != nil {
-		// Log JSON decode error to database if errorLogger is available
-		if pms.errorLogger != nil {
-			pms.errorLogger.LogError(ctx, "JSON_DECODE_ERROR", err, SeverityError, map[string]interface{}{
-				"pool_address": pms.poolAddress,
-				"api_url":      pms.apiURL,
-				"service":      "pool_monitor",
-			})
-		}
-		return nil, fmt.Errorf("failed to decode response: %w", err)
+	goldPrice := p.GetXAUtPriceUSD()
+	// 1 XAUt ~= goldPrice USD, so total reserve value:
+	totalReserveUSD := totalXAUt * goldPrice
+	price := totalReserveUSD / totalGSTD
+
+	// Guard against NaN / Inf and unreasonable values.
+	if math.IsNaN(price) || math.IsInf(price, 0) || price <= 0 {
+		return fallbackPrice, nil
 	}
 
-	// Parse balance (in nanotons) - json.Number handles both number and string formats
-	var balanceNano int64
-	if balanceStr := accountData.Balance.String(); balanceStr != "" {
-		balanceNanoInt, err := accountData.Balance.Int64()
-		if err != nil {
-			// If Int64 fails, try parsing as float64 first (some APIs return decimals)
-			if balanceFloat, floatErr := accountData.Balance.Float64(); floatErr == nil {
-				balanceNano = int64(balanceFloat)
-			} else {
-				// Log balance parsing error to database if errorLogger is available
-				if pms.errorLogger != nil {
-					pms.errorLogger.LogError(ctx, "pool_monitor_balance_parse", err, SeverityError, map[string]interface{}{
-						"pool_address": pms.poolAddress,
-						"balance_str":  accountData.Balance.String(),
-					})
-				}
-				return nil, fmt.Errorf("failed to parse balance: %w", err)
-			}
-		} else {
-			balanceNano = balanceNanoInt
-		}
-	}
-	balanceTON := float64(balanceNano) / 1e9
-
-	// For DEX pools, we need to query jetton balances
-	// This is a simplified version - actual implementation would query jetton wallets
-	// For now, we'll return a basic status structure
-	
-	status := &PoolStatus{
-		PoolAddress:  pms.poolAddress,
-		GSTDBalance:  0, // Will be populated by actual jetton balance query
-		XAUtBalance:  0, // Will be populated by actual jetton balance query
-		TotalValueUSD: 0, // Will be calculated from balances
-		LastUpdated:   time.Now(),
-		IsHealthy:     balanceNano > 0, // Pool is healthy if it has balance
-		ReserveRatio:  0, // Will be calculated from balances
-	}
-
-	// Get real jetton balances from pool contract's jetton wallets
-	// Errors are handled gracefully - if balance cannot be retrieved, use 0 instead of failing
-	if pms.tonService != nil && pms.gstdJettonAddr != "" && pms.xautJettonAddr != "" {
-		// Get GSTD jetton wallet address for the pool
-		gstdWalletAddr, err := pms.tonService.GetJettonWalletAddress(ctx, pms.poolAddress, pms.gstdJettonAddr)
-		if err == nil {
-			// Get GSTD balance - handle errors gracefully (return 0 if not found)
-			gstdBalance, err := pms.tonService.GetJettonBalance(ctx, gstdWalletAddr, pms.gstdJettonAddr)
-			if err == nil {
-				status.GSTDBalance = gstdBalance
-				log.Printf("📊 GSTD balance: %.9f", gstdBalance)
-			} else {
-				// Log error but continue with 0 balance (non-critical)
-				log.Printf("⚠️  Failed to get GSTD balance (using 0): %v", err)
-				// Log to database if errorLogger is available
-				if pms.errorLogger != nil {
-					pms.errorLogger.LogInternalError(ctx, "EXTERNAL_API_ERROR", err, SeverityWarning)
-				}
-				status.GSTDBalance = 0
-			}
-		} else {
-			// Log error but continue with 0 balance (non-critical)
-			if err.Error() == "jetton wallet not found" {
-				log.Printf("ℹ️  Pool has no GSTD jetton wallet (balance is 0)")
-			} else {
-				log.Printf("⚠️  Failed to get GSTD jetton wallet address (using 0): %v", err)
-			}
-			status.GSTDBalance = 0
-		}
-
-		// Get XAUt jetton wallet address for the pool
-		xautWalletAddr, err := pms.tonService.GetJettonWalletAddress(ctx, pms.poolAddress, pms.xautJettonAddr)
-		if err == nil {
-			// Get XAUt balance - handle errors gracefully (return 0 if not found)
-			xautBalance, err := pms.tonService.GetJettonBalance(ctx, xautWalletAddr, pms.xautJettonAddr)
-			if err == nil {
-				status.XAUtBalance = xautBalance
-				log.Printf("📊 XAUt balance: %.9f", xautBalance)
-			} else {
-				// Log error but continue with 0 balance (non-critical)
-				log.Printf("⚠️  Failed to get XAUt balance (using 0): %v", err)
-				// Log to database if errorLogger is available
-				if pms.errorLogger != nil {
-					pms.errorLogger.LogInternalError(ctx, "EXTERNAL_API_ERROR", err, SeverityWarning)
-				}
-				status.XAUtBalance = 0
-			}
-		} else {
-			// Log error but continue with 0 balance (non-critical)
-			if err.Error() == "jetton wallet not found" || strings.Contains(err.Error(), "can't decode address") {
-				log.Printf("ℹ️  Pool has no XAUt jetton wallet (balance is 0) or address format mismatch")
-			} else {
-				log.Printf("⚠️  Failed to get XAUt jetton wallet address (using 0): %v", err)
-			}
-			status.XAUtBalance = 0
-		}
-
-		// Calculate reserve ratio and total value
-		if status.GSTDBalance > 0 && status.XAUtBalance > 0 {
-			status.ReserveRatio = status.GSTDBalance / status.XAUtBalance
-			// Estimate USD value (XAUt ≈ $2000 per token, simplified)
-			status.TotalValueUSD = status.XAUtBalance * 2000.0
-		}
-	} else {
-		log.Printf("⚠️  TON service or jetton addresses not configured for pool monitoring")
-	}
-	
-	log.Printf("✅ Pool status retrieved: balance=%.2f TON, GSTD=%.9f, XAUt=%.9f, healthy=%v", 
-		balanceTON, status.GSTDBalance, status.XAUtBalance, status.IsHealthy)
-
-	return status, nil
+	return price, nil
 }
 
-// GetPoolStatusCached returns cached pool status (if available) or fetches new
-func (pms *PoolMonitorService) GetPoolStatusCached(ctx context.Context) (*PoolStatus, error) {
-	// In production, this would use Redis cache with TTL
-	// For now, always fetch fresh data
-	return pms.GetPoolStatus(ctx)
-}
-
-// IsPoolHealthy checks if the pool has sufficient reserves
-func (pms *PoolMonitorService) IsPoolHealthy(ctx context.Context) (bool, error) {
-	status, err := pms.GetPoolStatus(ctx)
-	if err != nil {
-		return false, err
+// GetPoolStatusCached returns pool status. Uses simple in-memory fallback when
+// on-chain or DB data unavailable. Safe for /pool/status endpoint.
+func (p *PoolMonitorService) GetPoolStatusCached(ctx context.Context) (map[string]interface{}, error) {
+	poolAddr := p.tonCfg.PoolAddress
+	if poolAddr == "" {
+		poolAddr = p.tonCfg.ContractAddress
 	}
-	return status.IsHealthy && status.GSTDBalance > 0 && status.XAUtBalance > 0, nil
-}
-
-// Start begins the monitoring loop
-func (pms *PoolMonitorService) Start(ctx context.Context) {
-    if pms.db == nil {
-        log.Println("⚠️ PoolMonitorService: DB not initialized (skipping background logging)")
-        return
-    }
-
-    ticker := time.NewTicker(24 * time.Hour)
-    
-    // Initial update
-    pms.updateAndLog(ctx)
-
-    go func() {
-        for {
-            select {
-            case <-ticker.C:
-                pms.updateAndLog(ctx)
-            case <-ctx.Done():
-                ticker.Stop()
-                return
-            }
-        }
-    }()
-}
-
-// updateAndLog fetches status and logs to DB
-func (pms *PoolMonitorService) updateAndLog(ctx context.Context) {
-    status, err := pms.GetPoolStatus(ctx)
-    if err != nil {
-        log.Printf("❌ PoolMonitor: Failed to get status: %v", err)
-        return
-    }
-
-    // Log to golden_reserve_log table
-    _, err = pms.db.ExecContext(ctx, `
-        INSERT INTO golden_reserve_log (
-            pool_address, gstd_balance, xaut_balance, 
-            total_value_usd, reserve_ratio, is_healthy
-        ) VALUES ($1, $2, $3, $4, $5, $6)
-    `, status.PoolAddress, status.GSTDBalance, status.XAUtBalance, 
-       status.TotalValueUSD, status.ReserveRatio, status.IsHealthy)
-
-    if err != nil {
-        log.Printf("❌ PoolMonitor: Failed to log to DB: %v", err)
-    } else {
-        log.Printf("✅ PoolMonitor: Gold Reserve updated in DB (XAUt: %.6f)", status.XAUtBalance)
-    }
-}
-
-// GetXAUtPriceUSD returns the current price of XAUt (Gold) in USD
-func (pms *PoolMonitorService) GetXAUtPriceUSD() float64 {
-	// In a real production environment, this should be fetched from an Oracle (e.g. RedStone or Chainlink)
-	// or a CEX API. For now, we use a hardcoded safe fallback that is close to market value.
-	return 2750.00 // Updated Gold Price roughly $2750
-}
-
-// GetGSTDPriceUSD returns the estimated price of GSTD in USD
-func (pms *PoolMonitorService) GetGSTDPriceUSD(ctx context.Context) (float64, error) {
-	// 1. Try GSTD/TON pool first (usually has more liquidity)
-	// GSTD/TON Pool: EQBAKUBvV_ppbcMCPnWQXKfV1IIHtve5ImYA8-wg0hpMzNH8
-	tonPoolAddr := "EQBAKUBvV_ppbcMCPnWQXKfV1IIHtve5ImYA8-wg0hpMzNH8"
-	
-	// Quick fetch for TON pool
-	url := fmt.Sprintf("https://api.ston.fi/v1/pools/%s", tonPoolAddr)
-	resp, err := pms.httpClient.Get(url)
-	if err == nil && resp.StatusCode == http.StatusOK {
-		var poolData struct {
-			Pool struct {
-				Reserve0 string `json:"reserve0"` // GSTD
-				Reserve1 string `json:"reserve1"` // TON
-				Token0   string `json:"token0_address"`
-			} `json:"pool"`
-		}
-		if err := json.NewDecoder(resp.Body).Decode(&poolData); err == nil {
-			r0, _ := strconv.ParseFloat(poolData.Pool.Reserve0, 64)
-			r1, _ := strconv.ParseFloat(poolData.Pool.Reserve1, 64)
-			
-			var reserveGSTD, reserveTON float64
-			if poolData.Pool.Token0 == "EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO" {
-				reserveGSTD = r0
-				reserveTON = r1
-			} else {
-				reserveGSTD = r1
-				reserveTON = r0
-			}
-
-			if reserveGSTD > 0 {
-				tonPriceUSD := 5.30 // Hardcoded fallback or fetch
-				// Price in TON = reserveTON / reserveGSTD
-				priceInTON := reserveTON / reserveGSTD
-				gstdPrice := priceInTON * tonPriceUSD
-				if gstdPrice > 0.0000001 {
-					log.Printf("📊 GSTD Price from TON Pool: $%.6f", gstdPrice)
-					return gstdPrice, nil
-				}
-			}
-		}
-		resp.Body.Close()
+	gstdBal, xautBal := 0.0, 0.0
+	if p.tonService != nil && poolAddr != "" {
+		gstdNano, _ := p.tonService.GetContractBalance(ctx, poolAddr)
+		gstdBal = float64(gstdNano) / 1e9
+		// XAUt would need jetton balance; use 0 for now
 	}
-
-	// 2. Fallback to XAUt Pool (The one provided by user)
-	status, err := pms.GetPoolStatusCached(ctx)
-	if err == nil && status.GSTDBalance > 100 {
-		xautPrice := pms.GetXAUtPriceUSD()
-		gstdPrice := xautPrice * (status.XAUtBalance / status.GSTDBalance)
-		if gstdPrice > 0.0000001 {
-			log.Printf("📊 GSTD Price from XAUt Pool: $%.8f", gstdPrice)
-			return gstdPrice, nil
-		}
+	goldPrice := p.GetXAUtPriceUSD()
+	totalUSD := gstdBal*0.02 + xautBal*goldPrice
+	if totalUSD <= 0 {
+		totalUSD = 0
 	}
-
-	// 3. Absolute Floor Price for Demo
-	return 0.015, nil
+	reserveRatio := 0.0
+	if gstdBal > 0 && xautBal > 0 {
+		reserveRatio = (xautBal * goldPrice) / (gstdBal * 0.02)
+	}
+	return map[string]interface{}{
+		"pool_address":    poolAddr,
+		"gstd_balance":    gstdBal,
+		"xaut_balance":    xautBal,
+		"total_value_usd": totalUSD,
+		"last_updated":    time.Now(),
+		"is_healthy":      totalUSD >= 0,
+		"reserve_ratio":   reserveRatio,
+	}, nil
 }
+

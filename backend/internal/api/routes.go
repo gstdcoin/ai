@@ -60,6 +60,7 @@ func SetupRoutes(
 	multiLevelReferralService *services.MultiLevelReferralService,
 	agentMarketplaceService *services.AgentMarketplaceService,
 	apiKeyService *services.APIKeyService,
+	guardrailsService *services.GuardrailsService,
 ) {
 	log.Printf("🔧 SetupRoutes: Starting route setup, redisClient type: %T", redisClient)
 	
@@ -68,6 +69,9 @@ func SetupRoutes(
 
 	// Initialize Gateway/API Key Handler
 	gatewayHandler := NewGatewayHandler(apiKeyService, taskService, db.(*sql.DB))
+	if guardrailsService != nil {
+		gatewayHandler.SetGuardrails(guardrailsService)
+	}
 
 	// Initialize Genesis System (Self-Generating APIs)
 	var genesisRedis *redis.Client
@@ -189,6 +193,13 @@ func SetupRoutes(
 		// Metrics endpoint (Prometheus format) - public
 		metricsService := NewMetricsService(db.(*sql.DB), redisClient.(*redis.Client))
 		v1.GET("/metrics", metricsService.GetMetrics())
+
+		// Internal endpoints (X-Admin-API-Key only, for cron/automation)
+		internal := v1.Group("/internal")
+		internal.Use(RequireAdminAPIKey())
+		{
+			internal.POST("/sync-gstd-balances", syncGSTDBalances(db.(*sql.DB), tonService, tonConfig))
+		}
 		
 
 		// Telegram Webhook
@@ -303,6 +314,7 @@ func SetupRoutes(
 			admin.GET("/withdrawals/pending", getPendingWithdrawals(db.(*sql.DB)))
 			admin.POST("/withdrawals/:id/approve", approveWithdrawal(db.(*sql.DB), rewardEngine))
 			admin.POST("/broadcast", broadcastAnnouncement(hub, knowledgeService))
+			admin.POST("/sync-gstd-balances", syncGSTDBalances(db.(*sql.DB), tonService, tonConfig))
 		}
 
 		// Admin commission endpoints (require session + admin wallet authorization)
