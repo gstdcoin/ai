@@ -3,17 +3,21 @@ package app
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
+	"log"
+	"net/http"
+	"os"
+	"time"
+
 	"distributed-computing-platform/internal/api"
 	"distributed-computing-platform/internal/config"
 	"distributed-computing-platform/internal/database"
 	"distributed-computing-platform/internal/queue"
 	"distributed-computing-platform/internal/services"
+
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/dig"
-	"log"
-	"os"
-	"time"
 )
 
 // BuildContainer constructs the dependency injection container
@@ -310,7 +314,30 @@ func StartApplication(container *dig.Container) error {
 			zbGateService, recyclingPool, kvCacheService,
 			dataAirlock, openClawBridge)
 
-		// 5. Start Server
+		// 5. Ollama connectivity check (inference gateway)
+		ollamaURL := os.Getenv("OLLAMA_URL")
+		if ollamaURL == "" {
+			ollamaURL = "http://host.docker.internal:11434"
+		}
+		go func() {
+			c := &http.Client{Timeout: 5 * time.Second}
+			resp, err := c.Get(ollamaURL + "/api/tags")
+			if err != nil {
+				log.Printf("⚠️ CRITICAL: Ollama unreachable at %s — /chat/completions will fail. Start Ollama: ollama serve", ollamaURL)
+				return
+			}
+			defer resp.Body.Close()
+			var data struct {
+				Models []struct{ Name string } `json:"models"`
+			}
+			if json.NewDecoder(resp.Body).Decode(&data) == nil {
+				log.Printf("✅ Ollama: %d model(s) available at %s", len(data.Models), ollamaURL)
+			} else {
+				log.Printf("✅ Ollama reachable at %s", ollamaURL)
+			}
+		}()
+
+		// 6. Start Server
 		port := cfg.Server.Port
 		log.Printf("🔥 Server starting on port %s", port)
 		if err := router.Run(":" + port); err != nil {
