@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>GSTD Miner</title>
+  <title>GSTD — Personal AI + Miner + Mini-node</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -47,6 +47,14 @@
       text-align: center; transition: all 0.2s;
     }
     .full-dashboard-link:hover { background: rgba(139,92,246,0.3); color: #fff; }
+    .quick-nav { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; justify-content: center; }
+    .quick-nav a {
+      padding: 8px 14px; border-radius: 10px; font-size: 11px; font-weight: 700;
+      text-decoration: none; transition: all 0.2s;
+      background: var(--card); border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .quick-nav a:hover { border-color: rgba(139,92,246,0.4); color: #a78bfa; }
     
     /* Power Button */
     .power-section { text-align: center; padding: 24px 0; }
@@ -119,17 +127,23 @@
 <body>
   <div class="container">
     <div class="header">
-      <h1><span>GSTD</span> Miner</h1>
+      <h1><span>GSTD</span> — Personal AI + Miner + Mini-node</h1>
+      <p style="font-size:11px;color:var(--muted);margin-top:4px;">Your assistant in Telegram</p>
       <div class="status-badge" id="statusBadge">
         <div class="dot"></div>
         <span id="statusText">Ready</span>
       </div>
+      <div class="quick-nav">
+        <a href="https://app.gstdtoken.com/dashboard">🤖 AI Chat</a>
+        <a href="https://app.gstdtoken.com/agent">📡 Agent Node</a>
+      </div>
       <a href="https://app.gstdtoken.com" class="full-dashboard-link" id="fullDashboardLink">
-        📱 Полный дашборд (чат, задачи, кошелёк)
+        📱 Full dashboard (chat, tasks, wallet)
       </a>
     </div>
 
     <div class="power-section">
+      <div style="font-size:9px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;">⛏ Miner · Mini-node</div>
       <div class="power-btn" id="powerBtn" onclick="toggleMining()">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M5.636 5.636a9 9 0 1012.728 0M12 3v9" />

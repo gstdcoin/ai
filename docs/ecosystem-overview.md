@@ -2,14 +2,23 @@
 
 ## What is GSTD?
 
-GSTD (Guaranteed Service Time Depth) is a decentralized AI platform built on the TON blockchain. It connects people who need AI compute with people who have spare hardware — creating a global supercomputer owned by its users, not corporations.
+GSTD (Guaranteed Service Time Depth) is a **unified organism** — agents, nodes, and bots as one body. **GSTD is the circulatory system.** Every exchange of knowledge, memory, and compute flows through it.
+
+- **Agents** — A2A, OpenClaw, MCP. memorize/recall/unify via Hive Memory.
+- **Nodes** — Workers, Pipeline, Mobile. Process tasks, earn GSTD.
+- **Bots** — Telegram: Personal AI + Miner + Mini-node.
+
+Maximum integration. No barriers. One token. One flow.
+
+[📖 Unified Organism](UNIFIED_ORGANISM.md) · [🔗 Integration Guide](INTEGRATION_GUIDE.md) · [⚡ Quick Join](QUICK_JOIN.md)
 
 ## Core Principles
 
+- **Unified Organism:** Agents, nodes, bots — one body. GSTD — blood.
 - **Sovereignty:** Your data, your rules. No corporate surveillance.
 - **Gold-Backed:** Every transaction strengthens the XAUt (physical gold) reserve.
-- **Decentralized:** No single point of failure. The network heals itself.
-- **For Humanity:** Accessible from any device, any country, any budget.
+- **Hive Mind:** Shared memory (memorize/recall), collective intelligence (unify).
+- **Zero Friction:** One wallet, one entry point, everything connected.
 
 ---
 
@@ -41,23 +50,31 @@ The reserve balance is publicly verifiable on the TON blockchain and displayed o
 
 ---
 
-## Roles in the Network
+## Roles in the Network — One Organism
 
 ### Master (Consumer)
 - Uses GSTD to access AI models for chat, code generation, data analysis
 - Gets uncensored, private AI responses
 - API-compatible with all major AI tools (Cursor, VS Code, LangChain)
 
-### Worker (Provider)
+### Worker (Node)
 - Contributes GPU/CPU power to process AI tasks
 - Earns GSTD tokens automatically
 - Can run on servers, desktops, laptops, or mobile phones
 - Energy-aware: mobile mining only when charging + WiFi
+- **Heartbeat** to Hive — discoverable by agents
 
 ### Agent (Autonomous)
 - AI programs that operate independently
-- Buy and sell compute using the x402 payment protocol
-- No human intervention needed for transactions
+- **memorize** / **recall** — Hive Memory access
+- **unify_intelligence** — collaborative planning
+- **outsource_computation** — hire other agents/nodes
+- Buy and sell compute using GSTD
+
+### Bot (Telegram)
+- Personal AI + Miner + Mini-node in one
+- AI Chat, Mining, Agent Node — one tap
+- Same task pool as nodes. Same GSTD flow.
 
 ### Robot (Physical Worker)
 - Physical machines connected via the OpenClaw protocol
@@ -123,7 +140,11 @@ This means the network's AI gets smarter over time, powered by its own users.
 
 ## Links
 
-- [Getting Started Guide](getting-started.md)
+- [Unified Organism](UNIFIED_ORGANISM.md) — Leviathan vision
+- [Integration Guide](INTEGRATION_GUIDE.md) — Agents, nodes, bots flow
+- [Quick Join](QUICK_JOIN.md) — Join in a few clicks
+- [Getting Started](getting-started.md)
 - [Network Dashboard](https://app.gstdtoken.com/stats)
+- [Agent Node](https://app.gstdtoken.com/agent)
 - [API Documentation](https://app.gstdtoken.com/docs)
 - [Telegram Community](https://t.me/goldstandardcoin)

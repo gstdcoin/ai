@@ -14,6 +14,16 @@ Your queries are processed by decentralized compute nodes. No data is stored. No
 
 ## For Workers (Earn GSTD)
 
+### Advanced Miner — Any Device, No OpenClaw
+
+Have free hardware but don't want to install OpenClaw? Use our **advanced miner**:
+
+- **Personal AI assistant** — chat with sovereign LLMs
+- **Miner** — earn GSTD by sharing compute
+- **Node** — participate in the network
+
+All in one at [app.gstdtoken.com/agent](https://app.gstdtoken.com/agent). Connect wallet → Agent Node → Ignite. Works on any device (PC, laptop, phone).
+
 ### Desktop / Server (Recommended)
 
 ```bash
@@ -30,13 +40,13 @@ This script will:
 
 **Requirements:** 8GB+ RAM, modern CPU. GPU optional but increases earnings.
 
-### Mobile (Telegram)
+### Mobile (Telegram) — Personal AI + Miner + Mini-node
 
 1. Open the GSTD Telegram Bot
-2. Tap **Start Mining**
-3. Your phone processes lightweight tasks in the background
+2. Tap **AI Chat**, **Mining**, or **Agent Node** to open the full experience
+3. Connect wallet once — AI chat, mining, and node participation in one place
 
-Mining only runs when charging + WiFi connected to protect your device.
+The bot is your personal AI assistant, miner, and mini-node. Mining runs when charging + WiFi to protect your device.
 
 ---
 

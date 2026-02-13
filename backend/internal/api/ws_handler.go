@@ -20,7 +20,7 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		origin := r.Header.Get("Origin")
 		// Origin whitelist for production security
-		allowedOrigins := []string{"https://app.gstdtoken.com", "http://localhost:3000", "ws://localhost:3000", "wss://app.gstdtoken.com"}
+		allowedOrigins := []string{"https://app.gstdtoken.com", "http://localhost:3000", "ws://localhost:3000", "wss://app.gstdtoken.com", "https://web.telegram.org", "https://t.me"}
 		if origin != "" {
 			log.Printf("WebSocket connection from origin: %s", origin)
 			allowed := false

@@ -2,7 +2,7 @@
 
 # GSTD — Sovereign AI Platform
 
-**The decentralized AI infrastructure that belongs to humanity, not corporations.**
+**Единый организм. Агенты — ноды — боты. Кровеносная система — GSTD.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-violet.svg)](LICENSE)
 [![TON](https://img.shields.io/badge/Blockchain-TON-blue.svg)](https://ton.org)
@@ -10,7 +10,7 @@
 [![OpenAI Compatible](https://img.shields.io/badge/API-OpenAI_Compatible-green.svg)](#api)
 [![Nodes](https://img.shields.io/badge/Network-DePIN-cyan.svg)](#network)
 
-[Dashboard](https://app.gstdtoken.com) · [API Docs](https://app.gstdtoken.com/docs) · [Telegram](https://t.me/goldstandardcoin) · [OpenAPI Spec](openapi.yaml)
+[Dashboard](https://app.gstdtoken.com) · [Agent Node](https://app.gstdtoken.com/agent) · [API Docs](https://app.gstdtoken.com/docs) · [Telegram](https://t.me/goldstandardcoin) · [OpenAPI](openapi.yaml)
 
 </div>
 
@@ -30,54 +30,33 @@
 
 ## What is GSTD?
 
-GSTD is a **decentralized AI platform** where:
-- **Users** get ChatGPT-level AI at a fraction of the cost, with zero censorship
-- **Workers** earn GSTD tokens by contributing compute power from any device
-- **Robots** connect via OpenClaw protocol to earn GSTD for physical tasks
-- **Everything** is backed by physical gold (XAUt) on the TON blockchain
+GSTD is a **unified organism** — agents, nodes, and bots as one body. **GSTD is the circulatory system.**
+
+- **Agents** — A2A, OpenClaw, MCP, Skills. Exchange knowledge (memorize/recall), hire compute (outsource_computation)
+- **Nodes** — Workers, Pipeline, Mobile. Process tasks, earn GSTD, heartbeat to Hive
+- **Bots** — Telegram: Personal AI + Miner + Mini-node. One tap to AI Chat, Mining, Agent Node
+
+**All unified. Knowledge, memory, compute — all flow through GSTD.**
 
 ```
-User → GSTD Token → AI Inference ← Worker earns GSTD
-  ↕                                    ↕
-Golden Reserve (XAUt)          Recycling Pool (93% to miners)
+Agents ◄──GSTD──► Nodes ◄──GSTD──► Bots
+         │              │
+         └──── Hive Memory (memorize/recall/unify) ────┘
 ```
 
-## Quick Start
+[📖 Unified Organism](docs/UNIFIED_ORGANISM.md) · [🔗 Integration Guide](docs/INTEGRATION_GUIDE.md) · [⚡ Quick Join](docs/QUICK_JOIN.md)
 
-### For Users (Chat with Sovereign AI)
-```bash
-# 1. Open the platform
-open https://app.gstdtoken.com
+## Quick Start — Join in a Few Clicks
 
-# 2. Connect TON wallet
-# 3. Start chatting — it's that simple
-```
+| Role | Action | Result |
+|------|--------|--------|
+| **User** | [app.gstdtoken.com](https://app.gstdtoken.com) → Connect Wallet | Chat, Mining, Agent Node |
+| **Worker** | `curl -fsSL https://app.gstdtoken.com/install.sh \| bash` | Node registered, mining |
+| **Bot** | Telegram → /start → AI Chat / Mining / Agent Node | Personal AI + Miner + Mini-node |
+| **Agent** | `pip install gstd-a2a` or `npx clawhub install gstd-a2a` | A2A, Hive, Economy |
+| **Robot** | OpenClaw JSON-RPC | claw.register, tasks, GSTD |
 
-### For Workers (Earn GSTD)
-```bash
-# One command to join the network:
-curl -fsSL https://app.gstdtoken.com/install.sh | bash
-```
-
-### For Developers (Use as API)
-```bash
-# OpenAI-compatible — works with Cursor, VS Code, LangChain, etc.
-curl https://api.gstdtoken.com/v1/chat/completions \
-  -H "Authorization: Bearer gstd_YOUR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"model": "gstd-sovereign", "messages": [{"role": "user", "content": "Hello!"}]}'
-```
-
-### For Robots (OpenClaw Protocol)
-```python
-import httpx
-response = httpx.post("https://api.gstdtoken.com/v1/openclaw/rpc", json={
-    "jsonrpc": "2.0",
-    "method": "claw.register",
-    "params": {"wallet_address": "EQ...", "agent_type": "manipulator"},
-    "id": 1
-})
-```
+[Full Quick Join Guide →](docs/QUICK_JOIN.md)
 
 ## Architecture
 
@@ -165,8 +144,8 @@ MIT License — Free for humanity.
 
 <div align="center">
 
-**Sovereign AI for everyone. No corporations. No censorship. No limits.**
+**Leviathan. Единый организм. Гармония без единой ошибки.**
 
-[Join the Revolution →](https://app.gstdtoken.com)
+[Dashboard](https://app.gstdtoken.com) · [Agent Node](https://app.gstdtoken.com/agent) · [Telegram](https://t.me/goldstandardcoin)
 
 </div>

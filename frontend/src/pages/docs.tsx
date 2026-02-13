@@ -57,6 +57,12 @@ export default function Docs({ content, isCalculator }: DocsProps) {
                     >
                         {router.locale === 'ru' ? 'Агенты (A2A)' : 'Agents (A2A)'}
                     </button>
+                    <button
+                        onClick={() => switchDoc('unified')}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${type === 'unified' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'text-gray-400 hover:text-white'}`}
+                    >
+                        {router.locale === 'ru' ? 'Единый организм' : 'Unified Organism'}
+                    </button>
                 </div>
             </div>
 
@@ -89,6 +95,8 @@ export const getServerSideProps: any = async ({ locale, query }: any) => {
         filename = locale === 'ru' ? 'TECHNICAL_DOCS_RU.md' : 'TECHNICAL_DOCS.md';
     } else if (type === 'agents') {
         filename = locale === 'ru' ? 'AGENTS_DOCS_RU.md' : 'AGENTS_DOCS.md';
+    } else if (type === 'unified') {
+        filename = locale === 'ru' ? 'UNIFIED_ORGANISM_RU.md' : 'UNIFIED_ORGANISM.md';
     } else {
         filename = locale === 'ru' ? 'INVESTMENT_COMPARISON_RU.md' : 'INVESTMENT_COMPARISON.md';
     }

@@ -169,11 +169,16 @@ func botLang(langCode string) string {
 	return "en"
 }
 
-// Bot messages EN/RU
+// Bot messages EN/RU — Personal AI Assistant + Miner + Mini-node
 var msgStart = map[string]string{
-	"en": `👋 <b>GSTD Sovereign Grid</b>
+	"en": `👋 <b>GSTD — Personal AI + Miner + Mini-node</b>
 
-Thin client — full functionality, wallet auth.
+Your assistant in Telegram:
+• <b>🤖 AI</b> — chat with sovereign LLMs
+• <b>⛏ Miner</b> — earn GSTD on your phone
+• <b>📡 Node</b> — participate in the network
+
+Connect wallet once — everything in one place.
 
 <b>Commands:</b>
 /start — this message
@@ -181,9 +186,14 @@ Thin client — full functionality, wallet auth.
 /status — status (admin only)
 /balance — balance (admin only)
 /admin — control panel (admin only)`,
-	"ru": `👋 <b>GSTD Sovereign Grid</b>
+	"ru": `👋 <b>GSTD — Персональный AI + Майнер + Мини-нода</b>
 
-Тонкий клиент — полный функционал, авторизация через кошелёк.
+Ваш ассистент в Telegram:
+• <b>🤖 AI</b> — чат с sovereign LLM
+• <b>⛏ Майнер</b> — зарабатывайте GSTD на телефоне
+• <b>📡 Нода</b> — участвуйте в сети
+
+Подключите кошелёк один раз — всё в одном месте.
 
 <b>Команды:</b>
 /start — это сообщение
@@ -194,20 +204,22 @@ Thin client — full functionality, wallet auth.
 }
 
 var msgHelp = map[string]string{
-	"en": `📖 <b>GSTD Help</b>
+	"en": `📖 <b>Personal AI + Miner + Mini-node</b>
 
-Tap the button below to open the full dashboard in Telegram:
-• Connect wallet (TonConnect)
-• Chat with Sovereign AI
-• Mining, tasks, statistics
-• Everything works without a separate app`,
-	"ru": `📖 <b>Справка GSTD</b>
+Choose what to open:
+• <b>AI Chat</b> — ask anything, sovereign LLMs
+• <b>Mining</b> — earn GSTD, share compute
+• <b>Agent Node</b> — AI + skills + miner in one
 
-Нажмите кнопку ниже, чтобы открыть полный дашборд в Telegram:
-• Подключите кошелёк (TonConnect)
-• Чат с Sovereign AI
-• Майнинг, задачи, статистика
-• Всё работает без отдельного приложения`,
+Connect wallet (TonConnect) — everything works in Telegram.`,
+	"ru": `📖 <b>Персональный AI + Майнер + Мини-нода</b>
+
+Выберите, что открыть:
+• <b>AI Чат</b> — спросите что угодно, sovereign LLM
+• <b>Майнинг</b> — зарабатывайте GSTD, делитесь мощностью
+• <b>Agent Node</b> — AI + навыки + майнер в одном
+
+Подключите кошелёк (TonConnect) — всё работает в Telegram.`,
 }
 
 var msgAdminOnly = map[string]string{
@@ -227,6 +239,21 @@ Choose an action:`,
 var btnOpenApp = map[string]string{
 	"en": "📱 Open App",
 	"ru": "📱 Открыть приложение",
+}
+
+var btnAIChat = map[string]string{
+	"en": "🤖 AI Chat",
+	"ru": "🤖 AI Чат",
+}
+
+var btnMining = map[string]string{
+	"en": "⛏ Mining",
+	"ru": "⛏ Майнинг",
+}
+
+var btnAgentNode = map[string]string{
+	"en": "📡 Agent Node",
+	"ru": "📡 Agent Node",
 }
 
 var msgProcessing = map[string]string{
@@ -308,31 +335,60 @@ func (s *TelegramService) ProcessWebhook(ctx context.Context, body []byte) error
 		webAppURL = "https://app.gstdtoken.com"
 	}
 
-	// /start — public welcome with Web App button
+	// /start — public welcome with 3 Web App buttons: AI Chat | Mining | Agent Node
 	if text == "/start" {
 		msg := msgStart[lang]
 		if msg == "" {
 			msg = msgStart["en"]
 		}
-		btnText := btnOpenApp[lang]
-		if btnText == "" {
-			btnText = btnOpenApp["en"]
+		aiBtn := btnAIChat[lang]
+		if aiBtn == "" {
+			aiBtn = btnAIChat["en"]
 		}
-		markup := fmt.Sprintf(`{"inline_keyboard":[[{"text":"%s","web_app":{"url":"%s"}}]]}`, btnText, webAppURL)
+		miningBtn := btnMining[lang]
+		if miningBtn == "" {
+			miningBtn = btnMining["en"]
+		}
+		nodeBtn := btnAgentNode[lang]
+		if nodeBtn == "" {
+			nodeBtn = btnAgentNode["en"]
+		}
+		// AI Chat → dashboard (chat tab), Mining → dashboard?tab=home, Agent Node → /agent
+		dashboardURL := webAppURL + "/dashboard"
+		miningURL := webAppURL + "/dashboard?tab=home"
+		agentURL := webAppURL + "/agent"
+		markup := fmt.Sprintf(`{"inline_keyboard":[
+			[{"text":"%s","web_app":{"url":"%s"}},{"text":"%s","web_app":{"url":"%s"}}],
+			[{"text":"%s","web_app":{"url":"%s"}}]
+		]}`, aiBtn, dashboardURL, miningBtn, miningURL, nodeBtn, agentURL)
 		return s.SendMessageToChatWithMarkup(ctx, chatID, msg, markup)
 	}
 
-	// /help
+	// /help — same 3 buttons
 	if text == "/help" {
 		msg := msgHelp[lang]
 		if msg == "" {
 			msg = msgHelp["en"]
 		}
-		btnText := btnOpenApp[lang]
-		if btnText == "" {
-			btnText = btnOpenApp["en"]
+		aiBtn := btnAIChat[lang]
+		if aiBtn == "" {
+			aiBtn = btnAIChat["en"]
 		}
-		markup := fmt.Sprintf(`{"inline_keyboard":[[{"text":"%s","web_app":{"url":"%s"}}]]}`, btnText, webAppURL)
+		miningBtn := btnMining[lang]
+		if miningBtn == "" {
+			miningBtn = btnMining["en"]
+		}
+		nodeBtn := btnAgentNode[lang]
+		if nodeBtn == "" {
+			nodeBtn = btnAgentNode["en"]
+		}
+		dashboardURL := webAppURL + "/dashboard"
+		miningURL := webAppURL + "/dashboard?tab=home"
+		agentURL := webAppURL + "/agent"
+		markup := fmt.Sprintf(`{"inline_keyboard":[
+			[{"text":"%s","web_app":{"url":"%s"}},{"text":"%s","web_app":{"url":"%s"}}],
+			[{"text":"%s","web_app":{"url":"%s"}}]
+		]}`, aiBtn, dashboardURL, miningBtn, miningURL, nodeBtn, agentURL)
 		return s.SendMessageToChatWithMarkup(ctx, chatID, msg, markup)
 	}
 

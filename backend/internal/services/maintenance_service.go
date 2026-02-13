@@ -186,7 +186,7 @@ func (s *MaintenanceService) sendDailyBriefing(ctx context.Context) {
 	s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM users WHERE created_at > NOW() - INTERVAL '24 hours'").Scan(&newUsers24h)
 	
 	var totalPaid float64
-	s.db.QueryRowContext(ctx, "SELECT COALESCE(SUM(amount), 0) FROM payout_transactions WHERE status = 'confirmed' AND created_at > NOW() - INTERVAL '24 hours'").Scan(&totalPaid)
+	s.db.QueryRowContext(ctx, "SELECT COALESCE(SUM(executor_reward_gstd), 0) FROM payout_transactions WHERE status = 'confirmed' AND created_at > NOW() - INTERVAL '24 hours'").Scan(&totalPaid)
 
 	// Format Message
 	msg := []string{
