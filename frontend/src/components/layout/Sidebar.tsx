@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'next-i18next';
-import { LayoutDashboard, Server, BarChart3, HelpCircle, X, Menu, Bot, Home, MessageSquare, Hammer } from 'lucide-react';
+import { useRouter } from 'next/router';
+import { LayoutDashboard, Server, BarChart3, HelpCircle, X, Menu, Bot, Home, MessageSquare, Hammer, Cpu } from 'lucide-react';
 import { Tab } from '../../types/tabs';
 
 interface SidebarProps {
@@ -11,10 +12,12 @@ interface SidebarProps {
 
 export default function Sidebar({ activeTab, onTabChange, onCreateTask }: SidebarProps) {
   const { t } = useTranslation('common');
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
 
-  const tabs: Array<{ id: Tab; label: string; icon: React.ReactNode; highlight?: boolean }> = [
+  const tabs: Array<{ id: Tab | 'agent'; label: string; icon: React.ReactNode; highlight?: boolean; href?: string }> = [
     { id: 'chat', label: t('chat') || 'Chat', icon: <MessageSquare size={20} />, highlight: true },
+    { id: 'agent', label: t('agent_node') || 'Agent Node', icon: <Cpu size={20} />, highlight: true, href: '/agent' },
     { id: 'home', label: t('nav_mining') || 'Mining', icon: <Hammer size={20} /> },
     { id: 'agents', label: t('agents') || 'Agents', icon: <Bot size={20} /> },
     { id: 'tasks', label: t('tasks') || 'Tasks', icon: <LayoutDashboard size={20} /> },
@@ -40,20 +43,33 @@ export default function Sidebar({ activeTab, onTabChange, onCreateTask }: Sideba
 
           <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto scrollbar-hide">
             {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => { onTabChange(tab.id); setIsOpen(false); }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 min-h-[40px] text-sm
-                  ${activeTab === tab.id
-                    ? tab.highlight
-                      ? 'bg-violet-600/20 text-violet-400'
-                      : 'bg-white/10 text-white'
-                    : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'}`}
-              >
-                {tab.icon}
-                <span className="font-medium truncate">{tab.label}</span>
-                {tab.highlight && activeTab !== tab.id && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-violet-500 animate-pulse" />}
-              </button>
+              tab.href ? (
+                <a
+                  key={tab.id}
+                  href={tab.href}
+                  onClick={() => setIsOpen(false)}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 min-h-[40px] text-sm text-gray-400 hover:text-gray-200 hover:bg-white/5"
+                >
+                  {tab.icon}
+                  <span className="font-medium truncate">{tab.label}</span>
+                  {tab.highlight && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-violet-500 animate-pulse" />}
+                </a>
+              ) : (
+                <button
+                  key={tab.id}
+                  onClick={() => { onTabChange(tab.id); setIsOpen(false); }}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 min-h-[40px] text-sm
+                    ${activeTab === tab.id
+                      ? tab.highlight
+                        ? 'bg-violet-600/20 text-violet-400'
+                        : 'bg-white/10 text-white'
+                      : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'}`}
+                >
+                  {tab.icon}
+                  <span className="font-medium truncate">{tab.label}</span>
+                  {tab.highlight && activeTab !== tab.id && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-violet-500 animate-pulse" />}
+                </button>
+              )
             ))}
           </nav>
 

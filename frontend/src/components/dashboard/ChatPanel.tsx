@@ -19,7 +19,11 @@ interface Message {
   verifiedUpTo?: number; // Characters verified by large model
 }
 
-export default function ChatPanel() {
+interface ChatPanelProps {
+  compact?: boolean; // When true, fills parent (e.g. Agent Node layout)
+}
+
+export default function ChatPanel({ compact }: ChatPanelProps = {}) {
   const { t } = useTranslation('common');
   const { gstdBalance } = useWalletStore();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -242,7 +246,7 @@ export default function ChatPanel() {
   const clearChat = () => { setMessages([]); };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-140px)] max-w-4xl mx-auto">
+    <div className={`flex flex-col max-w-4xl mx-auto ${compact ? 'h-full min-h-0' : 'h-[calc(100vh-140px)]'}`}>
       {/* Top Bar: Model + Settings */}
       <div className="flex items-center gap-3 mb-4 px-2 flex-wrap">
         <select
