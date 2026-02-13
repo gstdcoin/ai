@@ -142,7 +142,7 @@ func leaderboardByH3(db *sql.DB) gin.HandlerFunc {
 		}
 		defer rows.Close()
 
-		var items []map[string]interface{}
+		items := []map[string]interface{}{}
 		for rows.Next() {
 			var h3, country string
 			var count int

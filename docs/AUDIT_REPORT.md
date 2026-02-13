@@ -11,10 +11,10 @@
 | `/api/v1/pool/status` | GET | ✅ 200 | GSTD/XAUt pool |
 | `/api/v1/network/stats` | GET | ✅ 200 | active_workers, temperature, pressure |
 | `/api/v1/burn/stats` | GET | ✅ 200 | Burn statistics |
-| `/api/v1/cosmic/gold-multiplier` | GET | ❌ 404 | Зарегистрирован в SetupCosmicGenesisRoutes — возможно старый Docker image |
-| `/api/v1/leaderboard/h3` | GET | ❌ 404 | Зарегистрирован в SetupHyperExpansionRoutes — возможно старый image |
+| `/api/v1/cosmic/gold-multiplier` | GET | ✅ 200 | Gold multiplier (1.0–1.5x) |
+| `/api/v1/leaderboard/h3` | GET | ✅ 200 | H3 regions leaderboard (требует h3_index в nodes) |
 
-**Рекомендация:** Пересобрать backend Docker image и перезапустить: `docker compose build backend-blue backend-green && docker compose up -d`
+**Примечание:** Host backend (./server) слушает 8080. Docker backend — в отдельной сети. Миграции v48, v50, v51 должны быть применены к БД, к которой подключается backend.
 
 ## 2. Backend Services — статус
 
