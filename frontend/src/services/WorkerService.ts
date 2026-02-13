@@ -1,4 +1,5 @@
 import { toast } from 'sonner';
+import { useWalletStore } from '../store/walletStore';
 
 type WorkerState = 'idle' | 'igniting' | 'running' | 'paused' | 'error';
 type WorkerCallback = (data: any) => void;
@@ -143,8 +144,11 @@ class WorkerService {
 
     private connectWebSocket() {
         console.log('[Mining Loop] Step 3: Establishing Socket Connection...');
-        const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8080/ws'; // Adjust based on env
-        this.ws = new WebSocket(`${wsUrl}?device_id=${this.deviceId}`);
+        const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8080/ws';
+        const walletAddress = typeof window !== 'undefined' ? useWalletStore.getState().address : null;
+        const params = new URLSearchParams({ device_id: this.deviceId });
+        if (walletAddress) params.set('wallet_address', walletAddress);
+        this.ws = new WebSocket(`${wsUrl}?${params.toString()}`);
 
         this.ws.onopen = () => {
             console.log('[Mining Loop] Socket Connected ✅');

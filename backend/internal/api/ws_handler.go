@@ -418,6 +418,13 @@ func HandleWebSocket(hub *WSHub, deviceService *services.DeviceService, assignme
 			return
 		}
 
+		// Link browser device to wallet for task assignment and payouts (dashboard mining)
+		if walletAddress := c.Query("wallet_address"); walletAddress != "" {
+			if err := deviceService.LinkBrowserDevice(c.Request.Context(), deviceID, walletAddress); err != nil {
+				log.Printf("WebSocket: LinkBrowserDevice failed: %v", err)
+			}
+		}
+
 		// Get device trust score
 		var trustScore float64
 		ctx := context.Background()

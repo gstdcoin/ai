@@ -300,8 +300,25 @@ export default function Home() {
         </main>
 
         {/* Footer */}
-        <footer className="py-4 px-6 border-t border-white/5">
-          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3">
+        <footer className="border-t border-white/5">
+          {/* Stats ticker */}
+          <div className="overflow-hidden border-b border-white/5 bg-black/20">
+            <div className="flex animate-marquee w-max py-2">
+              <div className="flex items-center gap-8 px-6 shrink-0 text-[11px] text-gray-400">
+                <span><span className="text-amber-400/90 font-semibold">{goldReserve}</span> XAUt Reserve</span>
+                <span><span className="text-emerald-400/90 font-semibold">{activeNodes}</span> {t('workers_online')}</span>
+                <span><span className="text-violet-400/90 font-semibold">{gstdPrice}</span> $/GSTD</span>
+                <span><span className="text-cyan-400/90 font-semibold">{totalTasks}</span> {t('stat_tasks')}</span>
+              </div>
+              <div className="flex items-center gap-8 px-6 shrink-0 text-[11px] text-gray-400" aria-hidden="true">
+                <span><span className="text-amber-400/90 font-semibold">{goldReserve}</span> XAUt Reserve</span>
+                <span><span className="text-emerald-400/90 font-semibold">{activeNodes}</span> {t('workers_online')}</span>
+                <span><span className="text-violet-400/90 font-semibold">{gstdPrice}</span> $/GSTD</span>
+                <span><span className="text-cyan-400/90 font-semibold">{totalTasks}</span> {t('stat_tasks')}</span>
+              </div>
+            </div>
+          </div>
+          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3 py-4 px-6">
             <div className="flex items-center gap-4 text-[10px] text-gray-600">
               <span className="flex items-center gap-1"><Shield size={10} /> MiCA</span>
               <span className="flex items-center gap-1"><Zap size={10} /> TON</span>

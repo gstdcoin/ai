@@ -159,6 +159,24 @@ func (s *DeviceService) UpdateDeviceLastSeen(ctx context.Context, deviceID strin
 	return err
 }
 
+// LinkBrowserDevice links a browser worker device_id to a wallet for task assignment and payouts.
+// Called when WebSocket connects with wallet_address (browser mining from dashboard).
+func (s *DeviceService) LinkBrowserDevice(ctx context.Context, deviceID, walletAddress string) error {
+	if deviceID == "" || walletAddress == "" {
+		return nil // Skip if missing
+	}
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO devices (device_id, wallet_address, device_type, reputation, total_tasks, successful_tasks, failed_tasks, last_seen_at, is_active)
+		VALUES ($1, $2, 'browser', 0.5, 0, 0, 0, NOW(), true)
+		ON CONFLICT (device_id) DO UPDATE SET
+			wallet_address = $2,
+			device_type = 'browser',
+			last_seen_at = NOW(),
+			is_active = true
+	`, deviceID, walletAddress)
+	return err
+}
+
 // GetDeviceTrust retrieves trust score for a device
 func (s *DeviceService) GetDeviceTrust(ctx context.Context, deviceID string, trustScore *float64) error {
 	var reputation float64
