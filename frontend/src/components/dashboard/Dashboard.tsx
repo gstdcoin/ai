@@ -151,6 +151,18 @@ function Dashboard({ initialTab }: DashboardProps = {}) {
   }, []);
 
   const [networkStats, setNetworkStats] = useState<NetworkStats | null>(null);
+  const [referralMultiplier, setReferralMultiplier] = useState(1.0);
+
+  // Fetch referral stats for yield multiplier (1.0 + 0.05 per ref, max 1.25x)
+  useEffect(() => {
+    if (!address) return;
+    apiGet<{ total_referred?: number; total_referrals?: number }>('/referrals/stats')
+      .then((r) => {
+        const refs = r?.total_referred ?? r?.total_referrals ?? 0;
+        setReferralMultiplier(1 + 0.05 * Math.min(refs, 5));
+      })
+      .catch(() => setReferralMultiplier(1.0));
+  }, [address]);
 
   // Fetch network stats
   useEffect(() => {
@@ -399,8 +411,10 @@ function Dashboard({ initialTab }: DashboardProps = {}) {
                               <Users size={20} />
                             </div>
                             <div>
-                              <span className="text-[10px] text-gray-500 font-black uppercase tracking-widest block mb-0.5">Yield Mult</span>
-                              <span className="text-xl font-black text-white tabular-nums">1.25x</span>
+                              <span className="text-[10px] text-gray-500 font-black uppercase tracking-widest block mb-0.5">Referral</span>
+                              <span className="text-xl font-black text-white tabular-nums">
+                                {referralMultiplier}x
+                              </span>
                             </div>
                           </div>
                           <button className="text-[10px] font-black text-violet-400 border border-violet-500/20 px-3 py-1 rounded-lg hover:bg-violet-500/10">+</button>

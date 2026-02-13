@@ -18,13 +18,11 @@ func getPublicStats(db *sql.DB, tonService *services.TONService, tonConfig confi
 			if r := recover(); r != nil {
 				log.Printf("Panic in getPublicStats handler: %v", r)
 				c.JSON(200, gin.H{
-					"total_tasks_completed": 0,
-					"total_workers_paid":    0,
-					"total_gstd_paid":       0.0,
-					"golden_reserve_xaut":   0.0,
-					"xaut_history":          []interface{}{},
-					"system_status":         "Operational",
-					"last_swaps":            []interface{}{},
+					"total_tasks_completed": 0, "total_workers_paid": 0, "total_gstd_paid": 0.0,
+					"golden_reserve_xaut": 0.0, "xaut_history": []interface{}{}, "system_status": "Operational",
+					"last_swaps": []interface{}{},
+					"processing_tasks": 0, "queued_tasks": 0, "completed_tasks": 0,
+					"total_rewards_gstd": 0.0, "active_devices_count": 0, "total_burned": 0.0, "gstd_price_usd": 0.015,
 				})
 			}
 		}()
@@ -187,6 +185,35 @@ func getPublicStats(db *sql.DB, tonService *services.TONService, tonConfig confi
 			totalTFLOPS = float64(totalWorkersPaid) * 0.5
 		}
 
+		// Task counts for SystemStatusWidget (processing, queued, completed)
+		var processingTasks, queuedTasks int
+		db.QueryRow(`SELECT COUNT(*) FROM tasks WHERE status IN ('assigned', 'executing', 'validating')`).Scan(&processingTasks)
+		db.QueryRow(`SELECT COUNT(*) FROM tasks WHERE status = 'pending'`).Scan(&queuedTasks)
+
+		// Active devices (nodes or devices)
+		var activeDevicesCount int
+		db.QueryRow(`SELECT COUNT(*) FROM devices WHERE last_seen_at > NOW() - INTERVAL '5 minutes' AND is_active = true`).Scan(&activeDevicesCount)
+		if activeDevicesCount == 0 {
+			db.QueryRow(`SELECT COUNT(*) FROM nodes WHERE status = 'online' AND last_seen > NOW() - INTERVAL '5 minutes'`).Scan(&activeDevicesCount)
+		}
+
+		// Total burned (for GoldenReservePanel)
+		var totalBurned float64
+		db.QueryRow(`SELECT COALESCE(SUM(burn_amount), 0) FROM token_burns`).Scan(&totalBurned)
+
+		// GSTD price estimate: reserve_value / circulating or fallback
+		gstdPriceUSD := 0.015
+		if goldenReserveXAUt > 0 {
+			var circulatingSupply float64
+			if err := db.QueryRow(`SELECT COALESCE(1000000000 - (SELECT COALESCE(SUM(burn_amount), 0) FROM token_burns), 1000000000)`).Scan(&circulatingSupply); err == nil && circulatingSupply > 0 {
+				reserveUSD := goldenReserveXAUt * 2750
+				gstdPriceUSD = reserveUSD / circulatingSupply
+				if gstdPriceUSD < 0.0001 {
+					gstdPriceUSD = 0.015
+				}
+			}
+		}
+
 		c.JSON(200, gin.H{
 			"total_tasks_completed": totalTasksCompleted,
 			"total_workers_paid":    totalWorkersPaid,
@@ -197,6 +224,13 @@ func getPublicStats(db *sql.DB, tonService *services.TONService, tonConfig confi
 			"xaut_history":          xautHistory,
 			"system_status":         "Operational",
 			"last_swaps":            lastSwaps,
+			"processing_tasks":      processingTasks,
+			"queued_tasks":          queuedTasks,
+			"completed_tasks":       totalTasksCompleted,
+			"total_rewards_gstd":    totalGSTDPaid.Float64,
+			"active_devices_count":  activeDevicesCount,
+			"total_burned":          totalBurned,
+			"gstd_price_usd":        gstdPriceUSD,
 		})
 	}
 }
