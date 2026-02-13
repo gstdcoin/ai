@@ -41,12 +41,15 @@ var upgrader = websocket.Upgrader{
 
 // WSClient represents a WebSocket client (device/worker)
 type WSClient struct {
-	conn             *websocket.Conn
-	deviceID         string
-	trustScore       float64
-	send             chan []byte
-	hub              *WSHub
-	assignmentService *services.AssignmentService
+	conn               *websocket.Conn
+	deviceID           string
+	walletAddress      string // Set on connect from query; used for Fleet Command
+	trustScore         float64
+	send               chan []byte
+	hub                *WSHub
+	assignmentService  *services.AssignmentService
+	deviceService      *services.DeviceService
+	fleetCommandService *services.FleetCommandService
 }
 
 // WSHub manages WebSocket connections
@@ -349,9 +352,20 @@ func (c *WSClient) readPump() {
 				c.hub.mu.RUnlock()
 			}
 		case "heartbeat":
-			// Respond to heartbeat
+			// Respond to heartbeat; include fleet command if pending (Symbiotic Management)
+			ack := map[string]interface{}{"type": "heartbeat_ack"}
+			wallet := c.walletAddress
+			if wallet == "" && c.deviceService != nil {
+				wallet, _ = c.deviceService.GetWalletByDeviceID(context.Background(), c.deviceID)
+			}
+			if wallet != "" && c.fleetCommandService != nil {
+				if cmd, err := c.fleetCommandService.GetAndClearCommand(context.Background(), wallet); err == nil && cmd != nil {
+					ack["fleet_command"] = cmd
+				}
+			}
+			ackBytes, _ := json.Marshal(ack)
 			select {
-			case c.send <- []byte(`{"type":"heartbeat_ack"}`):
+			case c.send <- ackBytes:
 			default:
 				// Channel full, skip heartbeat response
 			}
@@ -404,7 +418,7 @@ func (c *WSClient) writePump() {
 }
 
 // HandleWebSocket handles WebSocket connections
-func HandleWebSocket(hub *WSHub, deviceService *services.DeviceService, assignmentService *services.AssignmentService) gin.HandlerFunc {
+func HandleWebSocket(hub *WSHub, deviceService *services.DeviceService, assignmentService *services.AssignmentService, fleetCommandService *services.FleetCommandService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 		if err != nil {
@@ -418,29 +432,30 @@ func HandleWebSocket(hub *WSHub, deviceService *services.DeviceService, assignme
 			return
 		}
 
-		// Link browser device to wallet for task assignment and payouts (dashboard mining)
-		if walletAddress := c.Query("wallet_address"); walletAddress != "" {
+		walletAddress := c.Query("wallet_address")
+		if walletAddress != "" {
 			if err := deviceService.LinkBrowserDevice(c.Request.Context(), deviceID, walletAddress); err != nil {
 				log.Printf("WebSocket: LinkBrowserDevice failed: %v", err)
 			}
 		}
 
-		// Get device trust score
 		var trustScore float64
 		ctx := context.Background()
 		err = deviceService.GetDeviceTrust(ctx, deviceID, &trustScore)
 		if err != nil {
-			// Default trust for new devices
 			trustScore = 0.1
 		}
 
 		client := &WSClient{
-			conn:             conn,
-			deviceID:         deviceID,
-			trustScore:       trustScore,
-			send:             make(chan []byte, 256),
-			hub:              hub,
-			assignmentService: assignmentService,
+			conn:                conn,
+			deviceID:            deviceID,
+			walletAddress:       walletAddress,
+			trustScore:          trustScore,
+			send:                make(chan []byte, 256),
+			hub:                 hub,
+			assignmentService:   assignmentService,
+			deviceService:       deviceService,
+			fleetCommandService: fleetCommandService,
 		}
 
 		client.hub.register <- client

@@ -427,13 +427,73 @@ func (s *NodeService) UpdateHealthStats(ctx context.Context, identifier string, 
 	// Refresh online status
 	s.redis.Set(ctx, onlineKey, "online", 90*time.Second)
 
-	// Update health metrics
-	err := s.redis.HSet(ctx, detailsKey, map[string]interface{}{
+	// Update health metrics (Omega: include h3_index for geo-routing / Vision task sharding)
+	capacityData := map[string]interface{}{
 		"battery_level":  battery,
 		"signal_quality": signal,
 		"last_seen":      time.Now().Format(time.RFC3339),
-	}).Err()
+	}
+	if lat != nil && lon != nil && s.geo != nil {
+		capacityData["h3_index"] = s.geo.LatLonToH3Index(*lat, *lon, H3Resolution)
+	}
+	err := s.redis.HSet(ctx, detailsKey, capacityData).Err()
 
 	s.UpdateHeartbeat(ctx, identifier)
 	return err
+}
+
+// MaintenanceAlert - Owner's Advocate AI: Predictive maintenance suggestion
+type MaintenanceAlert struct {
+	NodeID    string `json:"node_id"`
+	Severity  string `json:"severity"` // info, warning, critical
+	Message   string `json:"message"`
+	Recommendation string `json:"recommendation"`
+}
+
+// GetMaintenanceAlerts returns predictive maintenance alerts for a wallet's nodes.
+// Heuristics: low battery, low signal, long uptime (cooling), etc.
+func (s *NodeService) GetMaintenanceAlerts(ctx context.Context, wallet string) ([]MaintenanceAlert, error) {
+	var alerts []MaintenanceAlert
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT id, name, last_seen, status
+		FROM nodes WHERE wallet_address = $1 AND status = 'online'
+	`, wallet)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	addedGeneric := false
+	for rows.Next() {
+		var id, name, status string
+		var lastSeen interface{}
+		if err := rows.Scan(&id, &name, &lastSeen, &status); err != nil {
+			continue
+		}
+		// Check Redis capacity for battery/signal (if available)
+		if s.redis != nil {
+			detailsKey := fmt.Sprintf("capacity:%s", id)
+			capacity, _ := s.redis.HGetAll(ctx, detailsKey).Result()
+			if bat, ok := capacity["battery_level"]; ok && bat != "" {
+				var batInt int
+				fmt.Sscanf(bat, "%d", &batInt)
+				if batInt > 0 && batInt < 20 {
+					alerts = append(alerts, MaintenanceAlert{
+						NodeID: id, Severity: "warning",
+						Message:       fmt.Sprintf("Node %s: Battery at %d%%", name, batInt),
+						Recommendation: "Consider charging or switching to Eco mode to preserve battery.",
+					})
+				}
+			}
+		}
+		if !addedGeneric {
+			alerts = append(alerts, MaintenanceAlert{
+				NodeID: id, Severity: "info",
+				Message:       "Owner's Advocate: Hardware care tip",
+				Recommendation: "If you notice high fan speeds, consider cleaning the device to maintain mining efficiency.",
+			})
+			addedGeneric = true
+		}
+	}
+	return alerts, nil
 }

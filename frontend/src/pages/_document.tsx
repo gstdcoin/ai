@@ -24,7 +24,7 @@ export default function Document() {
         {/* Prevent zoom on input focus (iOS) */}
         <meta name="format-detection" content="telephone=no" />
       </Head>
-      <body>
+      <body suppressHydrationWarning>
         <Main />
         <NextScript />
       </body>

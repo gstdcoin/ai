@@ -57,6 +57,16 @@ const nextConfig = {
           },
         ],
       },
+      // Omega Point: CDN resilience - long cache for hashed static assets (browser independence)
+      {
+        source: '/_next/static/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
     ];
   },
 };

@@ -17,6 +17,7 @@ type ResultService struct {
 	payment     *PaymentService
 	tonConfig   config.TONConfig
 	telegram    *TelegramService
+	zkProof     *ZKComputeProofService // Absolute Point: ZK evidence for task completion
 }
 
 func NewResultService(db *sql.DB, encryption *EncryptionService, payment *PaymentService, tonConfig config.TONConfig) *ResultService {
@@ -28,6 +29,11 @@ func NewResultService(db *sql.DB, encryption *EncryptionService, payment *Paymen
 	}
 }
 
+// SetZKProofService injects ZK proof verifier (optional, for Absolute Point)
+func (s *ResultService) SetZKProofService(z *ZKComputeProofService) {
+	s.zkProof = z
+}
+
 func (s *ResultService) SetTelegramService(telegram *TelegramService) {
 	s.telegram = telegram
 }
@@ -37,9 +43,10 @@ type SubmitResultRequest struct {
 	TaskID        string          `json:"task_id"`
 	DeviceID      string          `json:"device_id"`
 	Result        json.RawMessage `json:"result"`
-	Proof         string          `json:"proof"` // Wallet signature (hex)
+	Proof         string          `json:"proof"`    // Wallet signature (hex)
 	ExecutionTime int64           `json:"execution_time_ms"`
 	Signature     string          `json:"signature"` // Alternative field name
+	ZKProof       json.RawMessage `json:"zk_proof"` // Absolute Point: optional ZK compute proof (mathematically verifiable)
 }
 
 // SubmitResult processes result submission from device
@@ -65,6 +72,20 @@ func (s *ResultService) SubmitResult(ctx context.Context, req SubmitResultReques
 	// Verify task is assigned to this device
 	if task.Status != "assigned" || task.AssignedDevice == nil || *task.AssignedDevice != req.DeviceID {
 		return fmt.Errorf("task not assigned to this device")
+	}
+
+	// Absolute Point: ZK Evidence — verify compute proof if provided (mathematically indisputable)
+	if len(req.ZKProof) > 0 && s.zkProof != nil {
+		var proof ComputeProof
+		if err := json.Unmarshal(req.ZKProof, &proof); err != nil {
+			return fmt.Errorf("invalid zk_proof format: %w", err)
+		}
+		proof.TaskID = req.TaskID
+		proof.NodeID = req.DeviceID
+		valid, _, reason := s.zkProof.VerifyProof(&proof)
+		if !valid {
+			return fmt.Errorf("zk proof verification failed: %s", reason)
+		}
 	}
 
 	// Encrypt result for requester

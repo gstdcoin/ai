@@ -1,16 +1,30 @@
 #!/bin/bash
 
-# GSTD "One-Line Deploy" Script
+# GSTD "One-Line Deploy" Script - Cosmic Genesis: One-Click Planet Scale
 # Turns any Linux/macOS device into a GSTD Sovereign Node
-# Personal AI + Miner + Node — no OpenClaw required (advanced miner)
+# Supports: bare metal, AWS, GCP, Azure, DigitalOcean
 # Usage: curl -sL https://app.gstdtoken.com/install.sh | bash
+# Cloud:  curl -sL https://app.gstdtoken.com/install.sh | CLOUD=aws bash
 
 set -e
 
 GREEN='\033[0;32m'
 CYAN='\033[0;36m'
 RED='\033[0;31m'
+YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
+
+# One-Click Planet Scale: Cloud provider detection
+CLOUD_PROVIDER="${CLOUD:-}"
+if [ -z "$CLOUD_PROVIDER" ]; then
+  if [ -f /sys/devices/virtual/dmi/id/product_name ]; then
+    DMI=$(cat /sys/devices/virtual/dmi/id/product_name 2>/dev/null || true)
+    echo "$DMI" | grep -qi "amazon\|ec2" && CLOUD_PROVIDER="aws"
+    echo "$DMI" | grep -qi "google\|gce" && CLOUD_PROVIDER="gcp"
+    echo "$DMI" | grep -qi "microsoft\|azure" && CLOUD_PROVIDER="azure"
+  fi
+  [ -f /.dockerenv ] && [ -n "$DIGITALOCEAN" ] && CLOUD_PROVIDER="do"
+fi
 
 echo -e "${CYAN}
    ___________  __________ 
@@ -174,8 +188,20 @@ EOF
 echo "requests" > requirements.txt
 pip3 install -r requirements.txt -q
 
-# 4. Launch
+# 4. Launch (or Cloud Deploy)
 echo -e "\n${GREEN}[4/4] Launching Node...${NC}"
+
+# One-Click Planet Scale: Cloud-specific hints
+if [ -n "$CLOUD_PROVIDER" ]; then
+  echo -e "${YELLOW}Cloud detected: $CLOUD_PROVIDER${NC}"
+  case "$CLOUD_PROVIDER" in
+    aws)   echo -e "  Tip: Run on EC2 (t3.medium+) for best performance" ;;
+    gcp)   echo -e "  Tip: Use e2-medium or larger on Google Compute" ;;
+    azure) echo -e "  Tip: B2s or larger on Azure VM" ;;
+    do)    echo -e "  Tip: Basic Droplet 2GB+ recommended" ;;
+  esac
+fi
+
 echo -e "${CYAN}Please enter your TON Wallet Address (for rewards):${NC}"
 read -p "> " WALLET_ADDRESS
 
@@ -185,4 +211,5 @@ if [ -z "$WALLET_ADDRESS" ]; then
 fi
 
 echo -e "\n${GREEN}✔ Setup Complete. Starting Agent...${NC}"
+echo -e "${CYAN}Leviathan is now a cloud above clouds.${NC}\n"
 python3 agent.py "$WALLET_ADDRESS"

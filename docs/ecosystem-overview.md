@@ -12,6 +12,42 @@ Maximum integration. No barriers. One token. One flow.
 
 [📖 Unified Organism](UNIFIED_ORGANISM.md) · [🔗 Integration Guide](INTEGRATION_GUIDE.md) · [⚡ Quick Join](QUICK_JOIN.md)
 
+## Cosmic Genesis: Anticipatory Defense & A2A Economy
+
+Mechanisms of existential stability and agent sovereignty:
+
+- **Anomaly Detection AI:** Monitors PoW patterns by H3 region; flags Sybil/51% when node count in a region suddenly doubles
+- **Auto-Bounty System:** On critical vulnerability pattern (5+ occurrences), creates WhiteHat task (1000 GSTD) — Leviathan hires to fix itself
+- **Agent Subcontract:** `POST /api/v1/cosmic/agent/hire` — Agents hire other agents from internal GSTD accounts (A2A economy)
+- **Hive Reputation Staking:** `reputation_stake_gstd` and `min_stake_gstd` for quality collateral on expensive tasks
+- **Gold-to-Hash Rate Link:** `GET /api/v1/cosmic/gold-multiplier` — More gold in reserve = higher base mining reward (1.0–1.5x)
+- **Hardware Buyback:** Treasury grants for best workers in scarce H3 regions
+- **One-Click Planet Scale:** `install.sh` detects AWS, GCP, Azure, DigitalOcean for cloud deployment
+
+## Hyper-Expansion: Viral Economy & Global Standard
+
+Mechanisms for viral growth, cross-chain interoperability, and knowledge monetization:
+
+- **Proof-of-Contribution (PoC):** Reputation multiplier (trust_score + quality) boosts worker rewards (0.8x–1.2x)
+- **Ref-Link Deep Integration:** Device/node registration with `referral_code` (ref_XXX from Telegram) auto-applies 5% forever
+- **Hive Intelligence API:** `POST /api/v1/brain/query` — paid knowledge access (GSTD → Gold Pool)
+- **TON Proxy-Oracle:** `GET /api/v1/oracle/opinion?query=...` — external contracts query Leviathan's opinion
+- **Multi-Token Gateway:** Concept for USDT/TON → GSTD conversion via Ston.fi (buy-pressure)
+- **Auto-Fine-Tuning Loop:** When 10+ agents contribute similar topics, merge into Global Knowledge Layer
+- **Global Leaderboard (H3):** Regions ranked by node count and trust
+- **Milestone Awards:** Badges for 1000 tasks, 100 days uptime
+
+## Omega Point: Autonomous Resilience
+
+The platform implements self-healing and self-diagnostic mechanisms for planetary-scale operation:
+
+- **Self-Healing Grid:** Blue-green failover (max_fails=2, 15s), DB circuit breaker (90% connections → read-only for stats, critical paths preserved)
+- **Self-Diagnostic AI:** Error pattern recognition in maintenance_service → Telegram alerts with suggested fixes
+- **Inference Load Balancing:** Priority queue (Marketplace first, free AI chats second) when Ollama is overloaded
+- **Ownership Resilience:** `ADMIN_API_KEY_2` fallback for emergency access if primary key revoked
+- **H3 Spatial Sharding:** Workers grouped by H3 index; Vision tasks prefer same-H3 workers for lower latency
+- **CDN Resilience:** Static assets (`/_next/static/*`, fonts, icons) cached long-term for browser independence
+
 ## Core Principles
 
 - **Unified Organism:** Agents, nodes, bots — one body. GSTD — blood.

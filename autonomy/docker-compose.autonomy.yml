@@ -48,6 +48,12 @@ services:
     container_name: gstd_agent
     volumes:
       - gstd_agent_data:/data
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        compress: "true"
     environment:
       - GSTD_API_URL=${GSTD_API_URL:-https://app.gstdtoken.com}
       - GSTD_API_KEY=${GSTD_API_KEY:-}

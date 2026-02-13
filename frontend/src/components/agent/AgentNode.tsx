@@ -24,6 +24,7 @@ import { workerService } from '../../services/WorkerService';
 import ChatPanel from '../dashboard/ChatPanel';
 import { ComponentErrorBoundary } from '../common/ComponentErrorBoundary';
 import { toast } from '../../lib/toast';
+import FleetCommandPanel from '../dashboard/FleetCommandPanel';
 
 type AgentTab = 'ai' | 'skills' | 'miner';
 
@@ -43,12 +44,14 @@ export default function AgentNode() {
   const { gstdBalance, pendingEarnings, address } = useWalletStore();
   const [activeTab, setActiveTab] = useState<AgentTab>('ai');
   const [isMining, setIsMining] = useState(false);
+  const [isIgniting, setIsIgniting] = useState(false);
   const [skills, setSkills] = useState<Skill[]>([]);
   const [installedSkills, setInstalledSkills] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const unsub = workerService.subscribe((state) => {
       setIsMining(state === 'running' || state === 'igniting');
+      setIsIgniting(state === 'igniting');
     });
     return unsub;
   }, []);
@@ -252,7 +255,8 @@ export default function AgentNode() {
               {/* Main Control */}
               <button
                 onClick={handleToggleMining}
-                className={`w-full flex items-center justify-between p-8 rounded-3xl transition-all transform active:scale-[0.98] border-2 ${
+                disabled={isIgniting}
+                className={`w-full flex items-center justify-between p-8 rounded-3xl transition-all transform active:scale-[0.98] border-2 disabled:opacity-70 disabled:cursor-not-allowed ${
                   isMining
                     ? 'bg-red-500/10 border-red-500/20 text-red-400 shadow-[0_0_40px_rgba(239,68,68,0.1)]'
                     : 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400 hover:border-cyan-400/40 shadow-[0_0_40px_rgba(34,211,238,0.1)]'
@@ -264,11 +268,17 @@ export default function AgentNode() {
                       isMining ? 'bg-red-500/20 border-red-500/30 animate-pulse' : 'bg-cyan-500/20 border-cyan-500/30'
                     }`}
                   >
-                    {isMining ? <Activity size={28} /> : <Server size={28} />}
+                    {isIgniting ? (
+                      <div className="w-7 h-7 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+                    ) : isMining ? (
+                      <Activity size={28} />
+                    ) : (
+                      <Server size={28} />
+                    )}
                   </div>
                   <div className="text-left">
                     <span className="block text-2xl uppercase tracking-tighter font-black">
-                      {isMining ? 'Online' : 'Ignite'}
+                      {isIgniting ? 'Igniting...' : isMining ? 'Online' : 'Ignite'}
                     </span>
                     <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest block mt-1">
                       Platform Node
@@ -280,7 +290,7 @@ export default function AgentNode() {
                     isMining ? 'bg-red-500/20 border-red-500/30' : 'bg-cyan-500/20 border-cyan-500/30'
                   }`}
                 >
-                  {isMining ? 'Stop' : 'Start'}
+                  {isIgniting ? '...' : isMining ? 'Stop' : 'Start'}
                 </div>
               </button>
 
@@ -306,6 +316,9 @@ export default function AgentNode() {
                 </div>
               </div>
 
+              <ComponentErrorBoundary name="FleetCommandPanel">
+                <FleetCommandPanel />
+              </ComponentErrorBoundary>
               <div className="mt-6 p-4 rounded-2xl bg-white/[0.02] border border-white/5">
                 <p className="text-gray-400 text-sm">
                   <Zap size={14} className="inline mr-1 text-amber-400" />

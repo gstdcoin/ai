@@ -72,8 +72,10 @@ func ValidateSession(redisClient *redis.Client, sessionTTL ...time.Duration) gin
 				}
 			}
 
-			masterKey := config.GetConfig().Server.AdminAPIKey
-			if apiKey != "" && apiKey == masterKey {
+			cfg := config.GetConfig()
+			masterKey := cfg.Server.AdminAPIKey
+			masterKey2 := cfg.Server.AdminAPIKey2
+			if apiKey != "" && (apiKey == masterKey || (masterKey2 != "" && apiKey == masterKey2)) {
 				// Use a dedicated wallet for the Master Key or extract from header
 				targetWallet := c.GetHeader("X-GSTD-Target-Wallet")
 				if targetWallet == "" {

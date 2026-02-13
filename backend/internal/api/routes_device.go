@@ -1,34 +1,46 @@
 package api
 
 import (
+	"database/sql"
 	"distributed-computing-platform/internal/services"
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
 
-func registerDevice(deviceService *services.DeviceService, errorLogger *services.ErrorLogger) gin.HandlerFunc {
+func registerDevice(deviceService *services.DeviceService, errorLogger *services.ErrorLogger, referral *services.MultiLevelReferralService, db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		
+
 		var req services.RegisterDeviceRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
 			log.Printf("DeviceRegistration: Failed to bind JSON - %v", err)
 			c.JSON(400, gin.H{"error": "Invalid request: " + err.Error()})
 			return
 		}
-		
-		// Log device registration attempt
-		log.Printf("DeviceRegistration: Attempting to register device - DeviceID: %s, WalletAddress: %s, DeviceType: %s", 
+
+		// Hyper-Expansion: Ref-Link Deep Integration - ensure user exists, apply referral from Telegram start=ref_XXX
+		if req.WalletAddress != "" {
+			_, _ = db.ExecContext(ctx, `INSERT INTO users (wallet_address, created_at, updated_at) VALUES ($1, NOW(), NOW()) ON CONFLICT (wallet_address) DO NOTHING`, req.WalletAddress)
+			if req.ReferralCode != "" && referral != nil {
+				code := strings.TrimPrefix(req.ReferralCode, "ref_")
+				if err := referral.ApplyReferralCode(ctx, req.WalletAddress, code); err == nil {
+					log.Printf("DeviceRegistration: Referral applied for worker %s (code=%s)", req.WalletAddress[:16], code)
+				}
+			}
+		}
+
+		log.Printf("DeviceRegistration: Attempting to register device - DeviceID: %s, WalletAddress: %s, DeviceType: %s",
 			req.DeviceID, req.WalletAddress, req.DeviceType)
-		
+
 		if err := deviceService.RegisterDevice(ctx, req); err != nil {
 			log.Printf("DeviceRegistration: Failed to register device - Error: %v", err)
 			c.JSON(500, gin.H{"error": err.Error()})
 			return
 		}
-		
+
 		log.Printf("DeviceRegistration: Successfully registered device - DeviceID: %s", req.DeviceID)
 		c.JSON(200, gin.H{"message": "Device registered successfully"})
 	}

@@ -275,6 +275,58 @@ func broadcastAnnouncement(hub *WSHub, ks *services.KnowledgeService) gin.Handle
 	}
 }
 
+// getFailedPayouts returns list of failed payouts for admin retry
+func getFailedPayouts(db *sql.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		rows, err := db.Query(`
+			SELECT id, task_id, payout_type, recipient_address, amount_gstd, error_message, status, retry_count, max_retries, created_at
+			FROM failed_payouts
+			WHERE status IN ('pending', 'failed')
+			ORDER BY created_at DESC
+			LIMIT 100
+		`)
+		if err != nil {
+			c.JSON(500, gin.H{"error": SanitizeError(err)})
+			return
+		}
+		defer rows.Close()
+		var items []map[string]interface{}
+		for rows.Next() {
+			var id, retryCount, maxRetries int
+			var taskID, payoutType, recipientAddress, errorMsg, status sql.NullString
+			var amountGSTD float64
+			var createdAt interface{}
+			if err := rows.Scan(&id, &taskID, &payoutType, &recipientAddress, &amountGSTD, &errorMsg, &status, &retryCount, &maxRetries, &createdAt); err != nil {
+				continue
+			}
+			items = append(items, map[string]interface{}{
+				"id": id, "task_id": taskID.String, "payout_type": payoutType.String,
+				"recipient_address": recipientAddress.String, "amount_gstd": amountGSTD,
+				"error_message": errorMsg.String, "status": status.String,
+				"retry_count": retryCount, "max_retries": maxRetries, "created_at": createdAt,
+			})
+		}
+		c.JSON(200, gin.H{"failed_payouts": items})
+	}
+}
+
+// retryPayout triggers manual retry for a failed payout (admin one-click)
+func retryPayout(prs *services.PayoutRetryService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		idStr := c.Param("id")
+		var id int
+		if _, err := fmt.Sscanf(idStr, "%d", &id); err != nil || id <= 0 {
+			c.JSON(400, gin.H{"error": "invalid payout id"})
+			return
+		}
+		if err := prs.RetryPayoutByID(c.Request.Context(), id); err != nil {
+			c.JSON(500, gin.H{"error": SanitizeError(err)})
+			return
+		}
+		c.JSON(200, gin.H{"status": "retry_triggered", "id": id})
+	}
+}
+
 // telegramNotifyAudit sends an audit/notification message to the admin via Telegram.
 // Called by night_audit.sh or other cron scripts. Requires X-Admin-API-Key.
 func telegramNotifyAudit(telegramService *services.TelegramService) gin.HandlerFunc {

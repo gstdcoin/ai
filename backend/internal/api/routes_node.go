@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -23,11 +24,12 @@ import (
 // @Failure 401 {object} map[string]string "Unauthorized"
 // @Router /nodes/register [post]
 // registerNode registers a new computing node
-func registerNode(service *services.NodeService, geoService *services.GeoService, telegramService *services.TelegramService) gin.HandlerFunc {
+func registerNode(service *services.NodeService, geoService *services.GeoService, telegramService *services.TelegramService, referral *services.MultiLevelReferralService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			Name  string                 `json:"name" binding:"required"`
-			Specs map[string]interface{} `json:"specs"`
+			Name         string                 `json:"name" binding:"required"`
+			Specs        map[string]interface{} `json:"specs"`
+			ReferralCode string                 `json:"referral_code"` // Hyper-Expansion: ref_XXX from Telegram (5% forever)
 		}
 
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -100,6 +102,14 @@ func registerNode(service *services.NodeService, geoService *services.GeoService
 		if err != nil {
 			c.JSON(500, gin.H{"error": err.Error()})
 			return
+		}
+
+		// Hyper-Expansion: Ref-Link Deep Integration - apply referral after node created (user exists)
+		if req.ReferralCode != "" && referral != nil {
+			code := strings.TrimPrefix(req.ReferralCode, "ref_")
+			if err := referral.ApplyReferralCode(c.Request.Context(), walletAddress, code); err == nil {
+				log.Printf("NodeRegistration: Referral applied for worker %s (code=%s)", walletAddress[:16], code)
+			}
 		}
 
 		c.JSON(200, node)
@@ -202,11 +212,69 @@ func UpdateHeartbeat(service *services.NodeService) gin.HandlerFunc {
 	}
 }
 
+// fleetCommand - Symbiotic Management: Group command for all nodes of a wallet
+func fleetCommand(fleet *services.FleetCommandService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if fleet == nil {
+			c.JSON(503, gin.H{"error": "fleet command service unavailable"})
+			return
+		}
+		wallet := c.GetString("wallet_address")
+		if wallet == "" {
+			wallet = c.Query("wallet_address")
+		}
+		if wallet == "" {
+			c.JSON(400, gin.H{"error": "wallet required"})
+			return
+		}
+		var req struct {
+			Action  string      `json:"action" binding:"required"`
+			Payload interface{} `json:"payload"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(400, gin.H{"error": err.Error()})
+			return
+		}
+		allowed := map[string]bool{"standby": true, "resume": true, "model": true, "update": true, "clean": true}
+		if !allowed[req.Action] {
+			c.JSON(400, gin.H{"error": "invalid action"})
+			return
+		}
+		if err := fleet.SetCommand(c.Request.Context(), wallet, services.FleetCommand{Action: req.Action, Payload: req.Payload}); err != nil {
+			c.JSON(500, gin.H{"error": "failed to set command"})
+			return
+		}
+		c.JSON(200, gin.H{"status": "ok", "action": req.Action, "message": "Command queued for fleet delivery"})
+	}
+}
+
+// maintenanceAlerts - Owner's Advocate AI: Predictive maintenance alerts for user's nodes
+func maintenanceAlerts(service *services.NodeService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		wallet := c.GetString("wallet_address")
+		if wallet == "" {
+			wallet = c.Query("wallet_address")
+		}
+		if wallet == "" {
+			c.JSON(400, gin.H{"error": "wallet required"})
+			return
+		}
+		alerts, err := service.GetMaintenanceAlerts(c.Request.Context(), wallet)
+		if err != nil {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(200, gin.H{"alerts": alerts})
+	}
+}
+
 // SetupNodeRoutes registers node-related routes
-func SetupNodeRoutes(group *gin.RouterGroup, service *services.NodeService, geoService *services.GeoService, telegramService *services.TelegramService) {
-	group.POST("/nodes/register", registerNode(service, geoService, telegramService))
+func SetupNodeRoutes(group *gin.RouterGroup, service *services.NodeService, geoService *services.GeoService, telegramService *services.TelegramService, referral *services.MultiLevelReferralService, fleetCommandService *services.FleetCommandService) {
+	group.POST("/nodes/register", registerNode(service, geoService, telegramService, referral))
 	group.GET("/nodes/my", getMyNodes(service))
 	group.GET("/nodes/public", getPublicNodes(service))
 	group.POST("/nodes/heartbeat", UpdateHeartbeat(service))
+	group.POST("/nodes/fleet/command", fleetCommand(fleetCommandService))
+	group.GET("/nodes/maintenance-alerts", maintenanceAlerts(service))
 }
 

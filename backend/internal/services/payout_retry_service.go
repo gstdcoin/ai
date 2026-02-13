@@ -146,3 +146,44 @@ func (prs *PayoutRetryService) LogFailedPayout(ctx context.Context, taskID, payo
 	return err
 }
 
+// RetryPayoutByID triggers a manual retry for a specific failed payout (admin one-click)
+func (prs *PayoutRetryService) RetryPayoutByID(ctx context.Context, id int) error {
+	var taskID, payoutType, recipientAddress sql.NullString
+	var amountGSTD float64
+	var retryCount, maxRetries int
+
+	err := prs.db.QueryRowContext(ctx, `
+		SELECT task_id, payout_type, recipient_address, amount_gstd, retry_count, max_retries
+		FROM failed_payouts
+		WHERE id = $1 AND status IN ('pending', 'failed')
+	`, id).Scan(&taskID, &payoutType, &recipientAddress, &amountGSTD, &retryCount, &maxRetries)
+	if err != nil {
+		return err
+	}
+
+	// Reset to pending and retry this one
+	prs.db.ExecContext(ctx, `
+		UPDATE failed_payouts SET status = 'retrying', last_retry_at = NOW() WHERE id = $1
+	`, id)
+
+	success := false
+	if payoutType.String == "worker" && recipientAddress.Valid {
+		err := prs.rewardEngine.sendGSTDToWorker(ctx, recipientAddress.String, amountGSTD, taskID.String)
+		if err == nil {
+			success = true
+		}
+	}
+
+	if success {
+		prs.db.ExecContext(ctx, `UPDATE failed_payouts SET status = 'succeeded', retry_count = retry_count + 1 WHERE id = $1`, id)
+	} else {
+		newRetryCount := retryCount + 1
+		newStatus := "pending"
+		if newRetryCount >= maxRetries {
+			newStatus = "failed"
+		}
+		prs.db.ExecContext(ctx, `UPDATE failed_payouts SET status = $1, retry_count = $2 WHERE id = $3`, newStatus, newRetryCount, id)
+	}
+	return nil
+}
+

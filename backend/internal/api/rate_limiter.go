@@ -40,7 +40,10 @@ func NewRateLimiter(redisClient *redis.Client) *RateLimiter {
 	rl.limits["/api/v1/tasks/worker/submit"] = &EndpointLimit{Requests: 60, Window: time.Minute}    // 1 per second max
 	rl.limits["/api/v1/device/tasks/:id/result"] = &EndpointLimit{Requests: 60, Window: time.Minute}
 	rl.limits["/api/v1/telemetry/submit"] = &EndpointLimit{Requests: 30, Window: time.Minute}      // Stricter for raw telemetry
-	
+
+	// Deep Dive: model-update - prevent LoRA spam (5/min per IP)
+	rl.limits["/api/v1/genesis/model-update"] = &EndpointLimit{Requests: 5, Window: time.Minute}
+
 	return rl
 }
 
@@ -48,6 +51,10 @@ func NewRateLimiter(redisClient *redis.Client) *RateLimiter {
 func (rl *RateLimiter) RateLimitMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		path := c.FullPath()
+		if path == "" {
+			// Deep Dive: FullPath can be empty in middleware; use request path as fallback
+			path = c.Request.URL.Path
+		}
 		if path == "" {
 			c.Next()
 			return

@@ -4,7 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
+	"net/http"
+	"net/url"
+	"strings"
+	"time"
 )
 
 // AgentModelService allows agents to submit trained LoRA adapter links
@@ -28,12 +33,35 @@ type ModelUpdateMetrics struct {
 
 // SubmitModelUpdate records an agent's LoRA adapter submission
 func (s *AgentModelService) SubmitModelUpdate(ctx context.Context, agentID, weightsURL string, metrics map[string]interface{}) error {
+	// Shadow Audit: validate URL format (https only) and reachability
+	u, err := url.Parse(weightsURL)
+	if err != nil || u.Scheme != "https" || u.Host == "" {
+		return fmt.Errorf("weights_url must be a valid https URL")
+	}
+	if !strings.HasPrefix(weightsURL, "https://") {
+		return fmt.Errorf("weights_url must use https protocol")
+	}
+	// HEAD request to verify URL is reachable (10s timeout)
+	req, err := http.NewRequestWithContext(ctx, http.MethodHead, weightsURL, nil)
+	if err != nil {
+		return fmt.Errorf("invalid weights_url: %w", err)
+	}
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("weights_url unreachable: %w", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("weights_url returned status %d", resp.StatusCode)
+	}
+
 	metricsJSON := "{}"
 	if metrics != nil {
 		b, _ := json.Marshal(metrics)
 		metricsJSON = string(b)
 	}
-	_, err := s.db.ExecContext(ctx, `
+	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO agent_model_updates (agent_id, weights_url, metrics)
 		VALUES ($1, $2, $3::jsonb)
 	`, agentID, weightsURL, metricsJSON)

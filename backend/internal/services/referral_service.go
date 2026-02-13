@@ -112,6 +112,11 @@ func (s *ReferralService) ProcessReferralRewardFixed(ctx context.Context, worker
 	if err != nil || referrerAddress == "" {
 		return nil
 	}
+	// Anti self-referral: worker must not be their own referrer
+	if referrerAddress == workerAddress {
+		log.Printf("⚠️ Referral blocked: self-referral attempt (worker=%s)", workerAddress)
+		return nil
+	}
 	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO referral_rewards (referrer_address, referred_user_address, task_id, amount_gstd, status)
 		VALUES ($1, $2, $3, $4, 'pending')

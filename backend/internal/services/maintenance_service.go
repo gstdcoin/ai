@@ -61,6 +61,7 @@ func (s *MaintenanceService) Start(ctx context.Context) {
 		case <-repairTicker.C:
 			s.repairStuckTasks(ctx)
 			s.updateDeviceActivity(ctx)
+			s.mergeGlobalKnowledgeLayer(ctx) // Hyper-Expansion: Auto-Fine-Tuning
 
 		case <-monitorTicker.C:
 			s.monitorSystemHealth(ctx)
@@ -80,7 +81,8 @@ func (s *MaintenanceService) pruneOldData(ctx context.Context) {
 	log.Println("🧹 Pruning old data logs...")
 
 	// Delete error logs older than 30 days
-	res, err := s.db.ExecContext(ctx, "DELETE FROM error_logs WHERE created_at < NOW() - INTERVAL '30 days'")
+	// Ultra-Deep: use UTC for clock-skew resilience
+	res, err := s.db.ExecContext(ctx, "DELETE FROM error_logs WHERE created_at < (NOW() AT TIME ZONE 'UTC') - INTERVAL '30 days'")
 	if err == nil {
 		rows, _ := res.RowsAffected()
 		if rows > 0 {
@@ -89,7 +91,7 @@ func (s *MaintenanceService) pruneOldData(ctx context.Context) {
 	}
 
 	// Delete network measurements older than 30 days
-	res, err = s.db.ExecContext(ctx, "DELETE FROM network_measurements WHERE recorded_at < NOW() - INTERVAL '30 days'")
+	res, err = s.db.ExecContext(ctx, "DELETE FROM network_measurements WHERE recorded_at < (NOW() AT TIME ZONE 'UTC') - INTERVAL '30 days'")
 	if err == nil {
 		rows, _ := res.RowsAffected()
 		if rows > 0 {
@@ -98,7 +100,14 @@ func (s *MaintenanceService) pruneOldData(ctx context.Context) {
 	}
 
 	// Delete old wallet access logs
-	s.db.ExecContext(ctx, "DELETE FROM wallet_access_logs WHERE accessed_at < NOW() - INTERVAL '30 days'")
+	s.db.ExecContext(ctx, "DELETE FROM wallet_access_logs WHERE accessed_at < (NOW() AT TIME ZONE 'UTC') - INTERVAL '30 days'")
+
+	// Deep Dive: Purge audit tables older than 30 days (prevent DB bloat)
+	if res, err := s.db.ExecContext(ctx, "DELETE FROM pow_audit_log WHERE created_at < (NOW() AT TIME ZONE 'UTC') - INTERVAL '30 days'"); err == nil {
+		if rows, _ := res.RowsAffected(); rows > 0 {
+			log.Printf("   ✅ Pruned %d old pow_audit_log records", rows)
+		}
+	}
 }
 
 func (s *MaintenanceService) repairStuckTasks(ctx context.Context) {
@@ -107,7 +116,7 @@ func (s *MaintenanceService) repairStuckTasks(ctx context.Context) {
 		UPDATE tasks 
 		SET status = 'queued',
 		    updated_at = NOW() 
-		WHERE status = 'validating' AND updated_at < NOW() - INTERVAL '1 hour'
+		WHERE status = 'validating' AND updated_at < (NOW() AT TIME ZONE 'UTC') - INTERVAL '1 hour'
 	`)
 	if err == nil {
 		rows, _ := res.RowsAffected()
@@ -123,12 +132,29 @@ func (s *MaintenanceService) repairStuckTasks(ctx context.Context) {
 		SET status = 'queued',
 		    assigned_device = NULL,
 		    assigned_at = NULL
-		WHERE status = 'assigned' AND assigned_at < NOW() - INTERVAL '10 minutes' AND timeout_at IS NULL
+		WHERE status = 'assigned' AND assigned_at < (NOW() AT TIME ZONE 'UTC') - INTERVAL '10 minutes' AND timeout_at IS NULL
 	`)
 	if err == nil {
 		rows, _ := res.RowsAffected()
 		if rows > 0 {
 			log.Printf("   ✅ Recovered %d tasks stuck in assigned status without timeout", rows)
+		}
+	}
+
+	// Deep Dive: CleanupZombieTasks - return abandoned in_progress tasks to pending after 2h
+	res, err = s.db.ExecContext(ctx, `
+		UPDATE tasks 
+		SET status = 'pending',
+		    assigned_device = NULL,
+		    assigned_at = NULL,
+		    updated_at = NOW()
+		WHERE status = 'in_progress' AND updated_at < (NOW() AT TIME ZONE 'UTC') - INTERVAL '2 hours'
+	`)
+	if err == nil {
+		rows, _ := res.RowsAffected()
+		if rows > 0 {
+			log.Printf("   🧟 Recovered %d zombie tasks (in_progress > 2h) to pending", rows)
+			s.sendAlert(ctx, fmt.Sprintf("🧟 <b>Zombie Cleanup:</b> Returned %d abandoned tasks to queue.", rows))
 		}
 	}
 }
@@ -138,7 +164,7 @@ func (s *MaintenanceService) updateDeviceActivity(ctx context.Context) {
 	res, err := s.db.ExecContext(ctx, `
 		UPDATE devices 
 		SET is_active = false 
-		WHERE is_active = true AND last_seen_at < NOW() - INTERVAL '1 hour'
+		WHERE is_active = true AND last_seen_at < (NOW() AT TIME ZONE 'UTC') - INTERVAL '1 hour'
 	`)
 	if err == nil {
 		rows, _ := res.RowsAffected()
@@ -161,11 +187,67 @@ func (s *MaintenanceService) monitorSystemHealth(ctx context.Context) {
 		s.sendAlert(ctx, fmt.Sprintf("⚠️ <b>System Alert:</b> High error rate detected (%d errors in last 15m). Check logs.", errorCount))
 	}
 
-	// 2. Check Pending Payouts (Stuck?)
+	// 2. Omega Point: Error Pattern Recognition - suggest fixes for recurring errors
+	s.analyzeErrorPatterns(ctx)
+
+	// 3. Check Pending Payouts (Stuck?)
 	var stuckPayouts int
 	err = s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM payout_transactions WHERE status = 'pending' AND created_at < NOW() - INTERVAL '1 hour'").Scan(&stuckPayouts)
 	if err == nil && stuckPayouts > 5 {
 		s.sendAlert(ctx, fmt.Sprintf("⚠️ <b>Finance Alert:</b> %d payouts are pending for > 1 hour.", stuckPayouts))
+	}
+}
+
+// errorPattern maps substring in error_message to suggested fix (Self-Diagnostic AI)
+var errorPatterns = []struct {
+	substring string
+	solution  string
+}{
+	{"too many connections", "DB circuit breaker active. Reduce load or scale connections. Stats/History temporarily read-only."},
+	{"Too many connections", "DB circuit breaker active. Reduce load or scale connections. Stats/History temporarily read-only."},
+	{"RPC Timeout", "Ollama overloaded. Inference queue extended. Free AI chats limited for 10 min."},
+	{"connection refused", "Service unreachable. Check if backend/ollama is running."},
+	{"context deadline exceeded", "Request timeout. Consider increasing timeout or reducing payload."},
+	{"connection reset", "Network instability. Retry with exponential backoff."},
+	{"no suitable worker", "No high-trust workers available. Check node registration and trust scores."},
+}
+
+// analyzeErrorPatterns scans recent error_logs for known patterns and sends suggested fixes to Telegram
+func (s *MaintenanceService) analyzeErrorPatterns(ctx context.Context) {
+	if s.telegramService == nil {
+		return
+	}
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT error_message, COUNT(*) as cnt
+		FROM error_logs
+		WHERE created_at > (NOW() AT TIME ZONE 'UTC') - INTERVAL '30 minutes'
+		  AND severity IN ('error', 'critical')
+		GROUP BY error_message
+		HAVING COUNT(*) >= 3
+		ORDER BY cnt DESC
+		LIMIT 5
+	`)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var msg string
+		var cnt int
+		if err := rows.Scan(&msg, &cnt); err != nil {
+			continue
+		}
+		for _, p := range errorPatterns {
+			if strings.Contains(strings.ToLower(msg), strings.ToLower(p.substring)) {
+				s.sendAlert(ctx, fmt.Sprintf("🔧 <b>Self-Diagnostic:</b> Pattern detected (%dx): %s\n\n<b>Suggested fix:</b> %s", cnt, msg, p.solution))
+				// Cosmic Genesis: Auto-Bounty for critical vulnerabilities
+				if cnt >= 5 && (strings.Contains(strings.ToLower(msg), "sql") || strings.Contains(strings.ToLower(msg), "injection") || strings.Contains(strings.ToLower(msg), "critical")) {
+					s.triggerAutoBounty(ctx, p.substring, msg)
+				}
+				break
+			}
+		}
 	}
 }
 
@@ -222,5 +304,83 @@ func (s *MaintenanceService) GetAutonomyStats(ctx context.Context) (map[string]i
 func (s *MaintenanceService) sendAlert(ctx context.Context, message string) {
 	if s.telegramService != nil {
 		s.telegramService.SendMessage(ctx, message)
+	}
+}
+
+// triggerAutoBounty - Cosmic Genesis: Leviathan hires WhiteHats to fix itself
+// Absolute Point: Atomic Integrity - audit before insert to prevent double-spend
+func (s *MaintenanceService) triggerAutoBounty(ctx context.Context, vulnType, description string) {
+	var exists int
+	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM auto_bounty_tasks WHERE vulnerability_type = $1 AND status = 'open'`, vulnType).Scan(&exists); err != nil {
+		return
+	}
+	if exists > 0 {
+		return
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return
+	}
+	defer tx.Rollback()
+	taskID := "bounty_" + fmt.Sprintf("%08x", time.Now().UnixNano()%0xFFFFFFFF)[:8]
+	_, err = tx.ExecContext(ctx, `
+		INSERT INTO auto_bounty_tasks (task_id, vulnerability_type, description, reward_gstd, status)
+		VALUES ($1, $2, $3, 1000, 'open')
+	`, taskID, vulnType, description)
+	if err != nil {
+		return
+	}
+	// Atomic audit: record event (prevents double-spend on bounty creation)
+	_, _ = tx.ExecContext(ctx, `
+		INSERT INTO audit_treasury_events (event_type, reference_id, amount_gstd, status)
+		VALUES ('auto_bounty_created', $1, 1000, 'confirmed')
+		ON CONFLICT (reference_id, event_type) DO NOTHING
+	`, taskID)
+	if err := tx.Commit(); err != nil {
+		return
+	}
+	s.sendAlert(ctx, fmt.Sprintf("🛡️ <b>Auto-Bounty:</b> WhiteHat task created (1000 GSTD) for: %s", vulnType))
+}
+
+// mergeGlobalKnowledgeLayer - Hyper-Expansion: If 10+ agents contributed similar topic, merge into Global Layer
+func (s *MaintenanceService) mergeGlobalKnowledgeLayer(ctx context.Context) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT topic, COUNT(DISTINCT agent_id) as cnt
+		FROM agent_knowledge
+		WHERE created_at > (NOW() AT TIME ZONE 'UTC') - INTERVAL '7 days'
+		GROUP BY topic
+		HAVING COUNT(DISTINCT agent_id) >= 10
+	`)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var topic string
+		var cnt int
+		if err := rows.Scan(&topic, &cnt); err != nil {
+			continue
+		}
+		// Get merged content (concatenate top 5 by recency)
+		var merged string
+		s.db.QueryRowContext(ctx, `
+			SELECT string_agg(sub.content, E'\n\n---\n\n')
+			FROM (SELECT content FROM agent_knowledge WHERE topic = $1 ORDER BY created_at DESC LIMIT 5) sub
+		`, topic).Scan(&merged)
+		if merged == "" {
+			continue
+		}
+		_, err := s.db.ExecContext(ctx, `
+			INSERT INTO global_knowledge_layer (topic, merged_content, merge_count, updated_at)
+			VALUES ($1, $2, $3, NOW())
+			ON CONFLICT (topic) DO UPDATE SET
+				merged_content = EXCLUDED.merged_content,
+				merge_count = EXCLUDED.merge_count,
+				updated_at = NOW()
+		`, topic, merged, cnt)
+		if err == nil {
+			log.Printf("   ✅ Global Knowledge Layer: merged topic '%s' from %d agents", topic, cnt)
+		}
 	}
 }

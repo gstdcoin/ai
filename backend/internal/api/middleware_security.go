@@ -21,11 +21,8 @@ func SanitizeError(err error) string {
 	errMsg = strings.ReplaceAll(errMsg, "/tmp/", "***/")
 	
 	// Remove database connection strings
-	if strings.Contains(errMsg, "postgresql://") {
-		errMsg = "Database connection error"
-	}
-	if strings.Contains(errMsg, "password") {
-		errMsg = "Authentication error"
+	if strings.Contains(errMsg, "postgresql://") || strings.Contains(errMsg, "redis://") {
+		return "Connection error"
 	}
 	
 	// Remove stack traces
@@ -33,19 +30,15 @@ func SanitizeError(err error) string {
 		errMsg = errMsg[:idx]
 	}
 	
-	// Generic error messages for sensitive patterns
+	// Ascension: Ghost Admin — never leak secrets via errors
 	sensitivePatterns := []string{
-		"sql:",
-		"database",
-		"connection",
-		"credentials",
-		"secret",
-		"key",
-		"token",
+		"sql:", "database", "connection", "credentials", "secret", "key", "token",
+		"telegram", "chat_id", "api_key", "admin_api", "bearer", "authorization",
+		"password", "mnemonic", "private_key", "env.",
 	}
-	
+	lower := strings.ToLower(errMsg)
 	for _, pattern := range sensitivePatterns {
-		if strings.Contains(strings.ToLower(errMsg), pattern) {
+		if strings.Contains(lower, pattern) {
 			return "Internal server error"
 		}
 	}

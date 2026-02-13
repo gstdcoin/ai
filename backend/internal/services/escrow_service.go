@@ -377,6 +377,7 @@ func (s *EscrowService) ReleaseToWorker(ctx context.Context, taskID, workerWalle
 }
 
 // ReleaseToWorkerMarketplace uses 80/15/5 split: 80% executor, 5% referral, 15% platform (7.5% Treasury, 7.5% Gold Pool)
+// Hyper-Expansion PoC: Reputation multiplier (trust_score + quality) boosts worker reward
 func (s *EscrowService) ReleaseToWorkerMarketplace(ctx context.Context, taskID, workerWallet string, qualityScore float64, referral *ReferralService) (*TransactionRecord, error) {
 	var escrow EscrowRecord
 	var geoJSON []byte
@@ -405,11 +406,41 @@ func (s *EscrowService) ReleaseToWorkerMarketplace(ctx context.Context, taskID, 
 		total = rewardPerWorker.Float64
 	}
 
-	// 80/15/5 split
-	workerReward := total * 0.80
+	// Hyper-Expansion PoC: Reputation multiplier (trust_score 0..1, quality 0..1) -> 0.8 to 1.2
+	var trustScore float64
+	s.db.QueryRowContext(ctx, "SELECT COALESCE(trust_score, 0.5) FROM nodes WHERE wallet_address = $1 LIMIT 1", workerWallet).Scan(&trustScore)
+	if trustScore <= 0 {
+		s.db.QueryRowContext(ctx, "SELECT COALESCE(reputation, 0.5) FROM devices WHERE wallet_address = $1 LIMIT 1", workerWallet).Scan(&trustScore)
+	}
+	if trustScore <= 0 {
+		trustScore = 0.5
+	}
+	quality := qualityScore
+	if quality <= 0 {
+		quality = 1.0
+	}
+	if quality > 1 {
+		quality = 1.0
+	}
+	// multiplier: 0.9 + 0.1*trust + 0.1*quality = 0.9 to 1.1
+	multiplier := 0.9 + 0.1*trustScore + 0.1*quality
+	if multiplier > 1.2 {
+		multiplier = 1.2
+	}
+	if multiplier < 0.8 {
+		multiplier = 0.8
+	}
+
+	// Ultra-Deep: 80/15/5 split with dust to Treasury (mathematical purity)
+	workerReward := total * 0.80 * multiplier
 	referralAmount := total * 0.05
 	platformAmount := total * 0.15
-	devFundAmount := platformAmount * 0.50
+	allocated := workerReward + referralAmount + platformAmount
+	dust := total - allocated
+	if dust < 0 {
+		dust = 0
+	}
+	devFundAmount := platformAmount*0.50 + dust // Dust goes to Treasury
 	goldAmount := platformAmount * 0.50
 
 	tx, err := s.db.BeginTx(ctx, nil)
