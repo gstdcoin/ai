@@ -29,18 +29,18 @@ fi
 cd ..
 echo "✅ Frontend built"
 
-# 2. Backend
-echo "[2/3] Building backend..."
+# 2. Docker images (frontend + backend)
+echo "[2/3] Building Docker images..."
 if [ "$FULL_REBUILD" = true ]; then
-    docker compose -f docker-compose.prod.yml build --no-cache backend-blue backend-green
+    docker compose -f docker-compose.prod.yml build --no-cache frontend backend-blue backend-green
 else
-    docker compose -f docker-compose.prod.yml build backend-blue backend-green
+    docker compose -f docker-compose.prod.yml build frontend backend-blue backend-green
 fi
-echo "✅ Backend built"
+echo "✅ Docker images built"
 
 # 3. Deploy
 echo "[3/3] Deploying..."
-docker compose -f docker-compose.prod.yml up -d frontend backend-blue backend-green
+docker compose -f docker-compose.prod.yml up -d --force-recreate frontend backend-blue backend-green
 echo "✅ Services restarted"
 
 # Reload nginx if exists
