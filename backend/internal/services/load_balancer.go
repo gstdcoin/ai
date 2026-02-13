@@ -29,6 +29,7 @@ type WorkerCapacity struct {
 	Stability     float64 // 0.0 to 1.0 based on uptime/response consistency
 	BatteryLevel  int     // 0-100
 	SignalQuality int     // 0-100
+	H3Index       string  // Omega Point: H3 hexagonal index for geo-routing (Vision tasks)
 }
 
 func NewLoadBalancer(db *sql.DB, rdb *redis.Client) *LoadBalancer {
@@ -40,10 +41,11 @@ func NewLoadBalancer(db *sql.DB, rdb *redis.Client) *LoadBalancer {
 
 
 type TaskRequirements struct {
-	MinTrust      float64
-	RequiredCPU   int
-	RequiredRAMGB float64
-	IsHeavy       bool // BOINC or complex AI tasks
+	MinTrust         float64
+	RequiredCPU      int
+	RequiredRAMGB    float64
+	IsHeavy          bool   // BOINC or complex AI tasks
+	PreferredH3Index string // Omega Point: For Vision tasks, prefer workers with same H3 (lower latency)
 }
 
 // SelectBestWorker finds the optimal worker for a given task
@@ -102,6 +104,11 @@ func (lb *LoadBalancer) SelectBestWorker(ctx context.Context, req TaskRequiremen
 			score -= 50
 		}
 
+		// Omega Point: H3 Spatial Sharding - prefer workers with same H3 for Vision (heavy data, lower latency)
+		if req.PreferredH3Index != "" && worker.H3Index != "" && worker.H3Index == req.PreferredH3Index {
+			score += 25
+		}
+
 		if score > bestScore {
 			bestScore = score
 			bestWorker = worker.WalletAddress
@@ -127,12 +134,14 @@ func (lb *LoadBalancer) getActiveWorkers(ctx context.Context) ([]*WorkerCapacity
 		wallet := key[14:]
 		data, err := lb.redis.HGetAll(ctx, "capacity:"+wallet).Result()
 		if err != nil || len(data) == 0 {
-			// Try to sync from DB if Redis is missing detailed stats
 			continue
 		}
 
 		w := &WorkerCapacity{WalletAddress: wallet}
 		fmt.Sscanf(data["max_tasks"], "%d", &w.MaxTasks)
+		if data["h3_index"] != "" {
+			w.H3Index = data["h3_index"]
+		}
 		fmt.Sscanf(data["active_tasks"], "%d", &w.ActiveTasks)
 		fmt.Sscanf(data["trust_score"], "%f", &w.TrustScore)
 		fmt.Sscanf(data["cpu_cores"], "%d", &w.CPUCores)
@@ -149,10 +158,10 @@ func (lb *LoadBalancer) getActiveWorkers(ctx context.Context) ([]*WorkerCapacity
 		workers = append(workers, w)
 	}
 
-	// If no workers in Redis, fallback to DB for initial population
+	// If no workers in Redis, fallback to DB for initial population (Omega: include h3_index for geo-routing)
 	if len(workers) == 0 {
 		rows, err := lb.db.QueryContext(ctx, `
-			SELECT wallet_address, 10, trust_score, 0, cpu_model, ram_gb, 1.0, last_seen 
+			SELECT wallet_address, 10, trust_score, 0, cpu_model, ram_gb, 1.0, last_seen, COALESCE(h3_index, '')
 			FROM nodes WHERE status = 'online' AND last_seen > NOW() - INTERVAL '1 minute'
 		`)
 		if err == nil {
@@ -160,8 +169,8 @@ func (lb *LoadBalancer) getActiveWorkers(ctx context.Context) ([]*WorkerCapacity
 			for rows.Next() {
 				var w WorkerCapacity
 				var cpuModel string
-				rows.Scan(&w.WalletAddress, &w.MaxTasks, &w.TrustScore, &w.ActiveTasks, &cpuModel, &w.RAMGB, &w.Stability, &w.LastSeen)
-				w.CPUCores = 4 // Heuristic since CPU model parsing is complex
+				rows.Scan(&w.WalletAddress, &w.MaxTasks, &w.TrustScore, &w.ActiveTasks, &cpuModel, &w.RAMGB, &w.Stability, &w.LastSeen, &w.H3Index)
+				w.CPUCores = 4
 				workers = append(workers, &w)
 			}
 		}

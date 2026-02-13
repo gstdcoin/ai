@@ -1,5 +1,8 @@
-import { toast } from 'sonner';
+import { toast } from '../lib/toast';
+import { logger } from '../lib/logger';
 import { useWalletStore } from '../store/walletStore';
+
+export type PowerProfile = 'eco' | 'balance' | 'max';
 
 type WorkerState = 'idle' | 'igniting' | 'running' | 'paused' | 'error';
 type WorkerCallback = (data: any) => void;
@@ -7,6 +10,7 @@ type WorkerCallback = (data: any) => void;
 class WorkerService {
     private worker: Worker | null = null;
     public state: WorkerState = 'idle';
+    public powerProfile: PowerProfile = 'balance';
     private subscribers: Function[] = [];
     private statsSubscribers: Function[] = [];
     private taskLoop: any = null;
@@ -24,7 +28,7 @@ class WorkerService {
             try {
                 const saved = localStorage.getItem('gstd_pending_results');
                 if (saved) this.pendingQueue = JSON.parse(saved);
-            } catch (e) { console.error('Failed to load pending results', e); }
+            } catch (e) { logger.error('Failed to load pending results', e); }
 
             this.initWorker();
         }
@@ -35,14 +39,14 @@ class WorkerService {
         if (typeof window !== 'undefined') {
             localStorage.setItem('gstd_pending_results', JSON.stringify(this.pendingQueue));
         }
-        console.log(`[Resilience] Result saved to Queue. Total pending: ${this.pendingQueue.length}`);
+            logger.debug(`[Resilience] Result saved to Queue. Total pending: ${this.pendingQueue.length}`);
         toast.info('Network Issue: Result Queued for Upload');
     }
 
     private processQueue() {
         if (this.pendingQueue.length === 0 || !this.ws || this.ws.readyState !== WebSocket.OPEN) return;
 
-        console.log(`[Resilience] Processing Queue (${this.pendingQueue.length} items)...`);
+        logger.debug(`[Resilience] Processing Queue (${this.pendingQueue.length} items)...`);
 
         // Clone and clear to prevent loops, will re-add failures
         const batch = [...this.pendingQueue];
@@ -58,15 +62,22 @@ class WorkerService {
 
     private initWorker() {
         try {
-            console.log('[Mining Loop] Step 1: Init Mobile Worker...');
+            logger.debug('[Mining Loop] Step 1: Init Mobile Worker...');
             this.worker = new Worker('/mobile_worker.js');
+            this.worker.postMessage({ type: 'set_power_profile', profile: this.powerProfile });
+            if (typeof document !== 'undefined') {
+                document.addEventListener('visibilitychange', () => {
+                    const active = document.visibilityState === 'visible';
+                    this.worker?.postMessage({ type: 'user_active', active });
+                });
+            }
 
             this.worker.onmessage = (event) => {
                 const { status, result, reason } = event.data;
                 this.processingTask = false; // Reset Backpressure
 
                 if (status === 'completed') {
-                    console.log('[Mining Loop] Step 4: Hashing Completed', result);
+                    logger.debug('[Mining Loop] Step 4: Hashing Completed', result);
 
                     // Add Success Sound (Optional)
                     try {
@@ -103,16 +114,16 @@ class WorkerService {
                     }
 
                 } else if (status === 'skipped') {
-                    console.log('Worker skipped task:', reason);
+                    logger.debug('Worker skipped task:', reason);
                 }
             };
 
             this.worker.onerror = (err) => {
-                console.error('Worker Script Error:', err);
+                logger.error('Worker Script Error', err);
             };
 
         } catch (e) {
-            console.error('Failed to init worker:', e);
+            logger.error('Failed to init worker', e);
             this.state = 'error';
         }
     }
@@ -128,7 +139,7 @@ class WorkerService {
 
         this.state = 'igniting';
         this.notifyState();
-        console.log('[Mining Loop] Step 2: Auth & State Sync...');
+        logger.debug('[Mining Loop] Step 2: Auth & State Sync...');
 
         // Connect Sync
         this.connectWebSocket();
@@ -143,7 +154,7 @@ class WorkerService {
     }
 
     private connectWebSocket() {
-        console.log('[Mining Loop] Step 3: Establishing Socket Connection...');
+        logger.debug('[Mining Loop] Step 3: Establishing Socket Connection...');
         const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8080/ws';
         const walletAddress = typeof window !== 'undefined' ? useWalletStore.getState().address : null;
         const params = new URLSearchParams({ device_id: this.deviceId });
@@ -151,7 +162,7 @@ class WorkerService {
         this.ws = new WebSocket(`${wsUrl}?${params.toString()}`);
 
         this.ws.onopen = () => {
-            console.log('[Mining Loop] Socket Connected ✅');
+            logger.debug('[Mining Loop] Socket Connected');
             this.retryCount = 0; // Reset backoff
             this.startHeartbeat();
             this.processQueue();
@@ -162,15 +173,25 @@ class WorkerService {
                 const msg = JSON.parse(event.data);
                 if (msg.type === 'heartbeat_ack') {
                     this.lastHeartbeatAck = Date.now();
+                    if (msg.fleet_command?.action === 'standby') {
+                        this.pause();
+                        toast.info('Fleet Command', 'All nodes set to standby');
+                    } else if (msg.fleet_command?.action === 'resume') {
+                        if (this.state === 'paused') this.ignite();
+                        toast.info('Fleet Command', 'Fleet resumed');
+                    } else if (msg.fleet_command?.action === 'clean') {
+                        this.triggerMaintenance();
+                        toast.info('Fleet Command', 'Cache cleanup triggered');
+                    }
                 }
-            } catch (e) { console.error(e); }
+            } catch (e) { logger.debug('WS message parse', e); }
         };
 
         const handleReconnect = () => {
             if (this.state === 'paused') return;
 
             const delay = Math.min(1000 * (2 ** this.retryCount), 30000); // Max 30s
-            console.log(`[Mining Loop] Reconnecting in ${delay}ms...`);
+            logger.debug(`[Mining Loop] Reconnecting in ${delay}ms...`);
             this.retryCount++;
 
             setTimeout(() => {
@@ -179,13 +200,13 @@ class WorkerService {
         };
 
         this.ws.onerror = (e) => {
-            console.error('[Mining Loop] Socket Error', e);
+            logger.error('[Mining Loop] Socket Error', e);
             if (this.retryCount === 0) toast.error('Connection Lost. Reconnecting...');
             handleReconnect();
         };
 
         this.ws.onclose = () => {
-            console.log('[Mining Loop] Socket Closed');
+            logger.debug('[Mining Loop] Socket Closed');
             handleReconnect();
         };
     }
@@ -199,7 +220,7 @@ class WorkerService {
 
             // Check for timeout (Extended for Mobile Stability)
             if (Date.now() - this.lastHeartbeatAck > 60000) {
-                console.error('Heartbeat Timeout! Backend not responding.');
+                logger.error('Heartbeat Timeout: Backend not responding');
                 this.state = 'error';
                 this.notifyState();
                 toast.error('Connection Timeout: No Heartbeat');
@@ -222,9 +243,8 @@ class WorkerService {
 
             // BACKPRESSURE: Don't overload the worker on slow mobile devices
             if (this.processingTask) {
-                // If task stuck for > 30s, reset it
                 if (Date.now() - this.lastTaskTime > 30000) {
-                    console.warn('[Mining Loop] Task Timeout - Resetting Backpressure');
+                    logger.warn('[Mining Loop] Task Timeout - Resetting Backpressure');
                     this.processingTask = false;
                 } else {
                     return; // Wait for current task
@@ -240,7 +260,8 @@ class WorkerService {
                 is_targeted: !!this.targetTaskId,
                 model: 'mobilenet_v2',
                 priority: 'normal',
-                input: new Float32Array(100)
+                input: new Float32Array(100),
+                power_profile: this.powerProfile
             };
 
             this.worker.postMessage(task);
@@ -284,6 +305,21 @@ class WorkerService {
         if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
         this.state = 'idle';
         this.notifyState();
+    }
+
+    /** Symbiotic Management: Set power profile (Eco / Balance / Max) */
+    public setPowerProfile(profile: PowerProfile) {
+        this.powerProfile = profile;
+        if (this.worker) {
+            this.worker.postMessage({ type: 'set_power_profile', profile });
+        }
+    }
+
+    /** Zero-Touch Maintenance: Trigger cache cleanup when storage low */
+    public triggerMaintenance() {
+        if (this.worker) {
+            this.worker.postMessage({ type: 'check_maintenance' });
+        }
     }
 }
 

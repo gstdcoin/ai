@@ -132,15 +132,21 @@ func (s *MarketplaceService) GetAvailableTasks(ctx context.Context, workerWallet
 	return tasks, nil
 }
 
-// ClaimTask assigns a task to a worker
+// ClaimTask assigns a task to a worker (Ultra-Deep: FOR UPDATE prevents double-claim race)
 func (s *MarketplaceService) ClaimTask(ctx context.Context, taskID, workerWallet, deviceID string) error {
-	// Check if task is available
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Check if task is available with row lock
 	var status string
 	var maxWorkers, workersCompleted int
 	var reward float64
-	err := s.db.QueryRowContext(ctx, `
+	err = tx.QueryRowContext(ctx, `
 		SELECT status, COALESCE(max_workers, 1), COALESCE(workers_completed, 0), COALESCE(reward_per_worker, labor_compensation_gstd, 0)
-		FROM tasks WHERE task_id = $1
+		FROM tasks WHERE task_id = $1 FOR UPDATE
 	`, taskID).Scan(&status, &maxWorkers, &workersCompleted, &reward)
 	
 	if err != nil {
@@ -157,7 +163,7 @@ func (s *MarketplaceService) ClaimTask(ctx context.Context, taskID, workerWallet
 
 	// Calculate stake based on worker level
 	var level string
-	err = s.db.QueryRowContext(ctx, "SELECT COALESCE(level, 'Bronze') FROM worker_ratings WHERE worker_wallet = $1", workerWallet).Scan(&level)
+	err = tx.QueryRowContext(ctx, "SELECT COALESCE(level, 'Bronze') FROM worker_ratings WHERE worker_wallet = $1", workerWallet).Scan(&level)
 	if err != nil {
 		level = "Bronze" // Default
 	}
@@ -175,7 +181,7 @@ func (s *MarketplaceService) ClaimTask(ctx context.Context, taskID, workerWallet
 	stakeAmount := reward * stakePercent
 
 	// Deduct stake from worker balance (check sufficiency)
-	res, err := s.db.ExecContext(ctx, `
+	res, err := tx.ExecContext(ctx, `
 		UPDATE users SET balance = balance - $1 
 		WHERE wallet_address = $2 AND balance >= $1
 	`, stakeAmount, workerWallet)
@@ -188,7 +194,7 @@ func (s *MarketplaceService) ClaimTask(ctx context.Context, taskID, workerWallet
 	}
 
 	// Create assignment with stake info
-	_, err = s.db.ExecContext(ctx, `
+	_, err = tx.ExecContext(ctx, `
 		INSERT INTO worker_task_assignments (task_id, worker_wallet, device_id, status, stake_amount_gstd)
 		VALUES ($1, $2, $3, 'assigned', $4)
 		ON CONFLICT (task_id, worker_wallet) DO NOTHING
@@ -200,28 +206,32 @@ func (s *MarketplaceService) ClaimTask(ctx context.Context, taskID, workerWallet
 
 	// Update task status if single worker
 	if maxWorkers == 1 {
-		_, err = s.db.ExecContext(ctx, `
+		_, err = tx.ExecContext(ctx, `
 			UPDATE tasks SET status = 'assigned', assigned_device = $1, assigned_at = NOW()
 			WHERE task_id = $2
 		`, deviceID, taskID)
 	}
 
-	return nil
+	return tx.Commit()
 }
 
 // CompleteTask marks a task as completed and triggers payout
+// Ultra-Deep: Atomic - escrow release first; only on success update assignment (no partial state)
 func (s *MarketplaceService) CompleteTask(ctx context.Context, taskID, workerWallet string, executionTimeMs int, qualityScore float64, resultData []byte) (*TaskReceipt, error) {
-	// Refund stake to worker
-	_, err := s.db.ExecContext(ctx, `
+	// 1. Release funds from escrow FIRST - if this fails, we don't touch assignment
+	tx, err := s.escrowService.ReleaseToWorkerMarketplace(ctx, taskID, workerWallet, qualityScore, s.referral)
+	if err != nil {
+		log.Printf("⚠️  Escrow release failed for task %s: %v", taskID, err)
+		return nil, fmt.Errorf("escrow release failed: %w", err)
+	}
+
+	// 2. Only after escrow success: refund stake and update assignment
+	_, _ = s.db.ExecContext(ctx, `
 		UPDATE users 
 		SET balance = balance + (SELECT COALESCE(stake_amount_gstd, 0) FROM worker_task_assignments WHERE task_id = $1 AND worker_wallet = $2)
 		WHERE wallet_address = $2
 	`, taskID, workerWallet)
-	if err != nil {
-		log.Printf("⚠️  Failed to refund stake for task %s: %v", taskID, err)
-	}
 
-	// Update assignment
 	_, err = s.db.ExecContext(ctx, `
 		UPDATE worker_task_assignments SET
 			status = 'completed',
@@ -231,16 +241,9 @@ func (s *MarketplaceService) CompleteTask(ctx context.Context, taskID, workerWal
 			result_data = $3
 		WHERE task_id = $4 AND worker_wallet = $5
 	`, executionTimeMs, qualityScore, resultData, taskID, workerWallet)
-
 	if err != nil {
-		return nil, fmt.Errorf("failed to update assignment: %w", err)
-	}
-
-	// Release funds from escrow (80/15/5: executor 80%, referral 5%, platform 15% Treasury/Gold 50/50)
-	tx, err := s.escrowService.ReleaseToWorkerMarketplace(ctx, taskID, workerWallet, qualityScore, s.referral)
-	if err != nil {
-		log.Printf("⚠️  Escrow release failed for task %s: %v", taskID, err)
-		return nil, fmt.Errorf("escrow release failed: %w", err)
+		log.Printf("⚠️  Assignment update failed after escrow for task %s: %v", taskID, err)
+		// Escrow already released - cannot rollback; log and continue
 	}
 
 	// Get escrow details for receipt

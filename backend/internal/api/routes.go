@@ -64,6 +64,7 @@ func SetupRoutes(
 	guardrailsService *services.GuardrailsService,
 	geoService *services.GeoService,
 	agentModelService *services.AgentModelService,
+	fleetCommandService *services.FleetCommandService,
 ) {
 	log.Printf("🔧 SetupRoutes: Starting route setup, redisClient type: %T", redisClient)
 	
@@ -147,6 +148,8 @@ func SetupRoutes(
 	if !ok {
 		log.Fatal("SetupRoutes: db is not *sql.DB")
 	}
+	// Omega Point: DB Circuit Breaker - blocks non-critical routes when connections >= 90%
+	router.Use(DBCircuitBreaker(dbConn))
 	referralService := services.NewReferralService(dbConn)
 
 	// API versioning
@@ -299,7 +302,7 @@ func SetupRoutes(
 		protected.GET("/tasks/:id/payment", getTaskWithPayment(taskPaymentService))
 
 		// Devices (protected)
-		protected.POST("/devices/register", registerDevice(deviceService, errorLogger))
+		protected.POST("/devices/register", registerDevice(deviceService, errorLogger, multiLevelReferralService, dbConn))
 		protected.GET("/devices", getDevices(deviceService))
 		protected.GET("/devices/my", getMyDevices(deviceService))
 
@@ -319,6 +322,8 @@ func SetupRoutes(
 		admin.Use(RequireAdminWallet(tonConfig))
 		{
 			admin.GET("/health", getAdminHealth(db.(*sql.DB), redisClient.(*redis.Client), rewardEngine, payoutRetryService))
+			admin.GET("/failed-payouts", getFailedPayouts(db.(*sql.DB)))
+			admin.POST("/retry-payout/:id", retryPayout(payoutRetryService))
 			admin.GET("/withdrawals/pending", getPendingWithdrawals(db.(*sql.DB)))
 			admin.POST("/withdrawals/:id/approve", approveWithdrawal(db.(*sql.DB), rewardEngine))
 			admin.POST("/broadcast", broadcastAnnouncement(hub, knowledgeService))
@@ -346,7 +351,7 @@ func SetupRoutes(
 
 		// Nodes (protected)
 		geoService := services.NewGeoService(rClient)
-		SetupNodeRoutes(protected, nodeService, geoService, telegramService)
+		SetupNodeRoutes(protected, nodeService, geoService, telegramService, multiLevelReferralService, fleetCommandService)
 
 		// Task Payment (protected)
 		protected.POST("/tasks/create", createTaskWithPayment(taskPaymentService, taskRateLimiter))
@@ -377,6 +382,8 @@ func SetupRoutes(
 		
 		// Knowledge / Hive Memory
 		SetupKnowledgeRoutes(protected, knowledgeService)
+		// Hyper-Expansion: Hive Intelligence API, Oracle, Leaderboard, Milestones
+		SetupHyperExpansionRoutes(v1, protected, knowledgeService, dbConn, tonConfig)
 		// Public: GRID IS THINKING ticker (resonance quotes, no auth)
 		v1.GET("/knowledge/resonance", getResonanceQuotes(knowledgeService))
 		// Public: FREE AI TOOLS BY GSTD GRID (code snippets from agents)
@@ -428,7 +435,7 @@ func SetupRoutes(
 	}
 
 	// WebSocket endpoint
-	router.GET("/ws", HandleWebSocket(hub, deviceService, assignmentService))
+	router.GET("/ws", HandleWebSocket(hub, deviceService, assignmentService, fleetCommandService))
 }
 
 func getAutonomyStats(service *services.MaintenanceService) gin.HandlerFunc {
@@ -1140,6 +1147,16 @@ func prepareLiquidityProvision(escrow *services.EscrowService) gin.HandlerFunc {
 		}
 		if req.AmountGSTD <= 0 && req.AmountXAUt <= 0 {
 			c.JSON(400, gin.H{"error": "at least one of amount_gstd or amount_xaut must be positive"})
+			return
+		}
+		// Ultra-Deep: Min Out - reject below Ston.fi min threshold (insufficient liquidity)
+		minGSTD, minXAUt := 0.1, 0.0001
+		if req.AmountGSTD > 0 && req.AmountGSTD < minGSTD {
+			c.JSON(400, gin.H{"error": "amount_gstd below minimum (0.1 GSTD)"})
+			return
+		}
+		if req.AmountXAUt > 0 && req.AmountXAUt < minXAUt {
+			c.JSON(400, gin.H{"error": "amount_xaut below minimum (0.0001 XAUt)"})
 			return
 		}
 		result, err := escrow.PrepareWithdraw(c.Request.Context(), req.AmountGSTD, req.AmountXAUt)

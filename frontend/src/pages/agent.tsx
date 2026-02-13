@@ -15,9 +15,10 @@ export default function AgentPage() {
     return () => clearTimeout(timer);
   }, []);
 
+  // Shadow Audit: deep linking — redirect to dashboard when wallet not connected
   useEffect(() => {
     if (!isChecking && !isConnected) {
-      router.push('/');
+      router.push('/dashboard');
     }
   }, [isChecking, isConnected, router]);
 

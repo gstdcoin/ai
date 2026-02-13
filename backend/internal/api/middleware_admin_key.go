@@ -20,7 +20,8 @@ func RequireAdminAPIKey() gin.HandlerFunc {
 			}
 		}
 		cfg := config.GetConfig()
-		if key == "" || key != cfg.Server.AdminAPIKey {
+		valid := key != "" && (key == cfg.Server.AdminAPIKey || (cfg.Server.AdminAPIKey2 != "" && key == cfg.Server.AdminAPIKey2))
+		if !valid {
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"error": "X-Admin-API-Key required",
 			})

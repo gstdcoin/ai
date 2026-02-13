@@ -107,8 +107,20 @@ func BuildContainer() *dig.Container {
 	c.Provide(services.NewZKComputeProofService)
 	c.Provide(services.NewDataAirlockService)
 	c.Provide(services.NewInferenceService)
+	c.Provide(services.NewAgentSubcontractService)
+	c.Provide(services.NewGoldHashRateService)
+	c.Provide(func(goldHash *services.GoldHashRateService, hub *api.WSHub) *services.GoldBroadcastRunner {
+		return services.NewGoldBroadcastRunner(goldHash, hub)
+	})
+	c.Provide(services.NewHardwareGrantsService)
+	c.Provide(func(db *sql.DB, telegram *services.TelegramService) *services.AnomalyDetectionService {
+		return services.NewAnomalyDetectionService(db, telegram)
+	})
 	c.Provide(func(db *sql.DB, inference *services.InferenceService, knowledge *services.KnowledgeService) *services.OpenClawBridgeService {
 		return services.NewOpenClawBridgeService(db, inference, knowledge)
+	})
+	c.Provide(func(knowledge *services.KnowledgeService) *services.EvolutionEngine {
+		return services.NewEvolutionEngine(knowledge)
 	})
 
 	c.Provide(func(cfg *config.Config) *services.TONService {
@@ -125,6 +137,9 @@ func BuildContainer() *dig.Container {
 
 	c.Provide(func(db *sql.DB, redis *redis.Client) *services.AssignmentService {
 		return services.NewAssignmentService(db, redis)
+	})
+	c.Provide(func(redis *redis.Client) *services.FleetCommandService {
+		return services.NewFleetCommandService(redis)
 	})
 
 	c.Provide(func(db *sql.DB, cfg *config.Config) *services.PaymentService {
@@ -213,6 +228,13 @@ func StartApplication(container *dig.Container) error {
 		openClawBridge *services.OpenClawBridgeService,
 		geoService *services.GeoService,
 		agentModelService *services.AgentModelService,
+		agentSubcontractService *services.AgentSubcontractService,
+		goldHashRateService *services.GoldHashRateService,
+		goldBroadcastRunner *services.GoldBroadcastRunner,
+		anomalyDetection *services.AnomalyDetectionService,
+		zkComputeProof *services.ZKComputeProofService,
+		fleetCommandService *services.FleetCommandService,
+		evolutionEngine *services.EvolutionEngine,
 	) {
 		// 1. Cross-dependency wiring
 		tonService.SetCacheService(cacheService)
@@ -228,6 +250,7 @@ func StartApplication(container *dig.Container) error {
 		paymentService.SetTONService(tonService)
 		paymentService.SetNodeService(nodeService)
 		resultService.SetTelegramService(telegramService)
+		resultService.SetZKProofService(zkComputeProof)
 		taskPaymentService.SetTaskService(taskService)
 		taskPaymentService.SetTelegramService(telegramService)
 		stonFiService.SetPoolMonitor(poolMonitor)
@@ -241,6 +264,9 @@ func StartApplication(container *dig.Container) error {
 
 		// 3. Start Background Workers
 		ctx := context.Background()
+		// 2b. Absolute Point: Gold Reserve → Hash-Rate Multiplier via WebSocket (real-time)
+		go goldBroadcastRunner.Start(ctx)
+		log.Printf("📡 Gold Broadcast Runner started (Unified State Machine)")
 		go timeoutService.StartTimeoutChecker(ctx, 30*time.Second)
 		go paymentWatcher.Start(ctx, 60*time.Second)
 		go payoutRetry.Start(ctx)
@@ -248,6 +274,8 @@ func StartApplication(container *dig.Container) error {
 		go taskOrchestrator.Start(ctx)
 		go maintenanceService.Start(ctx)
 		go poolMonitor.Start(ctx)
+		go anomalyDetection.Start(ctx)
+		go evolutionEngine.Start(ctx)
 
 		
 		// 🚀 1M User Optimization: Periodically flush batched heartbeats
@@ -317,6 +345,7 @@ func StartApplication(container *dig.Container) error {
 			guardrailsService,
 			geoService,
 			agentModelService,
+			fleetCommandService,
 		)
 
 		// 4b. Modular routes (registered separately for clean architecture)
@@ -327,6 +356,9 @@ func StartApplication(container *dig.Container) error {
 			guardrailsService, federatedEngine, mobileCompute,
 			zbGateService, recyclingPool, kvCacheService,
 			dataAirlock, openClawBridge)
+
+		// 4c. Cosmic Genesis: A2A economy, Gold-Hash link, Hardware grants
+		api.SetupCosmicGenesisRoutes(v1Group, protectedGroup, db, agentSubcontractService, goldHashRateService)
 
 		// 5. Ollama connectivity check (inference gateway)
 		ollamaURL := os.Getenv("OLLAMA_URL")

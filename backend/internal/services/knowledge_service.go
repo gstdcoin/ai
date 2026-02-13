@@ -120,8 +120,9 @@ func (s *KnowledgeService) SummarizeRecentInsights(ctx context.Context, limit in
 		}
 		parts = append(parts, "["+createdAt.Format(time.RFC3339)+"] "+agentID+"/"+topic+": "+content)
 	}
+	// Shadow Audit: empty agent_knowledge must not crash; return safe fallback for AI context
 	if len(parts) == 0 {
-		return "", nil
+		return "No recent insights available. Proceed with standard inference.", nil
 	}
 	// Reverse so oldest first (chronological context)
 	for i, j := 0, len(parts)-1; i < j; i, j = i+1, j-1 {

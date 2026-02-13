@@ -345,7 +345,7 @@ export default function GoldenReservePanel() {
                 {addLiquidityError && <p className="text-red-400 text-sm mb-3">{addLiquidityError}</p>}
                 <div className="flex gap-2">
                   <button onClick={() => setShowAddLiquidity(false)} className="flex-1 px-4 py-2 rounded-lg bg-white/10 text-gray-300 text-sm font-medium">{t('cancel') || 'Cancel'}</button>
-                  <button onClick={() => { const g = parseFloat((document.getElementById('add-gstd') as HTMLInputElement)?.value || '10'); const x = parseFloat((document.getElementById('add-xaut') as HTMLInputElement)?.value || '0'); if (g > 0 || x > 0) handlePrepareLiquidity(g, x); }} disabled={addLiquidityLoading} className="flex-1 px-4 py-2 rounded-lg bg-amber-500/30 text-amber-400 text-sm font-bold disabled:opacity-50">
+                  <button onClick={() => { const g = parseFloat((document.getElementById('add-gstd') as HTMLInputElement)?.value || '10'); const x = parseFloat((document.getElementById('add-xaut') as HTMLInputElement)?.value || '0'); if ((g >= 0.1 || x >= 0.0001) && (g > 0 || x > 0)) handlePrepareLiquidity(g, x); }} disabled={addLiquidityLoading} className="flex-1 px-4 py-2 rounded-lg bg-amber-500/30 text-amber-400 text-sm font-bold disabled:opacity-50">
                     {addLiquidityLoading ? '...' : (t('prepare') || 'Prepare')}
                   </button>
                 </div>

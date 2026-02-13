@@ -134,7 +134,15 @@ func (s *ProofOfWorkService) VerifyProof(ctx context.Context, taskID, workerWall
 	if challenge.Verified {
 		return &PoWResult{Valid: false}, fmt.Errorf("challenge already verified")
 	}
-	
+
+	// Ultra-Deep: Replay attack - reject if this nonce was already used for another task
+	var otherTaskID string
+	if err := s.db.QueryRowContext(ctx, `
+		SELECT task_id FROM pow_challenges WHERE nonce = $1 AND verified = true AND (task_id != $2 OR worker_wallet != $3) LIMIT 1
+	`, nonce, taskID, workerWallet).Scan(&otherTaskID); err == nil {
+		return &PoWResult{Valid: false}, fmt.Errorf("nonce replay: already used for another task")
+	}
+
 	// Compute hash
 	data := challenge.Challenge + taskID + workerWallet + nonce
 	hash := sha256.Sum256([]byte(data))

@@ -6,6 +6,14 @@ import (
 	"fmt"
 )
 
+// maskWallet returns truncated wallet for privacy (Ultra-Deep: workers must not see other wallets)
+func maskWallet(w string) string {
+	if len(w) <= 12 {
+		return "***"
+	}
+	return w[:6] + "***" + w[len(w)-4:]
+}
+
 type DeviceService struct {
 	db *sql.DB
 }
@@ -19,11 +27,12 @@ type RegisterDeviceRequest struct {
 	DeviceID      string `json:"device_id"`      // Unique device fingerprint
 	WalletAddress string `json:"wallet_address"`  // Wallet address (can be same for multiple devices)
 	DeviceType    string `json:"device_type"`    // android, ios, desktop
-	DeviceInfo    string `json:"device_info"`     // Additional device info
+	DeviceInfo    string `json:"device_info"`    // Additional device info
 	PoWNonce      string `json:"pow_nonce"`      // Proof of Work Nonce
 	CPUScore      int    `json:"cpu_score"`      // Benchmark score
-	RAMGB         float64 `json:"ram_gb"`        // Available RAM
-	PublicKey     string  `json:"public_key"`    // Agent public key (hex)
+	RAMGB         float64 `json:"ram_gb"`       // Available RAM
+	PublicKey     string `json:"public_key"`     // Agent public key (hex)
+	ReferralCode  string `json:"referral_code"`   // Hyper-Expansion: ref_XXX from Telegram start param (5% forever)
 }
 
 func (s *DeviceService) RegisterDevice(ctx context.Context, req RegisterDeviceRequest) error {
@@ -107,6 +116,7 @@ func (s *DeviceService) GetDevicesByWallet(ctx context.Context, walletAddress st
 	return devices, nil
 }
 
+// GetDevices returns active devices for network stats. Ultra-Deep: wallet_address masked for agent privacy.
 func (s *DeviceService) GetDevices(ctx context.Context) ([]map[string]interface{}, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT device_id, wallet_address, device_type, reputation,
@@ -135,14 +145,14 @@ func (s *DeviceService) GetDevices(ctx context.Context) ([]map[string]interface{
 		}
 
 		devices = append(devices, map[string]interface{}{
-			"device_id":              deviceID,
-			"wallet_address":          walletAddress,
-			"device_type":            deviceType,
+			"device_id":               deviceID,
+			"wallet_address":          maskWallet(walletAddress),
+			"device_type":             deviceType,
 			"reputation":              reputation,
-			"total_tasks":            totalTasks,
-			"successful_tasks":       successfulTasks,
+			"total_tasks":             totalTasks,
+			"successful_tasks":        successfulTasks,
 			"average_response_time_ms": avgTime,
-			"last_seen_at":           lastSeen,
+			"last_seen_at":            lastSeen,
 		})
 	}
 
@@ -175,6 +185,13 @@ func (s *DeviceService) LinkBrowserDevice(ctx context.Context, deviceID, walletA
 			is_active = true
 	`, deviceID, walletAddress)
 	return err
+}
+
+// GetWalletByDeviceID returns wallet_address for a device (Fleet Command: route commands to correct nodes)
+func (s *DeviceService) GetWalletByDeviceID(ctx context.Context, deviceID string) (string, error) {
+	var wallet string
+	err := s.db.QueryRowContext(ctx, `SELECT wallet_address FROM devices WHERE device_id = $1`, deviceID).Scan(&wallet)
+	return wallet, err
 }
 
 // GetDeviceTrust retrieves trust score for a device

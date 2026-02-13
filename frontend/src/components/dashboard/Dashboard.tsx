@@ -29,10 +29,13 @@ import ReferralPanel from '../referrals/ReferralPanel';
 import BurnStatsWidget from './BurnStatsWidget';
 import WelcomeBonusWidget from './WelcomeBonusWidget';
 import GoldenReservePanel from './GoldenReservePanel';
+import EarningsPredictionWidget from './EarningsPredictionWidget';
+import FleetCommandPanel from './FleetCommandPanel';
 import { NeuralBridge } from './NeuralBridge';
 import { GenesisRegistryWidget } from './GenesisRegistryWidget';
 import { VoiceBanner } from './VoiceBanner';
 import { GlobalNodeGrowthWidget } from './GlobalNodeGrowthWidget';
+import { GlobalLeaderboardWidget } from './GlobalLeaderboardWidget';
 import { isTelegramWebApp } from '../../lib/telegram';
 import { SovereignSwitch } from '../SovereignSwitch';
 
@@ -65,6 +68,7 @@ function Dashboard({ initialTab }: DashboardProps = {}) {
   });
   const [showNewTask, setShowNewTask] = useState(false);
   const [isMining, setIsMining] = useState(false);
+  const [isIgniting, setIsIgniting] = useState(false);
   const [showReferralModal, setShowReferralModal] = useState(false);
 
   // Check for pending chat from landing page
@@ -78,10 +82,11 @@ function Dashboard({ initialTab }: DashboardProps = {}) {
     }
   }, []);
 
-  // Subscribe to worker service state
+  // Subscribe to worker service state (Shadow Audit: loading state for Ignite)
   useEffect(() => {
     const unsub = workerService.subscribe((state) => {
       setIsMining(state === 'running' || state === 'igniting');
+      setIsIgniting(state === 'igniting');
     });
     return unsub;
   }, []);
@@ -312,25 +317,32 @@ function Dashboard({ initialTab }: DashboardProps = {}) {
                       {/* Worker Control */}
                       <button
                         onClick={handleToggleMining}
+                        disabled={isIgniting}
                         title={t('ignite_hint')}
-                        className={`group relative p-8 rounded-[2rem] font-black transition-all transform active:scale-95 flex items-center justify-between border-2 overflow-hidden ${isMining
+                        className={`group relative p-8 rounded-[2rem] font-black transition-all transform active:scale-95 flex items-center justify-between border-2 overflow-hidden disabled:opacity-70 disabled:cursor-not-allowed ${isMining
                           ? 'bg-red-500/10 border-red-500/20 text-red-400 shadow-[0_0_40px_rgba(239,68,68,0.1)]'
                           : 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400 hover:border-cyan-400/40 shadow-[0_0_40px_rgba(34,211,238,0.1)]'
                           }`}
                       >
                         <div className="flex items-center gap-5 relative z-10">
                           <div className={`p-4 rounded-2xl border ${isMining ? 'bg-red-500/20 border-red-500/30 animate-pulse' : 'bg-cyan-500/20 border-cyan-500/30'}`}>
-                            {isMining ? <Activity size={28} /> : <Server size={28} />}
+                            {isIgniting ? (
+                              <div className="w-7 h-7 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+                            ) : isMining ? (
+                              <Activity size={28} />
+                            ) : (
+                              <Server size={28} />
+                            )}
                           </div>
                           <div className="text-left">
                             <span className="block text-2xl uppercase tracking-tighter font-black">
-                              {isMining ? 'Online' : 'Ignite'}
+                              {isIgniting ? 'Igniting...' : isMining ? 'Online' : 'Ignite'}
                             </span>
                             <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest block mt-1">Platform Node</span>
                           </div>
                         </div>
                         <div className={`flex items-center gap-2 px-4 py-1.5 rounded-full border text-[10px] font-black tracking-widest uppercase ${isMining ? 'bg-red-500/20 border-red-500/30' : 'bg-cyan-500/20 border-cyan-500/30'}`}>
-                          {isMining ? 'Stop' : 'Start'}
+                          {isIgniting ? '...' : isMining ? 'Stop' : 'Start'}
                         </div>
                       </button>
 
@@ -393,6 +405,10 @@ function Dashboard({ initialTab }: DashboardProps = {}) {
                           </div>
                           <button className="text-[10px] font-black text-violet-400 border border-violet-500/20 px-3 py-1 rounded-lg hover:bg-violet-500/10">+</button>
                         </div>
+
+                        <ComponentErrorBoundary name="EarningsPredictionWidget">
+                          <EarningsPredictionWidget />
+                        </ComponentErrorBoundary>
                       </div>
                     </div>
                   </div>
@@ -426,6 +442,9 @@ function Dashboard({ initialTab }: DashboardProps = {}) {
                           <GlobalNodeGrowthWidget />
                         </ComponentErrorBoundary>
                       </div>
+                      <ComponentErrorBoundary name="GlobalLeaderboardWidget">
+                        <GlobalLeaderboardWidget />
+                      </ComponentErrorBoundary>
                       <ComponentErrorBoundary name="SystemStatusWidget">
                         <SystemStatusWidget onStatsUpdate={handleStatsUpdate} />
                       </ComponentErrorBoundary>
@@ -436,9 +455,14 @@ function Dashboard({ initialTab }: DashboardProps = {}) {
                   )}
 
                   {activeTab === 'devices' && (
-                    <ComponentErrorBoundary name="DevicesPanel">
-                      <DevicesPanel />
-                    </ComponentErrorBoundary>
+                    <div className="space-y-6">
+                      <ComponentErrorBoundary name="FleetCommandPanel">
+                        <FleetCommandPanel />
+                      </ComponentErrorBoundary>
+                      <ComponentErrorBoundary name="DevicesPanel">
+                        <DevicesPanel />
+                      </ComponentErrorBoundary>
+                    </div>
                   )}
 
                   {activeTab === 'marketplace' && (

@@ -52,8 +52,9 @@ type TONConfig struct {
 }
 
 type ServerConfig struct {
-	Port string
-	AdminAPIKey string
+	Port         string
+	AdminAPIKey  string
+	AdminAPIKey2 string // Omega: Emergency fallback if primary revoked
 }
 
 type TelegramConfig struct {
@@ -101,7 +102,8 @@ func Load() *Config {
 		},
 		Server: ServerConfig{
 			Port:        getEnv("PORT", "8080"),
-			AdminAPIKey: getEnv("ADMIN_API_KEY", "gstd_system_key_2026"),
+			AdminAPIKey:    getEnv("ADMIN_API_KEY", "gstd_system_key_2026"),
+			AdminAPIKey2:   getEnv("ADMIN_API_KEY_2", ""), // Omega: Emergency fallback if primary revoked
 		},
 		Telegram: TelegramConfig{
 			BotToken: getEnv("TELEGRAM_BOT_TOKEN", ""),

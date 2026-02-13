@@ -96,6 +96,7 @@ func (s *GenesisService) Ignite(ctx context.Context, walletAddress string) (stri
 			"last_access":    time.Now().Unix(),
 		}
 		s.redis.HSet(ctx, sessionKey, sessionData)
+		// Shadow Audit: 24h TTL; ensure Redis maxmemory-policy does not evict session keys (use noeviction or volatile-lru)
 		s.redis.Expire(ctx, sessionKey, 24*time.Hour)
 	}
 

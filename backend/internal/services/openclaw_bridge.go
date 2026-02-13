@@ -340,6 +340,7 @@ func (s *OpenClawBridgeService) rpcVision(ctx context.Context, req *RPCRequest) 
 		Image  string `json:"image"` // base64-encoded image
 	}
 	_ = json.Unmarshal(req.Params, &params)
+	// Ultra-Deep: never log image field - prevents disk fill and privacy exposure
 	if params.Prompt == "" {
 		return &RPCResponse{JSONRPC: "2.0", Error: &RPCError{Code: -32602, Message: "prompt required"}, ID: req.ID}
 	}
