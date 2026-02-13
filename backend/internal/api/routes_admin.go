@@ -469,6 +469,45 @@ func seedOmniTestTask(db *sql.DB, tonConfig config.TONConfig) gin.HandlerFunc {
 	}
 }
 
+// reconcileMarketplaceTask forces claim+complete for a stuck marketplace task (admin only)
+func reconcileMarketplaceTask(db *sql.DB, referral *services.ReferralService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req struct {
+			TaskID       string `json:"task_id" binding:"required"`
+			WorkerWallet string `json:"worker_wallet" binding:"required"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(400, gin.H{"error": err.Error()})
+			return
+		}
+		escrow := services.NewEscrowService(db)
+		marketplace := services.NewMarketplaceService(db, escrow, referral)
+
+		// Ensure worker exists with balance for stake
+		var balance float64
+		_ = db.QueryRowContext(c.Request.Context(), "SELECT COALESCE(balance, 0) FROM users WHERE wallet_address = $1", req.WorkerWallet).Scan(&balance)
+		if balance < 1 {
+			_, _ = db.ExecContext(c.Request.Context(), `
+				INSERT INTO users (wallet_address, balance, referral_code, created_at)
+				VALUES ($1, 100, 'RECON-'||substr(md5($1),1,8), NOW())
+				ON CONFLICT (wallet_address) DO UPDATE SET balance = GREATEST(users.balance, 100)
+			`, req.WorkerWallet)
+		}
+
+		if err := marketplace.ClaimTask(c.Request.Context(), req.TaskID, req.WorkerWallet, "reconcile"); err != nil {
+			// May already be claimed - try complete anyway
+			log.Printf("Reconcile: ClaimTask: %v (trying complete)", err)
+		}
+
+		receipt, err := marketplace.CompleteTask(c.Request.Context(), req.TaskID, req.WorkerWallet, 0, 1.0, []byte(`{"reconciled":true}`))
+		if err != nil {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(200, gin.H{"status": "reconciled", "receipt": receipt})
+	}
+}
+
 // seedUltimateCheckTasks creates 3 MFST-ULTIMATE-CHECK tasks for OMNISCIENT AUDIT
 func seedUltimateCheckTasks(db *sql.DB, tonConfig config.TONConfig) gin.HandlerFunc {
 	return func(c *gin.Context) {

@@ -61,13 +61,14 @@ else
     fi
 fi
 
-# Check Bot Health
-BOT_STATUS=$(docker inspect -f '{{.State.Status}}' gstd_bot 2>/dev/null)
-
-if [ "$BOT_STATUS" != "running" ]; then
-    log "⚠️ ALERT: Bot container is $BOT_STATUS. Restarting..."
-    docker restart gstd_bot
-    send_telegram "🤖 GSTD Sentinel: Bot was down. Autonomous restart triggered."
+# Check Bot Health (only if container exists in this stack)
+if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q 'gstd_bot'; then
+    BOT_STATUS=$(docker inspect -f '{{.State.Status}}' gstd_bot 2>/dev/null)
+    if [ "$BOT_STATUS" != "running" ]; then
+        log "⚠️ ALERT: Bot container is $BOT_STATUS. Restarting..."
+        docker restart gstd_bot 2>/dev/null || true
+        send_telegram "🤖 GSTD Sentinel: Bot was down. Autonomous restart triggered."
+    fi
 fi
 
 # 🛡️ File Integrity Check (Zero Trust)

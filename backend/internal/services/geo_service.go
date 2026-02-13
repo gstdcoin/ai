@@ -12,10 +12,15 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
+	"github.com/uber/h3-go/v3"
 )
-// GeoService handles IP geolocation and GPS validation
+
+// H3Resolution is the default resolution for node location indexing (Res 6 ≈ 36 km²)
+const H3Resolution = 6
+
+// GeoService handles IP geolocation, GPS validation, and H3 indexing
 type GeoService struct {
-	httpClient *http.Client
+	httpClient  *http.Client
 	redisClient *redis.Client
 }
 
@@ -147,4 +152,14 @@ func (s *GeoService) GetCountryByIP(ctx context.Context, ipAddress string) (stri
 
 	log.Printf("🌍 Geolocation success: %s -> %s", ipAddress, result.CountryCode)
 	return result.CountryCode, nil
+}
+
+// LatLonToH3Index converts lat/lon to H3 index at Resolution 6
+func (s *GeoService) LatLonToH3Index(lat, lon float64, res int) string {
+	if res <= 0 {
+		res = H3Resolution
+	}
+	geo := h3.GeoCoord{Latitude: lat, Longitude: lon}
+	h3Idx := h3.FromGeo(geo, res)
+	return h3.ToString(h3Idx)
 }

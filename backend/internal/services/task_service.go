@@ -22,6 +22,7 @@ type TaskService struct {
 	efficiencyService *EfficiencyService
 	gravityService    *HardenedGravityService
 	entropyService    *EntropyService
+	encryptionService *EncryptionService
 	hub               interface{} // *api.WSHub (avoid circular import)
 	hubMu             sync.RWMutex // Protects hub from race conditions
 	redisStreams      *RedisStreamsService
@@ -39,8 +40,13 @@ func NewTaskService(db *sql.DB, queue *redis.Client, tonService *TONService, ton
 		gravityService:    NewHardenedGravityService(db, queue),
 		entropyService:    NewEntropyService(db),
 		redisStreams:      NewRedisStreamsService(queue),
-		redisPubSub:        NewRedisPubSubService(queue),
+		redisPubSub:       NewRedisPubSubService(queue),
 	}
+}
+
+// SetEncryptionService wires encryption for is_encrypted tasks
+func (s *TaskService) SetEncryptionService(enc *EncryptionService) {
+	s.encryptionService = enc
 }
 
 // SetHub sets the WebSocket hub for broadcasting tasks
@@ -134,6 +140,17 @@ func (s *TaskService) CreateTask(ctx context.Context, requesterAddress string, d
 	finalCompensation := s.efficiencyService.CalculateTaskCost(descriptor.Reward.AmountGSTD, gstdBalance)
 	confidenceDepth := int(math.Floor(1 + math.Log10(1+gstdBalance/10000.0)))
 
+	// Data Airlock: encrypt sensitive payload when is_encrypted=true
+	payloadToStore := descriptor.Input.Data
+	if descriptor.IsEncrypted && descriptor.ExecutorPubkey != "" && payloadToStore != "" && s.encryptionService != nil {
+		encrypted, err := s.encryptionService.EncryptWithPublicKey([]byte(payloadToStore), descriptor.ExecutorPubkey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to encrypt task payload: %w", err)
+		}
+		payloadToStore = encrypted
+		log.Printf("🔒 Task %s: payload encrypted for executor (Data Airlock)", taskID)
+	}
+
     // REAL ESCROW LOGIC (Atomic Transaction)
     tx, err := s.db.BeginTx(ctx, nil)
     if err != nil {
@@ -179,7 +196,7 @@ func (s *TaskService) CreateTask(ctx context.Context, requesterAddress string, d
 	`, taskID, requesterAddress, descriptor.TaskType, descriptor.Operation, descriptor.Model,
 		descriptor.Reward.AmountGSTD, platformFee, gravityScore,
 		descriptor.MinTrust, descriptor.IsPrivate, confidenceDepth, redundancy, isSpotCheck, entropy,
-		false, "", 0, "", descriptor.Input.Data)
+		false, "", 0, "", payloadToStore)
 
 
     if err != nil {

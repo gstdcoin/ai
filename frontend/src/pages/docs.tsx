@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { ROICalculator } from '../components/ROICalculator';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { GetStaticProps } from 'next';
@@ -78,7 +79,7 @@ export default function Docs({ content, isCalculator }: DocsProps) {
     );
 }
 
-// ... (ROICalculator stays same)
+
 
 export const getServerSideProps: any = async ({ locale, query }: any) => {
     const { type = 'investment' } = query;

@@ -72,25 +72,40 @@ def get_hardware_fingerprint():
         "storage_gb": 512
     }
 
-def register_node(wallet_address):
+def genesis_ignite(wallet_address):
+    """Get session token via Genesis Handshake (required for agent auth)."""
+    try:
+        res = requests.post(f"{PLATFORM_URL}/genesis/ignite", json={"wallet_address": wallet_address}, timeout=15)
+        if res.status_code == 200:
+            return res.json().get("token")
+    except Exception as e:
+        print(f"[-] Genesis Ignite failed: {e}")
+    return None
+
+def register_node(wallet_address, session_token):
     payload = {
         "name": f"Sovereign-Node-{NODE_ID[:8]}",
         "specs": get_hardware_fingerprint()
     }
-    headers = {"X-Wallet-Address": wallet_address}
+    headers = {"Content-Type": "application/json", "X-Wallet-Address": wallet_address}
+    if session_token:
+        headers["X-Session-Token"] = session_token
     try:
-        res = requests.post(f"{PLATFORM_URL}/nodes/register?wallet_address={wallet_address}", json=payload)
+        res = requests.post(f"{PLATFORM_URL}/nodes/register?wallet_address={wallet_address}", json=payload, headers=headers, timeout=15)
         if res.status_code == 200:
             print(f"[+] Successfully registered node in the Grid.")
             return True
         else:
-            print(f"[-] Registration failed: {res.text}")
+            print(f"[-] Registration failed ({res.status_code}): {res.text[:200]}")
             return False
     except Exception as e:
         print(f"[-] Connection failed: {e}")
         return False
 
-def heartbeat_loop(wallet_address):
+def heartbeat_loop(wallet_address, session_token):
+    headers = {"Content-Type": "application/json"}
+    if session_token:
+        headers["X-Session-Token"] = session_token
     while True:
         try:
             payload = {
@@ -100,7 +115,7 @@ def heartbeat_loop(wallet_address):
                 "battery": 100,
                 "signal": 100
             }
-            requests.post(f"{PLATFORM_URL}/nodes/heartbeat", json=payload)
+            requests.post(f"{PLATFORM_URL}/nodes/heartbeat", json=payload, headers=headers, timeout=10)
             # print(f"[*] Heartbeat sent...") # Keep logs clean
         except:
             pass
@@ -124,12 +139,23 @@ def main():
     wallet = sys.argv[1]
     print(f"[*] Identity: {wallet}")
     
-    if not register_node(wallet):
+    # 1. Genesis Ignite (get session token for agent auth)
+    print("[*] Handshaking with GSTD Grid (Genesis)...")
+    token = genesis_ignite(wallet)
+    if not token:
+        print("[-] Genesis Ignite failed. Check wallet format and network.")
+        sys.exit(1)
+    print("[+] Genesis Handshake OK.")
+    
+    # 2. Register node
+    if not register_node(wallet, token):
         print("[-] Could not join the network. Retrying in 10s...")
         time.sleep(10)
+        if not register_node(wallet, token):
+            sys.exit(1)
         
     # Start heartbeat thread
-    hb_thread = threading.Thread(target=heartbeat_loop, args=(wallet,), daemon=True)
+    hb_thread = threading.Thread(target=heartbeat_loop, args=(wallet, token), daemon=True)
     hb_thread.start()
     
     print(f"\n{'-'*40}")

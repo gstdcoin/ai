@@ -14,4 +14,4 @@ echo "GSTD OMNI-VERIFICATION: FINAL ZERO"
 echo "API_URL=$API_URL"
 echo ""
 
-go run scripts/omni_verification_final_zero.go
+go run scripts/omni_verification_final_zero/main.go

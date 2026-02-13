@@ -42,6 +42,12 @@ function App({ Component, pageProps }: AppProps) {
 
       setIsMounted(true);
 
+      // Global unhandled rejection handler - log but don't crash
+      const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+        console.error('[Unhandled Rejection]', event.reason);
+      };
+      window.addEventListener('unhandledrejection', handleUnhandledRejection);
+
       // Register Service Worker for PWA
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker
@@ -53,6 +59,8 @@ function App({ Component, pageProps }: AppProps) {
             console.error('Service Worker registration failed:', error);
           });
       }
+
+      return () => window.removeEventListener('unhandledrejection', handleUnhandledRejection);
     }
   }, []);
 

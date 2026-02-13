@@ -1,10 +1,9 @@
 # Multi-stage Dockerfile for GSTD Backend
-# Stage 1: Build
-# Stage 1: Build
-FROM golang:1.24 AS builder
+# Stage 1: Build (h3-go requires CGO)
+FROM golang:1.24-alpine AS builder
 
-# Install build dependencies
-# RUN apk add --no-cache git ca-certificates tzdata
+# Install build deps for CGO (h3-go uses C bindings)
+RUN apk add --no-cache gcc musl-dev
 
 WORKDIR /app
 
@@ -17,10 +16,9 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build the application
-# CGO_ENABLED=0 for static binary, -ldflags for smaller binary
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo \
-    -ldflags '-extldflags "-static" -w -s' \
+# Build with CGO for h3-go (geo indexing)
+RUN CGO_ENABLED=1 GOOS=linux go build -a \
+    -ldflags '-w -s' \
     -o server ./main.go
 
 # Stage 2: Runtime

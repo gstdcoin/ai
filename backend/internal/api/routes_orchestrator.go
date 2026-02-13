@@ -17,15 +17,17 @@ type OrchestratorHandler struct {
 	orchestrator *services.TaskOrchestrator
 	pow          *services.ProofOfWorkService
 	ton          *services.TONService
+	geo          *services.GeoService
 }
 
 // NewOrchestratorHandler creates a new orchestrator handler
-func NewOrchestratorHandler(db *sql.DB, orchestrator *services.TaskOrchestrator, pow *services.ProofOfWorkService, ton *services.TONService) *OrchestratorHandler {
+func NewOrchestratorHandler(db *sql.DB, orchestrator *services.TaskOrchestrator, pow *services.ProofOfWorkService, ton *services.TONService, geo *services.GeoService) *OrchestratorHandler {
 	return &OrchestratorHandler{
 		db:           db,
 		orchestrator: orchestrator,
 		pow:          pow,
 		ton:          ton,
+		geo:          geo,
 	}
 }
 
@@ -313,6 +315,21 @@ func (h *OrchestratorHandler) GetNextTask(c *gin.Context) {
 		LastSeen:      time.Now(),
 	}
 
+	// Query worker stats and country from nodes
+	_ = h.db.QueryRowContext(c.Request.Context(), `
+		SELECT COALESCE(n.country, '')
+		FROM nodes n WHERE n.wallet_address = $1
+		ORDER BY n.last_seen DESC LIMIT 1
+	`, wallet).Scan(&worker.Country)
+
+	// If worker country unknown, resolve from IP via GeoService
+	if worker.Country == "" && h.geo != nil {
+		clientIP := c.ClientIP()
+		if country, err := h.geo.GetCountryByIP(c.Request.Context(), clientIP); err == nil && country != "" {
+			worker.Country = country
+		}
+	}
+
 	// Query worker stats
 	err := h.db.QueryRowContext(c.Request.Context(), `
 		SELECT COALESCE(trust_score, 0.5), COALESCE(total_tasks_completed, 0)
@@ -369,6 +386,19 @@ func (h *OrchestratorHandler) ClaimWithPoW(c *gin.Context) {
 		TrustScore:    0.5,
 		MaxCapacity:   5,
 		LastSeen:      time.Now(),
+	}
+
+	// Resolve worker country from nodes or IP
+	_ = h.db.QueryRowContext(c.Request.Context(), `
+		SELECT COALESCE(n.country, '')
+		FROM nodes n WHERE n.wallet_address = $1
+		ORDER BY n.last_seen DESC LIMIT 1
+	`, req.WorkerWallet).Scan(&worker.Country)
+	if worker.Country == "" && h.geo != nil {
+		clientIP := c.ClientIP()
+		if country, err := h.geo.GetCountryByIP(c.Request.Context(), clientIP); err == nil && country != "" {
+			worker.Country = country
+		}
 	}
 
 	challenge, err := h.orchestrator.ClaimTaskForWorker(c.Request.Context(), req.TaskID, worker)

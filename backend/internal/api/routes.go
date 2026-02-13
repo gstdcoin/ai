@@ -62,6 +62,8 @@ func SetupRoutes(
 	agentMarketplaceService *services.AgentMarketplaceService,
 	apiKeyService *services.APIKeyService,
 	guardrailsService *services.GuardrailsService,
+	geoService *services.GeoService,
+	agentModelService *services.AgentModelService,
 ) {
 	log.Printf("🔧 SetupRoutes: Starting route setup, redisClient type: %T", redisClient)
 	
@@ -81,7 +83,7 @@ func SetupRoutes(
 	}
 	genesisService := services.NewGenesisService(db.(*sql.DB), welcomeBonusService, genesisRedis, sovereignBridge)
 	genesisService.StartMoltInstructor(context.Background())
-	genesisHandler := NewGenesisHandler(genesisService, nodeService)
+	genesisHandler := NewGenesisHandler(genesisService, nodeService, agentModelService)
 	SetupGenesisRoutes(router.Group("/api/v1"), genesisHandler)
 	// Initialize ValidationService dependencies
 	validationService.SetDependencies(trustService, entropyService, assignmentService, encryptionService, tonService, cacheService, nodeService)
@@ -205,6 +207,7 @@ func SetupRoutes(
 			internal.POST("/seed-global-resonance", seedGlobalResonanceTask(db.(*sql.DB), tonConfig))
 			internal.POST("/seed-omni-test-task", seedOmniTestTask(db.(*sql.DB), tonConfig))
 			internal.POST("/seed-ultimate-check", seedUltimateCheckTasks(db.(*sql.DB), tonConfig))
+			internal.POST("/reconcile-marketplace-task", reconcileMarketplaceTask(db.(*sql.DB), referralService))
 		}
 
 		// Telegram Webhook
@@ -363,7 +366,7 @@ func SetupRoutes(
 		SetupMarketplaceProtectedRoutes(protected, marketplaceHandler)
 
 		// Initialize and setup Orchestrator routes (PoW, Task Queue, Client Dashboard)
-		orchestratorHandler := NewOrchestratorHandler(db.(*sql.DB), taskOrchestrator, powService, tonService)
+		orchestratorHandler := NewOrchestratorHandler(db.(*sql.DB), taskOrchestrator, powService, tonService, geoService)
 		SetupOrchestratorRoutes(v1, orchestratorHandler)
 		log.Printf("✅ Orchestrator routes registered")
 
@@ -506,16 +509,19 @@ func createPayoutIntent(service *services.PaymentService) gin.HandlerFunc {
 func createTask(service *services.TaskService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			RequesterAddress string                      `json:"requester_address"`
-			TaskType         string                      `json:"task_type"`
-			Operation        string                      `json:"operation"`
-			Model            string                      `json:"model"`
-			InputSource      string                      `json:"input_source"`
-			InputHash        string                      `json:"input_hash"`
-			TimeLimitSec     int                         `json:"time_limit_sec"`
-			MaxEnergyMwh     int                         `json:"max_energy_mwh"`
-			LaborCompensationGSTD float64                     `json:"labor_compensation_gstd"`
-			ValidationMethod string                      `json:"validation_method"`
+			RequesterAddress string  `json:"requester_address"`
+			TaskType         string  `json:"task_type"`
+			Operation        string  `json:"operation"`
+			Model            string  `json:"model"`
+			InputSource      string  `json:"input_source"`
+			InputHash        string  `json:"input_hash"`
+			InputData        string  `json:"input_data"`
+			TimeLimitSec     int     `json:"time_limit_sec"`
+			MaxEnergyMwh     int     `json:"max_energy_mwh"`
+			LaborCompensationGSTD float64 `json:"labor_compensation_gstd"`
+			ValidationMethod string  `json:"validation_method"`
+			IsEncrypted      bool    `json:"is_encrypted"`
+			ExecutorPubkey   string  `json:"executor_pubkey"`
 		}
 
 		if err := c.ShouldBindBodyWith(&req, binding.JSON); err != nil {
@@ -530,6 +536,7 @@ func createTask(service *services.TaskService) gin.HandlerFunc {
 			Input: models.InputData{
 				Source: req.InputSource,
 				Hash:   req.InputHash,
+				Data:   req.InputData,
 			},
 			Constraints: models.Constraints{
 				TimeLimitSec: req.TimeLimitSec,
@@ -538,9 +545,11 @@ func createTask(service *services.TaskService) gin.HandlerFunc {
 			Reward: models.Reward{
 				AmountGSTD: req.LaborCompensationGSTD,
 			},
-			Validation: req.ValidationMethod,
-			MinTrust: c.GetFloat64("min_trust"), // Optional from middleware or query
-			IsPrivate: c.GetBool("is_private"),
+			Validation:     req.ValidationMethod,
+			MinTrust:       c.GetFloat64("min_trust"),
+			IsPrivate:      c.GetBool("is_private"),
+			IsEncrypted:    req.IsEncrypted,
+			ExecutorPubkey: req.ExecutorPubkey,
 		}
 
 		task, err := service.CreateTask(c.Request.Context(), req.RequesterAddress, descriptor)

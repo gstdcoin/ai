@@ -45,8 +45,9 @@ interface NetworkStats {
   total_hashrate: number;
 }
 
-// Lazy load modals for performance
+// Lazy load modals for performance (must be at module level to avoid React hooks #310)
 const NewTaskModal = lazy(() => import('./NewTaskModal'));
+const ReferralModal = lazy(() => import('./ReferralModal'));
 
 function Dashboard() {
   const { t } = useTranslation('common');
@@ -57,7 +58,6 @@ function Dashboard() {
   const [showNewTask, setShowNewTask] = useState(false);
   const [isMining, setIsMining] = useState(false);
   const [showReferralModal, setShowReferralModal] = useState(false);
-  const ReferralModal = lazy(() => import('./ReferralModal'));
 
   // Check for pending chat from landing page
   useEffect(() => {
@@ -141,11 +141,13 @@ function Dashboard() {
         const stats = await apiGet<NetworkStats>('/network/stats');
         setNetworkStats(stats);
 
-        if (typeof document !== 'undefined') {
+        if (typeof document !== 'undefined' && stats) {
           const tempEl = document.getElementById('network-temperature');
           const pressureEl = document.getElementById('computational-pressure');
-          if (tempEl) tempEl.textContent = `${stats.temperature.toFixed(2)} T`;
-          if (pressureEl) pressureEl.textContent = `${stats.pressure.toFixed(2)} P`;
+          const temp = typeof stats.temperature === 'number' ? stats.temperature.toFixed(2) : '0.00';
+          const pressure = typeof stats.pressure === 'number' ? stats.pressure.toFixed(2) : '0.00';
+          if (tempEl) tempEl.textContent = `${temp} T`;
+          if (pressureEl) pressureEl.textContent = `${pressure} P`;
         }
       } catch (err) {
         console.error('Failed to fetch network stats:', err);
@@ -183,23 +185,20 @@ function Dashboard() {
     const tempEl = document.getElementById('network-temperature');
     const pressureEl = document.getElementById('computational-pressure');
     if (tempEl) {
-      if (stats) {
-        const temp = stats.active_devices_count > 0
-          ? (stats.processing_tasks / stats.active_devices_count).toFixed(2)
-          : '0.00';
+      if (stats && typeof stats.active_devices_count === 'number' && stats.active_devices_count > 0) {
+        const temp = (stats.processing_tasks / stats.active_devices_count).toFixed(2);
         tempEl.textContent = `${temp} T`;
       } else {
-        tempEl.textContent = '0.00 T';
+        tempEl.textContent = (stats?.processing_tasks ?? 0).toFixed(2) + ' T';
       }
     }
     if (pressureEl) {
-      if (stats) {
-        const pressure = stats.completed_tasks > 0
-          ? ((stats.queued_tasks + stats.processing_tasks) / stats.completed_tasks).toFixed(2)
-          : (stats.queued_tasks + stats.processing_tasks || 0.00).toFixed(2);
+      if (stats && typeof stats.completed_tasks === 'number' && stats.completed_tasks > 0) {
+        const pressure = ((stats.queued_tasks + stats.processing_tasks) / stats.completed_tasks).toFixed(2);
         pressureEl.textContent = `${pressure} P`;
       } else {
-        pressureEl.textContent = '0.00 P';
+        const fallback = (stats?.queued_tasks ?? 0) + (stats?.processing_tasks ?? 0);
+        pressureEl.textContent = `${fallback.toFixed(2)} P`;
       }
     }
   }, []);

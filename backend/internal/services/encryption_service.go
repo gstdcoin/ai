@@ -4,8 +4,11 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
+	"crypto/x509"
 	"encoding/base64"
+	"encoding/pem"
 	"fmt"
 	"io"
 )
@@ -94,5 +97,48 @@ func (s *EncryptionService) GenerateTaskKey(taskID string, requesterAddress stri
 	seed := taskID + requesterAddress
 	hash := sha256.Sum256([]byte(seed))
 	return hash[:]
+}
+
+// EncryptWithPublicKey encrypts plaintext using the executor's RSA public key.
+// Used for is_encrypted tasks: only the executor (with private key) can decrypt.
+// executorPubkey: PEM format ("-----BEGIN PUBLIC KEY-----...") or base64-encoded DER
+func (s *EncryptionService) EncryptWithPublicKey(plaintext []byte, executorPubkey string) (string, error) {
+	pubKey, err := parsePublicKey(executorPubkey)
+	if err != nil {
+		return "", fmt.Errorf("invalid executor public key: %w", err)
+	}
+	encrypted, err := rsa.EncryptOAEP(sha256.New(), rand.Reader, pubKey, plaintext, nil)
+	if err != nil {
+		return "", fmt.Errorf("encryption failed: %w", err)
+	}
+	return base64.StdEncoding.EncodeToString(encrypted), nil
+}
+
+func parsePublicKey(pemOrBase64 string) (*rsa.PublicKey, error) {
+	// Try PEM first
+	block, _ := pem.Decode([]byte(pemOrBase64))
+	if block != nil {
+		pub, err := x509.ParsePKIXPublicKey(block.Bytes)
+		if err != nil {
+			return nil, err
+		}
+		if pk, ok := pub.(*rsa.PublicKey); ok {
+			return pk, nil
+		}
+		return nil, fmt.Errorf("not an RSA public key")
+	}
+	// Try base64 DER
+	der, err := base64.StdEncoding.DecodeString(pemOrBase64)
+	if err != nil {
+		return nil, err
+	}
+	pub, err := x509.ParsePKIXPublicKey(der)
+	if err != nil {
+		return nil, err
+	}
+	if pk, ok := pub.(*rsa.PublicKey); ok {
+		return pk, nil
+	}
+	return nil, fmt.Errorf("not an RSA public key")
 }
 

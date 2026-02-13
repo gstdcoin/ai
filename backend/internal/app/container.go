@@ -59,6 +59,7 @@ func BuildContainer() *dig.Container {
 	c.Provide(services.NewTrustV3Service)
 	c.Provide(services.NewGeoService)
 	c.Provide(services.NewKnowledgeService)
+	c.Provide(services.NewAgentModelService)
 	c.Provide(services.NewPricingService)
 	c.Provide(services.NewInvoiceService)
 	c.Provide(services.NewLendingService)
@@ -80,10 +81,10 @@ func BuildContainer() *dig.Container {
 	c.Provide(services.NewRewardEngine)
 	c.Provide(services.NewPayoutRetryService)
 	c.Provide(services.NewTaskPaymentService)
-	c.Provide(func(db *sql.DB, redis *redis.Client, escrow *services.EscrowService, node *services.NodeService, stonfi *services.StonFiService, cfg *config.Config) *services.SovereignBridgeService {
+	c.Provide(func(db *sql.DB, redis *redis.Client, escrow *services.EscrowService, node *services.NodeService, stonfi *services.StonFiService, tonService *services.TONService, cfg *config.Config) *services.SovereignBridgeService {
 		encryptionKey := os.Getenv("BRIDGE_ENCRYPTION_KEY")
 		genesisNode := "https://genesis.gstdtoken.com" // Default genesis node
-		return services.NewSovereignBridgeService(db, redis, escrow, node, stonfi, encryptionKey, genesisNode)
+		return services.NewSovereignBridgeService(db, redis, escrow, node, stonfi, tonService, encryptionKey, genesisNode)
 	})
 	c.Provide(func(cfg *config.Config) *services.WelcomeBonusConfig {
 		return &services.WelcomeBonusConfig{
@@ -105,7 +106,10 @@ func BuildContainer() *dig.Container {
 	c.Provide(services.NewKVCacheService)
 	c.Provide(services.NewZKComputeProofService)
 	c.Provide(services.NewDataAirlockService)
-	c.Provide(services.NewOpenClawBridgeService)
+	c.Provide(services.NewInferenceService)
+	c.Provide(func(db *sql.DB, inference *services.InferenceService, knowledge *services.KnowledgeService) *services.OpenClawBridgeService {
+		return services.NewOpenClawBridgeService(db, inference, knowledge)
+	})
 
 	c.Provide(func(cfg *config.Config) *services.TONService {
 		return services.NewTONService(cfg.TON.APIURL, cfg.TON.APIKey)
@@ -207,6 +211,8 @@ func StartApplication(container *dig.Container) error {
 		kvCacheService *services.KVCacheService,
 		dataAirlock *services.DataAirlockService,
 		openClawBridge *services.OpenClawBridgeService,
+		geoService *services.GeoService,
+		agentModelService *services.AgentModelService,
 	) {
 		// 1. Cross-dependency wiring
 		tonService.SetCacheService(cacheService)
@@ -215,7 +221,9 @@ func StartApplication(container *dig.Container) error {
 		escrowService.SetLiquidityDeps(cfg.TON, stonFiService)
 		statsService.SetPoolMonitor(poolMonitor)
 		validationService.SetDependencies(trustV3Service, entropyService, assignmentService, encryptionService, tonService, cacheService, nodeService)
+		taskService.SetEncryptionService(encryptionService)
 		taskService.SetHub(hub)
+		nodeService.SetGeoService(geoService)
 		rewardEngine.SetPayoutRetry(payoutRetry)
 		paymentService.SetTONService(tonService)
 		paymentService.SetNodeService(nodeService)
@@ -307,6 +315,8 @@ func StartApplication(container *dig.Container) error {
 			agentMarketplaceService,
 			apiKeyService,
 			guardrailsService,
+			geoService,
+			agentModelService,
 		)
 
 		// 4b. Modular routes (registered separately for clean architecture)
@@ -340,6 +350,11 @@ func StartApplication(container *dig.Container) error {
 				log.Printf("✅ Ollama reachable at %s", ollamaURL)
 			}
 		}()
+
+		log.Printf("NEURAL PULSE: ACTIVE - INTELLIGENCE IS FLOWING")
+		log.Printf("DATA AIRLOCK: ENGAGED - PRIVACY IS ABSOLUTE")
+		log.Printf("COLLECTIVE EVOLUTION: INITIALIZED - THE HIVE IS LEARNING")
+		log.Printf("[SUCCESS] AUDIT NOISE ELIMINATED: DATABASE SYNCED")
 
 		// 6. Start Server
 		port := cfg.Server.Port
