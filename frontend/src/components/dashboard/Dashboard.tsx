@@ -19,6 +19,7 @@ import PoolStatusWidget from './PoolStatusWidget';
 import { toast } from '../../lib/toast';
 import { Plus, Users, Calculator, Activity, Globe, Server, Wallet, CheckCircle } from 'lucide-react';
 import { apiGet, apiPost } from '../../lib/apiClient';
+import Sidebar from '../layout/Sidebar';
 import { ComponentErrorBoundary } from '../common/ComponentErrorBoundary';
 import { workerService } from '../../services/WorkerService';
 import { InstallPwaPrompt } from '../common/InstallPwaPrompt';
@@ -246,9 +247,20 @@ function Dashboard() {
   const handleCompensationClaimed = useCallback(() => triggerHaptic('medium'), [triggerHaptic]);
 
   return (
-    <div className="flex flex-col h-screen bg-[#030014] overflow-hidden max-w-lg mx-auto w-full">
+    <div className="flex flex-col lg:flex-row h-screen bg-[#030014] overflow-hidden">
+      {/* Desktop Sidebar */}
+      <div className="hidden lg:block">
+        <ErrorBoundary>
+          <Sidebar
+            activeTab={activeTab}
+            onTabChange={handleTabChange}
+            onCreateTask={() => setShowNewTask(true)}
+          />
+        </ErrorBoundary>
+      </div>
+
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header - compact on all devices */}
+        {/* Header */}
         {!isTelegramWebApp() && (
           <ErrorBoundary>
             <Header
@@ -258,10 +270,11 @@ function Dashboard() {
           </ErrorBoundary>
         )}
 
-        {/* Main Content - mobile-proportional on all devices */}
-        <main className="flex-1 overflow-y-auto p-4 pb-24 custom-scrollbar">
+        {/* Main Content */}
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 pb-28 lg:pb-8 custom-scrollbar">
           <ErrorBoundary>
-            <div className="w-full max-w-md mx-auto">
+            <div className="max-w-7xl mx-auto">
+              <div className="max-w-4xl mx-auto">
 
                 {/* CHAT TAB - Primary Feature */}
                 {activeTab === 'chat' && (
@@ -282,7 +295,7 @@ function Dashboard() {
                     </div>
 
                     {/* PRIMARY ACTIONS */}
-                    <div className="grid grid-cols-1 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {/* Worker Control */}
                       <button
                         onClick={handleToggleMining}
@@ -386,7 +399,7 @@ function Dashboard() {
                       <ComponentErrorBoundary name="GoldenReservePanel">
                         <GoldenReservePanel />
                       </ComponentErrorBoundary>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <ComponentErrorBoundary name="TreasuryWidget">
                           <TreasuryWidget />
                         </ComponentErrorBoundary>
@@ -463,18 +476,21 @@ function Dashboard() {
                     </div>
                   )}
                 </div>
+              </div>
             </div>
           </ErrorBoundary>
         </main>
       </div>
 
-      {/* Bottom Navigation - always visible, mobile-first */}
-      <BottomNav activeTab={activeTab === 'stats' || activeTab === 'agents' || activeTab === 'marketplace' || activeTab === 'referrals' || activeTab === 'help' ? 'more' : activeTab} onTabChange={handleTabChange} />
+      {/* Mobile Bottom Navigation */}
+      <div className="lg:hidden">
+        <BottomNav activeTab={activeTab === 'stats' || activeTab === 'agents' || activeTab === 'marketplace' || activeTab === 'referrals' || activeTab === 'help' ? 'more' : activeTab} onTabChange={handleTabChange} />
+      </div>
 
-      {/* Floating Action Button - above bottom nav */}
+      {/* Floating Action Button */}
       <button
         onClick={() => setShowNewTask(true)}
-        className="fixed right-4 bottom-20 z-40 w-14 h-14 rounded-full bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-600/30 flex items-center justify-center transition-all active:scale-90"
+        className="fixed right-4 bottom-20 lg:bottom-8 z-40 w-12 h-12 lg:w-14 lg:h-14 rounded-full bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-600/30 flex items-center justify-center transition-all active:scale-90"
         aria-label={t('create_task')}
       >
         <Plus size={20} />
