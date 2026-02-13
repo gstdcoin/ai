@@ -40,8 +40,9 @@ func SetupRoutes(
 	taskRateLimiter *services.RateLimiter,
 	db interface{},
 	redisClient interface{},
-	payoutRetryService *services.PayoutRetryService,
-	poolMonitorService *services.PoolMonitorService,
+		payoutRetryService *services.PayoutRetryService,
+		escrowService *services.EscrowService,
+		poolMonitorService *services.PoolMonitorService,
 	cacheService *services.CacheService,
 	errorLogger *services.ErrorLogger,
 	powService *services.ProofOfWorkService,
@@ -327,6 +328,7 @@ func SetupRoutes(
 		{
 			adminCommissionGroup.GET("/balance", getCommissionBalance(paymentService))
 			adminCommissionGroup.GET("/withdraw-intent", getCommissionWithdrawIntent(paymentService, tonConfig))
+			adminCommissionGroup.POST("/prepare-liquidity", prepareLiquidityProvision(escrowService))
 		}
 
 		// Wallet (protected)
@@ -374,6 +376,8 @@ func SetupRoutes(
 		v1.GET("/knowledge/resonance", getResonanceQuotes(knowledgeService))
 		// Public: FREE AI TOOLS BY GSTD GRID (code snippets from agents)
 		v1.GET("/knowledge/grid-tools", getGridTools(knowledgeService))
+		// Agent store: allows registered agents to store knowledge (X-Wallet-Address + node validation)
+		v1.POST("/knowledge/agent/store", storeKnowledgeAgent(knowledgeService, db.(*sql.DB)))
 		SetupBrainRoutes(v1, brainHandler)
 
 		// Pricing (Dynamic Budget)
@@ -1112,6 +1116,29 @@ func getCommissionWithdrawIntent(service *services.PaymentService, tonConfig con
 	}
 }
 
+// prepareLiquidityProvision generates Ston.fi provide_liquidity payload for Dynamic Gold Backing
+func prepareLiquidityProvision(escrow *services.EscrowService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req struct {
+			AmountGSTD float64 `json:"amount_gstd"`
+			AmountXAUt float64 `json:"amount_xaut"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(400, gin.H{"error": "invalid request: amount_gstd and amount_xaut required"})
+			return
+		}
+		if req.AmountGSTD <= 0 && req.AmountXAUt <= 0 {
+			c.JSON(400, gin.H{"error": "at least one of amount_gstd or amount_xaut must be positive"})
+			return
+		}
+		result, err := escrow.PrepareWithdraw(c.Request.Context(), req.AmountGSTD, req.AmountXAUt)
+		if err != nil {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(200, result)
+	}
+}
 
 // getLoanQuote calculates loan terms
 // getLoanQuote calculates loan terms

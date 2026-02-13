@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"distributed-computing-platform/internal/config"
 )
 
 // EscrowService handles fund locking and release for tasks
@@ -17,6 +19,8 @@ type EscrowService struct {
 	platformFee  float64 // 5%
 	devFundShare float64 // 2% of platform fee (40% of 5%)
 	goldShare    float64 // 3% of platform fee (60% of 5%)
+	tonCfg       config.TONConfig
+	stonFi       *StonFiService
 }
 
 // Geography represents task geographic constraints
@@ -64,6 +68,64 @@ func NewEscrowService(db *sql.DB) *EscrowService {
 		devFundShare: 0.50, // 50% of platform fee
 		goldShare:    0.50, // 50% of platform fee
 	}
+}
+
+// SetLiquidityDeps wires config and StonFiService for PrepareWithdraw
+func (s *EscrowService) SetLiquidityDeps(cfg config.TONConfig, stonFi *StonFiService) {
+	s.tonCfg = cfg
+	s.stonFi = stonFi
+}
+
+// PrepareWithdrawResult holds the payload for liquidity provision transaction
+type PrepareWithdrawResult struct {
+	Payload       map[string]interface{} `json:"payload"`
+	AmountGSTD    float64              `json:"amount_gstd"`
+	AmountXAUt    float64              `json:"amount_xaut"`
+	PoolAddress   string               `json:"pool_address"`
+	WalletAddress string               `json:"wallet_address"`
+}
+
+// PrepareWithdraw generates payload for GSTD transaction that calls provide_liquidity on Ston.fi (Arbitrary Provision)
+// Admin wallet signs and broadcasts this to add gold reserve to the pool
+func (s *EscrowService) PrepareWithdraw(ctx context.Context, amountGSTD, amountXAUt float64) (*PrepareWithdrawResult, error) {
+	if s.stonFi == nil {
+		return nil, fmt.Errorf("StonFiService not configured for liquidity provision")
+	}
+	poolAddr := s.tonCfg.GoldPoolAddress
+	if poolAddr == "" {
+		poolAddr = s.tonCfg.PoolAddress
+	}
+	if poolAddr == "" {
+		return nil, fmt.Errorf("GOLD_POOL_ADDRESS not configured")
+	}
+	walletAddr := s.tonCfg.AdminWallet
+	if walletAddr == "" {
+		walletAddr = s.tonCfg.TreasuryWallet
+	}
+	if walletAddr == "" {
+		return nil, fmt.Errorf("ADMIN_WALLET not configured for liquidity provision")
+	}
+	gstdAddr := s.tonCfg.GSTDJettonAddress
+	if gstdAddr == "" {
+		gstdAddr = "EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO" // GSTD mainnet
+	}
+	xautAddr := s.tonCfg.XAUtJettonAddress
+	if xautAddr == "" {
+		xautAddr = "EQA1R_LuQCLHlMgOo1S4G7Y7W1cd0FrAkbA10Zq7rddKxi9k" // XAUt from pool
+	}
+
+	payload, err := s.stonFi.BuildProvideLiquidityPayload(ctx, poolAddr, walletAddr, gstdAddr, xautAddr, amountGSTD, amountXAUt)
+	if err != nil {
+		return nil, fmt.Errorf("build provide_liquidity payload: %w", err)
+	}
+
+	return &PrepareWithdrawResult{
+		Payload:       payload,
+		AmountGSTD:    amountGSTD,
+		AmountXAUt:    amountXAUt,
+		PoolAddress:   poolAddr,
+		WalletAddress: walletAddr,
+	}, nil
 }
 
 // LockFunds creates an escrow for a task

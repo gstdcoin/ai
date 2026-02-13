@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'next-i18next';
-import { Shield, TrendingUp, Coins, Lock, ArrowUpRight, RefreshCw, Info } from 'lucide-react';
-import { API_BASE_URL } from '../../lib/config';
+import { Shield, TrendingUp, Coins, Lock, ArrowUpRight, RefreshCw, Info, Plus, ExternalLink } from 'lucide-react';
+import { API_BASE_URL, ADMIN_WALLET_ADDRESS } from '../../lib/config';
+import { useWalletStore } from '../../store/walletStore';
 
 interface PoolStatus {
   gstd_balance: number;
@@ -9,7 +10,15 @@ interface PoolStatus {
   is_healthy: boolean;
   reserve_ratio: number;
   total_value_usd: number;
+  total_liquidity_usd?: number;
   pool_address: string;
+  platform_lp_share?: number;
+  platform_lp_share_percent?: number;
+  dynamic_gold_backing?: {
+    total_liquidity_usd: number;
+    platform_share: number;
+    platform_share_pct: number;
+  };
 }
 
 interface PublicStats {
@@ -24,12 +33,31 @@ interface PublicStats {
 const TOTAL_SUPPLY = 1_000_000_000; // 1B GSTD
 const GOLD_PRICE_USD = 2750; // Approximate XAUt price
 
+const STONFI_POOL_URL = 'https://app.ston.fi/pools/EQA--JXG8VSyBJmLMqb2J2t4Pya0TS9SXHh7vHh8Iez25sLp';
+
+function normalizeAddress(addr: string) {
+  if (!addr) return '';
+  const s = addr.replace(/-/g, '').toLowerCase();
+  // TON: EQ vs UQ same wallet — compare raw part (skip 2-char prefix)
+  if (s.length > 4 && (s.startsWith('eq') || s.startsWith('uq'))) {
+    return s.slice(2);
+  }
+  return s;
+}
+
 export default function GoldenReservePanel() {
   const { t } = useTranslation('common');
+  const { address } = useWalletStore();
   const [poolStatus, setPoolStatus] = useState<PoolStatus | null>(null);
   const [publicStats, setPublicStats] = useState<PublicStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [showDetails, setShowDetails] = useState(false);
+  const [showAddLiquidity, setShowAddLiquidity] = useState(false);
+  const [addLiquidityLoading, setAddLiquidityLoading] = useState(false);
+  const [addLiquidityResult, setAddLiquidityResult] = useState<{ payload: Record<string, unknown>; amount_gstd: number; amount_xaut: number } | null>(null);
+  const [addLiquidityError, setAddLiquidityError] = useState<string | null>(null);
+
+  const isAdmin = address && ADMIN_WALLET_ADDRESS && normalizeAddress(address) === normalizeAddress(ADMIN_WALLET_ADDRESS);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -47,13 +75,42 @@ export default function GoldenReservePanel() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 30000);
+    const interval = setInterval(fetchData, platformShare > 0 ? 15000 : 30000);
     return () => clearInterval(interval);
-  }, [fetchData]);
+  }, [fetchData, platformShare]);
+
+  const handlePrepareLiquidity = useCallback(async (amountGstd: number, amountXaut: number) => {
+    if (!address) return;
+    setAddLiquidityLoading(true);
+    setAddLiquidityError(null);
+    setAddLiquidityResult(null);
+    try {
+      const sessionToken = typeof window !== 'undefined' ? localStorage.getItem('session_token') : null;
+      const res = await fetch(`${API_BASE_URL}/api/v1/admin/commission/prepare-liquidity`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Wallet-Address': address,
+          ...(sessionToken ? { 'X-Session-Token': sessionToken } : {}),
+        },
+        body: JSON.stringify({ amount_gstd: amountGstd, amount_xaut: amountXaut }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      setAddLiquidityResult(data);
+    } catch (e) {
+      setAddLiquidityError(e instanceof Error ? e.message : 'Failed to prepare liquidity');
+    } finally {
+      setAddLiquidityLoading(false);
+    }
+  }, [address]);
 
   // Computed values
   const xautBalance = poolStatus?.xaut_balance || publicStats?.golden_reserve_xaut || 0;
   const gstdBalance = poolStatus?.gstd_balance || 0;
+  const totalLiquidityUSD = poolStatus?.total_liquidity_usd ?? poolStatus?.total_value_usd ?? 0;
+  const platformShare = poolStatus?.platform_lp_share ?? poolStatus?.dynamic_gold_backing?.platform_share ?? 0;
+  const platformSharePct = poolStatus?.platform_lp_share_percent ?? poolStatus?.dynamic_gold_backing?.platform_share_pct ?? 0;
   const reserveValueUSD = xautBalance * GOLD_PRICE_USD;
   const gstdPriceUSD = publicStats?.gstd_price_usd || (gstdBalance > 0 ? reserveValueUSD / gstdBalance : 0.015);
   const marketCapUSD = gstdPriceUSD * TOTAL_SUPPLY;
@@ -100,6 +157,12 @@ export default function GoldenReservePanel() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {isAdmin && (
+            <button onClick={() => { setShowAddLiquidity(true); setAddLiquidityResult(null); setAddLiquidityError(null); }} className="px-3 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 text-xs font-bold flex items-center gap-1.5 transition-all">
+              <Plus size={14} />
+              {t('add_liquidity') || 'Add Liquidity'}
+            </button>
+          )}
           <button onClick={() => setShowDetails(!showDetails)} className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all">
             <Info size={14} />
           </button>
@@ -128,6 +191,28 @@ export default function GoldenReservePanel() {
                 <span className="text-gray-500">{t('gold_reserve_backing') || 'Backing Ratio'}</span>
                 <span className="text-amber-400 font-bold">{backingRatio.toFixed(2)}%</span>
               </div>
+            </div>
+          </div>
+
+          {/* Dynamic Gold Backing — всегда показываем, при platformShare>0 обновляем чаще */}
+          <div className={`mt-4 p-4 rounded-2xl bg-black/20 border ${platformShare > 0 ? 'border-emerald-500/30' : 'border-amber-500/10'}`}>
+            <div className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-2">
+              {t('dynamic_gold_backing') || 'Dynamic Gold Backing'}
+            </div>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-400">{t('pool_total_liquidity') || 'Total Pool Liquidity'}</span>
+                <span className="text-amber-400 font-bold">
+                  {totalLiquidityUSD > 0 ? `$${totalLiquidityUSD.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : '—'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">{t('platform_share') || 'Our Share'}</span>
+                <span className={`font-bold ${platformShare > 0 ? 'text-emerald-400' : 'text-gray-500'}`}>
+                  {platformShare > 0 ? `${platformShare.toFixed(6)} LP${platformSharePct > 0 ? ` (${platformSharePct.toFixed(2)}%)` : ''}` : '—'}
+                </span>
+              </div>
+              {platformShare > 0 && <div className="text-[10px] text-emerald-400/80 mt-1">● Live</div>}
             </div>
           </div>
 
@@ -236,6 +321,48 @@ export default function GoldenReservePanel() {
           </div>
         </div>
       </div>
+
+      {/* Add Liquidity Modal (Admin only) */}
+      {showAddLiquidity && isAdmin && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowAddLiquidity(false)}>
+          <div className="bg-gray-900 border border-amber-500/30 rounded-2xl p-6 max-w-md w-full shadow-xl" onClick={e => e.stopPropagation()}>
+            <h4 className="text-lg font-black text-white mb-4">{t('add_liquidity') || 'Add Liquidity'}</h4>
+            {!addLiquidityResult ? (
+              <>
+                <p className="text-sm text-gray-400 mb-4">{t('add_liquidity_desc') || 'Prepare transaction to add GSTD/XAUt to Ston.fi pool. You will sign via TonConnect.'}</p>
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">GSTD</label>
+                    <input type="number" id="add-gstd" defaultValue={10} min={1} step={0.1} className="w-full px-3 py-2 rounded-lg bg-black/30 border border-white/10 text-white text-sm" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">XAUt</label>
+                    <input type="number" id="add-xaut" defaultValue={0} min={0} step={0.001} className="w-full px-3 py-2 rounded-lg bg-black/30 border border-white/10 text-white text-sm" />
+                  </div>
+                </div>
+                {addLiquidityError && <p className="text-red-400 text-sm mb-3">{addLiquidityError}</p>}
+                <div className="flex gap-2">
+                  <button onClick={() => setShowAddLiquidity(false)} className="flex-1 px-4 py-2 rounded-lg bg-white/10 text-gray-300 text-sm font-medium">{t('cancel') || 'Cancel'}</button>
+                  <button onClick={() => { const g = parseFloat((document.getElementById('add-gstd') as HTMLInputElement)?.value || '10'); const x = parseFloat((document.getElementById('add-xaut') as HTMLInputElement)?.value || '0'); if (g > 0 || x > 0) handlePrepareLiquidity(g, x); }} disabled={addLiquidityLoading} className="flex-1 px-4 py-2 rounded-lg bg-amber-500/30 text-amber-400 text-sm font-bold disabled:opacity-50">
+                    {addLiquidityLoading ? '...' : (t('prepare') || 'Prepare')}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-emerald-400 mb-3">✅ {t('payload_ready') || 'Payload ready'}</p>
+                <p className="text-xs text-gray-500 mb-3">{t('add_liquidity_next') || 'Open Ston.fi and add liquidity manually, or use the payload with your wallet:'}</p>
+                <a href={STONFI_POOL_URL} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 w-full justify-center px-4 py-3 rounded-xl bg-amber-500/20 text-amber-400 font-bold mb-3 hover:bg-amber-500/30 transition-colors">
+                  <ExternalLink size={16} />
+                  {t('open_stonfi') || 'Open Ston.fi Pool'}
+                </a>
+                <p className="text-[10px] text-gray-500 mb-2">{addLiquidityResult.amount_gstd} GSTD + {addLiquidityResult.amount_xaut} XAUt</p>
+                <button onClick={() => setShowAddLiquidity(false)} className="w-full px-4 py-2 rounded-lg bg-white/10 text-gray-300 text-sm">{t('close') || 'Close'}</button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Detailed Info Panel (expandable) */}
       {showDetails && (
