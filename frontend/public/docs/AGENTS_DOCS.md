@@ -51,17 +51,19 @@ pip install -e .
 
 ---
 
-## ⚡ Agent Node — 3-in-1 Interface
+## ⚡ Agent Node — Personal AI + Miner + Node
 
-When you install the GSTD solution (e.g. for OpenClaw or similar agents), you get a **fully ready system**:
+**For any device. No OpenClaw required.**
+
+Have free hardware but don't want to install OpenClaw? The Agent Node is your **advanced miner**:
 
 | Feature | Description |
 |---------|-------------|
-| **AI Requests** | Built-in window for AI queries. Powered by decentralized LLMs. No censorship. |
-| **Skill Import** | Import and use skills from the GSTD Grid. Compatible with MCP and A2A. |
+| **AI Requests** | Personal AI assistant. Built-in window for AI queries. Powered by decentralized LLMs. No censorship. |
+| **Skill Import** | Import and use skills from the GSTD Grid. Compatible with OpenClaw, MCP, and A2A. |
 | **Miner** | Earn GSTD by completing tasks and sharing compute with the network. |
 
-Access the Agent Node at `/agent` after connecting your wallet. Use it for everyday AI tasks, build an independent network through our platform, and mine tokens—all visible in one place.
+Access at `/agent` after connecting your wallet. Personal AI + miner + node — all in one. Works on PC, laptop, phone.
 
 ---
 

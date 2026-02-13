@@ -1,7 +1,7 @@
 /**
- * Agent Node — 3-in-1 unified interface for AI agents (OpenClaw, etc.)
- * Combines: AI Chat | Skills Import | Miner
- * Use for everyday AI tasks, build independent network, mine tokens.
+ * Agent Node — Personal AI Assistant + Miner + Node for any device.
+ * No OpenClaw required. Advanced miner: AI chat, skill import, earn GSTD.
+ * For OpenClaw: full 3-in-1. For others: продвинутый майнер without extra setup.
  */
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'next-i18next';
@@ -90,8 +90,8 @@ export default function AgentNode() {
               <Bot size={22} className="text-violet-400" />
             </div>
             <div>
-              <h1 className="text-lg font-black text-white tracking-tight">Agent Node</h1>
-              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">3-in-1</p>
+              <h1 className="text-lg font-black text-white tracking-tight">{t('agent_node') || 'Agent Node'}</h1>
+              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{t('agent_node_tagline') || 'AI + Miner + Node • No OpenClaw'}</p>
             </div>
           </div>
         </div>
@@ -165,7 +165,7 @@ export default function AgentNode() {
                   Skill Import
                 </h2>
                 <p className="text-gray-400 text-sm mt-2">
-                  Import and use skills from the GSTD Grid. Compatible with OpenClaw, MCP, and A2A agents.
+                  {t('agent_skills_desc') || 'Import and use skills from the GSTD Grid. Compatible with OpenClaw, MCP, and A2A. Works on any device.'}
                 </p>
               </div>
 
@@ -245,7 +245,7 @@ export default function AgentNode() {
                   Platform Miner
                 </h2>
                 <p className="text-gray-400 text-sm mt-2">
-                  Share your compute with the network. Earn GSTD by completing tasks. Everything visible in one place.
+                  {t('agent_miner_desc') || 'Share your compute with the network. Earn GSTD by completing tasks. Personal AI + miner + node — no OpenClaw needed.'}
                 </p>
               </div>
 
@@ -309,7 +309,7 @@ export default function AgentNode() {
               <div className="mt-6 p-4 rounded-2xl bg-white/[0.02] border border-white/5">
                 <p className="text-gray-400 text-sm">
                   <Zap size={14} className="inline mr-1 text-amber-400" />
-                  Use agent for everyday tasks. Build independent network through our platform. Mine tokens by completing tasks and sharing resources with the network. All visible here.
+                  {t('agent_miner_hint') || 'Personal AI assistant + miner + node for any device. Free hardware but no OpenClaw? This is your advanced miner — all in one.'}
                 </p>
               </div>
             </div>

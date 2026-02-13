@@ -2,6 +2,7 @@
 
 # GSTD "One-Line Deploy" Script
 # Turns any Linux/macOS device into a GSTD Sovereign Node
+# Personal AI + Miner + Node — no OpenClaw required (advanced miner)
 # Usage: curl -sL https://app.gstdtoken.com/install.sh | bash
 
 set -e

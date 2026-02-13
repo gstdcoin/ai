@@ -167,7 +167,15 @@ export default function Home() {
             </div>
 
             {/* === 3 VALUE PROPS === */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
+              {/* Advanced Miner — No OpenClaw */}
+              <button onClick={() => tonConnectUI.openModal()} className="group p-5 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-amber-500/30 hover:bg-amber-500/[0.03] transition-all text-left">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                  <Zap className="w-5 h-5 text-amber-400" />
+                </div>
+                <h3 className="font-bold text-white text-sm mb-1">{t('vp_advanced_miner_title') || 'Advanced Miner (No OpenClaw)'}</h3>
+                <p className="text-gray-500 text-xs leading-relaxed">{t('vp_advanced_miner_desc') || 'Personal AI assistant + miner + node for any device. Free hardware? Run our advanced miner — no OpenClaw required.'}</p>
+              </button>
               {/* Earn */}
               <button onClick={() => tonConnectUI.openModal()} className="group p-5 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-emerald-500/30 hover:bg-emerald-500/[0.03] transition-all text-left">
                 <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
@@ -252,6 +260,14 @@ export default function Home() {
                 <p className="mt-2 text-xs"><span className="text-emerald-400 font-bold">Cost:</span> Each query costs a small amount of GSTD tokens. New users receive a welcome bonus.</p>
               </AccordionItem>
 
+              <AccordionItem title={t('vp_advanced_miner_title') || 'Advanced Miner (No OpenClaw)'} icon={<Zap size={16} />}>
+                <p>Personal AI assistant + miner + node for any device. Free hardware but no OpenClaw? Use our advanced miner.</p>
+                <p className="mt-2"><span className="text-white font-semibold">1.</span> Open <a href="https://app.gstdtoken.com" className="text-cyan-400 hover:underline">app.gstdtoken.com</a></p>
+                <p><span className="text-white font-semibold">2.</span> Connect wallet → go to <a href="https://app.gstdtoken.com/agent" className="text-cyan-400 hover:underline">/agent</a></p>
+                <p><span className="text-white font-semibold">3.</span> Ignite — AI chat, skill import, mining. All in one.</p>
+                <p className="text-amber-400 text-xs mt-2 font-bold">Works on PC, laptop, phone. No OpenClaw required.</p>
+              </AccordionItem>
+
               <AccordionItem title={t('docs_workers_title') || 'For Workers — Earn GSTD'} icon={<Terminal size={16} />}>
                 <p className="font-semibold text-white mb-1">Desktop / Server (Recommended)</p>
                 <div className="bg-black/40 rounded-xl p-3 font-mono text-xs text-cyan-300 overflow-x-auto">
@@ -290,6 +306,7 @@ export default function Home() {
               <AccordionItem title={t('docs_links_title') || 'Useful Links'} icon={<Link2 size={16} />}>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <a href="https://app.gstdtoken.com" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-cyan-400 text-xs font-medium">Dashboard</a>
+                  <a href="https://app.gstdtoken.com/agent" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-violet-400 text-xs font-medium">Agent Node</a>
                   <a href="https://api.gstdtoken.com/v1" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-violet-400 text-xs font-medium">API Gateway</a>
                   <a href="/stats" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-emerald-400 text-xs font-medium">Network Stats</a>
                   <a href="https://t.me/goldstandardcoin" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-amber-400 text-xs font-medium">Telegram</a>

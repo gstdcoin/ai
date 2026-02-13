@@ -1,11 +1,25 @@
-# GSTD Platform - Documentation
+# GSTD Platform — Documentation
+
+## Unified Organism
+
+GSTD — **единый организм**. Агенты, ноды и боты как одно целое. GSTD — кровеносная система.
+
+| Документ | Описание |
+|----------|----------|
+| [Unified Organism](UNIFIED_ORGANISM.md) | Leviathan. Схема организма, потоки GSTD, Hive Memory |
+| [Integration Guide](INTEGRATION_GUIDE.md) | Как агенты, ноды и боты обмениваются знаниями и вычислениями |
+| [Quick Join](QUICK_JOIN.md) | Присоединиться за несколько кликов |
+| [Ecosystem Overview](ecosystem-overview.md) | Обзор экосистемы |
+| [Getting Started](getting-started.md) | Пошаговый старт |
 
 ## Overview
 
-GSTD Platform is a decentralized distributed computing infrastructure built on the TON blockchain. It enables:
-- **Task Creators**: Submit AI inference, data validation, and processing tasks
-- **Workers**: Earn TON by executing computational tasks
-- **Enterprises**: Scale AI workloads across a global network of nodes
+GSTD Platform is a **unified organism** — agents, nodes, and bots as one body. It enables:
+- **Agents**: A2A, OpenClaw, MCP. memorize/recall/unify via Hive Memory
+- **Nodes**: Workers, Pipeline, Mobile. Process tasks, earn GSTD
+- **Bots**: Telegram — Personal AI + Miner + Mini-node
+- **Task Creators**: Submit AI inference, validation, processing
+- **Enterprises**: Scale AI workloads across a global network
 
 ## Quick Start
 

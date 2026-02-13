@@ -42,7 +42,7 @@ export default function DashboardPage() {
         );
     }
 
-    return <Dashboard />;
+    return <Dashboard initialTab={(router.query.tab as string) || undefined} />;
 }
 
 export const getStaticProps: GetStaticProps = async ({ locale }) => {

@@ -49,12 +49,20 @@ interface NetworkStats {
 const NewTaskModal = lazy(() => import('./NewTaskModal'));
 const ReferralModal = lazy(() => import('./ReferralModal'));
 
-function Dashboard() {
+interface DashboardProps {
+  initialTab?: string;
+}
+
+function Dashboard({ initialTab }: DashboardProps = {}) {
   const { t } = useTranslation('common');
   const router = useRouter();
   const { address, disconnect, tonBalance, gstdBalance, pendingEarnings } = useWalletStore();
   const [tonConnectUI] = useTonConnectUI();
-  const [activeTab, setActiveTab] = useState<Tab>('chat');
+  const [activeTab, setActiveTab] = useState<Tab>(() => {
+    const valid: Tab[] = ['home', 'chat', 'tasks', 'devices', 'stats', 'help', 'marketplace', 'agents', 'referrals', 'more'];
+    if (initialTab && valid.includes(initialTab as Tab)) return initialTab as Tab;
+    return 'chat';
+  });
   const [showNewTask, setShowNewTask] = useState(false);
   const [isMining, setIsMining] = useState(false);
   const [showReferralModal, setShowReferralModal] = useState(false);
@@ -78,13 +86,18 @@ function Dashboard() {
     return unsub;
   }, []);
 
-  // Restore previously selected tab
+  // Restore previously selected tab (or apply initialTab from URL)
   useEffect(() => {
+    const valid: Tab[] = ['home', 'chat', 'tasks', 'devices', 'stats', 'help', 'marketplace', 'agents', 'referrals', 'more'];
+    if (initialTab && valid.includes(initialTab as Tab)) {
+      setActiveTab(initialTab as Tab);
+      return;
+    }
     const saved = typeof window !== 'undefined' ? window.localStorage.getItem('activeTab') : null;
-    if (['home','chat','tasks','devices','stats','help','marketplace','agents','referrals','more'].includes(saved || '')) {
+    if (saved && valid.includes(saved as Tab)) {
       setActiveTab(saved as Tab);
     }
-  }, []);
+  }, [initialTab]);
 
   // Save active tab to localStorage
   useEffect(() => {
