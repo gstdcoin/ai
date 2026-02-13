@@ -46,7 +46,7 @@ export default function BurnStatsWidget() {
                             <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Deflationary Burn</h3>
                         </div>
                         <div className="px-2 py-0.5 rounded bg-red-500/10 border border-red-500/20 text-red-400 text-[8px] font-black uppercase tracking-widest">
-                            {((stats?.burn_rate || 0.05) * 100).toFixed(0)}% Fee Burn
+                            {(stats?.burn_rate_percent ?? 5).toFixed(0)}% Fee Burn
                         </div>
                     </div>
 

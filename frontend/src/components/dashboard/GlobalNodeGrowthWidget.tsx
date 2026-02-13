@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'next-i18next';
 import { Users, TrendingUp, ShieldCheck } from 'lucide-react';
 import { apiGet } from '../../lib/apiClient';
@@ -7,14 +7,21 @@ export const GlobalNodeGrowthWidget: React.FC = () => {
     const { t } = useTranslation('common');
     const [stats, setStats] = useState<any>(null);
     const [growth, setGrowth] = useState(0);
+    const prevWorkersRef = useRef<number>(0);
 
     useEffect(() => {
         const fetchStats = async () => {
             try {
                 const data = await apiGet<any>('/network/stats');
+                const curr = data?.active_workers ?? 0;
                 setStats(data);
-                // Simulate recruitment growth for visual effect (Mission Omega)
-                setGrowth(85 + Math.random() * 10);
+                const prev = prevWorkersRef.current;
+                if (prev > 0 && curr > prev) {
+                    setGrowth(((curr - prev) / prev) * 100);
+                } else {
+                    setGrowth(0);
+                }
+                prevWorkersRef.current = curr;
             } catch (err) {
                 console.error(err);
             }
@@ -34,10 +41,12 @@ export const GlobalNodeGrowthWidget: React.FC = () => {
                     <Users className="w-5 h-5 text-blue-400" />
                     <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Agent Recruitment</span>
                 </div>
-                <div className="flex items-center gap-1 text-[10px] font-black text-emerald-400 uppercase tracking-widest">
-                    <TrendingUp className="w-3 h-3" />
-                    +{growth.toFixed(1)}%
-                </div>
+                {growth > 0 && (
+                    <div className="flex items-center gap-1 text-[10px] font-black text-emerald-400 uppercase tracking-widest">
+                        <TrendingUp className="w-3 h-3" />
+                        +{growth.toFixed(1)}%
+                    </div>
+                )}
             </div>
 
             <div className="space-y-4">
