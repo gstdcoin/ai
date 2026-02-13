@@ -106,8 +106,9 @@ func (re *RewardEngine) DistributeRewards(ctx context.Context, task *models.Task
 	// No need to process platform fee separately - escrow contract handles it
 	log.Printf("Platform fee (%.9f GSTD) will be collected when worker claims via escrow", platformFee)
 	
-	// Log accumulation in Golden Reserve (accounting purposes)
-	if err := re.logGoldenReserveAccumulation(ctx, platformFee, task.TaskID); err != nil {
+	// Log accumulation in Golden Reserve (2.5% gold share of 5% platform fee)
+	goldShare := platformFee * 0.5
+	if err := re.logGoldenReserveAccumulation(ctx, goldShare, task.TaskID); err != nil {
 		log.Printf("Warning: Failed to log golden reserve accumulation: %v", err)
 	}
 

@@ -137,8 +137,8 @@ func BuildContainer() *dig.Container {
 	})
 
 	// 3. Background Workers
-	c.Provide(func(db *sql.DB, ton *services.TONService, cfg config.TONConfig, pay *services.TaskPaymentService) *services.PaymentWatcher {
-		return services.NewPaymentWatcher(db, ton, cfg, pay)
+	c.Provide(func(db *sql.DB, ton *services.TONService, cfg config.TONConfig, pay *services.TaskPaymentService, stonFi *services.StonFiService) *services.PaymentWatcher {
+		return services.NewPaymentWatcher(db, ton, cfg, pay, stonFi)
 	})
 	c.Provide(services.NewPaymentTracker)
 
@@ -169,6 +169,7 @@ func StartApplication(container *dig.Container) error {
 		nodeService *services.NodeService,
 		taskService *services.TaskService,
 		rewardEngine *services.RewardEngine,
+		escrowService *services.EscrowService,
 		payoutRetry *services.PayoutRetryService,
 		paymentWatcher *services.PaymentWatcher,
 		paymentTracker *services.PaymentTracker,
@@ -211,6 +212,7 @@ func StartApplication(container *dig.Container) error {
 		tonService.SetCacheService(cacheService)
 		poolMonitor.SetTONService(tonService)
 		poolMonitor.SetErrorLogger(errorLogger)
+		escrowService.SetLiquidityDeps(cfg.TON, stonFiService)
 		statsService.SetPoolMonitor(poolMonitor)
 		validationService.SetDependencies(trustV3Service, entropyService, assignmentService, encryptionService, tonService, cacheService, nodeService)
 		taskService.SetHub(hub)
@@ -221,6 +223,7 @@ func StartApplication(container *dig.Container) error {
 		taskPaymentService.SetTaskService(taskService)
 		taskPaymentService.SetTelegramService(telegramService)
 		stonFiService.SetPoolMonitor(poolMonitor)
+		poolMonitor.SetStonFi(stonFiService)
 		lendingService.SetPoolMonitor(poolMonitor)
 		taskOrchestrator.SetPoWService(powService)
 
@@ -283,8 +286,9 @@ func StartApplication(container *dig.Container) error {
 			taskRateLimiter,
 			db,
 			redisClient,
-			payoutRetry,
-			poolMonitor,
+		payoutRetry,
+		escrowService,
+		poolMonitor,
 			cacheService,
 			errorLogger,
 			powService,

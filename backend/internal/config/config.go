@@ -42,6 +42,7 @@ type TONConfig struct {
 	CommissionWallet string // Wallet for sending commission (needs TON for gas)
 	TreasuryWallet   string // Treasury wallet for Golden Reserve (pool address)
 	PoolAddress      string // GSTD/XAUt pool address for monitoring
+	GoldPoolAddress  string // GOLD_POOL_ADDRESS for Ston.fi liquidity provision (GSTD/XAUt)
 	PlatformFeePercent float64 // Platform commission (e.g., 5%)
 	WithdrawalLockThreshold float64 // Threshold for withdrawal lock (GSTD)
 	PlatformWalletAddress string // Address of the platform's operational wallet
@@ -90,6 +91,7 @@ func Load() *Config {
 			CommissionWallet: getEnv("COMMISSION_WALLET", ""), // Wallet for sending commission (needs TON for gas)
 			TreasuryWallet:   getEnv("TREASURY_WALLET", ""), // Not used (replaced by AdminWallet)
 			PoolAddress:      getEnv("POOL_ADDRESS", "EQA--JXG8VSyBJmLMqb2J2t4Pya0TS9SXHh7vHh8Iez25sLp"), // GSTD/XAUt pool for monitoring
+			GoldPoolAddress:  getEnv("GOLD_POOL_ADDRESS", "EQA--JXG8VSyBJmLMqb2J2t4Pya0TS9SXHh7vHh8Iez25sLp"), // Ston.fi Arbitrary Provision target
 		PlatformFeePercent: getEnvFloat("PLATFORM_FEE_PERCENT", 5.0),
 		WithdrawalLockThreshold: getEnvFloat("WITHDRAWAL_LOCK_THRESHOLD", 500.0),
 		PlatformWalletAddress: getEnv("PLATFORM_WALLET_ADDRESS", ""), // Optional: only for admin operations

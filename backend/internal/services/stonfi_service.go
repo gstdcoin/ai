@@ -349,3 +349,127 @@ func (s *StonFiService) BuildSwapPayload(ctx context.Context, userWallet string,
 	}, nil
 }
 
+// LiquidityProvisionSimulation holds result from Ston.fi simulate liquidity provision API
+type LiquidityProvisionSimulation struct {
+	ProvisionType string `json:"provision_type"`
+	TokenA        string `json:"token_a"`
+	TokenB        string `json:"token_b"`
+	TokenAUnits   string `json:"token_a_units"`
+	TokenBUnits   string `json:"token_b_units"`
+	MinLpUnits    string `json:"min_lp_units"`
+	Router        *struct {
+		Address string `json:"address"`
+	} `json:"router"`
+}
+
+// SimulateLiquidityProvision calls Ston.fi /v1/liquidity_provision/simulate for Arbitrary provision
+func (s *StonFiService) SimulateLiquidityProvision(ctx context.Context, poolAddress, walletAddress, tokenA, tokenB, tokenAUnits, tokenBUnits string) (*LiquidityProvisionSimulation, error) {
+	// Arbitrary provision: add liquidity in any ratio to existing pool
+	// token_a/token_b must match pool order (token0/token1)
+	url := fmt.Sprintf("%s/v1/liquidity_provision/simulate?provision_type=Arbitrary&pool_address=%s&wallet_address=%s&token_a=%s&token_b=%s&token_a_units=%s&token_b_units=%s&slippage_tolerance=0.01",
+		s.apiURL, poolAddress, walletAddress, tokenA, tokenB, tokenAUnits, tokenBUnits)
+
+	req, err := http.NewRequestWithContext(ctx, "POST", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("liquidity provision simulate: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("Ston.fi simulate error (HTTP %d): %s", resp.StatusCode, string(body))
+	}
+
+	var result LiquidityProvisionSimulation
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("decode simulate response: %w", err)
+	}
+	return &result, nil
+}
+
+// BuildProvideLiquidityPayload generates payload for Ston.fi provide_liquidity (Arbitrary Provision)
+// Returns tx params for the admin wallet to sign and broadcast
+func (s *StonFiService) BuildProvideLiquidityPayload(ctx context.Context, poolAddress, walletAddress, gstdAddr, xautAddr string, amountGSTD, amountXAUt float64) (map[string]interface{}, error) {
+	tokenAUnits := strconv.FormatInt(int64(amountXAUt*1e9), 10) // XAUt = token0 in pool
+	tokenBUnits := strconv.FormatInt(int64(amountGSTD*1e9), 10)  // GSTD = token1 in pool
+
+	sim, err := s.SimulateLiquidityProvision(ctx, poolAddress, walletAddress, xautAddr, gstdAddr, tokenAUnits, tokenBUnits)
+	if err != nil {
+		log.Printf("StonFi: SimulateLiquidityProvision failed: %v", err)
+		return nil, err
+	}
+
+	routerAddr := s.routerAddr
+	if sim.Router != nil && sim.Router.Address != "" {
+		routerAddr = sim.Router.Address
+	}
+
+	return map[string]interface{}{
+		"action":           "provide_liquidity",
+		"router_address":   routerAddr,
+		"pool_address":     poolAddress,
+		"wallet_address":   walletAddress,
+		"token_a":         xautAddr,
+		"token_b":         gstdAddr,
+		"token_a_units":   sim.TokenAUnits,
+		"token_b_units":   sim.TokenBUnits,
+		"min_lp_units":    sim.MinLpUnits,
+		"provision_type":  sim.ProvisionType,
+		"comment":         "GSTD Dynamic Gold Backing - Ston.fi Arbitrary Provision",
+	}, nil
+}
+
+// GetPoolData fetches pool info from Ston.fi API
+func (s *StonFiService) GetPoolData(ctx context.Context, poolAddress string) (map[string]interface{}, error) {
+	url := fmt.Sprintf("%s/v1/pools/%s", s.apiURL, poolAddress)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("pool API error %d: %s", resp.StatusCode, string(body))
+	}
+	var data map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
+// GetWalletPoolPosition returns wallet's LP position for a pool
+func (s *StonFiService) GetWalletPoolPosition(ctx context.Context, walletAddress, poolAddress string) (map[string]interface{}, error) {
+	url := fmt.Sprintf("%s/v1/wallets/%s/pools/%s", s.apiURL, walletAddress, poolAddress)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, nil // No position
+	}
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("wallet pool API error %d: %s", resp.StatusCode, string(body))
+	}
+	var data map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+

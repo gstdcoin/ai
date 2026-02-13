@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"log"
 	"math"
+	"strconv"
 	"time"
 
 	"distributed-computing-platform/internal/config"
@@ -17,6 +18,7 @@ type PoolMonitorService struct {
 	db          *sql.DB
 	tonCfg      config.TONConfig
 	tonService  *TONService
+	stonFi      *StonFiService
 	errorLogger *ErrorLogger
 }
 
@@ -30,6 +32,9 @@ func NewPoolMonitorService(cfg config.TONConfig, db *sql.DB) *PoolMonitorService
 
 // SetTONService wires TON service for on-chain balance fetches.
 func (p *PoolMonitorService) SetTONService(ton *TONService) { p.tonService = ton }
+
+// SetStonFi wires Ston.fi service for pool and LP data.
+func (p *PoolMonitorService) SetStonFi(sf *StonFiService) { p.stonFi = sf }
 
 // SetErrorLogger wires error logger for diagnostics.
 func (p *PoolMonitorService) SetErrorLogger(el *ErrorLogger) { p.errorLogger = el }
@@ -110,36 +115,106 @@ func (p *PoolMonitorService) GetGSTDPriceUSD(ctx context.Context) (float64, erro
 	return price, nil
 }
 
-// GetPoolStatusCached returns pool status. Uses simple in-memory fallback when
-// on-chain or DB data unavailable. Safe for /pool/status endpoint.
+// GetPoolStatusCached returns pool status. Uses Ston.fi API when available for real pool data
+// and platform LP share (Dynamic Gold Backing). Falls back to DB/on-chain when unavailable.
 func (p *PoolMonitorService) GetPoolStatusCached(ctx context.Context) (map[string]interface{}, error) {
-	poolAddr := p.tonCfg.PoolAddress
+	poolAddr := p.tonCfg.GoldPoolAddress
+	if poolAddr == "" {
+		poolAddr = p.tonCfg.PoolAddress
+	}
 	if poolAddr == "" {
 		poolAddr = p.tonCfg.ContractAddress
 	}
+
 	gstdBal, xautBal := 0.0, 0.0
-	if p.tonService != nil && poolAddr != "" {
+	totalLiquidityUSD := 0.0
+	platformLpShare := 0.0
+	platformLpSharePercent := 0.0
+
+	// Try Ston.fi API for real pool data and Dynamic Gold Backing
+	if p.stonFi != nil && poolAddr != "" {
+		poolData, err := p.stonFi.GetPoolData(ctx, poolAddr)
+		if err == nil {
+			if pool, ok := poolData["pool"].(map[string]interface{}); ok {
+				// Pool: token0=XAUt, token1=GSTD (from API response)
+				r0, _ := strconv.ParseFloat(getStr(pool, "reserve0"), 64)
+				r1, _ := strconv.ParseFloat(getStr(pool, "reserve1"), 64)
+				token1 := getStr(pool, "token1_address")
+				// XAUt: EQA1R_LuQCLHlMgOo1S4G7Y7W1cd0FrAkbA10Zq7rddKxi9k, GSTD: EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO
+				if token1 != "" && (token1 == "EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO" || len(token1) > 20) {
+					xautBal = r0 / 1e9
+					gstdBal = r1 / 1e9
+				} else {
+					xautBal = r1 / 1e9
+					gstdBal = r0 / 1e9
+				}
+				if lpUSD := getStr(pool, "lp_total_supply_usd"); lpUSD != "" {
+					totalLiquidityUSD, _ = strconv.ParseFloat(lpUSD, 64)
+				}
+			}
+		}
+
+		// Fetch platform LP share (ADMIN_WALLET) for Dynamic Gold Backing
+		adminWallet := p.tonCfg.AdminWallet
+		if adminWallet == "" {
+			adminWallet = p.tonCfg.TreasuryWallet
+		}
+		if adminWallet != "" {
+			pos, err := p.stonFi.GetWalletPoolPosition(ctx, adminWallet, poolAddr)
+			if err == nil && pos != nil {
+				if pool, ok := pos["pool"].(map[string]interface{}); ok {
+					platformLpShare, _ = strconv.ParseFloat(getStr(pool, "balance"), 64)
+					platformLpShare = platformLpShare / 1e9
+				}
+				if sharePct := getStr(pos, "share_percent"); sharePct != "" {
+					platformLpSharePercent, _ = strconv.ParseFloat(sharePct, 64)
+				}
+			}
+		}
+	}
+
+	// Fallback: on-chain or DB
+	if gstdBal == 0 && xautBal == 0 && p.tonService != nil && poolAddr != "" {
 		gstdNano, _ := p.tonService.GetContractBalance(ctx, poolAddr)
 		gstdBal = float64(gstdNano) / 1e9
-		// XAUt would need jetton balance; use 0 for now
 	}
 	goldPrice := p.GetXAUtPriceUSD()
-	totalUSD := gstdBal*0.02 + xautBal*goldPrice
-	if totalUSD <= 0 {
-		totalUSD = 0
+	if totalLiquidityUSD <= 0 {
+		totalLiquidityUSD = gstdBal*0.02 + xautBal*goldPrice
+	}
+	if totalLiquidityUSD < 0 {
+		totalLiquidityUSD = 0
 	}
 	reserveRatio := 0.0
 	if gstdBal > 0 && xautBal > 0 {
 		reserveRatio = (xautBal * goldPrice) / (gstdBal * 0.02)
 	}
+
 	return map[string]interface{}{
-		"pool_address":    poolAddr,
-		"gstd_balance":    gstdBal,
-		"xaut_balance":    xautBal,
-		"total_value_usd": totalUSD,
-		"last_updated":    time.Now(),
-		"is_healthy":      totalUSD >= 0,
-		"reserve_ratio":   reserveRatio,
+		"pool_address":              poolAddr,
+		"gstd_balance":              gstdBal,
+		"xaut_balance":              xautBal,
+		"total_value_usd":           totalLiquidityUSD,
+		"total_liquidity_usd":       totalLiquidityUSD,
+		"platform_lp_share":         platformLpShare,
+		"platform_lp_share_percent": platformLpSharePercent,
+		"dynamic_gold_backing": map[string]interface{}{
+			"total_liquidity_usd": totalLiquidityUSD,
+			"platform_share":      platformLpShare,
+			"platform_share_pct":  platformLpSharePercent,
+		},
+		"last_updated":  time.Now(),
+		"is_healthy":    totalLiquidityUSD >= 0,
+		"reserve_ratio": reserveRatio,
 	}, nil
+}
+
+func getStr(m map[string]interface{}, key string) string {
+	if v, ok := m[key]; ok && v != nil {
+		if s, ok := v.(string); ok {
+			return s
+		}
+	}
+	return ""
 }
 

@@ -20,9 +20,11 @@ type PaymentWatcher struct {
 	tonService         *TONService
 	tonConfig          config.TONConfig
 	taskPaymentService *TaskPaymentService
+	stonFi             *StonFiService
 	platformWallet     string
 	jettonAddress      string
 	lastCheckedBlock   *int64
+	lastLpBalance      float64
 	stopChan           chan struct{}
 }
 
@@ -56,15 +58,17 @@ func NewPaymentWatcher(
 	tonService *TONService,
 	tonConfig config.TONConfig,
 	taskPaymentService *TaskPaymentService,
+	stonFi *StonFiService,
 ) *PaymentWatcher {
 	return &PaymentWatcher{
-		db:                db,
-		tonService:        tonService,
-		tonConfig:         tonConfig,
+		db:                 db,
+		tonService:         tonService,
+		tonConfig:          tonConfig,
 		taskPaymentService: taskPaymentService,
-		platformWallet:    tonConfig.ContractAddress, // Monitor Escrow for reward payment (95%)
-		jettonAddress:     tonConfig.GSTDJettonAddress,
-		stopChan:          make(chan struct{}),
+		stonFi:             stonFi,
+		platformWallet:     tonConfig.ContractAddress, // Monitor Escrow for reward payment (95%)
+		jettonAddress:      tonConfig.GSTDJettonAddress,
+		stopChan:           make(chan struct{}),
 	}
 }
 
@@ -135,6 +139,53 @@ func (pw *PaymentWatcher) checkPayments(ctx context.Context) {
 			log.Printf("PaymentWatcher: Error processing transfer %s: %v", transfer.TxHash, err)
 		}
 	}
+
+	// Track LP token mints for ADMIN_WALLET (Dynamic Gold Backing)
+	pw.checkLPMint(ctx)
+}
+
+// checkLPMint fetches ADMIN_WALLET's LP position from Ston.fi and logs when it increases
+func (pw *PaymentWatcher) checkLPMint(ctx context.Context) {
+	if pw.stonFi == nil {
+		return
+	}
+	adminWallet := pw.tonConfig.AdminWallet
+	if adminWallet == "" {
+		adminWallet = pw.tonConfig.TreasuryWallet
+	}
+	if adminWallet == "" {
+		return
+	}
+	poolAddr := pw.tonConfig.GoldPoolAddress
+	if poolAddr == "" {
+		poolAddr = pw.tonConfig.PoolAddress
+	}
+	if poolAddr == "" {
+		return
+	}
+
+	pos, err := pw.stonFi.GetWalletPoolPosition(ctx, adminWallet, poolAddr)
+	if err != nil {
+		return
+	}
+	if pos == nil {
+		return
+	}
+
+	var lpBalance float64
+	if pool, ok := pos["pool"].(map[string]interface{}); ok {
+		if bal, ok := pool["balance"].(string); ok {
+			var nano int64
+			if _, err := fmt.Sscanf(bal, "%d", &nano); err == nil {
+				lpBalance = float64(nano) / 1e9
+			}
+		}
+	}
+	if lpBalance > 0 && lpBalance > pw.lastLpBalance {
+		delta := lpBalance - pw.lastLpBalance
+		log.Printf("PaymentWatcher: LP mint detected for %s: +%.6f LP (total: %.6f)", adminWallet[:8]+"...", delta, lpBalance)
+	}
+	pw.lastLpBalance = lpBalance
 }
 
 // getRecentJettonTransfers fetches recent jetton transfers to the platform wallet
