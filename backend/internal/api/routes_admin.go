@@ -13,6 +13,7 @@ import (
 	"distributed-computing-platform/internal/services"
 
 	"github.com/gin-gonic/gin"
+	"github.com/lib/pq"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -434,6 +435,71 @@ func seedOpenGridManifestoTask(db *sql.DB, tonConfig config.TONConfig) gin.Handl
 			taskIDs = append(taskIDs, taskID)
 		}
 		c.JSON(200, gin.H{"status": "ok", "task_ids": taskIDs, "message": "THE OPEN GRID MANIFESTO tasks seeded"})
+	}
+}
+
+// seedOmniTestTask creates TEST-FINAL-CHECK (grid_tool) for GSTD OMNI-VERIFICATION: FINAL ZERO
+func seedOmniTestTask(db *sql.DB, tonConfig config.TONConfig) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		creatorWallet := tonConfig.AdminWallet
+		if creatorWallet == "" {
+			creatorWallet = tonConfig.ContractAddress
+		}
+		taskID := "TEST-FINAL-CHECK"
+		payload := `{"operation":"omni_verification","model":"qwen2.5-coder:7b","output":"code_snippet","reward":10}`
+		_, err := db.ExecContext(c.Request.Context(), `
+			INSERT INTO tasks (
+				task_id, creator_wallet, requester_address, task_type, operation, status,
+				budget_gstd, reward_gstd, labor_compensation_gstd, reward_per_worker, max_workers,
+				estimated_time_sec, min_trust_score, payload, priority_score
+			) VALUES ($1, $2, $2, 'grid_tool', 'OMNI_VERIFICATION', 'queued',
+				10, 10, 10, 10, 1, 120, 0, $3, 100)
+		`, taskID, creatorWallet, payload)
+		if err != nil {
+			// Idempotent: if task already exists, return success
+			if e, ok := err.(*pq.Error); ok && e.Code == "23505" {
+				c.JSON(200, gin.H{"status": "ok", "task_ids": []string{taskID}, "message": "TEST-FINAL-CHECK already exists"})
+				return
+			}
+			log.Printf("seedOmniTestTask: %v", err)
+			c.JSON(500, gin.H{"error": err.Error(), "task_id": taskID})
+			return
+		}
+		c.JSON(200, gin.H{"status": "ok", "task_ids": []string{taskID}, "message": "TEST-FINAL-CHECK seeded for OMNI-VERIFICATION"})
+	}
+}
+
+// seedUltimateCheckTasks creates 3 MFST-ULTIMATE-CHECK tasks for OMNISCIENT AUDIT
+func seedUltimateCheckTasks(db *sql.DB, tonConfig config.TONConfig) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		creatorWallet := tonConfig.AdminWallet
+		if creatorWallet == "" {
+			creatorWallet = tonConfig.ContractAddress
+		}
+		payload := `{"operation":"ultimate_check","model":"qwen2.5-coder:7b","output":"code_snippet","reward":50}`
+		taskIDs := []string{}
+		for i := 1; i <= 3; i++ {
+			taskID := fmt.Sprintf("MFST-ULTIMATE-CHECK-%d", i)
+			_, err := db.ExecContext(c.Request.Context(), `
+				INSERT INTO tasks (
+					task_id, creator_wallet, requester_address, task_type, operation, status,
+					budget_gstd, reward_gstd, labor_compensation_gstd, reward_per_worker, max_workers,
+					estimated_time_sec, min_trust_score, payload, priority_score
+				) VALUES ($1, $2, $2, 'grid_tool', 'ULTIMATE_CHECK', 'queued',
+					50, 50, 50, 50, 1, 180, 0, $3, 100)
+			`, taskID, creatorWallet, payload)
+			if err != nil {
+				if e, ok := err.(*pq.Error); ok && e.Code == "23505" {
+					taskIDs = append(taskIDs, taskID)
+					continue
+				}
+				log.Printf("seedUltimateCheckTasks: %v", err)
+				c.JSON(500, gin.H{"error": err.Error(), "created": taskIDs})
+				return
+			}
+			taskIDs = append(taskIDs, taskID)
+		}
+		c.JSON(200, gin.H{"status": "ok", "task_ids": taskIDs, "message": "3 MFST-ULTIMATE-CHECK tasks seeded"})
 	}
 }
 

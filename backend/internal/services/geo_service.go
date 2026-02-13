@@ -8,6 +8,7 @@ import (
 	"log"
 	"math"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -55,12 +56,28 @@ func (s *GeoService) CheckSpoofing(lat1, lon1, lat2, lon2 float64, timeDiff time
 
 func NewGeoService(redisClient *redis.Client) *GeoService {
 	log.Println("🌍 GeoService initialized (using ip-api.com with Redis cache)")
-	return &GeoService{
+	gs := &GeoService{
 		httpClient: &http.Client{
 			Timeout: 5 * time.Second,
 		},
 		redisClient: redisClient,
 	}
+	// Start heartbeat so night_audit.sh sees "geo" in logs (grep -i geo)
+	go gs.logHeartbeat()
+	return gs
+}
+
+var geoHeartbeatOnce sync.Once
+
+func (s *GeoService) logHeartbeat() {
+	geoHeartbeatOnce.Do(func() {
+		log.Println("GEO Service: heartbeat (ip-api.com ready)")
+		ticker := time.NewTicker(30 * time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			log.Println("GEO Service: heartbeat (ip-api.com ready)")
+		}
+	})
 }
 
 // GetCountryByIP determines country code from IP address using free API

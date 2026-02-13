@@ -106,22 +106,25 @@ func IsRawFormat(address string) bool {
 }
 
 // NormalizeAddressForAPI normalizes address for TON API calls
-// Converts raw format to user-friendly if needed
+// Converts raw format to user-friendly if needed. Sanitizes quotes and whitespace.
 func NormalizeAddressForAPI(address string) string {
+	// Remove quotes, trim whitespace - fixes "can't decode address" from TON API
 	address = strings.TrimSpace(address)
-	
+	address = strings.Trim(address, "\"'`")
+	address = strings.TrimSpace(address)
+
 	// If already user-friendly, return as is
 	if strings.HasPrefix(address, "EQ") || strings.HasPrefix(address, "UQ") ||
 		strings.HasPrefix(address, "kQ") || strings.HasPrefix(address, "0Q") {
 		return address
 	}
-	
+
 	// If raw format, try to convert
 	if IsRawFormat(address) {
 		converted := ConvertRawToUserFriendlySafe(address)
 		return converted
 	}
-	
+
 	// Unknown format, return as is
 	return address
 }

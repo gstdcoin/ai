@@ -16,6 +16,18 @@
 
 ---
 
+## System Status
+
+| Component | Status |
+|-----------|--------|
+| **Live Platform** | [app.gstdtoken.com](https://app.gstdtoken.com) |
+| **Dynamic Gold Backing** | GSTD backed by XAUt (Tether Gold) via Ston.fi liquidity pool |
+| **Integrity Audit** | Final audit passed — Integrity Score 100% |
+
+*Dynamic Gold Backing:* Platform commission (2.5%) accumulates in `golden_reserve_log` and can be provisioned as liquidity to the GSTD/XAUt pool on Ston.fi. Admin dashboard shows real-time pool status and Add Liquidity flow.
+
+---
+
 ## What is GSTD?
 
 GSTD is a **decentralized AI platform** where:

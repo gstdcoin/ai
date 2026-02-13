@@ -67,40 +67,34 @@ func (v *TonConnectValidator) ValidateSignature(
 
 	// 1. Parse payload to extract nonce and timestamp
 	var payloadData TonConnectPayload
-	
-	// Try JSON format first
-	if err := json.Unmarshal([]byte(payload), &payloadData); err != nil {
-		log.Printf("⚠️  Failed to parse payload as JSON, trying simple format: %v", err)
-		
-		// Log JSON decode error to database if errorLogger is available
-		if v.errorLogger != nil {
-			v.errorLogger.LogError(ctx, "tonconnect_json_decode", err, SeverityError, map[string]interface{}{
-				"wallet_address": walletAddress,
-				"payload":         payload,
-			})
+
+	// If payload doesn't start with '{', don't try JSON - avoids "invalid character 'g'" etc.
+	payloadTrimmed := strings.TrimSpace(payload)
+	if strings.HasPrefix(payloadTrimmed, "{") {
+		if err := json.Unmarshal([]byte(payload), &payloadData); err != nil {
+			log.Printf("⚠️  Failed to parse payload as JSON: %v", err)
+			return fmt.Errorf("invalid payload JSON: %w", err)
 		}
-		
-		// Try simple format: "nonce:timestamp" or "nonce:timestamp:address"
+		log.Printf("✅ Payload parsed as JSON: nonce=%s, timestamp=%d, address=%s",
+			payloadData.Nonce, payloadData.Timestamp, payloadData.Address)
+	} else {
+		// Simple format: "nonce:timestamp" or "nonce:timestamp:address"
 		parts := strings.Split(payload, ":")
 		if len(parts) < 2 {
 			log.Printf("❌ Invalid payload format: expected JSON or 'nonce:timestamp', got: %s", payload)
 			return fmt.Errorf("invalid payload format: expected JSON or 'nonce:timestamp'")
 		}
-		
-		payloadData.Nonce = parts[0]
-		timestamp, err := strconv.ParseInt(parts[1], 10, 64)
+		payloadData.Nonce = strings.TrimSpace(parts[0])
+		timestamp, err := strconv.ParseInt(strings.TrimSpace(parts[1]), 10, 64)
 		if err != nil {
 			log.Printf("❌ Invalid timestamp in payload: %v", err)
 			return fmt.Errorf("invalid timestamp in payload: %w", err)
 		}
 		payloadData.Timestamp = timestamp
-		
 		if len(parts) >= 3 {
-			payloadData.Address = parts[2]
+			payloadData.Address = strings.TrimSpace(parts[2])
 		}
-	} else {
-		log.Printf("✅ Payload parsed successfully: nonce=%s, timestamp=%d, address=%s", 
-			payloadData.Nonce, payloadData.Timestamp, payloadData.Address)
+		log.Printf("✅ Payload parsed as simple format: nonce=%s, timestamp=%d", payloadData.Nonce, payloadData.Timestamp)
 	}
 
 	// 2. Validate timestamp (not older than maxAge)
