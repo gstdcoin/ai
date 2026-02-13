@@ -462,15 +462,27 @@ function Dashboard() {
                           { id: 'marketplace' as Tab, label: t('marketplace') || 'Market', icon: '🛒' },
                           { id: 'referrals' as Tab, label: t('referrals') || 'Referrals', icon: '🎁' },
                           { id: 'help' as Tab, label: t('help_center') || 'Help', icon: '❓' },
-                        ].map(({ id, label, icon }) => (
-                          <button
-                            key={id}
-                            onClick={() => handleTabChange(id)}
-                            className="glass-card p-4 flex flex-col items-center gap-2 text-center hover:bg-white/[0.06] transition-colors active:scale-95"
-                          >
-                            <span className="text-2xl">{icon}</span>
-                            <span className="text-sm font-medium text-white">{label}</span>
-                          </button>
+                          { href: '/agent', label: t('agent_node') || 'Agent Node', icon: '⚡' },
+                        ].map((item) => (
+                          'href' in item ? (
+                            <a
+                              key={item.href}
+                              href={item.href}
+                              className="glass-card p-4 flex flex-col items-center gap-2 text-center hover:bg-white/[0.06] transition-colors active:scale-95"
+                            >
+                              <span className="text-2xl">{item.icon}</span>
+                              <span className="text-sm font-medium text-white">{item.label}</span>
+                            </a>
+                          ) : (
+                            <button
+                              key={item.id}
+                              onClick={() => handleTabChange(item.id)}
+                              className="glass-card p-4 flex flex-col items-center gap-2 text-center hover:bg-white/[0.06] transition-colors active:scale-95"
+                            >
+                              <span className="text-2xl">{item.icon}</span>
+                              <span className="text-sm font-medium text-white">{item.label}</span>
+                            </button>
+                          )
                         ))}
                       </div>
                     </div>
