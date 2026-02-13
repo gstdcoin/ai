@@ -10,9 +10,11 @@
 
 | Команда | Доступ | Описание |
 |---------|--------|----------|
-| `/start` | Все | Приветствие и ссылка на Dashboard |
+| `/start` | Все | Приветствие + кнопка «📱 Открыть приложение» (Web App) |
+| `/help` | Все | Справка и ссылка на дашборд |
 | `/status` | Только админ | Database, Contract, Sovereign AI |
 | `/balance` | Только админ | Баланс escrow, кол-во пользователей |
+| `/admin` | Только админ | Панель с кнопками: Status, Balance, Pending Withdrawals |
 
 **Безопасность:** `/status` и `/balance` отвечают только если `sender_id == TELEGRAM_CHAT_ID`.
 

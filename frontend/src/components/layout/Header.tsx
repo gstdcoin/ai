@@ -55,46 +55,39 @@ export default React.memo(function Header({ onCreateTask, onLogout, isPublic = f
 
   return (
     <header className="glass-dark border-b border-white/10 sticky top-0 z-40">
-      <div className="px-3 sm:px-6 py-2.5 sm:py-3">
-        <div className="flex items-center justify-between gap-2 sm:gap-4">
-          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+      <div className="px-4 py-2.5">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0 min-w-0">
             {/* Logo */}
             <div className="flex-shrink-0 relative">
               <img
                 src="/logo.png"
                 alt="GSTD Logo"
-                className="w-8 h-8 sm:w-10 sm:h-10 transition-transform hover:scale-110 duration-300"
+                className="w-9 h-9 transition-transform active:scale-95 duration-200"
               />
-              <div className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border border-gray-900 ${isWsConnected ? 'bg-emerald-500 shadow-[0_0_8px_#10b981]' : 'bg-red-500 animate-pulse'}`} />
+              <div className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-gray-900 ${isWsConnected ? 'bg-emerald-500 shadow-[0_0_6px_#10b981]' : 'bg-red-500 animate-pulse'}`} />
             </div>
-            <div className="hidden sm:block">
-              <h1 className="text-lg sm:text-xl font-black text-white font-display flex items-center gap-1.5 tracking-tighter uppercase whitespace-nowrap">
+            <div className="min-w-0">
+              <h1 className="text-base font-black text-white font-display tracking-tighter truncate">
                 <span className="bg-gradient-to-r from-cyan-400 via-violet-500 to-fuchsia-500 bg-clip-text text-transparent">GSTD</span>
-                <span className="text-gray-500 text-sm hidden sm:inline">/ CONTROL</span>
               </h1>
               {address && (
-                <p className="text-[9px] text-gray-600 font-mono tracking-widest uppercase">
-                  {address.slice(0, 6)}...{address.slice(-4)}
+                <p className="text-[9px] text-gray-500 font-mono truncate">
+                  {address.slice(0, 6)}…{address.slice(-4)}
                 </p>
               )}
             </div>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-4 overflow-hidden">
-            {/* Unified Balance Row */}
-            <div className="flex items-center gap-3 sm:gap-6">
-              <div className="text-right hidden sm:block">
-                <span className="text-[9px] text-gray-600 font-black uppercase tracking-widest block mb-0.5">TON</span>
-                <span className="text-sm font-black text-white tabular-nums">{tonBalance || '0.00'}</span>
-              </div>
-              <div className="text-right">
-                <span className="text-[9px] text-cyan-900 font-black uppercase tracking-widest block mb-0.5">GSTD</span>
-                <span className="text-sm font-black text-cyan-400 tabular-nums">{gstdBalance?.toFixed(2) || '0.00'}</span>
-              </div>
+          <div className="flex items-center gap-2 overflow-hidden">
+            {/* Balance */}
+            <div className="text-right">
+              <span className="text-[8px] text-gray-500 font-bold uppercase block">GSTD</span>
+              <span className="text-sm font-black text-cyan-400 tabular-nums">{gstdBalance?.toFixed(2) || '0.00'}</span>
             </div>
 
-            {/* Quick Metrics (Merged) */}
-            <div className="hidden lg:flex items-center gap-6 px-4 py-1.5 rounded-xl bg-white/[0.02] border border-white/5">
+            {/* Quick Metrics - hidden on small, shown when space */}
+            <div className="hidden md:flex items-center gap-3 px-2 py-1 rounded-lg bg-white/[0.02] border border-white/5">
               <div className="flex items-center gap-2">
                 <span className="text-[9px] text-gray-600 font-black uppercase tracking-widest">Grid</span>
                 <span className="text-[10px] font-black text-orange-400 font-mono" id="network-temperature">0 T</span>

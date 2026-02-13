@@ -39,6 +39,14 @@
     }
     .status-badge .dot { width: 6px; height: 6px; border-radius: 50%; background: #10b981; animation: pulse 2s infinite; }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    .full-dashboard-link {
+      display: block; margin-top: 12px; padding: 10px 16px;
+      background: linear-gradient(135deg, rgba(139,92,246,0.2), rgba(6,182,212,0.2));
+      border: 1px solid rgba(139,92,246,0.3); border-radius: 12px;
+      color: #a78bfa; font-size: 12px; font-weight: 600; text-decoration: none;
+      text-align: center; transition: all 0.2s;
+    }
+    .full-dashboard-link:hover { background: rgba(139,92,246,0.3); color: #fff; }
     
     /* Power Button */
     .power-section { text-align: center; padding: 24px 0; }
@@ -116,6 +124,9 @@
         <div class="dot"></div>
         <span id="statusText">Ready</span>
       </div>
+      <a href="https://app.gstdtoken.com" class="full-dashboard-link" id="fullDashboardLink">
+        📱 Полный дашборд (чат, задачи, кошелёк)
+      </a>
     </div>
 
     <div class="power-section">
