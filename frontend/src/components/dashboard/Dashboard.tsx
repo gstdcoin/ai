@@ -3,7 +3,6 @@ import { useTranslation } from 'next-i18next';
 import { ErrorBoundary } from '../common/ErrorBoundary';
 import { useRouter } from 'next/router';
 import { useWalletStore } from '../../store/walletStore';
-import Sidebar from '../layout/Sidebar';
 import BottomNav from '../layout/BottomNav';
 import Header from '../layout/Header';
 import TasksPanel from './TasksPanel';
@@ -81,7 +80,7 @@ function Dashboard() {
   // Restore previously selected tab
   useEffect(() => {
     const saved = typeof window !== 'undefined' ? window.localStorage.getItem('activeTab') : null;
-    if (saved === 'home' || saved === 'chat' || saved === 'tasks' || saved === 'devices' || saved === 'stats' || saved === 'help' || saved === 'marketplace' || saved === 'agents' || saved === 'referrals') {
+    if (['home','chat','tasks','devices','stats','help','marketplace','agents','referrals','more'].includes(saved || '')) {
       setActiveTab(saved as Tab);
     }
   }, []);
@@ -247,20 +246,9 @@ function Dashboard() {
   const handleCompensationClaimed = useCallback(() => triggerHaptic('medium'), [triggerHaptic]);
 
   return (
-    <div className="flex flex-col lg:flex-row h-screen bg-[#030014] overflow-hidden">
-      {/* Desktop Sidebar */}
-      <div className="hidden lg:block">
-        <ErrorBoundary>
-          <Sidebar
-            activeTab={activeTab}
-            onTabChange={handleTabChange}
-            onCreateTask={() => setShowNewTask(true)}
-          />
-        </ErrorBoundary>
-      </div>
-
+    <div className="flex flex-col h-screen bg-[#030014] overflow-hidden max-w-lg mx-auto w-full">
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
+        {/* Header - compact on all devices */}
         {!isTelegramWebApp() && (
           <ErrorBoundary>
             <Header
@@ -270,11 +258,10 @@ function Dashboard() {
           </ErrorBoundary>
         )}
 
-        {/* Main Content */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 pb-28 lg:pb-8 custom-scrollbar">
+        {/* Main Content - mobile-proportional on all devices */}
+        <main className="flex-1 overflow-y-auto p-4 pb-24 custom-scrollbar">
           <ErrorBoundary>
-            <div className="max-w-7xl mx-auto">
-              <div className="max-w-4xl mx-auto">
+            <div className="w-full max-w-md mx-auto">
 
                 {/* CHAT TAB - Primary Feature */}
                 {activeTab === 'chat' && (
@@ -295,7 +282,7 @@ function Dashboard() {
                     </div>
 
                     {/* PRIMARY ACTIONS */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4">
                       {/* Worker Control */}
                       <button
                         onClick={handleToggleMining}
@@ -399,7 +386,7 @@ function Dashboard() {
                       <ComponentErrorBoundary name="GoldenReservePanel">
                         <GoldenReservePanel />
                       </ComponentErrorBoundary>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div className="grid grid-cols-2 gap-3">
                         <ComponentErrorBoundary name="TreasuryWidget">
                           <TreasuryWidget />
                         </ComponentErrorBoundary>
@@ -451,22 +438,43 @@ function Dashboard() {
                       <HelpPanel />
                     </ComponentErrorBoundary>
                   )}
+
+                  {activeTab === 'more' && (
+                    <div className="space-y-4 animate-in fade-in duration-300">
+                      <h2 className="text-lg font-bold text-white">{t('help') || 'More'}</h2>
+                      <div className="grid grid-cols-2 gap-3">
+                        {[
+                          { id: 'stats' as Tab, label: t('stats') || 'Stats', icon: '📊' },
+                          { id: 'agents' as Tab, label: t('agents') || 'Agents', icon: '🤖' },
+                          { id: 'marketplace' as Tab, label: t('marketplace') || 'Market', icon: '🛒' },
+                          { id: 'referrals' as Tab, label: t('referrals') || 'Referrals', icon: '🎁' },
+                          { id: 'help' as Tab, label: t('help_center') || 'Help', icon: '❓' },
+                        ].map(({ id, label, icon }) => (
+                          <button
+                            key={id}
+                            onClick={() => handleTabChange(id)}
+                            className="glass-card p-4 flex flex-col items-center gap-2 text-center hover:bg-white/[0.06] transition-colors active:scale-95"
+                          >
+                            <span className="text-2xl">{icon}</span>
+                            <span className="text-sm font-medium text-white">{label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
             </div>
           </ErrorBoundary>
         </main>
       </div>
 
-      {/* Mobile Bottom Navigation */}
-      <div className="lg:hidden">
-        <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
-      </div>
+      {/* Bottom Navigation - always visible, mobile-first */}
+      <BottomNav activeTab={activeTab === 'stats' || activeTab === 'agents' || activeTab === 'marketplace' || activeTab === 'referrals' || activeTab === 'help' ? 'more' : activeTab} onTabChange={handleTabChange} />
 
-      {/* Floating Action Button - positioned above bottom nav on mobile */}
+      {/* Floating Action Button - above bottom nav */}
       <button
         onClick={() => setShowNewTask(true)}
-        className="fixed right-4 bottom-20 lg:bottom-6 z-40 w-12 h-12 rounded-full bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-600/30 flex items-center justify-center transition-all active:scale-90"
+        className="fixed right-4 bottom-20 z-40 w-14 h-14 rounded-full bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-600/30 flex items-center justify-center transition-all active:scale-90"
         aria-label={t('create_task')}
       >
         <Plus size={20} />
