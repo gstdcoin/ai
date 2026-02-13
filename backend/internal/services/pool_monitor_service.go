@@ -3,9 +3,12 @@ package services
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"log"
 	"math"
+	"net/http"
 	"strconv"
+	"sync"
 	"time"
 
 	"distributed-computing-platform/internal/config"
@@ -20,6 +23,12 @@ type PoolMonitorService struct {
 	tonService  *TONService
 	stonFi      *StonFiService
 	errorLogger *ErrorLogger
+	httpClient  *http.Client
+	xautCache   struct {
+		price float64
+		mu    sync.RWMutex
+		at    time.Time
+	}
 }
 
 // NewPoolMonitorService creates a new monitor tied to TON config and DB.
@@ -27,6 +36,7 @@ func NewPoolMonitorService(cfg config.TONConfig, db *sql.DB) *PoolMonitorService
 	return &PoolMonitorService{
 		db:     db,
 		tonCfg: cfg,
+		httpClient: &http.Client{Timeout: 10 * time.Second},
 	}
 }
 
@@ -43,35 +53,56 @@ func (p *PoolMonitorService) SetErrorLogger(el *ErrorLogger) { p.errorLogger = e
 func (p *PoolMonitorService) Start(ctx context.Context) {}
 
 // GetXAUtPriceUSD returns the current XAUt (gold) price in USD.
-// For now we use a safe default if no better source is available.
+// Fetches from CoinGecko API (tether-gold), fallback to default on error.
 func (p *PoolMonitorService) GetXAUtPriceUSD() float64 {
-	// TODO: wire an oracle or read from on‑chain XAUt price feed.
-	// For now use a conservative static price (~1oz gold).
 	const defaultGoldPrice = 2350.0
 
-	// Try to derive from golden_reserve_log if xaut_amount and gstd_amount are stored.
-	if p.db == nil {
-		return defaultGoldPrice
+	// Use cache if fresh (< 5 min)
+	p.xautCache.mu.RLock()
+	if time.Since(p.xautCache.at) < 5*time.Minute && p.xautCache.price > 0 {
+		price := p.xautCache.price
+		p.xautCache.mu.RUnlock()
+		return price
 	}
+	p.xautCache.mu.RUnlock()
 
-	var lastXAUt float64
-	err := p.db.QueryRow(`
-		SELECT COALESCE(xaut_amount, 0)
-		FROM golden_reserve_log
-		ORDER BY "timestamp" DESC
-		LIMIT 1
-	`).Scan(&lastXAUt)
+	// Fetch from CoinGecko API
+	req, err := http.NewRequestWithContext(context.Background(), "GET",
+		"https://api.coingecko.com/api/v3/simple/price?ids=tether-gold&vs_currencies=usd", nil)
 	if err != nil {
-		// If schema or data are missing, fall back to default.
 		return defaultGoldPrice
 	}
-
-	// If we have any XAUt in reserve, keep the static price;
-	// in future we can attach a real oracle here.
-	if lastXAUt > 0 {
+	resp, err := p.httpClient.Do(req)
+	if err != nil {
 		return defaultGoldPrice
 	}
+	defer resp.Body.Close()
 
+	var result map[string]map[string]float64
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return defaultGoldPrice
+	}
+	if tg, ok := result["tether-gold"]; ok {
+		if usd, ok := tg["usd"]; ok && usd > 0 {
+			p.xautCache.mu.Lock()
+			p.xautCache.price = usd
+			p.xautCache.at = time.Now()
+			p.xautCache.mu.Unlock()
+			return usd
+		}
+	}
+
+	if p.db != nil {
+		var lastXAUt float64
+		if err := p.db.QueryRow(`
+			SELECT COALESCE(xaut_amount, 0)
+			FROM golden_reserve_log
+			ORDER BY "timestamp" DESC
+			LIMIT 1
+		`).Scan(&lastXAUt); err == nil && lastXAUt > 0 {
+			return defaultGoldPrice
+		}
+	}
 	return defaultGoldPrice
 }
 

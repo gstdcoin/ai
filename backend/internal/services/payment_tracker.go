@@ -3,7 +3,10 @@ package services
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log"
+	"strconv"
+	"strings"
 	"time"
 
 	"distributed-computing-platform/internal/config"
@@ -72,11 +75,7 @@ func (pt *PaymentTracker) reconcilePayments(ctx context.Context) {
 	}
 
 	log.Printf("PaymentTracker: Starting reconciliation cycle")
-	// Temporarily disabled due to schema mismatch — re-enable when payout_transactions table exists
-}
 
-/* TODO: Re-enable reconciliation when schema is fixed
-func (pt *PaymentTracker) reconcileDisabled(ctx context.Context) {
 	// Get pending transactions from database
 	rows, err := pt.db.QueryContext(ctx, `
 		SELECT id, task_id, executor_address, tx_hash, query_id, status, created_at,
@@ -287,7 +286,7 @@ func (pt *PaymentTracker) markTransactionConfirmed(ctx context.Context, txID int
 		_, err = tx.ExecContext(ctx, `
 			INSERT INTO payout_history (
 				payout_transaction_id, task_id, executor_address, tx_hash, query_id,
-				executor_reward_gstd, platform_fee_gstd, nonce, confirmed_at
+				executor_reward_ton, platform_fee_ton, nonce, confirmed_at
 			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
 		`, txID, taskID, executorAddress, txHash, queryIDValue, executorReward, platformFee, nonce)
 		if err != nil {
@@ -392,4 +391,3 @@ func (pt *PaymentTracker) UpdateTransactionStatus(ctx context.Context, taskID, t
 	`, status, txHash, taskID)
 	return err
 }
-*/

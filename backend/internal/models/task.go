@@ -63,6 +63,8 @@ type TaskDescriptor struct {
 	BoincProjectURL string      `json:"boinc_project_url,omitempty"`
 	BoincBatchID    int         `json:"boinc_batch_id,omitempty"`
 	BoincAccountKey string      `json:"boinc_account_key,omitempty"`
+	IsEncrypted     bool        `json:"is_encrypted"`
+	ExecutorPubkey  string      `json:"executor_pubkey"`
 }
 
 // TaskDefinition is a flexible structure for any type of work

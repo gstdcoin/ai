@@ -17,10 +17,16 @@ import (
 type NodeService struct {
 	db    *sql.DB
 	redis *redis.Client
+	geo   *GeoService
 }
 
 func NewNodeService(db *sql.DB, rdb *redis.Client) *NodeService {
 	return &NodeService{db: db, redis: rdb}
+}
+
+// SetGeoService wires GeoService for H3 indexing on heartbeat
+func (s *NodeService) SetGeoService(geo *GeoService) {
+	s.geo = geo
 }
 
 // RegisterNode registers or updates a computing node for a wallet
@@ -303,30 +309,26 @@ func (s *NodeService) UpdateHeartbeat(ctx context.Context, walletAddress string)
 }
 
 // FlushHeartbeats flushes batched heartbeats from Redis to PostgreSQL
-// This should be called by a background worker every 30-60 seconds.
+// When GeoService is set, also updates h3_index from node's lat/lon (H3 Res 6)
 func (s *NodeService) FlushHeartbeats(ctx context.Context) (int64, error) {
 	if s.redis == nil {
 		return 0, nil
 	}
 
-	// Get all pending workers
 	workers, err := s.redis.SMembers(ctx, "workers:heartbeat:pending").Result()
 	if err != nil || len(workers) == 0 {
 		return 0, err
 	}
 
-	// Clear the set atomically
 	s.redis.Del(ctx, "workers:heartbeat:pending")
 
-	// Perform batch update in DB
-	// Using a temporary table or a complex UNNEST for high performance
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, err
 	}
 	defer tx.Rollback()
 
-	// Update nodes table in bulk
+	// Bulk update last_seen, status
 	stmt, _ := tx.PrepareContext(ctx, "UPDATE nodes SET last_seen = NOW(), status = 'online', updated_at = NOW() WHERE wallet_address = ANY($1)")
 	res, err := stmt.ExecContext(ctx, workers)
 	if err != nil {
@@ -395,14 +397,25 @@ func (s *NodeService) GetPublicActiveNodes(ctx context.Context, limit, offset in
 // UpdateHealthStats updates worker health metrics in Redis for the Load Balancer.
 // Performs immediate DB update so nodes are visible in Dashboard right away.
 // identifier can be wallet_address or node id (UUID).
-func (s *NodeService) UpdateHealthStats(ctx context.Context, identifier string, battery int, signal int) error {
-	// 1. Immediate DB update — nodes visible in Dashboard without waiting for FlushHeartbeats
-	// Try wallet_address first; if identifier looks like UUID (contains hyphens), try by id
-	if len(identifier) == 36 && strings.Contains(identifier, "-") {
-		_, _ = s.db.ExecContext(ctx, `UPDATE nodes SET last_seen = NOW(), status = 'online', updated_at = NOW() WHERE id = $1`, identifier)
-	} else {
-		_, _ = s.db.ExecContext(ctx, `UPDATE nodes SET last_seen = NOW(), status = 'online', updated_at = NOW() WHERE wallet_address = $1`, identifier)
+// lat, lon: optional GPS for H3 indexing (Resolution 6)
+func (s *NodeService) UpdateHealthStats(ctx context.Context, identifier string, battery int, signal int, lat, lon *float64) error {
+	// Build UPDATE with optional h3_index when lat/lon provided
+	updateSQL := `UPDATE nodes SET last_seen = NOW(), status = 'online', updated_at = NOW()`
+	args := []interface{}{}
+	argIdx := 1
+	if lat != nil && lon != nil && s.geo != nil {
+		h3Idx := s.geo.LatLonToH3Index(*lat, *lon, H3Resolution)
+		updateSQL += fmt.Sprintf(`, h3_index = $%d`, argIdx)
+		args = append(args, h3Idx)
+		argIdx++
 	}
+	if len(identifier) == 36 && strings.Contains(identifier, "-") {
+		updateSQL += fmt.Sprintf(` WHERE id = $%d`, argIdx)
+	} else {
+		updateSQL += fmt.Sprintf(` WHERE wallet_address = $%d`, argIdx)
+	}
+	args = append(args, identifier)
+	_, _ = s.db.ExecContext(ctx, updateSQL, args...)
 
 	if s.redis == nil {
 		return nil

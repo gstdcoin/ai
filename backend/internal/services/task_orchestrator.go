@@ -3,8 +3,10 @@ package services
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -470,7 +472,24 @@ func (o *TaskOrchestrator) workerMeetsRequirements(worker *WorkerInfo, task *Tas
 		return false
 	}
 
-	// 2. Heavy task specific: BOINC requires verified stability and trust > 0.8
+	// 2. Geography check: if task has required_geography (e.g. US, RU), worker must match
+	if requiredCountries := parseRequiredGeography(task.Geography); len(requiredCountries) > 0 {
+		if worker.Country == "" {
+			return false // Worker country unknown, cannot assign geo-restricted task
+		}
+		matched := false
+		for _, c := range requiredCountries {
+			if c == worker.Country {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			return false
+		}
+	}
+
+	// 3. Heavy task specific: BOINC requires verified stability and trust > 0.8
 	if req.IsHeavy {
 		if worker.TrustScore < 0.8 {
 			return false
@@ -481,12 +500,45 @@ func (o *TaskOrchestrator) workerMeetsRequirements(worker *WorkerInfo, task *Tas
 		}
 	}
 
-	// 3. Don't reassign to same worker on retry
+	// 4. Don't reassign to same worker on retry
 	if task.LastAssignedTo == worker.WalletAddress && task.RetryCount > 0 {
 		return false
 	}
 	
 	return true
+}
+
+// parseRequiredGeography extracts country codes from task geography field.
+// Supports: "US", "RU", "global", or JSON {"type":"countries","list":["US","RU"]}
+func parseRequiredGeography(geography string) []string {
+	if geography == "" || geography == "global" {
+		return nil
+	}
+	// Try JSON first
+	var parsed struct {
+		Type  string   `json:"type"`
+		List  []string `json:"list"`
+	}
+	if err := json.Unmarshal([]byte(geography), &parsed); err == nil {
+		if parsed.Type == "countries" && len(parsed.List) > 0 {
+			return parsed.List
+		}
+		return nil
+	}
+	// Single country code (e.g. "US", "RU")
+	if len(geography) == 2 {
+		return []string{geography}
+	}
+	// Comma-separated
+	parts := strings.Split(geography, ",")
+	var result []string
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if len(p) == 2 {
+			result = append(result, p)
+		}
+	}
+	return result
 }
 
 // monitorAssignedTasks checks for tasks stuck on offline workers

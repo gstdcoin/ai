@@ -236,18 +236,18 @@ func (s *MarketplaceService) CompleteTask(ctx context.Context, taskID, workerWal
 		return nil, fmt.Errorf("failed to update assignment: %w", err)
 	}
 
-	// Release funds from escrow
-	tx, err := s.escrowService.ReleaseToWorker(ctx, taskID, workerWallet, qualityScore)
+	// Release funds from escrow (80/15/5: executor 80%, referral 5%, platform 15% Treasury/Gold 50/50)
+	tx, err := s.escrowService.ReleaseToWorkerMarketplace(ctx, taskID, workerWallet, qualityScore, s.referral)
 	if err != nil {
 		log.Printf("⚠️  Escrow release failed for task %s: %v", taskID, err)
-		// Continue anyway - funds might be released manually
+		return nil, fmt.Errorf("escrow release failed: %w", err)
 	}
 
 	// Get escrow details for receipt
 	escrow, _ := s.escrowService.GetEscrowByTask(ctx, taskID)
 
-	// Calculate fee breakdown (50/50 split)
-	platformFee := tx.AmountGSTD / 0.95 * 0.05
+	// Fee breakdown for 80/15/5 (platform 15% split 50/50)
+	platformFee := tx.AmountGSTD / 0.80 * 0.15
 	devFund := platformFee * 0.50
 	goldReserve := platformFee * 0.50
 
@@ -271,13 +271,7 @@ func (s *MarketplaceService) CompleteTask(ctx context.Context, taskID, workerWal
 		log.Printf("⚠️  Failed to award XP for task %s: %v", taskID, err)
 	}
 
-	// REFERRAL: Process reward for referrer (1% of total project volume)
-	if s.referral != nil {
-		// platformFee already represents 5%. referral logic takes 20% of that (which is 1% of total)
-		if err := s.referral.ProcessReferralReward(ctx, workerWallet, taskID, platformFee); err != nil {
-			log.Printf("⚠️  Failed to process referral reward for task %s: %v", taskID, err)
-		}
-	}
+	// REFERRAL: 5% of total is handled inside ReleaseToWorkerMarketplace via ProcessReferralRewardFixed
 
 	// Create receipt
 	receipt := &TaskReceipt{

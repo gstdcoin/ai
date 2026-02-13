@@ -152,16 +152,18 @@ func getPublicNodes(service *services.NodeService) gin.HandlerFunc {
 	}
 }
 
-// UpdateHeartbeat handles worker heartbeat with battery and signal info.
-// Accepts wallet (direct) or node_id (resolved to wallet). Wallet is preferred for immediate DB update.
+// UpdateHeartbeat handles worker heartbeat with battery, signal, and optional location.
+// When lat/lon provided, node location is stored as H3 Resolution 6 index (Data Airlock).
 func UpdateHeartbeat(service *services.NodeService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			WalletAddress string `json:"wallet"`  // Frontend / A2A SDK — preferred for DB update
-			NodeID        string `json:"node_id"` // A2A SDK uses UUID
-			Status        string `json:"status"`
-			Battery       int    `json:"battery"`
-			Signal        int    `json:"signal"`
+			WalletAddress string  `json:"wallet"`
+			NodeID        string  `json:"node_id"`
+			Status        string  `json:"status"`
+			Battery       int     `json:"battery"`
+			Signal        int     `json:"signal"`
+			Latitude      float64 `json:"latitude"`
+			Longitude     float64 `json:"longitude"`
 		}
 
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -169,10 +171,8 @@ func UpdateHeartbeat(service *services.NodeService) gin.HandlerFunc {
 			return
 		}
 
-		// Prefer wallet for immediate nodes table update; fallback to node_id resolution
 		identifier := req.WalletAddress
 		if identifier == "" && req.NodeID != "" {
-			// Try to resolve node_id (UUID) to wallet_address for DB update
 			if node, err := service.GetNodeByID(c.Request.Context(), req.NodeID); err == nil && node != nil {
 				identifier = node.WalletAddress
 			} else {
@@ -187,7 +187,12 @@ func UpdateHeartbeat(service *services.NodeService) gin.HandlerFunc {
 			return
 		}
 
-		err := service.UpdateHealthStats(c.Request.Context(), identifier, req.Battery, req.Signal)
+		var lat, lon *float64
+		if req.Latitude != 0 || req.Longitude != 0 {
+			lat, lon = &req.Latitude, &req.Longitude
+		}
+
+		err := service.UpdateHealthStats(c.Request.Context(), identifier, req.Battery, req.Signal, lat, lon)
 		if err != nil {
 			c.JSON(500, gin.H{"error": err.Error()})
 			return

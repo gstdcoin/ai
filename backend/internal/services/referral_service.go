@@ -102,6 +102,23 @@ func (s *ReferralService) ProcessReferralReward(ctx context.Context, workerAddre
 	return nil
 }
 
+// ProcessReferralRewardFixed records a fixed referral amount (e.g. 5% of total for 80/15/5 split)
+func (s *ReferralService) ProcessReferralRewardFixed(ctx context.Context, workerAddress string, taskID string, amountGSTD float64) error {
+	if amountGSTD <= 0 {
+		return nil
+	}
+	var referrerAddress string
+	err := s.db.QueryRowContext(ctx, "SELECT referred_by FROM users WHERE wallet_address = $1", workerAddress).Scan(&referrerAddress)
+	if err != nil || referrerAddress == "" {
+		return nil
+	}
+	_, err = s.db.ExecContext(ctx, `
+		INSERT INTO referral_rewards (referrer_address, referred_user_address, task_id, amount_gstd, status)
+		VALUES ($1, $2, $3, $4, 'pending')
+	`, referrerAddress, workerAddress, taskID, amountGSTD)
+	return err
+}
+
 // ApplyReferralCode links a user to a referrer
 func (s *ReferralService) ApplyReferralCode(ctx context.Context, walletAddress string, code string) error {
 	// Cannot refer yourself

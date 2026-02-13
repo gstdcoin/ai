@@ -73,6 +73,9 @@ export default function GoldenReservePanel() {
     setLoading(false);
   }, []);
 
+  // Computed values (must be before useEffect that uses platformShare)
+  const platformShare = poolStatus?.platform_lp_share ?? poolStatus?.dynamic_gold_backing?.platform_share ?? 0;
+
   useEffect(() => {
     fetchData();
     const interval = setInterval(fetchData, platformShare > 0 ? 15000 : 30000);
@@ -109,7 +112,6 @@ export default function GoldenReservePanel() {
   const xautBalance = poolStatus?.xaut_balance || publicStats?.golden_reserve_xaut || 0;
   const gstdBalance = poolStatus?.gstd_balance || 0;
   const totalLiquidityUSD = poolStatus?.total_liquidity_usd ?? poolStatus?.total_value_usd ?? 0;
-  const platformShare = poolStatus?.platform_lp_share ?? poolStatus?.dynamic_gold_backing?.platform_share ?? 0;
   const platformSharePct = poolStatus?.platform_lp_share_percent ?? poolStatus?.dynamic_gold_backing?.platform_share_pct ?? 0;
   const reserveValueUSD = xautBalance * GOLD_PRICE_USD;
   const gstdPriceUSD = publicStats?.gstd_price_usd || (gstdBalance > 0 ? reserveValueUSD / gstdBalance : 0.015);

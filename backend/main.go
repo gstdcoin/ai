@@ -12,6 +12,7 @@ import (
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	log.Printf("🌌 Starting GSTD Platform Backend (DI Mode)...")
+	log.Printf("PHASE 2: FIRST BLOOD - SUCCESSFUL")
 
 	// 0. Load environment variables from .env if present
 	if err := godotenv.Load(); err != nil {

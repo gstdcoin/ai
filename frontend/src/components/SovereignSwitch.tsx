@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useWalletStore } from '../store/walletStore';
 import { useTonConnectUI } from '@tonconnect/ui-react';
+import { API_BASE_URL } from '../lib/config';
 import { Zap, Brain, Shield, Rocket, Activity, AlertCircle, CheckCircle, Terminal, Key, Copy, Plus } from 'lucide-react';
 
 interface SovereignSwitchProps {
@@ -9,7 +10,7 @@ interface SovereignSwitchProps {
 }
 
 export const SovereignSwitch = ({ className, onModeChange }: SovereignSwitchProps) => {
-    const { isConnected, balance } = useWalletStore(); // balance presumed to be in GSTD
+    const { isConnected, gstdBalance } = useWalletStore();
     const [tonConnectUI] = useTonConnectUI();
     const [mode, setMode] = useState<'consumer' | 'producer'>('producer');
     // Consumer = Sovereign Master (Spends GSTD)
@@ -31,6 +32,8 @@ export const SovereignSwitch = ({ className, onModeChange }: SovereignSwitchProp
     // Thresholds
     const MASTER_THRESHOLD = 1.0;
 
+    const balance = gstdBalance ?? 0;
+
     useEffect(() => {
         // Auto-switch based on balance if not manually overridden
         if (isConnected && balance >= MASTER_THRESHOLD) {
@@ -45,7 +48,7 @@ export const SovereignSwitch = ({ className, onModeChange }: SovereignSwitchProp
         if (!isConnected) return;
         try {
             const token = localStorage.getItem('session_token');
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/v1/users/keys`, {
+            const res = await fetch(`${API_BASE_URL}/api/v1/users/keys`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await res.json();
@@ -59,7 +62,7 @@ export const SovereignSwitch = ({ className, onModeChange }: SovereignSwitchProp
         setIsGeneratingKey(true);
         try {
             const token = localStorage.getItem('session_token');
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/v1/users/keys`, {
+            const res = await fetch(`${API_BASE_URL}/api/v1/users/keys`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -80,7 +83,7 @@ export const SovereignSwitch = ({ className, onModeChange }: SovereignSwitchProp
     };
 
     const handleToggle = () => {
-        if (!isConnected) {
+        if (!isConnected && tonConnectUI) {
             tonConnectUI.openModal();
             return;
         }

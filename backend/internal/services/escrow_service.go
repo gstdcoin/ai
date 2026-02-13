@@ -376,6 +376,162 @@ func (s *EscrowService) ReleaseToWorker(ctx context.Context, taskID, workerWalle
 	}, nil
 }
 
+// ReleaseToWorkerMarketplace uses 80/15/5 split: 80% executor, 5% referral, 15% platform (7.5% Treasury, 7.5% Gold Pool)
+func (s *EscrowService) ReleaseToWorkerMarketplace(ctx context.Context, taskID, workerWallet string, qualityScore float64, referral *ReferralService) (*TransactionRecord, error) {
+	var escrow EscrowRecord
+	var geoJSON []byte
+	err := s.db.QueryRowContext(ctx, `
+		SELECT id, task_id, creator_wallet, budget_gstd, platform_fee_gstd,
+		       total_locked_gstd, difficulty, task_type, geography, status,
+		       workers_paid, total_paid_gstd
+		FROM task_escrow WHERE task_id = $1
+	`, taskID).Scan(
+		&escrow.ID, &escrow.TaskID, &escrow.CreatorWallet, &escrow.BudgetGSTD,
+		&escrow.PlatformFeeGSTD, &escrow.TotalLockedGSTD, &escrow.Difficulty,
+		&escrow.TaskType, &geoJSON, &escrow.Status, &escrow.WorkersPaid, &escrow.TotalPaidGSTD,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("escrow not found: %w", err)
+	}
+	if escrow.Status != "locked" {
+		return nil, fmt.Errorf("escrow is not locked (status: %s)", escrow.Status)
+	}
+
+	var rewardPerWorker sql.NullFloat64
+	s.db.QueryRowContext(ctx, "SELECT reward_per_worker FROM tasks WHERE task_id = $1", taskID).Scan(&rewardPerWorker)
+
+	total := escrow.BudgetGSTD
+	if rewardPerWorker.Valid && rewardPerWorker.Float64 > 0 {
+		total = rewardPerWorker.Float64
+	}
+
+	// 80/15/5 split
+	workerReward := total * 0.80
+	referralAmount := total * 0.05
+	platformAmount := total * 0.15
+	devFundAmount := platformAmount * 0.50
+	goldAmount := platformAmount * 0.50
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	workerTxID := uuid.New().String()
+	_, err = tx.ExecContext(ctx, `
+		INSERT INTO transaction_history (
+			tx_id, from_wallet, to_wallet, amount_gstd, tx_type,
+			task_id, escrow_id, description, status, metadata
+		) VALUES ($1, 'escrow', $2, $3, 'worker_payout', $4, $5, $6, 'confirmed', $7)
+	`, workerTxID, workerWallet, workerReward, taskID, escrow.ID,
+		fmt.Sprintf("Task reward for %s (80%% marketplace split)", taskID),
+		fmt.Sprintf(`{"quality_score": %.4f}`, qualityScore))
+	if err != nil {
+		return nil, fmt.Errorf("failed to record worker payout: %w", err)
+	}
+
+	devTxID := uuid.New().String()
+	_, err = tx.ExecContext(ctx, `
+		INSERT INTO transaction_history (
+			tx_id, from_wallet, to_wallet, amount_gstd, tx_type, task_id, description, status
+		) VALUES ($1, 'escrow', 'dev_fund', $2, 'platform_fee', $3, 'Treasury (7.5% marketplace)', 'confirmed')
+	`, devTxID, devFundAmount, taskID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to record dev fund tx: %w", err)
+	}
+
+	goldTxID := uuid.New().String()
+	_, err = tx.ExecContext(ctx, `
+		INSERT INTO transaction_history (
+			tx_id, from_wallet, to_wallet, amount_gstd, tx_type, task_id, description, status
+		) VALUES ($1, 'escrow', 'gold_reserve', $2, 'platform_fee', $3, 'Gold Pool (7.5% marketplace)', 'confirmed')
+	`, goldTxID, goldAmount, taskID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to record gold reserve tx: %w", err)
+	}
+
+	_, err = tx.ExecContext(ctx, `
+		UPDATE platform_funds SET 
+			balance_gstd = balance_gstd + $1,
+			total_received_gstd = total_received_gstd + $1,
+			last_deposit_at = NOW(),
+			updated_at = NOW()
+		WHERE fund_type = 'dev_fund'
+	`, devFundAmount)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update dev fund: %w", err)
+	}
+
+	_, err = tx.ExecContext(ctx, `
+		UPDATE platform_funds SET 
+			balance_gstd = balance_gstd + $1,
+			total_received_gstd = total_received_gstd + $1,
+			last_deposit_at = NOW(),
+			updated_at = NOW()
+		WHERE fund_type = 'gold_reserve'
+	`, goldAmount)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update gold reserve: %w", err)
+	}
+
+	_, _ = tx.ExecContext(ctx, `
+		INSERT INTO fund_transactions (fund_type, amount_gstd, tx_type, source_task_id, description)
+		VALUES 
+			('dev_fund', $1, 'deposit', $2, 'Marketplace 80/15/5 - Treasury'),
+			('gold_reserve', $3, 'deposit', $2, 'Marketplace 80/15/5 - Gold Pool')
+	`, devFundAmount, taskID, goldAmount)
+
+	_, err = tx.ExecContext(ctx, `
+		UPDATE task_escrow SET 
+			workers_paid = workers_paid + 1,
+			total_paid_gstd = total_paid_gstd + $1,
+			status = CASE WHEN workers_paid + 1 >= (SELECT COALESCE(max_workers, 1) FROM tasks WHERE task_id = $2) THEN 'released' ELSE status END,
+			released_at = CASE WHEN workers_paid + 1 >= (SELECT COALESCE(max_workers, 1) FROM tasks WHERE task_id = $2) THEN NOW() ELSE released_at END
+		WHERE task_id = $2
+	`, workerReward+platformAmount+referralAmount, taskID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update escrow: %w", err)
+	}
+
+	_, _ = tx.ExecContext(ctx, `
+		INSERT INTO worker_ratings (worker_wallet, total_tasks_completed, total_earnings_gstd, last_task_at, first_task_at)
+		VALUES ($1, 1, $2, NOW(), NOW())
+		ON CONFLICT (worker_wallet) DO UPDATE SET
+			total_tasks_completed = worker_ratings.total_tasks_completed + 1,
+			total_earnings_gstd = worker_ratings.total_earnings_gstd + $2,
+			last_task_at = NOW(),
+			reliability_score = (worker_ratings.total_tasks_completed + 1)::numeric / 
+				NULLIF(worker_ratings.total_tasks_completed + worker_ratings.total_tasks_failed + 1, 0),
+			updated_at = NOW()
+	`, workerWallet, workerReward)
+
+	_, _ = tx.ExecContext(ctx, `UPDATE tasks SET workers_completed = COALESCE(workers_completed, 0) + 1 WHERE task_id = $1`, taskID)
+
+	if referral != nil && referralAmount > 0 {
+		if err := referral.ProcessReferralRewardFixed(ctx, workerWallet, taskID, referralAmount); err != nil {
+			log.Printf("⚠️  Failed to process referral reward: %v", err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	log.Printf("✅ Marketplace 80/15/5: worker=%.6f, referral=%.6f, platform=%.6f (treasury=%.6f, gold=%.6f)",
+		workerReward, referralAmount, platformAmount, devFundAmount, goldAmount)
+
+	return &TransactionRecord{
+		TxID:        workerTxID,
+		ToWallet:    workerWallet,
+		AmountGSTD:  workerReward,
+		TxType:      "worker_payout",
+		Description: fmt.Sprintf("Task reward for %s (80%% marketplace)", taskID),
+		Status:      "confirmed",
+		CreatedAt:   time.Now(),
+	}, nil
+}
+
 // GetTransactionHistory returns transaction history for a wallet
 func (s *EscrowService) GetTransactionHistory(ctx context.Context, wallet string, limit int) ([]TransactionRecord, error) {
 	if limit <= 0 {

@@ -28,10 +28,12 @@ export const ActivityFeed: React.FC = () => {
         };
 
         const handleClaim = (data: any) => {
+            const taskId = data?.task_id ?? '';
+            const shortId = typeof taskId === 'string' ? taskId.substring(0, 8) : '?';
             const newEvent: NetworkEvent = {
                 id: Math.random().toString(36).substr(2, 9),
                 type: 'task_claimed',
-                title: `Task Claimed: ${data.task_id.substring(0, 8)}...`,
+                title: `Task Claimed: ${shortId}...`,
                 timestamp: Date.now(),
                 payload: data
             };

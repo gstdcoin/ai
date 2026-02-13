@@ -33,6 +33,7 @@ type SovereignBridgeService struct {
 	escrow      *EscrowService
 	nodeService *NodeService
 	stonfi      *StonFiService
+	tonService  *TONService
 	httpClient  *http.Client
 	encryptKey  []byte
 	genesisNode string
@@ -123,6 +124,7 @@ func NewSovereignBridgeService(
 	escrow *EscrowService,
 	nodeService *NodeService,
 	stonfi *StonFiService,
+	tonService *TONService,
 	encryptionKey string,
 	genesisNodeEndpoint string,
 ) *SovereignBridgeService {
@@ -135,6 +137,7 @@ func NewSovereignBridgeService(
 		escrow:      escrow,
 		nodeService: nodeService,
 		stonfi:      stonfi,
+		tonService:  tonService,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -503,11 +506,22 @@ func (s *SovereignBridgeService) getLiquidityStatus(ctx context.Context, walletA
 		status.AutoSwapEnabled = autoSwap
 	}
 
-	// TODO: Get real TON balance via TON API
-	// For now, use cached value
-	tonKey := fmt.Sprintf("wallet:ton_balance:%s", walletAddress)
-	if tonStr, err := s.redis.Get(ctx, tonKey).Result(); err == nil {
-		fmt.Sscanf(tonStr, "%f", &status.TONBalance)
+	// Get real TON balance via TON API (TonCenter/TonAPI)
+	if s.tonService != nil {
+		balanceNano, err := s.tonService.GetContractBalance(ctx, walletAddress)
+		if err == nil {
+			status.TONBalance = float64(balanceNano) / 1e9
+			// Cache for 30s to reduce API load
+			tonKey := fmt.Sprintf("wallet:ton_balance:%s", walletAddress)
+			s.redis.Set(ctx, tonKey, fmt.Sprintf("%.9f", status.TONBalance), 30*time.Second)
+		}
+	}
+	// Fallback to cached value if API fails
+	if status.TONBalance == 0 {
+		tonKey := fmt.Sprintf("wallet:ton_balance:%s", walletAddress)
+		if tonStr, err := s.redis.Get(ctx, tonKey).Result(); err == nil {
+			fmt.Sscanf(tonStr, "%f", &status.TONBalance)
+		}
 	}
 
 	return status, nil

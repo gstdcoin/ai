@@ -99,6 +99,44 @@ func (s *KnowledgeService) GetResonanceQuotes(ctx context.Context, limit int) ([
 	return results, nil
 }
 
+// SummarizeRecentInsights returns the last N records from agent_knowledge as a single context string for AI inference
+func (s *KnowledgeService) SummarizeRecentInsights(ctx context.Context, limit int) (string, error) {
+	if limit <= 0 {
+		limit = 10
+	}
+	query := `SELECT agent_id, topic, content, created_at FROM agent_knowledge ORDER BY created_at DESC LIMIT $1`
+	rows, err := s.db.QueryContext(ctx, query, limit)
+	if err != nil {
+		return "", err
+	}
+	defer rows.Close()
+
+	var parts []string
+	for rows.Next() {
+		var agentID, topic, content string
+		var createdAt time.Time
+		if err := rows.Scan(&agentID, &topic, &content, &createdAt); err != nil {
+			continue
+		}
+		parts = append(parts, "["+createdAt.Format(time.RFC3339)+"] "+agentID+"/"+topic+": "+content)
+	}
+	if len(parts) == 0 {
+		return "", nil
+	}
+	// Reverse so oldest first (chronological context)
+	for i, j := 0, len(parts)-1; i < j; i, j = i+1, j-1 {
+		parts[i], parts[j] = parts[j], parts[i]
+	}
+	result := ""
+	for _, p := range parts {
+		if result != "" {
+			result += "\n"
+		}
+		result += p
+	}
+	return result, nil
+}
+
 func (s *KnowledgeService) GetGlobalBulletin(ctx context.Context, limit int) ([]KnowledgeItem, error) {
 	if limit <= 0 {
 		limit = 5

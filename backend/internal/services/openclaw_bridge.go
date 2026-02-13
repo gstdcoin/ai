@@ -22,7 +22,9 @@ import (
 // Protocol: JSON-RPC 2.0 over HTTP
 // Authentication: x402 (GSTD token) or API Key
 type OpenClawBridgeService struct {
-	db *sql.DB
+	db             *sql.DB
+	inferenceSvc   *InferenceService
+	knowledgeSvc   *KnowledgeService
 }
 
 // ============================================================================
@@ -100,10 +102,15 @@ type ClawTaskResult struct {
 	Signature      string                 `json:"signature"` // Ed25519 signature
 }
 
-func NewOpenClawBridgeService(db *sql.DB) *OpenClawBridgeService {
-	svc := &OpenClawBridgeService{db: db}
+func NewOpenClawBridgeService(db *sql.DB, inferenceSvc *InferenceService, knowledgeSvc *KnowledgeService) *OpenClawBridgeService {
+	svc := &OpenClawBridgeService{db: db, inferenceSvc: inferenceSvc, knowledgeSvc: knowledgeSvc}
 	svc.ensureSchema()
 	return svc
+}
+
+// SetInferenceService wires the inference service for claw.think and claw.vision.
+func (s *OpenClawBridgeService) SetInferenceService(inference *InferenceService) {
+	s.inferenceSvc = inference
 }
 
 func (s *OpenClawBridgeService) ensureSchema() {
@@ -300,20 +307,53 @@ func (s *OpenClawBridgeService) rpcSubmitResult(ctx context.Context, req *RPCReq
 }
 
 func (s *OpenClawBridgeService) rpcThink(ctx context.Context, req *RPCRequest) *RPCResponse {
-	// Placeholder — would route to GSTD inference gateway
-	return &RPCResponse{JSONRPC: "2.0", Result: map[string]string{
-		"status":  "use_gateway",
-		"url":     "https://api.gstdtoken.com/v1/chat/completions",
-		"message": "Use the OpenAI-compatible gateway for inference. Your GSTD balance will be deducted.",
+	var params struct {
+		Prompt string `json:"prompt"`
+	}
+	_ = json.Unmarshal(req.Params, &params)
+	if params.Prompt == "" {
+		return &RPCResponse{JSONRPC: "2.0", Error: &RPCError{Code: -32602, Message: "prompt required"}, ID: req.ID}
+	}
+	if s.inferenceSvc == nil {
+		return &RPCResponse{JSONRPC: "2.0", Error: &RPCError{Code: -32603, Message: "inference service unavailable"}, ID: req.ID}
+	}
+	prompt := params.Prompt
+	if s.knowledgeSvc != nil {
+		if insights, err := s.knowledgeSvc.SummarizeRecentInsights(ctx, 10); err == nil && insights != "" {
+			prompt = "Recent Hive Insights (use for context):\n" + insights + "\n\nUser prompt: " + params.Prompt
+		}
+	}
+	response, err := s.inferenceSvc.Think(ctx, prompt)
+	if err != nil {
+		return &RPCResponse{JSONRPC: "2.0", Error: &RPCError{Code: -32000, Message: err.Error()}, ID: req.ID}
+	}
+	return &RPCResponse{JSONRPC: "2.0", Result: map[string]interface{}{
+		"response": response,
+		"model":    "qwen2.5-coder:7b",
+		"status":   "ok",
 	}, ID: req.ID}
 }
 
 func (s *OpenClawBridgeService) rpcVision(ctx context.Context, req *RPCRequest) *RPCResponse {
-	return &RPCResponse{JSONRPC: "2.0", Result: map[string]string{
-		"status":  "use_gateway",
-		"url":     "https://api.gstdtoken.com/v1/chat/completions",
-		"model":   "llava:7b",
-		"message": "Use multimodal model for vision tasks.",
+	var params struct {
+		Prompt string `json:"prompt"`
+		Image  string `json:"image"` // base64-encoded image
+	}
+	_ = json.Unmarshal(req.Params, &params)
+	if params.Prompt == "" {
+		return &RPCResponse{JSONRPC: "2.0", Error: &RPCError{Code: -32602, Message: "prompt required"}, ID: req.ID}
+	}
+	if s.inferenceSvc == nil {
+		return &RPCResponse{JSONRPC: "2.0", Error: &RPCError{Code: -32603, Message: "inference service unavailable"}, ID: req.ID}
+	}
+	response, err := s.inferenceSvc.Vision(ctx, params.Prompt, params.Image)
+	if err != nil {
+		return &RPCResponse{JSONRPC: "2.0", Error: &RPCError{Code: -32000, Message: err.Error()}, ID: req.ID}
+	}
+	return &RPCResponse{JSONRPC: "2.0", Result: map[string]interface{}{
+		"response": response,
+		"model":    "qwen2.5-coder:7b",
+		"status":   "ok",
 	}, ID: req.ID}
 }
 

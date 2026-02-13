@@ -1,5 +1,4 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { useTranslation } from 'next-i18next';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 
 interface Props {
