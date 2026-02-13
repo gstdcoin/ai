@@ -20,7 +20,7 @@ export default function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden">
       <div className="glass-dark border-t border-white/10">
         <div className="grid grid-cols-5 gap-0.5 sm:gap-1 px-1 sm:px-2 py-2">
           {tabs.map((tab) => (
