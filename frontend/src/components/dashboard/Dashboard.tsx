@@ -291,6 +291,7 @@ function Dashboard() {
                       <ComponentErrorBoundary name="SovereignSwitch">
                         <SovereignSwitch className="w-full" />
                       </ComponentErrorBoundary>
+                      <p className="mt-2 text-[10px] text-gray-500 text-center max-w-md">{t('mode_switch_hint')}</p>
                     </div>
 
                     {/* PRIMARY ACTIONS */}
@@ -298,6 +299,7 @@ function Dashboard() {
                       {/* Worker Control */}
                       <button
                         onClick={handleToggleMining}
+                        title={t('ignite_hint')}
                         className={`group relative p-8 rounded-[2rem] font-black transition-all transform active:scale-95 flex items-center justify-between border-2 overflow-hidden ${isMining
                           ? 'bg-red-500/10 border-red-500/20 text-red-400 shadow-[0_0_40px_rgba(239,68,68,0.1)]'
                           : 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400 hover:border-cyan-400/40 shadow-[0_0_40px_rgba(34,211,238,0.1)]'

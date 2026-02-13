@@ -44,6 +44,11 @@
   "gstd_desc": "GSTD (Guaranteed Service Time Depth) is a utility token for platform operations. Fully compliant with MiCA (EU) and SEC (US) requirements. Backed by XAUt gold through the GSTD/XAUt liquidity pool.",
   "docs_title": "Documentation",
   "docs_subtitle": "Everything you need to integrate with GSTD Platform",
+  "docs_users_title": "For Users — AI Chat",
+  "docs_workers_title": "For Workers — Earn GSTD",
+  "docs_developers_title": "For Developers — API Access",
+  "docs_robots_title": "For Robots — OpenClaw Protocol",
+  "docs_links_title": "Useful Links",
   "connect_wallet": "Connect Wallet",
   "link_copied": "Link copied",
   "error": "Error",
@@ -459,5 +464,7 @@
   "zbg_message": "Your GSTD balance is empty. Switch to Worker mode to earn tokens by contributing compute power.",
   "zbg_deficit": "Deficit",
   "zbg_work": "Tasks needed",
-  "zbg_hint": "Go to Overview tab and tap Ignite to start mining. Your device will earn GSTD in the background."
+  "zbg_hint": "Go to Overview tab and tap Ignite to start mining. Your device will earn GSTD in the background.",
+  "mode_switch_hint": "Role: Master = spend GSTD on AI chat. Worker = earn GSTD by contributing compute.",
+  "ignite_hint": "Start/stop mining. Only applies when in Worker mode."
 }
