@@ -1,0 +1,3 @@
+# GSTD OMNISCIENT AUDIT
+
+See [OMNISCIENT_AUDIT.md](OMNISCIENT_AUDIT.md) for full content.

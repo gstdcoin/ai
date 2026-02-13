@@ -203,6 +203,8 @@ func SetupRoutes(
 			internal.POST("/telegram/notify-audit", telegramNotifyAudit(telegramService))
 			internal.POST("/seed-open-grid-manifesto", seedOpenGridManifestoTask(db.(*sql.DB), tonConfig))
 			internal.POST("/seed-global-resonance", seedGlobalResonanceTask(db.(*sql.DB), tonConfig))
+			internal.POST("/seed-omni-test-task", seedOmniTestTask(db.(*sql.DB), tonConfig))
+			internal.POST("/seed-ultimate-check", seedUltimateCheckTasks(db.(*sql.DB), tonConfig))
 		}
 
 		// Telegram Webhook

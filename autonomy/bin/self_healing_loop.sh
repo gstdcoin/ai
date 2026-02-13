@@ -7,8 +7,8 @@
 TARGET_CONTAINER="ubuntu-backend-blue-1"
 HEALTH_URL="http://localhost:8080/api/v1/health"
 LOG_FILE="/var/log/gstd/sentinel.log"
-TELEGRAM_BOT_TOKEN="8306755226:AAEfG2-BZ1Xo9hPex7-igz_WzHEscJOOk-U"
-ADMIN_ID="5700385228"
+TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-$(grep '^TELEGRAM_BOT_TOKEN=' /home/ubuntu/.env 2>/dev/null | cut -d= -f2-)}"
+ADMIN_ID="${TELEGRAM_CHAT_ID:-$(grep '^TELEGRAM_CHAT_ID=' /home/ubuntu/.env 2>/dev/null | cut -d= -f2-)}"
 
 # Ensure log dir exists
 mkdir -p /var/log/gstd
@@ -19,6 +19,7 @@ log() {
 
 notify() {
     MSG="$1"
+    [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$ADMIN_ID" ] && return 0
     curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
         -d chat_id="${ADMIN_ID}" \
         -d text="${MSG}" \

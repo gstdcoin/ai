@@ -78,11 +78,12 @@ func normalizeTONAddress(address string) string {
 
 // GetJettonBalance получает баланс Jetton токена (GSTD) на адресе
 func (s *TONService) GetJettonBalance(ctx context.Context, address string, jettonAddress string) (float64, error) {
-	// Normalize address format for TON API
+	// Normalize both addresses for TON API (fixes "can't decode address" errors)
 	normalizedAddress := normalizeTONAddress(address)
-	
+	normalizedJetton := NormalizeAddressForAPI(jettonAddress)
+
 	// Cache key
-	cacheKey := fmt.Sprintf("ton:balance:%s:%s", normalizedAddress, jettonAddress)
+	cacheKey := fmt.Sprintf("ton:balance:%s:%s", normalizedAddress, normalizedJetton)
 	
 	// Try cache first (1 minute TTL)
 	if s.cacheService != nil {
@@ -94,9 +95,9 @@ func (s *TONService) GetJettonBalance(ctx context.Context, address string, jetto
 	
 	// Используем TON API v2 для получения баланса конкретного Jetton
 	// Direct endpoint for a single jetton balance
-	url := fmt.Sprintf("%s/v2/accounts/%s/jettons/%s", s.apiURL, normalizedAddress, jettonAddress)
-	
-	log.Printf("GetJettonBalance: Fetching specific balance for address=%s, jetton=%s", normalizedAddress, jettonAddress)
+	url := fmt.Sprintf("%s/v2/accounts/%s/jettons/%s", s.apiURL, normalizedAddress, normalizedJetton)
+
+	log.Printf("GetJettonBalance: Fetching specific balance for address=%s, jetton=%s", normalizedAddress, normalizedJetton)
 	
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {

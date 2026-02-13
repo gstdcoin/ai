@@ -72,6 +72,10 @@ A2A/
 # Wallet data (NEVER commit private keys)
 .gstd/
 
+# TonConnect / TON keys
+ton-connect-manifest.json
+*.tonconnect
+
 # Utility / scratch files (not part of platform)
 find_idle_agents.py
 genesis_ignite.py

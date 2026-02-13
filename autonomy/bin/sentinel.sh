@@ -7,8 +7,8 @@
 URL="http://localhost:80/api/v1/health"
 COMPOSE_FILE="/home/ubuntu/docker-compose.prod.yml"
 LOG_FILE="/home/ubuntu/logs/sentinel.log"
-TELEGRAM_BOT_TOKEN="8306755226:AAEfG2-BZ1Xo9hPex7-igz_WzHEscJOOk-U"
-CHAT_ID="5700385228"
+TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-$(grep '^TELEGRAM_BOT_TOKEN=' /home/ubuntu/.env 2>/dev/null | cut -d= -f2-)}"
+CHAT_ID="${TELEGRAM_CHAT_ID:-$(grep '^TELEGRAM_CHAT_ID=' /home/ubuntu/.env 2>/dev/null | cut -d= -f2-)}"
 
 timestamp() {
     date "+%Y-%m-%d %H:%M:%S"
@@ -20,6 +20,7 @@ log() {
 
 send_telegram() {
     local message="$1"
+    [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$CHAT_ID" ] && return 0
     curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
         -d chat_id="${CHAT_ID}" \
         -d text="${message}" > /dev/null

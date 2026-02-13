@@ -1,5 +1,6 @@
 name: Deploy to Production
 
+# Triggers on push to main — deploys backend-blue, backend-green, and all services
 on:
   push:
     branches: [ main ]
