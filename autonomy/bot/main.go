@@ -18,8 +18,7 @@ import (
 
 // Configuration
 const (
-	DefaultToken = "8306755226:AAEfG2-BZ1Xo9hPex7-igz_WzHEscJOOk-U"
-	BackendURL   = "http://ubuntu-backend-blue-1:8080"
+	BackendURL = "http://ubuntu-backend-blue-1:8080"
 )
 
 var (
@@ -35,10 +34,9 @@ var (
 )
 
 func main() {
-	// Get token from environment or use default
 	token := os.Getenv("TELEGRAM_BOT_TOKEN")
 	if token == "" {
-		token = DefaultToken
+		log.Fatal("TELEGRAM_BOT_TOKEN is required (set in .env or environment)")
 	}
     
     // Load Admin ID
