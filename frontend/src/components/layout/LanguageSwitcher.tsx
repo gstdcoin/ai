@@ -19,7 +19,7 @@ export default function LanguageSwitcher() {
     setIsOpen(false);
   };
 
-  const currentLocale = router.locale || 'ru';
+  const currentLocale = router.locale || 'en';
 
   // Close menu when clicking outside
   useEffect(() => {

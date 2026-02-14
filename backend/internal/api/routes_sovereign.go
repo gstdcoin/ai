@@ -68,6 +68,16 @@ func SetupSovereignRoutes(
 			c.JSON(200, stats)
 		})
 
+		// Active fine-tuning target: nodes submit LoRA for this model; 10+ → Brain Update
+		v1.GET("/federated/active-model", func(c *gin.Context) {
+			model, err := federated.GetActiveModelTarget(c.Request.Context())
+			if err != nil {
+				c.JSON(500, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(200, gin.H{"model_name": model, "message": "Submit LoRA updates via POST /federated/submit. 10+ contributions trigger Brain Update."})
+		})
+
 		protected.POST("/federated/submit", func(c *gin.Context) {
 			var update services.LoRAUpdate
 			if err := c.ShouldBindJSON(&update); err != nil {

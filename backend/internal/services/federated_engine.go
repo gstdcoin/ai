@@ -92,7 +92,32 @@ func NewFederatedEngineService(db *sql.DB, redis *redis.Client) *FederatedEngine
 		pendingUpdates: make(map[string][]LoRAUpdate),
 	}
 	svc.ensureSchema()
+	svc.seedFirstModelTarget()
 	return svc
+}
+
+// seedFirstModelTarget ensures the first fine-tuning target exists
+func (s *FederatedEngineService) seedFirstModelTarget() {
+	if s.db == nil {
+		return
+	}
+	_, _ = s.db.Exec(`
+		INSERT INTO federated_model_targets (model_name, status, description)
+		VALUES ('gstd-inference-v1', 'active', 'Primary inference model. Submit LoRA via /federated/submit. 10+ nodes → Brain Update.')
+		ON CONFLICT (model_name) DO NOTHING
+	`)
+}
+
+// GetActiveModelTarget returns the current model for federated fine-tuning
+func (s *FederatedEngineService) GetActiveModelTarget(ctx context.Context) (string, error) {
+	var model string
+	err := s.db.QueryRowContext(ctx, `
+		SELECT model_name FROM federated_model_targets WHERE status = 'active' ORDER BY created_at DESC LIMIT 1
+	`).Scan(&model)
+	if err != nil {
+		return "gstd-inference-v1", nil
+	}
+	return model, nil
 }
 
 func (s *FederatedEngineService) ensureSchema() {
@@ -100,6 +125,13 @@ func (s *FederatedEngineService) ensureSchema() {
 		return
 	}
 	s.db.Exec(`
+		CREATE TABLE IF NOT EXISTS federated_model_targets (
+			id SERIAL PRIMARY KEY,
+			model_name VARCHAR(64) NOT NULL UNIQUE,
+			status VARCHAR(16) NOT NULL DEFAULT 'active',
+			description TEXT,
+			created_at TIMESTAMP NOT NULL DEFAULT NOW()
+		);
 		CREATE TABLE IF NOT EXISTS federated_updates (
 			id BIGSERIAL PRIMARY KEY,
 			update_id VARCHAR(64) UNIQUE,

@@ -113,6 +113,7 @@ func BuildContainer() *dig.Container {
 		return services.NewGoldBroadcastRunner(goldHash, hub)
 	})
 	c.Provide(services.NewHardwareGrantsService)
+	c.Provide(services.NewOmniPerformanceService)
 	c.Provide(func(db *sql.DB, telegram *services.TelegramService) *services.AnomalyDetectionService {
 		return services.NewAnomalyDetectionService(db, telegram)
 	})
@@ -133,6 +134,9 @@ func BuildContainer() *dig.Container {
 
 	c.Provide(func(cfg *config.Config, db *sql.DB) *services.TelegramService {
 		return services.NewTelegramService(cfg.Telegram.BotToken, cfg.Telegram.ChatID, db)
+	})
+	c.Provide(func(db *sql.DB, stonFi *services.StonFiService) *services.StarsBuybackService {
+		return services.NewStarsBuybackService(db, stonFi)
 	})
 
 	c.Provide(func(db *sql.DB, redis *redis.Client) *services.AssignmentService {
@@ -235,6 +239,8 @@ func StartApplication(container *dig.Container) error {
 		zkComputeProof *services.ZKComputeProofService,
 		fleetCommandService *services.FleetCommandService,
 		evolutionEngine *services.EvolutionEngine,
+		omniPerformance *services.OmniPerformanceService,
+		starsBuyback *services.StarsBuybackService,
 	) {
 		// 1. Cross-dependency wiring
 		tonService.SetCacheService(cacheService)
@@ -253,6 +259,7 @@ func StartApplication(container *dig.Container) error {
 		resultService.SetZKProofService(zkComputeProof)
 		taskPaymentService.SetTaskService(taskService)
 		taskPaymentService.SetTelegramService(telegramService)
+		telegramService.SetStarsBuyback(starsBuyback)
 		stonFiService.SetPoolMonitor(poolMonitor)
 		poolMonitor.SetStonFi(stonFiService)
 		lendingService.SetPoolMonitor(poolMonitor)
@@ -346,6 +353,7 @@ func StartApplication(container *dig.Container) error {
 			geoService,
 			agentModelService,
 			fleetCommandService,
+			omniPerformance,
 		)
 
 		// 4b. Modular routes (registered separately for clean architecture)

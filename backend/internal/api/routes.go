@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -65,6 +66,7 @@ func SetupRoutes(
 	geoService *services.GeoService,
 	agentModelService *services.AgentModelService,
 	fleetCommandService *services.FleetCommandService,
+	omniPerformance *services.OmniPerformanceService,
 ) {
 	log.Printf("🔧 SetupRoutes: Starting route setup, redisClient type: %T", redisClient)
 	
@@ -75,6 +77,12 @@ func SetupRoutes(
 	gatewayHandler := NewGatewayHandler(apiKeyService, taskService, db.(*sql.DB))
 	if guardrailsService != nil {
 		gatewayHandler.SetGuardrails(guardrailsService)
+	}
+	if omniPerformance != nil {
+		gatewayHandler.SetOmniPerformance(omniPerformance)
+	}
+	if knowledgeService != nil {
+		gatewayHandler.SetKnowledgeService(knowledgeService)
 	}
 
 	// Initialize Genesis System (Self-Generating APIs)
@@ -330,6 +338,7 @@ func SetupRoutes(
 			admin.POST("/sync-gstd-balances", syncGSTDBalances(db.(*sql.DB), tonService, tonConfig))
 			admin.POST("/seed-global-resonance", seedGlobalResonanceTask(db.(*sql.DB), tonConfig))
 			admin.POST("/seed-open-grid-manifesto", seedOpenGridManifestoTask(db.(*sql.DB), tonConfig))
+			admin.POST("/hardware-grants/allocate", allocateHardwareGrants(db.(*sql.DB)))
 		}
 
 		// Admin commission endpoints (require session + admin wallet authorization)
@@ -345,12 +354,14 @@ func SetupRoutes(
 		protected.GET("/wallet/gstd-balance", getGSTDBalance(tonService, tonConfig))
 		protected.GET("/wallet/efficiency", getEfficiency(tonService, tonConfig))
 		protected.GET("/wallet/jetton-address", getJettonAddress(tonService, tonConfig))
+
+		// TON Wallet Gateway: Direct GSTD purchase via Ston.fi (Ascension)
+		v1.GET("/wallet/buy-gstd", getBuyGSTDLink(tonService, tonConfig))
 		
 		// Payments (protected)
 		protected.POST("/payments/payout-intent", createPayoutIntent(paymentService))
 
-		// Nodes (protected)
-		geoService := services.NewGeoService(rClient)
+		// Nodes (protected) — use geoService from DI container
 		SetupNodeRoutes(protected, nodeService, geoService, telegramService, multiLevelReferralService, fleetCommandService)
 
 		// Task Payment (protected)
@@ -425,7 +436,21 @@ func SetupRoutes(
 		onboardingHandler.RegisterRoutes(v1)
 
 		// Global Gateway (OpenAI Compatible) - Sovereign AI Inference
-		v1.POST("/chat/completions", gatewayHandler.HandleChatCompletions)
+		// Chat uses OptionalSession so wallet is set when user is logged in (for Ultra gate)
+		var chatGroup *gin.RouterGroup
+		if redisClient != nil {
+			if rc, ok := redisClient.(*redis.Client); ok && rc != nil {
+				chatGroup = v1.Group("/chat")
+				chatGroup.Use(OptionalSession(rc))
+				chatGroup.POST("/completions", gatewayHandler.HandleChatCompletions)
+			}
+		}
+		if chatGroup == nil {
+			v1.POST("/chat/completions", gatewayHandler.HandleChatCompletions)
+			v1.GET("/chat/ultra-status", gatewayHandler.GetUltraStatus)
+		} else {
+			chatGroup.GET("/ultra-status", gatewayHandler.GetUltraStatus)
+		}
 		v1.GET("/models", gatewayHandler.ListModels)
 		// For Cursor/Other tools that expect /v1/chat/completions directly at root or /v1
 		router.POST("/v1/chat/completions", gatewayHandler.HandleChatCompletions)
@@ -846,6 +871,30 @@ func getGSTDBalance(tonService *services.TONService, tonConfig config.TONConfig)
 			"balance":  balance,
 			"has_gstd": hasGSTD,
 		})
+	}
+}
+
+// getBuyGSTDLink returns Ston.fi swap URL for direct TON→GSTD purchase (Ascension: TON Wallet Gateway)
+func getBuyGSTDLink(tonService *services.TONService, tonConfig config.TONConfig) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		amountTON := c.DefaultQuery("amount_ton", "1")
+		wallet := c.Query("wallet_address")
+		appURL := os.Getenv("APP_PUBLIC_URL")
+		if appURL == "" {
+			appURL = "https://app.gstdtoken.com"
+		}
+		// Ston.fi swap: TON → GSTD. ta = amount in TON
+		stonFiURL := fmt.Sprintf("https://app.ston.fi/swap?ft=TON&tt=GSTD&ta=%s", amountTON)
+		resp := gin.H{
+			"buy_url":      stonFiURL,
+			"amount_ton":   amountTON,
+			"app_url":      appURL + "/dashboard?tab=market&action=buy",
+			"instruction":  "Open buy_url in TON wallet or browser to swap TON for GSTD",
+		}
+		if wallet != "" {
+			resp["wallet_address"] = wallet
+		}
+		c.JSON(200, resp)
 	}
 }
 

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'next-i18next';
-import { Send, Bot, User, Loader2, Sparkles, Copy, Check, RotateCcw, Zap, Shield } from 'lucide-react';
+import { Send, Bot, User, Loader2, Sparkles, Copy, Check, RotateCcw, Zap, Shield, Crown } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useWalletStore } from '../../store/walletStore';
 import { API_BASE_URL } from '../../lib/config';
@@ -21,15 +21,18 @@ interface Message {
 
 interface ChatPanelProps {
   compact?: boolean; // When true, fills parent (e.g. Agent Node layout)
+  initialMode?: 'standard' | 'ultra'; // From bot: mode=ultra opens with Ultra selected
 }
 
-export default function ChatPanel({ compact }: ChatPanelProps = {}) {
+export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {}) {
   const { t } = useTranslation('common');
   const { gstdBalance } = useWalletStore();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedModel, setSelectedModel] = useState('qwen2.5-coder:7b');
+  const [selectedModel, setSelectedModel] = useState(
+    initialMode === 'ultra' ? 'llama3.3:70b' : 'qwen2.5-coder:7b'
+  );
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [speculativeEnabled, setSpeculativeEnabled] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -37,11 +40,32 @@ export default function ChatPanel({ compact }: ChatPanelProps = {}) {
   const abortRef = useRef<AbortController | null>(null);
 
   const models = [
-    { id: 'qwen2.5-coder:7b', name: t('chat_model_fast') || 'Fast', tier: 'Tier 1', desc: t('chat_model_fast_desc') || 'Quick responses', cost: 0.01 },
-    { id: 'llama3.1:8b', name: t('chat_model_creative') || 'Creative', tier: 'Tier 1', desc: t('chat_model_general') || 'General purpose', cost: 0.01 },
-    { id: 'qwen2.5-coder:32b', name: t('chat_model_professional') || 'Professional', tier: 'Tier 2', desc: t('chat_model_advanced') || 'Advanced reasoning', cost: 0.05 },
-    { id: 'llama3.3:70b', name: t('chat_model_ultra') || 'Ultra', tier: 'Tier 3', desc: t('chat_model_powerful') || 'Most powerful', cost: 0.1 },
+    { id: 'qwen2.5-coder:7b', name: t('chat_model_fast') || 'Fast', tier: 'Tier 1', desc: t('chat_model_fast_desc') || 'Quick responses', cost: 0.01, ultra: false },
+    { id: 'llama3.1:8b', name: t('chat_model_creative') || 'Creative', tier: 'Tier 1', desc: t('chat_model_general') || 'General purpose', cost: 0.01, ultra: false },
+    { id: 'qwen2.5-coder:32b', name: t('chat_model_professional') || 'Professional', tier: 'Tier 2', desc: t('chat_model_advanced') || 'Advanced reasoning', cost: 0.05, ultra: true },
+    { id: 'llama3.3:70b', name: t('chat_model_ultra') || 'Ultra', tier: 'Tier 3', desc: t('chat_model_powerful') || 'Most powerful', cost: 0.1, ultra: true },
   ];
+
+  const isUltraModel = (modelId: string) => models.find(m => m.id === modelId)?.ultra ?? (modelId.includes('70b') || modelId.includes('deepseek-r1'));
+
+  const [ultraStatus, setUltraStatus] = useState<{
+    mode: string;
+    ultra_available: boolean;
+    staked_gstd: number;
+    balance_gstd: number;
+    session_cost: number;
+    message: string;
+  } | null>(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem('session_token');
+    fetch(`${API_BASE_URL}/api/v1/chat/ultra-status`, {
+      headers: token ? { 'X-Session-Token': token } : {},
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => data && setUltraStatus(data))
+      .catch(() => {});
+  }, [gstdBalance]);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -118,22 +142,36 @@ export default function ChatPanel({ compact }: ChatPanelProps = {}) {
       });
 
       if (res.status === 402) {
-        // Zero-Balance-Gate: insufficient balance
         const gate = await res.json().catch(() => ({}));
-        const deficit = gate.deficit || 0;
-        const workRequired = gate.work_required || 1;
+        const isUltraGate = gate.requires_ultra === true || gate.error === 'ultra_gate_required';
 
-        setMessages(prev => prev.map(m =>
-          m.id === assistantId ? {
-            ...m,
-            isStreaming: false,
-            content: `**${t('zbg_title') || 'Insufficient Balance'}**\n\n` +
-              `${t('zbg_message') || 'Your GSTD balance is empty. Switch to **Worker mode** to earn tokens by contributing compute power.'}\n\n` +
-              `- ${t('zbg_deficit') || 'Deficit'}: **${deficit.toFixed(4)} GSTD**\n` +
-              `- ${t('zbg_work') || 'Tasks needed'}: **~${workRequired}** (~${workRequired * 15}s)\n\n` +
-              `*${t('zbg_hint') || 'Go to Overview tab and tap "Ignite" to start mining. Your device will earn GSTD in the background.'}*`,
-          } : m
-        ));
+        if (isUltraGate) {
+          setMessages(prev => prev.map(m =>
+            m.id === assistantId ? {
+              ...m,
+              isStreaming: false,
+              content: `**${t('ultra_gate_title') || 'Ultra Access Required'}**\n\n` +
+                `${t('ultra_gate_message') || 'Ultra models require 100 GSTD staked or 1 GSTD per session.'}\n\n` +
+                `- ${t('zbg_deficit') || 'Deficit'}: **${(gate.deficit ?? 1).toFixed(2)} GSTD**\n` +
+                `- Staked: **${(gate.staked_gstd ?? 0).toFixed(2)} GSTD** • Balance: **${(gate.balance_gstd ?? 0).toFixed(2)} GSTD**\n\n` +
+                `*Connect wallet, stake 100 GSTD, or add 1 GSTD for one Ultra session.*`,
+            } : m
+          ));
+        } else {
+          const deficit = gate.deficit || 0;
+          const workRequired = gate.work_required || 1;
+          setMessages(prev => prev.map(m =>
+            m.id === assistantId ? {
+              ...m,
+              isStreaming: false,
+              content: `**${t('zbg_title') || 'Insufficient Balance'}**\n\n` +
+                `${t('zbg_message') || 'Your GSTD balance is empty. Switch to **Worker mode** to earn tokens by contributing compute power.'}\n\n` +
+                `- ${t('zbg_deficit') || 'Deficit'}: **${deficit.toFixed(4)} GSTD**\n` +
+                `- ${t('zbg_work') || 'Tasks needed'}: **~${workRequired}** (~${workRequired * 15}s)\n\n` +
+                `*${t('zbg_hint') || 'Go to Overview tab and tap "Ignite" to start mining. Your device will earn GSTD in the background.'}*`,
+            } : m
+          ));
+        }
         setIsLoading(false);
         return;
       }
@@ -249,17 +287,27 @@ export default function ChatPanel({ compact }: ChatPanelProps = {}) {
     <div className={`flex flex-col max-w-4xl mx-auto ${compact ? 'h-full min-h-0' : 'h-[calc(100vh-140px)]'}`}>
       {/* Top Bar: Model + Settings */}
       <div className="flex items-center gap-3 mb-4 px-2 flex-wrap">
-        <select
-          value={selectedModel}
-          onChange={(e) => setSelectedModel(e.target.value)}
-          className="bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white font-medium focus:outline-none focus:border-violet-500/50 appearance-none cursor-pointer"
-        >
-          {models.map(m => (
-            <option key={m.id} value={m.id} className="bg-[#0a0a1a] text-white">
-              {m.name} ({m.tier}) — {m.cost} GSTD
-            </option>
-          ))}
-        </select>
+        <div className="flex items-center gap-2">
+          <select
+            value={selectedModel}
+            onChange={(e) => setSelectedModel(e.target.value)}
+            className="bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white font-medium focus:outline-none focus:border-violet-500/50 appearance-none cursor-pointer"
+          >
+            {models.map(m => (
+              <option key={m.id} value={m.id} className="bg-[#0a0a1a] text-white">
+                {m.name} ({m.tier}) — {m.cost} GSTD
+              </option>
+            ))}
+          </select>
+          <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${
+            isUltraModel(selectedModel)
+              ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+              : 'bg-white/5 border-white/10 text-gray-400'
+          }`}>
+            {isUltraModel(selectedModel) ? <Crown size={12} /> : null}
+            {isUltraModel(selectedModel) ? (t('chat_mode_ultra') || 'Ultra') : (t('chat_mode_standard') || 'Standard')}
+          </span>
+        </div>
 
         {/* Speculative Decoding Toggle */}
         <button
@@ -285,6 +333,22 @@ export default function ChatPanel({ compact }: ChatPanelProps = {}) {
           </button>
         )}
       </div>
+
+      {/* Ultra Upgrade Prompt: User selected Ultra but lacks access */}
+      {isUltraModel(selectedModel) && ultraStatus && !ultraStatus.ultra_available && (
+        <div className="mx-2 mb-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-3">
+          <Crown size={16} className="text-amber-400 mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="text-xs text-amber-300 font-bold mb-1">{t('chat_ultra_upgrade_prompt') || 'Upgrade to Ultra for expert responses'}</p>
+            <p className="text-[10px] text-gray-400 leading-relaxed">
+              {t('chat_ultra_upgrade_desc') || 'Ultra models (70B, DeepSeek-R1) require 100 GSTD staked or 1 GSTD per session.'}
+            </p>
+            <p className="text-[10px] text-amber-400/80 mt-1">
+              {ultraStatus.message}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Speculative Decoding Info Banner */}
       {speculativeEnabled && messages.length === 0 && (

@@ -1,6 +1,8 @@
 # GSTD Platform — Аудит работоспособности
 
-**Дата:** 2026-02-14
+**Дата:** 2026-02-11 (обновлено)
+
+> Полная инвентаризация: [PLATFORM_INVENTORY.md](PLATFORM_INVENTORY.md)
 
 ## 1. API Endpoints — что работает
 

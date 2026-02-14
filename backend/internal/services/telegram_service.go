@@ -18,12 +18,13 @@ import (
 // for admin notifications. If BOT_TOKEN or CHAT_ID are not configured,
 // it degrades gracefully to no‑op logging.
 type TelegramService struct {
-	botToken   string
-	chatID     string
-	db         *sql.DB
-	client     *http.Client
-	enabled    bool
-	apiBaseURL string
+	botToken    string
+	chatID      string
+	db          *sql.DB
+	client      *http.Client
+	enabled     bool
+	apiBaseURL  string
+	starsBuyback *StarsBuybackService
 }
 
 // NewTelegramService initializes the Telegram service.
@@ -128,6 +129,11 @@ func (s *TelegramService) IsEnabled() bool {
 	return s.enabled
 }
 
+// SetStarsBuyback wires the Stars-to-GSTD buyback service for Telegram Stars payments.
+func (s *TelegramService) SetStarsBuyback(sb *StarsBuybackService) {
+	s.starsBuyback = sb
+}
+
 // Telegram Update structure for webhook parsing
 type telegramUpdate struct {
 	UpdateID int64 `json:"update_id"`
@@ -143,7 +149,14 @@ type telegramUpdate struct {
 			ID   int64  `json:"id"`
 			Type string `json:"type"`
 		} `json:"chat"`
-		Text string `json:"text"`
+		Text             string `json:"text"`
+		SuccessfulPayment *struct {
+			Currency                string `json:"currency"`
+			TotalAmount             int    `json:"total_amount"`
+			TelegramPaymentChargeID string `json:"telegram_payment_charge_id"`
+			ProviderPaymentChargeID string `json:"provider_payment_charge_id"`
+			InvoicePayload          string `json:"invoice_payload"`
+		} `json:"successful_payment"`
 	} `json:"message"`
 	CallbackQuery *struct {
 		ID   string `json:"id"`
@@ -169,57 +182,49 @@ func botLang(langCode string) string {
 	return "en"
 }
 
-// Bot messages EN/RU — Personal AI Assistant + Miner + Mini-node
+// Bot messages EN/RU — Ascension: Sovereign AI, confident tone
 var msgStart = map[string]string{
-	"en": `👋 <b>GSTD — Personal AI + Miner + Mini-node</b>
+	"en": `👑 <b>GSTD — Sovereign Intelligence</b>
 
-Your assistant in Telegram:
-• <b>🤖 AI</b> — chat with sovereign LLMs
-• <b>⛏ Miner</b> — earn GSTD on your phone
-• <b>📡 Node</b> — participate in the network
+Your sovereign AI assistant.
+• <b>🤖 AI Standard</b> — fast responses, free tier
+• <b>⚡ AI Ultra</b> — 70B models, Hive Memory. 1 GSTD/session
+• <b>⛏ Miner</b> — earn GSTD by contributing compute
+• <b>📡 Node</b> — join the swarm
 
-Connect wallet once — everything in one place.
+<b>GSTD is the only fuel.</b> Buy via TON wallet → Ston.fi.
 
 <b>Commands:</b>
-/start — this message
-/help — help
-/status — status (admin only)
-/balance — balance (admin only)
-/admin — control panel (admin only)`,
-	"ru": `👋 <b>GSTD — Персональный AI + Майнер + Мини-нода</b>
+/start • /help • /network — Network Load
+/status • /balance • /admin — (admin)`,
+	"ru": `👑 <b>GSTD — Суверенный интеллект</b>
 
-Ваш ассистент в Telegram:
-• <b>🤖 AI</b> — чат с sovereign LLM
-• <b>⛏ Майнер</b> — зарабатывайте GSTD на телефоне
-• <b>📡 Нода</b> — участвуйте в сети
+Ваш суверенный AI-ассистент.
+• <b>🤖 AI Standard</b> — быстрые ответы, бесплатный уровень
+• <b>⚡ AI Ultra</b> — модели 70B, Hive Memory. 1 GSTD/сессия
+• <b>⛏ Майнер</b> — зарабатывайте GSTD, отдавая мощность
+• <b>📡 Нода</b> — присоединяйтесь к рою
 
-Подключите кошелёк один раз — всё в одном месте.
+<b>GSTD — единственное топливо.</b> Покупка через TON кошелёк → Ston.fi.
 
 <b>Команды:</b>
-/start — это сообщение
-/help — справка
-/status — статус (только админ)
-/balance — баланс (только админ)
-/admin — панель управления (только админ)`,
+/start • /help • /network — загрузка сети
+/status • /balance • /admin — (админ)`,
 }
 
 var msgHelp = map[string]string{
-	"en": `📖 <b>Personal AI + Miner + Mini-node</b>
+	"en": `📖 <b>GSTD — Sovereign Intelligence</b>
 
-Choose what to open:
-• <b>AI Chat</b> — ask anything, sovereign LLMs
-• <b>Mining</b> — earn GSTD, share compute
-• <b>Agent Node</b> — AI + skills + miner in one
+<b>AI Standard</b> — Quick answers. No censorship.
+<b>AI Ultra</b> — Maximum intelligence, deep analysis, Hive Memory. 1 GSTD.
 
-Connect wallet (TonConnect) — everything works in Telegram.`,
-	"ru": `📖 <b>Персональный AI + Майнер + Мини-нода</b>
+<b>Top up GSTD</b> — Buy via TON wallet on Ston.fi. One tap.`,
+	"ru": `📖 <b>GSTD — Суверенный интеллект</b>
 
-Выберите, что открыть:
-• <b>AI Чат</b> — спросите что угодно, sovereign LLM
-• <b>Майнинг</b> — зарабатывайте GSTD, делитесь мощностью
-• <b>Agent Node</b> — AI + навыки + майнер в одном
+<b>AI Standard</b> — Быстрые ответы. Без цензуры.
+<b>AI Ultra</b> — Максимальный интеллект, глубокий анализ, Hive Memory. 1 GSTD.
 
-Подключите кошелёк (TonConnect) — всё работает в Telegram.`,
+<b>Пополнить GSTD</b> — Покупка через TON кошелёк на Ston.fi. Один тап.`,
 }
 
 var msgAdminOnly = map[string]string{
@@ -254,6 +259,21 @@ var btnMining = map[string]string{
 var btnAgentNode = map[string]string{
 	"en": "📡 Agent Node",
 	"ru": "📡 Agent Node",
+}
+
+var btnBuyGSTD = map[string]string{
+	"en": "💰 Top up GSTD",
+	"ru": "💰 Пополнить GSTD",
+}
+
+var btnAIStandard = map[string]string{
+	"en": "🤖 AI Standard",
+	"ru": "🤖 AI Standard",
+}
+
+var btnAIUltra = map[string]string{
+	"en": "⚡ AI Ultra (1 GSTD)",
+	"ru": "⚡ AI Ultra (1 GSTD)",
 }
 
 var msgProcessing = map[string]string{
@@ -320,6 +340,14 @@ func (s *TelegramService) ProcessWebhook(ctx context.Context, body []byte) error
 	if upd.Message == nil {
 		return nil
 	}
+
+	// Stars-to-GSTD Buyback: 20% of Telegram Stars -> Ston.fi -> Gold Reserve or burn
+	if upd.Message.SuccessfulPayment != nil && s.starsBuyback != nil {
+		sp := upd.Message.SuccessfulPayment
+		if sp.Currency == "XTR" && sp.TotalAmount > 0 {
+			_ = s.starsBuyback.RecordStarsPayment(ctx, sp.TelegramPaymentChargeID, sp.TotalAmount)
+		}
+	}
 	chatID := strconv.FormatInt(upd.Message.Chat.ID, 10)
 	text := strings.TrimSpace(upd.Message.Text)
 	senderID := upd.Message.From
@@ -335,15 +363,19 @@ func (s *TelegramService) ProcessWebhook(ctx context.Context, body []byte) error
 		webAppURL = "https://app.gstdtoken.com"
 	}
 
-	// /start — public welcome with 3 Web App buttons: AI Chat | Mining | Agent Node
+	// /start — Ascension: AI Standard | AI Ultra | Miner | Node | Top up GSTD
 	if text == "/start" {
 		msg := msgStart[lang]
 		if msg == "" {
 			msg = msgStart["en"]
 		}
-		aiBtn := btnAIChat[lang]
-		if aiBtn == "" {
-			aiBtn = btnAIChat["en"]
+		stdBtn := btnAIStandard[lang]
+		if stdBtn == "" {
+			stdBtn = btnAIStandard["en"]
+		}
+		ultraBtn := btnAIUltra[lang]
+		if ultraBtn == "" {
+			ultraBtn = btnAIUltra["en"]
 		}
 		miningBtn := btnMining[lang]
 		if miningBtn == "" {
@@ -353,43 +385,113 @@ func (s *TelegramService) ProcessWebhook(ctx context.Context, body []byte) error
 		if nodeBtn == "" {
 			nodeBtn = btnAgentNode["en"]
 		}
-		// AI Chat → dashboard (chat tab), Mining → dashboard?tab=home, Agent Node → /agent
-		dashboardURL := webAppURL + "/dashboard"
+		buyBtn := btnBuyGSTD[lang]
+		if buyBtn == "" {
+			buyBtn = btnBuyGSTD["en"]
+		}
+		stdURL := webAppURL + "/dashboard?tab=chat&mode=standard"
+		ultraURL := webAppURL + "/dashboard?tab=chat&mode=ultra"
 		miningURL := webAppURL + "/dashboard?tab=home"
 		agentURL := webAppURL + "/agent"
+		stonFiURL := "https://app.ston.fi/swap?ft=TON&tt=GSTD"
 		markup := fmt.Sprintf(`{"inline_keyboard":[
 			[{"text":"%s","web_app":{"url":"%s"}},{"text":"%s","web_app":{"url":"%s"}}],
-			[{"text":"%s","web_app":{"url":"%s"}}]
-		]}`, aiBtn, dashboardURL, miningBtn, miningURL, nodeBtn, agentURL)
+			[{"text":"%s","web_app":{"url":"%s"}},{"text":"%s","web_app":{"url":"%s"}}],
+			[{"text":"%s","url":"%s"}]
+		]}`, stdBtn, stdURL, ultraBtn, ultraURL, miningBtn, miningURL, nodeBtn, agentURL, buyBtn, stonFiURL)
 		return s.SendMessageToChatWithMarkup(ctx, chatID, msg, markup)
 	}
 
-	// /help — same 3 buttons
+	// /help — same Ascension buttons
 	if text == "/help" {
 		msg := msgHelp[lang]
 		if msg == "" {
 			msg = msgHelp["en"]
 		}
-		aiBtn := btnAIChat[lang]
-		if aiBtn == "" {
-			aiBtn = btnAIChat["en"]
+		stdBtn := btnAIStandard[lang]
+		if stdBtn == "" {
+			stdBtn = btnAIStandard["en"]
 		}
-		miningBtn := btnMining[lang]
-		if miningBtn == "" {
-			miningBtn = btnMining["en"]
+		ultraBtn := btnAIUltra[lang]
+		if ultraBtn == "" {
+			ultraBtn = btnAIUltra["en"]
 		}
-		nodeBtn := btnAgentNode[lang]
-		if nodeBtn == "" {
-			nodeBtn = btnAgentNode["en"]
+		buyBtn := btnBuyGSTD[lang]
+		if buyBtn == "" {
+			buyBtn = btnBuyGSTD["en"]
 		}
-		dashboardURL := webAppURL + "/dashboard"
-		miningURL := webAppURL + "/dashboard?tab=home"
-		agentURL := webAppURL + "/agent"
+		stdURL := webAppURL + "/dashboard?tab=chat&mode=standard"
+		ultraURL := webAppURL + "/dashboard?tab=chat&mode=ultra"
+		stonFiURL := "https://app.ston.fi/swap?ft=TON&tt=GSTD"
 		markup := fmt.Sprintf(`{"inline_keyboard":[
 			[{"text":"%s","web_app":{"url":"%s"}},{"text":"%s","web_app":{"url":"%s"}}],
-			[{"text":"%s","web_app":{"url":"%s"}}]
-		]}`, aiBtn, dashboardURL, miningBtn, miningURL, nodeBtn, agentURL)
+			[{"text":"%s","url":"%s"}]
+		]}`, stdBtn, stdURL, ultraBtn, ultraURL, buyBtn, stonFiURL)
 		return s.SendMessageToChatWithMarkup(ctx, chatID, msg, markup)
+	}
+
+	// /network — Network Load from stats/public (Ascension: show swarm power)
+	if text == "/network" {
+		stats, err := s.fetchPublicStats(ctx)
+		if err != nil {
+			_ = s.SendMessageToChat(ctx, chatID, msgError[lang]+err.Error())
+			return nil
+		}
+		processing, _ := stats["processing_tasks"].(float64)
+		queued, _ := stats["queued_tasks"].(float64)
+		completed, _ := stats["completed_tasks"].(float64)
+		devices, _ := stats["active_devices_count"].(float64)
+		tflops, _ := stats["total_tflops"].(float64)
+		loadPct := 0.0
+		if devices > 0 {
+			loadPct = (processing + queued*0.5) / devices * 10
+			if loadPct > 100 {
+				loadPct = 100
+			}
+		}
+		loadBar := "░░░░░░░░░░"
+		if loadPct > 10 {
+			loadBar = "█░░░░░░░░░"
+		}
+		if loadPct > 30 {
+			loadBar = "███░░░░░░░"
+		}
+		if loadPct > 50 {
+			loadBar = "█████░░░░░"
+		}
+		if loadPct > 70 {
+			loadBar = "███████░░░"
+		}
+		if loadPct > 90 {
+			loadBar = "██████████"
+		}
+		msgEn := fmt.Sprintf(`📊 <b>Network Load</b>
+
+%s <b>%.0f%%</b>
+
+<b>Processing:</b> %.0f
+<b>Queued:</b> %.0f
+<b>Completed:</b> %.0f
+<b>Active nodes:</b> %.0f
+<b>Compute:</b> %.1f TFLOPS
+
+<i>GSTD swarm — real-time power</i>`, loadBar, loadPct, processing, queued, completed, devices, tflops)
+		msgRu := fmt.Sprintf(`📊 <b>Загрузка сети</b>
+
+%s <b>%.0f%%</b>
+
+<b>В работе:</b> %.0f
+<b>В очереди:</b> %.0f
+<b>Выполнено:</b> %.0f
+<b>Активных нод:</b> %.0f
+<b>Мощность:</b> %.1f TFLOPS
+
+<i>Рой GSTD — мощность в реальном времени</i>`, loadBar, loadPct, processing, queued, completed, devices, tflops)
+		netMsg := msgEn
+		if lang == "ru" {
+			netMsg = msgRu
+		}
+		return s.SendMessageToChat(ctx, chatID, netMsg)
 	}
 
 	// /status и /balance — только для админа
@@ -604,10 +706,16 @@ func (s *TelegramService) handleCallbackQuery(ctx context.Context, upd *telegram
 		if usersLabel == "" {
 			usersLabel = msgUsers["en"]
 		}
+		webAppURL := os.Getenv("APP_PUBLIC_URL")
+		if webAppURL == "" {
+			webAppURL = "https://app.gstdtoken.com"
+		}
 		msg := fmt.Sprintf(`%s
 
 <b>Contract:</b> %s
-<b>%s:</b> %d`, title, contractTON, usersLabel, totalUsers)
+<b>%s:</b> %d
+
+📱 <a href="%s">Dashboard</a>`, title, contractTON, usersLabel, totalUsers, webAppURL)
 		return s.SendMessageToChat(ctx, chatID, msg)
 
 	case "admin_pending":
@@ -671,6 +779,23 @@ func (s *TelegramService) handleCallbackQuery(ctx context.Context, upd *telegram
 
 func (s *TelegramService) fetchHealth(ctx context.Context) (map[string]interface{}, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", s.apiBaseURL+"/api/v1/health", nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	var out map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (s *TelegramService) fetchPublicStats(ctx context.Context) (map[string]interface{}, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", s.apiBaseURL+"/api/v1/stats/public", nil)
 	if err != nil {
 		return nil, err
 	}

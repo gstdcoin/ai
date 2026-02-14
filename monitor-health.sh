@@ -61,50 +61,71 @@ restart_service() {
     sleep 10
 }
 
-# Main health check
+# Main health check — ORDER MATTERS: postgres/redis first (backend depends on them)
 ISSUES_FOUND=0
+BACKEND_RESTARTED=0
 
-# Check nginx
+# 1. Check postgres FIRST — backend cannot start without it
+if ! check_service "postgres" "gstd_postgres_prod"; then
+    log "❌ PostgreSQL is down!"
+    cd /home/ubuntu
+    docker compose -f $COMPOSE_FILE up -d postgres
+    sleep 15
+    ISSUES_FOUND=1
+fi
+
+# 2. Check redis — backend cannot start without it
+if ! check_service "redis" "gstd_redis_prod"; then
+    log "❌ Redis is down!"
+    cd /home/ubuntu
+    docker compose -f $COMPOSE_FILE up -d redis
+    sleep 10
+    ISSUES_FOUND=1
+fi
+
+# 3. If we just started postgres/redis, wait for healthy then restart backend
+if [ "$ISSUES_FOUND" -eq 1 ]; then
+    for i in 1 2 3 4 5; do
+        if check_service "postgres" "gstd_postgres_prod" && check_service "redis" "gstd_redis_prod"; then
+            log "✅ Postgres & Redis healthy, restarting backend..."
+            cd /home/ubuntu
+            docker compose -f $COMPOSE_FILE restart backend-blue backend-green
+            sleep 20
+            BACKEND_RESTARTED=1
+            break
+        fi
+        sleep 5
+    done
+fi
+
+# 4. Check nginx
 if ! check_service "nginx" "gstd_nginx_lb"; then
     log "❌ NGINX is down!"
     restart_service "nginx-lb"
     ISSUES_FOUND=1
 fi
 
-# Check backend-blue
-if ! check_service "backend-blue" "backend-blue"; then
-    log "❌ Backend-blue is down!"
-    restart_service "backend-blue"
-    ISSUES_FOUND=1
+# 5. Check backend (only after postgres/redis are up; skip if we just restarted)
+if [ "$BACKEND_RESTARTED" -eq 0 ]; then
+    if ! check_service "backend-blue" "backend-blue"; then
+        log "❌ Backend-blue is down!"
+        restart_service "backend-blue"
+        ISSUES_FOUND=1
+    fi
+
+    if ! check_service "backend-green" "backend-green"; then
+        log "❌ Backend-green is down!"
+        restart_service "backend-green"
+        ISSUES_FOUND=1
+    fi
 fi
 
-# Check backend-green  
-if ! check_service "backend-green" "backend-green"; then
-    log "❌ Backend-green is down!"
-    restart_service "backend-green"
-    ISSUES_FOUND=1
-fi
-
-# Check frontend
+# 6. Check frontend
 FRONTEND_COUNT=$(docker ps --filter "name=frontend" --format "{{.Names}}" | wc -l)
 if [ "$FRONTEND_COUNT" -lt 1 ]; then
     log "❌ Frontend containers are down!"
     cd /home/ubuntu
     docker compose -f $COMPOSE_FILE up -d frontend
-    ISSUES_FOUND=1
-fi
-
-# Check postgres
-if ! check_service "postgres" "gstd_postgres_prod"; then
-    log "❌ PostgreSQL is down!"
-    restart_service "postgres"
-    ISSUES_FOUND=1
-fi
-
-# Check redis
-if ! check_service "redis" "gstd_redis_prod"; then
-    log "❌ Redis is down!"
-    restart_service "redis"
     ISSUES_FOUND=1
 fi
 

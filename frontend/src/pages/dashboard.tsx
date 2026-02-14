@@ -42,13 +42,18 @@ export default function DashboardPage() {
         );
     }
 
-    return <Dashboard initialTab={(router.query.tab as string) || undefined} />;
+    return (
+      <Dashboard
+        initialTab={(router.query.tab as string) || undefined}
+        initialMode={(router.query.mode as 'standard' | 'ultra') || undefined}
+      />
+    );
 }
 
 export const getStaticProps: GetStaticProps = async ({ locale }) => {
     return {
         props: {
-            ...(await serverSideTranslations(locale ?? 'ru', ['common'])),
+            ...(await serverSideTranslations(locale ?? 'en', ['common'])),
         },
     };
 };
