@@ -1,8 +1,9 @@
-import requests
+import os
+import sys
 import json
 import time
 import uuid
-import os
+import requests
 from .protocols import validate_task_payload
 from .security import SovereignSecurity
 
@@ -68,8 +69,8 @@ class GSTDClient:
         
         if resp.status_code == 401:
             sys.stderr.write("⚠️  Authentication failed (401). Please sanity check your GSTD_API_KEY.\n")
-        else:
-            sys.stderr.write(f"DEBUG: get_pending_tasks failed: {resp.status_code} - {resp.text}\n")
+        elif os.environ.get("GSTD_DEBUG"):
+            sys.stderr.write(f"get_pending_tasks: {resp.status_code} - {resp.text[:200]}\n")
         return []
 
 

@@ -146,6 +146,37 @@ func ValidateSession(redisClient *redis.Client, sessionTTL ...time.Duration) gin
 	}
 }
 
+// OptionalSession validates session if provided but never aborts. Sets wallet_address when valid.
+// Used for chat/completions so Ultra gate can check balance when user is logged in.
+func OptionalSession(redisClient *redis.Client) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if redisClient == nil {
+			c.Next()
+			return
+		}
+		sessionToken := c.GetHeader("X-Session-Token")
+		if sessionToken == "" {
+			sessionToken, _ = c.Cookie("session_token")
+		}
+		if sessionToken == "" {
+			c.Next()
+			return
+		}
+		ctx := c.Request.Context()
+		sessionKey := fmt.Sprintf("session:%s", sessionToken)
+		exists, err := redisClient.Exists(ctx, sessionKey).Result()
+		if err != nil || exists == 0 {
+			c.Next()
+			return
+		}
+		walletAddress, err := redisClient.HGet(ctx, sessionKey, "wallet_address").Result()
+		if err == nil && walletAddress != "" {
+			c.Set("wallet_address", walletAddress)
+		}
+		c.Next()
+	}
+}
+
 // min returns the minimum of two integers
 func min(a, b int) int {
 	if a < b {

@@ -11,6 +11,8 @@ GSTD — **единый организм**. Агенты, ноды и боты �
 | [Quick Join](QUICK_JOIN.md) | Присоединиться за несколько кликов |
 | [Ecosystem Overview](ecosystem-overview.md) | Обзор экосистемы |
 | [Getting Started](getting-started.md) | Пошаговый старт |
+| [Platform Inventory](PLATFORM_INVENTORY.md) | Полная инвентаризация: логика, сеть, блокчейн, код |
+| [Audit Report](AUDIT_REPORT.md) | Аудит работоспособности API и сервисов |
 
 ## Overview
 

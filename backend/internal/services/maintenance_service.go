@@ -11,18 +11,20 @@ import (
 
 // MaintenanceService handles autonomous platform maintenance and acts as a personal assistant
 type MaintenanceService struct {
-	db              *sql.DB
-	taskService     *TaskService
-	errorLogger     *ErrorLogger
-	telegramService *TelegramService
+	db                 *sql.DB
+	taskService        *TaskService
+	errorLogger        *ErrorLogger
+	telegramService    *TelegramService
+	hardwareGrants     *HardwareGrantsService
 }
 
-func NewMaintenanceService(db *sql.DB, taskService *TaskService, errorLogger *ErrorLogger, telegramService *TelegramService) *MaintenanceService {
+func NewMaintenanceService(db *sql.DB, taskService *TaskService, errorLogger *ErrorLogger, telegramService *TelegramService, hardwareGrants *HardwareGrantsService) *MaintenanceService {
 	return &MaintenanceService{
 		db:              db,
 		taskService:     taskService,
 		errorLogger:     errorLogger,
 		telegramService: telegramService,
+		hardwareGrants:  hardwareGrants,
 	}
 }
 
@@ -36,16 +38,17 @@ func (s *MaintenanceService) Start(ctx context.Context) {
 	}
 
 	// Different intervals for different tasks
-	pruneTicker := time.NewTicker(24 * time.Hour)      // Daily cleanup
+	pruneTicker := time.NewTicker(24 * time.Hour)       // Daily cleanup
 	briefingTicker := time.NewTicker(24 * time.Hour)   // Daily Report
 	repairTicker := time.NewTicker(30 * time.Minute)   // Frequent repairs
 	monitorTicker := time.NewTicker(15 * time.Minute)  // System Health Pulse
+	grantsTicker := time.NewTicker(24 * time.Hour)     // Daily: Treasury → Hardware Grants
 
 	defer pruneTicker.Stop()
 	defer briefingTicker.Stop()
 	defer repairTicker.Stop()
-
 	defer monitorTicker.Stop()
+	defer grantsTicker.Stop()
 
 	// Initial run
 	s.performMaintenance(ctx)
@@ -65,6 +68,8 @@ func (s *MaintenanceService) Start(ctx context.Context) {
 
 		case <-monitorTicker.C:
 			s.monitorSystemHealth(ctx)
+		case <-grantsTicker.C:
+			s.checkTreasuryAndAllocateGrants(ctx)
 		}
 	}
 }
@@ -99,8 +104,12 @@ func (s *MaintenanceService) pruneOldData(ctx context.Context) {
 		}
 	}
 
-	// Delete old wallet access logs
-	s.db.ExecContext(ctx, "DELETE FROM wallet_access_logs WHERE accessed_at < (NOW() AT TIME ZONE 'UTC') - INTERVAL '30 days'")
+	// Delete old wallet access logs (table may not exist — optional feature)
+	if res, err := s.db.ExecContext(ctx, "DELETE FROM wallet_access_logs WHERE accessed_at < (NOW() AT TIME ZONE 'UTC') - INTERVAL '30 days'"); err == nil {
+		if rows, _ := res.RowsAffected(); rows > 0 {
+			log.Printf("   ✅ Pruned %d old wallet_access_logs", rows)
+		}
+	}
 
 	// Deep Dive: Purge audit tables older than 30 days (prevent DB bloat)
 	if res, err := s.db.ExecContext(ctx, "DELETE FROM pow_audit_log WHERE created_at < (NOW() AT TIME ZONE 'UTC') - INTERVAL '30 days'"); err == nil {
@@ -178,11 +187,52 @@ func (s *MaintenanceService) ensureSystemIntegrity(ctx context.Context) {
 	s.db.ExecContext(ctx, "UPDATE tasks SET labor_compensation_gstd = 0.001 WHERE labor_compensation_gstd IS NULL OR labor_compensation_gstd <= 0")
 }
 
+// checkTreasuryAndAllocateGrants: when Treasury (Gold Reserve) has significant profit, allocate grants to scarce H3 regions
+const (
+	grantsTreasuryThresholdGSTD = 100  // Minimum treasury balance to trigger grants
+	grantsMaxAllocationGSTD     = 50   // Max GSTD per allocation cycle
+	grantsCooldownDays          = 7   // Don't allocate more than once per week
+)
+
+func (s *MaintenanceService) checkTreasuryAndAllocateGrants(ctx context.Context) {
+	if s.hardwareGrants == nil {
+		return
+	}
+	var balance float64
+	err := s.db.QueryRowContext(ctx, `SELECT COALESCE(balance_gstd, 0) FROM platform_funds WHERE fund_type = 'gold_reserve'`).Scan(&balance)
+	if err != nil || balance < grantsTreasuryThresholdGSTD {
+		return
+	}
+	var lastAlloc int
+	_ = s.db.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM audit_treasury_events 
+		WHERE event_type = 'hardware_grant_allocated' AND created_at > NOW() - INTERVAL '1 day' * $1
+	`, grantsCooldownDays).Scan(&lastAlloc)
+	if lastAlloc > 0 {
+		return
+	}
+	maxAlloc := balance * 0.1
+	if maxAlloc > grantsMaxAllocationGSTD {
+		maxAlloc = grantsMaxAllocationGSTD
+	}
+	if maxAlloc < 1 {
+		return
+	}
+	if err := s.hardwareGrants.AllocateGrantsForScarceRegions(ctx, maxAlloc); err != nil {
+		log.Printf("HardwareGrants: allocation failed: %v", err)
+		return
+	}
+	log.Printf("HardwareGrants: Allocated up to %.2f GSTD for scarce regions (treasury=%.2f)", maxAlloc, balance)
+	if s.telegramService != nil {
+		s.telegramService.SendMessage(ctx, fmt.Sprintf("🛠 <b>Hardware Grants:</b> Treasury profit (%.2f GSTD) → allocated grants to scarce H3 regions.", maxAlloc))
+	}
+}
+
 // monitorSystemHealth checks for anomalies without heavy load
 func (s *MaintenanceService) monitorSystemHealth(ctx context.Context) {
 	// 1. Check Error Rate (Last 15 mins)
 	var errorCount int
-	err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM error_logs WHERE created_at > NOW() - INTERVAL '15 minutes' AND severity = 'ERROR'").Scan(&errorCount)
+	err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM error_logs WHERE created_at > NOW() - INTERVAL '15 minutes' AND LOWER(severity) IN ('error', 'critical')").Scan(&errorCount)
 	if err == nil && errorCount > 10 {
 		s.sendAlert(ctx, fmt.Sprintf("⚠️ <b>System Alert:</b> High error rate detected (%d errors in last 15m). Check logs.", errorCount))
 	}
@@ -288,7 +338,7 @@ func (s *MaintenanceService) sendDailyBriefing(ctx context.Context) {
 // GetAutonomyStats returns metrics about the autonomous maintenance system
 func (s *MaintenanceService) GetAutonomyStats(ctx context.Context) (map[string]interface{}, error) {
 	var selfHealedTasks int
-	s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM error_logs WHERE message LIKE '%Self-Healing%'").Scan(&selfHealedTasks)
+	s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM error_logs WHERE error_message LIKE '%Self-Healing%'").Scan(&selfHealedTasks)
 
 	var activeMaintenance bool = true
 

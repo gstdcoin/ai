@@ -82,6 +82,10 @@ genesis_ignite.py
 load-balancer.conf.updated
 api.gstdtoken.com.conf
 test-project/
+broadcast_news.py
+buy_gstd.py
+mesh_intercept_proof.py
+verify_*.py
 
 # System / User config (never commit)
 .bash_history

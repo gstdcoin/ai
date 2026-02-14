@@ -521,6 +521,25 @@ func seedOmniTestTask(db *sql.DB, tonConfig config.TONConfig) gin.HandlerFunc {
 	}
 }
 
+// allocateHardwareGrants allocates Treasury funds to workers in scarce H3 regions (admin only)
+func allocateHardwareGrants(db *sql.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req struct {
+			MaxGSTD float64 `json:"max_gstd"`
+		}
+		_ = c.ShouldBindJSON(&req)
+		if req.MaxGSTD < 1 || req.MaxGSTD > 200 {
+			req.MaxGSTD = 50
+		}
+		svc := services.NewHardwareGrantsService(db)
+		if err := svc.AllocateGrantsForScarceRegions(c.Request.Context(), req.MaxGSTD); err != nil {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(200, gin.H{"status": "ok", "message": "Hardware grants allocated for scarce regions"})
+	}
+}
+
 // reconcileMarketplaceTask forces claim+complete for a stuck marketplace task (admin only)
 func reconcileMarketplaceTask(db *sql.DB, referral *services.ReferralService) gin.HandlerFunc {
 	return func(c *gin.Context) {

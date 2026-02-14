@@ -18,12 +18,14 @@ import (
 
 // GatewayHandler handles OpenAI-compatible chat completions and API key management.
 type GatewayHandler struct {
-	apiKeyService *services.APIKeyService
-	taskService   *services.TaskService
-	db            *sql.DB
-	guardrails    *services.GuardrailsService
-	ollamaURL     string
-	client        *http.Client
+	apiKeyService    *services.APIKeyService
+	taskService      *services.TaskService
+	db               *sql.DB
+	guardrails       *services.GuardrailsService
+	omniPerformance  *services.OmniPerformanceService
+	knowledgeService *services.KnowledgeService
+	ollamaURL        string
+	client           *http.Client
 }
 
 // NewGatewayHandler creates a new gateway handler.
@@ -48,6 +50,16 @@ func (h *GatewayHandler) SetGuardrails(g *services.GuardrailsService) {
 	h.guardrails = g
 }
 
+// SetOmniPerformance wires the Omni-Performance service for Ultra-Inference gate.
+func (h *GatewayHandler) SetOmniPerformance(o *services.OmniPerformanceService) {
+	h.omniPerformance = o
+}
+
+// SetKnowledgeService wires the knowledge service for Hive Memory expansion.
+func (h *GatewayHandler) SetKnowledgeService(k *services.KnowledgeService) {
+	h.knowledgeService = k
+}
+
 // HandleChatCompletions handles OpenAI-compatible chat completions and proxies to Ollama.
 func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 	body, err := io.ReadAll(c.Request.Body)
@@ -57,9 +69,11 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 	}
 
 	var req struct {
-		Model    string        `json:"model"`
-		Messages []interface{} `json:"messages"`
-		Stream   bool          `json:"stream"`
+		Model            string        `json:"model"`
+		Messages         []interface{} `json:"messages"`
+		Stream           bool          `json:"stream"`
+		ImageGeneration  bool          `json:"image_generation"`
+		PaymentMethod    string        `json:"payment_method"` // "gstd" = 20% discount, "stars" = full price
 	}
 	if err := json.Unmarshal(body, &req); err != nil {
 		c.JSON(400, gin.H{"error": "invalid_json"})
@@ -97,12 +111,41 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 		}
 	}
 
-	// Map to Ollama format
+	// Map to Ollama format; image_generation uses flux
 	ollamaModel := "qwen2.5-coder:7b"
-	if strings.HasPrefix(req.Model, "gpt") || strings.HasPrefix(req.Model, "gpt-") {
+	isImageGen := req.ImageGeneration || strings.Contains(strings.ToLower(req.Model), "flux")
+	if isImageGen {
+		ollamaModel = "flux:latest"
+		if req.Model != "" && !strings.HasPrefix(req.Model, "gpt") {
+			ollamaModel = req.Model
+		}
+	} else if strings.HasPrefix(req.Model, "gpt") || strings.HasPrefix(req.Model, "gpt-") {
 		ollamaModel = "qwen2.5-coder:7b"
 	} else if req.Model != "" {
 		ollamaModel = req.Model
+	}
+
+	// Omni-Performance: GSTD Staking Gate for Ultra models (70B, DeepSeek-R1)
+	isUltra := services.IsUltraModel(ollamaModel)
+	if isUltra && h.omniPerformance != nil {
+		access, err := h.omniPerformance.CheckUltraAccess(c.Request.Context(), wallet)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "ultra_gate_check_failed", "message": err.Error()})
+			return
+		}
+		if !access.Allowed {
+			c.JSON(402, gin.H{
+				"error":           "ultra_gate_required",
+				"code":            402,
+				"deficit":         access.SessionCost,
+				"work_required":   0,
+				"message":         access.Message,
+				"requires_ultra":  true,
+				"staked_gstd":     access.StakedGSTD,
+				"balance_gstd":    access.BalanceGSTD,
+			})
+			return
+		}
 	}
 
 	prompt := ""
@@ -118,7 +161,13 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 	}
 	ollamaBody, _ := json.Marshal(ollamaReq)
 
-	resp, err := h.client.Post(h.ollamaURL+"/api/generate", "application/json", bytes.NewReader(ollamaBody))
+	// Priority Compute: GSTD-paid Ultra requests use high-compute nodes (OLLAMA_ULTRA_URL)
+	ollamaBase := h.ollamaURL
+	if isUltra && os.Getenv("OLLAMA_ULTRA_URL") != "" {
+		ollamaBase = os.Getenv("OLLAMA_ULTRA_URL")
+	}
+
+	resp, err := h.client.Post(ollamaBase+"/api/generate", "application/json", bytes.NewReader(ollamaBody))
 	if err != nil {
 		log.Printf("Ollama proxy error: %v", err)
 		c.JSON(500, gin.H{"error": "inference_unavailable", "message": err.Error()})
@@ -131,9 +180,25 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 		Response string `json:"response"`
 	}
 	_ = json.Unmarshal(respBody, &ollamaResp)
+	content := strings.TrimSpace(ollamaResp.Response)
 
-	// OpenAI-compatible response
-	c.JSON(200, gin.H{
+	// Omni-Performance: Deduct 1 GSTD for Ultra session (when not staked) and store in Hive Memory
+	if isUltra && wallet != "" && h.omniPerformance != nil {
+		access, _ := h.omniPerformance.CheckUltraAccess(c.Request.Context(), wallet)
+		if access != nil && access.StakedGSTD < 100 {
+			_ = h.omniPerformance.DeductUltraSession(c.Request.Context(), wallet)
+		}
+		// Hive Memory Expansion: Store Ultra response for network training
+		if content != "" && h.knowledgeService != nil {
+			_ = h.knowledgeService.StoreKnowledge(c.Request.Context(), "ULTRA", "hive_memory_ultra", content, []string{"ultra", "gstd_powered"}, nil)
+		}
+	}
+
+	// Ascension: 20% discount when payment_method=gstd (image gen or Ultra)
+	gstdDiscount := req.PaymentMethod == "gstd"
+
+	// OpenAI-compatible response; image_generation uses flux, may return base64
+	out := gin.H{
 		"id":      "chatcmpl-gstd",
 		"object":  "chat.completion",
 		"model":   req.Model,
@@ -142,7 +207,7 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 				"index": 0,
 				"message": gin.H{
 					"role":    "assistant",
-					"content": strings.TrimSpace(ollamaResp.Response),
+					"content": content,
 				},
 				"finish_reason": "stop",
 			},
@@ -152,6 +217,36 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 			"completion_tokens": 0,
 			"total_tokens":      0,
 		},
+	}
+	if isImageGen {
+		out["image_generation"] = true
+		out["gstd_discount_20"] = gstdDiscount
+	}
+	c.JSON(200, out)
+}
+
+// GetUltraStatus returns Ultra mode access status for the current wallet.
+func (h *GatewayHandler) GetUltraStatus(c *gin.Context) {
+	wallet := c.GetString("wallet_address")
+	if wallet == "" {
+		wallet = c.GetHeader("X-GSTD-Target-Wallet")
+	}
+	if h.omniPerformance == nil {
+		c.JSON(200, gin.H{"mode": "standard", "ultra_available": false, "message": "Omni-Performance not configured"})
+		return
+	}
+	access, err := h.omniPerformance.CheckUltraAccess(c.Request.Context(), wallet)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, gin.H{
+		"mode":          access.Mode,
+		"ultra_available": access.Allowed,
+		"staked_gstd":   access.StakedGSTD,
+		"balance_gstd":  access.BalanceGSTD,
+		"session_cost":  access.SessionCost,
+		"message":       access.Message,
 	})
 }
 

@@ -34,6 +34,7 @@ import FleetCommandPanel from './FleetCommandPanel';
 import { NeuralBridge } from './NeuralBridge';
 import { GenesisRegistryWidget } from './GenesisRegistryWidget';
 import { VoiceBanner } from './VoiceBanner';
+import BrainQueryPanel from './BrainQueryPanel';
 import { GlobalNodeGrowthWidget } from './GlobalNodeGrowthWidget';
 import { GlobalLeaderboardWidget } from './GlobalLeaderboardWidget';
 import { isTelegramWebApp } from '../../lib/telegram';
@@ -54,9 +55,10 @@ const ReferralModal = lazy(() => import('./ReferralModal'));
 
 interface DashboardProps {
   initialTab?: string;
+  initialMode?: 'standard' | 'ultra';
 }
 
-function Dashboard({ initialTab }: DashboardProps = {}) {
+function Dashboard({ initialTab, initialMode }: DashboardProps = {}) {
   const { t } = useTranslation('common');
   const router = useRouter();
   const { address, disconnect, tonBalance, gstdBalance, pendingEarnings } = useWalletStore();
@@ -309,7 +311,7 @@ function Dashboard({ initialTab }: DashboardProps = {}) {
                 {/* CHAT TAB - Primary Feature */}
                 {activeTab === 'chat' && (
                   <ComponentErrorBoundary name="ChatPanel">
-                    <ChatPanel />
+                    <ChatPanel initialMode={initialMode} />
                   </ComponentErrorBoundary>
                 )}
 
@@ -411,7 +413,7 @@ function Dashboard({ initialTab }: DashboardProps = {}) {
                               <Users size={20} />
                             </div>
                             <div>
-                              <span className="text-[10px] text-gray-500 font-black uppercase tracking-widest block mb-0.5">Referral</span>
+                              <span className="text-[10px] text-gray-500 font-black uppercase tracking-widest block mb-0.5">{t('yield_mult') || 'Yield Mult'}</span>
                               <span className="text-xl font-black text-white tabular-nums">
                                 {referralMultiplier}x
                               </span>
@@ -441,6 +443,10 @@ function Dashboard({ initialTab }: DashboardProps = {}) {
                       {/* Golden Reserve - Hero Widget */}
                       <ComponentErrorBoundary name="GoldenReservePanel">
                         <GoldenReservePanel />
+                      </ComponentErrorBoundary>
+                      {/* Brain Query: Paid knowledge → Gold Pool */}
+                      <ComponentErrorBoundary name="BrainQueryPanel">
+                        <BrainQueryPanel />
                       </ComponentErrorBoundary>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <ComponentErrorBoundary name="TreasuryWidget">

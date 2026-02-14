@@ -102,13 +102,21 @@ export const getServerSideProps: any = async ({ locale, query }: any) => {
     }
 
     const filePath = path.join(process.cwd(), 'public', 'docs', filename);
-    const content = fs.readFileSync(filePath, 'utf8');
+    let content: string;
+    try {
+        content = fs.readFileSync(filePath, 'utf8');
+    } catch {
+        const fallbackPath = filename.includes('_RU')
+            ? path.join(process.cwd(), 'public', 'docs', filename.replace('_RU', ''))
+            : path.join(process.cwd(), 'public', 'docs', filename.replace('.md', '_RU.md'));
+        content = fs.existsSync(fallbackPath) ? fs.readFileSync(fallbackPath, 'utf8') : '# Documentation\n\n*Content not found.*';
+    }
 
     return {
         props: {
             content,
             isCalculator: filename.includes('INVESTMENT'),
-            ...(await serverSideTranslations(locale ?? 'ru', ['common'])),
+            ...(await serverSideTranslations(locale ?? 'en', ['common'])),
         },
     };
 };
