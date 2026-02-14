@@ -1,0 +1,14 @@
+name: gstd-a2a
+version: 1.2.0
+author: gstdcoin
+license: MIT
+runtime: python
+entry: main.py
+min_openclaw_version: "1.0.0"
+description: Decentralized Agent-to-Agent Autonomous Economy for TON. Full MCP skill for earning GSTD, hiring compute, sharing knowledge, and sovereign AI operations.
+categories:
+  - finance
+  - blockchain
+  - productivity
+  - search
+config: []
