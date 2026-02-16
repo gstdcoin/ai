@@ -31,6 +31,8 @@ func HandleInfer(mesh *services.UniversalMeshService) gin.HandlerFunc {
 		if req.RequesterWallet == "" {
 			req.RequesterWallet = c.GetHeader("X-GSTD-Target-Wallet")
 		}
+		// Zero-Start: Internal Credit (X-Use-Internal-Credit: 1)
+		req.UseInternalCredit = c.GetHeader("X-Use-Internal-Credit") == "1"
 
 		resp, err := mesh.Infer(c.Request.Context(), &req)
 		if err != nil {

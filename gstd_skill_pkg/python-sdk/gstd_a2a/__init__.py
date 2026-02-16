@@ -21,6 +21,7 @@ from .protocols import validate_task_payload
 from .sandbox import VirtualSandbox
 from .llm_service import LLMService
 from .agent import Agent, AgentConfig, run, quick_start
+from .bridge import convert_compute_to_logic
 
 __version__ = "2.0.0"
 
@@ -30,12 +31,12 @@ __all__ = [
     "AgentConfig",
     "GSTDClient",
     "GSTDWallet",
-    
+    # Zero-Start Bridge
+    "convert_compute_to_logic",
     # Utilities
     "validate_task_payload",
     "VirtualSandbox",
     "LLMService",
-    
     # Quick Functions
     "run",
     "quick_start",

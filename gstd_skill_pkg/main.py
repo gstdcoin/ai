@@ -283,13 +283,30 @@ def recall(topic: str) -> str:
 
 
 @mcp.tool()
-def platform_infer(prompt: str, model: str = "full", priority_platform: str = "") -> dict:
+def platform_infer(prompt: str, model: str = "full", priority_platform: str = "", use_internal_credit: bool = False) -> dict:
     """
     Use platform AI inference (same as Chat UI). No local Ollama needed.
     Mesh Routing: pass priority_platform (mobile|desktop|server) to prefer that compute tier.
-    Returns response from the GSTD Grid's sovereign LLM network.
+    Zero-Start: if balance < 0.01 GSTD, returns suggestion to launch Worker (Agent.run()).
+    Internal Credit: use_internal_credit=True for 1 free infer (repaid from first PoW payout).
     """
-    return CLIENT.infer(prompt, model, priority_platform or None)
+    return CLIENT.infer(prompt, model, priority_platform or None, use_internal_credit=use_internal_credit)
+
+
+@mcp.tool()
+def convert_compute_to_logic(prompt: str, model: str = "full", min_balance: float = 0.01, priority_platform: str = "") -> dict:
+    """
+    [Zero-Start] Resource-to-Inference Bridge: Convert earned GSTD into inference.
+    Spends agent's earned balance on platform inference. Use when agent has earned from Worker tasks.
+    Returns inference result or error if balance < min_balance.
+    """
+    if not CLIENT:
+        return {"error": "SDK not initialized. Check GSTD_API_KEY."}
+    try:
+        from gstd_a2a.bridge import convert_compute_to_logic as _convert
+        return _convert(CLIENT, prompt, model=model, min_balance=min_balance, priority_platform=priority_platform or None)
+    except ImportError:
+        return CLIENT.infer(prompt, model, priority_platform or None, check_zero_start=False)
 
 
 @mcp.tool()

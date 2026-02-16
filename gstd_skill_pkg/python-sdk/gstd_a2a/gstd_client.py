@@ -177,18 +177,53 @@ class GSTDClient:
 
     # --- Platform Inference (User Interface API) ---
 
-    def infer(self, prompt, model="full", priority_platform=None):
+    ZERO_START_THRESHOLD = 0.01  # GSTD — below this, suggest Worker launch
+
+    def _get_gstd_balance_float(self, wallet_address=None):
+        """Extract GSTD balance as float from get_balance or get_billing_balance."""
+        target = wallet_address or self.wallet_address
+        if not target:
+            return None
+        try:
+            bal = self.get_billing_balance(target)
+            if isinstance(bal, dict) and "error" not in bal:
+                return float(bal.get("earned_gstd", 0) or 0)
+            bal = self.get_balance(target)
+            if isinstance(bal, dict) and "error" not in bal:
+                return float(bal.get("earned_gstd", bal.get("balance", bal.get("gstd_balance", 0))) or 0)
+        except Exception:
+            pass
+        return None
+
+    def infer(self, prompt, model="full", priority_platform=None, check_zero_start=True, use_internal_credit=False):
         """
         Calls platform inference (GET /api/v1/infer).
         Same capability as Chat UI — agents use platform AI without local Ollama.
         Mesh Routing: pass priority_platform (mobile|desktop|server) to hint routing.
+        Zero-Start: if balance < 0.01 GSTD and check_zero_start, returns suggestion to launch Worker.
+        Internal Credit: use_internal_credit=True requests 1 infer on loan (repaid from first PoW payout).
         """
+        if check_zero_start and self.wallet_address and not use_internal_credit:
+            bal = self._get_gstd_balance_float()
+            if bal is not None and bal < self.ZERO_START_THRESHOLD:
+                return {
+                    "zero_start_suggestion": True,
+                    "balance_gstd": bal,
+                    "threshold": self.ZERO_START_THRESHOLD,
+                    "message": "Balance below 0.01 GSTD. Launch Worker module to earn: Agent.run() or agent.start()",
+                    "action": "auto_worker",
+                    "hint": "from gstd_a2a import Agent; Agent.run()  # or: agent = Agent(); agent.start()",
+                    "internal_credit_option": "Pass use_internal_credit=True for 1 free infer (repaid from first payout)",
+                }
+        headers = self._get_headers()
+        if use_internal_credit:
+            headers["X-Use-Internal-Credit"] = "1"
         params = {"prompt": prompt}
         if model:
             params["model"] = model
         if priority_platform and priority_platform.lower() in ("mobile", "desktop", "server"):
             params["priority_platform"] = priority_platform.lower()
-        resp = requests.get(f"{self.api_url}/api/v1/infer", params=params, headers=self._get_headers(), timeout=90)
+        resp = requests.get(f"{self.api_url}/api/v1/infer", params=params, headers=headers, timeout=90)
         if resp.status_code == 200:
             return resp.json()
         return {"error": resp.text or f"HTTP {resp.status_code}"}
