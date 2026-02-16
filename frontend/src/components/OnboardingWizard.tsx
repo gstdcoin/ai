@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_BASE_URL } from '../lib/config';
 
 interface OnboardingStep {
     order: number;
@@ -129,7 +130,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
         try {
             // Handle specific actions
             if (step.action === 'claim_welcome' && walletAddress) {
-                const response = await fetch('/api/v1/tokens/welcome', {
+                const response = await fetch(`${API_BASE_URL}/api/v1/tokens/welcome`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ wallet_address: walletAddress }),

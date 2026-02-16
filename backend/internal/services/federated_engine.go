@@ -33,9 +33,10 @@ import (
 //   5. When N updates collected (consensus threshold), aggregate
 //   6. "Brain Update" → new model version published to network
 type FederatedEngineService struct {
-	db          *sql.DB
-	redis       *redis.Client
-	mu          sync.RWMutex
+	db             *sql.DB
+	redis          *redis.Client
+	supremeCoord   *SupremeCoordinatorService // Integrity Cross-Check: LoRA compatibility with Predictive models
+	mu             sync.RWMutex
 	pendingUpdates map[string][]LoRAUpdate // model → updates awaiting aggregation
 }
 
@@ -94,6 +95,11 @@ func NewFederatedEngineService(db *sql.DB, redis *redis.Client) *FederatedEngine
 	svc.ensureSchema()
 	svc.seedFirstModelTarget()
 	return svc
+}
+
+// SetSupremeCoordinator injects coordinator for Integrity Cross-Check
+func (s *FederatedEngineService) SetSupremeCoordinator(c *SupremeCoordinatorService) {
+	s.supremeCoord = c
 }
 
 // seedFirstModelTarget ensures the first fine-tuning target exists
@@ -173,6 +179,11 @@ func (s *FederatedEngineService) SubmitUpdate(ctx context.Context, update *LoRAU
 	}
 	if update.Rank < 1 || update.Rank > 64 {
 		return nil, fmt.Errorf("LoRA rank must be between 1 and 64")
+	}
+
+	// Integrity Cross-Check: LoRA must target a model in routing or federated targets
+	if s.supremeCoord != nil && !s.supremeCoord.IsPredictiveModelCompatible(ctx, update.ModelName) {
+		return nil, fmt.Errorf("LoRA update rejected: model %s not in universal_mesh_routing or federated_model_targets — incompatible with Predictive models", update.ModelName)
 	}
 
 	// 2. Verify performance gain is acceptable

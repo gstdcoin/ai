@@ -49,7 +49,7 @@ export const SovereignSwitch = ({ className, onModeChange }: SovereignSwitchProp
         try {
             const token = localStorage.getItem('session_token');
             const res = await fetch(`${API_BASE_URL}/api/v1/users/keys`, {
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: token ? { 'X-Session-Token': token } : {}
             });
             const data = await res.json();
             if (data.keys) setApiKeys(data.keys);
@@ -65,15 +65,17 @@ export const SovereignSwitch = ({ className, onModeChange }: SovereignSwitchProp
             const res = await fetch(`${API_BASE_URL}/api/v1/users/keys`, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
+                    ...(token ? { 'X-Session-Token': token } : {}),
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ label: `Cursor Key ${apiKeys.length + 1}` })
             });
             const data = await res.json();
             if (data.api_key) {
-                addLog(`> [SYSTEM] New API Key generated: ${data.label}`);
+                addLog(`> [SYSTEM] New API Key generated: ${data.label}. Copy from list below.`);
                 fetchKeys();
+            } else if (data.error) {
+                addLog(`> [ERROR] ${data.error}`);
             }
         } catch (e) {
             addLog(`> [ERROR] Key generation failed.`);

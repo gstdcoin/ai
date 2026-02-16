@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_BASE_URL } from '../lib/config';
 
 interface EarnMethod {
     name: string;
@@ -32,7 +33,7 @@ export const TokenEarnPanel: React.FC<TokenEarnPanelProps> = ({
 
     const fetchSimpleTasks = async () => {
         try {
-            const response = await fetch('/api/v1/tokens/tasks');
+            const response = await fetch(`${API_BASE_URL}/api/v1/tokens/tasks`);
             const data = await response.json();
             if (data.success) {
                 setTasks(data.tasks || []);
@@ -55,7 +56,7 @@ export const TokenEarnPanel: React.FC<TokenEarnPanelProps> = ({
 
         setLoading('welcome');
         try {
-            const response = await fetch('/api/v1/tokens/welcome', {
+            const response = await fetch(`${API_BASE_URL}/api/v1/tokens/welcome`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ wallet_address: walletAddress }),
@@ -84,7 +85,7 @@ export const TokenEarnPanel: React.FC<TokenEarnPanelProps> = ({
 
         setLoading('daily');
         try {
-            const response = await fetch('/api/v1/tokens/faucet', {
+            const response = await fetch(`${API_BASE_URL}/api/v1/tokens/faucet`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ wallet_address: walletAddress }),
@@ -113,7 +114,7 @@ export const TokenEarnPanel: React.FC<TokenEarnPanelProps> = ({
 
         setLoading(taskId);
         try {
-            const response = await fetch(`/api/v1/tokens/tasks/${taskId}/complete`, {
+            const response = await fetch(`${API_BASE_URL}/api/v1/tokens/tasks/${taskId}/complete`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

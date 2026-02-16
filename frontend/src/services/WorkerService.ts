@@ -1,5 +1,6 @@
 import { toast } from '../lib/toast';
 import { logger } from '../lib/logger';
+import { WS_URL } from '../lib/config';
 import { useWalletStore } from '../store/walletStore';
 
 export type PowerProfile = 'eco' | 'balance' | 'max';
@@ -155,7 +156,8 @@ class WorkerService {
 
     private connectWebSocket() {
         logger.debug('[Mining Loop] Step 3: Establishing Socket Connection...');
-        const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8080/ws';
+        const baseWs = process.env.NEXT_PUBLIC_WS_URL || WS_URL;
+        const wsUrl = baseWs.includes('/ws') ? baseWs : `${baseWs.replace(/\/+$/, '')}/ws`;
         const walletAddress = typeof window !== 'undefined' ? useWalletStore.getState().address : null;
         const params = new URLSearchParams({ device_id: this.deviceId });
         if (walletAddress) params.set('wallet_address', walletAddress);

@@ -88,6 +88,10 @@ func SetupMarketplaceProtectedRoutes(router *gin.RouterGroup, handler *Marketpla
 
 		// Payout
 		marketplace.POST("/tasks/:id/payout", handler.PayoutTask)
+
+		// Cancel & Refund (creator actions)
+		marketplace.POST("/tasks/:id/cancel", handler.CancelTask)
+		marketplace.POST("/tasks/:id/refund", handler.RefundTask)
 		
 		// Crowdfunding
 		marketplace.POST("/tasks/:id/contribute", handler.ContributeToTask)
@@ -613,6 +617,86 @@ func (h *MarketplaceHandler) DeleteTask(c *gin.Context) {
 		"task_id": taskID,
 		"status":  "deleted",
 		"message": "Task deleted successfully",
+	})
+}
+
+// CancelTask cancels a pending/queued task (alias for DeleteTask for ClientDashboard compatibility)
+func (h *MarketplaceHandler) CancelTask(c *gin.Context) {
+	h.DeleteTask(c)
+}
+
+// RefundTask refunds escrow to creator when task is cancelled/failed (no workers paid)
+func (h *MarketplaceHandler) RefundTask(c *gin.Context) {
+	taskID := c.Param("id")
+	walletAddress, exists := c.Get("wallet_address")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "wallet address required"})
+		return
+	}
+	wallet := walletAddress.(string)
+
+	// Get escrow and verify ownership
+	var creatorWallet string
+	var status string
+	var workersPaid int
+	var totalLockedGSTD float64
+	err := h.db.QueryRowContext(c.Request.Context(), `
+		SELECT creator_wallet, status, workers_paid, total_locked_gstd
+		FROM task_escrow WHERE task_id = $1
+	`, taskID).Scan(&creatorWallet, &status, &workersPaid, &totalLockedGSTD)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusNotFound, gin.H{"error": "escrow not found"})
+			return
+		}
+		log.Printf("❌ RefundTask: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get escrow"})
+		return
+	}
+
+	if creatorWallet != wallet {
+		c.JSON(http.StatusForbidden, gin.H{"error": "only task creator can request refund"})
+		return
+	}
+
+	if status != "locked" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "escrow cannot be refunded",
+			"reason": "status is " + status + " (only locked escrow with no workers paid can be refunded)",
+		})
+		return
+	}
+
+	if workersPaid > 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "escrow cannot be refunded",
+			"reason": "workers have already been paid",
+		})
+		return
+	}
+
+	// Mark escrow as refunded
+	_, err = h.db.ExecContext(c.Request.Context(), `
+		UPDATE task_escrow SET status = 'refunded' WHERE task_id = $1
+	`, taskID)
+	if err != nil {
+		log.Printf("❌ RefundTask update: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to process refund"})
+		return
+	}
+
+	// Update task status
+	_, _ = h.db.ExecContext(c.Request.Context(), `
+		UPDATE tasks SET status = 'cancelled' WHERE task_id = $1
+	`, taskID)
+
+	log.Printf("✅ Escrow refunded for task %s to %s (%.6f GSTD)", taskID, wallet, totalLockedGSTD)
+	c.JSON(http.StatusOK, gin.H{
+		"task_id":      taskID,
+		"status":       "refunded",
+		"amount_gstd":  totalLockedGSTD,
+		"message":      "Refund processed successfully",
 	})
 }
 
