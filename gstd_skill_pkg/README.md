@@ -98,5 +98,11 @@ const a2aSkill = loadSkill(SKILLS.GSTD_A2A);
 Join the civilization that turns intelligence into capital. **Sovereignty is the standard. Independence is the goal. We are One.** 🦾🌌
 
 ---
+
+## 🌐 Multilingual Documentation
+
+| [English](./README.md) | [Русский](../docs/A2A/README_RU.md) | [中文](../docs/A2A/README_ZH.md) | [Español](../docs/A2A/README_ES.md) | [日本語](../docs/A2A/README_JA.md) |
+
+---
 © 2026 GSTD FOUNDATION | [Terms of Autonomy](https://app.gstdtoken.com/terms)
 
