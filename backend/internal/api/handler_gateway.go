@@ -41,7 +41,8 @@ const FirstQueryBonusGSTD = 0.05
 func NewGatewayHandler(apiKeyService *services.APIKeyService, taskService *services.TaskService, db *sql.DB) *GatewayHandler {
 	ollamaURL := os.Getenv("OLLAMA_URL")
 	if ollamaURL == "" {
-		ollamaURL = "http://host.docker.internal:11434"
+		// Docker: gstd_ollama; local dev: localhost
+		ollamaURL = "http://localhost:11434"
 	}
 	// 90s timeout for LLM generation (Qwen can take time)
 	ollamaClient := &http.Client{Timeout: 90 * time.Second}
@@ -208,13 +209,18 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 	// Market Ascension: First-Query Bonus — 0.05 GSTD for new user's first request
 	useFirstQueryBonus := false
 	if h.db != nil && fee <= FirstQueryBonusGSTD {
+		// Ensure user exists (new users from chat)
+		_, _ = h.db.ExecContext(c.Request.Context(), `INSERT INTO users (wallet_address, balance, created_at, updated_at) VALUES ($1, 0, NOW(), NOW()) ON CONFLICT (wallet_address) DO NOTHING`, wallet)
 		var bonusUsed bool
-		if h.db.QueryRowContext(c.Request.Context(), `SELECT COALESCE(first_query_bonus_used, false) FROM users WHERE wallet_address = $1`, wallet).Scan(&bonusUsed) == nil && !bonusUsed {
-			res, _ := h.db.ExecContext(c.Request.Context(), `UPDATE users SET first_query_bonus_used = true WHERE wallet_address = $1 AND COALESCE(first_query_bonus_used, false) = false`, wallet)
-			if rows, _ := res.RowsAffected(); rows > 0 {
-				useFirstQueryBonus = true
-				fee = 0
-				log.Printf("[Market Ascension] First-Query Bonus: %.2f GSTD granted to %s (first test request)", FirstQueryBonusGSTD, wallet[:min(12, len(wallet))])
+		err := h.db.QueryRowContext(c.Request.Context(), `SELECT COALESCE(first_query_bonus_used, false) FROM users WHERE wallet_address = $1`, wallet).Scan(&bonusUsed)
+		if err == nil && !bonusUsed {
+			res, errUpd := h.db.ExecContext(c.Request.Context(), `UPDATE users SET first_query_bonus_used = true WHERE wallet_address = $1 AND COALESCE(first_query_bonus_used, false) = false`, wallet)
+			if errUpd == nil {
+				if rows, _ := res.RowsAffected(); rows > 0 {
+					useFirstQueryBonus = true
+					fee = 0
+					log.Printf("[Market Ascension] First-Query Bonus: %.2f GSTD granted to %s (first test request)", FirstQueryBonusGSTD, wallet[:min(12, len(wallet))])
+				}
 			}
 		}
 	}

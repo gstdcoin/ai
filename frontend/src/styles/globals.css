@@ -31,9 +31,10 @@
   --tg-primary-button-text-color: var(--tg-theme-button-text-color);
 }
 
-/* Dark theme as default */
+/* Dark theme as default — cosmic background always */
 html {
   color-scheme: dark;
+  background-color: #030014 !important;
 }
 
 body {
@@ -55,6 +56,12 @@ body {
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
+}
+
+/* Ensure Next.js root and all wrappers use cosmic background */
+#__next {
+  background-color: #030014 !important;
+  min-height: 100vh;
 }
 
 html {

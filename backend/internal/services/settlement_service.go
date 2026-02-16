@@ -79,6 +79,8 @@ func (s *SettlementService) ensureSchema() {
 		log.Printf("⚠️ settlement_ledger schema: %v", err)
 		return
 	}
+	// Market Ascension: first_query_bonus_used (fallback if migration not run)
+	s.db.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS first_query_bonus_used BOOLEAN DEFAULT false`)
 	log.Printf("💰 SettlementService schema ensured")
 }
 

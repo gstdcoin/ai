@@ -132,15 +132,16 @@ export function applyTelegramTheme(theme: TelegramThemeParams) {
 
   const root = document.documentElement;
 
-  // Core theme colors - background is critical
+  // Always enforce cosmic background — platform aesthetic (never white)
+  if (document.body) {
+    document.body.style.setProperty('background-color', '#030014', 'important');
+  }
+  root.style.setProperty('background-color', '#030014', 'important');
+
+  // Core theme colors - background is critical (for components that use --tg-bg)
   if (theme.bg_color) {
     root.style.setProperty('--tg-theme-bg-color', theme.bg_color);
     root.style.setProperty('--tg-bg-color', theme.bg_color);
-    // Apply to body background immediately
-    // Do not override body background color to preserve Elite Cosmic Design
-    // if (typeof document !== 'undefined' && document.body) {
-    //   document.body.style.backgroundColor = theme.bg_color;
-    // }
   }
   if (theme.text_color) {
     root.style.setProperty('--tg-theme-text-color', theme.text_color);
