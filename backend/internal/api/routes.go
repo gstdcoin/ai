@@ -67,6 +67,7 @@ func SetupRoutes(
 	omniPerformance *services.OmniPerformanceService,
 	swarmLFS *services.SwarmLFSService,
 	settlementService *services.SettlementService,
+	gaslessUserService *services.GaslessUserService,
 ) {
 	log.Printf("🔧 SetupRoutes: Starting route setup, redisClient type: %T", redisClient)
 
@@ -162,6 +163,7 @@ func SetupRoutes(
 			"target_price_per_result_usd": eco.TargetPricePerResultUSD, // ТЗ: ~$0.03/результат
 			"genesis_launch":              true, // Genesis Launch status active
 			"eternal_flame":                true, // Eternal Flame: 99.99% uptime, Auto-Scale, Archon Oversight
+			"gasless_user":                 true, // Gasless User: Subsidized Onboarding, Internal Swap
 		})
 	})
 	// [DYNAMIC_CONFIG_END]
@@ -221,6 +223,11 @@ func SetupRoutes(
 		v1.POST("/analytics/viral/share", RecordViralShare(dbConn))
 		v1.POST("/analytics/viral/click", RecordViralClick(dbConn))
 		v1.GET("/analytics/viral/community-favorite", GetCommunityFavorite(dbConn))
+
+		// Gasless User: status (public)
+		if gaslessUserService != nil {
+			v1.GET("/gasless/status", GetGaslessStatus(gaslessUserService))
+		}
 
 		// Swarm LFS — tensor streaming, integrity, quantization (Protocol: Swarm LFS)
 		if swarmLFS == nil {
@@ -282,7 +289,7 @@ func SetupRoutes(
 				redisClientForLogin = rc
 			}
 		}
-		v1.POST("/users/login", loginUser(userService, tonConnectValidator, redisClientForLogin))
+		v1.POST("/users/login", loginUser(userService, tonConnectValidator, redisClientForLogin, gaslessUserService))
 
 		// Market Operations (Public) - Frictionless for Agents
 		marketHandler := NewMarketHandler(db.(*sql.DB))
@@ -336,6 +343,11 @@ func SetupRoutes(
 		protected.GET("/users/pending_balance", getPendingBalance(db.(*sql.DB)))                  // Check off-chain earnings
 		protected.POST("/users/claim_balance", claimPendingBalance(db.(*sql.DB), paymentService)) // Withdraw to TON
 
+		// Gasless User: Internal Swap (GSTD → TON for gas)
+		if gaslessUserService != nil {
+			protected.POST("/swap/gstd-for-ton", InternalSwapGSTDForTON(gaslessUserService))
+		}
+
 		// Tasks (protected)
 		protected.POST("/tasks", ValidateTaskRequest(), createTask(taskService))
 		protected.GET("/tasks", getTasks(taskService))
@@ -344,7 +356,7 @@ func SetupRoutes(
 		protected.GET("/tasks/:id/payment", getTaskWithPayment(taskPaymentService))
 
 		// Devices (protected)
-		protected.POST("/devices/register", registerDevice(deviceService, errorLogger, multiLevelReferralService, dbConn))
+		protected.POST("/devices/register", registerDevice(deviceService, errorLogger, multiLevelReferralService, dbConn, gaslessUserService))
 		protected.GET("/devices", getDevices(deviceService))
 		protected.GET("/devices/my", getMyDevices(deviceService))
 

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"database/sql"
 	"distributed-computing-platform/internal/services"
 	"fmt"
@@ -10,7 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func registerDevice(deviceService *services.DeviceService, errorLogger *services.ErrorLogger, referral *services.MultiLevelReferralService, db *sql.DB) gin.HandlerFunc {
+func registerDevice(deviceService *services.DeviceService, errorLogger *services.ErrorLogger, referral *services.MultiLevelReferralService, db *sql.DB, gaslessUser *services.GaslessUserService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
@@ -22,8 +23,16 @@ func registerDevice(deviceService *services.DeviceService, errorLogger *services
 		}
 
 		// Hyper-Expansion: Ref-Link Deep Integration - ensure user exists, apply referral from Telegram start=ref_XXX
+		// Gasless User: try subsidy for new wallet (first-time device registration)
 		if req.WalletAddress != "" {
+			var existed int
+			_ = db.QueryRowContext(ctx, `SELECT 1 FROM users WHERE wallet_address = $1`, req.WalletAddress).Scan(&existed)
 			_, _ = db.ExecContext(ctx, `INSERT INTO users (wallet_address, created_at, updated_at) VALUES ($1, NOW(), NOW()) ON CONFLICT (wallet_address) DO NOTHING`, req.WalletAddress)
+			if existed == 0 && gaslessUser != nil {
+				go func() {
+					gaslessUser.TrySubsidizeOnboarding(context.Background(), req.WalletAddress)
+				}()
+			}
 			if req.ReferralCode != "" && referral != nil {
 				code := strings.TrimPrefix(req.ReferralCode, "ref_")
 				if err := referral.ApplyReferralCode(ctx, req.WalletAddress, code); err == nil {

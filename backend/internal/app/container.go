@@ -210,6 +210,7 @@ func BuildContainer() *dig.Container {
 	c.Provide(func(db *sql.DB, redis *redis.Client) *services.AssignmentService {
 		return services.NewAssignmentService(db, redis)
 	})
+	c.Provide(services.NewGaslessUserService)
 	c.Provide(func(redis *redis.Client) *services.FleetCommandService {
 		return services.NewFleetCommandService(redis)
 	})
@@ -339,6 +340,7 @@ func StartApplication(container *dig.Container) error {
 		goldenAgeService *services.GoldenAgeService,
 		dynamicEquilibrium *services.DynamicEquilibriumService,
 		eternalFlameService *services.EternalFlameService,
+		gaslessUserService *services.GaslessUserService,
 		globalNeuralMerge *services.GlobalNeuralMergeService,
 		singularityGateway *services.SingularityGatewayService,
 		omnipotence *services.OmnipotenceService,
@@ -395,6 +397,13 @@ func StartApplication(container *dig.Container) error {
 		if eternalFlameService != nil {
 			eternalFlameService.SetPipeline(pipelineService)
 			go eternalFlameService.Start(ctx)
+		}
+		// Gasless User: wire TON wallet for subsidies and internal swap
+		if gaslessUserService != nil && cfg.TON.PlatformWalletAddress != "" && cfg.TON.PlatformWalletPrivateKey != "" {
+			if w, err := services.NewTONWalletService(cfg.TON.APIURL, cfg.TON.APIKey, cfg.TON.PlatformWalletAddress, cfg.TON.PlatformWalletPrivateKey); err == nil {
+				gaslessUserService.SetTONWallet(w)
+				log.Printf("⛽ Gasless User: TON wallet wired for subsidies and internal swap")
+			}
 		}
 		if globalNeuralMerge != nil {
 			go globalNeuralMerge.Start(ctx)
@@ -566,6 +575,7 @@ func StartApplication(container *dig.Container) error {
 			omniPerformance,
 			swarmLFS,
 			settlementService,
+			gaslessUserService,
 		)
 
 		// 4a. Leviathan Live Stream (SSE) — Protocol: Live Stream, No-DB, 30s memory

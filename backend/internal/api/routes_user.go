@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"crypto/rand"
 	"database/sql"
 	"distributed-computing-platform/internal/config"
@@ -43,7 +44,7 @@ type ConnectPayload struct {
 // @Failure 400 {object} map[string]string "Invalid request"
 // @Failure 401 {object} map[string]string "Signature validation failed"
 // @Router /users/login [post]
-func loginUser(service *services.UserService, validator *services.TonConnectValidator, redisClient *redis.Client) gin.HandlerFunc {
+func loginUser(service *services.UserService, validator *services.TonConnectValidator, redisClient *redis.Client, gaslessUser *services.GaslessUserService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
 			// New format: connect_payload object
@@ -238,11 +239,20 @@ func loginUser(service *services.UserService, validator *services.TonConnectVali
 		}
 
 		// Create or get user
-		user, err := service.LoginOrRegister(ctx, walletAddress)
+		user, isNew, err := service.LoginOrRegister(ctx, walletAddress)
 		if err != nil {
 			log.Printf("Failed to login/register user %s: %v", walletAddress, err)
 			c.JSON(500, gin.H{"error": "failed to create user session"})
 			return
+		}
+
+		// Gasless User: subsidize gas for first 5000 new users (async, don't block login)
+		if isNew && gaslessUser != nil {
+			go func() {
+				if sent, _ := gaslessUser.TrySubsidizeOnboarding(context.Background(), walletAddress); sent {
+					log.Printf("[Gasless] New user %s received 0.05 TON for gas", walletAddress[:16])
+				}
+			}()
 		}
 
 		// Create session in Redis (24 hour TTL)

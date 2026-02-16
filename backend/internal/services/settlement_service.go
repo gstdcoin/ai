@@ -155,6 +155,14 @@ func (s *SettlementService) ProcessPayment(ctx context.Context, req *SettlementR
 		_ = s.logTreasuryAccrual(ctx, treasuryAmt, req.InferenceID)
 	}
 
+	// Gasless User: accumulate protocol_amount (5%) to protocol_fund for gas subsidies
+	if protocolAmt > 0 {
+		_, _ = s.db.ExecContext(ctx, `
+			INSERT INTO platform_funds (fund_type, balance_gstd) VALUES ('protocol_fund', $1)
+			ON CONFLICT (fund_type) DO UPDATE SET balance_gstd = platform_funds.balance_gstd + EXCLUDED.balance_gstd
+		`, protocolAmt)
+	}
+
 	log.Printf("[Settlement] %.6f GSTD: worker=%.6f (85%%), treasury=%.6f (10%%), protocol=%.6f (5%%)",
 		req.AmountGSTD, workerAmt, treasuryAmt, protocolAmt)
 
