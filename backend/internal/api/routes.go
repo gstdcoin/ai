@@ -67,6 +67,7 @@ func SetupRoutes(
 	omniPerformance *services.OmniPerformanceService,
 	polymarketBridge *services.PolymarketBridgeService,
 	swarmLFS *services.SwarmLFSService,
+	settlementService *services.SettlementService,
 ) {
 	log.Printf("🔧 SetupRoutes: Starting route setup, redisClient type: %T", redisClient)
 
@@ -83,6 +84,12 @@ func SetupRoutes(
 	}
 	if knowledgeService != nil {
 		gatewayHandler.SetKnowledgeService(knowledgeService)
+	}
+	if settlementService != nil {
+		gatewayHandler.SetSettlement(settlementService)
+	}
+	if statsService != nil {
+		gatewayHandler.SetStats(statsService)
 	}
 
 	// Initialize Genesis System (Self-Generating APIs)
