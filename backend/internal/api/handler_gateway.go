@@ -205,8 +205,22 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 		}
 	}
 
-	// Check balance and deduct before inference
-	if h.db != nil {
+	// Market Ascension: First-Query Bonus — 0.05 GSTD for new user's first request
+	useFirstQueryBonus := false
+	if h.db != nil && fee <= FirstQueryBonusGSTD {
+		var bonusUsed bool
+		if h.db.QueryRowContext(c.Request.Context(), `SELECT COALESCE(first_query_bonus_used, false) FROM users WHERE wallet_address = $1`, wallet).Scan(&bonusUsed) == nil && !bonusUsed {
+			res, _ := h.db.ExecContext(c.Request.Context(), `UPDATE users SET first_query_bonus_used = true WHERE wallet_address = $1 AND COALESCE(first_query_bonus_used, false) = false`, wallet)
+			if rows, _ := res.RowsAffected(); rows > 0 {
+				useFirstQueryBonus = true
+				fee = 0
+				log.Printf("[Market Ascension] First-Query Bonus: %.2f GSTD granted to %s (first test request)", FirstQueryBonusGSTD, wallet[:min(12, len(wallet))])
+			}
+		}
+	}
+
+	// Check balance and deduct before inference (skip if First-Query Bonus)
+	if !useFirstQueryBonus && h.db != nil {
 		var balance float64
 		err := h.db.QueryRowContext(c.Request.Context(), `
 			SELECT COALESCE(gstd_balance, 0) + COALESCE(balance, 0) FROM users WHERE wallet_address = $1
@@ -281,8 +295,8 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 	_ = json.Unmarshal(respBody, &ollamaResp)
 	content := strings.TrimSpace(ollamaResp.Response)
 
-	// Consumer Adoption: SettlementService — record payment (85% worker pool, 10% treasury, 5% protocol)
-	if h.settlement != nil && wallet != "" {
+	// Consumer Adoption: SettlementService — record payment (skip when First-Query Bonus)
+	if h.settlement != nil && wallet != "" && fee > 0 {
 		workerAmt := fee * 0.85
 		_, _ = h.settlement.ProcessPayment(c.Request.Context(), &services.SettlementRequest{
 			AmountGSTD:   fee,

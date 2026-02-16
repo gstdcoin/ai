@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'next-i18next';
-import { Send, Bot, User, Loader2, Sparkles, Copy, Check, RotateCcw, Zap, Shield, Crown } from 'lucide-react';
+import { Send, Bot, User, Loader2, Sparkles, Copy, Check, RotateCcw, Zap, Shield, Crown, Share2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useWalletStore } from '../../store/walletStore';
 import { API_BASE_URL } from '../../lib/config';
@@ -33,6 +33,9 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
   const [selectedModel, setSelectedModel] = useState(
     initialMode === 'ultra' ? 'llama3.3:70b' : 'qwen2.5-coder:7b'
   );
+  const [compareMode, setCompareMode] = useState(false);
+  const [compareModelA, setCompareModelA] = useState('qwen2.5-coder:7b');
+  const [compareModelB, setCompareModelB] = useState('llama3.1:8b');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [speculativeEnabled, setSpeculativeEnabled] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -81,12 +84,60 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  // Viral Sharing: generate share link with PoW text
+  const handleShare = (msg: Message) => {
+    const devices = msg.powStats?.swarm_devices ?? 1500;
+    const shareText = typeof window !== 'undefined'
+      ? `${msg.content.slice(0, 200)}${msg.content.length > 200 ? '...' : ''}\n\n— Этот ответ был рассчитан ${devices} смартфонами в сети GSTD. Присоединяйся и зарабатывай золото! ${window.location.origin}/dashboard?tab=chat`
+      : `Этот ответ был рассчитан ${devices} смартфонами в сети GSTD. Присоединяйся и зарабатывай золото!`;
+    const url = typeof window !== 'undefined' ? `${window.location.origin}/dashboard?tab=chat` : 'https://app.gstdtoken.com/dashboard';
+    if (navigator.share && typeof window !== 'undefined') {
+      navigator.share({
+        title: 'GSTD Swarm',
+        text: shareText,
+        url,
+      }).catch(() => navigator.clipboard.writeText(shareText));
+    } else {
+      navigator.clipboard.writeText(shareText);
+      setCopiedId(msg.id);
+      setTimeout(() => setCopiedId(null), 2000);
+    }
+  };
+
   const stopGeneration = () => {
     if (abortRef.current) {
       abortRef.current.abort();
       abortRef.current = null;
     }
     setIsLoading(false);
+  };
+
+  const sendToModel = async (model: string, apiMessages: { role: string; content: string }[], signal?: AbortController['signal']): Promise<{ content: string; cost?: number; powStats?: { swarm_devices: number; workers_gstd: number } }> => {
+    const token = localStorage.getItem('session_token');
+    const res = await fetch(`${API_BASE_URL}/api/v1/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        ...(token ? { 'X-Session-Token': token } : {}),
+        ...(address ? { 'X-GSTD-Target-Wallet': address } : {}),
+      },
+      body: JSON.stringify({ model, messages: apiMessages, stream: false }),
+      signal,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    const json = await res.json();
+    const content = json.choices?.[0]?.message?.content ?? '';
+    const pow = json.gstd_pow;
+    const cost = pow?.fee_deducted ?? models.find(m => m.id === model)?.cost ?? 0.01;
+    return {
+      content,
+      cost,
+      powStats: pow ? { swarm_devices: pow.swarm_devices ?? 0, workers_gstd: pow.workers_gstd ?? cost * 0.85 } : undefined,
+    };
   };
 
   const sendMessage = async () => {
@@ -98,6 +149,37 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
       content: input.trim(),
       timestamp: new Date(),
     };
+
+    const apiMessages = [...messages, userMsg].map(m => ({ role: m.role, content: m.content }));
+
+    if (compareMode) {
+      // Model Comparison Mode: send to both models in parallel
+      const idA = (Date.now() + 1).toString();
+      const idB = (Date.now() + 2).toString();
+      const msgA: Message = { id: idA, role: 'assistant', content: '', isStreaming: true, timestamp: new Date(), model: compareModelA };
+      const msgB: Message = { id: idB, role: 'assistant', content: '', isStreaming: true, timestamp: new Date(), model: compareModelB };
+      setMessages(prev => [...prev, userMsg, msgA, msgB]);
+      setInput('');
+      setIsLoading(true);
+      try {
+        const [resultA, resultB] = await Promise.all([
+          sendToModel(compareModelA, apiMessages),
+          sendToModel(compareModelB, apiMessages),
+        ]);
+        setMessages(prev => prev.map(m => {
+          if (m.id === idA) return { ...m, content: resultA.content, cost: resultA.cost, powStats: resultA.powStats, isStreaming: false };
+          if (m.id === idB) return { ...m, content: resultB.content, cost: resultB.cost, powStats: resultB.powStats, isStreaming: false };
+          return m;
+        }));
+      } catch (err: any) {
+        setMessages(prev => prev.map(m =>
+          m.id === idA || m.id === idB ? { ...m, content: `**Error:** ${err.message}`, isStreaming: false } : m
+        ));
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
 
     const assistantId = (Date.now() + 1).toString();
     const assistantMsg: Message = {
@@ -115,18 +197,12 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
     setInput('');
     setIsLoading(true);
 
-    const apiMessages = [...messages, userMsg].map(m => ({
-      role: m.role,
-      content: m.content,
-    }));
-
     const controller = new AbortController();
     abortRef.current = controller;
 
     try {
       const token = localStorage.getItem('session_token');
 
-      // Use speculative decoding mode: backend sends draft tokens first, then verified
       const res = await fetch(`${API_BASE_URL}/api/v1/chat/completions`, {
         method: 'POST',
         headers: {
@@ -346,6 +422,29 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
           </span>
         </div>
 
+        {/* Model Comparison Mode */}
+        <button
+          onClick={() => setCompareMode(!compareMode)}
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider border transition-all ${
+            compareMode ? 'bg-amber-500/20 border-amber-500/40 text-amber-400' : 'bg-white/5 border-white/10 text-gray-500'
+          }`}
+          title={t('chat_compare_mode') || 'Compare two models side-by-side'}
+        >
+          {t('chat_compare_mode') || 'Compare'}
+        </button>
+        {compareMode && (
+          <div className="flex items-center gap-2">
+            <select value={compareModelA} onChange={(e) => setCompareModelA(e.target.value)}
+              className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white">
+              {models.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+            </select>
+            <span className="text-gray-500 text-xs">vs</span>
+            <select value={compareModelB} onChange={(e) => setCompareModelB(e.target.value)}
+              className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white">
+              {models.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+            </select>
+          </div>
+        )}
         {/* Speculative Decoding Toggle */}
         <button
           onClick={() => setSpeculativeEnabled(!speculativeEnabled)}
@@ -430,7 +529,51 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
           </div>
         )}
 
-        {messages.map((msg) => (
+        {messages.map((msg, idx) => {
+          const prevMsg = messages[idx - 1];
+          const nextMsg = messages[idx + 1];
+          // Skip second of comparison pair (rendered with first)
+          if (msg.role === 'assistant' && prevMsg?.role === 'assistant') return null;
+          // Model Comparison: render two consecutive assistant messages side-by-side
+          const isComparisonPair = msg.role === 'assistant' && nextMsg?.role === 'assistant';
+          if (isComparisonPair) {
+            return (
+              <div key={msg.id + '-' + nextMsg.id} className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+                <div className="flex gap-3 p-4 rounded-2xl bg-cyan-500/5 border border-cyan-500/10">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-cyan-500/20 flex items-center justify-center"><Bot size={16} className="text-cyan-400" /></div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[10px] text-cyan-500/80 font-bold mb-2">{models.find(m => m.id === msg.model)?.name || msg.model}</div>
+                    <div className="prose prose-invert prose-sm max-w-none [&_pre]:bg-black/40 [&_code]:text-violet-300"><ReactMarkdown>{msg.content}</ReactMarkdown></div>
+                    <div className="flex gap-2 mt-2 text-[10px] text-gray-500">
+                      {msg.cost != null && (msg.cost > 0 ? <span className="text-amber-500/60">−{msg.cost} GSTD</span> : <span className="text-emerald-500/60">Free</span>)}
+                      {msg.powStats && <span>🐝 {msg.powStats.swarm_devices} devices</span>}
+                    </div>
+                    <div className="flex gap-2 mt-2">
+                      <button onClick={() => handleCopy(msg.id, msg.content)} className="text-[10px] text-gray-500 hover:text-white">Copy</button>
+                      <button onClick={() => handleShare(msg)} className="text-[10px] text-gray-500 hover:text-cyan-400 flex items-center gap-1"><Share2 size={10} /> Share</button>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-3 p-4 rounded-2xl bg-amber-500/5 border border-amber-500/10">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-amber-500/20 flex items-center justify-center"><Bot size={16} className="text-amber-400" /></div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[10px] text-amber-500/80 font-bold mb-2">{models.find(m => m.id === nextMsg.model)?.name || nextMsg.model}</div>
+                    <div className="prose prose-invert prose-sm max-w-none [&_pre]:bg-black/40 [&_code]:text-violet-300"><ReactMarkdown>{nextMsg.content}</ReactMarkdown></div>
+                    <div className="flex gap-2 mt-2 text-[10px] text-gray-500">
+                      {nextMsg.cost != null && (nextMsg.cost > 0 ? <span className="text-amber-500/60">−{nextMsg.cost} GSTD</span> : <span className="text-emerald-500/60">Free</span>)}
+                      {nextMsg.powStats && <span>🐝 {nextMsg.powStats.swarm_devices} devices</span>}
+                    </div>
+                    <div className="flex gap-2 mt-2">
+                      <button onClick={() => handleCopy(nextMsg.id, nextMsg.content)} className="text-[10px] text-gray-500 hover:text-white">Copy</button>
+                      <button onClick={() => handleShare(nextMsg)} className="text-[10px] text-gray-500 hover:text-cyan-400 flex items-center gap-1"><Share2 size={10} /> Share</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+          if (msg.role === 'assistant' && nextMsg?.role === 'assistant' && msg.model === nextMsg.model) return null; // skip second of pair
+          return (
           <div key={msg.id} className={`flex gap-3 py-4 px-4 rounded-2xl ${msg.role === 'user' ? 'bg-white/[0.02]' : ''}`}>
             <div className={`flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center ${
               msg.role === 'user' ? 'bg-violet-600/20 text-violet-400' : 'bg-cyan-500/20 text-cyan-400'
@@ -463,6 +606,12 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
                     {copiedId === msg.id ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
                     {copiedId === msg.id ? (t('copied') || 'Copied') : (t('copy') || 'Copy')}
                   </button>
+                  <button onClick={() => handleShare(msg)}
+                    className="flex items-center gap-1.5 text-[10px] text-gray-500 hover:text-cyan-400 font-bold uppercase tracking-wider transition-colors"
+                    title={t('chat_share_answer') || 'Поделиться ответом'}>
+                    <Share2 size={12} />
+                    {t('chat_share_answer') || 'Поделиться'}
+                  </button>
                   {msg.model && (
                     <span className="text-[10px] text-gray-600 font-mono">
                       {models.find(m => m.id === msg.model)?.name || 'GSTD Neural Core'}
@@ -473,8 +622,10 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
                       {msg.tokens.prompt + msg.tokens.completion} tok
                     </span>
                   )}
-                  {msg.cost && (
-                    <span className="text-[10px] text-amber-500/60 font-bold">-{msg.cost} GSTD</span>
+                  {msg.cost != null && (
+                    <span className={`text-[10px] font-bold ${msg.cost > 0 ? 'text-amber-500/60' : 'text-emerald-500/60'}`}>
+                      {msg.cost > 0 ? `-${msg.cost} GSTD` : 'Free'}
+                    </span>
                   )}
                   {msg.powStats && msg.powStats.swarm_devices > 0 && (
                     <span className="text-[10px] text-cyan-500/60" title={t('chat_pow_tooltip') || 'Your request was processed by the Swarm'}>
@@ -490,7 +641,8 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
               )}
             </div>
           </div>
-        ))}
+          );
+        })}
 
         {/* Loading indicator */}
         {isLoading && messages[messages.length - 1]?.content === '' && !messages[messages.length - 1]?.speculativeContent && (
