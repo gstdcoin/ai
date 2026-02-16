@@ -2,8 +2,8 @@ package api
 
 import (
 	"context"
-	"distributed-computing-platform/internal/models"
-	"distributed-computing-platform/internal/services"
+	"gstd-bot/internal/models"
+	"gstd-bot/internal/services"
 	"encoding/json"
 	"fmt"
 	"log"

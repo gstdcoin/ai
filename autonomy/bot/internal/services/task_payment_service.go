@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"distributed-computing-platform/internal/config"
-	"distributed-computing-platform/internal/models"
+	"gstd-bot/internal/config"
+	"gstd-bot/internal/models"
 
 	"github.com/google/uuid"
 )

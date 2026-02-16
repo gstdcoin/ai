@@ -3,8 +3,8 @@ package api
 import (
 	"context"
 	"database/sql"
-	"distributed-computing-platform/internal/config"
-	"distributed-computing-platform/internal/services"
+	"gstd-bot/internal/config"
+	"gstd-bot/internal/services"
 	"log"
 	"time"
 

@@ -1,7 +1,7 @@
 package api
 
 import (
-	"distributed-computing-platform/internal/services"
+	"gstd-bot/internal/services"
 	"log"
 	
 	"github.com/gin-gonic/gin"

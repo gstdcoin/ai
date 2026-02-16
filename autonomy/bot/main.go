@@ -1,3 +1,5 @@
+//go:build !manifest && !mobile && !dominance
+
 package main
 
 import (

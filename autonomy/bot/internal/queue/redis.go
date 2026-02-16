@@ -2,7 +2,7 @@ package queue
 
 import (
 	"context"
-	"distributed-computing-platform/internal/config"
+	"gstd-bot/internal/config"
 	"github.com/redis/go-redis/v9"
 )
 

@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"distributed-computing-platform/internal/models"
+	"gstd-bot/internal/models"
 
 	"github.com/google/uuid"
 )

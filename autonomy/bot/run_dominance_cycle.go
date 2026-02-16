@@ -1,3 +1,5 @@
+//go:build dominance
+
 package main
 
 import (

@@ -1,7 +1,7 @@
 package api
 
 import (
-	"distributed-computing-platform/internal/config"
+	"gstd-bot/internal/config"
 	"net/http"
 	"strings"
 

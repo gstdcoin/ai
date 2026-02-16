@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"distributed-computing-platform/internal/config"
+	"gstd-bot/internal/config"
 
 	_ "github.com/lib/pq"
 )

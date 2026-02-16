@@ -4,8 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"distributed-computing-platform/internal/models"
-	"distributed-computing-platform/internal/services"
+	"gstd-bot/internal/models"
+	"gstd-bot/internal/services"
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"

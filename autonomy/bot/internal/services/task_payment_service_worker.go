@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"distributed-computing-platform/internal/models"
+	"gstd-bot/internal/models"
 )
 
 // GetDB returns the database connection (for use in routes)

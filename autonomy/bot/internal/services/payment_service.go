@@ -3,8 +3,8 @@ package services
 import (
 	"context"
 	"database/sql"
-	"distributed-computing-platform/internal/config"
-	"distributed-computing-platform/internal/models"
+	"gstd-bot/internal/config"
+	"gstd-bot/internal/models"
 	"fmt"
 	"log"
 	"time"

@@ -1,7 +1,7 @@
 package api
 
 import (
-	"distributed-computing-platform/internal/services"
+	"gstd-bot/internal/services"
 	"fmt"
 	"log"
 	"time"

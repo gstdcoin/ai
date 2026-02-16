@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"distributed-computing-platform/internal/config"
+	"gstd-bot/internal/config"
 )
 
 type PaymentWatcher struct {
