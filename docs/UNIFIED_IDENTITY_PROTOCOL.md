@@ -122,6 +122,46 @@ POST /api/v1/registry/join
 
 ### Обратная совместимость
 
-- `POST /api/v1/nodes/register` — по-прежнему работает
+- `POST /api/v1/nodes/register` — **DEPRECATED** (поддержка до 2026-03-18), заголовок `X-API-Deprecation`
 - `POST /api/v1/devices/register` — по-прежнему работает
 - Swarm client по умолчанию использует `/registry/join` с `platform_fingerprint`
+- Frontend RegisterDeviceModal использует `/registry/join`
+
+---
+
+## 4. Great Convergence (статус)
+
+### 4.1 Legacy Bridge
+
+- `/nodes/register` — deprecation warning в логах сервера и заголовок `X-API-Deprecation`
+- Swarm client: warning при `use_registry=False`
+- Поддержка до 2026-03-18
+
+### 4.2 Ultra Visibility
+
+- `/ultra-status` возвращает `identity_source`: `"Session"` | `"APIKey"` | `"unknown"`
+
+### 4.3 Global Payout ID
+
+- `settlement_ledger.unified_device_id` — канонический ID устройства/ноды для целостности массовых выплат
+- `SettlementRequest.UnifiedDeviceID` — передаётся при ProcessPayment
+
+---
+
+## 5. Sovereign Dawn (финальный статус)
+
+### 5.1 Auto-Migration Prompt
+
+- Плашка в Dashboard: «Обнаружены устаревшие ноды. Нажмите здесь, чтобы обновить их до Unified Identity и сохранить доступ к выплатам»
+- `GET /api/v1/registry/legacy-check?wallet_address=X` — возвращает `has_legacy`, `legacy_count`
+
+### 5.2 Ultra API Tiering
+
+- Chat rate limit: 60 req/min (standard), 600 req/min (Ultra APIKey)
+- Middleware `UltraRateLimitMiddleware` — проверяет Ultra через OmniPerformance
+
+### 5.3 Archon Health Check
+
+- Еженедельный аудит `unified_device_id`: коллизия = один ID с разными `worker_wallet`
+- При обнаружении: блокировка обоих ID в `archon_blocked_devices`
+- Settlement и Payout Batch исключают заблокированные ID

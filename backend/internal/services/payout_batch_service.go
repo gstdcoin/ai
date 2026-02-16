@@ -59,11 +59,14 @@ func (s *PayoutBatchService) RunBatchCheck(ctx context.Context) {
 		return
 	}
 
+	// Sovereign Dawn: exclude blocked unified_device_ids (Archon collision)
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT worker_wallet, SUM(worker_amount)::float8 as total
-		FROM settlement_ledger
-		WHERE paid_at IS NULL AND worker_wallet IS NOT NULL AND worker_wallet != ''
-		GROUP BY worker_wallet
+		SELECT sl.worker_wallet, SUM(sl.worker_amount)::float8 as total
+		FROM settlement_ledger sl
+		LEFT JOIN archon_blocked_devices abd ON sl.unified_device_id = abd.unified_device_id
+		WHERE sl.paid_at IS NULL AND sl.worker_wallet IS NOT NULL AND sl.worker_wallet != ''
+		  AND abd.unified_device_id IS NULL
+		GROUP BY sl.worker_wallet
 		LIMIT 255
 	`)
 	if err != nil {
@@ -95,10 +98,11 @@ func (s *PayoutBatchService) RunBatchCheck(ctx context.Context) {
 		return
 	}
 
-	// Mark as paid
+	// Mark as paid (Sovereign Dawn: exclude blocked unified_device_ids)
 	_, _ = s.db.ExecContext(ctx, `
 		UPDATE settlement_ledger SET paid_at = NOW(), payout_wave_id = $1
 		WHERE paid_at IS NULL AND worker_wallet IS NOT NULL AND worker_wallet != ''
+		  AND (unified_device_id IS NULL OR unified_device_id NOT IN (SELECT unified_device_id FROM archon_blocked_devices))
 	`, txHash)
 	log.Printf("[Payout Batch] GSTD batch sent: tx=%s (%d workers)", txHash, len(transfers))
 }

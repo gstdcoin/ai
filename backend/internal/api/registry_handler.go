@@ -245,3 +245,34 @@ func getString(m map[string]interface{}, key string) string {
 	s, _ := v.(string)
 	return s
 }
+
+// RegistryLegacyCheck — Sovereign Dawn: check if user has legacy devices (device_id not gstd_*)
+// GET /api/v1/registry/legacy-check?wallet_address=EQ...
+func RegistryLegacyCheck(deviceService *services.DeviceService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		wallet := c.Query("wallet_address")
+		if wallet == "" {
+			wallet = c.GetHeader("X-Wallet-Address")
+		}
+		if wallet == "" {
+			c.JSON(400, gin.H{"error": "wallet_address required"})
+			return
+		}
+		devices, err := deviceService.GetDevicesByWallet(c.Request.Context(), wallet)
+		if err != nil {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
+		var legacyCount int
+		for _, d := range devices {
+			did, _ := d["device_id"].(string)
+			if did != "" && !services.IsUnifiedDeviceID(did) {
+				legacyCount++
+			}
+		}
+		c.JSON(200, gin.H{
+			"has_legacy":   legacyCount > 0,
+			"legacy_count": legacyCount,
+		})
+	}
+}

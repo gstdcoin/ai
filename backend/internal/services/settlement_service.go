@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log"
 
 	"github.com/google/uuid"
@@ -24,11 +25,12 @@ type SettlementService struct {
 
 // SettlementRequest is the input for processing a proxy inference payment
 type SettlementRequest struct {
-	AmountGSTD   float64 `json:"amount_gstd"`
-	WorkerWallet string  `json:"worker_wallet"`
-	NodeID       string  `json:"node_id"`
-	InferenceID  string  `json:"inference_id"`
-	ModelID      string  `json:"model_id"`
+	AmountGSTD       float64 `json:"amount_gstd"`
+	WorkerWallet     string  `json:"worker_wallet"`
+	NodeID           string  `json:"node_id"`
+	UnifiedDeviceID  string  `json:"unified_device_id"` // Great Convergence: canonical device/node ID for payout integrity
+	InferenceID      string  `json:"inference_id"`
+	ModelID          string  `json:"model_id"`
 }
 
 // SettlementResult holds the distribution breakdown
@@ -81,6 +83,17 @@ func (s *SettlementService) ensureSchema() {
 	}
 	// Market Ascension: first_query_bonus_used (fallback if migration not run)
 	s.db.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS first_query_bonus_used BOOLEAN DEFAULT false`)
+	// Great Convergence: unified_device_id for payout integrity
+	s.db.Exec(`ALTER TABLE settlement_ledger ADD COLUMN IF NOT EXISTS unified_device_id VARCHAR(128)`)
+	// Sovereign Dawn: archon_blocked_devices for collision blocking
+	s.db.Exec(`
+		CREATE TABLE IF NOT EXISTS archon_blocked_devices (
+			unified_device_id VARCHAR(128) PRIMARY KEY,
+			reason VARCHAR(255) NOT NULL DEFAULT 'collision',
+			blocked_at TIMESTAMP DEFAULT NOW(),
+			worker_wallets TEXT[]
+		)
+	`)
 	log.Printf("💰 SettlementService schema ensured")
 }
 
@@ -135,15 +148,28 @@ func (s *SettlementService) ProcessPayment(ctx context.Context, req *SettlementR
 		}
 	}
 
+	// Sovereign Dawn: reject if unified_device_id is blocked (Archon collision)
+	unifiedID := req.UnifiedDeviceID
+	if unifiedID == "" && req.NodeID != "" {
+		unifiedID = req.NodeID
+	}
+	if unifiedID != "" {
+		var blocked int
+		if s.db.QueryRowContext(ctx, `SELECT 1 FROM archon_blocked_devices WHERE unified_device_id = $1`, unifiedID).Scan(&blocked) == nil && blocked > 0 {
+			log.Printf("[Settlement] Rejected: unified_device_id %s is blocked (Archon collision)", unifiedID)
+			return nil, fmt.Errorf("device_id blocked: collision under investigation")
+		}
+	}
+
 	settlementID := uuid.New().String()
 
 	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO settlement_ledger (
-			settlement_id, inference_id, amount_gstd, worker_wallet, node_id,
+			settlement_id, inference_id, amount_gstd, worker_wallet, node_id, unified_device_id,
 			worker_amount, treasury_amount, protocol_amount, model_id
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 	`, settlementID, nullIfEmpty(req.InferenceID), req.AmountGSTD, nullIfEmpty(req.WorkerWallet), nullIfEmpty(req.NodeID),
-		workerAmt, treasuryAmt, protocolAmt, nullIfEmpty(req.ModelID))
+		nullIfEmpty(unifiedID), workerAmt, treasuryAmt, protocolAmt, nullIfEmpty(req.ModelID))
 
 	if err != nil {
 		log.Printf("⚠️ SettlementService ProcessPayment: %v", err)

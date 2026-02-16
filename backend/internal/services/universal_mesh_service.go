@@ -167,11 +167,12 @@ func (s *UniversalMeshService) Infer(ctx context.Context, req *InferRequest) (*I
 			if s.settlement != nil {
 				inferenceFee := inferenceFeeGSTD(latencyMs)
 				_, _ = s.settlement.ProcessPayment(ctx, &SettlementRequest{
-					AmountGSTD:   inferenceFee,
-					WorkerWallet: pr.WalletAddr,
-					NodeID:       pr.NodeID,
-					InferenceID:  "",
-					ModelID:      modelID,
+					AmountGSTD:      inferenceFee,
+					WorkerWallet:    pr.WalletAddr,
+					NodeID:          pr.NodeID,
+					UnifiedDeviceID: pr.NodeID,
+					InferenceID:     "",
+					ModelID:         modelID,
 				})
 			}
 			return &InferResponse{
