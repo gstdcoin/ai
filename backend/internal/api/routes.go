@@ -91,6 +91,11 @@ func SetupRoutes(
 	if statsService != nil {
 		gatewayHandler.SetStats(statsService)
 	}
+	if redisClient != nil {
+		if rc, ok := redisClient.(*redis.Client); ok && rc != nil {
+			gatewayHandler.SetRedis(rc)
+		}
+	}
 
 	// Initialize Genesis System (Self-Generating APIs)
 	var genesisRedis *redis.Client
@@ -156,6 +161,7 @@ func SetupRoutes(
 			"network":                     tonConfig.Network,
 			"api_url":                     tonConfig.APIURL,
 			"target_price_per_result_usd": eco.TargetPricePerResultUSD, // ТЗ: ~$0.03/результат
+			"genesis_launch":              true, // Genesis Launch status active
 		})
 	})
 	// [DYNAMIC_CONFIG_END]
@@ -210,6 +216,11 @@ func SetupRoutes(
 		// @Success 200 {object} map[string]interface{} "Pool status"
 		// @Router /pool/status [get]
 		v1.GET("/pool/status", getPoolStatus(poolMonitorService))
+
+		// Genesis Launch: Viral Loop Analytics (public)
+		v1.POST("/analytics/viral/share", RecordViralShare(dbConn))
+		v1.POST("/analytics/viral/click", RecordViralClick(dbConn))
+		v1.GET("/analytics/viral/community-favorite", GetCommunityFavorite(dbConn))
 
 		// Swarm LFS — tensor streaming, integrity, quantization (Protocol: Swarm LFS)
 		if swarmLFS == nil {

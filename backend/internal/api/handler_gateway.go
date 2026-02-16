@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"io"
@@ -14,6 +15,7 @@ import (
 	"distributed-computing-platform/internal/services"
 
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 )
 
 // GatewayHandler handles OpenAI-compatible chat completions and API key management.
@@ -21,6 +23,7 @@ type GatewayHandler struct {
 	apiKeyService    *services.APIKeyService
 	taskService      *services.TaskService
 	db               *sql.DB
+	redis            *redis.Client
 	guardrails       *services.GuardrailsService
 	omniPerformance  *services.OmniPerformanceService
 	knowledgeService *services.KnowledgeService
@@ -29,6 +32,10 @@ type GatewayHandler struct {
 	ollamaURL        string
 	client           *http.Client
 }
+
+// CompareModeQueueThreshold: Genesis Launch — when compare-mode queue exceeds this, prioritize balance > 500 GSTD
+const CompareModeQueueThreshold = 10
+const CompareModePriorityBalanceGSTD = 500.0
 
 // StakingDiscountThresholdGSTD: Consumer Adoption — 10% discount when holding > 1000 GSTD
 const StakingDiscountThresholdGSTD = 1000.0
@@ -78,6 +85,11 @@ func (h *GatewayHandler) SetSettlement(s *services.SettlementService) {
 // SetStats wires StatsService for Public Proof-of-Work swarm stats.
 func (h *GatewayHandler) SetStats(s *services.StatsService) {
 	h.stats = s
+}
+
+// SetRedis wires Redis for Compare Mode queue monitoring (Genesis Launch).
+func (h *GatewayHandler) SetRedis(r *redis.Client) {
+	h.redis = r
 }
 
 // chatCostGSTD returns base cost per model (Consumer Adoption).
@@ -142,6 +154,30 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 			"message": "Connect wallet to use chat. GSTD is deducted per request.",
 		})
 		return
+	}
+
+	// Genesis Launch: Compare Mode queue — prioritize balance > 500 GSTD when backlog
+	isCompareMode := c.GetHeader("X-GSTD-Compare-Mode") == "1" || c.GetHeader("X-GSTD-Compare-Mode") == "true"
+	if isCompareMode && h.redis != nil {
+		ctx := c.Request.Context()
+		key := "leviathan:compare_mode_active"
+		h.redis.Incr(ctx, key)
+		h.redis.Expire(ctx, key, 5*time.Minute) // prevent zombie counts if handler crashes
+		defer func() { h.redis.Decr(ctx, key) }()
+		count, _ := h.redis.Get(ctx, key).Int64()
+		if count > CompareModeQueueThreshold && h.db != nil {
+			var gstdBalance, gstdFrozen float64
+			_ = h.db.QueryRowContext(ctx, `SELECT COALESCE(gstd_balance, 0) + COALESCE(balance, 0), COALESCE(gstd_frozen, 0) FROM users WHERE wallet_address = $1`, wallet).Scan(&gstdBalance, &gstdFrozen)
+			totalHeld := gstdBalance + gstdFrozen
+			if totalHeld < CompareModePriorityBalanceGSTD {
+				c.JSON(429, gin.H{
+					"error":   "compare_mode_queue_full",
+					"code":    429,
+					"message": "Compare Mode queue busy. Stake 500+ GSTD for priority access or try again shortly.",
+				})
+				return
+			}
+		}
 	}
 
 	// Guardrails check
