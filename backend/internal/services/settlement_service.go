@@ -98,6 +98,24 @@ func (s *SettlementService) ProcessPayment(ctx context.Context, req *SettlementR
 	treasuryAmt := req.AmountGSTD * s.treasuryPct
 	protocolAmt := req.AmountGSTD * s.protocolPct
 
+	// Genesis Sync: Repay internal credit from first PoW payout, then grant Reputation Recovery
+	if req.WorkerWallet != "" {
+		var creditUsed float64
+		if s.db.QueryRowContext(ctx, `SELECT COALESCE(internal_credit_used, 0) FROM users WHERE wallet_address = $1`, req.WorkerWallet).Scan(&creditUsed) == nil && creditUsed >= 1 {
+			repay := 0.01
+			if workerAmt >= repay {
+				workerAmt -= repay
+				// Reset flag and grant +5 reputation for "Успешное выполнение обязательств"
+				_, _ = s.db.ExecContext(ctx, `
+					UPDATE users SET internal_credit_used = 0,
+						reputation_bonus = COALESCE(reputation_bonus, 0) + 5
+					WHERE wallet_address = $1
+				`, req.WorkerWallet)
+				log.Printf("[Genesis Sync] Internal Credit repaid: %.2f GSTD deducted, +5 reputation (Успешное выполнение обязательств)", repay)
+			}
+		}
+	}
+
 	settlementID := uuid.New().String()
 
 	_, err := s.db.ExecContext(ctx, `

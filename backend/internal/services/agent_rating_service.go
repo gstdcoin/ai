@@ -27,7 +27,7 @@ func NewAgentRatingService(db *sql.DB) *AgentRatingService {
 }
 
 // GetRating returns reliability score for a wallet (0–100).
-// Based on: count of successful settlements, total worker_amount, recency.
+// Based on: count of successful settlements, total worker_amount, recency, reputation_bonus (Genesis Sync).
 func (s *AgentRatingService) GetRating(ctx context.Context, walletAddr string) (float64, error) {
 	if s.db == nil || walletAddr == "" {
 		return 0, nil
@@ -43,7 +43,16 @@ func (s *AgentRatingService) GetRating(ctx context.Context, walletAddr string) (
 	if err != nil {
 		return 0, err
 	}
-	return s.computeScore(txCount, totalGSTD, lastTx), nil
+	score := s.computeScore(txCount, totalGSTD, lastTx)
+	// Genesis Sync: Reputation Recovery — +5 per credit repayment
+	var repBonus int
+	if s.db.QueryRowContext(ctx, `SELECT COALESCE(reputation_bonus, 0) FROM users WHERE wallet_address = $1`, walletAddr).Scan(&repBonus) == nil && repBonus > 0 {
+		score += float64(repBonus)
+		if score > 100 {
+			score = 100
+		}
+	}
+	return score, nil
 }
 
 // GetRatingsMap returns wallet -> score for a list of wallets (for batch sorting)
