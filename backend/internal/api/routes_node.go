@@ -2,6 +2,7 @@ package api
 
 import (
 	"distributed-computing-platform/internal/services"
+	leviathan "distributed-computing-platform/internal/services/leviathan"
 	"fmt"
 	"log"
 	"strconv"
@@ -268,9 +269,41 @@ func maintenanceAlerts(service *services.NodeService) gin.HandlerFunc {
 	}
 }
 
+// activateWalletAsNode — Wallet-as-Node via Telegram: creates minimal node so wallet can claim tasks.
+// POST /nodes/activate-wallet (session required)
+// Body: { "source": "telegram" } — when from Telegram mining promo, feeds Leviathan for network learning.
+func activateWalletAsNode(service *services.NodeService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		wallet := c.GetString("wallet_address")
+		if wallet == "" {
+			c.JSON(401, gin.H{"error": "session required"})
+			return
+		}
+		var req struct {
+			Source string `json:"source"` // telegram, web — for growth/learning
+		}
+		_ = c.ShouldBindJSON(&req)
+		node, activated, err := service.ActivateWalletAsNode(c.Request.Context(), wallet)
+		if err != nil {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
+		// Omnipresence: Mining vertical — network learns from Telegram mining activations
+		if activated && req.Source == "telegram" {
+			leviathan.RecordMiningGrowth("telegram_mining", "wallet_activation")
+		}
+		c.JSON(200, gin.H{
+			"node_id":   node.ID,
+			"activated": activated,
+			"message":   "Wallet-as-Node active. You can claim tasks.",
+		})
+	}
+}
+
 // SetupNodeRoutes registers node-related routes
 func SetupNodeRoutes(group *gin.RouterGroup, service *services.NodeService, geoService *services.GeoService, telegramService *services.TelegramService, referral *services.MultiLevelReferralService, fleetCommandService *services.FleetCommandService) {
 	group.POST("/nodes/register", registerNode(service, geoService, telegramService, referral))
+	group.POST("/nodes/activate-wallet", activateWalletAsNode(service))
 	group.GET("/nodes/my", getMyNodes(service))
 	group.GET("/nodes/public", getPublicNodes(service))
 	group.POST("/nodes/heartbeat", UpdateHeartbeat(service))

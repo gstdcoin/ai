@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Brain, Search, Coins, ChevronDown, ChevronUp } from 'lucide-react';
-import { apiPost } from '../../lib/apiClient';
+import { Brain, Search, DollarSign, ChevronDown, ChevronUp } from 'lucide-react';
+import { apiPost, ApiError } from '../../lib/apiClient';
 import { useWalletStore } from '../../store/walletStore';
 import { toast } from '../../lib/toast';
 
@@ -54,6 +54,10 @@ export default function BrainQueryPanel() {
       setLastPaid(res.paid_gstd ?? null);
       toast.success('Knowledge Accessed', res.message || 'Revenue directed to Gold Pool.');
     } catch (err: any) {
+      if (err instanceof ApiError && err.status === 402) {
+        toast.error('Insufficient GSTD', 'Top up your wallet or become a Node to earn GSTD.');
+        return;
+      }
       toast.error('Query Failed', err?.message || 'Failed to query knowledge.');
     } finally {
       setLoading(false);
@@ -108,7 +112,7 @@ export default function BrainQueryPanel() {
             </div>
             <div>
               <label className="text-[10px] font-bold text-amber-500/80 uppercase tracking-wider block mb-1.5 flex items-center gap-1">
-                <Coins size={12} /> Amount (GSTD)
+                <DollarSign size={12} /> Amount (GSTD)
               </label>
               <input
                 type="number"

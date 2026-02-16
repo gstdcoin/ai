@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -12,13 +13,19 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+// APIKeyValidator validates user API keys (from dashboard). Can be nil.
+type APIKeyValidator interface {
+	ValidateKey(ctx context.Context, apiKey string) (walletAddress string, err error)
+}
+
 // ValidateSession validates session token from Redis
 // Session token can be provided in:
 // 1. Cookie: "session_token"
 // 2. Header: "X-Session-Token"
 // 3. Query parameter: "session_token" (for backward compatibility, not recommended)
+// 4. API Key: X-GSTD-API-KEY or Authorization: Bearer <key> (admin keys or user keys from dashboard)
 // sessionTTL is the session duration (e.g., 24*time.Hour)
-func ValidateSession(redisClient *redis.Client, sessionTTL ...time.Duration) gin.HandlerFunc {
+func ValidateSession(redisClient *redis.Client, apiKeyService APIKeyValidator, sessionTTL ...time.Duration) gin.HandlerFunc {
 	// Default TTL is 24 hours
 	ttl := 24 * time.Hour
 	if len(sessionTTL) > 0 && sessionTTL[0] > 0 {
@@ -84,6 +91,20 @@ func ValidateSession(redisClient *redis.Client, sessionTTL ...time.Duration) gin
 				c.Set("wallet_address", targetWallet)
 				c.Next()
 				return
+			}
+
+			// 5. Try user API keys (from dashboard, gstd_xxx format)
+			if apiKey != "" && apiKeyService != nil {
+				if wallet, err := apiKeyService.ValidateKey(c.Request.Context(), apiKey); err == nil && wallet != "" {
+					targetWallet := c.GetHeader("X-GSTD-Target-Wallet")
+					if targetWallet == "" {
+						targetWallet = wallet
+					}
+					c.Set("wallet_address", targetWallet)
+					log.Printf("🤖 Agent authenticated via user API key: %s", wallet[:min(8, len(wallet))])
+					c.Next()
+					return
+				}
 			}
 
 			log.Printf("❌ ValidateSession: No session token provided for path: %s", c.Request.URL.Path)

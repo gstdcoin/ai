@@ -72,16 +72,17 @@ type ModelSpec struct {
 
 // PipelineNode represents a worker node's capabilities for pipeline inference
 type PipelineNode struct {
-	NodeID       string    `json:"node_id"`
-	WalletAddr   string    `json:"wallet_address"`
-	VRAM_MB      int       `json:"vram_mb"`
-	RAM_MB       int       `json:"ram_mb"`
-	GPUModel     string    `json:"gpu_model"`
-	Bandwidth_Mbps int     `json:"bandwidth_mbps"`
+	NodeID        string    `json:"node_id"`
+	WalletAddr    string    `json:"wallet_address"`
+	VRAM_MB       int       `json:"vram_mb"`
+	RAM_MB        int       `json:"ram_mb"`
+	GPUModel      string    `json:"gpu_model"`
+	Bandwidth_Mbps int      `json:"bandwidth_mbps"`
 	AssignedLayers []int   `json:"assigned_layers"`
-	IsOnline     bool      `json:"is_online"`
-	LastSeen     time.Time `json:"last_seen"`
-	Region       string    `json:"region"` // For geo-aware routing
+	IsOnline      bool      `json:"is_online"`
+	LastSeen      time.Time `json:"last_seen"`
+	Region        string    `json:"region"` // For geo-aware routing
+	EndpointURL   string    `json:"endpoint_url"` // Clean Core: HTTP endpoint for proxied inference
 }
 
 // Known model specifications
@@ -150,17 +151,18 @@ func (s *PipelineParallelismService) ensureSchema() {
 			completed_at TIMESTAMP
 		);
 	`)
+	s.db.Exec(`ALTER TABLE pipeline_nodes ADD COLUMN IF NOT EXISTS endpoint_url VARCHAR(256)`)
 }
 
 // RegisterNode registers a node's GPU capabilities for pipeline inference
 func (s *PipelineParallelismService) RegisterNode(ctx context.Context, node *PipelineNode) error {
 	_, err := s.db.ExecContext(ctx, `
-		INSERT INTO pipeline_nodes (node_id, wallet_address, vram_mb, ram_mb, gpu_model, bandwidth_mbps, region)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO pipeline_nodes (node_id, wallet_address, vram_mb, ram_mb, gpu_model, bandwidth_mbps, region, endpoint_url)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		ON CONFLICT (node_id) DO UPDATE SET
 			vram_mb = $3, ram_mb = $4, gpu_model = $5, bandwidth_mbps = $6,
-			is_online = true, last_seen = NOW()
-	`, node.NodeID, node.WalletAddr, node.VRAM_MB, node.RAM_MB, node.GPUModel, node.Bandwidth_Mbps, node.Region)
+			region = $7, endpoint_url = $8, is_online = true, last_seen = NOW()
+	`, node.NodeID, node.WalletAddr, node.VRAM_MB, node.RAM_MB, node.GPUModel, node.Bandwidth_Mbps, node.Region, nullIfEmpty(node.EndpointURL))
 
 	if err != nil {
 		return fmt.Errorf("failed to register pipeline node: %w", err)

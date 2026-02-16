@@ -70,6 +70,19 @@ func NewEscrowService(db *sql.DB) *EscrowService {
 	}
 }
 
+// NewEscrowServiceWithEconomics creates EscrowService with ТЗ 3.Б: 70% Net Revenue → Gold
+func NewEscrowServiceWithEconomics(db *sql.DB, goldSharePct float64) *EscrowService {
+	if goldSharePct <= 0 || goldSharePct > 1 {
+		goldSharePct = 0.70 // ТЗ default
+	}
+	return &EscrowService{
+		db:           db,
+		platformFee:  0.05, // 5%
+		devFundShare: 1.0 - goldSharePct,
+		goldShare:    goldSharePct,
+	}
+}
+
 // SetLiquidityDeps wires config and StonFiService for PrepareWithdraw
 func (s *EscrowService) SetLiquidityDeps(cfg config.TONConfig, stonFi *StonFiService) {
 	s.tonCfg = cfg
@@ -440,8 +453,8 @@ func (s *EscrowService) ReleaseToWorkerMarketplace(ctx context.Context, taskID, 
 	if dust < 0 {
 		dust = 0
 	}
-	devFundAmount := platformAmount*0.50 + dust // Dust goes to Treasury
-	goldAmount := platformAmount * 0.50
+	devFundAmount := platformAmount*s.devFundShare + dust // Dust goes to Treasury; ТЗ: 70% to gold
+	goldAmount := platformAmount * s.goldShare
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -524,6 +537,11 @@ func (s *EscrowService) ReleaseToWorkerMarketplace(ctx context.Context, taskID, 
 	if err != nil {
 		return nil, fmt.Errorf("failed to update escrow: %w", err)
 	}
+
+	// Credit worker balance (marketplace payouts)
+	_, _ = tx.ExecContext(ctx, `
+		UPDATE users SET balance = COALESCE(balance, 0) + $1 WHERE wallet_address = $2
+	`, workerReward, workerWallet)
 
 	_, _ = tx.ExecContext(ctx, `
 		INSERT INTO worker_ratings (worker_wallet, total_tasks_completed, total_earnings_gstd, last_task_at, first_task_at)

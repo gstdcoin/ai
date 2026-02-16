@@ -27,12 +27,13 @@ func SetupPipelineRoutes(v1 *gin.RouterGroup, protected *gin.RouterGroup, pipeli
 	// Protected: Register a node for pipeline inference
 	protected.POST("/pipeline/register", func(c *gin.Context) {
 		var req struct {
-			NodeID       string `json:"node_id"`
-			VRAM_MB      int    `json:"vram_mb"`
-			RAM_MB       int    `json:"ram_mb"`
-			GPUModel     string `json:"gpu_model"`
-			BandwidthMbps int   `json:"bandwidth_mbps"`
-			Region       string `json:"region"`
+			NodeID        string `json:"node_id"`
+			VRAM_MB       int    `json:"vram_mb"`
+			RAM_MB        int    `json:"ram_mb"`
+			GPUModel      string `json:"gpu_model"`
+			BandwidthMbps int    `json:"bandwidth_mbps"`
+			Region        string `json:"region"`
+			EndpointURL   string `json:"endpoint_url"` // Clean Core: HTTP endpoint for proxied inference
 		}
 
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -46,13 +47,14 @@ func SetupPipelineRoutes(v1 *gin.RouterGroup, protected *gin.RouterGroup, pipeli
 		}
 
 		node := &services.PipelineNode{
-			NodeID:       req.NodeID,
-			WalletAddr:   walletAddress,
-			VRAM_MB:      req.VRAM_MB,
-			RAM_MB:       req.RAM_MB,
-			GPUModel:     req.GPUModel,
+			NodeID:        req.NodeID,
+			WalletAddr:    walletAddress,
+			VRAM_MB:       req.VRAM_MB,
+			RAM_MB:        req.RAM_MB,
+			GPUModel:      req.GPUModel,
 			Bandwidth_Mbps: req.BandwidthMbps,
-			Region:       req.Region,
+			Region:        req.Region,
+			EndpointURL:   req.EndpointURL,
 		}
 
 		if err := pipelineService.RegisterNode(c.Request.Context(), node); err != nil {

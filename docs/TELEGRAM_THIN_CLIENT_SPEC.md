@@ -127,7 +127,9 @@ docker compose -f docker-compose.prod.yml up -d frontend backend-blue backend-gr
 
 ## 6. Чек-лист реализации
 
-- [ ] Backend: /start с Web App кнопкой
+- [x] Backend: /start с Web App кнопкой (Open App, Start Mining)
+- [x] Wallet-as-Node при /connect — ActivateWalletAsNode + LinkTelegramDevice
+- [x] Bot: qwen2.5-coder:7b (Ollama) для /ask
 - [ ] Backend: /admin с inline-кнопками (admin only)
 - [ ] Backend: обработка callback_query для admin actions
 - [ ] tg-miner: редирект на app или TonConnect + полный UI

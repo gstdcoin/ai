@@ -11,9 +11,10 @@ interface ReferralModalProps {
 
 interface ReferralStats {
     referral_code: string;
-    total_referrals: number;
+    total_referred?: number;
+    total_referrals?: number;
     total_earned: number;
-    referral_link: string;
+    referral_link?: string;
 }
 
 export default function ReferralModal({ onClose }: ReferralModalProps) {
@@ -34,15 +35,15 @@ export default function ReferralModal({ onClose }: ReferralModalProps) {
             // For now we'll simulate or try to fetch if endpoint exists
             try {
                 // Try to fetch real stats if endpoint available
-                const data = await apiGet<ReferralStats>('/user/referrals');
+                const data = await apiGet<ReferralStats>('/referrals/stats');
                 setStats(data);
             } catch (err) {
-                // Fallback mock if endpoint not ready yet
+                // Fallback when not logged in or endpoint error
                 setStats({
                     referral_code: address ? address.slice(0, 8) : '--------',
-                    total_referrals: 0,
+                    total_referred: 0,
                     total_earned: 0,
-                    referral_link: `https://gstdtoken.com/ref/${address ? address.slice(0, 8) : ''}`
+                    referral_link: `https://app.gstdtoken.com?ref=${address ? address.slice(0, 8) : ''}`
                 });
             }
         } catch (error) {
@@ -93,7 +94,7 @@ export default function ReferralModal({ onClose }: ReferralModalProps) {
                             {/* Stats Grid */}
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="bg-white/5 rounded-xl p-4 border border-white/5 text-center">
-                                    <div className="text-2xl font-bold text-white mb-1">{stats.total_referrals}</div>
+                                    <div className="text-2xl font-bold text-white mb-1">{stats.total_referrals ?? stats.total_referred ?? 0}</div>
                                     <div className="text-xs text-gray-500 uppercase tracking-wider">Referrals</div>
                                 </div>
                                 <div className="bg-white/5 rounded-xl p-4 border border-white/5 text-center">
@@ -107,10 +108,10 @@ export default function ReferralModal({ onClose }: ReferralModalProps) {
                                 <label className="text-xs text-gray-400 uppercase tracking-wider">Your Referral Link</label>
                                 <div className="flex gap-2">
                                     <div className="flex-1 bg-black/50 border border-white/10 rounded-lg px-4 py-3 text-sm text-gray-300 font-mono truncate">
-                                        {stats.referral_link}
+                                        {stats.referral_link || `https://app.gstdtoken.com?ref=${stats.referral_code || ''}`}
                                     </div>
                                     <button
-                                        onClick={() => copyToClipboard(stats.referral_link)}
+                                        onClick={() => copyToClipboard(stats.referral_link || `https://app.gstdtoken.com?ref=${stats.referral_code || ''}`)}
                                         className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
                                     >
                                         <Copy size={18} />

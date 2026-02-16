@@ -373,6 +373,22 @@ a:focus-visible {
   animation: glow-pulse 2s ease-in-out infinite;
 }
 
+/* Guardian Mode: Supreme Opportunity — Alpha >= 30% pulse */
+@keyframes supreme-pulse {
+  0%, 100% {
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
+    border-color: rgba(245, 158, 11, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 24px rgba(245, 158, 11, 0.8);
+    border-color: rgba(245, 158, 11, 0.9);
+  }
+}
+
+.animate-supreme-pulse {
+  animation: supreme-pulse 1.2s ease-in-out infinite;
+}
+
 /* Footer stats ticker */
 @keyframes marquee {
   0% { transform: translateX(0); }

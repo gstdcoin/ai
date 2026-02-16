@@ -37,6 +37,9 @@ func (s *EvolutionEngine) Start(ctx context.Context) {
 }
 
 func (s *EvolutionEngine) evolve(ctx context.Context) {
+	// Self-Learning Loop (Clean Core): use free hashrate to update knowledge
 	_, _ = s.knowledge.GetResonanceQuotes(ctx, 5)
 	_, _ = s.knowledge.GetGridTools(ctx, 10)
+	// Golden Vectors: Leviathan micro-tasks and LogLesson update via shadow engine
+	// When no paid orders, this evolution feeds into Leviathan's Synergetic Growth
 }

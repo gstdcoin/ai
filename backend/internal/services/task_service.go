@@ -275,7 +275,8 @@ func (s *TaskService) GetTasks(ctx context.Context, requesterAddress *string) ([
 	query := `
 		SELECT task_id, requester_address, task_type, operation, model,
 		       labor_compensation_gstd, COALESCE(priority_score, 0.0) as gravity_score, status, created_at,
-		       COALESCE(escrow_status, 'none') as escrow_status, COALESCE(confidence_depth, 0) as confidence_depth
+		       COALESCE(escrow_status, 'none') as escrow_status, COALESCE(confidence_depth, 0) as confidence_depth,
+		       COALESCE(p2p_verified, false) as p2p_verified
 		FROM tasks
 	`
 	var args []interface{}
@@ -297,7 +298,7 @@ func (s *TaskService) GetTasks(ctx context.Context, requesterAddress *string) ([
 		err := rows.Scan(
 			&t.TaskID, &t.RequesterAddress, &t.TaskType, &t.Operation, &t.Model,
 			&t.LaborCompensationGSTD, &t.PriorityScore, &t.Status, &t.CreatedAt,
-			&t.EscrowStatus, &t.ConfidenceDepth,
+			&t.EscrowStatus, &t.ConfidenceDepth, &t.P2PVerified,
 		)
 		if err != nil {
 			continue

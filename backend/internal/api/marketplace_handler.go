@@ -18,9 +18,16 @@ type MarketplaceHandler struct {
 	referral    *services.ReferralService
 }
 
-// NewMarketplaceHandler creates a new marketplace handler
-func NewMarketplaceHandler(db *sql.DB, referral *services.ReferralService) *MarketplaceHandler {
-	escrow := services.NewEscrowService(db)
+// GetMarketplace returns the marketplace service (for Telegram bot integration)
+func (h *MarketplaceHandler) GetMarketplace() *services.MarketplaceService {
+	return h.marketplace
+}
+
+// NewMarketplaceHandler creates a new marketplace handler (uses escrow from container for 70/30 economics)
+func NewMarketplaceHandler(db *sql.DB, escrow *services.EscrowService, referral *services.ReferralService) *MarketplaceHandler {
+	if escrow == nil {
+		escrow = services.NewEscrowService(db)
+	}
 	marketplace := services.NewMarketplaceService(db, escrow, referral)
 	return &MarketplaceHandler{
 		db:          db,

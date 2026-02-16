@@ -12,6 +12,13 @@ type Config struct {
 	TON      TONConfig
 	Server   ServerConfig
 	Telegram TelegramConfig
+	Economics EconomicsConfig
+}
+
+// EconomicsConfig — ТЗ: Pay-for-Result ~$0.03/результат (экономия 70% vs облако)
+type EconomicsConfig struct {
+	TargetPricePerResultUSD float64 // Целевая цена за результат в USD (default 0.03)
+	NetRevenueToGoldPct     float64 // 70% Net Protocol Revenue → золото (ТЗ 3.Б)
 }
 
 type DatabaseConfig struct {
@@ -108,6 +115,10 @@ func Load() *Config {
 		Telegram: TelegramConfig{
 			BotToken: getEnv("TELEGRAM_BOT_TOKEN", ""),
 			ChatID:   getEnv("TELEGRAM_CHAT_ID", ""),
+		},
+		Economics: EconomicsConfig{
+			TargetPricePerResultUSD: getEnvFloat("TARGET_PRICE_PER_RESULT_USD", 0.03),
+			NetRevenueToGoldPct:     getEnvFloat("NET_REVENUE_TO_GOLD_PCT", 70.0),
 		},
 	}
 	return configInstance

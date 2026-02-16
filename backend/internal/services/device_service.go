@@ -187,6 +187,24 @@ func (s *DeviceService) LinkBrowserDevice(ctx context.Context, deviceID, walletA
 	return err
 }
 
+// LinkTelegramDevice links a Telegram user's device (tg-{telegram_id}) to a wallet.
+// Wallet-as-Node: enables claiming tasks from the bot without installing an app.
+func (s *DeviceService) LinkTelegramDevice(ctx context.Context, deviceID, walletAddress string) error {
+	if deviceID == "" || walletAddress == "" {
+		return nil
+	}
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO devices (device_id, wallet_address, device_type, reputation, total_tasks, successful_tasks, failed_tasks, last_seen_at, is_active)
+		VALUES ($1, $2, 'telegram', 0.5, 0, 0, 0, NOW(), true)
+		ON CONFLICT (device_id) DO UPDATE SET
+			wallet_address = $2,
+			device_type = 'telegram',
+			last_seen_at = NOW(),
+			is_active = true
+	`, deviceID, walletAddress)
+	return err
+}
+
 // GetWalletByDeviceID returns wallet_address for a device (Fleet Command: route commands to correct nodes)
 func (s *DeviceService) GetWalletByDeviceID(ctx context.Context, deviceID string) (string, error) {
 	var wallet string

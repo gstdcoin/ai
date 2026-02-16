@@ -17,6 +17,88 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+// getAdminArchitectNetwork - Master-Dashboard: global network health for Architect
+func getAdminArchitectNetwork(db *sql.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var activeNodes, completedTasks int
+		var totalBurned, goldenReserve, totalGSTDPaid float64
+		db.QueryRow(`SELECT COUNT(*) FROM nodes WHERE status = 'online' AND last_seen > NOW() - INTERVAL '5 minutes'`).Scan(&activeNodes)
+		db.QueryRow(`SELECT COUNT(*) FROM tasks WHERE status = 'completed'`).Scan(&completedTasks)
+		db.QueryRow(`SELECT COALESCE(SUM(burn_amount), 0) FROM token_burns`).Scan(&totalBurned)
+		db.QueryRow(`SELECT COALESCE(SUM(xaut_amount), 0) FROM golden_reserve_log WHERE xaut_amount IS NOT NULL`).Scan(&goldenReserve)
+		db.QueryRow(`SELECT COALESCE(SUM(labor_compensation_gstd), 0) FROM tasks WHERE status = 'completed'`).Scan(&totalGSTDPaid)
+
+		c.JSON(200, gin.H{
+			"active_nodes":      activeNodes,
+			"completed_tasks":   completedTasks,
+			"total_burned_gstd": totalBurned,
+			"golden_reserve_oz": goldenReserve,
+			"total_gstd_paid":   totalGSTDPaid,
+			"health":            "operational",
+		})
+	}
+}
+
+// getAdminArchitectParams - Emission/commission parameters (read-only from config)
+func getAdminArchitectParams(tonConfig config.TONConfig) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"platform_fee_percent": tonConfig.PlatformFeePercent,
+			"admin_wallet":         tonConfig.AdminWallet,
+			"treasury_wallet":      tonConfig.TreasuryWallet,
+		})
+	}
+}
+
+// getAdminArchitectVision - Estimated IQ growth for next 30 days based on Node Influx
+func getAdminArchitectVision(db *sql.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := c.Request.Context()
+
+		// Node Influx: new nodes in last 7 days
+		var nodesLast7d int
+		db.QueryRowContext(ctx, `
+			SELECT COUNT(*) FROM nodes WHERE created_at > NOW() - INTERVAL '7 days'
+		`).Scan(&nodesLast7d)
+
+		// Tasks completed last 7 days (IQ proxy)
+		var tasksLast7d int
+		db.QueryRowContext(ctx, `
+			SELECT COUNT(*) FROM tasks WHERE status = 'completed' AND completed_at > NOW() - INTERVAL '7 days'
+		`).Scan(&tasksLast7d)
+
+		// Tasks per node ratio (last 7d)
+		ratio := 0.0
+		if nodesLast7d > 0 {
+			ratio = float64(tasksLast7d) / float64(nodesLast7d)
+		}
+
+		// Projected node growth: assume same influx rate for 30d
+		nodesPerWeek := float64(nodesLast7d)
+		projectedNodes30d := nodesPerWeek * (30.0 / 7.0)
+
+		// Estimated IQ growth = projected tasks in 30d
+		// IQ = tasks completed (proxy for collective intelligence)
+		projectedTasks30d := 0
+		if ratio > 0 {
+			projectedTasks30d = int(projectedNodes30d * ratio)
+		}
+		// Fallback: use tasks_last_7d * 4 for 30d
+		if projectedTasks30d == 0 {
+			projectedTasks30d = tasksLast7d * 4
+		}
+
+		c.JSON(200, gin.H{
+			"nodes_influx_7d":       nodesLast7d,
+			"tasks_completed_7d":   tasksLast7d,
+			"tasks_per_node_ratio": ratio,
+			"projected_nodes_30d":  int(projectedNodes30d),
+			"estimated_iq_growth_30d": projectedTasks30d,
+			"message":              "Estimated IQ growth for next 30 days based on current Node Influx",
+		})
+	}
+}
+
 func getAdminHealth(
 	db *sql.DB,
 	redisClient *redis.Client,
@@ -76,6 +158,11 @@ func getAdminHealth(
 			WHERE status = 'pending' AND retry_count < max_retries
 		`).Scan(&pendingRetries)
 
+		// Admin Treasury View: total burned GSTD, total XAUt bought
+		var totalBurned, totalXAUtBought float64
+		db.QueryRow(`SELECT COALESCE(SUM(burn_amount), 0) FROM token_burns`).Scan(&totalBurned)
+		db.QueryRow(`SELECT COALESCE(SUM(xaut_amount), 0) FROM golden_reserve_log WHERE xaut_amount IS NOT NULL`).Scan(&totalXAUtBought)
+
 		c.JSON(200, gin.H{
 			"database": gin.H{
 				"status": dbStatus,
@@ -85,6 +172,10 @@ func getAdminHealth(
 			},
 			"last_xaut_swaps": swaps,
 			"pending_retries":  pendingRetries,
+			"treasury": gin.H{
+				"total_burned_gstd": totalBurned,
+				"total_xaut_bought": totalXAUtBought,
+			},
 		})
 	}
 }
@@ -570,7 +661,12 @@ func reconcileMarketplaceTask(db *sql.DB, referral *services.ReferralService) gi
 			log.Printf("Reconcile: ClaimTask: %v (trying complete)", err)
 		}
 
-		receipt, err := marketplace.CompleteTask(c.Request.Context(), req.TaskID, req.WorkerWallet, 0, 1.0, []byte(`{"reconciled":true}`))
+		resultData := []byte(`{"reconciled":true}`)
+		var taskType string
+		if err := db.QueryRowContext(c.Request.Context(), "SELECT COALESCE(task_type,'') FROM tasks WHERE task_id = $1", req.TaskID).Scan(&taskType); err == nil && taskType == services.TaskTypePolymarketPrediction {
+			resultData = []byte(`{"prediction":"yes","confidence":0.5,"reasoning":"admin reconcile"}`)
+		}
+		receipt, err := marketplace.CompleteTask(c.Request.Context(), req.TaskID, req.WorkerWallet, 0, 1.0, resultData)
 		if err != nil {
 			c.JSON(500, gin.H{"error": err.Error()})
 			return

@@ -60,6 +60,7 @@ export const useWalletStore = create<WalletState>()(
       user: null,
       workerActive: false,
       lastActiveTimestamp: null,
+      isHydrated: false,
       connect: (address: string) => set({
         isConnected: true,
         address,
@@ -89,6 +90,7 @@ export const useWalletStore = create<WalletState>()(
         workerActive: active,
         lastActiveTimestamp: active ? Date.now() : null
       }),
+      setHydrated: (hydrated: boolean) => set({ isHydrated: hydrated }),
     }),
     {
       name: 'gstd-wallet-storage', // Unique name for localStorage key
@@ -103,11 +105,13 @@ export const useWalletStore = create<WalletState>()(
       }),
       // Rehydrate check - clear stale data older than 24 hours
       onRehydrateStorage: () => (state) => {
-        if (state?.lastActiveTimestamp) {
-          const oneDay = 24 * 60 * 60 * 1000;
-          if (Date.now() - state.lastActiveTimestamp > oneDay) {
-            // Session is stale, reset
-            state.disconnect();
+        if (state) {
+          if (state.lastActiveTimestamp) {
+            const oneDay = 24 * 60 * 60 * 1000;
+            if (Date.now() - state.lastActiveTimestamp > oneDay) {
+              // Session is stale, reset
+              state.disconnect();
+            }
           }
         }
       },

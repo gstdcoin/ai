@@ -67,12 +67,12 @@ export const WalletBalanceWidget: React.FC = () => {
             const pendingData = await apiGet<{ pending_balance: number }>(`/users/pending_balance`);
 
             const newBalance: WalletBalance = {
-                gstd_balance: balanceData.balance || 0,
-                ton_balance: 0, // TODO: Fetch TON balance if needed, or get from wallet store
-                pending_earnings: pendingData.pending_balance || 0,
-                pending_payouts: 0,
-                total_earned: 0,
-                locked_in_escrow: 0
+                gstd_balance: balanceData.gstd_balance ?? balanceData.balance ?? 0,
+                ton_balance: balanceData.ton_balance ?? 0,
+                pending_earnings: balanceData.pending_earnings ?? pendingData.pending_balance ?? 0,
+                pending_payouts: balanceData.pending_payouts ?? 0,
+                total_earned: balanceData.total_earned ?? 0,
+                locked_in_escrow: balanceData.locked_in_escrow ?? 0
             };
 
             setBalance(newBalance);

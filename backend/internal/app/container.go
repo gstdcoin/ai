@@ -14,6 +14,8 @@ import (
 	"distributed-computing-platform/internal/database"
 	"distributed-computing-platform/internal/queue"
 	"distributed-computing-platform/internal/services"
+	leviathan "distributed-computing-platform/internal/services/leviathan"
+	"distributed-computing-platform/internal/services/multichain"
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
@@ -28,7 +30,7 @@ func BuildContainer() *dig.Container {
 	c.Provide(func() *config.Config {
 		return config.Load()
 	})
-	
+
 	c.Provide(func(cfg *config.Config) config.TONConfig {
 		return cfg.TON
 	})
@@ -62,20 +64,39 @@ func BuildContainer() *dig.Container {
 	c.Provide(services.NewAgentModelService)
 	c.Provide(services.NewPricingService)
 	c.Provide(services.NewInvoiceService)
-	c.Provide(services.NewLendingService)
-
 	c.Provide(services.NewProofOfWorkService)
 	c.Provide(services.NewMaintenanceService)
-	c.Provide(services.NewEscrowService)
+	c.Provide(func(db *sql.DB, cfg *config.Config) *services.EscrowService {
+		// ТЗ 3.Б: 70% Net Protocol Revenue → Gold
+		pct := cfg.Economics.NetRevenueToGoldPct / 100.0
+		if pct <= 0 || pct > 1 {
+			pct = 0.70
+		}
+		return services.NewEscrowServiceWithEconomics(db, pct)
+	})
 	c.Provide(func(cfg *config.Config) *services.StonFiService {
 		return services.NewStonFiService(cfg.TON.StonFiRouter)
 	})
 	c.Provide(func(db *sql.DB) *services.BurnService {
-		return services.NewBurnService(db, nil)
+		return services.NewBurnService(db, &services.BurnConfig{BurnRate: 0}) // Burn disabled: supply is low
 	})
 	c.Provide(services.NewReferralService)
 	c.Provide(services.NewMultiLevelReferralService)
 	c.Provide(services.NewStatsService)
+	c.Provide(func(db *sql.DB, escrow *services.EscrowService, cfg *config.Config) *services.PolymarketBridgeService {
+		creator := cfg.TON.AdminWallet
+		if creator == "" {
+			creator = "platform_polymarket"
+		}
+		return services.NewPolymarketBridgeService(db, escrow, services.PolymarketBridgeConfig{
+			GammaAPIBase:      "https://gamma-api.polymarket.com",
+			RewardPerTask:     0.5,
+			MaxWorkersPerTask: 5,
+			CreatorWallet:     creator,
+			MaxEventsToCreate: 100,
+			GoldSharePct:      cfg.Economics.NetRevenueToGoldPct / 100.0,
+		})
+	})
 	c.Provide(services.NewResultService)
 	c.Provide(services.NewTaskService)
 	c.Provide(services.NewRewardEngine)
@@ -107,6 +128,38 @@ func BuildContainer() *dig.Container {
 	c.Provide(services.NewZKComputeProofService)
 	c.Provide(services.NewDataAirlockService)
 	c.Provide(services.NewInferenceService)
+	c.Provide(services.NewSwarmLFSService)
+	c.Provide(func(db *sql.DB, redis *redis.Client, lfs *services.SwarmLFSService, pipeline *services.PipelineParallelismService, inference *services.InferenceService, contrib *services.ContributionMonetizationService) *services.CleanCoreService {
+		return services.NewCleanCoreService(db, redis, lfs, pipeline, inference, contrib)
+	})
+	c.Provide(func(db *sql.DB, poolMonitor *services.PoolMonitorService) *services.ContributionMonetizationService {
+		return services.NewContributionMonetizationService(db, poolMonitor)
+	})
+	c.Provide(func(db *sql.DB, cfg *config.Config, burn *services.BurnService, poolMonitor *services.PoolMonitorService) *services.SettlementService {
+		return services.NewSettlementService(db, cfg.TON, burn, poolMonitor)
+	})
+	c.Provide(func(db *sql.DB, settlement *services.SettlementService, poolMonitor *services.PoolMonitorService, escrow *services.EscrowService) *services.BillingService {
+		return services.NewBillingService(db, settlement, poolMonitor, escrow)
+	})
+	c.Provide(func(db *sql.DB, settlement *services.SettlementService, stats *services.StatsService) *services.GoldenAgeService {
+		return services.NewGoldenAgeService(db, settlement, stats)
+	})
+	c.Provide(func(db *sql.DB, poolMonitor *services.PoolMonitorService) *services.DynamicEquilibriumService {
+		return services.NewDynamicEquilibriumService(db, poolMonitor)
+	})
+	c.Provide(services.NewGlobalNeuralMergeService)
+	c.Provide(services.NewSingularityGatewayService)
+	c.Provide(services.NewSubAgentSelfOptimizationService)
+	c.Provide(func(db *sql.DB, cfg *config.Config) *services.OmnipotenceService {
+		wallet := cfg.TON.AdminWallet
+		if wallet == "" {
+			wallet = cfg.TON.TreasuryWallet
+		}
+		return services.NewOmnipotenceService(db, wallet)
+	})
+	c.Provide(func(db *sql.DB, inference *services.InferenceService, mobile *services.MobileComputeService, pipeline *services.PipelineParallelismService, contrib *services.ContributionMonetizationService, cleanCore *services.CleanCoreService, settlement *services.SettlementService) *services.UniversalMeshService {
+		return services.NewUniversalMeshService(db, inference, mobile, pipeline, contrib, cleanCore, settlement)
+	})
 	c.Provide(services.NewAgentSubcontractService)
 	c.Provide(services.NewGoldHashRateService)
 	c.Provide(func(goldHash *services.GoldHashRateService, hub *api.WSHub) *services.GoldBroadcastRunner {
@@ -153,10 +206,21 @@ func BuildContainer() *dig.Container {
 	c.Provide(func(db *sql.DB, redis *redis.Client) *services.TaskOrchestrator {
 		return services.NewTaskOrchestrator(db, redis)
 	})
-    
+
 	c.Provide(func() *services.RateLimiter {
 		// Matching main.go: taskRateLimiter := services.NewRateLimiter(10, 1*time.Minute)
 		return services.NewRateLimiter(10, 1*time.Minute)
+	})
+
+	// 2.a Multichain & Treasury
+	c.Provide(func(db *sql.DB, stonFi *services.StonFiService, cfg *config.Config) *services.TreasuryService {
+		return services.NewTreasuryService(db, stonFi, cfg.TON)
+	})
+	c.Provide(func() *multichain.SolanaServiceImpl {
+		return multichain.NewSolanaService(os.Getenv("SOLANA_RPC_URL"))
+	})
+	c.Provide(func() *multichain.XRPLServiceImpl {
+		return multichain.NewXRPLService(os.Getenv("XRPL_WEBSOCKET_URL"))
 	})
 
 	// 3. Background Workers
@@ -205,8 +269,6 @@ func StartApplication(container *dig.Container) error {
 		powService *services.ProofOfWorkService,
 		taskOrchestrator *services.TaskOrchestrator,
 		telegramService *services.TelegramService,
-		lendingService *services.LendingService,
-
 		maintenanceService *services.MaintenanceService,
 		sovereignBridge *services.SovereignBridgeService,
 		knowledgeService *services.KnowledgeService,
@@ -230,6 +292,9 @@ func StartApplication(container *dig.Container) error {
 		kvCacheService *services.KVCacheService,
 		dataAirlock *services.DataAirlockService,
 		openClawBridge *services.OpenClawBridgeService,
+		inferenceService *services.InferenceService,
+		contributionMonetization *services.ContributionMonetizationService,
+		universalMeshService *services.UniversalMeshService,
 		geoService *services.GeoService,
 		agentModelService *services.AgentModelService,
 		agentSubcontractService *services.AgentSubcontractService,
@@ -241,6 +306,17 @@ func StartApplication(container *dig.Container) error {
 		evolutionEngine *services.EvolutionEngine,
 		omniPerformance *services.OmniPerformanceService,
 		starsBuyback *services.StarsBuybackService,
+		polymarketBridge *services.PolymarketBridgeService,
+		treasuryService *services.TreasuryService,
+		swarmLFS *services.SwarmLFSService,
+		cleanCoreService *services.CleanCoreService,
+		billingService *services.BillingService,
+		goldenAgeService *services.GoldenAgeService,
+		dynamicEquilibrium *services.DynamicEquilibriumService,
+		globalNeuralMerge *services.GlobalNeuralMergeService,
+		singularityGateway *services.SingularityGatewayService,
+		omnipotence *services.OmnipotenceService,
+		subAgentSelfOpt *services.SubAgentSelfOptimizationService,
 	) {
 		// 1. Cross-dependency wiring
 		tonService.SetCacheService(cacheService)
@@ -262,7 +338,6 @@ func StartApplication(container *dig.Container) error {
 		telegramService.SetStarsBuyback(starsBuyback)
 		stonFiService.SetPoolMonitor(poolMonitor)
 		poolMonitor.SetStonFi(stonFiService)
-		lendingService.SetPoolMonitor(poolMonitor)
 		taskOrchestrator.SetPoWService(powService)
 
 		// 2. Start WebSocket Hub
@@ -284,7 +359,53 @@ func StartApplication(container *dig.Container) error {
 		go anomalyDetection.Start(ctx)
 		go evolutionEngine.Start(ctx)
 
-		
+		// Golden Age Protocol: Payout Waves, Dynamic Fee, Proof-of-Gold, Swarm Expansion
+		if goldenAgeService != nil {
+			go goldenAgeService.Start(ctx)
+		}
+		if dynamicEquilibrium != nil {
+			go dynamicEquilibrium.Start(ctx)
+		}
+		if globalNeuralMerge != nil {
+			go globalNeuralMerge.Start(ctx)
+			log.Printf("🧠 Global Neural Merge: Intelligence Consolidation ACTIVE (15m)")
+		}
+		if singularityGateway != nil {
+			go singularityGateway.Start(ctx)
+			log.Printf("🚀 Singularity Gateway: Latency Optimization + IQ Milestone ACTIVE (5m)")
+		}
+		if omnipotence != nil {
+			go omnipotence.Start(ctx)
+			log.Printf("👁 Omnipotence: Predictive Allocation + Autonomous Expansion + Golden Verification ACTIVE (10m)")
+		}
+		if subAgentSelfOpt != nil {
+			go subAgentSelfOpt.Start(ctx)
+			log.Printf("🤖 SubAgent Self-Optimization: lessons + critical insights exchange ACTIVE (20m)")
+		}
+
+		// Start Treasury Auto-Converter
+		go func() {
+			ticker := time.NewTicker(24 * time.Hour) // Check once a day ideally, or hourly. 24h for PoC.
+			defer ticker.Stop()
+			log.Printf("💰 Treasury Service Started (Gold Bridge Active)")
+
+			// Run on startup
+			if err := treasuryService.ProcessGoldReserves(ctx); err != nil {
+				log.Printf("⚠️ Treasury Error: %v", err)
+			}
+
+			for {
+				select {
+				case <-ticker.C:
+					if err := treasuryService.ProcessGoldReserves(ctx); err != nil {
+						log.Printf("⚠️ Treasury Error: %v", err)
+					}
+				case <-ctx.Done():
+					return
+				}
+			}
+		}()
+
 		// 🚀 1M User Optimization: Periodically flush batched heartbeats
 		go func() {
 			ticker := time.NewTicker(45 * time.Second)
@@ -303,8 +424,11 @@ func StartApplication(container *dig.Container) error {
 				}
 			}
 		}()
-		
+
 		log.Printf("🚀 All background workers started")
+
+		// 3b. Leviathan: optional prediction-market analytics (LEVIATHAN_ENABLED=true)
+		leviathan.StartIfEnabled(ctx)
 
 		// 4. Setup Routes
 		api.SetupRoutes(
@@ -329,15 +453,14 @@ func StartApplication(container *dig.Container) error {
 			taskRateLimiter,
 			db,
 			redisClient,
-		payoutRetry,
-		escrowService,
-		poolMonitor,
+			payoutRetry,
+			escrowService,
+			poolMonitor,
 			cacheService,
 			errorLogger,
 			powService,
 			taskOrchestrator,
 			telegramService,
-			lendingService,
 
 			maintenanceService,
 			sovereignBridge,
@@ -354,7 +477,12 @@ func StartApplication(container *dig.Container) error {
 			agentModelService,
 			fleetCommandService,
 			omniPerformance,
+			polymarketBridge,
+			swarmLFS,
 		)
+
+		// 4a. Leviathan Live Stream (SSE) — Protocol: Live Stream, No-DB, 30s memory
+		api.SetupLeviathanLiveStream(router)
 
 		// 4b. Modular routes (registered separately for clean architecture)
 		v1Group := router.Group("/api/v1")
@@ -364,6 +492,18 @@ func StartApplication(container *dig.Container) error {
 			guardrailsService, federatedEngine, mobileCompute,
 			zbGateService, recyclingPool, kvCacheService,
 			dataAirlock, openClawBridge)
+
+		// 4b2. Universal Mesh Protocol: public infer, XAUt monetization
+		api.SetupUniversalMeshRoutes(v1Group, universalMeshService, contributionMonetization)
+		log.Printf("🌐 Universal Mesh Protocol: ACTIVE — GET /api/v1/infer, GET /api/v1/mesh/shares")
+
+		// 4b2b. Financial API: billing balance
+		api.SetupBillingRoutes(v1Group, billingService)
+		log.Printf("💰 Financial API: GET /api/v1/billing/balance/:wallet")
+
+		// 4b3. Clean Core Protocol: Shard-First, Availability Staking, Proxy-Balancer
+		api.SetupCleanCoreRoutes(protectedGroup, cleanCoreService, cfg.TON)
+		log.Printf("🧹 Clean Core Protocol: ACTIVE — POST /admin/models/propagate, POST /pipeline/proof-storage")
 
 		// 4c. Cosmic Genesis: A2A economy, Gold-Hash link, Hardware grants
 		api.SetupCosmicGenesisRoutes(v1Group, protectedGroup, db, agentSubcontractService, goldHashRateService)

@@ -35,6 +35,7 @@ interface Task {
   is_private?: boolean;
   redundancy_factor?: number;
   is_spot_check?: boolean;
+  p2p_verified?: boolean;
 }
 
 interface TasksPanelProps {
@@ -462,18 +463,6 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
                     ? t('no_available_tasks_desc') || 'No tasks are currently available for execution.'
                     : t('no_tasks_desc') || 'No tasks found. Create a new task to get started.'
               }
-              action={filter !== 'available' ? (
-                <button
-                  onClick={() => {
-                    if (typeof window !== 'undefined') {
-                      window.dispatchEvent(new CustomEvent('openCreateTask'));
-                    }
-                  }}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  {t('create_task') || 'Create Task'}
-                </button>
-              ) : undefined}
             />
           );
         }
@@ -530,13 +519,20 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
                         {task.task_type}
                       </td>
                       <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${task.status === 'completed' ? 'bg-green-500/20 text-green-400' :
-                          task.status === 'processing' ? 'bg-blue-500/20 text-blue-400' :
-                            task.status === 'queued' ? 'bg-yellow-500/20 text-yellow-400' :
-                              'bg-gray-500/20 text-gray-400'
-                          }`}>
-                          {t(task.status)}
-                        </span>
+                        <div className="flex flex-col gap-1">
+                          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${task.status === 'completed' ? 'bg-green-500/20 text-green-400' :
+                            task.status === 'processing' ? 'bg-blue-500/20 text-blue-400' :
+                              task.status === 'queued' ? 'bg-yellow-500/20 text-yellow-400' :
+                                'bg-gray-500/20 text-gray-400'
+                            }`}>
+                            {t(task.status)}
+                          </span>
+                          {task.status === 'completed' && task.p2p_verified && (
+                            <span className="text-[10px] text-cyan-400 font-medium" title="P2P Verified">
+                              🛡️ Network Verification: Passed (P2P Verified)
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-300 hidden md:table-cell">
                         {task.labor_compensation_gstd} GSTD

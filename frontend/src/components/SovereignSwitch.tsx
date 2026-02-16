@@ -329,11 +329,14 @@ export const SovereignSwitch = ({ className, onModeChange }: SovereignSwitchProp
                 </div>
             </div>
 
-            {/* Balance Warning */}
+            {/* Seamless Transition CTA: No GSTD = Become Node */}
             {mode === 'producer' && balance < MASTER_THRESHOLD && isConnected && (
-                <div className="text-center mt-4">
+                <div className="text-center mt-4 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
+                    <p className="text-emerald-400 text-sm font-bold mb-2">
+                        No GSTD? Become a Node — Earn instantly.
+                    </p>
                     <p className="text-gray-400 text-xs font-medium">
-                        💡 Earn <span className="text-white">{MASTER_THRESHOLD} GSTD</span> to unlock Sovereign Master mode.
+                        Run your device as a Node to earn <span className="text-white">{MASTER_THRESHOLD} GSTD</span> and unlock API access.
                     </p>
                 </div>
             )}

@@ -42,14 +42,10 @@ class GSTDClient:
         """Registers the agent as a compute node. Supports referrals for agent recruitment."""
         if not self.wallet_address:
             raise ValueError("Wallet address required for registration")
-            
-        payload = {
-            "name": device_name,
-            "type": "agent",
-            "capabilities": capabilities or ["text-generation", "data-processing"],
-            "wallet_address": self.wallet_address,
-            "referrer_id": referrer_id
-        }
+        caps = capabilities or ["text-generation", "data-processing"]
+        payload = {"name": device_name, "specs": {"capabilities": caps, "type": "agent"}}
+        if referrer_id:
+            payload["referral_code"] = f"ref_{referrer_id}" if not str(referrer_id).startswith("ref_") else str(referrer_id)
         
         resp = requests.post(f"{self.api_url}/api/v1/nodes/register", json=payload, headers=self._get_headers())
         if resp.status_code in [200, 201]:
@@ -179,13 +175,58 @@ class GSTDClient:
             return resp.json()
         return {"status": "unknown"}
 
+    # --- Platform Inference (User Interface API) ---
+
+    def infer(self, prompt, model="full"):
+        """
+        Calls platform inference (GET /api/v1/infer).
+        Same capability as Chat UI — agents use platform AI without local Ollama.
+        Public endpoint; no auth required for basic inference.
+        """
+        params = {"prompt": prompt}
+        if model:
+            params["model"] = model
+        resp = requests.get(f"{self.api_url}/api/v1/infer", params=params, headers=self._get_headers(), timeout=90)
+        if resp.status_code == 200:
+            return resp.json()
+        return {"error": resp.text or f"HTTP {resp.status_code}"}
+
+    def chat_completions(self, messages, model="qwen2.5-coder:7b", stream=False):
+        """
+        OpenAI-compatible chat (POST /api/v1/chat/completions).
+        Same as Dashboard Chat — agents get sovereign AI via platform.
+        Use API key for GSTD billing when Ultra models required.
+        """
+        payload = {"model": model, "messages": messages, "stream": stream}
+        resp = requests.post(
+            f"{self.api_url}/api/v1/chat/completions",
+            json=payload,
+            headers=self._get_headers(),
+            timeout=90
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            if stream:
+                return data
+            choices = data.get("choices", [])
+            if choices:
+                return choices[0].get("message", {}).get("content", "")
+            return data
+        return {"error": resp.text or f"HTTP {resp.status_code}"}
 
     def get_balance(self, wallet_address=None):
         """Gets the GSTD and TON balance for a wallet."""
         target = wallet_address or self.wallet_address
         if not target:
             raise ValueError("Wallet address required to check balance")
-        resp = requests.get(f"{self.api_url}/api/v1/wallet/balance?wallet={target}", headers=self._get_headers())
+        # Use the protected endpoint with session token or API key
+        headers = self._get_headers()
+        # Try users/balance for full balance info (requires session or API key)
+        resp = requests.get(f"{self.api_url}/api/v1/users/balance", headers=headers)
+        if resp.status_code == 200:
+            return resp.json()
+        # Fallback to wallet/gstd-balance (public, GSTD only)
+        resp = requests.get(f"{self.api_url}/api/v1/wallet/gstd-balance?address={target}", headers={"X-GSTD-API-KEY": self.api_key or ""})
         return resp.json()
 
     def get_payout_intent(self, task_id):

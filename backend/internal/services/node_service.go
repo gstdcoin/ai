@@ -123,6 +123,41 @@ func (s *NodeService) RegisterNode(ctx context.Context, walletAddress string, na
 	return node, nil
 }
 
+// ActivateWalletAsNode — Wallet-as-Node via Telegram: creates minimal node record so wallet can claim tasks.
+// Node ID = wallet_address so browser/Telegram workers can use wallet as node_id when submitting.
+func (s *NodeService) ActivateWalletAsNode(ctx context.Context, walletAddress string) (*models.Node, bool, error) {
+	if walletAddress == "" {
+		return nil, false, errors.New("wallet_address is required")
+	}
+	existing, err := s.GetNodeByWalletAddress(ctx, walletAddress)
+	if err == nil && existing != nil {
+		// Already have a node - update last_seen
+		_, _ = s.db.ExecContext(ctx, `UPDATE nodes SET status = 'online', last_seen = NOW(), updated_at = NOW() WHERE wallet_address = $1`, walletAddress)
+		return existing, false, nil
+	}
+	// Create Wallet-as-Node: use wallet as id so worker can pass wallet as node_id
+	short := walletAddress
+	if len(short) > 12 {
+		short = short[:6] + "..." + short[len(short)-6:]
+	}
+	name := "Wallet-Node-" + short
+	_, _ = s.db.ExecContext(ctx, `
+		INSERT INTO users (wallet_address, created_at, updated_at) 
+		VALUES ($1, NOW(), NOW()) 
+		ON CONFLICT (wallet_address) DO NOTHING
+	`, walletAddress)
+	_, err = s.db.ExecContext(ctx, `
+		INSERT INTO nodes (id, wallet_address, name, status, trust_score, last_seen, created_at, updated_at)
+		VALUES ($1, $2, $3, 'online', 0.3, NOW(), NOW(), NOW())
+		ON CONFLICT (id) DO UPDATE SET status = 'online', last_seen = NOW(), updated_at = NOW()
+	`, walletAddress, walletAddress, name)
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to activate wallet-as-node: %w", err)
+	}
+	node, _ := s.GetNodeByWalletAddress(ctx, walletAddress)
+	return node, true, nil
+}
+
 // GetMyNodes retrieves all nodes owned by a wallet address
 func (s *NodeService) GetMyNodes(ctx context.Context, walletAddress string) ([]*models.Node, error) {
 	if walletAddress == "" {

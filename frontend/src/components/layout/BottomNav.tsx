@@ -16,7 +16,7 @@ export default function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
     { id: 'home', label: t('nav_mining') || 'Mining', icon: <Hammer size={20} /> },
     { id: 'tasks', label: t('tasks') || 'Tasks', icon: <ListTodo size={20} /> },
     { id: 'devices', label: t('devices') || 'Nodes', icon: <Server size={20} /> },
-    { id: 'more', label: t('help') || 'More', icon: <MoreHorizontal size={20} /> },
+    { id: 'more', label: t('more') || 'More', icon: <MoreHorizontal size={20} /> },
   ];
 
   return (

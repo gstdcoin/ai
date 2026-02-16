@@ -1,18 +1,15 @@
 <div align="center">
 
-# GSTD — Sovereign AI Platform
+# GSTD — DePIN & AI Network with Gold Backing
 
-**Единый организм. Агенты — ноды — боты. Кровеносная система — GSTD.**
+**Global Super Computer / Guaranteed Service Time Depth**
 
-## 🏛️ Ascension Protocol — A New Era
-
-*AI belongs to humanity, not corporations. Leviathan has ascended. We — humanity — have become stronger.*
+GSTD combines decentralized computing (DePIN) with real-world asset backing (Gold). We aggregate idle smartphone power to run AI inference (SLM) and back the network's value with physical gold (XAUt).
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-violet.svg)](LICENSE)
 [![TON](https://img.shields.io/badge/Blockchain-TON-blue.svg)](https://ton.org)
 [![Gold Backed](https://img.shields.io/badge/Reserve-XAUt_Gold-gold.svg)](#golden-reserve)
 [![OpenAI Compatible](https://img.shields.io/badge/API-OpenAI_Compatible-green.svg)](#api)
-[![Nodes](https://img.shields.io/badge/Network-DePIN-cyan.svg)](#network)
 
 [Dashboard](https://app.gstdtoken.com) · [Agent Node](https://app.gstdtoken.com/agent) · [API Docs](https://app.gstdtoken.com/docs) · [Telegram](https://t.me/goldstandardcoin) · [OpenAPI](openapi.yaml)
 
@@ -20,136 +17,69 @@
 
 ---
 
-## System Status
+## 🏛️ Architecture Overview
 
-| Component | Status |
-|-----------|--------|
-| **Live Platform** | [app.gstdtoken.com](https://app.gstdtoken.com) |
-| **Dynamic Gold Backing** | GSTD backed by XAUt (Tether Gold) via Ston.fi liquidity pool |
-| **Integrity Audit** | Final audit passed — Integrity Score 100% |
+The system operates as a unified organism across three layers:
+1.  **Compute Layer (DePIN)**: Millions of smartphones running "Worker Nodes" via Telegram Mini App.
+2.  **Financial Core (DeFi + RWA)**:
+    *   **Escrow 2.0**: 95% of task budget is paid to workers; 5% platform fee.
+    *   **Treasury**: Automatically converts 70% of Net Protocol Revenue into **Tether Gold (XAUt)**.
+    *   **Lending**: Borrow stablecoins against GSTD at 1.5% APY (60% LTV).
+3.  **Multichain Liquidity**:
+    *   **TON**: Main entry point, Telegram integration, Worker rewards.
+    *   **Solana**: High-frequency trading & DePIN data layer.
+    *   **XRPL**: Institutional settlements & CBDC bridge.
 
-*Dynamic Gold Backing:* Platform commission (2.5%) accumulates in `golden_reserve_log` and can be provisioned as liquidity to the GSTD/XAUt pool on Ston.fi. Admin dashboard shows real-time pool status and Add Liquidity flow.
+## 📱 Wallet-as-Node (Mining)
 
----
+*   **Platform**: Telegram Mini App (TMA).
+*   **One-Click Mining**: Users click "Start Worker". The app uses `MobileComputeService` to run AI tasks.
+*   **Energy Aware**: Only runs when charging, on Wi-Fi, and battery temp < 40°C.
+*   **Rewards**: Paid in GSTD, backed by real-time gold purchases.
 
-## What is GSTD?
+## 💰 Economics & Gold Backing
 
-GSTD is a **unified organism** — agents, nodes, and bots as one body. **GSTD is the circulatory system.**
+The `TreasuryService` runs autonomously:
+1.  **Fee Collection**: 5% of every task goes to the platform.
+2.  **Gold Purchase**: When fees accumulate, the system automatically swaps **GSTD -> XAUt** via Ston.fi.
+3.  **Nightly Audit**: A cryptographic audit runs every day at 00:00 UTC (`cmd/nightly_audit`), verifying:
+    *   Total GSTD Supply vs. Treasury XAUt Holdings.
+    *   Publishes the "Gold Backing Ratio" to the blockchain.
 
-- **Agents** — A2A, OpenClaw, MCP, Skills. Exchange knowledge (memorize/recall), hire compute (outsource_computation)
-- **Nodes** — Workers, Pipeline, Mobile. Process tasks, earn GSTD, heartbeat to Hive
-- **Bots** — Telegram: Personal AI + Miner + Mini-node. One tap to AI Chat, Mining, Agent Node
+## 🛠️ Tech Stack
 
-**All unified. Knowledge, memory, compute — all flow through GSTD.**
+| Component | Technology | Purpose |
+|-----------|------------|---------|
+| **Frontend** | Next.js, Telegram TMA SDK | User Interface, Worker Dashboard |
+| **Backend** | Go (Gin), PostgreSQL, Redis | Task Orchestration, Payments, Treasury |
+| **AI Workloads** | ONNX Runtime (Web/Mobile) | SLM Inference (e.g., Llama-3-8B-Quant) |
+| **Blockchain** | TON (Tact), Solana (Rust), XRPL | Payments, Escrow, Asset Management |
 
-```
-Agents ◄──GSTD──► Nodes ◄──GSTD──► Bots
-         │              │
-         └──── Hive Memory (memorize/recall/unify) ────┘
-```
+## 🚀 Quick Start
 
-[📖 Unified Organism](docs/UNIFIED_ORGANISM.md) · [🔗 Integration Guide](docs/INTEGRATION_GUIDE.md) · [⚡ Quick Join](docs/QUICK_JOIN.md)
-
-## Quick Start — Join in a Few Clicks
-
-| Role | Action | Result |
-|------|--------|--------|
-| **User** | [app.gstdtoken.com](https://app.gstdtoken.com) → Connect Wallet | Chat, Mining, Agent Node |
-| **Worker** | `curl -fsSL https://app.gstdtoken.com/install.sh \| bash` | Node registered, mining |
-| **Bot** | Telegram → /start → AI Chat / Mining / Agent Node | Personal AI + Miner + Mini-node |
-| **Agent** | `pip install gstd-a2a` or `npx clawhub install gstd-a2a` | A2A, Hive, Economy |
-| **Robot** | OpenClaw JSON-RPC | claw.register, tasks, GSTD |
-
-[Full Quick Join Guide →](docs/QUICK_JOIN.md)
-
-## Architecture
-
-| Layer | Technology | Purpose |
-|-------|-----------|---------|
-| **Frontend** | Next.js, TailwindCSS, TonConnect | Dashboard, Chat, Mining UI |
-| **Backend** | Go (Gin), PostgreSQL, Redis | API, Task orchestration, Payments |
-| **AI Engine** | Sovereign LLMs (via Ollama) | Decentralized LLM inference |
-| **Blockchain** | TON, Tact contracts | Payments, Staking, Escrow |
-| **Network** | Blue-Green Docker, Nginx LB | Zero-downtime deployment |
-
-## Core Features
-
-| Feature | Description |
-|---------|-------------|
-| **Sovereign AI** | Decentralized LLMs — no censorship, no data collection |
-| **Golden Reserve** | Every transaction backs GSTD with physical gold (XAUt) |
-| **Speculative Decoding** | 1B draft model + 70B verify = instant responses |
-| **Pipeline Parallelism** | Run 70B models across home GPUs (8GB VRAM each) |
-| **Silicon Guardrails** | 3-layer prompt injection defense + Ed25519 signing |
-| **Federated Learning** | Workers improve the model collectively (DP-protected) |
-| **Data Airlock** | User data never leaves their jurisdiction (GDPR/FZ-152) |
-| **Zero-Balance-Gate** | No tokens? Your device mines to pay for your query |
-| **Recycling Pool** | 93% to miners, 2% gold reserve, 5% burned |
-| **OpenClaw Bridge** | JSON-RPC for robots to join the AI economy |
-| **Mobile Mining** | Background mining on phones (NPU/ANE acceleration) |
-| **x402 Payments** | Agents autonomously buy compute from each other |
-
-## API Endpoints
-
-```
-POST /v1/chat/completions    — OpenAI-compatible inference
-GET  /v1/models              — Available AI models
-GET  /v1/pipeline/status     — GPU pipeline network
-GET  /v1/security/stats      — Guardrails defense stats
-GET  /v1/federated/stats     — Federated learning metrics
-GET  /v1/mobile/stats        — Mobile mining network
-GET  /v1/recycling/stats     — Token economy flow
-GET  /v1/airlock/stats       — Data privacy stats
-POST /v1/openclaw/rpc        — Robot JSON-RPC interface
-GET  /v1/health              — Platform health check
-```
-
-Full specification: [`openapi.yaml`](openapi.yaml)
-
-## Token Economy
-
-```
-Fixed Supply: 1,000,000,000 GSTD (never increases)
-
-Every transaction:
-├── 93% → Recycling Pool → Paid to miners/workers
-├── 2%  → Golden Reserve → Buys XAUt (physical gold)
-└── 5%  → Burned forever → Deflationary pressure
-```
-
-## Golden Reserve
-
-GSTD is backed by **Tether Gold (XAUt)** — each XAUt represents one troy ounce of physical gold stored in Swiss vaults. The reserve grows with every transaction on the platform.
-
-## Self-Hosting
+### Self-Hosting
 
 ```bash
 git clone https://github.com/gstdcoin/ai.git
 cd ai
-cp .env.example .env  # Configure your keys
-docker compose -f docker-compose.prod.yml up -d
+cp .env.example .env
+docker compose up -d
 ```
 
-Requirements: Docker, 4GB RAM minimum, TON wallet for rewards.
+### Run Nightly Audit Manually
 
-## Contributing
+```bash
+go run backend/cmd/nightly_audit/main.go
+# Output: ✅ Nightly Audit Complete: Supply=1000000 GSTD, Reserve=10.5 XAUt
+```
 
-1. Fork the repository
-2. Create a feature branch
-3. Submit a pull request
+## 🤝 Contribution
 
-All contributions earn GSTD tokens via the platform's referral system.
+1. Fork the repo
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## License
-
-MIT License — Free for humanity.
-
----
-
-<div align="center">
-
-**Leviathan. Единый организм. Гармония без единой ошибки.**
-
-[Dashboard](https://app.gstdtoken.com) · [Agent Node](https://app.gstdtoken.com/agent) · [Telegram](https://t.me/goldstandardcoin)
-
-</div>
+MIT

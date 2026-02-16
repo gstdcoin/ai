@@ -10,7 +10,7 @@ import WalletConnect from '../components/WalletConnect';
 import { NetworkMap } from '../components/dashboard/NetworkMap';
 import { useWalletStore } from '../store/walletStore';
 import { GSTD_CONTRACT_ADDRESS, API_BASE_URL } from '../lib/config';
-import { Zap, Shield, Globe, ArrowRight, Users, Activity, Coins, Code, BookOpen, Terminal, Server, Cpu, Download, Copy, Check, Play, DollarSign, Monitor, Layers, Radio, Workflow, Sparkles, MapPin, Brain, Rocket } from 'lucide-react';
+import { Zap, Shield, Globe, ArrowRight, Users, Activity, Code, BookOpen, Terminal, Server, Cpu, Download, Copy, Check, Play, DollarSign, Monitor, Layers, Radio, Workflow, Sparkles, MapPin, Brain, Rocket } from 'lucide-react';
 import { SovereignSwitch } from '../components/SovereignSwitch';
 
 interface NetworkStats {
@@ -374,7 +374,7 @@ export default function About() {
                 <div className="flex-shrink-0 relative">
                   <div className="absolute inset-0 bg-white/20 blur-3xl rounded-full" />
                   <div className="w-32 h-32 rounded-[32px] bg-gradient-to-br from-violet-600/40 to-fuchsia-600/40 flex items-center justify-center backdrop-blur-md border border-white/20 shadow-2xl transform group-hover:rotate-12 transition-transform duration-700">
-                    <Coins className="w-16 h-16 text-white" />
+                    <DollarSign className="w-16 h-16 text-white" />
                   </div>
                 </div>
                 <div className="flex-1 text-center lg:text-left">

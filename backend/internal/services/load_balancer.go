@@ -48,6 +48,15 @@ type TaskRequirements struct {
 	PreferredH3Index string // Omega Point: For Vision tasks, prefer workers with same H3 (lower latency)
 }
 
+// SelectWorkerForBrainRequest selects worker with best ping to consumer (Global Load Balancing)
+// Pass consumerH3Index from request geo for latency minimization
+func (lb *LoadBalancer) SelectWorkerForBrainRequest(ctx context.Context, consumerH3Index string, minTrust float64) (string, error) {
+	return lb.SelectBestWorker(ctx, TaskRequirements{
+		MinTrust:         minTrust,
+		PreferredH3Index: consumerH3Index,
+	})
+}
+
 // SelectBestWorker finds the optimal worker for a given task
 func (lb *LoadBalancer) SelectBestWorker(ctx context.Context, req TaskRequirements) (string, error) {
 	activeWorkers, err := lb.getActiveWorkers(ctx)

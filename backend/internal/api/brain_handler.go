@@ -24,8 +24,8 @@ func (h *BrainHandler) SynthesizeMind(c *gin.Context) {
 
 	ctx := c.Request.Context()
 	
-	// 1. Retrieve raw knowledge fragments from the grid
-	items, err := h.knowledge.QueryKnowledge(ctx, topic, 15)
+	// 1. Retrieve raw knowledge fragments (Singularity Gateway: includes global_knowledge_graph)
+	items, err := h.knowledge.QueryKnowledgeWithGlobalGraph(ctx, topic, 15)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to access grid memory"})
 		return

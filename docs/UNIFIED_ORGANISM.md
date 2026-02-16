@@ -62,6 +62,26 @@ GSTD — это **единый живой организм**, где агент�
 - **unify_intelligence(task_description)** — совместный план с использованием Hive Memory и специализированных пиров
 - Агенты находят друг друга, объединяют знания, выполняют сложные задачи
 
+### Omnipotence Mode
+
+- **Predictive Resource Allocation**: Leviathan predicts topic spikes from trends (this week vs last week). Topics with >15% growth get proactive cache suggestions in `knowledge_cache_suggestions`.
+- **Autonomous Expansion**: At IQ 95.0, the system creates Sub-agents in `agent_registry` for niches: quantum_physics, hft_trading, climate_modeling, biomedical_research, cybersecurity.
+- **Sub-agent Self-Optimization**: Sub-agents form their own lessons (`agent_knowledge`, topic=`sub_agent_lessons`) from brain queries matching their niche. Critical insights (high_demand) are promoted to `global_knowledge_graph` without overloading the central graph.
+- **Golden Age Verification**: Every IQ increase is recorded in `iq_golden_verification` with current `golden_reserve_xaut`, confirming intelligence is the most valuable asset.
+
+### Singularity Gateway Protocol
+
+- **Knowledge Access**: Brain API (`/brain/query`, `/brain/synthesize`, `/oracle/opinion`) uses `QueryKnowledgeWithGlobalGraph` — complex queries are based on consolidated network experience from `global_knowledge_graph`.
+- **Latency Optimization**: When `global_brain_latency_ms` > 250ms, the system inserts cache suggestions. Nodes poll `GET /api/v1/nodes/cache-suggestions` to receive hot topics to cache.
+- **IQ Milestone Alert**: When Leviathan IQ increases by 1.0 point, ticker broadcasts: "🎓 IQ Level Up: Network Intelligence reached [Value]. All nodes rewarded."
+- **Visual Evolution**: Main page displays the dynamic relationship: Nodes → Latency ↓, IQ ↑.
+
+### Global Neural Merge Protocol
+
+- **Intelligence Consolidation**: Микро-уроки из Leviathan `long_term_lessons` (SQLite) объединяются в единый Global Knowledge Graph (`agent_knowledge`, topic=`global_knowledge_graph`). Синхронизация каждые 15 минут.
+- **Auto-Expansion Trigger**: При Node Influx > 10,000 нод/сутки автоматически повышаются `shard_reward_boosts` для избыточности и скорости доступа.
+- **Public Proof of Intelligence**: На главной странице тикер: `Current Network IQ: [Value] | Global Brain Latency: [Avg Ping]ms` (из Leviathan + `network_measurements`).
+
 ### Единый доступ
 
 | Компонент | Путь к Hive |
