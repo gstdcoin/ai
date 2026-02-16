@@ -6,7 +6,6 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { useTonConnectUI } from '@tonconnect/ui-react';
 import WalletConnect from '../components/WalletConnect';
-import LeviathanLiveTicker from '../components/LeviathanLiveTicker';
 import { useWalletStore } from '../store/walletStore';
 import { API_BASE_URL } from '../lib/config';
 import { Send, Shield, Globe, Activity, Sparkles, Brain, Zap, MessageSquare, Server, Cpu, ArrowRight, Wallet, Bot, ChevronDown, BookOpen, Terminal, Code2, Link2, DollarSign, TrendingDown, TrendingUp } from 'lucide-react';
@@ -124,15 +123,12 @@ export default function Home() {
       </div>
 
       <div className="relative z-10 flex flex-col min-h-screen">
-        {/* Leviathan Ticker + Public Proof of Intelligence */}
-        <div className="bg-black/40 backdrop-blur-md border-b border-white/5">
-          {networkStats != null && (
-            <div className="px-4 py-1.5 text-center text-[11px] font-medium text-cyan-400/90 border-b border-white/5">
-              Current Network IQ: {networkStats.network_iq != null ? networkStats.network_iq.toFixed(1) : '—'} | Global Brain Latency: {networkStats.global_brain_latency_ms ?? '—'}ms
-            </div>
-          )}
-          <LeviathanLiveTicker />
-        </div>
+        {/* Network IQ strip (Polymarket/Leviathan ticker removed) */}
+        {networkStats != null && (
+          <div className="bg-black/40 backdrop-blur-md border-b border-white/5 px-4 py-1.5 text-center text-[11px] font-medium text-cyan-400/90">
+            Network IQ: {networkStats.network_iq != null ? networkStats.network_iq.toFixed(1) : '—'} | Latency: {networkStats.global_brain_latency_ms ?? '—'}ms
+          </div>
+        )}
 
         {/* Header */}
         <header className="px-6 py-5 flex justify-between items-center max-w-7xl mx-auto w-full">
