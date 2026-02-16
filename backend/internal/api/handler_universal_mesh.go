@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -11,6 +12,7 @@ import (
 
 // HandleInfer serves GET /api/v1/infer - public inference endpoint.
 // Any user can send a prompt; the GSTD network processes it collectively.
+// Eternal Synergy: X-Wallet-Address / X-GSTD-Target-Wallet for Reputation Shield (2x fee when low-rated).
 func HandleInfer(mesh *services.UniversalMeshService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if mesh == nil {
@@ -24,8 +26,24 @@ func HandleInfer(mesh *services.UniversalMeshService) gin.HandlerFunc {
 			return
 		}
 
+		// Eternal Synergy: extract requester for Reputation Shield
+		req.RequesterWallet = c.GetHeader("X-Wallet-Address")
+		if req.RequesterWallet == "" {
+			req.RequesterWallet = c.GetHeader("X-GSTD-Target-Wallet")
+		}
+
 		resp, err := mesh.Infer(c.Request.Context(), &req)
 		if err != nil {
+			var shieldErr *services.ReputationShieldError
+			if errors.As(err, &shieldErr) {
+				c.JSON(http.StatusPaymentRequired, gin.H{
+					"error":           "reputation_shield",
+					"message":         "2x inference fee required for low-rated agent. Top up balance.",
+					"required_fee":    shieldErr.RequiredFee,
+					"currency":        "GSTD",
+				})
+				return
+			}
 			if err == services.ErrInferPromptRequired {
 				c.JSON(http.StatusBadRequest, gin.H{"error": "prompt is required"})
 				return

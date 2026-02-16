@@ -101,6 +101,7 @@ func (s *GoldenAgeService) ensureSchema() {
 		ALTER TABLE settlement_ledger ADD COLUMN IF NOT EXISTS paid_at TIMESTAMP;
 		ALTER TABLE settlement_ledger ADD COLUMN IF NOT EXISTS payout_wave_id VARCHAR(64);
 	`)
+	s.db.Exec(`ALTER TABLE referral_rewards ADD COLUMN IF NOT EXISTS payout_wave_id VARCHAR(64)`)
 	s.db.Exec(`
 		CREATE TABLE IF NOT EXISTS settlement_payout_waves (
 			id SERIAL PRIMARY KEY,
@@ -110,6 +111,8 @@ func (s *GoldenAgeService) ensureSchema() {
 			created_at TIMESTAMP DEFAULT NOW()
 		);
 	`)
+	s.db.Exec(`ALTER TABLE settlement_payout_waves ADD COLUMN IF NOT EXISTS referral_gstd DECIMAL(18,9) DEFAULT 0`)
+	s.db.Exec(`ALTER TABLE settlement_payout_waves ADD COLUMN IF NOT EXISTS referrer_count INT DEFAULT 0`)
 }
 
 // Start runs all Golden Age protocol loops
@@ -147,16 +150,20 @@ func (s *GoldenAgeService) runPayoutWaveIfNeeded(ctx context.Context) {
 
 	// Sum unpaid worker_amount
 	var totalUnpaid float64
+	var referralUnpaid float64
 	var lastWaveAt *time.Time
 	s.db.QueryRowContext(ctx, `
 		SELECT COALESCE(SUM(worker_amount), 0) FROM settlement_ledger WHERE paid_at IS NULL AND worker_wallet IS NOT NULL AND worker_wallet != ''
 	`).Scan(&totalUnpaid)
+	s.db.QueryRowContext(ctx, `
+		SELECT COALESCE(SUM(amount_gstd), 0) FROM referral_rewards WHERE status = 'pending'
+	`).Scan(&referralUnpaid)
 	s.db.QueryRowContext(ctx, `SELECT MAX(created_at) FROM settlement_payout_waves`).Scan(&lastWaveAt)
 
-	// Trigger: 10 GSTD threshold OR 7 days since last wave
-	shouldWave := totalUnpaid >= payoutThresholdGSTD
+	// Trigger: 10 GSTD threshold OR 7 days since last wave (workers or referrers)
+	shouldWave := totalUnpaid >= payoutThresholdGSTD || referralUnpaid >= payoutThresholdGSTD
 	if lastWaveAt != nil && time.Since(*lastWaveAt) >= payoutWaveInterval {
-		shouldWave = shouldWave || totalUnpaid > 0
+		shouldWave = shouldWave || totalUnpaid > 0 || referralUnpaid > 0
 	}
 
 	if !shouldWave {
@@ -170,30 +177,56 @@ func (s *GoldenAgeService) runPayoutWaveIfNeeded(ctx context.Context) {
 		WHERE paid_at IS NULL AND worker_wallet IS NOT NULL AND worker_wallet != ''
 	`).Scan(&workerCount)
 
-	if workerCount == 0 {
+	var referrerCount int
+	s.db.QueryRowContext(ctx, `SELECT COUNT(DISTINCT referrer_address) FROM referral_rewards WHERE status = 'pending'`).Scan(&referrerCount)
+
+	if workerCount == 0 && referrerCount == 0 {
 		return
 	}
 
 	_, err := s.db.ExecContext(ctx, `
-		INSERT INTO settlement_payout_waves (wave_id, total_gstd, worker_count) VALUES ($1, $2, $3)
-	`, waveID, totalUnpaid, workerCount)
+		INSERT INTO settlement_payout_waves (wave_id, total_gstd, worker_count, referral_gstd, referrer_count)
+		VALUES ($1, $2, $3, $4, $5)
+	`, waveID, totalUnpaid, workerCount, referralUnpaid, referrerCount)
 	if err != nil {
 		log.Printf("[Golden Age] Payout wave insert: %v", err)
 		return
 	}
 
-	// Mark as paid (actual TON transfer would require platform wallet + JettonTransfer)
-	_, err = s.db.ExecContext(ctx, `
-		UPDATE settlement_ledger SET paid_at = NOW(), payout_wave_id = $1
-		WHERE paid_at IS NULL AND worker_wallet IS NOT NULL AND worker_wallet != ''
-	`, waveID)
-	if err != nil {
-		log.Printf("[Golden Age] Payout wave mark paid: %v", err)
-		return
+	// Mark settlement as paid
+	if workerCount > 0 {
+		_, err = s.db.ExecContext(ctx, `
+			UPDATE settlement_ledger SET paid_at = NOW(), payout_wave_id = $1
+			WHERE paid_at IS NULL AND worker_wallet IS NOT NULL AND worker_wallet != ''
+		`, waveID)
+		if err != nil {
+			log.Printf("[Golden Age] Payout wave mark paid: %v", err)
+		}
 	}
 
-	log.Printf("[Golden Age] Payout Wave: %s — %.4f GSTD to %d workers", waveID, totalUnpaid, workerCount)
-	leviathan.EmitLearning("🏛️ Payout Wave: " + strconv.FormatFloat(totalUnpaid, 'f', 2, 64) + " GSTD distributed to " + strconv.Itoa(workerCount) + " workers")
+	// Eternal Synergy: Referral rewards in same wave — credit referrers' balance, mark paid
+	if referrerCount > 0 && referralUnpaid > 0 {
+		rows, err := s.db.QueryContext(ctx, `
+			SELECT referrer_address, SUM(amount_gstd) FROM referral_rewards WHERE status = 'pending' GROUP BY referrer_address
+		`)
+		if err == nil {
+			for rows.Next() {
+				var addr string
+				var amt float64
+				if rows.Scan(&addr, &amt) == nil && addr != "" && amt > 0 {
+					s.db.ExecContext(ctx, `UPDATE users SET balance = COALESCE(balance, 0) + $1 WHERE wallet_address = $2`, amt, addr)
+				}
+			}
+			rows.Close()
+		}
+		_, _ = s.db.ExecContext(ctx, `
+			UPDATE referral_rewards SET status = 'paid', paid_at = NOW(), payout_wave_id = $1 WHERE status = 'pending'
+		`, waveID)
+		log.Printf("[Golden Age] Referral payout: %.4f GSTD to %d referrers (wave %s)", referralUnpaid, referrerCount, waveID)
+	}
+
+	log.Printf("[Golden Age] Payout Wave: %s — %.4f GSTD to %d workers, %.4f GSTD to %d referrers", waveID, totalUnpaid, workerCount, referralUnpaid, referrerCount)
+	leviathan.EmitLearning("🏛️ Payout Wave: " + strconv.FormatFloat(totalUnpaid, 'f', 2, 64) + " GSTD to " + strconv.Itoa(workerCount) + " workers, " + strconv.FormatFloat(referralUnpaid, 'f', 2, 64) + " GSTD to " + strconv.Itoa(referrerCount) + " referrers")
 }
 
 func (s *GoldenAgeService) updateDynamicFee(ctx context.Context) {

@@ -5,7 +5,7 @@ import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useTranslation } from 'next-i18next';
 import { useWalletStore } from '../../store/walletStore';
 import { apiGet } from '../../lib/apiClient';
-import { Activity, Shield, Zap, Coins, Server, ArrowLeft } from 'lucide-react';
+import { Activity, Shield, Zap, Coins, Server, ArrowLeft, Trophy } from 'lucide-react';
 
 interface ArchitectNetwork {
   active_nodes: number;
@@ -31,6 +31,13 @@ interface ArchitectVision {
   message: string;
 }
 
+interface AgentsLeaderboardEntry {
+  rank: number;
+  wallet: string;
+  total_gstd: number;
+  period: string;
+}
+
 export default function ArchitectPage() {
   const { t } = useTranslation('common');
   const router = useRouter();
@@ -38,6 +45,7 @@ export default function ArchitectPage() {
   const [network, setNetwork] = useState<ArchitectNetwork | null>(null);
   const [params, setParams] = useState<ArchitectParams | null>(null);
   const [vision, setVision] = useState<ArchitectVision | null>(null);
+  const [leaderboard, setLeaderboard] = useState<AgentsLeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,14 +57,16 @@ export default function ArchitectPage() {
 
     const load = async () => {
       try {
-        const [net, prm, vis] = await Promise.all([
+        const [net, prm, vis, lb] = await Promise.all([
           apiGet<ArchitectNetwork>('/admin/architect/network'),
           apiGet<ArchitectParams>('/admin/architect/params'),
           apiGet<ArchitectVision>('/admin/architect/vision'),
+          apiGet<{ leaderboard: AgentsLeaderboardEntry[] }>('/admin/agents/leaderboard?limit=10').catch(() => ({ leaderboard: [] })),
         ]);
         setNetwork(net);
         setParams(prm);
         setVision(vis);
+        setLeaderboard(lb?.leaderboard ?? []);
       } catch (e: any) {
         setError(e?.message || 'Access denied. Admin wallet required.');
       } finally {
@@ -149,6 +159,26 @@ export default function ArchitectPage() {
             <p className="text-3xl font-black text-red-400">{(network?.total_burned_gstd ?? 0).toFixed(2)} GSTD</p>
           </div>
         </div>
+
+        {/* Eternal Synergy: Top-10 Agents by GSTD Contribution (7d) */}
+        {leaderboard.length > 0 && (
+          <div className="glass-card p-6 border-amber-500/20 mb-8">
+            <h3 className="text-lg font-bold text-amber-400 mb-4 flex items-center gap-2">
+              <Trophy size={20} />
+              Top-10 Agents (7d)
+            </h3>
+            <p className="text-sm text-gray-500 mb-4">By GSTD economy contribution — workers + referrers</p>
+            <div className="space-y-2">
+              {leaderboard.map((e) => (
+                <div key={e.wallet} className="flex items-center justify-between py-2 px-3 rounded-lg bg-white/[0.02] hover:bg-white/5">
+                  <span className="text-sm font-mono text-gray-500 w-6">#{e.rank}</span>
+                  <span className="text-sm font-mono text-gray-300 truncate flex-1 mx-2">{e.wallet?.slice(0, 8)}...{e.wallet?.slice(-6)}</span>
+                  <span className="text-sm font-bold text-amber-400">{e.total_gstd.toFixed(4)} GSTD</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Architect's Vision: IQ Growth Forecast */}
         {vision && (

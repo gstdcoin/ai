@@ -359,6 +359,8 @@ func SetupRoutes(
 			admin.GET("/architect/network", getAdminArchitectNetwork(db.(*sql.DB)))
 			admin.GET("/architect/params", getAdminArchitectParams(tonConfig))
 			admin.GET("/architect/vision", getAdminArchitectVision(db.(*sql.DB)))
+			// Eternal Synergy: Top-10 Agents by GSTD economy contribution (weekly)
+			admin.GET("/agents/leaderboard", getAdminAgentsLeaderboard(db.(*sql.DB)))
 		}
 
 		// Admin commission endpoints (require session + admin wallet authorization)
