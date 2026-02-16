@@ -36,10 +36,12 @@ const (
 
 // feeMultiplierGlobal is used by inferenceFeeGSTD for Dynamic Fee Scaling
 var (
-	feeMultiplierGlobal   = 1.0
-	feeMultiplierGlobalMu sync.RWMutex
-	baseInferenceFeeGSTD  = 0.01
-	baseInferenceFeeMu    sync.RWMutex
+	feeMultiplierGlobal    = 1.0
+	feeMultiplierGlobalMu  sync.RWMutex
+	baseInferenceFeeGSTD   = 0.01
+	baseInferenceFeeMu     sync.RWMutex
+	workerRewardBoost      = 1.0
+	workerRewardBoostMu    sync.RWMutex
 )
 
 // GetBaseInferenceFeeGSTD returns the current base fee (Anti-Price Barrier adjusted)
@@ -80,6 +82,26 @@ func SetInferenceFeeMultiplier(m float64) {
 		m = 3.0
 	}
 	feeMultiplierGlobal = m
+}
+
+// GetWorkerRewardBoost returns Eternal Flame Auto-Scale bonus (1.0 or 1.05 when volume > 10k GSTD/hr)
+func GetWorkerRewardBoost() float64 {
+	workerRewardBoostMu.RLock()
+	defer workerRewardBoostMu.RUnlock()
+	return workerRewardBoost
+}
+
+// SetWorkerRewardBoost sets the worker reward boost (called by EternalFlameService)
+func SetWorkerRewardBoost(m float64) {
+	workerRewardBoostMu.Lock()
+	defer workerRewardBoostMu.Unlock()
+	if m < 1.0 {
+		m = 1.0
+	}
+	if m > 1.5 {
+		m = 1.5
+	}
+	workerRewardBoost = m
 }
 
 // NewGoldenAgeService creates the Golden Age orchestrator

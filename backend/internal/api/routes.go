@@ -162,6 +162,7 @@ func SetupRoutes(
 			"api_url":                     tonConfig.APIURL,
 			"target_price_per_result_usd": eco.TargetPricePerResultUSD, // ТЗ: ~$0.03/результат
 			"genesis_launch":              true, // Genesis Launch status active
+			"eternal_flame":                true, // Eternal Flame: 99.99% uptime, Auto-Scale, Archon Oversight
 		})
 	})
 	// [DYNAMIC_CONFIG_END]

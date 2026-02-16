@@ -2,7 +2,6 @@ package api
 
 import (
 	"database/sql"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
 )

@@ -88,9 +88,14 @@ func (re *RewardEngine) DistributeRewards(ctx context.Context, task *models.Task
 
 	budget := *task.BudgetGSTD
 
-	// Calculate 95/5 split
-	workerReward := budget * 0.95
-	platformFee := budget * 0.05
+	// Calculate 95/5 split; Eternal Flame: +5% worker boost when volume > 10k GSTD/hr
+	boost := GetWorkerRewardBoost()
+	workerReward := budget * 0.95 * boost
+	platformFee := budget - workerReward
+	if platformFee < 0 {
+		platformFee = 0
+		workerReward = budget
+	}
 
 	log.Printf("Distributing rewards for task %s: Budget=%.9f, Worker=%.9f, Platform=%.9f",
 		task.TaskID, budget, workerReward, platformFee)
