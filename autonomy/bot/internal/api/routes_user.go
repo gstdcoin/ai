@@ -2,8 +2,8 @@ package api
 
 import (
 	"crypto/rand"
-	"distributed-computing-platform/internal/config"
-	"distributed-computing-platform/internal/services"
+	"gstd-bot/internal/config"
+	"gstd-bot/internal/services"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"

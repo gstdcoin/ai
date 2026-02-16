@@ -2,7 +2,7 @@ package api
 
 import (
 	"database/sql"
-	"distributed-computing-platform/internal/services"
+	"gstd-bot/internal/services"
 	"encoding/json"
 	"log"
 	"net/http"

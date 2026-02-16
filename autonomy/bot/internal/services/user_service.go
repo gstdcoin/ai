@@ -6,7 +6,7 @@ import (
 	"errors"
 	"time"
 
-	"distributed-computing-platform/internal/models"
+	"gstd-bot/internal/models"
 )
 
 type UserService struct {

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"distributed-computing-platform/internal/config"
+	"gstd-bot/internal/config"
 )
 
 // PaymentTracker tracks payout transactions on blockchain and reconciles with database

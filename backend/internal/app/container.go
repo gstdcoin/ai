@@ -453,8 +453,29 @@ func StartApplication(container *dig.Container) error {
 		}
 		if payoutBatchService != nil && highloadWallet != nil && highloadWallet.IsInitialized() {
 			payoutBatchService.SetHighloadWallet(highloadWallet)
+			if cfg.TON.GSTDJettonAddress != "" {
+				payoutBatchService.SetGSTDJettonMaster(cfg.TON.GSTDJettonAddress)
+			}
 			go payoutBatchService.Start(ctx)
 			log.Printf("⛽ Payout Batch: Highload Ascension ACTIVE (15m)")
+			// Gas Reserve Monitor: alert admin if < 1 TON
+			if telegramService != nil {
+				highloadWallet.SetTelegramAlert(telegramService.SendMessage)
+				go func() {
+					ticker := time.NewTicker(30 * time.Minute)
+					defer ticker.Stop()
+					highloadWallet.CheckGasReserveAndAlert(ctx)
+					for {
+						select {
+						case <-ctx.Done():
+							return
+						case <-ticker.C:
+							highloadWallet.CheckGasReserveAndAlert(ctx)
+						}
+					}
+				}()
+				log.Printf("⛽ Gas Reserve Monitor ACTIVE (30m)")
+			}
 		}
 		if globalNeuralMerge != nil {
 			go globalNeuralMerge.Start(ctx)

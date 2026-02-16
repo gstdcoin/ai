@@ -2,9 +2,9 @@ package api
 
 import (
 	"database/sql"
-	"distributed-computing-platform/internal/config"
-	"distributed-computing-platform/internal/models"
-	"distributed-computing-platform/internal/services"
+	"gstd-bot/internal/config"
+	"gstd-bot/internal/models"
+	"gstd-bot/internal/services"
 	"log"
 	"strings"
 	"time"

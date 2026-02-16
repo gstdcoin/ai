@@ -7,7 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"distributed-computing-platform/internal/services"
+	"gstd-bot/internal/services"
 )
 
 // SmartLauncher starts all autonomous components

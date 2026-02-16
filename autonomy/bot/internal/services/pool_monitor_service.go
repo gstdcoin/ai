@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"distributed-computing-platform/internal/config"
+	"gstd-bot/internal/config"
 )
 
 // PoolMonitorService monitors GSTD/XAUt pool status

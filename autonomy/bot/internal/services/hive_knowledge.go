@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"log"
 	"os"
 	"sort"
@@ -86,7 +85,7 @@ func (hk *HiveKnowledge) StoreKnowledge(topic, content, source string, tags []st
 	// Check if exists - update confidence
 	if existing, ok := hk.entries[id]; ok {
 		existing.UseCount++
-		existing.Confidence = min(existing.Confidence+0.05, 1.0)
+		existing.Confidence = minFloat64(existing.Confidence+0.05, 1.0)
 		return id
 	}
 
@@ -420,7 +419,7 @@ func generateID(content string) string {
 	return hex.EncodeToString(hash[:8])
 }
 
-func min(a, b int) int {
+func minFloat64(a, b float64) float64 {
 	if a < b {
 		return a
 	}

@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"distributed-computing-platform/internal/services"
+	"gstd-bot/internal/services"
 
 	"github.com/gin-gonic/gin"
 )

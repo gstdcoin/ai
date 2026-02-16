@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"log"
 
-	"distributed-computing-platform/internal/config"
-	"distributed-computing-platform/internal/database"
-	"distributed-computing-platform/internal/services"
+	"gstd-bot/internal/config"
+	"gstd-bot/internal/database"
+	"gstd-bot/internal/services"
 )
 
 func main() {
