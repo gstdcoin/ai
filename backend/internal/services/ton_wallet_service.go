@@ -71,6 +71,58 @@ func NewTONWalletService(apiURL, apiKey, walletAddr, privateKeyHex string) (*TON
 	}, nil
 }
 
+// SendTON sends native TON to recipient (for gas subsidies, internal swap)
+func (w *TONWalletService) SendTON(ctx context.Context, recipientAddr string, amountNano int64, comment string) (string, error) {
+	select {
+	case <-w.rateLimiter:
+	case <-ctx.Done():
+		return "", ctx.Err()
+	}
+
+	// Use main wallet address for native TON transfer
+	transferReq := map[string]interface{}{
+		"destination": recipientAddr,
+		"amount":      strconv.FormatInt(amountNano, 10),
+		"comment":     comment,
+		"bounceable":  false,
+	}
+
+	url := fmt.Sprintf("%s/v2/wallet/%s/transfer", w.apiURL, w.walletAddr)
+	reqBody, err := json.Marshal(transferReq)
+	if err != nil {
+		return "", fmt.Errorf("marshal: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", url, strings.NewReader(string(reqBody)))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if w.apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+w.apiKey)
+		req.Header.Set("X-API-Key", w.apiKey)
+	}
+
+	resp, err := w.client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("TON API error %d: %s", resp.StatusCode, string(body))
+	}
+
+	var result struct {
+		Hash string `json:"hash"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", err
+	}
+	return result.Hash, nil
+}
+
 // SendJettonTransfer sends GSTD jetton to recipient using TON API
 // This method constructs the transaction and uses TON API to send it
 func (w *TONWalletService) SendJettonTransfer(

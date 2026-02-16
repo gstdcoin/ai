@@ -18,9 +18,10 @@ func NewUserService(db *sql.DB) *UserService {
 }
 
 // LoginOrRegister checks if a user exists, and if not, creates a new user with balance 0
-func (s *UserService) LoginOrRegister(ctx context.Context, walletAddress string) (*models.User, error) {
+// Returns (user, isNewlyCreated, error)
+func (s *UserService) LoginOrRegister(ctx context.Context, walletAddress string) (*models.User, bool, error) {
 	if walletAddress == "" {
-		return nil, errors.New("wallet_address is required")
+		return nil, false, errors.New("wallet_address is required")
 	}
 
 	var user models.User
@@ -39,15 +40,13 @@ func (s *UserService) LoginOrRegister(ctx context.Context, walletAddress string)
 	)
 
 	if err == nil {
-		// User exists, return it
 		user.CreatedAt = createdAt
 		user.UpdatedAt = updatedAt
-		return &user, nil
+		return &user, false, nil
 	}
 
 	if err != sql.ErrNoRows {
-		// Database error
-		return nil, err
+		return nil, false, err
 	}
 
 	// User doesn't exist, create new user
@@ -57,7 +56,7 @@ func (s *UserService) LoginOrRegister(ctx context.Context, walletAddress string)
 		VALUES ($1, 0, $2, $2)
 	`, walletAddress, now)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	user = models.User{
@@ -66,8 +65,7 @@ func (s *UserService) LoginOrRegister(ctx context.Context, walletAddress string)
 		CreatedAt:     now,
 		UpdatedAt:     now,
 	}
-
-	return &user, nil
+	return &user, true, nil
 }
 
 // GetUser retrieves a user by wallet address
