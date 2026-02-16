@@ -362,6 +362,7 @@ func SetupRoutes(
 
 		// Unified Identity: /registry/join — single endpoint for nodes + devices (Session or API Key)
 		protected.POST("/registry/join", RegistryJoin(nodeService, deviceService, geoService, telegramService, multiLevelReferralService, dbConn, gaslessUserService))
+		protected.GET("/registry/legacy-check", RegistryLegacyCheck(deviceService))
 
 		// Device endpoints (protected)
 		protected.GET("/device/tasks/available", getAvailableTasks(assignmentService))
@@ -502,11 +503,13 @@ func SetupRoutes(
 
 		// Global Gateway (OpenAI Compatible) - Sovereign AI Inference
 		// Hybrid Auth: Session (browser) + API Key (agents) → unified UserContext, Ultra gate works for both
+		// Sovereign Dawn: Ultra API Tiering — APIKey with Ultra gets 10x rate limit
 		var chatGroup *gin.RouterGroup
 		if redisClient != nil {
 			if rc, ok := redisClient.(*redis.Client); ok && rc != nil {
 				chatGroup = v1.Group("/chat")
 				chatGroup.Use(HybridAuth(rc, apiKeyService))
+				chatGroup.Use(UltraRateLimitMiddleware(rc, omniPerformance))
 				chatGroup.POST("/completions", gatewayHandler.HandleChatCompletions)
 			}
 		}
@@ -522,6 +525,7 @@ func SetupRoutes(
 			if rc, ok := redisClient.(*redis.Client); ok && rc != nil {
 				v1Root := router.Group("/v1")
 				v1Root.Use(HybridAuth(rc, apiKeyService))
+				v1Root.Use(UltraRateLimitMiddleware(rc, omniPerformance))
 				v1Root.POST("/chat/completions", gatewayHandler.HandleChatCompletions)
 				v1Root.GET("/chat/ultra-status", gatewayHandler.GetUltraStatus)
 				v1Root.GET("/models", gatewayHandler.ListModels)

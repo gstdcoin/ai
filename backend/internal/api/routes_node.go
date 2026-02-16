@@ -24,9 +24,16 @@ import (
 // @Failure 400 {object} map[string]string "Invalid request"
 // @Failure 401 {object} map[string]string "Unauthorized"
 // @Router /nodes/register [post]
+// nodesRegisterDeprecationUntil — Great Convergence: legacy bridge 30 days
+const nodesRegisterDeprecationUntil = "2026-03-18"
+
 // registerNode registers a new computing node
+// DEPRECATED: Use POST /api/v1/registry/join (Unified Identity). Legacy support until 2026-03-18.
 func registerNode(service *services.NodeService, geoService *services.GeoService, telegramService *services.TelegramService, referral *services.MultiLevelReferralService) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		log.Printf("⚠️ [DEPRECATION] POST /nodes/register is deprecated. Migrate to POST /api/v1/registry/join before %s", nodesRegisterDeprecationUntil)
+		c.Header("X-API-Deprecation", "POST /nodes/register deprecated. Use POST /api/v1/registry/join. Support until "+nodesRegisterDeprecationUntil)
+
 		var req struct {
 			Name         string                 `json:"name" binding:"required"`
 			Specs        map[string]interface{} `json:"specs"`

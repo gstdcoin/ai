@@ -400,10 +400,22 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 }
 
 // GetUltraStatus returns Ultra mode access status and Consumer Adoption cost info.
+// Great Convergence: identity_source (Session | APIKey) for agent visibility.
 func (h *GatewayHandler) GetUltraStatus(c *gin.Context) {
 	wallet := c.GetString("wallet_address")
 	if wallet == "" {
 		wallet = c.GetHeader("X-GSTD-Target-Wallet")
+	}
+	identitySource := "unknown"
+	if uc := GetUserContext(c); uc != nil && uc.AuthSource != "" {
+		switch uc.AuthSource {
+		case "session":
+			identitySource = "Session"
+		case "api_key", "sovereign":
+			identitySource = "APIKey"
+		default:
+			identitySource = uc.AuthSource
+		}
 	}
 	mode := "standard"
 	ultraAvailable := false
@@ -459,6 +471,7 @@ func (h *GatewayHandler) GetUltraStatus(c *gin.Context) {
 		"message":          msg,
 		"staking_discount": stakingDiscount,
 		"cost_per_model":   costPerModel,
+		"identity_source":  identitySource,
 	})
 }
 

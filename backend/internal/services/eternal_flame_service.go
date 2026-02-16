@@ -13,6 +13,7 @@ import (
 // - Global Availability: node failover + shard redistribution within 30s
 // - Auto-Scale Rewards: +5% worker rewards when volume > 10,000 GSTD/hour
 // - Archon Oversight: hourly settlement_ledger vs golden_reserve reconciliation
+// - Sovereign Dawn: weekly unified_device_id collision audit — block both IDs on collision
 
 const (
 	eternalFlameNodeFailoverThreshold = 30 * time.Second
@@ -200,6 +201,53 @@ func (s *EternalFlameService) logArchonAlert(ctx context.Context, alertType stri
 	`, "archon_alert_"+alertType, formatFloat(amount))
 }
 
+// RunArchonUnifiedDeviceIDAudit — Sovereign Dawn: weekly audit for unified_device_id collisions.
+// If same unified_device_id appears with different worker_wallets (mathematically impossible with SHA256, but Leviathan),
+// block both IDs immediately until resolved.
+func (s *EternalFlameService) RunArchonUnifiedDeviceIDAudit(ctx context.Context) {
+	if s.db == nil {
+		return
+	}
+	// Ensure archon_blocked_devices exists
+	_, _ = s.db.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS archon_blocked_devices (
+			unified_device_id VARCHAR(128) PRIMARY KEY,
+			reason VARCHAR(255) NOT NULL DEFAULT 'collision',
+			blocked_at TIMESTAMP DEFAULT NOW(),
+			worker_wallets TEXT[]
+		)
+	`)
+
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT unified_device_id, array_agg(DISTINCT worker_wallet) as wallets
+		FROM settlement_ledger
+		WHERE unified_device_id IS NOT NULL AND unified_device_id != '' AND worker_wallet IS NOT NULL AND worker_wallet != ''
+		GROUP BY unified_device_id
+		HAVING COUNT(DISTINCT worker_wallet) > 1
+	`)
+	if err != nil {
+		log.Printf("[Archon unified_device_id] Query failed: %v", err)
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var deviceID string
+		var wallets interface{}
+		if err := rows.Scan(&deviceID, &wallets); err != nil {
+			continue
+		}
+		log.Printf("[Archon unified_device_id] 🚨 COLLISION DETECTED: %s — blocking immediately", deviceID)
+		_, _ = s.db.ExecContext(ctx, `
+			INSERT INTO archon_blocked_devices (unified_device_id, reason, worker_wallets)
+			VALUES ($1, 'collision_detected', $2)
+			ON CONFLICT (unified_device_id) DO UPDATE SET reason = 'collision_detected', blocked_at = NOW()
+		`, deviceID, wallets)
+		s.logArchonAlert(ctx, "unified_device_id_collision", 0)
+	}
+	log.Printf("[Archon unified_device_id] Weekly audit complete")
+}
+
 // Start runs all Eternal Flame loops
 func (s *EternalFlameService) Start(ctx context.Context) {
 	// Global Availability: every 10s (30s failover window)
@@ -246,7 +294,22 @@ func (s *EternalFlameService) Start(ctx context.Context) {
 		}
 	}()
 
-	log.Printf("🔥 Eternal Flame: ACTIVE — 99.99%% uptime, Auto-Scale Rewards, Archon Oversight")
+	// Sovereign Dawn: Archon unified_device_id collision audit — weekly
+	go func() {
+		ticker := time.NewTicker(7 * 24 * time.Hour)
+		defer ticker.Stop()
+		s.RunArchonUnifiedDeviceIDAudit(ctx) // run on startup
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				s.RunArchonUnifiedDeviceIDAudit(ctx)
+			}
+		}
+	}()
+
+	log.Printf("🔥 Eternal Flame: ACTIVE — 99.99%% uptime, Auto-Scale Rewards, Archon Oversight, Sovereign Dawn")
 }
 
 func formatFloat(f float64) string {

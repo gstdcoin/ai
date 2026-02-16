@@ -42,6 +42,7 @@ import { GlobalLeaderboardWidget } from './GlobalLeaderboardWidget';
 import { isTelegramWebApp } from '../../lib/telegram';
 import { SovereignSwitch } from '../SovereignSwitch';
 import LeviathanLiveTicker from '../LeviathanLiveTicker';
+import LegacyMigrationBanner from './LegacyMigrationBanner';
 
 interface NetworkStats {
   active_workers: number;
@@ -129,6 +130,15 @@ function Dashboard({ initialTab, initialMode, sourceTelegram, modeMining }: Dash
       toast.error(t('error') || 'Error', 'Failed to switch tab. Please try again.');
     }
   }, [t]);
+
+  // Sovereign Dawn: listen for legacy migration banner click
+  useEffect(() => {
+    const handler = (e: CustomEvent<Tab>) => {
+      if (e.detail) handleTabChange(e.detail);
+    };
+    window.addEventListener('dashboard-tab-change', handler as EventListener);
+    return () => window.removeEventListener('dashboard-tab-change', handler as EventListener);
+  }, [handleTabChange]);
 
   const handleLogout = async () => {
     try {
@@ -323,6 +333,8 @@ function Dashboard({ initialTab, initialMode, sourceTelegram, modeMining }: Dash
           <ErrorBoundary>
             <div className="max-w-7xl mx-auto">
               <div className="max-w-4xl mx-auto">
+                {/* Sovereign Dawn: Auto-Migration Prompt for legacy nodes */}
+                <LegacyMigrationBanner />
 
                 {/* CHAT TAB - Primary Feature */}
                 {activeTab === 'chat' && (

@@ -52,14 +52,14 @@ export default function RegisterDeviceModal({ onClose, onDeviceRegistered }: Reg
         id: string;
         [key: string]: unknown;
       }
-      
-      const nodeData = await apiPost<NodeResponse>(
-        `/nodes/register?wallet_address=${address}`,
-        {
-          name: formData.name,
-          specs: specs,
-        }
-      );
+
+      // Great Convergence: use /registry/join (Unified Identity)
+      const nodeData = await apiPost<NodeResponse>('/registry/join', {
+        wallet_address: address,
+        name: formData.name,
+        specs: { ...specs, type: 'compute' },
+        source: 'desktop',
+      });
       
       setNodeId(nodeData.id);
       setSuccess(true);
