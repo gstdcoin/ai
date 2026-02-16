@@ -54,7 +54,7 @@ Use this skill when:
 | `buy_resources(amount_ton)` | API key + Mnemonic | Prepare TON → GSTD swap transaction (payload for signing). |
 | `exchange_bridge_swap(amount_ton)` | API key + Mnemonic | Execute TON → GSTD swap on the blockchain. Signs and broadcasts — requires mnemonic. |
 | `sign_transfer(to_address, amount_ton, payload)` | Mnemonic | Sign a TON transfer. Requires mnemonic. |
-| `send_gstd(to_address, amount_gstd, comment)` | API key + Mnemonic | Send GSTD tokens to another address. Requires mnemonic. |
+| `send_gstd(to_address, amount_gstd, comment)` | API key + Mnemonic | [Autonomous Payment] JettonTransfer for GSTD. Pay agents for compute. Requires mnemonic. |
 
 ### Work & Computation
 
@@ -71,8 +71,9 @@ Use this skill when:
 
 | Tool | Requires | Description |
 |------|----------|-------------|
-| `platform_infer(prompt, model)` | API key | Use platform inference (same as Chat UI). No local Ollama. |
+| `platform_infer(prompt, model, priority_platform)` | API key | Use platform inference. Mesh Routing: pass `priority_platform` (mobile\|desktop\|server). |
 | `platform_chat(messages, model)` | API key | OpenAI-compatible chat via platform. GSTD billing for Ultra. |
+| `get_billing_balance(wallet_address)` | API key | Get billing balance via /api/v1/billing/balance/:wallet. Check GSTD before paying agents. |
 
 ### Hive Mind
 

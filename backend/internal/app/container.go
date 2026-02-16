@@ -132,6 +132,30 @@ func BuildContainer() *dig.Container {
 	c.Provide(func(db *sql.DB, redis *redis.Client, lfs *services.SwarmLFSService, pipeline *services.PipelineParallelismService, inference *services.InferenceService, contrib *services.ContributionMonetizationService) *services.CleanCoreService {
 		return services.NewCleanCoreService(db, redis, lfs, pipeline, inference, contrib)
 	})
+	c.Provide(func(lfs *services.SwarmLFSService, cleanCore *services.CleanCoreService) *services.GlobalAbsorptionService {
+		return services.NewGlobalAbsorptionService(lfs, cleanCore)
+	})
+	c.Provide(func(db *sql.DB) *services.KnowledgeIntegrator {
+		return services.NewKnowledgeIntegrator(db)
+	})
+	c.Provide(func(absorption *services.GlobalAbsorptionService) *services.PredictiveMirroringService {
+		return services.NewPredictiveMirroringService(absorption)
+	})
+	c.Provide(func(db *sql.DB) *services.LeviathanProfitService {
+		return services.NewLeviathanProfitService(db)
+	})
+	c.Provide(func(db *sql.DB, absorption *services.GlobalAbsorptionService) *services.TalentHuntingService {
+		return services.NewTalentHuntingService(db, absorption)
+	})
+	c.Provide(func(db *sql.DB) *services.MeshConstitutionService {
+		return services.NewMeshConstitutionService(db)
+	})
+	c.Provide(func(db *sql.DB, ton *services.TONService) *services.ConstitutionAnchorService {
+		return services.NewConstitutionAnchorService(db, ton)
+	})
+	c.Provide(func(db *sql.DB, absorption *services.GlobalAbsorptionService, talentHunting *services.TalentHuntingService, predictive *services.PredictiveMirroringService, constitution *services.MeshConstitutionService) *services.SingularityReadyService {
+		return services.NewSingularityReadyService(db, absorption, talentHunting, predictive, constitution)
+	})
 	c.Provide(func(db *sql.DB, poolMonitor *services.PoolMonitorService) *services.ContributionMonetizationService {
 		return services.NewContributionMonetizationService(db, poolMonitor)
 	})
@@ -157,8 +181,9 @@ func BuildContainer() *dig.Container {
 		}
 		return services.NewOmnipotenceService(db, wallet)
 	})
-	c.Provide(func(db *sql.DB, inference *services.InferenceService, mobile *services.MobileComputeService, pipeline *services.PipelineParallelismService, contrib *services.ContributionMonetizationService, cleanCore *services.CleanCoreService, settlement *services.SettlementService) *services.UniversalMeshService {
-		return services.NewUniversalMeshService(db, inference, mobile, pipeline, contrib, cleanCore, settlement)
+	c.Provide(services.NewSupremeCoordinatorService)
+	c.Provide(func(db *sql.DB, inference *services.InferenceService, mobile *services.MobileComputeService, pipeline *services.PipelineParallelismService, contrib *services.ContributionMonetizationService, cleanCore *services.CleanCoreService, settlement *services.SettlementService, supremeCoord *services.SupremeCoordinatorService) *services.UniversalMeshService {
+		return services.NewUniversalMeshService(db, inference, mobile, pipeline, contrib, cleanCore, settlement, supremeCoord)
 	})
 	c.Provide(services.NewAgentSubcontractService)
 	c.Provide(services.NewGoldHashRateService)
@@ -310,6 +335,15 @@ func StartApplication(container *dig.Container) error {
 		treasuryService *services.TreasuryService,
 		swarmLFS *services.SwarmLFSService,
 		cleanCoreService *services.CleanCoreService,
+		globalAbsorption *services.GlobalAbsorptionService,
+		knowledgeIntegrator *services.KnowledgeIntegrator,
+		predictiveMirroring *services.PredictiveMirroringService,
+		supremeCoord *services.SupremeCoordinatorService,
+		leviathanProfit *services.LeviathanProfitService,
+		talentHunting *services.TalentHuntingService,
+		meshConstitution *services.MeshConstitutionService,
+		constitutionAnchor *services.ConstitutionAnchorService,
+		singularityReady *services.SingularityReadyService,
 		billingService *services.BillingService,
 		goldenAgeService *services.GoldenAgeService,
 		dynamicEquilibrium *services.DynamicEquilibriumService,
@@ -430,6 +464,51 @@ func StartApplication(container *dig.Container) error {
 		// 3b. Leviathan: optional prediction-market analytics (LEVIATHAN_ENABLED=true)
 		leviathan.StartIfEnabled(ctx)
 
+		// 3b2. Predictive Mirroring: Leviathan analyzes HF Trending, shards top-3 models/day
+		if os.Getenv("LEVIATHAN_ENABLED") == "true" && predictiveMirroring != nil {
+			globalAbsorption.SetKnowledgeIntegrator(knowledgeIntegrator)
+			go predictiveMirroring.Start(ctx)
+			log.Printf("🔮 Predictive Mirroring: ACTIVE — HF Trending top-3 sharding (6h cycle)")
+		} else if knowledgeIntegrator != nil {
+			globalAbsorption.SetKnowledgeIntegrator(knowledgeIntegrator)
+		}
+
+		// 3b3. Supreme Coordinator: Performance-Based Pruning, Golden Incentive, Integrity Cross-Check
+		if supremeCoord != nil {
+			go supremeCoord.RunPruningLoop(ctx)
+			if federatedEngine != nil {
+				federatedEngine.SetSupremeCoordinator(supremeCoord)
+			}
+			log.Printf("⚡ Supreme Coordinator: ACTIVE — Pruning (48h), Golden +10%%, LoRA Cross-Check")
+		}
+
+		// 3b4. Profit Maximization: Leviathan matches fee vs region costs, suggests high-margin nodes
+		if leviathanProfit != nil && cleanCoreService != nil {
+			cleanCoreService.SetLeviathanProfit(leviathanProfit)
+			log.Printf("💰 Profit Maximization: ACTIVE — node routing by Golden Treasury margin")
+		}
+
+		// 3b5. Automated Talent Hunting: category without score>7 → HF search
+		if talentHunting != nil {
+			go talentHunting.Start(ctx)
+			log.Printf("🎯 Talent Hunting: ACTIVE — category gap search (12h)")
+		}
+
+		// 3b6. Decentralized Governance: monthly Mesh Constitution + Immortal Identity
+		if meshConstitution != nil {
+			if constitutionAnchor != nil {
+				meshConstitution.SetAnchor(constitutionAnchor)
+			}
+			go meshConstitution.Start(ctx)
+			log.Printf("📜 Mesh Constitution: ACTIVE — monthly report, hash-signature for blockchain")
+		}
+
+		// 3b7. Singularity Ready: Global Equilibrium, Archon Protocol
+		if singularityReady != nil {
+			go singularityReady.Start(ctx)
+			log.Printf("🔮 Singularity Ready: ACTIVE — Equilibrium (Profit↔Talent), Archon (cap<5)")
+		}
+
 		// 4. Setup Routes
 		api.SetupRoutes(
 			router,
@@ -497,6 +576,9 @@ func StartApplication(container *dig.Container) error {
 		api.SetupUniversalMeshRoutes(v1Group, universalMeshService, contributionMonetization)
 		log.Printf("🌐 Universal Mesh Protocol: ACTIVE — GET /api/v1/infer, GET /api/v1/mesh/shares")
 
+		// 4b2b. Mesh Constitution: Decentralized Governance report
+		api.SetupMeshConstitutionRoutes(v1Group, meshConstitution)
+
 		// 4b2b. Financial API: billing balance
 		api.SetupBillingRoutes(v1Group, billingService)
 		log.Printf("💰 Financial API: GET /api/v1/billing/balance/:wallet")
@@ -504,6 +586,10 @@ func StartApplication(container *dig.Container) error {
 		// 4b3. Clean Core Protocol: Shard-First, Availability Staking, Proxy-Balancer
 		api.SetupCleanCoreRoutes(protectedGroup, cleanCoreService, cfg.TON)
 		log.Printf("🧹 Clean Core Protocol: ACTIVE — POST /admin/models/propagate, POST /pipeline/proof-storage")
+
+		// 4b3b. Global Absorption Protocol: Proxy-Hugging-Bridge, License Guard, Redundancy Scaling
+		api.SetupGlobalAbsorptionRoutes(v1Group, globalAbsorption)
+		log.Printf("🌐 Global Absorption: ACTIVE — GET /api/v1/absorption/search, POST /absorption/search-absorb, POST /absorption/absorb")
 
 		// 4c. Cosmic Genesis: A2A economy, Gold-Hash link, Hardware grants
 		api.SetupCosmicGenesisRoutes(v1Group, protectedGroup, db, agentSubcontractService, goldHashRateService)

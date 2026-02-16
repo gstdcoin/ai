@@ -19,15 +19,16 @@ import (
 // - Decentralized Inference: proxy to nodes, server as Proxy-Balancer
 // - Self-Learning Loop: free hashrate → Golden Vectors
 type CleanCoreService struct {
-	db         *sql.DB
-	redis      *redis.Client
-	lfs        *SwarmLFSService
-	pipeline   *PipelineParallelismService
-	inference  *InferenceService
-	contrib    *ContributionMonetizationService
-	propCh     chan *PropagationEvent
-	mu         sync.RWMutex
-	lastProp   map[string]time.Time // model_id -> last propagation
+	db            *sql.DB
+	redis         *redis.Client
+	lfs           *SwarmLFSService
+	pipeline      *PipelineParallelismService
+	inference     *InferenceService
+	contrib       *ContributionMonetizationService
+	leviathanProfit *LeviathanProfitService // Profit Maximization: prefer high-margin nodes
+	propCh        chan *PropagationEvent
+	mu            sync.RWMutex
+	lastProp      map[string]time.Time // model_id -> last propagation
 }
 
 // PropagationEvent is broadcast when a model is loaded for shard-first distribution
@@ -73,6 +74,11 @@ func NewCleanCoreService(
 	}
 	svc.ensureSchema()
 	return svc
+}
+
+// SetLeviathanProfit injects Profit Maximization service for high-margin node routing
+func (s *CleanCoreService) SetLeviathanProfit(lp *LeviathanProfitService) {
+	s.leviathanProfit = lp
 }
 
 func (s *CleanCoreService) ensureSchema() {
@@ -221,13 +227,19 @@ type ProxyInferResult struct {
 
 // ProxyInfer forwards the request to an eligible node. Returns result with OK=true if successful.
 // If no eligible nodes, OK=false and caller should fallback to server.
+// Profit Maximization: when LeviathanProfit is set, prefer nodes with max margin for Golden Treasury
 func (s *CleanCoreService) ProxyInfer(ctx context.Context, prompt, modelID string) ProxyInferResult {
 	nodes, err := s.GetEligibleNodes(ctx, modelID)
 	if err != nil || len(nodes) == 0 {
 		return ProxyInferResult{OK: false}
 	}
 
-	// Pick first eligible node (round-robin can be added later)
+	// Profit Maximization: sort by margin (fee - energy/traffic cost)
+	feeGSTD := GetBaseInferenceFeeGSTD() * GetInferenceFeeMultiplier()
+	if s.leviathanProfit != nil {
+		nodes = s.leviathanProfit.GetNodesByMargin(ctx, nodes, feeGSTD)
+	}
+
 	target := nodes[0]
 	url := strings.TrimSuffix(target.EndpointURL, "/") + "/infer"
 	reqBody := map[string]string{"prompt": prompt, "model": modelID}

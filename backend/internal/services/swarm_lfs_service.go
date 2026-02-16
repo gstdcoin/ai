@@ -27,12 +27,15 @@ type SwarmLFSService struct {
 }
 
 // LFSManifest describes a model's block layout for streaming
+// License Guard: license metadata for open swarm prioritization (Apache 2.0, MIT preferred)
 type LFSManifest struct {
 	ModelID   string        `json:"model_id"`
 	Version   string        `json:"version"`
 	Blocks    []LFSBlockRef `json:"blocks"`
 	TotalSize int64         `json:"total_size"`
 	CreatedAt time.Time     `json:"created_at"`
+	License   string        `json:"license,omitempty"`   // License Guard: apache-2.0, mit, etc.
+	SourceHF  string        `json:"source_hf,omitempty"` // Proxy-Hugging-Bridge: original HF model ID
 }
 
 // LFSBlockRef references a block in the manifest
@@ -90,6 +93,8 @@ func (s *SwarmLFSService) seedDemoManifest() {
 		Blocks:    blocks,
 		TotalSize: 4 * 65536,
 		CreatedAt: time.Now(),
+		License:   "apache-2.0",
+		SourceHF:  "Qwen/Qwen2.5-Coder-7B-Instruct",
 	}
 	log.Printf("[Swarm LFS] Demo manifest seeded for qwen2.5-coder:7b")
 }
@@ -119,6 +124,17 @@ func (s *SwarmLFSService) AddManifest(ctx context.Context, modelID string, block
 		CreatedAt: time.Now(),
 	}
 	s.manifests[modelID] = m
+	return m, nil
+}
+
+// AddManifestWithLicense registers a new model manifest with License Guard metadata
+func (s *SwarmLFSService) AddManifestWithLicense(ctx context.Context, modelID string, blockCount int, license, sourceHF string) (*LFSManifest, error) {
+	m, err := s.AddManifest(ctx, modelID, blockCount)
+	if err != nil {
+		return nil, err
+	}
+	m.License = license
+	m.SourceHF = sourceHF
 	return m, nil
 }
 

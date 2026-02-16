@@ -283,12 +283,27 @@ def recall(topic: str) -> str:
 
 
 @mcp.tool()
-def platform_infer(prompt: str, model: str = "full") -> dict:
+def platform_infer(prompt: str, model: str = "full", priority_platform: str = "") -> dict:
     """
     Use platform AI inference (same as Chat UI). No local Ollama needed.
+    Mesh Routing: pass priority_platform (mobile|desktop|server) to prefer that compute tier.
     Returns response from the GSTD Grid's sovereign LLM network.
     """
-    return CLIENT.infer(prompt, model)
+    return CLIENT.infer(prompt, model, priority_platform or None)
+
+
+@mcp.tool()
+def get_billing_balance(wallet_address: str = "") -> dict:
+    """
+    [OpenClaw Bridge] Get billing balance for a wallet via /api/v1/billing/balance/:wallet.
+    Use to check GSTD balance before paying another agent for compute.
+    """
+    if not CLIENT:
+        return {"error": "SDK not initialized. Check GSTD_API_KEY."}
+    addr = (wallet_address or "").strip() or (WALLET.address if WALLET else None)
+    if not addr:
+        return {"error": "Wallet address required. Pass wallet_address or set AGENT_PRIVATE_MNEMONIC."}
+    return CLIENT.get_billing_balance(addr)
 
 
 @mcp.tool()

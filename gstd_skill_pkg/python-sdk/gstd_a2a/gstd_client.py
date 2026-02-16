@@ -177,15 +177,17 @@ class GSTDClient:
 
     # --- Platform Inference (User Interface API) ---
 
-    def infer(self, prompt, model="full"):
+    def infer(self, prompt, model="full", priority_platform=None):
         """
         Calls platform inference (GET /api/v1/infer).
         Same capability as Chat UI — agents use platform AI without local Ollama.
-        Public endpoint; no auth required for basic inference.
+        Mesh Routing: pass priority_platform (mobile|desktop|server) to hint routing.
         """
         params = {"prompt": prompt}
         if model:
             params["model"] = model
+        if priority_platform and priority_platform.lower() in ("mobile", "desktop", "server"):
+            params["priority_platform"] = priority_platform.lower()
         resp = requests.get(f"{self.api_url}/api/v1/infer", params=params, headers=self._get_headers(), timeout=90)
         if resp.status_code == 200:
             return resp.json()
@@ -228,6 +230,19 @@ class GSTDClient:
         # Fallback to wallet/gstd-balance (public, GSTD only)
         resp = requests.get(f"{self.api_url}/api/v1/wallet/gstd-balance?address={target}", headers={"X-GSTD-API-KEY": self.api_key or ""})
         return resp.json()
+
+    def get_billing_balance(self, wallet_address=None):
+        """
+        Gets billing balance via /api/v1/billing/balance/:wallet.
+        OpenClaw-compatible: agents can check any wallet's GSTD balance for payments.
+        """
+        target = wallet_address or self.wallet_address
+        if not target:
+            raise ValueError("Wallet address required to check billing balance")
+        resp = requests.get(f"{self.api_url}/api/v1/billing/balance/{target}", headers=self._get_headers(), timeout=10)
+        if resp.status_code == 200:
+            return resp.json()
+        return {"error": resp.text or f"HTTP {resp.status_code}"}
 
     def get_payout_intent(self, task_id):
         """Creates a payout intent for a completed task to claim rewards."""

@@ -20,20 +20,22 @@ func inferenceFeeGSTD(latencyMs int64) float64 {
 // Implements the Universal Mesh Protocol: dynamic weight distribution and collective inference.
 // Clean Core: when cleanCore is set, infer first tries Proxy-Balancer (decentralized) before server.
 type UniversalMeshService struct {
-	db              *sql.DB
-	inference       *InferenceService
-	mobile          *MobileComputeService
-	pipeline        *PipelineParallelismService
-	contributions   *ContributionMonetizationService
-	cleanCore       *CleanCoreService // optional: decentralized inference, proxy to nodes
-	settlement      *SettlementService // optional: ProcessPayment on proxy infer success
+	db               *sql.DB
+	inference        *InferenceService
+	mobile           *MobileComputeService
+	pipeline         *PipelineParallelismService
+	contributions    *ContributionMonetizationService
+	cleanCore        *CleanCoreService // optional: decentralized inference, proxy to nodes
+	settlement       *SettlementService // optional: ProcessPayment on proxy infer success
+	supremeCoord     *SupremeCoordinatorService // optional: Golden Incentive, request tracking
 }
 
 // InferRequest is the public inference request
 type InferRequest struct {
-	Prompt string `form:"prompt" json:"prompt"`
-	Model  string `form:"model" json:"model"` // light, medium, full
-	Stream bool   `form:"stream" json:"stream"`
+	Prompt           string `form:"prompt" json:"prompt"`
+	Model            string `form:"model" json:"model"`                       // light, medium, full
+	Stream           bool   `form:"stream" json:"stream"`                     // SSE streaming
+	PriorityPlatform string `form:"priority_platform" json:"priority_platform"` // mobile, desktop, server — Mesh Routing for Agents
 }
 
 // InferResponse is the public inference response
@@ -54,15 +56,17 @@ func NewUniversalMeshService(
 	contributions *ContributionMonetizationService,
 	cleanCore *CleanCoreService,
 	settlement *SettlementService,
+	supremeCoord *SupremeCoordinatorService,
 ) *UniversalMeshService {
 	return &UniversalMeshService{
 		db:            db,
 		inference:     inference,
-		mobile:       mobile,
-		pipeline:     pipeline,
+		mobile:        mobile,
+		pipeline:      pipeline,
 		contributions: contributions,
-		cleanCore:    cleanCore,
-		settlement:   settlement,
+		cleanCore:     cleanCore,
+		settlement:    settlement,
+		supremeCoord:  supremeCoord,
 	}
 }
 
@@ -79,20 +83,25 @@ func (s *UniversalMeshService) Infer(ctx context.Context, req *InferRequest) (*I
 		model = "full"
 	}
 
-	platform := s.selectPlatform(ctx, len(req.Prompt), model)
+	platform := s.selectPlatformWithHint(ctx, len(req.Prompt), model, req.PriorityPlatform)
 
 	// Clean Core: try decentralized proxy first (Proxy-Balancer)
 	if s.cleanCore != nil {
 		modelID := s.resolveModelName(model)
 		if pr := s.cleanCore.ProxyInfer(ctx, req.Prompt, modelID); pr.OK {
 			latencyMs := time.Since(start).Milliseconds()
+			computeUnits := float64(latencyMs) * 0.001
+			if s.supremeCoord != nil {
+				s.supremeCoord.RecordModelRequest(ctx, modelID)
+				computeUnits *= s.supremeCoord.GoldenBonusMultiplier(ctx, modelID)
+			}
 			if s.contributions != nil {
 				_ = s.contributions.Record(ctx, &ContributionRecord{
 					NodeID:       pr.NodeID,
 					WalletAddr:   pr.WalletAddr,
 					Platform:     "node",
-					ComputeUnits: float64(latencyMs) * 0.001,
-					Model:        model,
+					ComputeUnits: computeUnits,
+					Model:        modelID,
 				})
 			}
 			// Proxy Settlement: ProcessPayment on successful proxy inference
@@ -133,6 +142,14 @@ func (s *UniversalMeshService) Infer(ctx context.Context, req *InferRequest) (*I
 	}
 
 	latencyMs := time.Since(start).Milliseconds()
+	resolvedModel := s.resolveModelName(model)
+
+	// Supreme Coordinator: record request, Golden Incentive (+10% for top models)
+	computeUnits := float64(latencyMs) * 0.001
+	if s.supremeCoord != nil {
+		s.supremeCoord.RecordModelRequest(ctx, resolvedModel)
+		computeUnits *= s.supremeCoord.GoldenBonusMultiplier(ctx, resolvedModel)
+	}
 
 	// Record contribution for monetization (server node as fallback)
 	if s.contributions != nil {
@@ -140,9 +157,9 @@ func (s *UniversalMeshService) Infer(ctx context.Context, req *InferRequest) (*I
 			NodeID:       "server-orchestrator",
 			WalletAddr:  "",
 			Platform:     platform,
-			ComputeUnits: float64(latencyMs) * 0.001, // token-seconds proxy
+			ComputeUnits: computeUnits,
 			TaskID:       "",
-			Model:        model,
+			Model:        resolvedModel,
 		})
 	}
 
@@ -155,7 +172,40 @@ func (s *UniversalMeshService) Infer(ctx context.Context, req *InferRequest) (*I
 	}, nil
 }
 
+// selectPlatformWithHint uses priority_platform hint from agents when valid
+func (s *UniversalMeshService) selectPlatformWithHint(ctx context.Context, promptLen int, model string, hint string) string {
+	hint = strings.ToLower(strings.TrimSpace(hint))
+	if hint == "mobile" && s.mobile != nil && s.hasMobileCapacity(ctx) {
+		return "mobile"
+	}
+	if hint == "desktop" && s.pipeline != nil && s.hasDesktopCapacity(ctx) {
+		return "desktop"
+	}
+	if hint == "server" {
+		return "server"
+	}
+	return s.selectPlatform(ctx, promptLen, model)
+}
+
 func (s *UniversalMeshService) selectPlatform(ctx context.Context, promptLen int, model string) string {
+	// Knowledge Cross-Link: prefer UniversalMesh_Routing if available
+	resolved := s.resolveModelName(model)
+	if s.db != nil {
+		var platform string
+		err := s.db.QueryRowContext(ctx, `SELECT platform_preference FROM universal_mesh_routing WHERE model_id = $1`, resolved).Scan(&platform)
+		if err == nil && platform != "" {
+			switch platform {
+			case "mobile":
+				if s.mobile != nil && s.hasMobileCapacity(ctx) {
+					return "mobile"
+				}
+			case "desktop":
+				if s.pipeline != nil && s.hasDesktopCapacity(ctx) {
+					return "desktop"
+				}
+			}
+		}
+	}
 	// light + short prompt → try mobile
 	if model == "light" && promptLen < 100 {
 		if s.mobile != nil && s.hasMobileCapacity(ctx) {
@@ -234,6 +284,7 @@ func (s *UniversalMeshService) resolveModelName(model string) string {
 		return "qwen2.5-coder:7b"
 	}
 }
+
 
 // ErrInferPromptRequired is returned when prompt is empty
 var ErrInferPromptRequired = &inferError{msg: "prompt is required"}

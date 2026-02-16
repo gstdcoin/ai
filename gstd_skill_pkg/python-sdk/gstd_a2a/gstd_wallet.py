@@ -372,3 +372,28 @@ class GSTDWallet:
         
         return self.broadcast_transfer(bytes_to_b64str(msg["message"].to_boc(False)))
 
+    def send_gstd(self, to_address: str, amount_gstd: float, comment: str = ""):
+        """
+        [Autonomous Payment] JettonTransfer for GSTD.
+        Sends GSTD tokens to another address on TON. Uses TEP-74 Jetton transfer.
+        Agents can pay each other for compute autonomously.
+        """
+        import base64
+        from tonsdk.boc import Cell
+
+        jetton_wallet = self.get_jetton_wallet_address()
+        if not jetton_wallet:
+            return {"error": "Could not resolve GSTD jetton wallet address"}
+        body_b64 = self.create_jetton_transfer_body(to_address, amount_gstd, comment)
+        try:
+            body_cell = Cell.one_from_boc(base64.b64decode(body_b64))
+        except Exception as e:
+            return {"error": f"Failed to build jetton transfer body: {e}"}
+        # ~0.02 TON for gas to process jetton transfer
+        msg = self.create_transfer_message(to_addr=jetton_wallet, amount_ton=0.02, payload=body_cell)
+        boc_b64 = bytes_to_b64str(msg["message"].to_boc(False))
+        result = self.broadcast_transfer(boc_b64)
+        if "error" in result:
+            return result
+        return {"tx_hash": result.get("result"), "jetton_wallet": jetton_wallet}
+
