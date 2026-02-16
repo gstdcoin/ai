@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"distributed-computing-platform/internal/api"
@@ -211,6 +212,19 @@ func BuildContainer() *dig.Container {
 		return services.NewAssignmentService(db, redis)
 	})
 	c.Provide(services.NewGaslessUserService)
+	c.Provide(services.NewPayoutBatchService)
+	c.Provide(func(cfg *config.Config) *services.HighloadWalletService {
+		seed := services.ParseSeedFromEnv(cfg.TON.HighloadWalletSeed)
+		if len(seed) < 12 {
+			return nil
+		}
+		hl, err := services.NewHighloadWalletService(seed, cfg.TON.LiteserverConfigURL)
+		if err != nil {
+			log.Printf("⚠️ Highload wallet init: %v", err)
+			return nil
+		}
+		return hl
+	})
 	c.Provide(func(redis *redis.Client) *services.FleetCommandService {
 		return services.NewFleetCommandService(redis)
 	})
@@ -251,6 +265,21 @@ func BuildContainer() *dig.Container {
 	})
 
 	return c
+}
+
+// parseTONAPIKeys returns API keys from TON_API_KEY and TON_API_KEYS (comma-separated)
+func parseTONAPIKeys(primary, keysStr string) []string {
+	var keys []string
+	if primary != "" {
+		keys = append(keys, strings.TrimSpace(primary))
+	}
+	for _, k := range strings.Split(keysStr, ",") {
+		k = strings.TrimSpace(k)
+		if k != "" && (len(keys) == 0 || k != keys[0]) {
+			keys = append(keys, k)
+		}
+	}
+	return keys
 }
 
 // StartApplication performs final wiring and starts all background services
@@ -341,6 +370,8 @@ func StartApplication(container *dig.Container) error {
 		dynamicEquilibrium *services.DynamicEquilibriumService,
 		eternalFlameService *services.EternalFlameService,
 		gaslessUserService *services.GaslessUserService,
+		payoutBatchService *services.PayoutBatchService,
+		highloadWallet *services.HighloadWalletService,
 		globalNeuralMerge *services.GlobalNeuralMergeService,
 		singularityGateway *services.SingularityGatewayService,
 		omnipotence *services.OmnipotenceService,
@@ -400,10 +431,30 @@ func StartApplication(container *dig.Container) error {
 		}
 		// Gasless User: wire TON wallet for subsidies and internal swap
 		if gaslessUserService != nil && cfg.TON.PlatformWalletAddress != "" && cfg.TON.PlatformWalletPrivateKey != "" {
-			if w, err := services.NewTONWalletService(cfg.TON.APIURL, cfg.TON.APIKey, cfg.TON.PlatformWalletAddress, cfg.TON.PlatformWalletPrivateKey); err == nil {
+			apiKeys := parseTONAPIKeys(cfg.TON.APIKey, cfg.TON.TONAPIKeys)
+			var w *services.TONWalletService
+			var err error
+			if len(apiKeys) > 1 {
+				w, err = services.NewTONWalletServiceWithKeyRotation(cfg.TON.APIURL, apiKeys, cfg.TON.PlatformWalletAddress, cfg.TON.PlatformWalletPrivateKey)
+				if err == nil {
+					log.Printf("⛽ Gasless User: TON wallet with %d API keys (rotation on 429)", len(apiKeys))
+				}
+			} else {
+				key := ""
+				if len(apiKeys) > 0 {
+					key = apiKeys[0]
+				}
+				w, err = services.NewTONWalletService(cfg.TON.APIURL, key, cfg.TON.PlatformWalletAddress, cfg.TON.PlatformWalletPrivateKey)
+			}
+			if err == nil && w != nil {
 				gaslessUserService.SetTONWallet(w)
 				log.Printf("⛽ Gasless User: TON wallet wired for subsidies and internal swap")
 			}
+		}
+		if payoutBatchService != nil && highloadWallet != nil && highloadWallet.IsInitialized() {
+			payoutBatchService.SetHighloadWallet(highloadWallet)
+			go payoutBatchService.Start(ctx)
+			log.Printf("⛽ Payout Batch: Highload Ascension ACTIVE (15m)")
 		}
 		if globalNeuralMerge != nil {
 			go globalNeuralMerge.Start(ctx)

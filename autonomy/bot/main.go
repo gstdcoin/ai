@@ -356,14 +356,19 @@ func main() {
 		}
 		defer resp.Body.Close()
 		var r struct {
-			Error   string `json:"error"`
-			Success bool   `json:"success"`
+			Error      string `json:"error"`
+			Success    bool   `json:"success"`
+			Subsidized bool   `json:"subsidized"`
 		}
 		json.NewDecoder(resp.Body).Decode(&r)
 		if resp.StatusCode != 200 || r.Error != "" {
 			return "", fmt.Errorf("%s", r.Error)
 		}
-		return "✅ Wallet linked! Use /take <task_id> to claim tasks.", nil
+		msg := "✅ Wallet linked! Use /take <task_id> to claim tasks."
+		if r.Subsidized {
+			msg = "✅ Wallet linked!\n\n⛽ Твой вход субсидирован. У тебя есть TON для первой операции!\n\nUse /take <task_id> to claim tasks."
+		}
+		return msg, nil
 	}
 
 	claimTask := func(baseURL, token string, telegramID int64, taskID string) (string, error) {
