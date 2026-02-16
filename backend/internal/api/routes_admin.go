@@ -50,6 +50,71 @@ func getAdminArchitectParams(tonConfig config.TONConfig) gin.HandlerFunc {
 	}
 }
 
+// getAdminAgentsLeaderboard - Eternal Synergy: Top-10 Agents by GSTD economy contribution (weekly)
+func getAdminAgentsLeaderboard(db *sql.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		limit := 10
+		if l := c.Query("limit"); l != "" {
+			if n, _ := fmt.Sscanf(l, "%d", &limit); n == 1 && limit > 0 && limit <= 100 {
+				// use limit
+			} else {
+				limit = 10
+			}
+		}
+
+		// Contribution = settlement_ledger worker_amount + referral_rewards (last 7 days)
+		rows, err := db.QueryContext(c.Request.Context(), `
+			WITH worker_earnings AS (
+				SELECT worker_wallet AS wallet, COALESCE(SUM(worker_amount), 0) AS amount
+				FROM settlement_ledger
+				WHERE created_at > NOW() - INTERVAL '7 days' AND worker_wallet IS NOT NULL AND worker_wallet != ''
+				GROUP BY worker_wallet
+			),
+			referral_earnings AS (
+				SELECT referrer_address AS wallet, COALESCE(SUM(amount_gstd), 0) AS amount
+				FROM referral_rewards
+				WHERE created_at > NOW() - INTERVAL '7 days' AND status IN ('pending','paid')
+				GROUP BY referrer_address
+			)
+			SELECT COALESCE(w.wallet, r.wallet) AS wallet,
+				COALESCE(w.amount, 0) + COALESCE(r.amount, 0) AS total_gstd
+			FROM worker_earnings w
+			FULL OUTER JOIN referral_earnings r ON w.wallet = r.wallet
+			WHERE COALESCE(w.amount, 0) + COALESCE(r.amount, 0) > 0
+			ORDER BY total_gstd DESC
+			LIMIT $1
+		`, limit)
+		if err != nil {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
+		defer rows.Close()
+
+		var leaderboard []gin.H
+		rank := 1
+		for rows.Next() {
+			var wallet string
+			var totalGSTD float64
+			if err := rows.Scan(&wallet, &totalGSTD); err != nil {
+				continue
+			}
+			leaderboard = append(leaderboard, gin.H{
+				"rank":        rank,
+				"wallet":     wallet,
+				"total_gstd": totalGSTD,
+				"period":     "7d",
+			})
+			rank++
+		}
+
+		c.JSON(200, gin.H{
+			"leaderboard": leaderboard,
+			"period":     "7d",
+			"updated_at":  time.Now().Format(time.RFC3339),
+		})
+	}
+}
+
 // getAdminArchitectVision - Estimated IQ growth for next 30 days based on Node Influx
 func getAdminArchitectVision(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {

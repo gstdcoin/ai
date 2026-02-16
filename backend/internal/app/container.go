@@ -496,6 +496,12 @@ func StartApplication(container *dig.Container) error {
 			log.Printf("🦾 A2A Symbio: ACTIVE — agent rating priority in UniversalMesh")
 		}
 
+		// 3b4c. Eternal Synergy: Reputation Shield (2x fee for low-rated agents)
+		if agentRatingService != nil && universalMeshService != nil {
+			universalMeshService.SetAgentRating(agentRatingService)
+			log.Printf("🛡️ Eternal Synergy: Reputation Shield ACTIVE — 2x fee for low-rated agents")
+		}
+
 		// 3b5. Automated Talent Hunting: category without score>7 → HF search
 		if talentHunting != nil {
 			go talentHunting.Start(ctx)

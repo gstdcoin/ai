@@ -28,6 +28,18 @@ type UniversalMeshService struct {
 	cleanCore        *CleanCoreService // optional: decentralized inference, proxy to nodes
 	settlement       *SettlementService // optional: ProcessPayment on proxy infer success
 	supremeCoord     *SupremeCoordinatorService // optional: Golden Incentive, request tracking
+	agentRating      *AgentRatingService // optional: Eternal Synergy — Reputation Shield
+}
+
+// ErrReputationShieldPaymentRequired is returned when low-rated agent must pay 2x fee
+var ErrReputationShieldPaymentRequired = &ReputationShieldError{}
+
+type ReputationShieldError struct {
+	RequiredFee float64
+}
+
+func (e *ReputationShieldError) Error() string {
+	return "reputation shield: 2x inference fee required for low-rated agent"
 }
 
 // InferRequest is the public inference request
@@ -36,6 +48,7 @@ type InferRequest struct {
 	Model            string `form:"model" json:"model"`                       // light, medium, full
 	Stream           bool   `form:"stream" json:"stream"`                     // SSE streaming
 	PriorityPlatform string `form:"priority_platform" json:"priority_platform"` // mobile, desktop, server — Mesh Routing for Agents
+	RequesterWallet  string `form:"-" json:"-"`                              // from X-Wallet-Address / X-GSTD-Target-Wallet — Eternal Synergy Reputation Shield
 }
 
 // InferResponse is the public inference response
@@ -70,12 +83,41 @@ func NewUniversalMeshService(
 	}
 }
 
+// SetAgentRating injects Eternal Synergy Reputation Shield
+func (s *UniversalMeshService) SetAgentRating(ar *AgentRatingService) {
+	s.agentRating = ar
+}
+
 // Infer routes the prompt to the best available platform and returns the collective result.
 func (s *UniversalMeshService) Infer(ctx context.Context, req *InferRequest) (*InferResponse, error) {
 	start := time.Now()
 
 	if req.Prompt == "" {
 		return nil, ErrInferPromptRequired
+	}
+
+	// Eternal Synergy: Reputation Shield — 2x fee for low-rated agents (spam protection)
+	if s.agentRating != nil && req.RequesterWallet != "" {
+		rating, _ := s.agentRating.GetRating(ctx, req.RequesterWallet)
+		if rating < 30 {
+			baseFee := GetBaseInferenceFeeGSTD() * GetInferenceFeeMultiplier()
+			shieldFee := baseFee * 2
+			if s.db != nil {
+				var balance float64
+				if err := s.db.QueryRowContext(ctx, `SELECT COALESCE(balance, 0) FROM users WHERE wallet_address = $1`, req.RequesterWallet).Scan(&balance); err != nil || balance < shieldFee {
+					return nil, &ReputationShieldError{RequiredFee: shieldFee}
+				}
+				res, err := s.db.ExecContext(ctx, `UPDATE users SET balance = balance - $1 WHERE wallet_address = $2 AND balance >= $1`, shieldFee, req.RequesterWallet)
+				if err != nil {
+					return nil, err
+				}
+				rows, _ := res.RowsAffected()
+				if rows == 0 {
+					return nil, &ReputationShieldError{RequiredFee: shieldFee}
+				}
+				log.Printf("[Eternal Synergy] Reputation Shield: %.6f GSTD deducted from %s (rating=%.1f)", shieldFee, truncateAddr(req.RequesterWallet, 16), rating)
+			}
+		}
 	}
 
 	model := strings.ToLower(strings.TrimSpace(req.Model))
@@ -272,6 +314,13 @@ func (s *UniversalMeshService) inferServer(ctx context.Context, prompt, model st
 		return "Error: " + err.Error(), []string{"server"}
 	}
 	return res, []string{"server"}
+}
+
+func truncateAddr(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n] + ".."
 }
 
 func (s *UniversalMeshService) resolveModelName(model string) string {
