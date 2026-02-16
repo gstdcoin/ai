@@ -347,6 +347,7 @@ func StartApplication(container *dig.Container) error {
 		constitutionAnchor *services.ConstitutionAnchorService,
 		singularityReady *services.SingularityReadyService,
 		billingService *services.BillingService,
+		settlementService *services.SettlementService,
 		goldenAgeService *services.GoldenAgeService,
 		dynamicEquilibrium *services.DynamicEquilibriumService,
 		globalNeuralMerge *services.GlobalNeuralMergeService,
@@ -572,6 +573,7 @@ func StartApplication(container *dig.Container) error {
 			omniPerformance,
 			polymarketBridge,
 			swarmLFS,
+			settlementService,
 		)
 
 		// 4a. Leviathan Live Stream (SSE) — Protocol: Live Stream, No-DB, 30s memory

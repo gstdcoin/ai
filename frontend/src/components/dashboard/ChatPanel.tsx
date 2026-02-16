@@ -13,10 +13,10 @@ interface Message {
   model?: string;
   tokens?: { prompt: number; completion: number };
   cost?: number;
-  // Speculative decoding fields
-  speculativeContent?: string; // Draft from small model (shown dimmed)
+  powStats?: { swarm_devices: number; workers_gstd: number }; // Public Proof-of-Work
+  speculativeContent?: string;
   isStreaming?: boolean;
-  verifiedUpTo?: number; // Characters verified by large model
+  verifiedUpTo?: number;
 }
 
 interface ChatPanelProps {
@@ -26,7 +26,7 @@ interface ChatPanelProps {
 
 export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {}) {
   const { t } = useTranslation('common');
-  const { gstdBalance } = useWalletStore();
+  const { gstdBalance, address } = useWalletStore();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -55,17 +55,19 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
     balance_gstd: number;
     session_cost: number;
     message: string;
+    staking_discount?: boolean;
+    cost_per_model?: Record<string, number>;
   } | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem('session_token');
-    fetch(`${API_BASE_URL}/api/v1/chat/ultra-status`, {
-      headers: token ? { 'X-Session-Token': token } : {},
-    })
+    const headers: Record<string, string> = token ? { 'X-Session-Token': token } : {};
+    if (address) headers['X-GSTD-Target-Wallet'] = address;
+    fetch(`${API_BASE_URL}/api/v1/chat/ultra-status`, { headers })
       .then(r => r.ok ? r.json() : null)
       .then(data => data && setUltraStatus(data))
       .catch(() => {});
-  }, [gstdBalance]);
+  }, [gstdBalance, address]);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -143,9 +145,19 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
 
       if (res.status === 402) {
         const gate = await res.json().catch(() => ({}));
+        const isWalletRequired = gate.error === 'wallet_required';
         const isUltraGate = gate.requires_ultra === true || gate.error === 'ultra_gate_required';
 
-        if (isUltraGate) {
+        if (isWalletRequired) {
+          setMessages(prev => prev.map(m =>
+            m.id === assistantId ? {
+              ...m,
+              isStreaming: false,
+              content: `**${t('chat_wallet_required') || 'Connect Wallet'}**\n\n` +
+                `${t('chat_wallet_required_desc') || 'Connect your wallet to use chat. GSTD is deducted per request.'}`,
+            } : m
+          ));
+        } else if (isUltraGate) {
           setMessages(prev => prev.map(m =>
             m.id === assistantId ? {
               ...m,
@@ -179,6 +191,29 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Network error' }));
         throw new Error(err.error || `HTTP ${res.status}`);
+      }
+
+      // Consumer Adoption: handle non-streaming JSON response (backend returns gstd_pow)
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json') && !contentType.includes('stream')) {
+        const json = await res.json();
+        const content = json.choices?.[0]?.message?.content ?? '';
+        const pow = json.gstd_pow;
+        const cost = pow?.fee_deducted ?? models.find(m => m.id === selectedModel)?.cost ?? 0.01;
+        setMessages(prev => prev.map(m =>
+          m.id === assistantId ? {
+            ...m,
+            content,
+            speculativeContent: '',
+            isStreaming: false,
+            verifiedUpTo: content.length,
+            tokens: json.usage ? { prompt: json.usage.prompt_tokens ?? 0, completion: json.usage.completion_tokens ?? 0 } : undefined,
+            cost,
+            powStats: pow ? { swarm_devices: pow.swarm_devices ?? 0, workers_gstd: pow.workers_gstd ?? cost * 0.85 } : undefined,
+          } : m
+        ));
+        setIsLoading(false);
+        return;
       }
 
       // Handle SSE streaming
@@ -232,7 +267,8 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
 
             if (finishReason === 'stop') {
               const usage = parsed.usage;
-              const cost = models.find(m => m.id === selectedModel)?.cost || 0.01;
+              const pow = parsed.gstd_pow;
+              const cost = pow?.fee_deducted ?? models.find(m => m.id === selectedModel)?.cost ?? 0.01;
               setMessages(prev => prev.map(m =>
                 m.id === assistantId ? {
                   ...m,
@@ -242,6 +278,7 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
                   verifiedUpTo: fullContent.length,
                   tokens: usage ? { prompt: usage.prompt_tokens, completion: usage.completion_tokens } : undefined,
                   cost,
+                  powStats: pow ? { swarm_devices: pow.swarm_devices ?? 0, workers_gstd: pow.workers_gstd ?? cost * 0.85 } : undefined,
                 } : m
               ));
             }
@@ -439,6 +476,11 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
                   {msg.cost && (
                     <span className="text-[10px] text-amber-500/60 font-bold">-{msg.cost} GSTD</span>
                   )}
+                  {msg.powStats && msg.powStats.swarm_devices > 0 && (
+                    <span className="text-[10px] text-cyan-500/60" title={t('chat_pow_tooltip') || 'Your request was processed by the Swarm'}>
+                      🐝 {msg.powStats.swarm_devices} devices • {msg.powStats.workers_gstd.toFixed(2)} GSTD → workers
+                    </span>
+                  )}
                   {speculativeEnabled && (
                     <span className="flex items-center gap-1 text-[10px] text-cyan-500/40">
                       <Zap size={10} /> Speculative
@@ -499,8 +541,17 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
             </button>
           )}
         </div>
-        <p className="text-[10px] text-gray-600 text-center mt-2 font-medium">
-          {t('chat_disclaimer') || 'Powered by Sovereign AI • Decentralized LLM network • No data stored'}
+        {/* Easy-Onboarding: Cost Indicator before sending */}
+        <p className="text-[10px] text-center mt-2 font-medium">
+          <span className="text-gray-500">{t('chat_disclaimer') || 'Powered by Sovereign AI • Decentralized LLM network • No data stored'}</span>
+          {' • '}
+          <span className="text-amber-500/80">
+            {t('chat_cost_indicator') || 'Cost'}:{' '}
+            {(ultraStatus?.cost_per_model?.[selectedModel] ?? models.find(m => m.id === selectedModel)?.cost ?? 0.01).toFixed(2)} GSTD
+            {ultraStatus?.staking_discount && (
+              <span className="text-emerald-500/80 ml-1">(−10%)</span>
+            )}
+          </span>
         </p>
       </div>
     </div>

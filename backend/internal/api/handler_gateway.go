@@ -24,9 +24,18 @@ type GatewayHandler struct {
 	guardrails       *services.GuardrailsService
 	omniPerformance  *services.OmniPerformanceService
 	knowledgeService *services.KnowledgeService
+	settlement       *services.SettlementService
+	stats            *services.StatsService
 	ollamaURL        string
 	client           *http.Client
 }
+
+// StakingDiscountThresholdGSTD: Consumer Adoption — 10% discount when holding > 1000 GSTD
+const StakingDiscountThresholdGSTD = 1000.0
+const StakingDiscountPct = 0.10
+
+// FirstQueryBonusGSTD: Market Ascension — 0.05 GSTD for new user's first test request
+const FirstQueryBonusGSTD = 0.05
 
 // NewGatewayHandler creates a new gateway handler.
 func NewGatewayHandler(apiKeyService *services.APIKeyService, taskService *services.TaskService, db *sql.DB) *GatewayHandler {
@@ -58,6 +67,28 @@ func (h *GatewayHandler) SetOmniPerformance(o *services.OmniPerformanceService) 
 // SetKnowledgeService wires the knowledge service for Hive Memory expansion.
 func (h *GatewayHandler) SetKnowledgeService(k *services.KnowledgeService) {
 	h.knowledgeService = k
+}
+
+// SetSettlement wires SettlementService for Consumer Adoption payment gateway.
+func (h *GatewayHandler) SetSettlement(s *services.SettlementService) {
+	h.settlement = s
+}
+
+// SetStats wires StatsService for Public Proof-of-Work swarm stats.
+func (h *GatewayHandler) SetStats(s *services.StatsService) {
+	h.stats = s
+}
+
+// chatCostGSTD returns base cost per model (Consumer Adoption).
+func chatCostGSTD(model string) float64 {
+	m := strings.ToLower(model)
+	if strings.Contains(m, "70b") || strings.Contains(m, "deepseek-r1") {
+		return services.UltraSessionCostGSTD // 1.0
+	}
+	if strings.Contains(m, "32b") {
+		return 0.05
+	}
+	return 0.01 // 7b, 8b, default
 }
 
 // HandleChatCompletions handles OpenAI-compatible chat completions and proxies to Ollama.
@@ -102,6 +133,16 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 		wallet = c.GetHeader("X-GSTD-Target-Wallet")
 	}
 
+	// Consumer Adoption: Unified Payment Gateway — require wallet for all chat
+	if wallet == "" {
+		c.JSON(402, gin.H{
+			"error":   "wallet_required",
+			"code":    402,
+			"message": "Connect wallet to use chat. GSTD is deducted per request.",
+		})
+		return
+	}
+
 	// Guardrails check
 	if h.guardrails != nil {
 		result := h.guardrails.AnalyzePrompt(c.Request.Context(), wallet, promptMsgs)
@@ -125,7 +166,8 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 		ollamaModel = req.Model
 	}
 
-	// Omni-Performance: GSTD Staking Gate for Ultra models (70B, DeepSeek-R1)
+	// Consumer Adoption: calculate fee with Staking-for-Access (10% off when > 1000 GSTD)
+	baseCost := chatCostGSTD(ollamaModel)
 	isUltra := services.IsUltraModel(ollamaModel)
 	if isUltra && h.omniPerformance != nil {
 		access, err := h.omniPerformance.CheckUltraAccess(c.Request.Context(), wallet)
@@ -146,6 +188,63 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 			})
 			return
 		}
+		baseCost = access.SessionCost
+	}
+
+	// Staking-for-Access: 10% discount when holding > 1000 GSTD
+	fee := baseCost
+	if h.db != nil {
+		var gstdBalance, gstdFrozen float64
+		_ = h.db.QueryRowContext(c.Request.Context(), `
+			SELECT COALESCE(gstd_balance, 0) + COALESCE(balance, 0), COALESCE(gstd_frozen, 0)
+			FROM users WHERE wallet_address = $1
+		`, wallet).Scan(&gstdBalance, &gstdFrozen)
+		totalHeld := gstdBalance + gstdFrozen
+		if totalHeld >= StakingDiscountThresholdGSTD {
+			fee = baseCost * (1 - StakingDiscountPct)
+		}
+	}
+
+	// Check balance and deduct before inference
+	if h.db != nil {
+		var balance float64
+		err := h.db.QueryRowContext(c.Request.Context(), `
+			SELECT COALESCE(gstd_balance, 0) + COALESCE(balance, 0) FROM users WHERE wallet_address = $1
+		`, wallet).Scan(&balance)
+		if err != nil || balance < fee {
+			c.JSON(402, gin.H{
+				"error":        "insufficient_balance",
+				"code":         402,
+				"deficit":      fee,
+				"balance_gstd": balance,
+				"message":      "Insufficient GSTD. Top up or run Worker to earn.",
+			})
+			return
+		}
+		// Deduct from gstd_balance first, then balance
+		res, err := h.db.ExecContext(c.Request.Context(), `
+			UPDATE users SET gstd_balance = COALESCE(gstd_balance, 0) - $1
+			WHERE wallet_address = $2 AND COALESCE(gstd_balance, 0) >= $1
+		`, fee, wallet)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "deduction_failed", "message": err.Error()})
+			return
+		}
+		if rows, _ := res.RowsAffected(); rows == 0 {
+			res, err = h.db.ExecContext(c.Request.Context(), `
+				UPDATE users SET balance = COALESCE(balance, 0) - $1
+				WHERE wallet_address = $2 AND COALESCE(balance, 0) >= $1
+			`, fee, wallet)
+			if err != nil {
+				c.JSON(500, gin.H{"error": "deduction_failed", "message": err.Error()})
+				return
+			}
+			if rows, _ := res.RowsAffected(); rows == 0 {
+				c.JSON(402, gin.H{"error": "insufficient_balance", "deficit": fee, "message": "Balance changed. Retry."})
+				return
+			}
+		}
+		log.Printf("[Consumer Adoption] %.4f GSTD deducted from %s for %s", fee, wallet[:min(12, len(wallet))], ollamaModel)
 	}
 
 	prompt := ""
@@ -182,20 +281,34 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 	_ = json.Unmarshal(respBody, &ollamaResp)
 	content := strings.TrimSpace(ollamaResp.Response)
 
-	// Omni-Performance: Deduct 1 GSTD for Ultra session (when not staked) and store in Hive Memory
-	if isUltra && wallet != "" && h.omniPerformance != nil {
-		access, _ := h.omniPerformance.CheckUltraAccess(c.Request.Context(), wallet)
-		if access != nil && access.StakedGSTD < 100 {
-			_ = h.omniPerformance.DeductUltraSession(c.Request.Context(), wallet)
-		}
-		// Hive Memory Expansion: Store Ultra response for network training
-		if content != "" && h.knowledgeService != nil {
-			_ = h.knowledgeService.StoreKnowledge(c.Request.Context(), "ULTRA", "hive_memory_ultra", content, []string{"ultra", "gstd_powered"}, nil)
-		}
+	// Consumer Adoption: SettlementService — record payment (85% worker pool, 10% treasury, 5% protocol)
+	if h.settlement != nil && wallet != "" {
+		workerAmt := fee * 0.85
+		_, _ = h.settlement.ProcessPayment(c.Request.Context(), &services.SettlementRequest{
+			AmountGSTD:   fee,
+			WorkerWallet: "platform_consumer",
+			InferenceID:  "",
+			ModelID:      ollamaModel,
+		})
+		c.Set("gstd_worker_amount", workerAmt)
+	}
+
+	// Hive Memory: Store Ultra response for network training
+	if isUltra && content != "" && h.knowledgeService != nil {
+		_ = h.knowledgeService.StoreKnowledge(c.Request.Context(), "ULTRA", "hive_memory_ultra", content, []string{"ultra", "gstd_powered"}, nil)
 	}
 
 	// Ascension: 20% discount when payment_method=gstd (image gen or Ultra)
 	gstdDiscount := req.PaymentMethod == "gstd"
+
+	// Public Proof-of-Work: swarm stats for frontend
+	activeDevices := 0
+	if h.stats != nil {
+		if st, err := h.stats.GetGlobalStats(c.Request.Context()); err == nil {
+			activeDevices = st.ActiveDevicesCount
+		}
+	}
+	workerAmount := fee * 0.85
 
 	// OpenAI-compatible response; image_generation uses flux, may return base64
 	out := gin.H{
@@ -222,31 +335,75 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 		out["image_generation"] = true
 		out["gstd_discount_20"] = gstdDiscount
 	}
+	// Public Proof-of-Work: swarm stats for UI
+	out["gstd_pow"] = gin.H{
+		"swarm_devices":   activeDevices,
+		"workers_gstd":    workerAmount,
+		"fee_deducted":    fee,
+	}
 	c.JSON(200, out)
 }
 
-// GetUltraStatus returns Ultra mode access status for the current wallet.
+// GetUltraStatus returns Ultra mode access status and Consumer Adoption cost info.
 func (h *GatewayHandler) GetUltraStatus(c *gin.Context) {
 	wallet := c.GetString("wallet_address")
 	if wallet == "" {
 		wallet = c.GetHeader("X-GSTD-Target-Wallet")
 	}
-	if h.omniPerformance == nil {
-		c.JSON(200, gin.H{"mode": "standard", "ultra_available": false, "message": "Omni-Performance not configured"})
-		return
+	mode := "standard"
+	ultraAvailable := false
+	stakedGSTD := 0.0
+	balanceGSTD := 0.0
+	sessionCost := 1.0
+	msg := "Connect wallet for chat"
+	stakingDiscount := false
+
+	if h.omniPerformance != nil && wallet != "" {
+		access, err := h.omniPerformance.CheckUltraAccess(c.Request.Context(), wallet)
+		if err == nil {
+			mode = access.Mode
+			ultraAvailable = access.Allowed
+			stakedGSTD = access.StakedGSTD
+			balanceGSTD = access.BalanceGSTD
+			sessionCost = access.SessionCost
+			msg = access.Message
+		}
 	}
-	access, err := h.omniPerformance.CheckUltraAccess(c.Request.Context(), wallet)
-	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
-		return
+	if h.db != nil && wallet != "" {
+		var bal, frozen float64
+		_ = h.db.QueryRowContext(c.Request.Context(), `
+			SELECT COALESCE(gstd_balance, 0) + COALESCE(balance, 0), COALESCE(gstd_frozen, 0)
+			FROM users WHERE wallet_address = $1
+		`, wallet).Scan(&bal, &frozen)
+		balanceGSTD = bal
+		if bal+frozen >= StakingDiscountThresholdGSTD {
+			stakingDiscount = true
+		}
 	}
+
+	// Easy-Onboarding: cost per model for Cost Indicator
+	costPerModel := map[string]float64{
+		"qwen2.5-coder:7b":  0.01,
+		"llama3.1:8b":      0.01,
+		"qwen2.5-coder:32b": 0.05,
+		"llama3.3:70b":      sessionCost,
+		"deepseek-r1":      sessionCost,
+	}
+	if stakingDiscount {
+		for k, v := range costPerModel {
+			costPerModel[k] = v * (1 - StakingDiscountPct)
+		}
+	}
+
 	c.JSON(200, gin.H{
-		"mode":          access.Mode,
-		"ultra_available": access.Allowed,
-		"staked_gstd":   access.StakedGSTD,
-		"balance_gstd":  access.BalanceGSTD,
-		"session_cost":  access.SessionCost,
-		"message":       access.Message,
+		"mode":             mode,
+		"ultra_available":  ultraAvailable,
+		"staked_gstd":      stakedGSTD,
+		"balance_gstd":     balanceGSTD,
+		"session_cost":     sessionCost,
+		"message":          msg,
+		"staking_discount": stakingDiscount,
+		"cost_per_model":   costPerModel,
 	})
 }
 
