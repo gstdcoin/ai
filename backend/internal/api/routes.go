@@ -360,6 +360,9 @@ func SetupRoutes(
 		protected.GET("/devices", getDevices(deviceService))
 		protected.GET("/devices/my", getMyDevices(deviceService))
 
+		// Unified Identity: /registry/join — single endpoint for nodes + devices (Session or API Key)
+		protected.POST("/registry/join", RegistryJoin(nodeService, deviceService, geoService, telegramService, multiLevelReferralService, dbConn, gaslessUserService))
+
 		// Device endpoints (protected)
 		protected.GET("/device/tasks/available", getAvailableTasks(assignmentService))
 		protected.GET("/device/tasks/my", getMyTasks(assignmentService))
@@ -498,12 +501,12 @@ func SetupRoutes(
 		onboardingHandler.RegisterRoutes(v1)
 
 		// Global Gateway (OpenAI Compatible) - Sovereign AI Inference
-		// Chat uses OptionalSession so wallet is set when user is logged in (for Ultra gate)
+		// Hybrid Auth: Session (browser) + API Key (agents) → unified UserContext, Ultra gate works for both
 		var chatGroup *gin.RouterGroup
 		if redisClient != nil {
 			if rc, ok := redisClient.(*redis.Client); ok && rc != nil {
 				chatGroup = v1.Group("/chat")
-				chatGroup.Use(OptionalSession(rc))
+				chatGroup.Use(HybridAuth(rc, apiKeyService))
 				chatGroup.POST("/completions", gatewayHandler.HandleChatCompletions)
 			}
 		}
@@ -514,9 +517,22 @@ func SetupRoutes(
 			chatGroup.GET("/ultra-status", gatewayHandler.GetUltraStatus)
 		}
 		v1.GET("/models", gatewayHandler.ListModels)
-		// For Cursor/Other tools that expect /v1/chat/completions directly at root or /v1
-		router.POST("/v1/chat/completions", gatewayHandler.HandleChatCompletions)
-		router.GET("/v1/models", gatewayHandler.ListModels)
+		// For Cursor/Other tools: /v1/chat/completions with HybridAuth (Session + API Key → Ultra)
+		if redisClient != nil {
+			if rc, ok := redisClient.(*redis.Client); ok && rc != nil {
+				v1Root := router.Group("/v1")
+				v1Root.Use(HybridAuth(rc, apiKeyService))
+				v1Root.POST("/chat/completions", gatewayHandler.HandleChatCompletions)
+				v1Root.GET("/chat/ultra-status", gatewayHandler.GetUltraStatus)
+				v1Root.GET("/models", gatewayHandler.ListModels)
+			} else {
+				router.POST("/v1/chat/completions", gatewayHandler.HandleChatCompletions)
+				router.GET("/v1/models", gatewayHandler.ListModels)
+			}
+		} else {
+			router.POST("/v1/chat/completions", gatewayHandler.HandleChatCompletions)
+			router.GET("/v1/models", gatewayHandler.ListModels)
+		}
 
 		log.Printf("✅ Growth System & Onboarding routes registered")
 	}
