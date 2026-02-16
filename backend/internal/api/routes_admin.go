@@ -727,10 +727,6 @@ func reconcileMarketplaceTask(db *sql.DB, referral *services.ReferralService) gi
 		}
 
 		resultData := []byte(`{"reconciled":true}`)
-		var taskType string
-		if err := db.QueryRowContext(c.Request.Context(), "SELECT COALESCE(task_type,'') FROM tasks WHERE task_id = $1", req.TaskID).Scan(&taskType); err == nil && taskType == services.TaskTypePolymarketPrediction {
-			resultData = []byte(`{"prediction":"yes","confidence":0.5,"reasoning":"admin reconcile"}`)
-		}
 		receipt, err := marketplace.CompleteTask(c.Request.Context(), req.TaskID, req.WorkerWallet, 0, 1.0, resultData)
 		if err != nil {
 			c.JSON(500, gin.H{"error": err.Error()})

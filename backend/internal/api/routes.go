@@ -65,7 +65,6 @@ func SetupRoutes(
 	agentModelService *services.AgentModelService,
 	fleetCommandService *services.FleetCommandService,
 	omniPerformance *services.OmniPerformanceService,
-	polymarketBridge *services.PolymarketBridgeService,
 	swarmLFS *services.SwarmLFSService,
 	settlementService *services.SettlementService,
 ) {
@@ -431,17 +430,6 @@ func SetupRoutes(
 		tgBot.GET("/nodes", tgBotHandler.GetNodes)
 		tgBot.POST("/claim", tgBotHandler.ClaimTask)
 		tgBot.POST("/complete", tgBotHandler.CompleteTask)
-
-		// Polymarket Bridge: events → tasks, criteria, rewards, commission split
-		if polymarketBridge != nil {
-			pmHandler := NewPolymarketBridgeHandler(polymarketBridge)
-			pm := v1.Group("/polymarket/bridge")
-			pm.GET("/tasks", pmHandler.GetBridgeTasks)
-			pm.GET("/pool", pmHandler.GetPoolBalance)
-			pm.POST("/fetch", pmHandler.FetchAndCreateTasks)
-			pm.POST("/tasks/:task_id/aggregate", pmHandler.AggregateTask)
-			pm.POST("/fund", pmHandler.FundPool)
-		}
 
 		// Initialize and setup Orchestrator routes (PoW, Task Queue, Client Dashboard)
 		orchestratorHandler := NewOrchestratorHandler(db.(*sql.DB), taskOrchestrator, powService, tonService, geoService)

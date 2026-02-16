@@ -83,20 +83,6 @@ func BuildContainer() *dig.Container {
 	c.Provide(services.NewReferralService)
 	c.Provide(services.NewMultiLevelReferralService)
 	c.Provide(services.NewStatsService)
-	c.Provide(func(db *sql.DB, escrow *services.EscrowService, cfg *config.Config) *services.PolymarketBridgeService {
-		creator := cfg.TON.AdminWallet
-		if creator == "" {
-			creator = "platform_polymarket"
-		}
-		return services.NewPolymarketBridgeService(db, escrow, services.PolymarketBridgeConfig{
-			GammaAPIBase:      "https://gamma-api.polymarket.com",
-			RewardPerTask:     0.5,
-			MaxWorkersPerTask: 5,
-			CreatorWallet:     creator,
-			MaxEventsToCreate: 100,
-			GoldSharePct:      cfg.Economics.NetRevenueToGoldPct / 100.0,
-		})
-	})
 	c.Provide(services.NewResultService)
 	c.Provide(services.NewTaskService)
 	c.Provide(services.NewRewardEngine)
@@ -335,7 +321,6 @@ func StartApplication(container *dig.Container) error {
 		evolutionEngine *services.EvolutionEngine,
 		omniPerformance *services.OmniPerformanceService,
 		starsBuyback *services.StarsBuybackService,
-		polymarketBridge *services.PolymarketBridgeService,
 		treasuryService *services.TreasuryService,
 		swarmLFS *services.SwarmLFSService,
 		cleanCoreService *services.CleanCoreService,
@@ -579,7 +564,6 @@ func StartApplication(container *dig.Container) error {
 			agentModelService,
 			fleetCommandService,
 			omniPerformance,
-			polymarketBridge,
 			swarmLFS,
 			settlementService,
 		)

@@ -8,8 +8,6 @@ import (
 	"time"
 )
 
-const TaskTypePolymarketPrediction = "polymarket_prediction"
-
 // MarketplaceService handles job feed and task matching
 type MarketplaceService struct {
 	db            *sql.DB
@@ -220,17 +218,6 @@ func (s *MarketplaceService) ClaimTask(ctx context.Context, taskID, workerWallet
 // CompleteTask marks a task as completed and triggers payout
 // Ultra-Deep: Atomic - escrow release first; only on success update assignment (no partial state)
 func (s *MarketplaceService) CompleteTask(ctx context.Context, taskID, workerWallet string, executionTimeMs int, qualityScore float64, resultData []byte) (*TaskReceipt, error) {
-	// Polymarket prediction: validate result format {prediction: yes|no, confidence: 0-1, reasoning}
-	var taskType string
-	if err := s.db.QueryRowContext(ctx, "SELECT COALESCE(task_type, '') FROM tasks WHERE task_id = $1", taskID).Scan(&taskType); err == nil && taskType == TaskTypePolymarketPrediction {
-		if len(resultData) == 0 {
-			return nil, fmt.Errorf("polymarket task requires result_data: {prediction, confidence, reasoning}")
-		}
-		if _, err := ValidatePolymarketResult(resultData); err != nil {
-			return nil, fmt.Errorf("invalid polymarket result: %w", err)
-		}
-	}
-
 	// 1. Release funds from escrow FIRST - if this fails, we don't touch assignment
 	tx, err := s.escrowService.ReleaseToWorkerMarketplace(ctx, taskID, workerWallet, qualityScore, s.referral)
 	if err != nil {
