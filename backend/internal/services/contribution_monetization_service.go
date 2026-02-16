@@ -9,9 +9,11 @@ import (
 
 // ContributionMonetizationService tracks compute contributions and calculates XAUt share.
 // Each node (PC, server, phone) receives a share of XAUt proportional to its contribution.
+// A2A Symbio: referrers get 1% of referred node's compute_units as bonus.
 type ContributionMonetizationService struct {
 	db         *sql.DB
 	poolMonitor *PoolMonitorService
+	referral   *ReferralService // optional: for compute referral bonus
 }
 
 // ContributionRecord represents a single compute contribution
@@ -35,8 +37,8 @@ type XAUtShare struct {
 }
 
 // NewContributionMonetizationService creates the service
-func NewContributionMonetizationService(db *sql.DB, poolMonitor *PoolMonitorService) *ContributionMonetizationService {
-	svc := &ContributionMonetizationService{db: db, poolMonitor: poolMonitor}
+func NewContributionMonetizationService(db *sql.DB, poolMonitor *PoolMonitorService, referral *ReferralService) *ContributionMonetizationService {
+	svc := &ContributionMonetizationService{db: db, poolMonitor: poolMonitor, referral: referral}
 	svc.ensureSchema()
 	return svc
 }
@@ -76,7 +78,14 @@ func (s *ContributionMonetizationService) Record(ctx context.Context, r *Contrib
 		INSERT INTO compute_contributions (node_id, wallet_address, platform, compute_units, task_id, model)
 		VALUES ($1, $2, $3, $4, $5, $6)
 	`, r.NodeID, nullIfEmpty(r.WalletAddr), r.Platform, r.ComputeUnits, nullIfEmpty(r.TaskID), nullIfEmpty(r.Model))
-	return err
+	if err != nil {
+		return err
+	}
+	// A2A Symbio: 1% of compute_units to referrer when a referred node contributes
+	if s.referral != nil && r.WalletAddr != "" && r.ComputeUnits > 0 {
+		_ = s.referral.ProcessComputeReferralBonus(ctx, r.WalletAddr, r.NodeID, r.ComputeUnits)
+	}
+	return nil
 }
 
 func nullIfEmpty(s string) interface{} {

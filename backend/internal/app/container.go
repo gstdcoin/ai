@@ -156,9 +156,10 @@ func BuildContainer() *dig.Container {
 	c.Provide(func(db *sql.DB, absorption *services.GlobalAbsorptionService, talentHunting *services.TalentHuntingService, predictive *services.PredictiveMirroringService, constitution *services.MeshConstitutionService) *services.SingularityReadyService {
 		return services.NewSingularityReadyService(db, absorption, talentHunting, predictive, constitution)
 	})
-	c.Provide(func(db *sql.DB, poolMonitor *services.PoolMonitorService) *services.ContributionMonetizationService {
-		return services.NewContributionMonetizationService(db, poolMonitor)
+	c.Provide(func(db *sql.DB, poolMonitor *services.PoolMonitorService, referral *services.ReferralService) *services.ContributionMonetizationService {
+		return services.NewContributionMonetizationService(db, poolMonitor, referral)
 	})
+	c.Provide(services.NewAgentRatingService)
 	c.Provide(func(db *sql.DB, cfg *config.Config, burn *services.BurnService, poolMonitor *services.PoolMonitorService) *services.SettlementService {
 		return services.NewSettlementService(db, cfg.TON, burn, poolMonitor)
 	})
@@ -340,6 +341,7 @@ func StartApplication(container *dig.Container) error {
 		predictiveMirroring *services.PredictiveMirroringService,
 		supremeCoord *services.SupremeCoordinatorService,
 		leviathanProfit *services.LeviathanProfitService,
+		agentRatingService *services.AgentRatingService,
 		talentHunting *services.TalentHuntingService,
 		meshConstitution *services.MeshConstitutionService,
 		constitutionAnchor *services.ConstitutionAnchorService,
@@ -486,6 +488,12 @@ func StartApplication(container *dig.Container) error {
 		if leviathanProfit != nil && cleanCoreService != nil {
 			cleanCoreService.SetLeviathanProfit(leviathanProfit)
 			log.Printf("💰 Profit Maximization: ACTIVE — node routing by Golden Treasury margin")
+		}
+
+		// 3b4b. A2A Symbio: Agent rating for UniversalMesh queue priority
+		if agentRatingService != nil && cleanCoreService != nil {
+			cleanCoreService.SetAgentRating(agentRatingService)
+			log.Printf("🦾 A2A Symbio: ACTIVE — agent rating priority in UniversalMesh")
 		}
 
 		// 3b5. Automated Talent Hunting: category without score>7 → HF search

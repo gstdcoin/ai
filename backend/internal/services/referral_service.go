@@ -124,6 +124,38 @@ func (s *ReferralService) ProcessReferralRewardFixed(ctx context.Context, worker
 	return err
 }
 
+// ProcessComputeReferralBonus credits referrer 1% of compute_units when a referred node contributes.
+// A2A Symbio: incentivize Swarm growth through agent referrals.
+// Conversion: 1 CU ≈ 0.01 GSTD, so 1% of CU = 0.0001 GSTD per CU.
+func (s *ReferralService) ProcessComputeReferralBonus(ctx context.Context, workerWallet string, nodeID string, computeUnits float64) error {
+	if s.db == nil || computeUnits <= 0 || workerWallet == "" {
+		return nil
+	}
+	var referrerAddress string
+	err := s.db.QueryRowContext(ctx, "SELECT referred_by FROM users WHERE wallet_address = $1", workerWallet).Scan(&referrerAddress)
+	if err != nil || referrerAddress == "" {
+		return nil
+	}
+	if referrerAddress == workerWallet {
+		return nil
+	}
+	bonusGSTD := computeUnits * 0.01 * 0.01 // 1% of compute_units, 1 CU ≈ 0.01 GSTD
+	if bonusGSTD < 0.000001 {
+		return nil
+	}
+	taskID := "compute:" + nodeID
+	_, err = s.db.ExecContext(ctx, `
+		INSERT INTO referral_rewards (referrer_address, referred_user_address, task_id, amount_gstd, status)
+		VALUES ($1, $2, $3, $4, 'pending')
+	`, referrerAddress, workerWallet, taskID, bonusGSTD)
+	if err != nil {
+		log.Printf("ProcessComputeReferralBonus: %v", err)
+		return err
+	}
+	log.Printf("[A2A Symbio] Referral compute bonus: %.6f GSTD to %s (1%% of %s CU)", bonusGSTD, referrerAddress[:16], workerWallet[:16])
+	return nil
+}
+
 // ApplyReferralCode links a user to a referrer
 func (s *ReferralService) ApplyReferralCode(ctx context.Context, walletAddress string, code string) error {
 	// Cannot refer yourself
