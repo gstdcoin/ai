@@ -64,9 +64,19 @@ function App({ Component, pageProps }: AppProps) {
     }
   }, []);
 
-  // Return null or loader until mounted
+  // Show cosmic background during mount to prevent white flash
   if (!isMounted) {
-    return null;
+    return (
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          backgroundColor: '#030014',
+          zIndex: 9999,
+        }}
+        aria-hidden="true"
+      />
+    );
   }
 
   const manifestUrl = getManifestUrl();

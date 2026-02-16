@@ -105,10 +105,8 @@ services:
       - REDIS_PORT=6379
       - PORT=8080
       - DEPLOYMENT_COLOR=blue
-      - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
+      - OLLAMA_URL=${OLLAMA_URL:-http://gstd_ollama:11434}
     env_file: .env
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     depends_on:
       postgres:
         condition: service_healthy
@@ -159,10 +157,8 @@ services:
       - REDIS_PORT=6379
       - PORT=8080
       - DEPLOYMENT_COLOR=green
-      - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
+      - OLLAMA_URL=${OLLAMA_URL:-http://gstd_ollama:11434}
     env_file: .env
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     depends_on:
       postgres:
         condition: service_healthy
@@ -203,7 +199,7 @@ services:
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://app.gstdtoken.com}
     ports:
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:3001:3000"
     environment:
       - PORT=3000
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-https://app.gstdtoken.com}
