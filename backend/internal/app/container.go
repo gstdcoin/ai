@@ -172,6 +172,9 @@ func BuildContainer() *dig.Container {
 	c.Provide(func(db *sql.DB, poolMonitor *services.PoolMonitorService) *services.DynamicEquilibriumService {
 		return services.NewDynamicEquilibriumService(db, poolMonitor)
 	})
+	c.Provide(func(db *sql.DB, pipeline *services.PipelineParallelismService, settlement *services.SettlementService) *services.EternalFlameService {
+		return services.NewEternalFlameService(db, pipeline, settlement)
+	})
 	c.Provide(services.NewGlobalNeuralMergeService)
 	c.Provide(services.NewSingularityGatewayService)
 	c.Provide(services.NewSubAgentSelfOptimizationService)
@@ -350,6 +353,7 @@ func StartApplication(container *dig.Container) error {
 		settlementService *services.SettlementService,
 		goldenAgeService *services.GoldenAgeService,
 		dynamicEquilibrium *services.DynamicEquilibriumService,
+		eternalFlameService *services.EternalFlameService,
 		globalNeuralMerge *services.GlobalNeuralMergeService,
 		singularityGateway *services.SingularityGatewayService,
 		omnipotence *services.OmnipotenceService,
@@ -402,6 +406,10 @@ func StartApplication(container *dig.Container) error {
 		}
 		if dynamicEquilibrium != nil {
 			go dynamicEquilibrium.Start(ctx)
+		}
+		if eternalFlameService != nil {
+			eternalFlameService.SetPipeline(pipelineService)
+			go eternalFlameService.Start(ctx)
 		}
 		if globalNeuralMerge != nil {
 			go globalNeuralMerge.Start(ctx)

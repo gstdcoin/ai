@@ -96,9 +96,26 @@ func (s *SettlementService) ProcessPayment(ctx context.Context, req *SettlementR
 
 	s.ensureSchema()
 
-	workerAmt := req.AmountGSTD * s.workerPct
+	// Eternal Flame: Auto-Scale +5% worker rewards when volume > 10k GSTD/hour
+	boost := GetWorkerRewardBoost()
+	workerAmt := req.AmountGSTD * s.workerPct * boost
 	treasuryAmt := req.AmountGSTD * s.treasuryPct
 	protocolAmt := req.AmountGSTD * s.protocolPct
+	if boost > 1.0 {
+		// Worker gets +5%; reduce treasury+protocol so total = amount_gstd
+		platformShare := treasuryAmt + protocolAmt
+		extraToWorker := workerAmt - (req.AmountGSTD * s.workerPct)
+		platformShare -= extraToWorker
+		if platformShare < 0 {
+			platformShare = 0
+		}
+		ratio := treasuryAmt / (treasuryAmt + protocolAmt)
+		if treasuryAmt+protocolAmt > 0 {
+			treasuryAmt = platformShare * ratio
+			protocolAmt = platformShare * (1 - ratio)
+		}
+		workerAmt = req.AmountGSTD - treasuryAmt - protocolAmt
+	}
 
 	// Genesis Sync: Repay internal credit from first PoW payout, then grant Reputation Recovery
 	if req.WorkerWallet != "" {
