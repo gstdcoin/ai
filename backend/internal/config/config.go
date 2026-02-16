@@ -56,6 +56,11 @@ type TONConfig struct {
 	PlatformWalletAddress string // Address of the platform's operational wallet
 	PlatformWalletPrivateKey string // Private key for the platform's operational wallet (hex-encoded 64 bytes)
 	PlatformWalletSeed string // Seed phrase for the platform's operational wallet (24 words)
+	// Highload Ascension: Liteserver + seed for batch payouts (50+ workers per tx)
+	LiteserverConfigURL string   // e.g. https://ton-blockchain.github.io/global.config.json
+	HighloadWalletSeed  string   // 24-word seed for Highload Wallet V3
+	// TON API: key rotation when throughput < 100/s (Advanced plan)
+	TONAPIKeys string // Comma-separated API keys for rotation
 }
 
 type ServerConfig struct {
@@ -106,6 +111,9 @@ func Load() *Config {
 		PlatformWalletAddress: getEnv("PLATFORM_WALLET_ADDRESS", ""), // Optional: only for admin operations
 		PlatformWalletPrivateKey: getEnv("PLATFORM_WALLET_PRIVATE_KEY", ""), // Optional: not needed for pull-model
 		PlatformWalletSeed: getEnv("PLATFORM_WALLET_SEED", ""), // Optional: not needed for pull-model
+		LiteserverConfigURL: getEnv("LITESERVER_CONFIG_URL", "https://ton-blockchain.github.io/global.config.json"),
+		HighloadWalletSeed:  getEnv("HIGHLOAD_WALLET_SEED", ""), // 24-word seed for batch payouts
+		TONAPIKeys:          getEnv("TON_API_KEYS", ""),         // Comma-separated for rotation (if primary < 100/s)
 		},
 		Server: ServerConfig{
 			Port:        getEnv("PORT", "8080"),

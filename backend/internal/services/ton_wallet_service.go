@@ -17,7 +17,8 @@ import (
 // TONWalletService handles wallet operations including signing and sending transactions
 type TONWalletService struct {
 	apiURL      string
-	apiKey      string
+	apiKeys     []string // For rotation when rate limited (429)
+	keyIndex    int      // Current key index
 	client      *http.Client
 	privateKey  ed25519.PrivateKey
 	publicKey   ed25519.PublicKey
@@ -58,9 +59,13 @@ func NewTONWalletService(apiURL, apiKey, walletAddr, privateKeyHex string) (*TON
 		}
 	}()
 
+	keys := []string{apiKey}
+	if apiKey == "" {
+		keys = nil
+	}
 	return &TONWalletService{
 		apiURL:      apiURL,
-		apiKey:      apiKey,
+		apiKeys:     keys,
 		walletAddr:  walletAddr,
 		privateKey:  privateKey,
 		publicKey:   publicKey,
@@ -69,6 +74,35 @@ func NewTONWalletService(apiURL, apiKey, walletAddr, privateKeyHex string) (*TON
 			Timeout: 30 * time.Second,
 		},
 	}, nil
+}
+
+// NewTONWalletServiceWithKeyRotation creates service with multiple API keys for rotation
+// When tonapi.io returns 429 (Advanced plan < 100/s), rotates to next key
+func NewTONWalletServiceWithKeyRotation(apiURL string, apiKeys []string, walletAddr, privateKeyHex string) (*TONWalletService, error) {
+	w, err := NewTONWalletService(apiURL, "", walletAddr, privateKeyHex)
+	if err != nil {
+		return nil, err
+	}
+	if len(apiKeys) > 0 {
+		w.apiKeys = apiKeys
+	}
+	return w, nil
+}
+
+// getAPIKey returns current API key (rotates on 429 in doRequest)
+func (w *TONWalletService) getAPIKey() string {
+	if len(w.apiKeys) == 0 {
+		return ""
+	}
+	return w.apiKeys[w.keyIndex%len(w.apiKeys)]
+}
+
+// rotateKey advances to next API key (call on 429)
+func (w *TONWalletService) rotateKey() {
+	if len(w.apiKeys) > 1 {
+		w.keyIndex = (w.keyIndex + 1) % len(w.apiKeys)
+		log.Printf("[TON API] Rotated to key index %d (rate limit hit)", w.keyIndex)
+	}
 }
 
 // SendTON sends native TON to recipient (for gas subsidies, internal swap)
@@ -98,9 +132,9 @@ func (w *TONWalletService) SendTON(ctx context.Context, recipientAddr string, am
 		return "", err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	if w.apiKey != "" {
-		req.Header.Set("Authorization", "Bearer "+w.apiKey)
-		req.Header.Set("X-API-Key", w.apiKey)
+	if k := w.getAPIKey(); k != "" {
+		req.Header.Set("Authorization", "Bearer "+k)
+		req.Header.Set("X-API-Key", k)
 	}
 
 	resp, err := w.client.Do(req)
@@ -109,6 +143,10 @@ func (w *TONWalletService) SendTON(ctx context.Context, recipientAddr string, am
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode == http.StatusTooManyRequests && len(w.apiKeys) > 1 {
+		w.rotateKey()
+		return "", fmt.Errorf("TON API rate limit (429): rotate key and retry")
+	}
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
 		return "", fmt.Errorf("TON API error %d: %s", resp.StatusCode, string(body))
@@ -170,9 +208,9 @@ func (w *TONWalletService) SendJettonTransfer(
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	if w.apiKey != "" {
-		req.Header.Set("Authorization", "Bearer "+w.apiKey)
-		req.Header.Set("X-API-Key", w.apiKey)
+	if k := w.getAPIKey(); k != "" {
+		req.Header.Set("Authorization", "Bearer "+k)
+		req.Header.Set("X-API-Key", k)
 	}
 
 	resp, err := w.client.Do(req)
@@ -220,9 +258,9 @@ func (w *TONWalletService) getJettonWalletAddress(ctx context.Context, ownerAddr
 		return "", err
 	}
 
-	if w.apiKey != "" {
-		req.Header.Set("Authorization", "Bearer "+w.apiKey)
-		req.Header.Set("X-API-Key", w.apiKey)
+	if k := w.getAPIKey(); k != "" {
+		req.Header.Set("Authorization", "Bearer "+k)
+		req.Header.Set("X-API-Key", k)
 	}
 
 	resp, err := w.client.Do(req)
@@ -283,9 +321,9 @@ func (w *TONWalletService) estimateAndLogTransfer(
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	if w.apiKey != "" {
-		req.Header.Set("Authorization", "Bearer "+w.apiKey)
-		req.Header.Set("X-API-Key", w.apiKey)
+	if k := w.getAPIKey(); k != "" {
+		req.Header.Set("Authorization", "Bearer "+k)
+		req.Header.Set("X-API-Key", k)
 	}
 
 	resp, err := w.client.Do(req)

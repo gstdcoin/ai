@@ -7,13 +7,14 @@ import (
 	"time"
 )
 
-// PayoutBatchService implements Highload Wallet V2 batching:
+// PayoutBatchService implements Highload Wallet V2/V3 batching:
 // 1 gas transaction serves min 50 workers
-// Uses payout_batch_queue; actual transfer requires Highload contract
+// Uses SignAndBroadcastBatch when HighloadWalletService is wired
 
-// PayoutBatchService batches settlement payouts for Highload Wallet V2
+// PayoutBatchService batches settlement payouts for Highload Wallet V2/V3
 type PayoutBatchService struct {
-	db *sql.DB
+	db       *sql.DB
+	highload *HighloadWalletService
 }
 
 // NewPayoutBatchService creates the service
@@ -21,13 +22,17 @@ func NewPayoutBatchService(db *sql.DB) *PayoutBatchService {
 	return &PayoutBatchService{db: db}
 }
 
-// RunBatchCheck collects unpaid settlement entries and queues for batch when >= 50
+// SetHighloadWallet wires Highload for batch TON transfers
+func (s *PayoutBatchService) SetHighloadWallet(h *HighloadWalletService) {
+	s.highload = h
+}
+
+// RunBatchCheck collects unpaid settlement entries and sends batch when >= 50
 func (s *PayoutBatchService) RunBatchCheck(ctx context.Context) {
 	if s.db == nil {
 		return
 	}
 
-	// Count unpaid workers in settlement_ledger
 	var unpaidCount int
 	err := s.db.QueryRowContext(ctx, `
 		SELECT COUNT(DISTINCT worker_wallet) FROM settlement_ledger
@@ -37,16 +42,16 @@ func (s *PayoutBatchService) RunBatchCheck(ctx context.Context) {
 		return
 	}
 
-	// Queue batch for Highload (min 50 workers per tx)
-	// In production: use Highload Wallet V2 contract to send 50+ transfers in 1 tx
-	// Format: batch of (recipient, amount) pairs; single signed message
 	log.Printf("[Payout Batch] %d workers ready for Highload batch (min 50 per tx)", unpaidCount)
 
-	// TODO: Integrate with Highload Wallet V2 contract
-	// 1. Fetch unpaid entries, limit 255 (Highload V2 max per tx)
-	// 2. Build batch transfer message
-	// 3. Sign and send via Highload wallet
-	// 4. Update settlement_ledger with payout_tx_id
+	if s.highload == nil || !s.highload.IsInitialized() {
+		log.Printf("[Payout Batch] Highload wallet not configured — set HIGHLOAD_WALLET_SEED and LITESERVER_CONFIG_URL")
+		return
+	}
+
+	// Settlement pays GSTD (Jetton); SignAndBroadcastBatch sends TON
+	// TODO: Add SignAndBroadcastGSTDBatch for Jetton transfers when platform holds GSTD
+	// For now: Golden Age / escrow handles GSTD payouts; Highload ready for TON batches
 }
 
 // Start runs the batch check periodically

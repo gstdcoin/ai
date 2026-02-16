@@ -39,15 +39,18 @@ func RequireBotToken() gin.HandlerFunc {
 
 // TelegramBotHandler handles Telegram bot → backend integration for tasks
 type TelegramBotHandler struct {
-	db           *sql.DB
-	marketplace  *services.MarketplaceService
-	nodeService  *services.NodeService
-	deviceService *services.DeviceService
+	db               *sql.DB
+	marketplace      *services.MarketplaceService
+	nodeService      *services.NodeService
+	deviceService    *services.DeviceService
+	gaslessUser      *services.GaslessUserService
 }
 
 // NewTelegramBotHandler creates the handler
-func NewTelegramBotHandler(db *sql.DB, marketplace *services.MarketplaceService, nodeService *services.NodeService, deviceService *services.DeviceService) *TelegramBotHandler {
-	return &TelegramBotHandler{db: db, marketplace: marketplace, nodeService: nodeService, deviceService: deviceService}
+func NewTelegramBotHandler(db *sql.DB, marketplace *services.MarketplaceService, nodeService *services.NodeService, deviceService *services.DeviceService, gaslessUser *services.GaslessUserService) *TelegramBotHandler {
+	return &TelegramBotHandler{
+		db: db, marketplace: marketplace, nodeService: nodeService, deviceService: deviceService, gaslessUser: gaslessUser,
+	}
 }
 
 // LinkWallet links telegram_id to wallet_address
@@ -63,14 +66,19 @@ func (h *TelegramBotHandler) LinkWallet(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	// Ensure user exists (for ClaimTask balance check)
+	// Ensure user exists (for ClaimTask balance check); detect if NEW user
+	var existed bool
+	err := h.db.QueryRowContext(c.Request.Context(), `SELECT EXISTS(SELECT 1 FROM users WHERE wallet_address = $1)`, req.WalletAddress).Scan(&existed)
+	if err != nil {
+		existed = false
+	}
 	_, _ = h.db.ExecContext(c.Request.Context(), `
 		INSERT INTO users (wallet_address, balance, created_at, updated_at)
 		VALUES ($1, 0, NOW(), NOW())
 		ON CONFLICT (wallet_address) DO NOTHING
 	`, req.WalletAddress)
 
-	_, err := h.db.ExecContext(c.Request.Context(), `
+	_, err = h.db.ExecContext(c.Request.Context(), `
 		INSERT INTO telegram_users (telegram_id, wallet_address, telegram_username, telegram_first_name, last_activity_at)
 		VALUES ($1, $2, $3, $4, NOW())
 		ON CONFLICT (telegram_id) DO UPDATE SET
@@ -99,7 +107,18 @@ func (h *TelegramBotHandler) LinkWallet(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Wallet linked. Wallet-as-Node active — you can claim tasks."})
+	// Gasless: subsidize onboarding for new users (first 5000)
+	subsidized := false
+	if !existed && h.gaslessUser != nil {
+		sent, _ := h.gaslessUser.TrySubsidizeOnboarding(c.Request.Context(), req.WalletAddress)
+		subsidized = sent
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success":     true,
+		"message":     "Wallet linked. Wallet-as-Node active — you can claim tasks.",
+		"subsidized":  subsidized,
+	})
 }
 
 // GetBalance returns balance for telegram_id (linked wallet)

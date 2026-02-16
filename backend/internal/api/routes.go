@@ -433,7 +433,7 @@ func SetupRoutes(
 		SetupMarketplaceProtectedRoutes(protected, marketplaceHandler)
 
 		// Telegram Bot API (X-Bot-Token auth) — link wallet, claim, complete tasks
-		tgBotHandler := NewTelegramBotHandler(dbConn, marketplaceHandler.GetMarketplace(), nodeService, deviceService)
+		tgBotHandler := NewTelegramBotHandler(dbConn, marketplaceHandler.GetMarketplace(), nodeService, deviceService, gaslessUserService)
 		tgBot := v1.Group("/telegram/bot")
 		tgBot.Use(RequireBotToken())
 		tgBot.POST("/link", tgBotHandler.LinkWallet)
