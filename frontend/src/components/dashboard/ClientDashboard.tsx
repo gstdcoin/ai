@@ -65,6 +65,7 @@ interface ClientTask {
     max_workers: number;
     created_at: string;
     completed_at: string | null;
+    p2p_verified?: boolean;
 }
 
 export const ClientDashboard: React.FC = () => {
@@ -327,6 +328,11 @@ export const ClientDashboard: React.FC = () => {
                                                         <p className="text-sm text-gray-400">
                                                             {task.completed_at ? formatDate(task.completed_at) : ''}
                                                         </p>
+                                                        {task.p2p_verified && (
+                                                            <p className="text-[10px] text-cyan-400 font-medium mt-1">
+                                                                🛡️ Network Verification: Passed (P2P Verified)
+                                                            </p>
+                                                        )}
                                                     </div>
                                                 </div>
                                                 <span className="text-green-400 font-medium">
@@ -375,9 +381,14 @@ export const ClientDashboard: React.FC = () => {
                                             </td>
                                             <td className="py-4">{task.task_type}</td>
                                             <td className="py-4">
-                                                <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(task.status)}`}>
-                                                    {task.status}
-                                                </span>
+                                                <div className="flex flex-col gap-1">
+                                                    <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(task.status)}`}>
+                                                        {task.status}
+                                                    </span>
+                                                    {task.status === 'completed' && task.p2p_verified && (
+                                                        <span className="text-[10px] text-cyan-400">🛡️ P2P Verified</span>
+                                                    )}
+                                                </div>
                                             </td>
                                             <td className="py-4">{task.budget_gstd?.toFixed(4)} GSTD</td>
                                             <td className="py-4">

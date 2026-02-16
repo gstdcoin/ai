@@ -3,7 +3,7 @@ import { useTranslation } from 'next-i18next';
 import { useWalletStore } from '../../store/walletStore';
 import { apiGet, apiPost } from '../../lib/apiClient';
 import {
-    Search, Plus, ClipboardList, Zap, Info, TrendingUp, Users,
+    Search, ClipboardList, Zap, Info, TrendingUp, Users,
     ArrowRight, Globe, Shield, Activity, Sparkles, Filter
 } from 'lucide-react';
 
@@ -46,7 +46,7 @@ export default function Marketplace() {
     const { t } = useTranslation('common');
     const { address, isConnected } = useWalletStore();
 
-    const [activeTab, setActiveTab] = useState<'jobs' | 'create' | 'my-tasks'>('jobs');
+    const [activeTab, setActiveTab] = useState<'jobs' | 'my-tasks'>('jobs');
     const [tasks, setTasks] = useState<AvailableTask[]>([]);
     const [myTasks, setMyTasks] = useState<any[]>([]);
     const [workerStats, setWorkerStats] = useState<WorkerStats | null>(null);
@@ -54,19 +54,6 @@ export default function Marketplace() {
     const [loading, setLoading] = useState(false);
     const [claimingTask, setClaimingTask] = useState<string | null>(null);
     const [priceUSD, setPriceUSD] = useState<number>(6.5); // Default fallback
-
-    // Task creation form
-    const [taskForm, setTaskForm] = useState({
-        task_type: 'network_survey',
-        operation: 'collect_topology',
-        budget_gstd: 10,
-        difficulty: 'medium',
-        max_workers: 5,
-        estimated_time_sec: 30,
-        min_trust_score: 0.3,
-        geography_type: 'global',
-        geography_countries: '',
-    });
 
     // Fetch available tasks
     const fetchTasks = useCallback(async () => {
@@ -159,46 +146,6 @@ export default function Marketplace() {
         }
     };
 
-    // Create task
-    const handleCreateTask = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!isConnected) return;
-        setLoading(true);
-
-        try {
-            const payload = {
-                task_type: taskForm.task_type,
-                operation: taskForm.operation,
-                budget_gstd: taskForm.budget_gstd,
-                difficulty: taskForm.difficulty,
-                max_workers: taskForm.max_workers,
-                estimated_time_sec: taskForm.estimated_time_sec,
-                min_trust_score: taskForm.min_trust_score,
-                geography: {
-                    type: taskForm.geography_type,
-                    countries: taskForm.geography_countries.split(',').map(s => s.trim()).filter(Boolean),
-                },
-            };
-
-            const result = await apiPost<any>('/marketplace/tasks/create', payload);
-
-            if (window.Telegram?.WebApp?.HapticFeedback) {
-                window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
-            }
-
-            // Reset form and switch to my-tasks
-            setActiveTab('my-tasks');
-            fetchMyTasks();
-        } catch (error: any) {
-            console.error('Failed to create task:', error);
-            alert(error.message || 'Failed to create task');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-
-
     const getDifficultyColor = (difficulty: string) => {
         switch (difficulty) {
             case 'easy': return 'text-green-400';
@@ -230,7 +177,6 @@ export default function Marketplace() {
             <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide">
                 {[
                     { id: 'jobs', icon: Search, label: 'Job Feed' },
-                    { id: 'create', icon: Plus, label: 'Create Task' },
                     { id: 'my-tasks', icon: ClipboardList, label: t('my_tasks') }
                 ].map((tab) => (
                     <button
@@ -429,175 +375,6 @@ export default function Marketplace() {
             }
 
             {
-                activeTab === 'create' && (
-                    <div className="glass-card p-6">
-                        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                            <span className="text-2xl">➕</span> Create New Task
-                        </h3>
-
-                        {!isConnected ? (
-                            <div className="text-center py-8">
-                                <div className="text-4xl mb-4">🔗</div>
-                                <p className="text-gray-400">Connect your wallet to create tasks</p>
-                            </div>
-                        ) : (
-                            <form onSubmit={handleCreateTask} className="space-y-4">
-                                {/* Task Type */}
-                                <div>
-                                    <label className="block text-sm text-gray-400 mb-1">Task Type</label>
-                                    <select
-                                        value={taskForm.task_type}
-                                        onChange={(e) => setTaskForm({ ...taskForm, task_type: e.target.value })}
-                                        className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white"
-                                    >
-                                        <option value="network_survey">📡 Network Survey</option>
-                                        <option value="js_script">📜 JavaScript Script</option>
-                                        <option value="wasm_binary">⚙️ WASM Binary</option>
-                                        <option value="ai_inference">🧠 AI Inference (LLM/GenAI)</option>
-                                        <option value="scientific_simulation">🧬 Scientific Simulation (Protein/Climate)</option>
-                                    </select>
-                                </div>
-
-                                {/* Dynamic Fields based on Type */}
-                                {taskForm.task_type === 'ai_inference' && (
-                                    <div>
-                                        <label className="block text-sm text-gray-400 mb-1">Model Name (HuggingFace ID)</label>
-                                        <input
-                                            type="text"
-                                            placeholder="e.g. gstd-sovereign, gstd-fast, gstd-ultra"
-                                            className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white"
-                                            onChange={(e) => setTaskForm({ ...taskForm, operation: `inference:${e.target.value}` })}
-                                        />
-                                    </div>
-                                )}
-
-                                {taskForm.task_type === 'scientific_simulation' && (
-                                    <div>
-                                        <label className="block text-sm text-gray-400 mb-1">Simulation Type</label>
-                                        <select
-                                            className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white"
-                                            onChange={(e) => setTaskForm({ ...taskForm, operation: e.target.value })}
-                                        >
-                                            <option value="protein_folding">🧬 Protein Folding</option>
-                                            <option value="climate_modeling">🌍 Climate Modeling</option>
-                                            <option value="astrophysics">🚀 Astrophysics Simulation</option>
-                                        </select>
-                                    </div>
-                                )}
-
-                                {/* Budget */}
-                                <div>
-                                    <label className="block text-sm text-gray-400 mb-1">
-                                        Budget (GSTD)
-                                        <span className="text-xs text-yellow-400 ml-2">+5% platform fee</span>
-                                    </label>
-                                    <input
-                                        type="number"
-                                        value={taskForm.budget_gstd}
-                                        onChange={(e) => setTaskForm({ ...taskForm, budget_gstd: parseFloat(e.target.value) || 0 })}
-                                        min={0.001}
-                                        step={0.001}
-                                        className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white"
-                                    />
-                                    <div className="text-xs text-gray-500 mt-1">
-                                        Total: {(taskForm.budget_gstd * 1.05).toFixed(4)} GSTD (incl. fee)
-                                    </div>
-                                </div>
-
-                                {/* Workers */}
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm text-gray-400 mb-1">Max Workers</label>
-                                        <input
-                                            type="number"
-                                            value={taskForm.max_workers}
-                                            onChange={(e) => setTaskForm({ ...taskForm, max_workers: parseInt(e.target.value) || 1 })}
-                                            min={1}
-                                            max={100}
-                                            className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm text-gray-400 mb-1">Reward per Worker</label>
-                                        <div className="bg-white/5 border border-white/10 rounded-lg p-3 text-green-400">
-                                            {((taskForm.budget_gstd / taskForm.max_workers) * 0.95).toFixed(4)} GSTD
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Difficulty */}
-                                <div>
-                                    <label className="block text-sm text-gray-400 mb-1">Difficulty</label>
-                                    <div className="flex gap-2">
-                                        {['easy', 'medium', 'hard'].map(d => (
-                                            <button
-                                                key={d}
-                                                type="button"
-                                                onClick={() => setTaskForm({ ...taskForm, difficulty: d })}
-                                                className={`flex-1 py-2 rounded-lg font-medium capitalize transition-all ${taskForm.difficulty === d
-                                                    ? d === 'easy' ? 'bg-green-500/30 text-green-400 border border-green-500'
-                                                        : d === 'medium' ? 'bg-yellow-500/30 text-yellow-400 border border-yellow-500'
-                                                            : 'bg-red-500/30 text-red-400 border border-red-500'
-                                                    : 'bg-white/5 text-gray-400'
-                                                    }`}
-                                            >
-                                                {d}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Geography */}
-                                <div>
-                                    <label className="block text-sm text-gray-400 mb-1">Geography</label>
-                                    <div className="flex gap-2 mb-2">
-                                        <button
-                                            type="button"
-                                            onClick={() => setTaskForm({ ...taskForm, geography_type: 'global' })}
-                                            className={`flex-1 py-2 rounded-lg ${taskForm.geography_type === 'global'
-                                                ? 'bg-purple-500/30 text-purple-400 border border-purple-500'
-                                                : 'bg-white/5 text-gray-400'
-                                                }`}
-                                        >
-                                            🌍 Global
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setTaskForm({ ...taskForm, geography_type: 'countries' })}
-                                            className={`flex-1 py-2 rounded-lg ${taskForm.geography_type === 'countries'
-                                                ? 'bg-purple-500/30 text-purple-400 border border-purple-500'
-                                                : 'bg-white/5 text-gray-400'
-                                                }`}
-                                        >
-                                            🎯 Specific Countries
-                                        </button>
-                                    </div>
-                                    {taskForm.geography_type === 'countries' && (
-                                        <input
-                                            type="text"
-                                            placeholder="US, DE, JP (comma-separated)"
-                                            value={taskForm.geography_countries}
-                                            onChange={(e) => setTaskForm({ ...taskForm, geography_countries: e.target.value })}
-                                            className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white"
-                                        />
-                                    )}
-                                </div>
-
-                                {/* Submit */}
-                                <button
-                                    type="submit"
-                                    disabled={loading || taskForm.budget_gstd < 0.001}
-                                    className="w-full py-4 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-purple-500/25 transition-all"
-                                >
-                                    {loading ? '⏳ Creating...' : `🚀 Create Task (${(taskForm.budget_gstd * 1.05).toFixed(4)} GSTD)`}
-                                </button>
-                            </form>
-                        )}
-                    </div>
-                )
-            }
-
-            {
                 activeTab === 'my-tasks' && (
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
@@ -618,13 +395,7 @@ export default function Marketplace() {
                         ) : myTasks.length === 0 ? (
                             <div className="glass-card p-8 text-center">
                                 <div className="text-4xl mb-4">📋</div>
-                                <p className="text-gray-400">You haven't created any tasks yet</p>
-                                <button
-                                    onClick={() => setActiveTab('create')}
-                                    className="mt-4 px-6 py-2 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg font-medium"
-                                >
-                                    Create Your First Task
-                                </button>
+                                <p className="text-gray-400">Tasks are created by the platform. Check Job Feed for available work.</p>
                             </div>
                         ) : (
                             <div className="space-y-3">

@@ -9,12 +9,11 @@ import { Tooltip } from '../ui/Tooltip';
 import { wsClient } from '../../lib/websocket';
 
 interface HeaderProps {
-  onCreateTask: () => void;
   onLogout: () => void;
   isPublic?: boolean;
 }
 
-export default React.memo(function Header({ onCreateTask, onLogout, isPublic = false }: HeaderProps) {
+export default React.memo(function Header({ onLogout, isPublic = false }: HeaderProps) {
   const { t } = useTranslation('common');
   const router = useRouter();
   const { address, tonBalance, gstdBalance } = useWalletStore();

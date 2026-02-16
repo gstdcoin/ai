@@ -40,13 +40,14 @@ This script will:
 
 **Requirements:** 8GB+ RAM, modern CPU. GPU optional but increases earnings.
 
-### Mobile (Telegram) — Personal AI + Miner + Mini-node
+### Mobile (Telegram) — Wallet-as-Node + Personal AI + Miner
 
-1. Open the GSTD Telegram Bot
-2. Tap **AI Chat**, **Mining**, or **Agent Node** to open the full experience
-3. Connect wallet once — AI chat, mining, and node participation in one place
+1. Open the GSTD Telegram Bot (`t.me/GSTD_Main_Bot` or `t.me/goldstandardcoin`)
+2. Tap **Start Mining** (or open `t.me/Bot?start=mining`) — Wallet-as-Node flow
+3. Connect your TON wallet in the Web App
+4. Your wallet becomes a compute node — claim tasks and earn GSTD
 
-The bot is your personal AI assistant, miner, and mini-node. Mining runs when charging + WiFi to protect your device.
+**Wallet-as-Node**: No app install. Your TON wallet = your node. Lightweight tasks run when charging + WiFi.
 
 ---
 

@@ -1,16 +1,15 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
-import { LayoutDashboard, Server, BarChart3, HelpCircle, X, Menu, Bot, Home, MessageSquare, Hammer, Cpu } from 'lucide-react';
+import { LayoutDashboard, Server, BarChart3, HelpCircle, X, Menu, Bot, Home, MessageSquare, Hammer, Cpu, ShoppingCart, Users } from 'lucide-react';
 import { Tab } from '../../types/tabs';
 
 interface SidebarProps {
   activeTab: Tab;
   onTabChange: (tab: Tab) => void;
-  onCreateTask: () => void;
 }
 
-export default function Sidebar({ activeTab, onTabChange, onCreateTask }: SidebarProps) {
+export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
   const { t } = useTranslation('common');
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
@@ -19,9 +18,11 @@ export default function Sidebar({ activeTab, onTabChange, onCreateTask }: Sideba
     { id: 'chat', label: t('chat') || 'Chat', icon: <MessageSquare size={20} />, highlight: true },
     { id: 'agent', label: t('agent_node') || 'Agent Node', icon: <Cpu size={20} />, highlight: true, href: '/agent' },
     { id: 'home', label: t('nav_mining') || 'Mining', icon: <Hammer size={20} /> },
-    { id: 'agents', label: t('agents') || 'Agents', icon: <Bot size={20} /> },
     { id: 'tasks', label: t('tasks') || 'Tasks', icon: <LayoutDashboard size={20} /> },
     { id: 'devices', label: t('devices') || 'Devices', icon: <Server size={20} /> },
+    { id: 'marketplace', label: t('marketplace') || 'Marketplace', icon: <ShoppingCart size={20} /> },
+    { id: 'agents', label: t('agents') || 'Agents', icon: <Bot size={20} /> },
+    { id: 'referrals', label: t('referrals') || 'Referrals', icon: <Users size={20} /> },
     { id: 'stats', label: t('stats') || 'Stats', icon: <BarChart3 size={20} /> },
     { id: 'help', label: t('help_center') || 'Help', icon: <HelpCircle size={20} /> },
   ];
@@ -73,12 +74,6 @@ export default function Sidebar({ activeTab, onTabChange, onCreateTask }: Sideba
             ))}
           </nav>
 
-          <div className="p-3 border-t border-white/10">
-            <button onClick={() => { onCreateTask(); setIsOpen(false); }} className="w-full glass-button-gold flex items-center justify-center gap-2 text-sm py-2.5">
-              <span className="text-lg">+</span>
-              <span>{t('create_task') || 'New Task'}</span>
-            </button>
-          </div>
         </div>
       </aside>
     </>

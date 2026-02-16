@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'next-i18next';
-import { Shield, TrendingUp, Coins, Lock, ArrowUpRight, RefreshCw, Info, Plus, ExternalLink } from 'lucide-react';
+import { Shield, TrendingUp, DollarSign, ArrowUpRight, RefreshCw, Info, Plus, ExternalLink } from 'lucide-react';
 import { API_BASE_URL, ADMIN_WALLET_ADDRESS } from '../../lib/config';
 import { useWalletStore } from '../../store/walletStore';
 
@@ -27,7 +27,10 @@ interface PublicStats {
   total_supply: number;
   circulating_supply: number;
   total_burned: number;
+  total_xaut_bought?: number; // Admin Treasury View
   xaut_history?: Array<{ timestamp: string; amount: number }>;
+  last_audit_date?: string;
+  audit_verified?: boolean;
 }
 
 const TOTAL_SUPPLY = 1_000_000_000; // 1B GSTD
@@ -64,7 +67,7 @@ export default function GoldenReservePanel() {
     try {
       const [poolRes, statsRes] = await Promise.allSettled([
         fetch(`${API_BASE_URL}/api/v1/pool/status`).then(r => r.ok ? r.json() : null),
-        fetch(`${API_BASE_URL}/api/v1/stats/public`).then(r => r.ok ? r.json() : null),
+        fetch(`${API_BASE_URL}/api/v1/network/stats`).then(r => r.ok ? r.json() : null), // Changed to network/stats to get audit data
       ]);
 
       if (poolRes.status === 'fulfilled' && poolRes.value) setPoolStatus(poolRes.value);
@@ -117,8 +120,9 @@ export default function GoldenReservePanel() {
   const gstdPriceUSD = publicStats?.gstd_price_usd || (gstdBalance > 0 ? reserveValueUSD / gstdBalance : 0.015);
   const marketCapUSD = gstdPriceUSD * TOTAL_SUPPLY;
   const backingRatio = marketCapUSD > 0 ? (reserveValueUSD / marketCapUSD) * 100 : 0;
-  const totalBurned = publicStats?.total_burned || 0;
-  const deflationPercent = (totalBurned / TOTAL_SUPPLY) * 100;
+  // Audit Status
+  const isVerified = publicStats?.audit_verified === true;
+  const auditDate = publicStats?.last_audit_date;
 
   // Progress toward 1 XAUt target (milestone)
   const xautTarget = 1.0;
@@ -150,9 +154,19 @@ export default function GoldenReservePanel() {
             <Shield className="w-6 h-6 text-amber-400" />
           </div>
           <div>
-            <h3 className="text-lg font-black text-white tracking-tight">
-              {t('gold_reserve_title') || 'Golden Reserve Fund'}
-            </h3>
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-black text-white tracking-tight">
+                {t('gold_reserve_title') || 'Golden Reserve Fund'}
+              </h3>
+              {isVerified && (
+                <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/30">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-wide">
+                    Verified {auditDate ? `(${auditDate})` : ''}
+                  </span>
+                </div>
+              )}
+            </div>
             <p className="text-[10px] text-amber-400/60 font-bold uppercase tracking-widest">
               {t('gold_reserve_subtitle') || 'XAUt-Backed Stability • Verified On-Chain'}
             </p>
@@ -244,7 +258,7 @@ export default function GoldenReservePanel() {
           {/* GSTD Price */}
           <div className="p-4 rounded-2xl bg-black/20 border border-white/5 flex items-center justify-between group hover:border-emerald-500/20 transition-all">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400"><Coins size={18} /></div>
+              <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400"><DollarSign size={18} /></div>
               <div>
                 <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">GSTD Price</div>
                 <div className="text-lg font-black text-white tabular-nums">${gstdPriceUSD.toFixed(6)}</div>
@@ -264,17 +278,18 @@ export default function GoldenReservePanel() {
             </div>
           </div>
 
-          {/* Deflation */}
-          <div className="p-4 rounded-2xl bg-black/20 border border-white/5 flex items-center justify-between group hover:border-red-500/20 transition-all">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-red-500/10 text-red-400"><Lock size={18} /></div>
-              <div>
-                <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{t('gold_reserve_burned') || 'Total Burned'}</div>
-                <div className="text-lg font-black text-white tabular-nums">{totalBurned.toLocaleString()} <span className="text-xs text-gray-500">GSTD</span></div>
+          {/* Admin Treasury: Total XAUt Bought */}
+          {isAdmin && (publicStats?.total_xaut_bought ?? 0) >= 0 && (
+            <div className="p-4 rounded-2xl bg-black/20 border border-amber-500/20 flex items-center justify-between group hover:border-amber-500/30 transition-all">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400"><Shield size={18} /></div>
+                <div>
+                  <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Total XAUt Bought</div>
+                  <div className="text-lg font-black text-white tabular-nums">{(publicStats?.total_xaut_bought ?? 0).toFixed(6)} <span className="text-xs text-gray-500">XAUt</span></div>
+                </div>
               </div>
             </div>
-            <span className="text-[10px] text-red-400 font-bold">-{deflationPercent.toFixed(4)}%</span>
-          </div>
+          )}
         </div>
 
         {/* Right: Mini Chart / Flow */}
@@ -309,11 +324,7 @@ export default function GoldenReservePanel() {
             <div className="space-y-2 text-[10px]">
               <div className="flex items-center gap-2 text-gray-400">
                 <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                <span>{t('gold_reserve_inflow') || '2% of every transaction → Reserve'}</span>
-              </div>
-              <div className="flex items-center gap-2 text-gray-400">
-                <div className="w-2 h-2 rounded-full bg-red-500" />
-                <span>{t('gold_reserve_burn') || '5% of every transaction → Burned'}</span>
+                <span>{t('gold_reserve_inflow') || '7% of every transaction → Reserve'}</span>
               </div>
               <div className="flex items-center gap-2 text-gray-400">
                 <div className="w-2 h-2 rounded-full bg-amber-500" />
@@ -370,14 +381,10 @@ export default function GoldenReservePanel() {
       {showDetails && (
         <div className="mt-6 p-5 rounded-2xl bg-black/30 border border-white/5 relative z-10 animate-in fade-in slide-in-from-top-2 duration-300">
           <h4 className="text-sm font-black text-white mb-3 uppercase tracking-wider">{t('gold_reserve_how') || 'How the Golden Reserve Works'}</h4>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-gray-400">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-gray-400">
             <div>
               <h5 className="font-bold text-amber-400 mb-1">{t('gold_reserve_how_1_title') || 'Transaction Fee'}</h5>
-              <p>{t('gold_reserve_how_1') || 'Every task payment on GSTD Platform allocates 2% to the Golden Reserve Fund. This fund buys XAUt (Tether Gold) on STON.fi DEX, creating physical gold backing for the GSTD token.'}</p>
-            </div>
-            <div>
-              <h5 className="font-bold text-red-400 mb-1">{t('gold_reserve_how_2_title') || 'Deflationary Burn'}</h5>
-              <p>{t('gold_reserve_how_2') || 'An additional 5% of every transaction is permanently burned, reducing the total supply from 1 billion. This creates constant deflationary pressure, increasing scarcity.'}</p>
+              <p>{t('gold_reserve_how_1') || 'Every task payment on GSTD Platform allocates 7% to the Golden Reserve Fund. This fund buys XAUt (Tether Gold) on STON.fi DEX, creating physical gold backing for the GSTD token.'}</p>
             </div>
             <div>
               <h5 className="font-bold text-emerald-400 mb-1">{t('gold_reserve_how_3_title') || 'Auto-Buyback'}</h5>

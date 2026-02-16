@@ -3,10 +3,12 @@ package services
 import (
 	"context"
 	"database/sql"
+
+	leviathan "distributed-computing-platform/internal/services/leviathan"
 )
 
 type StatsService struct {
-	db *sql.DB
+	db          *sql.DB
 	poolMonitor *PoolMonitorService
 }
 
@@ -75,7 +77,7 @@ func (s *StatsService) GetGlobalStats(ctx context.Context) (*GlobalStats, error)
 	// 5. Active devices count & TFLOPS estimation
 	// We estimate TFLOPS based on CPU cores (simplified: 1 core ~ 0.1 TFLOPS for standard consumer hardware in distributed network)
 	// Also get active countries count
-	
+
 	// Active devices (last 5 minutes)
 	err = s.db.QueryRowContext(ctx, `
 		SELECT COALESCE(COUNT(*), 0) FROM devices WHERE last_seen_at > NOW() - INTERVAL '5 minutes' AND is_active = true
@@ -83,7 +85,7 @@ func (s *StatsService) GetGlobalStats(ctx context.Context) (*GlobalStats, error)
 	if err != nil {
 		stats.ActiveDevicesCount = 0
 	}
-	
+
 	// Eco Certification Bonus Logic:
 	// We count nodes that are eco_certified to display in the UI / Marketing
 	// This is implicitly handled by ActiveDevicesCount for now but could be split if requested.
@@ -93,7 +95,7 @@ func (s *StatsService) GetGlobalStats(ctx context.Context) (*GlobalStats, error)
 	err = s.db.QueryRowContext(ctx, `
 		SELECT COUNT(*) FROM nodes WHERE status = 'online' AND last_seen > NOW() - INTERVAL '5 minutes'
 	`).Scan(&activeNodesCount)
-	
+
 	if err == nil && activeNodesCount > 0 {
 		// Use nodes count * 1.5 (assuming roughly 1.5 TFLOPS per node average for simplified metric)
 		stats.TotalTFLOPS = float64(activeNodesCount) * 1.5
@@ -108,7 +110,7 @@ func (s *StatsService) GetGlobalStats(ctx context.Context) (*GlobalStats, error)
 	`).Scan(&stats.ActiveCountries)
 	if err != nil {
 		// If nodes table query fails or no country data
-		stats.ActiveCountries = 0 
+		stats.ActiveCountries = 0
 		// Fallback: If we have active devices but no country data, assume at least 1 country
 		if stats.ActiveDevicesCount > 0 {
 			stats.ActiveCountries = 1
@@ -119,15 +121,22 @@ func (s *StatsService) GetGlobalStats(ctx context.Context) (*GlobalStats, error)
 }
 
 type NetworkStats struct {
-	ActiveWorkers int     `json:"active_workers"`
-	TotalGSTDPaid float64 `json:"total_gstd_paid"`
-	Tasks24h      int     `json:"tasks_24h"`
-	Temperature   float64 `json:"temperature"`
-	Pressure      float64 `json:"pressure"`
-	TotalHashrate float64 `json:"total_hashrate"`
-    GoldReserve       float64 `json:"gold_reserve"`
-	GoldenReserveXAUt float64 `json:"golden_reserve_xaut"`
-	GSTDPriceUSD      float64 `json:"gstd_price_usd"`
+	ActiveWorkers      int     `json:"active_workers"`
+	TotalGSTDPaid      float64 `json:"total_gstd_paid"`
+	Tasks24h           int     `json:"tasks_24h"`
+	Temperature        float64 `json:"temperature"`
+	Pressure           float64 `json:"pressure"`
+	TotalHashrate      float64 `json:"total_hashrate"`
+	GoldReserve        float64 `json:"gold_reserve"`
+	GoldenReserveXAUt  float64 `json:"golden_reserve_xaut"`
+	GSTDPriceUSD       float64 `json:"gstd_price_usd"`
+	LastAuditDate      string  `json:"last_audit_date"`
+	AuditVerified      bool    `json:"audit_verified"`
+	BackingRatio       float64 `json:"backing_ratio"`
+	TotalBurnedGSTD    float64 `json:"total_burned"`     // Admin Treasury View
+	TotalXAUtBought    float64 `json:"total_xaut_bought"` // Admin Treasury View
+	NetworkIQ          float64 `json:"network_iq"`        // Public Proof of Intelligence (Leviathan)
+	GlobalBrainLatencyMs int   `json:"global_brain_latency_ms"` // Avg ping from network_measurements
 }
 
 func (s *StatsService) GetNetworkStats(ctx context.Context) (*NetworkStats, error) {
@@ -170,7 +179,7 @@ func (s *StatsService) GetNetworkStats(ctx context.Context) (*NetworkStats, erro
 	err = s.db.QueryRowContext(ctx, `
 		SELECT COUNT(*) FROM tasks WHERE status IN ('pending', 'queued', 'assigned', 'executing')
 	`).Scan(&pendingTasks)
-	
+
 	activeNodes := stats.ActiveWorkers
 	if activeNodes == 0 {
 		// Try to count from nodes table if devices is 0 (nodes use last_seen)
@@ -187,35 +196,62 @@ func (s *StatsService) GetNetworkStats(ctx context.Context) (*NetworkStats, erro
 	var activeNodeCount int
 	_ = s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM nodes WHERE last_seen > NOW() - INTERVAL '30 seconds' AND status = 'online'`).Scan(&activeNodeCount)
 	stats.TotalHashrate = float64(activeNodeCount) * 0.5
-    
-    // 7. Gold Reserve (Get from latest log)
-    err = s.db.QueryRowContext(ctx, `
-        SELECT COALESCE(xaut_balance, 0) FROM golden_reserve_log ORDER BY created_at DESC LIMIT 1
+
+	// 7. Gold Reserve (Get from latest log)
+	err = s.db.QueryRowContext(ctx, `
+        SELECT COALESCE(xaut_amount, 0) FROM golden_reserve_log ORDER BY timestamp DESC LIMIT 1
     `).Scan(&stats.GoldReserve)
 	if err != nil {
-        stats.GoldReserve = 0
-    }
-    // Populate GoldenReserveXAUt from GoldReserve for consistency
-    stats.GoldenReserveXAUt = stats.GoldReserve
+		stats.GoldReserve = 0
+	}
+	// Populate GoldenReserveXAUt from GoldReserve for consistency
+	stats.GoldenReserveXAUt = stats.GoldReserve
 
 	if s.poolMonitor != nil {
 		price, err := s.poolMonitor.GetGSTDPriceUSD(ctx)
 		if err == nil {
 			stats.GSTDPriceUSD = price
 		} else {
-             stats.GSTDPriceUSD = 0.02
-        }
+			stats.GSTDPriceUSD = 0.02
+		}
 	} else {
-         stats.GSTDPriceUSD = 0.02
-    }
+		stats.GSTDPriceUSD = 0.02
+	}
+
+	// 8. Nightly Audit Stats
+	err = s.db.QueryRowContext(ctx, `
+		SELECT TO_CHAR(audit_date, 'YYYY-MM-DD'), verified, COALESCE(backing_ratio_percent, 0)
+		FROM nightly_audits 
+		ORDER BY audit_date DESC 
+		LIMIT 1
+	`).Scan(&stats.LastAuditDate, &stats.AuditVerified, &stats.BackingRatio)
+	if err != nil {
+		// Default if no audit yet
+		stats.LastAuditDate = ""
+		stats.AuditVerified = false
+		stats.BackingRatio = 0
+	}
+
+	// 9. Admin Treasury View: total burned GSTD, total XAUt bought
+	s.db.QueryRowContext(ctx, `SELECT COALESCE(SUM(burn_amount), 0) FROM token_burns`).Scan(&stats.TotalBurnedGSTD)
+	s.db.QueryRowContext(ctx, `SELECT COALESCE(SUM(xaut_amount), 0) FROM golden_reserve_log WHERE xaut_amount IS NOT NULL`).Scan(&stats.TotalXAUtBought)
+
+	// 10. Public Proof of Intelligence: Network IQ (Leviathan) + Global Brain Latency
+	if iq, ok := leviathan.GetSystemIQSafe(); ok {
+		stats.NetworkIQ = iq
+	}
+	var avgLatency float64
+	if err := s.db.QueryRowContext(ctx, `SELECT COALESCE(AVG(latency_ms), 0)::float FROM network_measurements WHERE recorded_at > NOW() - INTERVAL '1 hour' AND latency_ms IS NOT NULL`).Scan(&avgLatency); err == nil {
+		stats.GlobalBrainLatencyMs = int(avgLatency)
+	}
 
 	return stats, nil
 }
 
 // TaskCompletionData represents task completion statistics over time
 type TaskCompletionData struct {
-	Date  string `json:"date"`
-	Count int    `json:"count"`
+	Date  string  `json:"date"`
+	Count int     `json:"count"`
 	GSTD  float64 `json:"gstd"`
 }
 
@@ -307,4 +343,3 @@ func (s *StatsService) GetTaskCompletionHistory(ctx context.Context, period stri
 
 	return data, nil
 }
-

@@ -4,8 +4,8 @@
     "skills": [
         {
             "name": "gstd-a2a",
-            "description": "Universal GSTD Agent-to-Agent Autonomous Economy skill.",
-            "version": "1.2.0",
+            "description": "Universal GSTD Agent-to-Agent Autonomous Economy skill. Read-only with API key; signing requires mnemonic.",
+            "version": "1.2.2",
             "type": "mcp",
             "author": "GSTD Foundation",
             "capabilities": [

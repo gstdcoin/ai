@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"distributed-computing-platform/internal/services"
 	"math"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -15,6 +16,9 @@ func SetupCosmicGenesisRoutes(v1 *gin.RouterGroup, protected *gin.RouterGroup, d
 		mult := goldHash.GetGoldMultiplier(c.Request.Context())
 		c.JSON(200, gin.H{"gold_multiplier": mult, "message": "Base mining reward scales with Gold Reserve"})
 	})
+
+	// Swarm Reward Multiplier: uptime-based bonus (longer node active = higher golden accumulation multiplier)
+	protected.GET("/cosmic/swarm-multiplier", swarmMultiplier(db))
 
 	// Absolute Point: Predictive Dashboard — 30-day earnings prediction
 	protected.GET("/cosmic/earnings-prediction", earningsPrediction(db, goldHash))
@@ -155,6 +159,51 @@ func earningsPrediction(db *sql.DB, goldHash *services.GoldHashRateService) gin.
 			"predicted_30d_gstd": predicted30d,
 			"gold_multiplier":    mult,
 			"message":            "Based on your uptime and Gold Reserve growth, your earnings in 30 days",
+		})
+	}
+}
+
+func swarmMultiplier(db *sql.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		wallet := c.GetString("wallet_address")
+		if wallet == "" {
+			wallet = c.Query("wallet")
+		}
+		if wallet == "" {
+			c.JSON(400, gin.H{"error": "wallet required"})
+			return
+		}
+		ctx := c.Request.Context()
+
+		// Earliest activity: nodes or first task for this wallet (devices has no created_at)
+		var earliestAt sql.NullTime
+		err := db.QueryRowContext(ctx, `
+			SELECT MIN(ts) FROM (
+				SELECT created_at AS ts FROM nodes WHERE wallet_address = $1
+				UNION ALL
+				SELECT first_task_at AS ts FROM worker_ratings WHERE worker_wallet = $1 AND first_task_at IS NOT NULL
+			) AS sub WHERE ts IS NOT NULL
+		`, wallet, wallet).Scan(&earliestAt)
+		if err != nil || !earliestAt.Valid {
+			c.JSON(200, gin.H{"swarm_multiplier": 1.0, "uptime_hours": 0, "message": "No uptime data"})
+			return
+		}
+		t := earliestAt.Time
+
+		uptimeHours := time.Since(t).Hours()
+		if uptimeHours < 0 {
+			uptimeHours = 0
+		}
+		// Multiplier: 1.0 base + 0.01 per 24h uptime, cap 1.5 (e.g. 50 days = 1.5)
+		mult := 1.0 + 0.01*(uptimeHours/24)
+		if mult > 1.5 {
+			mult = 1.5
+		}
+		c.JSON(200, gin.H{
+			"swarm_multiplier": math.Round(mult*100) / 100,
+			"uptime_hours":     math.Round(uptimeHours*10) / 10,
+			"uptime_days":      math.Round(uptimeHours/24*10) / 10,
+			"message":         "Longer node uptime = higher golden accumulation multiplier",
 		})
 	}
 }

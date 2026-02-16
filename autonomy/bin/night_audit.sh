@@ -67,7 +67,26 @@ else
 fi
 echo "" >> $REPORT_FILE
 
-# 4. GEO Service
+# 4. Gold Reserves vs Tokens (ТЗ 3.Б: Night Audit — публичная проверка)
+echo "### 🏦 Gold Reserves vs Tokens" >> $REPORT_FILE
+AUDIT_URL="${API_URL:-https://app.gstdtoken.com}/api/v1/audit/reserves"
+AUDIT_JSON=$(curl -s "$AUDIT_URL" 2>/dev/null || echo "{}")
+if [ -n "$AUDIT_JSON" ] && [ "$AUDIT_JSON" != "{}" ]; then
+  GOLD_XAUT=$(echo "$AUDIT_JSON" | grep -o '"gold_reserve_xaut":[0-9.]*' | cut -d: -f2)
+  CIRC_GSTD=$(echo "$AUDIT_JSON" | grep -o '"circulating_gstd":[0-9.]*' | cut -d: -f2)
+  RATIO=$(echo "$AUDIT_JSON" | grep -o '"reserve_ratio":[0-9.]*' | cut -d: -f2)
+  [ -z "$GOLD_XAUT" ] && GOLD_XAUT="—"
+  [ -z "$CIRC_GSTD" ] && CIRC_GSTD="—"
+  [ -z "$RATIO" ] && RATIO="—"
+  echo "✅ XAUt Reserve: ${GOLD_XAUT}" >> $REPORT_FILE
+  echo "✅ Circulating GSTD: ${CIRC_GSTD}" >> $REPORT_FILE
+  echo "✅ Reserve Ratio: ${RATIO}" >> $REPORT_FILE
+else
+  echo "⚠️  Audit API unavailable." >> $REPORT_FILE
+fi
+echo "" >> $REPORT_FILE
+
+# 5. GEO Service
 echo "### 🌍 Infrastructure" >> $REPORT_FILE
 GEO_LOGS=$(docker logs --since 1h ubuntu-backend-blue-1 2>&1 | grep -i "geo")
 if [ -z "$GEO_LOGS" ]; then
@@ -85,7 +104,7 @@ LOAD=$(cat /proc/loadavg 2>/dev/null | cut -d' ' -f1-3)
 echo "" >> $REPORT_FILE
 
 echo "---" >> $REPORT_FILE
-echo "Audit cycle complete." >> $REPORT_FILE
+echo "Audit cycle complete. Run daily at 00:00 UTC (cron: 0 0 * * *)." >> $REPORT_FILE
 
 # Notify admin via Telegram
 if [ -n "$ADMIN_API_KEY" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then

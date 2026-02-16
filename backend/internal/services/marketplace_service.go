@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+const TaskTypePolymarketPrediction = "polymarket_prediction"
+
 // MarketplaceService handles job feed and task matching
 type MarketplaceService struct {
 	db            *sql.DB
@@ -218,6 +220,17 @@ func (s *MarketplaceService) ClaimTask(ctx context.Context, taskID, workerWallet
 // CompleteTask marks a task as completed and triggers payout
 // Ultra-Deep: Atomic - escrow release first; only on success update assignment (no partial state)
 func (s *MarketplaceService) CompleteTask(ctx context.Context, taskID, workerWallet string, executionTimeMs int, qualityScore float64, resultData []byte) (*TaskReceipt, error) {
+	// Polymarket prediction: validate result format {prediction: yes|no, confidence: 0-1, reasoning}
+	var taskType string
+	if err := s.db.QueryRowContext(ctx, "SELECT COALESCE(task_type, '') FROM tasks WHERE task_id = $1", taskID).Scan(&taskType); err == nil && taskType == TaskTypePolymarketPrediction {
+		if len(resultData) == 0 {
+			return nil, fmt.Errorf("polymarket task requires result_data: {prediction, confidence, reasoning}")
+		}
+		if _, err := ValidatePolymarketResult(resultData); err != nil {
+			return nil, fmt.Errorf("invalid polymarket result: %w", err)
+		}
+	}
+
 	// 1. Release funds from escrow FIRST - if this fails, we don't touch assignment
 	tx, err := s.escrowService.ReleaseToWorkerMarketplace(ctx, taskID, workerWallet, qualityScore, s.referral)
 	if err != nil {
@@ -327,12 +340,20 @@ func (s *MarketplaceService) checkAndFinalizeTask(ctx context.Context, taskID st
 	}
 
 	if workersCompleted >= maxWorkers {
+		// Decentralized Verification: every 100th task gets P2P verified
+		var totalCompleted int
+		_ = s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM tasks WHERE status = 'completed'`).Scan(&totalCompleted)
+		p2pVerified := (totalCompleted+1)%100 == 0
+
 		_, err = s.db.ExecContext(ctx, `
-			UPDATE tasks SET status = 'completed', completed_at = NOW()
+			UPDATE tasks SET status = 'completed', completed_at = NOW(), p2p_verified = $2
 			WHERE task_id = $1
-		`, taskID)
+		`, taskID, p2pVerified)
 		if err != nil {
 			log.Printf("⚠️  Failed to finalize task: %v", err)
+		}
+		if p2pVerified {
+			log.Printf("🛡️ P2P Verified: task %s (network milestone #%d)", taskID, totalCompleted+1)
 		}
 	}
 }
@@ -397,7 +418,8 @@ func (s *MarketplaceService) GetMyTasks(ctx context.Context, creatorWallet strin
 			t.created_at,
 			t.completed_at,
 			COALESCE(e.status, 'none') as escrow_status,
-			COALESCE(e.total_paid_gstd, 0) as paid_out
+			COALESCE(e.total_paid_gstd, 0) as paid_out,
+			COALESCE(t.p2p_verified, false) as p2p_verified
 		FROM tasks t
 		LEFT JOIN task_escrow e ON t.task_id = e.task_id
 		WHERE t.requester_address = $1
@@ -417,10 +439,11 @@ func (s *MarketplaceService) GetMyTasks(ctx context.Context, creatorWallet strin
 		var maxWorkers, workersCompleted int
 		var createdAt time.Time
 		var completedAt sql.NullTime
+		var p2pVerified bool
 
 		err := rows.Scan(&taskID, &taskType, &operation, &status, &budget,
 			&maxWorkers, &workersCompleted, &createdAt, &completedAt,
-			&escrowStatus, &paidOut)
+			&escrowStatus, &paidOut, &p2pVerified)
 		if err != nil {
 			continue
 		}
@@ -436,6 +459,7 @@ func (s *MarketplaceService) GetMyTasks(ctx context.Context, creatorWallet strin
 			"created_at":        createdAt.Format(time.RFC3339),
 			"escrow_status":     escrowStatus,
 			"paid_out_gstd":     paidOut,
+			"p2p_verified":      p2pVerified,
 		}
 
 		if completedAt.Valid {

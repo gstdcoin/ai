@@ -53,6 +53,80 @@ func (s *KnowledgeService) QueryKnowledge(ctx context.Context, topic string, lim
 	return results, nil
 }
 
+// QueryKnowledgeWithGlobalGraph (Singularity Gateway): merges topic-specific + global_knowledge_graph.
+// Complex queries are based on consolidated network experience from Leviathan lessons.
+func (s *KnowledgeService) QueryKnowledgeWithGlobalGraph(ctx context.Context, topic string, limit int) ([]KnowledgeItem, error) {
+	if limit <= 0 {
+		limit = 15
+	}
+	// 1. Topic-specific knowledge
+	topicQuery := `SELECT id, agent_id, topic, content, created_at FROM agent_knowledge 
+		WHERE (topic ILIKE $1 OR $1 = ANY(tags)) AND topic != 'global_knowledge_graph' 
+		ORDER BY created_at DESC LIMIT $2`
+	rows, err := s.db.QueryContext(ctx, topicQuery, "%"+topic+"%", limit)
+	if err != nil {
+		return nil, err
+	}
+	seen := make(map[string]bool)
+	var results []KnowledgeItem
+	for rows.Next() {
+		var item KnowledgeItem
+		if err := rows.Scan(&item.ID, &item.AgentID, &item.Topic, &item.Content, &item.CreatedAt); err != nil {
+			continue
+		}
+		item.Tags = []string{}
+		if !seen[item.ID] {
+			seen[item.ID] = true
+			results = append(results, item)
+		}
+	}
+	rows.Close()
+
+	// 2. Global Knowledge Graph (consolidated Leviathan experience) — prioritize for complex queries
+	globalLimit := limit / 2
+	if globalLimit < 3 {
+		globalLimit = 3
+	}
+	globalQuery := `SELECT id, agent_id, topic, content, created_at FROM agent_knowledge 
+		WHERE topic = 'global_knowledge_graph' AND (content ILIKE $1 OR $1 = ANY(tags)) 
+		ORDER BY created_at DESC LIMIT $2`
+	globalRows, err := s.db.QueryContext(ctx, globalQuery, "%"+topic+"%", globalLimit)
+	if err == nil {
+		defer globalRows.Close()
+		for globalRows.Next() {
+			var item KnowledgeItem
+			if err := globalRows.Scan(&item.ID, &item.AgentID, &item.Topic, &item.Content, &item.CreatedAt); err != nil {
+				continue
+			}
+			item.Tags = []string{"global_knowledge_graph", "leviathan"}
+			if !seen[item.ID] {
+				seen[item.ID] = true
+				results = append([]KnowledgeItem{item}, results...) // Prepend global experience
+			}
+		}
+	}
+	// If no topic match, still include recent global knowledge
+	if len(results) < 3 {
+		fallbackQuery := `SELECT id, agent_id, topic, content, created_at FROM agent_knowledge 
+			WHERE topic = 'global_knowledge_graph' ORDER BY created_at DESC LIMIT $1`
+		if fallbackRows, err := s.db.QueryContext(ctx, fallbackQuery, 5); err == nil {
+			for fallbackRows.Next() {
+				var item KnowledgeItem
+				if err := fallbackRows.Scan(&item.ID, &item.AgentID, &item.Topic, &item.Content, &item.CreatedAt); err != nil {
+					continue
+				}
+				item.Tags = []string{"global_knowledge_graph", "leviathan"}
+				if !seen[item.ID] {
+					seen[item.ID] = true
+					results = append(results, item)
+				}
+			}
+			fallbackRows.Close()
+		}
+	}
+	return results, nil
+}
+
 // GetGridTools returns code snippets for "FREE AI TOOLS BY GSTD GRID" (topic=grid_tool)
 func (s *KnowledgeService) GetGridTools(ctx context.Context, limit int) ([]KnowledgeItem, error) {
 	if limit <= 0 {

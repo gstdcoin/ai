@@ -13,10 +13,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/redis/go-redis/v9"
-	"github.com/gin-contrib/gzip"
 )
 
 func SetupRoutes(
@@ -41,16 +41,14 @@ func SetupRoutes(
 	taskRateLimiter *services.RateLimiter,
 	db interface{},
 	redisClient interface{},
-		payoutRetryService *services.PayoutRetryService,
-		escrowService *services.EscrowService,
-		poolMonitorService *services.PoolMonitorService,
+	payoutRetryService *services.PayoutRetryService,
+	escrowService *services.EscrowService,
+	poolMonitorService *services.PoolMonitorService,
 	cacheService *services.CacheService,
 	errorLogger *services.ErrorLogger,
 	powService *services.ProofOfWorkService,
 	taskOrchestrator *services.TaskOrchestrator,
 	telegramService *services.TelegramService,
-	lendingService *services.LendingService,
-
 	maintenanceService *services.MaintenanceService,
 	sovereignBridge *services.SovereignBridgeService,
 	knowledgeService *services.KnowledgeService,
@@ -67,9 +65,11 @@ func SetupRoutes(
 	agentModelService *services.AgentModelService,
 	fleetCommandService *services.FleetCommandService,
 	omniPerformance *services.OmniPerformanceService,
+	polymarketBridge *services.PolymarketBridgeService,
+	swarmLFS *services.SwarmLFSService,
 ) {
 	log.Printf("🔧 SetupRoutes: Starting route setup, redisClient type: %T", redisClient)
-	
+
 	// Initialize BrainHandler
 	brainHandler := NewBrainHandler(knowledgeService)
 
@@ -100,7 +100,7 @@ func SetupRoutes(
 	// [MOBILE_OPTIMIZATION_START]
 	// Enable Gzip compression (Level 5 for balance between CPU/Bandwidth)
 	router.Use(gzip.Gzip(gzip.BestSpeed))
-	
+
 	// Add Mobile Optimization Middleware
 	router.Use(func(c *gin.Context) {
 		userAgent := c.GetHeader("User-Agent")
@@ -116,12 +116,12 @@ func SetupRoutes(
 	// Add error handler middleware
 	router.Use(ErrorHandler())
 
-    // LIMIT PAYLOAD SIZE (Security)
-    router.Use(func(c *gin.Context) {
-        c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 2 * 1024 * 1024) // 2MB Limit
-        c.Next()
-    })
-	
+	// LIMIT PAYLOAD SIZE (Security)
+	router.Use(func(c *gin.Context) {
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 2*1024*1024) // 2MB Limit
+		c.Next()
+	})
+
 	// Add rate limiter if Redis is available
 	var rateLimiter *RateLimiter
 	if redisClient != nil {
@@ -139,13 +139,16 @@ func SetupRoutes(
 	// [DYNAMIC_CONFIG_START]
 	// Public configuration endpoint for frontend
 	router.GET("/api/v1/config", func(c *gin.Context) {
+		cfg := config.Load()
+		eco := cfg.Economics
 		c.JSON(200, gin.H{
-			"contract_address": tonConfig.ContractAddress,
-			"gstd_jetton":      tonConfig.GSTDJettonAddress,
-			"admin_wallet":     tonConfig.AdminWallet,
-			"escrow_contract":  tonConfig.ContractAddress, // Escrow is the main contract
-			"network":          tonConfig.Network,
-			"api_url":          tonConfig.APIURL,
+			"contract_address":            tonConfig.ContractAddress,
+			"gstd_jetton":                 tonConfig.GSTDJettonAddress,
+			"admin_wallet":                tonConfig.AdminWallet,
+			"escrow_contract":             tonConfig.ContractAddress, // Escrow is the main contract
+			"network":                     tonConfig.Network,
+			"api_url":                     tonConfig.APIURL,
+			"target_price_per_result_usd": eco.TargetPricePerResultUSD, // ТЗ: ~$0.03/результат
 		})
 	})
 	// [DYNAMIC_CONFIG_END]
@@ -163,7 +166,7 @@ func SetupRoutes(
 	// API versioning
 	api := router.Group("/api")
 	api.Use(APIVersionMiddleware())
-	
+
 	v1 := api.Group("/v1")
 	{
 		// Public endpoints (no session required)
@@ -200,10 +203,24 @@ func SetupRoutes(
 		// @Success 200 {object} map[string]interface{} "Pool status"
 		// @Router /pool/status [get]
 		v1.GET("/pool/status", getPoolStatus(poolMonitorService))
-		
-		v1.GET("/lending/quote", getLoanQuote(lendingService))
+
+		// Swarm LFS — tensor streaming, integrity, quantization (Protocol: Swarm LFS)
+		if swarmLFS == nil {
+			swarmLFS = services.NewSwarmLFSService()
+		}
+		lfsHandler := NewSwarmLFSHandler(swarmLFS)
+		lfs := v1.Group("/lfs")
+		{
+			lfs.GET("/manifest/:model_id", lfsHandler.GetManifest)
+			lfs.GET("/stream/:model_id/:block_id", lfsHandler.GetBlock)
+			lfs.POST("/verify", lfsHandler.VerifyBlock)
+		}
+		log.Printf("✅ Swarm LFS routes registered (/lfs/manifest, /lfs/stream)")
+
 		v1.GET("/network/autonomy", getAutonomyStats(maintenanceService))
-		
+		// Night Audit: публичная проверка соответствия золотых резервов количеству токенов (ТЗ 3.Б)
+		v1.GET("/audit/reserves", getReservesAudit(db.(*sql.DB), tonService, tonConfig))
+
 		// Metrics endpoint (Prometheus format) - public
 		metricsService := NewMetricsService(db.(*sql.DB), redisClient.(*redis.Client))
 		v1.GET("/metrics", metricsService.GetMetrics())
@@ -236,7 +253,6 @@ func SetupRoutes(
 			c.Status(200)
 		})
 
-
 		// Users - login is public
 		tonConnectValidator := services.NewTonConnectValidator(tonService)
 		if errorLogger != nil {
@@ -254,21 +270,21 @@ func SetupRoutes(
 		marketHandler := NewMarketHandler(db.(*sql.DB))
 		v1.GET("/market/quote", marketHandler.GetSwapQuote)
 		// Swap preparation still recommended to be public so users can see what they are signing before login
-		v1.POST("/market/swap", marketHandler.PrepareSwapTransaction) 
+		v1.POST("/market/swap", marketHandler.PrepareSwapTransaction)
 		// x402 Protocol for Agents (Payment Required)
-		v1.POST("/market/buy-gstd-x402", marketHandler.GetX402BuyDetails) 
+		v1.POST("/market/buy-gstd-x402", marketHandler.GetX402BuyDetails)
 		v1.POST("/market/buy-service-x402", marketHandler.BuyServiceX402) // NEW: Service Buying
 
 		// Autonomous Auth (PoW)
 		authHandler := NewAuthHandler()
 		v1.GET("/auth/challenge", authHandler.GetChallenge)
-		v1.POST("/auth/claim-key", authHandler.ClaimKey) 
+		v1.POST("/auth/claim-key", authHandler.ClaimKey)
 
 		// Protected endpoints (require session)
 		var sessionMiddleware gin.HandlerFunc
 		if redisClient != nil {
 			if rc, ok := redisClient.(*redis.Client); ok && rc != nil {
-				sessionMiddleware = ValidateSession(rc)
+				sessionMiddleware = ValidateSession(rc, apiKeyService)
 				log.Printf("✅ Session middleware initialized and will be applied to protected routes")
 			} else {
 				log.Printf("⚠️  Redis client type assertion failed or is nil")
@@ -276,7 +292,7 @@ func SetupRoutes(
 		} else {
 			log.Printf("⚠️  Redis client is nil - session middleware will not be applied")
 		}
-		
+
 		// Apply session middleware to protected routes
 		protected := v1.Group("")
 		if sessionMiddleware != nil {
@@ -285,7 +301,7 @@ func SetupRoutes(
 		} else {
 			log.Printf("⚠️  Session middleware is nil - protected routes will NOT require session")
 		}
-		
+
 		// Referrals
 		referrals := protected.Group("/referrals")
 		{
@@ -299,7 +315,7 @@ func SetupRoutes(
 		protected.POST("/users/keys", gatewayHandler.CreateUserKey)
 
 		// === VIRAL ECONOMY ROUTES ===
-		protected.GET("/users/pending_balance", getPendingBalance(db.(*sql.DB))) // Check off-chain earnings
+		protected.GET("/users/pending_balance", getPendingBalance(db.(*sql.DB)))                  // Check off-chain earnings
 		protected.POST("/users/claim_balance", claimPendingBalance(db.(*sql.DB), paymentService)) // Withdraw to TON
 
 		// Tasks (protected)
@@ -339,6 +355,10 @@ func SetupRoutes(
 			admin.POST("/seed-global-resonance", seedGlobalResonanceTask(db.(*sql.DB), tonConfig))
 			admin.POST("/seed-open-grid-manifesto", seedOpenGridManifestoTask(db.(*sql.DB), tonConfig))
 			admin.POST("/hardware-grants/allocate", allocateHardwareGrants(db.(*sql.DB)))
+			// Infrastructure Supremacy: Architect Master-Dashboard
+			admin.GET("/architect/network", getAdminArchitectNetwork(db.(*sql.DB)))
+			admin.GET("/architect/params", getAdminArchitectParams(tonConfig))
+			admin.GET("/architect/vision", getAdminArchitectVision(db.(*sql.DB)))
 		}
 
 		// Admin commission endpoints (require session + admin wallet authorization)
@@ -357,7 +377,7 @@ func SetupRoutes(
 
 		// TON Wallet Gateway: Direct GSTD purchase via Ston.fi (Ascension)
 		v1.GET("/wallet/buy-gstd", getBuyGSTDLink(tonService, tonConfig))
-		
+
 		// Payments (protected)
 		protected.POST("/payments/payout-intent", createPayoutIntent(paymentService))
 
@@ -367,13 +387,12 @@ func SetupRoutes(
 		// Task Payment (protected)
 		protected.POST("/tasks/create", createTaskWithPayment(taskPaymentService, taskRateLimiter))
 
-
 		// Worker endpoints (protected)
 		protected.GET("/tasks/worker/pending", getWorkerPendingTasks(taskPaymentService))
 		protected.POST("/tasks/worker/submit", submitWorkerResult(taskPaymentService, rewardEngine))
 
 		// Marketplace endpoints - split into public and protected
-		marketplaceHandler := NewMarketplaceHandler(db.(*sql.DB), referralService)
+		marketplaceHandler := NewMarketplaceHandler(dbConn, escrowService, referralService)
 		// Public marketplace endpoints (no session required)
 		v1.GET("/marketplace/tasks", marketplaceHandler.GetAvailableTasks)
 		v1.GET("/marketplace/stats", marketplaceHandler.GetMarketplaceStats)
@@ -381,20 +400,42 @@ func SetupRoutes(
 		// Protected marketplace endpoints (require session)
 		SetupMarketplaceProtectedRoutes(protected, marketplaceHandler)
 
+		// Telegram Bot API (X-Bot-Token auth) — link wallet, claim, complete tasks
+		tgBotHandler := NewTelegramBotHandler(dbConn, marketplaceHandler.GetMarketplace(), nodeService, deviceService)
+		tgBot := v1.Group("/telegram/bot")
+		tgBot.Use(RequireBotToken())
+		tgBot.POST("/link", tgBotHandler.LinkWallet)
+		tgBot.GET("/wallet", tgBotHandler.GetWallet)
+		tgBot.GET("/balance", tgBotHandler.GetBalance)
+		tgBot.GET("/nodes", tgBotHandler.GetNodes)
+		tgBot.POST("/claim", tgBotHandler.ClaimTask)
+		tgBot.POST("/complete", tgBotHandler.CompleteTask)
+
+		// Polymarket Bridge: events → tasks, criteria, rewards, commission split
+		if polymarketBridge != nil {
+			pmHandler := NewPolymarketBridgeHandler(polymarketBridge)
+			pm := v1.Group("/polymarket/bridge")
+			pm.GET("/tasks", pmHandler.GetBridgeTasks)
+			pm.GET("/pool", pmHandler.GetPoolBalance)
+			pm.POST("/fetch", pmHandler.FetchAndCreateTasks)
+			pm.POST("/tasks/:task_id/aggregate", pmHandler.AggregateTask)
+			pm.POST("/fund", pmHandler.FundPool)
+		}
+
 		// Initialize and setup Orchestrator routes (PoW, Task Queue, Client Dashboard)
 		orchestratorHandler := NewOrchestratorHandler(db.(*sql.DB), taskOrchestrator, powService, tonService, geoService)
 		SetupOrchestratorRoutes(v1, orchestratorHandler)
 		log.Printf("✅ Orchestrator routes registered")
 
-
-
 		// Sovereign Compute Bridge (MoltBot integration)
 		SetupBridgeRoutes(v1, sovereignBridge)
-		
+
 		// Knowledge / Hive Memory
 		SetupKnowledgeRoutes(protected, knowledgeService)
 		// Hyper-Expansion: Hive Intelligence API, Oracle, Leaderboard, Milestones
 		SetupHyperExpansionRoutes(v1, protected, knowledgeService, dbConn, tonConfig)
+		// Infrastructure Supremacy: API-as-a-Service gateway, become-node CTA
+		SetupInfrastructureSupremacyRoutes(v1, protected, dbConn)
 		// Public: GRID IS THINKING ticker (resonance quotes, no auth)
 		v1.GET("/knowledge/resonance", getResonanceQuotes(knowledgeService))
 		// Public: FREE AI TOOLS BY GSTD GRID (code snippets from agents)
@@ -541,19 +582,19 @@ func createPayoutIntent(service *services.PaymentService) gin.HandlerFunc {
 func createTask(service *services.TaskService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			RequesterAddress string  `json:"requester_address"`
-			TaskType         string  `json:"task_type"`
-			Operation        string  `json:"operation"`
-			Model            string  `json:"model"`
-			InputSource      string  `json:"input_source"`
-			InputHash        string  `json:"input_hash"`
-			InputData        string  `json:"input_data"`
-			TimeLimitSec     int     `json:"time_limit_sec"`
-			MaxEnergyMwh     int     `json:"max_energy_mwh"`
+			RequesterAddress      string  `json:"requester_address"`
+			TaskType              string  `json:"task_type"`
+			Operation             string  `json:"operation"`
+			Model                 string  `json:"model"`
+			InputSource           string  `json:"input_source"`
+			InputHash             string  `json:"input_hash"`
+			InputData             string  `json:"input_data"`
+			TimeLimitSec          int     `json:"time_limit_sec"`
+			MaxEnergyMwh          int     `json:"max_energy_mwh"`
 			LaborCompensationGSTD float64 `json:"labor_compensation_gstd"`
-			ValidationMethod string  `json:"validation_method"`
-			IsEncrypted      bool    `json:"is_encrypted"`
-			ExecutorPubkey   string  `json:"executor_pubkey"`
+			ValidationMethod      string  `json:"validation_method"`
+			IsEncrypted           bool    `json:"is_encrypted"`
+			ExecutorPubkey        string  `json:"executor_pubkey"`
 		}
 
 		if err := c.ShouldBindBodyWith(&req, binding.JSON); err != nil {
@@ -562,9 +603,9 @@ func createTask(service *services.TaskService) gin.HandlerFunc {
 		}
 
 		descriptor := &models.TaskDescriptor{
-			TaskType: req.TaskType,
+			TaskType:  req.TaskType,
 			Operation: req.Operation,
-			Model: req.Model,
+			Model:     req.Model,
 			Input: models.InputData{
 				Source: req.InputSource,
 				Hash:   req.InputHash,
@@ -727,16 +768,16 @@ func deleteTask(db *sql.DB) gin.HandlerFunc {
 		// Check status - can only delete if pending or queued (not claimed yet)
 		if status != "pending" && status != "queued" {
 			c.JSON(400, gin.H{
-				"error": "cannot delete task",
+				"error":  "cannot delete task",
 				"reason": "task is already " + status + " - can only delete pending or queued tasks",
 			})
 			return
 		}
 
 		// Delete the task
-		result, err := db.ExecContext(c.Request.Context(), 
+		result, err := db.ExecContext(c.Request.Context(),
 			"DELETE FROM tasks WHERE task_id = $1 AND requester_address = $2", taskID, walletAddress)
-		
+
 		if err != nil {
 			log.Printf("Failed to delete task: %v", err)
 			c.JSON(500, gin.H{"error": "failed to delete task"})
@@ -793,7 +834,7 @@ func getStats(service *services.StatsService) gin.HandlerFunc {
 			if r := recover(); r != nil {
 				log.Printf("Panic in getStats handler: %v", r)
 				c.JSON(200, gin.H{
-					"processing_tasks":    0,
+					"processing_tasks":     0,
 					"queued_tasks":         0,
 					"completed_tasks":      0,
 					"total_rewards_gstd":   0.0,
@@ -807,7 +848,7 @@ func getStats(service *services.StatsService) gin.HandlerFunc {
 			log.Printf("Error getting global stats: %v", err)
 			// Return safe defaults instead of 500 error to prevent frontend crashes
 			c.JSON(200, gin.H{
-				"processing_tasks":    0,
+				"processing_tasks":     0,
 				"queued_tasks":         0,
 				"completed_tasks":      0,
 				"total_rewards_gstd":   0.0,
@@ -815,12 +856,12 @@ func getStats(service *services.StatsService) gin.HandlerFunc {
 			})
 			return
 		}
-		
+
 		// Ensure stats is not nil
 		if stats == nil {
 			log.Printf("Warning: GetGlobalStats returned nil stats")
 			c.JSON(200, gin.H{
-				"processing_tasks":    0,
+				"processing_tasks":     0,
 				"queued_tasks":         0,
 				"completed_tasks":      0,
 				"total_rewards_gstd":   0.0,
@@ -828,7 +869,7 @@ func getStats(service *services.StatsService) gin.HandlerFunc {
 			})
 			return
 		}
-		
+
 		c.JSON(200, stats)
 	}
 }
@@ -886,10 +927,10 @@ func getBuyGSTDLink(tonService *services.TONService, tonConfig config.TONConfig)
 		// Ston.fi swap: TON → GSTD. ta = amount in TON
 		stonFiURL := fmt.Sprintf("https://app.ston.fi/swap?ft=TON&tt=GSTD&ta=%s", amountTON)
 		resp := gin.H{
-			"buy_url":      stonFiURL,
-			"amount_ton":   amountTON,
-			"app_url":      appURL + "/dashboard?tab=market&action=buy",
-			"instruction":  "Open buy_url in TON wallet or browser to swap TON for GSTD",
+			"buy_url":     stonFiURL,
+			"amount_ton":  amountTON,
+			"app_url":     appURL + "/dashboard?tab=market&action=buy",
+			"instruction": "Open buy_url in TON wallet or browser to swap TON for GSTD",
 		}
 		if wallet != "" {
 			resp["wallet_address"] = wallet
@@ -929,11 +970,11 @@ func getPendingBalance(db *sql.DB) gin.HandlerFunc {
 		walletAddress, _ := c.Get("wallet_address")
 		var balance float64
 		var referralCode sql.NullString
-		
-		err := db.QueryRowContext(c.Request.Context(), 
-			"SELECT COALESCE(pending_balance_gstd, 0), referral_code FROM users WHERE wallet_address = $1", 
+
+		err := db.QueryRowContext(c.Request.Context(),
+			"SELECT COALESCE(pending_balance_gstd, 0), referral_code FROM users WHERE wallet_address = $1",
 			walletAddress).Scan(&balance, &referralCode)
-			
+
 		if err != nil {
 			// If user not found, return 0 (new user)
 			c.JSON(200, gin.H{"pending_balance": 0.0, "referral_code": ""})
@@ -942,9 +983,9 @@ func getPendingBalance(db *sql.DB) gin.HandlerFunc {
 
 		c.JSON(200, gin.H{
 			"pending_balance": balance,
-			"referral_code": referralCode.String,
-			"min_withdrawal": 10.0,
-			"message": "Earn 10 GSTD to claim to your TON wallet.",
+			"referral_code":   referralCode.String,
+			"min_withdrawal":  10.0,
+			"message":         "Earn 10 GSTD to claim to your TON wallet.",
 		})
 	}
 }
@@ -954,13 +995,13 @@ func getPendingBalance(db *sql.DB) gin.HandlerFunc {
 func claimPendingBalance(db *sql.DB, paymentService *services.PaymentService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		walletAddress, _ := c.Get("wallet_address")
-		
+
 		// 1. Check Balance
 		var balance float64
-		err := db.QueryRowContext(c.Request.Context(), 
-			"SELECT COALESCE(pending_balance_gstd, 0) FROM users WHERE wallet_address = $1 FOR UPDATE", 
+		err := db.QueryRowContext(c.Request.Context(),
+			"SELECT COALESCE(pending_balance_gstd, 0) FROM users WHERE wallet_address = $1 FOR UPDATE",
 			walletAddress).Scan(&balance)
-			
+
 		if err != nil || balance < 10.0 {
 			c.JSON(400, gin.H{"error": "Insufficient pending balance. Min 10.0 GSTD required."})
 			return
@@ -968,19 +1009,19 @@ func claimPendingBalance(db *sql.DB, paymentService *services.PaymentService) gi
 
 		// 2. Reduce Balance (Internal Transaction)
 		// We deduct first to prevent double-spending
-		_, err = db.ExecContext(c.Request.Context(), 
+		_, err = db.ExecContext(c.Request.Context(),
 			"UPDATE users SET pending_balance_gstd = pending_balance_gstd - $1 WHERE wallet_address = $2",
 			balance, walletAddress)
-			
+
 		if err != nil {
 			c.JSON(500, gin.H{"error": "Database update failed"})
 			return
 		}
-		
+
 		// 3. Initiate On-Chain Payout (Async via RewardEngine logic)
 		// For now, we just create a payout intent which the admin/cron will pick up
 		// In a real automated system, this would call paymentService.SendPayment immediately or queue it
-		
+
 		// Log the withdrawal request
 		_, err = db.ExecContext(c.Request.Context(), `
 			INSERT INTO withdrawals (wallet_address, amount_gstd, status, created_at)
@@ -988,9 +1029,9 @@ func claimPendingBalance(db *sql.DB, paymentService *services.PaymentService) gi
 		`, walletAddress, balance)
 
 		c.JSON(200, gin.H{
-			"status": "processing",
+			"status":         "processing",
 			"amount_claimed": balance,
-			"message": "Withdrawal initiated. Funds will arrive in your wallet shortly.",
+			"message":        "Withdrawal initiated. Funds will arrive in your wallet shortly.",
 		})
 	}
 }
@@ -1018,8 +1059,8 @@ func getEfficiency(tonService *services.TONService, tonConfig config.TONConfig) 
 		breakdown := efficiencyService.GetEfficiencyBreakdown(balance)
 
 		c.JSON(200, gin.H{
-			"gstd_balance":          breakdown.GSTDBalance,
-			"efficiency":            breakdown.Efficiency,
+			"gstd_balance":           breakdown.GSTDBalance,
+			"efficiency":             breakdown.Efficiency,
 			"cost_reduction_percent": breakdown.CostReduction,
 			"final_cost_multiplier":  breakdown.FinalCostMultiplier,
 			"priority_multiplier":    1.0 / breakdown.Efficiency,
@@ -1030,14 +1071,14 @@ func getEfficiency(tonService *services.TONService, tonConfig config.TONConfig) 
 func getHealth(db *sql.DB, tonService *services.TONService, tonConfig config.TONConfig, rClient *redis.Client) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		
+
 		// Check database connection
 		dbStatus := "connected"
 		if err := db.PingContext(ctx); err != nil {
 			dbStatus = "disconnected"
 			log.Printf("Health check: Database ping failed: %v", err)
 		}
-		
+
 		// Get contract balance (cached for 2 minutes to avoid rate limits)
 		var contractBalance float64 = 0
 		var contractStatus string = "unknown"
@@ -1045,7 +1086,7 @@ func getHealth(db *sql.DB, tonService *services.TONService, tonConfig config.TON
 			// Try to get cached balance from Redis
 			cacheKey := "health:contract_balance"
 			cacheHit := false
-			
+
 			if rClient != nil {
 				if val, err := rClient.Get(ctx, cacheKey).Float64(); err == nil {
 					cacheHit = true
@@ -1053,7 +1094,7 @@ func getHealth(db *sql.DB, tonService *services.TONService, tonConfig config.TON
 					contractBalance = val
 				}
 			}
-			
+
 			// If cache miss, fetch from TON API
 			if !cacheHit {
 				balanceNano, err := tonService.GetContractBalance(ctx, tonConfig.ContractAddress)
@@ -1075,27 +1116,27 @@ func getHealth(db *sql.DB, tonService *services.TONService, tonConfig config.TON
 		} else {
 			contractStatus = "not_configured"
 		}
-		
+
 		// Determine overall health
 		status := "healthy"
 		if dbStatus != "connected" {
 			status = "unhealthy"
 		}
-		
+
 		c.JSON(200, gin.H{
 			"status": status,
 			"database": gin.H{
 				"status": dbStatus,
 			},
 			"contract": gin.H{
-				"address": tonConfig.ContractAddress,
-				"status":  contractStatus,
+				"address":     tonConfig.ContractAddress,
+				"status":      contractStatus,
 				"balance_ton": contractBalance,
 			},
 			"sovereign_ai": gin.H{
-				"status": "active",
+				"status":         "active",
 				"ollama_enabled": true,
-				"models": []string{"qwen2.5-coder:7b", "llama3.1:8b"},
+				"models":         []string{"qwen2.5-coder:7b", "llama3.1:8b"},
 			},
 			"timestamp": time.Now().Unix(),
 		})
@@ -1108,25 +1149,25 @@ func getPoolStatus(pms *services.PoolMonitorService) gin.HandlerFunc {
 			c.JSON(503, gin.H{"error": "Pool monitor service not available"})
 			return
 		}
-		
+
 		status, err := pms.GetPoolStatusCached(c.Request.Context())
 		if err != nil {
 			// Log error but return a safe default status instead of 500
 			// This prevents API failures when balance queries fail
 			log.Printf("⚠️  Pool status error (returning safe default): %v", err)
 			c.JSON(200, gin.H{
-				"pool_address": "",
-				"gstd_balance": 0,
-				"xaut_balance": 0,
+				"pool_address":    "",
+				"gstd_balance":    0,
+				"xaut_balance":    0,
 				"total_value_usd": 0,
-				"last_updated": time.Now(),
-				"is_healthy": false,
-				"reserve_ratio": 0,
-				"error": "Failed to fetch pool status",
+				"last_updated":    time.Now(),
+				"is_healthy":      false,
+				"reserve_ratio":   0,
+				"error":           "Failed to fetch pool status",
 			})
 			return
 		}
-		
+
 		c.JSON(200, status)
 	}
 }
@@ -1138,7 +1179,7 @@ func getCommissionBalance(service *services.PaymentService) gin.HandlerFunc {
 			c.JSON(500, gin.H{"error": err.Error()})
 			return
 		}
-		
+
 		c.JSON(200, balance)
 	}
 }
@@ -1171,14 +1212,14 @@ func getCommissionWithdrawIntent(service *services.PaymentService, tonConfig con
 		// For now, commission is already in admin wallet (sent by escrow contract)
 		// This endpoint just returns the balance information
 		// In future, if commission accumulates elsewhere, we can add actual withdrawal logic
-		
+
 		c.JSON(200, gin.H{
-			"admin_wallet":      adminWallet,
-			"total_commission":  balance.TotalCommission,
-			"amount_nano":       amountNano,
-			"pending_tasks":     balance.PendingTasks,
-			"claimed_tasks":     balance.ClaimedTasks,
-			"message":           "Commission is automatically sent to admin wallet by escrow contract. Check your wallet balance.",
+			"admin_wallet":     adminWallet,
+			"total_commission": balance.TotalCommission,
+			"amount_nano":      amountNano,
+			"pending_tasks":    balance.PendingTasks,
+			"claimed_tasks":    balance.ClaimedTasks,
+			"message":          "Commission is automatically sent to admin wallet by escrow contract. Check your wallet balance.",
 		})
 	}
 }
@@ -1217,37 +1258,3 @@ func prepareLiquidityProvision(escrow *services.EscrowService) gin.HandlerFunc {
 	}
 }
 
-// getLoanQuote calculates loan terms
-// getLoanQuote calculates loan terms
-// @Summary Get loan quote
-// @Description Calculate loan terms (LTV, APR) for GSTD collateral
-// @Tags Finance
-// @Produce json
-// @Security SessionToken
-// @Param amount_gstd query number true "GSTD Amount"
-// @Success 200 {object} services.LoanOffer "Loan offer"
-// @Failure 400 {object} map[string]string "Invalid request"
-// @Router /lending/quote [get]
-func getLoanQuote(service *services.LendingService) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		amountStr := c.Query("amount_gstd")
-		if amountStr == "" {
-			c.JSON(400, gin.H{"error": "amount_gstd is required"})
-			return
-		}
-		
-		var amount float64
-		if _, err := fmt.Sscanf(amountStr, "%f", &amount); err != nil {
-			c.JSON(400, gin.H{"error": "invalid amount format"})
-			return
-		}
-
-		offer, err := service.CalculateLoanTerms(amount)
-		if err != nil {
-			c.JSON(500, gin.H{"error": err.Error()})
-			return
-		}
-
-		c.JSON(200, offer)
-	}
-}

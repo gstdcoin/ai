@@ -44,6 +44,7 @@ RUN useradd -u 1001 -r -g nodejs nextjs
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder /app/next-i18next.config.js ./
 
 USER nextjs
 

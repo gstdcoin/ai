@@ -17,7 +17,7 @@ import SystemStatusWidget from './SystemStatusWidget';
 import TreasuryWidget from './TreasuryWidget';
 import PoolStatusWidget from './PoolStatusWidget';
 import { toast } from '../../lib/toast';
-import { Plus, Users, Calculator, Activity, Globe, Server, Wallet, CheckCircle } from 'lucide-react';
+import { Users, Calculator, Activity, Globe, Server, Wallet, CheckCircle } from 'lucide-react';
 import { apiGet, apiPost } from '../../lib/apiClient';
 import Sidebar from '../layout/Sidebar';
 import { ComponentErrorBoundary } from '../common/ComponentErrorBoundary';
@@ -26,10 +26,12 @@ import { InstallPwaPrompt } from '../common/InstallPwaPrompt';
 import { ActivityFeed } from './ActivityFeed';
 import AgentMarketplace from '../agents/AgentMarketplace';
 import ReferralPanel from '../referrals/ReferralPanel';
-import BurnStatsWidget from './BurnStatsWidget';
 import WelcomeBonusWidget from './WelcomeBonusWidget';
 import GoldenReservePanel from './GoldenReservePanel';
 import EarningsPredictionWidget from './EarningsPredictionWidget';
+import SwarmMultiplierWidget from './SwarmMultiplierWidget';
+import GlobalTreasuryGrowthWidget from './GlobalTreasuryGrowthWidget';
+import ShareSuccessCard from './ShareSuccessCard';
 import FleetCommandPanel from './FleetCommandPanel';
 import { NeuralBridge } from './NeuralBridge';
 import { GenesisRegistryWidget } from './GenesisRegistryWidget';
@@ -39,6 +41,7 @@ import { GlobalNodeGrowthWidget } from './GlobalNodeGrowthWidget';
 import { GlobalLeaderboardWidget } from './GlobalLeaderboardWidget';
 import { isTelegramWebApp } from '../../lib/telegram';
 import { SovereignSwitch } from '../SovereignSwitch';
+import LeviathanLiveTicker from '../LeviathanLiveTicker';
 
 interface NetworkStats {
   active_workers: number;
@@ -50,15 +53,16 @@ interface NetworkStats {
 }
 
 // Lazy load modals for performance (must be at module level to avoid React hooks #310)
-const NewTaskModal = lazy(() => import('./NewTaskModal'));
 const ReferralModal = lazy(() => import('./ReferralModal'));
 
 interface DashboardProps {
   initialTab?: string;
   initialMode?: 'standard' | 'ultra';
+  sourceTelegram?: boolean;
+  modeMining?: boolean;
 }
 
-function Dashboard({ initialTab, initialMode }: DashboardProps = {}) {
+function Dashboard({ initialTab, initialMode, sourceTelegram, modeMining }: DashboardProps = {}) {
   const { t } = useTranslation('common');
   const router = useRouter();
   const { address, disconnect, tonBalance, gstdBalance, pendingEarnings } = useWalletStore();
@@ -68,7 +72,6 @@ function Dashboard({ initialTab, initialMode }: DashboardProps = {}) {
     if (initialTab && valid.includes(initialTab as Tab)) return initialTab as Tab;
     return 'chat';
   });
-  const [showNewTask, setShowNewTask] = useState(false);
   const [isMining, setIsMining] = useState(false);
   const [isIgniting, setIsIgniting] = useState(false);
   const [showReferralModal, setShowReferralModal] = useState(false);
@@ -152,6 +155,19 @@ function Dashboard({ initialTab, initialMode }: DashboardProps = {}) {
     }
   }, []);
 
+  // Wallet-as-Node via Telegram: activate wallet as node when coming from mining flow
+  // source=telegram feeds Leviathan for network learning (Omnipresence: Mining vertical)
+  useEffect(() => {
+    if (modeMining && address) {
+      const body = sourceTelegram ? { source: 'telegram' } : {};
+      apiPost('/nodes/activate-wallet', body).then((res: any) => {
+        if (res?.activated) {
+          toast.success(t('wallet_as_node_active') || 'Wallet-as-Node active!', t('wallet_as_node_msg') || 'You can claim tasks and earn GSTD.');
+        }
+      }).catch(() => { /* silent */ });
+    }
+  }, [modeMining, address, sourceTelegram, t]);
+
   const [networkStats, setNetworkStats] = useState<NetworkStats | null>(null);
   const [referralMultiplier, setReferralMultiplier] = useState(1.0);
 
@@ -203,7 +219,7 @@ function Dashboard({ initialTab, initialMode }: DashboardProps = {}) {
   const handleToggleMining = useCallback(() => {
     if (isMining) {
       workerService.pause();
-      toast.info('Mining Paused', 'Worker stopped processing tasks.');
+      toast.info(t('mining_paused') || 'Mining Paused', t('mining_paused_msg') || 'Worker stopped processing tasks.');
     } else {
       workerService.ignite();
     }
@@ -239,7 +255,7 @@ function Dashboard({ initialTab, initialMode }: DashboardProps = {}) {
 
   const handleClaimRewards = useCallback(async () => {
     if (!address) {
-      toast.error('Connect Wallet', 'Please connect your wallet to claim rewards.');
+      toast.error(t('connect_wallet') || 'Connect Wallet', t('claim_rewards_connect') || 'Please connect your wallet to claim rewards.');
       return;
     }
 
@@ -256,7 +272,7 @@ function Dashboard({ initialTab, initialMode }: DashboardProps = {}) {
       if (targetId) {
         try {
           await apiPost(`/marketplace/tasks/${targetId}/payout`, {});
-          toast.success('Rewards Claimed!', `Sent for task ${targetId.slice(0, 8)}`);
+          toast.success(t('rewards_claimed') || 'Rewards Claimed!', `${t('rewards_sent_task') || 'Sent for task'} ${targetId.slice(0, 8)}`);
           workerService.targetTaskId = null;
           setIsClaimingRewards(false);
           return;
@@ -265,38 +281,38 @@ function Dashboard({ initialTab, initialMode }: DashboardProps = {}) {
         }
       }
 
-      toast.info('Searching rewards...', 'Checking for claimable tasks');
+      toast.info(t('searching_rewards') || 'Searching rewards...', t('checking_claimable') || 'Checking for claimable tasks');
       setActiveTab('tasks');
     } catch (err: any) {
       console.error('Claim failed:', err);
-      toast.error('Claim Failed', err.message || 'No rewards ready to claim yet.');
+      toast.error(t('claim_failed') || 'Claim Failed', err.message || (t('no_rewards_ready') || 'No rewards ready to claim yet.'));
     } finally {
       setIsClaimingRewards(false);
     }
-  }, [address]);
+  }, [address, t]);
 
   const handleTaskCreated = useCallback(() => triggerHaptic('medium'), [triggerHaptic]);
   const handleCompensationClaimed = useCallback(() => triggerHaptic('medium'), [triggerHaptic]);
 
   return (
     <div className="flex flex-col lg:flex-row h-screen bg-[#030014] overflow-hidden">
+      {/* Leviathan Live Stream — fixed at top (Guardian Mode) */}
+      <LeviathanLiveTicker />
       {/* Desktop Sidebar */}
       <div className="hidden lg:block">
         <ErrorBoundary>
           <Sidebar
             activeTab={activeTab}
             onTabChange={handleTabChange}
-            onCreateTask={() => setShowNewTask(true)}
           />
         </ErrorBoundary>
       </div>
 
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
+      <div className="flex-1 flex flex-col overflow-hidden pt-10">
+        {/* Header — pt-10 for fixed Leviathan ticker */}
         {!isTelegramWebApp() && (
           <ErrorBoundary>
             <Header
-              onCreateTask={() => setShowNewTask(true)}
               onLogout={handleLogout}
             />
           </ErrorBoundary>
@@ -318,6 +334,11 @@ function Dashboard({ initialTab, initialMode }: DashboardProps = {}) {
                 {/* HOME / OVERVIEW TAB */}
                 {activeTab === 'home' && (
                   <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                    {/* Global Treasury Growth — Live Stats */}
+                    <ComponentErrorBoundary name="GlobalTreasuryGrowthWidget">
+                      <GlobalTreasuryGrowthWidget />
+                    </ComponentErrorBoundary>
+
                     {/* IDENTITY & MODE SWITCH */}
                     <div className="flex flex-col items-center justify-center p-2 rounded-3xl bg-white/[0.02] border border-white/5 backdrop-blur-xl">
                       <ComponentErrorBoundary name="SovereignSwitch">
@@ -350,13 +371,13 @@ function Dashboard({ initialTab, initialMode }: DashboardProps = {}) {
                           </div>
                           <div className="text-left">
                             <span className="block text-2xl uppercase tracking-tighter font-black">
-                              {isIgniting ? 'Igniting...' : isMining ? 'Online' : 'Ignite'}
+                              {isIgniting ? t('igniting') : isMining ? t('mining_online') : t('ignite')}
                             </span>
-                            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest block mt-1">Platform Node</span>
+                            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest block mt-1">{t('platform_node')}</span>
                           </div>
                         </div>
                         <div className={`flex items-center gap-2 px-4 py-1.5 rounded-full border text-[10px] font-black tracking-widest uppercase ${isMining ? 'bg-red-500/20 border-red-500/30' : 'bg-cyan-500/20 border-cyan-500/30'}`}>
-                          {isIgniting ? '...' : isMining ? 'Stop' : 'Start'}
+                          {isIgniting ? '...' : isMining ? t('mining_stop') : t('mining_start')}
                         </div>
                       </button>
 
@@ -364,7 +385,7 @@ function Dashboard({ initialTab, initialMode }: DashboardProps = {}) {
                       <div className="glass-card p-8 bg-gradient-to-br from-emerald-500/[0.05] to-transparent border-emerald-500/20 flex flex-col justify-between">
                         <div className="flex justify-between items-start mb-6">
                           <div>
-                            <h3 className="text-[10px] font-black text-emerald-500/60 uppercase tracking-[0.2em] mb-1">Unclaimed</h3>
+                            <h3 className="text-[10px] font-black text-emerald-500/60 uppercase tracking-[0.2em] mb-1">{t('unclaimed')}</h3>
                             <div className="text-4xl font-black text-white tabular-nums tracking-tighter">
                               {pendingEarnings?.toFixed(2) || '0.00'}
                               <span className="text-[10px] text-gray-600 ml-1.5 font-bold">GSTD</span>
@@ -379,7 +400,7 @@ function Dashboard({ initialTab, initialMode }: DashboardProps = {}) {
                           disabled={isClaimingRewards}
                           className="w-full py-3.5 rounded-2xl bg-emerald-500 text-black text-xs font-black uppercase tracking-widest transition-all hover:bg-emerald-400 active:scale-95 disabled:opacity-50"
                         >
-                          {isClaimingRewards ? '...' : 'Settle Rewards'}
+                          {isClaimingRewards ? '...' : t('settle_rewards')}
                         </button>
                       </div>
                     </div>
@@ -397,7 +418,7 @@ function Dashboard({ initialTab, initialMode }: DashboardProps = {}) {
                               <Wallet size={20} />
                             </div>
                             <div>
-                              <span className="text-[10px] text-gray-500 font-black uppercase tracking-widest block mb-0.5">Wallet</span>
+                              <span className="text-[10px] text-gray-500 font-black uppercase tracking-widest block mb-0.5">{t('wallet_label')}</span>
                               <span className="text-xl font-black text-white tabular-nums">{gstdBalance?.toFixed(2) || '0.00'} GSTD</span>
                             </div>
                           </div>
@@ -425,6 +446,14 @@ function Dashboard({ initialTab, initialMode }: DashboardProps = {}) {
                         <ComponentErrorBoundary name="EarningsPredictionWidget">
                           <EarningsPredictionWidget />
                         </ComponentErrorBoundary>
+
+                        <ComponentErrorBoundary name="SwarmMultiplierWidget">
+                          <SwarmMultiplierWidget />
+                        </ComponentErrorBoundary>
+
+                        <ComponentErrorBoundary name="ShareSuccessCard">
+                          <ShareSuccessCard />
+                        </ComponentErrorBoundary>
                       </div>
                     </div>
                   </div>
@@ -439,38 +468,39 @@ function Dashboard({ initialTab, initialMode }: DashboardProps = {}) {
                   )}
 
                   {activeTab === 'stats' && (
-                    <div className="space-y-8">
-                      {/* Golden Reserve - Hero Widget */}
+                    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                      {/* Golden Reserve - Hero Widget (Comprehensive) */}
                       <ComponentErrorBoundary name="GoldenReservePanel">
                         <GoldenReservePanel />
                       </ComponentErrorBoundary>
-                      {/* Brain Query: Paid knowledge → Gold Pool */}
-                      <ComponentErrorBoundary name="BrainQueryPanel">
-                        <BrainQueryPanel />
-                      </ComponentErrorBoundary>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <ComponentErrorBoundary name="TreasuryWidget">
-                          <TreasuryWidget />
-                        </ComponentErrorBoundary>
-                        <ComponentErrorBoundary name="PoolStatusWidget">
-                          <PoolStatusWidget />
-                        </ComponentErrorBoundary>
-                        <ComponentErrorBoundary name="BurnStatsWidget">
-                          <BurnStatsWidget />
-                        </ComponentErrorBoundary>
+
+                      {/* Network Scale & Growth */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <ComponentErrorBoundary name="GlobalNodeGrowthWidget">
                           <GlobalNodeGrowthWidget />
                         </ComponentErrorBoundary>
+                        <ComponentErrorBoundary name="SystemStatusWidget">
+                          <SystemStatusWidget onStatsUpdate={handleStatsUpdate} />
+                        </ComponentErrorBoundary>
                       </div>
+
+                      {/* Leaderboard */}
                       <ComponentErrorBoundary name="GlobalLeaderboardWidget">
                         <GlobalLeaderboardWidget />
                       </ComponentErrorBoundary>
-                      <ComponentErrorBoundary name="SystemStatusWidget">
-                        <SystemStatusWidget onStatsUpdate={handleStatsUpdate} />
-                      </ComponentErrorBoundary>
+
+                      {/* Detailed Stats Table */}
                       <ComponentErrorBoundary name="StatsPanel">
                         <StatsPanel />
                       </ComponentErrorBoundary>
+
+                      {/* Hive Memory Access (Paid Feature) */}
+                      <div className="mt-8 pt-8 border-t border-white/5">
+                        <h3 className="text-lg font-bold text-amber-400 mb-4 px-2">{t('hive_intelligence')}</h3>
+                        <ComponentErrorBoundary name="BrainQueryPanel">
+                          <BrainQueryPanel />
+                        </ComponentErrorBoundary>
+                      </div>
                     </div>
                   )}
 
@@ -511,7 +541,7 @@ function Dashboard({ initialTab, initialMode }: DashboardProps = {}) {
 
                   {activeTab === 'more' && (
                     <div className="space-y-4 animate-in fade-in duration-300">
-                      <h2 className="text-lg font-bold text-white">{t('help') || 'More'}</h2>
+                      <h2 className="text-lg font-bold text-white">{t('more')}</h2>
                       <div className="grid grid-cols-2 gap-3">
                         {[
                           { id: 'stats' as Tab, label: t('stats') || 'Stats', icon: '📊' },
@@ -556,30 +586,7 @@ function Dashboard({ initialTab, initialMode }: DashboardProps = {}) {
         <BottomNav activeTab={activeTab === 'stats' || activeTab === 'agents' || activeTab === 'marketplace' || activeTab === 'referrals' || activeTab === 'help' ? 'more' : activeTab} onTabChange={handleTabChange} />
       </div>
 
-      {/* Floating Action Button */}
-      <button
-        onClick={() => setShowNewTask(true)}
-        className="fixed right-4 bottom-20 lg:bottom-8 z-40 w-12 h-12 lg:w-14 lg:h-14 rounded-full bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-600/30 flex items-center justify-center transition-all active:scale-90"
-        aria-label={t('create_task')}
-      >
-        <Plus size={20} />
-      </button>
-
       {/* Lazy Loaded Modals */}
-      {showNewTask && (
-        <Suspense fallback={<div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
-          <div className="glass-card text-white">{t('loading') || 'Loading...'}</div>
-        </div>}>
-          <NewTaskModal
-            onClose={() => setShowNewTask(false)}
-            onTaskCreated={() => {
-              triggerHaptic('medium');
-              setShowNewTask(false);
-            }}
-          />
-        </Suspense>
-      )}
-
       {showReferralModal && (
         <Suspense fallback={null}>
           <ReferralModal onClose={() => setShowReferralModal(false)} />

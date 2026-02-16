@@ -11,16 +11,38 @@ export default function DashboardPage() {
     const [isChecking, setIsChecking] = useState(true);
 
     useEffect(() => {
-        // Allow time for wallet restoration
-        const timer = setTimeout(() => {
-            setIsChecking(false);
-        }, 1000);
+        // Wait for localStorage hydration before checking connection
+        // This prevents race conditions where wallet appears disconnected
+        // even though it was previously connected
+        const checkWallet = () => {
+            const stored = localStorage.getItem('gstd-wallet-storage');
+            if (stored) {
+                try {
+                    const parsed = JSON.parse(stored);
+                    // If there's stored state, give it time to rehydrate
+                    setTimeout(() => setIsChecking(false), 500);
+                } catch {
+                    setIsChecking(false);
+                }
+            } else {
+                setIsChecking(false);
+            }
+        };
+        
+        // Small delay to allow initial render
+        const timer = setTimeout(checkWallet, 100);
         return () => clearTimeout(timer);
     }, []);
 
     useEffect(() => {
         if (!isChecking && !isConnected) {
-            router.push('/');
+            const source = router.query.source as string;
+            const mode = router.query.mode as string;
+            const params = new URLSearchParams();
+            if (source) params.set('source', source);
+            if (mode) params.set('mode', mode);
+            const q = params.toString() ? '?' + params.toString() : '';
+            router.push('/' + q);
         }
     }, [isChecking, isConnected, router]);
 
@@ -44,8 +66,10 @@ export default function DashboardPage() {
 
     return (
       <Dashboard
-        initialTab={(router.query.tab as string) || undefined}
+        initialTab={(router.query.tab as string) || (router.query.mode === 'mining' || router.query.mining === '1' ? 'home' : undefined)}
         initialMode={(router.query.mode as 'standard' | 'ultra') || undefined}
+        sourceTelegram={router.query.source === 'telegram'}
+        modeMining={router.query.mode === 'mining' || router.query.mining === '1'}
       />
     );
 }

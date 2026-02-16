@@ -35,7 +35,7 @@ export default function Docs({ content, isCalculator }: DocsProps) {
             <Head>
                 <title>GSTD Platform - Documentation</title>
             </Head>
-            <Header onCreateTask={() => { }} onLogout={() => router.push('/')} isPublic={true} />
+            <Header onLogout={() => router.push('/')} isPublic={true} />
 
             <div className="max-w-4xl mx-auto px-6 pt-12">
                 <div className="flex gap-2 p-1 bg-white/5 rounded-xl border border-white/10 w-fit mb-8">

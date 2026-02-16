@@ -9,27 +9,25 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
 )
 
 // TelegramService provides lightweight integration with a Telegram bot
-// for admin notifications. If BOT_TOKEN or CHAT_ID are not configured,
-// it degrades gracefully to no‑op logging.
+// for admin notifications and user interactions.
 type TelegramService struct {
-	botToken    string
-	chatID      string
-	db          *sql.DB
-	client      *http.Client
-	enabled     bool
-	apiBaseURL  string
+	botToken     string
+	chatID       string
+	db           *sql.DB
+	client       *http.Client
+	enabled      bool
+	apiBaseURL   string
 	starsBuyback *StarsBuybackService
 }
 
 // NewTelegramService initializes the Telegram service.
-// If botToken or chatID are empty, the service is disabled but
-// the type is still valid (methods become no‑ops).
 func NewTelegramService(botToken, chatID string, db *sql.DB) *TelegramService {
 	enabled := botToken != "" && chatID != ""
 	if !enabled {
@@ -51,18 +49,16 @@ func NewTelegramService(botToken, chatID string, db *sql.DB) *TelegramService {
 	}
 }
 
-// SendMessage sends an HTML‑formatted message to the configured chat.
+// SendMessage sends an HTML‑formatted message to the configured admin chat.
 func (s *TelegramService) SendMessage(ctx context.Context, message string) error {
 	if !s.enabled {
-		// Silent no‑op to avoid breaking flows when Telegram is not configured.
 		log.Printf("TelegramService (disabled): %s", message)
 		return nil
 	}
-
 	return s.SendMessageToChat(ctx, s.chatID, message)
 }
 
-// SendMessageToChat sends a message to a specific chat (for webhook replies).
+// SendMessageToChat sends a message to a specific chat.
 func (s *TelegramService) SendMessageToChat(ctx context.Context, chatID string, message string) error {
 	return s.SendMessageToChatWithMarkup(ctx, chatID, message, "")
 }
@@ -100,13 +96,196 @@ func (s *TelegramService) SendMessageToChatWithMarkup(ctx context.Context, chatI
 	return nil
 }
 
-// NotifyAdmin sends a message to the admin chat (CHAT_ID). Safe no-op if not configured.
+// NotifyAdmin sends a message to the admin chat.
 func (s *TelegramService) NotifyAdmin(ctx context.Context, message string) error {
 	return s.SendMessage(ctx, message)
 }
 
+// callBotAPI relays /connect, /take, /complete, balance, nodes to internal bot API (for webhook mode).
+// Returns (response, nil) on success, ("", err) on error, ("", nil) when not a bot command.
+func (s *TelegramService) callBotAPI(ctx context.Context, text, senderIDStr, username, firstName, chatID string) (string, error) {
+	base := strings.TrimSuffix(s.apiBaseURL, "/")
+	token := s.botToken
+	if token == "" {
+		return "", nil
+	}
+	telegramID, _ := strconv.ParseInt(senderIDStr, 10, 64)
+	if telegramID == 0 {
+		return "", nil
+	}
+
+	// /connect <wallet>
+	if strings.HasPrefix(text, "/connect ") {
+		wallet := strings.TrimSpace(strings.TrimPrefix(text, "/connect "))
+		if len(wallet) < 40 {
+			return "❌ Invalid wallet address (too short)", nil
+		}
+		body, _ := json.Marshal(map[string]interface{}{
+			"telegram_id":    telegramID,
+			"wallet_address": wallet,
+			"username":       username,
+			"first_name":     firstName,
+		})
+		req, _ := http.NewRequestWithContext(ctx, "POST", base+"/api/v1/telegram/bot/link", strings.NewReader(string(body)))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("X-Bot-Token", token)
+		resp, err := s.client.Do(req)
+		if err != nil {
+			return "", err
+		}
+		defer resp.Body.Close()
+		var r struct {
+			Error   string `json:"error"`
+			Success bool   `json:"success"`
+		}
+		json.NewDecoder(resp.Body).Decode(&r)
+		if resp.StatusCode != 200 || r.Error != "" {
+			return "", fmt.Errorf("%s", r.Error)
+		}
+		return "✅ Wallet linked! Wallet-as-Node active — you can claim tasks.", nil
+	}
+
+	// /take <task_id>
+	if strings.HasPrefix(text, "/take ") {
+		taskID := strings.TrimSpace(strings.TrimPrefix(text, "/take "))
+		if taskID == "" {
+			return "Usage: /take <task_id>", nil
+		}
+		body, _ := json.Marshal(map[string]interface{}{
+			"telegram_id": telegramID,
+			"task_id":     taskID,
+			"device_id":   "tg-" + senderIDStr,
+		})
+		req, _ := http.NewRequestWithContext(ctx, "POST", base+"/api/v1/telegram/bot/claim", strings.NewReader(string(body)))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("X-Bot-Token", token)
+		resp, err := s.client.Do(req)
+		if err != nil {
+			return "", err
+		}
+		defer resp.Body.Close()
+		var r struct {
+			Error   string `json:"error"`
+			Success bool   `json:"success"`
+		}
+		json.NewDecoder(resp.Body).Decode(&r)
+		if resp.StatusCode != 200 || r.Error != "" {
+			return "", fmt.Errorf("%s", r.Error)
+		}
+		return fmt.Sprintf("✅ Task `%s` claimed! Complete with: /complete %s", taskID, taskID), nil
+	}
+
+	// /complete <task_id> [yes|no] [confidence] [reasoning]
+	if strings.HasPrefix(text, "/complete ") {
+		args := strings.Fields(strings.TrimPrefix(text, "/complete "))
+		if len(args) == 0 {
+			return "Usage: /complete <task_id> [yes|no] [confidence] [reasoning]", nil
+		}
+		taskID := args[0]
+		var resultData []byte
+		if len(args) >= 2 {
+			pred := strings.ToLower(strings.TrimSpace(args[1]))
+			conf := 0.8
+			reason := ""
+			if len(args) >= 3 {
+				fmt.Sscanf(args[2], "%f", &conf)
+			}
+			if len(args) >= 4 {
+				reason = strings.Join(args[3:], " ")
+			}
+			if pred != "yes" && pred != "no" {
+				return "❌ Prediction must be 'yes' or 'no'", nil
+			}
+			resultData, _ = json.Marshal(map[string]interface{}{
+				"prediction": pred,
+				"confidence": conf,
+				"reasoning":  reason,
+			})
+		} else {
+			resultData = []byte(`{"completed":true}`)
+		}
+		body, _ := json.Marshal(map[string]interface{}{
+			"telegram_id":       telegramID,
+			"task_id":           taskID,
+			"result_data":       json.RawMessage(resultData),
+			"execution_time_ms": 5000,
+			"quality_score":     0.9,
+		})
+		req, _ := http.NewRequestWithContext(ctx, "POST", base+"/api/v1/telegram/bot/complete", strings.NewReader(string(body)))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("X-Bot-Token", token)
+		resp, err := s.client.Do(req)
+		if err != nil {
+			return "", err
+		}
+		defer resp.Body.Close()
+		var r struct {
+			Error      string  `json:"error"`
+			Success    bool    `json:"success"`
+			RewardGSTD float64 `json:"reward_gstd"`
+		}
+		json.NewDecoder(resp.Body).Decode(&r)
+		if resp.StatusCode != 200 || r.Error != "" {
+			return "", fmt.Errorf("%s", r.Error)
+		}
+		return fmt.Sprintf("✅ Task completed! Reward: %.4f GSTD", r.RewardGSTD), nil
+	}
+
+	// 💎 My Balance or /balance (user)
+	if text == "💎 My Balance" || (text == "/balance" && s.chatID != "" && senderIDStr != s.chatID) {
+		req, _ := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/api/v1/telegram/bot/balance?telegram_id=%d", base, telegramID), nil)
+		req.Header.Set("X-Bot-Token", token)
+		resp, err := s.client.Do(req)
+		if err != nil {
+			return "", err
+		}
+		defer resp.Body.Close()
+		var r struct {
+			Linked      bool    `json:"linked"`
+			BalanceGSTD float64 `json:"balance_gstd"`
+			PendingGSTD float64 `json:"pending_gstd"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
+			return "", err
+		}
+		if !r.Linked {
+			return "💎 **My Balance**\n\n⚠️ Wallet not linked.\n\nUse /connect <wallet_address> to link your TON wallet.", nil
+		}
+		usd := (r.BalanceGSTD + r.PendingGSTD) * 0.015
+		return fmt.Sprintf("💎 **My Balance**\n\n**%.4f GSTD** (available)\n**%.4f GSTD** (pending)\n\n≈ $%.2f USD", r.BalanceGSTD, r.PendingGSTD, usd), nil
+	}
+
+	// 🚀 My Nodes
+	if text == "🚀 My Nodes" {
+		req, _ := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/api/v1/telegram/bot/nodes?telegram_id=%d", base, telegramID), nil)
+		req.Header.Set("X-Bot-Token", token)
+		resp, err := s.client.Do(req)
+		if err != nil {
+			return "", err
+		}
+		defer resp.Body.Close()
+		var r struct {
+			Nodes []struct {
+				DeviceID string `json:"device_id"`
+				Status   string `json:"status"`
+			} `json:"nodes"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
+			return "", err
+		}
+		var sb strings.Builder
+		sb.WriteString("🚀 **My Nodes**\n\n")
+		for _, n := range r.Nodes {
+			sb.WriteString(fmt.Sprintf("• %s — %s\n", n.DeviceID, n.Status))
+		}
+		sb.WriteString("\n_Device ID = tg-{your_telegram_id} when mining from bot_")
+		return sb.String(), nil
+	}
+
+	return "", nil
+}
+
 // NotifyTaskCompleted sends a concise summary for a completed task.
-// Used by ResultService; safe no‑op if TelegramService is disabled.
 func (s *TelegramService) NotifyTaskCompleted(
 	ctx context.Context,
 	taskID string,
@@ -124,17 +303,35 @@ func (s *TelegramService) NotifyTaskCompleted(
 	return s.SendMessage(ctx, msg)
 }
 
-// IsEnabled returns true if Telegram is configured (bot token and chat ID set).
+// NotifyNewTask sends a brief notification about a newly created task.
+func (s *TelegramService) NotifyNewTask(
+	ctx context.Context,
+	taskID string,
+	taskType string,
+	requesterWallet string,
+	rewardGSTD float64,
+) error {
+	msg := fmt.Sprintf(
+		"🆕 <b>New Task</b>\n\nID: <code>%s</code>\nType: <b>%s</b>\nRequester: <code>%s</code>\nReward: <b>%.4f GSTD</b>",
+		taskID,
+		taskType,
+		requesterWallet,
+		rewardGSTD,
+	)
+	return s.SendMessage(ctx, msg)
+}
+
+// IsEnabled returns true if Telegram is configured.
 func (s *TelegramService) IsEnabled() bool {
 	return s.enabled
 }
 
-// SetStarsBuyback wires the Stars-to-GSTD buyback service for Telegram Stars payments.
+// SetStarsBuyback wires the Stars-to-GSTD buyback service.
 func (s *TelegramService) SetStarsBuyback(sb *StarsBuybackService) {
 	s.starsBuyback = sb
 }
 
-// Telegram Update structure for webhook parsing
+// Telegram Update structure
 type telegramUpdate struct {
 	UpdateID int64 `json:"update_id"`
 	Message  *struct {
@@ -149,7 +346,7 @@ type telegramUpdate struct {
 			ID   int64  `json:"id"`
 			Type string `json:"type"`
 		} `json:"chat"`
-		Text             string `json:"text"`
+		Text              string `json:"text"`
 		SuccessfulPayment *struct {
 			Currency                string `json:"currency"`
 			TotalAmount             int    `json:"total_amount"`
@@ -174,7 +371,6 @@ type telegramUpdate struct {
 	} `json:"callback_query"`
 }
 
-// botLang returns "ru" if language_code starts with "ru", else "en"
 func botLang(langCode string) string {
 	if strings.HasPrefix(strings.ToLower(langCode), "ru") {
 		return "ru"
@@ -182,49 +378,61 @@ func botLang(langCode string) string {
 	return "en"
 }
 
-// Bot messages EN/RU — Ascension: Sovereign AI, confident tone
+// --- Messages Configuration ---
+
 var msgStart = map[string]string{
 	"en": `👑 <b>GSTD — Sovereign Intelligence</b>
 
-Your sovereign AI assistant.
-• <b>🤖 AI Standard</b> — fast responses, free tier
-• <b>⚡ AI Ultra</b> — 70B models, Hive Memory. 1 GSTD/session
-• <b>⛏ Miner</b> — earn GSTD by contributing compute
-• <b>📡 Node</b> — join the swarm
+The world's first Gold-Backed DePIN Network.
+Connect your wallet to access sovereign AI or earn by providing compute.
 
-<b>GSTD is the only fuel.</b> Buy via TON wallet → Ston.fi.
-
-<b>Commands:</b>
-/start • /help • /network — Network Load
-/status • /balance • /admin — (admin)`,
+<b>Choose an action:</b>`,
 	"ru": `👑 <b>GSTD — Суверенный интеллект</b>
 
-Ваш суверенный AI-ассистент.
-• <b>🤖 AI Standard</b> — быстрые ответы, бесплатный уровень
-• <b>⚡ AI Ultra</b> — модели 70B, Hive Memory. 1 GSTD/сессия
-• <b>⛏ Майнер</b> — зарабатывайте GSTD, отдавая мощность
-• <b>📡 Нода</b> — присоединяйтесь к рою
+Первая в мире DePIN сеть, обеспеченная золотом.
+Подключите кошелёк для доступа к суверенному ИИ или заработка на вычислительной мощности.
 
-<b>GSTD — единственное топливо.</b> Покупка через TON кошелёк → Ston.fi.
+<b>Выберите действие:</b>`,
+}
 
-<b>Команды:</b>
-/start • /help • /network — загрузка сети
-/status • /balance • /admin — (админ)`,
+var msgWalletAsNode = map[string]string{
+	"en": `⛏ <b>Wallet-as-Node — Start Mining</b>
+
+Your TON wallet becomes a compute node. No app install needed.
+
+<b>1.</b> Tap <b>Start Mining</b> below
+<b>2.</b> Connect your TON wallet in the Web App
+<b>3.</b> Claim tasks and earn GSTD
+
+<i>Lightweight tasks run when charging + WiFi. Your phone, your earnings.</i>`,
+	"ru": `⛏ <b>Wallet-as-Node — Начать майнинг</b>
+
+Ваш TON-кошелёк становится вычислительной нодой. Установка не нужна.
+
+<b>1.</b> Нажмите <b>Начать майнинг</b> ниже
+<b>2.</b> Подключите TON-кошелёк в Web App
+<b>3.</b> Берите задачи и зарабатывайте GSTD
+
+<i>Лёгкие задачи — при зарядке и WiFi. Ваш телефон, ваш доход.</i>`,
 }
 
 var msgHelp = map[string]string{
-	"en": `📖 <b>GSTD — Sovereign Intelligence</b>
+	"en": `📖 <b>User Guide</b>
 
-<b>AI Standard</b> — Quick answers. No censorship.
-<b>AI Ultra</b> — Maximum intelligence, deep analysis, Hive Memory. 1 GSTD.
+• <b>Open App</b>: Main dashboard. Connect wallet here.
+• <b>Mining</b>: Earn GSTD by running AI inferences.
+• <b>AI Chat</b>: Uncensored, private AI models.
+• <b>Stats</b>: Real-time network capacity and Gold Reserve proof.
 
-<b>Top up GSTD</b> — Buy via TON wallet on Ston.fi. One tap.`,
-	"ru": `📖 <b>GSTD — Суверенный интеллект</b>
+<b>GSTD Token</b> is the fuel. Backed by XAUt (Tether Gold).`,
+	"ru": `📖 <b>Руководство пользователя</b>
 
-<b>AI Standard</b> — Быстрые ответы. Без цензуры.
-<b>AI Ultra</b> — Максимальный интеллект, глубокий анализ, Hive Memory. 1 GSTD.
+• <b>Открыть</b>: Главный дашборд. Подключите кошелёк здесь.
+• <b>Майнинг</b>: Зарабатывайте GSTD на вычислениях ИИ.
+• <b>AI Чат</b>: Приватный ИИ без цензуры.
+• <b>Статистика</b>: Мощность сети и доказательство золотого резерва.
 
-<b>Пополнить GSTD</b> — Покупка через TON кошелёк на Ston.fi. Один тап.`,
+<b>Токен GSTD</b> — это топливо. Обеспечен золотом XAUt.`,
 }
 
 var msgAdminOnly = map[string]string{
@@ -233,47 +441,8 @@ var msgAdminOnly = map[string]string{
 }
 
 var msgAdminPanel = map[string]string{
-	"en": `🛠 <b>Admin Panel</b>
-
-Choose an action:`,
-	"ru": `🛠 <b>Панель администратора</b>
-
-Выберите действие:`,
-}
-
-var btnOpenApp = map[string]string{
-	"en": "📱 Open App",
-	"ru": "📱 Открыть приложение",
-}
-
-var btnAIChat = map[string]string{
-	"en": "🤖 AI Chat",
-	"ru": "🤖 AI Чат",
-}
-
-var btnMining = map[string]string{
-	"en": "⛏ Mining",
-	"ru": "⛏ Майнинг",
-}
-
-var btnAgentNode = map[string]string{
-	"en": "📡 Agent Node",
-	"ru": "📡 Agent Node",
-}
-
-var btnBuyGSTD = map[string]string{
-	"en": "💰 Top up GSTD",
-	"ru": "💰 Пополнить GSTD",
-}
-
-var btnAIStandard = map[string]string{
-	"en": "🤖 AI Standard",
-	"ru": "🤖 AI Standard",
-}
-
-var btnAIUltra = map[string]string{
-	"en": "⚡ AI Ultra (1 GSTD)",
-	"ru": "⚡ AI Ultra (1 GSTD)",
+	"en": `🛠 <b>Admin Panel</b>`,
+	"ru": `🛠 <b>Панель администратора</b>`,
 }
 
 var msgProcessing = map[string]string{
@@ -322,7 +491,6 @@ var msgTotal = map[string]string{
 }
 
 // ProcessWebhook handles incoming Telegram webhook payloads.
-// Commands: /start (public), /status, /balance, /admin (admin only).
 func (s *TelegramService) ProcessWebhook(ctx context.Context, body []byte) error {
 	if s.botToken == "" {
 		return nil
@@ -341,7 +509,7 @@ func (s *TelegramService) ProcessWebhook(ctx context.Context, body []byte) error
 		return nil
 	}
 
-	// Stars-to-GSTD Buyback: 20% of Telegram Stars -> Ston.fi -> Gold Reserve or burn
+	// Stars-to-GSTD Buyback
 	if upd.Message.SuccessfulPayment != nil && s.starsBuyback != nil {
 		sp := upd.Message.SuccessfulPayment
 		if sp.Currency == "XTR" && sp.TotalAmount > 0 {
@@ -363,188 +531,117 @@ func (s *TelegramService) ProcessWebhook(ctx context.Context, body []byte) error
 		webAppURL = "https://app.gstdtoken.com"
 	}
 
-	// /start — Ascension: AI Standard | AI Ultra | Miner | Node | Top up GSTD
-	if text == "/start" {
+	// /start
+	if text == "/start" || strings.HasPrefix(text, "/start ") {
+		parts := strings.Fields(text)
+		payload := ""
+		if len(parts) > 1 {
+			payload = strings.ToLower(parts[1])
+		}
+
+		// Wallet-as-Node Flow
+		if payload == "mining" || payload == "node" {
+			msg := msgWalletAsNode[lang]
+			if msg == "" {
+				msg = msgWalletAsNode["en"]
+			}
+
+			btnMine := "⛏ Start Mining"
+			btnShare := "📤 Share"
+			if lang == "ru" {
+				btnMine = "⛏ Начать майнинг"
+				btnShare = "📤 Поделиться"
+			}
+
+			miningWebAppURL := webAppURL + "/?source=telegram&mode=mining"
+			botUsername := os.Getenv("TELEGRAM_BOT_USERNAME")
+			if botUsername == "" {
+				botUsername = "GSTD_Main_Bot"
+			}
+			promoLink := "https://t.me/" + botUsername + "?start=mining"
+			shareLink := "https://t.me/share/url?url=" + url.QueryEscape(promoLink) + "&text=" + url.QueryEscape("⛏ Join GSTD - Gold Backed DePIN Mining")
+
+			markup := fmt.Sprintf(`{"inline_keyboard":[[{"text":"%s","web_app":{"url":"%s"}}],[{"text":"%s","url":"%s"}]]}`,
+				btnMine, miningWebAppURL, btnShare, shareLink)
+			return s.SendMessageToChatWithMarkup(ctx, chatID, msg, markup)
+		}
+
+		// Standard Start Menu
 		msg := msgStart[lang]
 		if msg == "" {
 			msg = msgStart["en"]
 		}
-		stdBtn := btnAIStandard[lang]
-		if stdBtn == "" {
-			stdBtn = btnAIStandard["en"]
-		}
-		ultraBtn := btnAIUltra[lang]
-		if ultraBtn == "" {
-			ultraBtn = btnAIUltra["en"]
-		}
-		miningBtn := btnMining[lang]
-		if miningBtn == "" {
-			miningBtn = btnMining["en"]
-		}
-		nodeBtn := btnAgentNode[lang]
-		if nodeBtn == "" {
-			nodeBtn = btnAgentNode["en"]
-		}
-		buyBtn := btnBuyGSTD[lang]
-		if buyBtn == "" {
-			buyBtn = btnBuyGSTD["en"]
-		}
-		stdURL := webAppURL + "/dashboard?tab=chat&mode=standard"
-		ultraURL := webAppURL + "/dashboard?tab=chat&mode=ultra"
-		miningURL := webAppURL + "/dashboard?tab=home"
-		agentURL := webAppURL + "/agent"
+
+		appURL := webAppURL
+		miningURL := webAppURL + "/?source=telegram&mode=mining"
 		stonFiURL := "https://app.ston.fi/swap?ft=TON&tt=GSTD"
+
+		lblOpen := "📱 Open App"
+		lblMine := "⛏ Mining"
+		lblAbout := "ℹ️ About"
+		lblStats := "📊 Stats"
+		lblBuy := "💰 Buy GSTD"
+
+		if lang == "ru" {
+			lblOpen = "📱 Открыть приложение"
+			lblMine = "⛏ Майнинг"
+			lblAbout = "ℹ️ О проекте"
+			lblStats = "📊 Статистика"
+			lblBuy = "💰 Купить GSTD"
+		}
+
 		markup := fmt.Sprintf(`{"inline_keyboard":[
-			[{"text":"%s","web_app":{"url":"%s"}},{"text":"%s","web_app":{"url":"%s"}}],
-			[{"text":"%s","web_app":{"url":"%s"}},{"text":"%s","web_app":{"url":"%s"}}],
-			[{"text":"%s","url":"%s"}]
-		]}`, stdBtn, stdURL, ultraBtn, ultraURL, miningBtn, miningURL, nodeBtn, agentURL, buyBtn, stonFiURL)
+			[{"text":"%s","web_app":{"url":"%s"}}],
+			[{"text":"%s","web_app":{"url":"%s"}},{"text":"%s","url":"%s"}],
+			[{"text":"%s","callback_data":"public_about"},{"text":"%s","callback_data":"public_stats"}]
+		]}`, lblOpen, appURL, lblMine, miningURL, lblBuy, stonFiURL, lblAbout, lblStats)
+
 		return s.SendMessageToChatWithMarkup(ctx, chatID, msg, markup)
 	}
 
-	// /help — same Ascension buttons
+	// /help
 	if text == "/help" {
 		msg := msgHelp[lang]
 		if msg == "" {
 			msg = msgHelp["en"]
 		}
-		stdBtn := btnAIStandard[lang]
-		if stdBtn == "" {
-			stdBtn = btnAIStandard["en"]
-		}
-		ultraBtn := btnAIUltra[lang]
-		if ultraBtn == "" {
-			ultraBtn = btnAIUltra["en"]
-		}
-		buyBtn := btnBuyGSTD[lang]
-		if buyBtn == "" {
-			buyBtn = btnBuyGSTD["en"]
-		}
-		stdURL := webAppURL + "/dashboard?tab=chat&mode=standard"
-		ultraURL := webAppURL + "/dashboard?tab=chat&mode=ultra"
-		stonFiURL := "https://app.ston.fi/swap?ft=TON&tt=GSTD"
-		markup := fmt.Sprintf(`{"inline_keyboard":[
-			[{"text":"%s","web_app":{"url":"%s"}},{"text":"%s","web_app":{"url":"%s"}}],
-			[{"text":"%s","url":"%s"}]
-		]}`, stdBtn, stdURL, ultraBtn, ultraURL, buyBtn, stonFiURL)
-		return s.SendMessageToChatWithMarkup(ctx, chatID, msg, markup)
+		return s.SendMessage(ctx, msg)
 	}
 
-	// /network — Network Load from stats/public (Ascension: show swarm power)
+	// /network
 	if text == "/network" {
-		stats, err := s.fetchPublicStats(ctx)
-		if err != nil {
-			_ = s.SendMessageToChat(ctx, chatID, msgError[lang]+err.Error())
-			return nil
-		}
-		processing, _ := stats["processing_tasks"].(float64)
-		queued, _ := stats["queued_tasks"].(float64)
-		completed, _ := stats["completed_tasks"].(float64)
-		devices, _ := stats["active_devices_count"].(float64)
-		tflops, _ := stats["total_tflops"].(float64)
-		loadPct := 0.0
-		if devices > 0 {
-			loadPct = (processing + queued*0.5) / devices * 10
-			if loadPct > 100 {
-				loadPct = 100
-			}
-		}
-		loadBar := "░░░░░░░░░░"
-		if loadPct > 10 {
-			loadBar = "█░░░░░░░░░"
-		}
-		if loadPct > 30 {
-			loadBar = "███░░░░░░░"
-		}
-		if loadPct > 50 {
-			loadBar = "█████░░░░░"
-		}
-		if loadPct > 70 {
-			loadBar = "███████░░░"
-		}
-		if loadPct > 90 {
-			loadBar = "██████████"
-		}
-		msgEn := fmt.Sprintf(`📊 <b>Network Load</b>
-
-%s <b>%.0f%%</b>
-
-<b>Processing:</b> %.0f
-<b>Queued:</b> %.0f
-<b>Completed:</b> %.0f
-<b>Active nodes:</b> %.0f
-<b>Compute:</b> %.1f TFLOPS
-
-<i>GSTD swarm — real-time power</i>`, loadBar, loadPct, processing, queued, completed, devices, tflops)
-		msgRu := fmt.Sprintf(`📊 <b>Загрузка сети</b>
-
-%s <b>%.0f%%</b>
-
-<b>В работе:</b> %.0f
-<b>В очереди:</b> %.0f
-<b>Выполнено:</b> %.0f
-<b>Активных нод:</b> %.0f
-<b>Мощность:</b> %.1f TFLOPS
-
-<i>Рой GSTD — мощность в реальном времени</i>`, loadBar, loadPct, processing, queued, completed, devices, tflops)
-		netMsg := msgEn
-		if lang == "ru" {
-			netMsg = msgRu
-		}
-		return s.SendMessageToChat(ctx, chatID, netMsg)
+		return s.sendNetworkStats(ctx, chatID, lang)
 	}
 
-	// /status и /balance — только для админа
-	if text == "/status" || text == "/balance" {
+	// Bot API commands (relay to internal /telegram/bot/* for full task flow when webhook is active)
+	if s.botToken != "" {
+		username, firstName := "", ""
+		if senderID != nil {
+			username, firstName = senderID.Username, senderID.FirstName
+		}
+		if res, err := s.callBotAPI(ctx, text, senderIDStr, username, firstName, chatID); res != "" || err != nil {
+			if err != nil {
+				return s.SendMessageToChat(ctx, chatID, "❌ "+err.Error())
+			}
+			if res != "" {
+				return s.SendMessageToChat(ctx, chatID, markdownToHTML(res))
+			}
+		}
+	}
+
+	// Admin Commands
+	if text == "/status" || text == "/balance" || text == "/admin" {
 		if s.chatID == "" || senderIDStr != s.chatID {
 			_ = s.SendMessageToChat(ctx, chatID, msgAdminOnly[lang])
 			return nil
 		}
 	}
 
-	// /status — данные из /api/v1/health
 	if text == "/status" {
-		health, err := s.fetchHealth(ctx)
-		if err != nil {
-			return s.SendMessageToChat(ctx, chatID, msgError[lang]+err.Error())
-		}
-		dbStatus := "❌"
-		if ds, ok := health["database"].(map[string]interface{}); ok {
-			if st, _ := ds["status"].(string); st == "connected" {
-				dbStatus = "✅"
-			}
-		}
-		contractStatus := "❌"
-		contractTON := "—"
-		if c, ok := health["contract"].(map[string]interface{}); ok {
-			if st, _ := c["status"].(string); st == "reachable" {
-				contractStatus = "✅"
-			}
-			if b, ok := c["balance_ton"].(float64); ok {
-				contractTON = fmt.Sprintf("%.4f TON", b)
-			}
-		}
-		aiStatus := "—"
-		if ai, ok := health["sovereign_ai"].(map[string]interface{}); ok {
-			if st, _ := ai["status"].(string); st == "active" {
-				aiStatus = "✅ active"
-			}
-		}
-		msg := fmt.Sprintf(`📊 <b>GSTD Status</b>
-
-<b>Database:</b> %s
-<b>Contract:</b> %s (%s)
-<b>Sovereign AI:</b> %s`,
-			dbStatus, contractStatus, contractTON, aiStatus)
-		return s.SendMessageToChat(ctx, chatID, msg)
+		return s.handleAdminStatus(ctx, chatID, lang)
 	}
 
-	// /admin — admin panel with inline buttons (admin only)
 	if text == "/admin" {
-		if s.chatID == "" || senderIDStr != s.chatID {
-			_ = s.SendMessageToChat(ctx, chatID, msgAdminOnly[lang])
-			return nil
-		}
 		msg := msgAdminPanel[lang]
 		if msg == "" {
 			msg = msgAdminPanel["en"]
@@ -556,42 +653,20 @@ func (s *TelegramService) ProcessWebhook(ctx context.Context, body []byte) error
 		return s.SendMessageToChatWithMarkup(ctx, chatID, msg, markup)
 	}
 
-	// /balance — баланс и пользователи
 	if text == "/balance" {
-		health, err := s.fetchHealth(ctx)
-		if err != nil {
-			return s.SendMessageToChat(ctx, chatID, msgError[lang]+err.Error())
-		}
-		var totalUsers int
-		_ = s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM users`).Scan(&totalUsers)
-		contractTON := "—"
-		if c, ok := health["contract"].(map[string]interface{}); ok {
-			if b, ok := c["balance_ton"].(float64); ok {
-				contractTON = fmt.Sprintf("%.4f TON", b)
-			}
-		}
-		title := msgBalanceTitle[lang]
-		usersLabel := msgUsers[lang]
-		if title == "" {
-			title = msgBalanceTitle["en"]
-		}
-		if usersLabel == "" {
-			usersLabel = msgUsers["en"]
-		}
-		msg := fmt.Sprintf(`%s
-
-<b>Contract (Escrow):</b> %s
-<b>%s:</b> %d
-
-📱 <a href="%s">Dashboard</a>`,
-			title, contractTON, usersLabel, totalUsers, webAppURL)
-		return s.SendMessageToChat(ctx, chatID, msg)
+		return s.handleAdminBalance(ctx, chatID, lang)
 	}
 
 	return nil
 }
 
-// answerCallbackQuery acknowledges a callback query (removes loading state).
+var mdBoldRe = regexp.MustCompile(`\*\*(.*?)\*\*`)
+
+func markdownToHTML(s string) string {
+	return mdBoldRe.ReplaceAllString(s, "<b>$1</b>")
+}
+
+// answerCallbackQuery acknowledges a callback query.
 func (s *TelegramService) answerCallbackQuery(ctx context.Context, callbackQueryID string, text string) error {
 	if s.botToken == "" {
 		return nil
@@ -615,24 +690,73 @@ func (s *TelegramService) answerCallbackQuery(ctx context.Context, callbackQuery
 	return nil
 }
 
-// handleCallbackQuery processes inline button clicks (admin actions).
+// handleCallbackQuery processes inline button clicks.
 func (s *TelegramService) handleCallbackQuery(ctx context.Context, upd *telegramUpdate) error {
 	cq := upd.CallbackQuery
 	if cq == nil || cq.From == nil {
 		return nil
 	}
-	senderIDStr := strconv.FormatInt(cq.From.ID, 10)
 	chatID := strconv.FormatInt(cq.Message.Chat.ID, 10)
-
 	lang := botLang(cq.From.LanguageCode)
+	senderIDStr := strconv.FormatInt(cq.From.ID, 10)
 
-	// Admin only
+	data := cq.Data
+
+	// 1. Public Callbacks
+	if strings.HasPrefix(data, "public_") {
+		_ = s.answerCallbackQuery(ctx, cq.ID, "")
+
+		switch data {
+		case "public_about":
+			msg := `👑 <b>About GSTD</b>
+
+<b>Gold Backing:</b>
+Every transaction burns tokens and buys <b>XAUt (Tether Gold)</b>. 
+The reserves are audited nightly on-chain.
+
+<b>DePIN Power:</b>
+GSTD runs on thousands of distributed nodes (phones, PCs). 
+No central server. Pure swarm intelligence.
+
+<b>Tokenomics:</b>
+• 70% Revenue → Gold
+• 5% Revenue → Burn
+• Supply: 1,000,000,000 (Deflationary)
+
+<i>Sovereignty backed by physics.</i>`
+
+			if lang == "ru" {
+				msg = `👑 <b>О GSTD</b>
+
+<b>Золотое обеспечение:</b>
+Каждая транзакция сжигает токены и покупает <b>XAUt (Tether Gold)</b>. 
+Резервы проходят аудит каждую ночь.
+
+<b>Мощь DePIN:</b>
+GSTD работает на тысячах узлов (телефоны, ПК). 
+Никаких центральных серверов. Чистый рой.
+
+<b>Токеномика:</b>
+• 70% Выручки → Золото
+• 5% Выручки → Сжигание
+• Эмиссия: 1,000,000,000 (Дефляционная)
+
+<i>Суверенитет, обеспеченный физикой.</i>`
+			}
+			return s.SendMessageToChat(ctx, chatID, msg)
+
+		case "public_stats":
+			return s.sendNetworkStats(ctx, chatID, lang)
+		}
+		return nil
+	}
+
+	// 2. Admin Callbacks
 	if s.chatID == "" || senderIDStr != s.chatID {
 		_ = s.answerCallbackQuery(ctx, cq.ID, msgAdminOnly[lang])
 		return nil
 	}
 
-	data := cq.Data
 	if !strings.HasPrefix(data, "admin_") {
 		_ = s.answerCallbackQuery(ctx, cq.ID, "")
 		return nil
@@ -646,135 +770,208 @@ func (s *TelegramService) handleCallbackQuery(ctx context.Context, upd *telegram
 
 	switch data {
 	case "admin_status":
-		health, err := s.fetchHealth(ctx)
-		if err != nil {
-			_ = s.SendMessageToChat(ctx, chatID, msgError[lang]+err.Error())
-			return nil
+		return s.handleAdminStatus(ctx, chatID, lang)
+	case "admin_balance":
+		return s.handleAdminBalance(ctx, chatID, lang)
+	case "admin_pending":
+		return s.handleAdminPending(ctx, chatID, lang)
+	}
+
+	return nil
+}
+
+// --- Helper Handlers ---
+
+func (s *TelegramService) sendNetworkStats(ctx context.Context, chatID string, lang string) error {
+	stats, err := s.fetchPublicStats(ctx)
+	if err != nil {
+		_ = s.SendMessageToChat(ctx, chatID, msgError[lang]+err.Error())
+		return nil
+	}
+	processing, _ := stats["processing_tasks"].(float64)
+	queued, _ := stats["queued_tasks"].(float64)
+	completed, _ := stats["completed_tasks"].(float64)
+	devices, _ := stats["active_devices_count"].(float64)
+	// Some defaults if fields missing
+
+	loadPct := 0.0
+	if devices > 0 {
+		loadPct = (processing + queued*0.5) / devices * 10
+		if loadPct > 100 {
+			loadPct = 100
 		}
-		dbStatus := "❌"
-		if ds, ok := health["database"].(map[string]interface{}); ok {
-			if st, _ := ds["status"].(string); st == "connected" {
-				dbStatus = "✅"
-			}
+	}
+	loadBar := "░░░░░░░░░░"
+	if loadPct > 10 {
+		loadBar = "█░░░░░░░░░"
+	}
+	if loadPct > 30 {
+		loadBar = "███░░░░░░░"
+	}
+	if loadPct > 50 {
+		loadBar = "█████░░░░░"
+	}
+	if loadPct > 70 {
+		loadBar = "███████░░░"
+	}
+	if loadPct > 90 {
+		loadBar = "██████████"
+	}
+	msgEn := fmt.Sprintf(`📊 <b>Network Load</b>
+
+%s <b>%.0f%%</b>
+
+<b>Processing:</b> %.0f
+<b>Queued:</b> %.0f
+<b>Completed:</b> %.0f
+<b>Active nodes:</b> %.0f
+
+<i>GSTD swarm — real-time power</i>`, loadBar, loadPct, processing, queued, completed, devices)
+
+	msgRu := fmt.Sprintf(`📊 <b>Загрузка сети</b>
+
+%s <b>%.0f%%</b>
+
+<b>В работе:</b> %.0f
+<b>В очереди:</b> %.0f
+<b>Выполнено:</b> %.0f
+<b>Активных нод:</b> %.0f
+
+<i>Рой GSTD — мощность в реальном времени</i>`, loadBar, loadPct, processing, queued, completed, devices)
+
+	netMsg := msgEn
+	if lang == "ru" {
+		netMsg = msgRu
+	}
+	return s.SendMessageToChat(ctx, chatID, netMsg)
+}
+
+func (s *TelegramService) handleAdminStatus(ctx context.Context, chatID string, lang string) error {
+	health, err := s.fetchHealth(ctx)
+	if err != nil {
+		return s.SendMessageToChat(ctx, chatID, msgError[lang]+err.Error())
+	}
+	dbStatus := "❌"
+	if ds, ok := health["database"].(map[string]interface{}); ok {
+		if st, _ := ds["status"].(string); st == "connected" {
+			dbStatus = "✅"
 		}
-		contractStatus := "❌"
-		contractTON := "—"
-		if c, ok := health["contract"].(map[string]interface{}); ok {
-			if st, _ := c["status"].(string); st == "reachable" {
-				contractStatus = "✅"
-			}
-			if b, ok := c["balance_ton"].(float64); ok {
-				contractTON = fmt.Sprintf("%.4f TON", b)
-			}
+	}
+	contractStatus := "❌"
+	contractTON := "—"
+	if c, ok := health["contract"].(map[string]interface{}); ok {
+		if st, _ := c["status"].(string); st == "reachable" {
+			contractStatus = "✅"
 		}
-		aiStatus := "—"
-		if ai, ok := health["sovereign_ai"].(map[string]interface{}); ok {
-			if st, _ := ai["status"].(string); st == "active" {
-				aiStatus = "✅ active"
-			}
+		if b, ok := c["balance_ton"].(float64); ok {
+			contractTON = fmt.Sprintf("%.4f TON", b)
 		}
-		title := msgStatusTitle[lang]
-		if title == "" {
-			title = msgStatusTitle["en"]
+	}
+	aiStatus := "—"
+	if ai, ok := health["sovereign_ai"].(map[string]interface{}); ok {
+		if st, _ := ai["status"].(string); st == "active" {
+			aiStatus = "✅ active"
 		}
-		msg := fmt.Sprintf(`%s
+	}
+	title := msgStatusTitle[lang]
+	if title == "" {
+		title = msgStatusTitle["en"]
+	}
+	msg := fmt.Sprintf(`%s
 
 <b>Database:</b> %s
 <b>Contract:</b> %s (%s)
 <b>Sovereign AI:</b> %s`, title, dbStatus, contractStatus, contractTON, aiStatus)
-		return s.SendMessageToChat(ctx, chatID, msg)
+	return s.SendMessageToChat(ctx, chatID, msg)
+}
 
-	case "admin_balance":
-		health, err := s.fetchHealth(ctx)
-		if err != nil {
-			_ = s.SendMessageToChat(ctx, chatID, msgError[lang]+err.Error())
-			return nil
+func (s *TelegramService) handleAdminBalance(ctx context.Context, chatID string, lang string) error {
+	health, err := s.fetchHealth(ctx)
+	if err != nil {
+		return s.SendMessageToChat(ctx, chatID, msgError[lang]+err.Error())
+	}
+	var totalUsers int
+	_ = s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM users`).Scan(&totalUsers)
+	contractTON := "—"
+	if c, ok := health["contract"].(map[string]interface{}); ok {
+		if b, ok := c["balance_ton"].(float64); ok {
+			contractTON = fmt.Sprintf("%.4f TON", b)
 		}
-		var totalUsers int
-		_ = s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM users`).Scan(&totalUsers)
-		contractTON := "—"
-		if c, ok := health["contract"].(map[string]interface{}); ok {
-			if b, ok := c["balance_ton"].(float64); ok {
-				contractTON = fmt.Sprintf("%.4f TON", b)
-			}
-		}
-		title := msgBalanceTitle[lang]
-		usersLabel := msgUsers[lang]
-		if title == "" {
-			title = msgBalanceTitle["en"]
-		}
-		if usersLabel == "" {
-			usersLabel = msgUsers["en"]
-		}
-		webAppURL := os.Getenv("APP_PUBLIC_URL")
-		if webAppURL == "" {
-			webAppURL = "https://app.gstdtoken.com"
-		}
-		msg := fmt.Sprintf(`%s
+	}
+	title := msgBalanceTitle[lang]
+	usersLabel := msgUsers[lang]
+	if title == "" {
+		title = msgBalanceTitle["en"]
+	}
+	if usersLabel == "" {
+		usersLabel = msgUsers["en"]
+	}
+	webAppURL := os.Getenv("APP_PUBLIC_URL")
+	if webAppURL == "" {
+		webAppURL = "https://app.gstdtoken.com"
+	}
+	msg := fmt.Sprintf(`%s
 
 <b>Contract:</b> %s
 <b>%s:</b> %d
+`, title, contractTON, usersLabel, totalUsers)
+	return s.SendMessageToChat(ctx, chatID, msg)
+}
 
-📱 <a href="%s">Dashboard</a>`, title, contractTON, usersLabel, totalUsers, webAppURL)
-		return s.SendMessageToChat(ctx, chatID, msg)
-
-	case "admin_pending":
-		var count int
-		_ = s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM withdrawal_locks WHERE status = 'pending_approval'`).Scan(&count)
-		if count == 0 {
-			title := msgPendingTitle[lang]
-			noPending := msgNoPending[lang]
-			if title == "" {
-				title = msgPendingTitle["en"]
-			}
-			if noPending == "" {
-				noPending = msgNoPending["en"]
-			}
-			return s.SendMessageToChat(ctx, chatID, title+noPending)
-		}
-		rows, err := s.db.QueryContext(ctx, `
-			SELECT id, task_id, worker_wallet, amount_gstd
-			FROM withdrawal_locks
-			WHERE status = 'pending_approval'
-			ORDER BY created_at DESC
-			LIMIT 10
-		`)
-		if err != nil {
-			return s.SendMessageToChat(ctx, chatID, msgError[lang]+err.Error())
-		}
-		defer rows.Close()
+func (s *TelegramService) handleAdminPending(ctx context.Context, chatID string, lang string) error {
+	var count int
+	_ = s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM withdrawal_locks WHERE status = 'pending_approval'`).Scan(&count)
+	if count == 0 {
 		title := msgPendingTitle[lang]
-		approveVia := msgApproveVia[lang]
+		noPending := msgNoPending[lang]
 		if title == "" {
 			title = msgPendingTitle["en"]
 		}
-		if approveVia == "" {
-			approveVia = msgApproveVia["en"]
+		if noPending == "" {
+			noPending = msgNoPending["en"]
 		}
-		var sb strings.Builder
-		sb.WriteString(title + "\n\n")
-		for rows.Next() {
-			var id int
-			var taskID, workerWallet string
-			var amountGSTD float64
-			if err := rows.Scan(&id, &taskID, &workerWallet, &amountGSTD); err != nil {
-				continue
-			}
-			shortWallet := workerWallet
-			if len(shortWallet) > 12 {
-				shortWallet = shortWallet[:6] + "…" + shortWallet[len(shortWallet)-6:]
-			}
-			sb.WriteString(fmt.Sprintf("• ID %d: %s → %.4f GSTD\n", id, shortWallet, amountGSTD))
-		}
-		totalLabel := msgTotal[lang]
-		if totalLabel == "" {
-			totalLabel = msgTotal["en"]
-		}
-		sb.WriteString(fmt.Sprintf("\n%s: %d. %s", totalLabel, count, approveVia))
-		return s.SendMessageToChat(ctx, chatID, sb.String())
+		return s.SendMessageToChat(ctx, chatID, title+noPending)
 	}
-
-	return nil
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT id, task_id, worker_wallet, amount_gstd
+		FROM withdrawal_locks
+		WHERE status = 'pending_approval'
+		ORDER BY created_at DESC
+		LIMIT 10
+	`)
+	if err != nil {
+		return s.SendMessageToChat(ctx, chatID, msgError[lang]+err.Error())
+	}
+	defer rows.Close()
+	title := msgPendingTitle[lang]
+	approveVia := msgApproveVia[lang]
+	if title == "" {
+		title = msgPendingTitle["en"]
+	}
+	if approveVia == "" {
+		approveVia = msgApproveVia["en"]
+	}
+	var sb strings.Builder
+	sb.WriteString(title + "\n\n")
+	for rows.Next() {
+		var id int
+		var taskID, workerWallet string
+		var amountGSTD float64
+		if err := rows.Scan(&id, &taskID, &workerWallet, &amountGSTD); err != nil {
+			continue
+		}
+		shortWallet := workerWallet
+		if len(shortWallet) > 12 {
+			shortWallet = shortWallet[:6] + "…" + shortWallet[len(shortWallet)-6:]
+		}
+		sb.WriteString(fmt.Sprintf("• ID %d: %s → %.4f GSTD\n", id, shortWallet, amountGSTD))
+	}
+	totalLabel := msgTotal[lang]
+	if totalLabel == "" {
+		totalLabel = msgTotal["en"]
+	}
+	sb.WriteString(fmt.Sprintf("\n%s: %d. %s", totalLabel, count, approveVia))
+	return s.SendMessageToChat(ctx, chatID, sb.String())
 }
 
 func (s *TelegramService) fetchHealth(ctx context.Context) (map[string]interface{}, error) {
@@ -795,7 +992,7 @@ func (s *TelegramService) fetchHealth(ctx context.Context) (map[string]interface
 }
 
 func (s *TelegramService) fetchPublicStats(ctx context.Context) (map[string]interface{}, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", s.apiBaseURL+"/api/v1/stats/public", nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", s.apiBaseURL+"/api/v1/network/stats", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -810,23 +1007,3 @@ func (s *TelegramService) fetchPublicStats(ctx context.Context) (map[string]inte
 	}
 	return out, nil
 }
-
-// NotifyNewTask sends a brief notification about a newly created task.
-// This is used by TaskService; safe no‑op if TelegramService is disabled.
-func (s *TelegramService) NotifyNewTask(
-	ctx context.Context,
-	taskID string,
-	taskType string,
-	requesterWallet string,
-	rewardGSTD float64,
-) error {
-	msg := fmt.Sprintf(
-		"🆕 <b>New Task</b>\n\nID: <code>%s</code>\nType: <b>%s</b>\nRequester: <code>%s</code>\nReward: <b>%.4f GSTD</b>",
-		taskID,
-		taskType,
-		requesterWallet,
-		rewardGSTD,
-	)
-	return s.SendMessage(ctx, msg)
-}
-

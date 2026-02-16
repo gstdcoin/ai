@@ -7,7 +7,47 @@ import (
 	"log"
 
 	"github.com/gin-gonic/gin"
+	"github.com/lib/pq"
 )
+
+// getCacheSuggestions — Singularity Gateway: nodes poll for cache suggestions when latency > 250ms
+func getCacheSuggestions(db *sql.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		h3 := c.Query("h3") // optional: consumer h3 for geo-targeting
+		ctx := c.Request.Context()
+		rows, err := db.QueryContext(ctx, `
+			SELECT id, consumer_h3_index, suggested_topics, latency_ms, created_at
+			FROM knowledge_cache_suggestions
+			WHERE created_at > NOW() - INTERVAL '1 hour'
+			ORDER BY created_at DESC LIMIT 10
+		`)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "Failed to fetch cache suggestions"})
+			return
+		}
+		defer rows.Close()
+		var items []map[string]interface{}
+		for rows.Next() {
+			var id int
+			var consumerH3 *string
+			var topics pq.StringArray
+			var latencyMs int
+			var createdAt interface{}
+			if rows.Scan(&id, &consumerH3, &topics, &latencyMs, &createdAt) != nil {
+				continue
+			}
+			topicsSlice := []string(topics)
+			if topicsSlice == nil {
+				topicsSlice = []string{}
+			}
+			items = append(items, map[string]interface{}{
+				"id": id, "consumer_h3_index": consumerH3, "suggested_topics": topicsSlice,
+				"latency_ms": latencyMs, "created_at": createdAt,
+			})
+		}
+		c.JSON(200, gin.H{"suggestions": items, "h3_filter": h3})
+	}
+}
 
 // SetupHyperExpansionRoutes registers viral economy, oracle, leaderboard, brain query
 func SetupHyperExpansionRoutes(
@@ -17,8 +57,11 @@ func SetupHyperExpansionRoutes(
 	db *sql.DB,
 	tonConfig config.TONConfig,
 ) {
+	// Singularity Gateway: nodes poll cache suggestions (latency > 250ms)
+	v1.GET("/nodes/cache-suggestions", getCacheSuggestions(db))
 	// Hive Intelligence API: Paid brain query (GSTD -> Gold Pool)
-	protected.POST("/brain/query", brainQueryPaid(knowledge, db, tonConfig))
+	// API-as-a-Service: No GSTD = 402 + Become Node CTA
+	protected.POST("/brain/query", RequireGSTDBalance(db, 0.01), brainQueryPaid(knowledge, db, tonConfig))
 
 	// TON Proxy-Oracle: External smart contracts query Leviathan's opinion (no auth for oracle)
 	v1.GET("/oracle/opinion", oracleOpinion(knowledge))
@@ -59,7 +102,7 @@ func brainQueryPaid(knowledge *services.KnowledgeService, db *sql.DB, tonConfig 
 		}
 
 		ctx := c.Request.Context()
-		items, err := knowledge.QueryKnowledge(ctx, req.Topic, req.Limit)
+		items, err := knowledge.QueryKnowledgeWithGlobalGraph(ctx, req.Topic, req.Limit)
 		if err != nil {
 			c.JSON(500, gin.H{"error": "Failed to query knowledge"})
 			return
@@ -96,7 +139,7 @@ func oracleOpinion(knowledge *services.KnowledgeService) gin.HandlerFunc {
 			return
 		}
 		ctx := c.Request.Context()
-		items, err := knowledge.QueryKnowledge(ctx, query, 5)
+		items, err := knowledge.QueryKnowledgeWithGlobalGraph(ctx, query, 5)
 		if err != nil {
 			c.JSON(500, gin.H{"error": "oracle unavailable"})
 			return

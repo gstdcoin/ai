@@ -45,6 +45,7 @@ type Task struct {
 	RedundancyFactor    int        `json:"redundancy_factor" db:"redundancy_factor"`
 	ConfidenceDepth     int        `json:"confidence_depth" db:"confidence_depth"`
 	IsSpotCheck         bool       `json:"is_spot_check" db:"is_spot_check"`
+	P2PVerified         bool       `json:"p2p_verified" db:"p2p_verified"`
 }
 
 type TaskDescriptor struct {

@@ -90,9 +90,9 @@ func (s *RecyclingPoolService) ensureSchema() {
 // ProcessPayment splits a user payment through the recycling pool
 // Returns the breakdown of how tokens are distributed
 func (s *RecyclingPoolService) ProcessPayment(ctx context.Context, fromWallet string, amount float64, taskID string, txType string) (*PoolTransaction, error) {
-	// Calculate distribution (total = 100%)
-	burnRate := 0.05     // 5% burned
-	reserveRate := 0.02  // 2% to golden reserve
+	// Calculate distribution (total = 100%) — Burn disabled: 5% → Golden Reserve
+	burnRate := 0.0      // Burn disabled (supply low)
+	reserveRate := 0.07  // 7% to golden reserve (2% + former 5% burn)
 	minerRate := 1.0 - burnRate - reserveRate // 93% to miners
 
 	tx := &PoolTransaction{
@@ -100,7 +100,7 @@ func (s *RecyclingPoolService) ProcessPayment(ctx context.Context, fromWallet st
 		TotalAmount:     amount,
 		MinerReward:     amount * minerRate,
 		GoldenReserve:   amount * reserveRate,
-		BurnedAmount:    amount * burnRate,
+		BurnedAmount:    0,
 		TaskID:          taskID,
 		TransactionType: txType,
 		CreatedAt:       time.Now(),

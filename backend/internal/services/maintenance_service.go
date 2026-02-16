@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 	"time"
 )
@@ -28,12 +29,18 @@ func NewMaintenanceService(db *sql.DB, taskService *TaskService, errorLogger *Er
 	}
 }
 
+// alertsEnabled returns false when DISABLE_MAINTENANCE_ALERTS=true|1 (no error reports to Telegram)
+func alertsEnabled() bool {
+	v := strings.ToLower(strings.TrimSpace(os.Getenv("DISABLE_MAINTENANCE_ALERTS")))
+	return v != "true" && v != "1"
+}
+
 // Start starts the autonomous maintenance loop
 func (s *MaintenanceService) Start(ctx context.Context) {
 	log.Println("🤖 Autonomous Assistant & Maintenance Service started")
 
-	// Send startup notification
-	if s.telegramService != nil {
+	// Send startup notification (unless alerts disabled)
+	if s.telegramService != nil && alertsEnabled() {
 		s.telegramService.SendMessage(ctx, "🤖 <b>System Assistant Online</b>\nI am now monitoring the GSTD platform. I will handle maintenance and keep you updated.")
 	}
 
@@ -223,7 +230,7 @@ func (s *MaintenanceService) checkTreasuryAndAllocateGrants(ctx context.Context)
 		return
 	}
 	log.Printf("HardwareGrants: Allocated up to %.2f GSTD for scarce regions (treasury=%.2f)", maxAlloc, balance)
-	if s.telegramService != nil {
+	if s.telegramService != nil && alertsEnabled() {
 		s.telegramService.SendMessage(ctx, fmt.Sprintf("🛠 <b>Hardware Grants:</b> Treasury profit (%.2f GSTD) → allocated grants to scarce H3 regions.", maxAlloc))
 	}
 }
@@ -264,7 +271,7 @@ var errorPatterns = []struct {
 
 // analyzeErrorPatterns scans recent error_logs for known patterns and sends suggested fixes to Telegram
 func (s *MaintenanceService) analyzeErrorPatterns(ctx context.Context) {
-	if s.telegramService == nil {
+	if s.telegramService == nil || !alertsEnabled() {
 		return
 	}
 	rows, err := s.db.QueryContext(ctx, `
@@ -303,7 +310,7 @@ func (s *MaintenanceService) analyzeErrorPatterns(ctx context.Context) {
 
 // sendDailyBriefing sends a summary of platform activity
 func (s *MaintenanceService) sendDailyBriefing(ctx context.Context) {
-	if s.telegramService == nil {
+	if s.telegramService == nil || !alertsEnabled() {
 		return
 	}
 
@@ -352,7 +359,7 @@ func (s *MaintenanceService) GetAutonomyStats(ctx context.Context) (map[string]i
 }
 
 func (s *MaintenanceService) sendAlert(ctx context.Context, message string) {
-	if s.telegramService != nil {
+	if s.telegramService != nil && alertsEnabled() {
 		s.telegramService.SendMessage(ctx, message)
 	}
 }

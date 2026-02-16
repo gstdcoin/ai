@@ -201,6 +201,13 @@ func getPublicStats(db *sql.DB, tonService *services.TONService, tonConfig confi
 		var totalBurned float64
 		db.QueryRow(`SELECT COALESCE(SUM(burn_amount), 0) FROM token_burns`).Scan(&totalBurned)
 
+		// Live Global Stats: Global Treasury Growth (oz XAUt added today)
+		var globalTreasuryGrowthTodayOz float64
+		db.QueryRow(`
+			SELECT COALESCE(SUM(xaut_amount), 0) FROM golden_reserve_log
+			WHERE timestamp >= CURRENT_DATE AND xaut_amount IS NOT NULL
+		`).Scan(&globalTreasuryGrowthTodayOz)
+
 		// GSTD price estimate: reserve_value / circulating or fallback
 		gstdPriceUSD := 0.015
 		if goldenReserveXAUt > 0 {
@@ -215,22 +222,23 @@ func getPublicStats(db *sql.DB, tonService *services.TONService, tonConfig confi
 		}
 
 		c.JSON(200, gin.H{
-			"total_tasks_completed": totalTasksCompleted,
-			"total_workers_paid":    totalWorkersPaid,
-			"total_gstd_paid":       totalGSTDPaid.Float64,
-			"total_tflops":          totalTFLOPS,
-			"active_countries":      activeCountries,
-			"golden_reserve_xaut":   goldenReserveXAUt,
-			"xaut_history":          xautHistory,
-			"system_status":         "Operational",
-			"last_swaps":            lastSwaps,
-			"processing_tasks":      processingTasks,
-			"queued_tasks":          queuedTasks,
-			"completed_tasks":       totalTasksCompleted,
-			"total_rewards_gstd":    totalGSTDPaid.Float64,
-			"active_devices_count":  activeDevicesCount,
-			"total_burned":          totalBurned,
-			"gstd_price_usd":        gstdPriceUSD,
+			"total_tasks_completed":       totalTasksCompleted,
+			"total_workers_paid":          totalWorkersPaid,
+			"total_gstd_paid":             totalGSTDPaid.Float64,
+			"total_tflops":                totalTFLOPS,
+			"active_countries":            activeCountries,
+			"golden_reserve_xaut":         goldenReserveXAUt,
+			"xaut_history":                xautHistory,
+			"system_status":               "Operational",
+			"last_swaps":                  lastSwaps,
+			"processing_tasks":             processingTasks,
+			"queued_tasks":                queuedTasks,
+			"completed_tasks":             totalTasksCompleted,
+			"total_rewards_gstd":          totalGSTDPaid.Float64,
+			"active_devices_count":        activeDevicesCount,
+			"total_burned":                totalBurned,
+			"gstd_price_usd":              gstdPriceUSD,
+			"global_treasury_growth_today_oz": globalTreasuryGrowthTodayOz,
 		})
 	}
 }
