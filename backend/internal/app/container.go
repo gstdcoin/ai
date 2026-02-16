@@ -420,9 +420,9 @@ func StartApplication(container *dig.Container) error {
 			log.Printf("🤖 SubAgent Self-Optimization: lessons + critical insights exchange ACTIVE (20m)")
 		}
 
-		// Start Treasury Auto-Converter
+		// Start Treasury Auto-Converter (Genesis Launch: Golden Liquidity — instant GSTD→XAUt)
 		go func() {
-			ticker := time.NewTicker(24 * time.Hour) // Check once a day ideally, or hourly. 24h for PoC.
+			ticker := time.NewTicker(5 * time.Minute) // Every 5 min for instant conversion
 			defer ticker.Stop()
 			log.Printf("💰 Treasury Service Started (Gold Bridge Active)")
 

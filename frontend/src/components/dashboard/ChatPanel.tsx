@@ -38,6 +38,7 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
   const [compareModelB, setCompareModelB] = useState('llama3.1:8b');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [speculativeEnabled, setSpeculativeEnabled] = useState(true);
+  const [communityFavorite, setCommunityFavorite] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -72,6 +73,26 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
       .catch(() => {});
   }, [gstdBalance, address]);
 
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/api/v1/analytics/viral/community-favorite`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => data?.community_favorite && setCommunityFavorite(data.community_favorite))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('viral') === '1') {
+      const model = params.get('model') || 'unknown';
+      const key = `gstd_viral_click_${model}`;
+      if (!sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, '1');
+        fetch(`${API_BASE_URL}/api/v1/analytics/viral/click?model=${encodeURIComponent(model)}`, { method: 'POST' }).catch(() => {});
+      }
+    }
+  }, []);
+
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
@@ -84,19 +105,16 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  // Viral Sharing: generate share link with PoW text
+  // Viral Sharing: generate share link with model for analytics, record share
   const handleShare = (msg: Message) => {
+    const modelId = msg.model || selectedModel;
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://app.gstdtoken.com';
+    const viralUrl = `${baseUrl}/dashboard?tab=chat&viral=1&model=${encodeURIComponent(modelId)}`;
     const devices = msg.powStats?.swarm_devices ?? 1500;
-    const shareText = typeof window !== 'undefined'
-      ? `${msg.content.slice(0, 200)}${msg.content.length > 200 ? '...' : ''}\n\n— Этот ответ был рассчитан ${devices} смартфонами в сети GSTD. Присоединяйся и зарабатывай золото! ${window.location.origin}/dashboard?tab=chat`
-      : `Этот ответ был рассчитан ${devices} смартфонами в сети GSTD. Присоединяйся и зарабатывай золото!`;
-    const url = typeof window !== 'undefined' ? `${window.location.origin}/dashboard?tab=chat` : 'https://app.gstdtoken.com/dashboard';
+    const shareText = `${msg.content.slice(0, 200)}${msg.content.length > 200 ? '...' : ''}\n\n— Этот ответ был рассчитан ${devices} смартфонами в сети GSTD. Присоединяйся и зарабатывай золото! ${viralUrl}`;
+    fetch(`${API_BASE_URL}/api/v1/analytics/viral/share?model=${encodeURIComponent(modelId)}`, { method: 'POST' }).catch(() => {});
     if (navigator.share && typeof window !== 'undefined') {
-      navigator.share({
-        title: 'GSTD Swarm',
-        text: shareText,
-        url,
-      }).catch(() => navigator.clipboard.writeText(shareText));
+      navigator.share({ title: 'GSTD Swarm', text: shareText, url: viralUrl }).catch(() => navigator.clipboard.writeText(shareText));
     } else {
       navigator.clipboard.writeText(shareText);
       setCopiedId(msg.id);
@@ -114,14 +132,16 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
 
   const sendToModel = async (model: string, apiMessages: { role: string; content: string }[], signal?: AbortController['signal']): Promise<{ content: string; cost?: number; powStats?: { swarm_devices: number; workers_gstd: number } }> => {
     const token = localStorage.getItem('session_token');
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      ...(token ? { 'X-Session-Token': token } : {}),
+      ...(address ? { 'X-GSTD-Target-Wallet': address } : {}),
+    };
+    if (compareMode) headers['X-GSTD-Compare-Mode'] = '1';
     const res = await fetch(`${API_BASE_URL}/api/v1/chat/completions`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-        ...(token ? { 'X-Session-Token': token } : {}),
-        ...(address ? { 'X-GSTD-Target-Wallet': address } : {}),
-      },
+      headers,
       body: JSON.stringify({ model, messages: apiMessages, stream: false }),
       signal,
     });
@@ -408,10 +428,15 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
           >
             {models.map(m => (
               <option key={m.id} value={m.id} className="bg-[#0a0a1a] text-white">
-                {m.name} ({m.tier}) — {m.cost} GSTD
+                {m.name} ({m.tier}) — {m.cost} GSTD{communityFavorite === m.id ? ' ★' : ''}
               </option>
             ))}
           </select>
+          {communityFavorite === selectedModel && (
+            <span className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold bg-cyan-500/10 border border-cyan-500/30 text-cyan-400" title="Community Favorite">
+              ★ {t('chat_community_favorite') || 'Community Favorite'}
+            </span>
+          )}
           <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${
             isUltraModel(selectedModel)
               ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'

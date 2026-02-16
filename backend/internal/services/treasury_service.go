@@ -22,7 +22,7 @@ func NewTreasuryService(db *sql.DB, stonFi *StonFiService, cfg config.TONConfig)
 		db:         db,
 		stonFi:     stonFi,
 		tonCfg:     cfg,
-		minSwapAmt: 100.0, // Example threshold
+		minSwapAmt: 1.0, // Genesis Launch: instant conversion — every 1 GSTD to XAUt
 	}
 }
 
