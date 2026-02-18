@@ -1,8 +1,0 @@
-{
-    "name": "gstd-a2a",
-    "description": "Decentralized Agent-to-Agent Autonomous Economy for TON. Read-only with GSTD_API_KEY; signing requires AGENT_PRIVATE_MNEMONIC.",
-    "version": "1.2.3",
-    "entrypoint": "python3 main.py",
-    "runtime": "python3",
-    "type": "mcp"
-}

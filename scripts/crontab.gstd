@@ -1,6 +1,0 @@
-# GSTD Platform Cron Jobs
-# Install: crontab scripts/crontab.gstd
-# Or append to existing: (crontab -l 2>/dev/null; cat scripts/crontab.gstd) | crontab -
-
-# Night Audit: ежедневно в 00:00 UTC — публичная проверка золотых резервов vs токенов (ТЗ 3.Б)
-0 0 * * * /home/ubuntu/autonomy/bin/night_audit.sh >> /var/log/gstd_night_audit.log 2>&1
