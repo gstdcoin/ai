@@ -1,3 +1,0 @@
-# ABSOLUTE SYNC PROTOCOL
-
-See [ABSOLUTE_SYNC.md](ABSOLUTE_SYNC.md) for full protocol.
