@@ -71,7 +71,7 @@
 ## 7. Preview URL (текущий деплой)
 
 - **Production:** https://frontend-alpha-sable-5z72k3f2so.vercel.app
-- API: frontend вызывает `app.gstdtoken.com` (default). Rewrite `/api/*` → `api.gstdtoken.com` используется при `NEXT_PUBLIC_API_URL` = Vercel URL.
+- API: frontend вызывает `app.gstdtoken.com` (default). Rewrite `/api/*` → `app.gstdtoken.com` при `NEXT_PUBLIC_API_URL` = Vercel URL.
 
 ---
 

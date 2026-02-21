@@ -12,7 +12,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $GSTDVersion = "1.0.0"
 $GSTDDir = Join-Path $env:USERPROFILE ".gstd"
-$GSTDAPI = if ($env:GSTD_API) { $env:GSTD_API } else { "https://api.gstdtoken.com" }
+$GSTDAPI = if ($env:GSTD_API) { $env:GSTD_API } else { "https://app.gstdtoken.com" }
 
 function Write-Banner {
     Write-Host ""
