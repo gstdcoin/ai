@@ -68,7 +68,7 @@ backups/
 # Nested repos (managed separately)
 A2A/
 
-# Cursor & IDE servers
+# IDE workspace
 .cursor/
 .cursor-server/
 .windsurf-server/

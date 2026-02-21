@@ -68,7 +68,7 @@ export const SovereignSwitch = ({ className, onModeChange }: SovereignSwitchProp
                     ...(token ? { 'X-Session-Token': token } : {}),
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ label: `Cursor Key ${apiKeys.length + 1}` })
+                body: JSON.stringify({ label: `API Key ${apiKeys.length + 1}` })
             });
             const data = await res.json();
             if (data.api_key) {
@@ -244,7 +244,7 @@ export const SovereignSwitch = ({ className, onModeChange }: SovereignSwitchProp
                             >
                                 <div className="flex items-center gap-3">
                                     <Key size={14} className="text-violet-400" />
-                                    <span className="text-[10px] font-black text-white uppercase tracking-widest">External AI Gateway (Cursor / SDK)</span>
+                                    <span className="text-[10px] font-black text-white uppercase tracking-widest">External AI Gateway (SDK)</span>
                                 </div>
                                 <Plus size={14} className={`text-violet-400 transition-transform ${showKeys ? 'rotate-45' : ''}`} />
                             </button>
@@ -286,7 +286,7 @@ export const SovereignSwitch = ({ className, onModeChange }: SovereignSwitchProp
                                             <div className="p-4 rounded-xl bg-violet-600/5 border border-violet-500/20">
                                                 <div className="text-[9px] font-black text-violet-400 uppercase tracking-widest mb-2">Integration Guide</div>
                                                 <div className="text-[10px] text-gray-400 space-y-1">
-                                                    <p>1. Open **Cursor** {">"} Settings {">"} Models</p>
+                                                    <p>1. Open your IDE {">"} Settings {">"} Models</p>
                                                     <p>2. Set Base URL: <code className="text-violet-300">http://api.gstdtoken.com/v1</code></p>
                                                     <p>3. Use any API key above as the "OpenAI API Key"</p>
                                                 </div>

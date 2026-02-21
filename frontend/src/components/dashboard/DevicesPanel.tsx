@@ -153,13 +153,17 @@ export default function DevicesPanel() {
               No tokens? No problem. Connect your phone, PC, OpenClaw, or IoT device. Earn GSTD by contributing compute.
             </p>
             <div className="space-y-3 mb-4">
-              <p className="text-xs font-bold text-cyan-400/90 uppercase tracking-wider">Connect from any device (A2A)</p>
+              <p className="text-xs font-bold text-cyan-400/90 uppercase tracking-wider">1. Get API key</p>
+              <p className="text-[10px] text-gray-400">
+                Dashboard → SovereignSwitch → Generate API Key. Or headless: <code className="text-cyan-400/80">GET /agents/challenge</code> → solve PoW → <code className="text-cyan-400/80">POST /agents/claim-key</code>
+              </p>
+              <p className="text-xs font-bold text-cyan-400/90 uppercase tracking-wider">2. Connect device (A2A)</p>
               <pre className="text-xs bg-black/40 p-3 rounded-lg text-gray-300 font-mono overflow-x-auto">
 {`curl -O https://raw.githubusercontent.com/gstdcoin/A2A/main/connect.py
 python3 connect.py --api-key YOUR_KEY`}
               </pre>
               <p className="text-[10px] text-gray-500">
-                API: app.gstdtoken.com • OpenClaw: openclaw_bridge.py • <a href="https://github.com/gstdcoin/A2A" target="_blank" rel="noopener" className="text-cyan-400 hover:underline">A2A repo</a>
+                API: app.gstdtoken.com • OpenClaw: openclaw_bridge.py • <a href="https://github.com/gstdcoin/ai/blob/main/docs/skills/SWARM_PARTICIPANT.md" target="_blank" rel="noopener" className="text-cyan-400 hover:underline">Skill: SWARM_PARTICIPANT</a>
               </p>
             </div>
             <button

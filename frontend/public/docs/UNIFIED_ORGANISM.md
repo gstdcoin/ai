@@ -101,7 +101,7 @@ GSTD is a **unified living organism** where agents, nodes, and bots form one bod
 
 - **TonConnect** — wallet for users and bots
 - **Genesis Ignite** — handshake for agents and nodes
-- **API Key** — for Cursor, VS Code, LangChain
+- **API Key** — for VS Code, LangChain, AI tools
 - **Session Token** — X-Session-Token for all API
 
 ---

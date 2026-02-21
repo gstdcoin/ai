@@ -1,4 +1,4 @@
--- User API Keys for External Integration (Cursor, Antigravity, etc.)
+-- User API Keys for External Integration (SDK, agents, etc.)
 CREATE TABLE IF NOT EXISTS user_api_keys (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_wallet TEXT NOT NULL REFERENCES users(wallet_address) ON DELETE CASCADE,
