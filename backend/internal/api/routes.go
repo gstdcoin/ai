@@ -337,10 +337,12 @@ func SetupRoutes(
 		v1.POST("/market/buy-gstd-x402", marketHandler.GetX402BuyDetails)
 		v1.POST("/market/buy-service-x402", marketHandler.BuyServiceX402) // NEW: Service Buying
 
-		// Autonomous Auth (PoW)
+		// Autonomous Auth (PoW) — devices get API key without session
 		authHandler := NewAuthHandler()
 		v1.GET("/auth/challenge", authHandler.GetChallenge)
 		v1.POST("/auth/claim-key", authHandler.ClaimKey)
+		v1.GET("/agents/challenge", authHandler.GetChallenge)   // Alias for devices
+		v1.POST("/agents/claim-key", authHandler.ClaimKey)     // Alias for devices
 
 		// Protected endpoints (require session)
 		var sessionMiddleware gin.HandlerFunc
@@ -554,7 +556,7 @@ func SetupRoutes(
 			chatGroup.GET("/ultra-status", gatewayHandler.GetUltraStatus)
 		}
 		v1.GET("/models", gatewayHandler.ListModels)
-		// For Cursor/Other tools: /v1/chat/completions with HybridAuth (Session + API Key → Ultra)
+		// OpenAI-compatible: /v1/chat/completions with HybridAuth (Session + API Key → Ultra)
 		if redisClient != nil {
 			if rc, ok := redisClient.(*redis.Client); ok && rc != nil {
 				v1Root := router.Group("/v1")

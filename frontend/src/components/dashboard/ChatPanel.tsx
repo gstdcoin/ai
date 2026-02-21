@@ -617,7 +617,7 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
                   </span>
                 )}
 
-                {/* Streaming cursor */}
+                {/* Streaming indicator */}
                 {msg.isStreaming && (
                   <span className="inline-block w-2 h-4 bg-cyan-400 animate-pulse ml-0.5 rounded-sm" />
                 )}
