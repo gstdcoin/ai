@@ -7,7 +7,7 @@ set -euo pipefail
 
 GSTD_VERSION="1.0.0"
 GSTD_DIR="${GSTD_DIR:-$HOME/.gstd}"
-GSTD_API="${GSTD_API:-https://api.gstdtoken.com}"
+GSTD_API="${GSTD_API:-https://app.gstdtoken.com}"
 NODE_TYPE="auto"
 
 # Colors

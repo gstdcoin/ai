@@ -31,7 +31,7 @@ cd frontend && npx vercel
 ```
 
 ### OpenClaw (Agent skill)
-Import `https://github.com/gstdcoin/ai` → uses `openclaw-manifest.json`
+Import `https://github.com/gstdcoin/ai` → uses `openclaw-manifest.json` and [SKILL.md](docs/skills/SKILL.md)
 
 ### Mobile (Telegram Web App)
 Open [@GSTDBot](https://t.me/GSTDBot) → Launch App → Node auto-starts as Micro Worker

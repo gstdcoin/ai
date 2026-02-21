@@ -98,7 +98,7 @@ Backend: ok (a2a, api, genesis, hive, inference, node, sentinel, services, levia
 ## 8. Доступ
 
 - **Локально:** http://127.0.0.1:8080 (API), http://127.0.0.1:9080 (app), http://127.0.0.1:3001 (frontend direct)
-- **Продакшн:** https://app.gstdtoken.com, https://api.gstdtoken.com
+- **Продакшн:** https://app.gstdtoken.com
 
 ---
 

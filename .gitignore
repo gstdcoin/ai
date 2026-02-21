@@ -68,7 +68,7 @@ backups/
 # Nested repos (managed separately)
 A2A/
 
-# IDE workspace
+# IDE workspace (local dev only)
 .cursor/
 .cursor-server/
 .windsurf-server/
@@ -88,7 +88,7 @@ ton-connect-manifest.json
 *.py
 !scripts/**/*.py
 load-balancer.conf.updated
-api.gstdtoken.com.conf
+app.gstdtoken.com.conf
 test-project/
 
 # Inspection & log dumps (generated locally, never commit)

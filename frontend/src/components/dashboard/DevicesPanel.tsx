@@ -163,7 +163,7 @@ export default function DevicesPanel() {
 python3 connect.py --api-key YOUR_KEY`}
               </pre>
               <p className="text-[10px] text-gray-500">
-                API: app.gstdtoken.com • OpenClaw: openclaw_bridge.py • <a href="https://github.com/gstdcoin/ai/blob/main/docs/skills/SWARM_PARTICIPANT.md" target="_blank" rel="noopener" className="text-cyan-400 hover:underline">Skill: SWARM_PARTICIPANT</a>
+                API: app.gstdtoken.com • OpenClaw: openclaw_bridge.py • <a href="https://github.com/gstdcoin/ai/blob/main/docs/skills/SKILL.md" target="_blank" rel="noopener" className="text-cyan-400 hover:underline">Skill: SKILL.md</a>
               </p>
             </div>
             <button

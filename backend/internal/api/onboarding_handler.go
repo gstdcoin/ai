@@ -416,7 +416,7 @@ func (h *OnboardingHandler) GetQuickBuyLink(c *gin.Context) {
 			"getgems":     "https://getgems.io/collection/gstd",
 			"wallet_tg":   "https://t.me/wallet",
 			"manual":      "https://github.com/gstdcoin/ai/blob/main/docs/BUY_GSTD_TELEGRAM_WALLET.md",
-			"direct_swap": "https://api.gstdtoken.com/swap?amount=" + amount,
+			"direct_swap": "https://app.ston.fi/swap?ft=TON&tt=GSTD&ta=" + amount,
 		},
 		"instructions": "Buy TON in @wallet, then swap TON→GSTD on Ston.fi or DeDust. See manual for step-by-step.",
 	})

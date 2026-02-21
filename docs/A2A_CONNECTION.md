@@ -78,6 +78,10 @@ python3 openclaw_bridge.py
 }
 ```
 
+## OpenClaw Skill
+
+Автоматическая инструкция: [docs/skills/SKILL.md](https://github.com/gstdcoin/ai/blob/main/docs/skills/SKILL.md)
+
 ## Device Status in Dashboard
 
 After handshake, devices appear in Dashboard → Devices (merged with nodes from /nodes/my and /devices/my).
