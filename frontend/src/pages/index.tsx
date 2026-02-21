@@ -8,28 +8,8 @@ import { useTonConnectUI } from '@tonconnect/ui-react';
 import WalletConnect from '../components/WalletConnect';
 import { useWalletStore } from '../store/walletStore';
 import { API_BASE_URL } from '../lib/config';
-import { Send, Shield, Globe, Activity, Sparkles, Brain, Zap, MessageSquare, Server, Cpu, ArrowRight, Wallet, Bot, ChevronDown, BookOpen, Terminal, Code2, Link2, DollarSign, TrendingDown, TrendingUp } from 'lucide-react';
+import { Send, Shield, Globe, Activity, Zap, MessageSquare, Server, ArrowRight, Bot, TrendingDown, TrendingUp } from 'lucide-react';
 import SwarmVisualization from '../components/home/SwarmVisualization';
-
-function AccordionItem({ title, icon, children, defaultOpen = false }: { title: string; icon: React.ReactNode; children: React.ReactNode; defaultOpen?: boolean }) {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <div className="border border-white/10 rounded-2xl overflow-hidden bg-white/[0.02] hover:bg-white/[0.04] transition-colors">
-      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between gap-3 p-4 sm:p-5 text-left">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center text-violet-400 flex-shrink-0">{icon}</div>
-          <span className="text-sm sm:text-base font-bold text-white">{title}</span>
-        </div>
-        <ChevronDown size={16} className={`text-gray-500 transition-transform duration-300 flex-shrink-0 ${open ? 'rotate-180' : ''}`} />
-      </button>
-      <div className={`overflow-hidden transition-all duration-300 ${open ? 'max-h-[600px] opacity-100' : 'max-h-0 opacity-0'}`}>
-        <div className="px-4 sm:px-5 pb-4 sm:pb-5 pt-0 text-sm text-gray-400 leading-relaxed space-y-2">
-          {children}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 interface NetworkStats {
   active_workers: number;
@@ -123,10 +103,9 @@ export default function Home() {
       </div>
 
       <div className="relative z-10 flex flex-col min-h-screen">
-        {/* Network IQ strip (Polymarket/Leviathan ticker removed) */}
         {networkStats != null && (
           <div className="bg-black/40 backdrop-blur-md border-b border-white/5 px-4 py-1.5 text-center text-[11px] font-medium text-cyan-400/90">
-            Network IQ: {networkStats.network_iq != null ? networkStats.network_iq.toFixed(1) : '—'} | Latency: {networkStats.global_brain_latency_ms ?? '—'}ms
+            {networkStats.active_workers?.toLocaleString() ?? '—'} nodes • {networkStats.total_tasks?.toLocaleString() ?? '—'} tasks
           </div>
         )}
 
@@ -213,16 +192,13 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-5xl mb-20" id="features">
             {/* Consumer Path */}
             <div className="group relative p-8 rounded-3xl bg-white/[0.02] border border-white/10 hover:bg-white/[0.04] transition-all overflow-hidden">
-              <div className="absolute top-0 right-0 p-8 opacity-20 group-hover:opacity-40 transition-opacity">
-                <Brain size={120} className="text-violet-500" />
-              </div>
               <div className="relative z-10">
                 <div className="w-12 h-12 rounded-2xl bg-violet-500/20 flex items-center justify-center mb-6">
                   <MessageSquare className="text-violet-400" size={24} />
                 </div>
-                <h2 className="text-2xl font-bold mb-3 text-white">Use Intelligence</h2>
-                <p className="text-gray-400 mb-8 leading-relaxed h-12">
-                  Access censorship-free AI models. Pay per request with privacy-preserving architecture.
+                <h2 className="text-2xl font-bold mb-3 text-white">Use AI</h2>
+                <p className="text-gray-400 mb-8 leading-relaxed">
+                  Chat with the swarm. Basic requests are free. GSTD unlocks advanced models and Hive Memory.
                 </p>
                 <button
                   onClick={() => tonConnectUI.openModal()}
@@ -235,16 +211,13 @@ export default function Home() {
 
             {/* Provider Path */}
             <div className="group relative p-8 rounded-3xl bg-white/[0.02] border border-white/10 hover:bg-white/[0.04] transition-all overflow-hidden">
-              <div className="absolute top-0 right-0 p-8 opacity-20 group-hover:opacity-40 transition-opacity">
-                <Server size={120} className="text-emerald-500" />
-              </div>
               <div className="relative z-10">
                 <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 flex items-center justify-center mb-6">
                   <Zap className="text-emerald-400" size={24} />
                 </div>
-                <h2 className="text-2xl font-bold mb-3 text-white">Provide Compute</h2>
-                <p className="text-gray-400 mb-8 leading-relaxed h-12">
-                  Turn your idle device into a node. Earn GSTD backed by real gold reserves.
+                <h2 className="text-2xl font-bold mb-3 text-white">Earn GSTD</h2>
+                <p className="text-gray-400 mb-8 leading-relaxed">
+                  No tokens? Connect your device. Any phone, PC, or IoT can join the swarm and earn.
                 </p>
                 <button
                   onClick={() => tonConnectUI.openModal()}
@@ -285,58 +258,25 @@ export default function Home() {
             </div>
           </div>
 
-          {/* VISUAL EVOLUTION: Nodes → Latency ↓, IQ ↑ */}
           <div className="w-full max-w-5xl mb-20">
             <div className="p-6 rounded-2xl bg-gradient-to-br from-violet-500/5 to-cyan-500/5 border border-white/10">
               <h3 className="text-sm font-bold text-white/90 mb-4 flex items-center gap-2">
                 <Activity size={18} className="text-cyan-400" />
-                Visual Evolution: Network Intelligence
+                Supercomputer for Humanity
               </h3>
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-8">
-                <div className="flex flex-col items-center">
-                  <div className="text-2xl font-black text-emerald-400">{activeNodes}</div>
-                  <div className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">Nodes</div>
-                </div>
-                <ArrowRight size={24} className="text-white/30 rotate-90 sm:rotate-0" />
-                <div className="flex flex-col sm:flex-row gap-6 sm:gap-8">
-                  <div className="flex flex-col items-center">
-                    <div className="flex items-center gap-1">
-                      <TrendingDown size={16} className="text-cyan-400" />
-                      <span className="text-xl font-black text-cyan-400">{networkStats?.global_brain_latency_ms ?? '—'}ms</span>
-                    </div>
-                    <div className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">Latency</div>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <div className="flex items-center gap-1">
-                      <TrendingUp size={16} className="text-amber-400" />
-                      <span className="text-xl font-black text-amber-400">{networkStats?.network_iq != null ? networkStats.network_iq.toFixed(1) : '—'}</span>
-                    </div>
-                    <div className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">Network IQ</div>
-                  </div>
-                </div>
-              </div>
-              <p className="text-xs text-gray-500 mt-4 text-center max-w-md mx-auto">
-                More nodes → lower latency, higher intelligence. Join the swarm to strengthen the collective brain.
+              <p className="text-sm text-gray-400 text-center max-w-md mx-auto">
+                Any device joins the swarm. No tokens? Earn by contributing. Have tokens? Unlock advanced AI. The network learns and grows with every request.
               </p>
             </div>
           </div>
 
-          {/* DOCUMENTATION / FAQ */}
-          <div className="w-full max-w-3xl" id="docs-section">
-            <div className="flex items-center gap-3 mb-8">
-              <BookOpen className="text-gray-400" size={20} />
-              <h3 className="text-xl font-bold text-white">Documentation & Guide</h3>
-            </div>
-            <div className="space-y-4">
-              <AccordionItem title="How does Gold Backing work?" icon={<Shield size={18} />} defaultOpen={true}>
-                <p>Every GSTD token is backed by real physical gold (XAUt). The protocol automatically converts 70% of net revenue into gold reserves, creating a rising floor price. A cryptographic Nightly Audit verifies the reserves every 24 hours.</p>
-              </AccordionItem>
-              <AccordionItem title="How do I earn?" icon={<DollarSign size={18} />}>
-                <p>Connect your wallet and click "Ignite Miner". Your device will process small AI tasks (inference) in the background. You are paid in GSTD for every valid result. No specialized hardware is required for basic mining.</p>
-              </AccordionItem>
-              <AccordionItem title="Is it decentralized?" icon={<Globe size={18} />}>
-                <p>Yes. The GSTD network uses a swarm architecture. There is no central server controlling the intelligence. Your data is processed across distributed nodes using secure multi-party computation.</p>
-              </AccordionItem>
+          {/* SIMPLE FAQ */}
+          <div className="w-full max-w-2xl" id="docs-section">
+            <h3 className="text-lg font-bold text-white mb-4">How it works</h3>
+            <div className="space-y-3 text-sm text-gray-400">
+              <p><strong className="text-white">No tokens?</strong> Connect your device and earn GSTD by contributing compute. Any device can join the swarm.</p>
+              <p><strong className="text-white">Have tokens?</strong> Unlock advanced AI features: better models, Hive Memory, and priority access.</p>
+              <p><strong className="text-white">Gold-backed.</strong> GSTD is secured by physical gold reserves. Decentralized. Uncensored.</p>
             </div>
           </div>
 

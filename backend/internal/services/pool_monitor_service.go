@@ -4,10 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"log"
 	"math"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -106,44 +106,61 @@ func (p *PoolMonitorService) GetXAUtPriceUSD() float64 {
 	return defaultGoldPrice
 }
 
-// GetGSTDPriceUSD returns an implied GSTD price in USD, based on the
-// Golden Reserve log if available, otherwise falls back to a conservative default.
+// GetGSTDPriceUSD returns GSTD price in USD. Priority: (1) Ston.fi pool reserves, (2) golden_reserve_log, (3) fallback.
 func (p *PoolMonitorService) GetGSTDPriceUSD(ctx context.Context) (float64, error) {
 	const fallbackPrice = 0.02 // safe default when we cannot derive from reserve
 
-	if p.db == nil {
-		return fallbackPrice, nil
-	}
-
-	// Golden reserve log stores how much GSTD was swapped into XAUt.
-	// We approximate price as: total XAUt value / total GSTD in those swaps.
-	var totalGSTD, totalXAUt float64
-	err := p.db.QueryRowContext(ctx, `
-		SELECT
-			COALESCE(SUM(gstd_amount), 0) AS total_gstd,
-			COALESCE(SUM(xaut_amount), 0) AS total_xaut
-		FROM golden_reserve_log
-	`).Scan(&totalGSTD, &totalXAUt)
-	if err != nil {
-		log.Printf("PoolMonitorService: failed to read golden_reserve_log: %v", err)
-		return fallbackPrice, nil
-	}
-
-	if totalGSTD <= 0 || totalXAUt <= 0 {
-		return fallbackPrice, nil
-	}
-
 	goldPrice := p.GetXAUtPriceUSD()
-	// 1 XAUt ~= goldPrice USD, so total reserve value:
-	totalReserveUSD := totalXAUt * goldPrice
-	price := totalReserveUSD / totalGSTD
 
-	// Guard against NaN / Inf and unreasonable values.
-	if math.IsNaN(price) || math.IsInf(price, 0) || price <= 0 {
-		return fallbackPrice, nil
+	// 1. Try Ston.fi pool for real-time DEX price (most accurate)
+	if p.stonFi != nil {
+		poolAddr := p.tonCfg.GoldPoolAddress
+		if poolAddr == "" {
+			poolAddr = p.tonCfg.PoolAddress
+		}
+		if poolAddr != "" {
+			poolData, err := p.stonFi.GetPoolData(ctx, poolAddr)
+			if err == nil {
+				if pool, ok := poolData["pool"].(map[string]interface{}); ok {
+					r0, _ := strconv.ParseFloat(getStr(pool, "reserve0"), 64)
+					r1, _ := strconv.ParseFloat(getStr(pool, "reserve1"), 64)
+					t1 := getStr(pool, "token1_address")
+					if r0 > 0 && r1 > 0 {
+						var xautReserve, gstdReserve float64
+						gstdAddr := p.tonCfg.GSTDJettonAddress
+						if gstdAddr != "" && (t1 == gstdAddr || strings.Contains(t1, gstdAddr)) {
+							gstdReserve, xautReserve = r1/1e9, r0/1e9
+						} else {
+							xautReserve, gstdReserve = r0/1e9, r1/1e9
+						}
+						if gstdReserve > 0 {
+							price := (xautReserve * goldPrice) / gstdReserve
+							if !math.IsNaN(price) && !math.IsInf(price, 0) && price > 0.0001 && price < 1000 {
+								return price, nil
+							}
+						}
+					}
+				}
+			}
+		}
 	}
 
-	return price, nil
+	// 2. Golden reserve log
+	if p.db != nil {
+		var totalGSTD, totalXAUt float64
+		err := p.db.QueryRowContext(ctx, `
+			SELECT COALESCE(SUM(gstd_amount), 0), COALESCE(SUM(xaut_amount), 0)
+			FROM golden_reserve_log
+		`).Scan(&totalGSTD, &totalXAUt)
+		if err == nil && totalGSTD > 0 && totalXAUt > 0 {
+			price := (totalXAUt * goldPrice) / totalGSTD
+			if !math.IsNaN(price) && !math.IsInf(price, 0) && price > 0 {
+				return price, nil
+			}
+		}
+	}
+
+	return fallbackPrice, nil
 }
 
 // GetPoolStatusCached returns pool status. Uses Ston.fi API when available for real pool data

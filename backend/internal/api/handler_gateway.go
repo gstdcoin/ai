@@ -43,6 +43,9 @@ const StakingDiscountPct = 0.10
 // FirstQueryBonusGSTD: Market Ascension — 0.05 GSTD for new user's first test request
 const FirstQueryBonusGSTD = 0.05
 
+// FreeBasicTierDaily: Supercomputer for Humanity — 5 free requests/day for users with balance < 0.01 (7b/8b only)
+const FreeBasicTierDaily = 5
+
 // NewGatewayHandler creates a new gateway handler.
 func NewGatewayHandler(apiKeyService *services.APIKeyService, taskService *services.TaskService, db *sql.DB) *GatewayHandler {
 	ollamaURL := os.Getenv("OLLAMA_URL")
@@ -241,9 +244,28 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 		}
 	}
 
+	// Supercomputer for Humanity: Free basic tier — 5 requests/day when balance < 0.01 (7b/8b only)
+	useFreeTier := false
+	if h.redis != nil && h.db != nil && !isUltra && (ollamaModel == "qwen2.5-coder:7b" || ollamaModel == "llama3.1:8b") {
+		today := time.Now().Format("2006-01-02")
+		key := "free_chat:" + wallet + ":" + today
+		count, _ := h.redis.Incr(c.Request.Context(), key).Result()
+		if count == 1 {
+			h.redis.Expire(c.Request.Context(), key, 48*time.Hour)
+		}
+		if count <= FreeBasicTierDaily {
+			var balance float64
+			_ = h.db.QueryRowContext(c.Request.Context(), `SELECT COALESCE(gstd_balance, 0) + COALESCE(balance, 0) FROM users WHERE wallet_address = $1`, wallet).Scan(&balance)
+			if balance < 0.01 {
+				useFreeTier = true
+				fee = 0
+			}
+		}
+	}
+
 	// Market Ascension: First-Query Bonus — 0.05 GSTD for new user's first request
 	useFirstQueryBonus := false
-	if h.db != nil && fee <= FirstQueryBonusGSTD {
+	if !useFreeTier && h.db != nil && fee <= FirstQueryBonusGSTD {
 		// Ensure user exists (new users from chat)
 		_, _ = h.db.ExecContext(c.Request.Context(), `INSERT INTO users (wallet_address, balance, created_at, updated_at) VALUES ($1, 0, NOW(), NOW()) ON CONFLICT (wallet_address) DO NOTHING`, wallet)
 		var bonusUsed bool
@@ -260,8 +282,8 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 		}
 	}
 
-	// Check balance and deduct before inference (skip if First-Query Bonus)
-	if !useFirstQueryBonus && h.db != nil {
+	// Check balance and deduct before inference (skip if Free Tier or First-Query Bonus)
+	if !useFreeTier && !useFirstQueryBonus && h.db != nil {
 		var balance float64
 		err := h.db.QueryRowContext(c.Request.Context(), `
 			SELECT COALESCE(gstd_balance, 0) + COALESCE(balance, 0) FROM users WHERE wallet_address = $1
@@ -336,8 +358,8 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 	_ = json.Unmarshal(respBody, &ollamaResp)
 	content := strings.TrimSpace(ollamaResp.Response)
 
-	// Consumer Adoption: SettlementService — record payment (skip when First-Query Bonus)
-	if h.settlement != nil && wallet != "" && fee > 0 {
+	// Consumer Adoption: SettlementService — record payment (skip when Free Tier or First-Query Bonus)
+	if h.settlement != nil && wallet != "" && fee > 0 && !useFreeTier {
 		workerAmt := fee * 0.85
 		_, _ = h.settlement.ProcessPayment(c.Request.Context(), &services.SettlementRequest{
 			AmountGSTD:   fee,

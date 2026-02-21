@@ -11,6 +11,7 @@ export default function HelpPanel() {
     howItWorks: true,
     useCases: true,
     gstd: true,
+    buyGstd: true,
   });
 
   const toggleSection = (section: string) => {
@@ -250,6 +251,49 @@ export default function HelpPanel() {
                 </p>
               </div>
             </div>
+          </div>
+        )}
+      </section>
+
+      {/* How to Buy GSTD (Telegram Wallet) */}
+      <section>
+        <button
+          onClick={() => toggleSection('buyGstd')}
+          className="w-full flex items-center justify-between text-xl sm:text-2xl font-bold text-white mb-6 hover:text-gold-900 transition-colors"
+        >
+          <span className="flex items-center gap-2">🛒 {t('how_to_buy_gstd') || 'How to Buy GSTD'}</span>
+          {expandedSections.buyGstd ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+        </button>
+        {expandedSections.buyGstd && (
+          <div className="glass-card border-amber-500/30 bg-amber-500/10 p-4 sm:p-6 rounded-xl">
+            <p className="text-sm sm:text-base text-gray-300 mb-4">
+              {t('buy_gstd_intro') || 'Buy GSTD using Telegram Wallet: get TON first, then swap on DEX.'}
+            </p>
+            <ol className="list-decimal list-inside space-y-3 text-sm sm:text-base text-gray-300 mb-4">
+              <li>
+                <strong className="text-white">Open @wallet</strong> in Telegram → <a href="https://t.me/wallet" target="_blank" rel="noopener noreferrer" className="text-amber-400 hover:underline">t.me/wallet</a>
+              </li>
+              <li>
+                <strong className="text-white">Deposit</strong> → Add crypto → Bank Card / P2P Express → buy <strong>Toncoin</strong>
+              </li>
+              <li>
+                <strong className="text-white">Swap TON → GSTD</strong> on{' '}
+                <a href="https://app.ston.fi/swap?ft=TON&tt=GSTD" target="_blank" rel="noopener noreferrer" className="text-amber-400 hover:underline">Ston.fi</a>
+                {' '}or{' '}
+                <a href="https://dedust.io/swap/TON/GSTD" target="_blank" rel="noopener noreferrer" className="text-amber-400 hover:underline">DeDust</a>
+              </li>
+              <li>
+                {t('buy_gstd_keep_ton') || 'Keep a small TON balance for gas fees.'}
+              </li>
+            </ol>
+            <a
+              href="https://github.com/gstdcoin/ai/blob/main/docs/BUY_GSTD_TELEGRAM_WALLET.md"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 text-amber-400 hover:text-amber-300 font-medium"
+            >
+              📄 {t('full_manual') || 'Full manual (RU)'}
+            </a>
           </div>
         )}
       </section>
