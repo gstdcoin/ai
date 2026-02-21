@@ -71,7 +71,7 @@ const nextConfig = {
   },
   async rewrites() {
     const apiDest = process.env.VERCEL
-      ? 'https://api.gstdtoken.com/api/:path*'
+      ? 'https://app.gstdtoken.com/api/:path*'
       : 'http://localhost:8080/api/:path*';
     return [{ source: '/api/:path*', destination: apiDest }];
   },

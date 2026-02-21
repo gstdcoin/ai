@@ -8,6 +8,7 @@ import { ErrorBoundary } from '../components/common/ErrorBoundary';
 import { TelegramThemeProvider } from '../components/common/TelegramThemeProvider';
 import { initTelegramWebApp, isTelegramWebApp, getTelegramColorScheme } from '../lib/telegram';
 import WalletListener from '../components/common/WalletListener';
+import VercelSwarmHeartbeat from '../components/common/VercelSwarmHeartbeat';
 import '../styles/globals.css';
 
 // Get manifestUrl from environment variable or use fallback
@@ -105,6 +106,7 @@ function App({ Component, pageProps }: AppProps) {
           language={tonConnectLanguage}
         >
           <WalletListener />
+          <VercelSwarmHeartbeat />
           <Component {...pageProps} />
           <Toaster
             position="top-right"
