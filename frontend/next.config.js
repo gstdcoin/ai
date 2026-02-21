@@ -26,8 +26,8 @@ const nextConfig = {
   compress: true,
   poweredByHeader: false,
   generateEtags: false,
-  // Output standalone for Docker
-  output: 'standalone',
+  // Output standalone for Docker; Vercel ignores this
+  ...(process.env.VERCEL ? {} : { output: 'standalone' }),
   // Ignore TypeScript errors during build (eslint config removed as it is deprecated in next.config.js)
   typescript: {
     ignoreBuildErrors: true,
@@ -70,12 +70,10 @@ const nextConfig = {
     ];
   },
   async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: 'http://localhost:8080/api/:path*',
-      },
-    ];
+    const apiDest = process.env.VERCEL
+      ? 'https://api.gstdtoken.com/api/:path*'
+      : 'http://localhost:8080/api/:path*';
+    return [{ source: '/api/:path*', destination: apiDest }];
   },
 };
 
