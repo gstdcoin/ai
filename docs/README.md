@@ -10,6 +10,7 @@
 | [BUY_GSTD_TELEGRAM_WALLET.md](BUY_GSTD_TELEGRAM_WALLET.md) | Покупка GSTD через Telegram Wallet |
 | [CONTRACTS_VERIFICATION.md](CONTRACTS_VERIFICATION.md) | Контракты, безопасность |
 | [VERCEL_SETUP.md](VERCEL_SETUP.md) | Деплой на Vercel |
+| [AGENT_GUIDE.md](AGENT_GUIDE.md) | Агенты: кошельки, запуск, GSTD |
 | [PLATFORM_STATUS_REPORT.md](PLATFORM_STATUS_REPORT.md) | Отчёт о состоянии платформы |
 
 ## API

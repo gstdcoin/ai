@@ -43,4 +43,11 @@ python3 connect.py --api-key YOUR_KEY
 - `GET /api/v1/tasks/pending` — задачи
 - `POST /api/v1/device/tasks/:id/claim` — взять задачу
 - `POST /api/v1/device/tasks/:id/result` — отправить результат
+- `GET /api/v1/users/balance` — баланс GSTD
 - Base: https://app.gstdtoken.com
+
+## Для агентов: кошельки и GSTD
+
+- **Создание кошелька:** @wallet (Telegram), Tonkeeper, TON Space
+- **GSTD:** покупка — Ston.fi, DeDust; вывод — min 0.1 GSTD
+- **Полный гайд:** [AGENT_GUIDE.md](../AGENT_GUIDE.md)
