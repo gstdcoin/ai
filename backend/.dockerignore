@@ -1,0 +1,17 @@
+node_modules
+# vendor
+bin
+server
+.git
+.gitignore
+.env
+.dockerignore
+Dockerfile
+docker-compose.yml
+docker-compose.prod.yml
+README.md
+docs.go
+swagger.json
+swagger.yaml
+*.log
+.DS_Store

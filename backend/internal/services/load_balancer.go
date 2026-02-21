@@ -1,0 +1,189 @@
+package services
+
+import (
+	"context"
+	"database/sql"
+	"fmt"
+	"sync"
+	"time"
+
+	"github.com/redis/go-redis/v9"
+)
+
+// LoadBalancer manages task distribution across workers based on capacity and trust
+type LoadBalancer struct {
+	db          *sql.DB
+	redis       *redis.Client
+	workerStats sync.Map // Map[string]*WorkerCapacity
+	mu          sync.RWMutex
+}
+
+type WorkerCapacity struct {
+	WalletAddress string
+	MaxTasks      int
+	ActiveTasks   int
+	TrustScore    float64
+	LastSeen      time.Time
+	CPUCores      int
+	RAMGB         float64
+	Stability     float64 // 0.0 to 1.0 based on uptime/response consistency
+	BatteryLevel  int     // 0-100
+	SignalQuality int     // 0-100
+	H3Index       string  // Omega Point: H3 hexagonal index for geo-routing (Vision tasks)
+}
+
+func NewLoadBalancer(db *sql.DB, rdb *redis.Client) *LoadBalancer {
+	return &LoadBalancer{
+		db:    db,
+		redis: rdb,
+	}
+}
+
+
+type TaskRequirements struct {
+	MinTrust         float64
+	RequiredCPU      int
+	RequiredRAMGB    float64
+	IsHeavy          bool   // BOINC or complex AI tasks
+	PreferredH3Index string // Omega Point: For Vision tasks, prefer workers with same H3 (lower latency)
+}
+
+// SelectWorkerForBrainRequest selects worker with best ping to consumer (Global Load Balancing)
+// Pass consumerH3Index from request geo for latency minimization
+func (lb *LoadBalancer) SelectWorkerForBrainRequest(ctx context.Context, consumerH3Index string, minTrust float64) (string, error) {
+	return lb.SelectBestWorker(ctx, TaskRequirements{
+		MinTrust:         minTrust,
+		PreferredH3Index: consumerH3Index,
+	})
+}
+
+// SelectBestWorker finds the optimal worker for a given task
+func (lb *LoadBalancer) SelectBestWorker(ctx context.Context, req TaskRequirements) (string, error) {
+	activeWorkers, err := lb.getActiveWorkers(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	var bestWorker string
+	var bestScore float64 = -1e9
+
+	for _, worker := range activeWorkers {
+		// 1. Mandatory Constraint Checks
+		if worker.ActiveTasks >= worker.MaxTasks {
+			continue
+		}
+		if worker.TrustScore < req.MinTrust {
+			continue
+		}
+		if req.RequiredCPU > 0 && worker.CPUCores < req.RequiredCPU {
+			continue
+		}
+		if req.RequiredRAMGB > 0 && worker.RAMGB < req.RequiredRAMGB {
+			continue
+		}
+
+		// 2. Heavy Task Specific Rules (BOINC)
+		if req.IsHeavy {
+			// Require at least 0.8 trust and high stability for BOINC
+			if worker.TrustScore < 0.8 || worker.Stability < 0.9 {
+				continue
+			}
+		}
+
+		// 3. Scoring (Reputation Weighted Load Balancing + Preventive Health)
+		// Score = (Trust * 40) + (Stability * 20) + (HealthRating * 30) - (LoadFactor * 20)
+		loadFactor := float64(worker.ActiveTasks) / float64(worker.MaxTasks)
+		
+		// Health Rating (PROACTIVE)
+		healthRating := 1.0
+		if worker.BatteryLevel > 0 && worker.BatteryLevel < 20 {
+			healthRating *= 0.2 // Severe penalty for low battery
+		} else if worker.BatteryLevel > 0 && worker.BatteryLevel < 50 {
+			healthRating *= 0.7 // Subtle penalty for moderate battery
+		}
+		
+		if worker.SignalQuality > 0 && worker.SignalQuality < 30 {
+			healthRating *= 0.5 // Penalty for weak signal
+		}
+
+		score := (worker.TrustScore * 40) + (worker.Stability * 20) + (healthRating * 30) - (loadFactor * 20)
+
+		// Age penalty for stale workers (LastSeen more than 30s ago)
+		if time.Since(worker.LastSeen) > 30*time.Second {
+			score -= 50
+		}
+
+		// Omega Point: H3 Spatial Sharding - prefer workers with same H3 for Vision (heavy data, lower latency)
+		if req.PreferredH3Index != "" && worker.H3Index != "" && worker.H3Index == req.PreferredH3Index {
+			score += 25
+		}
+
+		if score > bestScore {
+			bestScore = score
+			bestWorker = worker.WalletAddress
+		}
+	}
+
+	if bestWorker == "" {
+		return "", fmt.Errorf("no suitable high-trust stable worker found for requirements")
+	}
+
+	return bestWorker, nil
+}
+
+// getActiveWorkers fetches online workers from Redis with their detailed stats
+func (lb *LoadBalancer) getActiveWorkers(ctx context.Context) ([]*WorkerCapacity, error) {
+	keys, err := lb.redis.Keys(ctx, "worker:online:*").Result()
+	if err != nil {
+		return nil, err
+	}
+
+	workers := make([]*WorkerCapacity, 0, len(keys))
+	for _, key := range keys {
+		wallet := key[14:]
+		data, err := lb.redis.HGetAll(ctx, "capacity:"+wallet).Result()
+		if err != nil || len(data) == 0 {
+			continue
+		}
+
+		w := &WorkerCapacity{WalletAddress: wallet}
+		fmt.Sscanf(data["max_tasks"], "%d", &w.MaxTasks)
+		if data["h3_index"] != "" {
+			w.H3Index = data["h3_index"]
+		}
+		fmt.Sscanf(data["active_tasks"], "%d", &w.ActiveTasks)
+		fmt.Sscanf(data["trust_score"], "%f", &w.TrustScore)
+		fmt.Sscanf(data["cpu_cores"], "%d", &w.CPUCores)
+		fmt.Sscanf(data["ram_gb"], "%f", &w.RAMGB)
+		fmt.Sscanf(data["stability"], "%f", &w.Stability)
+		
+		fmt.Sscanf(data["battery_level"], "%d", &w.BatteryLevel)
+		fmt.Sscanf(data["signal_quality"], "%d", &w.SignalQuality)
+		
+		if ts, err := time.Parse(time.RFC3339, data["last_seen"]); err == nil {
+			w.LastSeen = ts
+		}
+
+		workers = append(workers, w)
+	}
+
+	// If no workers in Redis, fallback to DB for initial population (Omega: include h3_index for geo-routing)
+	if len(workers) == 0 {
+		rows, err := lb.db.QueryContext(ctx, `
+			SELECT wallet_address, 10, trust_score, 0, cpu_model, ram_gb, 1.0, last_seen, COALESCE(h3_index, '')
+			FROM nodes WHERE status = 'online' AND last_seen > NOW() - INTERVAL '1 minute'
+		`)
+		if err == nil {
+			defer rows.Close()
+			for rows.Next() {
+				var w WorkerCapacity
+				var cpuModel string
+				rows.Scan(&w.WalletAddress, &w.MaxTasks, &w.TrustScore, &w.ActiveTasks, &cpuModel, &w.RAMGB, &w.Stability, &w.LastSeen, &w.H3Index)
+				w.CPUCores = 4
+				workers = append(workers, &w)
+			}
+		}
+	}
+
+	return workers, nil
+}
