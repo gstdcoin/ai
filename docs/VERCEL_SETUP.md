@@ -20,12 +20,13 @@
 
 | Variable | Value | Описание |
 |----------|-------|----------|
-| `NEXT_PUBLIC_API_URL` | `https://api.gstdtoken.com` | Или URL деплоя (для rewrites) |
+| `NEXT_PUBLIC_API_URL` | `https://app.gstdtoken.com` | API (default, CORS разрешает *.vercel.app) |
+| `NEXT_PUBLIC_GSTD_VERCEL_RELAY_WALLET` | `EQ...` | Кошелёк для Vercel-ноды в рое (опционально) |
 | `NEXT_PUBLIC_WS_URL` | `wss://app.gstdtoken.com/ws` | WebSocket |
 | `GSTD_JETTON_ADDRESS` | Адрес контракта GSTD | Для TonConnect |
 | `TON_NETWORK` | `mainnet` | Сеть TON |
 
-**Важно:** Если `NEXT_PUBLIC_API_URL` = URL Vercel (например `https://xxx.vercel.app`), запросы к `/api/*` будут проксироваться на `api.gstdtoken.com` через rewrites в `vercel.json`.
+**Vercel Swarm Node:** При открытии страницы на `*.vercel.app` компонент `VercelSwarmHeartbeat` вызывает A2A handshake каждые 20 сек. Нода появляется в рое (Dashboard → Devices). Без `NEXT_PUBLIC_GSTD_VERCEL_RELAY_WALLET` используется zero-address.
 
 ---
 
