@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
-import { LayoutDashboard, Server, BarChart3, HelpCircle, X, Menu, Bot, Home, MessageSquare, Hammer, Cpu, ShoppingCart, Users } from 'lucide-react';
+import { LayoutDashboard, Server, BarChart3, HelpCircle, X, Menu, Bot, MessageSquare, Hammer, Cpu, ShoppingCart, Users } from 'lucide-react';
 import { Tab } from '../../types/tabs';
 
 interface SidebarProps {
@@ -16,11 +16,11 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
 
   const tabs: Array<{ id: Tab | 'agent'; label: string; icon: React.ReactNode; highlight?: boolean; href?: string }> = [
     { id: 'chat', label: t('chat') || 'Chat', icon: <MessageSquare size={20} />, highlight: true },
-    { id: 'agent', label: t('agent_node') || 'Agent Node', icon: <Cpu size={20} />, highlight: true, href: '/agent' },
-    { id: 'home', label: t('nav_mining') || 'Mining', icon: <Hammer size={20} /> },
+    { id: 'home', label: t('nav_mining') || 'Earn', icon: <Hammer size={20} /> },
+    { id: 'devices', label: t('devices') || 'Swarm', icon: <Server size={20} /> },
     { id: 'tasks', label: t('tasks') || 'Tasks', icon: <LayoutDashboard size={20} /> },
-    { id: 'devices', label: t('devices') || 'Devices', icon: <Server size={20} /> },
-    { id: 'marketplace', label: t('marketplace') || 'Marketplace', icon: <ShoppingCart size={20} /> },
+    { id: 'agent', label: t('agent_node') || 'Agent', icon: <Cpu size={20} />, href: '/agent' },
+    { id: 'marketplace', label: t('marketplace') || 'Market', icon: <ShoppingCart size={20} /> },
     { id: 'agents', label: t('agents') || 'Agents', icon: <Bot size={20} /> },
     { id: 'referrals', label: t('referrals') || 'Referrals', icon: <Users size={20} /> },
     { id: 'stats', label: t('stats') || 'Stats', icon: <BarChart3 size={20} /> },

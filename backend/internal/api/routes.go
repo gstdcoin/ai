@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
@@ -70,6 +71,36 @@ func SetupRoutes(
 	gaslessUserService *services.GaslessUserService,
 ) {
 	log.Printf("🔧 SetupRoutes: Starting route setup, redisClient type: %T", redisClient)
+
+	// CORS: allow API access from web app, Telegram, mobile, and external clients
+	allowedOrigins := map[string]bool{
+		"https://app.gstdtoken.com":  true,
+		"https://api.gstdtoken.com":  true,
+		"http://localhost:3000":      true,
+		"http://127.0.0.1:3000":      true,
+		"https://web.telegram.org":   true,
+		"https://t.me":               true,
+	}
+	router.Use(cors.New(cors.Config{
+		AllowOriginFunc: func(origin string) bool {
+			if origin == "" {
+				return true // Non-browser clients (mobile SDK, curl, API tools)
+			}
+			if allowedOrigins[origin] {
+				return true
+			}
+			// Vercel preview deployments (*.vercel.app)
+			if strings.HasSuffix(origin, ".vercel.app") {
+				return true
+			}
+			return false
+		},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Session-Token", "X-API-Key", "X-Admin-API-Key"},
+		ExposeHeaders:    []string{"Content-Length", "Content-Type"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
 
 	// Initialize BrainHandler
 	brainHandler := NewBrainHandler(knowledgeService)
@@ -186,6 +217,11 @@ func SetupRoutes(
 	{
 		// Public endpoints (no session required)
 		v1.GET("/version", GetAPIVersion())
+
+		// A2A (Agent-to-Agent) — https://github.com/gstdcoin/A2A
+		v1.GET("/system/integrity", getSystemIntegrity())
+		v1.POST("/agents/handshake", agentsHandshake(deviceService, apiKeyService, dbConn))
+
 		// @Summary Health check
 		// @Description Returns the health status of the API, database, and TON contract
 		// @Tags Public
@@ -293,6 +329,7 @@ func SetupRoutes(
 
 		// Market Operations (Public) - Frictionless for Agents
 		marketHandler := NewMarketHandler(db.(*sql.DB))
+		v1.GET("/market/price", getMarketPrice(poolMonitorService))
 		v1.GET("/market/quote", marketHandler.GetSwapQuote)
 		// Swap preparation still recommended to be public so users can see what they are signing before login
 		v1.POST("/market/swap", marketHandler.PrepareSwapTransaction)
@@ -949,6 +986,36 @@ func getGSTDBalance(tonService *services.TONService, tonConfig config.TONConfig)
 			"balance":  balance,
 			"has_gstd": hasGSTD,
 		})
+	}
+}
+
+// getMarketPrice returns current GSTD price and buy links (easy acquisition in TON)
+func getMarketPrice(pms *services.PoolMonitorService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if pms == nil {
+			c.JSON(200, gin.H{"gstd_price_usd": 0.02, "source": "fallback", "buy_links": getBuyLinksMap("1")})
+			return
+		}
+		price, err := pms.GetGSTDPriceUSD(c.Request.Context())
+		if err != nil || price <= 0 {
+			price = 0.02
+		}
+		amount := c.DefaultQuery("amount", "10")
+		c.JSON(200, gin.H{
+			"gstd_price_usd": price,
+			"xaut_price_usd": pms.GetXAUtPriceUSD(),
+			"source":         "pool",
+			"buy_links":     getBuyLinksMap(amount),
+		})
+	}
+}
+
+func getBuyLinksMap(amount string) map[string]string {
+	return map[string]string{
+		"ston_fi":   fmt.Sprintf("https://app.ston.fi/swap?ft=TON&tt=GSTD&ta=%s", amount),
+		"dedust":    "https://dedust.io/swap/TON/GSTD",
+		"manual":    "https://github.com/gstdcoin/ai/blob/main/docs/BUY_GSTD_TELEGRAM_WALLET.md",
+		"wallet_tg": "https://t.me/wallet",
 	}
 }
 

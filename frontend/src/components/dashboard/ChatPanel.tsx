@@ -718,17 +718,18 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
             </button>
           )}
         </div>
-        {/* Easy-Onboarding: Cost Indicator before sending */}
+        {/* Cost / Free tier indicator */}
         <p className="text-[10px] text-center mt-2 font-medium">
-          <span className="text-gray-500">{t('chat_disclaimer') || 'Powered by Sovereign AI • Decentralized LLM network • No data stored'}</span>
+          <span className="text-gray-500">{t('chat_disclaimer') || 'Sovereign AI • Decentralized • No data stored'}</span>
           {' • '}
-          <span className="text-amber-500/80">
-            {t('chat_cost_indicator') || 'Cost'}:{' '}
-            {(ultraStatus?.cost_per_model?.[selectedModel] ?? models.find(m => m.id === selectedModel)?.cost ?? 0.01).toFixed(2)} GSTD
-            {ultraStatus?.staking_discount && (
-              <span className="text-emerald-500/80 ml-1">(−10%)</span>
-            )}
-          </span>
+          {(gstdBalance ?? 0) < 0.01 && !isUltraModel(selectedModel) ? (
+            <span className="text-cyan-400">5 free requests/day</span>
+          ) : (
+            <span className="text-amber-500/80">
+              {(ultraStatus?.cost_per_model?.[selectedModel] ?? models.find(m => m.id === selectedModel)?.cost ?? 0.01).toFixed(2)} GSTD
+              {ultraStatus?.staking_discount && <span className="text-emerald-500/80 ml-1">(−10%)</span>}
+            </span>
+          )}
         </p>
       </div>
     </div>

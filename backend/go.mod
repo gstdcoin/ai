@@ -5,6 +5,7 @@ go 1.24.0
 toolchain go1.24.12
 
 require (
+	github.com/gin-contrib/cors v1.7.2
 	github.com/gin-contrib/gzip v1.2.5
 	github.com/gin-gonic/gin v1.11.0
 	github.com/google/uuid v1.6.0
@@ -20,6 +21,7 @@ require (
 	github.com/uber/h3-go/v3 v3.7.1
 	github.com/xssnick/tonutils-go v1.15.5
 	go.uber.org/dig v1.19.0
+	modernc.org/sqlite v1.45.0
 )
 
 require (
@@ -80,7 +82,6 @@ require (
 	modernc.org/libc v1.67.6 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
-	modernc.org/sqlite v1.45.0 // indirect
 )
 
 // Force secure versions for all dependencies (mitigate CVEs)

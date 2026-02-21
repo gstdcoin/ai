@@ -20,6 +20,16 @@ interface Node {
   last_seen: string;
   created_at: string;
   updated_at: string;
+  source?: 'node' | 'device';
+}
+
+interface Device {
+  device_id: string;
+  device_type: string;
+  reputation?: number;
+  total_tasks?: number;
+  successful_tasks?: number;
+  last_seen_at: string;
 }
 
 export default function DevicesPanel() {
@@ -44,24 +54,41 @@ export default function DevicesPanel() {
   }, [address]);
 
   const loadNodes = async () => {
-    if (!address) {
-      logger.warn('Cannot load nodes: wallet address is not available');
-      return;
-    }
+    if (!address) return;
 
     setLoading(true);
     try {
-      const data = await apiGet<{ nodes: Node[] }>('/nodes/my', { wallet_address: address });
-      setNodes(data.nodes || []);
+      const [nodesRes, devicesRes] = await Promise.all([
+        apiGet<{ nodes: Node[] }>('/nodes/my', { wallet_address: address }),
+        apiGet<{ devices: Device[] }>('/devices/my', { wallet_address: address }).catch(() => ({ devices: [] })),
+      ]);
+
+      const nodeList: Node[] = (nodesRes.nodes || []).map((n) => ({ ...n, source: 'node' as const }));
+      const deviceList: Node[] = (devicesRes.devices || []).map((d) => ({
+        id: d.device_id,
+        wallet_address: address,
+        name: d.device_type === 'a2a' ? 'A2A Agent' : d.device_type === 'openclaw' ? 'OpenClaw' : d.device_type || 'Device',
+        status: 'online',
+        last_seen: d.last_seen_at,
+        created_at: d.last_seen_at,
+        updated_at: d.last_seen_at,
+        source: 'device' as const,
+      }));
+
+      // Merge: nodes first, then devices (avoid duplicates by id)
+      const seen = new Set<string>();
+      const merged: Node[] = [];
+      for (const n of [...nodeList, ...deviceList]) {
+        if (!seen.has(n.id)) {
+          seen.add(n.id);
+          merged.push(n);
+        }
+      }
+      setNodes(merged);
     } catch (error: any) {
-      logger.error('Error loading nodes', error);
+      logger.error('Error loading swarm', error);
       setNodes([]);
-      // Показываем понятное сообщение вместо «тихой» ошибки
-      const message = error?.message || 'Failed to load devices';
-      toast.error(
-        t('error') || 'Error',
-        `${t('failed_to_load_devices') || t('connection_error') || 'Failed to load devices'}: ${message}`,
-      );
+      toast.error(t('error') || 'Error', error?.message || 'Failed to load devices');
     } finally {
       setLoading(false);
     }
@@ -104,9 +131,9 @@ export default function DevicesPanel() {
     <div>
       <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-white font-display">{t('my_nodes') || 'My Computing Nodes'}</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-white font-display">{t('my_nodes') || 'My Swarm'}</h2>
           <p className="text-sm sm:text-base text-gray-400 mt-1">
-            {t('total_nodes') || 'Total nodes'}: {nodes.length}
+            {nodes.length} {nodes.length === 1 ? 'device' : 'devices'} in the swarm
           </p>
         </div>
         <button
@@ -119,19 +146,43 @@ export default function DevicesPanel() {
       </div>
 
       {nodes.length === 0 ? (
-        <EmptyState
-          icon={<Server className="text-gray-400" size={48} />}
-          title={t('no_nodes') || 'No devices registered'}
-          description={t('no_nodes_desc') || 'Register your first computing node to start earning GSTD by processing tasks.'}
-          action={
+        <div className="space-y-4">
+          <div className="p-6 rounded-2xl bg-cyan-500/5 border border-cyan-500/20">
+            <h3 className="text-lg font-bold text-white mb-2">Any device can join the swarm</h3>
+            <p className="text-sm text-gray-400 mb-4">
+              No tokens? No problem. Connect your phone, PC, OpenClaw, or IoT device. Earn GSTD by contributing compute.
+            </p>
+            <div className="space-y-3 mb-4">
+              <p className="text-xs font-bold text-cyan-400/90 uppercase tracking-wider">Connect from any device (A2A)</p>
+              <pre className="text-xs bg-black/40 p-3 rounded-lg text-gray-300 font-mono overflow-x-auto">
+{`curl -O https://raw.githubusercontent.com/gstdcoin/A2A/main/connect.py
+python3 connect.py --api-key YOUR_KEY`}
+              </pre>
+              <p className="text-[10px] text-gray-500">
+                API: app.gstdtoken.com • OpenClaw: openclaw_bridge.py • <a href="https://github.com/gstdcoin/A2A" target="_blank" rel="noopener" className="text-cyan-400 hover:underline">A2A repo</a>
+              </p>
+            </div>
             <button
               onClick={() => setShowRegisterModal(true)}
-              className="px-4 py-2 glass-button-gold rounded-lg transition-colors min-h-[44px]"
+              className="px-5 py-2.5 rounded-xl bg-cyan-500 text-black font-bold hover:bg-cyan-400 transition-colors"
             >
-              {t('register_first_device') || 'Register Your First Device'}
+              {t('register_first_device') || 'Add This Device'}
             </button>
-          }
-        />
+          </div>
+          <EmptyState
+            icon={<Server className="text-gray-400" size={48} />}
+            title={t('no_nodes') || 'No devices yet'}
+            description={t('no_nodes_desc') || 'Register a device to start earning GSTD.'}
+            action={
+              <button
+                onClick={() => setShowRegisterModal(true)}
+                className="px-4 py-2 glass-button-gold rounded-lg transition-colors min-h-[44px]"
+              >
+                {t('register_first_device') || 'Register Device'}
+              </button>
+            }
+          />
+        </div>
       ) : (
         <div className="glass-card overflow-hidden">
           <div className="overflow-x-auto">
