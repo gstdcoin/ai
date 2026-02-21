@@ -59,7 +59,12 @@ func getMyDevices(deviceService *services.DeviceService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		walletAddress := c.Query("wallet_address")
 		if walletAddress == "" {
-			c.JSON(400, gin.H{"error": "wallet_address parameter is required"})
+			if w, ok := c.Get("wallet_address"); ok && w != "" {
+				walletAddress = w.(string)
+			}
+		}
+		if walletAddress == "" {
+			c.JSON(400, gin.H{"error": "wallet_address required"})
 			return
 		}
 

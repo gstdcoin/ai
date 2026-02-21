@@ -50,11 +50,26 @@ func agentsHandshake(deviceService *services.DeviceService, apiKeyService *servi
 			return
 		}
 
-		// Resolve wallet from API key or header
+		// Resolve wallet: body > sk_sovereign parse > ValidateKey > header
 		wallet := req.WalletAddr
 		if wallet == "" {
 			apiKey := c.GetHeader("X-API-Key")
-			if apiKey != "" && apiKeyService != nil {
+			if apiKey == "" {
+				apiKey = c.GetHeader("X-GSTD-API-KEY")
+			}
+			if apiKey == "" {
+				if ah := c.GetHeader("Authorization"); len(ah) > 7 && ah[:7] == "Bearer " {
+					apiKey = ah[7:]
+				}
+			}
+			// sk_sovereign_{WALLET}_{NONCE} — wallet may contain underscores
+			if wallet == "" && strings.HasPrefix(apiKey, "sk_sovereign_") {
+				rest := strings.TrimPrefix(apiKey, "sk_sovereign_")
+				if idx := strings.LastIndex(rest, "_"); idx > 0 {
+					wallet = rest[:idx]
+				}
+			}
+			if wallet == "" && apiKey != "" && apiKeyService != nil {
 				if w, err := apiKeyService.ValidateKey(c.Request.Context(), apiKey); err == nil && w != "" {
 					wallet = w
 				}
