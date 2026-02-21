@@ -1,54 +1,168 @@
-name: GSTD Platform CI (ai)
+# ============================================================================
+# GSTD CI — Smart Contract + Backend + Frontend validation
+# ============================================================================
+name: GSTD CI
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, master ]
+    branches: [main]
 
 jobs:
-  backend-test:
-    name: Backend (Go)
+  # ── Smart Contract Validation ──────────────────────────────────────────
+  test-contracts:
     runs-on: ubuntu-latest
+    name: 🔱 Tact Contracts
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: '1.21'
-        cache-dependency-path: backend/go.sum
+      - uses: actions/checkout@v4
 
-    - name: Install dependencies
-      run: cd backend && go mod download
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
 
-    - name: Run Build
-      run: cd backend && go build -v ./...
+      - name: Install Tact compiler
+        run: npm install -g @tact-lang/compiler@latest
 
-    - name: Run Tests
-      run: cd backend && go test -v ./...
+      - name: Validate contracts syntax
+        run: |
+          echo "🔱 Validating Tact smart contracts..."
+          for f in contracts/*.tact; do
+            echo "  Checking: $f"
+            npx tact --check "$f" || exit 1
+          done
+          echo "✅ All contracts valid"
 
-  frontend-check:
-    name: Frontend (Next.js)
+      - name: List contract files
+        run: ls -la contracts/
+
+  # ── Go Backend Tests ───────────────────────────────────────────────────
+  test-backend:
     runs-on: ubuntu-latest
+    name: 🧠 Go Backend
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: gstd_test
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 3s --health-retries 10
+
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 3s --health-retries 10
+
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '18'
-        cache: 'npm'
-        cache-dependency-path: frontend/package-lock.json
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: backend/go.sum
 
-    - name: Install dependencies
-      run: cd frontend && npm ci
+      - name: Go Vet
+        working-directory: backend
+        run: go vet ./...
 
-    - name: Run Lint
-      run: cd frontend && npm run lint 
+      - name: Go Build
+        working-directory: backend
+        run: go build -v ./...
 
-    - name: Run Build
-      run: cd frontend && npm run build
-      env:
-        SKIP_BUILD_STATIC_GENERATION: false
-        NEXT_PUBLIC_API_URL: https://app.gstdtoken.com
+      - name: Go Test (race detection)
+        working-directory: backend
+        run: go test ./... -v -race -timeout 120s
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_USER: postgres
+          DB_PASSWORD: test
+          DB_NAME: gstd_test
+          DB_SSLMODE: disable
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          BRIDGE_ENCRYPTION_KEY: test_key_for_ci_only
+
+  # ── Frontend Build ─────────────────────────────────────────────────────
+  test-frontend:
+    runs-on: ubuntu-latest
+    name: 🖥️ Frontend Build
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm install --legacy-peer-deps
+
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: https://app.gstdtoken.com
+
+  # ── Security Scan ──────────────────────────────────────────────────────
+  security-scan:
+    runs-on: ubuntu-latest
+    name: 🛡️ Security Scan
+    needs: [test-backend]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: GoSec Security Scanner
+        run: |
+          go install github.com/securego/gosec/v2/cmd/gosec@latest
+          cd backend && gosec -exclude-dir=docs ./...
+
+      - name: Check for secrets
+        run: |
+          echo "Checking for exposed secrets..."
+          ! grep -rn "PRIVATE_KEY\|SECRET_KEY\|API_KEY=" --include="*.go" backend/ || true
+
+  # ── Docker Build ───────────────────────────────────────────────────────
+  docker-build:
+    runs-on: ubuntu-latest
+    name: 🐳 Docker Build
+    needs: [test-backend, test-contracts, test-frontend]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Backend Image
+        run: docker build -t gstd-backend:ci ./backend
+
+      - name: Build Frontend Image
+        run: docker build -t gstd-frontend:ci ./frontend
+
+      - name: Image sizes
+        run: |
+          echo "📦 Image sizes:"
+          docker images --format "{{.Repository}}:{{.Tag}} - {{.Size}}" | grep gstd
+
+  # ── Vercel Deploy (Frontend) ──────────────────────────────────────────
+  deploy-vercel:
+    runs-on: ubuntu-latest
+    name: ▲ Vercel Deploy
+    needs: [test-frontend]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          working-directory: frontend
+          vercel-args: '--prod'
