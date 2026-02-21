@@ -119,6 +119,7 @@ frontend/.vercel/
 .config/
 .local/
 .venv/
+.gnupg/
 .history
 .selected_editor
 .sudo_as_admin_successful
