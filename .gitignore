@@ -16,7 +16,7 @@ postgres_data/
 redis_data/
 ollama_data/
 certbot/
-nginx/ssl/
+nginx/
 
 # Build artifacts
 node_modules/
