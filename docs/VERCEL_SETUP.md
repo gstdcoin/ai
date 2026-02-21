@@ -61,14 +61,20 @@
 
 | Область | Проверить |
 |---------|-----------|
-| CORS | `api.gstdtoken.com` должен разрешать origin `*.vercel.app` |
+| CORS | Backend уже разрешает `*.vercel.app` |
+| API URL | Для rewrites: `NEXT_PUBLIC_API_URL` = URL Vercel (чтобы /api проксировался). Иначе — `app.gstdtoken.com` (прямые вызовы) |
 | WebSocket | `wss://app.gstdtoken.com/ws` — для real-time |
-| TonConnect | Домен в manifest для TON Wallet |
+| TonConnect | Добавить Vercel домен в tonconnect-manifest.json `url` |
 | CSP | Content-Security-Policy для Vercel домена |
+
+## 7. Preview URL (текущий деплой)
+
+- **Production:** https://frontend-alpha-sable-5z72k3f2so.vercel.app
+- API: frontend вызывает `app.gstdtoken.com` (default). Rewrite `/api/*` → `api.gstdtoken.com` используется при `NEXT_PUBLIC_API_URL` = Vercel URL.
 
 ---
 
-## 7. Custom Domain (опционально)
+## 8. Custom Domain (опционально)
 
 Для `app.gstdtoken.com`:
 - Vercel → Settings → Domains → Add `app.gstdtoken.com`
