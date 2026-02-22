@@ -416,7 +416,7 @@ func SetupRoutes(
 		// Device endpoints (protected)
 		protected.GET("/device/tasks/available", getAvailableTasks(assignmentService))
 		protected.GET("/device/tasks/my", getMyTasks(assignmentService))
-		protected.POST("/device/tasks/:id/claim", claimTask(assignmentService))
+		protected.POST("/device/tasks/:id/claim", claimTask(assignmentService, deviceService))
 		protected.POST("/device/tasks/:id/result", submitResult(resultService, validationService))
 		protected.GET("/device/tasks/:id/result", getTaskResult(resultService))
 
@@ -1080,8 +1080,8 @@ func getPendingBalance(db *sql.DB) gin.HandlerFunc {
 		c.JSON(200, gin.H{
 			"pending_balance": balance,
 			"referral_code":   referralCode.String,
-			"min_withdrawal":  10.0,
-			"message":         "Earn 10 GSTD to claim to your TON wallet.",
+			"min_withdrawal":  0.1,
+			"message":         "Earn 0.1 GSTD to claim to your TON wallet.",
 		})
 	}
 }
@@ -1092,22 +1092,44 @@ func claimPendingBalance(db *sql.DB, paymentService *services.PaymentService) gi
 	return func(c *gin.Context) {
 		walletAddress, _ := c.Get("wallet_address")
 
-		// 1. Check Balance
-		var balance float64
+		// 1. Check Balance (balance + gstd_balance + pending_balance_gstd)
+		var bal, gstdBal, pendingBal float64
 		err := db.QueryRowContext(c.Request.Context(),
-			"SELECT COALESCE(pending_balance_gstd, 0) FROM users WHERE wallet_address = $1 FOR UPDATE",
-			walletAddress).Scan(&balance)
-
-		if err != nil || balance < 10.0 {
-			c.JSON(400, gin.H{"error": "Insufficient pending balance. Min 10.0 GSTD required."})
+			"SELECT COALESCE(balance, 0), COALESCE(gstd_balance, 0), COALESCE(pending_balance_gstd, 0) FROM users WHERE wallet_address = $1 FOR UPDATE",
+			walletAddress).Scan(&bal, &gstdBal, &pendingBal)
+		balance := bal + gstdBal + pendingBal
+		if err != nil || balance < 0.1 {
+			c.JSON(400, gin.H{"error": "Insufficient balance. Min 0.1 GSTD required."})
 			return
 		}
 
-		// 2. Reduce Balance (Internal Transaction)
-		// We deduct first to prevent double-spending
-		_, err = db.ExecContext(c.Request.Context(),
-			"UPDATE users SET pending_balance_gstd = pending_balance_gstd - $1 WHERE wallet_address = $2",
-			balance, walletAddress)
+		// 2. Reduce Balance (deduct from balance, gstd_balance, pending in order)
+		deduct := balance
+		fromBal := deduct
+		if bal < deduct {
+			fromBal = bal
+		}
+		remain := deduct - fromBal
+		fromGstd := remain
+		if gstdBal < remain {
+			fromGstd = gstdBal
+		}
+		fromPending := remain - fromGstd
+		if fromBal > 0 {
+			_, err = db.ExecContext(c.Request.Context(),
+				"UPDATE users SET balance = COALESCE(balance, 0) - $1 WHERE wallet_address = $2",
+				fromBal, walletAddress)
+		}
+		if err == nil && fromGstd > 0 {
+			_, err = db.ExecContext(c.Request.Context(),
+				"UPDATE users SET gstd_balance = COALESCE(gstd_balance, 0) - $1 WHERE wallet_address = $2",
+				fromGstd, walletAddress)
+		}
+		if err == nil && fromPending > 0 {
+			_, err = db.ExecContext(c.Request.Context(),
+				"UPDATE users SET pending_balance_gstd = GREATEST(0, COALESCE(pending_balance_gstd, 0) - $1) WHERE wallet_address = $2",
+				fromPending, walletAddress)
+		}
 
 		if err != nil {
 			c.JSON(500, gin.H{"error": "Database update failed"})

@@ -129,7 +129,7 @@ func getAvailableTasks(assignmentService *services.AssignmentService) gin.Handle
 	}
 }
 
-func claimTask(assignmentService *services.AssignmentService) gin.HandlerFunc {
+func claimTask(assignmentService *services.AssignmentService, deviceService *services.DeviceService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		taskID := c.Param("id")
 		deviceID := c.Query("device_id")
@@ -141,17 +141,28 @@ func claimTask(assignmentService *services.AssignmentService) gin.HandlerFunc {
 				deviceID = body.DeviceID
 			}
 		}
-		if deviceID == "" {
-			// Fallback: use wallet as device_id for autonomous agents
-			if w, ok := c.Get("wallet_address"); ok {
-				if ws, ok := w.(string); ok && len(ws) >= 8 {
-					deviceID = "autonomous-" + ws[:8]
-				}
+		walletStr := ""
+		if w, ok := c.Get("wallet_address"); ok {
+			if ws, ok := w.(string); ok {
+				walletStr = ws
 			}
+		}
+		if deviceID == "" && len(walletStr) >= 8 {
+			deviceID = "autonomous-" + walletStr[:8]
 		}
 		if deviceID == "" {
 			c.JSON(400, gin.H{"error": "device_id required (query, JSON body, or API key wallet)"})
 			return
+		}
+
+		// Register autonomous device so ResultService can resolve wallet for payout
+		if deviceService != nil && strings.HasPrefix(deviceID, "autonomous-") && walletStr != "" {
+			_ = deviceService.RegisterDevice(c.Request.Context(), services.RegisterDeviceRequest{
+				DeviceID:      deviceID,
+				WalletAddress: walletStr,
+				DeviceType:    "a2a",
+				PoWNonce:      "claim-" + taskID,
+			})
 		}
 
 		if err := assignmentService.ClaimTask(c.Request.Context(), taskID, deviceID); err != nil {
@@ -175,6 +186,14 @@ func submitResult(resultService *services.ResultService, validationService *serv
 			return
 		}
         req.TaskID = taskID
+		// Fallback device_id for autonomous agents (from wallet)
+		if req.DeviceID == "" {
+			if w, ok := c.Get("wallet_address"); ok {
+				if ws, ok := w.(string); ok && len(ws) >= 8 {
+					req.DeviceID = "autonomous-" + ws[:8]
+				}
+			}
+		}
 
 		if err := resultService.SubmitResult(c.Request.Context(), req, validationService); err != nil {
 			log.Printf("submitResult: Error: %v", err)

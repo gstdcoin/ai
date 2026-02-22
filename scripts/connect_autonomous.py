@@ -135,7 +135,7 @@ def main():
                 # Placeholder: submit minimal result
                 result_req = urllib.request.Request(
                     API.rstrip("/") + f"/api/v1/device/tasks/{tid}/result",
-                    data=json.dumps({"result": {"completed": True}}).encode(),
+                    data=json.dumps({"device_id": "autonomous-" + WALLET[:8], "result": {"completed": True}}).encode(),
                     headers={"Content-Type": "application/json", "Authorization": "Bearer " + api_key},
                     method="POST",
                 )

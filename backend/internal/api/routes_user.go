@@ -314,6 +314,9 @@ func getUserBalance(tonService *services.TONService, tonConfig config.TONConfig,
 	return func(c *gin.Context) {
 		walletAddress := c.GetString("user_id")
 		if walletAddress == "" {
+			walletAddress = c.GetString("wallet_address") // Agents use API key → wallet_address
+		}
+		if walletAddress == "" {
 			c.JSON(401, gin.H{"error": "Unauthorized"})
 			return
 		}
@@ -339,14 +342,17 @@ func getUserBalance(tonService *services.TONService, tonConfig config.TONConfig,
 		}
 
 		// Get internal balance from DB
-		var internalBalance float64
-		_ = db.QueryRowContext(ctx, "SELECT COALESCE(balance, 0) FROM users WHERE wallet_address = $1", walletAddress).Scan(&internalBalance)
+		var gstdInternal, pendingGSTD float64
+		_ = db.QueryRowContext(ctx, "SELECT COALESCE(balance, 0) + COALESCE(gstd_balance, 0), COALESCE(pending_balance_gstd, 0) FROM users WHERE wallet_address = $1", walletAddress).Scan(&gstdInternal, &pendingGSTD)
 
 		c.JSON(200, gin.H{
 			"ton":              tonBalance,
 			"gstd_on_chain":    gstdBalance,
-			"gstd":             gstdBalance + internalBalance,
-			"balance_internal": internalBalance,
+			"gstd":             gstdBalance + gstdInternal,
+			"gstd_internal":    gstdInternal,
+			"pending_gstd":     pendingGSTD,
+			"balance_internal": gstdInternal,
+			"min_withdrawal":   0.1,
 		})
 	}
 }
