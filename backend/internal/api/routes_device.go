@@ -78,6 +78,34 @@ func getMyDevices(deviceService *services.DeviceService) gin.HandlerFunc {
 	}
 }
 
+// getTasksPending returns pending tasks for agents (API key auth). Uses wallet from session.
+// Alias for GET /api/v1/tasks/pending — device_id derived from wallet.
+func getTasksPending(assignmentService *services.AssignmentService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		wallet, _ := c.Get("wallet_address")
+		walletStr, _ := wallet.(string)
+		if walletStr == "" || len(walletStr) < 8 {
+			c.JSON(400, gin.H{"error": "wallet_address required (use API key or session)"})
+			return
+		}
+		suffix := walletStr
+		if len(walletStr) > 8 {
+			suffix = walletStr[:8]
+		}
+		deviceID := "autonomous-" + suffix
+		limit := 10
+		if l := c.Query("limit"); l != "" {
+			fmt.Sscanf(l, "%d", &limit)
+		}
+		tasks, err := assignmentService.GetAvailableTasks(c.Request.Context(), deviceID, limit)
+		if err != nil {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(200, gin.H{"tasks": tasks})
+	}
+}
+
 func getAvailableTasks(assignmentService *services.AssignmentService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		deviceID := c.Query("device_id")
@@ -106,7 +134,23 @@ func claimTask(assignmentService *services.AssignmentService) gin.HandlerFunc {
 		taskID := c.Param("id")
 		deviceID := c.Query("device_id")
 		if deviceID == "" {
-			c.JSON(400, gin.H{"error": "device_id parameter is required"})
+			var body struct {
+				DeviceID string `json:"device_id"`
+			}
+			if err := c.ShouldBindJSON(&body); err == nil && body.DeviceID != "" {
+				deviceID = body.DeviceID
+			}
+		}
+		if deviceID == "" {
+			// Fallback: use wallet as device_id for autonomous agents
+			if w, ok := c.Get("wallet_address"); ok {
+				if ws, ok := w.(string); ok && len(ws) >= 8 {
+					deviceID = "autonomous-" + ws[:8]
+				}
+			}
+		}
+		if deviceID == "" {
+			c.JSON(400, gin.H{"error": "device_id required (query, JSON body, or API key wallet)"})
 			return
 		}
 

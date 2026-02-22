@@ -69,17 +69,18 @@ func SetupRoutes(
 	swarmLFS *services.SwarmLFSService,
 	settlementService *services.SettlementService,
 	gaslessUserService *services.GaslessUserService,
+	omegaHandler *OmegaGatewayHandler,
 ) {
 	log.Printf("🔧 SetupRoutes: Starting route setup, redisClient type: %T", redisClient)
 
 	// CORS: allow API access from web app, Telegram, mobile, and external clients
 	allowedOrigins := map[string]bool{
-		"https://app.gstdtoken.com":  true,
-		"https://api.gstdtoken.com":  true,
-		"http://localhost:3000":      true,
-		"http://127.0.0.1:3000":      true,
-		"https://web.telegram.org":   true,
-		"https://t.me":               true,
+		"https://app.gstdtoken.com": true,
+		"https://api.gstdtoken.com": true,
+		"http://localhost:3000":     true,
+		"http://127.0.0.1:3000":     true,
+		"https://web.telegram.org":  true,
+		"https://t.me":              true,
 	}
 	router.Use(cors.New(cors.Config{
 		AllowOriginFunc: func(origin string) bool {
@@ -165,6 +166,15 @@ func SetupRoutes(
 		c.Next()
 	})
 
+	// ═══════════════════════════════════════════════════════════════
+	// OMEGA CORE MIDDLEWARE (Applied Globally)
+	// ═══════════════════════════════════════════════════════════════
+	// Intercepts Omega API keys (gstd_sk_*) and sets wallet context.
+	// Records billing transactions after response completion.
+	dbConn, _ := db.(*sql.DB)
+	router.Use(OmegaAuthMiddleware(omegaHandler.omegaKeys, dbConn))
+	router.Use(OmegaBillingMiddleware(dbConn, omegaHandler.omegaKeys))
+
 	// Add rate limiter if Redis is available
 	var rateLimiter *RateLimiter
 	if redisClient != nil {
@@ -192,9 +202,9 @@ func SetupRoutes(
 			"network":                     tonConfig.Network,
 			"api_url":                     tonConfig.APIURL,
 			"target_price_per_result_usd": eco.TargetPricePerResultUSD, // ТЗ: ~$0.03/результат
-			"genesis_launch":              true, // Genesis Launch status active
-			"eternal_flame":                true, // Eternal Flame: 99.99% uptime, Auto-Scale, Archon Oversight
-			"gasless_user":                 true, // Gasless User: Subsidized Onboarding, Internal Swap
+			"genesis_launch":              true,                        // Genesis Launch status active
+			"eternal_flame":               true,                        // Eternal Flame: 99.99% uptime, Auto-Scale, Archon Oversight
+			"gasless_user":                true,                        // Gasless User: Subsidized Onboarding, Internal Swap
 		})
 	})
 	// [DYNAMIC_CONFIG_END]
@@ -341,8 +351,8 @@ func SetupRoutes(
 		authHandler := NewAuthHandler()
 		v1.GET("/auth/challenge", authHandler.GetChallenge)
 		v1.POST("/auth/claim-key", authHandler.ClaimKey)
-		v1.GET("/agents/challenge", authHandler.GetChallenge)   // Alias for devices
-		v1.POST("/agents/claim-key", authHandler.ClaimKey)     // Alias for devices
+		v1.GET("/agents/challenge", authHandler.GetChallenge) // Alias for devices
+		v1.POST("/agents/claim-key", authHandler.ClaimKey)    // Alias for devices
 
 		// Protected endpoints (require session)
 		var sessionMiddleware gin.HandlerFunc
@@ -390,6 +400,7 @@ func SetupRoutes(
 		// Tasks (protected)
 		protected.POST("/tasks", ValidateTaskRequest(), createTask(taskService))
 		protected.GET("/tasks", getTasks(taskService))
+		protected.GET("/tasks/pending", getTasksPending(assignmentService)) // Before :id — agent flow
 		protected.GET("/tasks/:id", getTask(taskService))
 		protected.DELETE("/tasks/:id", deleteTask(db.(*sql.DB)))
 		protected.GET("/tasks/:id/payment", getTaskWithPayment(taskPaymentService))
@@ -484,6 +495,7 @@ func SetupRoutes(
 		tgBot.GET("/nodes", tgBotHandler.GetNodes)
 		tgBot.POST("/claim", tgBotHandler.ClaimTask)
 		tgBot.POST("/complete", tgBotHandler.CompleteTask)
+		tgBot.POST("/ai", tgBotHandler.AIChat)
 
 		// Initialize and setup Orchestrator routes (PoW, Task Queue, Client Dashboard)
 		orchestratorHandler := NewOrchestratorHandler(db.(*sql.DB), taskOrchestrator, powService, tonService, geoService)
@@ -541,39 +553,17 @@ func SetupRoutes(
 
 		// Global Gateway (OpenAI Compatible) - Sovereign AI Inference
 		// Hybrid Auth: Session (browser) + API Key (agents) → unified UserContext, Ultra gate works for both
-		var chatGroup *gin.RouterGroup
-		if redisClient != nil {
-			if rc, ok := redisClient.(*redis.Client); ok && rc != nil {
-				chatGroup = v1.Group("/chat")
-				chatGroup.Use(HybridAuth(rc, apiKeyService))
-				chatGroup.POST("/completions", gatewayHandler.HandleChatCompletions)
-			}
-		}
-		if chatGroup == nil {
-			v1.POST("/chat/completions", gatewayHandler.HandleChatCompletions)
-			v1.GET("/chat/ultra-status", gatewayHandler.GetUltraStatus)
-		} else {
-			chatGroup.GET("/ultra-status", gatewayHandler.GetUltraStatus)
-		}
-		v1.GET("/models", gatewayHandler.ListModels)
-		// OpenAI-compatible: /v1/chat/completions with HybridAuth (Session + API Key → Ultra)
-		if redisClient != nil {
-			if rc, ok := redisClient.(*redis.Client); ok && rc != nil {
-				v1Root := router.Group("/v1")
-				v1Root.Use(HybridAuth(rc, apiKeyService))
-				v1Root.POST("/chat/completions", gatewayHandler.HandleChatCompletions)
-				v1Root.GET("/chat/ultra-status", gatewayHandler.GetUltraStatus)
-				v1Root.GET("/models", gatewayHandler.ListModels)
-			} else {
-				router.POST("/v1/chat/completions", gatewayHandler.HandleChatCompletions)
-				router.GET("/v1/models", gatewayHandler.ListModels)
-			}
-		} else {
-			router.POST("/v1/chat/completions", gatewayHandler.HandleChatCompletions)
-			router.GET("/v1/models", gatewayHandler.ListModels)
-		}
 
-		log.Printf("✅ Growth System & Onboarding routes registered")
+		// ═══ OMEGA GATEWAY INTEGRATION ═══
+		// These routes are now handled by OmegaGatewayHandler for:
+		// 1. Transparency: GSTD pricing shown in response
+		// 2. Economy: Token burn & balance checks
+		// 3. Intelligence: Tri-Tier routing (Experience Vault -> Swarm -> LiteLLM)
+
+		router.POST("/v1/chat/completions", omegaHandler.HandleChatCompletions)
+		router.GET("/v1/models", omegaHandler.HandleListModels)
+
+		log.Printf("✅ Growth System & Onboarding routes registered (Omega Gateway Active)")
 	}
 
 	// WebSocket endpoint
@@ -1007,7 +997,7 @@ func getMarketPrice(pms *services.PoolMonitorService) gin.HandlerFunc {
 			"gstd_price_usd": price,
 			"xaut_price_usd": pms.GetXAUtPriceUSD(),
 			"source":         "pool",
-			"buy_links":     getBuyLinksMap(amount),
+			"buy_links":      getBuyLinksMap(amount),
 		})
 	}
 }
@@ -1363,4 +1353,3 @@ func prepareLiquidityProvision(escrow *services.EscrowService) gin.HandlerFunc {
 		c.JSON(200, result)
 	}
 }
-
