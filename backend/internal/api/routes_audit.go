@@ -14,7 +14,7 @@ import (
 
 // getReservesAudit returns public verification of gold reserves vs tokens (ТЗ: Night Audit).
 // GET /api/v1/audit/reserves — публичная проверка соответствия золотых резервов количеству токенов.
-func getReservesAudit(db *sql.DB, tonService *services.TONService, tonConfig config.TONConfig) gin.HandlerFunc {
+func getReservesAudit(db *sql.DB, tonService *services.TONService, tonConfig config.TONConfig, poolMonitor *services.PoolMonitorService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		defer func() {
 			if r := recover(); r != nil {
@@ -64,12 +64,14 @@ func getReservesAudit(db *sql.DB, tonService *services.TONService, tonConfig con
 		// 4. Total supply reference (1B from ТЗ)
 		const totalSupplyGSTD = 1_000_000_000.0
 		reserveRatio := 0.0
-		if circulatingGSTD > 0 && goldReserveXAUt > 0 {
-			// XAUt price ~$2000-2500; 1 GSTD target ~$0.01-0.02
-			// Ratio: gold_value_usd / (circulating_gstd * gstd_price_usd)
+		if circulatingGSTD > 0 && goldReserveXAUt > 0 && poolMonitor != nil {
 			goldValueUSD := goldReserveXAUt * 2350
-			gstdPriceUSD := 0.015
-			reserveRatio = goldValueUSD / (circulatingGSTD * gstdPriceUSD)
+			if goldPrice := poolMonitor.GetXAUtPriceUSD(); goldPrice > 0 {
+				goldValueUSD = goldReserveXAUt * goldPrice
+			}
+			if gstdPriceUSD, err := poolMonitor.GetGSTDPriceUSD(ctx); err == nil && gstdPriceUSD > 0 {
+				reserveRatio = goldValueUSD / (circulatingGSTD * gstdPriceUSD)
+			}
 		}
 
 		c.JSON(http.StatusOK, gin.H{

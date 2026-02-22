@@ -56,10 +56,15 @@ func (s *BillingService) GetWalletBalance(ctx context.Context, wallet string) (*
 		xautPrice = s.poolMon.GetXAUtPriceUSD()
 	}
 
-	// GSTD price ~0.015 USD, XAUt ~2350 USD; equivalent = earned_gstd * gstd_usd / xaut_usd
-	gstdPriceUSD := 0.015
+	// Real GSTD price from pool; equivalent = earned_gstd * gstd_usd / xaut_usd
+	var gstdPriceUSD float64
+	if s.poolMon != nil {
+		if p, err := s.poolMon.GetGSTDPriceUSD(context.Background()); err == nil && p > 0 {
+			gstdPriceUSD = p
+		}
+	}
 	xautEquivalent := 0.0
-	if xautPrice > 0 {
+	if xautPrice > 0 && gstdPriceUSD > 0 {
 		xautEquivalent = (earned * gstdPriceUSD) / xautPrice
 	}
 

@@ -69,7 +69,6 @@ func SetupRoutes(
 	swarmLFS *services.SwarmLFSService,
 	settlementService *services.SettlementService,
 	gaslessUserService *services.GaslessUserService,
-	omegaHandler *OmegaGatewayHandler,
 ) {
 	log.Printf("🔧 SetupRoutes: Starting route setup, redisClient type: %T", redisClient)
 
@@ -170,10 +169,11 @@ func SetupRoutes(
 	// OMEGA CORE MIDDLEWARE (Applied Globally)
 	// ═══════════════════════════════════════════════════════════════
 	// Intercepts Omega API keys (gstd_sk_*) and sets wallet context.
-	// Records billing transactions after response completion.
 	dbConn, _ := db.(*sql.DB)
-	router.Use(OmegaAuthMiddleware(omegaHandler.omegaKeys, dbConn))
-	router.Use(OmegaBillingMiddleware(dbConn, omegaHandler.omegaKeys))
+	if dbConn != nil && apiKeyService != nil {
+		router.Use(OmegaAuthMiddleware(apiKeyService, dbConn))
+		router.Use(OmegaBillingMiddleware(dbConn, apiKeyService))
+	}
 
 	// Add rate limiter if Redis is available
 	var rateLimiter *RateLimiter
@@ -252,7 +252,7 @@ func SetupRoutes(
 		// @Produce json
 		// @Success 200 {object} map[string]interface{} "Public statistics"
 		// @Router /stats/public [get]
-		v1.GET("/stats/public", getPublicStats(db.(*sql.DB), tonService, tonConfig, errorLogger))
+		v1.GET("/stats/public", getPublicStats(db.(*sql.DB), tonService, tonConfig, poolMonitorService, errorLogger))
 		v1.GET("/openapi.json", GetOpenAPISpec())
 		v1.GET("/network/entropy", getEntropyStats(taskService))
 		v1.GET("/network/stats", getNetworkStats(statsService))
@@ -290,7 +290,7 @@ func SetupRoutes(
 
 		v1.GET("/network/autonomy", getAutonomyStats(maintenanceService))
 		// Night Audit: публичная проверка соответствия золотых резервов количеству токенов (ТЗ 3.Б)
-		v1.GET("/audit/reserves", getReservesAudit(db.(*sql.DB), tonService, tonConfig))
+		v1.GET("/audit/reserves", getReservesAudit(db.(*sql.DB), tonService, tonConfig, poolMonitorService))
 
 		// Metrics endpoint (Prometheus format) - public
 		metricsService := NewMetricsService(db.(*sql.DB), redisClient.(*redis.Client))
@@ -555,11 +555,8 @@ func SetupRoutes(
 		// Hybrid Auth: Session (browser) + API Key (agents) → unified UserContext, Ultra gate works for both
 
 		// ═══ OMEGA GATEWAY INTEGRATION ═══
-		// These routes are now handled by OmegaGatewayHandler for:
-		// 1. Transparency: GSTD pricing shown in response
-		// 2. Economy: Token burn & balance checks
-		// 3. Intelligence: Tri-Tier routing (Experience Vault -> Swarm -> LiteLLM)
-
+		// OpenAI-compatible chat: GSTD pricing, balance checks, Tri-Tier routing
+		omegaHandler := NewOmegaGatewayHandler(gatewayHandler, apiKeyService)
 		router.POST("/v1/chat/completions", omegaHandler.HandleChatCompletions)
 		router.GET("/v1/models", omegaHandler.HandleListModels)
 
@@ -981,16 +978,17 @@ func getGSTDBalance(tonService *services.TONService, tonConfig config.TONConfig)
 	}
 }
 
-// getMarketPrice returns current GSTD price and buy links (easy acquisition in TON)
+// getMarketPrice returns current GSTD price and buy links. Always uses real DEX/reserve data.
 func getMarketPrice(pms *services.PoolMonitorService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if pms == nil {
-			c.JSON(200, gin.H{"gstd_price_usd": 0.02, "source": "fallback", "buy_links": getBuyLinksMap("1")})
+			c.JSON(503, gin.H{"error": "price service unavailable", "buy_links": getBuyLinksMap("1")})
 			return
 		}
 		price, err := pms.GetGSTDPriceUSD(c.Request.Context())
 		if err != nil || price <= 0 {
-			price = 0.02
+			c.JSON(503, gin.H{"error": "real GSTD price temporarily unavailable", "buy_links": getBuyLinksMap("1")})
+			return
 		}
 		amount := c.DefaultQuery("amount", "10")
 		c.JSON(200, gin.H{

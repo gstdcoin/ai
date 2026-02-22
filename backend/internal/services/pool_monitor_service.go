@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"math"
 	"net/http"
 	"strconv"
@@ -14,9 +15,10 @@ import (
 	"distributed-computing-platform/internal/config"
 )
 
+var ErrNoRealGSTDPrice = errors.New("real GSTD price unavailable")
+
 // PoolMonitorService provides read‑only metrics for GSTD/XAUt pools and prices.
-// It is deliberately lightweight and safe: if on‑chain or DB data are unavailable,
-// it falls back to conservative defaults instead of breaking the platform.
+// Always uses real DEX/reserve data; caches last known price when live fetch fails.
 type PoolMonitorService struct {
 	db          *sql.DB
 	tonCfg      config.TONConfig
@@ -25,6 +27,11 @@ type PoolMonitorService struct {
 	errorLogger *ErrorLogger
 	httpClient  *http.Client
 	xautCache   struct {
+		price float64
+		mu    sync.RWMutex
+		at    time.Time
+	}
+	gstdCache struct {
 		price float64
 		mu    sync.RWMutex
 		at    time.Time
@@ -106,13 +113,12 @@ func (p *PoolMonitorService) GetXAUtPriceUSD() float64 {
 	return defaultGoldPrice
 }
 
-// GetGSTDPriceUSD returns GSTD price in USD. Priority: (1) Ston.fi pool reserves, (2) golden_reserve_log, (3) fallback.
+// GetGSTDPriceUSD returns GSTD price in USD. Always uses real data: Ston.fi pool or golden_reserve_log.
+// When live fetch fails, returns last cached real price if < 24h old. Otherwise returns ErrNoRealGSTDPrice.
 func (p *PoolMonitorService) GetGSTDPriceUSD(ctx context.Context) (float64, error) {
-	const fallbackPrice = 0.02 // safe default when we cannot derive from reserve
-
 	goldPrice := p.GetXAUtPriceUSD()
 
-	// 1. Try Ston.fi pool for real-time DEX price (most accurate)
+	// 1. Ston.fi pool — real-time DEX price
 	if p.stonFi != nil {
 		poolAddr := p.tonCfg.GoldPoolAddress
 		if poolAddr == "" {
@@ -136,6 +142,10 @@ func (p *PoolMonitorService) GetGSTDPriceUSD(ctx context.Context) (float64, erro
 						if gstdReserve > 0 {
 							price := (xautReserve * goldPrice) / gstdReserve
 							if !math.IsNaN(price) && !math.IsInf(price, 0) && price > 0.0001 && price < 1000 {
+								p.gstdCache.mu.Lock()
+								p.gstdCache.price = price
+								p.gstdCache.at = time.Now()
+								p.gstdCache.mu.Unlock()
 								return price, nil
 							}
 						}
@@ -155,12 +165,24 @@ func (p *PoolMonitorService) GetGSTDPriceUSD(ctx context.Context) (float64, erro
 		if err == nil && totalGSTD > 0 && totalXAUt > 0 {
 			price := (totalXAUt * goldPrice) / totalGSTD
 			if !math.IsNaN(price) && !math.IsInf(price, 0) && price > 0 {
+				p.gstdCache.mu.Lock()
+				p.gstdCache.price = price
+				p.gstdCache.at = time.Now()
+				p.gstdCache.mu.Unlock()
 				return price, nil
 			}
 		}
 	}
 
-	return fallbackPrice, nil
+	// 3. Cached last real price (< 24h)
+	p.gstdCache.mu.RLock()
+	cached := p.gstdCache.price
+	cachedAt := p.gstdCache.at
+	p.gstdCache.mu.RUnlock()
+	if cached > 0 && time.Since(cachedAt) < 24*time.Hour {
+		return cached, nil
+	}
+	return 0, ErrNoRealGSTDPrice
 }
 
 // GetPoolStatusCached returns pool status. Uses Ston.fi API when available for real pool data
@@ -227,15 +249,20 @@ func (p *PoolMonitorService) GetPoolStatusCached(ctx context.Context) (map[strin
 		gstdBal = float64(gstdNano) / 1e9
 	}
 	goldPrice := p.GetXAUtPriceUSD()
-	if totalLiquidityUSD <= 0 {
-		totalLiquidityUSD = gstdBal*0.02 + xautBal*goldPrice
+	gstdPriceUSD, _ := p.GetGSTDPriceUSD(ctx) // real or cached
+	if totalLiquidityUSD <= 0 && gstdBal > 0 && xautBal > 0 {
+		// derive from reserves: gstdPrice = (xaut*gold)/gstd
+		derivedPrice := (xautBal * goldPrice) / gstdBal
+		totalLiquidityUSD = gstdBal*derivedPrice + xautBal*goldPrice
+	} else if totalLiquidityUSD <= 0 && gstdPriceUSD > 0 {
+		totalLiquidityUSD = gstdBal*gstdPriceUSD + xautBal*goldPrice
 	}
 	if totalLiquidityUSD < 0 {
 		totalLiquidityUSD = 0
 	}
 	reserveRatio := 0.0
-	if gstdBal > 0 && xautBal > 0 {
-		reserveRatio = (xautBal * goldPrice) / (gstdBal * 0.02)
+	if gstdBal > 0 && xautBal > 0 && gstdPriceUSD > 0 {
+		reserveRatio = (xautBal * goldPrice) / (gstdBal * gstdPriceUSD)
 	}
 
 	return map[string]interface{}{

@@ -53,7 +53,7 @@ export default function Marketplace() {
     const [marketStats, setMarketStats] = useState<MarketplaceStats | null>(null);
     const [loading, setLoading] = useState(false);
     const [claimingTask, setClaimingTask] = useState<string | null>(null);
-    const [priceUSD, setPriceUSD] = useState<number>(6.5); // Default fallback
+    const [priceUSD, setPriceUSD] = useState<number | null>(null);
 
     // Fetch available tasks
     const fetchTasks = useCallback(async () => {
@@ -314,7 +314,7 @@ export default function Marketplace() {
                                                         </span>
                                                         <span className="text-xs font-bold text-gray-500">GSTD</span>
                                                     </div>
-                                                    <div className="text-xs text-gray-500 mt-1 font-mono">≈ $ {((task.reward_gstd * 0.95) * priceUSD).toFixed(2)}</div>
+                                                    <div className="text-xs text-gray-500 mt-1 font-mono">{priceUSD != null ? `≈ $ ${((task.reward_gstd * 0.95) * priceUSD).toFixed(2)}` : ''}</div>
                                                 </div>
                                             </div>
 

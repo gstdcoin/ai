@@ -91,7 +91,7 @@ export default function Home() {
   const goldReserve = networkStats?.gold_reserve?.toFixed(4) || '0.0000';
   const activeNodes = networkStats?.active_workers?.toLocaleString() || '—';
   const totalTasks = networkStats?.total_tasks?.toLocaleString() || '—';
-  const gstdPrice = networkStats?.gstd_price_usd?.toFixed(6) || '0.015000';
+  const gstdPrice = networkStats?.gstd_price_usd && networkStats.gstd_price_usd > 0 ? networkStats.gstd_price_usd.toFixed(6) : '—';
 
   return (
     <div className="min-h-screen bg-[#030014] text-white overflow-x-hidden font-sans selection:bg-violet-500/30">

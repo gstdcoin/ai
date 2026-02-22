@@ -254,6 +254,15 @@ func (h *TelegramBotHandler) ClaimTask(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Task claimed", "task_id": req.TaskID})
 }
 
+// AIChat handles AI chat requests from Telegram bot (stub).
+// POST /api/v1/telegram/bot/ai
+func (h *TelegramBotHandler) AIChat(c *gin.Context) {
+	c.JSON(http.StatusNotImplemented, gin.H{
+		"error":   "not_implemented",
+		"message": "AI chat via /api/v1/chat/completions with X-API-Key",
+	})
+}
+
 // CompleteTask completes a marketplace task
 // POST /api/v1/telegram/bot/complete
 func (h *TelegramBotHandler) CompleteTask(c *gin.Context) {
