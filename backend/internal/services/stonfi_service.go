@@ -424,6 +424,48 @@ func (s *StonFiService) BuildProvideLiquidityPayload(ctx context.Context, poolAd
 	}, nil
 }
 
+// GetPoolByMarket fetches pools for a token pair (asset0, asset1) from Ston.fi API.
+// Returns the first pool with non-zero liquidity.
+func (s *StonFiService) GetPoolByMarket(ctx context.Context, asset0, asset1 string) (map[string]interface{}, error) {
+	url := fmt.Sprintf("%s/v1/pools/by_market/%s/%s", s.apiURL, asset0, asset1)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("pools by_market API error %d: %s", resp.StatusCode, string(body))
+	}
+	var data struct {
+		PoolList []map[string]interface{} `json:"pool_list"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return nil, err
+	}
+	for _, p := range data.PoolList {
+		if r0, _ := strconv.ParseFloat(getStrFromMap(p, "reserve0"), 64); r0 > 0 {
+			if r1, _ := strconv.ParseFloat(getStrFromMap(p, "reserve1"), 64); r1 > 0 {
+				return map[string]interface{}{"pool": p}, nil
+			}
+		}
+	}
+	return nil, fmt.Errorf("no pool with liquidity for %s/%s", asset0, asset1)
+}
+
+func getStrFromMap(m map[string]interface{}, key string) string {
+	if v, ok := m[key]; ok && v != nil {
+		if s, ok := v.(string); ok {
+			return s
+		}
+	}
+	return ""
+}
+
 // GetPoolData fetches pool info from Ston.fi API
 func (s *StonFiService) GetPoolData(ctx context.Context, poolAddress string) (map[string]interface{}, error) {
 	url := fmt.Sprintf("%s/v1/pools/%s", s.apiURL, poolAddress)

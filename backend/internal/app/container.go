@@ -91,6 +91,7 @@ func BuildContainer() *dig.Container {
 	c.Provide(func(db *sql.DB) *services.BurnService {
 		return services.NewBurnService(db, &services.BurnConfig{BurnRate: 0}) // Burn disabled: supply is low
 	})
+	c.Provide(services.NewBitchatBridgeService)
 	c.Provide(services.NewReferralService)
 	c.Provide(services.NewMultiLevelReferralService)
 	c.Provide(services.NewStatsService)
@@ -459,6 +460,7 @@ func StartApplication(container *dig.Container) error {
 		singularityGateway *services.SingularityGatewayService,
 		omnipotence *services.OmnipotenceService,
 		subAgentSelfOpt *services.SubAgentSelfOptimizationService,
+		bitchatBridge *services.BitchatBridgeService,
 		// ── Phase 0 Genesis Services ──
 		a2aServer *a2a.Server,
 		hiveStore hive.HiveStore,
@@ -507,6 +509,7 @@ func StartApplication(container *dig.Container) error {
 		go taskOrchestrator.Start(ctx)
 		go maintenanceService.Start(ctx)
 		go poolMonitor.Start(ctx)
+		go bitchatBridge.Start(ctx)
 		go anomalyDetection.Start(ctx)
 		go evolutionEngine.Start(ctx)
 

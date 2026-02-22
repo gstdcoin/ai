@@ -107,11 +107,19 @@ func (s *TelegramService) NotifyAdmin(ctx context.Context, message string) error
 	return s.SendMessage(ctx, message)
 }
 
+// getBotAPIToken returns token for internal /telegram/bot/* calls. Matches RequireBotToken (BOT_API_KEY or TELEGRAM_BOT_TOKEN).
+func (s *TelegramService) getBotAPIToken() string {
+	if t := os.Getenv("BOT_API_KEY"); t != "" {
+		return t
+	}
+	return s.botToken
+}
+
 // callBotAPI relays /connect, /take, /complete, balance, nodes to internal bot API (for webhook mode).
 // Returns (response, nil) on success, ("", err) on error, ("", nil) when not a bot command.
 func (s *TelegramService) callBotAPI(ctx context.Context, text, senderIDStr, username, firstName, chatID string) (string, error) {
 	base := strings.TrimSuffix(s.apiBaseURL, "/")
-	token := s.botToken
+	token := s.getBotAPIToken()
 	if token == "" {
 		return "", nil
 	}
@@ -239,7 +247,7 @@ func (s *TelegramService) callBotAPI(ctx context.Context, text, senderIDStr, use
 
 	// 💎 Balance (button or command)
 	if text == "💎 Balance" || text == "💎 My Balance" || (text == "/balance" && s.chatID != "" && senderIDStr != s.chatID) {
-		req, _ := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/api/v1/telegram/bot/balance?telegram_id=%d", base, telegramID), nil)
+		req, _ := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/api/v1/telegram/bot/balance?telegram_id=%s", base, senderIDStr), nil)
 		req.Header.Set("X-Bot-Token", token)
 		resp, err := s.client.Do(req)
 		if err != nil {
@@ -269,7 +277,7 @@ func (s *TelegramService) callBotAPI(ctx context.Context, text, senderIDStr, use
 
 	// 🚀 Nodes (button or command)
 	if text == "🚀 Nodes" || text == "🚀 My Nodes" {
-		req, _ := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/api/v1/telegram/bot/nodes?telegram_id=%d", base, telegramID), nil)
+		req, _ := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/api/v1/telegram/bot/nodes?telegram_id=%s", base, senderIDStr), nil)
 		req.Header.Set("X-Bot-Token", token)
 		resp, err := s.client.Do(req)
 		if err != nil {
