@@ -237,8 +237,8 @@ func (s *TelegramService) callBotAPI(ctx context.Context, text, senderIDStr, use
 		return fmt.Sprintf("✅ Task completed! Reward: %.4f GSTD", r.RewardGSTD), nil
 	}
 
-	// 💎 My Balance or /balance (user)
-	if text == "💎 My Balance" || (text == "/balance" && s.chatID != "" && senderIDStr != s.chatID) {
+	// 💎 Balance (button or command)
+	if text == "💎 Balance" || text == "💎 My Balance" || (text == "/balance" && s.chatID != "" && senderIDStr != s.chatID) {
 		req, _ := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/api/v1/telegram/bot/balance?telegram_id=%d", base, telegramID), nil)
 		req.Header.Set("X-Bot-Token", token)
 		resp, err := s.client.Do(req)
@@ -257,12 +257,18 @@ func (s *TelegramService) callBotAPI(ctx context.Context, text, senderIDStr, use
 		if !r.Linked {
 			return "💎 **My Balance**\n\n⚠️ Wallet not linked.\n\nUse /connect <wallet_address> to link your TON wallet.", nil
 		}
-		usd := (r.BalanceGSTD + r.PendingGSTD) * 0.015
+		gstdPriceUSD := 0.02
+		if s.gstdPrice != nil {
+			if p, err := s.gstdPrice.GetGSTDPriceUSD(ctx); err == nil && p > 0 {
+				gstdPriceUSD = p
+			}
+		}
+		usd := (r.BalanceGSTD + r.PendingGSTD) * gstdPriceUSD
 		return fmt.Sprintf("💎 **My Balance**\n\n**%.4f GSTD** (available)\n**%.4f GSTD** (pending)\n\n≈ $%.2f USD", r.BalanceGSTD, r.PendingGSTD, usd), nil
 	}
 
-	// 🚀 My Nodes
-	if text == "🚀 My Nodes" {
+	// 🚀 Nodes (button or command)
+	if text == "🚀 Nodes" || text == "🚀 My Nodes" {
 		req, _ := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/api/v1/telegram/bot/nodes?telegram_id=%d", base, telegramID), nil)
 		req.Header.Set("X-Bot-Token", token)
 		resp, err := s.client.Do(req)
@@ -747,24 +753,16 @@ func (s *TelegramService) ProcessWebhook(ctx context.Context, body []byte) error
 				msg = msgWalletAsNode["en"]
 			}
 
-			btnMine := "⛏ Start Mining"
-			btnShare := "📤 Share"
-			if lang == "ru" {
-				btnMine = "⛏ Начать майнинг"
-				btnShare = "📤 Поделиться"
-			}
-
 			miningWebAppURL := webAppURL + "/?source=telegram&mode=mining"
-			botUsername := os.Getenv("TELEGRAM_BOT_USERNAME")
-			if botUsername == "" {
-				botUsername = "GSTD_Main_Bot"
-			}
-			promoLink := "https://t.me/" + botUsername + "?start=mining"
-			shareLink := "https://t.me/share/url?url=" + url.QueryEscape(promoLink) + "&text=" + url.QueryEscape("⛏ Join GSTD - Gold Backed DePIN Mining")
 
-			markup := fmt.Sprintf(`{"inline_keyboard":[[{"text":"%s","web_app":{"url":"%s"}}],[{"text":"%s","url":"%s"}]]}`,
-				btnMine, miningWebAppURL, btnShare, shareLink)
-			return s.SendMessageToChatWithMarkup(ctx, chatID, msg, markup)
+			// Persistent keyboard for mining flow too
+			replyKb := fmt.Sprintf(`{"keyboard":[
+				[{"text":"📱 Open App","web_app":{"url":"%s"}},{"text":"⛏ Mining","web_app":{"url":"%s"}}],
+				[{"text":"💎 Balance"},{"text":"💰 Buy GSTD"}],
+				[{"text":"📊 Stats"},{"text":"🚀 Nodes"}],
+				[{"text":"ℹ️ About"},{"text":"📖 Help"}]
+			],"resize_keyboard":true,"is_persistent":true,"one_time_keyboard":false}`, webAppURL, miningWebAppURL)
+			return s.SendMessageToChatWithMarkup(ctx, chatID, msg, replyKb)
 		}
 
 		// Standard Start Menu
@@ -776,51 +774,38 @@ func (s *TelegramService) ProcessWebhook(ctx context.Context, body []byte) error
 		appURL := webAppURL
 		miningURL := webAppURL + "/?source=telegram&mode=mining"
 
-		lblOpen := "📱 Open App"
-		lblMine := "⛏ Mining"
-		lblAbout := "ℹ️ About"
-		lblStats := "📊 Stats"
-		lblBuy := "💰 Buy GSTD"
+		// Persistent ReplyKeyboard — always visible, replaces commands
+		replyKeyboard := fmt.Sprintf(`{"keyboard":[
+			[{"text":"📱 Open App","web_app":{"url":"%s"}},{"text":"⛏ Mining","web_app":{"url":"%s"}}],
+			[{"text":"💎 Balance"},{"text":"💰 Buy GSTD"}],
+			[{"text":"📊 Stats"},{"text":"🚀 Nodes"}],
+			[{"text":"ℹ️ About"},{"text":"📖 Help"}]
+		],"resize_keyboard":true,"is_persistent":true,"one_time_keyboard":false}`, appURL, miningURL)
 
-		if lang == "ru" {
-			lblOpen = "📱 Открыть приложение"
-			lblMine = "⛏ Майнинг"
-			lblAbout = "ℹ️ О проекте"
-			lblStats = "📊 Статистика"
-			lblBuy = "💰 Купить GSTD"
-		}
-
-		lblStars := "⭐ 10 Stars"
-		if lang == "ru" {
-			lblStars = "⭐ 10 Stars"
-		}
-		// Buy GSTD → Stars purchase (invoice), not Ston.fi
-		markup := fmt.Sprintf(`{"inline_keyboard":[
-			[{"text":"%s","web_app":{"url":"%s"}}],
-			[{"text":"%s","web_app":{"url":"%s"}},{"text":"%s","callback_data":"buy_stars_10"}],
-			[{"text":"%s","callback_data":"buy_stars_10"}],
-			[{"text":"%s","callback_data":"public_about"},{"text":"%s","callback_data":"public_stats"}]
-		]}`, lblOpen, appURL, lblMine, miningURL, lblStars, lblBuy, lblAbout, lblStats)
-
-		return s.SendMessageToChatWithMarkup(ctx, chatID, msg, markup)
+		return s.SendMessageToChatWithMarkup(ctx, chatID, msg, replyKeyboard)
 	}
 
-	// /help
-	if text == "/help" {
+	// 📖 Help (button or command)
+	if text == "📖 Help" || text == "/help" {
 		msg := msgHelp[lang]
 		if msg == "" {
 			msg = msgHelp["en"]
 		}
-		return s.SendMessage(ctx, msg)
+		return s.SendMessageToChat(ctx, chatID, msg)
 	}
 
-	// /network
-	if text == "/network" {
+	// 📊 Stats (button or command)
+	if text == "📊 Stats" || text == "/network" {
 		return s.sendNetworkStats(ctx, chatID, lang)
 	}
 
-	// /buy — Purchase GSTD with Telegram Stars (no wallet needed)
-	if text == "/buy" || strings.HasPrefix(text, "/buy ") {
+	// ℹ️ About (button)
+	if text == "ℹ️ About" {
+		return s.sendAboutMessage(ctx, chatID, lang)
+	}
+
+	// 💰 Buy GSTD (button or command)
+	if text == "💰 Buy GSTD" || text == "/buy" || strings.HasPrefix(text, "/buy ") {
 		stars := 10
 		if parts := strings.Fields(text); len(parts) > 1 {
 			fmt.Sscanf(parts[1], "%d", &stars)
@@ -1030,6 +1015,44 @@ GSTD работает на тысячах узлов (телефоны, ПК).
 }
 
 // --- Helper Handlers ---
+
+func (s *TelegramService) sendAboutMessage(ctx context.Context, chatID string, lang string) error {
+	msg := `👑 <b>About GSTD</b>
+
+<b>Gold Backing:</b>
+Every transaction burns tokens and buys <b>XAUt (Tether Gold)</b>. 
+The reserves are audited nightly on-chain.
+
+<b>DePIN Power:</b>
+GSTD runs on thousands of distributed nodes (phones, PCs). 
+No central server. Pure swarm intelligence.
+
+<b>Tokenomics:</b>
+• 70% Revenue → Gold
+• 5% Revenue → Burn
+• Supply: 1,000,000,000 (Deflationary)
+
+<i>Sovereignty backed by physics.</i>`
+	if lang == "ru" {
+		msg = `👑 <b>О GSTD</b>
+
+<b>Золотое обеспечение:</b>
+Каждая транзакция сжигает токены и покупает <b>XAUt (Tether Gold)</b>. 
+Резервы проходят аудит каждую ночь.
+
+<b>Мощь DePIN:</b>
+GSTD работает на тысячах узлов (телефоны, ПК). 
+Никаких центральных серверов. Чистый рой.
+
+<b>Токеномика:</b>
+• 70% Выручки → Золото
+• 5% Выручки → Сжигание
+• Эмиссия: 1,000,000,000 (Дефляционная)
+
+<i>Суверенитет, обеспеченный физикой.</i>`
+	}
+	return s.SendMessageToChat(ctx, chatID, msg)
+}
 
 func (s *TelegramService) sendNetworkStats(ctx context.Context, chatID string, lang string) error {
 	stats, err := s.fetchPublicStats(ctx)
