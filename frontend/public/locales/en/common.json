@@ -447,6 +447,8 @@
   "chat_balance": "Balance",
   "chat_clear": "Clear chat",
   "chat_error_hint": "Please check your GSTD balance and try again.",
+  "chat_model_auto": "Auto",
+  "chat_model_auto_desc": "Best model for your question",
   "chat_model_fast": "Fast",
   "chat_model_creative": "Creative",
   "chat_model_professional": "Professional",

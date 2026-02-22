@@ -435,6 +435,8 @@
   "chat_balance": "Баланс",
   "chat_clear": "Очистить чат",
   "chat_error_hint": "Пожалуйста, проверьте баланс GSTD и попробуйте снова.",
+  "chat_model_auto": "Авто",
+  "chat_model_auto_desc": "Лучшая модель для вашего вопроса",
   "chat_model_fast": "Быстрый",
   "chat_model_creative": "Творческий",
   "chat_model_professional": "Профессионал",

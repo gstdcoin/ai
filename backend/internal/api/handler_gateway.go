@@ -94,6 +94,21 @@ func (h *GatewayHandler) SetRedis(r *redis.Client) {
 	h.redis = r
 }
 
+// analyzeIntelligenceNeedOllama picks best Ollama model from message content (omega-auto).
+func analyzeIntelligenceNeedOllama(msgs []map[string]string) string {
+	var text string
+	for _, m := range msgs {
+		text += strings.ToLower(m["content"]) + " "
+	}
+	if strings.Contains(text, "func") || strings.Contains(text, "code") || strings.Contains(text, "script") {
+		return "qwen2.5-coder:7b"
+	}
+	if strings.Contains(text, "math") || strings.Contains(text, "think") || strings.Contains(text, "reason") {
+		return "qwen2.5-coder:32b"
+	}
+	return "llama3.1:8b"
+}
+
 // chatCostGSTD returns base cost per model (Consumer Adoption).
 func chatCostGSTD(model string) float64 {
 	m := strings.ToLower(model)
@@ -199,6 +214,9 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 		if req.Model != "" && !strings.HasPrefix(req.Model, "gpt") {
 			ollamaModel = req.Model
 		}
+	} else if req.Model == "omega-auto" || req.Model == "auto" || req.Model == "" {
+		// Auto model: pick best based on content (like Telegram)
+		ollamaModel = analyzeIntelligenceNeedOllama(promptMsgs)
 	} else if strings.HasPrefix(req.Model, "gpt") || strings.HasPrefix(req.Model, "gpt-") {
 		ollamaModel = "qwen2.5-coder:7b"
 	} else if req.Model != "" {

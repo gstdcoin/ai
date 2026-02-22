@@ -555,10 +555,11 @@ func SetupRoutes(
 		// Hybrid Auth: Session (browser) + API Key (agents) → unified UserContext, Ultra gate works for both
 
 		// ═══ OMEGA GATEWAY INTEGRATION ═══
-		// OpenAI-compatible chat: GSTD pricing, balance checks, Tri-Tier routing
+		// OpenAI-compatible chat: /api/v1/chat/* (GSTD pricing, balance checks)
 		omegaHandler := NewOmegaGatewayHandler(gatewayHandler, apiKeyService)
-		router.POST("/v1/chat/completions", omegaHandler.HandleChatCompletions)
-		router.GET("/v1/models", omegaHandler.HandleListModels)
+		v1.POST("/chat/completions", omegaHandler.HandleChatCompletions)
+		v1.GET("/chat/ultra-status", gatewayHandler.GetUltraStatus) // Optional auth: X-GSTD-Target-Wallet
+		v1.GET("/models", omegaHandler.HandleListModels)
 
 		log.Printf("✅ Growth System & Onboarding routes registered (Omega Gateway Active)")
 	}

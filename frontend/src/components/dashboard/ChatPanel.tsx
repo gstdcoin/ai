@@ -31,7 +31,7 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [selectedModel, setSelectedModel] = useState(
-    initialMode === 'ultra' ? 'llama3.3:70b' : 'qwen2.5-coder:7b'
+    initialMode === 'ultra' ? 'llama3.3:70b' : 'omega-auto'
   );
   const [compareMode, setCompareMode] = useState(false);
   const [compareModelA, setCompareModelA] = useState('qwen2.5-coder:7b');
@@ -44,6 +44,7 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
   const abortRef = useRef<AbortController | null>(null);
 
   const models = [
+    { id: 'omega-auto', name: t('chat_model_auto') || 'Auto', tier: 'Smart', desc: t('chat_model_auto_desc') || 'Best model for your question', cost: 0.01, ultra: false },
     { id: 'qwen2.5-coder:7b', name: t('chat_model_fast') || 'Fast', tier: 'Tier 1', desc: t('chat_model_fast_desc') || 'Quick responses', cost: 0.01, ultra: false },
     { id: 'llama3.1:8b', name: t('chat_model_creative') || 'Creative', tier: 'Tier 1', desc: t('chat_model_general') || 'General purpose', cost: 0.01, ultra: false },
     { id: 'qwen2.5-coder:32b', name: t('chat_model_professional') || 'Professional', tier: 'Tier 2', desc: t('chat_model_advanced') || 'Advanced reasoning', cost: 0.05, ultra: true },
