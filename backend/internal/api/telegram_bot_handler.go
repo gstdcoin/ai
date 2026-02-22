@@ -72,6 +72,17 @@ func (h *TelegramBotHandler) LinkWallet(c *gin.Context) {
 	if err != nil {
 		existed = false
 	}
+
+	// Migrate balance from tg-{id} if user bought GSTD with Stars before linking
+	tgWallet := fmt.Sprintf("tg-%d", req.TelegramID)
+	var tgBalance float64
+	if h.db.QueryRowContext(c.Request.Context(), `SELECT COALESCE(gstd_balance, 0) + COALESCE(balance, 0) FROM users WHERE wallet_address = $1`, tgWallet).Scan(&tgBalance) == nil && tgBalance > 0 {
+		_, _ = h.db.ExecContext(c.Request.Context(), `
+			UPDATE users SET gstd_balance = COALESCE(gstd_balance, 0) + $1 WHERE wallet_address = $2
+		`, tgBalance, req.WalletAddress)
+		_, _ = h.db.ExecContext(c.Request.Context(), `UPDATE users SET gstd_balance = 0, balance = 0 WHERE wallet_address = $1`, tgWallet)
+	}
+
 	_, _ = h.db.ExecContext(c.Request.Context(), `
 		INSERT INTO users (wallet_address, balance, created_at, updated_at)
 		VALUES ($1, 0, NOW(), NOW())
