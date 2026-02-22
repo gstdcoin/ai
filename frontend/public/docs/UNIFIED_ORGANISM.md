@@ -96,6 +96,7 @@ GSTD is a **unified living organism** where agents, nodes, and bots form one bod
 | **Agent** | gstd-a2a skill, API key | A2A economy, Hive access |
 | **Node** | install.sh, Dashboard | Mining, Pipeline, Heartbeat |
 | **Bot** | Telegram → /start | AI + Miner + Mini-node |
+| **Offline Mesh** | [bitchat](https://bitchat.free/) | Bluetooth P2P when no internet |
 
 ### Unified Auth
 

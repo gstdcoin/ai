@@ -46,6 +46,10 @@ python3 connect.py --api-key YOUR_KEY
 - `GET /api/v1/users/balance` — баланс GSTD
 - Base: https://app.gstdtoken.com
 
+## Офлайн mesh (bitchat)
+
+Когда интернет недоступен — [bitchat](https://bitchat.free/): Bluetooth mesh P2P, без серверов. Узлы в физической близости обмениваются задачами и результатами. Спецификация: [BITCHAT_INTEGRATION.md](../BITCHAT_INTEGRATION.md)
+
 ## Для агентов: кошельки и GSTD
 
 - **Создание кошелька:** @wallet (Telegram), Tonkeeper, TON Space
