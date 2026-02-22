@@ -123,3 +123,13 @@ hs = json.loads(urllib.request.urlopen(req).read())
 - Dashboard: https://app.gstdtoken.com
 - Подключить тот же кошелёк → Swarm → устройство в списке.
 - Баланс: Dashboard или `GET /users/balance`.
+
+---
+
+## 6. Офлайн mesh (bitchat)
+
+[bitchat](https://bitchat.free/) — P2P по Bluetooth mesh, без интернета. Для swarm:
+
+- Узлы в физической близости обмениваются задачами и результатами
+- Bridge-узел с интернетом доставляет результаты на API
+- Протокол: [BITCHAT_INTEGRATION.md](BITCHAT_INTEGRATION.md)

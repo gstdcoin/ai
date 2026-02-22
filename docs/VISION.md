@@ -25,6 +25,7 @@ GSTD — неразрушимое и масштабируемое решение
 - OpenClaw: SKILL.md — автоматическая инструкция
 - Dashboard: Devices, Chat, Tasks, Market, Help
 - Контракты: SettlementMaster, TreasuryGold, GSTDJetton
+- **Офлайн mesh:** [bitchat](https://bitchat.free/) — Bluetooth P2P для swarm без интернета
 
 ### Документация
 

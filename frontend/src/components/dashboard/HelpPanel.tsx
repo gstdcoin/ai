@@ -8,6 +8,7 @@ export default function HelpPanel() {
     platform: true,
     customers: true,
     executors: true,
+    bitchat: false,
     howItWorks: true,
     useCases: true,
     gstd: true,
@@ -130,6 +131,37 @@ export default function HelpPanel() {
                 </div>
               </li>
             </ul>
+          </div>
+        )}
+      </section>
+
+      {/* Offline Mesh (bitchat) */}
+      <section>
+        <button
+          onClick={() => toggleSection('bitchat')}
+          className="w-full flex items-center justify-between text-xl sm:text-2xl font-bold text-white mb-6 hover:text-gold-900 transition-colors"
+        >
+          <span className="flex items-center gap-2">📡 {t('bitchat_title') || 'Offline Mesh (bitchat)'}</span>
+          {expandedSections.bitchat ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+        </button>
+        {expandedSections.bitchat && (
+          <div className="glass-card border-cyan-500/30 bg-cyan-500/10 p-4 sm:p-6 rounded-xl">
+            <p className="text-sm sm:text-base text-gray-300 mb-4">
+              {t('bitchat_desc') || 'When the internet is unavailable, use bitchat — a decentralized P2P messaging app over Bluetooth mesh. No servers, no phone numbers.'}
+            </p>
+            <ul className="space-y-2 text-sm text-gray-300 mb-4">
+              <li>• <a href="https://bitchat.free/" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline">bitchat.free</a> — iOS, Android, macOS</li>
+              <li>• Swarm nodes in physical proximity exchange tasks and results</li>
+              <li>• Bridge node with internet delivers results to the API</li>
+            </ul>
+            <a
+              href="/docs/BITCHAT_INTEGRATION.md"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 text-cyan-400 hover:text-cyan-300 font-medium"
+            >
+              📄 {t('bitchat_protocol') || 'Protocol spec'}
+            </a>
           </div>
         )}
       </section>
