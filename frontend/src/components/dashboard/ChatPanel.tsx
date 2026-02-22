@@ -4,6 +4,7 @@ import { Send, Bot, User, Loader2, Sparkles, Copy, Check, RotateCcw, Zap, Shield
 import ReactMarkdown from 'react-markdown';
 import { useWalletStore } from '../../store/walletStore';
 import { API_BASE_URL } from '../../lib/config';
+import { apiGet } from '../../lib/apiClient';
 
 interface Message {
   id: string;
@@ -63,6 +64,28 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
     staking_discount?: boolean;
     cost_per_model?: Record<string, number>;
   } | null>(null);
+
+  // Ensure balance is fetched when ChatPanel mounts (fallback if WalletListener hasn't run yet)
+  useEffect(() => {
+    if (!address) return;
+    const fetchBalance = async () => {
+      try {
+        const [balanceRes, usersRes] = await Promise.allSettled([
+          fetch(`${API_BASE_URL}/api/v1/wallet/balance?wallet=${encodeURIComponent(address)}&address=${encodeURIComponent(address)}`),
+          apiGet<{ gstd?: number }>('/users/balance'),
+        ]);
+        const gstd = (balanceRes.status === 'fulfilled' && balanceRes.value.ok)
+          ? (await balanceRes.value.json()).gstd_balance
+          : (usersRes.status === 'fulfilled' && usersRes.value?.gstd != null)
+            ? usersRes.value.gstd
+            : null;
+        if (typeof gstd === 'number' && gstd >= 0) {
+          useWalletStore.getState().updateBalance('0', gstd);
+        }
+      } catch { /* silent */ }
+    };
+    if (gstdBalance == null) fetchBalance();
+  }, [address, gstdBalance]);
 
   useEffect(() => {
     const token = localStorage.getItem('session_token');

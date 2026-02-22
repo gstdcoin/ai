@@ -160,7 +160,7 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
           setLoading(false);
           return;
         }
-        data = await apiGet<{ tasks: Task[] }>(`/device/tasks/available`, { device_id: address });
+        data = await apiGet<{ tasks: Task[] }>(`/device/tasks/available`, { device_id: `autonomous-${address.slice(0, 8)}` });
       } else {
         data = await apiGet<{ tasks: Task[] }>('/tasks');
       }
