@@ -117,9 +117,9 @@ export default function GoldenReservePanel() {
   const totalLiquidityUSD = poolStatus?.total_liquidity_usd ?? poolStatus?.total_value_usd ?? 0;
   const platformSharePct = poolStatus?.platform_lp_share_percent ?? poolStatus?.dynamic_gold_backing?.platform_share_pct ?? 0;
   const reserveValueUSD = xautBalance * GOLD_PRICE_USD;
-  const gstdPriceUSD = publicStats?.gstd_price_usd || (gstdBalance > 0 ? reserveValueUSD / gstdBalance : 0.015);
-  const marketCapUSD = gstdPriceUSD * TOTAL_SUPPLY;
-  const backingRatio = marketCapUSD > 0 ? (reserveValueUSD / marketCapUSD) * 100 : 0;
+  const gstdPriceUSD = publicStats?.gstd_price_usd ?? (gstdBalance > 0 ? reserveValueUSD / gstdBalance : null);
+  const marketCapUSD = gstdPriceUSD != null ? gstdPriceUSD * TOTAL_SUPPLY : null;
+  const backingRatio = marketCapUSD != null && marketCapUSD > 0 ? (reserveValueUSD / marketCapUSD) * 100 : 0;
   // Audit Status
   const isVerified = publicStats?.audit_verified === true;
   const auditDate = publicStats?.last_audit_date;
@@ -261,7 +261,7 @@ export default function GoldenReservePanel() {
               <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400"><DollarSign size={18} /></div>
               <div>
                 <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">GSTD Price</div>
-                <div className="text-lg font-black text-white tabular-nums">${gstdPriceUSD.toFixed(6)}</div>
+                <div className="text-lg font-black text-white tabular-nums">${gstdPriceUSD != null ? gstdPriceUSD.toFixed(6) : '—'}</div>
               </div>
             </div>
             <ArrowUpRight size={14} className="text-emerald-500/40" />
@@ -273,7 +273,7 @@ export default function GoldenReservePanel() {
               <div className="p-2 rounded-xl bg-violet-500/10 text-violet-400"><TrendingUp size={18} /></div>
               <div>
                 <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{t('gold_reserve_mcap') || 'Market Cap'}</div>
-                <div className="text-lg font-black text-white tabular-nums">${(marketCapUSD / 1000000).toFixed(2)}M</div>
+                <div className="text-lg font-black text-white tabular-nums">{marketCapUSD != null ? `$${(marketCapUSD / 1000000).toFixed(2)}M` : '—'}</div>
               </div>
             </div>
           </div>

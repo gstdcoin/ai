@@ -11,7 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func getPublicStats(db *sql.DB, tonService *services.TONService, tonConfig config.TONConfig, errorLogger *services.ErrorLogger) gin.HandlerFunc {
+func getPublicStats(db *sql.DB, tonService *services.TONService, tonConfig config.TONConfig, poolMonitor *services.PoolMonitorService, errorLogger *services.ErrorLogger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Recover from any panics to prevent 500 errors
 		defer func() {
@@ -22,7 +22,7 @@ func getPublicStats(db *sql.DB, tonService *services.TONService, tonConfig confi
 					"golden_reserve_xaut": 0.0, "xaut_history": []interface{}{}, "system_status": "Operational",
 					"last_swaps": []interface{}{},
 					"processing_tasks": 0, "queued_tasks": 0, "completed_tasks": 0,
-					"total_rewards_gstd": 0.0, "active_devices_count": 0, "total_burned": 0.0, "gstd_price_usd": 0.015,
+					"total_rewards_gstd": 0.0, "active_devices_count": 0, "total_burned": 0.0, "gstd_price_usd": nil,
 				})
 			}
 		}()
@@ -208,17 +208,15 @@ func getPublicStats(db *sql.DB, tonService *services.TONService, tonConfig confi
 			WHERE timestamp >= CURRENT_DATE AND xaut_amount IS NOT NULL
 		`).Scan(&globalTreasuryGrowthTodayOz)
 
-		// GSTD price estimate: reserve_value / circulating or fallback
-		gstdPriceUSD := 0.015
-		if goldenReserveXAUt > 0 {
-			var circulatingSupply float64
-			if err := db.QueryRow(`SELECT COALESCE(1000000000 - (SELECT COALESCE(SUM(burn_amount), 0) FROM token_burns), 1000000000)`).Scan(&circulatingSupply); err == nil && circulatingSupply > 0 {
-				reserveUSD := goldenReserveXAUt * 2750
-				gstdPriceUSD = reserveUSD / circulatingSupply
-				if gstdPriceUSD < 0.0001 {
-					gstdPriceUSD = 0.015
-				}
+		// Real GSTD price from pool monitor
+		var gstdPriceUSD interface{}
+		if poolMonitor != nil {
+			if price, err := poolMonitor.GetGSTDPriceUSD(c.Request.Context()); err == nil && price > 0 {
+				gstdPriceUSD = price
 			}
+		}
+		if gstdPriceUSD == nil {
+			gstdPriceUSD = nil // frontend shows "—" when unavailable
 		}
 
 		c.JSON(200, gin.H{

@@ -378,11 +378,15 @@ func (s *TelegramService) creditStarsPurchase(ctx context.Context, telegramID in
 			starsToUSD = v
 		}
 	}
-	gstdPriceUSD := 0.02
+	var gstdPriceUSD float64
 	if s.gstdPrice != nil {
 		if p, err := s.gstdPrice.GetGSTDPriceUSD(ctx); err == nil && p > 0 {
 			gstdPriceUSD = p
 		}
+	}
+	if gstdPriceUSD <= 0 {
+		log.Printf("creditStarsPurchase: real GSTD price unavailable, skipping")
+		return 0
 	}
 	gstdCredited := (float64(starsAmount) * starsToUSD) / gstdPriceUSD
 	if gstdCredited < 0.001 {
@@ -451,11 +455,14 @@ func (s *TelegramService) SendStarsInvoice(ctx context.Context, chatID string, s
 			starsToUSD = v
 		}
 	}
-	gstdPriceUSD := 0.02
+	var gstdPriceUSD float64
 	if s.gstdPrice != nil {
 		if p, err := s.gstdPrice.GetGSTDPriceUSD(ctx); err == nil && p > 0 {
 			gstdPriceUSD = p
 		}
+	}
+	if gstdPriceUSD <= 0 {
+		return fmt.Errorf("real GSTD price temporarily unavailable")
 	}
 	approxGSTD := (float64(starsAmount) * starsToUSD) / gstdPriceUSD
 	title := "GSTD Tokens"
@@ -768,7 +775,6 @@ func (s *TelegramService) ProcessWebhook(ctx context.Context, body []byte) error
 
 		appURL := webAppURL
 		miningURL := webAppURL + "/?source=telegram&mode=mining"
-		stonFiURL := "https://app.ston.fi/swap?ft=TON&tt=GSTD"
 
 		lblOpen := "📱 Open App"
 		lblMine := "⛏ Mining"
@@ -788,12 +794,13 @@ func (s *TelegramService) ProcessWebhook(ctx context.Context, body []byte) error
 		if lang == "ru" {
 			lblStars = "⭐ 10 Stars"
 		}
+		// Buy GSTD → Stars purchase (invoice), not Ston.fi
 		markup := fmt.Sprintf(`{"inline_keyboard":[
 			[{"text":"%s","web_app":{"url":"%s"}}],
 			[{"text":"%s","web_app":{"url":"%s"}},{"text":"%s","callback_data":"buy_stars_10"}],
-			[{"text":"%s","url":"%s"}],
+			[{"text":"%s","callback_data":"buy_stars_10"}],
 			[{"text":"%s","callback_data":"public_about"},{"text":"%s","callback_data":"public_stats"}]
-		]}`, lblOpen, appURL, lblMine, miningURL, lblStars, lblBuy, stonFiURL, lblAbout, lblStats)
+		]}`, lblOpen, appURL, lblMine, miningURL, lblStars, lblBuy, lblAbout, lblStats)
 
 		return s.SendMessageToChatWithMarkup(ctx, chatID, msg, markup)
 	}

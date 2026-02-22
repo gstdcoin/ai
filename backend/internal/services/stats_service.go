@@ -208,14 +208,9 @@ func (s *StatsService) GetNetworkStats(ctx context.Context) (*NetworkStats, erro
 	stats.GoldenReserveXAUt = stats.GoldReserve
 
 	if s.poolMonitor != nil {
-		price, err := s.poolMonitor.GetGSTDPriceUSD(ctx)
-		if err == nil {
+		if price, err := s.poolMonitor.GetGSTDPriceUSD(ctx); err == nil && price > 0 {
 			stats.GSTDPriceUSD = price
-		} else {
-			stats.GSTDPriceUSD = 0.02
 		}
-	} else {
-		stats.GSTDPriceUSD = 0.02
 	}
 
 	// 8. Nightly Audit Stats

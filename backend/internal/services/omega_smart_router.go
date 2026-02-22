@@ -8,10 +8,72 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+// ExperienceVault caches prior responses for L1 routing (optional).
+type ExperienceVault struct {
+	mu sync.RWMutex
+	// Stub: no-op implementation; override with real cache when needed
+}
+
+// Lookup returns cached response if hit.
+func (v *ExperienceVault) Lookup(ctx context.Context, msgs []map[string]string, model string) (struct{ Hit bool; Response string }, error) {
+	return struct{ Hit bool; Response string }{Hit: false}, nil
+}
+
+// Store saves response for future lookup.
+func (v *ExperienceVault) Store(ctx context.Context, msgs []map[string]string, model, response string, confidence float64) {
+	// Stub: no-op
+}
+
+// GSTDOracleService provides GSTD price for cost calculation.
+type GSTDOracleService struct {
+	poolMonitor *PoolMonitorService
+	cachedPrice float64
+	cachedAt    time.Time
+	mu          sync.RWMutex
+}
+
+// NewGSTDOracleService creates an oracle backed by PoolMonitorService.
+func NewGSTDOracleService(pm *PoolMonitorService) *GSTDOracleService {
+	return &GSTDOracleService{poolMonitor: pm}
+}
+
+// GetPrice returns current GSTD price in USD (cached, refreshed on each call if stale).
+func (o *GSTDOracleService) GetPrice() float64 {
+	const defaultPrice = 0.02
+	if o == nil {
+		return defaultPrice
+	}
+	o.mu.RLock()
+	if time.Since(o.cachedAt) < 30*time.Second && o.cachedPrice > 0 {
+		p := o.cachedPrice
+		o.mu.RUnlock()
+		return p
+	}
+	o.mu.RUnlock()
+
+	if o.poolMonitor != nil {
+		if p, err := o.poolMonitor.GetGSTDPriceUSD(context.Background()); err == nil && p > 0 {
+			o.mu.Lock()
+			o.cachedPrice = p
+			o.cachedAt = time.Now()
+			o.mu.Unlock()
+			return p
+		}
+	}
+	o.mu.RLock()
+	p := o.cachedPrice
+	o.mu.RUnlock()
+	if p > 0 {
+		return p
+	}
+	return defaultPrice
+}
 
 // SmartRouter manages the Tri-Tier routing logic
 type SmartRouter struct {
@@ -128,7 +190,10 @@ func (r *SmartRouter) Route(ctx context.Context, req *OmegaChatRequest) (*Routin
 		return nil, err
 	}
 
-	gstdPrice := r.oracle.GetPrice()
+	gstdPrice := 0.02
+	if r.oracle != nil {
+		gstdPrice = r.oracle.GetPrice()
+	}
 	pricing := r.pricingTable[resolvedModel]
 	costGSTD := (float64(promptT)*pricing.InputUSDPer1K/1000 + float64(compT)*pricing.OutputUSDPer1K/1000) * 1.30 / gstdPrice
 
@@ -162,7 +227,10 @@ func (r *SmartRouter) analyzeIntelligenceNeed(messages []map[string]interface{})
 }
 
 func (r *SmartRouter) GetAvailableModels() map[string]interface{} {
-	gstdPrice := r.oracle.GetPrice()
+	gstdPrice := 0.02
+	if r.oracle != nil {
+		gstdPrice = r.oracle.GetPrice()
+	}
 	res := make(map[string]interface{})
 	for model, pricing := range r.pricingTable {
 		res[model] = map[string]interface{}{
