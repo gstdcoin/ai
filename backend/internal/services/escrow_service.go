@@ -92,10 +92,10 @@ func (s *EscrowService) SetLiquidityDeps(cfg config.TONConfig, stonFi *StonFiSer
 // PrepareWithdrawResult holds the payload for liquidity provision transaction
 type PrepareWithdrawResult struct {
 	Payload       map[string]interface{} `json:"payload"`
-	AmountGSTD    float64              `json:"amount_gstd"`
-	AmountXAUt    float64              `json:"amount_xaut"`
-	PoolAddress   string               `json:"pool_address"`
-	WalletAddress string               `json:"wallet_address"`
+	AmountGSTD    float64                `json:"amount_gstd"`
+	AmountXAUt    float64                `json:"amount_xaut"`
+	PoolAddress   string                 `json:"pool_address"`
+	WalletAddress string                 `json:"wallet_address"`
 }
 
 // PrepareWithdraw generates payload for GSTD transaction that calls provide_liquidity on Ston.fi (Arbitrary Provision)
@@ -435,26 +435,30 @@ func (s *EscrowService) ReleaseToWorkerMarketplace(ctx context.Context, taskID, 
 	if quality > 1 {
 		quality = 1.0
 	}
-	// multiplier: 0.9 + 0.1*trust + 0.1*quality = 0.9 to 1.1
-	multiplier := 0.9 + 0.1*trustScore + 0.1*quality
-	if multiplier > 1.2 {
-		multiplier = 1.2
+	// Multiplier: 0.8 to 1.0 (penalty for low trust/quality, max 100% of worker share)
+	multiplier := 0.8 + 0.1*trustScore + 0.1*quality
+	if multiplier > 1.0 {
+		multiplier = 1.0
 	}
-	if multiplier < 0.8 {
-		multiplier = 0.8
+	if multiplier < 0.5 {
+		multiplier = 0.5
 	}
 
-	// Ultra-Deep: 80/15/5 split with dust to Treasury (mathematical purity)
+	// Marketplace split: 80% worker (scaled by rep), 5% referral, 15% platform
 	workerReward := total * 0.80 * multiplier
 	referralAmount := total * 0.05
 	platformAmount := total * 0.15
+
+	// Ensure mathematical balance: any "saved" funds from low reputation go to Gold Reserve
 	allocated := workerReward + referralAmount + platformAmount
 	dust := total - allocated
 	if dust < 0 {
+		// Safety check: should not happen with multiplier <= 1.0
 		dust = 0
 	}
-	devFundAmount := platformAmount*s.devFundShare + dust // Dust goes to Treasury; ТЗ: 70% to gold
-	goldAmount := platformAmount * s.goldShare
+
+	devFundAmount := (total * 0.15 * s.devFundShare)
+	goldAmount := (total * 0.15 * s.goldShare) + dust // Dust from penalties goes to Gold Pool
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -664,4 +668,68 @@ func (s *EscrowService) GetEscrowByTask(ctx context.Context, taskID string) (*Es
 
 	json.Unmarshal(geoJSON, &escrow.Geography)
 	return &escrow, nil
+}
+
+// Refund returns escrowed funds to the creator (e.g. on timeout or cancellation)
+func (s *EscrowService) Refund(ctx context.Context, taskID string) error {
+	// 1. Get escrow record
+	var escrow EscrowRecord
+	err := s.db.QueryRowContext(ctx, `
+		SELECT id, task_id, creator_wallet, total_locked_gstd, status
+		FROM task_escrow WHERE task_id = $1
+	`, taskID).Scan(&escrow.ID, &escrow.TaskID, &escrow.CreatorWallet, &escrow.TotalLockedGSTD, &escrow.Status)
+
+	if err != nil {
+		return fmt.Errorf("escrow not found: %w", err)
+	}
+
+	if escrow.Status != "locked" {
+		return fmt.Errorf("cannot refund escrow in status: %s", escrow.Status)
+	}
+
+	// 2. Execute refund in transaction
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Update escrow status
+	_, err = tx.ExecContext(ctx, `UPDATE task_escrow SET status = 'refunded', released_at = NOW() WHERE task_id = $1`, taskID)
+	if err != nil {
+		return fmt.Errorf("failed to update escrow status: %w", err)
+	}
+
+	// Create refund transaction
+	txID := uuid.New().String()
+	_, err = tx.ExecContext(ctx, `
+		INSERT INTO transaction_history (
+			tx_id, from_wallet, to_wallet, amount_gstd, tx_type, 
+			task_id, escrow_id, description, status
+		) VALUES ($1, 'escrow', $2, $3, 'escrow_refund', $4, $5, $6, 'confirmed')
+	`, txID, escrow.CreatorWallet, escrow.TotalLockedGSTD, taskID, escrow.ID,
+		fmt.Sprintf("Refunded %.6f GSTD for task %s (timeout/cancellation)", escrow.TotalLockedGSTD, taskID))
+
+	if err != nil {
+		return fmt.Errorf("failed to record refund transaction: %w", err)
+	}
+
+	// Credit user balance
+	_, err = tx.ExecContext(ctx, `
+		UPDATE users SET gstd_balance = COALESCE(gstd_balance, 0) + $1 
+		WHERE wallet_address = $2
+	`, escrow.TotalLockedGSTD, escrow.CreatorWallet)
+
+	if err != nil {
+		return fmt.Errorf("failed to credit user balance: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	log.Printf("💰 [Escrow] Refunded %.6f GSTD to %s for task %s",
+		escrow.TotalLockedGSTD, escrow.CreatorWallet, taskID)
+
+	return nil
 }

@@ -1,9 +1,11 @@
 package api
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -39,17 +41,18 @@ func RequireBotToken() gin.HandlerFunc {
 
 // TelegramBotHandler handles Telegram bot → backend integration for tasks
 type TelegramBotHandler struct {
-	db               *sql.DB
-	marketplace      *services.MarketplaceService
-	nodeService      *services.NodeService
-	deviceService    *services.DeviceService
-	gaslessUser      *services.GaslessUserService
+	db            *sql.DB
+	marketplace   *services.MarketplaceService
+	nodeService   *services.NodeService
+	deviceService *services.DeviceService
+	gaslessUser   *services.GaslessUserService
+	gateway       *GatewayHandler
 }
 
 // NewTelegramBotHandler creates the handler
-func NewTelegramBotHandler(db *sql.DB, marketplace *services.MarketplaceService, nodeService *services.NodeService, deviceService *services.DeviceService, gaslessUser *services.GaslessUserService) *TelegramBotHandler {
+func NewTelegramBotHandler(db *sql.DB, marketplace *services.MarketplaceService, nodeService *services.NodeService, deviceService *services.DeviceService, gaslessUser *services.GaslessUserService, gateway *GatewayHandler) *TelegramBotHandler {
 	return &TelegramBotHandler{
-		db: db, marketplace: marketplace, nodeService: nodeService, deviceService: deviceService, gaslessUser: gaslessUser,
+		db: db, marketplace: marketplace, nodeService: nodeService, deviceService: deviceService, gaslessUser: gaslessUser, gateway: gateway,
 	}
 }
 
@@ -126,9 +129,9 @@ func (h *TelegramBotHandler) LinkWallet(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"success":     true,
-		"message":     "Wallet linked. Wallet-as-Node active — you can claim tasks.",
-		"subsidized":  subsidized,
+		"success":    true,
+		"message":    "Wallet linked. Wallet-as-Node active — you can claim tasks.",
+		"subsidized": subsidized,
 	})
 }
 
@@ -254,13 +257,50 @@ func (h *TelegramBotHandler) ClaimTask(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Task claimed", "task_id": req.TaskID})
 }
 
-// AIChat handles AI chat requests from Telegram bot (stub).
+// AIChat handles AI chat requests from Telegram bot.
 // POST /api/v1/telegram/bot/ai
 func (h *TelegramBotHandler) AIChat(c *gin.Context) {
-	c.JSON(http.StatusNotImplemented, gin.H{
-		"error":   "not_implemented",
-		"message": "AI chat via /api/v1/chat/completions with X-API-Key",
-	})
+	if h.gateway == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "gateway_unavailable"})
+		return
+	}
+
+	var req struct {
+		TelegramID int64  `json:"telegram_id" binding:"required"`
+		Text       string `json:"text" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Resolve wallet for the telegram user
+	var wallet string
+	err := h.db.QueryRowContext(c.Request.Context(), `
+		SELECT wallet_address FROM telegram_users WHERE telegram_id = $1 AND wallet_address IS NOT NULL
+	`, req.TelegramID).Scan(&wallet)
+
+	// If not linked, use a temporary tg-{id} wallet
+	if err != nil || wallet == "" {
+		wallet = fmt.Sprintf("tg-%d", req.TelegramID)
+	}
+
+	// Prepare virtual context for GatewayHandler
+	c.Set("wallet_address", wallet)
+
+	// Mock request body for GatewayHandler
+	chatReq := map[string]interface{}{
+		"model": "omega-auto",
+		"messages": []map[string]string{
+			{"role": "user", "content": req.Text},
+		},
+	}
+	jsonBody, _ := json.Marshal(chatReq)
+	c.Request.Body = io.NopCloser(bytes.NewBuffer(jsonBody))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	// Call GatewayHandler.HandleChatCompletions
+	h.gateway.HandleChatCompletions(c)
 }
 
 // CompleteTask completes a marketplace task

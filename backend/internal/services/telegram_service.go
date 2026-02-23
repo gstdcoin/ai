@@ -302,6 +302,37 @@ func (s *TelegramService) callBotAPI(ctx context.Context, text, senderIDStr, use
 		return sb.String(), nil
 	}
 
+	// 🤖 AI Chat (fallback for non-command text)
+	if text != "" && !strings.HasPrefix(text, "/") {
+		body, _ := json.Marshal(map[string]interface{}{
+			"telegram_id": telegramID,
+			"text":        text,
+		})
+		req, _ := http.NewRequestWithContext(ctx, "POST", base+"/api/v1/telegram/bot/ai", strings.NewReader(string(body)))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("X-Bot-Token", token)
+		resp, err := s.client.Do(req)
+		if err != nil {
+			return "", err
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode == 200 {
+			var r struct {
+				Choices []struct {
+					Message struct {
+						Content string `json:"content"`
+					} `json:"message"`
+				} `json:"choices"`
+			}
+			if err := json.NewDecoder(resp.Body).Decode(&r); err == nil && len(r.Choices) > 0 {
+				return r.Choices[0].Message.Content, nil
+			}
+		} else if resp.StatusCode == 402 {
+			return "⚠️ **Insufficient GSTD**\n\nTop up your balance or run a worker to earn GSTD for expanded AI conversations.", nil
+		}
+	}
+
 	return "", nil
 }
 
@@ -515,18 +546,20 @@ func (s *TelegramService) SendStarsInvoice(ctx context.Context, chatID string, s
 
 // PreCheckoutQuery for Stars payments
 type preCheckoutQuery struct {
-	ID               string `json:"id"`
-	From             *struct { ID int64 `json:"id"` } `json:"from"`
-	Currency         string `json:"currency"`
-	TotalAmount      int    `json:"total_amount"`
-	InvoicePayload   string `json:"invoice_payload"`
+	ID   string `json:"id"`
+	From *struct {
+		ID int64 `json:"id"`
+	} `json:"from"`
+	Currency       string `json:"currency"`
+	TotalAmount    int    `json:"total_amount"`
+	InvoicePayload string `json:"invoice_payload"`
 }
 
 // Telegram Update structure
 type telegramUpdate struct {
-	UpdateID        int64             `json:"update_id"`
+	UpdateID         int64             `json:"update_id"`
 	PreCheckoutQuery *preCheckoutQuery `json:"pre_checkout_query"`
-	Message  *struct {
+	Message          *struct {
 		MessageID int64 `json:"message_id"`
 		From      *struct {
 			ID           int64  `json:"id"`

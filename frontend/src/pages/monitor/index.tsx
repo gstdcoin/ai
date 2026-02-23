@@ -32,6 +32,9 @@ export default function GlobalMonitor() {
         totalUsers: 0,
         telegramLinked: 0,
         activeDevices: 0,
+        gstdPriceUsd: 0,
+        marketCapUsd: 0,
+        volume24hUsd: 0,
     });
     const [analysis, setAnalysis] = useState('NEURAL_SYNAPSE_INIT...');
     const [health, setHealth] = useState(0.85);
@@ -52,10 +55,11 @@ export default function GlobalMonitor() {
                     setAnalysis(data.neural || 'NEURAL_STABLE');
                     setLastDecision(org.last_decision || '');
                     const eco = data.ecosystem || {};
+                    const mkt = data.market || {};
                     setStats(prev => ({
                         ...prev,
                         tps: flows.global_tps ?? prev.tps,
-                        tvl: flows.total_volume_24h ?? prev.tvl,
+                        tvl: flows.total_volume_24h ?? mkt.volume_24h_usd ?? prev.tvl,
                         revenue24h: mon.total_revenue_24h ?? org.revenue_24h ?? prev.revenue24h,
                         goldReserve: mon.gold_reserve ?? org.gold_reserve ?? prev.goldReserve,
                         protocolFund: mon.protocol_fund ?? org.protocol_fund ?? prev.protocolFund,
@@ -65,6 +69,9 @@ export default function GlobalMonitor() {
                         telegramLinked: eco.telegram_linked ?? prev.telegramLinked,
                         activeDevices: eco.active_devices ?? eco.active_nodes ?? prev.activeDevices,
                         activeNodes: eco.active_nodes ?? prev.activeNodes,
+                        gstdPriceUsd: mkt.gstd_price_usd ?? prev.gstdPriceUsd,
+                        marketCapUsd: mkt.market_cap_usd ?? prev.marketCapUsd,
+                        volume24hUsd: mkt.volume_24h_usd ?? prev.volume24hUsd,
                     }));
                 }
             } catch (e) {
@@ -267,11 +274,23 @@ export default function GlobalMonitor() {
                                 </div>
                                 <div>
                                     <label className="text-[9px] uppercase font-black text-gray-500 block mb-1">Throughput</label>
-                                    <div className="text-3xl font-black text-amber-400 tracking-tighter">{stats.tps.toFixed(1)} <span className="text-sm">TPS</span></div>
+                                    <div className="text-3xl font-black text-amber-400 tracking-tighter">{(stats.tps ?? 0).toFixed(1)} <span className="text-sm">TPS</span></div>
+                                </div>
+                                <div>
+                                    <label className="text-[9px] uppercase font-black text-gray-500 block mb-1">GSTD Price (Live)</label>
+                                    <div className="text-2xl font-black text-blue-400 tracking-tighter">${stats.gstdPriceUsd > 0 ? stats.gstdPriceUsd.toFixed(6) : '—'}</div>
+                                </div>
+                                <div>
+                                    <label className="text-[9px] uppercase font-black text-gray-500 block mb-1">Market Cap</label>
+                                    <div className="text-2xl font-black text-emerald-400 tracking-tighter">${stats.marketCapUsd >= 1e6 ? (stats.marketCapUsd / 1e6).toFixed(2) + 'M' : stats.marketCapUsd?.toLocaleString() ?? '—'}</div>
+                                </div>
+                                <div>
+                                    <label className="text-[9px] uppercase font-black text-gray-500 block mb-1">Volume 24h</label>
+                                    <div className="text-2xl font-black text-amber-400 tracking-tighter">${stats.volume24hUsd >= 1000 ? (stats.volume24hUsd / 1000).toFixed(1) + 'K' : stats.volume24hUsd?.toFixed(0) ?? '—'}</div>
                                 </div>
                                 <div>
                                     <label className="text-[9px] uppercase font-black text-gray-500 block mb-1">Global TVL Secured</label>
-                                    <div className="text-3xl font-black text-emerald-400 tracking-tighter">${(stats.tvl / 1e6).toFixed(1)}M</div>
+                                    <div className="text-3xl font-black text-emerald-400 tracking-tighter">${((stats.tvl ?? 0) / 1e6).toFixed(1)}M</div>
                                 </div>
                                 <div>
                                     <label className="text-[9px] uppercase font-black text-gray-500 block mb-1">Revenue 24h</label>
