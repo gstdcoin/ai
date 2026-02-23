@@ -21,59 +21,59 @@ type TaskOrchestrator struct {
 	powService   *ProofOfWorkService
 	loadBalancer *LoadBalancer
 	mutex        sync.RWMutex
-	
+
 	// Configuration
-	maxRetries         int
-	retryBackoff       []time.Duration
-	workerCapacity     map[string]int  // workerWallet -> active task count
-	maxTasksPerWorker  int
-	
+	maxRetries        int
+	retryBackoff      []time.Duration
+	workerCapacity    map[string]int // workerWallet -> active task count
+	maxTasksPerWorker int
+
 	// Channels for async processing
-	taskQueue     chan *TaskQueueItem
-	resultQueue   chan *TaskResult
-	stopChan      chan struct{}
+	taskQueue   chan *TaskQueueItem
+	resultQueue chan *TaskResult
+	stopChan    chan struct{}
 }
 
 // TaskQueueItem represents a task in the priority queue
 type TaskQueueItem struct {
-	TaskID          string    `json:"task_id"`
-	TaskType        string    `json:"task_type"`
-	Operation       string    `json:"operation"`
-	Priority        int       `json:"priority"`        // 1=critical, 2=high, 3=normal, 4=low
-	RewardGSTD      float64   `json:"reward_gstd"`
-	CreatedAt       time.Time `json:"created_at"`
-	Deadline        time.Time `json:"deadline"`
-	RequiredCPU     int       `json:"required_cpu"`
-	RequiredRAMGB   float64   `json:"required_ram_gb"`
-	MinTrustScore   float64   `json:"min_trust_score"`
-	RetryCount      int       `json:"retry_count"`
-	LastAssignedTo  string    `json:"last_assigned_to"`
-	Geography       string    `json:"geography"`
-	PoWDifficulty   int       `json:"pow_difficulty"`
+	TaskID         string    `json:"task_id"`
+	TaskType       string    `json:"task_type"`
+	Operation      string    `json:"operation"`
+	Priority       int       `json:"priority"` // 1=critical, 2=high, 3=normal, 4=low
+	RewardGSTD     float64   `json:"reward_gstd"`
+	CreatedAt      time.Time `json:"created_at"`
+	Deadline       time.Time `json:"deadline"`
+	RequiredCPU    int       `json:"required_cpu"`
+	RequiredRAMGB  float64   `json:"required_ram_gb"`
+	MinTrustScore  float64   `json:"min_trust_score"`
+	RetryCount     int       `json:"retry_count"`
+	LastAssignedTo string    `json:"last_assigned_to"`
+	Geography      string    `json:"geography"`
+	PoWDifficulty  int       `json:"pow_difficulty"`
 }
 
 // TaskResult represents the result of task execution
 type TaskResult struct {
-	TaskID        string    `json:"task_id"`
-	WorkerWallet  string    `json:"worker_wallet"`
-	Success       bool      `json:"success"`
-	ResultData    []byte    `json:"result_data"`
-	ExecutionTime int       `json:"execution_time_ms"`
-	PoWNonce      string    `json:"pow_nonce"`
-	ErrorMessage  string    `json:"error_message,omitempty"`
+	TaskID        string `json:"task_id"`
+	WorkerWallet  string `json:"worker_wallet"`
+	Success       bool   `json:"success"`
+	ResultData    []byte `json:"result_data"`
+	ExecutionTime int    `json:"execution_time_ms"`
+	PoWNonce      string `json:"pow_nonce"`
+	ErrorMessage  string `json:"error_message,omitempty"`
 }
 
 // WorkerInfo represents worker capacity and status
 type WorkerInfo struct {
-	WalletAddress   string    `json:"wallet_address"`
-	TrustScore      float64   `json:"trust_score"`
-	ActiveTasks     int       `json:"active_tasks"`
-	MaxCapacity     int       `json:"max_capacity"`
-	CPUCores        int       `json:"cpu_cores"`
-	RAMGB           float64   `json:"ram_gb"`
-	Country         string    `json:"country"`
-	LastSeen        time.Time `json:"last_seen"`
-	AvgExecutionMs  int       `json:"avg_execution_ms"`
+	WalletAddress  string    `json:"wallet_address"`
+	TrustScore     float64   `json:"trust_score"`
+	ActiveTasks    int       `json:"active_tasks"`
+	MaxCapacity    int       `json:"max_capacity"`
+	CPUCores       int       `json:"cpu_cores"`
+	RAMGB          float64   `json:"ram_gb"`
+	Country        string    `json:"country"`
+	LastSeen       time.Time `json:"last_seen"`
+	AvgExecutionMs int       `json:"avg_execution_ms"`
 }
 
 // NewTaskOrchestrator creates a new task orchestrator
@@ -90,7 +90,7 @@ func NewTaskOrchestrator(db *sql.DB, redis *redis.Client) *TaskOrchestrator {
 		stopChan:          make(chan struct{}),
 		loadBalancer:      NewLoadBalancer(db, redis),
 	}
-	
+
 	return orch
 }
 
@@ -102,22 +102,22 @@ func (o *TaskOrchestrator) SetPoWService(pow *ProofOfWorkService) {
 // Start begins the orchestrator background processes
 func (o *TaskOrchestrator) Start(ctx context.Context) {
 	log.Println("🚀 TaskOrchestrator starting...")
-	
+
 	// Start queue processor
 	go o.processQueue(ctx)
-	
+
 	// Start result processor
 	go o.processResults(ctx)
-	
+
 	// Start periodic queue refresh
 	go o.refreshQueue(ctx)
-	
+
 	// Start worker capacity monitor
 	go o.monitorWorkerCapacity(ctx)
 
 	// Start assigned task health monitor (Instant Re-assignment Logic)
 	go o.monitorAssignedTasks(ctx)
-	
+
 	log.Println("✅ TaskOrchestrator started")
 }
 
@@ -132,18 +132,18 @@ func (o *TaskOrchestrator) EnqueueTask(ctx context.Context, task *TaskQueueItem)
 	// Calculate priority score for Redis sorted set
 	// Lower score = higher priority
 	score := o.calculatePriorityScore(task)
-	
+
 	// Add to Redis sorted set
 	key := "task_queue:pending"
 	member := task.TaskID
-	
+
 	if err := o.redis.ZAdd(ctx, key, redis.Z{
 		Score:  score,
 		Member: member,
 	}).Err(); err != nil {
 		return fmt.Errorf("failed to enqueue task: %w", err)
 	}
-	
+
 	// Store task details in hash
 	detailsKey := fmt.Sprintf("task_queue:details:%s", task.TaskID)
 	if err := o.redis.HSet(ctx, detailsKey, map[string]interface{}{
@@ -160,9 +160,9 @@ func (o *TaskOrchestrator) EnqueueTask(ctx context.Context, task *TaskQueueItem)
 	}).Err(); err != nil {
 		log.Printf("Warning: failed to store task details: %v", err)
 	}
-	
+
 	log.Printf("📥 Task %s enqueued with priority score %.2f", task.TaskID, score)
-	
+
 	return nil
 }
 
@@ -172,31 +172,31 @@ func (o *TaskOrchestrator) GetNextTaskForWorker(ctx context.Context, worker *Wor
 	o.mutex.RLock()
 	activeCount := o.workerCapacity[worker.WalletAddress]
 	o.mutex.RUnlock()
-	
+
 	if activeCount >= o.maxTasksPerWorker {
 		return nil, fmt.Errorf("worker at capacity (%d/%d tasks)", activeCount, o.maxTasksPerWorker)
 	}
-	
+
 	// Get top N pending tasks from Redis
 	key := "task_queue:pending"
 	taskIDs, err := o.redis.ZRange(ctx, key, 0, 19).Result() // Top 20 tasks
 	if err != nil {
 		return nil, fmt.Errorf("failed to get pending tasks: %w", err)
 	}
-	
+
 	// Find best matching task
 	for _, taskID := range taskIDs {
 		task, err := o.getTaskDetails(ctx, taskID)
 		if err != nil {
 			continue
 		}
-		
+
 		// Check if worker meets requirements
 		if o.workerMeetsRequirements(worker, task) {
 			return task, nil
 		}
 	}
-	
+
 	return nil, nil // No suitable task found
 }
 
@@ -207,12 +207,12 @@ func (o *TaskOrchestrator) ClaimTaskForWorker(ctx context.Context, taskID string
 	if err != nil {
 		return nil, fmt.Errorf("task not found: %w", err)
 	}
-	
+
 	// Verify worker requirements
 	if !o.workerMeetsRequirements(worker, task) {
 		return nil, fmt.Errorf("worker does not meet task requirements")
 	}
-	
+
 	// Remove from pending queue
 	key := "task_queue:pending"
 	// Use Result() to get the number of removed elements
@@ -223,7 +223,7 @@ func (o *TaskOrchestrator) ClaimTaskForWorker(ctx context.Context, taskID string
 	if removed == 0 {
 		return nil, fmt.Errorf("task already claimed by another worker")
 	}
-	
+
 	// Add to assigned queue
 	assignedKey := "task_queue:assigned"
 	if err := o.redis.ZAdd(ctx, assignedKey, redis.Z{
@@ -234,17 +234,17 @@ func (o *TaskOrchestrator) ClaimTaskForWorker(ctx context.Context, taskID string
 		o.redis.ZAdd(ctx, key, redis.Z{Score: 0, Member: taskID})
 		return nil, fmt.Errorf("failed to assign task: %w", err)
 	}
-	
+
 	// Update worker capacity
 	o.mutex.Lock()
 	o.workerCapacity[worker.WalletAddress]++
 	o.mutex.Unlock()
-	
+
 	// Update database
 	if err := o.updateTaskAssignment(ctx, taskID, worker.WalletAddress); err != nil {
 		log.Printf("Warning: failed to update task assignment in DB: %v", err)
 	}
-	
+
 	// Generate PoW challenge
 	var challenge *PoWChallenge
 	if o.powService != nil {
@@ -253,9 +253,9 @@ func (o *TaskOrchestrator) ClaimTaskForWorker(ctx context.Context, taskID string
 			log.Printf("Warning: failed to generate PoW challenge: %v", err)
 		}
 	}
-	
+
 	log.Printf("📤 Task %s assigned to worker %s", taskID, worker.WalletAddress[:16])
-	
+
 	return challenge, nil
 }
 
@@ -272,20 +272,20 @@ func (o *TaskOrchestrator) CompleteTask(ctx context.Context, result *TaskResult)
 		}
 		log.Printf("✅ PoW verified for task %s", result.TaskID)
 	}
-	
+
 	// Remove from assigned queue
 	assignedKey := "task_queue:assigned"
 	if err := o.redis.ZRem(ctx, assignedKey, result.TaskID).Err(); err != nil {
 		log.Printf("Warning: failed to remove task from assigned queue: %v", err)
 	}
-	
+
 	// Update worker capacity
 	o.mutex.Lock()
 	if o.workerCapacity[result.WorkerWallet] > 0 {
 		o.workerCapacity[result.WorkerWallet]--
 	}
 	o.mutex.Unlock()
-	
+
 	// Add to completed queue for processing
 	completedKey := "task_queue:completed"
 	if err := o.redis.ZAdd(ctx, completedKey, redis.Z{
@@ -294,15 +294,15 @@ func (o *TaskOrchestrator) CompleteTask(ctx context.Context, result *TaskResult)
 	}).Err(); err != nil {
 		log.Printf("Warning: failed to add task to completed queue: %v", err)
 	}
-	
+
 	// Update database
 	if err := o.updateTaskCompletion(ctx, result); err != nil {
 		return fmt.Errorf("failed to update task completion: %w", err)
 	}
-	
-	log.Printf("✅ Task %s completed by worker %s in %dms", 
+
+	log.Printf("✅ Task %s completed by worker %s in %dms",
 		result.TaskID, result.WorkerWallet[:16], result.ExecutionTime)
-	
+
 	return nil
 }
 
@@ -313,13 +313,13 @@ func (o *TaskOrchestrator) RetryTask(ctx context.Context, taskID string, reason 
 	if err != nil {
 		return fmt.Errorf("task not found: %w", err)
 	}
-	
+
 	// Check retry limit
 	if task.RetryCount >= o.maxRetries {
 		log.Printf("❌ Task %s exceeded max retries (%d), marking as failed", taskID, o.maxRetries)
 		return o.markTaskFailed(ctx, taskID, reason)
 	}
-	
+
 	// Calculate backoff delay (Standard: 1s, 5s, 30s)
 	backoffDelay := o.retryBackoff[task.RetryCount]
 	if task.RetryCount >= len(o.retryBackoff) {
@@ -330,26 +330,26 @@ func (o *TaskOrchestrator) RetryTask(ctx context.Context, taskID string, reason 
 	if reason == "worker_offline" {
 		backoffDelay = 0
 	}
-	
+
 	// Update retry count
 	task.RetryCount++
 	task.LastAssignedTo = ""
-	
+
 	// Schedule retry after delay
 	go func() {
 		if backoffDelay > 0 {
 			time.Sleep(backoffDelay)
 		}
-		
+
 		// Re-enqueue with increased priority (lower score)
-		task.Priority = max(1, task.Priority-1) 
+		task.Priority = max(1, task.Priority-1)
 		if err := o.EnqueueTask(context.Background(), task); err != nil {
 			log.Printf("Failed to re-enqueue task %s: %v", taskID, err)
 		}
-		log.Printf("🔄 Task %s re-queued (Delay: %v, Reason: %s) Retry %d/%d", 
+		log.Printf("🔄 Task %s re-queued (Delay: %v, Reason: %s) Retry %d/%d",
 			taskID, backoffDelay, reason, task.RetryCount, o.maxRetries)
 	}()
-	
+
 	// Update database
 	_, err = o.db.ExecContext(ctx, `
 		UPDATE tasks SET 
@@ -359,7 +359,7 @@ func (o *TaskOrchestrator) RetryTask(ctx context.Context, taskID string, reason 
 			updated_at = NOW()
 		WHERE task_id = $3
 	`, task.RetryCount, reason, taskID)
-	
+
 	return err
 }
 
@@ -368,7 +368,7 @@ func (o *TaskOrchestrator) GetQueueStats(ctx context.Context) (map[string]interf
 	pendingCount, _ := o.redis.ZCard(ctx, "task_queue:pending").Result()
 	assignedCount, _ := o.redis.ZCard(ctx, "task_queue:assigned").Result()
 	completedCount, _ := o.redis.ZCard(ctx, "task_queue:completed").Result()
-	
+
 	return map[string]interface{}{
 		"pending":   pendingCount,
 		"assigned":  assignedCount,
@@ -384,14 +384,14 @@ func (o *TaskOrchestrator) GetQueueStats(ctx context.Context) (map[string]interf
 func (o *TaskOrchestrator) calculatePriorityScore(task *TaskQueueItem) float64 {
 	// Base: priority level (1-4) * 1000000
 	score := float64(task.Priority) * 1000000
-	
+
 	// Subtract reward to prioritize higher rewards
 	score -= task.RewardGSTD * 1000
-	
+
 	// Add age penalty (older tasks get priority)
 	age := time.Since(task.CreatedAt).Minutes()
 	score -= age * 10
-	
+
 	// Deadline urgency
 	if !task.Deadline.IsZero() {
 		timeToDeadline := time.Until(task.Deadline).Minutes()
@@ -399,7 +399,7 @@ func (o *TaskOrchestrator) calculatePriorityScore(task *TaskQueueItem) float64 {
 			score -= (60 - timeToDeadline) * 100 // Urgent tasks
 		}
 	}
-	
+
 	return score
 }
 
@@ -437,7 +437,7 @@ func (o *TaskOrchestrator) getTaskDetails(ctx context.Context, taskID string) (*
 		}
 		return task, nil
 	}
-	
+
 	// Fall back to database
 	task := &TaskQueueItem{TaskID: taskID}
 	err = o.db.QueryRowContext(ctx, `
@@ -447,11 +447,11 @@ func (o *TaskOrchestrator) getTaskDetails(ctx context.Context, taskID string) (*
 		&task.TaskType, &task.Operation, &task.Priority, &task.RewardGSTD,
 		&task.MinTrustScore, &task.Geography, &task.PoWDifficulty,
 	)
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return task, nil
 }
 
@@ -504,7 +504,7 @@ func (o *TaskOrchestrator) workerMeetsRequirements(worker *WorkerInfo, task *Tas
 	if task.LastAssignedTo == worker.WalletAddress && task.RetryCount > 0 {
 		return false
 	}
-	
+
 	return true
 }
 
@@ -516,8 +516,8 @@ func parseRequiredGeography(geography string) []string {
 	}
 	// Try JSON first
 	var parsed struct {
-		Type  string   `json:"type"`
-		List  []string `json:"list"`
+		Type string   `json:"type"`
+		List []string `json:"list"`
 	}
 	if err := json.Unmarshal([]byte(geography), &parsed); err == nil {
 		if parsed.Type == "countries" && len(parsed.List) > 0 {
@@ -596,7 +596,7 @@ func (o *TaskOrchestrator) updateTaskCompletion(ctx context.Context, result *Tas
 	if !result.Success {
 		status = "failed"
 	}
-	
+
 	_, err := o.db.ExecContext(ctx, `
 		UPDATE tasks SET 
 			status = $1,
@@ -625,7 +625,7 @@ func (o *TaskOrchestrator) markTaskFailed(ctx context.Context, taskID, reason st
 func (o *TaskOrchestrator) processQueue(ctx context.Context) {
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -659,7 +659,7 @@ func (o *TaskOrchestrator) processResults(ctx context.Context) {
 func (o *TaskOrchestrator) refreshQueue(ctx context.Context) {
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -667,6 +667,9 @@ func (o *TaskOrchestrator) refreshQueue(ctx context.Context) {
 		case <-o.stopChan:
 			return
 		case <-ticker.C:
+			// 0. Auto-Clean Stale Tasks (Older than 24h and not completed)
+			o.AutoCleanStaleTasks(ctx)
+
 			// Sync pending tasks from database to Redis
 			rows, err := o.db.QueryContext(ctx, `
 				SELECT task_id, task_type, operation, priority, reward_per_worker, 
@@ -681,7 +684,7 @@ func (o *TaskOrchestrator) refreshQueue(ctx context.Context) {
 				log.Printf("Error refreshing queue: %v", err)
 				continue
 			}
-			
+
 			for rows.Next() {
 				task := &TaskQueueItem{}
 				var rewardGSTD sql.NullFloat64
@@ -695,7 +698,7 @@ func (o *TaskOrchestrator) refreshQueue(ctx context.Context) {
 				if rewardGSTD.Valid {
 					task.RewardGSTD = rewardGSTD.Float64
 				}
-				
+
 				// Check if already in queue
 				score, err := o.redis.ZScore(ctx, "task_queue:pending", task.TaskID).Result()
 				if err != nil || score == 0 {
@@ -711,7 +714,7 @@ func (o *TaskOrchestrator) refreshQueue(ctx context.Context) {
 func (o *TaskOrchestrator) monitorWorkerCapacity(ctx context.Context) {
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -730,7 +733,7 @@ func (o *TaskOrchestrator) monitorWorkerCapacity(ctx context.Context) {
 			if err != nil {
 				continue
 			}
-			
+
 			newCapacity := make(map[string]int)
 			for rows.Next() {
 				var wallet string
@@ -740,10 +743,25 @@ func (o *TaskOrchestrator) monitorWorkerCapacity(ctx context.Context) {
 				}
 			}
 			rows.Close()
-			
+
 			o.mutex.Lock()
 			o.workerCapacity = newCapacity
 			o.mutex.Unlock()
+		}
+	}
+}
+
+// AutoCleanStaleTasks removes tasks older than 24h that are in pending/queued/assigned status
+func (o *TaskOrchestrator) AutoCleanStaleTasks(ctx context.Context) {
+	res, err := o.db.ExecContext(ctx, `
+		DELETE FROM tasks 
+		WHERE status IN ('pending', 'queued', 'assigned')
+		AND created_at < NOW() - INTERVAL '24 hours'
+	`)
+	if err == nil {
+		count, _ := res.RowsAffected()
+		if count > 0 {
+			log.Printf("🧹 [Orchestrator] Pruned %d stale tasks older than 24 hours.", count)
 		}
 	}
 }

@@ -25,6 +25,7 @@ import ChatPanel from '../dashboard/ChatPanel';
 import { ComponentErrorBoundary } from '../common/ComponentErrorBoundary';
 import { toast } from '../../lib/toast';
 import FleetCommandPanel from '../dashboard/FleetCommandPanel';
+import { apiPost } from '../../lib/apiClient';
 
 type AgentTab = 'ai' | 'skills' | 'miner';
 
@@ -72,9 +73,29 @@ export default function AgentNode() {
     }
   }, [isMining]);
 
-  const handleInstallSkill = (skill: Skill) => {
+  const handleInstallSkill = async (skill: Skill) => {
+    if (skill.price_gstd && (gstdBalance || 0) < skill.price_gstd) {
+      toast.error('Insufficient Balance', `You need ${skill.price_gstd} GSTD to import this skill.`);
+      return;
+    }
+
+    if (skill.price_gstd) {
+      try {
+        await apiPost('/payments/purchase-skill', {
+          skill_name: skill.name,
+          price: skill.price_gstd,
+          wallet: address,
+        });
+        toast.success('Skill Purchased', `${skill.name} successfully imported for ${skill.price_gstd} GSTD.`);
+      } catch (err: any) {
+        toast.error('Purchase Failed', err?.message || 'Transaction could not be completed.');
+        return;
+      }
+    } else {
+      toast.success('Skill Installed', `${skill.name} v${skill.version} ready for use.`);
+    }
+
     setInstalledSkills((prev) => new Set(prev).add(skill.name));
-    toast.success('Skill Installed', `${skill.name} v${skill.version} ready for use.`);
   };
 
   const tabs: Array<{ id: AgentTab; label: string; icon: React.ReactNode; desc: string }> = [
@@ -104,10 +125,9 @@ export default function AgentNode() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
-                activeTab === tab.id
-                  ? 'bg-violet-600/20 text-violet-400 border border-violet-500/20'
-                  : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'}`}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${activeTab === tab.id
+                ? 'bg-violet-600/20 text-violet-400 border border-violet-500/20'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'}`}
             >
               {tab.icon}
               <div className="flex-1 text-left">
@@ -212,11 +232,10 @@ export default function AgentNode() {
                         <button
                           onClick={() => handleInstallSkill(skill)}
                           disabled={installedSkills.has(skill.name)}
-                          className={`flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-xl transition-all ${
-                            installedSkills.has(skill.name)
-                              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 cursor-default'
-                              : 'bg-violet-600 hover:bg-violet-500 text-white border border-violet-500/30'
-                          }`}
+                          className={`flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-xl transition-all ${installedSkills.has(skill.name)
+                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 cursor-default'
+                            : 'bg-violet-600 hover:bg-violet-500 text-white border border-violet-500/30'
+                            }`}
                         >
                           {installedSkills.has(skill.name) ? (
                             <>
@@ -256,17 +275,15 @@ export default function AgentNode() {
               <button
                 onClick={handleToggleMining}
                 disabled={isIgniting}
-                className={`w-full flex items-center justify-between p-8 rounded-3xl transition-all transform active:scale-[0.98] border-2 disabled:opacity-70 disabled:cursor-not-allowed ${
-                  isMining
-                    ? 'bg-red-500/10 border-red-500/20 text-red-400 shadow-[0_0_40px_rgba(239,68,68,0.1)]'
-                    : 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400 hover:border-cyan-400/40 shadow-[0_0_40px_rgba(34,211,238,0.1)]'
-                }`}
+                className={`w-full flex items-center justify-between p-8 rounded-3xl transition-all transform active:scale-[0.98] border-2 disabled:opacity-70 disabled:cursor-not-allowed ${isMining
+                  ? 'bg-red-500/10 border-red-500/20 text-red-400 shadow-[0_0_40px_rgba(239,68,68,0.1)]'
+                  : 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400 hover:border-cyan-400/40 shadow-[0_0_40px_rgba(34,211,238,0.1)]'
+                  }`}
               >
                 <div className="flex items-center gap-5">
                   <div
-                    className={`p-4 rounded-2xl border ${
-                      isMining ? 'bg-red-500/20 border-red-500/30 animate-pulse' : 'bg-cyan-500/20 border-cyan-500/30'
-                    }`}
+                    className={`p-4 rounded-2xl border ${isMining ? 'bg-red-500/20 border-red-500/30 animate-pulse' : 'bg-cyan-500/20 border-cyan-500/30'
+                      }`}
                   >
                     {isIgniting ? (
                       <div className="w-7 h-7 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
@@ -286,9 +303,8 @@ export default function AgentNode() {
                   </div>
                 </div>
                 <div
-                  className={`flex items-center gap-2 px-4 py-1.5 rounded-full border text-[10px] font-black tracking-widest uppercase ${
-                    isMining ? 'bg-red-500/20 border-red-500/30' : 'bg-cyan-500/20 border-cyan-500/30'
-                  }`}
+                  className={`flex items-center gap-2 px-4 py-1.5 rounded-full border text-[10px] font-black tracking-widest uppercase ${isMining ? 'bg-red-500/20 border-red-500/30' : 'bg-cyan-500/20 border-cyan-500/30'
+                    }`}
                 >
                   {isIgniting ? '...' : isMining ? 'Stop' : 'Start'}
                 </div>
