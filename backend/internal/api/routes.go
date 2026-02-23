@@ -262,7 +262,7 @@ func SetupRoutes(
 		v1.GET("/network/stats", getNetworkStats(statsService))
 		v1.GET("/network/swarm-stats", getSwarmStats(db.(*sql.DB)))
 		v1.GET("/network/map", getNetworkMap(db.(*sql.DB)))
-		v1.GET("/monitor/unified", getUnifiedOrganism(organism, financialMonitor, monetizationService, organismHub))
+		v1.GET("/monitor/unified", getUnifiedOrganism(organism, financialMonitor, monetizationService, organismHub, poolMonitorService))
 		v1.GET("/monitor/flows", getFinancialMonitorData(financialMonitor))
 		v1.GET("/monitor/neural", getNeuralFinancialAnalysis(financialMonitor))
 		v1.GET("/monitor/organism-state", getOrganismState(organism))
@@ -496,7 +496,7 @@ func SetupRoutes(
 		SetupMarketplaceProtectedRoutes(protected, marketplaceHandler)
 
 		// Telegram Bot API (X-Bot-Token auth) — link wallet, claim, complete tasks
-		tgBotHandler := NewTelegramBotHandler(dbConn, marketplaceHandler.GetMarketplace(), nodeService, deviceService, gaslessUserService)
+		tgBotHandler := NewTelegramBotHandler(dbConn, marketplaceHandler.GetMarketplace(), nodeService, deviceService, gaslessUserService, gatewayHandler)
 		tgBot := v1.Group("/telegram/bot")
 		tgBot.Use(RequireBotToken())
 		tgBot.POST("/link", tgBotHandler.LinkWallet)

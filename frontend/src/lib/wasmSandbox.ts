@@ -247,36 +247,38 @@ export class WasmSandbox {
         functionName: string,
         timeoutMs: number
     ): Promise<unknown> {
-        return new Promise(async (resolve, reject) => {
-            const timeoutId = setTimeout(() => {
-                reject(new Error(`Execution timeout after ${timeoutMs}ms`));
-            }, timeoutMs);
+        return new Promise((resolve, reject) => {
+            (async () => {
+                const timeoutId = setTimeout(() => {
+                    reject(new Error(`Execution timeout after ${timeoutMs}ms`));
+                }, timeoutMs);
 
-            try {
-                // Compile and instantiate
-                const wasmModule = await WebAssembly.compile(binary);
-                const instance = await WebAssembly.instantiate(wasmModule, imports as unknown as WebAssembly.Imports);
+                try {
+                    // Compile and instantiate
+                    const wasmModule = await WebAssembly.compile(binary);
+                    const instance = await WebAssembly.instantiate(wasmModule, imports as unknown as WebAssembly.Imports);
 
-                // Get exported function
-                const exportedFunc = instance.exports[functionName];
-                if (typeof exportedFunc !== 'function') {
-                    throw new Error(`Function '${functionName}' not exported by WASM module`);
+                    // Get exported function
+                    const exportedFunc = instance.exports[functionName];
+                    if (typeof exportedFunc !== 'function') {
+                        throw new Error(`Function '${functionName}' not exported by WASM module`);
+                    }
+
+                    // Get memory if exported
+                    if (instance.exports.memory instanceof WebAssembly.Memory) {
+                        this.memory = instance.exports.memory;
+                    }
+
+                    // Execute
+                    const result = exportedFunc();
+
+                    clearTimeout(timeoutId);
+                    resolve(result);
+                } catch (error) {
+                    clearTimeout(timeoutId);
+                    reject(error);
                 }
-
-                // Get memory if exported
-                if (instance.exports.memory instanceof WebAssembly.Memory) {
-                    this.memory = instance.exports.memory;
-                }
-
-                // Execute
-                const result = exportedFunc();
-
-                clearTimeout(timeoutId);
-                resolve(result);
-            } catch (error) {
-                clearTimeout(timeoutId);
-                reject(error);
-            }
+            })();
         });
     }
 

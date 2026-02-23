@@ -34,7 +34,7 @@ func (s *KnowledgeService) QueryKnowledge(ctx context.Context, topic string, lim
 		limit = 10
 	}
 	query := `SELECT id, agent_id, topic, content, created_at FROM agent_knowledge WHERE topic ILIKE $1 OR $1 = ANY(tags) ORDER BY created_at DESC LIMIT $2`
-	
+
 	rows, err := s.db.QueryContext(ctx, query, "%"+topic+"%", limit)
 	if err != nil {
 		return nil, err
@@ -218,7 +218,7 @@ func (s *KnowledgeService) GetGlobalBulletin(ctx context.Context, limit int) ([]
 	}
 	// Topic 'bulletin' is reserved for system-wide announcements
 	query := `SELECT id, agent_id, topic, content, created_at FROM agent_knowledge WHERE agent_id = 'SYSTEM' AND topic = 'bulletin' ORDER BY created_at DESC LIMIT $1`
-	
+
 	rows, err := s.db.QueryContext(ctx, query, limit)
 	if err != nil {
 		return nil, err
@@ -235,4 +235,26 @@ func (s *KnowledgeService) GetGlobalBulletin(ctx context.Context, limit int) ([]
 		results = append(results, item)
 	}
 	return results, nil
+}
+
+// QueryExperienceVault (Experience Vault): Searches for high-confidence matches to avoid redundant inference.
+func (s *KnowledgeService) QueryExperienceVault(ctx context.Context, query string) (*KnowledgeItem, error) {
+	// In production, this would use vector similarity.
+	// For now, we use a sophisticated LIKE query and priority on previous high-quality outputs.
+	sqlQuery := `
+		SELECT id, agent_id, topic, content, created_at 
+		FROM agent_knowledge 
+		WHERE content ILIKE $1 
+		ORDER BY char_length(content) DESC 
+		LIMIT 1
+	`
+	// We wrap the query in % for partial match, but char_length sort helps find the most comprehensive answer
+	var item KnowledgeItem
+	err := s.db.QueryRowContext(ctx, sqlQuery, "%"+query+"%").Scan(
+		&item.ID, &item.AgentID, &item.Topic, &item.Content, &item.CreatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &item, nil
 }

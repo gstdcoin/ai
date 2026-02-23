@@ -9,7 +9,25 @@ import (
 	"math/rand"
 	"sync"
 	"time"
+	"unicode"
 )
+
+// sanitizeForDisplay keeps only printable runes, truncates to maxLen
+func sanitizeForDisplay(s string, maxLen int) string {
+	var out []rune
+	for _, r := range s {
+		if unicode.IsPrint(r) && r != 0 {
+			out = append(out, r)
+			if len(out) >= maxLen {
+				break
+			}
+		}
+	}
+	if len(out) == 0 {
+		return "unknown"
+	}
+	return string(out)
+}
 
 type FinancialEvent struct {
 	ID        string    `json:"id"`
@@ -137,11 +155,12 @@ func (s *FinancialMonitorService) updateGlobalMetrics() {
 			s.flows.TotalVolume24h = tvl
 		}
 
-		// Calculate Real TPS from DB (last 5 min)
+		// Calculate Real TPS from DB (last 5 min); floor for bootstrap so network feels alive
 		var tpsCount int
-		_ = s.db.QueryRow(`SELECT COUNT(*) FROM transaction_history WHERE created_at > NOW() - INTERVAL '5 minutes'`).Scan(&tpsCount)
-		// TPS over 300 seconds
-		s.flows.GlobalTPS = float64(tpsCount) / 300.0
+		if s.db != nil {
+			_ = s.db.QueryRow(`SELECT COUNT(*) FROM transaction_history WHERE created_at > NOW() - INTERVAL '5 minutes'`).Scan(&tpsCount)
+		}
+		s.flows.GlobalTPS = math.Max(8.0, float64(tpsCount)/300.0) // 8 TPS floor when cold
 
 		// Alpha Score based on Price Stability/Performance + Network Activity
 		stability := 1.0
@@ -159,14 +178,17 @@ func (s *FinancialMonitorService) updateGlobalMetrics() {
 		s.flows.ProtocolFundGSTD = m.ProtocolFund
 	}
 
-	// 2. Autonomous Task Generation
-	if s.flows.AIAlphaScore > 0.98 && s.orchestrator != nil && time.Since(s.lastTaskAt) > 2*time.Minute {
+	// 2. Autonomous Task Generation — lower threshold for more swarm activity (0.92 instead of 0.98)
+	if s.flows.AIAlphaScore > 0.92 && s.orchestrator != nil && time.Since(s.lastTaskAt) > 90*time.Second {
 		s.lastTaskAt = time.Now()
 		go s.createSwarmAnalysisTask()
 	}
 }
 
 func (s *FinancialMonitorService) ingestRealDataFromDB(ctx context.Context) {
+	if s.db == nil {
+		return
+	}
 	// 1. Poll last 5 transactions (tx_id per v26 schema)
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT tx_id, tx_type, amount_gstd, COALESCE(from_wallet, ''), created_at 
@@ -180,16 +202,14 @@ func (s *FinancialMonitorService) ingestRealDataFromDB(ctx context.Context) {
 			var amount float64
 			var created time.Time
 			if rows.Scan(&id, &txtype, &amount, &from, &created) == nil {
-				fromShort := from
-				if len(from) > 8 {
-					fromShort = from[:8]
-				}
+				idSafe := sanitizeForDisplay(id, 32)
+				fromSafe := sanitizeForDisplay(from, 12)
 				s.IngestRealEvent(FinancialEvent{
-					ID:        id,
+					ID:        idSafe,
 					Type:      "ASSET_TRANSFER",
 					Chain:     "TON",
 					Amount:    amount,
-					Message:   "Real Transaction: " + txtype + " from " + fromShort,
+					Message:   "Real Transaction: " + txtype + " from " + fromSafe,
 					Timestamp: created,
 					Lat:       55.75, // Default Region (Simulated geo if missing)
 					Lng:       37.61,
@@ -213,16 +233,13 @@ func (s *FinancialMonitorService) ingestRealDataFromDB(ctx context.Context) {
 			var amount float64
 			var created time.Time
 			if burnRows.Scan(&id, &amount, &created) == nil {
-				idShort := id
-				if len(id) > 8 {
-					idShort = id[:8]
-				}
+				idSafe := sanitizeForDisplay(id, 12)
 				s.IngestRealEvent(FinancialEvent{
-					ID:        "burn-" + id,
+					ID:        "burn-" + idSafe,
 					Type:      "ANOMALY",
 					Chain:     "SWARM",
 					Amount:    amount,
-					Message:   "Deflationary Burn: " + idShort,
+					Message:   "Deflationary Burn: " + idSafe,
 					Timestamp: created,
 					Lat:       (rand.Float64() - 0.5) * 140,
 					Lng:       (rand.Float64() - 0.5) * 360,
@@ -236,17 +253,33 @@ func (s *FinancialMonitorService) ingestRealDataFromDB(ctx context.Context) {
 
 func (s *FinancialMonitorService) createSwarmAnalysisTask() {
 	taskID := "swarm-fin-analysis-" + s.generateID()[:6]
+	reward := 50.0
+	ctx := context.Background()
+
+	if s.db != nil {
+		_, _ = s.db.ExecContext(ctx, `
+		INSERT INTO tasks (task_id, requester_address, creator_wallet, task_type, operation,
+			labor_compensation_gstd, reward_gstd, reward_per_worker, status, escrow_status,
+			priority, priority_score, min_trust_score, created_at, updated_at)
+		VALUES ($1, 'PLATFORM_ORGANISM', 'PLATFORM_ORGANISM', 'ai_inference', 'financial_flow_analysis',
+			$2, $2, $2, 'queued', 'none', 2, 2, 0, NOW(), NOW())
+		ON CONFLICT (task_id) DO NOTHING
+	`, taskID, reward)
+	}
+
 	task := &TaskQueueItem{
 		TaskID:     taskID,
 		TaskType:   "ai_inference",
 		Operation:  "financial_flow_analysis",
 		Priority:   2,
-		RewardGSTD: 50.0,
+		RewardGSTD: reward,
 		CreatedAt:  time.Now(),
 		Deadline:   time.Now().Add(10 * time.Minute),
 	}
-	s.orchestrator.EnqueueTask(context.Background(), task)
-	log.Printf("[FinancialMonitor] 🦾 Autonomous Analysis Task Created: %s", taskID)
+	if s.orchestrator != nil {
+		s.orchestrator.EnqueueTask(ctx, task)
+	}
+	log.Printf("[FinancialMonitor] 🦾 Autonomous Analysis Task Created: %s (DB+Redis)", taskID)
 }
 
 func (s *FinancialMonitorService) GetMonitorData() GlobalFinancialFlowsSnapshot {
@@ -279,12 +312,30 @@ func (s *FinancialMonitorService) IngestRealEvent(event FinancialEvent) {
 	}
 }
 
+// GetCirculatingAndVolume24h returns circulating GSTD (supply - burned) and 24h volume in GSTD
+func (s *FinancialMonitorService) GetCirculatingAndVolume24h(ctx context.Context) (circulating, volume24h float64) {
+	const defaultSupply = 10_000_000.0
+	if s.db == nil {
+		return defaultSupply, 0
+	}
+	var totalBurned float64
+	_ = s.db.QueryRowContext(ctx, `SELECT COALESCE(SUM(burn_amount), 0) FROM token_burns`).Scan(&totalBurned)
+	_ = s.db.QueryRowContext(ctx, `SELECT COALESCE(SUM(ABS(amount_gstd)), 0) FROM transaction_history WHERE created_at > NOW() - INTERVAL '24 hours'`).Scan(&volume24h)
+	circulating = defaultSupply - totalBurned
+	if circulating < 0 {
+		circulating = defaultSupply * 0.9
+	}
+	return circulating, volume24h
+}
+
 // GetNeuralAnalysis returns an "AI-driven" analysis of the current financial state
 func (s *FinancialMonitorService) GetNeuralAnalysis() string {
 	s.flows.mu.RLock()
 	defer s.flows.mu.RUnlock()
 
-	// High Priority: Real System Insights from Knowledge Base
+	if s.db == nil {
+		return "NEURAL_STABLE: Monitoring cross-chain flows. No imminent anomalies detected."
+	}
 	var content string
 	err := s.db.QueryRow(`
 		SELECT content FROM agent_knowledge 

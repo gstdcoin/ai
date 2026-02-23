@@ -45,7 +45,7 @@ export default function LeviathanTMATicker() {
       setConnected(false);
       es.close();
       esRef.current = null;
-      setTimeout(connect, RECONNECT_DELAY_MS);
+      setTimeout(() => connect(), RECONNECT_DELAY_MS);
     };
   }, [translate]);
 

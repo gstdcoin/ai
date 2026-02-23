@@ -130,11 +130,11 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 	}
 
 	var req struct {
-		Model            string        `json:"model"`
-		Messages         []interface{} `json:"messages"`
-		Stream           bool          `json:"stream"`
-		ImageGeneration  bool          `json:"image_generation"`
-		PaymentMethod    string        `json:"payment_method"` // "gstd" = 20% discount, "stars" = full price
+		Model           string        `json:"model"`
+		Messages        []interface{} `json:"messages"`
+		Stream          bool          `json:"stream"`
+		ImageGeneration bool          `json:"image_generation"`
+		PaymentMethod   string        `json:"payment_method"` // "gstd" = 20% discount, "stars" = full price
 	}
 	if err := json.Unmarshal(body, &req); err != nil {
 		c.JSON(400, gin.H{"error": "invalid_json"})
@@ -234,14 +234,14 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 		}
 		if !access.Allowed {
 			c.JSON(402, gin.H{
-				"error":           "ultra_gate_required",
-				"code":            402,
-				"deficit":         access.SessionCost,
-				"work_required":   0,
-				"message":         access.Message,
-				"requires_ultra":  true,
-				"staked_gstd":     access.StakedGSTD,
-				"balance_gstd":    access.BalanceGSTD,
+				"error":          "ultra_gate_required",
+				"code":           402,
+				"deficit":        access.SessionCost,
+				"work_required":  0,
+				"message":        access.Message,
+				"requires_ultra": true,
+				"staked_gstd":    access.StakedGSTD,
+				"balance_gstd":   access.BalanceGSTD,
 			})
 			return
 		}
@@ -343,10 +343,31 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 	}
 
 	prompt := ""
+	lastUserMsg := ""
 	for _, m := range promptMsgs {
 		prompt += m["role"] + ": " + m["content"] + "\n"
+		if m["role"] == "user" {
+			lastUserMsg = m["content"]
+		}
 	}
 	prompt += "assistant: "
+
+	// Public Proof-of-Work: swarm stats for frontend
+	activeDevices := 0
+	if h.stats != nil {
+		if st, err := h.stats.GetGlobalStats(c.Request.Context()); err == nil {
+			activeDevices = st.ActiveDevicesCount
+		}
+	}
+
+	// Neural Router: Experience Vault check (semantic cache)
+	if (req.Model == "omega-auto" || req.Model == "auto") && h.knowledgeService != nil && lastUserMsg != "" {
+		if cached, err := h.knowledgeService.QueryExperienceVault(c.Request.Context(), lastUserMsg); err == nil && cached != nil {
+			log.Printf("🧠 [Neural Router] Experience Vault HIT: using cached response for '%s'", truncate(lastUserMsg, 30))
+			h.respondWithUsage(c, req.Model, cached.Content, true, activeDevices, fee)
+			return
+		}
+	}
 
 	ollamaReq := map[string]interface{}{
 		"model":  ollamaModel,
@@ -393,23 +414,19 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 		_ = h.knowledgeService.StoreKnowledge(c.Request.Context(), "ULTRA", "hive_memory_ultra", content, []string{"ultra", "gstd_powered"}, nil)
 	}
 
-	// Ascension: 20% discount when payment_method=gstd (image gen or Ultra)
-	gstdDiscount := req.PaymentMethod == "gstd"
+	// Ascension: 20% discount logic (can be expanded later)
 
-	// Public Proof-of-Work: swarm stats for frontend
-	activeDevices := 0
-	if h.stats != nil {
-		if st, err := h.stats.GetGlobalStats(c.Request.Context()); err == nil {
-			activeDevices = st.ActiveDevicesCount
-		}
-	}
+	h.respondWithUsage(c, req.Model, content, false, activeDevices, fee)
+}
+
+// respondWithUsage sends a standardized OpenAI-compatible response with GSTD PoW stats.
+func (h *GatewayHandler) respondWithUsage(c *gin.Context, model, content string, cached bool, activeDevices int, fee float64) {
 	workerAmount := fee * 0.85
-
-	// OpenAI-compatible response; image_generation uses flux, may return base64
 	out := gin.H{
 		"id":      "chatcmpl-gstd",
 		"object":  "chat.completion",
-		"model":   req.Model,
+		"model":   model,
+		"created": time.Now().Unix(),
 		"choices": []gin.H{
 			{
 				"index": 0,
@@ -425,16 +442,12 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 			"completion_tokens": 0,
 			"total_tokens":      0,
 		},
-	}
-	if isImageGen {
-		out["image_generation"] = true
-		out["gstd_discount_20"] = gstdDiscount
-	}
-	// Public Proof-of-Work: swarm stats for UI
-	out["gstd_pow"] = gin.H{
-		"swarm_devices":   activeDevices,
-		"workers_gstd":    workerAmount,
-		"fee_deducted":    fee,
+		"cached": cached,
+		"gstd_pow": gin.H{
+			"swarm_devices": activeDevices,
+			"workers_gstd":  workerAmount,
+			"fee_deducted":  fee,
+		},
 	}
 	c.JSON(200, out)
 }
@@ -479,10 +492,10 @@ func (h *GatewayHandler) GetUltraStatus(c *gin.Context) {
 	// Easy-Onboarding: cost per model for Cost Indicator
 	costPerModel := map[string]float64{
 		"qwen2.5-coder:7b":  0.01,
-		"llama3.1:8b":      0.01,
+		"llama3.1:8b":       0.01,
 		"qwen2.5-coder:32b": 0.05,
 		"llama3.3:70b":      sessionCost,
-		"deepseek-r1":      sessionCost,
+		"deepseek-r1":       sessionCost,
 	}
 	if stakingDiscount {
 		for k, v := range costPerModel {

@@ -365,6 +365,9 @@ func (o *TaskOrchestrator) RetryTask(ctx context.Context, taskID string, reason 
 
 // GetQueueStats returns current queue statistics
 func (o *TaskOrchestrator) GetQueueStats(ctx context.Context) (map[string]interface{}, error) {
+	if o.redis == nil {
+		return map[string]interface{}{"pending": int64(0), "assigned": int64(0), "completed": int64(0), "workers": 0}, nil
+	}
 	pendingCount, _ := o.redis.ZCard(ctx, "task_queue:pending").Result()
 	assignedCount, _ := o.redis.ZCard(ctx, "task_queue:assigned").Result()
 	completedCount, _ := o.redis.ZCard(ctx, "task_queue:completed").Result()

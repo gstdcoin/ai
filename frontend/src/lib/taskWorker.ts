@@ -159,9 +159,9 @@ async function loadWasmModule(modelUrl: string): Promise<WebAssembly.Module> {
     }
 
     const bytes = await response.arrayBuffer();
-    const module = await WebAssembly.compile(bytes);
-    wasmModuleCache.set(modelUrl, module);
-    return module;
+    const wasmModule = await WebAssembly.compile(bytes);
+    wasmModuleCache.set(modelUrl, wasmModule);
+    return wasmModule;
   } catch (error) {
     logger.error('Failed to load Wasm module', error as Error);
     throw error;
@@ -169,10 +169,10 @@ async function loadWasmModule(modelUrl: string): Promise<WebAssembly.Module> {
 }
 
 // Execute Wasm computation
-async function executeWasm(module: WebAssembly.Module, inputData: any): Promise<any> {
+async function executeWasm(wasmModule: WebAssembly.Module, inputData: any): Promise<any> {
   try {
     const memory = new WebAssembly.Memory({ initial: 256, maximum: 512 });
-    const instance = await WebAssembly.instantiate(module, {
+    const instance = await WebAssembly.instantiate(wasmModule, {
       env: { memory },
       wasi_snapshot_preview1: {
         proc_exit: () => { },

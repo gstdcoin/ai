@@ -2,7 +2,9 @@ package services
 
 import (
 	"context"
+	"crypto/rand"
 	"database/sql"
+	"encoding/hex"
 	"fmt"
 	"log"
 	"math"
@@ -11,6 +13,14 @@ import (
 
 	"github.com/lib/pq"
 )
+
+func organismGenerateID() string {
+	b := make([]byte, 8)
+	if _, err := rand.Read(b); err != nil {
+		return fmt.Sprintf("%x", time.Now().UnixNano())
+	}
+	return hex.EncodeToString(b)
+}
 
 // EquilibriumState represents the global state of the GSTD organism
 type EquilibriumState struct {
@@ -77,6 +87,9 @@ func NewSovereignOrganismService(
 func (s *SovereignOrganismService) Start(ctx context.Context) {
 	log.Println("🧠 Sovereign Organism: Neural Link Established. Starting Autonomous Heartbeat.")
 
+	// Seed one stimulus task so swarm has work from the start
+	go s.stimulateNetwork(ctx)
+
 	// Initial Run
 	s.performHeartbeat(ctx)
 
@@ -98,17 +111,23 @@ func (s *SovereignOrganismService) performHeartbeat(ctx context.Context) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// 1. Gather Intelligence
+	if s.monitor == nil {
+		return
+	}
 	monitorData := s.monitor.GetMonitorData()
-	gstdPrice, _ := s.pool.GetGSTDPriceUSD(ctx)
+	gstdPrice := 0.015
+	if s.pool != nil {
+		gstdPrice, _ = s.pool.GetGSTDPriceUSD(ctx)
+	}
 	if gstdPrice == 0 {
 		gstdPrice = 0.015
 	}
 
 	// 2. Calculate Health Score
 	// Metrics: Activity (TPS + task throughput), Value (TVL), Performance (Alpha Score)
-	activity := math.Min(1.0, monitorData.GlobalTPS/1000.0)
-	alpha := monitorData.AIAlphaScore
+	// Bootstrap: small floor so cold start doesn't stall
+	activity := math.Max(0.15, math.Min(1.0, monitorData.GlobalTPS/1000.0))
+	alpha := math.Max(0.5, monitorData.AIAlphaScore)
 
 	// Task throughput factor: more completed tasks = healthier
 	if s.orchestrator != nil {
@@ -125,8 +144,8 @@ func (s *SovereignOrganismService) performHeartbeat(ctx context.Context) {
 		}
 	}
 
-	// Health Score = weighted average
-	s.state.HealthScore = (activity * 0.4) + (alpha * 0.6)
+	// Health Score = weighted average; floor 0.35 so we don't stall in STIMULATE forever
+	s.state.HealthScore = math.Max(0.35, (activity*0.4)+(alpha*0.6))
 	s.state.OmniChainTVL = monitorData.TotalVolume24h // Using volume as proxy for now
 	s.state.LastAdjustmentAt = time.Now()
 
@@ -145,13 +164,21 @@ func (s *SovereignOrganismService) performHeartbeat(ctx context.Context) {
 	decision := "STABLE"
 	now := time.Now()
 
-	// DECISION A: If Health is low (< 0.5), stimulate the network
-	if s.state.HealthScore < 0.5 {
+	// DECISION A: If Health is low (< 0.55), stimulate the network (lower threshold = more stimulus, swarm growth)
+	// DECISION A2: When STABLE but queue is empty, gentle nudge to keep swarm fed
+	if s.state.HealthScore < 0.55 {
 		decision = "STIMULATE"
 		s.state.LastDecision = decision
 		s.state.LastDecisionAt = now
 		log.Println("[Sovereign Organism] 📉 Low Activity Detected. Triggering Stimulation.")
 		s.notifyDecision(ctx, "STIMULATE", "Low activity (Health %.2f). Stimulating network.", s.state.HealthScore)
+		s.stimulateNetwork(ctx)
+	} else if s.state.TasksPending < 2 {
+		// Queue nearly empty — seed work so swarm has tasks to claim
+		decision = "STIMULATE"
+		s.state.LastDecision = decision
+		s.state.LastDecisionAt = now
+		log.Println("[Sovereign Organism] 📦 Queue low. Seeding stimulus.")
 		s.stimulateNetwork(ctx)
 	} else if s.state.HealthScore > 0.8 {
 		// DECISION B: If Health is high (> 0.8), accelerate deflation and backing
@@ -185,9 +212,12 @@ func (s *SovereignOrganismService) performHeartbeat(ctx context.Context) {
 }
 
 func (s *SovereignOrganismService) summarizeAndLearn(ctx context.Context) {
-	// Synthesize current state into a Knowledge Item for the Swarm
+	if s.db == nil || s.monitor == nil {
+		return
+	}
+	tps := s.monitor.GetMonitorData().GlobalTPS
 	content := fmt.Sprintf("Homeostasis Report: OCHI at %.2f. Network throughput at %.2f TPS. Global liquidity optimized at $%.2f. System sentiment: EVOLUTIONARY.",
-		s.state.HealthScore, s.monitor.GetMonitorData().GlobalTPS, s.state.OmniChainTVL)
+		s.state.HealthScore, tps, s.state.OmniChainTVL)
 
 	_, _ = s.db.ExecContext(ctx, `
 		INSERT INTO agent_knowledge (agent_id, topic, content, tags, created_at)
@@ -198,25 +228,52 @@ func (s *SovereignOrganismService) summarizeAndLearn(ctx context.Context) {
 }
 
 func (s *SovereignOrganismService) stimulateNetwork(ctx context.Context) {
-	// Lower fees via Equilibrium to attract users
-	// This is handled by DynamicEquilibrium but we can force an adjustment
-	s.equilibrium.RunAntiPriceBarrier(ctx)
+	if s.equilibrium != nil {
+		s.equilibrium.RunAntiPriceBarrier(ctx)
+	}
 
-	// Generate High-Reward Bounty Tasks in Swarm
+	taskID := "stimulus-" + organismGenerateID()[:6]
+	reward := 100.0
+
+	// Persist to tasks table so workers see it (AssignmentService + refreshQueue read from DB)
+	if s.db != nil {
+		_, err := s.db.ExecContext(ctx, `
+			INSERT INTO tasks (task_id, requester_address, creator_wallet, task_type, operation,
+				labor_compensation_gstd, reward_gstd, reward_per_worker, status, escrow_status,
+				priority, priority_score, min_trust_score, created_at, updated_at)
+			VALUES ($1, 'PLATFORM_ORGANISM', 'PLATFORM_ORGANISM', 'swarm_optimization', 'network_integrity_check',
+				$2, $2, $2, 'queued', 'none', 1, 1, 0, NOW(), NOW())
+			ON CONFLICT (task_id) DO NOTHING
+		`, taskID, reward)
+		if err != nil {
+			_, _ = s.db.ExecContext(ctx, `
+				INSERT INTO tasks (task_id, requester_address, task_type, operation, labor_compensation_gstd, status, created_at, updated_at)
+				VALUES ($1, 'PLATFORM_ORGANISM', 'swarm_optimization', 'network_integrity_check', $2, 'queued', NOW(), NOW())
+				ON CONFLICT (task_id) DO NOTHING
+			`, taskID, reward)
+		}
+	}
+
+	// Enqueue to Redis for orchestrator (refreshQueue will also pick from DB)
 	task := &TaskQueueItem{
-		TaskID:     "stimulus-" + s.monitor.generateID()[:6],
+		TaskID:     taskID,
 		TaskType:   "swarm_optimization",
 		Operation:  "network_integrity_check",
-		Priority:   1,     // Top Priority
-		RewardGSTD: 100.0, // High reward
+		Priority:   1,
+		RewardGSTD: reward,
 		CreatedAt:  time.Now(),
 		Deadline:   time.Now().Add(1 * time.Hour),
 	}
-	s.orchestrator.EnqueueTask(ctx, task)
+	if s.orchestrator != nil {
+		s.orchestrator.EnqueueTask(ctx, task)
+	}
+	log.Printf("🦾 [Organism] Stimulus task %s created (DB+Redis)", taskID)
 }
 
 func (s *SovereignOrganismService) accelerateValueAccrual(ctx context.Context) {
-	// 1. Process Gold Reserves: Convert platform profit into XAUt (Gold)
+	if s.treasury == nil {
+		return
+	}
 	if err := s.treasury.ProcessGoldReserves(ctx); err != nil {
 		log.Printf("⚠️ Treasury processing error: %v", err)
 	}
@@ -230,12 +287,13 @@ func (s *SovereignOrganismService) accelerateValueAccrual(ctx context.Context) {
 }
 
 func (s *SovereignOrganismService) triggerEmergencyBuyback(ctx context.Context) {
-	// Use portion of backing fund to buy GSTD and burn it
 	log.Println("🔥 [Sovereign Organism] Emergency Buyback Triggered: Price below support.")
-	// In a real system, this would call StonFi.SwapXAUtToGSTD and then BurnService.RecordBurn
-	// Simulation:
+	if s.burn == nil {
+		log.Println("⚠️ [Organism] BurnService nil, skipping RecordBurn")
+		return
+	}
 	s.burn.RecordBurn(ctx, &BurnRecord{
-		TransactionID:   "emergency-buyback-" + s.monitor.generateID()[:4],
+		TransactionID:   "emergency-buyback-" + organismGenerateID()[:4],
 		TransactionType: "EMERGENCY_STABILIZATION",
 		OriginalAmount:  10000.0,
 		BurnAmount:      10000.0,
@@ -244,18 +302,29 @@ func (s *SovereignOrganismService) triggerEmergencyBuyback(ctx context.Context) 
 }
 
 func (s *SovereignOrganismService) updateGlobalStateDB(ctx context.Context) {
+	if s.db == nil {
+		return
+	}
 	_, err := s.db.ExecContext(ctx, `
-		INSERT INTO global_organism_state (health_score, omni_tvl, global_tflops, updated_at)
-		VALUES ($1, $2, $3, NOW())
+		INSERT INTO global_organism_state (id, health_score, omni_tvl, global_tflops, updated_at)
+		VALUES (1, $1, $2, $3, NOW())
 		ON CONFLICT (id) DO UPDATE SET
 			health_score = EXCLUDED.health_score,
 			omni_tvl = EXCLUDED.omni_tvl,
 			global_tflops = EXCLUDED.global_tflops,
 			updated_at = NOW()
-	`, s.state.HealthScore, s.state.OmniChainTVL, 14502.0) // 14502 is placeholder for now
+	`, s.state.HealthScore, s.state.OmniChainTVL, 14502.0)
 	if err != nil {
-		// Try creating table if missing
 		s.ensureSchema()
+		_, _ = s.db.ExecContext(ctx, `
+			INSERT INTO global_organism_state (id, health_score, omni_tvl, global_tflops, updated_at)
+			VALUES (1, $1, $2, $3, NOW())
+			ON CONFLICT (id) DO UPDATE SET
+				health_score = EXCLUDED.health_score,
+				omni_tvl = EXCLUDED.omni_tvl,
+				global_tflops = EXCLUDED.global_tflops,
+				updated_at = NOW()
+		`, s.state.HealthScore, s.state.OmniChainTVL, 14502.0)
 	}
 }
 
