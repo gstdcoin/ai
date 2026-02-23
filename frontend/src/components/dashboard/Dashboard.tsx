@@ -15,7 +15,7 @@ import { Tab } from '../../types/tabs';
 import { useTonConnectUI } from '@tonconnect/ui-react';
 import SystemStatusWidget from './SystemStatusWidget';
 import { toast } from '../../lib/toast';
-import { Activity, Server, Wallet, CheckCircle, ShoppingCart, Globe } from 'lucide-react';
+import { Activity, Server, Wallet, CheckCircle, ShoppingCart, Globe, Zap, TrendingUp } from 'lucide-react';
 import { apiGet, apiPost } from '../../lib/apiClient';
 import Sidebar from '../layout/Sidebar';
 import { ComponentErrorBoundary } from '../common/ComponentErrorBoundary';
@@ -58,6 +58,8 @@ function Dashboard({ initialTab, initialMode, sourceTelegram, modeMining }: Dash
   const [isMining, setIsMining] = useState(false);
   const [isIgniting, setIsIgniting] = useState(false);
   const [showReferralModal, setShowReferralModal] = useState(false);
+  const [neuralStatus, setNeuralStatus] = useState('SYNCING_WITH_SWARM...');
+  const [healthScore, setHealthScore] = useState(0.92);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -140,6 +142,18 @@ function Dashboard({ initialTab, initialMode, sourceTelegram, modeMining }: Dash
       .catch(() => { });
   }, []);
 
+  useEffect(() => {
+    const itv = setInterval(() => {
+      apiGet<any>('/monitor/organism-state')
+        .then(r => r.health_score && setHealthScore(r.health_score))
+        .catch(() => { });
+      apiGet<any>('/monitor/neural')
+        .then(r => r.analysis && setNeuralStatus(r.analysis))
+        .catch(() => { });
+    }, 15000);
+    return () => clearInterval(itv);
+  }, []);
+
   const triggerHaptic = useCallback((style: 'light' | 'medium' | 'heavy' = 'medium') => {
     if (typeof window !== 'undefined') {
       try { require('../../lib/telegram').triggerHapticImpact(style); } catch { }
@@ -212,6 +226,43 @@ function Dashboard({ initialTab, initialMode, sourceTelegram, modeMining }: Dash
 
               {activeTab === 'home' && (
                 <div className="space-y-6 animate-in fade-in duration-500">
+                  <div className="flex flex-col md:flex-row gap-4">
+                    <div className="flex-1 flex items-center justify-between p-5 bg-gradient-to-r from-blue-900/40 to-indigo-900/40 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden relative group">
+                      <div className="absolute inset-0 bg-blue-500/5 scanline" />
+                      <div className="flex items-center gap-4 relative z-10">
+                        <div className="relative">
+                          <div className="w-12 h-12 rounded-2xl bg-blue-500/20 flex items-center justify-center border border-blue-500/30">
+                            <Zap size={22} className="text-blue-400 group-hover:scale-110 transition-transform" />
+                          </div>
+                          <div className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-[#030014] flex items-center justify-center">
+                            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_#10b981]" />
+                          </div>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-blue-300 font-black uppercase block tracking-[0.2em] mb-1">Organism Pulse</span>
+                          <span className="text-lg font-black text-white uppercase tracking-tighter leading-tight">Autonomous Core <span className="text-blue-400">ACTIVE</span></span>
+                        </div>
+                      </div>
+                      <div className="text-right relative z-10">
+                        <span className="text-[10px] text-gray-400 font-bold uppercase block mb-1">Health Index</span>
+                        <div className="flex items-center gap-2">
+                          <div className="w-24 h-1.5 bg-white/10 rounded-full overflow-hidden hidden sm:block">
+                            <div className="h-full bg-emerald-500 transition-all duration-1000" style={{ width: `${healthScore * 100}%` }} />
+                          </div>
+                          <span className="text-xl font-black text-emerald-400 tabular-nums">{(healthScore * 100).toFixed(1)}%</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="md:w-1/3 flex flex-col justify-center p-5 bg-white/[0.02] border border-white/5 rounded-2xl backdrop-blur-sm">
+                      <span className="text-[10px] text-purple-400 font-black uppercase block tracking-wider mb-2">Neural Status</span>
+                      <div className="text-[11px] font-mono text-gray-300 leading-relaxed overflow-hidden">
+                        <span className="inline-block animate-pulse mr-1">●</span>
+                        {neuralStatus}
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <button
                       onClick={handleToggleMining}
@@ -262,15 +313,15 @@ function Dashboard({ initialTab, initialMode, sourceTelegram, modeMining }: Dash
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-400">
                           <Wallet size={18} />
                         </div>
                         <div>
-                          <span className="text-[10px] text-gray-500 font-bold uppercase block">{t('wallet_label')}</span>
-                          <span className="text-lg font-bold text-white tabular-nums">{gstdBalance?.toFixed(2) || '0.00'} GSTD</span>
+                          <span className="text-[10px] text-gray-400 font-bold uppercase block tracking-wider">{t('wallet_label')}</span>
+                          <span className="text-lg font-black text-white tabular-nums tracking-tighter">{gstdBalance?.toFixed(2) || '0.00'}</span>
                         </div>
                       </div>
                       <CheckCircle className="text-emerald-500 w-4 h-4" />
@@ -278,17 +329,33 @@ function Dashboard({ initialTab, initialMode, sourceTelegram, modeMining }: Dash
 
                     <button
                       onClick={() => setShowReferralModal(true)}
-                      className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 flex items-center justify-between hover:bg-white/[0.04] transition-colors text-left"
+                      className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 flex items-center justify-between hover:bg-white/[0.04] transition-colors text-left group"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="p-2.5 rounded-xl bg-violet-500/10 text-violet-400">
-                          <span className="text-lg">+</span>
+                        <div className="p-2.5 rounded-xl bg-violet-500/10 text-violet-400 group-hover:scale-110 transition-transform">
+                          <span className="text-lg font-bold">+</span>
                         </div>
                         <div>
-                          <span className="text-[10px] text-gray-500 font-bold uppercase block">{t('yield_mult') || 'Yield'}</span>
-                          <span className="text-lg font-bold text-white">{referralMultiplier}x</span>
+                          <span className="text-[10px] text-gray-400 font-bold uppercase block tracking-wider">{t('yield_mult') || 'Yield'}</span>
+                          <span className="text-lg font-black text-white tracking-tighter">{referralMultiplier}x</span>
                         </div>
                       </div>
+                    </button>
+
+                    <button
+                      onClick={() => toast.info('Yield Vault Coming Soon', 'Liquid Staking: Earn protocol fees by locking GSTD.')}
+                      className="p-5 rounded-2xl bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 flex items-center justify-between hover:border-emerald-500/40 transition-all group"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-400 group-hover:scale-110 transition-transform">
+                          <TrendingUp size={18} />
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-emerald-400 font-black uppercase block tracking-wider">Vault</span>
+                          <span className="text-lg font-black text-white tracking-tighter uppercase whitespace-nowrap">Stake</span>
+                        </div>
+                      </div>
+                      <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                     </button>
                   </div>
 

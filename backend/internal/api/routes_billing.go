@@ -55,4 +55,22 @@ func SetupBillingRoutes(v1 *gin.RouterGroup, billing *services.BillingService) {
 		}
 		c.JSON(http.StatusOK, gin.H{"transactions": txs})
 	})
+
+	// Skill Purchase
+	v1.POST("/payments/purchase-skill", func(c *gin.Context) {
+		var req struct {
+			SkillName string  `json:"skill_name"`
+			Price     float64 `json:"price"`
+			Wallet    string  `json:"wallet"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if err := billing.ProcessSkillPurchase(c.Request.Context(), req.Wallet, req.SkillName, req.Price); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"status": "success"})
+	})
 }
