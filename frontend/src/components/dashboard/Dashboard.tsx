@@ -22,6 +22,7 @@ import { ComponentErrorBoundary } from '../common/ComponentErrorBoundary';
 import { workerService } from '../../services/WorkerService';
 import { InstallPwaPrompt } from '../common/InstallPwaPrompt';
 import { ActivityFeed } from './ActivityFeed';
+import { SwarmActivityWidget } from './SwarmActivityWidget';
 import AgentMarketplace from '../agents/AgentMarketplace';
 import ReferralPanel from '../referrals/ReferralPanel';
 import { isTelegramWebApp } from '../../lib/telegram';
@@ -88,7 +89,7 @@ function Dashboard({ initialTab, initialMode, sourceTelegram, modeMining }: Dash
 
   useEffect(() => {
     if (typeof window !== 'undefined' && activeTab) {
-      try { window.localStorage.setItem('activeTab', activeTab); } catch {}
+      try { window.localStorage.setItem('activeTab', activeTab); } catch { }
     }
   }, [activeTab]);
 
@@ -97,7 +98,7 @@ function Dashboard({ initialTab, initialMode, sourceTelegram, modeMining }: Dash
   }, [t]);
 
   const handleLogout = async () => {
-    try { if (tonConnectUI) await tonConnectUI.disconnect(); } catch {}
+    try { if (tonConnectUI) await tonConnectUI.disconnect(); } catch { }
     finally { workerService.terminate(); disconnect(); router.push('/'); }
   };
 
@@ -105,7 +106,7 @@ function Dashboard({ initialTab, initialMode, sourceTelegram, modeMining }: Dash
     if (modeMining && address) {
       apiPost('/nodes/activate-wallet', sourceTelegram ? { source: 'telegram' } : {})
         .then((res: any) => res?.activated && toast.success(t('wallet_as_node_active') || 'Active!', t('wallet_as_node_msg') || 'Earn GSTD.'))
-        .catch(() => {});
+        .catch(() => { });
     }
   }, [modeMining, address, sourceTelegram, t]);
 
@@ -123,7 +124,7 @@ function Dashboard({ initialTab, initialMode, sourceTelegram, modeMining }: Dash
 
   useEffect(() => {
     const fetchStats = async () => {
-      try { setNetworkStats(await apiGet<NetworkStats>('/network/stats')); } catch {}
+      try { setNetworkStats(await apiGet<NetworkStats>('/network/stats')); } catch { }
     };
     fetchStats();
     const interval = setInterval(fetchStats, 15000);
@@ -136,12 +137,12 @@ function Dashboard({ initialTab, initialMode, sourceTelegram, modeMining }: Dash
         if (r?.gstd_price_usd) setGstdPriceUSD(r.gstd_price_usd);
         if (r?.buy_links) setBuyLinks(r.buy_links);
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const triggerHaptic = useCallback((style: 'light' | 'medium' | 'heavy' = 'medium') => {
     if (typeof window !== 'undefined') {
-      try { require('../../lib/telegram').triggerHapticImpact(style); } catch {}
+      try { require('../../lib/telegram').triggerHapticImpact(style); } catch { }
     }
   }, []);
 
@@ -177,7 +178,7 @@ function Dashboard({ initialTab, initialMode, sourceTelegram, modeMining }: Dash
           toast.success(t('rewards_claimed') || 'Claimed!', t('rewards_sent_task') || 'Sent.');
           workerService.targetTaskId = null;
           return;
-        } catch {}
+        } catch { }
       }
       setActiveTab('tasks');
     } catch (err: any) {
@@ -311,9 +312,14 @@ function Dashboard({ initialTab, initialMode, sourceTelegram, modeMining }: Dash
                     <span className="text-amber-400 text-sm font-bold">→</span>
                   </a>
 
-                  <ComponentErrorBoundary name="ActivityFeed">
-                    <ActivityFeed />
-                  </ComponentErrorBoundary>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <ComponentErrorBoundary name="ActivityFeed">
+                      <ActivityFeed />
+                    </ComponentErrorBoundary>
+                    <ComponentErrorBoundary name="SwarmActivityWidget">
+                      <SwarmActivityWidget />
+                    </ComponentErrorBoundary>
+                  </div>
                 </div>
               )}
 
