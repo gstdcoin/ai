@@ -203,6 +203,7 @@ func BuildContainer() *dig.Container {
 	c.Provide(func(knowledge *services.KnowledgeService) *services.EvolutionEngine {
 		return services.NewEvolutionEngine(knowledge)
 	})
+	c.Provide(services.NewFinancialMonitorService)
 
 	c.Provide(func(cfg *config.Config) *services.TONService {
 		return services.NewTONService(cfg.TON.APIURL, cfg.TON.APIKey)
@@ -469,6 +470,7 @@ func StartApplication(container *dig.Container) error {
 		nodeManager *nodeMgr.NodeManager,
 		llmRouter *infRouter.Router,
 		settlementCli *settlementClient.Client,
+		financialMonitor *services.FinancialMonitorService,
 	) {
 		// 1. Cross-dependency wiring
 		tonService.SetCacheService(cacheService)
@@ -512,6 +514,7 @@ func StartApplication(container *dig.Container) error {
 		go bitchatBridge.Start(ctx)
 		go anomalyDetection.Start(ctx)
 		go evolutionEngine.Start(ctx)
+		go financialMonitor.Start(ctx)
 
 		// Golden Age Protocol: Payout Waves, Dynamic Fee, Proof-of-Gold, Swarm Expansion
 		if goldenAgeService != nil {
@@ -813,6 +816,7 @@ func StartApplication(container *dig.Container) error {
 			swarmLFS,
 			settlementService,
 			gaslessUserService,
+			financialMonitor,
 		)
 
 		// 4a. Leviathan Live Stream (SSE) — Protocol: Live Stream, No-DB, 30s memory

@@ -69,6 +69,7 @@ func SetupRoutes(
 	swarmLFS *services.SwarmLFSService,
 	settlementService *services.SettlementService,
 	gaslessUserService *services.GaslessUserService,
+	financialMonitor *services.FinancialMonitorService,
 ) {
 	log.Printf("🔧 SetupRoutes: Starting route setup, redisClient type: %T", redisClient)
 
@@ -258,6 +259,8 @@ func SetupRoutes(
 		v1.GET("/network/stats", getNetworkStats(statsService))
 		v1.GET("/network/swarm-stats", getSwarmStats(db.(*sql.DB)))
 		v1.GET("/network/map", getNetworkMap(db.(*sql.DB)))
+		v1.GET("/monitor/flows", getFinancialMonitorData(financialMonitor))
+		v1.GET("/monitor/neural", getNeuralFinancialAnalysis(financialMonitor))
 		// @Summary Get pool status
 		// @Description Returns GSTD/XAUt liquidity pool status
 		// @Tags Public
