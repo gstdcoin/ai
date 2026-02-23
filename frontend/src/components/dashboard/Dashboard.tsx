@@ -25,7 +25,7 @@ import { ActivityFeed } from './ActivityFeed';
 import { SwarmActivityWidget } from './SwarmActivityWidget';
 import AgentMarketplace from '../agents/AgentMarketplace';
 import ReferralPanel from '../referrals/ReferralPanel';
-import { isTelegramWebApp } from '../../lib/telegram';
+import { isTelegramWebApp, triggerHapticImpact } from '../../lib/telegram';
 
 const ReferralModal = lazy(() => import('./ReferralModal'));
 
@@ -156,7 +156,7 @@ function Dashboard({ initialTab, initialMode, sourceTelegram, modeMining }: Dash
 
   const triggerHaptic = useCallback((style: 'light' | 'medium' | 'heavy' = 'medium') => {
     if (typeof window !== 'undefined') {
-      try { require('../../lib/telegram').triggerHapticImpact(style); } catch { }
+      try { triggerHapticImpact(style); } catch { }
     }
   }, []);
 

@@ -25,6 +25,8 @@ export default function LeviathanTMATicker() {
     return msg;
   }, [t]);
 
+  const connectRef = useRef<() => void>(() => { });
+
   const connect = useCallback(() => {
     if (esRef.current) {
       esRef.current.close();
@@ -45,9 +47,15 @@ export default function LeviathanTMATicker() {
       setConnected(false);
       es.close();
       esRef.current = null;
-      setTimeout(() => connect(), RECONNECT_DELAY_MS);
+      setTimeout(() => {
+        if (connectRef.current) connectRef.current();
+      }, RECONNECT_DELAY_MS);
     };
   }, [translate]);
+
+  useEffect(() => {
+    connectRef.current = connect;
+  }, [connect]);
 
   useEffect(() => {
     connect();
