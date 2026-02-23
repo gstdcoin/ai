@@ -15,7 +15,7 @@ import { Tab } from '../../types/tabs';
 import { useTonConnectUI } from '@tonconnect/ui-react';
 import SystemStatusWidget from './SystemStatusWidget';
 import { toast } from '../../lib/toast';
-import { Activity, Server, Wallet, CheckCircle, ShoppingCart } from 'lucide-react';
+import { Activity, Server, Wallet, CheckCircle, ShoppingCart, Globe } from 'lucide-react';
 import { apiGet, apiPost } from '../../lib/apiClient';
 import Sidebar from '../layout/Sidebar';
 import { ComponentErrorBoundary } from '../common/ComponentErrorBoundary';
@@ -292,25 +292,43 @@ function Dashboard({ initialTab, initialMode, sourceTelegram, modeMining }: Dash
                     </button>
                   </div>
 
-                  <a
-                    href={buyLinks?.ston_fi || 'https://app.ston.fi/swap?ft=TON&tt=GSTD'}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-5 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between hover:bg-amber-500/15 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-400">
-                        <ShoppingCart size={18} />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <a
+                      href={buyLinks?.ston_fi || 'https://app.ston.fi/swap?ft=TON&tt=GSTD'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-5 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between hover:bg-amber-500/15 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-400">
+                          <ShoppingCart size={18} />
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-gray-500 font-bold uppercase block">{t('buy_gstd') || 'Buy GSTD'}</span>
+                          <span className="text-lg font-bold text-white">
+                            ${gstdPriceUSD?.toFixed(4) ?? '—'}
+                          </span>
+                        </div>
                       </div>
-                      <div>
-                        <span className="text-[10px] text-gray-500 font-bold uppercase block">{t('buy_gstd') || 'Buy GSTD'}</span>
-                        <span className="text-lg font-bold text-white">
-                          ${gstdPriceUSD?.toFixed(4) ?? '—'}/GSTD
-                        </span>
+                      <span className="text-amber-400 text-sm font-bold">→</span>
+                    </a>
+
+                    <a
+                      href="/monitor"
+                      className="p-5 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-between hover:bg-blue-500/15 transition-all group"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="p-2.5 rounded-xl bg-blue-500/20 text-blue-400 group-hover:scale-110 transition-transform">
+                          <Globe size={18} />
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-gray-500 font-bold uppercase block">Global Network</span>
+                          <span className="text-lg font-bold text-white uppercase tracking-tighter">Live Monitor</span>
+                        </div>
                       </div>
-                    </div>
-                    <span className="text-amber-400 text-sm font-bold">→</span>
-                  </a>
+                      <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    </a>
+                  </div>
 
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     <ComponentErrorBoundary name="ActivityFeed">
