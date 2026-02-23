@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Head from 'next/head';
-import { Activity, Globe2, Cpu, Network, Zap, Database, ArrowRight, ShieldCheck, TrendingUp, AlertCircle } from 'lucide-react';
+import { Activity, Globe2, Cpu, Network, Zap, Database, ArrowRight, ShieldCheck, TrendingUp, AlertCircle, DollarSign, Coins } from 'lucide-react';
 import { apiGet } from '../../lib/apiClient';
 
 interface LogEntry {
@@ -24,44 +24,77 @@ export default function GlobalMonitor() {
         tps: 342.5,
         tvl: 45000000,
         tasksProcessed: 14502500,
+        revenue24h: 0,
+        goldReserve: 0,
+        protocolFund: 0,
+        tasksPending: 0,
+        tasksCompleted: 0,
+        totalUsers: 0,
+        telegramLinked: 0,
+        activeDevices: 0,
     });
     const [analysis, setAnalysis] = useState('NEURAL_SYNAPSE_INIT...');
+    const [health, setHealth] = useState(0.85);
+    const [lastDecision, setLastDecision] = useState('');
     const [isFullscreen, setIsFullscreen] = useState(false);
 
-    // Core Data Polling
+    // Unified Organism Polling — single endpoint for organism + flows + monetization + neural
     useEffect(() => {
-        const fetchFlows = async () => {
+        const fetchUnified = async () => {
             try {
-                const data = await apiGet<any>('/monitor/flows');
-                if (data && data.recent_events) {
-                    setLogs(data.recent_events);
-                    setStats({
-                        activeNodes: 14502,
-                        tps: data.global_tps || 342.5,
-                        tvl: data.total_volume_24h || 45000000,
-                        tasksProcessed: 14502500,
-                    });
+                const data = await apiGet<any>('/monitor/unified');
+                if (data) {
+                    const org = data.organism || {};
+                    const flows = data.flows || {};
+                    const mon = data.monetization || {};
+                    if (flows.recent_events) setLogs(flows.recent_events);
+                    setHealth(org.health_score ?? 0.85);
+                    setAnalysis(data.neural || 'NEURAL_STABLE');
+                    setLastDecision(org.last_decision || '');
+                    const eco = data.ecosystem || {};
+                    setStats(prev => ({
+                        ...prev,
+                        tps: flows.global_tps ?? prev.tps,
+                        tvl: flows.total_volume_24h ?? prev.tvl,
+                        revenue24h: mon.total_revenue_24h ?? org.revenue_24h ?? prev.revenue24h,
+                        goldReserve: mon.gold_reserve ?? org.gold_reserve ?? prev.goldReserve,
+                        protocolFund: mon.protocol_fund ?? org.protocol_fund ?? prev.protocolFund,
+                        tasksPending: org.tasks_pending ?? eco.tasks_pending ?? prev.tasksPending,
+                        tasksCompleted: org.tasks_completed ?? eco.tasks_completed ?? prev.tasksCompleted,
+                        totalUsers: eco.total_users ?? prev.totalUsers,
+                        telegramLinked: eco.telegram_linked ?? prev.telegramLinked,
+                        activeDevices: eco.active_devices ?? eco.active_nodes ?? prev.activeDevices,
+                        activeNodes: eco.active_nodes ?? prev.activeNodes,
+                    }));
                 }
             } catch (e) {
-                console.error('Monitor flow fetch error');
+                // Fallback: fetch individual endpoints
+                try {
+                    const [flowsRes, orgRes, revRes, neuralRes] = await Promise.all([
+                        apiGet<any>('/monitor/flows'),
+                        apiGet<any>('/monitor/organism-state'),
+                        apiGet<any>('/monitor/revenue'),
+                        apiGet<any>('/monitor/neural'),
+                    ]);
+                    if (flowsRes?.recent_events) setLogs(flowsRes.recent_events);
+                    if (orgRes?.health_score != null) setHealth(orgRes.health_score);
+                    if (neuralRes?.analysis) setAnalysis(neuralRes.analysis);
+                    if (revRes) {
+                        setStats(prev => ({
+                            ...prev,
+                            revenue24h: revRes.total_revenue_24h ?? prev.revenue24h,
+                            goldReserve: revRes.gold_reserve ?? prev.goldReserve,
+                            protocolFund: revRes.protocol_fund ?? prev.protocolFund,
+                        }));
+                    }
+                } catch (e2) {
+                    console.error('Monitor fetch error');
+                }
             }
         };
-        fetchFlows();
-        const interval = setInterval(fetchFlows, 2000);
+        fetchUnified();
+        const interval = setInterval(fetchUnified, 3000);
         return () => clearInterval(interval);
-    }, []);
-
-    // Neural Analysis Polling
-    useEffect(() => {
-        const fetchAnalysis = async () => {
-            try {
-                const res = await apiGet<any>('/monitor/neural');
-                setAnalysis(res.analysis || 'NEURAL_STABLE');
-            } catch (e) { }
-        };
-        fetchAnalysis();
-        const inv = setInterval(fetchAnalysis, 15000);
-        return () => clearInterval(inv);
     }, []);
 
     // WebGL/Canvas Visualizer
@@ -226,7 +259,11 @@ export default function GlobalMonitor() {
                             <div className="space-y-8">
                                 <div>
                                     <label className="text-[9px] uppercase font-black text-gray-500 block mb-1">Swarm Agents</label>
-                                    <div className="text-4xl font-black text-white tracking-tighter">{stats.activeNodes.toLocaleString()}</div>
+                                    <div className="text-4xl font-black text-white tracking-tighter">{stats.activeNodes?.toLocaleString() ?? '0'}</div>
+                                </div>
+                                <div>
+                                    <label className="text-[9px] uppercase font-black text-gray-500 block mb-1">Users / Bot</label>
+                                    <div className="text-xl font-black text-white tracking-tighter">{stats.totalUsers?.toLocaleString() ?? '0'} / {stats.telegramLinked ?? '0'}</div>
                                 </div>
                                 <div>
                                     <label className="text-[9px] uppercase font-black text-gray-500 block mb-1">Throughput</label>
@@ -236,22 +273,39 @@ export default function GlobalMonitor() {
                                     <label className="text-[9px] uppercase font-black text-gray-500 block mb-1">Global TVL Secured</label>
                                     <div className="text-3xl font-black text-emerald-400 tracking-tighter">${(stats.tvl / 1e6).toFixed(1)}M</div>
                                 </div>
+                                <div>
+                                    <label className="text-[9px] uppercase font-black text-gray-500 block mb-1">Revenue 24h</label>
+                                    <div className="text-2xl font-black text-amber-400 tracking-tighter flex items-center gap-1">
+                                        <DollarSign className="w-5 h-5" />
+                                        {stats.revenue24h?.toFixed(2) ?? '0.00'} GSTD
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="text-[9px] uppercase font-black text-gray-500 block mb-1">Gold Reserve</label>
+                                    <div className="text-2xl font-black text-yellow-500 tracking-tighter flex items-center gap-1">
+                                        <Coins className="w-5 h-5" />
+                                        {stats.goldReserve?.toFixed(2) ?? '0.00'} GSTD
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
                         <div className="bg-gradient-to-br from-purple-900/40 to-blue-900/40 backdrop-blur-2xl border border-white/10 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
                             <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 blur-3xl" />
                             <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-400 mb-6 flex items-center gap-3">
-                                <Zap className="w-4 h-4" />
-                                Neural Analysis
+                                <Zap className="w-4 h-4 text-amber-400" />
+                                Organism Health
                             </h2>
                             <div className="relative z-10">
-                                <div className="text-sm font-black uppercase tracking-tighter leading-tight mb-6">{analysis}</div>
+                                <div className="text-3xl font-black uppercase tracking-tighter leading-tight mb-2">{(health * 100).toFixed(1)}%</div>
+                                {lastDecision && (
+                                    <div className="text-[9px] uppercase font-bold text-amber-400/80 mb-1">Decision: {lastDecision}</div>
+                                )}
+                                <div className="text-[10px] uppercase font-bold text-gray-400 mb-6 truncate">{analysis}</div>
                                 <div className="flex items-center gap-4">
                                     <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
-                                        <div className="h-full bg-purple-500 animate-shimmer" style={{ width: '94%' }} />
+                                        <div className="h-full bg-gradient-to-r from-blue-500 to-purple-500 animate-shimmer" style={{ width: `${health * 100}%` }} />
                                     </div>
-                                    <span className="text-[10px] font-black text-purple-400">94.2%</span>
                                 </div>
                             </div>
                         </div>

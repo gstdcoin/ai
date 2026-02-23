@@ -70,6 +70,9 @@ func SetupRoutes(
 	settlementService *services.SettlementService,
 	gaslessUserService *services.GaslessUserService,
 	financialMonitor *services.FinancialMonitorService,
+	organism *services.SovereignOrganismService,
+	monetizationService *services.MonetizationMetricsService,
+	organismHub *services.OrganismHubService,
 ) {
 	log.Printf("🔧 SetupRoutes: Starting route setup, redisClient type: %T", redisClient)
 
@@ -259,8 +262,11 @@ func SetupRoutes(
 		v1.GET("/network/stats", getNetworkStats(statsService))
 		v1.GET("/network/swarm-stats", getSwarmStats(db.(*sql.DB)))
 		v1.GET("/network/map", getNetworkMap(db.(*sql.DB)))
+		v1.GET("/monitor/unified", getUnifiedOrganism(organism, financialMonitor, monetizationService, organismHub))
 		v1.GET("/monitor/flows", getFinancialMonitorData(financialMonitor))
 		v1.GET("/monitor/neural", getNeuralFinancialAnalysis(financialMonitor))
+		v1.GET("/monitor/organism-state", getOrganismState(organism))
+		v1.GET("/monitor/revenue", getMonetizationMetrics(monetizationService))
 		// @Summary Get pool status
 		// @Description Returns GSTD/XAUt liquidity pool status
 		// @Tags Public

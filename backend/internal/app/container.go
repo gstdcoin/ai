@@ -204,6 +204,24 @@ func BuildContainer() *dig.Container {
 		return services.NewEvolutionEngine(knowledge)
 	})
 	c.Provide(services.NewFinancialMonitorService)
+	c.Provide(func(db *sql.DB, escrow *services.EscrowService) *services.MonetizationMetricsService {
+		return services.NewMonetizationMetricsService(db, escrow)
+	})
+	c.Provide(func(
+		db *sql.DB,
+		monitor *services.FinancialMonitorService,
+		pool *services.PoolMonitorService,
+		burn *services.BurnService,
+		treasury *services.TreasuryService,
+		equilibrium *services.DynamicEquilibriumService,
+		orchestrator *services.TaskOrchestrator,
+		monetization *services.MonetizationMetricsService,
+		telegram *services.TelegramService,
+	) *services.SovereignOrganismService {
+		var notifier services.OrganismNotifier = telegram
+		return services.NewSovereignOrganismService(db, monitor, pool, burn, treasury, equilibrium, orchestrator, monetization, notifier)
+	})
+	c.Provide(services.NewOrganismHubService)
 
 	c.Provide(func(cfg *config.Config) *services.TONService {
 		return services.NewTONService(cfg.TON.APIURL, cfg.TON.APIKey)
@@ -471,6 +489,9 @@ func StartApplication(container *dig.Container) error {
 		llmRouter *infRouter.Router,
 		settlementCli *settlementClient.Client,
 		financialMonitor *services.FinancialMonitorService,
+		organism *services.SovereignOrganismService,
+		monetizationService *services.MonetizationMetricsService,
+		organismHub *services.OrganismHubService,
 	) {
 		// 1. Cross-dependency wiring
 		tonService.SetCacheService(cacheService)
@@ -515,6 +536,7 @@ func StartApplication(container *dig.Container) error {
 		go anomalyDetection.Start(ctx)
 		go evolutionEngine.Start(ctx)
 		go financialMonitor.Start(ctx)
+		go organism.Start(ctx)
 
 		// Golden Age Protocol: Payout Waves, Dynamic Fee, Proof-of-Gold, Swarm Expansion
 		if goldenAgeService != nil {
@@ -817,6 +839,9 @@ func StartApplication(container *dig.Container) error {
 			settlementService,
 			gaslessUserService,
 			financialMonitor,
+			organism,
+			monetizationService,
+			organismHub,
 		)
 
 		// 4a. Leviathan Live Stream (SSE) — Protocol: Live Stream, No-DB, 30s memory
