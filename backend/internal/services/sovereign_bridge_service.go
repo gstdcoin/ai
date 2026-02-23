@@ -866,6 +866,20 @@ func (s *SovereignBridgeService) verifyResultHash(result, expectedHash string) b
 // STORAGE & NOTIFICATIONS
 // =============================================================================
 
+// GetTask retrieves task state from Redis
+func (s *SovereignBridgeService) GetTask(ctx context.Context, taskID string) (*BridgeTask, error) {
+	key := fmt.Sprintf("bridge:task:%s", taskID)
+	val, err := s.redis.Get(ctx, key).Result()
+	if err != nil {
+		return nil, err
+	}
+	var task BridgeTask
+	if err := json.Unmarshal([]byte(val), &task); err != nil {
+		return nil, err
+	}
+	return &task, nil
+}
+
 // storeTaskState persists task state
 func (s *SovereignBridgeService) storeTaskState(ctx context.Context, task *BridgeTask) error {
 	taskJSON, _ := json.Marshal(task)

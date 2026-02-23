@@ -71,6 +71,9 @@ func (s *MonetizationMetricsService) GetMetrics(ctx context.Context) Monetizatio
 
 func (s *MonetizationMetricsService) refresh(ctx context.Context) MonetizationMetrics {
 	m := MonetizationMetrics{}
+	if s.db == nil {
+		return m
+	}
 
 	// 1. Platform funds
 	rows, err := s.db.QueryContext(ctx, `SELECT fund_type, COALESCE(balance_gstd, 0) FROM platform_funds`)

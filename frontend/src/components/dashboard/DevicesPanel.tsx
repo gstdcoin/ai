@@ -155,11 +155,11 @@ export default function DevicesPanel() {
             <div className="space-y-3 mb-4">
               <p className="text-xs font-bold text-cyan-400/90 uppercase tracking-wider">One command (use this wallet)</p>
               <pre className="text-xs bg-black/40 p-3 rounded-lg text-gray-300 font-mono overflow-x-auto">
-{`export GSTD_WALLET_ADDRESS=EQ...
+                {`export GSTD_WALLET_ADDRESS=EQ...
 curl -sL https://raw.githubusercontent.com/gstdcoin/ai/main/scripts/connect_autonomous.py | python3`}
               </pre>
               <p className="text-[10px] text-gray-500">
-                Same wallet = device appears here. <a href="https://github.com/gstdcoin/ai/blob/main/docs/skills/SKILL.md" target="_blank" rel="noopener" className="text-cyan-400 hover:underline">SKILL.md</a>
+                Same wallet = device appears here. <a href="https://github.com/gstdcoin/ai/blob/main/docs/skills/SKILL.md" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline">SKILL.md</a>
               </p>
             </div>
             <button

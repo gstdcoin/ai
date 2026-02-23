@@ -68,6 +68,10 @@ func (s *OrganismHubService) GetEcosystemStats(ctx context.Context) EcosystemSta
 
 func (s *OrganismHubService) refresh(ctx context.Context) EcosystemStats {
 	e := EcosystemStats{ChainTON: true}
+	if s.db == nil {
+		e.LastUpdatedAt = time.Now().UTC().Format(time.RFC3339)
+		return e
+	}
 
 	_ = s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM nodes WHERE status = 'online' AND last_seen > NOW() - INTERVAL '5 minutes'`).Scan(&e.ActiveNodes)
 	_ = s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM devices WHERE last_seen_at > NOW() - INTERVAL '5 minutes' AND is_active = true`).Scan(&e.ActiveDevices)
