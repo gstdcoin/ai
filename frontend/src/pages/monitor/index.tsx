@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import Head from 'next/head';
-import { Globe2, Sprout, HeartPulse, Droplets, BookOpen, Sun, Activity, Database, ShieldCheck, Code, Zap, FileDown, CheckCircle, ChevronRight } from 'lucide-react';
+import { Globe2, Sprout, HeartPulse, Droplets, BookOpen, Sun, Activity, Database, ShieldCheck, Code, Zap, FileDown, CheckCircle, ChevronRight, TrendingUp } from 'lucide-react';
 import { toast } from '../../lib/toast';
 import { useWalletStore } from '../../store/walletStore';
 
