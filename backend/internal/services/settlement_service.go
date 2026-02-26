@@ -13,11 +13,11 @@ import (
 // SettlementService handles automatic distribution on proxy inference completion.
 // Split: 85% workers, 10% Treasury (XAUt), 5% protocol.
 type SettlementService struct {
-	db        *sql.DB
-	tonCfg    config.TONConfig
-	burn      *BurnService
-	poolMon   *PoolMonitorService
-	workerPct float64 // 0.85
+	db          *sql.DB
+	tonCfg      config.TONConfig
+	burn        *BurnService
+	poolMon     *PoolMonitorService
+	workerPct   float64 // 0.85
 	treasuryPct float64 // 0.10
 	protocolPct float64 // 0.05
 }
@@ -45,7 +45,7 @@ func NewSettlementService(db *sql.DB, tonCfg config.TONConfig, burn *BurnService
 		db:          db,
 		tonCfg:      tonCfg,
 		burn:        burn,
-		poolMon:    poolMon,
+		poolMon:     poolMon,
 		workerPct:   0.85,
 		treasuryPct: 0.10,
 		protocolPct: 0.05,
@@ -101,7 +101,13 @@ func (s *SettlementService) ProcessPayment(ctx context.Context, req *SettlementR
 	workerAmt := req.AmountGSTD * s.workerPct * boost
 	treasuryAmt := req.AmountGSTD * s.treasuryPct
 	protocolAmt := req.AmountGSTD * s.protocolPct
-	if boost > 1.0 {
+
+	if req.WorkerWallet == "platform_consumer" || req.WorkerWallet == "" {
+		// All tokens from platform requests distribute to Gold Backing Pool (70%) and Project Development Pool (30%)
+		treasuryAmt = req.AmountGSTD * 0.70
+		protocolAmt = req.AmountGSTD * 0.30
+		workerAmt = 0.0
+	} else if boost > 1.0 {
 		// Worker gets +5%; reduce treasury+protocol so total = amount_gstd
 		platformShare := treasuryAmt + protocolAmt
 		extraToWorker := workerAmt - (req.AmountGSTD * s.workerPct)

@@ -23,14 +23,13 @@ type GSTDPriceProvider interface {
 }
 
 type TelegramService struct {
-	botToken     string
-	chatID       string
-	db           *sql.DB
-	client       *http.Client
-	enabled      bool
-	apiBaseURL   string
-	starsBuyback *StarsBuybackService
-	gstdPrice    GSTDPriceProvider
+	botToken   string
+	chatID     string
+	db         *sql.DB
+	client     *http.Client
+	enabled    bool
+	apiBaseURL string
+	gstdPrice  GSTDPriceProvider
 }
 
 // NewTelegramService initializes the Telegram service.
@@ -246,7 +245,7 @@ func (s *TelegramService) callBotAPI(ctx context.Context, text, senderIDStr, use
 	}
 
 	// 💎 Balance (button or command)
-	if text == "💎 Balance" || text == "💎 My Balance" || (text == "/balance" && s.chatID != "" && senderIDStr != s.chatID) {
+	if text == "💎 Balance" || text == "💎 My Balance" || text == "💎 Баланс" || (text == "/balance" && s.chatID != "" && senderIDStr != s.chatID) {
 		req, _ := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/api/v1/telegram/bot/balance?telegram_id=%s", base, senderIDStr), nil)
 		req.Header.Set("X-Bot-Token", token)
 		resp, err := s.client.Do(req)
@@ -377,189 +376,14 @@ func (s *TelegramService) IsEnabled() bool {
 	return s.enabled
 }
 
-// SetStarsBuyback wires the Stars-to-GSTD buyback service.
-func (s *TelegramService) SetStarsBuyback(sb *StarsBuybackService) {
-	s.starsBuyback = sb
-}
-
 // SetGSTDPriceProvider wires the price oracle for real GSTD rate (Stars→GSTD).
 func (s *TelegramService) SetGSTDPriceProvider(p GSTDPriceProvider) {
 	s.gstdPrice = p
 }
 
-// answerPreCheckout approves the payment (required within 10s)
-func (s *TelegramService) answerPreCheckout(ctx context.Context, q *preCheckoutQuery) error {
-	if s.botToken == "" {
-		return nil
-	}
-	apiURL := fmt.Sprintf("https://api.telegram.org/bot%s/answerPreCheckoutQuery", s.botToken)
-	body := map[string]interface{}{"pre_checkout_query_id": q.ID, "ok": true}
-	jsonBody, _ := json.Marshal(body)
-	req, err := http.NewRequestWithContext(ctx, "POST", apiURL, strings.NewReader(string(jsonBody)))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := s.client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		log.Printf("answerPreCheckout: %d", resp.StatusCode)
-	}
-	return nil
-}
-
-// creditStarsPurchase credits user's gstd_balance. Creates tg-{id} wallet if no wallet linked. Returns gstd credited.
-func (s *TelegramService) creditStarsPurchase(ctx context.Context, telegramID int64, chargeID string, starsAmount int) float64 {
-	if s.db == nil {
-		return 0
-	}
-	// Real rate: Stars (USD) → GSTD. 1 Star ≈ $0.013 (Telegram/Fragment). GSTD price from oracle.
-	starsToUSD := 0.013
-	if r := os.Getenv("STARS_TO_USD"); r != "" {
-		if v, e := strconv.ParseFloat(r, 64); e == nil && v > 0 {
-			starsToUSD = v
-		}
-	}
-	var gstdPriceUSD float64
-	if s.gstdPrice != nil {
-		if p, err := s.gstdPrice.GetGSTDPriceUSD(ctx); err == nil && p > 0 {
-			gstdPriceUSD = p
-		}
-	}
-	if gstdPriceUSD <= 0 {
-		log.Printf("creditStarsPurchase: real GSTD price unavailable, skipping")
-		return 0
-	}
-	gstdCredited := (float64(starsAmount) * starsToUSD) / gstdPriceUSD
-	if gstdCredited < 0.001 {
-		return 0
-	}
-
-	// Avoid double-credit
-	var exists int
-	if s.db.QueryRowContext(ctx, "SELECT 1 FROM stars_purchases WHERE telegram_payment_charge_id = $1", chargeID).Scan(&exists) == nil {
-		return 0
-	}
-
-	// Resolve wallet: linked wallet or tg-{telegram_id}
-	var wallet string
-	s.db.QueryRowContext(ctx, "SELECT wallet_address FROM telegram_users WHERE telegram_id = $1 AND wallet_address IS NOT NULL", telegramID).Scan(&wallet)
-	if wallet == "" {
-		wallet = fmt.Sprintf("tg-%d", telegramID)
-		// Ensure telegram_users exists
-		s.db.ExecContext(ctx, `
-			INSERT INTO telegram_users (telegram_id, wallet_address, last_activity_at)
-			VALUES ($1, $2, NOW())
-			ON CONFLICT (telegram_id) DO UPDATE SET
-				wallet_address = COALESCE(telegram_users.wallet_address, EXCLUDED.wallet_address),
-				last_activity_at = NOW()
-		`, telegramID, wallet)
-		// Ensure user exists
-		s.db.ExecContext(ctx, `
-			INSERT INTO users (wallet_address, created_at, updated_at)
-			VALUES ($1, NOW(), NOW())
-			ON CONFLICT (wallet_address) DO NOTHING
-		`, wallet)
-	}
-
-	// Credit gstd_balance
-	_, err := s.db.ExecContext(ctx, `
-		UPDATE users SET gstd_balance = COALESCE(gstd_balance, 0) + $1 WHERE wallet_address = $2
-	`, gstdCredited, wallet)
-	if err != nil {
-		log.Printf("creditStarsPurchase: %v", err)
-		return 0
-	}
-
-	// Record to prevent double-credit
-	s.db.ExecContext(ctx, `
-		INSERT INTO stars_purchases (telegram_payment_charge_id, telegram_id, stars_amount, gstd_credited, wallet_address)
-		VALUES ($1, $2, $3, $4, $5)
-	`, chargeID, telegramID, starsAmount, gstdCredited, wallet)
-
-	trunc := wallet
-	if len(wallet) > 12 {
-		trunc = wallet[:12]
-	}
-	log.Printf("Stars: +%.4f GSTD to %s (tg:%d, %d Stars)", gstdCredited, trunc, telegramID, starsAmount)
-	return gstdCredited
-}
-
-// SendStarsInvoice sends a Telegram Stars invoice for GSTD purchase
-func (s *TelegramService) SendStarsInvoice(ctx context.Context, chatID string, starsAmount int, lang string) error {
-	if s.botToken == "" || starsAmount < 1 {
-		return fmt.Errorf("invalid config or amount")
-	}
-	// Approximate GSTD for description (real rate applied at payment)
-	starsToUSD := 0.013
-	if r := os.Getenv("STARS_TO_USD"); r != "" {
-		if v, e := strconv.ParseFloat(r, 64); e == nil && v > 0 {
-			starsToUSD = v
-		}
-	}
-	var gstdPriceUSD float64
-	if s.gstdPrice != nil {
-		if p, err := s.gstdPrice.GetGSTDPriceUSD(ctx); err == nil && p > 0 {
-			gstdPriceUSD = p
-		}
-	}
-	if gstdPriceUSD <= 0 {
-		return fmt.Errorf("real GSTD price temporarily unavailable")
-	}
-	approxGSTD := (float64(starsAmount) * starsToUSD) / gstdPriceUSD
-	title := "GSTD Tokens"
-	desc := fmt.Sprintf("Buy ~%.2f GSTD. Use for AI, tasks, mining.", approxGSTD)
-	if lang == "ru" {
-		title = "Токены GSTD"
-		desc = fmt.Sprintf("Купить ~%.2f GSTD. Для ИИ, задач, майнинга.", approxGSTD)
-	}
-	apiURL := fmt.Sprintf("https://api.telegram.org/bot%s/sendInvoice", s.botToken)
-	payload := fmt.Sprintf("gstd_%d_%d", time.Now().Unix(), starsAmount)
-	prices := fmt.Sprintf(`[{"label":"%d Stars","amount":%d}]`, starsAmount, starsAmount)
-	values := url.Values{}
-	values.Set("chat_id", chatID)
-	values.Set("title", title)
-	values.Set("description", desc)
-	values.Set("payload", payload)
-	values.Set("provider_token", "")
-	values.Set("currency", "XTR")
-	values.Set("prices", prices)
-
-	req, err := http.NewRequestWithContext(ctx, "POST", apiURL, strings.NewReader(values.Encode()))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	resp, err := s.client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("sendInvoice: %d", resp.StatusCode)
-	}
-	return nil
-}
-
-// PreCheckoutQuery for Stars payments
-type preCheckoutQuery struct {
-	ID   string `json:"id"`
-	From *struct {
-		ID int64 `json:"id"`
-	} `json:"from"`
-	Currency       string `json:"currency"`
-	TotalAmount    int    `json:"total_amount"`
-	InvoicePayload string `json:"invoice_payload"`
-}
-
-// Telegram Update structure
 type telegramUpdate struct {
-	UpdateID         int64             `json:"update_id"`
-	PreCheckoutQuery *preCheckoutQuery `json:"pre_checkout_query"`
-	Message          *struct {
+	UpdateID int64 `json:"update_id"`
+	Message  *struct {
 		MessageID int64 `json:"message_id"`
 		From      *struct {
 			ID           int64  `json:"id"`
@@ -594,6 +418,15 @@ type telegramUpdate struct {
 		} `json:"message"`
 		Data string `json:"data"`
 	} `json:"callback_query"`
+	PreCheckoutQuery *struct {
+		ID   string `json:"id"`
+		From *struct {
+			ID int64 `json:"id"`
+		} `json:"from"`
+		Currency       string `json:"currency"`
+		TotalAmount    int    `json:"total_amount"`
+		InvoicePayload string `json:"invoice_payload"`
+	} `json:"pre_checkout_query"`
 }
 
 func botLang(langCode string) string {
@@ -725,46 +558,25 @@ func (s *TelegramService) ProcessWebhook(ctx context.Context, body []byte) error
 		return nil
 	}
 
-	// Pre-checkout: must answer within 10s or payment is cancelled
-	if upd.PreCheckoutQuery != nil {
-		return s.answerPreCheckout(ctx, upd.PreCheckoutQuery)
-	}
-
 	// Handle callback_query (inline button clicks)
 	if upd.CallbackQuery != nil {
 		return s.handleCallbackQuery(ctx, &upd)
+	}
+
+	if upd.PreCheckoutQuery != nil {
+		return s.handlePreCheckoutQuery(ctx, upd.PreCheckoutQuery)
 	}
 
 	if upd.Message == nil {
 		return nil
 	}
 
+	if upd.Message.SuccessfulPayment != nil {
+		return s.handleSuccessfulPayment(ctx, &upd)
+	}
+
 	chatID := strconv.FormatInt(upd.Message.Chat.ID, 10)
 
-	// Successful Stars payment: credit user + platform buyback
-	if upd.Message.SuccessfulPayment != nil {
-		sp := upd.Message.SuccessfulPayment
-		if sp.Currency == "XTR" && sp.TotalAmount > 0 {
-			var gstdCredited float64
-			if upd.Message.From != nil {
-				gstdCredited = s.creditStarsPurchase(ctx, upd.Message.From.ID, sp.TelegramPaymentChargeID, sp.TotalAmount)
-			}
-			if s.starsBuyback != nil {
-				_ = s.starsBuyback.RecordStarsPayment(ctx, sp.TelegramPaymentChargeID, sp.TotalAmount)
-			}
-			if gstdCredited > 0 {
-				lang := "en"
-				if upd.Message.From != nil {
-					lang = botLang(upd.Message.From.LanguageCode)
-				}
-				msg := fmt.Sprintf("✅ +%.2f GSTD credited! Use for AI, tasks, mining.", gstdCredited)
-				if lang == "ru" {
-					msg = fmt.Sprintf("✅ +%.2f GSTD зачислено! Используйте для ИИ, задач, майнинга.", gstdCredited)
-				}
-				_ = s.SendMessageToChat(ctx, chatID, msg)
-			}
-		}
-	}
 	text := strings.TrimSpace(upd.Message.Text)
 	senderID := upd.Message.From
 	var senderIDStr string
@@ -787,6 +599,26 @@ func (s *TelegramService) ProcessWebhook(ctx context.Context, body []byte) error
 			payload = strings.ToLower(parts[1])
 		}
 
+		btnApp := "📱 Open App"
+		btnMining := "⛏ Mining"
+		btnBalance := "💎 Balance"
+		btnBuy := "💰 Buy GSTD"
+		btnStars := "⭐️ Buy with Stars"
+		btnConnect := "🔗 Connect Wallet"
+		btnStats := "📊 Stats"
+		btnAbout := "ℹ️ About"
+
+		if lang == "ru" {
+			btnApp = "📱 Приложение"
+			btnMining = "⛏ Майнинг"
+			btnBalance = "💎 Баланс"
+			btnBuy = "💰 Купить GSTD"
+			btnStars = "⭐️ за Stars"
+			btnConnect = "🔗 Кошелек"
+			btnStats = "📊 Статистика"
+			btnAbout = "ℹ️ О проекте"
+		}
+
 		// Wallet-as-Node Flow
 		if payload == "mining" || payload == "node" {
 			msg := msgWalletAsNode[lang]
@@ -798,11 +630,15 @@ func (s *TelegramService) ProcessWebhook(ctx context.Context, body []byte) error
 
 			// Persistent keyboard for mining flow too
 			replyKb := fmt.Sprintf(`{"keyboard":[
-				[{"text":"📱 Open App","web_app":{"url":"%s"}},{"text":"⛏ Mining","web_app":{"url":"%s"}}],
-				[{"text":"💎 Balance"},{"text":"💰 Buy GSTD"}],
-				[{"text":"📊 Stats"},{"text":"🚀 Nodes"}],
-				[{"text":"ℹ️ About"},{"text":"📖 Help"}]
-			],"resize_keyboard":true,"is_persistent":true,"one_time_keyboard":false}`, webAppURL, miningWebAppURL)
+				[{"text":"%s","web_app":{"url":"%s"}},{"text":"%s","web_app":{"url":"%s"}}],
+				[{"text":"%s"},{"text":"%s"}],
+				[{"text":"%s"},{"text":"%s"}],
+				[{"text":"%s"},{"text":"%s"}]
+			],"resize_keyboard":true,"is_persistent":true,"one_time_keyboard":false}`,
+				btnApp, webAppURL, btnMining, miningWebAppURL,
+				btnBalance, btnBuy,
+				btnStars, btnConnect,
+				btnStats, btnAbout)
 			return s.SendMessageToChatWithMarkup(ctx, chatID, msg, replyKb)
 		}
 
@@ -817,17 +653,21 @@ func (s *TelegramService) ProcessWebhook(ctx context.Context, body []byte) error
 
 		// Persistent ReplyKeyboard — always visible, replaces commands
 		replyKeyboard := fmt.Sprintf(`{"keyboard":[
-			[{"text":"📱 Open App","web_app":{"url":"%s"}},{"text":"⛏ Mining","web_app":{"url":"%s"}}],
-			[{"text":"💎 Balance"},{"text":"💰 Buy GSTD"}],
-			[{"text":"📊 Stats"},{"text":"🚀 Nodes"}],
-			[{"text":"ℹ️ About"},{"text":"📖 Help"}]
-		],"resize_keyboard":true,"is_persistent":true,"one_time_keyboard":false}`, appURL, miningURL)
+			[{"text":"%s","web_app":{"url":"%s"}},{"text":"%s","web_app":{"url":"%s"}}],
+			[{"text":"%s"},{"text":"%s"}],
+			[{"text":"%s"},{"text":"%s"}],
+			[{"text":"%s"},{"text":"%s"}]
+		],"resize_keyboard":true,"is_persistent":true,"one_time_keyboard":false}`,
+			btnApp, appURL, btnMining, miningURL,
+			btnBalance, btnBuy,
+			btnStars, btnConnect,
+			btnStats, btnAbout)
 
 		return s.SendMessageToChatWithMarkup(ctx, chatID, msg, replyKeyboard)
 	}
 
 	// 📖 Help (button or command)
-	if text == "📖 Help" || text == "/help" {
+	if text == "📖 Help" || text == "📖 Помощь" || text == "/help" {
 		msg := msgHelp[lang]
 		if msg == "" {
 			msg = msgHelp["en"]
@@ -836,35 +676,64 @@ func (s *TelegramService) ProcessWebhook(ctx context.Context, body []byte) error
 	}
 
 	// 📊 Stats (button or command)
-	if text == "📊 Stats" || text == "/network" {
+	if text == "📊 Stats" || text == "📊 Статистика" || text == "/network" {
 		return s.sendNetworkStats(ctx, chatID, lang)
 	}
 
+	// 🔗 Connect Wallet (button)
+	if text == "🔗 Connect Wallet" || text == "🔗 Кошелек" || text == "/connect" {
+		msg := "🔗 **Connect Your TON Wallet**\n\nJust send me your TON wallet address in chat. (e.g. `EQDv...`)\n\nDon't have a wallet? Get one here:\n• [Tonkeeper](https://tonkeeper.com/)\n• [MyTonWallet](https://mytonwallet.io/)\n\nAlternatively, you can tap **📱 Open App** and connect via TON Connect."
+		if lang == "ru" {
+			msg = "🔗 **Привязка кошелька**\n\nПросто отправьте мне адрес вашего TON-кошелька в чат. (например, `EQDv...`)\n\nНет кошелька? Скачайте здесь:\n• [Tonkeeper](https://tonkeeper.com/)\n• [MyTonWallet](https://mytonwallet.io/)\n\nТакже вы можете нажать **📱 Open App** и привязать его через TON Connect."
+		}
+		return s.SendMessageToChat(ctx, chatID, markdownToHTML(msg))
+	}
+
+	// Just typing an address
+	if len(text) > 40 && (strings.HasPrefix(text, "EQ") || strings.HasPrefix(text, "UQ")) && !strings.Contains(text, " ") {
+		text = "/connect " + text
+	}
+
 	// ℹ️ About (button)
-	if text == "ℹ️ About" {
+	if text == "ℹ️ About" || text == "ℹ️ О проекте" {
 		return s.sendAboutMessage(ctx, chatID, lang)
 	}
 
 	// 💰 Buy GSTD (button or command)
-	if text == "💰 Buy GSTD" || text == "/buy" || strings.HasPrefix(text, "/buy ") {
-		stars := 10
-		if parts := strings.Fields(text); len(parts) > 1 {
-			fmt.Sscanf(parts[1], "%d", &stars)
-		}
-		if stars < 1 {
-			stars = 10
-		}
-		if stars > 1000 {
-			stars = 1000
-		}
-		if err := s.SendStarsInvoice(ctx, chatID, stars, lang); err != nil {
-			return s.SendMessageToChat(ctx, chatID, "❌ "+err.Error())
-		}
-		msg := "💫 Invoice sent! Pay with Telegram Stars. GSTD will be credited instantly."
+	if text == "💰 Buy GSTD" || text == "💰 Купить GSTD" || text == "/buy" || strings.HasPrefix(text, "/buy ") {
+		msg := "💎 **Buy / Exchange GSTD**\n\nGSTD is a real utility token on the TON blockchain used to purchase computing power and AI requests. Earning and holding GSTD provides tangible ecosystem value.\n\nTo purchase real GSTD, you must use an external DEX since your wallet is truly yours, directly on the blockchain.\n\n"
+		msg += "1️⃣ **Link your Wallet**: Type `/connect [wallet_address]` or use the **📱 Open App** button below directly.\n"
+		msg += "2️⃣ **Buy on STON.fi**: Direct on-chain exchange using TON. The tokens go immediately to your linked wallet."
+
+		replyMarkup := `{"inline_keyboard":[
+			[{"text":"💱 Buy Real GSTD (STON.fi)","url":"https://app.ston.fi/swap?chartVisible=false&ft=TON&tt=EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO"}],
+			[{"text":"🔗 Wait, how to link wallet?","callback_data":"public_connect"}]
+		]}`
+
 		if lang == "ru" {
-			msg = "💫 Счёт отправлен! Оплатите Stars. GSTD зачислится мгновенно."
+			msg = "💎 **Покупка / Обмен GSTD**\n\nGSTD — это настоящий утилитарный токен в сети TON, используемый для покупки вычислительной мощности и ИИ-запросов. Вы работаете с реальным блокчейном, а не с виртуальными баллами!\n\nДля покупки реального GSTD используйте децентрализованную биржу, чтобы токены сразу оказались на вашем кошельке.\n\n"
+			msg += "1️⃣ **Привяжите кошелек**: Просто отправьте адрес в чат или привяжите через кнопку **📱 Open App**.\n"
+			msg += "2️⃣ **Покупка на STON.fi**: Прямой ончейн обмен за TON. Токены мгновенно поступают на ваш кошелек."
+
+			replyMarkup = `{"inline_keyboard":[
+				[{"text":"💱 Реальная покупка (STON.fi)","url":"https://app.ston.fi/swap?chartVisible=false&ft=TON&tt=EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO"}],
+				[{"text":"🔗 А как привязать кошелек?","callback_data":"public_connect"}]
+			]}`
 		}
-		return s.SendMessageToChat(ctx, chatID, msg)
+		return s.SendMessageToChatWithMarkup(ctx, chatID, markdownToHTML(msg), replyMarkup)
+	}
+
+	// ⭐️ Buy with Stars (button or command)
+	if text == "⭐️ Buy with Stars" || text == "⭐️ за Stars" || text == "/buy_stars" {
+		title := "GSTD Tokens (via Stars)"
+		desc := "Purchase 100 GSTD using Telegram Stars for computing and AI tasks."
+		if lang == "ru" {
+			title = "GSTD Токены (за Звёзды)"
+			desc = "Покупка 100 GSTD за Telegram Stars для вычислений и ИИ-задач."
+		}
+		// Assuming 1 Telegram Star = 1 GSTD point for simplicity, or 100 stars = 100 GSTD.
+		// Set amount = 100 Stars
+		return s.sendInvoiceWithStars(ctx, chatID, title, desc, "gstd_100_stars", 100)
 	}
 
 	// Bot API commands (relay to internal /telegram/bot/* for full task flow when webhook is active)
@@ -956,27 +825,6 @@ func (s *TelegramService) handleCallbackQuery(ctx context.Context, upd *telegram
 
 	data := cq.Data
 
-	// 0. Buy Stars (any user)
-	if strings.HasPrefix(data, "buy_stars_") {
-		var stars int
-		fmt.Sscanf(data, "buy_stars_%d", &stars)
-		if stars < 1 {
-			stars = 10
-		}
-		if stars > 1000 {
-			stars = 1000
-		}
-		_ = s.answerCallbackQuery(ctx, cq.ID, "")
-		if err := s.SendStarsInvoice(ctx, chatID, stars, lang); err != nil {
-			return s.SendMessageToChat(ctx, chatID, "❌ "+err.Error())
-		}
-		msg := "💫 Invoice sent! Pay with Telegram Stars. GSTD credited instantly."
-		if lang == "ru" {
-			msg = "💫 Счёт отправлен! Оплатите Stars. GSTD зачислится мгновенно."
-		}
-		return s.SendMessageToChat(ctx, chatID, msg)
-	}
-
 	// 1. Public Callbacks
 	if strings.HasPrefix(data, "public_") {
 		_ = s.answerCallbackQuery(ctx, cq.ID, "")
@@ -1019,6 +867,13 @@ GSTD работает на тысячах узлов (телефоны, ПК).
 <i>Суверенитет, обеспеченный физикой.</i>`
 			}
 			return s.SendMessageToChat(ctx, chatID, msg)
+
+		case "public_connect":
+			msg := "🔗 **Connect Your TON Wallet**\n\nTo link your wallet in the bot, send a message with the command `/connect` followed by your TON wallet address.\n\nExample:\n`/connect EQDv...`\n\nAlternatively, you can tap **📱 Open App** and connect it directly in the Web App interface."
+			if lang == "ru" {
+				msg = "🔗 **Привязка кошелька**\n\nЧтобы привязать кошелек прямо в боте, отправьте сообщение с командой `/connect` и адресом вашего TON-кошелька.\n\nПример:\n`/connect EQDv...`\n\nТакже вы можете нажать **📱 Open App** и привязать его напрямую через интерфейс приложения."
+			}
+			return s.SendMessageToChat(ctx, chatID, markdownToHTML(msg))
 
 		case "public_stats":
 			return s.sendNetworkStats(ctx, chatID, lang)
@@ -1319,4 +1174,96 @@ func (s *TelegramService) fetchPublicStats(ctx context.Context) (map[string]inte
 		return nil, err
 	}
 	return out, nil
+}
+
+func (s *TelegramService) handlePreCheckoutQuery(ctx context.Context, pcq *struct {
+	ID   string `json:"id"`
+	From *struct {
+		ID int64 `json:"id"`
+	} `json:"from"`
+	Currency       string `json:"currency"`
+	TotalAmount    int    `json:"total_amount"`
+	InvoicePayload string `json:"invoice_payload"`
+}) error {
+	if s.botToken == "" {
+		return nil
+	}
+	apiURL := fmt.Sprintf("https://api.telegram.org/bot%s/answerPreCheckoutQuery", s.botToken)
+	values := url.Values{}
+	values.Set("pre_checkout_query_id", pcq.ID)
+	values.Set("ok", "true")
+
+	req, _ := http.NewRequestWithContext(ctx, "POST", apiURL, strings.NewReader(values.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp, err := s.client.Do(req)
+	if err == nil {
+		defer resp.Body.Close()
+	}
+	return err
+}
+
+func (s *TelegramService) sendInvoiceWithStars(ctx context.Context, chatID string, title string, desc string, payload string, starsAmount int) error {
+	if s.botToken == "" {
+		return nil
+	}
+	apiURL := fmt.Sprintf("https://api.telegram.org/bot%s/sendInvoice", s.botToken)
+	values := url.Values{}
+	values.Set("chat_id", chatID)
+	values.Set("title", title)
+	values.Set("description", desc)
+	values.Set("payload", payload)
+	values.Set("provider_token", "") // Empty for Telegram Stars
+	values.Set("currency", "XTR")
+	values.Set("prices", fmt.Sprintf(`[{"label":"%s","amount":%d}]`, title, starsAmount))
+
+	req, _ := http.NewRequestWithContext(ctx, "POST", apiURL, strings.NewReader(values.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	return nil
+}
+
+func (s *TelegramService) handleSuccessfulPayment(ctx context.Context, upd *telegramUpdate) error {
+	if upd.Message == nil || upd.Message.SuccessfulPayment == nil || upd.Message.From == nil {
+		return nil
+	}
+
+	sp := upd.Message.SuccessfulPayment
+	tgID := upd.Message.From.ID
+	chatID := strconv.FormatInt(upd.Message.Chat.ID, 10)
+
+	gstdCredited := float64(sp.TotalAmount) // e.g. 100 stars = 100 GSTD
+	walletAddr := fmt.Sprintf("tg-%d", tgID)
+
+	if s.db != nil {
+		// Ensure user exists
+		_, _ = s.db.ExecContext(ctx, `INSERT INTO users (wallet_address, balance, created_at, updated_at) VALUES ($1, 0, NOW(), NOW()) ON CONFLICT (wallet_address) DO NOTHING`, walletAddr)
+
+		// Insert purchase record & add balance
+		tx, err := s.db.BeginTx(ctx, nil)
+		if err == nil {
+			var insertedID int64
+			err = tx.QueryRowContext(ctx, `
+				INSERT INTO stars_purchases (telegram_payment_charge_id, telegram_id, stars_amount, gstd_credited, wallet_address, created_at)
+				VALUES ($1, $2, $3, $4, $5, NOW()) ON CONFLICT (telegram_payment_charge_id) DO NOTHING RETURNING id
+			`, sp.TelegramPaymentChargeID, tgID, sp.TotalAmount, gstdCredited, walletAddr).Scan(&insertedID)
+
+			if err != sql.ErrNoRows && err == nil {
+				// Added the balance precisely only if not conflict.
+				_, _ = tx.ExecContext(ctx, `UPDATE users SET gstd_balance = COALESCE(gstd_balance, 0) + $1 WHERE wallet_address = $2`, gstdCredited, walletAddr)
+			}
+			_ = tx.Commit()
+		}
+	}
+
+	msg := fmt.Sprintf("✅ <b>Payment Successful!</b>\n\nYou have purchased <b>%.0f GSTD</b> with %d Telegram Stars.\n\nThe GSTD has been credited to your internal bot wallet <code>%s</code>.", gstdCredited, sp.TotalAmount, walletAddr)
+
+	if botLang(upd.Message.From.LanguageCode) == "ru" {
+		msg = fmt.Sprintf("✅ <b>Оплата успешна!</b>\n\nВы успешно приобрели <b>%.0f GSTD</b> за %d Telegram Stars.\n\nGSTD были зачислены на ваш внутренний кошелёк <code>%s</code>.", gstdCredited, sp.TotalAmount, walletAddr)
+	}
+
+	return s.SendMessageToChat(ctx, chatID, msg)
 }

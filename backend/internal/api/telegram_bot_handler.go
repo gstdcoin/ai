@@ -59,6 +59,10 @@ func NewTelegramBotHandler(db *sql.DB, marketplace *services.MarketplaceService,
 // LinkWallet links telegram_id to wallet_address
 // POST /api/v1/telegram/bot/link
 func (h *TelegramBotHandler) LinkWallet(c *gin.Context) {
+	if h == nil || h.db == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "service_unavailable"})
+		return
+	}
 	var req struct {
 		TelegramID    int64  `json:"telegram_id" binding:"required"`
 		WalletAddress string `json:"wallet_address" binding:"required"`
@@ -138,6 +142,10 @@ func (h *TelegramBotHandler) LinkWallet(c *gin.Context) {
 // GetBalance returns balance for telegram_id (linked wallet)
 // GET /api/v1/telegram/bot/balance?telegram_id=123
 func (h *TelegramBotHandler) GetBalance(c *gin.Context) {
+	if h == nil || h.db == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "service_unavailable"})
+		return
+	}
 	var telegramID int64
 	if _, err := fmt.Sscanf(c.Query("telegram_id"), "%d", &telegramID); err != nil || telegramID == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "telegram_id required"})
@@ -169,6 +177,10 @@ func (h *TelegramBotHandler) GetBalance(c *gin.Context) {
 // GetNodes returns nodes/devices for telegram_id (device_id = tg-{id})
 // GET /api/v1/telegram/bot/nodes?telegram_id=123
 func (h *TelegramBotHandler) GetNodes(c *gin.Context) {
+	if h == nil || h.db == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "service_unavailable"})
+		return
+	}
 	var telegramID int64
 	if _, err := fmt.Sscanf(c.Query("telegram_id"), "%d", &telegramID); err != nil || telegramID == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "telegram_id required"})
@@ -210,6 +222,10 @@ func (h *TelegramBotHandler) GetNodes(c *gin.Context) {
 // GetWallet returns wallet for telegram_id
 // GET /api/v1/telegram/bot/wallet?telegram_id=123
 func (h *TelegramBotHandler) GetWallet(c *gin.Context) {
+	if h == nil || h.db == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "service_unavailable"})
+		return
+	}
 	var telegramID int64
 	if _, err := fmt.Sscanf(c.Query("telegram_id"), "%d", &telegramID); err != nil || telegramID == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "telegram_id required"})
@@ -229,6 +245,10 @@ func (h *TelegramBotHandler) GetWallet(c *gin.Context) {
 // ClaimTask claims a marketplace task for a Telegram user
 // POST /api/v1/telegram/bot/claim
 func (h *TelegramBotHandler) ClaimTask(c *gin.Context) {
+	if h == nil || h.db == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "service_unavailable"})
+		return
+	}
 	var req struct {
 		TelegramID int64  `json:"telegram_id" binding:"required"`
 		TaskID     string `json:"task_id" binding:"required"`
@@ -260,6 +280,10 @@ func (h *TelegramBotHandler) ClaimTask(c *gin.Context) {
 // AIChat handles AI chat requests from Telegram bot.
 // POST /api/v1/telegram/bot/ai
 func (h *TelegramBotHandler) AIChat(c *gin.Context) {
+	if h == nil || h.db == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "service_unavailable"})
+		return
+	}
 	if h.gateway == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "gateway_unavailable"})
 		return
@@ -306,6 +330,10 @@ func (h *TelegramBotHandler) AIChat(c *gin.Context) {
 // CompleteTask completes a marketplace task
 // POST /api/v1/telegram/bot/complete
 func (h *TelegramBotHandler) CompleteTask(c *gin.Context) {
+	if h == nil || h.db == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "service_unavailable"})
+		return
+	}
 	var req struct {
 		TelegramID      int64           `json:"telegram_id" binding:"required"`
 		TaskID          string          `json:"task_id" binding:"required"`

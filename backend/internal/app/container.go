@@ -234,9 +234,6 @@ func BuildContainer() *dig.Container {
 	c.Provide(func(cfg *config.Config, db *sql.DB) *services.TelegramService {
 		return services.NewTelegramService(cfg.Telegram.BotToken, cfg.Telegram.ChatID, db)
 	})
-	c.Provide(func(db *sql.DB, stonFi *services.StonFiService) *services.StarsBuybackService {
-		return services.NewStarsBuybackService(db, stonFi)
-	})
 
 	c.Provide(func(db *sql.DB, redis *redis.Client) *services.AssignmentService {
 		return services.NewAssignmentService(db, redis)
@@ -453,7 +450,6 @@ func StartApplication(container *dig.Container) error {
 		fleetCommandService *services.FleetCommandService,
 		evolutionEngine *services.EvolutionEngine,
 		omniPerformance *services.OmniPerformanceService,
-		starsBuyback *services.StarsBuybackService,
 		treasuryService *services.TreasuryService,
 		swarmLFS *services.SwarmLFSService,
 		cleanCoreService *services.CleanCoreService,
@@ -510,7 +506,6 @@ func StartApplication(container *dig.Container) error {
 		resultService.SetZKProofService(zkComputeProof)
 		taskPaymentService.SetTaskService(taskService)
 		taskPaymentService.SetTelegramService(telegramService)
-		telegramService.SetStarsBuyback(starsBuyback)
 		telegramService.SetGSTDPriceProvider(poolMonitor)
 		stonFiService.SetPoolMonitor(poolMonitor)
 		poolMonitor.SetStonFi(stonFiService)

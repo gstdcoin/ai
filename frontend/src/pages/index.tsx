@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import Link from 'next/link';
 import { GetStaticProps } from 'next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useTranslation } from 'next-i18next';
@@ -126,7 +127,7 @@ export default function Home() {
             <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-400">
               <a href="#features" className="hover:text-white transition-colors">Features</a>
               <a href="#stats" className="hover:text-white transition-colors">Network</a>
-              <a href="/docs" className="hover:text-white transition-colors">Docs</a>
+              <Link href="/docs" className="hover:text-white transition-colors">Docs</Link>
             </nav>
             <div className="h-6 w-px bg-white/10 hidden md:block" />
             <button onClick={changeLanguage} className="text-xs font-bold text-gray-500 hover:text-white uppercase transition-colors">
@@ -149,13 +150,12 @@ export default function Home() {
             </div>
 
             <h1 className="text-5xl sm:text-7xl font-black tracking-tight mb-6 leading-[1.1]">
-              <span className="block text-white">Sovereign Intelligence.</span>
-              <span className="block bg-gradient-to-r from-amber-300 via-amber-500 to-yellow-600 bg-clip-text text-transparent">Backed by Gold.</span>
+              <span className="block text-white">Corporation-Free AI.</span>
+              <span className="block bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">Working for Humanity.</span>
             </h1>
 
             <p className="text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed mb-10">
-              The first distributed AI network where compute power is tokenized and secured by physical gold reserves (XAUt).
-              <span className="block mt-2 text-gray-500 text-base">Uncensored. Decentralized. Permanent.</span>
+              The ultimate decentralized AI network. Companies purchase compute power with GSTD to solve massive tasks. You use it like any premium AI service, paying with GSTD — or <span className="text-emerald-400 font-bold">earn it by connecting your devices</span> to the grid.
             </p>
 
             {/* Interactive Chat Hook */}
@@ -191,18 +191,18 @@ export default function Home() {
           {/* DUAL PATHWAY CARDS */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-5xl mb-20" id="features">
             {/* Consumer Path */}
-            <div className="group relative p-8 rounded-3xl bg-white/[0.02] border border-white/10 hover:bg-white/[0.04] transition-all overflow-hidden">
+            <div className="group relative p-8 rounded-3xl bg-white/[0.02] border border-white/10 hover:bg-white/[0.04] transition-all overflow-hidden flex flex-col justify-between">
               <div className="relative z-10">
                 <div className="w-12 h-12 rounded-2xl bg-violet-500/20 flex items-center justify-center mb-6">
-                  <MessageSquare className="text-violet-400" size={24} />
+                  <MessageSquare className="text-violet-400 group-hover:scale-110 transition-transform" size={24} />
                 </div>
-                <h2 className="text-2xl font-bold mb-3 text-white">Use AI</h2>
-                <p className="text-gray-400 mb-8 leading-relaxed">
-                  Chat with the swarm. Basic requests are free. GSTD unlocks advanced models and Hive Memory.
+                <h2 className="text-2xl font-black tracking-tight mb-3 text-white">Use Premium AI</h2>
+                <p className="text-gray-400 mb-8 leading-relaxed font-medium">
+                  Use it like ChatGPT or any commercial service, but pay with GSTD. Access world-class models for creative, coding, and reasoning tasks. Complete privacy, zero corporate oversight.
                 </p>
                 <button
                   onClick={() => tonConnectUI.openModal()}
-                  className="flex items-center gap-2 text-violet-400 font-bold hover:gap-3 transition-all"
+                  className="flex items-center gap-2 text-violet-400 font-black hover:gap-3 transition-all"
                 >
                   Start Chatting <ArrowRight size={16} />
                 </button>
@@ -210,18 +210,18 @@ export default function Home() {
             </div>
 
             {/* Provider Path */}
-            <div className="group relative p-8 rounded-3xl bg-white/[0.02] border border-white/10 hover:bg-white/[0.04] transition-all overflow-hidden">
+            <div className="group relative p-8 rounded-3xl bg-white/[0.02] border border-white/10 hover:bg-white/[0.04] transition-all overflow-hidden flex flex-col justify-between">
               <div className="relative z-10">
                 <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 flex items-center justify-center mb-6">
-                  <Zap className="text-emerald-400" size={24} />
+                  <Zap className="text-emerald-400 group-hover:scale-110 transition-transform" size={24} />
                 </div>
-                <h2 className="text-2xl font-bold mb-3 text-white">Earn GSTD</h2>
-                <p className="text-gray-400 mb-8 leading-relaxed">
-                  No tokens? Connect your device. Any phone, PC, or IoT can join the swarm and earn.
+                <h2 className="text-2xl font-black tracking-tight mb-3 text-white">Provide Compute</h2>
+                <p className="text-gray-400 mb-8 leading-relaxed font-medium">
+                  Don't have GSTD? Connect your smart device or PC to the swarm. Earn GSTD by processing decentralized tasks for companies solving complex, massive computations.
                 </p>
                 <button
                   onClick={() => tonConnectUI.openModal()}
-                  className="flex items-center gap-2 text-emerald-400 font-bold hover:gap-3 transition-all"
+                  className="flex items-center gap-2 text-emerald-400 font-black hover:gap-3 transition-all"
                 >
                   Ignite Miner <ArrowRight size={16} />
                 </button>

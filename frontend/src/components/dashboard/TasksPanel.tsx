@@ -447,9 +447,12 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
       </div>
 
       {(() => {
+        // Filter out zero-reward or missing-reward tasks, as they are broken/old
+        const validTasks = tasks.filter(t => t.labor_compensation_gstd && t.labor_compensation_gstd > 0);
+
         const filteredTasks = filter === 'available'
-          ? tasks.filter(t => t.status === 'pending' || t.status === 'queued' || t.status === 'active' || t.status === 'executing' || t.status === 'assigned')
-          : tasks;
+          ? validTasks.filter(t => t.status === 'pending' || t.status === 'queued' || t.status === 'active' || t.status === 'executing' || t.status === 'assigned')
+          : validTasks;
 
         if (filteredTasks.length === 0) {
           return (

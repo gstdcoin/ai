@@ -72,11 +72,12 @@ export default function LeviathanLiveTicker() {
   const containerRef = useRef<HTMLDivElement>(null);
   const esRef = useRef<EventSource | null>(null);
   const connectTimeRef = useRef<number>(0);
-  const lastMessageTimeRef = useRef<number>(Date.now());
+  const lastMessageTimeRef = useRef<number>(0);
   const connectionOpenRef = useRef<boolean>(false);
   const supremeUntilRef = useRef<number>(0);
   const pendingItemsRef = useRef<string[]>([]);
   const throttleTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const connectRef = useRef<() => void>(() => {});
 
   const connect = useCallback(() => {
     if (esRef.current) {
@@ -121,9 +122,10 @@ export default function LeviathanLiveTicker() {
       es.close();
       esRef.current = null;
       // Auto-Reconnect: hard restart after 5s
-      setTimeout(() => connect(), RECONNECT_DELAY_MS);
+      setTimeout(() => connectRef.current(), RECONNECT_DELAY_MS);
     };
 
+    connectRef.current = connect;
     return es;
   }, []);
 
