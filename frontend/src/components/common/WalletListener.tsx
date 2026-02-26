@@ -128,11 +128,16 @@ export default function WalletListener() {
                     lastLoggedInAddress.current = rawAddress;
                 }
 
-            };
+            } catch (err: any) {
+                logger.error('Login process failed', err);
+            } finally {
+                isLoggingIn.current = false;
+            }
+        };
 
-            processLogin();
+        processLogin();
 
-        }, [wallet, isConnected, connect, disconnect, setUser]);
+    }, [wallet, isConnected, connect, disconnect, setUser]);
 
     // Periodic balance refresh every 30 seconds when connected
     useEffect(() => {
