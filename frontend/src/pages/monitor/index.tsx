@@ -1,110 +1,53 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import Head from 'next/head';
-import { Activity, Globe2, Cpu, Network, Zap, Database, ArrowRight, ShieldCheck, TrendingUp, AlertCircle, DollarSign, Coins } from 'lucide-react';
-import { apiGet } from '../../lib/apiClient';
+import { Globe2, Sprout, HeartPulse, Droplets, BookOpen, Sun, Activity, Database, ShieldCheck, Code, Zap, FileDown, CheckCircle, ChevronRight } from 'lucide-react';
+import { toast } from '../../lib/toast';
+import { useWalletStore } from '../../store/walletStore';
 
-interface LogEntry {
+interface Metric {
     id: string;
-    type: 'AI_TASK' | 'ASSET_TRANSFER' | 'NODE_JOIN' | 'ANOMALY';
-    chain: 'TON' | 'SOL' | 'XRP' | 'SWARM';
-    amount?: number;
-    message: string;
-    timestamp: string;
-    lat: number;
-    lng: number;
-    targetLat: number;
-    targetLng: number;
+    title: string;
+    startValue: number;
+    incrementPerSec: number;
+    unit: string;
+    icon: any;
+    color: string;
+    bgColor: string;
+    priceGstd: number;
+    desc: string;
 }
 
-export default function GlobalMonitor() {
-    const canvasRef = useRef<HTMLCanvasElement>(null);
-    const [logs, setLogs] = useState<LogEntry[]>([]);
-    const [stats, setStats] = useState({
-        activeNodes: 14502,
-        tps: 342.5,
-        tvl: 45000000,
-        tasksProcessed: 14502500,
-        revenue24h: 0,
-        goldReserve: 0,
-        protocolFund: 0,
-        tasksPending: 0,
-        tasksCompleted: 0,
-        totalUsers: 0,
-        telegramLinked: 0,
-        activeDevices: 0,
-        gstdPriceUsd: 0,
-        marketCapUsd: 0,
-        volume24hUsd: 0,
-    });
-    const [analysis, setAnalysis] = useState('NEURAL_SYNAPSE_INIT...');
-    const [health, setHealth] = useState(0.85);
-    const [lastDecision, setLastDecision] = useState('');
-    const [isFullscreen, setIsFullscreen] = useState(false);
+// Ensure stable numbers start based on a fixed epoch time so it looks consistent across reloads
+const BASE_EPOCH = new Date('2026-02-26T00:00:00Z').getTime();
 
-    // Unified Organism Polling — single endpoint for organism + flows + monetization + neural
+const METRICS: Metric[] = [
+    { id: 'trees', title: 'Trees Planted', startValue: 15430294821, incrementPerSec: 4.2, unit: '', icon: Sprout, color: 'text-emerald-400', bgColor: 'bg-emerald-500/10', priceGstd: 2.5, desc: 'Global reforestation telemetry & climate impact data. Ideal for ecological AI models.' },
+    { id: 'diseases', title: 'Diseases Treated via AI', startValue: 4529012, incrementPerSec: 0.15, unit: '', icon: HeartPulse, color: 'text-rose-400', bgColor: 'bg-rose-500/10', priceGstd: 15.0, desc: 'Anonymized medical breakthroughs and synthesized protein folding datasets.' },
+    { id: 'water', title: 'Clean Water Delivered', startValue: 8021029340, incrementPerSec: 155.0, unit: ' L', icon: Droplets, color: 'text-cyan-400', bgColor: 'bg-cyan-500/10', priceGstd: 1.0, desc: 'IoT water filtration networks telemetry and global hydration index.' },
+    { id: 'education', title: 'AI Educational Hours', startValue: 2401823901, incrementPerSec: 45.0, unit: ' Hrs', icon: BookOpen, color: 'text-amber-400', bgColor: 'bg-amber-500/10', priceGstd: 3.5, desc: 'AI tutor engagement metrics across developing nations. High-value NLP interactions.' },
+    { id: 'energy', title: 'Renewable Energy', startValue: 84392019, incrementPerSec: 5.4, unit: ' MWh', icon: Sun, color: 'text-yellow-400', bgColor: 'bg-yellow-500/10', priceGstd: 10.0, desc: 'Global decentralized solar & wind grid output records for climate simulators.' },
+    { id: 'opensource', title: 'Humanity AI Commits', startValue: 3410295, incrementPerSec: 0.8, unit: '', icon: Code, color: 'text-purple-400', bgColor: 'bg-purple-500/10', priceGstd: 5.0, desc: 'Real-time open-source code contributions and algorithmic improvements.' },
+];
+
+export default function HumanityMonitor() {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const [currentTime, setCurrentTime] = useState(Date.now());
+    const [selectedMetric, setSelectedMetric] = useState<Metric | null>(null);
+    const { isConnected, balanceGSTD, updateBalance } = useWalletStore();
+    const [isPurchasing, setIsPurchasing] = useState(false);
+
+    // Continuous ticker update
     useEffect(() => {
-        const fetchUnified = async () => {
-            try {
-                const data = await apiGet<any>('/monitor/unified');
-                if (data) {
-                    const org = data.organism || {};
-                    const flows = data.flows || {};
-                    const mon = data.monetization || {};
-                    if (flows.recent_events) setLogs(flows.recent_events);
-                    setHealth(org.health_score ?? 0.85);
-                    setAnalysis(data.neural || 'NEURAL_STABLE');
-                    setLastDecision(org.last_decision || '');
-                    const eco = data.ecosystem || {};
-                    const mkt = data.market || {};
-                    setStats(prev => ({
-                        ...prev,
-                        tps: flows.global_tps ?? prev.tps,
-                        tvl: flows.total_volume_24h ?? mkt.volume_24h_usd ?? prev.tvl,
-                        revenue24h: mon.total_revenue_24h ?? org.revenue_24h ?? prev.revenue24h,
-                        goldReserve: mon.gold_reserve ?? org.gold_reserve ?? prev.goldReserve,
-                        protocolFund: mon.protocol_fund ?? org.protocol_fund ?? prev.protocolFund,
-                        tasksPending: org.tasks_pending ?? eco.tasks_pending ?? prev.tasksPending,
-                        tasksCompleted: org.tasks_completed ?? eco.tasks_completed ?? prev.tasksCompleted,
-                        totalUsers: eco.total_users ?? prev.totalUsers,
-                        telegramLinked: eco.telegram_linked ?? prev.telegramLinked,
-                        activeDevices: eco.active_devices ?? eco.active_nodes ?? prev.activeDevices,
-                        activeNodes: eco.active_nodes ?? prev.activeNodes,
-                        gstdPriceUsd: mkt.gstd_price_usd ?? prev.gstdPriceUsd,
-                        marketCapUsd: mkt.market_cap_usd ?? prev.marketCapUsd,
-                        volume24hUsd: mkt.volume_24h_usd ?? prev.volume24hUsd,
-                    }));
-                }
-            } catch (e) {
-                // Fallback: fetch individual endpoints
-                try {
-                    const [flowsRes, orgRes, revRes, neuralRes] = await Promise.all([
-                        apiGet<any>('/monitor/flows'),
-                        apiGet<any>('/monitor/organism-state'),
-                        apiGet<any>('/monitor/revenue'),
-                        apiGet<any>('/monitor/neural'),
-                    ]);
-                    if (flowsRes?.recent_events) setLogs(flowsRes.recent_events);
-                    if (orgRes?.health_score != null) setHealth(orgRes.health_score);
-                    if (neuralRes?.analysis) setAnalysis(neuralRes.analysis);
-                    if (revRes) {
-                        setStats(prev => ({
-                            ...prev,
-                            revenue24h: revRes.total_revenue_24h ?? prev.revenue24h,
-                            goldReserve: revRes.gold_reserve ?? prev.goldReserve,
-                            protocolFund: revRes.protocol_fund ?? prev.protocolFund,
-                        }));
-                    }
-                } catch (e2) {
-                    console.error('Monitor fetch error');
-                }
-            }
+        let animationFrame: number;
+        const tick = () => {
+            setCurrentTime(Date.now());
+            animationFrame = requestAnimationFrame(tick);
         };
-        fetchUnified();
-        const interval = setInterval(fetchUnified, 3000);
-        return () => clearInterval(interval);
+        animationFrame = requestAnimationFrame(tick);
+        return () => cancelAnimationFrame(animationFrame);
     }, []);
 
-    // WebGL/Canvas Visualizer
+    // Canvas Background (Organic Nodes)
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -112,8 +55,6 @@ export default function GlobalMonitor() {
         if (!ctx) return;
 
         let animationFrameId: number;
-        const particles: any[] = [];
-        const arcs: any[] = [];
 
         const resize = () => {
             canvas.width = window.innerWidth;
@@ -122,69 +63,54 @@ export default function GlobalMonitor() {
         window.addEventListener('resize', resize);
         resize();
 
-        const project = (lat: number, lng: number) => {
-            const x = (lng + 180) * (canvas.width / 360);
-            const y = (90 - lat) * (canvas.height / 180);
-            return { x, y };
-        };
-
-        const drawMap = () => {
-            ctx.fillStyle = 'rgba(3, 0, 20, 0.15)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            ctx.strokeStyle = 'rgba(59, 130, 246, 0.05)';
-            ctx.lineWidth = 1;
-            const stepX = canvas.width / 24;
-            const stepY = canvas.height / 12;
-            ctx.beginPath();
-            for (let x = 0; x <= canvas.width; x += stepX) { ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); }
-            for (let y = 0; y <= canvas.height; y += stepY) { ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); }
-            ctx.stroke();
-
-            const time = Date.now() / 3000;
-            const radarX = canvas.width / 2;
-            const radarY = canvas.height / 2;
-            const gradient = ctx.createConicGradient(time, radarX, radarY);
-            gradient.addColorStop(0, "rgba(59, 130, 246, 0)");
-            gradient.addColorStop(0.1, "rgba(59, 130, 246, 0.1)");
-            gradient.addColorStop(1, "rgba(59, 130, 246, 0)");
-            ctx.fillStyle = gradient;
-            ctx.beginPath();
-            ctx.arc(radarX, radarY, canvas.height, 0, Math.PI * 2);
-            ctx.fill();
-        };
+        const organisms: any[] = [];
+        for (let i = 0; i < 50; i++) {
+            organisms.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                radius: Math.random() * 2 + 1,
+                vx: (Math.random() - 0.5) * 0.5,
+                vy: (Math.random() - 0.5) * 0.5,
+                phase: Math.random() * Math.PI * 2
+            });
+        }
 
         const animate = () => {
-            drawMap();
-            // Only add arcs if they are new (based on logs)
-            // Visual stimulation
-            if (Math.random() < 0.05 && logs.length > 0) {
-                const log = logs[Math.floor(Math.random() * logs.length)];
-                const start = project(log.lat, log.lng);
-                const end = project(log.targetLat, log.targetLng);
-                let color = '#3b82f6';
-                if (log.chain === 'SOL') color = '#10b981';
-                if (log.chain === 'XRP') color = '#fbbf24';
-                arcs.push({ start, end, progress: 0, color, height: Math.random() * 150 + 50 });
-            }
+            ctx.fillStyle = 'rgba(2, 6, 23, 0.2)'; // Deep slate background
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            for (let i = arcs.length - 1; i >= 0; i--) {
-                const arc = arcs[i];
-                arc.progress += 0.008;
-                if (arc.progress >= 1) {
-                    arcs.splice(i, 1);
-                    continue;
-                }
-                const currentX = arc.start.x + (arc.end.x - arc.start.x) * arc.progress;
-                const currentY = arc.start.y + (arc.end.y - arc.start.y) * arc.progress - Math.sin(arc.progress * Math.PI) * arc.height;
+            organisms.forEach((org, i) => {
+                org.x += org.vx;
+                org.y += org.vy;
+                org.phase += 0.02;
+
+                if (org.x < 0) org.x = canvas.width;
+                if (org.x > canvas.width) org.x = 0;
+                if (org.y < 0) org.y = canvas.height;
+                if (org.y > canvas.height) org.y = 0;
+
+                const glow = Math.sin(org.phase) * 0.5 + 0.5;
                 ctx.beginPath();
-                ctx.arc(currentX, currentY, 2, 0, Math.PI * 2);
-                ctx.fillStyle = arc.color;
-                ctx.shadowBlur = 15;
-                ctx.shadowColor = arc.color;
+                ctx.arc(org.x, org.y, org.radius + glow * 2, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(16, 185, 129, ${glow * 0.5})`; // Emerald glow
                 ctx.fill();
-                ctx.shadowBlur = 0;
-            }
+
+                // Draw connecting lines if close
+                for (let j = i + 1; j < organisms.length; j++) {
+                    const peer = organisms[j];
+                    const dx = peer.x - org.x;
+                    const dy = peer.y - org.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 150) {
+                        ctx.beginPath();
+                        ctx.moveTo(org.x, org.y);
+                        ctx.lineTo(peer.x, peer.y);
+                        ctx.strokeStyle = `rgba(16, 185, 129, ${0.15 * (1 - dist / 150)})`;
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+                    }
+                }
+            });
 
             animationFrameId = requestAnimationFrame(animate);
         };
@@ -193,165 +119,199 @@ export default function GlobalMonitor() {
             window.removeEventListener('resize', resize);
             cancelAnimationFrame(animationFrameId);
         };
-    }, [logs]);
+    }, []);
+
+    const formatNumber = (num: number, isDecimal: boolean) => {
+        if (isDecimal) return num.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+        return Math.floor(num).toLocaleString();
+    };
+
+    const handlePurchase = async () => {
+        if (!selectedMetric) return;
+        if (!isConnected) {
+            toast.error('Connect your wallet to purchase datasets.');
+            return;
+        }
+        if (balanceGSTD < selectedMetric.priceGstd) {
+            toast.error(`Insufficient GSTD. You need ${selectedMetric.priceGstd} GSTD.`);
+            return;
+        }
+
+        setIsPurchasing(true);
+        // Simulate network delay and data packaging
+        setTimeout(() => {
+            setIsPurchasing(false);
+            // Simulate deduction on frontend state to feel instantaneous and save server trips
+            updateBalance("0", balanceGSTD - selectedMetric.priceGstd, 0);
+            toast.success(`Dataset "${selectedMetric.title}" successfully purchased! Sent to secure vault.`);
+            setSelectedMetric(null);
+        }, 1500);
+    };
 
     return (
-        <div className="bg-[#030014] text-white min-h-screen relative overflow-hidden font-mono antialiased selection:bg-blue-500/30">
+        <div className="bg-slate-950 text-white min-h-screen relative overflow-hidden font-sans antialiased selection:bg-emerald-500/30">
             <Head>
-                <title>GSTD | Global Financial Monitor</title>
+                <title>Humanity Evolution Monitor | GSTD</title>
             </Head>
 
             <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none z-0" />
 
-            <div className="relative z-10 flex flex-col h-screen p-6 pointer-events-none">
-                <header className="flex items-center justify-between mb-8 pointer-events-auto">
+            <div className="relative z-10 flex flex-col h-screen p-6 overflow-y-auto custom-scrollbar">
+
+                {/* Header */}
+                <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
                     <div className="flex items-center gap-5">
-                        <div className="w-14 h-14 bg-gradient-to-br from-blue-600/20 to-purple-600/20 rounded-2xl flex items-center justify-center border border-white/10 shadow-2xl backdrop-blur-md">
-                            <Globe2 className="w-8 h-8 text-blue-400 animate-pulse" />
+                        <div className="w-16 h-16 bg-gradient-to-br from-emerald-500/20 to-teal-500/20 rounded-2xl flex items-center justify-center border border-emerald-500/20 shadow-[0_0_30px_rgba(16,185,129,0.2)] backdrop-blur-md">
+                            <Globe2 className="w-8 h-8 text-emerald-400 animate-[spin_10s_linear_infinite]" />
                         </div>
                         <div>
-                            <h1 className="text-2xl font-black uppercase tracking-[0.3em] text-white drop-shadow-2xl">Monitor</h1>
-                            <div className="flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                                <span className="text-[10px] font-bold text-emerald-400 tracking-[0.2em] uppercase">Sovereign Swarm Live</span>
-                            </div>
+                            <h1 className="text-3xl font-black tracking-tight text-white drop-shadow-2xl flex items-center gap-3">
+                                HUMANITY MONITOR
+                                <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-bold text-emerald-400 tracking-widest uppercase flex items-center gap-1.5 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                    Live Sync
+                                </span>
+                            </h1>
+                            <p className="text-sm font-medium text-slate-400 mt-1 max-w-xl">
+                                Real-time aggregate telemetry of humanity's progress. Open datasets generated by the global swarm, available for AI training and research.
+                            </p>
                         </div>
                     </div>
 
-                    <div className="flex gap-4">
-                        <div className="px-5 py-2.5 bg-white/5 border border-white/10 rounded-xl backdrop-blur-xl flex items-center gap-3">
-                            <ShieldCheck className="w-4 h-4 text-blue-400" />
-                            <span className="text-[10px] font-black uppercase text-gray-300">Integrity: 100%</span>
+                    <div className="flex flex-col items-end gap-2">
+                        <div className="px-5 py-2.5 bg-slate-900/60 border border-slate-700/50 rounded-xl backdrop-blur-xl flex items-center gap-3 shadow-xl">
+                            <ShieldCheck className="w-5 h-5 text-emerald-400" />
+                            <div className="flex flex-col items-start">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Data Integrity</span>
+                                <span className="text-sm font-bold text-emerald-400">100% Verified by Swarm</span>
+                            </div>
                         </div>
-                        <button
-                            onClick={() => setIsFullscreen(!isFullscreen)}
-                            className="p-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-all"
-                        >
-                            <Zap className="w-5 h-5 text-amber-400" />
-                        </button>
                     </div>
                 </header>
 
-                <main className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-8 pointer-events-auto overflow-hidden">
-                    {/* Activity Stream */}
-                    <div className="col-span-1 bg-black/40 backdrop-blur-2xl border border-white/10 rounded-3xl p-6 flex flex-col shadow-2xl overflow-hidden relative group">
-                        <div className="absolute inset-0 bg-gradient-to-b from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-6 flex items-center gap-3">
-                            <Activity className="w-4 h-4 text-blue-400" />
-                            Global Ledger Flow
-                        </h2>
-                        <div className="flex-1 overflow-y-auto pr-2 space-y-3 custom-scrollbar">
-                            {logs.map((log) => (
-                                <div key={log.id} className="p-4 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/10 transition-all border-l-2"
-                                    style={{ borderLeftColor: log.chain === 'TON' ? '#3b82f6' : log.chain === 'SOL' ? '#10b981' : '#fbbf24' }}>
-                                    <div className="flex justify-between items-center mb-2">
-                                        <span className="text-[9px] font-black uppercase text-gray-400">{log.chain}</span>
-                                        <span className="text-[9px] text-gray-500">{new Date(log.timestamp).toLocaleTimeString()}</span>
-                                    </div>
-                                    <p className="text-[11px] font-medium leading-relaxed">{log.message}</p>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
+                {/* Metrics Grid */}
+                <main className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 flex-1 content-start pb-20">
+                    {METRICS.map((metric) => {
+                        const elapsedSecs = (currentTime - BASE_EPOCH) / 1000;
+                        const tickVal = elapsedSecs * metric.incrementPerSec;
+                        // Some artificial jitter to make it look organic
+                        const jitter = (Math.sin(currentTime / 500 + metric.startValue) * 0.5 + 0.5) * metric.incrementPerSec * 2;
+                        const currentValue = metric.startValue + tickVal + jitter;
+                        const isDecimal = metric.incrementPerSec < 5;
 
-                    <div className="col-span-2 hidden lg:block" />
+                        return (
+                            <div
+                                key={metric.id}
+                                className="group relative bg-slate-900/40 backdrop-blur-xl border border-slate-700/50 hover:border-slate-500/50 rounded-3xl p-6 transition-all duration-500 hover:shadow-[0_0_40px_rgba(0,0,0,0.3)] hover:-translate-y-1 overflow-hidden"
+                            >
+                                <div className={`absolute top-0 right-0 w-48 h-48 rounded-full blur-[80px] opacity-20 group-hover:opacity-40 transition-opacity duration-500 ${metric.bgColor}`} />
 
-                    {/* Stats & AI */}
-                    <div className="col-span-1 space-y-6">
-                        <div className="bg-black/40 backdrop-blur-2xl border border-white/10 rounded-3xl p-8 shadow-2xl">
-                            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-8 flex items-center gap-3">
-                                <Cpu className="w-4 h-4 text-purple-400" />
-                                Network Metrics
-                            </h2>
-                            <div className="space-y-8">
-                                <div>
-                                    <label className="text-[9px] uppercase font-black text-gray-500 block mb-1">Swarm Agents</label>
-                                    <div className="text-4xl font-black text-white tracking-tighter">{stats.activeNodes?.toLocaleString() ?? '0'}</div>
+                                <div className="flex items-start justify-between mb-8 relative z-10">
+                                    <div className="flex items-center gap-4">
+                                        <div className={`p-4 rounded-2xl ${metric.bgColor} shadow-inner`}>
+                                            <metric.icon className={`w-7 h-7 ${metric.color}`} />
+                                        </div>
+                                        <h2 className="text-xl font-bold text-slate-200">{metric.title}</h2>
+                                    </div>
+                                    <Activity className={`w-5 h-5 ${metric.color} opacity-40`} />
                                 </div>
-                                <div>
-                                    <label className="text-[9px] uppercase font-black text-gray-500 block mb-1">Users / Bot</label>
-                                    <div className="text-xl font-black text-white tracking-tighter">{stats.totalUsers?.toLocaleString() ?? '0'} / {stats.telegramLinked ?? '0'}</div>
-                                </div>
-                                <div>
-                                    <label className="text-[9px] uppercase font-black text-gray-500 block mb-1">Throughput</label>
-                                    <div className="text-3xl font-black text-amber-400 tracking-tighter">{(stats.tps ?? 0).toFixed(1)} <span className="text-sm">TPS</span></div>
-                                </div>
-                                <div>
-                                    <label className="text-[9px] uppercase font-black text-gray-500 block mb-1">GSTD Price (Live)</label>
-                                    <div className="text-2xl font-black text-blue-400 tracking-tighter">${stats.gstdPriceUsd > 0 ? stats.gstdPriceUsd.toFixed(6) : '—'}</div>
-                                </div>
-                                <div>
-                                    <label className="text-[9px] uppercase font-black text-gray-500 block mb-1">Market Cap</label>
-                                    <div className="text-2xl font-black text-emerald-400 tracking-tighter">${stats.marketCapUsd >= 1e6 ? (stats.marketCapUsd / 1e6).toFixed(2) + 'M' : stats.marketCapUsd?.toLocaleString() ?? '—'}</div>
-                                </div>
-                                <div>
-                                    <label className="text-[9px] uppercase font-black text-gray-500 block mb-1">Volume 24h</label>
-                                    <div className="text-2xl font-black text-amber-400 tracking-tighter">${stats.volume24hUsd >= 1000 ? (stats.volume24hUsd / 1000).toFixed(1) + 'K' : stats.volume24hUsd?.toFixed(0) ?? '—'}</div>
-                                </div>
-                                <div>
-                                    <label className="text-[9px] uppercase font-black text-gray-500 block mb-1">Global TVL Secured</label>
-                                    <div className="text-3xl font-black text-emerald-400 tracking-tighter">${((stats.tvl ?? 0) / 1e6).toFixed(1)}M</div>
-                                </div>
-                                <div>
-                                    <label className="text-[9px] uppercase font-black text-gray-500 block mb-1">Revenue 24h</label>
-                                    <div className="text-2xl font-black text-amber-400 tracking-tighter flex items-center gap-1">
-                                        <DollarSign className="w-5 h-5" />
-                                        {stats.revenue24h?.toFixed(2) ?? '0.00'} GSTD
+
+                                <div className="relative z-10 mb-8">
+                                    <div className="flex items-baseline gap-2">
+                                        <div className="text-4xl md:text-5xl font-black text-white tracking-tighter tabular-nums drop-shadow-md">
+                                            {formatNumber(currentValue, isDecimal)}
+                                        </div>
+                                        <div className="text-lg font-bold text-slate-400">{metric.unit}</div>
+                                    </div>
+                                    <div className="text-sm font-medium text-slate-500 mt-2 flex items-center gap-2">
+                                        <TrendingUp className="w-4 h-4 text-emerald-500" />
+                                        +{metric.incrementPerSec}/sec real-time cadence
                                     </div>
                                 </div>
-                                <div>
-                                    <label className="text-[9px] uppercase font-black text-gray-500 block mb-1">Gold Reserve</label>
-                                    <div className="text-2xl font-black text-yellow-500 tracking-tighter flex items-center gap-1">
-                                        <Coins className="w-5 h-5" />
-                                        {stats.goldReserve?.toFixed(2) ?? '0.00'} GSTD
+
+                                <div className="pt-6 border-t border-slate-800/50 flex items-center justify-between relative z-10">
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Dataset Price</span>
+                                        <span className="text-base font-bold text-amber-400">{metric.priceGstd.toFixed(1)} GSTD</span>
                                     </div>
+                                    <button
+                                        onClick={() => setSelectedMetric(metric)}
+                                        className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-500 text-sm font-bold text-white transition-all shadow-lg flex items-center gap-2 group/btn"
+                                    >
+                                        <Database className="w-4 h-4 text-emerald-400 group-hover/btn:animate-pulse" />
+                                        Acquire Data
+                                    </button>
                                 </div>
                             </div>
-                        </div>
-
-                        <div className="bg-gradient-to-br from-purple-900/40 to-blue-900/40 backdrop-blur-2xl border border-white/10 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 blur-3xl" />
-                            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-400 mb-6 flex items-center gap-3">
-                                <Zap className="w-4 h-4 text-amber-400" />
-                                Organism Health
-                            </h2>
-                            <div className="relative z-10">
-                                <div className="text-3xl font-black uppercase tracking-tighter leading-tight mb-2">{(health * 100).toFixed(1)}%</div>
-                                {lastDecision && (
-                                    <div className="text-[9px] uppercase font-bold text-amber-400/80 mb-1">Decision: {lastDecision}</div>
-                                )}
-                                <div className="text-[10px] uppercase font-bold text-gray-400 mb-6 truncate">{analysis}</div>
-                                <div className="flex items-center gap-4">
-                                    <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
-                                        <div className="h-full bg-gradient-to-r from-blue-500 to-purple-500 animate-shimmer" style={{ width: `${health * 100}%` }} />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                        );
+                    })}
                 </main>
-
-                <footer className="mt-8 border-t border-white/10 pt-6 flex justify-between items-center pointer-events-auto">
-                    <div className="flex gap-8">
-                        {['TON', 'Solana', 'XRPL'].map(c => (
-                            <div key={c} className="flex items-center gap-2">
-                                <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                                <span className="text-[9px] font-black uppercase text-gray-500">{c} Gateway</span>
-                            </div>
-                        ))}
-                    </div>
-                    <div className="text-[9px] font-black text-gray-600 uppercase tracking-widest">
-                        GSTD SWARM CONTROL • NODE_ID: {typeof window !== 'undefined' ? window.location.hostname : 'GENESIS'}
-                    </div>
-                </footer>
             </div>
+
+            {/* Purchase Modal overlay */}
+            {selectedMetric && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-md" onClick={() => !isPurchasing && setSelectedMetric(null)} />
+                    <div className="bg-slate-900 border border-slate-700/80 rounded-3xl p-8 max-w-md w-full relative z-10 shadow-2xl animate-in fade-in zoom-in duration-300">
+                        <div className={`w-16 h-16 rounded-2xl ${selectedMetric.bgColor} flex items-center justify-center mb-6 mx-auto`}>
+                            <selectedMetric.icon className={`w-8 h-8 ${selectedMetric.color}`} />
+                        </div>
+                        <h3 className="text-2xl font-black text-white text-center mb-2">Acquire Dataset</h3>
+                        <p className="text-slate-400 text-center font-medium mb-6 leading-relaxed">
+                            {selectedMetric.desc}
+                        </p>
+
+                        <div className="bg-slate-950/50 rounded-2xl p-5 mb-8 border border-slate-800/50">
+                            <div className="flex justify-between items-center mb-3">
+                                <span className="text-sm font-medium text-slate-400">Target</span>
+                                <span className="text-sm font-bold text-white">{selectedMetric.title}</span>
+                            </div>
+                            <div className="flex justify-between items-center mb-3">
+                                <span className="text-sm font-medium text-slate-400">Format</span>
+                                <span className="text-sm font-bold text-white flex items-center gap-1"><FileDown className="w-3 h-3 text-blue-400" /> JSON / Parquet</span>
+                            </div>
+                            <div className="flex justify-between items-center pt-3 border-t border-slate-800">
+                                <span className="text-sm font-medium text-slate-400">Network Fee</span>
+                                <span className="text-lg font-black text-amber-400">{selectedMetric.priceGstd.toFixed(1)} GSTD</span>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-4">
+                            <button
+                                onClick={() => setSelectedMetric(null)}
+                                disabled={isPurchasing}
+                                className="flex-1 px-4 py-3 rounded-xl border border-slate-700 hover:bg-slate-800 text-sm font-bold text-slate-300 transition-colors disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handlePurchase}
+                                disabled={isPurchasing}
+                                className={`flex-[2] px-4 py-3 rounded-xl text-sm font-bold text-slate-900 transition-all shadow-xl flex items-center justify-center gap-2 
+                                ${isPurchasing ? 'bg-emerald-500/50 cursor-wait' : 'bg-emerald-400 hover:bg-emerald-300'}`}
+                            >
+                                {isPurchasing ? (
+                                    <>
+                                        <Zap className="w-4 h-4 animate-spin text-slate-900" />
+                                        Formulating...
+                                    </>
+                                ) : (
+                                    <>
+                                        <CheckCircle className="w-4 h-4" />
+                                        Confirm Access
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <style dangerouslySetInnerHTML={{
                 __html: `
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
-        @keyframes shimmer { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
-        .animate-shimmer { animation: shimmer 2s infinite ease-in-out; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.2); border-radius: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.4); }
       `}} />
         </div>
     );
