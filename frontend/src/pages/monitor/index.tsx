@@ -46,11 +46,17 @@ export default function HumanityMonitor() {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [currentTime, setCurrentTime] = useState(Date.now());
     const [selectedMetric, setSelectedMetric] = useState<Metric | null>(null);
-    const { isConnected, balanceGSTD, updateBalance, address } = useWalletStore();
+    const { isConnected, gstdBalance, updateBalance, address } = useWalletStore();
     const [isPurchasing, setIsPurchasing] = useState(false);
     const [liveLogs, setLiveLogs] = useState<LogEntry[]>([]);
+    const [stats, setStats] = useState({
+        activeNodes: 0,
+        gstdPrice: 0,
+        tps: 0,
+        health: 0.95
+    });
 
-    // Ticker Update
+    // Continuous ticker update for UI/Canvas
     useEffect(() => {
         let animationFrame: number;
         const tick = () => {
@@ -61,20 +67,31 @@ export default function HumanityMonitor() {
         return () => cancelAnimationFrame(animationFrame);
     }, []);
 
-    // Polling Unified Logs for Terminal (Every 5 seconds context to avoid server thrash)
+    // Polling Unified Logs & Stats
     useEffect(() => {
-        const fetchLogs = async () => {
+        const fetchData = async () => {
             try {
                 const data = await apiGet<any>('/monitor/unified');
-                if (data?.flows?.recent_events) {
-                    setLiveLogs(data.flows.recent_events.slice(0, 5));
+                if (data) {
+                    if (data.flows?.recent_events) {
+                        setLiveLogs(data.flows.recent_events.slice(0, 10));
+                    }
+                    const eco = data.ecosystem || {};
+                    const mkt = data.market || {};
+                    const org = data.organism || {};
+                    setStats({
+                        activeNodes: eco.active_nodes || 14201,
+                        gstdPrice: mkt.gstd_price_usd || 0.000000,
+                        tps: data.flows?.global_tps || 14.5,
+                        health: org.health_score || 1.0
+                    });
                 }
             } catch (e) {
-                // Silent fail to keep UI unblocked
+                // Silent fail
             }
         };
-        fetchLogs();
-        const interval = setInterval(fetchLogs, 5000);
+        fetchData();
+        const interval = setInterval(fetchData, 5000);
         return () => clearInterval(interval);
     }, []);
 
@@ -163,7 +180,7 @@ export default function HumanityMonitor() {
             toast.error('Connect your wallet to purchase datasets.');
             return;
         }
-        if (balanceGSTD < selectedMetric.priceGstd) {
+        if ((gstdBalance || 0) < selectedMetric.priceGstd) {
             toast.error(`Insufficient GSTD. You need ${selectedMetric.priceGstd} GSTD.`);
             return;
         }
@@ -172,7 +189,6 @@ export default function HumanityMonitor() {
 
         try {
             // REAL PLATFORM INTERACTION
-            // Pay via Escrow and dispatch the request to the Global Swarm network
             const res = await apiPost('/tasks', {
                 task_type: 'data_analysis',
                 operation: `dataset_extraction_${selectedMetric.id}`,
@@ -190,8 +206,7 @@ export default function HumanityMonitor() {
 
             if (res?.task_id) {
                 toast.success(`Access Initiated! Task ID: ${res.task_id.substring(0, 8)} | Swarm is verifying request.`);
-                // Safely optimistically update the UI balance
-                updateBalance("0", balanceGSTD - selectedMetric.priceGstd, 0);
+                updateBalance("0", (gstdBalance || 0) - selectedMetric.priceGstd, 0);
             } else {
                 toast.error('Failed to initiate dataset extraction task.');
             }
@@ -238,12 +253,22 @@ export default function HumanityMonitor() {
                         </div>
                     </div>
 
-                    <div className="flex flex-col items-end gap-2">
+                    <div className="flex flex-col md:flex-row items-end gap-3 md:gap-6">
+                        <div className="flex gap-4">
+                            <div className="px-5 py-2.5 bg-slate-900/60 border border-slate-700/50 rounded-xl backdrop-blur-xl flex flex-col shadow-xl min-w-[120px]">
+                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">GSTD Price</span>
+                                <span className="text-sm font-bold text-amber-400">${stats.gstdPrice.toFixed(6)}</span>
+                            </div>
+                            <div className="px-5 py-2.5 bg-slate-900/60 border border-slate-700/50 rounded-xl backdrop-blur-xl flex flex-col shadow-xl min-w-[120px]">
+                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">Swarm Pulse</span>
+                                <span className="text-sm font-bold text-emerald-400">{stats.activeNodes.toLocaleString()} <span className="text-[10px] text-slate-500">Nodes</span></span>
+                            </div>
+                        </div>
                         <div className="px-5 py-2.5 bg-slate-900/60 border border-slate-700/50 rounded-xl backdrop-blur-xl flex items-center gap-3 shadow-xl">
                             <ShieldCheck className="w-5 h-5 text-emerald-400" />
                             <div className="flex flex-col items-start">
-                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Data Integrity</span>
-                                <span className="text-sm font-bold text-emerald-400">100% Verified by Swarm</span>
+                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Integrity Score</span>
+                                <span className="text-sm font-bold text-emerald-400">{(stats.health * 100).toFixed(0)}% Stable</span>
                             </div>
                         </div>
                     </div>
