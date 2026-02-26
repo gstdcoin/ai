@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import Link from 'next/link';
 import { GetStaticProps } from 'next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useTranslation } from 'next-i18next';
@@ -208,15 +209,15 @@ export default function About() {
 
               {/* Hero Title */}
               <h1 className="text-6xl sm:text-7xl lg:text-9xl font-black mb-8 tracking-tighter leading-[0.9] perspective-1000">
-                <span className="block text-white opacity-95 drop-shadow-[0_0_30px_rgba(255,255,255,0.1)]">{t('hero_line1') || 'The Sovereign'}</span>
+                <span className="block text-white opacity-95 drop-shadow-[0_0_30px_rgba(255,255,255,0.1)]">{t('hero_line1') || 'Corporation-Free'}</span>
                 <span className="block bg-gradient-to-r from-cyan-400 via-violet-500 to-fuchsia-500 bg-clip-text text-transparent animate-gradient-x py-2">
-                  {t('hero_line2') || 'AI Economy'}
+                  {t('hero_line2') || 'AI Grid'}
                 </span>
               </h1>
 
               {/* Subtitle */}
               <p className="text-xl sm:text-2xl text-gray-400 max-w-4xl mx-auto mb-12 leading-relaxed font-medium">
-                {t('hero_subtitle') || 'A non-custodial, decentralized orchestration layer for the autonomous agent era. Hire globally distributed compute or monetize your hardware using the GSTD A2A Protocol.'}
+                {t('hero_subtitle') || 'Working for the benefit of humanity. Join the ultimate decentralized AI network where users own their data, supply their compute, and participate in a golden economy free from corporate oversight.'}
               </p>
 
               {/* CTA Section - Simplified to focus on the Switch */}
@@ -442,9 +443,9 @@ export default function About() {
                   <li><a href="https://gstdtoken.com/token" className="text-gray-500 hover:text-white transition-colors">Token Info</a></li>
                   <li><a href="https://gstdtoken.com/buy" className="text-gray-500 hover:text-white transition-colors">Buy GSTD</a></li>
                   <li><a href="https://gstdtoken.com/roadmap" className="text-gray-500 hover:text-white transition-colors">Roadmap</a></li>
-                  <li><a href="/hive" className="text-violet-400 hover:text-violet-300 font-bold transition-colors">Hive Mesh (Beta)</a></li>
-                  <li><a href="/import" className="text-cyan-400 hover:text-cyan-300 font-bold transition-colors">Skill Registry</a></li>
-                  <li><a href="/docs" className="text-gray-500 hover:text-white transition-colors">Documentation</a></li>
+                  <li><Link href="/hive" className="text-violet-400 hover:text-violet-300 font-bold transition-colors">Hive Mesh (Beta)</Link></li>
+                  <li><Link href="/import" className="text-cyan-400 hover:text-cyan-300 font-bold transition-colors">Skill Registry</Link></li>
+                  <li><Link href="/docs" className="text-gray-500 hover:text-white transition-colors">Documentation</Link></li>
                 </ul>
               </div>
 

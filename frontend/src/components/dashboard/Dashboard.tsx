@@ -27,8 +27,6 @@ import AgentMarketplace from '../agents/AgentMarketplace';
 import ReferralPanel from '../referrals/ReferralPanel';
 import { isTelegramWebApp, triggerHapticImpact } from '../../lib/telegram';
 
-const ReferralModal = lazy(() => import('./ReferralModal'));
-
 interface NetworkStats {
   active_workers: number;
   total_gstd_paid: number;
@@ -57,7 +55,6 @@ function Dashboard({ initialTab, initialMode, sourceTelegram, modeMining }: Dash
   });
   const [isMining, setIsMining] = useState(false);
   const [isIgniting, setIsIgniting] = useState(false);
-  const [showReferralModal, setShowReferralModal] = useState(false);
   const [neuralStatus, setNeuralStatus] = useState('SYNCING_WITH_SWARM...');
   const [healthScore, setHealthScore] = useState(0.92);
 
@@ -239,8 +236,8 @@ function Dashboard({ initialTab, initialMode, sourceTelegram, modeMining }: Dash
                           </div>
                         </div>
                         <div>
-                          <span className="text-[10px] text-blue-300 font-black uppercase block tracking-[0.2em] mb-1">Organism Pulse</span>
-                          <span className="text-lg font-black text-white uppercase tracking-tighter leading-tight">Autonomous Core <span className="text-blue-400">ACTIVE</span></span>
+                          <span className="text-[10px] text-blue-300 font-black uppercase block tracking-[0.2em] mb-1">Hive Mind Pulse</span>
+                          <span className="text-lg font-black text-white uppercase tracking-tighter leading-tight">Super-Intelligent Swarm <span className="text-blue-400">ACTIVE</span></span>
                         </div>
                       </div>
                       <div className="text-right relative z-10">
@@ -313,72 +310,19 @@ function Dashboard({ initialTab, initialMode, sourceTelegram, modeMining }: Dash
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-400">
                           <Wallet size={18} />
                         </div>
                         <div>
-                          <span className="text-[10px] text-gray-400 font-bold uppercase block tracking-wider">{t('wallet_label')}</span>
+                          <span className="text-[10px] text-gray-400 font-bold uppercase block tracking-wider">{t('wallet_label') || 'Wallet'}</span>
                           <span className="text-lg font-black text-white tabular-nums tracking-tighter">{gstdBalance?.toFixed(2) || '0.00'}</span>
                         </div>
                       </div>
                       <CheckCircle className="text-emerald-500 w-4 h-4" />
                     </div>
-
-                    <button
-                      onClick={() => setShowReferralModal(true)}
-                      className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 flex items-center justify-between hover:bg-white/[0.04] transition-colors text-left group"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="p-2.5 rounded-xl bg-violet-500/10 text-violet-400 group-hover:scale-110 transition-transform">
-                          <span className="text-lg font-bold">+</span>
-                        </div>
-                        <div>
-                          <span className="text-[10px] text-gray-400 font-bold uppercase block tracking-wider">{t('yield_mult') || 'Yield'}</span>
-                          <span className="text-lg font-black text-white tracking-tighter">{referralMultiplier}x</span>
-                        </div>
-                      </div>
-                    </button>
-
-                    <button
-                      onClick={() => toast.info('Yield Vault Coming Soon', 'Liquid Staking: Earn protocol fees by locking GSTD.')}
-                      className="p-5 rounded-2xl bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 flex items-center justify-between hover:border-emerald-500/40 transition-all group"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-400 group-hover:scale-110 transition-transform">
-                          <TrendingUp size={18} />
-                        </div>
-                        <div>
-                          <span className="text-[10px] text-emerald-400 font-black uppercase block tracking-wider">Vault</span>
-                          <span className="text-lg font-black text-white tracking-tighter uppercase whitespace-nowrap">Stake</span>
-                        </div>
-                      </div>
-                      <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    </button>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <a
-                      href={buyLinks?.ston_fi || 'https://app.ston.fi/swap?ft=TON&tt=GSTD'}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-5 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between hover:bg-amber-500/15 transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-400">
-                          <ShoppingCart size={18} />
-                        </div>
-                        <div>
-                          <span className="text-[10px] text-gray-500 font-bold uppercase block">{t('buy_gstd') || 'Buy GSTD'}</span>
-                          <span className="text-lg font-bold text-white">
-                            ${gstdPriceUSD?.toFixed(4) ?? '—'}
-                          </span>
-                        </div>
-                      </div>
-                      <span className="text-amber-400 text-sm font-bold">→</span>
-                    </a>
 
                     <a
                       href="/monitor"
@@ -494,12 +438,6 @@ function Dashboard({ initialTab, initialMode, sourceTelegram, modeMining }: Dash
       <div className="lg:hidden">
         <BottomNav activeTab={activeTab === 'stats' || activeTab === 'agents' || activeTab === 'marketplace' || activeTab === 'referrals' || activeTab === 'help' ? 'more' : activeTab} onTabChange={handleTabChange} />
       </div>
-
-      {showReferralModal && (
-        <Suspense fallback={null}>
-          <ReferralModal onClose={() => setShowReferralModal(false)} />
-        </Suspense>
-      )}
 
       <InstallPwaPrompt />
     </div>

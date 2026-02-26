@@ -171,7 +171,7 @@ func (s *SovereignOrganismService) performHeartbeat(ctx context.Context) {
 		s.state.LastDecision = decision
 		s.state.LastDecisionAt = now
 		log.Println("[Sovereign Organism] 📉 Low Activity Detected. Triggering Stimulation.")
-		s.notifyDecision(ctx, "STIMULATE", "Low activity (Health %.2f). Stimulating network.", s.state.HealthScore)
+		// s.notifyDecision(ctx, "STIMULATE", "Low activity (Health %.2f). Stimulating network.", s.state.HealthScore)
 		s.stimulateNetwork(ctx)
 	} else if s.state.TasksPending < 2 {
 		// Queue nearly empty — seed work so swarm has tasks to claim
@@ -186,14 +186,14 @@ func (s *SovereignOrganismService) performHeartbeat(ctx context.Context) {
 		s.state.LastDecision = decision
 		s.state.LastDecisionAt = now
 		log.Println("[Sovereign Organism] 📈 Peak Performance. Accelerating Value Accrual.")
-		s.notifyDecision(ctx, "ACCELERATE", "Peak performance (Health %.2f). Accelerating value accrual.", s.state.HealthScore)
+		// s.notifyDecision(ctx, "ACCELERATE", "Peak performance (Health %.2f). Accelerating value accrual.", s.state.HealthScore)
 		s.accelerateValueAccrual(ctx)
 	} else if gstdPrice < 0.01 {
 		// DECISION C: Buyback and Burn if price is below target
 		decision = "BUYBACK"
 		s.state.LastDecision = decision
 		s.state.LastDecisionAt = now
-		s.notifyDecision(ctx, "BUYBACK", "Price $%.4f below support. Emergency buyback triggered.", gstdPrice)
+		// s.notifyDecision(ctx, "BUYBACK", "Price $%.4f below support. Emergency buyback triggered.", gstdPrice)
 		s.triggerEmergencyBuyback(ctx)
 	} else {
 		s.state.LastDecision = decision
