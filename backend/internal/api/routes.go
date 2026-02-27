@@ -270,6 +270,13 @@ func SetupRoutes(
 		v1.GET("/monitor/neural", getNeuralFinancialAnalysis(financialMonitor))
 		v1.GET("/monitor/organism-state", getOrganismState(organism))
 		v1.GET("/monitor/revenue", getMonetizationMetrics(monetizationService))
+
+		// Monitor Signals — real progress data
+		monitorSignalService := services.NewMonitorSignalService(db.(*sql.DB))
+		v1.GET("/monitor/signals", getMonitorSignals(monitorSignalService))
+		v1.GET("/monitor/signals/:id", getMonitorSignal(monitorSignalService))
+		v1.POST("/monitor/signals/:id/sponsor", sponsorMonitorSignal(monitorSignalService, db.(*sql.DB)))
+
 		// @Summary Get pool status
 		// @Description Returns GSTD/XAUt liquidity pool status
 		// @Tags Public
