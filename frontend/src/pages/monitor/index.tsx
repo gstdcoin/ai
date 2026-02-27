@@ -47,7 +47,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
     },
     {
         id: 'nasa_eosdis',
-        title: 'NASA EOSDIS Climate Anomaly Extraction',
+        title: 'NASA Climate Anomaly Extraction',
         description: 'Process raw satellite imagery and atmospheric data to detect early signs of severe deforestation and extreme surface temperature anomalies.',
         source: 'NASA Earth Observation System',
         severity: 'high',
@@ -68,26 +68,48 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
         starsCost: 5000, gstdReward: 400, platformFee: 100, category: 'Medical AI'
     },
     {
-        id: 'copernicus_marine',
-        title: 'Copernicus Ocean Heatwave Modeling',
-        description: 'Process deep oceanic temperature, drift, and salinity arrays to model the impact on marine ecosystems and global weather phenomena.',
-        source: 'Copernicus Marine Service',
-        severity: 'medium',
-        location: 'Pacific & Atlantic Oceans',
-        dataVolume: '8.1 TB / mo',
-        icon: Droplets, color: 'text-cyan-400', bgColor: 'bg-cyan-500/10',
-        starsCost: 1500, gstdReward: 120, platformFee: 30, category: 'Oceanography'
+        id: 'alphafold_protein',
+        title: 'Complex Protein Folding (Orphan Diseases)',
+        description: 'Perform immense permutations to predict 3D protein structures for rare uncurable genetic diseases, accelerating drug discovery.',
+        source: 'Global Genetic Banks',
+        severity: 'critical',
+        location: 'Global / Decentralized',
+        dataVolume: '120 TB / mo',
+        icon: Dna, color: 'text-emerald-300', bgColor: 'bg-emerald-400/10',
+        starsCost: 8000, gstdReward: 640, platformFee: 160, category: 'Life Science'
     },
     {
-        id: 'osm_disaster',
-        title: 'HOTOSM Disaster Zone Mapping',
-        description: 'Identify damaged infrastructure, blocked roads, and safe zones from satellite signals in post-disaster areas to optimize rescue routing.',
-        source: 'Humanitarian OpenStreetMap',
+        id: 'seismic_array',
+        title: 'Global Seismic Anomaly Detection',
+        description: 'Analyze real-time low-frequency tectonic data from global seismograph networks to find micro-patterns preceding major earthquakes.',
+        source: 'IRIS & Global Seismographic Network',
         severity: 'high',
-        location: 'Current Disaster Zones',
-        dataVolume: '1.2 TB / area',
-        icon: MapPin, color: 'text-emerald-400', bgColor: 'bg-emerald-500/10',
-        starsCost: 1000, gstdReward: 80, platformFee: 20, category: 'Infrastructure'
+        location: 'Pacific Ring of Fire',
+        dataVolume: '18.5 TB / day',
+        icon: Activity, color: 'text-orange-400', bgColor: 'bg-orange-500/10',
+        starsCost: 4000, gstdReward: 320, platformFee: 80, category: 'Geophysics'
+    },
+    {
+        id: 'darknet_tracker',
+        title: 'Human Trafficking Vector Analysis',
+        description: 'NLP and image hash analysis across Dark Web scrapes to identify illicit supply chains and assist global law enforcement operations anonymously.',
+        source: 'OSINT Protocol Drops',
+        severity: 'critical',
+        location: 'Shadow Web / Global',
+        dataVolume: '3.1 TB / batch',
+        icon: ShieldCheck, color: 'text-fuchsia-400', bgColor: 'bg-fuchsia-500/10',
+        starsCost: 6000, gstdReward: 480, platformFee: 120, category: 'Cyber Security'
+    },
+    {
+        id: 'deepfake_firewall',
+        title: 'Real-Time AGI Deception Filter',
+        description: 'Run adversarial generative models to detect synthetic media (video/audio) designed to manipulate global elections and stock markets.',
+        source: 'Global Social Firehose',
+        severity: 'high',
+        location: 'North America / EU',
+        dataVolume: '50.1 TB / week',
+        icon: BrainCircuit, color: 'text-cyan-300', bgColor: 'bg-cyan-400/10',
+        starsCost: 2500, gstdReward: 200, platformFee: 50, category: 'Information Security'
     },
     {
         id: 'cern_physics',
@@ -99,6 +121,28 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
         dataVolume: '120 TB / batch',
         icon: Network, color: 'text-blue-400', bgColor: 'bg-blue-500/10',
         starsCost: 8000, gstdReward: 640, platformFee: 160, category: 'Physics & Energy'
+    },
+    {
+        id: 'copernicus_marine',
+        title: 'Copernicus Ocean Heatwave Modeling',
+        description: 'Process deep oceanic temperature, drift, and salinity arrays to model the impact on marine ecosystems and global weather phenomena.',
+        source: 'Copernicus Marine Service',
+        severity: 'medium',
+        location: 'Pacific & Atlantic Oceans',
+        dataVolume: '8.1 TB / mo',
+        icon: Droplets, color: 'text-teal-400', bgColor: 'bg-teal-500/10',
+        starsCost: 1500, gstdReward: 120, platformFee: 30, category: 'Oceanography'
+    },
+    {
+        id: 'osm_disaster',
+        title: 'HOTOSM Disaster Zone Mapping',
+        description: 'Identify damaged infrastructure, blocked roads, and safe zones from satellite signals in post-disaster areas to optimize rescue routing.',
+        source: 'Humanitarian OpenStreetMap',
+        severity: 'high',
+        location: 'Current Disaster Zones',
+        dataVolume: '1.2 TB / area',
+        icon: MapPin, color: 'text-red-400', bgColor: 'bg-red-500/10',
+        starsCost: 1000, gstdReward: 80, platformFee: 20, category: 'Infrastructure'
     },
 ];
 
