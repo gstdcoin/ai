@@ -300,6 +300,12 @@ func (o *TaskOrchestrator) CompleteTask(ctx context.Context, result *TaskResult)
 		return fmt.Errorf("failed to update task completion: %w", err)
 	}
 
+	// === SIGNAL FEEDBACK LOOP ===
+	// If this is a signal_analysis task, update monitor_signals with real progress
+	if strings.HasPrefix(result.TaskID, "signal_") {
+		o.updateSignalProgress(ctx, result)
+	}
+
 	log.Printf("✅ Task %s completed by worker %s in %dms",
 		result.TaskID, result.WorkerWallet[:16], result.ExecutionTime)
 
@@ -755,11 +761,13 @@ func (o *TaskOrchestrator) monitorWorkerCapacity(ctx context.Context) {
 }
 
 // AutoCleanStaleTasks removes tasks older than 24h that are in pending/queued/assigned status
+// EXCLUDES signal_analysis tasks — those persist until solved
 func (o *TaskOrchestrator) AutoCleanStaleTasks(ctx context.Context) {
 	res, err := o.db.ExecContext(ctx, `
 		DELETE FROM tasks 
 		WHERE status IN ('pending', 'queued', 'assigned')
 		AND created_at < NOW() - INTERVAL '24 hours'
+		AND task_type != 'signal_analysis'
 	`)
 	if err == nil {
 		count, _ := res.RowsAffected()
@@ -767,6 +775,64 @@ func (o *TaskOrchestrator) AutoCleanStaleTasks(ctx context.Context) {
 			log.Printf("🧹 [Orchestrator] Pruned %d stale tasks older than 24 hours.", count)
 		}
 	}
+}
+
+// updateSignalProgress updates monitor_signals when a signal_analysis task completes
+// This closes the feedback loop: Sponsor → Task → Worker → Result → Monitor Progress
+func (o *TaskOrchestrator) updateSignalProgress(ctx context.Context, result *TaskResult) {
+	// Extract signal_id from task_id (format: signal_{signalID}_{uuid})
+	parts := strings.SplitN(result.TaskID, "_", 3)
+	if len(parts) < 3 {
+		return
+	}
+	signalID := parts[1]
+	// Some signal IDs have underscores (e.g. nasa_eosdis → signal_nasa_eosdis_abc123)
+	// Re-parse: remove "signal_" prefix and last "_xxxx" suffix
+	withoutPrefix := strings.TrimPrefix(result.TaskID, "signal_")
+	lastUnderscore := strings.LastIndex(withoutPrefix, "_")
+	if lastUnderscore > 0 {
+		signalID = withoutPrefix[:lastUnderscore]
+	}
+
+	resultSummary := ""
+	if result.ResultData != nil {
+		resultSummary = string(result.ResultData)
+		if len(resultSummary) > 500 {
+			resultSummary = resultSummary[:500] + "..."
+		}
+	}
+
+	// Estimate data processed (based on execution time — faster = more efficient worker)
+	dataTB := float64(result.ExecutionTime) / 60000.0 // rough: 1 min ≈ 1 TB processed
+
+	// Update monitor_signals atomically
+	_, err := o.db.ExecContext(ctx, `
+		UPDATE monitor_signals SET
+			tasks_completed = tasks_completed + 1,
+			contributor_count = contributor_count + 1,
+			data_processed_tb = data_processed_tb + $1,
+			progress = LEAST(100, progress + GREATEST(1, 
+				CASE WHEN tasks_created > 0 
+				     THEN CAST((100.0 / GREATEST(tasks_created, 1)) AS INTEGER)
+				     ELSE 5 END)),
+			last_result = CASE WHEN $2 != '' THEN $2 ELSE last_result END,
+			last_completed_at = NOW(),
+			updated_at = NOW()
+		WHERE signal_id = $3
+	`, dataTB, resultSummary, signalID)
+
+	if err != nil {
+		log.Printf("⚠️ [Signal] Failed to update progress for %s: %v", signalID, err)
+	} else {
+		log.Printf("🌍 [Signal] %s progress updated (task %s completed by %s)", signalID, result.TaskID, result.WorkerWallet[:12])
+	}
+
+	// Also update sponsorship status
+	_, _ = o.db.ExecContext(ctx, `
+		UPDATE monitor_sponsorships SET status = 'completed', result_summary = $1, completed_at = NOW()
+		WHERE signal_id = $2 AND status = 'processing'
+		AND id = (SELECT id FROM monitor_sponsorships WHERE signal_id = $2 AND status = 'processing' ORDER BY created_at LIMIT 1)
+	`, resultSummary, signalID)
 }
 
 // Helper function for Go 1.21+
