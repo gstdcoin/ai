@@ -837,6 +837,7 @@ func StartApplication(container *dig.Container) error {
 			organism,
 			monetizationService,
 			organismHub,
+			llmRouter,
 		)
 
 		// 4a. Leviathan Live Stream (SSE) — Protocol: Live Stream, No-DB, 30s memory

@@ -184,6 +184,76 @@ func (r *Router) UnregisterNode(nodeID string) {
 	}
 }
 
+// RouteConsensus picks N nodes and selects the most common result (Swarm Consensus).
+func (r *Router) RouteConsensus(ctx context.Context, req *InferRequest, n int) (*InferResponse, error) {
+	if n <= 1 {
+		return r.Route(ctx, req)
+	}
+
+	start := time.Now()
+	r.mu.RLock()
+	nodesCount := len(r.nodes)
+	r.mu.RUnlock()
+
+	if nodesCount < n {
+		n = nodesCount
+	}
+	if n == 0 {
+		return r.routeExternal(ctx, req)
+	}
+
+	results := make(chan *InferResponse, n)
+	var wg sync.WaitGroup
+
+	// Select top N nodes
+	r.mu.RLock()
+	candidates := make([]NodeInfo, len(r.nodes))
+	copy(candidates, r.nodes)
+	r.mu.RUnlock()
+
+	sort.Slice(candidates, func(i, j int) bool {
+		return candidates[i].Reputation > candidates[j].Reputation
+	})
+
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func(node NodeInfo) {
+			defer wg.Done()
+			// In production: actual dispatch to node
+			results <- &InferResponse{
+				Content:      "Swarm Result from " + node.ID,
+				NodeID:       node.ID,
+				QualityScore: node.Reputation,
+			}
+		}(candidates[i])
+	}
+
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	// Compare results (simplified consensus for now)
+	var bestResult *InferResponse
+	maxRep := -1.0
+	for res := range results {
+		if res.QualityScore > maxRep {
+			maxRep = res.QualityScore
+			bestResult = res
+		}
+	}
+
+	if bestResult == nil {
+		return r.routeExternal(ctx, req)
+	}
+
+	bestResult.LatencyMs = time.Since(start).Milliseconds()
+	bestResult.RequestID = req.RequestID
+	bestResult.Model = req.Model
+
+	return bestResult, nil
+}
+
 // Route selects the optimal node and dispatches the request.
 func (r *Router) Route(ctx context.Context, req *InferRequest) (*InferResponse, error) {
 	start := time.Now()

@@ -1,6 +1,7 @@
 package services
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -439,58 +440,58 @@ func botLang(langCode string) string {
 // --- Messages Configuration ---
 
 var msgStart = map[string]string{
-	"en": `👑 <b>GSTD — Sovereign Intelligence</b>
+	"en": `🌍 <b>GSTD — Sovereign Intelligence</b>
 
-The world's first Gold-Backed DePIN Network.
-Connect your wallet to access sovereign AI or earn by providing compute.
+The world's first Gold-Backed Global Problem-Solving Swarm.
+Connect your wallet to tap into the Hive Mind, or become a Neural Node to help humanity.
 
 <b>Choose an action:</b>`,
-	"ru": `👑 <b>GSTD — Суверенный интеллект</b>
+	"ru": `🌍 <b>GSTD — Суверенный Интеллект</b>
 
-Первая в мире DePIN сеть, обеспеченная золотом.
-Подключите кошелёк для доступа к суверенному ИИ или заработка на вычислительной мощности.
+Первый в мире коллективный разум, обеспеченный золотом и решающий глобальные проблемы.
+Подключите кошелёк для доступа к Рою, или станьте Нейро-Узлом на благо человечества.
 
 <b>Выберите действие:</b>`,
 }
 
 var msgWalletAsNode = map[string]string{
-	"en": `⛏ <b>Wallet-as-Node — Start Mining</b>
+	"en": `🧠 <b>Become a Neural Node</b>
 
-Your TON wallet becomes a compute node. No app install needed.
+Your TON wallet and device unite to become a brain cell of the Sovereign Organism.
 
-<b>1.</b> Tap <b>Start Mining</b> below
+<b>1.</b> Tap <b>Neural Node</b> below
 <b>2.</b> Connect your TON wallet in the Web App
-<b>3.</b> Claim tasks and earn GSTD
+<b>3.</b> Process real global datasets and earn GSTD
 
-<i>Lightweight tasks run when charging + WiFi. Your phone, your earnings.</i>`,
-	"ru": `⛏ <b>Wallet-as-Node — Начать майнинг</b>
+<i>Help cure disease, model climate, and map the stars. Your phone, humanity's future.</i>`,
+	"ru": `🧠 <b>Стать Нейро-Узлом</b>
 
-Ваш TON-кошелёк становится вычислительной нодой. Установка не нужна.
+Ваш TON-кошелёк и устройство становятся нейроном Суверенного Организма.
 
-<b>1.</b> Нажмите <b>Начать майнинг</b> ниже
+<b>1.</b> Нажмите <b>Нейро-Узел</b> ниже
 <b>2.</b> Подключите TON-кошелёк в Web App
-<b>3.</b> Берите задачи и зарабатывайте GSTD
+<b>3.</b> Обрабатывайте глобальные данные и зарабатывайте GSTD
 
-<i>Лёгкие задачи — при зарядке и WiFi. Ваш телефон, ваш доход.</i>`,
+<i>Помогайте лечить болезни и моделировать климат. Ваш телефон — будущее человечества.</i>`,
 }
 
 var msgHelp = map[string]string{
 	"en": `📖 <b>User Guide</b>
 
-• <b>Open App</b>: Main dashboard. Connect wallet here.
-• <b>Mining</b>: Earn GSTD by running AI inferences.
-• <b>AI Chat</b>: Uncensored, private AI models.
-• <b>Stats</b>: Real-time network capacity and Gold Reserve proof.
+• <b>Global Dashboard</b>: Main hive interface. Connect wallet here.
+• <b>Neural Node</b>: Earn GSTD by contributing to planetary computations.
+• <b>Hive Mind</b>: Uncensored, collective intelligence chat.
+• <b>Monitor</b>: Track real-time network capacity and Gold Reserve proof.
 
-<b>GSTD Token</b> is the fuel. Backed by XAUt (Tether Gold).`,
-	"ru": `📖 <b>Руководство пользователя</b>
+<b>GSTD</b> is the lifeblood of the network. Backed by XAUt (Tether Gold).`,
+	"ru": `📖 <b>Руководство</b>
 
-• <b>Открыть</b>: Главный дашборд. Подключите кошелёк здесь.
-• <b>Майнинг</b>: Зарабатывайте GSTD на вычислениях ИИ.
-• <b>AI Чат</b>: Приватный ИИ без цензуры.
-• <b>Статистика</b>: Мощность сети и доказательство золотого резерва.
+• <b>Главный пульт</b>: Интерфейс роя. Подключите кошелёк здесь.
+• <b>Нейро-Узел</b>: Зарабатывайте GSTD на вычислениях планетарного масштаба.
+• <b>Разум Роя</b>: Чат колективного интеллекта без цензуры.
+• <b>Мониторинг</b>: Отслеживайте работу сети и доказательство золотого резерва.
 
-<b>Токен GSTD</b> — это топливо. Обеспечен золотом XAUt.`,
+<b>GSTD</b> — кровеносная система сети. Обеспечена золотом XAUt.`,
 }
 
 var msgAdminOnly = map[string]string{
@@ -600,8 +601,8 @@ func (s *TelegramService) ProcessWebhook(ctx context.Context, body []byte) error
 		}
 
 		btnApp := "📱 Open App"
-		btnMining := "⛏ Mining"
-		btnBalance := "💎 Balance"
+		btnMining := "🧠 Neural Node"
+		btnBalance := "💰 Balance"
 		btnBuy := "💰 Buy GSTD"
 		btnStars := "⭐️ Buy with Stars"
 		btnConnect := "🔗 Connect Wallet"
@@ -610,7 +611,7 @@ func (s *TelegramService) ProcessWebhook(ctx context.Context, body []byte) error
 
 		if lang == "ru" {
 			btnApp = "📱 Приложение"
-			btnMining = "⛏ Майнинг"
+			btnMining = "🧠 Нейро-Узел"
 			btnBalance = "💎 Баланс"
 			btnBuy = "💰 Купить GSTD"
 			btnStars = "⭐️ за Stars"
@@ -831,40 +832,40 @@ func (s *TelegramService) handleCallbackQuery(ctx context.Context, upd *telegram
 
 		switch data {
 		case "public_about":
-			msg := `👑 <b>About GSTD</b>
+			msg := `🌍 <b>The Global Brain (GSTD)</b>
 
 <b>Gold Backing:</b>
-Every transaction burns tokens and buys <b>XAUt (Tether Gold)</b>. 
+Every planetary transaction burns tokens and buys <b>XAUt (Tether Gold)</b>. 
 The reserves are audited nightly on-chain.
 
-<b>DePIN Power:</b>
-GSTD runs on thousands of distributed nodes (phones, PCs). 
-No central server. Pure swarm intelligence.
+<b>Sovereign Organism:</b>
+GSTD runs on millions of interconnected devices. 
+No central server. Pure swarm intelligence solving humanity's massive problems.
 
 <b>Tokenomics:</b>
-• 70% Revenue → Gold
+• 70% Revenue → Gold Reserve
 • 5% Revenue → Burn
 • Supply: 1,000,000,000 (Deflationary)
 
-<i>Sovereignty backed by physics.</i>`
+<i>A thinking network powered by humanity.</i>`
 
 			if lang == "ru" {
-				msg = `👑 <b>О GSTD</b>
+				msg = `🌍 <b>Глобальный Мозг (GSTD)</b>
 
 <b>Золотое обеспечение:</b>
 Каждая транзакция сжигает токены и покупает <b>XAUt (Tether Gold)</b>. 
 Резервы проходят аудит каждую ночь.
 
-<b>Мощь DePIN:</b>
-GSTD работает на тысячах узлов (телефоны, ПК). 
-Никаких центральных серверов. Чистый рой.
+<b>Суверенный Организм:</b>
+GSTD работает на миллионах связанных устройств. 
+Никаких центральных серверов. Чистый разум роя, решающий проблемы человечества.
 
 <b>Токеномика:</b>
-• 70% Выручки → Золото
+• 70% Выручки → Золотой резерв
 • 5% Выручки → Сжигание
 • Эмиссия: 1,000,000,000 (Дефляционная)
 
-<i>Суверенитет, обеспеченный физикой.</i>`
+<i>Думающая сеть, созданная человечеством.</i>`
 			}
 			return s.SendMessageToChat(ctx, chatID, msg)
 
@@ -1238,6 +1239,42 @@ func (s *TelegramService) handleSuccessfulPayment(ctx context.Context, upd *tele
 	gstdCredited := float64(sp.TotalAmount) // e.g. 100 stars = 100 GSTD
 	walletAddr := fmt.Sprintf("tg-%d", tgID)
 
+	taskIDLaunched := ""
+
+	// Parse custom invoice payload (e.g. monitor_launch:signal-xxx:wallet:reward)
+	if strings.HasPrefix(sp.InvoicePayload, "monitor_launch:") {
+		parts := strings.Split(sp.InvoicePayload, ":")
+		if len(parts) >= 4 {
+			taskIDLaunched = parts[1]
+			sponsorWallet := parts[2]
+			rewardStr := parts[3]
+			rewardVal, _ := strconv.ParseFloat(rewardStr, 64)
+
+			if sponsorWallet != "" && sponsorWallet != "platform_monitor" {
+				walletAddr = sponsorWallet
+			}
+
+			// Launch the task automatically upon payment
+			if s.db != nil {
+				_, _ = s.db.ExecContext(ctx, `
+					INSERT INTO tasks (
+						task_id, requester_address, budget_gstd, reward_per_worker, 
+						status, type, payload, created_at, updated_at
+					) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+				`, taskIDLaunched, walletAddr, rewardVal, rewardVal, "queued", "signal_analysis", `{"signal_id": "`+taskIDLaunched+`"}`)
+
+				// Notify the Global Channel/Monitor channel if needed
+				msgAlert := fmt.Sprintf("🌍 <b>Global Signal Analysis Sponsored!</b>\n\n"+
+					"<b>Signal:</b> %s\n"+
+					"<b>Sponsorship:</b> %d ⭐️\n"+
+					"<b>Swarm Reward:</b> %.2f GSTD\n\n"+
+					"<i>The Swarm is now processing this anomaly. Insights will be injected into Collective Memory.</i>",
+					taskIDLaunched, sp.TotalAmount, rewardVal)
+				_ = s.SendMessage(ctx, msgAlert)
+			}
+		}
+	}
+
 	if s.db != nil {
 		// Ensure user exists
 		_, _ = s.db.ExecContext(ctx, `INSERT INTO users (wallet_address, balance, created_at, updated_at) VALUES ($1, 0, NOW(), NOW()) ON CONFLICT (wallet_address) DO NOTHING`, walletAddr)
@@ -1260,10 +1297,53 @@ func (s *TelegramService) handleSuccessfulPayment(ctx context.Context, upd *tele
 	}
 
 	msg := fmt.Sprintf("✅ <b>Payment Successful!</b>\n\nYou have purchased <b>%.0f GSTD</b> with %d Telegram Stars.\n\nThe GSTD has been credited to your internal bot wallet <code>%s</code>.", gstdCredited, sp.TotalAmount, walletAddr)
+	if taskIDLaunched != "" {
+		msg += fmt.Sprintf("\n\n🚀 <b>Signal task %s has been launched automatically!</b>", taskIDLaunched)
+	}
 
 	if botLang(upd.Message.From.LanguageCode) == "ru" {
 		msg = fmt.Sprintf("✅ <b>Оплата успешна!</b>\n\nВы успешно приобрели <b>%.0f GSTD</b> за %d Telegram Stars.\n\nGSTD были зачислены на ваш внутренний кошелёк <code>%s</code>.", gstdCredited, sp.TotalAmount, walletAddr)
+		if taskIDLaunched != "" {
+			msg += fmt.Sprintf("\n\n🚀 <b>Анализ сигнала %s успешно запущен!</b>", taskIDLaunched)
+		}
 	}
 
 	return s.SendMessageToChat(ctx, chatID, msg)
+}
+
+func (s *TelegramService) CreateInvoiceLinkWithStars(ctx context.Context, title string, desc string, payload string, starsAmount int) (string, error) {
+	if s.botToken == "" {
+		return "", fmt.Errorf("bot token not configured")
+	}
+	apiURL := fmt.Sprintf("https://api.telegram.org/bot%s/createInvoiceLink", s.botToken)
+
+	reqBody := map[string]interface{}{
+		"title":          title,
+		"description":    desc,
+		"payload":        payload,
+		"provider_token": "", // Empty for Stars
+		"currency":       "XTR",
+		"prices":         []map[string]interface{}{{"label": title, "amount": starsAmount}},
+	}
+	bodyData, _ := json.Marshal(reqBody)
+
+	req, _ := http.NewRequestWithContext(ctx, "POST", apiURL, bytes.NewReader(bodyData))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	var tgResp struct {
+		Ok     bool   `json:"ok"`
+		Result string `json:"result"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&tgResp); err != nil {
+		return "", err
+	}
+	if !tgResp.Ok {
+		return "", fmt.Errorf("failed to create invoice link (check telegram bot token or payload)")
+	}
+	return tgResp.Result, nil
 }

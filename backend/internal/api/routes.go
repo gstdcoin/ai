@@ -13,6 +13,8 @@ import (
 	"strings"
 	"time"
 
+	infRouter "distributed-computing-platform/internal/inference"
+
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
@@ -73,6 +75,7 @@ func SetupRoutes(
 	organism *services.SovereignOrganismService,
 	monetizationService *services.MonetizationMetricsService,
 	organismHub *services.OrganismHubService,
+	llmRouter *infRouter.Router,
 ) {
 	log.Printf("🔧 SetupRoutes: Starting route setup, redisClient type: %T", redisClient)
 
@@ -110,7 +113,7 @@ func SetupRoutes(
 	brainHandler := NewBrainHandler(knowledgeService)
 
 	// Initialize Gateway/API Key Handler
-	gatewayHandler := NewGatewayHandler(apiKeyService, taskService, db.(*sql.DB))
+	gatewayHandler := NewGatewayHandler(apiKeyService, taskService, db.(*sql.DB), llmRouter)
 	if guardrailsService != nil {
 		gatewayHandler.SetGuardrails(guardrailsService)
 	}
@@ -514,6 +517,9 @@ func SetupRoutes(
 
 		// Sovereign Compute Bridge (MoltBot integration)
 		SetupBridgeRoutes(v1, sovereignBridge)
+
+		// Monitor Routes (Signal Launch)
+		setupMonitorRoutes(v1, taskService, telegramService, db.(*sql.DB))
 
 		// Knowledge / Hive Memory
 		SetupKnowledgeRoutes(protected, knowledgeService)

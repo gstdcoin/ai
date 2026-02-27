@@ -155,7 +155,7 @@ export default function Home() {
             </h1>
 
             <p className="text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed mb-10">
-              The ultimate decentralized AI network. Companies purchase compute power with GSTD to solve massive tasks. You use it like any premium AI service, paying with GSTD — or <span className="text-emerald-400 font-bold">earn it by connecting your devices</span> to the grid.
+              GSTD forms a decentralized planetary brain. By contributing your unused compute power, you become a neural node—helping humanity solve complex global problems, from medical research to climate modeling. Access the Hive Mind to enhance your capabilities, or <span className="text-emerald-400 font-bold">connect your devices</span> to earn GSTD.
             </p>
 
             {/* Interactive Chat Hook */}
@@ -196,15 +196,15 @@ export default function Home() {
                 <div className="w-12 h-12 rounded-2xl bg-violet-500/20 flex items-center justify-center mb-6">
                   <MessageSquare className="text-violet-400 group-hover:scale-110 transition-transform" size={24} />
                 </div>
-                <h2 className="text-2xl font-black tracking-tight mb-3 text-white">Use Premium AI</h2>
+                <h2 className="text-2xl font-black tracking-tight mb-3 text-white">Tap the Hive Mind</h2>
                 <p className="text-gray-400 mb-8 leading-relaxed font-medium">
-                  Use it like ChatGPT or any commercial service, but pay with GSTD. Access world-class models for creative, coding, and reasoning tasks. Complete privacy, zero corporate oversight.
+                  Use the Global Brain to solve any task. Pay with GSTD to route your queries through the collective intelligence of thousands of nodes. True privacy, open-source models, zero corporate control.
                 </p>
                 <button
                   onClick={() => tonConnectUI.openModal()}
                   className="flex items-center gap-2 text-violet-400 font-black hover:gap-3 transition-all"
                 >
-                  Start Chatting <ArrowRight size={16} />
+                  Access Intelligence <ArrowRight size={16} />
                 </button>
               </div>
             </div>
@@ -215,15 +215,15 @@ export default function Home() {
                 <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 flex items-center justify-center mb-6">
                   <Zap className="text-emerald-400 group-hover:scale-110 transition-transform" size={24} />
                 </div>
-                <h2 className="text-2xl font-black tracking-tight mb-3 text-white">Provide Compute</h2>
+                <h2 className="text-2xl font-black tracking-tight mb-3 text-white">Become a Neural Node</h2>
                 <p className="text-gray-400 mb-8 leading-relaxed font-medium">
-                  Don't have GSTD? Connect your smart device or PC to the swarm. Earn GSTD by processing decentralized tasks for companies solving complex, massive computations.
+                  Turn your phone or PC into a neuron of the Sovereign Organism. Earn GSTD dynamically while your device processes distributed AI tasks contributing to the greater good of humanity.
                 </p>
                 <button
                   onClick={() => tonConnectUI.openModal()}
                   className="flex items-center gap-2 text-emerald-400 font-black hover:gap-3 transition-all"
                 >
-                  Ignite Miner <ArrowRight size={16} />
+                  Ignite Your Node <ArrowRight size={16} />
                 </button>
               </div>
             </div>

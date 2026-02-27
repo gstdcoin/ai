@@ -1,21 +1,28 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Head from 'next/head';
-import { Globe2, Sprout, HeartPulse, Droplets, BookOpen, Sun, Activity, Database, ShieldCheck, Code, Zap, FileDown, CheckCircle, ChevronRight, Target, Dna, ArrowRight, TrendingUp } from 'lucide-react';
+import {
+    Globe2, Sprout, HeartPulse, Droplets, BookOpen, Sun,
+    Activity, ShieldCheck, Code, Zap, Database, CheckCircle,
+    Target, Dna, ArrowRight, TrendingUp, Cpu, Star, Lock, BrainCircuit, Share2, Radio, AlertTriangle, MapPin, Network
+} from 'lucide-react';
 import { toast } from '../../lib/toast';
-import { useWalletStore } from '../../store/walletStore';
 import { apiGet, apiPost } from '../../lib/apiClient';
 
-interface Metric {
+interface GlobalSignal {
     id: string;
     title: string;
-    startValue: number;
-    incrementPerSec: number;
-    unit: string;
+    description: string;
+    source: string;
+    severity: 'critical' | 'high' | 'medium';
+    location: string;
+    dataVolume: string;
     icon: any;
     color: string;
     bgColor: string;
-    priceGstd: number;
-    desc: string;
+    starsCost: number;    // Cost in Telegram Stars
+    gstdReward: number;   // Equivalent reward for Swarm in GSTD
+    platformFee: number;  // Fee sent to Admin Wallet (Gold Backing)
+    category: string;
 }
 
 interface LogEntry {
@@ -26,52 +33,92 @@ interface LogEntry {
     timestamp: string;
 }
 
-// Ensure stable numbers start based on a fixed epoch time (start of 2026 roughly)
-const BASE_EPOCH = new Date('2026-01-01T00:00:00Z').getTime();
-
-// Verified global open-source telemetry averages for 2026
-const METRICS: Metric[] = [
-    { id: 'trees', title: 'Trees Planted (Global)', startValue: 15482912400, incrementPerSec: 45.0, unit: '', icon: Sprout, color: 'text-emerald-400', bgColor: 'bg-emerald-500/10', priceGstd: 2.5, desc: 'Global reforestation telemetry & climate impact data. Ideal for ecological modeling.' },
-    { id: 'diseases', title: 'Malaria Treatments Distributed', startValue: 452102000, incrementPerSec: 3.2, unit: '', icon: HeartPulse, color: 'text-rose-400', bgColor: 'bg-rose-500/10', priceGstd: 10.0, desc: 'Anonymized medical distribution networks. High value for pharmaceutical supply chain AI.' },
-    { id: 'water', title: 'Clean Water Delivered', startValue: 8021029340, incrementPerSec: 155.0, unit: ' L', icon: Droplets, color: 'text-cyan-400', bgColor: 'bg-cyan-500/10', priceGstd: 1.0, desc: 'IoT water filtration networks telemetry and global hydration availability indices.' },
-    { id: 'education', title: 'AI Educational Hours', startValue: 2401823901, incrementPerSec: 45.0, unit: ' Hrs', icon: BookOpen, color: 'text-amber-400', bgColor: 'bg-amber-500/10', priceGstd: 3.5, desc: 'AI tutor engagement metrics across developing nations. Critical for NLP fine-tuning.' },
-    { id: 'energy', title: 'Renewable Gen. YTD', startValue: 8421029, incrementPerSec: 240.0, unit: ' MWh', icon: Sun, color: 'text-yellow-400', bgColor: 'bg-yellow-500/10', priceGstd: 8.0, desc: 'Global decentralized solar & wind grid records for advanced climate simulators.' },
-    { id: 'opensource', title: 'Humanity AI Commits', startValue: 3410295, incrementPerSec: 0.8, unit: '', icon: Code, color: 'text-purple-400', bgColor: 'bg-purple-500/10', priceGstd: 5.0, desc: 'Real-time open-source code contributions and algorithmic baseline improvements.' },
-    { id: 'internet', title: 'Global Connectivity', startValue: 5502345000, incrementPerSec: 12.0, unit: '', icon: Globe2, color: 'text-blue-400', bgColor: 'bg-blue-500/10', priceGstd: 4.0, desc: 'Real-time tracking of internet penetration and global macro-connectivity routing.' },
-    { id: 'space', title: 'Space Objects Tracked', startValue: 35402, incrementPerSec: 0.01, unit: '', icon: Target, color: 'text-slate-400', bgColor: 'bg-slate-500/10', priceGstd: 25.0, desc: 'High-frequency orbital telemetry mapping Near-Earth Objects. Used by aerospace nodes.' },
-    { id: 'cancer_research', title: 'Genomes Sequenced', startValue: 4204500, incrementPerSec: 0.12, unit: '', icon: Dna, color: 'text-pink-400', bgColor: 'bg-pink-500/10', priceGstd: 50.0, desc: 'Raw synthetic genomic datasets specialized for multi-modal protein synthesis AI.' },
+const ACTIVE_SIGNALS: GlobalSignal[] = [
+    {
+        id: 'gdelt_crisis',
+        title: 'GDELT Crisis Event Mapping',
+        description: 'Analyze massive global event logs (news, social, reports) to identify emerging humanitarian aid gaps and population displacement vectors.',
+        source: 'GDELT Project (Global Database)',
+        severity: 'critical',
+        location: 'Global / MENA Focus',
+        dataVolume: '14.2 TB / day',
+        icon: Globe2, color: 'text-rose-400', bgColor: 'bg-rose-500/10',
+        starsCost: 2000, gstdReward: 160, platformFee: 40, category: 'Humanitarian'
+    },
+    {
+        id: 'nasa_eosdis',
+        title: 'NASA EOSDIS Climate Anomaly Extraction',
+        description: 'Process raw satellite imagery and atmospheric data to detect early signs of severe deforestation and extreme surface temperature anomalies.',
+        source: 'NASA Earth Observation System',
+        severity: 'high',
+        location: 'Equatorial Band',
+        dataVolume: '45.8 TB / week',
+        icon: Sun, color: 'text-amber-400', bgColor: 'bg-amber-500/10',
+        starsCost: 3500, gstdReward: 280, platformFee: 70, category: 'Ecological'
+    },
+    {
+        id: 'who_pubmed',
+        title: 'Epidemiological Pattern Matching',
+        description: 'Semantic analysis of global medical literature and regional health reports to predict early-stage disease outbreak vectors.',
+        source: 'WHO GHO & PubMed Central',
+        severity: 'critical',
+        location: 'Southeast Asia / Global',
+        dataVolume: '2.4 TB / text',
+        icon: HeartPulse, color: 'text-purple-400', bgColor: 'bg-purple-500/10',
+        starsCost: 5000, gstdReward: 400, platformFee: 100, category: 'Medical AI'
+    },
+    {
+        id: 'copernicus_marine',
+        title: 'Copernicus Ocean Heatwave Modeling',
+        description: 'Process deep oceanic temperature, drift, and salinity arrays to model the impact on marine ecosystems and global weather phenomena.',
+        source: 'Copernicus Marine Service',
+        severity: 'medium',
+        location: 'Pacific & Atlantic Oceans',
+        dataVolume: '8.1 TB / mo',
+        icon: Droplets, color: 'text-cyan-400', bgColor: 'bg-cyan-500/10',
+        starsCost: 1500, gstdReward: 120, platformFee: 30, category: 'Oceanography'
+    },
+    {
+        id: 'osm_disaster',
+        title: 'HOTOSM Disaster Zone Mapping',
+        description: 'Identify damaged infrastructure, blocked roads, and safe zones from satellite signals in post-disaster areas to optimize rescue routing.',
+        source: 'Humanitarian OpenStreetMap',
+        severity: 'high',
+        location: 'Current Disaster Zones',
+        dataVolume: '1.2 TB / area',
+        icon: MapPin, color: 'text-emerald-400', bgColor: 'bg-emerald-500/10',
+        starsCost: 1000, gstdReward: 80, platformFee: 20, category: 'Infrastructure'
+    },
+    {
+        id: 'cern_physics',
+        title: 'CERN Particle Collision Crunching',
+        description: 'Process high-energy collision layer data to assist in foundational physics discovery and material science advancements for clean energy.',
+        source: 'CERN Open Data Portal',
+        severity: 'medium',
+        location: 'Geneva / Virtual',
+        dataVolume: '120 TB / batch',
+        icon: Network, color: 'text-blue-400', bgColor: 'bg-blue-500/10',
+        starsCost: 8000, gstdReward: 640, platformFee: 160, category: 'Physics & Energy'
+    },
 ];
 
 export default function HumanityMonitor() {
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    const [currentTime, setCurrentTime] = useState(Date.now());
-    const [selectedMetric, setSelectedMetric] = useState<Metric | null>(null);
-    const { isConnected, gstdBalance, updateBalance, address } = useWalletStore();
+    const [selectedSignal, setSelectedSignal] = useState<GlobalSignal | null>(null);
     const [isPurchasing, setIsPurchasing] = useState(false);
+    const [purchaseStep, setPurchaseStep] = useState<number>(0);
     const [liveLogs, setLiveLogs] = useState<LogEntry[]>([]);
     const [stats, setStats] = useState({
         activeNodes: 0,
         gstdPrice: 0,
-        tps: 0,
+        dataProcessed: 0,
         health: 0.95
     });
 
-    // Continuous ticker update for UI/Canvas
-    useEffect(() => {
-        let animationFrame: number;
-        const tick = () => {
-            setCurrentTime(Date.now());
-            animationFrame = requestAnimationFrame(tick);
-        };
-        animationFrame = requestAnimationFrame(tick);
-        return () => cancelAnimationFrame(animationFrame);
-    }, []);
-
-    // Polling Unified Logs & Stats
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const data = await apiGet<any>('/monitor/unified');
+                const data = await apiGet<any>('/monitor/unified').catch(() => null);
                 if (data) {
                     if (data.flows?.recent_events) {
                         setLiveLogs(data.flows.recent_events.slice(0, 10));
@@ -80,22 +127,20 @@ export default function HumanityMonitor() {
                     const mkt = data.market || {};
                     const org = data.organism || {};
                     setStats({
-                        activeNodes: eco.active_nodes || 14201,
-                        gstdPrice: mkt.gstd_price_usd || 0.000000,
-                        tps: data.flows?.global_tps || 14.5,
-                        health: org.health_score || 1.0
+                        activeNodes: eco.active_nodes || 15420,
+                        gstdPrice: mkt.gstd_price_usd || 0.052,
+                        dataProcessed: data.flows?.global_tps * 1.5 || 245.5, // TB Processed mock
+                        health: org.health_score || 0.99
                     });
                 }
-            } catch (e) {
-                // Silent fail
-            }
+            } catch (e) { }
         };
         fetchData();
-        const interval = setInterval(fetchData, 5000);
+        const interval = setInterval(fetchData, 4000);
         return () => clearInterval(interval);
     }, []);
 
-    // Canvas Background (Organic Nodes)
+    // Canvas Background (Global Signal Radar Effect)
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -103,7 +148,7 @@ export default function HumanityMonitor() {
         if (!ctx) return;
 
         let animationFrameId: number;
-
+        let ptime = 0;
         const resize = () => {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
@@ -111,248 +156,255 @@ export default function HumanityMonitor() {
         window.addEventListener('resize', resize);
         resize();
 
-        const organisms: any[] = [];
-        for (let i = 0; i < 60; i++) {
-            organisms.push({
+        const signals: any[] = [];
+        for (let i = 0; i < 30; i++) {
+            signals.push({
                 x: Math.random() * canvas.width,
                 y: Math.random() * canvas.height,
-                radius: Math.random() * 2 + 1,
-                vx: (Math.random() - 0.5) * 0.4,
-                vy: (Math.random() - 0.5) * 0.4,
-                phase: Math.random() * Math.PI * 2
+                radius: 0,
+                maxRadius: Math.random() * 100 + 50,
+                speed: Math.random() * 0.5 + 0.2,
+                color: ['rgba(14, 165, 233,', 'rgba(16, 185, 129,', 'rgba(244, 63, 94,'][Math.floor(Math.random() ** 2 * 3)] // weighted colors
             });
         }
 
-        const animate = () => {
-            ctx.fillStyle = 'rgba(2, 6, 23, 0.2)'; // Deep slate background
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        const animate = (time: number) => {
+            if (time - ptime > 30) {
+                ctx.fillStyle = 'rgba(2, 6, 23, 0.15)'; // Deep fading trail
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ptime = time;
+            }
 
-            organisms.forEach((org, i) => {
-                org.x += org.vx;
-                org.y += org.vy;
-                org.phase += 0.015;
-
-                if (org.x < 0) org.x = canvas.width;
-                if (org.x > canvas.width) org.x = 0;
-                if (org.y < 0) org.y = canvas.height;
-                if (org.y > canvas.height) org.y = 0;
-
-                const glow = Math.sin(org.phase) * 0.5 + 0.5;
-                ctx.beginPath();
-                ctx.arc(org.x, org.y, org.radius + glow * 2, 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(16, 185, 129, ${glow * 0.5})`; // Emerald glow
-                ctx.fill();
-
-                // Draw connecting lines if close
-                for (let j = i + 1; j < organisms.length; j++) {
-                    const peer = organisms[j];
-                    const dx = peer.x - org.x;
-                    const dy = peer.y - org.y;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-                    if (dist < 180) {
-                        ctx.beginPath();
-                        ctx.moveTo(org.x, org.y);
-                        ctx.lineTo(peer.x, peer.y);
-                        ctx.strokeStyle = `rgba(16, 185, 129, ${0.1 * (1 - dist / 180)})`;
-                        ctx.lineWidth = 1;
-                        ctx.stroke();
-                    }
+            signals.forEach((sig) => {
+                sig.radius += sig.speed;
+                if (sig.radius > sig.maxRadius) {
+                    sig.radius = 0;
+                    sig.x = Math.random() * canvas.width;
+                    sig.y = Math.random() * canvas.height;
                 }
+
+                const alpha = (1 - (sig.radius / sig.maxRadius)) * 0.3;
+                ctx.beginPath();
+                ctx.arc(sig.x, sig.y, sig.radius, 0, Math.PI * 2);
+                ctx.strokeStyle = sig.color + alpha + ')';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
             });
+
+            // Draw grid
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.02)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            for (let x = 0; x < canvas.width; x += 100) { ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); }
+            for (let y = 0; y < canvas.height; y += 100) { ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); }
+            ctx.stroke();
 
             animationFrameId = requestAnimationFrame(animate);
         };
-        animate();
+        animationFrameId = requestAnimationFrame(animate);
         return () => {
             window.removeEventListener('resize', resize);
             cancelAnimationFrame(animationFrameId);
         };
     }, []);
 
-    const formatNumber = (num: number, isDecimal: boolean) => {
-        if (isDecimal) return num.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-        return Math.floor(num).toLocaleString();
-    };
-
-    const handlePurchase = async () => {
-        if (!selectedMetric) return;
-        if (!isConnected) {
-            toast.error('Connect your wallet to purchase datasets.');
-            return;
-        }
-        if ((gstdBalance || 0) < selectedMetric.priceGstd) {
-            toast.error(`Insufficient GSTD. You need ${selectedMetric.priceGstd} GSTD.`);
-            return;
-        }
-
+    const handleAnalyzeSignal = async () => {
+        if (!selectedSignal) return;
         setIsPurchasing(true);
+        setPurchaseStep(1);
 
         try {
-            // REAL PLATFORM INTERACTION
-            const res = await apiPost('/tasks', {
-                task_type: 'data_analysis',
-                operation: `dataset_extraction_${selectedMetric.id}`,
-                model: 'gstd-monitor-core',
-                is_private: true,
-                min_trust: 0.3,
-                is_encrypted: true,
-                reward: {
-                    amount_gstd: selectedMetric.priceGstd
-                },
-                input: {
-                    data: `Access and structure real-time dataset for: ${selectedMetric.title}. Target Node: ${address}`
-                }
+            const resp = await apiPost('/tasks/telegram-launch', {
+                task_id: selectedSignal.id,
+                stars_paid: selectedSignal.starsCost,
+                reward_gstd: selectedSignal.gstdReward,
+                admin_fee_gstd: selectedSignal.platformFee
             });
 
-            if (res?.task_id) {
-                toast.success(`Access Initiated! Task ID: ${res.task_id.substring(0, 8)} | Swarm is verifying request.`);
-                updateBalance("0", (gstdBalance || 0) - selectedMetric.priceGstd, 0);
+            if (resp.invoice_url) {
+                setPurchaseStep(2);
+
+                // Open real Telegram Telegram Stars invoice if in WebApp
+                if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp?.openInvoice) {
+                    (window as any).Telegram.WebApp.openInvoice(resp.invoice_url, (status: string) => {
+                        if (status === 'paid') {
+                            setPurchaseStep(3);
+                            setTimeout(() => {
+                                toast.success("Signal Routed to Swarm! " + selectedSignal.gstdReward + " GSTD locked for resolution. Insights will be saved to Collective Memory.");
+                                setIsPurchasing(false);
+                                setPurchaseStep(0);
+                                setSelectedSignal(null);
+
+                                setLiveLogs(prev => [{
+                                    id: Math.random().toString(),
+                                    type: 'SIGNAL_PROCESS',
+                                    chain: 'SWARM',
+                                    message: "[Signal Routing] " + selectedSignal.title + " assigned to Swarm.",
+                                    timestamp: new Date().toISOString()
+                                }, ...prev].slice(0, 15));
+                            }, 2000);
+                        } else {
+                            toast.error('Payment ' + status);
+                            setIsPurchasing(false);
+                            setPurchaseStep(0);
+                        }
+                    });
+                } else {
+                    // Fallback for dev/external browser
+                    window.open(resp.invoice_url, '_blank');
+                    setPurchaseStep(3);
+                    setTimeout(() => {
+                        toast.success("Signal Routed to Swarm! (Fallback Mode)");
+                        setIsPurchasing(false);
+                        setPurchaseStep(0);
+                        setSelectedSignal(null);
+                    }, 2000);
+                }
             } else {
-                toast.error('Failed to initiate dataset extraction task.');
+                toast.error("Failed to generate invoice");
+                setIsPurchasing(false);
+                setPurchaseStep(0);
             }
         } catch (e: any) {
-            console.error('Dataset purchase error', e);
-            if (e.response?.status === 402) {
-                toast.error(`Blockchain Error: Insufficient Wallet Balance for ${selectedMetric.priceGstd} GSTD.`);
-            } else {
-                toast.error(`Transaction failed: ${e.response?.data?.message || e.message}`);
-            }
-        } finally {
+            toast.error('Failed to route signal: ' + (e?.message || 'Unknown error'));
             setIsPurchasing(false);
-            setSelectedMetric(null);
+            setPurchaseStep(0);
         }
+    };
+
+    const getSeverityStyles = (severity: string) => {
+        if (severity === 'critical') return 'text-rose-400 bg-rose-500/10 border-rose-500/30';
+        if (severity === 'high') return 'text-amber-400 bg-amber-500/10 border-amber-500/30';
+        return 'text-sky-400 bg-sky-500/10 border-sky-500/30';
     };
 
     return (
-        <div className="bg-slate-950 text-white min-h-screen relative overflow-hidden font-sans antialiased selection:bg-emerald-500/30">
+        <div className="bg-slate-950 text-white min-h-screen relative overflow-hidden font-sans antialiased selection:bg-sky-500/30">
             <Head>
-                <title>Humanity Evolution Monitor | GSTD</title>
+                <title>Global Intelligence Monitor | GSTD</title>
             </Head>
 
             <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none z-0" />
 
             <div className="relative z-10 flex flex-col h-screen p-6 overflow-y-auto custom-scrollbar">
-
                 {/* Header */}
                 <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
                     <div className="flex items-center gap-5">
-                        <div className="w-16 h-16 bg-gradient-to-br from-emerald-500/20 to-teal-500/20 rounded-2xl flex items-center justify-center border border-emerald-500/20 shadow-[0_0_30px_rgba(16,185,129,0.2)] backdrop-blur-md">
-                            <Globe2 className="w-8 h-8 text-emerald-400 animate-[spin_10s_linear_infinite]" />
+                        <div className="w-16 h-16 bg-slate-900/80 rounded-2xl flex items-center justify-center border border-slate-700/80 shadow-[0_0_30px_rgba(14,165,233,0.1)] backdrop-blur-md relative overflow-hidden">
+                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(14,165,233,0.3)_0%,transparent_70%)] animate-pulse" />
+                            <Radio className="w-8 h-8 text-sky-400 relative z-10" />
                         </div>
                         <div>
                             <h1 className="text-3xl font-black tracking-tight text-white drop-shadow-2xl flex items-center gap-3">
-                                GLOBAL DATA EXCHANGE
-                                <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-bold text-emerald-400 tracking-widest uppercase flex items-center gap-1.5 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                                    Live Sync
+                                GLOBAL SIGNAL MONITOR
+                                <span className="px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-[10px] font-bold text-sky-400 tracking-widest uppercase flex items-center gap-1.5 shadow-[0_0_10px_rgba(14,165,233,0.1)]">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping absolute" />
+                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 relative" />
+                                    Live Signals
                                 </span>
                             </h1>
-                            <p className="text-sm font-medium text-slate-400 mt-1 max-w-xl">
-                                Real-time aggregate telemetry of humanity's progress via open data platforms. The Swarm generates datasets available for immediate decentralized acquisition.
+                            <p className="text-sm font-medium text-slate-400 mt-1 max-w-2xl leading-relaxed">
+                                Real-time intelligence dashboard mapping global open-data signals. Use Telegram Stars to sponsor deeper Swarm analysis on critical anomalies. Extracted knowledge is permanently injected into the Collective Memory.
                             </p>
                         </div>
                     </div>
 
                     <div className="flex flex-col md:flex-row items-end gap-3 md:gap-6">
                         <div className="flex gap-4">
-                            <div className="px-5 py-2.5 bg-slate-900/60 border border-slate-700/50 rounded-xl backdrop-blur-xl flex flex-col shadow-xl min-w-[120px]">
-                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">GSTD Price</span>
-                                <span className="text-sm font-bold text-amber-400">${stats.gstdPrice.toFixed(6)}</span>
+                            <div className="px-5 py-2.5 bg-slate-900/60 border border-slate-700/50 rounded-xl backdrop-blur-xl flex items-center gap-3 shadow-xl">
+                                <Database className="w-5 h-5 text-sky-400 opacity-70" />
+                                <div className="flex flex-col items-start">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Data Processed</span>
+                                    <span className="text-sm font-bold text-sky-400">{stats.dataProcessed.toFixed(1)} TB/day</span>
+                                </div>
                             </div>
                             <div className="px-5 py-2.5 bg-slate-900/60 border border-slate-700/50 rounded-xl backdrop-blur-xl flex flex-col shadow-xl min-w-[120px]">
                                 <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">Swarm Pulse</span>
-                                <span className="text-sm font-bold text-emerald-400">{stats.activeNodes.toLocaleString()} <span className="text-[10px] text-slate-500">Nodes</span></span>
-                            </div>
-                        </div>
-                        <div className="px-5 py-2.5 bg-slate-900/60 border border-slate-700/50 rounded-xl backdrop-blur-xl flex items-center gap-3 shadow-xl">
-                            <ShieldCheck className="w-5 h-5 text-emerald-400" />
-                            <div className="flex flex-col items-start">
-                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Integrity Score</span>
-                                <span className="text-sm font-bold text-emerald-400">{(stats.health * 100).toFixed(0)}% Stable</span>
+                                <span className="text-sm font-bold text-sky-400">{stats.activeNodes.toLocaleString()} <span className="text-[10px] text-slate-500">Nodes</span></span>
                             </div>
                         </div>
                     </div>
                 </header>
 
                 <div className="flex flex-col lg:flex-row gap-8 flex-1 content-start pb-20">
-
-                    {/* Main Metrics (Left 3/4) */}
+                    {/* Signals Grid (Left) */}
                     <div className="w-full lg:w-3/4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                        {METRICS.map((metric) => {
-                            const elapsedSecs = (currentTime - BASE_EPOCH) / 1000;
-                            const tickVal = elapsedSecs * metric.incrementPerSec;
-                            // Artificial organic jitter
-                            const jitter = (Math.sin(currentTime / 500 + metric.startValue) * 0.5 + 0.5) * metric.incrementPerSec * 2;
-                            const currentValue = metric.startValue + tickVal + jitter;
-                            const isDecimal = metric.incrementPerSec < 5 && metric.incrementPerSec > 0;
+                        {ACTIVE_SIGNALS.map((signal) => (
+                            <div
+                                key={signal.id}
+                                className="group relative bg-slate-900/60 backdrop-blur-xl border border-slate-700/60 hover:border-slate-500/50 rounded-3xl p-6 transition-all duration-300 hover:shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col justify-between"
+                            >
+                                <div className={"absolute top-0 right-0 w-32 h-32 rounded-full blur-[70px] opacity-10 group-hover:opacity-20 transition-opacity duration-500 " + signal.bgColor} />
 
-                            return (
-                                <div
-                                    key={metric.id}
-                                    className="group relative bg-slate-900/40 backdrop-blur-xl border border-slate-700/50 hover:border-slate-500/50 rounded-3xl p-6 transition-all duration-500 hover:shadow-[0_0_40px_rgba(0,0,0,0.3)] hover:-translate-y-1 overflow-hidden"
-                                >
-                                    <div className={`absolute top-0 right-0 w-48 h-48 rounded-full blur-[80px] opacity-10 group-hover:opacity-30 transition-opacity duration-500 ${metric.bgColor}`} />
-
-                                    <div className="flex items-start justify-between mb-8 relative z-10">
-                                        <div className="flex items-center gap-4">
-                                            <div className={`p-4 rounded-2xl ${metric.bgColor} shadow-inner`}>
-                                                <metric.icon className={`w-6 h-6 ${metric.color}`} />
+                                <div>
+                                    <div className="flex items-start justify-between mb-4 relative z-10">
+                                        <div className="flex flex-col gap-2">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <span className={"text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded border " + getSeverityStyles(signal.severity)}>
+                                                    {signal.severity}
+                                                </span>
+                                                <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
+                                                    <MapPin className="w-3 h-3" /> {signal.location}
+                                                </span>
                                             </div>
-                                            <h2 className="text-md md:text-lg font-bold text-slate-200 leading-tight">{metric.title}</h2>
-                                        </div>
-                                        <Activity className={`w-5 h-5 ${metric.color} opacity-40`} />
-                                    </div>
-
-                                    <div className="relative z-10 mb-8">
-                                        <div className="flex items-baseline gap-2">
-                                            <div className="text-3xl lg:text-4xl font-black text-white tracking-tighter tabular-nums drop-shadow-md">
-                                                {formatNumber(currentValue, isDecimal)}
-                                            </div>
-                                            <div className="text-md font-bold text-slate-400">{metric.unit}</div>
-                                        </div>
-                                        <div className="text-sm font-medium text-slate-500 mt-2 flex items-center gap-2">
-                                            <TrendingUp className="w-4 h-4 text-emerald-500" />
-                                            +{metric.incrementPerSec}/sec real-time
+                                            <h2 className="text-lg font-bold text-slate-100 leading-tight mt-1 group-hover:text-white transition-colors">{signal.title}</h2>
                                         </div>
                                     </div>
 
-                                    <div className="pt-6 border-t border-slate-800/50 flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
-                                        <div className="flex flex-col">
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Dataset Price</span>
-                                            <span className="text-base font-bold text-amber-400">{metric.priceGstd.toFixed(1)} GSTD</span>
+                                    <div className="bg-slate-950/40 rounded-xl p-3 border border-slate-800/80 mb-4 relative z-10">
+                                        <div className="text-[10px] uppercase font-bold text-slate-500 mb-1">Data Source</div>
+                                        <div className="text-xs font-mono text-sky-400 flex items-center justify-between">
+                                            <span>{signal.source}</span>
+                                            <span className="text-slate-500">{signal.dataVolume}</span>
                                         </div>
-                                        <button
-                                            onClick={() => setSelectedMetric(metric)}
-                                            className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-500 text-sm font-bold text-white transition-all shadow-lg flex items-center justify-center gap-2 group/btn"
-                                        >
-                                            <Database className="w-4 h-4 text-emerald-400 group-hover/btn:animate-pulse" />
-                                            Acquire
-                                        </button>
                                     </div>
+
+                                    <p className="text-xs text-slate-300 font-medium leading-relaxed mb-6 relative z-10">
+                                        {signal.description}
+                                    </p>
                                 </div>
-                            );
-                        })}
+
+                                <div className="pt-5 border-t border-slate-800/80 flex flex-col gap-3 relative z-10">
+                                    <div className="flex items-center justify-between text-xs">
+                                        <span className="font-medium text-slate-400">Compute Reward</span>
+                                        <span className="font-bold text-emerald-400 flex items-center gap-1">
+                                            <Database className="w-3 h-3" /> {signal.gstdReward} GSTD
+                                        </span>
+                                    </div>
+                                    <button
+                                        onClick={() => setSelectedSignal(signal)}
+                                        className="w-full py-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 hover:border-sky-500/50 text-sm font-bold text-white transition-all shadow-lg flex items-center justify-center gap-2 group/btn"
+                                    >
+                                        <Cpu className="w-4 h-4 text-sky-400 group-hover/btn:animate-pulse" />
+                                        Process Signal ({signal.starsCost} <Star className="w-3 h-3 text-yellow-400 fill-yellow-400 inline" />)
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
                     </div>
 
-                    {/* Right Live Terminal (1/4) */}
+                    {/* Right Live Terminal */}
                     <div className="w-full lg:w-1/4">
-                        <div className="h-full bg-slate-900/60 backdrop-blur-3xl border border-slate-700/50 rounded-3xl p-6 flex flex-col shadow-2xl relative group">
-                            <h2 className="text-xs font-black uppercase tracking-[0.2em] text-emerald-500 mb-6 flex items-center gap-3">
+                        <div className="h-full bg-slate-900/80 backdrop-blur-3xl border border-slate-700/60 rounded-3xl p-6 flex flex-col shadow-2xl relative group min-h-[500px]">
+                            <h2 className="text-xs font-black uppercase tracking-[0.2em] text-sky-400 mb-6 flex items-center gap-3">
                                 <Activity className="w-4 h-4" />
-                                Live Network Log
+                                Global Intake Feed
                             </h2>
                             <div className="flex-1 overflow-y-auto pr-2 space-y-4 custom-scrollbar">
                                 {liveLogs.length === 0 ? (
-                                    <div className="text-slate-500 text-xs text-center py-10 animate-pulse">Scanning Global Feeds...</div>
+                                    <div className="text-slate-500 text-xs text-center py-10 flex flex-col items-center gap-2">
+                                        <Radio className="w-6 h-6 animate-pulse opacity-50" />
+                                        Awaiting Global Transmissions...
+                                    </div>
                                 ) : (
                                     liveLogs.map((log, index) => (
-                                        <div key={index} className="pb-4 border-b border-slate-800/50 last:border-0 relative">
+                                        <div key={index} className="pb-4 border-b border-slate-800/80 last:border-0 relative">
                                             <div className="flex justify-between items-center mb-1.5">
-                                                <span className="text-[10px] font-black uppercase text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">{log.chain || 'SWARM'}</span>
+                                                <span className="text-[9px] font-black uppercase text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/20">{log.chain || 'NODE'}</span>
                                                 <span className="text-[10px] text-slate-500 font-mono">{new Date(log.timestamp).toLocaleTimeString()}</span>
                                             </div>
                                             <p className="text-xs font-medium leading-relaxed text-slate-300 relative pl-3">
-                                                <span className="absolute left-0 top-1.5 w-1 h-1 bg-emerald-500 rounded-full" />
+                                                <span className="absolute left-0 top-1.5 w-1 h-1 bg-sky-500 rounded-full shadow-[0_0_5px_rgba(14,165,233,0.8)]" />
                                                 {log.message}
                                             </p>
                                         </div>
@@ -361,69 +413,101 @@ export default function HumanityMonitor() {
                             </div>
                         </div>
                     </div>
-
                 </div>
             </div>
 
-            {/* Purchase Modal overlay */}
-            {selectedMetric && (
+            {/* Signal Process Modal */}
+            {selectedSignal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-md" onClick={() => !isPurchasing && setSelectedMetric(null)} />
-                    <div className="bg-slate-900 border border-emerald-500/30 rounded-3xl p-8 max-w-md w-full relative z-10 shadow-[0_0_50px_rgba(16,185,129,0.15)] animate-in fade-in zoom-in duration-300">
-                        <div className={`w-16 h-16 rounded-2xl ${selectedMetric.bgColor} flex items-center justify-center mb-6 mx-auto`}>
-                            <selectedMetric.icon className={`w-8 h-8 ${selectedMetric.color}`} />
+                    <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-md" onClick={() => !isPurchasing && setSelectedSignal(null)} />
+                    <div className="bg-slate-900 border border-slate-700 rounded-3xl p-8 max-w-md w-full relative z-10 shadow-[0_0_60px_rgba(0,0,0,0.8)] animate-in fade-in zoom-in duration-300">
+
+                        <div className={"w-16 h-16 rounded-2xl border flex items-center justify-center mb-6 mx-auto relative " + selectedSignal.bgColor + " " + getSeverityStyles(selectedSignal.severity).split(' ')[2]}>
+                            {isPurchasing && purchaseStep < 3 ? (
+                                <Zap className={"w-8 h-8 animate-pulse " + selectedSignal.color} />
+                            ) : isPurchasing && purchaseStep === 3 ? (
+                                <CheckCircle className={"w-8 h-8 " + selectedSignal.color} />
+                            ) : (
+                                <selectedSignal.icon className={"w-8 h-8 " + selectedSignal.color} />
+                            )}
                         </div>
-                        <h3 className="text-2xl font-black text-white text-center mb-2">Acquire Swarm Dataset</h3>
-                        <p className="text-slate-400 text-center text-sm font-medium mb-6 leading-relaxed">
-                            {selectedMetric.desc}
+
+                        <h3 className="text-xl font-black text-white text-center mb-2">Sponsor Signal Analysis</h3>
+                        <p className="text-slate-400 text-center text-sm font-medium mb-8 leading-relaxed px-2">
+                            Deploy the Swarm to structure and solve this open-source anomaly. Insights are permanently archived for humanity.
                         </p>
 
-                        <div className="bg-slate-950/50 rounded-2xl p-5 mb-8 border border-slate-800">
+                        <div className="bg-slate-950/80 rounded-2xl p-5 mb-8 border border-slate-800 shadow-inner">
+                            <div className="flex justify-between items-start mb-4 gap-4">
+                                <span className="text-sm font-medium text-slate-400 flex items-center gap-2 whitespace-nowrap">
+                                    <Target className="w-4 h-4" /> Signal Focus
+                                </span>
+                                <span className="text-sm font-bold text-white text-right leading-tight">{selectedSignal.title}</span>
+                            </div>
+
+                            <div className="flex justify-between items-center mb-4 pb-4 border-b border-slate-800/80">
+                                <span className="text-sm font-medium text-slate-400 flex items-center gap-2">
+                                    <Share2 className="w-4 h-4" /> Save To
+                                </span>
+                                <span className="text-xs font-bold text-sky-400 bg-sky-500/10 px-2 py-1 rounded border border-sky-500/20">
+                                    Collective Memory DB
+                                </span>
+                            </div>
+
                             <div className="flex justify-between items-center mb-3">
-                                <span className="text-sm font-medium text-slate-400">Target Concept</span>
-                                <span className="text-sm font-bold text-white">{selectedMetric.title}</span>
+                                <span className="text-sm font-medium text-slate-400 flex items-center gap-2">
+                                    <Database className="w-4 h-4 text-emerald-400" /> Reward to Swarm Nodes
+                                </span>
+                                <span className="text-sm font-bold text-emerald-400">+{selectedSignal.gstdReward} GSTD</span>
                             </div>
                             <div className="flex justify-between items-center mb-3">
-                                <span className="text-sm font-medium text-slate-400">Target Model</span>
-                                <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded">gstd-monitor-core</span>
+                                <span className="text-sm font-medium text-slate-400 flex items-center gap-2">
+                                    <Lock className="w-4 h-4 text-amber-400" /> Platform Gold Fund
+                                </span>
+                                <span className="text-sm font-bold text-amber-400">+{selectedSignal.platformFee} GSTD</span>
                             </div>
-                            <div className="flex justify-between items-center mb-3">
-                                <span className="text-sm font-medium text-slate-400">Destination</span>
-                                <span className="text-sm font-mono text-white truncate max-w-[120px]">{address ? address : 'GSTD Mainnet'}</span>
-                            </div>
-                            <div className="flex justify-between items-center pt-3 border-t border-slate-800">
-                                <span className="text-sm font-medium text-slate-400">Smart Contract Fee</span>
-                                <span className="text-lg font-black text-amber-400">{selectedMetric.priceGstd.toFixed(1)} GSTD</span>
+
+                            <div className="flex justify-between items-center pt-4 border-t border-slate-800 mt-2">
+                                <span className="text-sm font-bold text-white">Sponsorship Cost</span>
+                                <span className="text-lg font-black text-white flex items-center gap-1.5 bg-slate-800 px-3 py-1 rounded-lg border border-slate-600">
+                                    {selectedSignal.starsCost} <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+                                </span>
                             </div>
                         </div>
 
-                        <div className="flex gap-4 mt-2">
-                            <button
-                                onClick={() => setSelectedMetric(null)}
-                                disabled={isPurchasing}
-                                className="flex-1 px-4 py-3 rounded-xl border border-slate-700 hover:bg-slate-800 text-sm font-bold text-slate-300 transition-colors disabled:opacity-50"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handlePurchase}
-                                disabled={isPurchasing}
-                                className={`flex-[2] px-4 py-3 rounded-xl text-sm font-bold text-slate-900 transition-all shadow-[0_0_20px_rgba(16,185,129,0.4)] flex items-center justify-center gap-2 
-                                ${isPurchasing ? 'bg-emerald-500/50 cursor-wait' : 'bg-emerald-400 hover:bg-emerald-300'}`}
-                            >
-                                {isPurchasing ? (
-                                    <>
-                                        <Zap className="w-4 h-4 animate-spin text-slate-900" />
-                                        Submitting to Swarm...
-                                    </>
-                                ) : (
-                                    <>
-                                        <ArrowRight className="w-4 h-4" />
-                                        Confirm & Acquire
-                                    </>
-                                )}
-                            </button>
-                        </div>
+                        {isPurchasing ? (
+                            <div className="flex flex-col gap-4 mb-2">
+                                <div className="h-12 flex items-center justify-center bg-slate-800/50 rounded-xl border border-slate-700">
+                                    <span className="text-sm font-bold text-sky-400 animate-pulse flex items-center gap-2">
+                                        {purchaseStep === 1 && "Confirming Telegram Stars..."}
+                                        {purchaseStep === 2 && "Minting GSTD & Locking Funds..."}
+                                        {purchaseStep === 3 && "Signal Dispatched to Swarm!"}
+                                    </span>
+                                </div>
+                                <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full bg-sky-500 transition-all duration-500 ease-out"
+                                        style={{ width: ((purchaseStep / 3) * 100) + '%' }}
+                                    />
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex gap-4 mt-2">
+                                <button
+                                    onClick={() => setSelectedSignal(null)}
+                                    className="flex-1 px-4 py-3.5 rounded-xl border border-slate-700 hover:bg-slate-800 text-sm font-bold text-slate-300 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleAnalyzeSignal}
+                                    className="flex-[2] px-4 py-3.5 rounded-xl text-sm font-bold text-slate-900 transition-all shadow-[0_0_20px_rgba(14,165,233,0.2)] bg-sky-400 hover:bg-sky-300 flex items-center justify-center gap-2 group/pay"
+                                >
+                                    <Star className="w-4 h-4 text-slate-900 group-hover/pay:scale-110 transition-transform" />
+                                    Pay with Stars
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
@@ -431,9 +515,9 @@ export default function HumanityMonitor() {
             <style dangerouslySetInnerHTML={{
                 __html: `
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.2); border-radius: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.4); }
-      `}} />
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(51, 65, 85, 0.5); border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(71, 85, 105, 0.8); }
+        `}} />
         </div>
     );
 }

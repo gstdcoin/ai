@@ -1,8 +1,8 @@
 'use client';
 
 /**
- * Total Domination Protocol — GSTD Ecosystem in Telegram Mini App
- * Unified Dashboard | Worker Logic | Leviathan Stream | Escrow 2.0 | RU/EN Localization
+ * Sovereign Organism Protocol — GSTD Ecosystem in Telegram Mini App
+ * Unified Dashboard | Neural Node Logic | Leviathan Stream | Escrow 2.0 | RU/EN Localization
  */
 import React, { useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'next-i18next';
@@ -109,7 +109,7 @@ export default function TMAPage() {
         <header className="text-center py-3">
           <h1 className="text-lg font-black tracking-tight">
             <span className="bg-gradient-to-r from-amber-400 to-amber-600 bg-clip-text text-transparent">GSTD</span>
-            {' '}Total Domination
+            {' '}Sovereign Organism
           </h1>
         </header>
 
@@ -120,8 +120,8 @@ export default function TMAPage() {
               key={id}
               onClick={() => setTab(id)}
               className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-sm font-bold transition-colors ${tab === id
-                  ? 'bg-violet-500/30 border border-violet-500/50 text-violet-300'
-                  : 'bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10'
+                ? 'bg-violet-500/30 border border-violet-500/50 text-violet-300'
+                : 'bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10'
                 }`}
             >
               {icon}
@@ -137,10 +137,10 @@ export default function TMAPage() {
               <div className="rounded-xl bg-white/5 border border-white/10 p-4">
                 <div className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-1">{t('stat_workers')}</div>
                 <div className={`text-lg font-black ${stats?.node_status === 'online' ? 'text-emerald-400' :
-                    stats?.node_status === 'mining' ? 'text-amber-400' : 'text-gray-500'
+                  stats?.node_status === 'mining' ? 'text-amber-400' : 'text-gray-500'
                   }`}>
                   {stats?.node_status === 'online' ? '🟢 ' + t('mining_online') :
-                    stats?.node_status === 'mining' ? '⛏ Mining' : '🔴 ' + t('mining_paused')}
+                    stats?.node_status === 'mining' ? '🧠 Processing' : '🔴 ' + t('mining_paused')}
                 </div>
               </div>
               <div className="rounded-xl bg-white/5 border border-white/10 p-4">
@@ -176,10 +176,10 @@ export default function TMAPage() {
           <div className="space-y-4">
             <div className="rounded-xl bg-white/5 border border-white/10 p-4">
               <div className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-2">
-                In-App SLM Inference
+                Cognitive Neural Node
               </div>
               <p className="text-xs text-gray-500 mb-3">
-                {t('chat_disclaimer')}. Overheating protection active.
+                Your device acts as a neuron validating global tasks. Neural node temperature protection active.
               </p>
               <TMAInferenceWorker />
             </div>
@@ -250,8 +250,8 @@ function TMAInferenceWorker() {
         }
       }
     };
-    workerRef.current.postMessage({ id, type: 'inference', payload: { text: 'market is strong, buy signal' } });
-    setResult('...');
+    workerRef.current.postMessage({ id, type: 'inference', payload: { text: 'analyzing global signal anomalys...' } });
+    setResult('Connecting to Hive Mind...');
   };
 
   return (
