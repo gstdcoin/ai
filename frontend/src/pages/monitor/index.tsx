@@ -320,13 +320,29 @@ export default function HumanityMonitor() {
     const [liveLogs, setLiveLogs] = useState<LogEntry[]>([]);
     const [activeCategory, setActiveCategory] = useState('All');
     const [searchQuery, setSearchQuery] = useState('');
+    const [signalStats, setSignalStats] = useState<Record<string, any>>({});
     const [stats, setStats] = useState({
         activeNodes: 0, gstdPrice: 0, dataProcessed: 0, health: 0.95,
         totalUsers: 0, tasksCompleted: 0, totalBurned: 0
     });
 
+    // Merge static signal definitions with real backend progress data
+    const signalsWithRealData = useMemo(() => {
+        return ACTIVE_SIGNALS.map(s => {
+            const real = signalStats[s.id];
+            if (real) {
+                return {
+                    ...s,
+                    progress: real.progress || 0,
+                    contributors: real.contributor_count || 0,
+                };
+            }
+            return { ...s, progress: 0, contributors: 0 };
+        });
+    }, [signalStats]);
+
     const filteredSignals = useMemo(() => {
-        return ACTIVE_SIGNALS.filter(s => {
+        return signalsWithRealData.filter(s => {
             if (activeCategory !== 'All' && s.category !== activeCategory) return false;
             if (searchQuery) {
                 const q = searchQuery.toLowerCase();
@@ -335,7 +351,20 @@ export default function HumanityMonitor() {
             }
             return true;
         });
-    }, [activeCategory, searchQuery]);
+    }, [activeCategory, searchQuery, signalsWithRealData]);
+
+    // Fetch real signal stats from backend
+    useEffect(() => {
+        const fetchSignals = async () => {
+            try {
+                const data = await apiGet<any>('/monitor/signals').catch(() => null);
+                if (data?.signals) setSignalStats(data.signals);
+            } catch (e) { }
+        };
+        fetchSignals();
+        const interval = setInterval(fetchSignals, 8000);
+        return () => clearInterval(interval);
+    }, []);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -404,6 +433,14 @@ export default function HumanityMonitor() {
         if (!selectedSignal) return;
         setIsPurchasing(true); setPurchaseStep(1);
         try {
+            // Record real sponsorship in backend DB
+            await apiPost(`/monitor/signals/${selectedSignal.id}/sponsor`, {
+                user_id: 'web_' + Date.now(),
+                stars_paid: selectedSignal.starsCost,
+                gstd_reward: selectedSignal.gstdReward,
+                gstd_gold_fee: selectedSignal.platformFee
+            }).catch(() => null);
+
             const resp = await apiPost('/tasks/telegram-launch', {
                 task_id: selectedSignal.id, stars_paid: selectedSignal.starsCost,
                 reward_gstd: selectedSignal.gstdReward, admin_fee_gstd: selectedSignal.platformFee
