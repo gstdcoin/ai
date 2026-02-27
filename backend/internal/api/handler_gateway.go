@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	infRouter "distributed-computing-platform/internal/inference"
 	"distributed-computing-platform/internal/services"
 
 	"github.com/gin-gonic/gin"
@@ -28,6 +29,7 @@ type GatewayHandler struct {
 	knowledgeService *services.KnowledgeService
 	settlement       *services.SettlementService
 	stats            *services.StatsService
+	router           *infRouter.Router
 	ollamaURL        string
 	client           *http.Client
 }
@@ -47,18 +49,17 @@ const FirstQueryBonusGSTD = 0.05
 const FreeBasicTierDaily = 5
 
 // NewGatewayHandler creates a new gateway handler.
-func NewGatewayHandler(apiKeyService *services.APIKeyService, taskService *services.TaskService, db *sql.DB) *GatewayHandler {
+func NewGatewayHandler(apiKeyService *services.APIKeyService, taskService *services.TaskService, db *sql.DB, router *infRouter.Router) *GatewayHandler {
 	ollamaURL := os.Getenv("OLLAMA_URL")
 	if ollamaURL == "" {
-		// Docker: gstd_ollama; local dev: localhost
 		ollamaURL = "http://localhost:11434"
 	}
-	// 90s timeout for LLM generation (Qwen can take time)
 	ollamaClient := &http.Client{Timeout: 90 * time.Second}
 	return &GatewayHandler{
 		apiKeyService: apiKeyService,
 		taskService:   taskService,
 		db:            db,
+		router:        router,
 		ollamaURL:     ollamaURL,
 		client:        ollamaClient,
 	}
@@ -375,6 +376,23 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 		"stream": false,
 	}
 	ollamaBody, _ := json.Marshal(ollamaReq)
+
+	// Public Swarm: use Router for consensus-based inference if nodes are available
+	if h.router != nil {
+		swarmReq := &infRouter.InferRequest{
+			RequestID: "tg-" + time.Now().Format("150405"),
+			Model:     ollamaModel,
+			Prompt:    prompt,
+		}
+		// Genesis Launch: 3-node consensus for high quality
+		swarmResp, err := h.router.RouteConsensus(c.Request.Context(), swarmReq, 3)
+		if err == nil && swarmResp != nil && swarmResp.Content != "" {
+			log.Printf("🐝 [Swarm] Inference SUCCESS via consensus (Latency: %dms)", swarmResp.LatencyMs)
+			h.respondWithUsage(c, req.Model, swarmResp.Content, false, activeDevices, fee)
+			return
+		}
+		log.Printf("⚠️ [Swarm] Falling back to Ollama: %v", err)
+	}
 
 	// Priority Compute: GSTD-paid Ultra requests use high-compute nodes (OLLAMA_ULTRA_URL)
 	ollamaBase := h.ollamaURL

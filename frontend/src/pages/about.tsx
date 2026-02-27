@@ -217,7 +217,7 @@ export default function About() {
 
               {/* Subtitle */}
               <p className="text-xl sm:text-2xl text-gray-400 max-w-4xl mx-auto mb-12 leading-relaxed font-medium">
-                {t('hero_subtitle') || 'Working for the benefit of humanity. Join the ultimate decentralized AI network where users own their data, supply their compute, and participate in a golden economy free from corporate oversight.'}
+                {t('hero_subtitle') || 'Working for the benefit of humanity. Join the ultimate decentralized AI network where users own their data, supply their compute to solve global crises, and participate in a sovereign economy free from corporate oversight.'}
               </p>
 
               {/* CTA Section - Simplified to focus on the Switch */}
@@ -418,7 +418,7 @@ export default function About() {
                   <span className="text-xl font-bold text-white">GSTD Platform</span>
                 </div>
                 <p className="text-gray-500 text-sm leading-relaxed mb-6">
-                  Global Supercomputer with Gold Backing. First DePIN network on TON that turns your device power into gold.
+                  The Global Planetary Brain backed by Gold. The first intelligence network on TON that turns your device power into humanity's future.
                 </p>
                 <div className="flex gap-4">
                   <a href="https://t.me/goldstandardcoin" target="_blank" rel="noopener noreferrer"
