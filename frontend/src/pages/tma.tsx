@@ -135,12 +135,12 @@ export default function TMAPage() {
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-xl bg-white/5 border border-white/10 p-4">
-                <div className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-1">{t('stat_workers')}</div>
+                <div className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-1">Neural Connection</div>
                 <div className={`text-lg font-black ${stats?.node_status === 'online' ? 'text-emerald-400' :
                   stats?.node_status === 'mining' ? 'text-amber-400' : 'text-gray-500'
                   }`}>
-                  {stats?.node_status === 'online' ? '🟢 ' + t('mining_online') :
-                    stats?.node_status === 'mining' ? '🧠 Processing' : '🔴 ' + t('mining_paused')}
+                  {stats?.node_status === 'online' ? '🟢 Grid Ready' :
+                    stats?.node_status === 'mining' ? '🧠 Processing' : '🔴 Standby'}
                 </div>
               </div>
               <div className="rounded-xl bg-white/5 border border-white/10 p-4">
@@ -244,13 +244,13 @@ function TMAInferenceWorker() {
       if (e.data?.id === id && e.data?.type === 'inference_result') {
         const r = e.data.result;
         if (e.data.throttled) {
-          setResult(t('mining_paused'));
+          setResult('Neural Node Cooldown');
         } else {
           setResult(`${r.label} (${(r.score * 100).toFixed(0)}%)`);
         }
       }
     };
-    workerRef.current.postMessage({ id, type: 'inference', payload: { text: 'analyzing global signal anomalys...' } });
+    workerRef.current.postMessage({ id, type: 'inference', payload: { text: 'synchronizing with Global Brain...' } });
     setResult('Connecting to Hive Mind...');
   };
 
@@ -258,11 +258,11 @@ function TMAInferenceWorker() {
     <div>
       <button
         onClick={runInference}
-        className="text-xs py-2 px-3 rounded-lg bg-violet-500/20 border border-violet-500/40 text-violet-300"
+        className="text-xs py-2 px-3 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-bold"
       >
-        Run inference
+        Ignite Neural Node
       </button>
-      {result && <span className="ml-2 text-xs text-gray-400">{result}</span>}
+      {result && <span className="ml-2 text-xs text-sky-400 font-mono">{result}</span>}
     </div>
   );
 }
