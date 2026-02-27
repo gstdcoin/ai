@@ -442,16 +442,34 @@ func botLang(langCode string) string {
 var msgStart = map[string]string{
 	"en": `🌍 <b>GSTD — Sovereign Intelligence</b>
 
-The world's first Gold-Backed Global Problem-Solving Swarm.
-Connect your wallet to tap into the Hive Mind, or become a Neural Node to help humanity.
+Welcome to the world's first <b>Gold-Backed Decentralized AI</b>.
 
-<b>Choose an action:</b>`,
+🧬 <b>What is GSTD?</b>
+A planetary computing organism that solves humanity's hardest problems — from drug discovery to climate modeling — powered by millions of devices like yours.
+
+💰 <b>How it works:</b>
+• <b>Use AI</b> — Uncensored, sovereign chat. Pay with GSTD.
+• <b>Earn GSTD</b> — Turn your phone into a Neural Node.
+• <b>Sponsor Research</b> — Fund global signal analysis.
+
+GSTD token is backed by <b>physical gold (XAUt)</b> on every transaction.
+
+👇 <b>Choose an action to begin:</b>`,
 	"ru": `🌍 <b>GSTD — Суверенный Интеллект</b>
 
-Первый в мире коллективный разум, обеспеченный золотом и решающий глобальные проблемы.
-Подключите кошелёк для доступа к Рою, или станьте Нейро-Узлом на благо человечества.
+Добро пожаловать в первый в мире <b>децентрализованный ИИ, обеспеченный золотом</b>.
 
-<b>Выберите действие:</b>`,
+🧬 <b>Что такое GSTD?</b>
+Планетарный вычислительный организм, решающий сложнейшие проблемы человечества — от создания лекарств до моделирования климата — на миллионах устройств, таких как ваше.
+
+💰 <b>Как это работает:</b>
+• <b>ИИ без цензуры</b> — Суверенный чат. Оплата в GSTD.
+• <b>Заработок GSTD</b> — Превратите телефон в Нейро-Узел.
+• <b>Спонсируйте науку</b> — Запускайте анализ глобальных данных.
+
+Токен GSTD обеспечен <b>физическим золотом (XAUt)</b> при каждой транзакции.
+
+👇 <b>Выберите действие:</b>`,
 }
 
 var msgWalletAsNode = map[string]string{
@@ -476,22 +494,48 @@ Your TON wallet and device unite to become a brain cell of the Sovereign Organis
 }
 
 var msgHelp = map[string]string{
-	"en": `📖 <b>User Guide</b>
+	"en": `📖 <b>Complete Guide</b>
 
-• <b>Global Dashboard</b>: Main hive interface. Connect wallet here.
-• <b>Neural Node</b>: Earn GSTD by contributing to planetary computations.
-• <b>Hive Mind</b>: Uncensored, collective intelligence chat.
-• <b>Monitor</b>: Track real-time network capacity and Gold Reserve proof.
+<b>🖥 Platform Features:</b>
+• <b>📱 Open App</b> — Full dashboard with AI chat, tasks, and wallet
+• <b>🧠 Neural Node</b> — Earn GSTD by lending your device's compute power
+• <b>🌍 Monitor</b> — 16 live planetary signals awaiting Swarm analysis
+• <b>💬 Hive Mind</b> — Uncensored AI chat (OpenAI-compatible)
+• <b>🛒 Marketplace</b> — Buy/sell compute tasks
+• <b>🤖 Agent Node</b> — Advanced miner for PC/server
 
-<b>GSTD</b> is the lifeblood of the network. Backed by XAUt (Tether Gold).`,
-	"ru": `📖 <b>Руководство</b>
+<b>💰 Economics:</b>
+• 85% of every payment → goes to compute workers
+• 10% → Gold Reserve (XAUt backing)
+• 5% → Deflationary burn (supply decreasing forever)
 
-• <b>Главный пульт</b>: Интерфейс роя. Подключите кошелёк здесь.
-• <b>Нейро-Узел</b>: Зарабатывайте GSTD на вычислениях планетарного масштаба.
-• <b>Разум Роя</b>: Чат колективного интеллекта без цензуры.
-• <b>Мониторинг</b>: Отслеживайте работу сети и доказательство золотого резерва.
+<b>🔗 Useful Links:</b>
+• Website: app.gstdtoken.com
+• Monitor: monitor.gstdtoken.com
+• GitHub: github.com/gstdcoin
 
-<b>GSTD</b> — кровеносная система сети. Обеспечена золотом XAUt.`,
+<b>GSTD</b> — the lifeblood of the Sovereign Organism. Backed by gold.`,
+	"ru": `📖 <b>Полное руководство</b>
+
+<b>🖥 Возможности платформы:</b>
+• <b>📱 Приложение</b> — Полный пульт управления с ИИ-чатом и кошельком
+• <b>🧠 Нейро-Узел</b> — Зарабатывайте GSTD, предоставляя мощности устройства
+• <b>🌍 Монитор</b> — 16 планетарных сигналов, ждущих анализа Роя
+• <b>💬 Разум Роя</b> — ИИ-чат без цензуры (OpenAI-совместимый)
+• <b>🛒 Маркетплейс</b> — Покупка/продажа вычислительных задач
+• <b>🤖 Агент-Узел</b> — Продвинутый майнер для ПК/сервера
+
+<b>💰 Экономика:</b>
+• 85% каждого платежа → исполнителям задач
+• 10% → Золотой Резерв (обеспечение XAUt)
+• 5% → Дефляционное сжигание (предложение уменьшается навсегда)
+
+<b>🔗 Полезные ссылки:</b>
+• Сайт: app.gstdtoken.com
+• Монитор: monitor.gstdtoken.com
+• GitHub: github.com/gstdcoin
+
+<b>GSTD</b> — кровеносная система Суверенного Организма. Обеспечена золотом.`,
 }
 
 var msgAdminOnly = map[string]string{
@@ -606,8 +650,8 @@ func (s *TelegramService) ProcessWebhook(ctx context.Context, body []byte) error
 		btnBuy := "💰 Buy GSTD"
 		btnStars := "⭐️ Buy with Stars"
 		btnConnect := "🔗 Connect Wallet"
-		btnStats := "📊 Stats"
-		btnAbout := "ℹ️ About"
+		btnMonitor := "🌍 Monitor"
+		btnHelp := "📖 Help"
 
 		if lang == "ru" {
 			btnApp = "📱 Приложение"
@@ -616,8 +660,8 @@ func (s *TelegramService) ProcessWebhook(ctx context.Context, body []byte) error
 			btnBuy = "💰 Купить GSTD"
 			btnStars = "⭐️ за Stars"
 			btnConnect = "🔗 Кошелек"
-			btnStats = "📊 Статистика"
-			btnAbout = "ℹ️ О проекте"
+			btnMonitor = "🌍 Монитор"
+			btnHelp = "📖 Помощь"
 		}
 
 		// Wallet-as-Node Flow
@@ -639,7 +683,7 @@ func (s *TelegramService) ProcessWebhook(ctx context.Context, body []byte) error
 				btnApp, webAppURL, btnMining, miningWebAppURL,
 				btnBalance, btnBuy,
 				btnStars, btnConnect,
-				btnStats, btnAbout)
+				btnMonitor, btnHelp)
 			return s.SendMessageToChatWithMarkup(ctx, chatID, msg, replyKb)
 		}
 
@@ -662,7 +706,7 @@ func (s *TelegramService) ProcessWebhook(ctx context.Context, body []byte) error
 			btnApp, appURL, btnMining, miningURL,
 			btnBalance, btnBuy,
 			btnStars, btnConnect,
-			btnStats, btnAbout)
+			btnMonitor, btnHelp)
 
 		return s.SendMessageToChatWithMarkup(ctx, chatID, msg, replyKeyboard)
 	}
@@ -677,8 +721,18 @@ func (s *TelegramService) ProcessWebhook(ctx context.Context, body []byte) error
 	}
 
 	// 📊 Stats (button or command)
-	if text == "📊 Stats" || text == "📊 Статистика" || text == "/network" {
+	if text == "📊 Stats" || text == "📊 Статистика" || text == "/network" || text == "/stats" {
 		return s.sendNetworkStats(ctx, chatID, lang)
+	}
+
+	// 🌍 Monitor (button)
+	if text == "🌍 Monitor" || text == "🌍 Монитор" || text == "/monitor" {
+		msg := "🌍 <b>Global Signal Monitor</b>\n\n16 planetary-scale problems awaiting Swarm analysis — from drug discovery to earthquake prediction.\n\n📡 <b>Sponsor a signal</b> with Telegram Stars to deploy the Swarm.\n\n👉 <a href=\"https://monitor.gstdtoken.com\">Open Monitor</a>"
+		if lang == "ru" {
+			msg = "🌍 <b>Монитор Глобальных Сигналов</b>\n\n16 планетарных проблем, ожидающих анализа Роя — от создания лекарств до предсказания землетрясений.\n\n📡 <b>Спонсируйте сигнал</b> через Telegram Stars для запуска Роя.\n\n👉 <a href=\"https://monitor.gstdtoken.com\">Открыть Монитор</a>"
+		}
+		markup := `{"inline_keyboard":[[{"text":"🌍 Open Live Monitor","url":"https://monitor.gstdtoken.com"}]]}`
+		return s.SendMessageToChatWithMarkup(ctx, chatID, msg, markup)
 	}
 
 	// 🔗 Connect Wallet (button)
