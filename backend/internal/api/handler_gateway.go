@@ -31,6 +31,10 @@ type GatewayHandler struct {
 	stats            *services.StatsService
 	router           *infRouter.Router
 	recyclingPool    *services.RecyclingPoolService
+	cocoonBridge     *services.CocoonBridgeService      // Cocoon Confidential Compute
+	cocoonSymbiosis  *services.CocoonSwarmSymbiosis     // Cocoon→Hive Memory
+	hybridRouter     *services.HybridIntelligenceRouter // Swarm ↔ Cocoon ↔ Ollama tier routing
+	smartRouter      *services.SmartRouter              // Omega Sovereign-First routing
 	ollamaURL        string
 	client           *http.Client
 }
@@ -101,6 +105,26 @@ func (h *GatewayHandler) SetRecyclingPool(rp *services.RecyclingPoolService) {
 	h.recyclingPool = rp
 }
 
+// SetCocoonBridge wires CocoonBridgeService for confidential compute via Cocoon TEE network.
+func (h *GatewayHandler) SetCocoonBridge(cb *services.CocoonBridgeService) {
+	h.cocoonBridge = cb
+}
+
+// SetCocoonSymbiosis wires Cocoon-Swarm symbiosis for knowledge absorption.
+func (h *GatewayHandler) SetCocoonSymbiosis(cs *services.CocoonSwarmSymbiosis) {
+	h.cocoonSymbiosis = cs
+}
+
+// SetHybridRouter wires the Hybrid Intelligence Router for 3-tier task routing.
+func (h *GatewayHandler) SetHybridRouter(hr *services.HybridIntelligenceRouter) {
+	h.hybridRouter = hr
+}
+
+// SetSmartRouter wires the Omega SmartRouter for sovereignty metrics.
+func (h *GatewayHandler) SetSmartRouter(sr *services.SmartRouter) {
+	h.smartRouter = sr
+}
+
 // analyzeIntelligenceNeedOllama picks best Ollama model from message content (omega-auto).
 func analyzeIntelligenceNeedOllama(msgs []map[string]string) string {
 	var text string
@@ -118,6 +142,10 @@ func analyzeIntelligenceNeedOllama(msgs []map[string]string) string {
 
 // chatCostGSTD returns base cost per model (Consumer Adoption).
 func chatCostGSTD(model string) float64 {
+	// Cocoon models use their own pricing
+	if services.IsCocoonModel(model) {
+		return services.CocoonCostGSTD(model)
+	}
 	m := strings.ToLower(model)
 	if strings.Contains(m, "70b") || strings.Contains(m, "deepseek-r1") {
 		return services.UltraSessionCostGSTD // 1.0
@@ -176,7 +204,7 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 	if wallet == "" {
 		// Allow free tier without wallet for chat.gstdtoken.com onboarding
 		modelLower := strings.ToLower(req.Model)
-		isFreeModel := modelLower == "" || modelLower == "auto" || modelLower == "gstd-flash" || modelLower == "omega-auto"
+		isFreeModel := modelLower == "" || modelLower == "auto" || modelLower == "gstd-flash" || modelLower == "omega-auto" || modelLower == "cocoon-auto"
 		if !isFreeModel {
 			c.JSON(402, gin.H{
 				"error":   "wallet_required",
@@ -316,8 +344,12 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 		}
 	}
 
-	// Check balance and deduct before inference (skip if Free Tier or First-Query Bonus)
-	if !useFreeTier && !useFirstQueryBonus && h.db != nil {
+	if anonymousFree {
+		fee = 0
+	}
+
+	// Check balance and deduct before inference (skip if Free Tier, First-Query, or Anonymous Free)
+	if !useFreeTier && !useFirstQueryBonus && !anonymousFree && h.db != nil {
 		var balance float64
 		err := h.db.QueryRowContext(c.Request.Context(), `
 			SELECT COALESCE(gstd_balance, 0) + COALESCE(balance, 0) FROM users WHERE wallet_address = $1
@@ -406,7 +438,88 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 			h.respondWithUsage(c, req.Model, swarmResp.Content, false, activeDevices, fee)
 			return
 		}
-		log.Printf("⚠️ [Swarm] Falling back to Ollama: %v", err)
+		log.Printf("⚠️ [Swarm] Falling back to Cocoon/Ollama: %v", err)
+	}
+
+	// ═══ COCOON CONFIDENTIAL COMPUTE ═══
+	// Route cocoon-* models through Cocoon TEE network
+	if services.IsCocoonModel(req.Model) && h.cocoonBridge != nil && h.cocoonBridge.IsEnabled() {
+		var cocoonMsgs []services.CocoonMessage
+		for _, m := range promptMsgs {
+			cocoonMsgs = append(cocoonMsgs, services.CocoonMessage{
+				Role:    m["role"],
+				Content: m["content"],
+			})
+		}
+		maxTok := 4096
+		if cm := services.GetCocoonModel(req.Model); cm != nil {
+			maxTok = cm.MaxTokens
+		}
+		cocoonResp, err := h.cocoonBridge.Infer(c.Request.Context(), req.Model, cocoonMsgs, maxTok)
+		if err == nil && cocoonResp != nil && len(cocoonResp.Choices) > 0 {
+			content := cocoonResp.Choices[0].Message.Content
+			log.Printf("🛡️ [Cocoon] Response delivered: model=%s tokens=%d tee=%v",
+				req.Model, cocoonResp.Usage.TotalTokens, cocoonResp.Attestation != nil)
+
+			// Build OpenAI-compatible response with Cocoon attestation
+			workerAmount := fee * 0.85
+			out := gin.H{
+				"id":      cocoonResp.ID,
+				"object":  "chat.completion",
+				"model":   req.Model,
+				"created": cocoonResp.Created,
+				"choices": []gin.H{{
+					"index":         0,
+					"message":       gin.H{"role": "assistant", "content": content},
+					"finish_reason": "stop",
+				}},
+				"usage": gin.H{
+					"prompt_tokens":     cocoonResp.Usage.PromptTokens,
+					"completion_tokens": cocoonResp.Usage.CompletionTokens,
+					"total_tokens":      cocoonResp.Usage.TotalTokens,
+				},
+				"gstd_pow": gin.H{
+					"swarm_devices": activeDevices,
+					"workers_gstd":  workerAmount,
+					"fee_deducted":  fee,
+				},
+			}
+			// Add Cocoon TEE attestation to response
+			if cocoonResp.Attestation != nil {
+				out["cocoon_tee"] = gin.H{
+					"confidential":   true,
+					"tee_type":       cocoonResp.Attestation.TEEType,
+					"verified":       cocoonResp.Attestation.Verified,
+					"worker_id":      cocoonResp.Attestation.WorkerID,
+					"proxy_id":       cocoonResp.Attestation.ProxyID,
+					"image_hash":     cocoonResp.Attestation.ImageHash,
+					"attestation_ts": cocoonResp.Attestation.Timestamp,
+				}
+			}
+			c.JSON(200, out)
+
+			// RecyclingPool + Settlement for Cocoon payments
+			if wallet != "" && fee > 0 && !useFreeTier && !anonymousFree {
+				if h.recyclingPool != nil {
+					_, _ = h.recyclingPool.ProcessPayment(c.Request.Context(), wallet, fee, "cocoon-"+req.Model, "inference")
+				}
+				if h.settlement != nil {
+					_, _ = h.settlement.ProcessPayment(c.Request.Context(), &services.SettlementRequest{
+						AmountGSTD:   fee,
+						WorkerWallet: "cocoon_tee_network",
+						ModelID:      req.Model,
+					})
+				}
+			}
+
+			// Cocoon→Swarm Symbiosis: absorb knowledge into Hive Memory
+			if h.cocoonSymbiosis != nil && content != "" {
+				go h.cocoonSymbiosis.AbsorbCocoonResult(c.Request.Context(), req.Model, prompt, content, cocoonResp.Attestation)
+			}
+			return
+		}
+		// Cocoon failed — fall through to Ollama
+		log.Printf("⚠️ [Cocoon] Inference failed, falling back to Ollama: %v", err)
 	}
 
 	// Priority Compute: GSTD-paid Ultra requests use high-compute nodes (OLLAMA_ULTRA_URL)
@@ -545,6 +658,10 @@ func (h *GatewayHandler) GetUltraStatus(c *gin.Context) {
 		"qwen2.5-coder:32b": 0.05,
 		"llama3.3:70b":      sessionCost,
 		"deepseek-r1":       sessionCost,
+		// Cocoon Confidential Compute models
+		"cocoon-auto":       0.02,
+		"cocoon-qwen3-0.6b": 0.01,
+		"cocoon-llama3-70b": 0.15,
 	}
 	if stakingDiscount {
 		for k, v := range costPerModel {
@@ -590,6 +707,25 @@ func (h *GatewayHandler) ListModels(c *gin.Context) {
 	c.JSON(200, gin.H{"object": "list", "data": models})
 }
 
+// GetCocoonStatus returns Cocoon bridge health and stats.
+func (h *GatewayHandler) GetCocoonStatus(c *gin.Context) {
+	if h.cocoonBridge == nil {
+		c.JSON(200, gin.H{"enabled": false, "message": "Cocoon bridge not configured"})
+		return
+	}
+	stats := h.cocoonBridge.GetStats()
+	health := h.cocoonBridge.HealthCheck(c.Request.Context())
+	models := h.cocoonBridge.GetModels()
+	c.JSON(200, gin.H{
+		"enabled":  h.cocoonBridge.IsEnabled(),
+		"stats":    stats,
+		"health":   health,
+		"models":   models,
+		"protocol": "Cocoon — Confidential Compute Open Network (Telegram)",
+		"docs":     "https://cocoon.org/developers",
+	})
+}
+
 // GetUserKeys returns API keys for the authenticated user.
 func (h *GatewayHandler) GetUserKeys(c *gin.Context) {
 	wallet := c.GetString("wallet_address")
@@ -628,4 +764,42 @@ func (h *GatewayHandler) CreateUserKey(c *gin.Context) {
 		return
 	}
 	c.JSON(200, gin.H{"api_key": key, "label": req.Label})
+}
+
+// GetHybridStatus returns hybrid routing stats and Cocoon revenue info.
+func (h *GatewayHandler) GetHybridStatus(c *gin.Context) {
+	out := gin.H{
+		"hybrid_router": "active",
+	}
+
+	if h.hybridRouter != nil {
+		out["routing"] = h.hybridRouter.GetStats()
+		out["revenue"] = h.hybridRouter.GetRevenueStats()
+	}
+
+	if h.cocoonBridge != nil {
+		out["cocoon"] = gin.H{
+			"enabled": h.cocoonBridge.IsEnabled(),
+			"stats":   h.cocoonBridge.GetStats(),
+		}
+	}
+
+	if h.cocoonSymbiosis != nil {
+		out["symbiosis"] = h.cocoonSymbiosis.GetStats()
+	}
+
+	if h.smartRouter != nil {
+		out["sovereignty"] = h.smartRouter.GetSovereigntyMetrics()
+	}
+
+	c.JSON(200, out)
+}
+
+// GetSovereigntyIndex returns the current sovereignty metrics for the Global Monitor.
+func (h *GatewayHandler) GetSovereigntyIndex(c *gin.Context) {
+	out := gin.H{"sovereignty_index": 100.0}
+	if h.smartRouter != nil {
+		out = gin.H(h.smartRouter.GetSovereigntyMetrics())
+	}
+	c.JSON(200, out)
 }

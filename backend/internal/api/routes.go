@@ -77,6 +77,10 @@ func SetupRoutes(
 	organismHub *services.OrganismHubService,
 	llmRouter *infRouter.Router,
 	recyclingPool *services.RecyclingPoolService,
+	cocoonBridge *services.CocoonBridgeService,
+	cocoonSymbiosis *services.CocoonSwarmSymbiosis,
+	hybridRouter *services.HybridIntelligenceRouter,
+	smartRouter *services.SmartRouter,
 ) {
 	log.Printf("🔧 SetupRoutes: Starting route setup, redisClient type: %T", redisClient)
 
@@ -139,6 +143,18 @@ func SetupRoutes(
 	}
 	if recyclingPool != nil {
 		gatewayHandler.SetRecyclingPool(recyclingPool)
+	}
+	if cocoonBridge != nil {
+		gatewayHandler.SetCocoonBridge(cocoonBridge)
+	}
+	if cocoonSymbiosis != nil {
+		gatewayHandler.SetCocoonSymbiosis(cocoonSymbiosis)
+	}
+	if hybridRouter != nil {
+		gatewayHandler.SetHybridRouter(hybridRouter)
+	}
+	if smartRouter != nil {
+		gatewayHandler.SetSmartRouter(smartRouter)
 	}
 
 	// Initialize Genesis System (Self-Generating APIs)
@@ -589,6 +605,11 @@ func SetupRoutes(
 		v1.POST("/chat/completions", omegaHandler.HandleChatCompletions)
 		v1.GET("/chat/ultra-status", gatewayHandler.GetUltraStatus) // Optional auth: X-GSTD-Target-Wallet
 		v1.GET("/models", omegaHandler.HandleListModels)
+		// Cocoon Confidential Compute — TEE-protected inference on TON blockchain
+		// Docs: https://cocoon.org/developers
+		v1.GET("/chat/cocoon-status", gatewayHandler.GetCocoonStatus)
+		v1.GET("/chat/hybrid-status", gatewayHandler.GetHybridStatus)
+		v1.GET("/chat/sovereignty-index", gatewayHandler.GetSovereigntyIndex)
 
 		log.Printf("✅ Growth System & Onboarding routes registered (Omega Gateway Active)")
 	}

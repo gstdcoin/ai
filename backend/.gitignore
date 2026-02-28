@@ -34,3 +34,11 @@ dist/
 
 
 
+
+# Build artifacts
+main
+server-test
+tmp_bin
+*.db
+*.db-shm
+*.db-wal

@@ -122,6 +122,12 @@ func BuildContainer() *dig.Container {
 	c.Provide(services.NewMobileComputeService)
 	c.Provide(services.NewZeroBalanceGateService)
 	c.Provide(services.NewRecyclingPoolService)
+	c.Provide(services.NewCocoonBridgeService) // Cocoon TEE — confidential compute via TON
+	c.Provide(func(db *sql.DB, knowledge *services.KnowledgeService, cocoon *services.CocoonBridgeService) *services.CocoonSwarmSymbiosis {
+		return services.NewCocoonSwarmSymbiosis(db, knowledge, cocoon)
+	})
+	c.Provide(services.NewHybridIntelligenceRouter) // Swarm ↔ Cocoon ↔ Ollama 3-tier routing
+	c.Provide(services.NewSmartRouter)              // Omega Sovereign-First routing + Sovereignty Index
 	c.Provide(services.NewKVCacheService)
 	c.Provide(services.NewZKComputeProofService)
 	c.Provide(services.NewDataAirlockService)
@@ -476,6 +482,10 @@ func StartApplication(container *dig.Container) error {
 		omnipotence *services.OmnipotenceService,
 		subAgentSelfOpt *services.SubAgentSelfOptimizationService,
 		bitchatBridge *services.BitchatBridgeService,
+		cocoonBridge *services.CocoonBridgeService, // Cocoon Confidential Compute
+		cocoonSymbiosis *services.CocoonSwarmSymbiosis, // Cocoon→Hive Memory symbiosis
+		hybridRouter *services.HybridIntelligenceRouter, // Swarm↔Cocoon↔Ollama
+		smartRouter *services.SmartRouter, // Omega Sovereign-First routing
 		// ── Phase 0 Genesis Services ──
 		a2aServer *a2a.Server,
 		hiveStore hive.HiveStore,
@@ -528,6 +538,9 @@ func StartApplication(container *dig.Container) error {
 		go maintenanceService.Start(ctx)
 		go poolMonitor.Start(ctx)
 		go bitchatBridge.Start(ctx)
+		go cocoonBridge.StartHealthLoop(ctx) // Cocoon TEE: health check loop
+		go cocoonSymbiosis.Start(ctx)        // Cocoon→Swarm symbiosis
+		go hybridRouter.Start(ctx)           // Hybrid routing monitor
 		go anomalyDetection.Start(ctx)
 		go evolutionEngine.Start(ctx)
 		go financialMonitor.Start(ctx)
@@ -716,6 +729,15 @@ func StartApplication(container *dig.Container) error {
 			return 0
 		}())
 		log.Printf("   Settlement:      %v", settlementCli != nil)
+		log.Printf("   Cocoon TEE:      %v (proxy=%v)", cocoonBridge != nil && cocoonBridge.IsEnabled(), func() bool {
+			if cocoonBridge != nil {
+				h := cocoonBridge.HealthCheck(ctx)
+				return h.ProxyReachable
+			}
+			return false
+		}())
+		log.Printf("   Hybrid Router:   %v", hybridRouter != nil)
+		log.Printf("   Cocoon Symbiosis: %v", cocoonSymbiosis != nil)
 		log.Printf("══════════════════════════════════════════")
 
 		// Suppress unused variable warnings for services that are used passively
@@ -839,6 +861,10 @@ func StartApplication(container *dig.Container) error {
 			organismHub,
 			llmRouter,
 			recyclingPool,
+			cocoonBridge,
+			cocoonSymbiosis,
+			hybridRouter,
+			smartRouter,
 		)
 
 		// 4a. Leviathan Live Stream (SSE) — Protocol: Live Stream, No-DB, 30s memory

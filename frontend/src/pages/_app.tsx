@@ -9,6 +9,8 @@ import { TelegramThemeProvider } from '../components/common/TelegramThemeProvide
 import { initTelegramWebApp, isTelegramWebApp, getTelegramColorScheme } from '../lib/telegram';
 import WalletListener from '../components/common/WalletListener';
 import VercelSwarmHeartbeat from '../components/common/VercelSwarmHeartbeat';
+import EcosystemNav from '../components/layout/EcosystemNav';
+import EcosystemFooter from '../components/layout/EcosystemFooter';
 import '../styles/globals.css';
 
 // Get manifestUrl from environment variable or use fallback
@@ -107,7 +109,12 @@ function App({ Component, pageProps }: AppProps) {
         >
           <WalletListener />
           <VercelSwarmHeartbeat />
-          <Component {...pageProps} />
+          {/* Ecosystem layout: Nav + Content + Footer (skip for TMA) */}
+          {router.pathname !== '/tma' && <EcosystemNav />}
+          <main style={{ paddingTop: router.pathname !== '/tma' ? 56 : 0, minHeight: '100vh' }}>
+            <Component {...pageProps} />
+          </main>
+          {router.pathname !== '/tma' && <EcosystemFooter />}
           <Toaster
             position="top-right"
             richColors

@@ -46,10 +46,10 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
 
   const models = [
     { id: 'omega-auto', name: t('chat_model_auto') || 'Auto', tier: 'Smart', desc: t('chat_model_auto_desc') || 'Best model for your question', cost: 0.01, ultra: false },
-    { id: 'qwen2.5-coder:7b', name: t('chat_model_fast') || 'Fast', tier: 'Tier 1', desc: t('chat_model_fast_desc') || 'Quick responses', cost: 0.01, ultra: false },
-    { id: 'llama3.1:8b', name: t('chat_model_creative') || 'Creative', tier: 'Tier 1', desc: t('chat_model_general') || 'General purpose', cost: 0.01, ultra: false },
-    { id: 'qwen2.5-coder:32b', name: t('chat_model_professional') || 'Professional', tier: 'Tier 2', desc: t('chat_model_advanced') || 'Advanced reasoning', cost: 0.05, ultra: true },
-    { id: 'llama3.3:70b', name: t('chat_model_ultra') || 'Ultra', tier: 'Tier 3', desc: t('chat_model_powerful') || 'Most powerful', cost: 0.1, ultra: true },
+    { id: 'qwen2.5-coder:7b', name: t('chat_model_fast') || 'Flash', tier: 'Tier 1', desc: t('chat_model_fast_desc') || 'Fast responses', cost: 0.01, ultra: false },
+    { id: 'qwen2.5-coder:32b', name: t('chat_model_professional') || 'Pro', tier: 'Tier 2', desc: t('chat_model_advanced') || 'Deep reasoning', cost: 0.05, ultra: true },
+    { id: 'llama3.3:70b', name: t('chat_model_ultra') || 'Ultra', tier: 'Tier 3', desc: t('chat_model_powerful') || 'Maximum power', cost: 0.1, ultra: true },
+    { id: 'cocoon-auto', name: 'Cocoon', tier: 'TEE', desc: 'Confidential compute', cost: 0.02, ultra: false, cocoon: true },
   ];
 
   const isUltraModel = (modelId: string) => models.find(m => m.id === modelId)?.ultra ?? (modelId.includes('70b') || modelId.includes('deepseek-r1'));
@@ -94,14 +94,14 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
     fetch(`${API_BASE_URL}/api/v1/chat/ultra-status`, { headers })
       .then(r => r.ok ? r.json() : null)
       .then(data => data && setUltraStatus(data))
-      .catch(() => {});
+      .catch(() => { });
   }, [gstdBalance, address]);
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/api/v1/analytics/viral/community-favorite`)
       .then(r => r.ok ? r.json() : null)
       .then(data => data?.community_favorite && setCommunityFavorite(data.community_favorite))
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   useEffect(() => {
@@ -112,7 +112,7 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
       const key = `gstd_viral_click_${model}`;
       if (!sessionStorage.getItem(key)) {
         sessionStorage.setItem(key, '1');
-        fetch(`${API_BASE_URL}/api/v1/analytics/viral/click?model=${encodeURIComponent(model)}`, { method: 'POST' }).catch(() => {});
+        fetch(`${API_BASE_URL}/api/v1/analytics/viral/click?model=${encodeURIComponent(model)}`, { method: 'POST' }).catch(() => { });
       }
     }
   }, []);
@@ -136,7 +136,7 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
     const viralUrl = `${baseUrl}/dashboard?tab=chat&viral=1&model=${encodeURIComponent(modelId)}`;
     const devices = msg.powStats?.swarm_devices ?? 1500;
     const shareText = `${msg.content.slice(0, 200)}${msg.content.length > 200 ? '...' : ''}\n\n— Этот ответ был рассчитан ${devices} смартфонами в сети GSTD. Присоединяйся и зарабатывай золото! ${viralUrl}`;
-    fetch(`${API_BASE_URL}/api/v1/analytics/viral/share?model=${encodeURIComponent(modelId)}`, { method: 'POST' }).catch(() => {});
+    fetch(`${API_BASE_URL}/api/v1/analytics/viral/share?model=${encodeURIComponent(modelId)}`, { method: 'POST' }).catch(() => { });
     if (navigator.share && typeof window !== 'undefined') {
       navigator.share({ title: 'GSTD Swarm', text: shareText, url: viralUrl }).catch(() => navigator.clipboard.writeText(shareText));
     } else {
@@ -452,7 +452,7 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
           >
             {models.map(m => (
               <option key={m.id} value={m.id} className="bg-[#0a0a1a] text-white">
-                {m.name} ({m.tier}) — {m.cost} GSTD{communityFavorite === m.id ? ' ★' : ''}
+                {m.name} ({m.tier}) — {m.cost} GSTD{communityFavorite === m.id ? ' ★' : ''}{(m as any).cocoon ? ' 🛡️' : ''}
               </option>
             ))}
           </select>
@@ -461,11 +461,10 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
               ★ {t('chat_community_favorite') || 'Community Favorite'}
             </span>
           )}
-          <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${
-            isUltraModel(selectedModel)
-              ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
-              : 'bg-white/5 border-white/10 text-gray-400'
-          }`}>
+          <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${isUltraModel(selectedModel)
+            ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+            : 'bg-white/5 border-white/10 text-gray-400'
+            }`}>
             {isUltraModel(selectedModel) ? <Crown size={12} /> : null}
             {isUltraModel(selectedModel) ? (t('chat_mode_ultra') || 'Ultra') : (t('chat_mode_standard') || 'Standard')}
           </span>
@@ -474,9 +473,8 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
         {/* Model Comparison Mode */}
         <button
           onClick={() => setCompareMode(!compareMode)}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider border transition-all ${
-            compareMode ? 'bg-amber-500/20 border-amber-500/40 text-amber-400' : 'bg-white/5 border-white/10 text-gray-500'
-          }`}
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider border transition-all ${compareMode ? 'bg-amber-500/20 border-amber-500/40 text-amber-400' : 'bg-white/5 border-white/10 text-gray-500'
+            }`}
           title={t('chat_compare_mode') || 'Compare two models side-by-side'}
         >
           {t('chat_compare_mode') || 'Compare'}
@@ -497,11 +495,10 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
         {/* Speculative Decoding Toggle */}
         <button
           onClick={() => setSpeculativeEnabled(!speculativeEnabled)}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider border transition-all ${
-            speculativeEnabled
-              ? 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400'
-              : 'bg-white/5 border-white/10 text-gray-500'
-          }`}
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider border transition-all ${speculativeEnabled
+            ? 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400'
+            : 'bg-white/5 border-white/10 text-gray-500'
+            }`}
           title={t('chat_speculative_tooltip') || 'Speculative Decoding: small model drafts instantly, large model verifies'}
         >
           <Zap size={12} />
@@ -623,73 +620,77 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
           }
           if (msg.role === 'assistant' && nextMsg?.role === 'assistant' && msg.model === nextMsg.model) return null; // skip second of pair
           return (
-          <div key={msg.id} className={`flex gap-3 py-4 px-4 rounded-2xl ${msg.role === 'user' ? 'bg-white/[0.02]' : ''}`}>
-            <div className={`flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center ${
-              msg.role === 'user' ? 'bg-violet-600/20 text-violet-400' : 'bg-cyan-500/20 text-cyan-400'
-            }`}>
-              {msg.role === 'user' ? <User size={16} /> : <Bot size={16} />}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="prose prose-invert prose-sm max-w-none [&_pre]:bg-black/40 [&_pre]:border [&_pre]:border-white/10 [&_pre]:rounded-xl [&_code]:text-violet-300 [&_a]:text-cyan-400">
-                {/* Verified content */}
-                <ReactMarkdown>{msg.content}</ReactMarkdown>
-
-                {/* Speculative (unverified) content - shown dimmed */}
-                {msg.speculativeContent && (
-                  <span className="text-gray-500/60 italic animate-pulse">
-                    {msg.speculativeContent}
-                  </span>
-                )}
-
-                {/* Streaming indicator */}
-                {msg.isStreaming && (
-                  <span className="inline-block w-2 h-4 bg-cyan-400 animate-pulse ml-0.5 rounded-sm" />
-                )}
+            <div key={msg.id} className={`flex gap-3 py-4 px-4 rounded-2xl ${msg.role === 'user' ? 'bg-white/[0.02]' : ''}`}>
+              <div className={`flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center ${msg.role === 'user' ? 'bg-violet-600/20 text-violet-400' : 'bg-cyan-500/20 text-cyan-400'
+                }`}>
+                {msg.role === 'user' ? <User size={16} /> : <Bot size={16} />}
               </div>
+              <div className="flex-1 min-w-0">
+                <div className="prose prose-invert prose-sm max-w-none [&_pre]:bg-black/40 [&_pre]:border [&_pre]:border-white/10 [&_pre]:rounded-xl [&_code]:text-violet-300 [&_a]:text-cyan-400">
+                  {/* Verified content */}
+                  <ReactMarkdown>{msg.content}</ReactMarkdown>
 
-              {/* Message footer with metadata */}
-              {msg.role === 'assistant' && !msg.isStreaming && msg.content && (
-                <div className="flex items-center gap-3 mt-3 pt-2 border-t border-white/5 flex-wrap">
-                  <button onClick={() => handleCopy(msg.id, msg.content)}
-                    className="flex items-center gap-1.5 text-[10px] text-gray-500 hover:text-white font-bold uppercase tracking-wider transition-colors">
-                    {copiedId === msg.id ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
-                    {copiedId === msg.id ? (t('copied') || 'Copied') : (t('copy') || 'Copy')}
-                  </button>
-                  <button onClick={() => handleShare(msg)}
-                    className="flex items-center gap-1.5 text-[10px] text-gray-500 hover:text-cyan-400 font-bold uppercase tracking-wider transition-colors"
-                    title={t('chat_share_answer') || 'Поделиться ответом'}>
-                    <Share2 size={12} />
-                    {t('chat_share_answer') || 'Поделиться'}
-                  </button>
-                  {msg.model && (
-                    <span className="text-[10px] text-gray-600 font-mono">
-                      {models.find(m => m.id === msg.model)?.name || 'GSTD Neural Core'}
+                  {/* Speculative (unverified) content - shown dimmed */}
+                  {msg.speculativeContent && (
+                    <span className="text-gray-500/60 italic animate-pulse">
+                      {msg.speculativeContent}
                     </span>
                   )}
-                  {msg.tokens && (
-                    <span className="text-[10px] text-gray-600">
-                      {msg.tokens.prompt + msg.tokens.completion} tok
-                    </span>
-                  )}
-                  {msg.cost != null && (
-                    <span className={`text-[10px] font-bold ${msg.cost > 0 ? 'text-amber-500/60' : 'text-emerald-500/60'}`}>
-                      {msg.cost > 0 ? `-${msg.cost} GSTD` : 'Free'}
-                    </span>
-                  )}
-                  {msg.powStats && msg.powStats.swarm_devices > 0 && (
-                    <span className="text-[10px] text-cyan-500/60" title={t('chat_pow_tooltip') || 'Your request was processed by the Swarm'}>
-                      🐝 {msg.powStats.swarm_devices} devices • {msg.powStats.workers_gstd.toFixed(2)} GSTD → workers
-                    </span>
-                  )}
-                  {speculativeEnabled && (
-                    <span className="flex items-center gap-1 text-[10px] text-cyan-500/40">
-                      <Zap size={10} /> Speculative
-                    </span>
+
+                  {/* Streaming indicator */}
+                  {msg.isStreaming && (
+                    <span className="inline-block w-2 h-4 bg-cyan-400 animate-pulse ml-0.5 rounded-sm" />
                   )}
                 </div>
-              )}
+
+                {/* Message footer with metadata */}
+                {msg.role === 'assistant' && !msg.isStreaming && msg.content && (
+                  <div className="flex items-center gap-3 mt-3 pt-2 border-t border-white/5 flex-wrap">
+                    <button onClick={() => handleCopy(msg.id, msg.content)}
+                      className="flex items-center gap-1.5 text-[10px] text-gray-500 hover:text-white font-bold uppercase tracking-wider transition-colors">
+                      {copiedId === msg.id ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                      {copiedId === msg.id ? (t('copied') || 'Copied') : (t('copy') || 'Copy')}
+                    </button>
+                    <button onClick={() => handleShare(msg)}
+                      className="flex items-center gap-1.5 text-[10px] text-gray-500 hover:text-cyan-400 font-bold uppercase tracking-wider transition-colors"
+                      title={t('chat_share_answer') || 'Поделиться ответом'}>
+                      <Share2 size={12} />
+                      {t('chat_share_answer') || 'Поделиться'}
+                    </button>
+                    {msg.model && (
+                      <span className="text-[10px] text-gray-600 font-mono">
+                        {models.find(m => m.id === msg.model)?.name || 'GSTD Neural Core'}
+                      </span>
+                    )}
+                    {msg.tokens && (
+                      <span className="text-[10px] text-gray-600">
+                        {msg.tokens.prompt + msg.tokens.completion} tok
+                      </span>
+                    )}
+                    {msg.cost != null && (
+                      <span className={`text-[10px] font-bold ${msg.cost > 0 ? 'text-amber-500/60' : 'text-emerald-500/60'}`}>
+                        {msg.cost > 0 ? `-${msg.cost} GSTD` : 'Free'}
+                      </span>
+                    )}
+                    {msg.powStats && msg.powStats.swarm_devices > 0 && (
+                      <span className="text-[10px] text-cyan-500/60" title={t('chat_pow_tooltip') || 'Your request was processed by the Swarm'}>
+                        🐝 {msg.powStats.swarm_devices} devices • {msg.powStats.workers_gstd.toFixed(2)} GSTD → workers
+                      </span>
+                    )}
+                    {speculativeEnabled && (
+                      <span className="flex items-center gap-1 text-[10px] text-cyan-500/40">
+                        <Zap size={10} /> Speculative
+                      </span>
+                    )}
+                    {selectedModel.startsWith('cocoon-') && (
+                      <span className="flex items-center gap-1 text-[10px] text-emerald-400/60">
+                        <Shield size={10} /> Cocoon TEE
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
           );
         })}
 

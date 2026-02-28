@@ -325,6 +325,7 @@ export default function HumanityMonitor() {
         activeNodes: 0, gstdPrice: 0, dataProcessed: 0, health: 0.95,
         totalUsers: 0, tasksCompleted: 0, totalBurned: 0
     });
+    const [sovereigntyIndex, setSovereigntyIndex] = useState(100.0);
 
     // Merge static signal definitions with real backend progress data
     const signalsWithRealData = useMemo(() => {
@@ -389,6 +390,19 @@ export default function HumanityMonitor() {
         };
         fetchData();
         const interval = setInterval(fetchData, 4000);
+        return () => clearInterval(interval);
+    }, []);
+
+    // Fetch Sovereignty Index
+    useEffect(() => {
+        const fetchSov = async () => {
+            try {
+                const data = await apiGet<any>('/chat/sovereignty-index').catch(() => null);
+                if (data?.sovereignty_index !== undefined) setSovereigntyIndex(data.sovereignty_index);
+            } catch (e) { }
+        };
+        fetchSov();
+        const interval = setInterval(fetchSov, 5000);
         return () => clearInterval(interval);
     }, []);
 
@@ -541,8 +555,9 @@ export default function HumanityMonitor() {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full md:w-auto">
+                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 w-full md:w-auto">
                             {[
+                                { label: 'Sovereignty', value: sovereigntyIndex.toFixed(1) + '%', color: sovereigntyIndex > 90 ? 'text-emerald-400' : sovereigntyIndex > 70 ? 'text-amber-400' : 'text-rose-400', icon: Shield },
                                 { label: 'Health', value: (stats.health * 100).toFixed(0) + '%', color: stats.health > 0.8 ? 'text-emerald-400' : 'text-amber-400', icon: Activity },
                                 { label: 'Signals', value: `${criticalCount} critical`, color: 'text-rose-400', icon: AlertTriangle },
                                 { label: 'Contributors', value: totalContributors.toLocaleString(), color: 'text-violet-400', icon: Users },
