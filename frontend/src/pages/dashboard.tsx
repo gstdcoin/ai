@@ -26,10 +26,10 @@ export default function DashboardPage() {
             }
         });
 
-        // Method 3: Timeout fallback — if nothing hydrates in 1.5s, proceed
+        // Method 3: Timeout fallback — extended to 3s for slow TonConnect restore
         const timer = setTimeout(() => {
             setHydrated(true);
-        }, 1500);
+        }, 3000);
 
         // If there's saved data in localStorage, give extra time for TonConnect
         let storageTimer: ReturnType<typeof setTimeout> | null = null;
@@ -39,9 +39,7 @@ export default function DashboardPage() {
                 const parsed = JSON.parse(stored);
                 const savedState = parsed?.state;
                 if (savedState?.isConnected && savedState?.address) {
-                    // Store has data — it will hydrate shortly
-                    // Give zustand time to finish persist rehydration
-                    storageTimer = setTimeout(() => setHydrated(true), 800);
+                    storageTimer = setTimeout(() => setHydrated(true), 1500);
                 }
             } catch {
                 // Invalid JSON, proceed normally
@@ -55,11 +53,11 @@ export default function DashboardPage() {
         };
     }, []);
 
-    // Redirect away if not connected after hydration
+    // Redirect away if not connected after hydration — with longer delay for TonConnect restore
     useEffect(() => {
         if (!hydrated) return;
 
-        // Give TonConnect's `restoreConnection` time to reconnect the wallet
+        // Extended delay (2s) to let TonConnect's restoreConnection finish
         const redirectTimer = setTimeout(() => {
             const currentState = useWalletStore.getState();
             if (!currentState.isConnected) {
@@ -71,20 +69,24 @@ export default function DashboardPage() {
                 const q = params.toString() ? '?' + params.toString() : '';
                 router.push('/' + q);
             }
-        }, 500);
+        }, 2000);
 
         return () => clearTimeout(redirectTimer);
     }, [hydrated, isConnected, router]);
 
     // Loading state — waiting for hydration
-    if (!hydrated || !isConnected) {
+    if (!hydrated) {
         return (
             <div className="min-h-screen bg-[#030014] flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-violet-500 opacity-50"></div>
+                <div className="text-center space-y-3">
+                    <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-violet-500 opacity-50 mx-auto" />
+                    <div className="text-xs text-gray-600 animate-pulse">Connecting to Swarm…</div>
+                </div>
             </div>
         );
     }
 
+    // Show dashboard even during wallet reconnect (avoids "inaccessible" state)
     return (
         <Dashboard
             initialTab={(router.query.tab as string) || (router.query.mode === 'mining' || router.query.mining === '1' ? 'home' : undefined)}
@@ -94,6 +96,7 @@ export default function DashboardPage() {
         />
     );
 }
+
 
 export const getStaticProps: GetStaticProps = async ({ locale }) => {
     return {

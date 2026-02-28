@@ -39,7 +39,7 @@ function translateTickerMessage(msg: string, t: (k: string) => string): string {
     const m = msg.match(/predicted (\d+\.?\d*)h, actual (\d+\.?\d*)h/);
     const predicted = m ? m[1] : '?';
     const actual = m ? m[2] : '?';
-    return '⏱ ' + t('ticker_temporal_precision', { predicted, actual });
+    return '⏱ ' + (t('ticker_temporal_precision') || 'Temporal Precision') + `: predicted ${predicted}h, actual ${actual}h`;
   }
   if (msg.includes('Информационный вакуум') || msg.includes('Information vacuum')) {
     return '⚠️ ' + t('ticker_integrity_guard');
@@ -57,7 +57,7 @@ function translateTickerMessage(msg: string, t: (k: string) => string): string {
     const hours = m ? (m[1] || m[2] || m[3] || m[4] || '?') : '?';
     const c = msg.match(/\((\d+)\s*(цепочек|chains)\)/);
     const count = c ? c[1] : '?';
-    return '🔮 ' + t('ticker_forecast', { hours, count });
+    return '🔮 ' + (t('ticker_forecast') || 'Forecast') + `: ${hours}h (${count} chains)`;
   }
   return msg;
 }
@@ -77,7 +77,7 @@ export default function LeviathanLiveTicker() {
   const supremeUntilRef = useRef<number>(0);
   const pendingItemsRef = useRef<string[]>([]);
   const throttleTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const connectRef = useRef<() => void>(() => {});
+  const connectRef = useRef<() => void>(() => { });
 
   const connect = useCallback(() => {
     if (esRef.current) {
@@ -217,18 +217,17 @@ export default function LeviathanLiveTicker() {
     ? ['⚠️ No data from Leviathan. Check Backend Pollers.']
     : isEmpty
       ? (connectionState === 'closed'
-          ? ['СТАТУС: ЛЕВИАФАН ИЩЕТ СИГНАЛ...']
-          : ['Leviathan Live Stream — АРХИТЕКТОР, СИСТЕМА СТАЛА ПРОЗРАЧНОЙ'])
+        ? ['СТАТУС: ЛЕВИАФАН ИЩЕТ СИГНАЛ...']
+        : ['Leviathan Live Stream — АРХИТЕКТОР, СИСТЕМА СТАЛА ПРОЗРАЧНОЙ'])
       : items;
   const displayItems = rawDisplayItems.map((m) => translateTickerMessage(m, t));
 
   return (
     <div
-      className={`overflow-hidden border-b py-2 z-[9999] opacity-100 transition-colors duration-300 ${
-        supremeOpportunity
+      className={`overflow-hidden border-b py-2 z-[9999] opacity-100 transition-colors duration-300 ${supremeOpportunity
           ? 'border-amber-500/60 bg-amber-500/10 animate-supreme-pulse'
           : 'border-white/5 bg-black/30'
-      }`}
+        }`}
       style={{ position: 'fixed', top: 0, left: 0, width: '100%' }}
     >
       <div

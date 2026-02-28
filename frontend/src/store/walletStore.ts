@@ -26,6 +26,8 @@ interface WalletState {
   updateBalance: (ton: string, gstd: string | number, pending?: number) => void;
   setUser: (user: User | null) => void;
   setWorkerActive: (active: boolean) => void;
+  isHydrated: boolean;
+  setHydrated: (hydrated: boolean) => void;
 }
 
 // Custom storage that works in both browser and Telegram WebApp

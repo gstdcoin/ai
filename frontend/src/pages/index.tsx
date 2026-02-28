@@ -33,7 +33,7 @@ export default function Home() {
   const [isClient, setIsClient] = useState(false);
   const [chatInput, setChatInput] = useState('');
   const [checkingSession, setCheckingSession] = useState(true);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { setIsClient(true); }, []);
 

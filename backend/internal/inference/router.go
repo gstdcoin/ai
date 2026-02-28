@@ -19,10 +19,11 @@ type ProviderPriority int
 
 const (
 	PrioritySovereignGPU ProviderPriority = 1 // GSTD GPU nodes (best)
-	PriorityCPUWorker    ProviderPriority = 2 // GSTD CPU workers
-	PriorityEdgeNode     ProviderPriority = 3 // Edge nodes
-	PriorityPartner      ProviderPriority = 4 // Cross-network partners
-	PriorityExternal     ProviderPriority = 5 // External APIs (fallback)
+	PriorityCocoonTEE    ProviderPriority = 2 // Cocoon Confidential Compute (TEE-protected, TON-paid)
+	PriorityCPUWorker    ProviderPriority = 3 // GSTD CPU workers
+	PriorityEdgeNode     ProviderPriority = 4 // Edge nodes
+	PriorityPartner      ProviderPriority = 5 // Cross-network partners
+	PriorityExternal     ProviderPriority = 6 // External APIs (fallback)
 )
 
 // InferRequest is an inference request from a client.
@@ -120,6 +121,12 @@ var ModelZoo = []ModelSpec{
 	// Speech
 	{Name: "whisper-large-v3", Category: "speech", VRAMGB: 4, NodeTypes: []string{"cpu", "gpu"}},
 	{Name: "xtts-v2", Category: "speech", VRAMGB: 8, NodeTypes: []string{"cpu", "gpu"}},
+
+	// Cocoon TEE (Confidential Compute Open Network — TEE-protected inference on TON)
+	// Docs: https://cocoon.org/developers • GitHub: https://github.com/TelegramMessenger/cocoon
+	{Name: "cocoon-auto", Category: "cocoon_tee", VRAMGB: 0, NodeTypes: []string{"cocoon"}},
+	{Name: "cocoon-qwen3-0.6b", Category: "cocoon_tee", VRAMGB: 0, NodeTypes: []string{"cocoon"}},
+	{Name: "cocoon-llama3-70b", Category: "cocoon_tee", VRAMGB: 0, NodeTypes: []string{"cocoon"}},
 }
 
 // ─── LLM Router ─────────────────────────────────────────────────────────────
