@@ -124,8 +124,8 @@ export default function WalletListener() {
                     }
                 } catch (e: any) {
                     logger.error('Simple login failed', e);
-                    // Still keep UI connected
-                    lastLoggedInAddress.current = rawAddress;
+                    toast.error('Failed to authenticate wallet. Please disconnect and try again.');
+                    // Do not lock the UI, so they can try again if they disconnect/reconnect
                 }
 
             } catch (err: any) {
