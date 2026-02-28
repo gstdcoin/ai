@@ -76,17 +76,20 @@ func SetupRoutes(
 	monetizationService *services.MonetizationMetricsService,
 	organismHub *services.OrganismHubService,
 	llmRouter *infRouter.Router,
+	recyclingPool *services.RecyclingPoolService,
 ) {
 	log.Printf("🔧 SetupRoutes: Starting route setup, redisClient type: %T", redisClient)
 
 	// CORS: allow API access from web app, Telegram, mobile, and external clients
 	allowedOrigins := map[string]bool{
-		"https://app.gstdtoken.com": true,
-		"https://api.gstdtoken.com": true,
-		"http://localhost:3000":     true,
-		"http://127.0.0.1:3000":     true,
-		"https://web.telegram.org":  true,
-		"https://t.me":              true,
+		"https://app.gstdtoken.com":     true,
+		"https://api.gstdtoken.com":     true,
+		"https://chat.gstdtoken.com":    true,
+		"https://monitor.gstdtoken.com": true,
+		"http://localhost:3000":         true,
+		"http://127.0.0.1:3000":         true,
+		"https://web.telegram.org":      true,
+		"https://t.me":                  true,
 	}
 	router.Use(cors.New(cors.Config{
 		AllowOriginFunc: func(origin string) bool {
@@ -133,6 +136,9 @@ func SetupRoutes(
 		if rc, ok := redisClient.(*redis.Client); ok && rc != nil {
 			gatewayHandler.SetRedis(rc)
 		}
+	}
+	if recyclingPool != nil {
+		gatewayHandler.SetRecyclingPool(recyclingPool)
 	}
 
 	// Initialize Genesis System (Self-Generating APIs)

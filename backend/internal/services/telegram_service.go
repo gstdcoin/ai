@@ -664,6 +664,34 @@ func (s *TelegramService) ProcessWebhook(ctx context.Context, body []byte) error
 			btnHelp = "📖 Помощь"
 		}
 
+		// Sponsor Signal Flow (deep link from Monitor)
+		// Format: sponsor-SIGNALID-STARS (e.g. sponsor-nasa_eosdis-3500)
+		// Uses dash separator because signal IDs contain underscores
+		if strings.HasPrefix(payload, "sponsor-") {
+			sponsorParts := strings.SplitN(payload, "-", 3)
+			signalID := "unknown"
+			starsAmount := 100
+			if len(sponsorParts) >= 2 {
+				signalID = sponsorParts[1]
+			}
+			if len(sponsorParts) >= 3 {
+				fmt.Sscanf(sponsorParts[2], "%d", &starsAmount)
+			}
+			if starsAmount < 1 {
+				starsAmount = 100
+			}
+
+			title := "Sponsor Signal Analysis"
+			desc := fmt.Sprintf("Sponsor Swarm analysis for signal %s — %d ⭐️ → GSTD for workers + results stored in Collective Memory.", signalID, starsAmount)
+			if lang == "ru" {
+				title = "Спонсирование сигнала"
+				desc = fmt.Sprintf("Спонсирование анализа сигнала %s — %d ⭐️ → GSTD работникам + результат сохраняется в Коллективной Памяти.", signalID, starsAmount)
+			}
+
+			invoicePayload := fmt.Sprintf("monitor_launch:%s:%s:%.2f", signalID, "tg-"+senderIDStr, float64(starsAmount)*0.8)
+			return s.sendInvoiceWithStars(ctx, chatID, title, desc, invoicePayload, starsAmount)
+		}
+
 		// Wallet-as-Node Flow
 		if payload == "mining" || payload == "node" {
 			msg := msgWalletAsNode[lang]
