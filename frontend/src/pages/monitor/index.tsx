@@ -400,25 +400,44 @@ export default function HumanityMonitor() {
         if (!ctx) return;
         let animationFrameId: number;
         let ptime = 0;
-        const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
-        window.addEventListener('resize', resize); resize();
+        const resize = () => {
+            const dpr = window.devicePixelRatio || 1;
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            canvas.width = w * dpr;
+            canvas.height = h * dpr;
+            canvas.style.width = w + 'px';
+            canvas.style.height = h + 'px';
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            // Clear and re-scatter particles on resize to avoid stretching
+            ctx.fillStyle = 'rgba(2, 6, 23, 1)';
+            ctx.fillRect(0, 0, w, h);
+            particles.forEach(p => {
+                p.x = Math.random() * w;
+                p.y = Math.random() * h;
+                p.radius = 0;
+            });
+        };
         const particles: any[] = [];
         for (let i = 0; i < 50; i++) {
             particles.push({
-                x: Math.random() * canvas.width, y: Math.random() * canvas.height,
+                x: Math.random() * (canvas.width || window.innerWidth), y: Math.random() * (canvas.height || window.innerHeight),
                 radius: 0, maxRadius: Math.random() * 100 + 30, speed: Math.random() * 0.35 + 0.1,
                 color: ['rgba(14,165,233,', 'rgba(16,185,129,', 'rgba(244,63,94,', 'rgba(168,85,247,', 'rgba(245,158,11,'][Math.floor(Math.random() ** 2 * 5)]
             });
         }
+        window.addEventListener('resize', resize); resize();
         const animate = (time: number) => {
+            const w = window.innerWidth;
+            const h = window.innerHeight;
             if (time - ptime > 30) {
                 ctx.fillStyle = 'rgba(2, 6, 23, 0.1)';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillRect(0, 0, w, h);
                 ptime = time;
             }
             particles.forEach((p) => {
                 p.radius += p.speed;
-                if (p.radius > p.maxRadius) { p.radius = 0; p.x = Math.random() * canvas.width; p.y = Math.random() * canvas.height; }
+                if (p.radius > p.maxRadius) { p.radius = 0; p.x = Math.random() * w; p.y = Math.random() * h; }
                 const alpha = (1 - (p.radius / p.maxRadius)) * 0.2;
                 ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
                 ctx.strokeStyle = p.color + alpha + ')'; ctx.lineWidth = 0.8; ctx.stroke();
@@ -431,6 +450,20 @@ export default function HumanityMonitor() {
 
     const handleAnalyzeSignal = async () => {
         if (!selectedSignal) return;
+
+        const isTelegram = typeof window !== 'undefined' && (window as any).Telegram?.WebApp?.openInvoice;
+
+        // If we're NOT inside the Telegram Mini App, redirect to the bot directly
+        // The bot will send the Stars invoice in the chat — simplest purchase flow
+        if (!isTelegram) {
+            const deepLink = `https://t.me/GstdAppBot?start=sponsor-${selectedSignal.id}-${selectedSignal.starsCost}`;
+            window.open(deepLink, '_blank');
+            toast.success("Opening GstdAppBot in Telegram to pay with Stars...");
+            setSelectedSignal(null);
+            return;
+        }
+
+        // Inside Telegram WebApp — full invoice flow
         setIsPurchasing(true); setPurchaseStep(1);
         try {
             // Record real sponsorship in backend DB
@@ -447,25 +480,19 @@ export default function HumanityMonitor() {
             });
             if (resp.invoice_url) {
                 setPurchaseStep(2);
-                if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp?.openInvoice) {
-                    (window as any).Telegram.WebApp.openInvoice(resp.invoice_url, (status: string) => {
-                        if (status === 'paid') {
-                            setPurchaseStep(3);
-                            setTimeout(() => {
-                                toast.success("Signal Dispatched! " + selectedSignal.gstdReward + " GSTD locked for Swarm resolution.");
-                                setIsPurchasing(false); setPurchaseStep(0); setSelectedSignal(null);
-                                setLiveLogs(prev => [{
-                                    id: Math.random().toString(), type: 'SIGNAL_SPONSOR', chain: 'SWARM',
-                                    message: `[Sponsored] ${selectedSignal.title} → Swarm processing initiated`, timestamp: new Date().toISOString()
-                                }, ...prev].slice(0, 20));
-                            }, 2000);
-                        } else { toast.error('Payment ' + status); setIsPurchasing(false); setPurchaseStep(0); }
-                    });
-                } else {
-                    window.open(resp.invoice_url, '_blank');
-                    setPurchaseStep(3);
-                    setTimeout(() => { toast.success("Signal Dispatched!"); setIsPurchasing(false); setPurchaseStep(0); setSelectedSignal(null); }, 2000);
-                }
+                (window as any).Telegram.WebApp.openInvoice(resp.invoice_url, (status: string) => {
+                    if (status === 'paid') {
+                        setPurchaseStep(3);
+                        setTimeout(() => {
+                            toast.success("Signal Dispatched! " + selectedSignal.gstdReward + " GSTD locked for Swarm resolution.");
+                            setIsPurchasing(false); setPurchaseStep(0); setSelectedSignal(null);
+                            setLiveLogs(prev => [{
+                                id: Math.random().toString(), type: 'SIGNAL_SPONSOR', chain: 'SWARM',
+                                message: `[Sponsored] ${selectedSignal.title} → Swarm processing initiated`, timestamp: new Date().toISOString()
+                            }, ...prev].slice(0, 20));
+                        }, 2000);
+                    } else { toast.error('Payment ' + status); setIsPurchasing(false); setPurchaseStep(0); }
+                });
             } else { toast.error("Failed to generate invoice"); setIsPurchasing(false); setPurchaseStep(0); }
         } catch (e: any) { toast.error('Error: ' + (e?.message || 'Unknown')); setIsPurchasing(false); setPurchaseStep(0); }
     };
@@ -488,7 +515,7 @@ export default function HumanityMonitor() {
                 <meta name="description" content={`${ACTIVE_SIGNALS.length} planetary-scale signals covering climate, health, security, food, science, and society. Sponsor Swarm analysis to solve humanity's hardest problems.`} />
             </Head>
 
-            <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none z-0" />
+            <canvas ref={canvasRef} className="fixed inset-0 w-full h-full pointer-events-none z-0" style={{ width: '100vw', height: '100vh' }} />
 
             <div className="relative z-10 flex flex-col min-h-screen p-4 sm:p-6 overflow-y-auto custom-scrollbar">
                 {/* ─── HEADER ─────────────────────────────────────────────── */}
@@ -708,7 +735,7 @@ export default function HumanityMonitor() {
                         </div>
 
                         {/* Join CTA */}
-                        <a href="https://t.me/GSTDBot" target="_blank" rel="noopener noreferrer"
+                        <a href="https://t.me/GstdAppBot" target="_blank" rel="noopener noreferrer"
                             className="block bg-gradient-to-br from-sky-600/20 to-violet-600/20 border border-sky-500/30 rounded-2xl p-4 hover:border-sky-400/50 transition-all group">
                             <h3 className="text-sm font-black text-white mb-1 flex items-center gap-2">
                                 Become a Neuron <ExternalLink className="w-3 h-3 text-sky-400 group-hover:translate-x-0.5 transition-transform" />

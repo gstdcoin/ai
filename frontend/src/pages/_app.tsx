@@ -96,7 +96,7 @@ function App({ Component, pageProps }: AppProps) {
         <TonConnectUIProvider
           manifestUrl={manifestUrl}
           actionsConfiguration={{
-            twaReturnUrl: 'https://t.me/gstdtoken_bot'
+            twaReturnUrl: 'https://t.me/GstdAppBot/app'
           }}
           restoreConnection={true}
           uiPreferences={{
