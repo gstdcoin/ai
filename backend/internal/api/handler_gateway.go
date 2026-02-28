@@ -30,6 +30,7 @@ type GatewayHandler struct {
 	settlement       *services.SettlementService
 	stats            *services.StatsService
 	router           *infRouter.Router
+	recyclingPool    *services.RecyclingPoolService
 	ollamaURL        string
 	client           *http.Client
 }
@@ -93,6 +94,11 @@ func (h *GatewayHandler) SetStats(s *services.StatsService) {
 // SetRedis wires Redis for Compare Mode queue monitoring (Genesis Launch).
 func (h *GatewayHandler) SetRedis(r *redis.Client) {
 	h.redis = r
+}
+
+// SetRecyclingPool wires RecyclingPool for closed-loop token economy (93% miners, 7% Golden Reserve).
+func (h *GatewayHandler) SetRecyclingPool(rp *services.RecyclingPoolService) {
+	h.recyclingPool = rp
 }
 
 // analyzeIntelligenceNeedOllama picks best Ollama model from message content (omega-auto).
@@ -164,14 +170,23 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 		wallet = c.GetHeader("X-GSTD-Target-Wallet")
 	}
 
-	// Consumer Adoption: Unified Payment Gateway — require wallet for all chat
+	// Consumer Adoption: Allow anonymous free-tier (basic models only)
+	// Wallet required for paid models (Pro, Ultra)
+	anonymousFree := false
 	if wallet == "" {
-		c.JSON(402, gin.H{
-			"error":   "wallet_required",
-			"code":    402,
-			"message": "Connect wallet to use chat. GSTD is deducted per request.",
-		})
-		return
+		// Allow free tier without wallet for chat.gstdtoken.com onboarding
+		modelLower := strings.ToLower(req.Model)
+		isFreeModel := modelLower == "" || modelLower == "auto" || modelLower == "gstd-flash" || modelLower == "omega-auto"
+		if !isFreeModel {
+			c.JSON(402, gin.H{
+				"error":   "wallet_required",
+				"code":    402,
+				"message": "Connect wallet to use Pro/Ultra models. Free models: Auto, Flash.",
+			})
+			return
+		}
+		wallet = "anon-" + c.ClientIP()
+		anonymousFree = true
 	}
 
 	// Genesis Launch: Compare Mode queue — prioritize balance > 500 GSTD when backlog
@@ -415,16 +430,32 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 	_ = json.Unmarshal(respBody, &ollamaResp)
 	content := strings.TrimSpace(ollamaResp.Response)
 
-	// Consumer Adoption: SettlementService — record payment (skip when Free Tier or First-Query Bonus)
-	if h.settlement != nil && wallet != "" && fee > 0 && !useFreeTier {
-		workerAmt := fee * 0.85
-		_, _ = h.settlement.ProcessPayment(c.Request.Context(), &services.SettlementRequest{
-			AmountGSTD:   fee,
-			WorkerWallet: "platform_consumer",
-			InferenceID:  "",
-			ModelID:      ollamaModel,
-		})
-		c.Set("gstd_worker_amount", workerAmt)
+	// Consumer Adoption: SettlementService + RecyclingPool — record payment (skip when Free Tier or First-Query Bonus)
+	if wallet != "" && fee > 0 && !useFreeTier && !anonymousFree {
+		// RecyclingPool: 85% → miners, 7% → Golden Reserve, 5% → Value Fund, 3% → burn
+		if h.recyclingPool != nil {
+			_, rpErr := h.recyclingPool.ProcessPayment(c.Request.Context(), wallet, fee, "chat-"+ollamaModel, "inference")
+			if rpErr != nil {
+				log.Printf("[RecyclingPool] Error processing chat fee: %v", rpErr)
+			}
+		}
+		// Settlement: record for auditing
+		if h.settlement != nil {
+			workerAmt := fee * 0.85
+			_, _ = h.settlement.ProcessPayment(c.Request.Context(), &services.SettlementRequest{
+				AmountGSTD:   fee,
+				WorkerWallet: "platform_consumer",
+				InferenceID:  "",
+				ModelID:      ollamaModel,
+			})
+			c.Set("gstd_worker_amount", workerAmt)
+		}
+	}
+
+	// Value Fund: subsidize free queries — paid queries fund free queries for growth
+	if (useFreeTier || anonymousFree || useFirstQueryBonus) && h.recyclingPool != nil {
+		computeCost := chatCostGSTD(ollamaModel) // base cost that would have been charged
+		h.recyclingPool.SubsidizeFreeQuery(c.Request.Context(), computeCost, ollamaModel)
 	}
 
 	// Hive Memory: Store Ultra response for network training

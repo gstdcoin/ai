@@ -125,6 +125,7 @@ var ModelZoo = []ModelSpec{
 // ─── LLM Router ─────────────────────────────────────────────────────────────
 
 // Router selects the optimal node for each inference request.
+// It implements load-aware distribution across swarm nodes to scale horizontally.
 type Router struct {
 	nodes []NodeInfo
 	cache sync.Map // request hash → cached response
@@ -133,6 +134,12 @@ type Router struct {
 
 	// External fallback (Ollama, OpenAI, etc.)
 	externalURL string
+
+	// Load tracking: nodeID → active task count (mutex-protected for atomic inc/dec)
+	nodeTaskCounts map[string]int
+	taskCountMu    sync.Mutex
+	// Maximum tasks per node before it's considered overloaded
+	maxTasksPerNode int
 }
 
 // RouterStats tracks routing decisions.
@@ -147,10 +154,15 @@ type RouterStats struct {
 
 // NewRouter creates a new inference router.
 func NewRouter(externalURL string) *Router {
-	return &Router{
-		nodes:       make([]NodeInfo, 0),
-		externalURL: externalURL,
+	r := &Router{
+		nodes:           make([]NodeInfo, 0),
+		externalURL:     externalURL,
+		nodeTaskCounts:  make(map[string]int),
+		maxTasksPerNode: 10, // Default: max 10 concurrent tasks per node
 	}
+	// Start background rebalancer
+	go r.rebalanceLoop()
+	return r
 }
 
 // RegisterNode adds a node to the routing pool.
@@ -318,12 +330,19 @@ func (r *Router) Route(ctx context.Context, req *InferRequest) (*InferResponse, 
 	return response, nil
 }
 
-// selectNode finds the best available node for given criteria.
+// selectNode finds the best available node using weighted load-aware scoring.
+// Score formula: (priority_weight) + (reputation_weight) - (load_penalty) + (latency_bonus)
+// This distributes tasks across the swarm proportionally to node capacity.
 func (r *Router) selectNode(ctx context.Context, criteria NodeCriteria) (*NodeInfo, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	var candidates []NodeInfo
+	type scoredNode struct {
+		node  NodeInfo
+		score float64
+	}
+
+	var candidates []scoredNode
 
 	for _, node := range r.nodes {
 		// Filter by model support
@@ -346,12 +365,30 @@ func (r *Router) selectNode(ctx context.Context, criteria NodeCriteria) (*NodeIn
 			continue
 		}
 
-		// Filter by load (skip overloaded nodes)
-		if node.CurrentLoad > 0.9 {
+		// Get real-time load from task counter
+		nodeLoad := r.getNodeLoad(node.ID)
+		effectiveLoad := node.CurrentLoad
+		if nodeLoad > effectiveLoad {
+			effectiveLoad = nodeLoad
+		}
+
+		// Skip overloaded nodes (>90% capacity)
+		if effectiveLoad > 0.9 {
 			continue
 		}
 
-		candidates = append(candidates, node)
+		// Weighted scoring for load-aware distribution:
+		// Lower priority number = better (GPU > CPU > Edge > Partner > External)
+		priorityScore := float64(6-node.Priority) * 20.0 // 0-100 range
+		reputationScore := node.Reputation * 30.0        // 0-30 range
+		loadPenalty := effectiveLoad * 50.0              // 0-50 penalty for high load
+		latencyBonus := 0.0
+		if node.Latency > 0 && node.Latency < 500*time.Millisecond {
+			latencyBonus = (1.0 - float64(node.Latency)/float64(500*time.Millisecond)) * 10.0
+		}
+
+		totalScore := priorityScore + reputationScore - loadPenalty + latencyBonus
+		candidates = append(candidates, scoredNode{node: node, score: totalScore})
 	}
 
 	if len(candidates) == 0 {
@@ -359,15 +396,16 @@ func (r *Router) selectNode(ctx context.Context, criteria NodeCriteria) (*NodeIn
 			criteria.ModelRequired, criteria.MinVRAM, criteria.GenesisLocked)
 	}
 
-	// Sort by priority (lower = better), then by reputation (higher = better)
+	// Sort by score (higher = better)
 	sort.Slice(candidates, func(i, j int) bool {
-		if candidates[i].Priority != candidates[j].Priority {
-			return candidates[i].Priority < candidates[j].Priority
-		}
-		return candidates[i].Reputation > candidates[j].Reputation
+		return candidates[i].score > candidates[j].score
 	})
 
-	return &candidates[0], nil
+	selected := candidates[0].node
+	log.Printf("[Router] Load-balanced selection: %s (score=%.1f, load=%.0f%%, rep=%.2f) from %d candidates",
+		selected.ID, candidates[0].score, r.getNodeLoad(selected.ID)*100, selected.Reputation, len(candidates))
+
+	return &selected, nil
 }
 
 // routeExternal sends request to external API (Ollama, etc.).
@@ -399,6 +437,120 @@ func (r *Router) GetNodeCount() int {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return len(r.nodes)
+}
+
+// GetNodeList returns all registered nodes with their current load.
+func (r *Router) GetNodeList() []NodeInfo {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	result := make([]NodeInfo, len(r.nodes))
+	for i, n := range r.nodes {
+		n.CurrentLoad = r.getNodeLoad(n.ID)
+		result[i] = n
+	}
+	return result
+}
+
+// ─── Load Distribution ──────────────────────────────────────────────────────
+
+// DistributeTask assigns a task to the optimal swarm node and tracks the load.
+// Returns the selected node ID. Call ReleaseTask when done.
+func (r *Router) DistributeTask(ctx context.Context, model string) (string, error) {
+	node, err := r.selectNode(ctx, NodeCriteria{
+		ModelRequired: model,
+		MinVRAM:       getModelVRAM(model),
+	})
+	if err != nil {
+		return "", err
+	}
+
+	// Increment task counter for this node
+	r.incrementNodeTasks(node.ID)
+
+	log.Printf("[Router] Distributed task to node %s (model=%s, new_load=%.0f%%)",
+		node.ID, model, r.getNodeLoad(node.ID)*100)
+
+	return node.ID, nil
+}
+
+// ReleaseTask decrements the task counter when a task finishes.
+func (r *Router) ReleaseTask(nodeID string) {
+	r.taskCountMu.Lock()
+	defer r.taskCountMu.Unlock()
+	if count, ok := r.nodeTaskCounts[nodeID]; ok && count > 0 {
+		r.nodeTaskCounts[nodeID] = count - 1
+	}
+}
+
+// UpdateNodeLoad updates a node's load metric (called by heartbeat).
+func (r *Router) UpdateNodeLoad(nodeID string, load float64) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for i, n := range r.nodes {
+		if n.ID == nodeID {
+			r.nodes[i].CurrentLoad = load
+			return
+		}
+	}
+}
+
+// getNodeLoad returns the effective load ratio for a node (0.0-1.0).
+func (r *Router) getNodeLoad(nodeID string) float64 {
+	r.taskCountMu.Lock()
+	count := r.nodeTaskCounts[nodeID]
+	r.taskCountMu.Unlock()
+	if r.maxTasksPerNode <= 0 {
+		return 0
+	}
+	load := float64(count) / float64(r.maxTasksPerNode)
+	if load > 1.0 {
+		load = 1.0
+	}
+	return load
+}
+
+// incrementNodeTasks atomically increments the active task count for a node.
+func (r *Router) incrementNodeTasks(nodeID string) {
+	r.taskCountMu.Lock()
+	r.nodeTaskCounts[nodeID]++
+	r.taskCountMu.Unlock()
+}
+
+// rebalanceLoop periodically prunes dead/stuck nodes and logs distribution stats.
+func (r *Router) rebalanceLoop() {
+	ticker := time.NewTicker(60 * time.Second)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		r.mu.RLock()
+		nodeCount := len(r.nodes)
+		totalLoad := 0.0
+		overloaded := 0
+		for _, n := range r.nodes {
+			load := r.getNodeLoad(n.ID)
+			totalLoad += load
+			if load > 0.9 {
+				overloaded++
+			}
+		}
+		r.mu.RUnlock()
+
+		if nodeCount > 0 {
+			avgLoad := totalLoad / float64(nodeCount)
+			log.Printf("[Router] Swarm stats: %d nodes, avg_load=%.0f%%, overloaded=%d",
+				nodeCount, avgLoad*100, overloaded)
+
+			// If all nodes are overloaded, log warning
+			if overloaded == nodeCount {
+				log.Printf("[Router] ⚠️ ALL %d nodes overloaded! Requests will route to external. Consider adding more swarm nodes.", nodeCount)
+			}
+		}
+	}
+}
+
+// SetMaxTasksPerNode configures the maximum concurrent tasks per node.
+func (r *Router) SetMaxTasksPerNode(max int) {
+	r.maxTasksPerNode = max
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
