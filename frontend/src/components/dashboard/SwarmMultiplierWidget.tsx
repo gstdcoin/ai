@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Zap } from 'lucide-react';
 import { apiGet } from '../../lib/apiClient';
 import { useWalletStore } from '../../store/walletStore';
+import { useTranslation } from 'next-i18next';
 
 interface SwarmMultiplierData {
   swarm_multiplier: number;
@@ -13,6 +14,7 @@ interface SwarmMultiplierData {
 }
 
 export default function SwarmMultiplierWidget() {
+  const { t } = useTranslation('common');
   const { address } = useWalletStore();
   const [data, setData] = useState<SwarmMultiplierData | null>(null);
   const [loading, setLoading] = useState(false);

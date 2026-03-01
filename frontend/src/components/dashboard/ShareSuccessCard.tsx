@@ -6,6 +6,7 @@ import { apiGet } from '../../lib/apiClient';
 import { useWalletStore } from '../../store/walletStore';
 import { toast } from '../../lib/toast';
 import html2canvas from 'html2canvas';
+import { useTranslation } from 'next-i18next';
 
 interface WorkerStats {
   total_tasks_completed?: number;
@@ -13,6 +14,7 @@ interface WorkerStats {
 }
 
 export default function ShareSuccessCard() {
+  const { t } = useTranslation('common');
   const { address } = useWalletStore();
   const cardRef = useRef<HTMLDivElement>(null);
   const [stats, setStats] = useState<WorkerStats | null>(null);
