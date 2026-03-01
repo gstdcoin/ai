@@ -67,21 +67,6 @@ function App({ Component, pageProps }: AppProps) {
     }
   }, []);
 
-  // Show cosmic background during mount to prevent white flash
-  if (!isMounted) {
-    return (
-      <div
-        style={{
-          position: 'fixed',
-          inset: 0,
-          backgroundColor: '#030014',
-          zIndex: 9999,
-        }}
-        aria-hidden="true"
-      />
-    );
-  }
-
   const manifestUrl = getManifestUrl();
 
   // Определить тему для TonConnect на основе Telegram
@@ -107,19 +92,14 @@ function App({ Component, pageProps }: AppProps) {
           }}
           language={tonConnectLanguage}
         >
-          <WalletListener />
-          <VercelSwarmHeartbeat />
-          {/* Ecosystem layout: Nav + Content + Footer (skip for TMA) */}
+          {isMounted && <WalletListener />}
+          {isMounted && <VercelSwarmHeartbeat />}
           {router.pathname !== '/tma' && <EcosystemNav />}
           <main style={{ paddingTop: router.pathname !== '/tma' ? 56 : 0, paddingBottom: router.pathname === '/dashboard' ? 80 : 0, minHeight: '100vh' }}>
             <Component {...pageProps} />
           </main>
           {router.pathname !== '/tma' && router.pathname !== '/dashboard' && router.pathname !== '/chat' && <EcosystemFooter />}
-          <Toaster
-            position="top-right"
-            richColors
-            closeButton
-          />
+          <Toaster position="top-right" richColors closeButton />
         </TonConnectUIProvider>
       </TelegramThemeProvider>
     </ErrorBoundary>
