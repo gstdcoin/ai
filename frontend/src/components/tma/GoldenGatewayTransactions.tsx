@@ -79,10 +79,10 @@ export default function GoldenGatewayTransactions({ wallet }: GoldenGatewayTrans
   return (
     <div className="rounded-xl bg-white/5 border border-white/10 p-4">
       <div className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-3">
-        {t('gold_reserve_title')} — Golden Gateway
+        {t('gold_reserve_title', 'Gold Reserve Fund')} — Golden Gateway
       </div>
       {txs.length === 0 ? (
-        <p className="text-sm text-gray-500 py-4 text-center">{t('no_tasks')}</p>
+        <p className="text-sm text-gray-500 py-4 text-center">{t('no_tasks', 'No Tasks')}</p>
       ) : (
         <div className="space-y-2 max-h-[200px] overflow-y-auto">
           {txs.map((tx) => (
@@ -98,7 +98,7 @@ export default function GoldenGatewayTransactions({ wallet }: GoldenGatewayTrans
                 )}
                 <div>
                   <div className="text-xs text-gray-300">
-                    {tx.tx_type === 'worker_payout' ? t('task_history') : tx.description || tx.tx_type}
+                    {tx.tx_type === 'worker_payout' ? t('task_history', 'Task History') : tx.description || tx.tx_type}
                   </div>
                   <div className="text-[10px] text-gray-500">{formatDate(tx.created_at)}</div>
                 </div>

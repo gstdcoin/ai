@@ -1,3 +1,4 @@
+import { useTranslation } from 'next-i18next';
 import React, { useState, useEffect } from 'react';
 import { wsClient } from '../../lib/websocket';
 import { Megaphone, X, Sparkles } from 'lucide-react';
@@ -11,6 +12,7 @@ interface Announcement {
 }
 
 export const VoiceBanner: React.FC = () => {
+  const { t } = useTranslation('common');
     const [announcement, setAnnouncement] = useState<Announcement | null>(null);
     const [visible, setVisible] = useState(false);
 
@@ -61,7 +63,7 @@ export const VoiceBanner: React.FC = () => {
 
                 <div className="flex-1">
                     <div className="flex items-center gap-2 mb-0.5">
-                        <span className="text-[10px] font-black text-violet-400 uppercase tracking-[0.2em]">The Voice of Creator</span>
+                        <span className="text-[10px] font-black text-violet-400 uppercase tracking-[0.2em]">{t('voice_creator', 'The Voice of Creator')}</span>
                         <Sparkles className="w-3 h-3 text-cyan-400" />
                         <span className="text-[9px] text-gray-600 font-bold ml-auto">
                             {new Date(announcement.timestamp).toLocaleTimeString()}

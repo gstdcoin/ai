@@ -425,7 +425,7 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 	ollamaBody, _ := json.Marshal(ollamaReq)
 
 	// Public Swarm: use Router for consensus-based inference if nodes are available
-	if h.router != nil {
+	if h.router != nil && h.router.GetNodeCount() > 0 {
 		swarmReq := &infRouter.InferRequest{
 			RequestID: "tg-" + time.Now().Format("150405"),
 			Model:     ollamaModel,
@@ -433,7 +433,7 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 		}
 		// Genesis Launch: 3-node consensus for high quality
 		swarmResp, err := h.router.RouteConsensus(c.Request.Context(), swarmReq, 3)
-		if err == nil && swarmResp != nil && swarmResp.Content != "" {
+		if err == nil && swarmResp != nil && swarmResp.Content != "" && !strings.Contains(swarmResp.Content, "placeholder") {
 			log.Printf("🐝 [Swarm] Inference SUCCESS via consensus (Latency: %dms)", swarmResp.LatencyMs)
 			h.respondWithUsage(c, req.Model, swarmResp.Content, false, activeDevices, fee)
 			return
@@ -530,7 +530,29 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 
 	resp, err := h.client.Post(ollamaBase+"/api/generate", "application/json", bytes.NewReader(ollamaBody))
 	if err != nil {
-		log.Printf("Ollama proxy error: %v", err)
+		log.Printf("Ollama proxy error: %v — trying Phantom Nodes fallback", err)
+
+		// ═══ PHANTOM NODES FALLBACK ═══
+		// When Ollama is unreachable, route through SmartRouter (HuggingFace / Groq)
+		if h.smartRouter != nil {
+			smartMsgs := make([]map[string]interface{}, len(promptMsgs))
+			for i, m := range promptMsgs {
+				smartMsgs[i] = map[string]interface{}{"role": m["role"], "content": m["content"]}
+			}
+			smartReq := &services.OmegaChatRequest{
+				Model:    req.Model,
+				Messages: smartMsgs,
+				Stream:   false,
+			}
+			decision, srErr := h.smartRouter.Route(c.Request.Context(), smartReq)
+			if srErr == nil && decision != nil && decision.Response != "" {
+				log.Printf("🌐 [Phantom Fallback] SUCCESS via %s (L%d, %dms)", decision.TierName, decision.Tier, decision.LatencyMs)
+				h.respondWithUsage(c, req.Model, decision.Response, false, activeDevices, fee)
+				return
+			}
+			log.Printf("⚠️ [Phantom Fallback] SmartRouter also failed: %v", srErr)
+		}
+
 		c.JSON(500, gin.H{"error": "inference_unavailable", "message": err.Error()})
 		return
 	}
@@ -542,6 +564,25 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 	}
 	_ = json.Unmarshal(respBody, &ollamaResp)
 	content := strings.TrimSpace(ollamaResp.Response)
+
+	// If Ollama returned empty content, try Phantom Nodes
+	if content == "" && h.smartRouter != nil {
+		log.Printf("⚠️ Ollama returned empty response, trying Phantom Nodes fallback")
+		smartMsgs := make([]map[string]interface{}, len(promptMsgs))
+		for i, m := range promptMsgs {
+			smartMsgs[i] = map[string]interface{}{"role": m["role"], "content": m["content"]}
+		}
+		smartReq := &services.OmegaChatRequest{
+			Model:    req.Model,
+			Messages: smartMsgs,
+			Stream:   false,
+		}
+		decision, srErr := h.smartRouter.Route(c.Request.Context(), smartReq)
+		if srErr == nil && decision != nil && decision.Response != "" {
+			log.Printf("🌐 [Phantom Fallback] SUCCESS via %s (L%d, %dms)", decision.TierName, decision.Tier, decision.LatencyMs)
+			content = decision.Response
+		}
+	}
 
 	// Consumer Adoption: SettlementService + RecyclingPool — record payment (skip when Free Tier or First-Query Bonus)
 	if wallet != "" && fee > 0 && !useFreeTier && !anonymousFree {

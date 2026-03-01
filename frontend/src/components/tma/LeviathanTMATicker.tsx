@@ -18,10 +18,10 @@ export default function LeviathanTMATicker() {
   const esRef = useRef<EventSource | null>(null);
 
   const translate = useCallback((msg: string): string => {
-    if (msg.includes('Alpha found:')) return msg.replace('Alpha found:', t('ticker_alpha') + ':');
-    if (msg.includes('No data from Leviathan')) return t('ticker_no_data');
-    if (msg.includes('АРХИТЕКТОР')) return t('ticker_architect_ready');
-    if (msg.includes('ЛЕВИАФАН ИЩЕТ')) return t('ticker_seeking');
+    if (msg.includes('Alpha found:')) return msg.replace('Alpha found:', t('ticker_alpha', 'Alpha found') + ':');
+    if (msg.includes('No data from Leviathan')) return t('ticker_no_data', 'No data from Leviathan. Check Backend Pollers.');
+    if (msg.includes('АРХИТЕКТОР')) return t('ticker_architect_ready', 'Leviathan Live Stream — АРХИТЕКТОР, СИСТЕМА СТАЛА ПРОЗРАЧНОЙ');
+    if (msg.includes('ЛЕВИАФАН ИЩЕТ')) return t('ticker_seeking', 'STATUS: LEVIATHAN SEEKING SIGNAL...');
     return msg;
   }, [t]);
 
@@ -68,7 +68,7 @@ export default function LeviathanTMATicker() {
   }, [connect]);
 
   const displayItems = items.length === 0
-    ? [connected ? t('ticker_architect_ready') : t('ticker_seeking')]
+    ? [connected ? t('ticker_architect_ready', 'Leviathan Live Stream — АРХИТЕКТОР, СИСТЕМА СТАЛА ПРОЗРАЧНОЙ') : t('ticker_seeking', 'STATUS: LEVIATHAN SEEKING SIGNAL...')]
     : items;
 
   return (

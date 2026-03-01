@@ -47,8 +47,8 @@ export function NeuralBridge() {
                     <Brain className="w-5 h-5" />
                 </div>
                 <div>
-                    <h3 className="text-sm font-black text-white uppercase tracking-wider">Collective Brain</h3>
-                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Neural Synthesis Bridge</p>
+                    <h3 className="text-sm font-black text-white uppercase tracking-wider">{t('collective_brain', 'Collective Brain')}</h3>
+                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{t('neural_synthesis_bridge', 'Neural Synthesis Bridge')}</p>
                 </div>
             </div>
 
@@ -75,7 +75,7 @@ export function NeuralBridge() {
                 <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
                     <div className="p-4 rounded-2xl bg-violet-500/5 border border-violet-500/10 text-xs">
                         <div className="flex items-center justify-between mb-3 text-[10px] font-black uppercase text-violet-400 tracking-widest">
-                            <span className="flex items-center gap-1"><Globe className="w-3 h-3" /> Grid Insight</span>
+                            <span className="flex items-center gap-1"><Globe className="w-3 h-3" />{t('grid_insight', 'Grid Insight')}</span>
                             <span>Confidence: {(result.confidence_score * 100).toFixed(0)}%</span>
                         </div>
                         <p className="text-gray-300 leading-relaxed whitespace-pre-wrap font-medium">
@@ -93,7 +93,7 @@ export function NeuralBridge() {
 
             {!result && !isSynthesizing && (
                 <div className="space-y-3">
-                    <p className="text-[10px] font-black text-gray-600 uppercase tracking-[0.2em] mb-2">Recent Synchronizations</p>
+                    <p className="text-[10px] font-black text-gray-600 uppercase tracking-[0.2em] mb-2">{t('recent_synchronizations', 'Recent Synchronizations')}</p>
                     {recentInsights.length > 0 ? (
                         recentInsights.map((ri, i) => (
                             <div key={i} className="flex justify-between items-center py-2 px-3 rounded-xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] transition-colors cursor-pointer" onClick={() => { setQuery(ri.topic); handleSynthesize(); }}>
@@ -102,7 +102,7 @@ export function NeuralBridge() {
                             </div>
                         ))
                     ) : (
-                        <p className="text-xs italic text-gray-700">Initial sync complete. Waiting for query...</p>
+                        <p className="text-xs italic text-gray-700">{t('initial_sync_complete_waiting_for_query', 'Initial sync complete. Waiting for query...')}</p>
                     )}
                 </div>
             )}

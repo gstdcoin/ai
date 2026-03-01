@@ -193,9 +193,7 @@ export const WalletBalanceWidget: React.FC = () => {
                         onClick={() => window.open('https://tonviewer.com/' + address, '_blank')}
                         className="py-2.5 px-4 rounded-xl bg-gray-700/30 text-gray-300 hover:bg-gray-700/50 border border-gray-600/30 transition-all font-medium text-sm flex items-center justify-center gap-2"
                     >
-                        <ExternalLink className="w-4 h-4" />
-                        Explorer
-                    </button>
+                        <ExternalLink className="w-4 h-4" />{t('explorer', 'Explorer')}</button>
                 </div>
 
                 {/* Stats Row */}

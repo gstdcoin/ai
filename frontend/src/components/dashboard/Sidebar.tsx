@@ -12,10 +12,10 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
   const router = useRouter();
 
   const menuItems = [
-    { id: 'tasks' as Tab, label: t('tasks'), icon: '📋' },
-    { id: 'devices' as Tab, label: t('devices'), icon: '📱' },
-    { id: 'stats' as Tab, label: t('stats'), icon: '📊' },
-    { id: 'help' as Tab, label: t('help_center'), icon: '❓' },
+    { id: 'tasks' as Tab, label: t('tasks', 'Tasks'), icon: '📋' },
+    { id: 'devices' as Tab, label: t('devices', 'Devices'), icon: '📱' },
+    { id: 'stats' as Tab, label: t('stats', 'Statistics'), icon: '📊' },
+    { id: 'help' as Tab, label: t('help_center', 'Help Center'), icon: '❓' },
   ];
 
   const changeLanguage = () => {
@@ -26,7 +26,7 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
   return (
     <aside className="w-full lg:w-64 bg-white shadow-sm border-b lg:border-b-0 lg:border-r border-gray-200 flex flex-row lg:flex-col overflow-x-auto lg:overflow-x-visible">
       <div className="p-4 lg:p-6 border-b lg:border-b border-r lg:border-r-0 border-gray-200 flex-shrink-0">
-        <h2 className="text-lg lg:text-xl font-bold text-gray-900 whitespace-nowrap">{t('title')}</h2>
+        <h2 className="text-lg lg:text-xl font-bold text-gray-900 whitespace-nowrap">{t('title', 'GSTD Platform')}</h2>
       </div>
 
       <nav className="flex-1 flex lg:block p-2 lg:p-4 overflow-x-auto lg:overflow-x-visible">

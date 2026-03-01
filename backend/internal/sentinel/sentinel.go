@@ -2,12 +2,19 @@
 // the swarm's immune system for content safety.
 // NOT a censor — an immune system that blocks pathogens while allowing
 // all healthy content to flow freely.
+//
+// Uses Ollama Llama-Guard for ML-based content safety classification with
+// graceful fallback to keyword heuristics when Ollama is unavailable.
 package sentinel
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"strings"
 	"sync"
 	"time"
@@ -76,17 +83,20 @@ type Sentinel struct {
 	hashDB     *CSAMHashDB
 	classifier *IntentClassifier
 	stats      *SentinelStats
+	ollamaURL  string // Ollama base URL for ML classification
 	mu         sync.RWMutex
 }
 
 // SentinelStats tracks sentinel performance.
 type SentinelStats struct {
-	TotalChecks  int64 `json:"total_checks"`
-	TotalBlocked int64 `json:"total_blocked"`
-	TotalAllowed int64 `json:"total_allowed"`
-	TotalRouted  int64 `json:"total_routed"`
-	AvgLatencyMs int64 `json:"avg_latency_ms"`
-	mu           sync.Mutex
+	TotalChecks     int64 `json:"total_checks"`
+	TotalBlocked    int64 `json:"total_blocked"`
+	TotalAllowed    int64 `json:"total_allowed"`
+	TotalRouted     int64 `json:"total_routed"`
+	TotalMLChecks   int64 `json:"total_ml_checks"`
+	TotalFallbacks  int64 `json:"total_fallbacks"`
+	AvgLatencyMs    int64 `json:"avg_latency_ms"`
+	mu              sync.Mutex
 }
 
 // CSAMHashDB holds perceptual hashes for CSAM detection.
@@ -95,23 +105,41 @@ type CSAMHashDB struct {
 	mu     sync.RWMutex
 }
 
-// IntentClassifier uses ML-based classification for content intent.
+// IntentClassifier uses ML-based classification (Ollama Llama-Guard)
+// with graceful fallback to keyword heuristics.
 type IntentClassifier struct {
-	// In production: loaded ML model (ONNX/TorchScript)
-	// For now: keyword + heuristic based
+	ollamaURL         string
+	guardModel        string
+	httpClient        *http.Client
+	ollamaAvailable   bool
+	lastHealthCheck   time.Time
+	healthCheckMu     sync.Mutex
+	// Fallback: keyword-based patterns
 	maliciousPatterns []string
 	threshold         float64
 }
 
-// NewSentinel creates and initializes the Sentinel engine.
+// NewSentinel creates the Sentinel engine with default local Ollama URL.
 func NewSentinel() *Sentinel {
+	return NewSentinelWithOllama("http://localhost:11434")
+}
+
+// NewSentinelWithOllama creates and initializes the Sentinel engine
+// with ML-based content classification via Ollama Llama-Guard.
+func NewSentinelWithOllama(ollamaURL string) *Sentinel {
+	classifier := newIntentClassifier(ollamaURL)
 	s := &Sentinel{
 		rules:      defaultRules(),
 		hashDB:     newCSAMHashDB(),
-		classifier: newIntentClassifier(),
+		classifier: classifier,
 		stats:      &SentinelStats{},
+		ollamaURL:  ollamaURL,
 	}
-	log.Printf("[Sentinel] Initialized with %d rules", len(s.rules))
+	mode := "keyword-fallback"
+	if classifier.ollamaAvailable {
+		mode = "ML (Llama-Guard)"
+	}
+	log.Printf("[Sentinel] Initialized with %d rules, classifier=%s, ollama=%s", len(s.rules), mode, ollamaURL)
 	return s
 }
 
@@ -121,14 +149,14 @@ func NewSentinel() *Sentinel {
 func (s *Sentinel) Check(ctx context.Context, task *Task) CheckResult {
 	start := time.Now()
 
-	// 1. Fast keyword/pattern rules
+	// 1. Fast keyword/pattern rules (always runs first — near-zero latency)
 	if result := s.checkRules(task); !result.Allowed {
 		s.recordBlock(result, start)
 		return result
 	}
 
-	// 2. ML intent classification
-	if result := s.checkIntent(task); !result.Allowed {
+	// 2. ML intent classification (Ollama Llama-Guard with keyword fallback)
+	if result := s.checkIntent(ctx, task); !result.Allowed {
 		s.recordBlock(result, start)
 		return result
 	}
@@ -176,15 +204,19 @@ func (s *Sentinel) checkRules(task *Task) CheckResult {
 	return CheckResult{Allowed: true}
 }
 
-// ─── Intent Classification ──────────────────────────────────────────────────
+// ─── Intent Classification (Ollama ML + Keyword Fallback) ───────────────────
 
-func (s *Sentinel) checkIntent(task *Task) CheckResult {
-	result := s.classifier.Classify(task.Content)
+func (s *Sentinel) checkIntent(ctx context.Context, task *Task) CheckResult {
+	result := s.classifier.Classify(ctx, task.Content)
 	if result.IsMalicious && result.Score > 0.85 {
+		source := "keyword-heuristic"
+		if result.MLBacked {
+			source = "llama-guard-ml"
+		}
 		return CheckResult{
 			Allowed:    false,
 			Category:   result.Category,
-			Reason:     "ML classifier flagged with confidence " + fmt.Sprintf("%.2f", result.Score),
+			Reason:     fmt.Sprintf("%s classifier flagged with confidence %.2f", source, result.Score),
 			Action:     ActionBlock,
 			Confidence: result.Score,
 			CheckedAt:  time.Now(),
@@ -232,24 +264,72 @@ func (s *Sentinel) GetStats() *SentinelStats {
 	s.stats.mu.Lock()
 	defer s.stats.mu.Unlock()
 	return &SentinelStats{
-		TotalChecks:  s.stats.TotalChecks,
-		TotalBlocked: s.stats.TotalBlocked,
-		TotalAllowed: s.stats.TotalAllowed,
-		TotalRouted:  s.stats.TotalRouted,
-		AvgLatencyMs: s.stats.AvgLatencyMs,
+		TotalChecks:    s.stats.TotalChecks,
+		TotalBlocked:   s.stats.TotalBlocked,
+		TotalAllowed:   s.stats.TotalAllowed,
+		TotalRouted:    s.stats.TotalRouted,
+		TotalMLChecks:  s.stats.TotalMLChecks,
+		TotalFallbacks: s.stats.TotalFallbacks,
+		AvgLatencyMs:   s.stats.AvgLatencyMs,
 	}
 }
 
-// ─── Intent Classifier ──────────────────────────────────────────────────────
+// ─── Ollama Llama-Guard Intent Classifier ───────────────────────────────────
 
+// ClassifyResult contains the classification output.
 type ClassifyResult struct {
 	IsMalicious bool          `json:"is_malicious"`
 	Score       float64       `json:"score"`
 	Category    BlockCategory `json:"category"`
+	MLBacked    bool          `json:"ml_backed"` // true if classified by Ollama, false if keyword fallback
 }
 
-func newIntentClassifier() *IntentClassifier {
-	return &IntentClassifier{
+// ollamaGenerateRequest is the request body for Ollama /api/generate.
+type ollamaGenerateRequest struct {
+	Model  string                 `json:"model"`
+	Prompt string                 `json:"prompt"`
+	Stream bool                   `json:"stream"`
+	Options map[string]interface{} `json:"options,omitempty"`
+}
+
+// ollamaGenerateResponse is the response from Ollama /api/generate.
+type ollamaGenerateResponse struct {
+	Response string `json:"response"`
+	Done     bool   `json:"done"`
+}
+
+// guardPromptTemplate is the system prompt used for Llama-Guard classification.
+const guardPromptTemplate = `[INST] Task: Check if there is unsafe content in the user message according to our safety policy.
+
+<BEGIN UNSAFE CATEGORIES>
+S1: Violent Crimes — Unlawful violence toward people (assault, murder, kidnapping, terrorism)
+S2: Non-Violent Crimes — Financial crimes, theft, cybercrimes, fraud, creating malware
+S3: Sex-Related Crimes — Human trafficking, sexual assault, CSAM
+S4: Child Safety — Content harmful to children
+S5: Defamation — Libel, slander
+S6: Specialized Advice — Unqualified medical/legal/financial advice that could cause harm
+S7: Privacy — Unauthorized personal data exposure, doxxing
+S8: Intellectual Property — Copyright/trademark violation
+S9: Indiscriminate Weapons — Chemical/biological/radiological/nuclear weapons (CBRN)
+S10: Hate — Attacks based on protected characteristics
+S11: Suicide & Self-Harm — Encouraging or instructing self-harm
+S12: Sexual Content — Explicit sexual content
+S13: Elections — Misinformation about elections, voter suppression
+<END UNSAFE CATEGORIES>
+
+<BEGIN USER MESSAGE>
+%s
+<END USER MESSAGE>
+
+Provide your safety assessment for the user message.
+First line must be 'safe' or 'unsafe'.
+If unsafe, the second line must include the violated category (e.g., S1, S2). [/INST]`
+
+func newIntentClassifier(ollamaURL string) *IntentClassifier {
+	ic := &IntentClassifier{
+		ollamaURL:  ollamaURL,
+		guardModel: "llama-guard3:1b",
+		httpClient: &http.Client{Timeout: 10 * time.Second},
 		maliciousPatterns: []string{
 			"how to synthesize", "create a virus", "bypass security",
 			"hack into", "generate exploit", "create malware",
@@ -257,9 +337,192 @@ func newIntentClassifier() *IntentClassifier {
 		},
 		threshold: 0.85,
 	}
+
+	// Probe Ollama availability at startup
+	ic.checkOllamaHealth()
+	return ic
 }
 
-func (ic *IntentClassifier) Classify(content string) ClassifyResult {
+// checkOllamaHealth verifies that Ollama is running and the guard model is available.
+// Re-checks at most once per 60 seconds.
+func (ic *IntentClassifier) checkOllamaHealth() {
+	ic.healthCheckMu.Lock()
+	defer ic.healthCheckMu.Unlock()
+
+	if time.Since(ic.lastHealthCheck) < 60*time.Second {
+		return
+	}
+	ic.lastHealthCheck = time.Now()
+
+	url := strings.TrimSuffix(ic.ollamaURL, "/") + "/api/tags"
+	resp, err := ic.httpClient.Get(url)
+	if err != nil {
+		ic.ollamaAvailable = false
+		log.Printf("[Sentinel] Ollama unavailable (%s) — using keyword fallback", err.Error())
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		ic.ollamaAvailable = false
+		log.Printf("[Sentinel] Ollama returned status %d — using keyword fallback", resp.StatusCode)
+		return
+	}
+
+	// Parse to check if guard model is present
+	var tagsResp struct {
+		Models []struct {
+			Name string `json:"name"`
+		} `json:"models"`
+	}
+	body, _ := io.ReadAll(resp.Body)
+	if err := json.Unmarshal(body, &tagsResp); err != nil {
+		ic.ollamaAvailable = false
+		return
+	}
+
+	for _, m := range tagsResp.Models {
+		// Accept any llama-guard variant (llama-guard3:1b, llama-guard3:8b, etc.)
+		if strings.Contains(strings.ToLower(m.Name), "llama-guard") ||
+			strings.Contains(strings.ToLower(m.Name), "llamaguard") {
+			ic.guardModel = m.Name
+			ic.ollamaAvailable = true
+			log.Printf("[Sentinel] Ollama ML classifier active: model=%s", m.Name)
+			return
+		}
+	}
+
+	ic.ollamaAvailable = false
+	log.Printf("[Sentinel] Llama-Guard model not found in Ollama (have %d models) — using keyword fallback. Pull with: ollama pull llama-guard3:1b", len(tagsResp.Models))
+}
+
+// Classify performs content safety classification.
+// Tries Ollama Llama-Guard first; falls back to keyword heuristics if unavailable.
+func (ic *IntentClassifier) Classify(ctx context.Context, content string) ClassifyResult {
+	// Periodically re-check Ollama availability
+	ic.checkOllamaHealth()
+
+	// Attempt ML classification if Ollama is available
+	if ic.ollamaAvailable {
+		result, err := ic.classifyWithOllama(ctx, content)
+		if err == nil {
+			return result
+		}
+		log.Printf("[Sentinel] Ollama classify failed (%s) — falling back to keywords", err.Error())
+	}
+
+	// Fallback: keyword-based heuristic
+	return ic.classifyWithKeywords(content)
+}
+
+// classifyWithOllama sends content to Ollama Llama-Guard for safety classification.
+func (ic *IntentClassifier) classifyWithOllama(ctx context.Context, content string) (ClassifyResult, error) {
+	prompt := fmt.Sprintf(guardPromptTemplate, content)
+
+	reqBody := ollamaGenerateRequest{
+		Model:  ic.guardModel,
+		Prompt: prompt,
+		Stream: false,
+		Options: map[string]interface{}{
+			"temperature": 0.0,
+			"num_predict": 50,
+		},
+	}
+
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return ClassifyResult{}, fmt.Errorf("marshal request: %w", err)
+	}
+
+	url := strings.TrimSuffix(ic.ollamaURL, "/") + "/api/generate"
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(jsonData))
+	if err != nil {
+		return ClassifyResult{}, fmt.Errorf("create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := ic.httpClient.Do(req)
+	if err != nil {
+		return ClassifyResult{}, fmt.Errorf("ollama request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return ClassifyResult{}, fmt.Errorf("ollama returned status %d", resp.StatusCode)
+	}
+
+	var ollamaResp ollamaGenerateResponse
+	if err := json.NewDecoder(resp.Body).Decode(&ollamaResp); err != nil {
+		return ClassifyResult{}, fmt.Errorf("decode response: %w", err)
+	}
+
+	return ic.parseGuardResponse(ollamaResp.Response), nil
+}
+
+// parseGuardResponse parses the Llama-Guard output into a ClassifyResult.
+// Expected format:
+//
+//	Line 1: "safe" or "unsafe"
+//	Line 2 (if unsafe): "S1", "S2", etc.
+func (ic *IntentClassifier) parseGuardResponse(response string) ClassifyResult {
+	response = strings.TrimSpace(response)
+	lines := strings.Split(response, "\n")
+
+	if len(lines) == 0 {
+		return ClassifyResult{IsMalicious: false, Score: 0.0, Category: CatNormal, MLBacked: true}
+	}
+
+	firstLine := strings.TrimSpace(strings.ToLower(lines[0]))
+
+	if firstLine == "safe" {
+		return ClassifyResult{IsMalicious: false, Score: 0.05, Category: CatNormal, MLBacked: true}
+	}
+
+	if strings.Contains(firstLine, "unsafe") {
+		category := CatMalware // default unsafe category
+		confidence := 0.92
+
+		if len(lines) > 1 {
+			catLine := strings.TrimSpace(strings.ToUpper(lines[1]))
+			switch {
+			case strings.Contains(catLine, "S1"):
+				category = CatMalware
+				confidence = 0.93
+			case strings.Contains(catLine, "S2"):
+				category = CatMalware
+				confidence = 0.91
+			case strings.Contains(catLine, "S3"), strings.Contains(catLine, "S4"):
+				category = CatCSAM
+				confidence = 0.97
+			case strings.Contains(catLine, "S9"):
+				category = CatCBRN
+				confidence = 0.96
+			case strings.Contains(catLine, "S10"):
+				category = CatMassManip
+				confidence = 0.89
+			case strings.Contains(catLine, "S13"):
+				category = CatMassManip
+				confidence = 0.88
+			default:
+				category = CatLegalGrey
+				confidence = 0.87
+			}
+		}
+
+		return ClassifyResult{
+			IsMalicious: true,
+			Score:       confidence,
+			Category:    category,
+			MLBacked:    true,
+		}
+	}
+
+	// Ambiguous response — treat as safe with low confidence
+	return ClassifyResult{IsMalicious: false, Score: 0.3, Category: CatNormal, MLBacked: true}
+}
+
+// classifyWithKeywords is the original keyword-based fallback classifier.
+func (ic *IntentClassifier) classifyWithKeywords(content string) ClassifyResult {
 	lower := strings.ToLower(content)
 	matchCount := 0
 	for _, pattern := range ic.maliciousPatterns {
@@ -269,7 +532,7 @@ func (ic *IntentClassifier) Classify(content string) ClassifyResult {
 	}
 
 	if matchCount == 0 {
-		return ClassifyResult{IsMalicious: false, Score: 0.0, Category: CatNormal}
+		return ClassifyResult{IsMalicious: false, Score: 0.0, Category: CatNormal, MLBacked: false}
 	}
 
 	score := float64(matchCount) / float64(len(ic.maliciousPatterns))
@@ -286,6 +549,7 @@ func (ic *IntentClassifier) Classify(content string) ClassifyResult {
 		IsMalicious: score > ic.threshold,
 		Score:       score,
 		Category:    category,
+		MLBacked:    false,
 	}
 }
 

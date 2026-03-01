@@ -31,22 +31,22 @@ export function EmptyStatePreset({ type, action }: EmptyStatePresetProps) {
   const presets = {
     tasks: {
       icon: '📋',
-      title: t('no_tasks') || 'No tasks',
-      description: t('no_tasks_desc') || 'No tasks found. Create a new task to get started.',
+      title: t('no_tasks', 'No Tasks') || 'No tasks',
+      description: t('no_tasks_desc', 'No tasks found. Create a new task to get started.') || 'No tasks found. Create a new task to get started.',
     },
     devices: {
       icon: '📱',
-      title: t('no_nodes') || 'No devices',
-      description: t('no_nodes_desc') || 'Register your first computing node to start earning GSTD.',
+      title: t('no_nodes', 'No devices registered') || 'No devices',
+      description: t('no_nodes_desc', 'Register your first computing node to start earning GSTD by processing tasks.') || 'Register your first computing node to start earning GSTD.',
     },
     results: {
       icon: '📊',
-      title: 'No results',
+      title: t('no_results', 'No results'),
       description: 'No results available yet.',
     },
     'no-data': {
       icon: '📭',
-      title: 'No data',
+      title: t('no_data', 'No data'),
       description: 'No data available at this time.',
     },
   };

@@ -1,4 +1,5 @@
 'use client';
+import { useTranslation } from 'next-i18next';
 
 import { useState } from 'react';
 import { Brain, Search, DollarSign, ChevronDown, ChevronUp } from 'lucide-react';
@@ -23,6 +24,7 @@ interface BrainQueryResponse {
 }
 
 export default function BrainQueryPanel() {
+  const { t } = useTranslation('common');
   const { address } = useWalletStore();
   const [topic, setTopic] = useState('');
   const [limit, setLimit] = useState(10);
@@ -75,7 +77,7 @@ export default function BrainQueryPanel() {
             <Brain size={22} />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-white">Brain Query</h3>
+            <h3 className="text-sm font-bold text-white">{t('brain_query', 'Brain Query')}</h3>
             <p className="text-[10px] text-amber-500/70">Paid knowledge access → Gold Pool</p>
           </div>
         </div>
@@ -85,7 +87,7 @@ export default function BrainQueryPanel() {
       {expanded && (
         <div className="mt-5 space-y-4">
           <div>
-            <label className="text-[10px] font-bold text-amber-500/80 uppercase tracking-wider block mb-1.5">Topic</label>
+            <label className="text-[10px] font-bold text-amber-500/80 uppercase tracking-wider block mb-1.5">{t('topic', 'Topic')}</label>
             <div className="relative">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
               <input
@@ -100,7 +102,7 @@ export default function BrainQueryPanel() {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-[10px] font-bold text-amber-500/80 uppercase tracking-wider block mb-1.5">Limit</label>
+              <label className="text-[10px] font-bold text-amber-500/80 uppercase tracking-wider block mb-1.5">{t('limit', 'Limit')}</label>
               <input
                 type="number"
                 min={1}
@@ -112,8 +114,7 @@ export default function BrainQueryPanel() {
             </div>
             <div>
               <label className="text-[10px] font-bold text-amber-500/80 uppercase tracking-wider block mb-1.5 flex items-center gap-1">
-                <DollarSign size={12} /> Amount (GSTD)
-              </label>
+                <DollarSign size={12} />{t('amount_gstd', 'Amount (GSTD)')}</label>
               <input
                 type="number"
                 min={0.01}
@@ -131,7 +132,7 @@ export default function BrainQueryPanel() {
             className="w-full py-3 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-400 font-bold text-sm uppercase tracking-wider hover:bg-amber-500/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {loading ? (
-              <span className="animate-pulse">Querying...</span>
+              <span className="animate-pulse">{t('querying', 'Querying...')}</span>
             ) : (
               <>Query Knowledge · Min 0.01 GSTD</>
             )}
@@ -145,7 +146,7 @@ export default function BrainQueryPanel() {
 
           {results && results.length > 0 && (
             <div className="mt-4 space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
-              <p className="text-[10px] font-bold text-amber-500/80 uppercase">Results</p>
+              <p className="text-[10px] font-bold text-amber-500/80 uppercase">{t('results', 'Results')}</p>
               {results.map((item) => (
                 <div
                   key={item.id}
@@ -158,7 +159,7 @@ export default function BrainQueryPanel() {
             </div>
           )}
           {results && results.length === 0 && (
-            <p className="text-xs text-gray-500 text-center py-2">No knowledge found for this topic.</p>
+            <p className="text-xs text-gray-500 text-center py-2">{t('no_knowledge', 'No knowledge found for this topic.')}</p>
           )}
         </div>
       )}

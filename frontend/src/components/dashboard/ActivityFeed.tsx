@@ -71,7 +71,7 @@ export const ActivityFeed: React.FC = () => {
             <div className="p-2 max-h-[320px] overflow-y-auto scrollbar-hide">
                 {events.length === 0 ? (
                     <div className="py-8 text-center">
-                        <p className="text-xs text-gray-500 italic">Listening for network events...</p>
+                        <p className="text-xs text-gray-500 italic">{t('listening_events', 'Listening for network events...')}</p>
                     </div>
                 ) : (
                     <div className="space-y-1">

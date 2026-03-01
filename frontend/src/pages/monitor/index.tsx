@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import { useTranslation } from 'next-i18next';
+import React, { useEffect, useState, useMemo } from 'react';
 import Head from 'next/head';
 import {
     Globe2, Sprout, HeartPulse, Droplets, BookOpen, Sun,
@@ -46,7 +47,7 @@ interface LogEntry {
 const ACTIVE_SIGNALS: GlobalSignal[] = [
     // ─── CLIMATE & ENVIRONMENT ───────────────────────────────────────
     {
-        id: 'nasa_eosdis', title: 'NASA Climate Anomaly Extraction',
+        id: 'nasa_eosdis', title: t('nasa_climate_anomaly_extraction', 'NASA Climate Anomaly Extraction'),
         description: 'Process raw satellite imagery & atmospheric data to detect deforestation and extreme surface temperature anomalies before they become irreversible.',
         source: 'NASA EOSDIS', severity: 'critical', location: 'Equatorial Band',
         dataVolume: '45.8 TB/week', icon: Sun, color: 'text-amber-400', bgColor: 'bg-amber-500/10',
@@ -54,7 +55,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
         progress: 61, contributors: 89, impact: 'Early warning for 2.3B people in equatorial zones'
     },
     {
-        id: 'wildfire_sentinel', title: 'Wildfire Spread Prediction Grid',
+        id: 'wildfire_sentinel', title: t('wildfire_spread_prediction_grid', 'Wildfire Spread Prediction Grid'),
         description: 'Cross-reference Sentinel-2 thermal bands and MODIS hotspot data with wind models to predict wildfire spread within 6-hour windows.',
         source: 'ESA Sentinel-2 & FIRMS', severity: 'critical', location: 'California / Australia / Siberia',
         dataVolume: '22.7 TB/week', icon: Flame, color: 'text-orange-300', bgColor: 'bg-orange-400/10',
@@ -62,7 +63,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
         progress: 45, contributors: 112, impact: 'Prevent $50B+ annual wildfire damage'
     },
     {
-        id: 'copernicus_marine', title: 'Ocean Heatwave & Coral Bleaching Model',
+        id: 'copernicus_marine', title: t('ocean_heatwave__coral_bleaching_model', 'Ocean Heatwave & Coral Bleaching Model'),
         description: 'Process deep oceanic temperature, drift, and salinity arrays to predict marine heatwaves and coral reef die-off events months in advance.',
         source: 'Copernicus Marine Service', severity: 'high', location: 'Pacific & Indian Oceans',
         dataVolume: '8.1 TB/mo', icon: Droplets, color: 'text-teal-400', bgColor: 'bg-teal-500/10',
@@ -70,7 +71,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
         progress: 88, contributors: 64, impact: 'Protect 500M people dependent on coral reef ecosystems'
     },
     {
-        id: 'air_quality_mesh', title: 'Urban Air Quality Mesh Intelligence',
+        id: 'air_quality_mesh', title: t('urban_air_quality_mesh_intelligence', 'Urban Air Quality Mesh Intelligence'),
         description: 'Aggregate and normalize 200,000+ low-cost PM2.5/PM10 sensors across 12,000 cities to build real-time AQI maps with health risk heatmaps.',
         source: 'OpenAQ & PurpleAir APIs', severity: 'high', location: '12,000+ Cities',
         dataVolume: '3.8 TB/day', icon: Wind, color: 'text-sky-300', bgColor: 'bg-sky-400/10',
@@ -78,7 +79,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
         progress: 76, contributors: 310, impact: 'Air pollution kills 7M people/year (WHO)'
     },
     {
-        id: 'carbon_sink', title: 'Global Carbon Sink Mapping',
+        id: 'carbon_sink', title: t('global_carbon_sink_mapping', 'Global Carbon Sink Mapping'),
         description: 'Combine LIDAR forest canopy data with soil carbon sensors and satellite imagery to map the planet\'s carbon capture capacity in real time.',
         source: 'Global Forest Watch & FLUXNET', severity: 'medium', location: 'Amazon / Congo / Boreal',
         dataVolume: '15 TB/mo', icon: Leaf, color: 'text-green-400', bgColor: 'bg-green-500/10',
@@ -88,7 +89,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
 
     // ─── HEALTH & MEDICINE ───────────────────────────────────────────
     {
-        id: 'who_pubmed', title: 'Pandemic Early Warning System',
+        id: 'who_pubmed', title: t('pandemic_early_warning_system', 'Pandemic Early Warning System'),
         description: 'Semantic analysis of 40M+ medical papers, hospital discharge records, and wastewater surveillance to predict disease outbreak vectors 30+ days ahead.',
         source: 'WHO GHO & PubMed Central', severity: 'critical', location: 'Global',
         dataVolume: '2.4 TB/text', icon: HeartPulse, color: 'text-purple-400', bgColor: 'bg-purple-500/10',
@@ -96,7 +97,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
         progress: 18, contributors: 214, impact: 'Next pandemic prevention — COVID cost $16T globally'
     },
     {
-        id: 'alphafold_protein', title: 'Orphan Disease Drug Discovery',
+        id: 'alphafold_protein', title: t('orphan_disease_drug_discovery', 'Orphan Disease Drug Discovery'),
         description: 'Predict 3D protein structures for 7,000+ rare uncurable genetic diseases using distributed folding. Each solution could unlock a new therapy.',
         source: 'UniProt & NCBI GenBank', severity: 'critical', location: 'Global / Decentralized',
         dataVolume: '120 TB/mo', icon: Dna, color: 'text-emerald-300', bgColor: 'bg-emerald-400/10',
@@ -104,7 +105,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
         progress: 7, contributors: 341, impact: '350M people suffer from rare diseases worldwide'
     },
     {
-        id: 'antibiotic_resistance', title: 'Superbug Mutation Tracker',
+        id: 'antibiotic_resistance', title: t('superbug_mutation_tracker', 'Superbug Mutation Tracker'),
         description: 'Sequence-align bacterial genomes from hospital wastewater worldwide to map antibiotic-resistant superbug mutations before they spread.',
         source: 'NCBI SRA & CARD Database', severity: 'critical', location: 'Global Hospital Networks',
         dataVolume: '35 TB/batch', icon: Microscope, color: 'text-lime-400', bgColor: 'bg-lime-500/10',
@@ -112,7 +113,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
         progress: 22, contributors: 189, impact: 'AMR could kill 10M people/year by 2050 (WHO)'
     },
     {
-        id: 'mental_health_nlp', title: 'Global Mental Health Signal Detection',
+        id: 'mental_health_nlp', title: t('global_mental_health_signal_detection', 'Global Mental Health Signal Detection'),
         description: 'Analyze anonymized social media language patterns, crisis hotline metadata, and public health surveys to map depression/anxiety hotspots and predict suicide risk zones.',
         source: 'Crisis Text Line Data & WHO MH Atlas', severity: 'high', location: 'Global',
         dataVolume: '4.2 TB/mo', icon: Brain, color: 'text-pink-400', bgColor: 'bg-pink-500/10',
@@ -122,7 +123,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
 
     // ─── HUMANITARIAN & SAFETY ────────────────────────────────────────
     {
-        id: 'gdelt_crisis', title: 'Humanitarian Crisis Early Warning',
+        id: 'gdelt_crisis', title: t('humanitarian_crisis_early_warning', 'Humanitarian Crisis Early Warning'),
         description: 'Analyze massive global event logs (300M+ news articles/year) to identify emerging humanitarian aid gaps, famine signals, and displacement vectors 2-4 weeks early.',
         source: 'GDELT Project (Global DB)', severity: 'critical', location: 'Global / MENA / Sub-Saharan Africa',
         dataVolume: '14.2 TB/day', icon: Globe2, color: 'text-rose-400', bgColor: 'bg-rose-500/10',
@@ -130,7 +131,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
         progress: 34, contributors: 127, impact: '100M people in need of humanitarian assistance (OCHA)'
     },
     {
-        id: 'darknet_tracker', title: 'Human Trafficking Vector Analysis',
+        id: 'darknet_tracker', title: t('human_trafficking_vector_analysis', 'Human Trafficking Vector Analysis'),
         description: 'NLP and image hash analysis across Dark Web scrapes to identify illicit supply chains and assist global law enforcement operations anonymously.',
         source: 'OSINT Protocol Drops', severity: 'critical', location: 'Shadow Web / Global',
         dataVolume: '3.1 TB/batch', icon: ShieldCheck, color: 'text-fuchsia-400', bgColor: 'bg-fuchsia-500/10',
@@ -138,7 +139,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
         progress: 42, contributors: 78, impact: '50M people in modern slavery (ILO)'
     },
     {
-        id: 'osm_disaster', title: 'Disaster Zone Rapid Mapping',
+        id: 'osm_disaster', title: t('disaster_zone_rapid_mapping', 'Disaster Zone Rapid Mapping'),
         description: 'Identify damaged infrastructure, blocked roads, and safe zones from satellite imagery in post-disaster areas to optimize rescue routing within hours.',
         source: 'Humanitarian OpenStreetMap', severity: 'high', location: 'Active Disaster Zones',
         dataVolume: '1.2 TB/area', icon: MapPin, color: 'text-red-400', bgColor: 'bg-red-500/10',
@@ -146,7 +147,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
         progress: 95, contributors: 48, impact: '339 natural disasters affected 185M people in 2023'
     },
     {
-        id: 'refugee_flow', title: 'Refugee Flow Prediction Model',
+        id: 'refugee_flow', title: t('refugee_flow_prediction_model', 'Refugee Flow Prediction Model'),
         description: 'Combine conflict zone satellite data, border crossing reports, and news NLP to predict refugee flows 2-6 weeks ahead, enabling pre-positioned aid.',
         source: 'UNHCR Data & ACAPS', severity: 'high', location: 'Conflict Zones / Borders',
         dataVolume: '2.5 TB/mo', icon: PersonStanding, color: 'text-violet-400', bgColor: 'bg-violet-500/10',
@@ -156,7 +157,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
 
     // ─── FOOD & WATER SECURITY ────────────────────────────────────────
     {
-        id: 'famine_prediction', title: 'Global Famine Prediction Engine',
+        id: 'famine_prediction', title: t('global_famine_prediction_engine', 'Global Famine Prediction Engine'),
         description: 'Correlate crop yield satellite data, commodity prices, rainfall anomalies, and conflict indicators to predict food crises 60-90 days before they peak.',
         source: 'FEWS NET & FAO GIEWS', severity: 'critical', location: 'Horn of Africa / South Asia',
         dataVolume: '6.8 TB/mo', icon: Wheat, color: 'text-yellow-400', bgColor: 'bg-yellow-500/10',
@@ -164,7 +165,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
         progress: 41, contributors: 132, impact: '783M people face chronic hunger (FAO)'
     },
     {
-        id: 'water_stress', title: 'Freshwater Stress Monitoring',
+        id: 'water_stress', title: t('freshwater_stress_monitoring', 'Freshwater Stress Monitoring'),
         description: 'Process GRACE satellite gravity data, groundwater well sensors, and snowpack measurements to map aquifer depletion and predict water shortages.',
         source: 'NASA GRACE-FO & WRI Aqueduct', severity: 'high', location: 'Middle East / India / Central Asia',
         dataVolume: '4.5 TB/mo', icon: Droplets, color: 'text-blue-300', bgColor: 'bg-blue-400/10',
@@ -174,7 +175,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
 
     // ─── GEOPHYSICS & NATURAL DISASTERS ──────────────────────────────
     {
-        id: 'seismic_array', title: 'Earthquake Precursor Pattern Mining',
+        id: 'seismic_array', title: t('earthquake_precursor_pattern_mining', 'Earthquake Precursor Pattern Mining'),
         description: 'Analyze real-time low-frequency tectonic data from 30,000+ seismographs to find micro-patterns (foreshocks, radon anomalies) preceding major earthquakes.',
         source: 'IRIS & Global Seismographic Network', severity: 'high', location: 'Pacific Ring of Fire',
         dataVolume: '18.5 TB/day', icon: Activity, color: 'text-orange-400', bgColor: 'bg-orange-500/10',
@@ -182,7 +183,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
         progress: 52, contributors: 156, impact: 'Earthquakes killed 60,000+ people in 2023 alone'
     },
     {
-        id: 'tsunami_model', title: 'Tsunami Propagation Modeling',
+        id: 'tsunami_model', title: t('tsunami_propagation_modeling', 'Tsunami Propagation Modeling'),
         description: 'Run high-resolution ocean floor bathymetry simulations to predict tsunami wave heights and arrival times for every coastal city within 15 minutes of a seismic event.',
         source: 'NOAA DART Buoy Network', severity: 'critical', location: 'All Coastal Zones',
         dataVolume: '7.3 TB/sim', icon: Waves, color: 'text-cyan-400', bgColor: 'bg-cyan-500/10',
@@ -192,7 +193,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
 
     // ─── CYBERSECURITY & INFORMATION ──────────────────────────────────
     {
-        id: 'deepfake_firewall', title: 'Deepfake & Disinformation Shield',
+        id: 'deepfake_firewall', title: t('deepfake__disinformation_shield', 'Deepfake & Disinformation Shield'),
         description: 'Run adversarial models to detect synthetic media (video/audio/text) designed to manipulate elections, markets, and public health decisions in real time.',
         source: 'Global Social Firehose', severity: 'high', location: 'North America / EU / APAC',
         dataVolume: '50.1 TB/week', icon: BrainCircuit, color: 'text-cyan-300', bgColor: 'bg-cyan-400/10',
@@ -210,7 +211,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
 
     // ─── SCIENCE & ENERGY ────────────────────────────────────────────
     {
-        id: 'cern_physics', title: 'CERN Particle Physics Discovery',
+        id: 'cern_physics', title: t('cern_particle_physics_discovery', 'CERN Particle Physics Discovery'),
         description: 'Process high-energy collision layer data to assist in foundational physics discoveries and material science breakthroughs for fusion and clean energy.',
         source: 'CERN Open Data Portal', severity: 'medium', location: 'Geneva / Virtual',
         dataVolume: '120 TB/batch', icon: Network, color: 'text-blue-400', bgColor: 'bg-blue-500/10',
@@ -218,7 +219,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
         progress: 13, contributors: 92, impact: 'Understanding the universe to unlock clean energy'
     },
     {
-        id: 'fusion_sim', title: 'Fusion Plasma Stability Simulation',
+        id: 'fusion_sim', title: t('fusion_plasma_stability_simulation', 'Fusion Plasma Stability Simulation'),
         description: 'Simulate tokamak plasma confinement scenarios using magnetohydrodynamic models to accelerate the path to commercial fusion power.',
         source: 'ITER & PPPL Open Data', severity: 'medium', location: 'Global Research Labs',
         dataVolume: '28 TB/sim', icon: Zap, color: 'text-yellow-300', bgColor: 'bg-yellow-400/10',
@@ -226,7 +227,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
         progress: 8, contributors: 45, impact: 'Unlimited clean energy for all of humanity'
     },
     {
-        id: 'space_debris', title: 'Space Debris Collision Avoidance',
+        id: 'space_debris', title: t('space_debris_collision_avoidance', 'Space Debris Collision Avoidance'),
         description: 'Track 40,000+ orbital debris objects and predict collision probabilities for active satellites and the ISS using distributed orbit propagation.',
         source: 'US Space Command TLE Data', severity: 'high', location: 'Low Earth Orbit',
         dataVolume: '5.3 TB/day', icon: Satellite, color: 'text-indigo-400', bgColor: 'bg-indigo-500/10',
@@ -236,7 +237,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
 
     // ─── EDUCATION & POVERTY ─────────────────────────────────────────
     {
-        id: 'education_gap', title: 'Global Education Gap Analysis',
+        id: 'education_gap', title: t('global_education_gap_analysis', 'Global Education Gap Analysis'),
         description: 'Process UNESCO enrollment data, satellite imagery of school infrastructure, and mobility data to identify where 250M children are denied education.',
         source: 'UNESCO UIS & World Bank EdStats', severity: 'high', location: 'Sub-Saharan Africa / South Asia',
         dataVolume: '1.8 TB/quarter', icon: GraduationCap, color: 'text-indigo-300', bgColor: 'bg-indigo-400/10',
@@ -244,7 +245,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
         progress: 44, contributors: 167, impact: '250M children out of school worldwide'
     },
     {
-        id: 'poverty_mapping', title: 'Poverty Mapping from Space',
+        id: 'poverty_mapping', title: t('poverty_mapping_from_space', 'Poverty Mapping from Space'),
         description: 'Use nighttime light satellite imagery, building footprints, and cell tower density to map poverty at 1km² resolution — enabling targeted aid delivery.',
         source: 'VIIRS Nightlight & WorldPop', severity: 'high', location: 'Global South',
         dataVolume: '9.2 TB/mo', icon: Building2, color: 'text-amber-300', bgColor: 'bg-amber-400/10',
@@ -252,7 +253,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
         progress: 56, contributors: 134, impact: '700M people live in extreme poverty'
     },
     {
-        id: 'child_mortality', title: 'Child Mortality Risk Prediction',
+        id: 'child_mortality', title: t('child_mortality_risk_prediction', 'Child Mortality Risk Prediction'),
         description: 'Combine vaccination records, nutrition surveys, and weather data to predict where under-5 mortality will spike, enabling preventive intervention.',
         source: 'UNICEF MICS & DHS Program', severity: 'critical', location: 'Low-Income Countries',
         dataVolume: '2.1 TB/batch', icon: Baby, color: 'text-pink-300', bgColor: 'bg-pink-400/10',
@@ -262,7 +263,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
 
     // ─── ECONOMY & GOVERNANCE ────────────────────────────────────────
     {
-        id: 'financial_contagion', title: 'Systemic Financial Contagion Model',
+        id: 'financial_contagion', title: t('systemic_financial_contagion_model', 'Systemic Financial Contagion Model'),
         description: 'Simulate cascading bank failures across 200+ interconnected institutions using real-time CDS spreads and interbank exposure data.',
         source: 'BIS & ECB Open Data', severity: 'high', location: 'Global Financial System',
         dataVolume: '1.5 TB/cycle', icon: TrendingUp, color: 'text-yellow-400', bgColor: 'bg-yellow-500/10',
@@ -270,7 +271,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
         progress: 55, contributors: 73, impact: 'Prevent next financial crisis (2008 cost $22T)'
     },
     {
-        id: 'corruption_trace', title: 'Public Spending Anomaly Detection',
+        id: 'corruption_trace', title: t('public_spending_anomaly_detection', 'Public Spending Anomaly Detection'),
         description: 'Analyze government procurement data, corporate registries, and financial flows to detect corruption patterns and illicit wealth transfers.',
         source: 'OCDS & OpenCorporates & ICIJ', severity: 'medium', location: 'Global',
         dataVolume: '5.6 TB/mo', icon: Scale, color: 'text-emerald-400', bgColor: 'bg-emerald-500/10',
@@ -280,7 +281,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
 
     // ─── BIODIVERSITY & OCEANS ───────────────────────────────────────
     {
-        id: 'biodiversity_loss', title: 'Species Extinction Risk Modeling',
+        id: 'biodiversity_loss', title: t('species_extinction_risk_modeling', 'Species Extinction Risk Modeling'),
         description: 'Process audio (bioacoustics), camera trap images, and eDNA sequencing from 15,000+ monitoring stations to track biodiversity loss in real time.',
         source: 'GBIF & IUCN Red List Data', severity: 'critical', location: 'Hotspot Ecosystems',
         dataVolume: '11.4 TB/mo', icon: Sprout, color: 'text-green-300', bgColor: 'bg-green-400/10',
@@ -288,7 +289,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
         progress: 26, contributors: 145, impact: '1M species face extinction (IPBES)'
     },
     {
-        id: 'ocean_plastic', title: 'Ocean Plastic Drift Prediction',
+        id: 'ocean_plastic', title: t('ocean_plastic_drift_prediction', 'Ocean Plastic Drift Prediction'),
         description: 'Model microplastic dispersion using ocean current data from Argo floats and satellite altimetry to predict accumulation zones and plan cleanup routes.',
         source: 'Argo Float Network & NOAA', severity: 'medium', location: 'Pacific Gyre / Indian Ocean',
         dataVolume: '6.2 TB/mo', icon: Waves, color: 'text-cyan-400', bgColor: 'bg-cyan-500/10',
@@ -313,7 +314,8 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 export default function HumanityMonitor() {
-    const canvasRef = useRef<HTMLCanvasElement>(null);
+  const { t } = useTranslation('common');
+
     const [selectedSignal, setSelectedSignal] = useState<GlobalSignal | null>(null);
     const [isPurchasing, setIsPurchasing] = useState(false);
     const [purchaseStep, setPurchaseStep] = useState<number>(0);
@@ -406,61 +408,7 @@ export default function HumanityMonitor() {
         return () => clearInterval(interval);
     }, []);
 
-    // Canvas Background
-    useEffect(() => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-        let animationFrameId: number;
-        let ptime = 0;
-        const resize = () => {
-            const dpr = window.devicePixelRatio || 1;
-            const w = window.innerWidth;
-            const h = window.innerHeight;
-            canvas.width = w * dpr;
-            canvas.height = h * dpr;
-            canvas.style.width = w + 'px';
-            canvas.style.height = h + 'px';
-            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-            // Clear and re-scatter particles on resize to avoid stretching
-            ctx.fillStyle = 'rgba(2, 6, 23, 1)';
-            ctx.fillRect(0, 0, w, h);
-            particles.forEach(p => {
-                p.x = Math.random() * w;
-                p.y = Math.random() * h;
-                p.radius = 0;
-            });
-        };
-        const particles: any[] = [];
-        for (let i = 0; i < 50; i++) {
-            particles.push({
-                x: Math.random() * (canvas.width || window.innerWidth), y: Math.random() * (canvas.height || window.innerHeight),
-                radius: 0, maxRadius: Math.random() * 100 + 30, speed: Math.random() * 0.35 + 0.1,
-                color: ['rgba(14,165,233,', 'rgba(16,185,129,', 'rgba(244,63,94,', 'rgba(168,85,247,', 'rgba(245,158,11,'][Math.floor(Math.random() ** 2 * 5)]
-            });
-        }
-        window.addEventListener('resize', resize); resize();
-        const animate = (time: number) => {
-            const w = window.innerWidth;
-            const h = window.innerHeight;
-            if (time - ptime > 30) {
-                ctx.fillStyle = 'rgba(2, 6, 23, 0.1)';
-                ctx.fillRect(0, 0, w, h);
-                ptime = time;
-            }
-            particles.forEach((p) => {
-                p.radius += p.speed;
-                if (p.radius > p.maxRadius) { p.radius = 0; p.x = Math.random() * w; p.y = Math.random() * h; }
-                const alpha = (1 - (p.radius / p.maxRadius)) * 0.2;
-                ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-                ctx.strokeStyle = p.color + alpha + ')'; ctx.lineWidth = 0.8; ctx.stroke();
-            });
-            animationFrameId = requestAnimationFrame(animate);
-        };
-        animationFrameId = requestAnimationFrame(animate);
-        return () => { window.removeEventListener('resize', resize); cancelAnimationFrame(animationFrameId); };
-    }, []);
+
 
     const handleAnalyzeSignal = async () => {
         if (!selectedSignal) return;
@@ -501,7 +449,7 @@ export default function HumanityMonitor() {
                             toast.success("Signal Dispatched! " + selectedSignal.gstdReward + " GSTD locked for Swarm resolution.");
                             setIsPurchasing(false); setPurchaseStep(0); setSelectedSignal(null);
                             setLiveLogs(prev => [{
-                                id: Math.random().toString(), type: 'SIGNAL_SPONSOR', chain: 'SWARM',
+                                id: Math.random().toString(), type: 'SIGNAL_SPONSOR', chain: t('swarm', 'SWARM'),
                                 message: `[Sponsored] ${selectedSignal.title} → Swarm processing initiated`, timestamp: new Date().toISOString()
                             }, ...prev].slice(0, 20));
                         }, 2000);
@@ -523,13 +471,18 @@ export default function HumanityMonitor() {
     const criticalCount = ACTIVE_SIGNALS.filter(s => s.severity === 'critical').length;
 
     return (
-        <div className="bg-slate-950 text-white min-h-screen relative overflow-hidden font-sans antialiased selection:bg-sky-500/30">
+        <div className="bg-[#030014] text-white min-h-screen relative overflow-hidden font-sans antialiased selection:bg-sky-500/30">
             <Head>
                 <title>Humanity's Supercomputer — GSTD Global Signal Monitor</title>
                 <meta name="description" content={`${ACTIVE_SIGNALS.length} planetary-scale signals covering climate, health, security, food, science, and society. Sponsor Swarm analysis to solve humanity's hardest problems.`} />
             </Head>
 
-            <canvas ref={canvasRef} className="fixed inset-0 w-full h-full pointer-events-none z-0" style={{ width: '100vw', height: '100vh' }} />
+            {/* Static ambient background */}
+            <div className="fixed inset-0 pointer-events-none z-0">
+                <div className="absolute top-0 left-1/4 w-[600px] h-[600px] rounded-full bg-violet-600/[0.04] blur-[120px]" />
+                <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] rounded-full bg-sky-600/[0.04] blur-[120px]" />
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full bg-emerald-600/[0.02] blur-[150px]" />
+            </div>
 
             <div className="relative z-10 flex flex-col min-h-screen p-4 sm:p-6 overflow-y-auto custom-scrollbar">
                 {/* ─── HEADER ─────────────────────────────────────────────── */}
@@ -557,11 +510,11 @@ export default function HumanityMonitor() {
 
                         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 w-full md:w-auto">
                             {[
-                                { label: 'Sovereignty', value: sovereigntyIndex.toFixed(1) + '%', color: sovereigntyIndex > 90 ? 'text-emerald-400' : sovereigntyIndex > 70 ? 'text-amber-400' : 'text-rose-400', icon: Shield },
-                                { label: 'Health', value: (stats.health * 100).toFixed(0) + '%', color: stats.health > 0.8 ? 'text-emerald-400' : 'text-amber-400', icon: Activity },
-                                { label: 'Signals', value: `${criticalCount} critical`, color: 'text-rose-400', icon: AlertTriangle },
-                                { label: 'Contributors', value: totalContributors.toLocaleString(), color: 'text-violet-400', icon: Users },
-                                { label: 'Reward Pool', value: totalRewardPool.toLocaleString() + ' GSTD', color: 'text-emerald-400', icon: Database },
+                                { label: t('sovereignty', 'Sovereignty'), value: sovereigntyIndex.toFixed(1) + '%', color: sovereigntyIndex > 90 ? 'text-emerald-400' : sovereigntyIndex > 70 ? 'text-amber-400' : 'text-rose-400', icon: Shield },
+                                { label: t('health', 'Health'), value: (stats.health * 100).toFixed(0) + '%', color: stats.health > 0.8 ? 'text-emerald-400' : 'text-amber-400', icon: Activity },
+                                { label: t('signals', 'Signals'), value: `${criticalCount} critical`, color: 'text-rose-400', icon: AlertTriangle },
+                                { label: t('contributors', 'Contributors'), value: totalContributors.toLocaleString(), color: 'text-violet-400', icon: Users },
+                                { label: t('reward_pool', 'Reward Pool'), value: totalRewardPool.toLocaleString() + ' GSTD', color: 'text-emerald-400', icon: Database },
                             ].map((s, i) => (
                                 <div key={i} className="px-3 py-2.5 bg-slate-900/60 border border-slate-700/50 rounded-xl backdrop-blur-xl flex items-center gap-2.5">
                                     <s.icon className={`w-4 h-4 ${s.color} opacity-60 flex-shrink-0`} />
@@ -634,7 +587,7 @@ export default function HumanityMonitor() {
                                     {/* Progress */}
                                     <div className="mb-3 relative z-10">
                                         <div className="flex justify-between items-center mb-1">
-                                            <span className="text-[9px] font-bold text-slate-500 uppercase">Progress</span>
+                                            <span className="text-[9px] font-bold text-slate-500 uppercase">{t('progress', 'Progress')}</span>
                                             <span className="text-[9px] font-bold text-slate-400 tabular-nums">{signal.progress || 0}%</span>
                                         </div>
                                         <div className="w-full h-1 bg-slate-800 rounded-full overflow-hidden">
@@ -661,8 +614,8 @@ export default function HumanityMonitor() {
                         {filteredSignals.length === 0 && (
                             <div className="col-span-full text-center py-16 text-slate-500">
                                 <Search className="w-8 h-8 mx-auto mb-3 opacity-30" />
-                                <p className="text-sm font-bold">No signals found</p>
-                                <p className="text-xs mt-1">Try a different category or search term</p>
+                                <p className="text-sm font-bold">{t('no_signals', 'No signals found')}</p>
+                                <p className="text-xs mt-1">{t('try_different', 'Try a different category or search term')}</p>
                             </div>
                         )}
                     </div>
@@ -672,15 +625,14 @@ export default function HumanityMonitor() {
                         {/* Network Overview */}
                         <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-4">
                             <h3 className="text-[10px] font-black uppercase tracking-widest text-violet-400 mb-3 flex items-center gap-2">
-                                <BarChart3 className="w-3.5 h-3.5" /> Planetary Overview
-                            </h3>
+                                <BarChart3 className="w-3.5 h-3.5" />{t('planetary_overview', 'Planetary Overview')}</h3>
                             <div className="space-y-2.5">
                                 {[
-                                    { l: 'Total Signals', v: String(ACTIVE_SIGNALS.length), c: 'text-white' },
-                                    { l: 'Critical Priority', v: String(criticalCount), c: 'text-rose-400' },
-                                    { l: 'Categories', v: String(CATEGORIES.length - 1), c: 'text-sky-400' },
-                                    { l: 'Total Contributors', v: totalContributors.toLocaleString(), c: 'text-violet-400' },
-                                    { l: 'Reward Pool', v: totalRewardPool.toLocaleString() + ' GSTD', c: 'text-emerald-400' },
+                                    { l: t('total_signals', 'Total Signals'), v: String(ACTIVE_SIGNALS.length), c: 'text-white' },
+                                    { l: t('critical_priority', 'Critical Priority'), v: String(criticalCount), c: 'text-rose-400' },
+                                    { l: t('categories', 'Categories'), v: String(CATEGORIES.length - 1), c: 'text-sky-400' },
+                                    { l: t('total_contributors', 'Total Contributors'), v: totalContributors.toLocaleString(), c: 'text-violet-400' },
+                                    { l: t('reward_pool', 'Reward Pool'), v: totalRewardPool.toLocaleString() + ' GSTD', c: 'text-emerald-400' },
                                 ].map((r, i) => (
                                     <div key={i} className="flex justify-between items-center">
                                         <span className="text-[10px] text-slate-400">{r.l}</span>
@@ -689,7 +641,7 @@ export default function HumanityMonitor() {
                                 ))}
                                 <div className="pt-2 border-t border-slate-800">
                                     <div className="flex justify-between items-center mb-1.5">
-                                        <span className="text-[10px] text-slate-400">Avg. Progress</span>
+                                        <span className="text-[10px] text-slate-400">{t('avg_progress', 'Avg. Progress')}</span>
                                         <span className="text-xs font-bold text-sky-400">{avgProgress}%</span>
                                     </div>
                                     <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
@@ -702,8 +654,7 @@ export default function HumanityMonitor() {
                         {/* Category Breakdown */}
                         <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-4">
                             <h3 className="text-[10px] font-black uppercase tracking-widest text-sky-400 mb-3 flex items-center gap-2">
-                                <Target className="w-3.5 h-3.5" /> Problems by Domain
-                            </h3>
+                                <Target className="w-3.5 h-3.5" />{t('problems_by_domain', 'Problems by Domain')}</h3>
                             <div className="space-y-2">
                                 {CATEGORIES.filter(c => c !== 'All').map(cat => {
                                     const count = ACTIVE_SIGNALS.filter(s => s.category === cat).length;
@@ -727,14 +678,11 @@ export default function HumanityMonitor() {
                         {/* Live Feed */}
                         <div className="flex-1 bg-slate-900/80 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-4 flex flex-col min-h-[300px]">
                             <h3 className="text-[10px] font-black uppercase tracking-[0.15em] text-sky-400 mb-3 flex items-center gap-2">
-                                <Activity className="w-3.5 h-3.5" /> Live Network Feed
-                            </h3>
+                                <Activity className="w-3.5 h-3.5" />{t('live_network_feed', 'Live Network Feed')}</h3>
                             <div className="flex-1 overflow-y-auto pr-1 space-y-2.5 custom-scrollbar">
                                 {liveLogs.length === 0 ? (
                                     <div className="text-slate-500 text-xs text-center py-8 flex flex-col items-center gap-2">
-                                        <Radio className="w-5 h-5 animate-pulse opacity-50" />
-                                        Awaiting transmissions...
-                                    </div>
+                                        <Radio className="w-5 h-5 animate-pulse opacity-50" />{t('awaiting_transmissions', 'Awaiting transmissions...')}</div>
                                 ) : (
                                     liveLogs.map((log, i) => (
                                         <div key={i} className="pb-2 border-b border-slate-800/80 last:border-0">
@@ -775,7 +723,7 @@ export default function HumanityMonitor() {
                                     : <selectedSignal.icon className={"w-6 h-6 " + selectedSignal.color} />}
                         </div>
 
-                        <h3 className="text-lg font-black text-white text-center mb-1">Sponsor This Signal</h3>
+                        <h3 className="text-lg font-black text-white text-center mb-1">{t('sponsor_signal', 'Sponsor This Signal')}</h3>
                         <p className="text-slate-400 text-center text-xs mb-5 leading-relaxed">{selectedSignal.description}</p>
 
                         {selectedSignal.impact && (
@@ -786,16 +734,16 @@ export default function HumanityMonitor() {
                         )}
 
                         <div className="bg-slate-950/80 rounded-xl p-4 mb-5 border border-slate-800 space-y-2.5">
-                            <div className="flex justify-between items-center"><span className="text-xs text-slate-400">Signal</span><span className="text-xs font-bold text-white text-right">{selectedSignal.title}</span></div>
-                            <div className="flex justify-between items-center"><span className="text-xs text-slate-400">Data Source</span><span className="text-[10px] font-mono text-sky-400">{selectedSignal.source}</span></div>
-                            <div className="flex justify-between items-center"><span className="text-xs text-slate-400">Data Volume</span><span className="text-xs text-slate-300">{selectedSignal.dataVolume}</span></div>
+                            <div className="flex justify-between items-center"><span className="text-xs text-slate-400">{t('signal', 'Signal')}</span><span className="text-xs font-bold text-white text-right">{selectedSignal.title}</span></div>
+                            <div className="flex justify-between items-center"><span className="text-xs text-slate-400">{t('data_source', 'Data Source')}</span><span className="text-[10px] font-mono text-sky-400">{selectedSignal.source}</span></div>
+                            <div className="flex justify-between items-center"><span className="text-xs text-slate-400">{t('data_volume', 'Data Volume')}</span><span className="text-xs text-slate-300">{selectedSignal.dataVolume}</span></div>
                             <div className="border-t border-slate-800 pt-2.5 space-y-2">
                                 <div className="flex justify-between"><span className="text-xs text-slate-400">→ Swarm Workers (85%)</span><span className="text-xs font-bold text-emerald-400">+{selectedSignal.gstdReward} GSTD</span></div>
                                 <div className="flex justify-between"><span className="text-xs text-slate-400">→ Gold Reserve (10%)</span><span className="text-xs font-bold text-amber-400">+{selectedSignal.platformFee} GSTD</span></div>
-                                <div className="flex justify-between"><span className="text-xs text-slate-400">→ Results stored in</span><span className="text-[10px] font-bold text-violet-400">Collective Memory</span></div>
+                                <div className="flex justify-between"><span className="text-xs text-slate-400">→ Results stored in</span><span className="text-[10px] font-bold text-violet-400">{t('collective_memory', 'Collective Memory')}</span></div>
                             </div>
                             <div className="flex justify-between items-center pt-2.5 border-t border-slate-800">
-                                <span className="text-sm font-bold text-white">Sponsorship</span>
+                                <span className="text-sm font-bold text-white">{t('sponsorship', 'Sponsorship')}</span>
                                 <span className="text-base font-black text-white flex items-center gap-1.5 bg-slate-800 px-3 py-1 rounded-lg border border-slate-600">
                                     {selectedSignal.starsCost} <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
                                 </span>
@@ -817,10 +765,9 @@ export default function HumanityMonitor() {
                             </div>
                         ) : (
                             <div className="flex gap-3">
-                                <button onClick={() => setSelectedSignal(null)} className="flex-1 px-3 py-2.5 rounded-xl border border-slate-700 hover:bg-slate-800 text-sm font-bold text-slate-300 transition-colors">Cancel</button>
+                                <button onClick={() => setSelectedSignal(null)} className="flex-1 px-3 py-2.5 rounded-xl border border-slate-700 hover:bg-slate-800 text-sm font-bold text-slate-300 transition-colors">{t('cancel', 'Cancel')}</button>
                                 <button onClick={handleAnalyzeSignal} className="flex-[2] px-3 py-2.5 rounded-xl text-sm font-bold text-slate-900 bg-sky-400 hover:bg-sky-300 flex items-center justify-center gap-2 transition-all">
-                                    <Star className="w-4 h-4" /> Sponsor with Stars
-                                </button>
+                                    <Star className="w-4 h-4" />{t('sponsor_with_stars', 'Sponsor with Stars')}</button>
                             </div>
                         )}
                     </div>
@@ -836,3 +783,12 @@ export default function HumanityMonitor() {
         </div>
     );
 }
+
+import { GetStaticProps } from 'next';
+import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
+
+export const getStaticProps: GetStaticProps = async ({ locale }) => ({
+  props: {
+    ...(await serverSideTranslations(locale || 'en', ['common'])),
+  },
+});

@@ -65,8 +65,8 @@ export default function RegisterDeviceModal({ onClose, onDeviceRegistered }: Reg
       setSuccess(true);
       
       toast.success(
-        t('device_registered') || 'Device Registered Successfully!',
-        t('device_registered_message') || 'Your computing node has been registered and is ready to process tasks.'
+        t('device_registered', 'Device Registered') || 'Device Registered Successfully!',
+        t('device_registered_message', 'Your device has been registered') || 'Your computing node has been registered and is ready to process tasks.'
       );
       
       if (onDeviceRegistered) {
@@ -77,7 +77,7 @@ export default function RegisterDeviceModal({ onClose, onDeviceRegistered }: Reg
       const errorMessage = err?.message || 'Failed to register device';
       setError(errorMessage);
       toast.error(
-        t('error') || 'Error',
+        t('error', 'Error') || 'Error',
         errorMessage
       );
     } finally {
@@ -96,27 +96,27 @@ export default function RegisterDeviceModal({ onClose, onDeviceRegistered }: Reg
               </svg>
             </div>
             <h3 className="text-lg font-medium text-white mb-2">
-              {t('device_registered') || 'Device Registered Successfully!'}
+              {t('device_registered', 'Device Registered') || 'Device Registered Successfully!'}
             </h3>
             <p className="text-sm text-gray-300 mb-4">
-              {t('device_registered_message') || 'Your computing node has been registered.'}
+              {t('device_registered_message', 'Your device has been registered') || 'Your computing node has been registered.'}
             </p>
             <div className="bg-white/5 rounded-lg p-4 mb-4 border border-white/10">
               <p className="text-xs text-gray-400 mb-2 font-semibold">
-                {t('node_id') || 'Node ID'}:
+                {t('node_id', 'Node ID') || 'Node ID'}:
               </p>
               <p className="text-sm font-mono text-white break-all">
                 {nodeId}
               </p>
               <p className="text-xs text-gray-400 mt-2">
-                {t('node_id_instruction') || 'Tasks will be processed automatically in your browser. No installation needed!'}
+                {t('node_id_instruction', 'Enter your node ID') || 'Tasks will be processed automatically in your browser. No installation needed!'}
               </p>
             </div>
             <button
               onClick={onClose}
               className="w-full glass-button-gold px-4 py-2 rounded-lg transition-colors min-h-[44px]"
             >
-              {t('close') || 'Close'}
+              {t('close', 'Close') || 'Close'}
             </button>
           </div>
         </div>
@@ -129,12 +129,12 @@ export default function RegisterDeviceModal({ onClose, onDeviceRegistered }: Reg
       <div className="glass-card max-w-md w-full p-6">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold text-white">
-            {t('register_device') || 'Register Device'}
+            {t('register_device', 'Register Device') || 'Register Device'}
           </h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-white transition-colors glass-button p-1 rounded"
-            aria-label="Close"
+            aria-label={t('close', 'Close')}
           >
             <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -151,7 +151,7 @@ export default function RegisterDeviceModal({ onClose, onDeviceRegistered }: Reg
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-1">
-              {t('device_name') || 'Device Name'} *
+              {t('device_name', 'Device Name') || 'Device Name'} *
             </label>
             <input
               type="text"
@@ -160,13 +160,13 @@ export default function RegisterDeviceModal({ onClose, onDeviceRegistered }: Reg
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-gold-900 focus:border-gold-900 transition-colors"
-              placeholder={t('device_name_placeholder') || 'e.g., My-PC, Server-01'}
+              placeholder={t('device_name_placeholder', 'My PC') || 'e.g., My-PC, Server-01'}
             />
           </div>
 
           <div>
             <label htmlFor="cpu" className="block text-sm font-medium text-gray-300 mb-1">
-              {t('cpu_model') || 'CPU Model'} (Optional)
+              {t('cpu_model', 'CPU Model') || 'CPU Model'} (Optional)
             </label>
             <input
               type="text"
@@ -174,13 +174,13 @@ export default function RegisterDeviceModal({ onClose, onDeviceRegistered }: Reg
               value={formData.cpu}
               onChange={(e) => setFormData({ ...formData, cpu: e.target.value })}
               className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-gold-900 focus:border-gold-900 transition-colors"
-              placeholder={t('cpu_placeholder') || 'e.g., Intel i7-9700K, AMD Ryzen 9 5900X'}
+              placeholder={t('cpu_placeholder', 'e.g. Intel i7-12700') || 'e.g., Intel i7-9700K, AMD Ryzen 9 5900X'}
             />
           </div>
 
           <div>
             <label htmlFor="ram" className="block text-sm font-medium text-gray-300 mb-1">
-              {t('ram_gb') || 'RAM (GB)'} (Optional)
+              {t('ram_gb', 'RAM (GB)') || 'RAM (GB)'} (Optional)
             </label>
             <input
               type="number"
@@ -189,7 +189,7 @@ export default function RegisterDeviceModal({ onClose, onDeviceRegistered }: Reg
               value={formData.ram}
               onChange={(e) => setFormData({ ...formData, ram: e.target.value })}
               className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-gold-900 focus:border-gold-900 transition-colors"
-              placeholder={t('ram_placeholder') || 'e.g., 16, 32, 64'}
+              placeholder={t('ram_placeholder', 'e.g. 16') || 'e.g., 16, 32, 64'}
             />
           </div>
 
@@ -200,14 +200,14 @@ export default function RegisterDeviceModal({ onClose, onDeviceRegistered }: Reg
               className="flex-1 px-4 py-2 glass-button text-white rounded-lg transition-colors min-h-[44px]"
               disabled={loading}
             >
-              {t('cancel') || 'Cancel'}
+              {t('cancel', 'Cancel') || 'Cancel'}
             </button>
             <button
               type="submit"
               disabled={loading || !formData.name}
               className="flex-1 px-4 py-2 glass-button-gold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
             >
-              {loading ? (t('registering') || 'Registering...') : (t('register') || 'Register')}
+              {loading ? (t('registering', 'Registering...') || 'Registering...') : (t('register', 'Register') || 'Register')}
             </button>
           </div>
         </form>

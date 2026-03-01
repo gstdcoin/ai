@@ -99,9 +99,9 @@ export default function AgentNode() {
   };
 
   const tabs: Array<{ id: AgentTab; label: string; icon: React.ReactNode; desc: string }> = [
-    { id: 'ai', label: 'AI', icon: <MessageSquare size={20} />, desc: 'AI requests' },
-    { id: 'skills', label: 'Skills', icon: <Package size={20} />, desc: 'Import skills' },
-    { id: 'miner', label: 'Miner', icon: <Server size={20} />, desc: 'Earn GSTD' },
+    { id: 'ai', label: 'AI', icon: <MessageSquare size={20} />, desc: t('ai_requests', 'AI requests') },
+    { id: 'skills', label: t('skills', 'Skills'), icon: <Package size={20} />, desc: t('import_skills', 'Import skills') },
+    { id: 'miner', label: t('miner', 'Miner'), icon: <Server size={20} />, desc: t('earn_gstd', 'Earn GSTD') },
   ];
 
   return (
@@ -114,8 +114,8 @@ export default function AgentNode() {
               <Bot size={22} className="text-violet-400" />
             </div>
             <div>
-              <h1 className="text-lg font-black text-white tracking-tight">{t('agent_node') || 'Agent Node'}</h1>
-              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{t('agent_node_tagline') || 'AI + Miner + Node • No OpenClaw'}</p>
+              <h1 className="text-lg font-black text-white tracking-tight">{t('agent_node', 'Agent Node') || 'Agent Node'}</h1>
+              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{t('agent_node_tagline', 'AI + Miner + Node • No OpenClaw') || 'AI + Miner + Node • No OpenClaw'}</p>
             </div>
           </div>
         </div>
@@ -142,15 +142,15 @@ export default function AgentNode() {
         {/* Quick Stats */}
         <div className="p-4 border-t border-white/10 space-y-2">
           <div className="flex items-center justify-between text-[10px]">
-            <span className="text-gray-500 uppercase tracking-wider">Wallet</span>
+            <span className="text-gray-500 uppercase tracking-wider">{t('wallet_label', 'Wallet')}</span>
             <span className="text-cyan-400 font-bold tabular-nums">{gstdBalance?.toFixed(2) || '0.00'} GSTD</span>
           </div>
           <div className="flex items-center justify-between text-[10px]">
-            <span className="text-gray-500 uppercase tracking-wider">Pending</span>
+            <span className="text-gray-500 uppercase tracking-wider">{t('pending', 'Pending')}</span>
             <span className="text-emerald-400 font-bold tabular-nums">{pendingEarnings?.toFixed(2) || '0.00'} GSTD</span>
           </div>
           <div className="flex items-center justify-between text-[10px]">
-            <span className="text-gray-500 uppercase tracking-wider">Node</span>
+            <span className="text-gray-500 uppercase tracking-wider">{t('node', 'Node')}</span>
             <span className={isMining ? 'text-emerald-400 font-bold' : 'text-gray-500'}>
               {isMining ? 'Online' : 'Offline'}
             </span>
@@ -184,11 +184,9 @@ export default function AgentNode() {
             <div className="max-w-3xl mx-auto">
               <div className="mb-8">
                 <h2 className="text-xl font-black text-white flex items-center gap-2">
-                  <Package size={22} className="text-violet-400" />
-                  Skill Import
-                </h2>
+                  <Package size={22} className="text-violet-400" />{t('skill_import', 'Skill Import')}</h2>
                 <p className="text-gray-400 text-sm mt-2">
-                  {t('agent_skills_desc') || 'Import and use skills from the GSTD Grid. Compatible with OpenClaw, MCP, and A2A. Works on any device.'}
+                  {t('agent_skills_desc', 'Import and use skills from the GSTD Grid. Compatible with OpenClaw, MCP, and A2A. Works on any device.') || 'Import and use skills from the GSTD Grid. Compatible with OpenClaw, MCP, and A2A. Works on any device.'}
                 </p>
               </div>
 
@@ -196,7 +194,7 @@ export default function AgentNode() {
                 {skills.length === 0 ? (
                   <div className="glass-card p-8 text-center text-gray-500">
                     <Package size={40} className="mx-auto mb-4 opacity-50" />
-                    <p>Loading skills...</p>
+                    <p>{t('loading_skills', 'Loading skills...')}</p>
                   </div>
                 ) : (
                   skills.map((skill) => (
@@ -263,11 +261,9 @@ export default function AgentNode() {
             <div className="max-w-2xl mx-auto">
               <div className="mb-8">
                 <h2 className="text-xl font-black text-white flex items-center gap-2">
-                  <Server size={22} className="text-cyan-400" />
-                  Platform Miner
-                </h2>
+                  <Server size={22} className="text-cyan-400" />{t('platform_miner', 'Platform Miner')}</h2>
                 <p className="text-gray-400 text-sm mt-2">
-                  {t('agent_miner_desc') || 'Share your compute with the network. Earn GSTD by completing tasks. Personal AI + miner + node — no OpenClaw needed.'}
+                  {t('agent_miner_desc', 'Share your compute with the network. Earn GSTD by completing tasks. Personal AI + miner + node — no OpenClaw needed.') || 'Share your compute with the network. Earn GSTD by completing tasks. Personal AI + miner + node — no OpenClaw needed.'}
                 </p>
               </div>
 
@@ -297,9 +293,7 @@ export default function AgentNode() {
                     <span className="block text-2xl uppercase tracking-tighter font-black">
                       {isIgniting ? 'Igniting...' : isMining ? 'Online' : 'Ignite'}
                     </span>
-                    <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest block mt-1">
-                      Platform Node
-                    </span>
+                    <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest block mt-1">{t('platform_node', 'Platform Node')}</span>
                   </div>
                 </div>
                 <div
@@ -317,7 +311,7 @@ export default function AgentNode() {
                     <Wallet size={20} />
                   </div>
                   <div>
-                    <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest block">Balance</span>
+                    <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest block">{t('chat_balance', 'Balance')}</span>
                     <span className="text-xl font-black text-white tabular-nums">{gstdBalance?.toFixed(2) || '0.00'} GSTD</span>
                   </div>
                 </div>
@@ -326,7 +320,7 @@ export default function AgentNode() {
                     <Cpu size={20} />
                   </div>
                   <div>
-                    <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest block">Pending</span>
+                    <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest block">{t('pending', 'Pending')}</span>
                     <span className="text-xl font-black text-white tabular-nums">{pendingEarnings?.toFixed(2) || '0.00'} GSTD</span>
                   </div>
                 </div>
@@ -338,7 +332,7 @@ export default function AgentNode() {
               <div className="mt-6 p-4 rounded-2xl bg-white/[0.02] border border-white/5">
                 <p className="text-gray-400 text-sm">
                   <Zap size={14} className="inline mr-1 text-amber-400" />
-                  {t('agent_miner_hint') || 'Personal AI assistant + miner + node for any device. Free hardware but no OpenClaw? This is your advanced miner — all in one.'}
+                  {t('agent_miner_hint', 'Personal AI assistant + miner + node for any device. Free hardware but no OpenClaw? This is your advanced miner — all in one.') || 'Personal AI assistant + miner + node for any device. Free hardware but no OpenClaw? This is your advanced miner — all in one.'}
                 </p>
               </div>
             </div>

@@ -35,9 +35,7 @@ export default function GlobalTreasuryGrowthWidget() {
           <Globe size={20} />
         </div>
         <div>
-          <span className="text-[10px] text-gray-500 font-black uppercase tracking-widest block mb-0.5">
-            Global Treasury Growth
-          </span>
+          <span className="text-[10px] text-gray-500 font-black uppercase tracking-widest block mb-0.5">{t('global_treasury_growth', 'Global Treasury Growth')}</span>
           <span className="text-xl font-black text-white tabular-nums">
             {oz !== null ? oz.toFixed(4) : '—'} oz today
           </span>

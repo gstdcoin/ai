@@ -50,9 +50,7 @@ export default function EarningsPredictionWidget() {
           </span>
         )}
       </div>
-      <p className="mt-2 text-[10px] text-gray-500">
-        Based on uptime & Gold Reserve growth
-      </p>
+      <p className="mt-2 text-[10px] text-gray-500">{t('based_on_uptime__gold_reserve_growth', 'Based on uptime & Gold Reserve growth')}</p>
     </div>
   );
 }

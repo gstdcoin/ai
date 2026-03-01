@@ -1,3 +1,4 @@
+import { useTranslation } from 'next-i18next';
 import React, { useState, useEffect, useCallback } from 'react';
 import { apiGet, apiPost } from '../../lib/apiClient';
 import { Sparkles, CheckCircle, Smartphone, UserPlus, Gift } from 'lucide-react';
@@ -14,6 +15,7 @@ interface BonusStatus {
 }
 
 export default function WelcomeBonusWidget() {
+  const { t } = useTranslation('common');
     const { address, isConnected } = useWalletStore();
     const [status, setStatus] = useState<BonusStatus | null>(null);
     const [loading, setLoading] = useState(false);
@@ -63,13 +65,13 @@ export default function WelcomeBonusWidget() {
         <div className="glass-card p-6 border-amber-500/20 bg-gradient-to-br from-amber-500/5 to-transparent animate-in zoom-in-95 duration-500">
             <div className="flex items-center gap-2 mb-6">
                 <Gift className="w-5 h-5 text-amber-500" />
-                <h3 className="text-xs font-black text-gray-500 uppercase tracking-[0.2em]">Growth Rewards</h3>
+                <h3 className="text-xs font-black text-gray-500 uppercase tracking-[0.2em]">{t('growth_rewards', 'Growth Rewards')}</h3>
             </div>
 
             <div className="space-y-4">
                 {!status.has_claimed_welcome && (
                     <BonusItem
-                        title="Welcome Bonus"
+                        title={t('welcome_bonus', 'Welcome Bonus')}
                         amount={status.welcome_amount}
                         onClaim={() => handleClaim('welcome')}
                         loading={loading}
@@ -78,7 +80,7 @@ export default function WelcomeBonusWidget() {
                 )}
                 {!status.has_claimed_faucet_today && (
                     <BonusItem
-                        title="Daily Faucet"
+                        title={t('daily_faucet', 'Daily Faucet')}
                         amount={status.faucet_amount}
                         onClaim={() => handleClaim('faucet')}
                         loading={loading}
@@ -87,7 +89,7 @@ export default function WelcomeBonusWidget() {
                 )}
                 {!status.has_agent_bootstrap && (
                     <BonusItem
-                        title="Agent Bootstrap"
+                        title={t('agent_bootstrap', 'Agent Bootstrap')}
                         amount={status.bootstrap_amount}
                         onClaim={() => handleClaim('bootstrap')}
                         loading={loading}

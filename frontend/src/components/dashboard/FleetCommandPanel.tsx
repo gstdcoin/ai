@@ -38,12 +38,8 @@ export default function FleetCommandPanel() {
   return (
     <div className="glass-card p-6 border-cyan-500/20">
       <h3 className="text-sm font-bold text-white flex items-center gap-2 mb-4">
-        <Server size={18} className="text-cyan-400" />
-        Fleet Command
-      </h3>
-      <p className="text-[10px] text-gray-500 mb-4">
-        One-click control for all connected nodes
-      </p>
+        <Server size={18} className="text-cyan-400" />{t('fleet_command', 'Fleet Command')}</h3>
+      <p className="text-[10px] text-gray-500 mb-4">{t('oneclick_control_for_all_connected_nodes', 'One-click control for all connected nodes')}</p>
       <div className="flex flex-wrap gap-2 mb-4">
         <button
           onClick={() => runCommand('standby')}
@@ -71,7 +67,7 @@ export default function FleetCommandPanel() {
         </button>
       </div>
       <div className="flex flex-wrap gap-2">
-        <span className="text-[10px] text-gray-500 uppercase tracking-wider self-center">Power:</span>
+        <span className="text-[10px] text-gray-500 uppercase tracking-wider self-center">{t('power', 'Power:')}</span>
         {(['eco', 'balance', 'max'] as PowerProfile[]).map((p) => (
           <button
             key={p}

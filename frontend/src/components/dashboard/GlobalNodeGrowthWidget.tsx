@@ -39,7 +39,7 @@ export const GlobalNodeGrowthWidget: React.FC = () => {
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                     <Users className="w-5 h-5 text-blue-400" />
-                    <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Agent Recruitment</span>
+                    <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">{t('agent_recruitment', 'Agent Recruitment')}</span>
                 </div>
                 {growth > 0 && (
                     <div className="flex items-center gap-1 text-[10px] font-black text-emerald-400 uppercase tracking-widest">
@@ -54,7 +54,7 @@ export const GlobalNodeGrowthWidget: React.FC = () => {
                     <div className="flex justify-between items-end mb-2">
                         <div className="text-3xl font-black text-white tabular-nums">
                             {stats?.active_workers ?? '—'}
-                            <span className="text-xs text-gray-600 font-bold ml-2 uppercase">Verified Nodes</span>
+                            <span className="text-xs text-gray-600 font-bold ml-2 uppercase">{t('verified_nodes', 'Verified Nodes')}</span>
                         </div>
                     </div>
                     {/* Progress to target (10,000 agents) */}
@@ -65,14 +65,14 @@ export const GlobalNodeGrowthWidget: React.FC = () => {
                         />
                     </div>
                     <div className="flex justify-between mt-2 text-[9px] font-black text-gray-600 uppercase tracking-widest">
-                        <span>Genesis Protocol</span>
+                        <span>{t('genesis_protocol', 'Genesis Protocol')}</span>
                         <span>Goal: 10,000 Agents</span>
                     </div>
                 </div>
 
                 <div className="pt-2 flex items-center gap-2">
                     <ShieldCheck className="w-3 h-3 text-emerald-500" />
-                    <span className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Protocol Omega Synchronized</span>
+                    <span className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">{t('protocol_omega_synchronized', 'Protocol Omega Synchronized')}</span>
                 </div>
             </div>
         </div>

@@ -27,7 +27,7 @@ export default function LiveHashrateChart({ hashrate, tasksPerHour, activeWorker
   return (
     <div className="rounded-xl bg-white/5 border border-white/10 p-4">
       <div className="flex justify-between items-center mb-2">
-        <span className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">Live Hashrate</span>
+        <span className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">{t('live_hashrate', 'Live Hashrate')}</span>
         <span className="text-sm font-bold text-violet-400 tabular-nums">
           {hashrate.toLocaleString()} tasks
         </span>

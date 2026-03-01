@@ -158,16 +158,13 @@ export const SovereignSwitch = ({ className, onModeChange }: SovereignSwitchProp
                             <div className="flex items-center justify-center md:justify-start gap-3 mb-2">
                                 {mode === 'consumer' ? (
                                     <div className="px-3 py-1 rounded-full bg-violet-500/10 border border-violet-500/30 text-violet-300 text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2">
-                                        <Brain size={12} /> Sovereign Master
-                                    </div>
+                                        <Brain size={12} />{t('sovereign_master', 'Sovereign Master')}</div>
                                 ) : (
                                     <div className="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2">
-                                        <Activity size={12} /> Hive Worker
-                                    </div>
+                                        <Activity size={12} />{t('hive_worker', 'Hive Worker')}</div>
                                 )}
                                 <div className="px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-500 text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2">
-                                    <Shield size={10} /> Golden Fund: Verified
-                                </div>
+                                    <Shield size={10} />{t('golden_fund_verified', 'Golden Fund: Verified')}</div>
                             </div>
 
                             <h2 className="text-3xl font-black text-white tracking-tighter mb-1">
@@ -230,9 +227,7 @@ export const SovereignSwitch = ({ className, onModeChange }: SovereignSwitchProp
                                 <button
                                     onClick={executeCommand}
                                     className="px-3 py-1 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold transition-colors"
-                                >
-                                    EXECUTE
-                                </button>
+                                >{t('execute', 'EXECUTE')}</button>
                             </div>
                         </div>
 
@@ -244,7 +239,7 @@ export const SovereignSwitch = ({ className, onModeChange }: SovereignSwitchProp
                             >
                                 <div className="flex items-center gap-3">
                                     <Key size={14} className="text-violet-400" />
-                                    <span className="text-[10px] font-black text-white uppercase tracking-widest">External AI Gateway (SDK)</span>
+                                    <span className="text-[10px] font-black text-white uppercase tracking-widest">{t('external_ai_gateway_sdk', 'External AI Gateway (SDK)')}</span>
                                 </div>
                                 <Plus size={14} className={`text-violet-400 transition-transform ${showKeys ? 'rotate-45' : ''}`} />
                             </button>
@@ -253,7 +248,7 @@ export const SovereignSwitch = ({ className, onModeChange }: SovereignSwitchProp
                                 <div className="mt-3 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
                                     {apiKeys.length === 0 ? (
                                         <div className="p-4 rounded-xl bg-black/40 border border-white/5 text-center">
-                                            <p className="text-xs text-gray-500 mb-3">No active API keys found.</p>
+                                            <p className="text-xs text-gray-500 mb-3">{t('no_active_api_keys_found', 'No active API keys found.')}</p>
                                             <button
                                                 onClick={generateKey}
                                                 disabled={isGeneratingKey}
@@ -284,7 +279,7 @@ export const SovereignSwitch = ({ className, onModeChange }: SovereignSwitchProp
                                                 </div>
                                             ))}
                                             <div className="p-4 rounded-xl bg-violet-600/5 border border-violet-500/20">
-                                                <div className="text-[9px] font-black text-violet-400 uppercase tracking-widest mb-2">Integration Guide</div>
+                                                <div className="text-[9px] font-black text-violet-400 uppercase tracking-widest mb-2">{t('integration_guide', 'Integration Guide')}</div>
                                                 <div className="text-[10px] text-gray-400 space-y-1">
                                                     <p>1. Open your IDE {">"} Settings {">"} Models</p>
                                                     <p>2. Set Base URL: <code className="text-violet-300">https://app.gstdtoken.com/v1</code></p>
@@ -311,7 +306,7 @@ export const SovereignSwitch = ({ className, onModeChange }: SovereignSwitchProp
                             <div className="flex items-center justify-between mb-3">
                                 <div className="flex items-center gap-3">
                                     <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                                    <span className="text-emerald-400 font-black text-sm uppercase tracking-wider">Memory Contribution: Active</span>
+                                    <span className="text-emerald-400 font-black text-sm uppercase tracking-wider">{t('memory_contribution_active', 'Memory Contribution: Active')}</span>
                                 </div>
                                 <div className="text-white font-black text-sm">
                                     +0.0034 <span className="text-gray-500 text-[10px] uppercase">GSTD/Task</span>
@@ -322,7 +317,7 @@ export const SovereignSwitch = ({ className, onModeChange }: SovereignSwitchProp
                                 <div className="h-full bg-emerald-500 animate-[contribution_2s_ease-in-out_infinite]" style={{ width: '40%' }}></div>
                             </div>
                             <div className="flex justify-between mt-2 text-[9px] font-black text-gray-600 uppercase tracking-widest">
-                                <span>Distributing local shards</span>
+                                <span>{t('distributing_local_shards', 'Distributing local shards')}</span>
                                 <span>Platform Fee: 2% (Golden Fund)</span>
                             </div>
                         </div>

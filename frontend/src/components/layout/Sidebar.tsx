@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'next-i18next';
-import { useRouter } from 'next/router';
-import { LayoutDashboard, Server, BarChart3, HelpCircle, X, Menu, Bot, MessageSquare, Hammer, Cpu, ShoppingCart, Users } from 'lucide-react';
+import { Home, Server, ListTodo, MessageSquare, BarChart3, HelpCircle, X, Menu, Cpu } from 'lucide-react';
 import { Tab } from '../../types/tabs';
 
 interface SidebarProps {
@@ -11,69 +10,83 @@ interface SidebarProps {
 
 export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
   const { t } = useTranslation('common');
-  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
 
-  const tabs: Array<{ id: Tab | 'agent'; label: string; icon: React.ReactNode; highlight?: boolean; href?: string }> = [
-    { id: 'chat', label: t('chat') || 'Chat', icon: <MessageSquare size={20} />, highlight: true },
-    { id: 'home', label: t('nav_mining') || 'Earn', icon: <Hammer size={20} /> },
-    { id: 'devices', label: t('devices') || 'Swarm', icon: <Server size={20} /> },
-    { id: 'tasks', label: t('tasks') || 'Tasks', icon: <LayoutDashboard size={20} /> },
-    { id: 'agent', label: t('agent_node') || 'Agent', icon: <Cpu size={20} />, href: '/agent' },
-    { id: 'marketplace', label: t('marketplace') || 'Market', icon: <ShoppingCart size={20} /> },
-    { id: 'agents', label: t('agents') || 'Agents', icon: <Bot size={20} /> },
-    { id: 'referrals', label: t('referrals') || 'Referrals', icon: <Users size={20} /> },
-    { id: 'stats', label: t('stats') || 'Stats', icon: <BarChart3 size={20} /> },
-    { id: 'help', label: t('help_center') || 'Help', icon: <HelpCircle size={20} /> },
+  const mainTabs: Array<{ id: Tab; label: string; icon: React.ReactNode }> = [
+    { id: 'home', label: t('tab_home', 'Home'), icon: <Home size={18} /> },
+    { id: 'tasks', label: t('tab_tasks', 'Tasks'), icon: <ListTodo size={18} /> },
+    { id: 'nodes', label: t('tab_nodes', 'Nodes'), icon: <Server size={18} /> },
+  ];
+
+  const externalLinks: Array<{ label: string; icon: React.ReactNode; href: string }> = [
+    { label: t('chat', 'Chat'), icon: <MessageSquare size={18} />, href: '/chat' },
+    { label: t('stats', 'Stats'), icon: <BarChart3 size={18} />, href: '/stats' },
+    { label: t('agent_node', 'Agent'), icon: <Cpu size={18} />, href: '/agent' },
+    { label: t('help_center', 'Help'), icon: <HelpCircle size={18} />, href: '/about' },
   ];
 
   return (
     <>
-      <button onClick={() => setIsOpen(true)} className="lg:hidden fixed top-4 left-4 z-50 glass-button text-white" aria-label="Open menu">
-        <Menu size={24} />
+      <button onClick={() => setIsOpen(true)} className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-white/5 text-white" aria-label={t('menu', 'Menu')}>
+        <Menu size={22} />
       </button>
 
       {isOpen && <div className="lg:hidden fixed inset-0 bg-black/50 z-40 backdrop-blur-sm" onClick={() => setIsOpen(false)} />}
 
-      <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-56 glass-dark border-r border-white/10 transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+      <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-52 transform transition-transform duration-300 
+        ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
+        style={{
+          background: 'rgba(8, 8, 26, 0.95)',
+          backdropFilter: 'blur(20px)',
+          borderRight: '1px solid rgba(255,255,255,0.06)',
+        }}
+      >
         <div className="flex flex-col h-full">
-          <div className="flex items-center justify-between p-4 border-b border-white/10">
-            <h2 className="text-xl font-bold bg-gradient-to-r from-cyan-400 via-violet-500 to-fuchsia-500 bg-clip-text text-transparent">GSTD</h2>
-            <button onClick={() => setIsOpen(false)} className="lg:hidden glass-button text-white" aria-label="Close"><X size={20} /></button>
+          <div className="flex items-center justify-between p-4 border-b border-white/[0.06]">
+            <span style={{
+              fontWeight: 800,
+              fontSize: 18,
+              background: 'linear-gradient(135deg, #8b5cf6, #06b6d4)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+            }}>GSTD</span>
+            <button onClick={() => setIsOpen(false)} className="lg:hidden p-1.5 rounded-lg hover:bg-white/5 text-gray-400">
+              <X size={18} />
+            </button>
           </div>
 
-          <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto scrollbar-hide">
-            {tabs.map((tab) => (
-              tab.href ? (
-                <a
-                  key={tab.id}
-                  href={tab.href}
-                  onClick={() => setIsOpen(false)}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 min-h-[40px] text-sm text-gray-400 hover:text-gray-200 hover:bg-white/5"
-                >
-                  {tab.icon}
-                  <span className="font-medium truncate">{tab.label}</span>
-                  {tab.highlight && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-violet-500 animate-pulse" />}
-                </a>
-              ) : (
-                <button
-                  key={tab.id}
-                  onClick={() => { onTabChange(tab.id as Tab); setIsOpen(false); }}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 min-h-[40px] text-sm
-                    ${activeTab === tab.id
-                      ? tab.highlight
-                        ? 'bg-violet-600/20 text-violet-400'
-                        : 'bg-white/10 text-white'
-                      : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'}`}
-                >
-                  {tab.icon}
-                  <span className="font-medium truncate">{tab.label}</span>
-                  {tab.highlight && activeTab !== tab.id && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-violet-500 animate-pulse" />}
-                </button>
-              )
+          {/* Main tabs */}
+          <nav className="flex-1 p-3 space-y-1">
+            <div className="text-[10px] font-bold text-gray-600 uppercase tracking-wider px-3 mb-2">{t('menu', 'Menu')}</div>
+            {mainTabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => { onTabChange(tab.id); setIsOpen(false); }}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] transition-all
+                  ${activeTab === tab.id
+                    ? 'bg-violet-500/10 text-white font-semibold border border-violet-500/15'
+                    : 'text-gray-400 hover:text-white hover:bg-white/[0.04] border border-transparent'}`}
+              >
+                {tab.icon}
+                <span>{tab.label}</span>
+              </button>
+            ))}
+
+            <div className="h-px bg-white/[0.04] my-4" />
+            <div className="text-[10px] font-bold text-gray-600 uppercase tracking-wider px-3 mb-2">{t('quick_actions', 'Quick Actions')}</div>
+
+            {externalLinks.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                onClick={() => setIsOpen(false)}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] text-gray-500 hover:text-gray-200 hover:bg-white/[0.04] transition-all"
+              >
+                {link.icon}
+                <span>{link.label}</span>
+              </a>
             ))}
           </nav>
-
         </div>
       </aside>
     </>

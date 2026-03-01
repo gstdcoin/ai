@@ -49,8 +49,8 @@ export const InstallPwaPrompt: React.FC = () => {
                         <Download className="w-6 h-6 text-blue-400" />
                     </div>
                     <div>
-                        <h4 className="font-bold text-white text-sm">{t('install_app') || 'Install App'}</h4>
-                        <p className="text-xs text-gray-400">{t('install_app_desc') || 'Add to Home Screen for better performance'}</p>
+                        <h4 className="font-bold text-white text-sm">{t('install_app', 'Install App') || 'Install App'}</h4>
+                        <p className="text-xs text-gray-400">{t('install_app_desc', 'Install GSTD for the best experience') || 'Add to Home Screen for better performance'}</p>
                     </div>
                 </div>
                 <div className="flex gap-2">
@@ -64,7 +64,7 @@ export const InstallPwaPrompt: React.FC = () => {
                         onClick={handleInstallClick}
                         className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-2 px-4 rounded-lg transition-colors"
                     >
-                        {t('install') || 'Install'}
+                        {t('install', 'Install') || 'Install'}
                     </button>
                 </div>
             </div>

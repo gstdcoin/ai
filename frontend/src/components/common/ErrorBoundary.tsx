@@ -55,9 +55,7 @@ export class ErrorBoundary extends Component<Props, State> {
               onClick={this.handleRefresh}
               className="px-6 py-3 bg-gradient-to-r from-gold-400 to-gold-600 hover:from-gold-500 hover:to-gold-700 text-black font-bold rounded-xl transition-all flex items-center gap-2 mx-auto"
             >
-              <RefreshCw className="w-5 h-5" />
-              Reload Dashboard
-            </button>
+              <RefreshCw className="w-5 h-5" />{t('reload_dashboard', 'Reload Dashboard')}</button>
 
             <div className="mt-8 p-4 bg-white/5 rounded-lg text-left">
               <p className="text-xs text-gray-500 font-mono break-all">

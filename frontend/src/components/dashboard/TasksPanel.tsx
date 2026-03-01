@@ -56,7 +56,7 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
 
   const triggerConfetti = () => {
     // Simple confetti effect using canvas
-    const canvas = document.createElement('canvas');
+    const canvas = document.createElement('canvas', 'Canvas');
     canvas.style.position = 'fixed';
     canvas.style.top = '0';
     canvas.style.left = '0';
@@ -193,8 +193,8 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
       const errorMessage = error?.message || error?.data?.error || 'Unknown error';
       const statusCode = error?.status || 'N/A';
       toast.error(
-        t('error') || 'Error',
-        `${t('failed_to_load_tasks') || 'Failed to load tasks'}: ${errorMessage} (${statusCode})`
+        t('error', 'Error') || 'Error',
+        `${t('failed_to_load_tasks', 'Failed to load tasks') || 'Failed to load tasks'}: ${errorMessage} (${statusCode})`
       );
       // Set empty array on error to show empty state instead of infinite loading
       setTasks([]);
@@ -250,7 +250,7 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
 
   const handleClaimCompensation = async (task: Task) => {
     if (!address || !task.assigned_device) {
-      toast.error('Wallet required', t('wallet_required') || 'Wallet address required');
+      toast.error('Wallet required', t('wallet_required', 'Wallet address required') || 'Wallet address required');
       return;
     }
 
@@ -337,13 +337,13 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
         onCompensationClaimed();
       }
 
-      toast.success(t('labor_compensation_claimed_success') || 'Labor compensation claimed successfully!');
+      toast.success(t('labor_compensation_claimed_success', 'Compensation claimed!') || 'Labor compensation claimed successfully!');
 
       // Reload tasks
       loadTasks();
     } catch (error) {
       logger.error('Failed to claim labor compensation', error);
-      toast.error('Failed to claim compensation', t('labor_compensation_claim_failed') || 'Failed to claim labor compensation');
+      toast.error('Failed to claim compensation', t('labor_compensation_claim_failed', 'Claim failed') || 'Failed to claim labor compensation');
     } finally {
       setClaimingCompensation(null);
     }
@@ -351,25 +351,25 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
 
   const handleDeleteTask = async (task: Task) => {
     if (!address) {
-      toast.error(t('error') || 'Error', t('wallet_required') || 'Wallet address required');
+      toast.error(t('error', 'Error') || 'Error', t('wallet_required', 'Wallet address required') || 'Wallet address required');
       return;
     }
 
     // Confirm deletion
-    if (!window.confirm(t('delete_task_confirm') || 'Are you sure you want to delete this task?')) {
+    if (!window.confirm(t('delete_task_confirm', 'Are you sure you want to delete this task?') || 'Are you sure you want to delete this task?')) {
       return;
     }
 
     setDeletingTask(task.task_id);
     try {
       await apiDelete(`/tasks/${task.task_id}`);
-      toast.success(t('task_deleted') || 'Task deleted successfully');
-      triggerHapticImpact('medium');
+      toast.success(t('task_deleted', 'Task deleted successfully') || 'Task deleted successfully');
+      triggerHapticImpact('medium', 'Medium');
       loadTasks();
     } catch (error: any) {
       logger.error('Failed to delete task', error);
       const errorMessage = error?.message || error?.data?.error || 'Unknown error';
-      toast.error(t('failed_to_delete_task') || 'Failed to delete task', errorMessage);
+      toast.error(t('failed_to_delete_task', 'Failed to delete task') || 'Failed to delete task', errorMessage);
     } finally {
       setDeletingTask(null);
     }
@@ -395,14 +395,14 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
           type="button"
           onClick={() => {
             setFilter('all');
-            triggerHapticImpact('light');
+            triggerHapticImpact('light', 'Light');
           }}
           className={`px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm sm:text-base min-h-[44px] ${filter === 'all'
             ? 'glass-button-gold'
             : 'glass-button text-white'
             }`}
         >
-          {t('tasks')}
+          {t('tasks', 'Tasks')}
         </button>
         {address && (
           <>
@@ -410,27 +410,27 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
               type="button"
               onClick={() => {
                 setFilter('my');
-                triggerHapticImpact('light');
+                triggerHapticImpact('light', 'Light');
               }}
               className={`px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm sm:text-base min-h-[44px] ${filter === 'my'
                 ? 'glass-button-gold'
                 : 'glass-button text-white'
                 }`}
             >
-              {t('my_tasks')}
+              {t('my_tasks', 'My Tasks')}
             </button>
             <button
               type="button"
               onClick={() => {
                 setFilter('available');
-                triggerHapticImpact('light');
+                triggerHapticImpact('light', 'Light');
               }}
               className={`px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm sm:text-base min-h-[44px] ${filter === 'available'
                 ? 'glass-button-gold'
                 : 'glass-button text-white'
                 }`}
             >
-              {t('available_tasks')}
+              {t('available_tasks', 'Available Tasks')}
             </button>
           </>
         )}
@@ -439,10 +439,10 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
           onClick={loadTasks}
           disabled={loading}
           className="ml-auto glass-button text-white disabled:opacity-50"
-          title={t('refresh') || 'Refresh task list'}
+          title={t('refresh', 'Refresh') || 'Refresh task list'}
         >
           <span>🔄</span>
-          <span className="hidden sm:inline">{t('refresh') || 'Refresh'}</span>
+          <span className="hidden sm:inline">{t('refresh', 'Refresh') || 'Refresh'}</span>
         </button>
       </div>
 
@@ -458,13 +458,13 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
           return (
             <EmptyState
               icon={<ClipboardList className="text-gray-400" size={48} />}
-              title={t('no_tasks') || 'No tasks yet'}
+              title={t('no_tasks', 'No Tasks') || 'No tasks yet'}
               description={
                 filter === 'my'
-                  ? t('no_my_tasks_desc') || 'You haven\'t created any tasks yet. Create your first task to get started.'
+                  ? t('no_my_tasks_desc', 'You haven\'t created any tasks yet. Create your first task to get started.') || 'You haven\'t created any tasks yet. Create your first task to get started.'
                   : filter === 'available'
-                    ? t('no_available_tasks_desc') || 'No tasks are currently available for execution.'
-                    : t('no_tasks_desc') || 'No tasks found. Create a new task to get started.'
+                    ? t('no_available_tasks_desc', 'No tasks are currently available for execution.') || 'No tasks are currently available for execution.'
+                    : t('no_tasks_desc', 'No tasks found. Create a new task to get started.') || 'No tasks found. Create a new task to get started.'
               }
             />
           );
@@ -492,22 +492,22 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
                 <thead className="bg-white/5">
                   <tr>
                     <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                      {t('task_id')}
+                      {t('task_id', 'Task ID')}
                     </th>
                     <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden sm:table-cell">
-                      {t('task_type')}
+                      {t('task_type', 'Task Type')}
                     </th>
                     <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                      {t('status')}
+                      {t('status', 'Status')}
                     </th>
                     <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden md:table-cell">
-                      {t('labor_compensation')}
+                      {t('labor_compensation', 'Compensation')}
                     </th>
                     <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden lg:table-cell">
-                      {t('created_at')}
+                      {t('created_at', 'Created')}
                     </th>
                     <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                      {t('actions')}
+                      {t('actions', 'Actions')}
                     </th>
                   </tr>
                 </thead>
@@ -549,11 +549,11 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
                             type="button"
                             onClick={() => {
                               setSelectedTaskId(task.task_id);
-                              triggerHapticImpact('light');
+                              triggerHapticImpact('light', 'Light');
                             }}
                             className="text-gold-900 hover:text-gold-700 text-xs sm:text-sm font-medium"
                           >
-                            {t('view_details')}
+                            {t('view_details', 'View Details')}
                           </button>
                           {task.status === 'validated' && task.assigned_device === address && (
                             <button
@@ -563,8 +563,8 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
                               className="bg-green-500/20 text-green-400 px-2 sm:px-3 py-1 rounded hover:bg-green-500/30 disabled:opacity-50 text-xs sm:text-sm font-medium"
                             >
                               {claimingCompensation === task.task_id
-                                ? (t('claiming') || 'Claiming...')
-                                : (t('claim_compensation') || 'Claim')}
+                                ? (t('claiming', 'Claiming...') || 'Claiming...')
+                                : (t('claim_compensation', 'Claim') || 'Claim')}
                             </button>
                           )}
                           {(task.status === 'pending' || task.status === 'queued') && task.requester_address === address && (
@@ -576,7 +576,7 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
                             >
                               {deletingTask === task.task_id
                                 ? '...'
-                                : (t('delete_task') || 'Delete')}
+                                : (t('delete_task', 'Delete') || 'Delete')}
                             </button>
                           )}
                         </div>

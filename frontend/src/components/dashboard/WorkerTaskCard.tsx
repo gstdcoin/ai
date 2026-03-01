@@ -35,7 +35,7 @@ export default function WorkerTaskCard({ task, onTaskCompleted }: WorkerTaskCard
 
   const handleStartWork = async () => {
     if (!address || !tonConnectUI?.connected) {
-      toast.error(t('connect_wallet_to_work') || 'Please connect your wallet to start working');
+      toast.error(t('connect_wallet_to_work', 'Please connect your wallet to view and manage devices.') || 'Please connect your wallet to start working');
       return;
     }
 
@@ -48,13 +48,13 @@ export default function WorkerTaskCard({ task, onTaskCompleted }: WorkerTaskCard
     workerService.targetTaskId = task.task_id;
 
     // Haptic feedback on button press
-    triggerHapticImpact('medium');
+    triggerHapticImpact('medium', 'Medium');
 
     setIsRunning(true);
     setProgress({
       progress: 0,
       status: 'running',
-      message: t('starting_computation') || 'Starting computation...'
+      message: t('starting_computation', 'Starting computation...') || 'Starting computation...'
     });
 
     try {
@@ -74,14 +74,14 @@ export default function WorkerTaskCard({ task, onTaskCompleted }: WorkerTaskCard
       setProgress({
         progress: 100,
         status: 'completed',
-        message: t('computation_completed') || 'Computation completed!'
+        message: t('computation_completed', 'Computation completed') || 'Computation completed!'
       });
 
       // Sign result data with wallet (SECURITY: Required for validation)
       setProgress({
         progress: 95,
         status: 'running',
-        message: t('signing_result') || 'Signing result...'
+        message: t('signing_result', 'Signing result...') || 'Signing result...'
       });
 
       // Import signResultData function
@@ -90,7 +90,7 @@ export default function WorkerTaskCard({ task, onTaskCompleted }: WorkerTaskCard
       try {
         signature = await signResultData(task.task_id, result.result, tonConnectUI);
       } catch (error: any) {
-        throw new Error(t('signature_failed') || `Signature failed: ${error?.message || 'Unknown error'}`);
+        throw new Error(t('signature_failed', 'Signature failed') || `Signature failed: ${error?.message || 'Unknown error'}`);
       }
 
       // Submit result to backend with signature
@@ -118,7 +118,7 @@ export default function WorkerTaskCard({ task, onTaskCompleted }: WorkerTaskCard
       setProgress({
         progress: 0,
         status: 'error',
-        message: error?.message || t('task_execution_failed') || 'Task execution failed'
+        message: error?.message || t('task_execution_failed', 'Task execution failed') || 'Task execution failed'
       });
       triggerHapticNotification('error');
       setIsRunning(false);
@@ -155,7 +155,7 @@ export default function WorkerTaskCard({ task, onTaskCompleted }: WorkerTaskCard
             <p className="text-xl font-black text-violet-400 tabular-nums">
               {task.labor_compensation_gstd.toFixed(6)}
             </p>
-            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{t('reward') || 'Bounty (GSTD)'}</p>
+            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{t('reward', 'Reward') || 'Bounty (GSTD)'}</p>
           </div>
         </div>
       </div>
@@ -190,12 +190,12 @@ export default function WorkerTaskCard({ task, onTaskCompleted }: WorkerTaskCard
             {isRunning ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin text-violet-400" />
-                <span className="text-sm font-black text-white uppercase tracking-widest">{t('working') || 'Executing Core...'}</span>
+                <span className="text-sm font-black text-white uppercase tracking-widest">{t('working', 'Working...') || 'Executing Core...'}</span>
               </>
             ) : (
               <>
                 <Play className="w-4 h-4 text-violet-400" fill="currentColor" />
-                <span className="text-sm font-black text-white uppercase tracking-widest">{t('start_work') || 'Compute Task'}</span>
+                <span className="text-sm font-black text-white uppercase tracking-widest">{t('start_work', 'Start Work') || 'Compute Task'}</span>
               </>
             )}
           </div>
@@ -205,7 +205,7 @@ export default function WorkerTaskCard({ task, onTaskCompleted }: WorkerTaskCard
           className="w-full h-[60px] bg-emerald-500/10 border-2 border-emerald-500/30 rounded-2xl flex items-center justify-center gap-3"
         >
           <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-          <span className="text-sm font-black text-emerald-400 uppercase tracking-widest">{t('task_completed') || 'Verified'}</span>
+          <span className="text-sm font-black text-emerald-400 uppercase tracking-widest">{t('task_completed', 'Task Completed') || 'Verified'}</span>
         </div>
       )}
 

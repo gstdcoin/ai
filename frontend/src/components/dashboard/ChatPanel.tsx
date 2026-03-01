@@ -45,11 +45,11 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
   const abortRef = useRef<AbortController | null>(null);
 
   const models = [
-    { id: 'omega-auto', name: t('chat_model_auto') || 'Auto', tier: 'Smart', desc: t('chat_model_auto_desc') || 'Best model for your question', cost: 0.01, ultra: false },
-    { id: 'qwen2.5-coder:7b', name: t('chat_model_fast') || 'Flash', tier: 'Tier 1', desc: t('chat_model_fast_desc') || 'Fast responses', cost: 0.01, ultra: false },
-    { id: 'qwen2.5-coder:32b', name: t('chat_model_professional') || 'Pro', tier: 'Tier 2', desc: t('chat_model_advanced') || 'Deep reasoning', cost: 0.05, ultra: true },
-    { id: 'llama3.3:70b', name: t('chat_model_ultra') || 'Ultra', tier: 'Tier 3', desc: t('chat_model_powerful') || 'Maximum power', cost: 0.1, ultra: true },
-    { id: 'cocoon-auto', name: 'Cocoon', tier: 'TEE', desc: 'Confidential compute', cost: 0.02, ultra: false, cocoon: true },
+    { id: 'omega-auto', name: t('chat_model_auto', 'Auto') || 'Auto', tier: 'Smart', desc: t('chat_model_auto_desc', 'Best model for your question') || 'Best model for your question', cost: 0.01, ultra: false },
+    { id: 'qwen2.5-coder:7b', name: t('chat_model_fast', 'Fast') || 'Flash', tier: 'Tier 1', desc: t('chat_model_fast_desc', 'Quick responses') || 'Fast responses', cost: 0.01, ultra: false },
+    { id: 'qwen2.5-coder:32b', name: t('chat_model_professional', 'Professional') || 'Pro', tier: 'Tier 2', desc: t('chat_model_advanced', 'Advanced reasoning') || 'Deep reasoning', cost: 0.05, ultra: true },
+    { id: 'llama3.3:70b', name: t('chat_model_ultra', 'Ultra') || 'Ultra', tier: 'Tier 3', desc: t('chat_model_powerful', 'Most powerful') || 'Maximum power', cost: 0.1, ultra: true },
+    { id: 'cocoon-auto', name: t('cocoon', 'Cocoon'), tier: 'TEE', desc: t('confidential_compute', 'Confidential compute'), cost: 0.02, ultra: false, cocoon: true },
   ];
 
   const isUltraModel = (modelId: string) => models.find(m => m.id === modelId)?.ultra ?? (modelId.includes('70b') || modelId.includes('deepseek-r1'));
@@ -107,8 +107,8 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
-    if (params.get('viral') === '1') {
-      const model = params.get('model') || 'unknown';
+    if (params.get('viral', 'Viral') === '1') {
+      const model = params.get('model', 'Model') || 'unknown';
       const key = `gstd_viral_click_${model}`;
       if (!sessionStorage.getItem(key)) {
         sessionStorage.setItem(key, '1');
@@ -138,7 +138,7 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
     const shareText = `${msg.content.slice(0, 200)}${msg.content.length > 200 ? '...' : ''}\n\n— Этот ответ был рассчитан ${devices} смартфонами в сети GSTD. Присоединяйся и зарабатывай золото! ${viralUrl}`;
     fetch(`${API_BASE_URL}/api/v1/analytics/viral/share?model=${encodeURIComponent(modelId)}`, { method: 'POST' }).catch(() => { });
     if (navigator.share && typeof window !== 'undefined') {
-      navigator.share({ title: 'GSTD Swarm', text: shareText, url: viralUrl }).catch(() => navigator.clipboard.writeText(shareText));
+      navigator.share({ title: t('gstd_swarm', 'GSTD Swarm'), text: shareText, url: viralUrl }).catch(() => navigator.clipboard.writeText(shareText));
     } else {
       navigator.clipboard.writeText(shareText);
       setCopiedId(msg.id);
@@ -273,8 +273,8 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
             m.id === assistantId ? {
               ...m,
               isStreaming: false,
-              content: `**${t('chat_wallet_required') || 'Connect Wallet'}**\n\n` +
-                `${t('chat_wallet_required_desc') || 'Connect your wallet to use chat. GSTD is deducted per request.'}`,
+              content: `**${t('chat_wallet_required', 'Wallet Required') || 'Connect Wallet'}**\n\n` +
+                `${t('chat_wallet_required_desc', 'Connect your wallet to use chat') || 'Connect your wallet to use chat. GSTD is deducted per request.'}`,
             } : m
           ));
         } else if (isUltraGate) {
@@ -282,9 +282,9 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
             m.id === assistantId ? {
               ...m,
               isStreaming: false,
-              content: `**${t('ultra_gate_title') || 'Ultra Access Required'}**\n\n` +
-                `${t('ultra_gate_message') || 'Ultra models require 100 GSTD staked or 1 GSTD per session.'}\n\n` +
-                `- ${t('zbg_deficit') || 'Deficit'}: **${(gate.deficit ?? 1).toFixed(2)} GSTD**\n` +
+              content: `**${t('ultra_gate_title', 'Ultra Access Required') || 'Ultra Access Required'}**\n\n` +
+                `${t('ultra_gate_message', 'Ultra models require 100 GSTD staked or 1 GSTD per session. Connect wallet an...') || 'Ultra models require 100 GSTD staked or 1 GSTD per session.'}\n\n` +
+                `- ${t('zbg_deficit', 'Deficit') || 'Deficit'}: **${(gate.deficit ?? 1).toFixed(2)} GSTD**\n` +
                 `- Staked: **${(gate.staked_gstd ?? 0).toFixed(2)} GSTD** • Balance: **${(gate.balance_gstd ?? 0).toFixed(2)} GSTD**\n\n` +
                 `*Connect wallet, stake 100 GSTD, or add 1 GSTD for one Ultra session.*`,
             } : m
@@ -296,11 +296,11 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
             m.id === assistantId ? {
               ...m,
               isStreaming: false,
-              content: `**${t('zbg_title') || 'Insufficient Balance'}**\n\n` +
-                `${t('zbg_message') || 'Your GSTD balance is empty. Switch to **Worker mode** to earn tokens by contributing compute power.'}\n\n` +
-                `- ${t('zbg_deficit') || 'Deficit'}: **${deficit.toFixed(4)} GSTD**\n` +
-                `- ${t('zbg_work') || 'Tasks needed'}: **~${workRequired}** (~${workRequired * 15}s)\n\n` +
-                `*${t('zbg_hint') || 'Go to Overview tab and tap "Ignite" to start mining. Your device will earn GSTD in the background.'}*`,
+              content: `**${t('zbg_title', 'Insufficient Balance') || 'Insufficient Balance'}**\n\n` +
+                `${t('zbg_message', 'Your GSTD balance is empty. Switch to Worker mode to earn tokens by contribut...') || 'Your GSTD balance is empty. Switch to **Worker mode** to earn tokens by contributing compute power.'}\n\n` +
+                `- ${t('zbg_deficit', 'Deficit') || 'Deficit'}: **${deficit.toFixed(4)} GSTD**\n` +
+                `- ${t('zbg_work', 'Tasks needed') || 'Tasks needed'}: **~${workRequired}** (~${workRequired * 15}s)\n\n` +
+                `*${t('zbg_hint', 'Go to Overview tab and tap Ignite to activate your Neural Node. Your device w...') || 'Go to Overview tab and tap "Ignite" to start mining. Your device will earn GSTD in the background.'}*`,
             } : m
           ));
         }
@@ -420,7 +420,7 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
           m.id === assistantId ? {
             ...m,
             isStreaming: false,
-            content: `**Error:** ${err.message}\n\n${t('chat_error_hint') || 'Please check your GSTD balance and try again.'}`,
+            content: `**Error:** ${err.message}\n\n${t('chat_error_hint', 'Please check your GSTD balance and try again.') || 'Please check your GSTD balance and try again.'}`,
           } : m
         ));
       }
@@ -457,8 +457,8 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
             ))}
           </select>
           {communityFavorite === selectedModel && (
-            <span className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold bg-cyan-500/10 border border-cyan-500/30 text-cyan-400" title="Community Favorite">
-              ★ {t('chat_community_favorite') || 'Community Favorite'}
+            <span className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold bg-cyan-500/10 border border-cyan-500/30 text-cyan-400" title={t('chat_community_favorite', 'Community Favorite')}>
+              ★ {t('chat_community_favorite', 'Community Favorite') || 'Community Favorite'}
             </span>
           )}
           <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${isUltraModel(selectedModel)
@@ -466,7 +466,7 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
             : 'bg-white/5 border-white/10 text-gray-400'
             }`}>
             {isUltraModel(selectedModel) ? <Crown size={12} /> : null}
-            {isUltraModel(selectedModel) ? (t('chat_mode_ultra') || 'Ultra') : (t('chat_mode_standard') || 'Standard')}
+            {isUltraModel(selectedModel) ? (t('chat_mode_ultra', 'Ultra') || 'Ultra') : (t('chat_mode_standard', 'Standard') || 'Standard')}
           </span>
         </div>
 
@@ -475,9 +475,9 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
           onClick={() => setCompareMode(!compareMode)}
           className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider border transition-all ${compareMode ? 'bg-amber-500/20 border-amber-500/40 text-amber-400' : 'bg-white/5 border-white/10 text-gray-500'
             }`}
-          title={t('chat_compare_mode') || 'Compare two models side-by-side'}
+          title={t('chat_compare_mode', 'Compare Mode') || 'Compare two models side-by-side'}
         >
-          {t('chat_compare_mode') || 'Compare'}
+          {t('chat_compare_mode', 'Compare Mode') || 'Compare'}
         </button>
         {compareMode && (
           <div className="flex items-center gap-2">
@@ -499,18 +499,18 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
             ? 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400'
             : 'bg-white/5 border-white/10 text-gray-500'
             }`}
-          title={t('chat_speculative_tooltip') || 'Speculative Decoding: small model drafts instantly, large model verifies'}
+          title={t('chat_speculative_tooltip', 'Draft model generates tokens instantly, verified model confirms quality') || 'Speculative Decoding: small model drafts instantly, large model verifies'}
         >
           <Zap size={12} />
-          {t('chat_speculative') || 'Speculative'}
+          {t('chat_speculative', 'Speculative') || 'Speculative'}
         </button>
 
         <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
-          {t('chat_balance') || 'Balance'}: <span className="text-cyan-400">{gstdBalance?.toFixed(2) || '0.00'} GSTD</span>
+          {t('chat_balance', 'Balance') || 'Balance'}: <span className="text-cyan-400">{gstdBalance?.toFixed(2) || '0.00'} GSTD</span>
         </div>
 
         {messages.length > 0 && (
-          <button onClick={clearChat} className="ml-auto p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors" title={t('chat_clear') || 'Clear'}>
+          <button onClick={clearChat} className="ml-auto p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors" title={t('chat_clear', 'Clear chat') || 'Clear'}>
             <RotateCcw size={14} />
           </button>
         )}
@@ -521,9 +521,9 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
         <div className="mx-2 mb-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-3">
           <Crown size={16} className="text-amber-400 mt-0.5 flex-shrink-0" />
           <div>
-            <p className="text-xs text-amber-300 font-bold mb-1">{t('chat_ultra_upgrade_prompt') || 'Upgrade to Ultra for expert responses'}</p>
+            <p className="text-xs text-amber-300 font-bold mb-1">{t('chat_ultra_upgrade_prompt', 'Upgrade to Ultra for expert responses') || 'Upgrade to Ultra for expert responses'}</p>
             <p className="text-[10px] text-gray-400 leading-relaxed">
-              {t('chat_ultra_upgrade_desc') || 'Ultra models (70B, DeepSeek-R1) require 100 GSTD staked or 1 GSTD per session.'}
+              {t('chat_ultra_upgrade_desc', 'Ultra models (70B, DeepSeek-R1) require 100 GSTD staked or 1 GSTD per session...') || 'Ultra models (70B, DeepSeek-R1) require 100 GSTD staked or 1 GSTD per session.'}
             </p>
             <p className="text-[10px] text-amber-400/80 mt-1">
               {ultraStatus.message}
@@ -537,9 +537,9 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
         <div className="mx-2 mb-4 p-3 rounded-xl bg-cyan-500/5 border border-cyan-500/10 flex items-start gap-3">
           <Zap size={16} className="text-cyan-400 mt-0.5 flex-shrink-0" />
           <div>
-            <p className="text-xs text-cyan-300 font-bold mb-1">{t('chat_speculative_title') || 'Speculative Decoding Active'}</p>
+            <p className="text-xs text-cyan-300 font-bold mb-1">{t('chat_speculative_title', 'Speculative Decoding Active') || 'Speculative Decoding Active'}</p>
             <p className="text-[10px] text-gray-400 leading-relaxed">
-              {t('chat_speculative_desc') || 'A small draft model (1B) generates tokens instantly while the full model verifies them. Speculative tokens appear dimmed until confirmed. This reduces perceived latency by 3-5x.'}
+              {t('chat_speculative_desc', 'A small draft model (1B) generates tokens instantly while the full model veri...') || 'A small draft model (1B) generates tokens instantly while the full model verifies them. Speculative tokens appear dimmed until confirmed. This reduces perceived latency by 3-5x.'}
             </p>
           </div>
         </div>
@@ -553,17 +553,17 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
               <Sparkles className="w-10 h-10 text-violet-400" />
             </div>
             <h2 className="text-2xl font-black text-white mb-3 tracking-tight">
-              {t('chat_welcome_title') || 'Sovereign Intelligence'}
+              {t('chat_welcome_title', 'Sovereign Intelligence') || 'Sovereign Intelligence'}
             </h2>
             <p className="text-gray-400 max-w-md mb-8 text-sm">
-              {t('chat_welcome_desc') || 'Powered by decentralized LLMs. No censorship. No data collection.'}
+              {t('chat_welcome_desc', 'Powered by decentralized LLMs running on the GSTD network. No censorship. No ...') || 'Powered by decentralized LLMs. No censorship. No data collection.'}
             </p>
             <div className="grid grid-cols-2 gap-3 max-w-lg w-full">
               {[
-                { text: t('chat_suggestion_1') || 'Write a smart contract in FunC', icon: '📝' },
-                { text: t('chat_suggestion_2') || 'Explain blockchain consensus', icon: '🔗' },
-                { text: t('chat_suggestion_3') || 'Build a REST API in Go', icon: '⚡' },
-                { text: t('chat_suggestion_4') || 'Analyze my tokenomics model', icon: '📊' },
+                { text: t('chat_suggestion_1', 'Write a smart contract in FunC') || 'Write a smart contract in FunC', icon: '📝' },
+                { text: t('chat_suggestion_2', 'Explain blockchain consensus') || 'Explain blockchain consensus', icon: '🔗' },
+                { text: t('chat_suggestion_3', 'Build a REST API in Go') || 'Build a REST API in Go', icon: '⚡' },
+                { text: t('chat_suggestion_4', 'Analyze my tokenomics model') || 'Analyze my tokenomics model', icon: '📊' },
               ].map((s, i) => (
                 <button key={i} onClick={() => { setInput(s.text); inputRef.current?.focus(); }}
                   className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-violet-500/30 hover:bg-white/[0.05] transition-all text-left group">
@@ -591,12 +591,12 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
                     <div className="text-[10px] text-cyan-500/80 font-bold mb-2">{models.find(m => m.id === msg.model)?.name || msg.model}</div>
                     <div className="prose prose-invert prose-sm max-w-none [&_pre]:bg-black/40 [&_code]:text-violet-300"><ReactMarkdown>{msg.content}</ReactMarkdown></div>
                     <div className="flex gap-2 mt-2 text-[10px] text-gray-500">
-                      {msg.cost != null && (msg.cost > 0 ? <span className="text-amber-500/60">−{msg.cost} GSTD</span> : <span className="text-emerald-500/60">Free</span>)}
+                      {msg.cost != null && (msg.cost > 0 ? <span className="text-amber-500/60">−{msg.cost} GSTD</span> : <span className="text-emerald-500/60">{t('free', 'Free')}</span>)}
                       {msg.powStats && <span>🐝 {msg.powStats.swarm_devices} devices</span>}
                     </div>
                     <div className="flex gap-2 mt-2">
                       <button onClick={() => handleCopy(msg.id, msg.content)} className="text-[10px] text-gray-500 hover:text-white">Copy</button>
-                      <button onClick={() => handleShare(msg)} className="text-[10px] text-gray-500 hover:text-cyan-400 flex items-center gap-1"><Share2 size={10} /> Share</button>
+                      <button onClick={() => handleShare(msg)} className="text-[10px] text-gray-500 hover:text-cyan-400 flex items-center gap-1"><Share2 size={10} />{t('share', 'Share')}</button>
                     </div>
                   </div>
                 </div>
@@ -606,12 +606,12 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
                     <div className="text-[10px] text-amber-500/80 font-bold mb-2">{models.find(m => m.id === nextMsg.model)?.name || nextMsg.model}</div>
                     <div className="prose prose-invert prose-sm max-w-none [&_pre]:bg-black/40 [&_code]:text-violet-300"><ReactMarkdown>{nextMsg.content}</ReactMarkdown></div>
                     <div className="flex gap-2 mt-2 text-[10px] text-gray-500">
-                      {nextMsg.cost != null && (nextMsg.cost > 0 ? <span className="text-amber-500/60">−{nextMsg.cost} GSTD</span> : <span className="text-emerald-500/60">Free</span>)}
+                      {nextMsg.cost != null && (nextMsg.cost > 0 ? <span className="text-amber-500/60">−{nextMsg.cost} GSTD</span> : <span className="text-emerald-500/60">{t('free', 'Free')}</span>)}
                       {nextMsg.powStats && <span>🐝 {nextMsg.powStats.swarm_devices} devices</span>}
                     </div>
                     <div className="flex gap-2 mt-2">
                       <button onClick={() => handleCopy(nextMsg.id, nextMsg.content)} className="text-[10px] text-gray-500 hover:text-white">Copy</button>
-                      <button onClick={() => handleShare(nextMsg)} className="text-[10px] text-gray-500 hover:text-cyan-400 flex items-center gap-1"><Share2 size={10} /> Share</button>
+                      <button onClick={() => handleShare(nextMsg)} className="text-[10px] text-gray-500 hover:text-cyan-400 flex items-center gap-1"><Share2 size={10} />{t('share', 'Share')}</button>
                     </div>
                   </div>
                 </div>
@@ -649,13 +649,13 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
                     <button onClick={() => handleCopy(msg.id, msg.content)}
                       className="flex items-center gap-1.5 text-[10px] text-gray-500 hover:text-white font-bold uppercase tracking-wider transition-colors">
                       {copiedId === msg.id ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
-                      {copiedId === msg.id ? (t('copied') || 'Copied') : (t('copy') || 'Copy')}
+                      {copiedId === msg.id ? (t('copied', 'Copied') || 'Copied') : (t('copy', 'Copy ID') || 'Copy')}
                     </button>
                     <button onClick={() => handleShare(msg)}
                       className="flex items-center gap-1.5 text-[10px] text-gray-500 hover:text-cyan-400 font-bold uppercase tracking-wider transition-colors"
-                      title={t('chat_share_answer') || 'Поделиться ответом'}>
+                      title={t('chat_share_answer', 'Share Answer') || 'Поделиться ответом'}>
                       <Share2 size={12} />
-                      {t('chat_share_answer') || 'Поделиться'}
+                      {t('chat_share_answer', 'Share Answer') || 'Поделиться'}
                     </button>
                     {msg.model && (
                       <span className="text-[10px] text-gray-600 font-mono">
@@ -673,19 +673,17 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
                       </span>
                     )}
                     {msg.powStats && msg.powStats.swarm_devices > 0 && (
-                      <span className="text-[10px] text-cyan-500/60" title={t('chat_pow_tooltip') || 'Your request was processed by the Swarm'}>
+                      <span className="text-[10px] text-cyan-500/60" title={t('chat_pow_tooltip', 'Proof of Work') || 'Your request was processed by the Swarm'}>
                         🐝 {msg.powStats.swarm_devices} devices • {msg.powStats.workers_gstd.toFixed(2)} GSTD → workers
                       </span>
                     )}
                     {speculativeEnabled && (
                       <span className="flex items-center gap-1 text-[10px] text-cyan-500/40">
-                        <Zap size={10} /> Speculative
-                      </span>
+                        <Zap size={10} />{t('chat_speculative', 'Speculative')}</span>
                     )}
                     {selectedModel.startsWith('cocoon-') && (
                       <span className="flex items-center gap-1 text-[10px] text-emerald-400/60">
-                        <Shield size={10} /> Cocoon TEE
-                      </span>
+                        <Shield size={10} />{t('model_cocoon', 'Cocoon TEE')}</span>
                     )}
                   </div>
                 )}
@@ -706,7 +704,7 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
                 <div className="w-2 h-2 rounded-full bg-cyan-500/50 animate-bounce" style={{ animationDelay: '150ms' }} />
                 <div className="w-2 h-2 rounded-full bg-cyan-500/50 animate-bounce" style={{ animationDelay: '300ms' }} />
               </div>
-              <span className="text-xs font-medium">{t('chat_thinking') || 'Processing on the Grid...'}</span>
+              <span className="text-xs font-medium">{t('chat_thinking', 'Processing on the Grid...') || 'Processing on the Grid...'}</span>
             </div>
           </div>
         )}
@@ -722,7 +720,7 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={t('chat_placeholder') || 'Ask anything... (Shift+Enter for new line)'}
+            placeholder={t('chat_placeholder', 'Ask anything... (Shift+Enter for new line)') || 'Ask anything... (Shift+Enter for new line)'}
             rows={1}
             className="flex-1 bg-transparent text-white placeholder-gray-500 resize-none outline-none text-sm font-medium max-h-32 min-h-[24px]"
             style={{ height: 'auto', overflow: 'hidden' }}
@@ -745,7 +743,7 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
         </div>
         {/* Cost / Free tier indicator */}
         <p className="text-[10px] text-center mt-2 font-medium">
-          <span className="text-gray-500">{t('chat_disclaimer') || 'Sovereign AI • Decentralized • No data stored'}</span>
+          <span className="text-gray-500">{t('chat_disclaimer', 'Powered by Sovereign AI • Responses generated by decentralized LLM network • ...') || 'Sovereign AI • Decentralized • No data stored'}</span>
           {' • '}
           {(gstdBalance ?? 0) < 0.01 && !isUltraModel(selectedModel) ? (
             <span className="text-cyan-400">5 free requests/day</span>

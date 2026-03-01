@@ -62,18 +62,18 @@ export default function TreasuryWidget() {
         <div>
           <h3 className="text-lg font-bold text-white flex items-center gap-2 font-display">
             <span className="text-2xl">🏛️</span>
-            {t('platform_treasury') || 'Platform Treasury'}
+            {t('platform_treasury', 'Platform Treasury') || 'Platform Treasury'}
           </h3>
           <p className="text-xs text-gray-400 mt-1">
-            {t('golden_reserve') || 'Golden Reserve (XAUt)'}
+            {t('golden_reserve', 'Gold Reserve (XAUt)') || 'Golden Reserve (XAUt)'}
           </p>
         </div>
         <button
           onClick={loadTreasuryBalance}
           disabled={loading}
           className="glass-button text-gold-900 hover:bg-gold-900/20 disabled:opacity-50 min-h-[40px] min-w-[40px] rounded-full"
-          title={t('refresh') || 'Refresh'}
-          aria-label={t('refresh') || 'Refresh'}
+          title={t('refresh', 'Refresh') || 'Refresh'}
+          aria-label={t('refresh', 'Refresh') || 'Refresh'}
         >
           <svg className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -89,7 +89,7 @@ export default function TreasuryWidget() {
         <div className="text-center py-4">
           <p className="text-red-400 text-sm mb-2">{error}</p>
           <button onClick={loadTreasuryBalance} className="text-xs text-gold-900 hover:underline">
-            {t('retry') || 'Retry'}
+            {t('retry', 'Retry') || 'Retry'}
           </button>
         </div>
       ) : (
@@ -101,7 +101,7 @@ export default function TreasuryWidget() {
             <span className="text-lg text-gray-400">XAUt</span>
           </div>
           <div className="text-xs text-gray-500 font-mono bg-black/20 px-3 py-2 rounded-lg">
-            {t('treasury_address') || 'Treasury'}: {TREASURY_WALLET.slice(0, 8)}...{TREASURY_WALLET.slice(-6)}
+            {t('treasury_address', 'Treasury') || 'Treasury'}: {TREASURY_WALLET.slice(0, 8)}...{TREASURY_WALLET.slice(-6)}
           </div>
         </div>
       )}

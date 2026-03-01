@@ -89,7 +89,7 @@ function TaskDetailsModal({ taskId, onClose }: TaskDetailsModalProps) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div className="bg-white rounded-lg p-8">
-          <div className="text-gray-500">{t('loading')}</div>
+          <div className="text-gray-500">{t('loading', 'Loading...')}</div>
         </div>
       </div>
     );
@@ -103,7 +103,7 @@ function TaskDetailsModal({ taskId, onClose }: TaskDetailsModalProps) {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6 border-b border-gray-200 flex justify-between items-center">
-          <h2 className="text-2xl font-bold">{t('task_details')}</h2>
+          <h2 className="text-2xl font-bold">{t('task_details', 'Task Details')}</h2>
           <button
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700 text-2xl"
@@ -117,7 +117,7 @@ function TaskDetailsModal({ taskId, onClose }: TaskDetailsModalProps) {
           <div className="flex gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('status')}
+                {t('status', 'Status')}
               </label>
               <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(task.status)}`}>
                 {t(task.status)}
@@ -125,7 +125,7 @@ function TaskDetailsModal({ taskId, onClose }: TaskDetailsModalProps) {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('escrow_status')}
+                {t('escrow_status', 'Escrow Status')}
               </label>
               <span className={`px-3 py-1 rounded-full text-sm font-semibold ${task.escrow_status === 'locked' ? 'bg-green-100 text-green-800' :
                   task.escrow_status === 'awaiting' ? 'bg-yellow-100 text-yellow-800' :
@@ -140,25 +140,25 @@ function TaskDetailsModal({ taskId, onClose }: TaskDetailsModalProps) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('task_id')}
+                {t('task_id', 'Task ID')}
               </label>
               <div className="text-sm font-mono text-gray-600">{task.task_id}</div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('task_type')}
+                {t('task_type', 'Task Type')}
               </label>
               <div className="text-sm text-gray-600">{task.task_type}</div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('labor_compensation')}
+                {t('labor_compensation', 'Compensation')}
               </label>
               <div className="text-sm text-gray-600">{task.labor_compensation_gstd} GSTD</div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('created_at')}
+                {t('created_at', 'Created')}
               </label>
               <div className="text-sm text-gray-600">
                 {new Date(task.created_at).toLocaleString()}
@@ -170,7 +170,7 @@ function TaskDetailsModal({ taskId, onClose }: TaskDetailsModalProps) {
           {task.assigned_at && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('assigned')}
+                {t('assigned', 'Assigned')}
               </label>
               <div className="text-sm text-gray-600">
                 {new Date(task.assigned_at).toLocaleString()}
@@ -181,7 +181,7 @@ function TaskDetailsModal({ taskId, onClose }: TaskDetailsModalProps) {
           {task.execution_time_ms && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('execution_time')}
+                {t('execution_time', 'Execution Time')}
               </label>
               <div className="text-sm text-gray-600">{task.execution_time_ms} ms</div>
             </div>
@@ -190,18 +190,18 @@ function TaskDetailsModal({ taskId, onClose }: TaskDetailsModalProps) {
           {/* Выплаты */}
           {task.platform_fee_gstd && task.executor_reward_gstd && (
             <div className="border-t pt-4">
-              <h3 className="font-semibold mb-2">{t('payment_breakdown')}</h3>
+              <h3 className="font-semibold mb-2">{t('payment_breakdown', 'Payment Breakdown')}</h3>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span>{t('executor_compensation') || t('executor_reward')}:</span>
+                  <span>{t('executor_compensation', 'Executor Compensation') || t('executor_reward', 'Executor Reward')}:</span>
                   <span className="font-medium">{task.executor_reward_gstd} GSTD</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>{t('platform_fee')}:</span>
+                  <span>{t('platform_fee', 'Platform Fee')}:</span>
                   <span className="font-medium">{task.platform_fee_gstd} GSTD</span>
                 </div>
                 <div className="flex justify-between font-semibold border-t pt-2">
-                  <span>{t('total')}:</span>
+                  <span>{t('total', 'Total')}:</span>
                   <span>{task.labor_compensation_gstd} GSTD</span>
                 </div>
               </div>
@@ -212,14 +212,14 @@ function TaskDetailsModal({ taskId, onClose }: TaskDetailsModalProps) {
           {task.status === 'completed' || task.status === 'validating' ? (
             <div className="border-t pt-4">
               <div className="flex justify-between items-center mb-2">
-                <h3 className="font-semibold">{t('result')}</h3>
+                <h3 className="font-semibold">{t('result', 'Result')}</h3>
                 {!result && (
                   <button
                     onClick={loadResult}
                     disabled={loadingResult}
                     className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 text-sm"
                   >
-                    {loadingResult ? t('loading') : t('load_result')}
+                    {loadingResult ? t('loading', 'Loading...') : t('load_result', 'Load Result')}
                   </button>
                 )}
               </div>
@@ -230,7 +230,7 @@ function TaskDetailsModal({ taskId, onClose }: TaskDetailsModalProps) {
                   </pre>
                 </div>
               ) : (
-                <div className="text-gray-500 text-sm">{t('result_not_loaded')}</div>
+                <div className="text-gray-500 text-sm">{t('result_not_loaded', 'Result not loaded')}</div>
               )}
             </div>
           ) : null}
@@ -240,7 +240,7 @@ function TaskDetailsModal({ taskId, onClose }: TaskDetailsModalProps) {
               onClick={onClose}
               className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
             >
-              {t('close')}
+              {t('close', 'Close')}
             </button>
           </div>
         </div>

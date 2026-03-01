@@ -176,8 +176,8 @@ export default function Marketplace() {
             {/* Tab Navigation */}
             <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide">
                 {[
-                    { id: 'jobs', icon: Search, label: 'Job Feed' },
-                    { id: 'my-tasks', icon: ClipboardList, label: t('my_tasks') }
+                    { id: 'jobs', icon: Search, label: t('job_feed', 'Job Feed') },
+                    { id: 'my-tasks', icon: ClipboardList, label: t('my_tasks', 'My Tasks') }
                 ].map((tab) => (
                     <button
                         key={tab.id}
@@ -200,10 +200,10 @@ export default function Marketplace() {
             {marketStats && (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {[
-                        { label: 'Active Jobs', value: marketStats.active_tasks, icon: Zap, color: 'text-blue-400' },
-                        { label: 'Workers Online', value: marketStats.active_workers, icon: Users, color: 'text-green-400' },
-                        { label: 'GSTD Paid Out', value: marketStats.total_payouts.toFixed(2), icon: TrendingUp, color: 'text-indigo-400' },
-                        { label: 'Platform Fund', value: ((marketStats.platform_funds?.dev_fund || 0) + (marketStats.platform_funds?.gold_reserve || 0)).toFixed(2), icon: Shield, color: 'text-amber-400' }
+                        { label: t('active_jobs', 'Active Jobs'), value: marketStats.active_tasks, icon: Zap, color: 'text-blue-400' },
+                        { label: t('workers_online', 'Workers Online'), value: marketStats.active_workers, icon: Users, color: 'text-green-400' },
+                        { label: t('gstd_paid_out', 'GSTD Paid Out'), value: marketStats.total_payouts.toFixed(2), icon: TrendingUp, color: 'text-indigo-400' },
+                        { label: t('platform_fund', 'Platform Fund'), value: ((marketStats.platform_funds?.dev_fund || 0) + (marketStats.platform_funds?.gold_reserve || 0)).toFixed(2), icon: Shield, color: 'text-amber-400' }
                     ].map((stat, idx) => (
                         <div key={idx} className="bg-gray-900/40 backdrop-blur-md rounded-2xl p-4 border border-gray-700/50 flex flex-col items-center justify-center group overflow-hidden relative">
                             <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${stat.color.replace('text', 'from')} to-transparent opacity-0 group-hover:opacity-100 transition-opacity`} />
@@ -220,24 +220,23 @@ export default function Marketplace() {
                 isConnected && workerStats && (
                     <div className="glass-card p-4">
                         <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                            <span className="text-2xl">👷</span> Your Worker Stats
-                        </h3>
+                            <span className="text-2xl">👷</span>{t('your_worker_stats', 'Your Worker Stats')}</h3>
                         <div className="grid grid-cols-4 gap-4 text-center">
                             <div>
                                 <div className="text-xl font-bold text-white">{workerStats.total_tasks_completed}</div>
-                                <div className="text-xs text-gray-400">Tasks Done</div>
+                                <div className="text-xs text-gray-400">{t('tasks_done', 'Tasks Done')}</div>
                             </div>
                             <div>
                                 <div className="text-xl font-bold text-green-400">{workerStats.total_earnings_gstd.toFixed(4)}</div>
-                                <div className="text-xs text-gray-400">GSTD Earned</div>
+                                <div className="text-xs text-gray-400">{t('gstd_earned', 'GSTD Earned')}</div>
                             </div>
                             <div>
                                 <div className="text-xl font-bold text-blue-400">{(workerStats.reliability_score * 100).toFixed(0)}%</div>
-                                <div className="text-xs text-gray-400">Reliability</div>
+                                <div className="text-xs text-gray-400">{t('reliability', 'Reliability')}</div>
                             </div>
                             <div>
                                 <div className="text-xl font-bold text-purple-400">{workerStats.avg_execution_time_ms}ms</div>
-                                <div className="text-xs text-gray-400">Avg Time</div>
+                                <div className="text-xs text-gray-400">{t('avg_time', 'Avg Time')}</div>
                             </div>
                         </div>
                     </div>
@@ -249,7 +248,7 @@ export default function Marketplace() {
                 activeTab === 'jobs' && (
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                            <h3 className="text-lg font-semibold">Available Jobs</h3>
+                            <h3 className="text-lg font-semibold">{t('available_jobs', 'Available Jobs')}</h3>
                             <button
                                 onClick={fetchTasks}
                                 className="text-sm text-gray-400 hover:text-white"
@@ -261,8 +260,8 @@ export default function Marketplace() {
                         {tasks.length === 0 ? (
                             <div className="glass-card p-8 text-center">
                                 <div className="text-4xl mb-4">🔍</div>
-                                <p className="text-gray-400">No jobs available right now</p>
-                                <p className="text-sm text-gray-500 mt-2">Check back soon or create your own task!</p>
+                                <p className="text-gray-400">{t('no_jobs_available_right_now', 'No jobs available right now')}</p>
+                                <p className="text-sm text-gray-500 mt-2">{t('check_back_soon_or_create_your_own_task', 'Check back soon or create your own task!')}</p>
                             </div>
                         ) : (
                             <div className="space-y-3">
@@ -277,9 +276,7 @@ export default function Marketplace() {
 
                                             {isHot && (
                                                 <div className="absolute -top-2.5 -right-2.5 px-3 py-1 bg-gradient-to-br from-amber-400 via-orange-500 to-red-600 rounded-lg text-[10px] font-black text-white shadow-xl flex items-center gap-1.5 animate-bounce-subtle z-10">
-                                                    <Sparkles className="w-3 h-3" />
-                                                    PREMIUM REWARD
-                                                </div>
+                                                    <Sparkles className="w-3 h-3" />{t('premium_reward', 'PREMIUM REWARD')}</div>
                                             )}
 
                                             <div className="flex items-start justify-between relative z-1">
@@ -321,7 +318,7 @@ export default function Marketplace() {
                                             <div className="mt-6 pt-4 border-t border-gray-800/50 flex items-center justify-between">
                                                 <div className="flex gap-4">
                                                     <div className="space-y-1">
-                                                        <div className="text-[10px] text-gray-500 uppercase tracking-tighter">Availability</div>
+                                                        <div className="text-[10px] text-gray-500 uppercase tracking-tighter">{t('availability', 'Availability')}</div>
                                                         <div className="text-xs text-gray-300 flex items-center gap-1.5">
                                                             <div className="w-24 h-1.5 bg-gray-800 rounded-full overflow-hidden">
                                                                 <div
@@ -333,7 +330,7 @@ export default function Marketplace() {
                                                         </div>
                                                     </div>
                                                     <div className="space-y-1">
-                                                        <div className="text-[10px] text-gray-500 uppercase tracking-tighter">Estimated Time</div>
+                                                        <div className="text-[10px] text-gray-500 uppercase tracking-tighter">{t('estimated_time', 'Estimated Time')}</div>
                                                         <div className="text-xs text-gray-300 font-mono">~{task.estimated_time_sec}s</div>
                                                     </div>
                                                 </div>
@@ -378,7 +375,7 @@ export default function Marketplace() {
                 activeTab === 'my-tasks' && (
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                            <h3 className="text-lg font-semibold">My Created Tasks</h3>
+                            <h3 className="text-lg font-semibold">{t('my_created_tasks', 'My Created Tasks')}</h3>
                             <button
                                 onClick={fetchMyTasks}
                                 className="text-sm text-gray-400 hover:text-white"
@@ -390,7 +387,7 @@ export default function Marketplace() {
                         {!isConnected ? (
                             <div className="glass-card p-8 text-center">
                                 <div className="text-4xl mb-4">🔗</div>
-                                <p className="text-gray-400">Connect your wallet to view your tasks</p>
+                                <p className="text-gray-400">{t('connect_your_wallet_to_view_your_tasks', 'Connect your wallet to view your tasks')}</p>
                             </div>
                         ) : myTasks.length === 0 ? (
                             <div className="glass-card p-8 text-center">
@@ -409,15 +406,15 @@ export default function Marketplace() {
                                         </div>
                                         <div className="grid grid-cols-3 gap-4 text-sm">
                                             <div>
-                                                <div className="text-gray-400">Budget</div>
+                                                <div className="text-gray-400">{t('budget', 'Budget')}</div>
                                                 <div className="font-medium">{task.budget_gstd?.toFixed(4)} GSTD</div>
                                             </div>
                                             <div>
-                                                <div className="text-gray-400">Workers</div>
+                                                <div className="text-gray-400">{t('workers', 'Workers')}</div>
                                                 <div className="font-medium">{task.workers_completed}/{task.max_workers}</div>
                                             </div>
                                             <div>
-                                                <div className="text-gray-400">Paid Out</div>
+                                                <div className="text-gray-400">{t('paid_out', 'Paid Out')}</div>
                                                 <div className="font-medium text-green-400">{task.paid_out_gstd?.toFixed(4)} GSTD</div>
                                             </div>
                                         </div>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'next-i18next';
-import { Server, BarChart3, Bot, MessageSquare, Hammer, ListTodo, MoreHorizontal } from 'lucide-react';
+import { Home, ListTodo, Server, MessageSquare, MoreHorizontal } from 'lucide-react';
 import { Tab } from '../../types/tabs';
 
 interface BottomNavProps {
@@ -11,31 +11,47 @@ interface BottomNavProps {
 export default function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
   const { t } = useTranslation('common');
 
-  const tabs: Array<{ id: Tab; label: string; icon: React.ReactNode; highlight?: boolean }> = [
-    { id: 'chat', label: t('chat') || 'Chat', icon: <MessageSquare size={20} />, highlight: true },
-    { id: 'home', label: t('nav_mining') || 'Mining', icon: <Hammer size={20} /> },
-    { id: 'tasks', label: t('tasks') || 'Tasks', icon: <ListTodo size={20} /> },
-    { id: 'devices', label: t('devices') || 'Nodes', icon: <Server size={20} /> },
-    { id: 'more', label: t('more') || 'More', icon: <MoreHorizontal size={20} /> },
+  const items: Array<{ id: Tab | 'chat'; label: string; icon: React.ReactNode; href?: string }> = [
+    { id: 'home', label: t('tab_home', 'Home'), icon: <Home size={20} /> },
+    { id: 'tasks', label: t('tab_tasks', 'Tasks'), icon: <ListTodo size={20} /> },
+    { id: 'nodes', label: t('tab_nodes', 'Nodes'), icon: <Server size={20} /> },
+    { id: 'chat', label: t('chat', 'Chat'), icon: <MessageSquare size={20} />, href: '/chat' },
   ];
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden">
-      <div className="glass-dark border-t border-white/10">
-        <div className="grid grid-cols-5 gap-0.5 sm:gap-1 px-1 sm:px-2 py-2">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => onTabChange(tab.id)}
-              className={`flex flex-col items-center justify-center gap-0.5 py-2 px-1 rounded-lg transition-all duration-200 min-h-[44px]
-                ${activeTab === tab.id
-                  ? tab.highlight ? 'bg-violet-600/20 text-violet-400' : 'bg-white/10 text-white'
-                  : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'}`}
-              aria-label={tab.label}
-            >
-              {tab.icon}
-              <span className="text-[10px] font-medium truncate">{tab.label}</span>
-            </button>
+      <div style={{
+        background: 'rgba(3, 0, 20, 0.92)',
+        backdropFilter: 'blur(20px)',
+        borderTop: '1px solid rgba(255,255,255,0.06)',
+        paddingBottom: 'env(safe-area-inset-bottom, 0)',
+      }}>
+        <div className="grid grid-cols-4 gap-0.5 px-2 py-2">
+          {items.map((item) => (
+            item.href ? (
+              <a
+                key={item.id}
+                href={item.href}
+                className="flex flex-col items-center justify-center gap-0.5 py-2 px-1 rounded-xl transition-all duration-200 min-h-[48px] text-gray-500 hover:text-gray-300"
+                aria-label={item.label}
+              >
+                {item.icon}
+                <span className="text-[10px] font-medium">{item.label}</span>
+              </a>
+            ) : (
+              <button
+                key={item.id}
+                onClick={() => onTabChange(item.id as Tab)}
+                className={`flex flex-col items-center justify-center gap-0.5 py-2 px-1 rounded-xl transition-all duration-200 min-h-[48px]
+                  ${activeTab === item.id
+                    ? 'text-white bg-violet-500/10'
+                    : 'text-gray-500 hover:text-gray-300'}`}
+                aria-label={item.label}
+              >
+                {item.icon}
+                <span className="text-[10px] font-medium">{item.label}</span>
+              </button>
+            )
           ))}
         </div>
       </div>
