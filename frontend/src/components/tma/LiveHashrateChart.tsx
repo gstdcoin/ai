@@ -5,6 +5,7 @@
  * Animated bar / pulse showing compute power
  */
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'next-i18next';
 
 interface LiveHashrateChartProps {
   hashrate: number;
@@ -13,6 +14,7 @@ interface LiveHashrateChartProps {
 }
 
 export default function LiveHashrateChart({ hashrate, tasksPerHour, activeWorkers }: LiveHashrateChartProps) {
+  const { t } = useTranslation('common');
   const [pulse, setPulse] = useState(0);
 
   useEffect(() => {
