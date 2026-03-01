@@ -59,7 +59,6 @@ export default function Home() {
   const [tonConnectUI] = useTonConnectUI();
   const [networkStats, setNetworkStats] = useState<NetworkStats | null>(null);
   const [isClient, setIsClient] = useState(false);
-  const [checkingSession, setCheckingSession] = useState(true);
 
   useEffect(() => { setIsClient(true); }, []);
 
@@ -76,34 +75,30 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    const timer = setTimeout(() => setCheckingSession(false), 800);
-    return () => clearTimeout(timer);
-  }, []);
-
   const changeLanguage = () => {
     router.push(router.pathname, router.asPath, { locale: router.locale === 'ru' ? 'en' : 'ru' });
   };
 
+  // Redirect to dashboard ONLY if TonConnect wallet is truly connected
+  // (not just persisted state from localStorage)
   useEffect(() => {
-    if (isConnected && !checkingSession) {
-      const source = router.query.source as string;
-      const mode = router.query.mode as string;
-      const params = new URLSearchParams();
-      if (source) params.set('source', source);
-      if (mode) params.set('mode', mode);
-      const q = params.toString() ? '?' + params.toString() : '';
-      router.push('/dashboard' + q);
-    }
-  }, [isConnected, checkingSession, router]);
-
-  if (isConnected || checkingSession) {
-    return (
-      <div className="min-h-screen bg-[#030014] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-violet-500 opacity-50" />
-      </div>
-    );
-  }
+    if (!isClient) return;
+    const checkRealConnection = () => {
+      const wallet = tonConnectUI.wallet;
+      if (wallet && isConnected) {
+        const source = router.query.source as string;
+        const mode = router.query.mode as string;
+        const params = new URLSearchParams();
+        if (source) params.set('source', source);
+        if (mode) params.set('mode', mode);
+        const q = params.toString() ? '?' + params.toString() : '';
+        router.push('/dashboard' + q);
+      }
+    };
+    // Check after TonConnect SDK has restored session (give it time)
+    const timer = setTimeout(checkRealConnection, 1500);
+    return () => clearTimeout(timer);
+  }, [isClient, isConnected, tonConnectUI, router]);
 
   const goldReserve = networkStats?.gold_reserve?.toFixed(4) || '—';
   const activeNodes = networkStats?.active_workers?.toLocaleString() || '—';

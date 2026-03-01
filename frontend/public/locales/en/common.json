@@ -1080,5 +1080,7 @@
   "manifesto_desc": "Any device joins the swarm. No tokens? Earn by contributing. Have tokens? Unlock advanced AI. The network learns and grows with every request.",
   "no_tokens_desc": "Connect your device and earn GSTD by contributing compute. Any device can join the swarm.",
   "have_tokens_desc": "Unlock advanced AI features: better models, Hive Memory, and priority access.",
-  "gold_backed_desc": "GSTD is secured by physical gold reserves. Decentralized. Uncensored."
+  "gold_backed_desc": "GSTD is secured by physical gold reserves. Decentralized. Uncensored.",
+  "connecting_to_swarm": "Connecting to Swarm…",
+  "connect_wallet_to_access": "Connect your TON wallet to access the dashboard"
 }
