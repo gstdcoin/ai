@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'next-i18next';
 import { API_BASE_URL } from '../../lib/config';
 
 interface NetworkStats {
@@ -25,6 +26,7 @@ interface PulseEvent {
  * No fake data — if nothing changes, the terminal stays quiet.
  */
 export default function LivePulse({ className = '' }: { className?: string }) {
+    const { t } = useTranslation('common');
     const [events, setEvents] = useState<PulseEvent[]>([]);
     const prevStatsRef = useRef<NetworkStats | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
