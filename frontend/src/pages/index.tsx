@@ -132,10 +132,10 @@ export default function Home() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
                 <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
               </span>
-              {networkStats.active_workers?.toLocaleString() ?? '—'} nodes
+              {networkStats.active_workers?.toLocaleString() ?? '—'} {t('nodes', 'nodes')}
             </span>
             <span className="mx-2 text-white/10">•</span>
-            <span>{networkStats.total_tasks?.toLocaleString() ?? '—'} tasks</span>
+            <span>{networkStats.total_tasks?.toLocaleString() ?? '—'} {t('tasks', 'tasks')}</span>
             {networkStats.gstd_price_usd > 0 && (
               <>
                 <span className="mx-2 text-white/10">•</span>
@@ -180,7 +180,7 @@ export default function Home() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500" />
               </span>
-              DePIN Compute Protocol • Live
+              {t('depin_compute_protocol_live', 'DePIN Compute Protocol • Live')}
             </div>
 
             <h1 className="text-5xl sm:text-7xl font-black tracking-tight mb-6 leading-[1.08]">
@@ -189,7 +189,7 @@ export default function Home() {
             </h1>
 
             <p className="text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed mb-10">
-              GSTD forms a decentralized planetary brain. By contributing your unused compute power, you become a neural node—helping humanity solve complex global problems. Access the Hive Mind, or <span className="text-emerald-400 font-bold">{t('connect_devices', 'connect your devices')}</span> to earn GSTD.
+              {t('hero_desc', 'GSTD forms a decentralized planetary brain. By contributing your unused compute power, you become a neural node—helping humanity solve complex global problems. Access the Hive Mind, or')} <span className="text-emerald-400 font-bold">{t('connect_devices', 'connect your devices')}</span> {t('connect_devices_earn', 'to earn GSTD.')}
             </p>
 
             {/* CTA Buttons */}
@@ -221,13 +221,13 @@ export default function Home() {
                 </div>
                 <h2 className="text-2xl font-black tracking-tight mb-3 text-white">{t('tap_hive', 'Tap the Hive Mind')}</h2>
                 <p className="text-gray-400 mb-8 leading-relaxed font-medium">
-                  Use the Global Brain to solve any task. Pay with GSTD to route your queries through the collective intelligence of thousands of nodes. True privacy, open-source models, zero corporate control.
+                  {t('tap_hive_desc', 'Use the Global Brain to solve any task. Pay with GSTD to route your queries through the collective intelligence of thousands of nodes. True privacy, open-source models, zero corporate control.')}
                 </p>
                 <button
                   onClick={() => tonConnectUI.openModal()}
                   className="flex items-center gap-2 text-violet-400 font-black hover:gap-3 transition-all"
                 >
-                  Access Intelligence <ArrowRight size={16} />
+                  {t('access_intelligence', 'Access Intelligence')} <ArrowRight size={16} />
                 </button>
               </div>
             </div>
@@ -239,13 +239,13 @@ export default function Home() {
                 </div>
                 <h2 className="text-2xl font-black tracking-tight mb-3 text-white">{t('become_node', 'Become a Neural Node')}</h2>
                 <p className="text-gray-400 mb-8 leading-relaxed font-medium">
-                  Turn your phone or PC into a neuron of the Sovereign Organism. Earn GSTD dynamically while your device processes distributed AI tasks contributing to the greater good of humanity.
+                  {t('become_node_desc', 'Turn your phone or PC into a neuron of the Sovereign Organism. Earn GSTD dynamically while your device processes distributed AI tasks contributing to the greater good of humanity.')}
                 </p>
                 <button
                   onClick={() => tonConnectUI.openModal()}
                   className="flex items-center gap-2 text-emerald-400 font-black hover:gap-3 transition-all"
                 >
-                  Ignite Your Node <ArrowRight size={16} />
+                  {t('ignite_your_node', 'Ignite Your Node')} <ArrowRight size={16} />
                 </button>
               </div>
             </div>
@@ -258,10 +258,10 @@ export default function Home() {
 
           {/* ═══════ NETWORK STATS (Reactive) ═══════ */}
           <div className="w-full max-w-5xl grid grid-cols-2 md:grid-cols-4 gap-4 mb-20 stagger-in" id="stats">
-            <StatCard value={goldReserve} label="XAUt Reserve" color="text-amber-400" />
-            <StatCard value={activeNodes} label="Active Nodes" color="text-emerald-400" />
-            <StatCard value={totalTasks} label="Tasks Completed" color="text-cyan-400" />
-            <StatCard value={gstdPrice} label="GSTD Price ($)" color="text-violet-400" />
+            <StatCard value={goldReserve} label={t('xaut_reserve', 'XAUt Reserve')} color="text-amber-400" />
+            <StatCard value={activeNodes} label={t('active_nodes', 'Active Nodes')} color="text-emerald-400" />
+            <StatCard value={totalTasks} label={t('tasks_completed', 'Tasks Completed')} color="text-cyan-400" />
+            <StatCard value={gstdPrice} label={t('gstd_price_usd', 'GSTD Price ($)')} color="text-violet-400" />
           </div>
 
           {/* ═══════ MANIFESTO STRIP ═══════ */}
@@ -270,7 +270,7 @@ export default function Home() {
               <h3 className="text-sm font-bold text-white/90 mb-4 flex items-center gap-2">
                 <Activity size={18} className="text-cyan-400" />{t('supercomputer_for_humanity', 'Supercomputer for Humanity')}</h3>
               <p className="text-sm text-gray-400 text-center max-w-md mx-auto leading-relaxed">
-                Any device joins the swarm. No tokens? Earn by contributing. Have tokens? Unlock advanced AI. The network learns and grows with every request.
+                {t('manifesto_desc', 'Any device joins the swarm. No tokens? Earn by contributing. Have tokens? Unlock advanced AI. The network learns and grows with every request.')}
               </p>
             </div>
           </div>
@@ -279,9 +279,9 @@ export default function Home() {
           <div className="w-full max-w-2xl stagger-in" id="docs-section">
             <h3 className="text-lg font-bold text-white mb-4">{t('how_it_works', 'How it works')}</h3>
             <div className="space-y-3 text-sm text-gray-400">
-              <p><strong className="text-white">No tokens?</strong> Connect your device and earn GSTD by contributing compute. Any device can join the swarm.</p>
-              <p><strong className="text-white">Have tokens?</strong> Unlock advanced AI features: better models, Hive Memory, and priority access.</p>
-              <p><strong className="text-white">Gold-backed.</strong> GSTD is secured by physical gold reserves. Decentralized. Uncensored.</p>
+              <p><strong className="text-white">{t('no_tokens', 'No tokens?')}</strong> {t('no_tokens_desc', 'Connect your device and earn GSTD by contributing compute. Any device can join the swarm.')}</p>
+              <p><strong className="text-white">{t('have_tokens', 'Have tokens?')}</strong> {t('have_tokens_desc', 'Unlock advanced AI features: better models, Hive Memory, and priority access.')}</p>
+              <p><strong className="text-white">{t('goldbacked', 'Gold-backed.')}</strong> {t('gold_backed_desc', 'GSTD is secured by physical gold reserves. Decentralized. Uncensored.')}</p>
             </div>
           </div>
 

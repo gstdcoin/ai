@@ -1068,5 +1068,17 @@
   "wildfire_spread_prediction_grid": "Wildfire Spread Prediction Grid",
   "workers": "Workers",
   "your_worker_stats": "Your Worker Stats",
-  "your_unique_multilevel_link": "Your unique multi-level link"
+  "your_unique_multilevel_link": "Your unique multi-level link",
+  "depin_compute_protocol_live": "DePIN Compute Protocol • Live",
+  "hero_desc": "GSTD forms a decentralized planetary brain. By contributing your unused compute power, you become a neural node—helping humanity solve complex global problems. Access the Hive Mind, or",
+  "connect_devices_earn": "connect your devices to earn GSTD.",
+  "tap_hive_desc": "Use the Global Brain to solve any task. Pay with GSTD to route your queries through the collective intelligence of thousands of nodes. True privacy, open-source models, zero corporate control.",
+  "access_intelligence": "Access Intelligence",
+  "become_node_desc": "Turn your phone or PC into a neuron of the Sovereign Organism. Earn GSTD dynamically while your device processes distributed AI tasks contributing to the greater good of humanity.",
+  "ignite_your_node": "Ignite Your Node",
+  "gstd_price_usd": "GSTD Price ($)",
+  "manifesto_desc": "Any device joins the swarm. No tokens? Earn by contributing. Have tokens? Unlock advanced AI. The network learns and grows with every request.",
+  "no_tokens_desc": "Connect your device and earn GSTD by contributing compute. Any device can join the swarm.",
+  "have_tokens_desc": "Unlock advanced AI features: better models, Hive Memory, and priority access.",
+  "gold_backed_desc": "GSTD is secured by physical gold reserves. Decentralized. Uncensored."
 }
