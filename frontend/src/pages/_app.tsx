@@ -111,10 +111,10 @@ function App({ Component, pageProps }: AppProps) {
           <VercelSwarmHeartbeat />
           {/* Ecosystem layout: Nav + Content + Footer (skip for TMA) */}
           {router.pathname !== '/tma' && <EcosystemNav />}
-          <main style={{ paddingTop: router.pathname !== '/tma' ? 56 : 0, minHeight: '100vh' }}>
+          <main style={{ paddingTop: router.pathname !== '/tma' ? 56 : 0, paddingBottom: router.pathname === '/dashboard' ? 80 : 0, minHeight: '100vh' }}>
             <Component {...pageProps} />
           </main>
-          {router.pathname !== '/tma' && <EcosystemFooter />}
+          {router.pathname !== '/tma' && router.pathname !== '/dashboard' && router.pathname !== '/chat' && <EcosystemFooter />}
           <Toaster
             position="top-right"
             richColors

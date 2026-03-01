@@ -88,7 +88,7 @@ export default function DevicesPanel() {
     } catch (error: any) {
       logger.error('Error loading swarm', error);
       setNodes([]);
-      toast.error(t('error') || 'Error', error?.message || 'Failed to load devices');
+      toast.error(t('error', 'Error') || 'Error', error?.message || 'Failed to load devices');
     } finally {
       setLoading(false);
     }
@@ -113,8 +113,8 @@ export default function DevicesPanel() {
     return (
       <EmptyState
         icon={<Server className="text-gray-400" size={48} />}
-        title={t('connect_wallet') || 'Connect Wallet'}
-        description={t('connect_wallet_to_work') || 'Please connect your wallet to view and manage devices.'}
+        title={t('connect_wallet', 'Connect Wallet') || 'Connect Wallet'}
+        description={t('connect_wallet_to_work', 'Please connect your wallet to view and manage devices.') || 'Please connect your wallet to view and manage devices.'}
       />
     );
   }
@@ -131,7 +131,7 @@ export default function DevicesPanel() {
     <div>
       <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-white font-display">{t('my_nodes') || 'My Swarm'}</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-white font-display">{t('my_nodes', 'My Computing Nodes') || 'My Swarm'}</h2>
           <p className="text-sm sm:text-base text-gray-400 mt-1">
             {nodes.length} {nodes.length === 1 ? 'device' : 'devices'} in the swarm
           </p>
@@ -141,44 +141,44 @@ export default function DevicesPanel() {
           className="glass-button-gold min-h-[44px]"
         >
           <Plus size={18} />
-          <span>{t('register_device') || 'Register Device'}</span>
+          <span>{t('register_device', 'Register Device') || 'Register Device'}</span>
         </button>
       </div>
 
       {nodes.length === 0 ? (
         <div className="space-y-4">
           <div className="p-6 rounded-2xl bg-cyan-500/5 border border-cyan-500/20">
-            <h3 className="text-lg font-bold text-white mb-2">Any device can join the swarm</h3>
+            <h3 className="text-lg font-bold text-white mb-2">{t('join_swarm', 'Any device can join the swarm')}</h3>
             <p className="text-sm text-gray-400 mb-4">
               No tokens? No problem. Connect your phone, PC, OpenClaw, or IoT device. Earn GSTD by contributing compute.
             </p>
             <div className="space-y-3 mb-4">
-              <p className="text-xs font-bold text-cyan-400/90 uppercase tracking-wider">One command (use this wallet)</p>
+              <p className="text-xs font-bold text-cyan-400/90 uppercase tracking-wider">{t('one_command', 'One command (use this wallet)')}</p>
               <pre className="text-xs bg-black/40 p-3 rounded-lg text-gray-300 font-mono overflow-x-auto">
                 {`export GSTD_WALLET_ADDRESS=EQ...
 curl -sL https://raw.githubusercontent.com/gstdcoin/ai/main/scripts/connect_autonomous.py | python3`}
               </pre>
               <p className="text-[10px] text-gray-500">
-                Same wallet = device appears here. <a href="https://github.com/gstdcoin/ai/blob/main/docs/skills/SKILL.md" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline">SKILL.md</a>
+                Same wallet = device appears here. <a href="https://github.com/gstdcoin/ai/blob/main/docs/skills/SKILL.md" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline">{t('skillmd', 'SKILL.md')}</a>
               </p>
             </div>
             <button
               onClick={() => setShowRegisterModal(true)}
               className="px-5 py-2.5 rounded-xl bg-cyan-500 text-black font-bold hover:bg-cyan-400 transition-colors"
             >
-              {t('register_first_device') || 'Add This Device'}
+              {t('register_first_device', 'Register Your First Device') || 'Add This Device'}
             </button>
           </div>
           <EmptyState
             icon={<Server className="text-gray-400" size={48} />}
-            title={t('no_nodes') || 'No devices yet'}
-            description={t('no_nodes_desc') || 'Register a device to start earning GSTD.'}
+            title={t('no_nodes', 'No devices registered') || 'No devices yet'}
+            description={t('no_nodes_desc', 'Register your first computing node to start earning GSTD by processing tasks.') || 'Register a device to start earning GSTD.'}
             action={
               <button
                 onClick={() => setShowRegisterModal(true)}
                 className="px-4 py-2 glass-button-gold rounded-lg transition-colors min-h-[44px]"
               >
-                {t('register_first_device') || 'Register Device'}
+                {t('register_first_device', 'Register Your First Device') || 'Register Device'}
               </button>
             }
           />
@@ -190,25 +190,23 @@ curl -sL https://raw.githubusercontent.com/gstdcoin/ai/main/scripts/connect_auto
               <thead className="bg-white/5">
                 <tr>
                   <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                    {t('name') || 'Name'}
+                    {t('name', 'Name') || 'Name'}
                   </th>
                   <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden sm:table-cell">
-                    {t('node_id') || 'Node ID'}
+                    {t('node_id', 'Node ID') || 'Node ID'}
                   </th>
                   <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden sm:table-cell">
-                    {t('status') || 'Status'}
+                    {t('status', 'Status') || 'Status'}
                   </th>
                   <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden md:table-cell">
-                    {t('specs') || 'Specs'}
+                    {t('specs', 'Specs') || 'Specs'}
                   </th>
                   <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden lg:table-cell">
-                    {t('last_seen') || 'Last Seen'}
+                    {t('last_seen', 'Last Seen') || 'Last Seen'}
                   </th>
-                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden lg:table-cell">
-                    Eco-Label
-                  </th>
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden lg:table-cell">{t('ecolabel', 'Eco-Label')}</th>
                   <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                    {t('actions') || 'Actions'}
+                    {t('actions', 'Actions') || 'Actions'}
                   </th>
                 </tr>
               </thead>
@@ -232,8 +230,8 @@ curl -sL https://raw.githubusercontent.com/gstdcoin/ai/main/scripts/connect_auto
                             : 'bg-gray-500/20 text-gray-400'
                             }`}>
                             {isOnline
-                              ? (t('online') || 'Online')
-                              : (t('offline') || 'Offline')}
+                              ? (t('online', 'Online') || 'Online')
+                              : (t('offline', 'Offline') || 'Offline')}
                           </span>
                         );
                       })()}
@@ -254,9 +252,7 @@ curl -sL https://raw.githubusercontent.com/gstdcoin/ai/main/scripts/connect_auto
                     </td>
                     <td className="px-3 sm:px-6 py-4 whitespace-nowrap hidden lg:table-cell">
                       {(node as any).eco_certified && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                          Eco-Proof
-                        </span>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">{t('ecoproof', 'Eco-Proof')}</span>
                       )}
                     </td>
                     <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm">
@@ -264,12 +260,12 @@ curl -sL https://raw.githubusercontent.com/gstdcoin/ai/main/scripts/connect_auto
                         <button
                           onClick={() => {
                             navigator.clipboard.writeText(node.id);
-                            toast.success(t('copied') || 'Copied', t('node_id_copied') || 'Node ID copied to clipboard');
+                            toast.success(t('copied', 'Copied') || 'Copied', t('node_id_copied', 'Node ID copied to clipboard') || 'Node ID copied to clipboard');
                           }}
                           className="text-xs glass-button text-white px-2 py-1 rounded"
-                          title={t('copy_node_id') || 'Copy Node ID'}
+                          title={t('copy_node_id', 'Copy Node ID') || 'Copy Node ID'}
                         >
-                          {t('copy') || 'Copy ID'}
+                          {t('copy', 'Copy ID') || 'Copy ID'}
                         </button>
                       </div>
                     </td>

@@ -22,7 +22,7 @@ export default function EcosystemNav() {
 
     const navItems: NavItem[] = [
         { key: 'nav_dashboard', href: '/dashboard', icon: <LayoutDashboard size={16} /> },
-        { key: 'nav_chat', href: 'https://chat.gstdtoken.com/chat', icon: <MessageSquare size={16} />, external: true },
+        { key: 'nav_chat', href: '/chat', icon: <MessageSquare size={16} /> },
         { key: 'nav_monitor', href: 'https://monitor.gstdtoken.com', icon: <Activity size={16} />, external: true },
         { key: 'nav_bot', href: 'https://gstdbot.gstdtoken.com', icon: <Bot size={16} />, external: true },
         { key: 'nav_telegram', href: 'https://t.me/GstdAppBot', icon: <ExternalLink size={14} />, external: true },
@@ -58,7 +58,7 @@ export default function EcosystemNav() {
                     <span style={{
                         fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
                         background: '#8b5cf6', color: 'white', letterSpacing: 0.5,
-                    }}>ECOSYSTEM</span>
+                    }}>{t('ecosystem', 'ECOSYSTEM')}</span>
                 </Link>
 
                 {/* Desktop nav */}

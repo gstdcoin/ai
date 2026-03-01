@@ -69,14 +69,14 @@ export default function ClawHubImport() {
                             <div className="absolute inset-0 bg-violet-500 blur-lg opacity-40" />
                         </div>
                         <span className="text-2xl font-black tracking-tighter">
-                            ClawHub <span className="text-violet-400">Import</span>
+                            ClawHub <span className="text-violet-400">{t('import', 'Import')}</span>
                         </span>
                     </div>
                     <button
                         onClick={() => router.push('/')}
                         className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-sm font-bold"
                     >
-                        <Home size={16} /> {t('back_to_home') || 'Home'}
+                        <Home size={16} /> {t('back_to_home', 'Back to Home') || 'Home'}
                     </button>
                 </div>
 
@@ -87,11 +87,9 @@ export default function ClawHubImport() {
 
                         {/* Title Section */}
                         <div className="text-center mb-12">
-                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 text-[10px] font-black mb-4 uppercase tracking-[0.3em]">
-                                Sovereign Registry
-                            </div>
+                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 text-[10px] font-black mb-4 uppercase tracking-[0.3em]">{t('sovereign_registry', 'Sovereign Registry')}</div>
                             <h1 className="text-4xl md:text-5xl font-black mb-4 tracking-tighter">
-                                Import Skill from <span className="bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">GitHub</span>
+                                Import Skill from <span className="bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">{t('github', 'GitHub')}</span>
                             </h1>
                             <p className="text-gray-400 text-lg max-w-xl mx-auto font-medium">
                                 Paste the repository URL to verify and generate an installation command for your AI agent.
@@ -136,7 +134,7 @@ export default function ClawHubImport() {
                                     {/* Skill Summary */}
                                     <div className="grid md:grid-cols-2 gap-6">
                                         <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/10">
-                                            <div className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-3">Skill Identity</div>
+                                            <div className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-3">{t('skill_identity', 'Skill Identity')}</div>
                                             <div className="flex items-center gap-4">
                                                 <div className="w-12 h-12 rounded-xl bg-violet-500/20 flex items-center justify-center text-violet-400">
                                                     <Brain size={24} />
@@ -148,18 +146,16 @@ export default function ClawHubImport() {
                                             </div>
                                         </div>
                                         <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/10">
-                                            <div className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-3">Verification Status</div>
+                                            <div className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-3">{t('verification_status', 'Verification Status')}</div>
                                             <div className="flex items-center gap-3 text-emerald-400 font-bold">
-                                                <Check size={20} className="bg-emerald-400/10 p-1 rounded-full" />
-                                                Valid SKILL.md found
-                                            </div>
-                                            <div className="mt-2 text-[10px] text-gray-600 uppercase tracking-widest">Signed by GSTD Protocol</div>
+                                                <Check size={20} className="bg-emerald-400/10 p-1 rounded-full" />{t('valid_skillmd_found', 'Valid SKILL.md found')}</div>
+                                            <div className="mt-2 text-[10px] text-gray-600 uppercase tracking-widest">{t('signed_by_protocol', 'Signed by GSTD Protocol')}</div>
                                         </div>
                                     </div>
 
                                     {/* Install Command */}
                                     <div className="relative">
-                                        <div className="text-[10px] font-black text-violet-400 uppercase tracking-[0.3em] mb-4 ml-2">Installation Command</div>
+                                        <div className="text-[10px] font-black text-violet-400 uppercase tracking-[0.3em] mb-4 ml-2">{t('installation_command', 'Installation Command')}</div>
                                         <div className="group/code relative">
                                             <div className="absolute -inset-0.5 bg-gradient-to-r from-violet-500/20 to-cyan-500/20 rounded-2xl blur opacity-0 group-hover/code:opacity-100 transition duration-500" />
                                             <div className="relative flex items-center justify-between p-6 rounded-2xl bg-black/80 border border-white/10 font-mono text-sm overflow-hidden">
@@ -206,17 +202,17 @@ export default function ClawHubImport() {
                     {[
                         {
                             icon: Search,
-                            title: 'Discover',
+                            title: t('discover', 'Discover'),
                             desc: 'Explore thousands of verified skills for high-level agent reasoning.'
                         },
                         {
                             icon: Layout,
-                            title: 'Modular',
+                            title: t('modular', 'Modular'),
                             desc: 'Skills follow the MCP standard, making them compatible with any LLM.'
                         },
                         {
                             icon: Brain,
-                            title: 'Secure',
+                            title: t('secure', 'Secure'),
                             desc: 'All imported skills are sandboxed and verified for economic safety.'
                         }
                     ].map((item, i) => (

@@ -25,27 +25,27 @@ function parseAlphaFromMessage(msg: string): number | null {
  */
 /** Omnipresence: Multilingual Ticker — translate key phrases, keep technical terms (Alpha, Int-Logic, Verified) */
 function translateTickerMessage(msg: string, t: (k: string) => string): string {
-  if (msg.startsWith('🔍 Scan:')) return '🔍 ' + t('ticker_scan') + ': ' + msg.slice(8);
-  if (msg.includes('Alpha found:')) return msg.replace('Alpha found:', t('ticker_alpha') + ':');
-  if (msg.startsWith('🎓 Learning:')) return '🎓 ' + t('ticker_learning') + ': ' + msg.slice(12);
-  if (msg.startsWith('🧠 Recall:')) return '🧠 ' + t('ticker_recall') + ': ' + msg.slice(10);
-  if (msg.includes('System Heartbeat:')) return msg.replace('System Heartbeat:', t('ticker_heartbeat') + ':');
-  if (msg.startsWith('Bank Vault:')) return t('ticker_bank_vault') + ': ' + msg.slice(11);
-  if (msg.includes('Golden Pattern Match:')) return msg.replace('Golden Pattern Match:', t('ticker_golden_match') + ':');
-  if (msg.includes('No data from Leviathan')) return t('ticker_no_data');
-  if (msg.includes('АРХИТЕКТОР, СИСТЕМА СТАЛА ПРОЗРАЧНОЙ')) return t('ticker_architect_ready');
-  if (msg.includes('ЛЕВИАФАН ИЩЕТ СИГНАЛ')) return t('ticker_seeking');
+  if (msg.startsWith('🔍 Scan:')) return '🔍 ' + t('ticker_scan', 'Scan') + ': ' + msg.slice(8);
+  if (msg.includes('Alpha found:')) return msg.replace('Alpha found:', t('ticker_alpha', 'Alpha found') + ':');
+  if (msg.startsWith('🎓 Learning:')) return '🎓 ' + t('ticker_learning', 'Learning') + ': ' + msg.slice(12);
+  if (msg.startsWith('🧠 Recall:')) return '🧠 ' + t('ticker_recall', 'Recall') + ': ' + msg.slice(10);
+  if (msg.includes('System Heartbeat:')) return msg.replace('System Heartbeat:', t('ticker_heartbeat', 'System Heartbeat') + ':');
+  if (msg.startsWith('Bank Vault:')) return t('ticker_bank_vault', 'Bank Vault') + ': ' + msg.slice(11);
+  if (msg.includes('Golden Pattern Match:')) return msg.replace('Golden Pattern Match:', t('ticker_golden_match', 'Golden Pattern Match') + ':');
+  if (msg.includes('No data from Leviathan')) return t('ticker_no_data', 'No data from Leviathan. Check Backend Pollers.');
+  if (msg.includes('АРХИТЕКТОР, СИСТЕМА СТАЛА ПРОЗРАЧНОЙ')) return t('ticker_architect_ready', 'Leviathan Live Stream — АРХИТЕКТОР, СИСТЕМА СТАЛА ПРОЗРАЧНОЙ');
+  if (msg.includes('ЛЕВИАФАН ИЩЕТ СИГНАЛ')) return t('ticker_seeking', 'STATUS: LEVIATHAN SEEKING SIGNAL...');
   if (msg.startsWith('⏱ Temporal Precision:')) {
     const m = msg.match(/predicted (\d+\.?\d*)h, actual (\d+\.?\d*)h/);
     const predicted = m ? m[1] : '?';
     const actual = m ? m[2] : '?';
-    return '⏱ ' + (t('ticker_temporal_precision') || 'Temporal Precision') + `: predicted ${predicted}h, actual ${actual}h`;
+    return '⏱ ' + (t('ticker_temporal_precision', 'Temporal Precision: predicted {{predicted}}h, actual {{actual}}h (refined)') || 'Temporal Precision') + `: predicted ${predicted}h, actual ${actual}h`;
   }
   if (msg.includes('Информационный вакуум') || msg.includes('Information vacuum')) {
-    return '⚠️ ' + t('ticker_integrity_guard');
+    return '⚠️ ' + t('ticker_integrity_guard', 'Information vacuum: Trusting only Code and Oracles');
   }
   if (msg.includes('Integrity Check') && msg.includes('All systems nominal')) {
-    return '✅ ' + t('ticker_integrity_check');
+    return '✅ ' + t('ticker_integrity_check', 'Integrity Check: All systems nominal. Digital Hygiene: 100%. IQ: Evolving.');
   }
   if (msg.includes('IQ Level Up') && msg.includes('Network Intelligence reached')) {
     return msg; // Singularity Gateway: IQ Milestone — keep as-is
@@ -57,7 +57,7 @@ function translateTickerMessage(msg: string, t: (k: string) => string): string {
     const hours = m ? (m[1] || m[2] || m[3] || m[4] || '?') : '?';
     const c = msg.match(/\((\d+)\s*(цепочек|chains)\)/);
     const count = c ? c[1] : '?';
-    return '🔮 ' + (t('ticker_forecast') || 'Forecast') + `: ${hours}h (${count} chains)`;
+    return '🔮 ' + (t('ticker_forecast', 'Forecast: Expecting market reaction in {{hours}}h based on experience ({{coun...') || 'Forecast') + `: ${hours}h (${count} chains)`;
   }
   return msg;
 }

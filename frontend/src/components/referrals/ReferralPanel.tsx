@@ -67,7 +67,7 @@ export default function ReferralPanel() {
         return (
             <div className="flex flex-col items-center justify-center p-12 glass-card text-center">
                 <Users className="w-16 h-16 text-gray-600 mb-4" />
-                <h3 className="text-xl font-black text-white mb-2">Build Your AI Network</h3>
+                <h3 className="text-xl font-black text-white mb-2">{t('build_your_ai_network', 'Build Your AI Network')}</h3>
                 <p className="text-gray-400 max-w-md mb-6">Connect your wallet to generate your unique referral link and start earning from the compute grid expansion.</p>
                 <div className="px-6 py-2 rounded-full bg-violet-600/20 border border-violet-500/30 text-[10px] font-black text-violet-400 uppercase tracking-widest">
                     3-Level Rewards Active
@@ -83,7 +83,7 @@ export default function ReferralPanel() {
                 <div className="absolute top-0 right-0 w-64 h-64 bg-violet-500/5 rounded-full blur-[80px] -mr-32 -mt-32" />
                 <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div>
-                        <h2 className="text-3xl font-black text-white mb-2 tracking-tight">Expand the Grid</h2>
+                        <h2 className="text-3xl font-black text-white mb-2 tracking-tight">{t('expand_the_grid', 'Expand the Grid')}</h2>
                         <p className="text-gray-400 text-sm">Earn passive income from every task executed by your network.</p>
                     </div>
 
@@ -99,7 +99,7 @@ export default function ReferralPanel() {
                                 <Copy size={16} />
                             </button>
                         </div>
-                        <p className="text-[10px] font-black text-gray-600 uppercase tracking-wider text-center">Your unique multi-level link</p>
+                        <p className="text-[10px] font-black text-gray-600 uppercase tracking-wider text-center">{t('your_unique_multilevel_link', 'Your unique multi-level link')}</p>
                     </div>
                 </div>
             </div>
@@ -124,7 +124,7 @@ export default function ReferralPanel() {
                     <div className="relative z-10 flex flex-col h-full justify-between">
                         <div>
                             <div className="flex justify-between items-start mb-4">
-                                <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Ready to Claim</h3>
+                                <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">{t('ready_to_claim', 'Ready to Claim')}</h3>
                                 <Gift className="w-5 h-5 text-cyan-400" />
                             </div>
                             <div className="text-3xl font-black text-white mb-1">
@@ -147,7 +147,7 @@ export default function ReferralPanel() {
             <div className="space-y-4">
                 <div className="flex items-center gap-2">
                     <Award className="text-amber-400 w-5 h-5" />
-                    <h3 className="text-xs font-black text-gray-500 uppercase tracking-[0.2em]">Multi-Level Structure</h3>
+                    <h3 className="text-xs font-black text-gray-500 uppercase tracking-[0.2em]">{t('multilevel_structure', 'Multi-Level Structure')}</h3>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -164,7 +164,7 @@ export default function ReferralPanel() {
                         <Zap className="w-6 h-6" />
                     </div>
                     <div>
-                        <h4 className="text-white font-bold mb-1">How Rewards Work</h4>
+                        <h4 className="text-white font-bold mb-1">{t('how_rewards_work', 'How Rewards Work')}</h4>
                         <p className="text-xs text-gray-500 leading-relaxed max-w-2xl">
                             Each time someone in your network executes a task, part of the platform fee is redistributed back to the inviters.
                             Level 1 earns you 15% of the fee, Level 2 earns 7%, and Level 3 earns 3%.

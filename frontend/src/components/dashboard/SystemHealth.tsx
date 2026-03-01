@@ -44,13 +44,13 @@ export default function SystemHealth() {
                 <div className="flex items-center gap-2 mb-4">
                     <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                     <h3 className="text-lg font-bold text-white">
-                        {t('system_autonomy') || 'Autonomous System Health'}
+                        {t('system_autonomy', 'System Autonomy') || 'Autonomous System Health'}
                     </h3>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                     <div className="flex flex-col">
-                        <span className="text-xs text-gray-400 uppercase tracking-widest mb-1">{t('op_status') || 'Operational Status'}</span>
+                        <span className="text-xs text-gray-400 uppercase tracking-widest mb-1">{t('op_status', 'Operation Status') || 'Operational Status'}</span>
                         <span className="text-xl font-bold text-emerald-400 flex items-center gap-2">
                             <Activity size={18} />
                             {stats.status.toUpperCase()}
@@ -58,7 +58,7 @@ export default function SystemHealth() {
                     </div>
 
                     <div className="flex flex-col">
-                        <span className="text-xs text-gray-400 uppercase tracking-widest mb-1">{t('self_healing') || 'Self-Healed Tasks'}</span>
+                        <span className="text-xs text-gray-400 uppercase tracking-widest mb-1">{t('self_healing', 'Self Healing') || 'Self-Healed Tasks'}</span>
                         <span className="text-xl font-bold text-white flex items-center gap-2">
                             <Zap size={18} className="text-yellow-400" />
                             {stats.self_healed_tasks}
@@ -66,7 +66,7 @@ export default function SystemHealth() {
                     </div>
 
                     <div className="flex flex-col">
-                        <span className="text-xs text-gray-400 uppercase tracking-widest mb-1">{t('maintenance_mode') || 'Active Maintenance'}</span>
+                        <span className="text-xs text-gray-400 uppercase tracking-widest mb-1">{t('maintenance_mode', 'Maintenance Mode') || 'Active Maintenance'}</span>
                         <span className={`text-xl font-bold ${stats.maintenance_active ? 'text-blue-400' : 'text-gray-400'} flex items-center gap-2`}>
                             <Server size={18} />
                             {stats.maintenance_active ? 'ACTIVE' : 'IDLE'}
@@ -74,7 +74,7 @@ export default function SystemHealth() {
                     </div>
 
                     <div className="flex flex-col">
-                        <span className="text-xs text-gray-400 uppercase tracking-widest mb-1">{t('next_cycle') || 'Last Cycle'}</span>
+                        <span className="text-xs text-gray-400 uppercase tracking-widest mb-1">{t('next_cycle', 'Next Cycle') || 'Last Cycle'}</span>
                         <span className="text-sm font-mono text-gray-300">
                             {new Date(stats.last_cycle).toLocaleTimeString()}
                         </span>

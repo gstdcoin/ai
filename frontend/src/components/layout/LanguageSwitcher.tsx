@@ -48,7 +48,7 @@ export default function LanguageSwitcher() {
         ref={buttonRef}
         onClick={() => setIsOpen(!isOpen)}
         className="glass-button flex items-center gap-2 text-white touch-manipulation"
-        aria-label={t('change_language') || 'Change language'}
+        aria-label={t('change_language', 'Change language') || 'Change language'}
         aria-expanded={isOpen}
         type="button"
       >
@@ -75,9 +75,7 @@ export default function LanguageSwitcher() {
               ${currentLocale === 'en' ? 'bg-gold-900/20 text-gold-900' : 'text-gray-300 hover:bg-white/5 active:bg-white/10'}
             `}
             type="button"
-          >
-            English
-          </button>
+          >{t('english', 'English')}</button>
           <button
             onClick={() => changeLanguage('ru')}
             className={`

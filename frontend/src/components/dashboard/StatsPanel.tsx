@@ -71,7 +71,7 @@ export default function StatsPanel() {
       logger.error('Error loading stats', error);
       const errorMessage = error?.message || 'Failed to load statistics';
       toast.error(
-        t('error') || 'Error',
+        t('error', 'Error') || 'Error',
         errorMessage
       );
       // Don't set stats to null on error in setInterval - keep previous data
@@ -114,8 +114,8 @@ export default function StatsPanel() {
       loadCompletionData()
     ]);
     toast.success(
-      t('refreshed') || 'Refreshed',
-      t('stats_refreshed') || 'Statistics updated successfully'
+      t('refreshed', 'Refreshed') || 'Refreshed',
+      t('stats_refreshed', 'Statistics updated successfully') || 'Statistics updated successfully'
     );
   };
 
@@ -140,7 +140,7 @@ export default function StatsPanel() {
 
   const statCards = [
     {
-      label: t('stats_processing'),
+      label: t('stats_processing', 'Processing'),
       value: stats?.processing_tasks || 0,
       color: 'text-blue-400',
       borderColor: 'border-blue-500/30',
@@ -148,7 +148,7 @@ export default function StatsPanel() {
       tooltip: undefined
     },
     {
-      label: t('stats_queued'),
+      label: t('stats_queued', 'Queued'),
       value: stats?.queued_tasks || 0,
       color: 'text-yellow-400',
       borderColor: 'border-yellow-500/30',
@@ -156,7 +156,7 @@ export default function StatsPanel() {
       tooltip: undefined
     },
     {
-      label: t('stats_completed'),
+      label: t('stats_completed', 'Completed'),
       value: stats?.completed_tasks || 0,
       color: 'text-green-400',
       borderColor: 'border-green-500/30',
@@ -164,23 +164,23 @@ export default function StatsPanel() {
       tooltip: undefined
     },
     {
-      label: t('network_temperature'),
+      label: t('network_temperature', 'Network Temperature'),
       value: stats ? ((stats.processing_tasks / Math.max(stats.active_devices_count, 1)).toFixed(2)) : '-',
       color: 'text-orange-400',
       borderColor: 'border-orange-500/30',
       bgColor: 'bg-orange-500/10',
-      tooltip: t('network_temperature_tooltip') || 'Среднее значение entropy_score по всем операциям. Высокая температура = низкая надёжность сети.'
+      tooltip: t('network_temperature_tooltip', 'Average entropy score across all operations. High temperature = low network reliability.') || 'Среднее значение entropy_score по всем операциям. Высокая температура = низкая надёжность сети.'
     },
     {
-      label: t('computational_pressure'),
+      label: t('computational_pressure', 'Computational Pressure'),
       value: stats ? ((stats.queued_tasks + stats.processing_tasks) / Math.max(stats.completed_tasks, 1)).toFixed(2) : '-',
       color: 'text-red-400',
       borderColor: 'border-red-500/30',
       bgColor: 'bg-red-500/10',
-      tooltip: t('computational_pressure_tooltip') || 'Количество ожидающих задач / Количество активных узлов. Высокое давление = перегрузка сети.'
+      tooltip: t('computational_pressure_tooltip', 'Pending tasks / Active nodes. High pressure = network overload.') || 'Количество ожидающих задач / Количество активных узлов. Высокое давление = перегрузка сети.'
     },
     {
-      label: t('total_compensation'),
+      label: t('total_compensation', 'Total Compensation'),
       value: `${(stats?.total_rewards_gstd || 0).toFixed(2)} GSTD`,
       color: 'text-indigo-400',
       borderColor: 'border-indigo-500/30',
@@ -188,15 +188,15 @@ export default function StatsPanel() {
       tooltip: undefined
     },
     {
-      label: t('pool_gstd_balance') || 'Pool GSTD',
+      label: t('pool_gstd_balance', 'Pool GSTD') || 'Pool GSTD',
       value: poolStatus ? `${poolStatus.gstd_balance.toFixed(2)} GSTD` : '-',
       color: 'text-purple-400',
       borderColor: 'border-purple-500/30',
       bgColor: 'bg-purple-500/10',
-      tooltip: t('pool_balance_tooltip') || 'GSTD balance in the liquidity pool'
+      tooltip: t('pool_balance_tooltip', 'GSTD balance in the liquidity pool') || 'GSTD balance in the liquidity pool'
     },
     {
-      label: t('intelligence_index') || 'Intelligence Index',
+      label: t('intelligence_index', 'Intelligence Index') || 'Intelligence Index',
       value: stats ? (Math.sqrt(stats.completed_tasks) * 12.5).toFixed(0) : '-',
       color: 'text-violet-400',
       borderColor: 'border-white/20',
@@ -210,19 +210,19 @@ export default function StatsPanel() {
       {/* Заголовок с кнопкой обновления */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-white font-display">{t('statistics') || 'Statistics'}</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-white font-display">{t('statistics', 'Statistics') || 'Statistics'}</h2>
           <p className="text-sm text-gray-400 mt-1">
-            {t('stats_description') || 'Network statistics and performance metrics'}
+            {t('stats_description', 'Network statistics and performance metrics') || 'Network statistics and performance metrics'}
           </p>
         </div>
         <button
           onClick={handleRefresh}
           disabled={loading}
           className="glass-button-gold min-h-[44px] flex items-center gap-2"
-          title={t('refresh_stats') || 'Refresh statistics'}
+          title={t('refresh_stats', 'Refresh statistics') || 'Refresh statistics'}
         >
           <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
-          <span>{t('refresh') || 'Refresh'}</span>
+          <span>{t('refresh', 'Refresh') || 'Refresh'}</span>
         </button>
       </div>
 
@@ -253,7 +253,7 @@ export default function StatsPanel() {
       {/* Графики выполненных задач */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
         <div className="glass-card p-4 sm:p-6 rounded-xl">
-          <h3 className="text-base sm:text-lg font-semibold text-white mb-4 sm:mb-6">{t('tasks_activity') || 'Выполненные задачи'}</h3>
+          <h3 className="text-base sm:text-lg font-semibold text-white mb-4 sm:mb-6">{t('tasks_activity', 'Completed Tasks') || 'Выполненные задачи'}</h3>
           <div className="h-48 sm:h-64">
             {completionData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
@@ -277,14 +277,14 @@ export default function StatsPanel() {
               </ResponsiveContainer>
             ) : (
               <div className="flex items-center justify-center h-full text-gray-400">
-                {t('no_data_yet') || 'Нет данных'}
+                {t('no_data_yet', 'No data available yet') || 'Нет данных'}
               </div>
             )}
           </div>
         </div>
 
         <div className="glass-card p-4 sm:p-6 rounded-xl">
-          <h3 className="text-base sm:text-lg font-semibold text-white mb-4 sm:mb-6">{t('compensation_distribution') || 'Распределение наград'}</h3>
+          <h3 className="text-base sm:text-lg font-semibold text-white mb-4 sm:mb-6">{t('compensation_distribution', 'Reward Distribution') || 'Распределение наград'}</h3>
           <div className="h-48 sm:h-64">
             {completionData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
@@ -309,7 +309,7 @@ export default function StatsPanel() {
               </ResponsiveContainer>
             ) : (
               <div className="flex items-center justify-center h-full text-gray-400">
-                {t('no_data_yet') || 'Нет данных'}
+                {t('no_data_yet', 'No data available yet') || 'Нет данных'}
               </div>
             )}
           </div>

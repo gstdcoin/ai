@@ -30,7 +30,7 @@ export default function SmartTaskWidget({ onTaskCreated }: SmartTaskWidgetProps)
 
     const handleAnalyze = async () => {
         if (!prompt.trim()) {
-            toast.error('Error', t('prompt_empty') || 'Please enter a task description');
+            toast.error('Error', t('prompt_empty', 'Please enter a message') || 'Please enter a task description');
             return;
         }
 
@@ -151,7 +151,7 @@ export default function SmartTaskWidget({ onTaskCreated }: SmartTaskWidgetProps)
                 ]
             });
 
-            toast.success(t('success') || 'Success', t('task_created_paid') || 'Task created and payment sent!');
+            toast.success(t('success', 'Success') || 'Success', t('task_created_paid', 'Task created and paid') || 'Task created and payment sent!');
 
             // Reset
             setStep('input');
@@ -161,7 +161,7 @@ export default function SmartTaskWidget({ onTaskCreated }: SmartTaskWidgetProps)
 
         } catch (err: any) {
             logger.error('Smart Task Creation Error', err);
-            toast.error(t('error') || 'Error', err.message || 'Failed to create task');
+            toast.error(t('error', 'Error') || 'Error', err.message || 'Failed to create task');
             setStep('confirm'); // Go back to confirm step so user can retry or edit
         } finally {
             setLoading(false);
@@ -181,7 +181,7 @@ export default function SmartTaskWidget({ onTaskCreated }: SmartTaskWidgetProps)
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
                             </svg>
                         </div>
-                        {t('prompt_window') || 'Smart Task Creator'}
+                        {t('prompt_window', 'Prompt Window') || 'Smart Task Creator'}
                     </h3>
                 </div>
 
@@ -191,13 +191,11 @@ export default function SmartTaskWidget({ onTaskCreated }: SmartTaskWidgetProps)
                             <textarea
                                 value={prompt}
                                 onChange={(e) => setPrompt(e.target.value)}
-                                placeholder={t('prompt_placeholder') || "Describe your task (e.g. 'I need to train a LoRA model on 50 images')..."}
+                                placeholder={t('prompt_placeholder', 'Describe your task (e.g. \'I need to train a LoRA model on 50 images\')...') || "Describe your task (e.g. 'I need to train a LoRA model on 50 images')..."}
                                 disabled={isAnalyzing}
                                 className="w-full h-32 bg-black/40 border border-white/10 rounded-xl p-4 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent resize-none font-mono text-sm transition-all group-hover:bg-black/50"
                             />
-                            <div className="absolute bottom-4 right-4 text-xs text-gray-500 pointer-events-none">
-                                AI Powered
-                            </div>
+                            <div className="absolute bottom-4 right-4 text-xs text-gray-500 pointer-events-none">{t('ai_powered', 'AI Powered')}</div>
                         </div>
                         <div className="flex justify-end">
                             <button
@@ -212,11 +210,11 @@ export default function SmartTaskWidget({ onTaskCreated }: SmartTaskWidgetProps)
                                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                         </svg>
-                                        {t('analyzing') || 'Analyzing...'}
+                                        {t('analyzing', 'Analyzing...') || 'Analyzing...'}
                                     </>
                                 ) : (
                                     <>
-                                        {t('analyze_request') || 'Analyze Request'}
+                                        {t('analyze_request', 'Analyze Request') || 'Analyze Request'}
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
                                     </>
                                 )}
@@ -230,17 +228,17 @@ export default function SmartTaskWidget({ onTaskCreated }: SmartTaskWidgetProps)
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="bg-white/5 rounded-xl p-4 border border-white/10 relative overflow-hidden group">
                                 <div className="absolute inset-0 bg-violet-600/5 group-hover:bg-violet-600/10 transition-colors"></div>
-                                <p className="text-xs text-gray-400 uppercase tracking-wider relative z-10">{t('task_type')}</p>
+                                <p className="text-xs text-gray-400 uppercase tracking-wider relative z-10">{t('task_type', 'Task Type')}</p>
                                 <p className="text-lg font-bold text-violet-300 relative z-10 mt-1">{estimation.type}</p>
                             </div>
                             <div className="bg-white/5 rounded-xl p-4 border border-white/10 relative overflow-hidden group">
                                 <div className="absolute inset-0 bg-emerald-600/5 group-hover:bg-emerald-600/10 transition-colors"></div>
-                                <p className="text-xs text-gray-400 uppercase tracking-wider relative z-10">{t('estimated_cost')}</p>
+                                <p className="text-xs text-gray-400 uppercase tracking-wider relative z-10">{t('estimated_cost', 'Estimated Cost')}</p>
                                 <p className="text-lg font-bold text-emerald-300 relative z-10 mt-1">{estimation.budget.toFixed(2)} GSTD</p>
                             </div>
                             <div className="bg-white/5 rounded-xl p-4 border border-white/10 relative overflow-hidden group">
                                 <div className="absolute inset-0 bg-blue-600/5 group-hover:bg-blue-600/10 transition-colors"></div>
-                                <p className="text-xs text-gray-400 uppercase tracking-wider relative z-10">{t('workers_needed') || 'Workers'}</p>
+                                <p className="text-xs text-gray-400 uppercase tracking-wider relative z-10">{t('workers_needed', 'Workers Needed') || 'Workers'}</p>
                                 <p className="text-lg font-bold text-blue-300 relative z-10 mt-1">{estimation.workers}</p>
                             </div>
                         </div>
@@ -255,8 +253,8 @@ export default function SmartTaskWidget({ onTaskCreated }: SmartTaskWidgetProps)
                                     <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-violet-500"></div>
                                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[10px] font-bold text-violet-500">TX</div>
                                 </div>
-                                <p className="text-gray-300 font-medium animate-pulse">{t('processing_payment') || 'Processing transaction...'}</p>
-                                <p className="text-xs text-gray-500 text-center max-w-sm">Please confirm the transaction in your wallet.</p>
+                                <p className="text-gray-300 font-medium animate-pulse">{t('processing_payment', 'Processing payment...') || 'Processing transaction...'}</p>
+                                <p className="text-xs text-gray-500 text-center max-w-sm">{t('confirm_transaction', 'Please confirm the transaction in your wallet.')}</p>
                             </div>
                         ) : (
                             <div className="flex gap-4 pt-2">
@@ -264,7 +262,7 @@ export default function SmartTaskWidget({ onTaskCreated }: SmartTaskWidgetProps)
                                     onClick={() => setStep('input')}
                                     className="flex-1 px-4 py-3 rounded-xl border border-white/10 text-gray-300 hover:bg-white/5 transition-colors font-medium"
                                 >
-                                    {t('back') || 'Back'}
+                                    {t('back', 'Back') || 'Back'}
                                 </button>
                                 <button
                                     onClick={handleCreateAndPay}
@@ -274,11 +272,11 @@ export default function SmartTaskWidget({ onTaskCreated }: SmartTaskWidgetProps)
                                     {!address || !tonConnectUI?.connected ? (
                                         <>
                                             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                                            {t('connect_wallet') || 'Connect Wallet'}
+                                            {t('connect_wallet', 'Connect Wallet') || 'Connect Wallet'}
                                         </>
                                     ) : (
                                         <>
-                                            {t('confirm_and_pay') || 'Confirm & Pay'}
+                                            {t('confirm_and_pay', 'Confirm & Pay') || 'Confirm & Pay'}
                                             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                                         </>
                                     )}

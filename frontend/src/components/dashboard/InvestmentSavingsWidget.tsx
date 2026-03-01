@@ -54,9 +54,9 @@ export default function InvestmentSavingsWidget() {
                 <div>
                     <h3 className="text-sm font-medium text-gray-400 mb-1 flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                        {t('network_savings_24h') || 'Network Savings (24h)'}
+                        {t('network_savings_24h', 'Savings (24h)') || 'Network Savings (24h)'}
                     </h3>
-                    <p className="text-xs text-gray-500 mb-3">vs Amazon EC2 (t3.medium)</p>
+                    <p className="text-xs text-gray-500 mb-3">{t('vs_amazon', 'vs Amazon EC2 (t3.medium)')}</p>
 
                     <div className="flex items-baseline gap-1">
                         <span className="text-3xl font-bold text-white tracking-tight">
@@ -70,11 +70,11 @@ export default function InvestmentSavingsWidget() {
 
                 <div className="mt-4 pt-4 border-t border-white/5">
                     <div className="text-xs text-gray-400 flex justify-between">
-                        <span>AWS Cost:</span>
+                        <span>{t('aws_cost', 'AWS Cost:')}</span>
                         <span className="text-gray-300 line-through">${(savings / 0.52).toFixed(2)}</span>
                     </div>
                     <div className="text-xs text-green-400 flex justify-between mt-1 font-medium">
-                        <span>GSTD Cost:</span>
+                        <span>{t('gstd_cost', 'GSTD Cost:')}</span>
                         <span>${(savings / 0.52 * 0.48).toFixed(2)}</span>
                     </div>
                 </div>

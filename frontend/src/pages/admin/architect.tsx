@@ -91,14 +91,12 @@ export default function ArchitectPage() {
       <div className="min-h-screen bg-[#030014] flex items-center justify-center p-6">
         <div className="text-center max-w-md">
           <Shield className="w-16 h-16 text-amber-500/50 mx-auto mb-4" />
-          <h1 className="text-xl font-bold text-white mb-2">Architect Access</h1>
+          <h1 className="text-xl font-bold text-white mb-2">{t('architect_access', 'Architect Access')}</h1>
           <p className="text-gray-400 mb-6">{error}</p>
           <button
             onClick={() => router.push('/')}
             className="px-6 py-3 rounded-xl bg-white/10 text-white font-bold hover:bg-white/20 transition-colors"
-          >
-            Back to Home
-          </button>
+          >{t('back_to_home', 'Back to Home')}</button>
         </div>
       </div>
     );
@@ -116,7 +114,7 @@ export default function ArchitectPage() {
               <ArrowLeft size={20} />
             </button>
             <div>
-              <h1 className="text-2xl font-black">Architect Master-Dashboard</h1>
+              <h1 className="text-2xl font-black">{t('architect_masterdashboard', 'Architect Master-Dashboard')}</h1>
               <p className="text-sm text-gray-500">Infrastructure Supremacy • Network Health</p>
             </div>
           </div>
@@ -129,33 +127,33 @@ export default function ArchitectPage() {
           <div className="glass-card p-6 border-cyan-500/20">
             <div className="flex items-center gap-3 mb-4">
               <Server className="w-8 h-8 text-cyan-400" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">Active Nodes</span>
+              <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">{t('active_nodes', 'Active Nodes')}</span>
             </div>
             <p className="text-3xl font-black text-white">{network?.active_nodes ?? '—'}</p>
           </div>
           <div className="glass-card p-6 border-emerald-500/20">
             <div className="flex items-center gap-3 mb-4">
               <Activity className="w-8 h-8 text-emerald-400" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">Completed Tasks</span>
+              <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">{t('completed_tasks', 'Completed Tasks')}</span>
             </div>
             <p className="text-3xl font-black text-white">{(network?.completed_tasks ?? 0).toLocaleString()}</p>
           </div>
           <div className="glass-card p-6 border-amber-500/20">
             <div className="flex items-center gap-3 mb-4">
               <Coins className="w-8 h-8 text-amber-400" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">Golden Reserve (oz)</span>
+              <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">{t('golden_reserve_oz', 'Golden Reserve (oz)')}</span>
             </div>
             <p className="text-3xl font-black text-amber-400">{(network?.golden_reserve_oz ?? 0).toFixed(4)}</p>
           </div>
           <div className="glass-card p-6 border-violet-500/20">
             <div className="flex items-center gap-3 mb-4">
               <Zap className="w-8 h-8 text-violet-400" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">Total GSTD Paid</span>
+              <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">{t('total_gstd_paid', 'Total GSTD Paid')}</span>
             </div>
             <p className="text-3xl font-black text-white">{(network?.total_gstd_paid ?? 0).toFixed(2)}</p>
           </div>
           <div className="glass-card p-6 border-red-500/20">
-            <span className="text-[10px] font-black uppercase tracking-widest text-gray-500 block mb-4">Total Burned</span>
+            <span className="text-[10px] font-black uppercase tracking-widest text-gray-500 block mb-4">{t('total_burned', 'Total Burned')}</span>
             <p className="text-3xl font-black text-red-400">{(network?.total_burned_gstd ?? 0).toFixed(2)} GSTD</p>
           </div>
         </div>
@@ -207,18 +205,18 @@ export default function ArchitectPage() {
         )}
 
         <div className="glass-card p-6 border-white/10">
-          <h3 className="text-lg font-bold text-white mb-4">Emission & Commission Parameters</h3>
+          <h3 className="text-lg font-bold text-white mb-4">{t('emission__commission_parameters', 'Emission & Commission Parameters')}</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
             <div>
-              <span className="text-gray-500 block">Platform Fee</span>
+              <span className="text-gray-500 block">{t('platform_fee', 'Platform Fee')}</span>
               <span className="text-white font-bold">{params?.platform_fee_percent ?? '—'}%</span>
             </div>
             <div>
-              <span className="text-gray-500 block">Admin Wallet</span>
+              <span className="text-gray-500 block">{t('admin_wallet', 'Admin Wallet')}</span>
               <span className="text-violet-400 font-mono text-xs break-all">{params?.admin_wallet?.slice(0, 12)}...{params?.admin_wallet?.slice(-8)}</span>
             </div>
             <div>
-              <span className="text-gray-500 block">Treasury Wallet</span>
+              <span className="text-gray-500 block">{t('treasury_wallet', 'Treasury Wallet')}</span>
               <span className="text-amber-400 font-mono text-xs break-all">{params?.treasury_wallet?.slice(0, 12)}...{params?.treasury_wallet?.slice(-8)}</span>
             </div>
           </div>

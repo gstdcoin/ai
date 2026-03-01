@@ -35,7 +35,7 @@ export class ComponentErrorBoundary extends Component<Props, State> {
                 <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400">
                     <div className="flex items-center gap-2 mb-2">
                         <AlertTriangle className="w-5 h-5" />
-                        <span className="font-semibold">Component Error</span>
+                        <span className="font-semibold">{t('component_error', 'Component Error')}</span>
                     </div>
                     <p className="text-sm opacity-80">
                         {this.props.name ? `Error in ${this.props.name}: ` : ''}

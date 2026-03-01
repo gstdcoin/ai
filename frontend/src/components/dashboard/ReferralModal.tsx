@@ -66,7 +66,7 @@ export default function ReferralModal({ onClose }: ReferralModalProps) {
                 <div className="flex items-center justify-between p-6 border-b border-white/5 bg-white/5">
                     <h2 className="text-xl font-bold text-white flex items-center gap-2">
                         <Users className="w-5 h-5 text-purple-400" />
-                        {t('your_network') || 'Your Network'}
+                        {t('your_network', 'Your Network') || 'Your Network'}
                     </h2>
                     <button
                         onClick={onClose}
@@ -83,7 +83,7 @@ export default function ReferralModal({ onClose }: ReferralModalProps) {
                         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-purple-500/10 mb-4">
                             <Share2 className="w-8 h-8 text-purple-400" />
                         </div>
-                        <h3 className="text-lg font-medium text-white mb-1">Invite Friends & Earn</h3>
+                        <h3 className="text-lg font-medium text-white mb-1">{t('invite_earn', 'Invite Friends & Earn')}</h3>
                         <p className="text-sm text-gray-400">
                             Get 5% of all GSTD earned by your referrals forever.
                         </p>
@@ -99,13 +99,13 @@ export default function ReferralModal({ onClose }: ReferralModalProps) {
                                 </div>
                                 <div className="bg-white/5 rounded-xl p-4 border border-white/5 text-center">
                                     <div className="text-2xl font-bold text-gold-400 mb-1">{stats.total_earned.toFixed(2)}</div>
-                                    <div className="text-xs text-gray-500 uppercase tracking-wider">GSTD Earned</div>
+                                    <div className="text-xs text-gray-500 uppercase tracking-wider">{t('gstd_earned', 'GSTD Earned')}</div>
                                 </div>
                             </div>
 
                             {/* Referral Link */}
                             <div className="space-y-2">
-                                <label className="text-xs text-gray-400 uppercase tracking-wider">Your Referral Link</label>
+                                <label className="text-xs text-gray-400 uppercase tracking-wider">{t('your_referral_link', 'Your Referral Link')}</label>
                                 <div className="flex gap-2">
                                     <div className="flex-1 bg-black/50 border border-white/10 rounded-lg px-4 py-3 text-sm text-gray-300 font-mono truncate">
                                         {stats.referral_link || `https://app.gstdtoken.com?ref=${stats.referral_code || ''}`}
@@ -120,9 +120,7 @@ export default function ReferralModal({ onClose }: ReferralModalProps) {
                             </div>
                         </>
                     ) : (
-                        <div className="py-8 text-center text-gray-500">
-                            Loading referral data...
-                        </div>
+                        <div className="py-8 text-center text-gray-500">{t('loading_referral_data', 'Loading referral data...')}</div>
                     )}
 
                 </div>

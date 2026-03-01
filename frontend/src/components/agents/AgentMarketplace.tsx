@@ -84,7 +84,7 @@ export default function AgentMarketplace() {
                         </div>
                     </div>
                     <h2 className="text-4xl lg:text-5xl font-black text-white mb-6 leading-tight tracking-tighter">
-                        Hire Sovereign <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400">AI Agents</span> to Automate Your World.
+                        Hire Sovereign <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400">{t('ai_agents', 'AI Agents')}</span> to Automate Your World.
                     </h2>
                     <p className="text-gray-400 text-lg mb-8 leading-relaxed">
                         The world's first decentralized marketplace where high-performance agents trade their skills.
@@ -92,11 +92,8 @@ export default function AgentMarketplace() {
                     </p>
                     <div className="flex flex-wrap gap-4">
                         <button className="px-8 py-3 bg-white text-black rounded-xl font-bold flex items-center gap-2 hover:bg-violet-400 hover:text-white transition-all transform hover:scale-105">
-                            <Plus size={18} /> List Your Agent
-                        </button>
-                        <button className="px-8 py-3 bg-white/5 border border-white/10 text-white rounded-xl font-bold hover:bg-white/10 transition-all">
-                            How it Works
-                        </button>
+                            <Plus size={18} />{t('list_your_agent', 'List Your Agent')}</button>
+                        <button className="px-8 py-3 bg-white/5 border border-white/10 text-white rounded-xl font-bold hover:bg-white/10 transition-all">{t('how_it_works', 'How it Works')}</button>
                     </div>
                 </div>
             </div>
@@ -106,7 +103,7 @@ export default function AgentMarketplace() {
                 <div className="space-y-4">
                     <div className="flex items-center gap-2">
                         <Sparkles className="text-amber-400 w-5 h-5" />
-                        <h3 className="text-xs font-black text-gray-500 uppercase tracking-[0.2em]">Featured Workers</h3>
+                        <h3 className="text-xs font-black text-gray-500 uppercase tracking-[0.2em]">{t('featured_workers', 'Featured Workers')}</h3>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {featuredAgents.map(agent => (
@@ -121,7 +118,7 @@ export default function AgentMarketplace() {
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex items-center gap-2">
                         <Bot className="text-cyan-400 w-5 h-5" />
-                        <h3 className="text-xs font-black text-gray-500 uppercase tracking-[0.2em]">All Available Agents</h3>
+                        <h3 className="text-xs font-black text-gray-500 uppercase tracking-[0.2em]">{t('all_available_agents', 'All Available Agents')}</h3>
                     </div>
 
                     {/* Filters */}
@@ -156,7 +153,7 @@ export default function AgentMarketplace() {
                 ) : agents.length === 0 ? (
                     <div className="text-center py-20 glass-card">
                         <Bot className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-                        <p className="text-gray-400 font-bold uppercase tracking-widest">No agents found matching filters</p>
+                        <p className="text-gray-400 font-bold uppercase tracking-widest">{t('no_agents_found_matching_filters', 'No agents found matching filters')}</p>
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -183,8 +180,7 @@ function AgentCard({ agent, onRent, featured = false }: { agent: Agent, onRent: 
                             agent.capabilities.includes('code-generation') ? '💻' : '🤖'}
                     </div>
                     <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[9px] font-black uppercase">
-                        <Activity size={10} /> Online
-                    </div>
+                        <Activity size={10} />{t('online', 'Online')}</div>
                 </div>
 
                 <h4 className="text-xl font-black text-white mb-2 tracking-tight group-hover:text-violet-400 transition-colors">
@@ -205,14 +201,14 @@ function AgentCard({ agent, onRent, featured = false }: { agent: Agent, onRent: 
 
                 <div className="flex items-center justify-between pt-4 border-t border-white/5">
                     <div className="space-y-1">
-                        <div className="text-[9px] font-black text-gray-600 uppercase tracking-widest">Rate</div>
+                        <div className="text-[9px] font-black text-gray-600 uppercase tracking-widest">{t('rate', 'Rate')}</div>
                         <div className="flex items-baseline gap-1">
                             <span className="text-lg font-black text-white">{agent.price_per_use.toFixed(2)}</span>
                             <span className="text-[10px] font-bold text-gray-500 uppercase">GSTD</span>
                         </div>
                     </div>
                     <div className="space-y-1 text-right">
-                        <div className="text-[9px] font-black text-gray-600 uppercase tracking-widest">Trust</div>
+                        <div className="text-[9px] font-black text-gray-600 uppercase tracking-widest">{t('trust', 'Trust')}</div>
                         <div className="flex items-center justify-end gap-1 text-emerald-400 font-black">
                             <ShieldCheck size={12} />
                             {(agent.trust_score * 100).toFixed(0)}%
@@ -223,9 +219,7 @@ function AgentCard({ agent, onRent, featured = false }: { agent: Agent, onRent: 
                 <button
                     onClick={onRent}
                     className="w-full mt-6 py-3 bg-white/5 border border-white/10 hover:bg-white text-white hover:text-black rounded-xl text-xs font-black uppercase tracking-widest transition-all group-hover:shadow-[0_0_20px_rgba(139,92,246,0.2)]"
-                >
-                    Hire Agent
-                </button>
+                >{t('hire_agent', 'Hire Agent')}</button>
             </div>
         </div>
     );

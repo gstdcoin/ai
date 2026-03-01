@@ -1,3 +1,4 @@
+import { useTranslation } from 'next-i18next';
 import React, { useState, useEffect } from 'react';
 import { API_BASE_URL } from '../lib/config';
 
@@ -17,6 +18,7 @@ interface TokenEarnPanelProps {
 }
 
 export const TokenEarnPanel: React.FC<TokenEarnPanelProps> = ({
+  const { t } = useTranslation('common');
     walletAddress,
     language = 'en',
     onClaimSuccess
@@ -170,8 +172,8 @@ export const TokenEarnPanel: React.FC<TokenEarnPanelProps> = ({
                         <div className="flex items-center gap-3">
                             <span className="text-3xl">🎁</span>
                             <div>
-                                <h3 className="text-white font-semibold">Welcome Bonus</h3>
-                                <p className="text-gray-400 text-sm">One-time gift for new users</p>
+                                <h3 className="text-white font-semibold">{t('welcome_bonus', 'Welcome Bonus')}</h3>
+                                <p className="text-gray-400 text-sm">{t('onetime_gift_for_new_users', 'One-time gift for new users')}</p>
                             </div>
                         </div>
                         <div className="text-right">
@@ -197,7 +199,7 @@ export const TokenEarnPanel: React.FC<TokenEarnPanelProps> = ({
                         <div className="flex items-center gap-3">
                             <span className="text-3xl">💧</span>
                             <div>
-                                <h3 className="text-white font-semibold">Daily Faucet</h3>
+                                <h3 className="text-white font-semibold">{t('daily_faucet', 'Daily Faucet')}</h3>
                                 <p className="text-gray-400 text-sm">Claim every 24 hours</p>
                             </div>
                         </div>
@@ -243,9 +245,7 @@ export const TokenEarnPanel: React.FC<TokenEarnPanelProps> = ({
                             </div>
                         ))}
                         {tasks.length === 0 && (
-                            <div className="text-gray-500 text-center py-4">
-                                No tasks available right now
-                            </div>
+                            <div className="text-gray-500 text-center py-4">{t('no_tasks_available_right_now', 'No tasks available right now')}</div>
                         )}
                     </div>
                 </div>
@@ -256,16 +256,14 @@ export const TokenEarnPanel: React.FC<TokenEarnPanelProps> = ({
                         <div className="flex items-center gap-3">
                             <span className="text-3xl">🎯</span>
                             <div>
-                                <h3 className="text-white font-semibold">Invite Friends</h3>
+                                <h3 className="text-white font-semibold">{t('invite_friends', 'Invite Friends')}</h3>
                                 <p className="text-gray-400 text-sm">Earn 1 GSTD per friend</p>
                             </div>
                         </div>
                         <button
                             onClick={copyRefLink}
                             className="px-4 py-2 bg-green-500 text-white rounded-lg text-sm font-medium hover:bg-green-400 transition-colors"
-                        >
-                            Copy Link
-                        </button>
+                        >{t('copy_link', 'Copy Link')}</button>
                     </div>
                 </div>
 
@@ -275,8 +273,8 @@ export const TokenEarnPanel: React.FC<TokenEarnPanelProps> = ({
                         <div className="flex items-center gap-3">
                             <span className="text-3xl">🚀</span>
                             <div>
-                                <h3 className="text-white font-semibold">Become a Worker</h3>
-                                <p className="text-gray-400 text-sm">Earn unlimited GSTD with your device</p>
+                                <h3 className="text-white font-semibold">{t('become_a_worker', 'Become a Worker')}</h3>
+                                <p className="text-gray-400 text-sm">{t('earn_unlimited_gstd_with_your_device', 'Earn unlimited GSTD with your device')}</p>
                             </div>
                         </div>
                         <a
@@ -291,26 +289,20 @@ export const TokenEarnPanel: React.FC<TokenEarnPanelProps> = ({
 
             {/* Buy Link */}
             <div className="mt-6 pt-6 border-t border-white/10">
-                <p className="text-gray-400 text-sm text-center mb-3">
-                    Need more tokens? Buy directly:
-                </p>
+                <p className="text-gray-400 text-sm text-center mb-3">{t('need_more_tokens_buy_directly', 'Need more tokens? Buy directly:')}</p>
                 <div className="flex gap-2 justify-center">
                     <a
                         href="https://app.ston.fi/swap?ft=TON&tt=GSTD"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-500 transition-colors"
-                    >
-                        STON.fi
-                    </a>
+                    >{t('stonfi', 'STON.fi')}</a>
                     <a
                         href="https://dedust.io/swap/TON/GSTD"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-500 transition-colors"
-                    >
-                        DeDust
-                    </a>
+                    >{t('dedust', 'DeDust')}</a>
                 </div>
             </div>
         </div>

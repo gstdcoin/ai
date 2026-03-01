@@ -1,3 +1,4 @@
+import { useTranslation } from 'next-i18next';
 import Link from 'next/link';
 import { useEffect, useState, useMemo, useRef } from 'react';
 import Head from 'next/head';
@@ -45,6 +46,7 @@ interface NetworkPoint {
 }
 
 export default function NetworkMapPage() {
+  const { t } = useTranslation('common');
     const [points, setPoints] = useState<NetworkPoint[]>([]);
     const [loading, setLoading] = useState(true);
     const [secretMode, setSecretMode] = useState(false);
@@ -98,27 +100,23 @@ export default function NetworkMapPage() {
             <div className="absolute top-0 left-0 right-0 z-20 p-6 pointer-events-none">
                 <div className="max-w-7xl mx-auto flex justify-between items-start">
                     <div className="pointer-events-auto bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl shadow-cyan-900/10">
-                        <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-500 mb-1">
-                            GSTD Global Grid
-                        </h1>
-                        <p className="text-sm text-gray-400 uppercase tracking-widest mb-4 font-mono">
-                            Live Network Topology
-                        </p>
+                        <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-500 mb-1">{t('gstd_global_grid', 'GSTD Global Grid')}</h1>
+                        <p className="text-sm text-gray-400 uppercase tracking-widest mb-4 font-mono">{t('live_network_topology', 'Live Network Topology')}</p>
 
                         <div className="grid grid-cols-3 gap-6">
                             <div>
-                                <div className="text-xs text-gray-500 mb-1">Active Nodes</div>
+                                <div className="text-xs text-gray-500 mb-1">{t('active_nodes', 'Active Nodes')}</div>
                                 <div className="text-2xl font-mono text-white flex items-center">
                                     <span className="w-2 h-2 rounded-full bg-green-500 mr-2 animate-pulse" />
                                     {stats.activeNodes}
                                 </div>
                             </div>
                             <div>
-                                <div className="text-xs text-gray-500 mb-1">Avg Latency</div>
+                                <div className="text-xs text-gray-500 mb-1">{t('avg_latency', 'Avg Latency')}</div>
                                 <div className="text-2xl font-mono text-cyan-400">{stats.avgLatency}ms</div>
                             </div>
                             <div>
-                                <div className="text-xs text-gray-500 mb-1">Signal Health</div>
+                                <div className="text-xs text-gray-500 mb-1">{t('signal_health', 'Signal Health')}</div>
                                 <div className="text-2xl font-mono text-emerald-400">{100 - parseFloat(stats.avgLoss.toString())}%</div>
                             </div>
                         </div>
@@ -141,7 +139,7 @@ export default function NetworkMapPage() {
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                         <div className="text-center">
                             <div className="w-16 h-16 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin mx-auto mb-4" />
-                            <p className="text-gray-400">Loading network data...</p>
+                            <p className="text-gray-400">{t('loading_network_data', 'Loading network data...')}</p>
                         </div>
                     </div>
                 )}
@@ -189,7 +187,7 @@ export default function NetworkMapPage() {
             {/* Bottom Status Bar */}
             <div className="absolute bottom-0 left-0 right-0 z-20 bg-black/60 backdrop-blur-md border-t border-white/5 p-2">
                 <div className="max-w-7xl mx-auto flex justify-between items-center text-xs text-gray-400 font-mono">
-                    <div>SYSTEM: OPERATIONAL</div>
+                    <div>{t('system_operational', 'SYSTEM: OPERATIONAL')}</div>
                     <div className="flex gap-4">
                         <span>NETWORK: GSTD_CORE_GRID</span>
                         <span>PROTOCOL: v1.0.2</span>
@@ -201,3 +199,12 @@ export default function NetworkMapPage() {
     );
 }
 
+
+import { GetStaticProps } from 'next';
+import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
+
+export const getStaticProps: GetStaticProps = async ({ locale }) => ({
+  props: {
+    ...(await serverSideTranslations(locale || 'en', ['common'])),
+  },
+});

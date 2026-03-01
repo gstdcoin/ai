@@ -12,7 +12,7 @@ export default function EcosystemFooter() {
         { label: t('footer_bot', 'GSTD Bot'), href: 'https://gstdbot.gstdtoken.com', external: true },
         { label: t('footer_telegram', 'Telegram'), href: 'https://t.me/GstdAppBot', external: true },
         { label: t('footer_github', 'GitHub'), href: 'https://github.com/gstdcoin', external: true },
-        { label: 'API', href: 'https://gstdbot.gstdtoken.com/v1/models', external: true },
+        { label: t('api', 'API'), href: 'https://gstdbot.gstdtoken.com/v1/models', external: true },
     ];
 
     return (

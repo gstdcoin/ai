@@ -95,12 +95,12 @@ export default function SystemStatusWidget({ onStatsUpdate }: SystemStatusWidget
   };
 
   const getStatusText = () => {
-    if (!stats) return t('loading') || 'Loading...';
+    if (!stats) return t('loading', 'Loading...') || 'Loading...';
     const totalActive = stats.processing_tasks + stats.queued_tasks;
-    if (totalActive === 0) return t('system_idle') || 'Idle';
-    if (totalActive < 10) return t('system_normal') || 'Nominal';
-    if (totalActive < 50) return t('system_busy') || 'Elevated';
-    return t('system_high_load') || 'Critical';
+    if (totalActive === 0) return t('system_idle', 'Idle') || 'Idle';
+    if (totalActive < 10) return t('system_normal', 'Normal') || 'Nominal';
+    if (totalActive < 50) return t('system_busy', 'System Busy') || 'Elevated';
+    return t('system_high_load', 'High Load') || 'Critical';
   };
 
   return (
@@ -109,7 +109,7 @@ export default function SystemStatusWidget({ onStatsUpdate }: SystemStatusWidget
         <div className="flex-1 w-full">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
-              {t('system_status') || 'System Status'}
+              {t('system_status', 'System Status') || 'System Status'}
               {!loading && (
                 <span className={`px-2 py-0.5 rounded text-[10px] uppercase tracking-wider font-bold border ${getStatusText() === 'Idle' ? 'bg-gray-500/20 text-gray-400 border-gray-500/30' :
                   getStatusText() === 'Nominal' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
@@ -128,23 +128,23 @@ export default function SystemStatusWidget({ onStatsUpdate }: SystemStatusWidget
           {stats ? (
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
               <div className="p-3 rounded-lg bg-white/5 border border-white/5">
-                <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">{t('processing') || 'Processing'}</p>
+                <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">{t('processing', 'Processing') || 'Processing'}</p>
                 <p className="text-xl font-bold text-blue-400 font-mono">{stats.processing_tasks}</p>
               </div>
               <div className="p-3 rounded-lg bg-white/5 border border-white/5">
-                <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">{t('queued') || 'Queued'}</p>
+                <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">{t('queued', 'Queued') || 'Queued'}</p>
                 <p className="text-xl font-bold text-yellow-400 font-mono">{stats.queued_tasks}</p>
               </div>
               <div className="p-3 rounded-lg bg-white/5 border border-white/5">
-                <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">{t('completed') || 'Done'}</p>
+                <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">{t('completed', 'Completed') || 'Done'}</p>
                 <p className="text-xl font-bold text-green-400 font-mono">{stats.completed_tasks}</p>
               </div>
               <div className="p-3 rounded-lg bg-white/5 border border-white/5">
-                <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">{t('active_devices') || 'Nodes'}</p>
+                <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">{t('active_devices', 'Active Devices') || 'Nodes'}</p>
                 <p className="text-xl font-bold text-purple-400 font-mono">{stats.active_devices_count}</p>
               </div>
               <div className="p-3 rounded-lg bg-white/5 border border-white/5">
-                <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">{t('total_compensation') || 'Paid'}</p>
+                <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">{t('total_compensation', 'Total Compensation') || 'Paid'}</p>
                 <p className="text-xl font-bold text-indigo-400 font-mono">
                   {(stats.total_rewards_gstd || 0).toFixed(0)} <span className="text-xs text-gray-500">GSTD</span>
                 </p>

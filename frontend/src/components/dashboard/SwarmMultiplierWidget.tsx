@@ -39,9 +39,7 @@ export default function SwarmMultiplierWidget() {
             <Zap size={20} />
           </div>
           <div>
-            <span className="text-[10px] text-gray-500 font-black uppercase tracking-widest block mb-0.5">
-              Swarm Multiplier
-            </span>
+            <span className="text-[10px] text-gray-500 font-black uppercase tracking-widest block mb-0.5">{t('swarm_multiplier', 'Swarm Multiplier')}</span>
             <span className="text-xl font-black text-white tabular-nums">
               {mult.toFixed(2)}x
             </span>

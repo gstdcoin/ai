@@ -38,14 +38,12 @@ export default React.memo(function Header({ onLogout, isPublic = false }: Header
             </div>
             <h1 className="text-xl font-bold text-white font-display">
               <span className="bg-gradient-to-r from-gold-400 to-gold-600 bg-clip-text text-transparent">GSTD</span>
-              <span className="text-gray-300 ml-2">Documentation</span>
+              <span className="text-gray-300 ml-2">{t('documentation', 'Documentation')}</span>
             </h1>
           </a>
           <div className="flex items-center gap-4">
             <LanguageSwitcher />
-            <a href="/" className="text-sm font-medium text-white/70 hover:text-white transition-colors">
-              Back to Platform
-            </a>
+            <a href="/" className="text-sm font-medium text-white/70 hover:text-white transition-colors">{t('back_to_platform', 'Back to Platform')}</a>
           </div>
         </div>
       </header>
@@ -95,11 +93,11 @@ export default React.memo(function Header({ onLogout, isPublic = false }: Header
             {/* Quick Metrics */}
             <div className="hidden lg:flex items-center gap-6 px-4 py-1.5 rounded-xl bg-white/[0.02] border border-white/5">
               <div className="flex items-center gap-2">
-                <span className="text-[9px] text-gray-600 font-black uppercase tracking-widest">Grid</span>
+                <span className="text-[9px] text-gray-600 font-black uppercase tracking-widest">{t('grid', 'Grid')}</span>
                 <span className="text-[10px] font-black text-orange-400 font-mono" id="network-temperature">0 T</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-[9px] text-gray-600 font-black uppercase tracking-widest">Load</span>
+                <span className="text-[9px] text-gray-600 font-black uppercase tracking-widest">{t('load', 'Load')}</span>
                 <span className="text-[10px] font-black text-cyan-400 font-mono" id="computational-pressure">0 P</span>
               </div>
             </div>

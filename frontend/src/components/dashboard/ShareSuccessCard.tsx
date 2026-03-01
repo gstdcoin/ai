@@ -45,14 +45,14 @@ export default function ShareSuccessCard() {
 
       if (navigator.share && navigator.canShare?.({ files: [new File([blob], 'gstd-success.png', { type: 'image/png' })] })) {
         await navigator.share({
-          title: 'GSTD DePIN — My Success',
+          title: t('gstd_depin__my_success', 'GSTD DePIN — My Success'),
           text: `Hashrate: ${stats?.total_tasks_completed ?? 0} tasks • Gold: ${(stats?.total_earnings_gstd ?? 0).toFixed(2)} GSTD`,
           files: [new File([blob], 'gstd-success.png', { type: 'image/png' })],
         });
         toast.success('Shared!', 'Success card shared to Telegram Stories or other apps');
       } else {
         const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
+        const a = document.createElement('a', 'a');
         a.href = url;
         a.download = 'gstd-success.png';
         a.click();
@@ -97,26 +97,18 @@ export default function ShareSuccessCard() {
       >
         <div className="p-8 h-full flex flex-col justify-between">
           <div>
-            <div className="text-amber-400/80 text-xs font-black uppercase tracking-[0.3em] mb-2">
-              GSTD DePIN
-            </div>
-            <h2 className="text-2xl font-black text-white uppercase tracking-tight">
-              My Success
-            </h2>
+            <div className="text-amber-400/80 text-xs font-black uppercase tracking-[0.3em] mb-2">{t('gstd_depin', 'GSTD DePIN')}</div>
+            <h2 className="text-2xl font-black text-white uppercase tracking-tight">{t('my_success', 'My Success')}</h2>
           </div>
           <div className="space-y-6">
             <div className="p-6 rounded-2xl bg-amber-500/10 border border-amber-500/20">
-              <div className="text-amber-400/70 text-[10px] font-black uppercase tracking-widest mb-1">
-                Hashrate
-              </div>
+              <div className="text-amber-400/70 text-[10px] font-black uppercase tracking-widest mb-1">{t('hashrate', 'Hashrate')}</div>
               <div className="text-4xl font-black text-white tabular-nums">
                 {tasks.toLocaleString()} tasks
               </div>
             </div>
             <div className="p-6 rounded-2xl bg-amber-500/10 border border-amber-500/20">
-              <div className="text-amber-400/70 text-[10px] font-black uppercase tracking-widest mb-1">
-                Gold Accumulated
-              </div>
+              <div className="text-amber-400/70 text-[10px] font-black uppercase tracking-widest mb-1">{t('gold_accumulated', 'Gold Accumulated')}</div>
               <div className="text-4xl font-black text-amber-400 tabular-nums">
                 {gold.toFixed(2)} GSTD
               </div>

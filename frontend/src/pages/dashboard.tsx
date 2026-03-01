@@ -86,10 +86,26 @@ export default function DashboardPage() {
         );
     }
 
-    // Show dashboard even during wallet reconnect (avoids "inaccessible" state)
+    // If hydrated but not connected — show connect prompt (not dashboard)
+    if (!isConnected && !address) {
+        return (
+            <div className="min-h-screen bg-[#030014] flex items-center justify-center" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
+                <div className="text-center space-y-6 p-8 max-w-sm">
+                    <div className="text-5xl">🔐</div>
+                    <h2 className="text-xl font-bold text-white">Connect Wallet</h2>
+                    <p className="text-sm text-gray-400">Connect your TON wallet to access the dashboard</p>
+                    <a href="/" className="inline-block px-6 py-3 rounded-xl bg-violet-600 text-white font-semibold hover:bg-violet-500 transition-colors">
+                        Go to Home
+                    </a>
+                </div>
+            </div>
+        );
+    }
+
+    // Show dashboard for authorized users
     return (
         <Dashboard
-            initialTab={(router.query.tab as string) || (router.query.mode === 'mining' || router.query.mining === '1' ? 'home' : undefined)}
+            initialTab={(router.query.tab as string) || (router.query.mode === 'mining' || router.query.mining === '1' ? 'home' : 'home')}
             initialMode={(router.query.mode as 'standard' | 'ultra') || undefined}
             sourceTelegram={router.query.source === 'telegram'}
             modeMining={router.query.mode === 'mining' || router.query.mining === '1'}

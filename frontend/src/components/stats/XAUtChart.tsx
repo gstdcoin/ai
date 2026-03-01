@@ -17,7 +17,7 @@ const XAUtChart = memo(function XAUtChart({ data }: XAUtChartProps) {
   if (!data || data.length === 0) {
     return (
       <div className="h-64 flex items-center justify-center text-gray-400">
-        {t('no_data_yet') || 'No data available yet'}
+        {t('no_data_yet', 'No data available yet') || 'No data available yet'}
       </div>
     );
   }

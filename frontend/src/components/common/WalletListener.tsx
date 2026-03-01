@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
 import { useWalletStore } from '../../store/walletStore';
 import { useTonConnectUI, useTonWallet } from '@tonconnect/ui-react';
 import { logger } from '../../lib/logger';
@@ -24,26 +24,10 @@ export default function WalletListener() {
     // Ref to track login state and prevent duplicates
     const lastLoggedInAddress = useRef<string | null>(null);
     const isLoggingIn = useRef<boolean>(false);
-    const proofRequested = useRef<boolean>(false);
-
-    // Request tonProof on mount
-    useEffect(() => {
-        if (!tonConnectUI || proofRequested.current) return;
-
-        // Generate payload for tonProof - using colon separator for backend compatibility
-        // Backend expects format: nonce:timestamp
-        const payload = `gstd_auth:${Math.floor(Date.now() / 1000)}`;
-
-        tonConnectUI.setConnectRequestParameters({
-            state: 'ready',
-            value: {
-                tonProof: payload
-            }
-        });
-
-        proofRequested.current = true;
-        logger.info('TonProof request parameters set', { payload });
-    }, [tonConnectUI]);
+    // NOTE: tonProof was intentionally removed. We use simple_connect on the backend,
+    // and setConnectRequestParameters with tonProof can prevent some wallets from
+    // showing the connection dialog (they hang waiting for proof preparation).
+    // If tonProof verification is needed in future, re-enable with proper backend support.
 
     // Handle Wallet Connection
     useEffect(() => {
@@ -117,10 +101,31 @@ export default function WalletListener() {
                                 balanceData.gstd || 0,
                                 pendingData.pending_balance || 0
                             );
-                        } catch (e) { /* silent */ }
 
-                        // Redirect to dashboard after successful login
-                        router.push('/dashboard');
+                            // Auto-claim welcome bonus for new users (1.0 GSTD)
+                            const currentBalance = balanceData.gstd || 0;
+                            try {
+                                const bonusStatus = await apiGet<any>(`/bonus/status?wallet=${walletAddress}`);
+                                if (bonusStatus?.welcome_bonus_available) {
+                                    const bonus = await apiPost('/bonus/welcome', { wallet_address: walletAddress, source: 'web' });
+                                    if (bonus?.amount && bonus.amount > 0) {
+                                        toast.success(`+${bonus.amount} GSTD`, 'Welcome bonus!');
+                                        // Refresh balance
+                                        const freshBalance = await apiGet<any>('/users/balance');
+                                        useWalletStore.getState().updateBalance(
+                                            (freshBalance.ton || 0).toString(),
+                                            freshBalance.gstd || 0,
+                                            pendingData.pending_balance || 0
+                                        );
+                                    }
+                                }
+                                // Daily faucet for returning users with low balance
+                                if (currentBalance < 0.5 && bonusStatus?.daily_faucet_available) {
+                                    await apiPost('/telegram/faucet', { wallet_address: walletAddress }).catch(() => { });
+                                }
+                            } catch { /* bonus claim failed — non-critical */ }
+                        } catch (e) { /* silent */ }
+                        // Redirect is handled by index.tsx useEffect (isConnected → /dashboard)
                     }
                 } catch (e: any) {
                     logger.error('Simple login failed', e);

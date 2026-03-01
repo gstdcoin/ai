@@ -477,7 +477,7 @@ export const ClientDashboard: React.FC = () => {
                                             <p className="text-2xl font-bold text-white">
                                                 {escrow.total_locked_gstd.toFixed(4)}
                                             </p>
-                                            <p className="text-xs text-gray-500">GSTD Locked</p>
+                                            <p className="text-xs text-gray-500">{t('gstd_locked', 'GSTD Locked')}</p>
                                         </div>
                                     </div>
 
@@ -553,7 +553,7 @@ export const ClientDashboard: React.FC = () => {
                                         <p className="text-xl font-bold text-white">{(stats?.total_spent_gstd || 0).toFixed(2)} GSTD</p>
                                     </div>
                                     <div className="p-4 bg-gray-800/50 rounded-xl border border-gray-700/50">
-                                        <p className="text-xs text-gray-500 mb-1">ROI Efficiency</p>
+                                        <p className="text-xs text-gray-500 mb-1">{t('roi_efficiency', 'ROI Efficiency')}</p>
                                         <p className="text-xl font-bold text-blue-400">+280%</p>
                                     </div>
                                 </div>
@@ -564,7 +564,7 @@ export const ClientDashboard: React.FC = () => {
                         <div className="bg-gray-900/50 rounded-2xl p-6 border border-gray-700/50">
                             <div className="flex items-center justify-between mb-6">
                                 <h3 className="text-lg font-semibold text-white">{t('client.spendTrend')}</h3>
-                                <span className="text-xs px-2 py-1 bg-blue-500/20 text-blue-400 rounded-lg">Last 30 Days</span>
+                                <span className="text-xs px-2 py-1 bg-blue-500/20 text-blue-400 rounded-lg">{t('last_30_days', 'Last 30 Days')}</span>
                             </div>
                             <div className="h-[250px] w-full">
                                 <ResponsiveContainer width="100%" height="100%">
@@ -607,9 +607,9 @@ export const ClientDashboard: React.FC = () => {
                         <h3 className="text-lg font-semibold text-white mb-6 font-display">{t('client.cloudCostComparison')}</h3>
                         <div className="space-y-4">
                             {[
-                                { name: 'Nvidia H100 Instance', cloud: 12.5, gstd: 3.2, unit: '/hr' },
-                                { name: 'Generic GPU Worker', cloud: 4.8, gstd: 1.1, unit: '/hr' },
-                                { name: 'Batch CPU Processing', cloud: 0.95, gstd: 0.15, unit: '/1M req' }
+                                { name: t('nvidia_h100_instance', 'Nvidia H100 Instance'), cloud: 12.5, gstd: 3.2, unit: '/hr' },
+                                { name: t('generic_gpu_worker', 'Generic GPU Worker'), cloud: 4.8, gstd: 1.1, unit: '/hr' },
+                                { name: t('batch_cpu_processing', 'Batch CPU Processing'), cloud: 0.95, gstd: 0.15, unit: '/1M req' }
                             ].map((item, idx) => (
                                 <div key={idx} className="flex items-center space-x-4">
                                     <div className="w-1/3">

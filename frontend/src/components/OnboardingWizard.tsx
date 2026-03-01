@@ -87,37 +87,37 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
     const steps: OnboardingStep[] = [
         {
             order: 1,
-            title: t('welcome'),
-            description: t('welcomeDesc'),
+            title: t('welcome', 'Welcome'),
+            description: t('welcomeDesc', 'Welcome to the GSTD platform'),
             action: 'welcome',
             helpText: 'No technical knowledge required. We\'ll guide you.',
             skippable: false,
         },
         {
             order: 2,
-            title: t('connectWallet'),
-            description: t('connectWalletDesc'),
+            title: t('connectWallet', 'Connect Wallet'),
+            description: t('connectWalletDesc', 'Connect your TON wallet to get started'),
             action: 'connect_wallet',
             skippable: false,
         },
         {
             order: 3,
-            title: t('claimBonus'),
+            title: t('claimBonus', 'Claim Bonus'),
             description: t('claimBonusDesc', { amount: welcomeBonus || 1.0 }),
             action: 'claim_welcome',
             skippable: false,
         },
         {
             order: 4,
-            title: t('tryAI'),
-            description: t('tryAIDesc'),
+            title: t('tryAI', 'Try AI'),
+            description: t('tryAIDesc', 'Chat with sovereign AI for free'),
             action: 'first_task',
             skippable: true,
         },
         {
             order: 5,
-            title: t('allSet'),
-            description: t('allSetDesc'),
+            title: t('allSet', 'All Set!'),
+            description: t('allSetDesc', 'You\'re ready to use GSTD'),
             action: 'complete',
             skippable: false,
         },
@@ -168,13 +168,13 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
             <div className="fixed inset-0 bg-gradient-to-br from-purple-900/95 to-black/95 flex items-center justify-center z-50">
                 <div className="text-center max-w-md px-6">
                     <div className="text-6xl mb-6">🎉</div>
-                    <h1 className="text-3xl font-bold text-white mb-4">{t('allSet')}</h1>
-                    <p className="text-gray-300 mb-8">{t('allSetDesc')}</p>
+                    <h1 className="text-3xl font-bold text-white mb-4">{t('allSet', 'All Set!')}</h1>
+                    <p className="text-gray-300 mb-8">{t('allSetDesc', 'You\'re ready to use GSTD')}</p>
                     <button
                         onClick={onComplete}
                         className="px-8 py-4 bg-gradient-to-r from-yellow-400 to-orange-500 text-black font-bold rounded-xl hover:scale-105 transition-transform"
                     >
-                        {t('finish')}
+                        {t('finish', 'Finish')}
                     </button>
                 </div>
             </div>
@@ -220,7 +220,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                             onClick={handleSkip}
                             className="flex-1 py-3 text-gray-400 hover:text-white transition-colors"
                         >
-                            {t('skip')}
+                            {t('skip', 'Skip')}
                         </button>
                     )}
                     <button
@@ -231,7 +231,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
               disabled:opacity-50 disabled:cursor-not-allowed
               ${!currentStepData.skippable ? 'w-full' : ''}`}
                     >
-                        {loading ? t('loading') : (currentStep === steps.length - 1 ? t('finish') : t('next'))}
+                        {loading ? t('loading', 'Loading...') : (currentStep === steps.length - 1 ? t('finish', 'Finish') : t('next', 'Next'))}
                     </button>
                 </div>
 

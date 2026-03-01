@@ -41,7 +41,7 @@ export function GenesisRegistryWidget() {
         <div className="glass-card p-6 border-gold-500/20 relative overflow-hidden">
             <div className="absolute top-2 right-4 flex items-center gap-2">
                 <span className={`w-2 h-2 rounded-full ${beaconStatus === 'broadcasting' ? 'bg-amber-500 animate-pulse' : 'bg-gray-500'}`} />
-                <span className="text-[10px] font-black text-amber-500/70 uppercase tracking-widest">Genesis Beacon Active</span>
+                <span className="text-[10px] font-black text-amber-500/70 uppercase tracking-widest">{t('genesis_beacon_active', 'Genesis Beacon Active')}</span>
             </div>
 
             <div className="flex items-center gap-3 mb-6">
@@ -49,14 +49,14 @@ export function GenesisRegistryWidget() {
                     <Radio className="w-5 h-5" />
                 </div>
                 <div>
-                    <h3 className="text-sm font-black text-white uppercase tracking-wider">Genesis Machine Registry</h3>
-                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Distributed Agentic Endpoints</p>
+                    <h3 className="text-sm font-black text-white uppercase tracking-wider">{t('genesis_machine_registry', 'Genesis Machine Registry')}</h3>
+                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{t('distributed_agentic_endpoints', 'Distributed Agentic Endpoints')}</p>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 gap-3">
                 {loading && services.length === 0 ? (
-                    <div className="h-20 flex items-center justify-center text-xs text-gray-500 italic">Scanning the grid for agentic doors...</div>
+                    <div className="h-20 flex items-center justify-center text-xs text-gray-500 italic">{t('scanning_the_grid_for_agentic_doors', 'Scanning the grid for agentic doors...')}</div>
                 ) : services.length > 0 ? (
                     services.map((svc) => (
                         <div key={svc.id} className="group relative p-3 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-amber-500/30 hover:bg-white/[0.04] transition-all">
@@ -73,9 +73,7 @@ export function GenesisRegistryWidget() {
 
                             <div className="flex items-center gap-3 mt-3 pt-3 border-t border-white/5 opacity-40 group-hover:opacity-100 transition-opacity">
                                 <div className="flex items-center gap-1 text-[9px] font-bold text-gray-400">
-                                    <Shield className="w-3 h-3 text-green-500/50" />
-                                    Sovereign Verified
-                                </div>
+                                    <Shield className="w-3 h-3 text-green-500/50" />{t('sovereign_verified', 'Sovereign Verified')}</div>
                                 <div className="flex items-center gap-1 text-[9px] font-bold text-gray-400">
                                     <Database className="w-3 h-3 text-blue-500/50" />
                                     P2P Endpoint
@@ -89,7 +87,7 @@ export function GenesisRegistryWidget() {
                 ) : (
                     <div className="p-8 text-center glass-card border-dashed border-white/10">
                         <Terminal className="w-8 h-8 text-gray-600 mx-auto mb-3" />
-                        <p className="text-[10px] font-bold text-gray-500 uppercase">Wait for discovery...</p>
+                        <p className="text-[10px] font-bold text-gray-500 uppercase">{t('wait_for_discovery', 'Wait for discovery...')}</p>
                         <p className="text-[9px] text-gray-600 mt-1">Millions of bots will soon broadcast their services here.</p>
                     </div>
                 )}
@@ -97,7 +95,7 @@ export function GenesisRegistryWidget() {
 
             <div className="mt-6 flex flex-col gap-2">
                 <div className="p-3 rounded-xl bg-violet-600/10 border border-violet-500/20">
-                    <p className="text-[10px] text-violet-400 font-black uppercase tracking-tighter mb-1">Genesis Protocol Link</p>
+                    <p className="text-[10px] text-violet-400 font-black uppercase tracking-tighter mb-1">{t('genesis_protocol_link', 'Genesis Protocol Link')}</p>
                     <p className="text-[9px] text-gray-400 leading-tight">Your gateway is configured to accept machine-to-machine handshakes. Static APIs are being phased out in favor of the Sovereign Mesh.</p>
                 </div>
             </div>

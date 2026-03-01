@@ -156,7 +156,7 @@ export default function GoldenReservePanel() {
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-lg font-black text-white tracking-tight">
-                {t('gold_reserve_title') || 'Golden Reserve Fund'}
+                {t('gold_reserve_title', 'Gold Reserve Fund') || 'Golden Reserve Fund'}
               </h3>
               {isVerified && (
                 <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/30">
@@ -168,7 +168,7 @@ export default function GoldenReservePanel() {
               )}
             </div>
             <p className="text-[10px] text-amber-400/60 font-bold uppercase tracking-widest">
-              {t('gold_reserve_subtitle') || 'XAUt-Backed Stability • Verified On-Chain'}
+              {t('gold_reserve_subtitle', 'XAUt-Backed Stability • Verified On-Chain') || 'XAUt-Backed Stability • Verified On-Chain'}
             </p>
           </div>
         </div>
@@ -176,7 +176,7 @@ export default function GoldenReservePanel() {
           {isAdmin && (
             <button onClick={() => { setShowAddLiquidity(true); setAddLiquidityResult(null); setAddLiquidityError(null); }} className="px-3 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 text-xs font-bold flex items-center gap-1.5 transition-all">
               <Plus size={14} />
-              {t('add_liquidity') || 'Add Liquidity'}
+              {t('add_liquidity', 'Add Liquidity') || 'Add Liquidity'}
             </button>
           )}
           <button onClick={() => setShowDetails(!showDetails)} className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all">
@@ -193,18 +193,18 @@ export default function GoldenReservePanel() {
         {/* Left: Reserve Balance */}
         <div className="md:col-span-1">
           <div className="p-5 rounded-2xl bg-black/20 border border-amber-500/10">
-            <div className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-2">{t('gold_reserve_balance') || 'Reserve Balance'}</div>
+            <div className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-2">{t('gold_reserve_balance', 'Reserve Balance') || 'Reserve Balance'}</div>
             <div className="text-3xl font-black bg-gradient-to-r from-yellow-400 via-amber-400 to-orange-400 bg-clip-text text-transparent tabular-nums mb-1">
               {xautBalance.toFixed(6)}
             </div>
-            <div className="text-sm text-gray-400 font-bold">XAUt (Tether Gold)</div>
+            <div className="text-sm text-gray-400 font-bold">{t('xaut_gold', 'XAUt (Tether Gold)')}</div>
             <div className="mt-3 pt-3 border-t border-white/5">
               <div className="flex justify-between text-xs mb-1">
-                <span className="text-gray-500">{t('gold_reserve_usd') || 'USD Value'}</span>
+                <span className="text-gray-500">{t('gold_reserve_usd', 'USD Value') || 'USD Value'}</span>
                 <span className="text-emerald-400 font-bold">${reserveValueUSD.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
               </div>
               <div className="flex justify-between text-xs">
-                <span className="text-gray-500">{t('gold_reserve_backing') || 'Backing Ratio'}</span>
+                <span className="text-gray-500">{t('gold_reserve_backing', 'Backing Ratio') || 'Backing Ratio'}</span>
                 <span className="text-amber-400 font-bold">{backingRatio.toFixed(2)}%</span>
               </div>
             </div>
@@ -213,17 +213,17 @@ export default function GoldenReservePanel() {
           {/* Dynamic Gold Backing — всегда показываем, при platformShare>0 обновляем чаще */}
           <div className={`mt-4 p-4 rounded-2xl bg-black/20 border ${platformShare > 0 ? 'border-emerald-500/30' : 'border-amber-500/10'}`}>
             <div className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-2">
-              {t('dynamic_gold_backing') || 'Dynamic Gold Backing'}
+              {t('dynamic_gold_backing', 'Dynamic Gold Backing') || 'Dynamic Gold Backing'}
             </div>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-gray-400">{t('pool_total_liquidity') || 'Total Pool Liquidity'}</span>
+                <span className="text-gray-400">{t('pool_total_liquidity', 'Total Pool Liquidity') || 'Total Pool Liquidity'}</span>
                 <span className="text-amber-400 font-bold">
                   {totalLiquidityUSD > 0 ? `$${totalLiquidityUSD.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : '—'}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-400">{t('platform_share') || 'Our Share'}</span>
+                <span className="text-gray-400">{t('platform_share', 'Our Share') || 'Our Share'}</span>
                 <span className={`font-bold ${platformShare > 0 ? 'text-emerald-400' : 'text-gray-500'}`}>
                   {platformShare > 0 ? `${platformShare.toFixed(6)} LP${platformSharePct > 0 ? ` (${platformSharePct.toFixed(2)}%)` : ''}` : '—'}
                 </span>
@@ -235,7 +235,7 @@ export default function GoldenReservePanel() {
           {/* Progress to milestone */}
           <div className="mt-4 p-4 rounded-2xl bg-black/20 border border-amber-500/10">
             <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest mb-2">
-              <span className="text-gray-500">{t('gold_reserve_progress') || 'Progress to 1 XAUt'}</span>
+              <span className="text-gray-500">{t('gold_reserve_progress', 'Progress to 1 XAUt') || 'Progress to 1 XAUt'}</span>
               <span className="text-amber-400">{progressToTarget.toFixed(1)}%</span>
             </div>
             <div className="w-full h-3 bg-white/5 rounded-full overflow-hidden">
@@ -260,7 +260,7 @@ export default function GoldenReservePanel() {
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400"><DollarSign size={18} /></div>
               <div>
-                <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">GSTD Price</div>
+                <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{t('gstd_price', 'GSTD Price')}</div>
                 <div className="text-lg font-black text-white tabular-nums">${gstdPriceUSD != null ? gstdPriceUSD.toFixed(6) : '—'}</div>
               </div>
             </div>
@@ -272,7 +272,7 @@ export default function GoldenReservePanel() {
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-xl bg-violet-500/10 text-violet-400"><TrendingUp size={18} /></div>
               <div>
-                <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{t('gold_reserve_mcap') || 'Market Cap'}</div>
+                <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{t('gold_reserve_mcap', 'Market Cap') || 'Market Cap'}</div>
                 <div className="text-lg font-black text-white tabular-nums">{marketCapUSD != null ? `$${(marketCapUSD / 1000000).toFixed(2)}M` : '—'}</div>
               </div>
             </div>
@@ -284,7 +284,7 @@ export default function GoldenReservePanel() {
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400"><Shield size={18} /></div>
                 <div>
-                  <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Total XAUt Bought</div>
+                  <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{t('total_xaut', 'Total XAUt Bought')}</div>
                   <div className="text-lg font-black text-white tabular-nums">{(publicStats?.total_xaut_bought ?? 0).toFixed(6)} <span className="text-xs text-gray-500">XAUt</span></div>
                 </div>
               </div>
@@ -295,7 +295,7 @@ export default function GoldenReservePanel() {
         {/* Right: Mini Chart / Flow */}
         <div className="md:col-span-1">
           <div className="p-5 rounded-2xl bg-black/20 border border-white/5 h-full flex flex-col">
-            <div className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-3">{t('gold_reserve_flow') || 'Reserve Growth'}</div>
+            <div className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-3">{t('gold_reserve_flow', 'Reserve Growth') || 'Reserve Growth'}</div>
 
             {/* Mini sparkline */}
             <div className="flex-1 flex items-end gap-[2px] min-h-[80px] mb-3">
@@ -324,11 +324,11 @@ export default function GoldenReservePanel() {
             <div className="space-y-2 text-[10px]">
               <div className="flex items-center gap-2 text-gray-400">
                 <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                <span>{t('gold_reserve_inflow') || '7% of every transaction → Reserve'}</span>
+                <span>{t('gold_reserve_inflow', '2% of every transaction → Reserve') || '7% of every transaction → Reserve'}</span>
               </div>
               <div className="flex items-center gap-2 text-gray-400">
                 <div className="w-2 h-2 rounded-full bg-amber-500" />
-                <span>{t('gold_reserve_buyback') || 'Auto-buyback from platform revenue'}</span>
+                <span>{t('gold_reserve_buyback', 'Auto-buyback from platform revenue') || 'Auto-buyback from platform revenue'}</span>
               </div>
             </div>
           </div>
@@ -339,10 +339,10 @@ export default function GoldenReservePanel() {
       {showAddLiquidity && isAdmin && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowAddLiquidity(false)}>
           <div className="bg-gray-900 border border-amber-500/30 rounded-2xl p-6 max-w-md w-full shadow-xl" onClick={e => e.stopPropagation()}>
-            <h4 className="text-lg font-black text-white mb-4">{t('add_liquidity') || 'Add Liquidity'}</h4>
+            <h4 className="text-lg font-black text-white mb-4">{t('add_liquidity', 'Add Liquidity') || 'Add Liquidity'}</h4>
             {!addLiquidityResult ? (
               <>
-                <p className="text-sm text-gray-400 mb-4">{t('add_liquidity_desc') || 'Prepare transaction to add GSTD/XAUt to Ston.fi pool. You will sign via TonConnect.'}</p>
+                <p className="text-sm text-gray-400 mb-4">{t('add_liquidity_desc', 'Prepare transaction to add GSTD/XAUt to Ston.fi pool. You will sign via TonCo...') || 'Prepare transaction to add GSTD/XAUt to Ston.fi pool. You will sign via TonConnect.'}</p>
                 <div className="grid grid-cols-2 gap-3 mb-4">
                   <div>
                     <label className="text-xs text-gray-500 block mb-1">GSTD</label>
@@ -355,22 +355,22 @@ export default function GoldenReservePanel() {
                 </div>
                 {addLiquidityError && <p className="text-red-400 text-sm mb-3">{addLiquidityError}</p>}
                 <div className="flex gap-2">
-                  <button onClick={() => setShowAddLiquidity(false)} className="flex-1 px-4 py-2 rounded-lg bg-white/10 text-gray-300 text-sm font-medium">{t('cancel') || 'Cancel'}</button>
+                  <button onClick={() => setShowAddLiquidity(false)} className="flex-1 px-4 py-2 rounded-lg bg-white/10 text-gray-300 text-sm font-medium">{t('cancel', 'Cancel') || 'Cancel'}</button>
                   <button onClick={() => { const g = parseFloat((document.getElementById('add-gstd') as HTMLInputElement)?.value || '10'); const x = parseFloat((document.getElementById('add-xaut') as HTMLInputElement)?.value || '0'); if ((g >= 0.1 || x >= 0.0001) && (g > 0 || x > 0)) handlePrepareLiquidity(g, x); }} disabled={addLiquidityLoading} className="flex-1 px-4 py-2 rounded-lg bg-amber-500/30 text-amber-400 text-sm font-bold disabled:opacity-50">
-                    {addLiquidityLoading ? '...' : (t('prepare') || 'Prepare')}
+                    {addLiquidityLoading ? '...' : (t('prepare', 'Prepare') || 'Prepare')}
                   </button>
                 </div>
               </>
             ) : (
               <>
-                <p className="text-sm text-emerald-400 mb-3">✅ {t('payload_ready') || 'Payload ready'}</p>
-                <p className="text-xs text-gray-500 mb-3">{t('add_liquidity_next') || 'Open Ston.fi and add liquidity manually, or use the payload with your wallet:'}</p>
+                <p className="text-sm text-emerald-400 mb-3">✅ {t('payload_ready', 'Payload ready') || 'Payload ready'}</p>
+                <p className="text-xs text-gray-500 mb-3">{t('add_liquidity_next', 'Open Ston.fi and add liquidity manually, or use the payload with your wallet.') || 'Open Ston.fi and add liquidity manually, or use the payload with your wallet:'}</p>
                 <a href={STONFI_POOL_URL} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 w-full justify-center px-4 py-3 rounded-xl bg-amber-500/20 text-amber-400 font-bold mb-3 hover:bg-amber-500/30 transition-colors">
                   <ExternalLink size={16} />
-                  {t('open_stonfi') || 'Open Ston.fi Pool'}
+                  {t('open_stonfi', 'Open Ston.fi Pool') || 'Open Ston.fi Pool'}
                 </a>
                 <p className="text-[10px] text-gray-500 mb-2">{addLiquidityResult.amount_gstd} GSTD + {addLiquidityResult.amount_xaut} XAUt</p>
-                <button onClick={() => setShowAddLiquidity(false)} className="w-full px-4 py-2 rounded-lg bg-white/10 text-gray-300 text-sm">{t('close') || 'Close'}</button>
+                <button onClick={() => setShowAddLiquidity(false)} className="w-full px-4 py-2 rounded-lg bg-white/10 text-gray-300 text-sm">{t('close', 'Close') || 'Close'}</button>
               </>
             )}
           </div>
@@ -380,15 +380,15 @@ export default function GoldenReservePanel() {
       {/* Detailed Info Panel (expandable) */}
       {showDetails && (
         <div className="mt-6 p-5 rounded-2xl bg-black/30 border border-white/5 relative z-10 animate-in fade-in slide-in-from-top-2 duration-300">
-          <h4 className="text-sm font-black text-white mb-3 uppercase tracking-wider">{t('gold_reserve_how') || 'How the Golden Reserve Works'}</h4>
+          <h4 className="text-sm font-black text-white mb-3 uppercase tracking-wider">{t('gold_reserve_how', 'How the Gold Reserve Works') || 'How the Golden Reserve Works'}</h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-gray-400">
             <div>
-              <h5 className="font-bold text-amber-400 mb-1">{t('gold_reserve_how_1_title') || 'Transaction Fee'}</h5>
-              <p>{t('gold_reserve_how_1') || 'Every task payment on GSTD Platform allocates 7% to the Golden Reserve Fund. This fund buys XAUt (Tether Gold) on STON.fi DEX, creating physical gold backing for the GSTD token.'}</p>
+              <h5 className="font-bold text-amber-400 mb-1">{t('gold_reserve_how_1_title', 'Transaction Fee') || 'Transaction Fee'}</h5>
+              <p>{t('gold_reserve_how_1', 'Every task payment on GSTD Platform allocates 2% to the Gold Reserve Fund. Th...') || 'Every task payment on GSTD Platform allocates 7% to the Golden Reserve Fund. This fund buys XAUt (Tether Gold) on STON.fi DEX, creating physical gold backing for the GSTD token.'}</p>
             </div>
             <div>
-              <h5 className="font-bold text-emerald-400 mb-1">{t('gold_reserve_how_3_title') || 'Auto-Buyback'}</h5>
-              <p>{t('gold_reserve_how_3') || 'Platform revenue from API gateway fees and marketplace commissions is used to buy back GSTD from the open market and add to the gold reserve, creating a virtuous cycle.'}</p>
+              <h5 className="font-bold text-emerald-400 mb-1">{t('gold_reserve_how_3_title', 'Auto-Buyback') || 'Auto-Buyback'}</h5>
+              <p>{t('gold_reserve_how_3', 'Platform revenue from API fees and marketplace commissions is used to buy bac...') || 'Platform revenue from API gateway fees and marketplace commissions is used to buy back GSTD from the open market and add to the gold reserve, creating a virtuous cycle.'}</p>
             </div>
           </div>
         </div>
