@@ -3,6 +3,7 @@ import { useWalletStore } from '../store/walletStore';
 import { useTonConnectUI } from '@tonconnect/ui-react';
 import { API_BASE_URL } from '../lib/config';
 import { Zap, Brain, Shield, Rocket, Activity, AlertCircle, CheckCircle, Terminal, Key, Copy, Plus } from 'lucide-react';
+import { useTranslation } from 'next-i18next';
 
 interface SovereignSwitchProps {
     className?: string;
@@ -10,6 +11,7 @@ interface SovereignSwitchProps {
 }
 
 export const SovereignSwitch = ({ className, onModeChange }: SovereignSwitchProps) => {
+  const { t } = useTranslation('common');
     const { isConnected, gstdBalance } = useWalletStore();
     const [tonConnectUI] = useTonConnectUI();
     const [mode, setMode] = useState<'consumer' | 'producer'>('producer');

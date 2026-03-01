@@ -3,12 +3,14 @@
 import { useState, useEffect } from 'react';
 import { Globe } from 'lucide-react';
 import { API_BASE_URL } from '../../lib/config';
+import { useTranslation } from 'next-i18next';
 
 interface PublicStats {
   global_treasury_growth_today_oz?: number;
 }
 
 export default function GlobalTreasuryGrowthWidget() {
+  const { t } = useTranslation('common');
   const [oz, setOz] = useState<number | null>(null);
 
   useEffect(() => {

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { TrendingUp } from 'lucide-react';
 import { apiGet } from '../../lib/apiClient';
 import { useWalletStore } from '../../store/walletStore';
+import { useTranslation } from 'next-i18next';
 
 interface EarningsPrediction {
   wallet: string;
@@ -13,6 +14,7 @@ interface EarningsPrediction {
 }
 
 export default function EarningsPredictionWidget() {
+  const { t } = useTranslation('common');
   const { address } = useWalletStore();
   const [data, setData] = useState<EarningsPrediction | null>(null);
   const [loading, setLoading] = useState(false);

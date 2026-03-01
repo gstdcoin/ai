@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { API_BASE_URL } from '../lib/config';
+import { useTranslation } from 'next-i18next';
 
 interface OnboardingStep {
     order: number;
@@ -75,6 +76,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
     };
 
     const t = (key: string, params?: Record<string, string | number>) => {
+  const { t } = useTranslation('common');
         let text = translations[language]?.[key] || translations.en[key] || key;
         if (params) {
             Object.entries(params).forEach(([k, v]) => {
