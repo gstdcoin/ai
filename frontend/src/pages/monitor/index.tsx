@@ -47,7 +47,7 @@ interface LogEntry {
 const ACTIVE_SIGNALS: GlobalSignal[] = [
     // ─── CLIMATE & ENVIRONMENT ───────────────────────────────────────
     {
-        id: 'nasa_eosdis', title: t('nasa_climate_anomaly_extraction', 'NASA Climate Anomaly Extraction'),
+        id: 'nasa_eosdis', title: 'NASA Climate Anomaly Extraction',
         description: 'Process raw satellite imagery & atmospheric data to detect deforestation and extreme surface temperature anomalies before they become irreversible.',
         source: 'NASA EOSDIS', severity: 'critical', location: 'Equatorial Band',
         dataVolume: '45.8 TB/week', icon: Sun, color: 'text-amber-400', bgColor: 'bg-amber-500/10',
@@ -55,7 +55,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
         progress: 61, contributors: 89, impact: 'Early warning for 2.3B people in equatorial zones'
     },
     {
-        id: 'wildfire_sentinel', title: t('wildfire_spread_prediction_grid', 'Wildfire Spread Prediction Grid'),
+        id: 'wildfire_sentinel', title: 'Wildfire Spread Prediction Grid',
         description: 'Cross-reference Sentinel-2 thermal bands and MODIS hotspot data with wind models to predict wildfire spread within 6-hour windows.',
         source: 'ESA Sentinel-2 & FIRMS', severity: 'critical', location: 'California / Australia / Siberia',
         dataVolume: '22.7 TB/week', icon: Flame, color: 'text-orange-300', bgColor: 'bg-orange-400/10',
@@ -63,7 +63,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
         progress: 45, contributors: 112, impact: 'Prevent $50B+ annual wildfire damage'
     },
     {
-        id: 'copernicus_marine', title: t('ocean_heatwave__coral_bleaching_model', 'Ocean Heatwave & Coral Bleaching Model'),
+        id: 'copernicus_marine', title: 'Ocean Heatwave & Coral Bleaching Model',
         description: 'Process deep oceanic temperature, drift, and salinity arrays to predict marine heatwaves and coral reef die-off events months in advance.',
         source: 'Copernicus Marine Service', severity: 'high', location: 'Pacific & Indian Oceans',
         dataVolume: '8.1 TB/mo', icon: Droplets, color: 'text-teal-400', bgColor: 'bg-teal-500/10',
@@ -71,7 +71,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
         progress: 88, contributors: 64, impact: 'Protect 500M people dependent on coral reef ecosystems'
     },
     {
-        id: 'air_quality_mesh', title: t('urban_air_quality_mesh_intelligence', 'Urban Air Quality Mesh Intelligence'),
+        id: 'air_quality_mesh', title: 'Urban Air Quality Mesh Intelligence',
         description: 'Aggregate and normalize 200,000+ low-cost PM2.5/PM10 sensors across 12,000 cities to build real-time AQI maps with health risk heatmaps.',
         source: 'OpenAQ & PurpleAir APIs', severity: 'high', location: '12,000+ Cities',
         dataVolume: '3.8 TB/day', icon: Wind, color: 'text-sky-300', bgColor: 'bg-sky-400/10',
@@ -79,7 +79,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
         progress: 76, contributors: 310, impact: 'Air pollution kills 7M people/year (WHO)'
     },
     {
-        id: 'carbon_sink', title: t('global_carbon_sink_mapping', 'Global Carbon Sink Mapping'),
+        id: 'carbon_sink', title: 'Global Carbon Sink Mapping',
         description: 'Combine LIDAR forest canopy data with soil carbon sensors and satellite imagery to map the planet\'s carbon capture capacity in real time.',
         source: 'Global Forest Watch & FLUXNET', severity: 'medium', location: 'Amazon / Congo / Boreal',
         dataVolume: '15 TB/mo', icon: Leaf, color: 'text-green-400', bgColor: 'bg-green-500/10',
@@ -89,7 +89,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
 
     // ─── HEALTH & MEDICINE ───────────────────────────────────────────
     {
-        id: 'who_pubmed', title: t('pandemic_early_warning_system', 'Pandemic Early Warning System'),
+        id: 'who_pubmed', title: 'Pandemic Early Warning System',
         description: 'Semantic analysis of 40M+ medical papers, hospital discharge records, and wastewater surveillance to predict disease outbreak vectors 30+ days ahead.',
         source: 'WHO GHO & PubMed Central', severity: 'critical', location: 'Global',
         dataVolume: '2.4 TB/text', icon: HeartPulse, color: 'text-purple-400', bgColor: 'bg-purple-500/10',
@@ -97,7 +97,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
         progress: 18, contributors: 214, impact: 'Next pandemic prevention — COVID cost $16T globally'
     },
     {
-        id: 'alphafold_protein', title: t('orphan_disease_drug_discovery', 'Orphan Disease Drug Discovery'),
+        id: 'alphafold_protein', title: 'Orphan Disease Drug Discovery',
         description: 'Predict 3D protein structures for 7,000+ rare uncurable genetic diseases using distributed folding. Each solution could unlock a new therapy.',
         source: 'UniProt & NCBI GenBank', severity: 'critical', location: 'Global / Decentralized',
         dataVolume: '120 TB/mo', icon: Dna, color: 'text-emerald-300', bgColor: 'bg-emerald-400/10',
@@ -105,7 +105,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
         progress: 7, contributors: 341, impact: '350M people suffer from rare diseases worldwide'
     },
     {
-        id: 'antibiotic_resistance', title: t('superbug_mutation_tracker', 'Superbug Mutation Tracker'),
+        id: 'antibiotic_resistance', title: 'Superbug Mutation Tracker',
         description: 'Sequence-align bacterial genomes from hospital wastewater worldwide to map antibiotic-resistant superbug mutations before they spread.',
         source: 'NCBI SRA & CARD Database', severity: 'critical', location: 'Global Hospital Networks',
         dataVolume: '35 TB/batch', icon: Microscope, color: 'text-lime-400', bgColor: 'bg-lime-500/10',
@@ -113,7 +113,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
         progress: 22, contributors: 189, impact: 'AMR could kill 10M people/year by 2050 (WHO)'
     },
     {
-        id: 'mental_health_nlp', title: t('global_mental_health_signal_detection', 'Global Mental Health Signal Detection'),
+        id: 'mental_health_nlp', title: 'Global Mental Health Signal Detection',
         description: 'Analyze anonymized social media language patterns, crisis hotline metadata, and public health surveys to map depression/anxiety hotspots and predict suicide risk zones.',
         source: 'Crisis Text Line Data & WHO MH Atlas', severity: 'high', location: 'Global',
         dataVolume: '4.2 TB/mo', icon: Brain, color: 'text-pink-400', bgColor: 'bg-pink-500/10',
@@ -123,7 +123,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
 
     // ─── HUMANITARIAN & SAFETY ────────────────────────────────────────
     {
-        id: 'gdelt_crisis', title: t('humanitarian_crisis_early_warning', 'Humanitarian Crisis Early Warning'),
+        id: 'gdelt_crisis', title: 'Humanitarian Crisis Early Warning',
         description: 'Analyze massive global event logs (300M+ news articles/year) to identify emerging humanitarian aid gaps, famine signals, and displacement vectors 2-4 weeks early.',
         source: 'GDELT Project (Global DB)', severity: 'critical', location: 'Global / MENA / Sub-Saharan Africa',
         dataVolume: '14.2 TB/day', icon: Globe2, color: 'text-rose-400', bgColor: 'bg-rose-500/10',
@@ -131,7 +131,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
         progress: 34, contributors: 127, impact: '100M people in need of humanitarian assistance (OCHA)'
     },
     {
-        id: 'darknet_tracker', title: t('human_trafficking_vector_analysis', 'Human Trafficking Vector Analysis'),
+        id: 'darknet_tracker', title: 'Human Trafficking Vector Analysis',
         description: 'NLP and image hash analysis across Dark Web scrapes to identify illicit supply chains and assist global law enforcement operations anonymously.',
         source: 'OSINT Protocol Drops', severity: 'critical', location: 'Shadow Web / Global',
         dataVolume: '3.1 TB/batch', icon: ShieldCheck, color: 'text-fuchsia-400', bgColor: 'bg-fuchsia-500/10',
@@ -139,7 +139,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
         progress: 42, contributors: 78, impact: '50M people in modern slavery (ILO)'
     },
     {
-        id: 'osm_disaster', title: t('disaster_zone_rapid_mapping', 'Disaster Zone Rapid Mapping'),
+        id: 'osm_disaster', title: 'Disaster Zone Rapid Mapping',
         description: 'Identify damaged infrastructure, blocked roads, and safe zones from satellite imagery in post-disaster areas to optimize rescue routing within hours.',
         source: 'Humanitarian OpenStreetMap', severity: 'high', location: 'Active Disaster Zones',
         dataVolume: '1.2 TB/area', icon: MapPin, color: 'text-red-400', bgColor: 'bg-red-500/10',
@@ -147,7 +147,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
         progress: 95, contributors: 48, impact: '339 natural disasters affected 185M people in 2023'
     },
     {
-        id: 'refugee_flow', title: t('refugee_flow_prediction_model', 'Refugee Flow Prediction Model'),
+        id: 'refugee_flow', title: 'Refugee Flow Prediction Model',
         description: 'Combine conflict zone satellite data, border crossing reports, and news NLP to predict refugee flows 2-6 weeks ahead, enabling pre-positioned aid.',
         source: 'UNHCR Data & ACAPS', severity: 'high', location: 'Conflict Zones / Borders',
         dataVolume: '2.5 TB/mo', icon: PersonStanding, color: 'text-violet-400', bgColor: 'bg-violet-500/10',
@@ -157,7 +157,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
 
     // ─── FOOD & WATER SECURITY ────────────────────────────────────────
     {
-        id: 'famine_prediction', title: t('global_famine_prediction_engine', 'Global Famine Prediction Engine'),
+        id: 'famine_prediction', title: 'Global Famine Prediction Engine',
         description: 'Correlate crop yield satellite data, commodity prices, rainfall anomalies, and conflict indicators to predict food crises 60-90 days before they peak.',
         source: 'FEWS NET & FAO GIEWS', severity: 'critical', location: 'Horn of Africa / South Asia',
         dataVolume: '6.8 TB/mo', icon: Wheat, color: 'text-yellow-400', bgColor: 'bg-yellow-500/10',
@@ -165,7 +165,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
         progress: 41, contributors: 132, impact: '783M people face chronic hunger (FAO)'
     },
     {
-        id: 'water_stress', title: t('freshwater_stress_monitoring', 'Freshwater Stress Monitoring'),
+        id: 'water_stress', title: 'Freshwater Stress Monitoring',
         description: 'Process GRACE satellite gravity data, groundwater well sensors, and snowpack measurements to map aquifer depletion and predict water shortages.',
         source: 'NASA GRACE-FO & WRI Aqueduct', severity: 'high', location: 'Middle East / India / Central Asia',
         dataVolume: '4.5 TB/mo', icon: Droplets, color: 'text-blue-300', bgColor: 'bg-blue-400/10',
@@ -175,7 +175,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
 
     // ─── GEOPHYSICS & NATURAL DISASTERS ──────────────────────────────
     {
-        id: 'seismic_array', title: t('earthquake_precursor_pattern_mining', 'Earthquake Precursor Pattern Mining'),
+        id: 'seismic_array', title: 'Earthquake Precursor Pattern Mining',
         description: 'Analyze real-time low-frequency tectonic data from 30,000+ seismographs to find micro-patterns (foreshocks, radon anomalies) preceding major earthquakes.',
         source: 'IRIS & Global Seismographic Network', severity: 'high', location: 'Pacific Ring of Fire',
         dataVolume: '18.5 TB/day', icon: Activity, color: 'text-orange-400', bgColor: 'bg-orange-500/10',
@@ -183,7 +183,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
         progress: 52, contributors: 156, impact: 'Earthquakes killed 60,000+ people in 2023 alone'
     },
     {
-        id: 'tsunami_model', title: t('tsunami_propagation_modeling', 'Tsunami Propagation Modeling'),
+        id: 'tsunami_model', title: 'Tsunami Propagation Modeling',
         description: 'Run high-resolution ocean floor bathymetry simulations to predict tsunami wave heights and arrival times for every coastal city within 15 minutes of a seismic event.',
         source: 'NOAA DART Buoy Network', severity: 'critical', location: 'All Coastal Zones',
         dataVolume: '7.3 TB/sim', icon: Waves, color: 'text-cyan-400', bgColor: 'bg-cyan-500/10',
@@ -193,7 +193,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
 
     // ─── CYBERSECURITY & INFORMATION ──────────────────────────────────
     {
-        id: 'deepfake_firewall', title: t('deepfake__disinformation_shield', 'Deepfake & Disinformation Shield'),
+        id: 'deepfake_firewall', title: 'Deepfake & Disinformation Shield',
         description: 'Run adversarial models to detect synthetic media (video/audio/text) designed to manipulate elections, markets, and public health decisions in real time.',
         source: 'Global Social Firehose', severity: 'high', location: 'North America / EU / APAC',
         dataVolume: '50.1 TB/week', icon: BrainCircuit, color: 'text-cyan-300', bgColor: 'bg-cyan-400/10',
@@ -211,7 +211,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
 
     // ─── SCIENCE & ENERGY ────────────────────────────────────────────
     {
-        id: 'cern_physics', title: t('cern_particle_physics_discovery', 'CERN Particle Physics Discovery'),
+        id: 'cern_physics', title: 'CERN Particle Physics Discovery',
         description: 'Process high-energy collision layer data to assist in foundational physics discoveries and material science breakthroughs for fusion and clean energy.',
         source: 'CERN Open Data Portal', severity: 'medium', location: 'Geneva / Virtual',
         dataVolume: '120 TB/batch', icon: Network, color: 'text-blue-400', bgColor: 'bg-blue-500/10',
@@ -219,7 +219,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
         progress: 13, contributors: 92, impact: 'Understanding the universe to unlock clean energy'
     },
     {
-        id: 'fusion_sim', title: t('fusion_plasma_stability_simulation', 'Fusion Plasma Stability Simulation'),
+        id: 'fusion_sim', title: 'Fusion Plasma Stability Simulation',
         description: 'Simulate tokamak plasma confinement scenarios using magnetohydrodynamic models to accelerate the path to commercial fusion power.',
         source: 'ITER & PPPL Open Data', severity: 'medium', location: 'Global Research Labs',
         dataVolume: '28 TB/sim', icon: Zap, color: 'text-yellow-300', bgColor: 'bg-yellow-400/10',
@@ -227,7 +227,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
         progress: 8, contributors: 45, impact: 'Unlimited clean energy for all of humanity'
     },
     {
-        id: 'space_debris', title: t('space_debris_collision_avoidance', 'Space Debris Collision Avoidance'),
+        id: 'space_debris', title: 'Space Debris Collision Avoidance',
         description: 'Track 40,000+ orbital debris objects and predict collision probabilities for active satellites and the ISS using distributed orbit propagation.',
         source: 'US Space Command TLE Data', severity: 'high', location: 'Low Earth Orbit',
         dataVolume: '5.3 TB/day', icon: Satellite, color: 'text-indigo-400', bgColor: 'bg-indigo-500/10',
@@ -237,7 +237,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
 
     // ─── EDUCATION & POVERTY ─────────────────────────────────────────
     {
-        id: 'education_gap', title: t('global_education_gap_analysis', 'Global Education Gap Analysis'),
+        id: 'education_gap', title: 'Global Education Gap Analysis',
         description: 'Process UNESCO enrollment data, satellite imagery of school infrastructure, and mobility data to identify where 250M children are denied education.',
         source: 'UNESCO UIS & World Bank EdStats', severity: 'high', location: 'Sub-Saharan Africa / South Asia',
         dataVolume: '1.8 TB/quarter', icon: GraduationCap, color: 'text-indigo-300', bgColor: 'bg-indigo-400/10',
@@ -245,7 +245,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
         progress: 44, contributors: 167, impact: '250M children out of school worldwide'
     },
     {
-        id: 'poverty_mapping', title: t('poverty_mapping_from_space', 'Poverty Mapping from Space'),
+        id: 'poverty_mapping', title: 'Poverty Mapping from Space',
         description: 'Use nighttime light satellite imagery, building footprints, and cell tower density to map poverty at 1km² resolution — enabling targeted aid delivery.',
         source: 'VIIRS Nightlight & WorldPop', severity: 'high', location: 'Global South',
         dataVolume: '9.2 TB/mo', icon: Building2, color: 'text-amber-300', bgColor: 'bg-amber-400/10',
@@ -253,7 +253,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
         progress: 56, contributors: 134, impact: '700M people live in extreme poverty'
     },
     {
-        id: 'child_mortality', title: t('child_mortality_risk_prediction', 'Child Mortality Risk Prediction'),
+        id: 'child_mortality', title: 'Child Mortality Risk Prediction',
         description: 'Combine vaccination records, nutrition surveys, and weather data to predict where under-5 mortality will spike, enabling preventive intervention.',
         source: 'UNICEF MICS & DHS Program', severity: 'critical', location: 'Low-Income Countries',
         dataVolume: '2.1 TB/batch', icon: Baby, color: 'text-pink-300', bgColor: 'bg-pink-400/10',
@@ -263,7 +263,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
 
     // ─── ECONOMY & GOVERNANCE ────────────────────────────────────────
     {
-        id: 'financial_contagion', title: t('systemic_financial_contagion_model', 'Systemic Financial Contagion Model'),
+        id: 'financial_contagion', title: 'Systemic Financial Contagion Model',
         description: 'Simulate cascading bank failures across 200+ interconnected institutions using real-time CDS spreads and interbank exposure data.',
         source: 'BIS & ECB Open Data', severity: 'high', location: 'Global Financial System',
         dataVolume: '1.5 TB/cycle', icon: TrendingUp, color: 'text-yellow-400', bgColor: 'bg-yellow-500/10',
@@ -271,7 +271,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
         progress: 55, contributors: 73, impact: 'Prevent next financial crisis (2008 cost $22T)'
     },
     {
-        id: 'corruption_trace', title: t('public_spending_anomaly_detection', 'Public Spending Anomaly Detection'),
+        id: 'corruption_trace', title: 'Public Spending Anomaly Detection',
         description: 'Analyze government procurement data, corporate registries, and financial flows to detect corruption patterns and illicit wealth transfers.',
         source: 'OCDS & OpenCorporates & ICIJ', severity: 'medium', location: 'Global',
         dataVolume: '5.6 TB/mo', icon: Scale, color: 'text-emerald-400', bgColor: 'bg-emerald-500/10',
@@ -281,7 +281,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
 
     // ─── BIODIVERSITY & OCEANS ───────────────────────────────────────
     {
-        id: 'biodiversity_loss', title: t('species_extinction_risk_modeling', 'Species Extinction Risk Modeling'),
+        id: 'biodiversity_loss', title: 'Species Extinction Risk Modeling',
         description: 'Process audio (bioacoustics), camera trap images, and eDNA sequencing from 15,000+ monitoring stations to track biodiversity loss in real time.',
         source: 'GBIF & IUCN Red List Data', severity: 'critical', location: 'Hotspot Ecosystems',
         dataVolume: '11.4 TB/mo', icon: Sprout, color: 'text-green-300', bgColor: 'bg-green-400/10',
@@ -289,7 +289,7 @@ const ACTIVE_SIGNALS: GlobalSignal[] = [
         progress: 26, contributors: 145, impact: '1M species face extinction (IPBES)'
     },
     {
-        id: 'ocean_plastic', title: t('ocean_plastic_drift_prediction', 'Ocean Plastic Drift Prediction'),
+        id: 'ocean_plastic', title: 'Ocean Plastic Drift Prediction',
         description: 'Model microplastic dispersion using ocean current data from Argo floats and satellite altimetry to predict accumulation zones and plan cleanup routes.',
         source: 'Argo Float Network & NOAA', severity: 'medium', location: 'Pacific Gyre / Indian Ocean',
         dataVolume: '6.2 TB/mo', icon: Waves, color: 'text-cyan-400', bgColor: 'bg-cyan-500/10',
