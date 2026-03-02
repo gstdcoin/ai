@@ -885,7 +885,7 @@ func StartApplication(container *dig.Container) error {
 			dataAirlock, openClawBridge)
 
 		// 4b1a. Agent API: OpenClaw/A2A agent endpoints
-		agentHandler := api.NewAgentAPIHandler(db, openClawBridge)
+		agentHandler := api.NewAgentAPIHandler(db, openClawBridge, recyclingPool)
 		api.SetupAgentRoutes(v1Group, agentHandler)
 		log.Printf("🤖 Agent API: ACTIVE — POST /api/v1/agents/register, /agents/chat/completions")
 
