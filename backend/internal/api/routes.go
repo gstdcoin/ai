@@ -541,7 +541,7 @@ func SetupRoutes(
 		tgBot.POST("/claim_reward", tgBotHandler.ClaimReward)
 
 		// Stars purchase — credits GSTD to linked wallet
-		v1.POST("/telegram/buy-stars", buyStarsHandler(dbConn, welcomeBonusService))
+		v1.POST("/telegram/buy-stars", buyStarsHandler(dbConn))
 
 		// Initialize and setup Orchestrator routes (PoW, Task Queue, Client Dashboard)
 		orchestratorHandler := NewOrchestratorHandler(db.(*sql.DB), taskOrchestrator, powService, tonService, geoService)
