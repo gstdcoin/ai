@@ -39,7 +39,6 @@ func NewLoadBalancer(db *sql.DB, rdb *redis.Client) *LoadBalancer {
 	}
 }
 
-
 type TaskRequirements struct {
 	MinTrust         float64
 	RequiredCPU      int
@@ -93,7 +92,7 @@ func (lb *LoadBalancer) SelectBestWorker(ctx context.Context, req TaskRequiremen
 		// 3. Scoring (Reputation Weighted Load Balancing + Preventive Health)
 		// Score = (Trust * 40) + (Stability * 20) + (HealthRating * 30) - (LoadFactor * 20)
 		loadFactor := float64(worker.ActiveTasks) / float64(worker.MaxTasks)
-		
+
 		// Health Rating (PROACTIVE)
 		healthRating := 1.0
 		if worker.BatteryLevel > 0 && worker.BatteryLevel < 20 {
@@ -101,7 +100,7 @@ func (lb *LoadBalancer) SelectBestWorker(ctx context.Context, req TaskRequiremen
 		} else if worker.BatteryLevel > 0 && worker.BatteryLevel < 50 {
 			healthRating *= 0.7 // Subtle penalty for moderate battery
 		}
-		
+
 		if worker.SignalQuality > 0 && worker.SignalQuality < 30 {
 			healthRating *= 0.5 // Penalty for weak signal
 		}
@@ -156,10 +155,10 @@ func (lb *LoadBalancer) getActiveWorkers(ctx context.Context) ([]*WorkerCapacity
 		fmt.Sscanf(data["cpu_cores"], "%d", &w.CPUCores)
 		fmt.Sscanf(data["ram_gb"], "%f", &w.RAMGB)
 		fmt.Sscanf(data["stability"], "%f", &w.Stability)
-		
+
 		fmt.Sscanf(data["battery_level"], "%d", &w.BatteryLevel)
 		fmt.Sscanf(data["signal_quality"], "%d", &w.SignalQuality)
-		
+
 		if ts, err := time.Parse(time.RFC3339, data["last_seen"]); err == nil {
 			w.LastSeen = ts
 		}

@@ -54,4 +54,3 @@ func createTaskWithPayment(service *services.TaskPaymentService, rateLimiter *se
 		c.JSON(200, response)
 	}
 }
-

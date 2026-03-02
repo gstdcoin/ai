@@ -8,13 +8,13 @@ import (
 // Lesson is a distilled vector from Final Resolution (Evolutionary Data: Continuous Vector Learning).
 // Infinite Growth: MetaCause = extracted meta-reason (Pattern Extraction).
 type Lesson struct {
-	Sector     string  // politics, crypto, general
-	Keywords   string  // space-separated keywords from event
+	Sector     string // politics, crypto, general
+	Keywords   string // space-separated keywords from event
 	Correct    bool
-	SourceUsed string  // news | polymarket
+	SourceUsed string // news | polymarket
 	Reasoning  string
-	MetaCause  string  // Infinite Growth: extracted meta-cause vector
-	CreatedAt  string  // for Live Stream "Recall from [Date]"
+	MetaCause  string // Infinite Growth: extracted meta-cause vector
+	CreatedAt  string // for Live Stream "Recall from [Date]"
 }
 
 // ExtractMetaCause derives meta-cause from reasoning (Pattern Extraction).
@@ -510,7 +510,10 @@ func (e *ShadowEngine) GetSourceLeaderboard() []SourceLeaderboardEntry {
 }
 
 // GetSectorAccuracyStats returns per-sector accuracy for Sentience Ticker (System Status).
-func (e *ShadowEngine) GetSectorAccuracyStats() []struct{ Sector string; AccuracyPct float64 } {
+func (e *ShadowEngine) GetSectorAccuracyStats() []struct {
+	Sector      string
+	AccuracyPct float64
+} {
 	rows, err := e.db.Query(`
 		SELECT sector, SUM(correct_cnt) as correct, SUM(total_cnt) as total
 		FROM sector_accuracy WHERE total_cnt >= 2

@@ -92,4 +92,3 @@ func updateUserBalance(ctx context.Context, db *sql.DB, wallet string, onChain f
 	`, onChain, wallet)
 	return err
 }
-

@@ -222,14 +222,14 @@ func (w *TONWalletService) SendJettonTransfer(
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
 		log.Printf("TON API transfer error (status %d): %s", resp.StatusCode, string(body))
-		
+
 		// If TON API doesn't support direct transfer, use estimate and log
 		if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusMethodNotAllowed {
 			log.Printf("⚠️  TON API doesn't support direct transfer endpoint")
 			log.Printf("   Using estimate endpoint and logging transfer intent")
 			return w.estimateAndLogTransfer(ctx, recipientAddr, jettonAddr, amountNano, comment)
 		}
-		
+
 		return "", fmt.Errorf("TON API error (status %d): %s", resp.StatusCode, string(body))
 	}
 
@@ -348,4 +348,3 @@ func (w *TONWalletService) estimateAndLogTransfer(
 
 	return txHash, nil
 }
-

@@ -18,12 +18,12 @@ import (
 
 // CodeLayer holds GitHub/ArXiv signals (Omnipresence: trust code over news).
 type CodeLayer struct {
-	GitHubSummary  string
-	GitHubSource   string
-	ArXivSummary   string
-	ArXivSource    string
-	DEXSignal      string    // Pyth/oracle signal when available
-	LatestTime     time.Time // newest UpdatedAt from GitHub/ArXiv; zero = none
+	GitHubSummary string
+	GitHubSource  string
+	ArXivSummary  string
+	ArXivSource   string
+	DEXSignal     string    // Pyth/oracle signal when available
+	LatestTime    time.Time // newest UpdatedAt from GitHub/ArXiv; zero = none
 }
 
 // GitHubSearchResult from api.github.com/search/repositories

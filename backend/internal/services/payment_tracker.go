@@ -14,11 +14,11 @@ import (
 
 // PaymentTracker tracks payout transactions on blockchain and reconciles with database
 type PaymentTracker struct {
-	db          *sql.DB
-	tonService  *TONService
-	tonConfig   config.TONConfig
+	db           *sql.DB
+	tonService   *TONService
+	tonConfig    config.TONConfig
 	contractAddr string
-	stopChan    chan struct{}
+	stopChan     chan struct{}
 }
 
 // NewPaymentTracker creates a new payment tracker service
@@ -40,7 +40,7 @@ func NewPaymentTracker(db *sql.DB, tonService *TONService, tonConfig config.TONC
 // Start begins tracking payments every 2 minutes
 func (pt *PaymentTracker) Start(ctx context.Context) {
 	log.Printf("PaymentTracker: Starting payment tracking for contract %s", pt.contractAddr)
-	
+
 	ticker := time.NewTicker(2 * time.Minute)
 	defer ticker.Stop()
 
@@ -92,30 +92,30 @@ func (pt *PaymentTracker) reconcilePayments(ctx context.Context) {
 	defer rows.Close()
 
 	var transactions []struct {
-		ID               int
-		TaskID           string
-		ExecutorAddr     string
-		TxHash           sql.NullString
-		QueryID          sql.NullInt64
-		Status           string
-		CreatedAt        time.Time
-		ExecutorReward   float64
-		PlatformFee      float64
-		Nonce            int64
+		ID             int
+		TaskID         string
+		ExecutorAddr   string
+		TxHash         sql.NullString
+		QueryID        sql.NullInt64
+		Status         string
+		CreatedAt      time.Time
+		ExecutorReward float64
+		PlatformFee    float64
+		Nonce          int64
 	}
 
 	for rows.Next() {
 		var tx struct {
-			ID               int
-			TaskID           string
-			ExecutorAddr     string
-			TxHash           sql.NullString
-			QueryID          sql.NullInt64
-			Status           string
-			CreatedAt        time.Time
-			ExecutorReward   float64
-			PlatformFee      float64
-			Nonce            int64
+			ID             int
+			TaskID         string
+			ExecutorAddr   string
+			TxHash         sql.NullString
+			QueryID        sql.NullInt64
+			Status         string
+			CreatedAt      time.Time
+			ExecutorReward float64
+			PlatformFee    float64
+			Nonce          int64
 		}
 		err := rows.Scan(&tx.ID, &tx.TaskID, &tx.ExecutorAddr, &tx.TxHash, &tx.QueryID, &tx.Status, &tx.CreatedAt,
 			&tx.ExecutorReward, &tx.PlatformFee, &tx.Nonce)
@@ -147,7 +147,7 @@ func (pt *PaymentTracker) reconcilePayments(ctx context.Context) {
 			// Mark as failed if no transaction found or transaction is stuck
 			log.Printf("PaymentTracker: Transaction %d (task: %s) timed out after 24 hours, marking as failed and refunding balance",
 				dbTx.ID, dbTx.TaskID)
-			
+
 			// Mark transaction as failed and refund balance to user
 			err := pt.markTransactionFailedAndRefund(ctx, dbTx.ID, dbTx.TaskID, dbTx.ExecutorAddr, dbTx.ExecutorReward)
 			if err != nil {
@@ -162,7 +162,7 @@ func (pt *PaymentTracker) reconcilePayments(ctx context.Context) {
 			if pt.isTransactionConfirmed(blockchainTxs, dbTx.TxHash.String) {
 				log.Printf("PaymentTracker: Transaction %s confirmed for task %s",
 					dbTx.TxHash.String, dbTx.TaskID)
-				
+
 				pt.markTransactionConfirmed(ctx, dbTx.ID, dbTx.TaskID, dbTx.TxHash.String, dbTx.ExecutorReward, dbTx.PlatformFee, dbTx.Nonce, dbTx.QueryID)
 				continue
 			}
@@ -174,18 +174,18 @@ func (pt *PaymentTracker) reconcilePayments(ctx context.Context) {
 			for _, bcTx := range blockchainTxs {
 				if bcTx.QueryID == dbTx.QueryID.Int64 && bcTx.Success {
 					log.Printf("PaymentTracker: QueryID matched %d. Verifying details...", dbTx.QueryID.Int64)
-					
+
 					// VERIFY DESTINATION AND AMOUNT
 					// 1. Check if ANY output message pays the correct executor
 					// 2. Check if the amount matches explicitly
-					
+
 					verified := false
-					
+
 					for _, outMsg := range bcTx.OutMsgs {
 						// Normalize addresses for comparison (function available in same package)
 						outDest := NormalizeAddressForAPI(outMsg.Destination)
 						expectedExecutor := NormalizeAddressForAPI(dbTx.ExecutorAddr)
-						
+
 						if outDest == expectedExecutor {
 							// Check amount
 							// outMsg.Value is in nanoton string
@@ -194,9 +194,9 @@ func (pt *PaymentTracker) reconcilePayments(ctx context.Context) {
 								log.Printf("PaymentTracker: Failed to parse output value for tx %s: %v", bcTx.Hash, err)
 								continue
 							}
-							
+
 							expectedNano := int64(dbTx.ExecutorReward * 1e9)
-							
+
 							// Allow small diff (e.g. 0.01 TON) or exact match?
 							// Exact match preferred for crypto
 							if valNano == expectedNano {
@@ -208,13 +208,13 @@ func (pt *PaymentTracker) reconcilePayments(ctx context.Context) {
 							}
 						}
 					}
-					
+
 					if verified {
 						log.Printf("PaymentTracker: Found confirmed transaction by query_id %d for task %s", dbTx.QueryID.Int64, dbTx.TaskID)
 						pt.markTransactionConfirmed(ctx, dbTx.ID, dbTx.TaskID, bcTx.Hash, dbTx.ExecutorReward, dbTx.PlatformFee, dbTx.Nonce, dbTx.QueryID)
 						break
 					} else {
-						log.Printf("PaymentTracker: 🚨 CRITICAL: QueryID %d matched but verification FAILED for task %s! Possible collision or attack.", 
+						log.Printf("PaymentTracker: 🚨 CRITICAL: QueryID %d matched but verification FAILED for task %s! Possible collision or attack.",
 							dbTx.QueryID.Int64, dbTx.TaskID)
 						// Do NOT confirm the transaction
 					}
@@ -228,7 +228,7 @@ func (pt *PaymentTracker) reconcilePayments(ctx context.Context) {
 				if bcTx.Success {
 					log.Printf("PaymentTracker: Found confirmed transaction by comment for task %s (hash: %s)",
 						dbTx.TaskID, bcTx.Hash)
-					
+
 					pt.markTransactionConfirmed(ctx, dbTx.ID, dbTx.TaskID, bcTx.Hash, dbTx.ExecutorReward, dbTx.PlatformFee, dbTx.Nonce, dbTx.QueryID)
 					break
 				}
@@ -275,7 +275,7 @@ func (pt *PaymentTracker) markTransactionConfirmed(ctx context.Context, txID int
 	if queryID.Valid {
 		queryIDValue = &queryID.Int64
 	}
-	
+
 	// Get executor_address from payout_transactions
 	var executorAddress string
 	err = tx.QueryRowContext(ctx, `SELECT executor_address FROM payout_transactions WHERE id = $1`, txID).Scan(&executorAddress)

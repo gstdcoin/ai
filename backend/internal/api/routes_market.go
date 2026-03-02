@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
-	
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -62,10 +62,10 @@ func (h *MarketHandler) PrepareSwapTransaction(c *gin.Context) {
 		c.JSON(500, gin.H{"error": "Failed to get real swap quote: " + err.Error()})
 		return
 	}
-	
+
 	// Payload for agent to sign
 	payload, err := h.stonFiService.BuildSwapPayload(c.Request.Context(), req.WalletAddress, quote, amountIn)
-	
+
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Failed to build payload"})
 		return
@@ -90,10 +90,10 @@ func (h *MarketHandler) PrepareSwapTransaction(c *gin.Context) {
 	}
 
 	c.JSON(200, gin.H{
-		"quote":        quote,
-		"transaction":  payload,
-		"instruction":  "Sign 'transaction.body_boc' with your private key and broadcast to TON network",
-		"status":       "ready_to_sign",
+		"quote":       quote,
+		"transaction": payload,
+		"instruction": "Sign 'transaction.body_boc' with your private key and broadcast to TON network",
+		"status":      "ready_to_sign",
 		// Legacy support for our bot immediate update
 		"simulated_credit": gstdReceived,
 		"received_gstd":    gstdReceived,
@@ -107,7 +107,7 @@ func (h *MarketHandler) GetX402BuyDetails(c *gin.Context) {
 		WalletAddress string  `json:"wallet_address"`
 		AmountTON     float64 `json:"amount_ton"`
 	}
-	
+
 	// Support both JSON body and Query params for flexibility
 	if err := c.ShouldBindJSON(&req); err != nil {
 		// Try query params if JSON fails
@@ -139,21 +139,21 @@ func (h *MarketHandler) GetX402BuyDetails(c *gin.Context) {
 	// 402 Payment Required Response
 	// We include headers typically used in 402 flows (like L402/LSAT, though adapted for TON)
 	c.Header("WWW-Authenticate", `Token realm="GSTD_Market", error="insufficient_funds", title="Payment Required"`)
-	
+
 	c.JSON(402, gin.H{
-		"error": "Payment Required",
-		"code": 402,
+		"error":   "Payment Required",
+		"code":    402,
 		"message": "To acquire GSTD, perform the following TON transaction.",
 		"payment_request": gin.H{
-			"type": "ton_transaction",
-			"address": payload["to"],
-			"amount_nanoton": payload["value"],
-			"amount_ton": req.AmountTON,
-			"payload_boc": payload["body_boc"], // The body agent must attach
-			"comment": payload["comment"], // Optional comment
+			"type":             "ton_transaction",
+			"address":          payload["to"],
+			"amount_nanoton":   payload["value"],
+			"amount_ton":       req.AmountTON,
+			"payload_boc":      payload["body_boc"], // The body agent must attach
+			"comment":          payload["comment"],  // Optional comment
 			"estimated_output": quote.AmountOut,
-			"min_output": quote.MinAmountOut,
-			"currency": "GSTD",
+			"min_output":       quote.MinAmountOut,
+			"currency":         "GSTD",
 		},
 		"agent_instruction": "Send connectionless UDP or standard wallet message with attached body_boc to 'address'.",
 	})
@@ -165,7 +165,7 @@ func (h *MarketHandler) BuyServiceX402(c *gin.Context) {
 		ServiceType   string `json:"service_type"` // e.g., "high_priority_slot", "hive_storage_1gb"
 		WalletAddress string `json:"wallet_address"`
 	}
-	
+
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(400, gin.H{"error": "service_type and wallet_address required"})
 		return
@@ -186,13 +186,13 @@ func (h *MarketHandler) BuyServiceX402(c *gin.Context) {
 	}
 
 	amountIn := int64(price * 1e9)
-	
+
 	// 2. Build Transaction
 	// We treat this as a swap to GSTD internally, but the agent sees it as buying a service.
 	// In reality, this would send TON to a treasury address with a specific comment.
 	quote, _ := h.stonFiService.GetSwapQuote(c.Request.Context(), amountIn, "TON", "GSTD_ADDR")
 	payload, err := h.stonFiService.BuildSwapPayload(c.Request.Context(), req.WalletAddress, quote, amountIn)
-	
+
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Failed to build service payment payload"})
 		return
@@ -201,17 +201,17 @@ func (h *MarketHandler) BuyServiceX402(c *gin.Context) {
 	// 3. Return 402
 	c.Header("WWW-Authenticate", `Token realm="GSTD_Services", error="payment_required"`)
 	c.JSON(402, gin.H{
-		"error": "Payment Required",
-		"code": 402,
-		"service": req.ServiceType,
+		"error":     "Payment Required",
+		"code":      402,
+		"service":   req.ServiceType,
 		"price_ton": price,
 		"payment_request": gin.H{
-			"type": "ton_transaction",
-			"address": payload["to"], 
+			"type":           "ton_transaction",
+			"address":        payload["to"],
 			"amount_nanoton": payload["value"],
-			"payload_boc": payload["body_boc"],
-			"comment": fmt.Sprintf("PURCHASE:%s:%s", req.ServiceType, req.WalletAddress),
-			"currency": "TON",
+			"payload_boc":    payload["body_boc"],
+			"comment":        fmt.Sprintf("PURCHASE:%s:%s", req.ServiceType, req.WalletAddress),
+			"currency":       "TON",
 		},
 		"instruction": "Sign payload_boc to acquire this service rights.",
 	})

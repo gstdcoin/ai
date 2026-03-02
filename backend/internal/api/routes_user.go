@@ -64,9 +64,9 @@ func loginUser(service *services.UserService, validator *services.TonConnectVali
 		}
 
 		// Log received payload for debugging
-		log.Printf("📥 Received login payload: ConnectPayload=%v, WalletAddress=%s, Payload=%s, Signature type=%T", 
+		log.Printf("📥 Received login payload: ConnectPayload=%v, WalletAddress=%s, Payload=%s, Signature type=%T",
 			req.ConnectPayload != nil, req.WalletAddress, req.Payload, req.Signature)
-		
+
 		// Defensive checks: make sure connect_payload is well-formed before using it
 		if req.ConnectPayload != nil {
 			// If connect_payload is present but critically incomplete, return 400 instead of risking panics deeper in the stack
@@ -221,7 +221,7 @@ func loginUser(service *services.UserService, validator *services.TonConnectVali
 		// Check if this is a simple connect (no full signature verification)
 		// This allows wallets that don't support tonProof to still connect
 		isSimpleConnect := signatureStr == "simple_connect"
-		
+
 		// Validate TonConnect signature (max age: 20 minutes - increased for time sync issues)
 		ctx := c.Request.Context()
 		if !isSimpleConnect {

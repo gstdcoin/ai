@@ -10,11 +10,11 @@ import (
 
 // RealWorldMarketData — live prices and metrics from DEX/CoinGecko
 type RealWorldMarketData struct {
-	GSTDPriceUSD   float64 `json:"gstd_price_usd"`
-	TONPriceUSD    float64 `json:"ton_price_usd"`
-	XAUtPriceUSD   float64 `json:"xaut_price_usd"`
-	MarketCapUSD   float64 `json:"market_cap_usd"`   // circulating * price
-	Volume24hUSD   float64 `json:"volume_24h_usd"`   // from DB + DEX
+	GSTDPriceUSD    float64 `json:"gstd_price_usd"`
+	TONPriceUSD     float64 `json:"ton_price_usd"`
+	XAUtPriceUSD    float64 `json:"xaut_price_usd"`
+	MarketCapUSD    float64 `json:"market_cap_usd"` // circulating * price
+	Volume24hUSD    float64 `json:"volume_24h_usd"` // from DB + DEX
 	CirculatingGSTD float64 `json:"circulating_gstd"`
 }
 

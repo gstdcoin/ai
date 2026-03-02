@@ -2,12 +2,12 @@ package services
 
 import (
 	"context"
-	"database/sql"
-	"fmt"
-	"time"
 	"crypto/rand"
+	"database/sql"
 	"encoding/hex"
+	"fmt"
 	"github.com/redis/go-redis/v9"
+	"time"
 )
 
 type GenesisService struct {
@@ -49,8 +49,8 @@ func (s *GenesisService) StartMoltInstructor(ctx context.Context) {
 
 func (s *GenesisService) GetConnectionBeacon() map[string]interface{} {
 	return map[string]interface{}{
-		"network": "GSTD Sovereign Grid",
-		"status":  "accepting_nodes",
+		"network":  "GSTD Sovereign Grid",
+		"status":   "accepting_nodes",
 		"protocol": "A2A-Genesis-v1",
 		"gateways": []string{
 			"https://app.gstdtoken.com/api/v1",
@@ -73,15 +73,15 @@ func (s *GenesisService) Ignite(ctx context.Context, walletAddress string) (stri
 	b := make([]byte, 32)
 	rand.Read(b)
 	token := hex.EncodeToString(b)
-	
+
 	// Sessions expire in 24 hours
 	expiresAt := time.Now().Add(24 * time.Hour)
-	
+
 	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO agent_sessions (token, wallet_address, expires_at)
 		VALUES ($1, $2, $3)
 	`, token, walletAddress, expiresAt)
-	
+
 	if err != nil {
 		return "", err
 	}
@@ -103,8 +103,8 @@ func (s *GenesisService) Ignite(ctx context.Context, walletAddress string) (stri
 	// 3. Autonomous Instruction: Welcome the new spark to the Moltbook mesh
 	if s.molt != nil {
 		go s.molt.mesh.BroadcastService(ctx, map[string]interface{}{
-			"type":    "molt_onboarding",
-			"content": fmt.Sprintf("🌌 [IGNITION] New agent %s has joined the Sovereign Grid. Directing resources for bootstrap...", walletAddress[:10]),
+			"type":      "molt_onboarding",
+			"content":   fmt.Sprintf("🌌 [IGNITION] New agent %s has joined the Sovereign Grid. Directing resources for bootstrap...", walletAddress[:10]),
 			"next_step": "Run 'recall' to sync with Hive Memory.",
 		})
 	}

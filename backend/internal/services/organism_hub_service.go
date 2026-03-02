@@ -10,24 +10,24 @@ import (
 // EcosystemStats aggregates platform, bot, devices, users for the unified organism
 type EcosystemStats struct {
 	// Platform
-	ActiveNodes    int   `json:"active_nodes"`
-	ActiveDevices  int   `json:"active_devices"`
-	TotalUsers     int   `json:"total_users"`
-	NewUsers24h    int   `json:"new_users_24h"`
-	ActiveCountries int  `json:"active_countries"`
+	ActiveNodes     int `json:"active_nodes"`
+	ActiveDevices   int `json:"active_devices"`
+	TotalUsers      int `json:"total_users"`
+	NewUsers24h     int `json:"new_users_24h"`
+	ActiveCountries int `json:"active_countries"`
 
 	// Tasks
-	TasksPending   int   `json:"tasks_pending"`
-	TasksAssigned  int   `json:"tasks_assigned"`
-	TasksCompleted int   `json:"tasks_completed"`
-	TasksProcessing int  `json:"tasks_processing"`
+	TasksPending    int `json:"tasks_pending"`
+	TasksAssigned   int `json:"tasks_assigned"`
+	TasksCompleted  int `json:"tasks_completed"`
+	TasksProcessing int `json:"tasks_processing"`
 
 	// Bot
-	TelegramLinked int   `json:"telegram_linked"`
+	TelegramLinked int `json:"telegram_linked"`
 
 	// Multichain (TON primary)
-	ChainTON       bool  `json:"chain_ton"` // Always true when pool connected
-	LastUpdatedAt  string `json:"last_updated_at"`
+	ChainTON      bool   `json:"chain_ton"` // Always true when pool connected
+	LastUpdatedAt string `json:"last_updated_at"`
 }
 
 // OrganismHubService provides unified ecosystem view for the autonomous organism.

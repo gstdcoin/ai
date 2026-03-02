@@ -38,12 +38,12 @@ func NewRedisPubSubService(client *redis.Client) *RedisPubSubService {
 
 // TaskMessage represents a task notification message
 type TaskMessage struct {
-	TaskID      string                 `json:"task_id"`
-	TaskType    string                 `json:"task_type"`
-	Status      string                 `json:"status"`
-	Payload     map[string]interface{} `json:"payload,omitempty"`
-	Timestamp   int64                  `json:"timestamp"`
-	ServerID    string                 `json:"server_id,omitempty"` // Optional: identify which server published
+	TaskID    string                 `json:"task_id"`
+	TaskType  string                 `json:"task_type"`
+	Status    string                 `json:"status"`
+	Payload   map[string]interface{} `json:"payload,omitempty"`
+	Timestamp int64                  `json:"timestamp"`
+	ServerID  string                 `json:"server_id,omitempty"` // Optional: identify which server published
 }
 
 // PublishTask publishes a task to Redis Pub/Sub channel
@@ -81,7 +81,7 @@ func (s *RedisPubSubService) Subscribe() (<-chan interface{}, error) {
 
 	// Create pubsub subscription
 	s.pubsub = s.client.Subscribe(s.ctx, s.channel)
-	
+
 	// Wait for subscription confirmation
 	_, err := s.pubsub.Receive(s.ctx)
 	if err != nil {

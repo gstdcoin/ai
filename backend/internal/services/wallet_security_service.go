@@ -263,4 +263,3 @@ func (s *WalletSecurityService) GetWalletOperationsHistory(ctx context.Context, 
 
 	return history, nil
 }
-

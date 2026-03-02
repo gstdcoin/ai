@@ -16,10 +16,10 @@ import (
 )
 
 type TaskPaymentService struct {
-	db             *sql.DB
-	tonService     *TONService
-	tonConfig      config.TONConfig
-	taskService    *TaskService // For broadcasting tasks via Redis Pub/Sub
+	db              *sql.DB
+	tonService      *TONService
+	tonConfig       config.TONConfig
+	taskService     *TaskService // For broadcasting tasks via Redis Pub/Sub
 	telegramService *TelegramService
 }
 
@@ -40,11 +40,11 @@ type CreateTaskRequest struct {
 }
 
 type CreateTaskResponse struct {
-	TaskID      string  `json:"task_id"`
-	Status      string  `json:"status"`
-	PaymentMemo string  `json:"payment_memo"`
-	Amount      float64 `json:"amount"`
-	PlatformWallet string `json:"platform_wallet"`
+	TaskID         string  `json:"task_id"`
+	Status         string  `json:"status"`
+	PaymentMemo    string  `json:"payment_memo"`
+	Amount         float64 `json:"amount"`
+	PlatformWallet string  `json:"platform_wallet"`
 }
 
 // CreateTask creates a new task with pending_payment status
@@ -58,7 +58,7 @@ func (s *TaskPaymentService) CreateTask(ctx context.Context, creatorWallet strin
 
 	// Generate unique task ID
 	taskID := uuid.New().String()
-	
+
 	// Generate payment memo (unique identifier for this task payment)
 	// SECURITY: Use full UUID to prevent collisions
 	paymentMemo := fmt.Sprintf("TASK-%s", taskID)
@@ -79,7 +79,7 @@ func (s *TaskPaymentService) CreateTask(ctx context.Context, creatorWallet strin
 	// Insert task with pending_payment status
 	// Use original wallet address for storage (keep raw format if provided)
 	now := time.Now()
-	
+
 	// Set default values for required columns that may not be provided in payment flow
 	defaultOperation := req.Type // Use task type as operation if not specified
 	defaultModel := ""
@@ -88,7 +88,7 @@ func (s *TaskPaymentService) CreateTask(ctx context.Context, creatorWallet strin
 		defaultInputSource = "inline"
 	}
 	defaultInputHash := req.InputHash
-	
+
 	// Check which priority column exists in database
 	// Try to insert with priority_score, fallback to certainty_gravity_score
 	_, err = s.db.ExecContext(ctx, `
@@ -98,10 +98,10 @@ func (s *TaskPaymentService) CreateTask(ctx context.Context, creatorWallet strin
 			status, budget_gstd, reward_gstd, payment_memo, payload,
 			created_at, escrow_status
 		) VALUES ($1, $2, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'pending')
-	`, taskID, creatorWallet, req.Type, defaultOperation, defaultModel, 
+	`, taskID, creatorWallet, req.Type, defaultOperation, defaultModel,
 		defaultInputSource, defaultInputHash,
 		"queued", req.Budget, rewardGSTD, paymentMemo, payloadStr, now)
-	
+
 	// If error about priority_score or other columns, try with minimal required columns
 	if err != nil && (strings.Contains(err.Error(), "priority_score") || strings.Contains(err.Error(), "column") && strings.Contains(err.Error(), "does not exist")) {
 		// Try with minimal required columns only
@@ -135,7 +135,7 @@ func (s *TaskPaymentService) CreateTask(ctx context.Context, creatorWallet strin
 func (s *TaskPaymentService) VerifyPayment(ctx context.Context, taskID string) (bool, error) {
 	var depositID sql.NullString
 	var status string
-	
+
 	err := s.db.QueryRowContext(ctx, `
 		SELECT deposit_id, status
 		FROM tasks
@@ -219,7 +219,7 @@ func (s *TaskPaymentService) GetTaskByID(ctx context.Context, taskID string) (*m
 		&task.CreatedAt,
 		&task.PriorityScore,
 	)
-	
+
 	// If error about column, try with priority_score only
 	if err != nil && strings.Contains(err.Error(), "certainty_gravity_score") {
 		err = s.db.QueryRowContext(ctx, `
@@ -322,4 +322,3 @@ func (s *TaskPaymentService) GetTaskByPaymentMemo(ctx context.Context, paymentMe
 
 	return &task, nil
 }
-

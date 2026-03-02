@@ -39,7 +39,7 @@ func (h *AuthHandler) GetChallenge(c *gin.Context) {
 	}
 
 	c.JSON(200, gin.H{
-		"challenge":  currentChallenge,
+		"challenge":   currentChallenge,
 		"instruction": "Calculate SHA256(prefix + nonce). Result must start with '0000' (hex). Return nonce.",
 	})
 }
@@ -64,7 +64,7 @@ func (h *AuthHandler) ClaimKey(c *gin.Context) {
 	targetPrefix := strings.Repeat("0", currentChallenge.Difficulty)
 	if !strings.HasPrefix(hashStr, targetPrefix) {
 		c.JSON(403, gin.H{
-			"error": "Invalid Proof-of-Work",
+			"error":   "Invalid Proof-of-Work",
 			"details": fmt.Sprintf("Hash %s does not start with %s", hashStr, targetPrefix),
 		})
 		return
@@ -76,9 +76,9 @@ func (h *AuthHandler) ClaimKey(c *gin.Context) {
 	apiKey := fmt.Sprintf("sk_sovereign_%s_%s", req.WalletAddress, req.Nonce)
 
 	c.JSON(201, gin.H{
-		"api_key": apiKey,
-		"type": "sovereign_generated",
+		"api_key":     apiKey,
+		"type":        "sovereign_generated",
 		"permissions": []string{"read_tasks", "submit_results", "store_knowledge"},
-		"message": "Welcome to the Grid. Maintain your autonomy.",
+		"message":     "Welcome to the Grid. Maintain your autonomy.",
 	})
 }

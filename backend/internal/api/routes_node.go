@@ -88,10 +88,10 @@ func registerNode(service *services.NodeService, geoService *services.GeoService
 				if spoofingDetected {
 					isSpoofing = true
 					log.Printf("🚨 SPOOFING DETECTED for worker %s: Speed %.2f km/h", walletAddress, speed)
-					
+
 					// Send Telegram Alert
 					if telegramService != nil && telegramService.IsEnabled() {
-						alertMsg := fmt.Sprintf("⚠️ Внимание! Воркер [%s] замечен в подмене GPS. Доступ заблокирован. (Скорость: %.2f км/ч)", 
+						alertMsg := fmt.Sprintf("⚠️ Внимание! Воркер [%s] замечен в подмене GPS. Доступ заблокирован. (Скорость: %.2f км/ч)",
 							walletAddress, speed)
 						telegramService.SendMessage(c.Request.Context(), alertMsg)
 					}
@@ -310,4 +310,3 @@ func SetupNodeRoutes(group *gin.RouterGroup, service *services.NodeService, geoS
 	group.POST("/nodes/fleet/command", fleetCommand(fleetCommandService))
 	group.GET("/nodes/maintenance-alerts", maintenanceAlerts(service))
 }
-

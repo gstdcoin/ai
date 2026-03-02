@@ -14,11 +14,11 @@ import (
 // 3. Internal Swap: User gives GSTD → we send TON for gas
 
 const (
-	gaslessSubsidyLimit       = 5000
-	gaslessSubsidyTonNano     = 50_000_000 // 0.05 TON
-	internalSwapMinGSTD      = 0.1
-	internalSwapTonPerGSTD   = 0.02 // ~0.02 TON per 1 GSTD (adjust by market)
-	payoutBatchMinWorkers    = 50
+	gaslessSubsidyLimit    = 5000
+	gaslessSubsidyTonNano  = 50_000_000 // 0.05 TON
+	internalSwapMinGSTD    = 0.1
+	internalSwapTonPerGSTD = 0.02 // ~0.02 TON per 1 GSTD (adjust by market)
+	payoutBatchMinWorkers  = 50
 )
 
 // GaslessUserService implements the Gasless User protocol

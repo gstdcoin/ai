@@ -57,24 +57,24 @@ func (s *MeshConstitutionService) ensureSchema() {
 
 // DominantModelEntry in the constitution report
 type DominantModelEntry struct {
-	ModelID   string  `json:"model_id"`
-	Category  string  `json:"category"`
-	Score     float64 `json:"capability_score"`
-	Rank      int     `json:"rank"`
-	Requests  int64   `json:"request_count"`
+	ModelID  string  `json:"model_id"`
+	Category string  `json:"category"`
+	Score    float64 `json:"capability_score"`
+	Rank     int     `json:"rank"`
+	Requests int64   `json:"request_count"`
 }
 
 // MeshConstitutionReport is the monthly governance report
 type MeshConstitutionReport struct {
-	ReportMonth        string              `json:"report_month"`
+	ReportMonth        string               `json:"report_month"`
 	DominantModels     []DominantModelEntry `json:"dominant_models"`
-	GoldenReserveStart float64             `json:"golden_reserve_start"`
-	GoldenReserveEnd   float64             `json:"golden_reserve_end"`
-	ReserveChangePct   float64             `json:"reserve_change_pct"`
-	ConstitutionHash   string              `json:"constitution_hash,omitempty"`   // Immortal Identity
-	BlockchainTxHash   string              `json:"blockchain_tx_hash,omitempty"`   // TON/Solana anchor
-	AnchoredChain      string              `json:"anchored_chain,omitempty"`
-	CreatedAt          time.Time           `json:"created_at"`
+	GoldenReserveStart float64              `json:"golden_reserve_start"`
+	GoldenReserveEnd   float64              `json:"golden_reserve_end"`
+	ReserveChangePct   float64              `json:"reserve_change_pct"`
+	ConstitutionHash   string               `json:"constitution_hash,omitempty"`  // Immortal Identity
+	BlockchainTxHash   string               `json:"blockchain_tx_hash,omitempty"` // TON/Solana anchor
+	AnchoredChain      string               `json:"anchored_chain,omitempty"`
+	CreatedAt          time.Time            `json:"created_at"`
 }
 
 // Start runs the monthly constitution generation loop

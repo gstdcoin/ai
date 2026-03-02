@@ -9,10 +9,14 @@ import (
 // GoldBroadcastRunner - Absolute Point: Gold Reserve changes → instant Hash-Rate Multiplier via WebSocket
 type GoldBroadcastRunner struct {
 	goldHash *GoldHashRateService
-	hub      interface{ BroadcastAnnouncement(string, string, interface{}) }
+	hub      interface {
+		BroadcastAnnouncement(string, string, interface{})
+	}
 }
 
-func NewGoldBroadcastRunner(goldHash *GoldHashRateService, hub interface{ BroadcastAnnouncement(string, string, interface{}) }) *GoldBroadcastRunner {
+func NewGoldBroadcastRunner(goldHash *GoldHashRateService, hub interface {
+	BroadcastAnnouncement(string, string, interface{})
+}) *GoldBroadcastRunner {
 	return &GoldBroadcastRunner{goldHash: goldHash, hub: hub}
 }
 

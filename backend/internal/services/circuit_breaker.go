@@ -18,12 +18,12 @@ const (
 
 // CircuitBreaker implements the circuit breaker pattern for fault tolerance
 type CircuitBreaker struct {
-	maxFailures    int
-	resetTimeout   time.Duration
-	state          CircuitBreakerState
-	failureCount   int
+	maxFailures     int
+	resetTimeout    time.Duration
+	state           CircuitBreakerState
+	failureCount    int
 	lastFailureTime time.Time
-	mu             sync.RWMutex
+	mu              sync.RWMutex
 }
 
 // NewCircuitBreaker creates a new circuit breaker

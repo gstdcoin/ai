@@ -12,22 +12,22 @@ import (
 // Singularity Ready: Final status orchestrating Global Equilibrium, Immortal Identity, Archon Protocol.
 
 const (
-	equilibriumInterval     = 30 * time.Minute
-	reserveGrowthPlanPct    = 5.0   // target monthly reserve growth %
+	equilibriumInterval       = 30 * time.Minute
+	reserveGrowthPlanPct      = 5.0 // target monthly reserve growth %
 	archonCapabilityThreshold = 5.0 // critical: total capability score below this
-	archonTopModelsToMirror = 10
-	archonCooldown          = 24 * time.Hour
+	archonTopModelsToMirror   = 10
+	archonCooldown            = 24 * time.Hour
 )
 
 // SingularityReadyService orchestrates Global Equilibrium and Archon Protocol
 type SingularityReadyService struct {
-	db              *sql.DB
-	absorption      *GlobalAbsorptionService
-	talentHunting   *TalentHuntingService
-	predictive      *PredictiveMirroringService
-	constitution    *MeshConstitutionService
-	mu              sync.Mutex
-	lastArchonRun   time.Time
+	db            *sql.DB
+	absorption    *GlobalAbsorptionService
+	talentHunting *TalentHuntingService
+	predictive    *PredictiveMirroringService
+	constitution  *MeshConstitutionService
+	mu            sync.Mutex
+	lastArchonRun time.Time
 }
 
 // NewSingularityReadyService creates the orchestrator

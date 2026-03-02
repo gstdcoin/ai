@@ -5,7 +5,7 @@ import (
 )
 
 const (
-	APIVersion = "v1"
+	APIVersion       = "v1"
 	APIVersionHeader = "X-API-Version"
 )
 
@@ -23,12 +23,12 @@ func GetAPIVersion() gin.HandlerFunc {
 		c.JSON(200, gin.H{
 			"version": APIVersion,
 			"endpoints": gin.H{
-				"health": "/api/v1/health",
+				"health":  "/api/v1/health",
 				"metrics": "/api/v1/metrics",
 				"openapi": "/api/v1/openapi.json",
-				"tasks": "/api/v1/tasks",
+				"tasks":   "/api/v1/tasks",
 				"devices": "/api/v1/devices",
-				"stats": "/api/v1/stats",
+				"stats":   "/api/v1/stats",
 			},
 		})
 	}

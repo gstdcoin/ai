@@ -42,4 +42,3 @@ func DequeueTask(client *redis.Client, ctx context.Context) (string, error) {
 
 	return vals[0].Member.(string), nil
 }
-

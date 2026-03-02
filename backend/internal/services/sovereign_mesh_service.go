@@ -4,8 +4,8 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"github.com/redis/go-redis/v9"
 	"encoding/json"
+	"github.com/redis/go-redis/v9"
 )
 
 // ZKProofProtocol defines the requirement for ZK-Signals
@@ -59,8 +59,8 @@ func (s *ZKVerificationLayer) ValidateProof(taskID, resultData, proof string) bo
 	h := sha256.New()
 	h.Write([]byte(taskID + resultData))
 	expectedCommitment := hex.EncodeToString(h.Sum(nil))
-	
-	// If the proof matches the signed hash commitment of the work, 
+
+	// If the proof matches the signed hash commitment of the work,
 	// it mathematically links the device identity to this specific result.
 	return proof == expectedCommitment
 }

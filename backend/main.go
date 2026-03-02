@@ -25,7 +25,7 @@ func main() {
 		log.Fatal("❌ Failed to load configuration")
 	}
 
-	log.Printf("📂 DB Config: Host=%s Port=%s User=%s DBName=%s SSLMode=%s", 
+	log.Printf("📂 DB Config: Host=%s Port=%s User=%s DBName=%s SSLMode=%s",
 		cfg.Database.Host, cfg.Database.Port, cfg.Database.User, cfg.Database.DBName, cfg.Database.SSLMode)
 
 	// Security Check: Hardened Environment
@@ -46,7 +46,7 @@ func main() {
 
 	// 2. Build and Start Application using DI Container
 	container := app.BuildContainer()
-	
+
 	if err := app.StartApplication(container); err != nil {
 		log.Fatalf("❌ Failed to start application: %v", err)
 	}

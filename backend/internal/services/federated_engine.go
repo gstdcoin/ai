@@ -26,12 +26,12 @@ import (
 //   - Secure aggregation: no single party sees individual updates
 //
 // Process:
-//   1. Worker processes inference task → observes performance
-//   2. Worker computes LoRA weight update (small rank-4 adaptation)
-//   3. Worker adds differential privacy noise (ε-DP with ε=1.0)
-//   4. Update submitted to FederatedEngine
-//   5. When N updates collected (consensus threshold), aggregate
-//   6. "Brain Update" → new model version published to network
+//  1. Worker processes inference task → observes performance
+//  2. Worker computes LoRA weight update (small rank-4 adaptation)
+//  3. Worker adds differential privacy noise (ε-DP with ε=1.0)
+//  4. Update submitted to FederatedEngine
+//  5. When N updates collected (consensus threshold), aggregate
+//  6. "Brain Update" → new model version published to network
 type FederatedEngineService struct {
 	db             *sql.DB
 	redis          *redis.Client
@@ -42,18 +42,18 @@ type FederatedEngineService struct {
 
 // LoRAUpdate represents a Low-Rank Adaptation weight update from a worker
 type LoRAUpdate struct {
-	UpdateID      string    `json:"update_id"`
-	NodeID        string    `json:"node_id"`
-	WalletAddress string    `json:"wallet_address"`
-	ModelName     string    `json:"model_name"`
-	Rank          int       `json:"rank"`            // LoRA rank (typically 4-16)
-	LayerUpdates  []LayerDelta `json:"layer_updates"` // Per-layer weight deltas
-	DPNoiseAdded  bool      `json:"dp_noise_added"`  // Whether differential privacy was applied
-	Epsilon       float64   `json:"epsilon"`          // Privacy budget (lower = more private)
-	TaskCount     int       `json:"task_count"`       // How many tasks this update covers
-	PerformanceGain float64 `json:"performance_gain"` // Measured improvement (%)
-	SubmittedAt   time.Time `json:"submitted_at"`
-	Hash          string    `json:"hash"`            // SHA256 of weight data for integrity
+	UpdateID        string       `json:"update_id"`
+	NodeID          string       `json:"node_id"`
+	WalletAddress   string       `json:"wallet_address"`
+	ModelName       string       `json:"model_name"`
+	Rank            int          `json:"rank"`             // LoRA rank (typically 4-16)
+	LayerUpdates    []LayerDelta `json:"layer_updates"`    // Per-layer weight deltas
+	DPNoiseAdded    bool         `json:"dp_noise_added"`   // Whether differential privacy was applied
+	Epsilon         float64      `json:"epsilon"`          // Privacy budget (lower = more private)
+	TaskCount       int          `json:"task_count"`       // How many tasks this update covers
+	PerformanceGain float64      `json:"performance_gain"` // Measured improvement (%)
+	SubmittedAt     time.Time    `json:"submitted_at"`
+	Hash            string       `json:"hash"` // SHA256 of weight data for integrity
 }
 
 // LayerDelta represents weight changes for a single model layer
@@ -66,24 +66,24 @@ type LayerDelta struct {
 
 // BrainUpdate represents a global model update after aggregation
 type BrainUpdate struct {
-	UpdateID        string    `json:"update_id"`
-	ModelName       string    `json:"model_name"`
-	Version         int       `json:"version"`
-	ContributorCount int      `json:"contributor_count"`
-	TotalTasks      int       `json:"total_tasks"`
-	AvgPerformance  float64   `json:"avg_performance_gain"`
-	AggregatedAt    time.Time `json:"aggregated_at"`
-	Hash            string    `json:"hash"`
-	Status          string    `json:"status"` // pending, applied, rejected
+	UpdateID         string    `json:"update_id"`
+	ModelName        string    `json:"model_name"`
+	Version          int       `json:"version"`
+	ContributorCount int       `json:"contributor_count"`
+	TotalTasks       int       `json:"total_tasks"`
+	AvgPerformance   float64   `json:"avg_performance_gain"`
+	AggregatedAt     time.Time `json:"aggregated_at"`
+	Hash             string    `json:"hash"`
+	Status           string    `json:"status"` // pending, applied, rejected
 }
 
 // Federated learning parameters
 const (
-	ConsensusThreshold  = 10    // Minimum updates before aggregation
-	MaxGradientNorm     = 1.0   // Gradient clipping threshold
-	DPEpsilon           = 1.0   // Differential privacy budget
-	DPDelta             = 1e-5  // DP failure probability
-	MinPerformanceGain  = -0.02 // Reject updates that degrade performance >2%
+	ConsensusThreshold = 10    // Minimum updates before aggregation
+	MaxGradientNorm    = 1.0   // Gradient clipping threshold
+	DPEpsilon          = 1.0   // Differential privacy budget
+	DPDelta            = 1e-5  // DP failure probability
+	MinPerformanceGain = -0.02 // Reject updates that degrade performance >2%
 )
 
 func NewFederatedEngineService(db *sql.DB, redis *redis.Client) *FederatedEngineService {
@@ -310,10 +310,10 @@ func (s *FederatedEngineService) triggerBrainUpdate(ctx context.Context, modelNa
 	// Create brain update record
 	updateID := fmt.Sprintf("brain-%s-v%d", modelName, newVersion)
 	aggregateData, _ := json.Marshal(map[string]interface{}{
-		"model":       modelName,
-		"version":     newVersion,
+		"model":        modelName,
+		"version":      newVersion,
 		"contributors": len(updates),
-		"total_tasks": totalTasks,
+		"total_tasks":  totalTasks,
 	})
 	hash := sha256.Sum256(aggregateData)
 

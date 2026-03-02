@@ -27,7 +27,7 @@ func NewRateLimiter(redisClient *redis.Client) *RateLimiter {
 		redisClient: redisClient,
 		limits:      make(map[string]*EndpointLimit),
 	}
-	
+
 	// Set default limits - generous for MVP/Demo to avoid 429s
 	rl.limits["/api/v1/tasks"] = &EndpointLimit{Requests: 1000, Window: time.Minute}
 	rl.limits["/api/v1/tasks/create"] = &EndpointLimit{Requests: 200, Window: time.Minute}
@@ -35,11 +35,11 @@ func NewRateLimiter(redisClient *redis.Client) *RateLimiter {
 	rl.limits["/api/v1/admin"] = &EndpointLimit{Requests: 500, Window: time.Minute}
 	rl.limits["/api/v1/users/balance"] = &EndpointLimit{Requests: 500, Window: time.Minute}
 	rl.limits["/api/v1/network/stats"] = &EndpointLimit{Requests: 500, Window: time.Minute}
-	
+
 	// Telemetry/Genesis Task endpoints - stricter limits to prevent spam
-	rl.limits["/api/v1/tasks/worker/submit"] = &EndpointLimit{Requests: 60, Window: time.Minute}    // 1 per second max
+	rl.limits["/api/v1/tasks/worker/submit"] = &EndpointLimit{Requests: 60, Window: time.Minute} // 1 per second max
 	rl.limits["/api/v1/device/tasks/:id/result"] = &EndpointLimit{Requests: 60, Window: time.Minute}
-	rl.limits["/api/v1/telemetry/submit"] = &EndpointLimit{Requests: 30, Window: time.Minute}      // Stricter for raw telemetry
+	rl.limits["/api/v1/telemetry/submit"] = &EndpointLimit{Requests: 30, Window: time.Minute} // Stricter for raw telemetry
 
 	// Deep Dive: model-update - prevent LoRA spam (5/min per IP)
 	rl.limits["/api/v1/genesis/model-update"] = &EndpointLimit{Requests: 5, Window: time.Minute}
@@ -59,16 +59,16 @@ func (rl *RateLimiter) RateLimitMiddleware() gin.HandlerFunc {
 			c.Next()
 			return
 		}
-		
+
 		limit, exists := rl.limits[path]
 		if !exists {
 			c.Next()
 			return
 		}
-		
+
 		// Use IP address as key
 		key := "rate_limit:" + c.ClientIP() + ":" + path
-		
+
 		// Check current count
 		count, err := rl.redisClient.Get(c.Request.Context(), key).Int()
 		if err != nil && err != redis.Nil {
@@ -76,23 +76,23 @@ func (rl *RateLimiter) RateLimitMiddleware() gin.HandlerFunc {
 			c.Next()
 			return
 		}
-		
+
 		if count >= limit.Requests {
 			c.JSON(429, gin.H{
-				"error": "Rate limit exceeded",
-				"limit": limit.Requests,
+				"error":  "Rate limit exceeded",
+				"limit":  limit.Requests,
 				"window": limit.Window.String(),
 			})
 			c.Abort()
 			return
 		}
-		
+
 		// Increment counter
 		pipe := rl.redisClient.Pipeline()
 		pipe.Incr(c.Request.Context(), key)
 		pipe.Expire(c.Request.Context(), key, limit.Window)
 		_, _ = pipe.Exec(c.Request.Context())
-		
+
 		c.Next()
 	}
 }

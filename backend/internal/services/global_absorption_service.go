@@ -25,20 +25,20 @@ const (
 
 // OpenLicensePriority — higher = preferred for open swarm
 var openLicensePriority = map[string]int{
-	"apache-2.0": 100,
-	"mit":        95,
+	"apache-2.0":   100,
+	"mit":          95,
 	"bsd-3-clause": 90,
 	"bsd-2-clause": 85,
 }
 
 // HFModel represents a model from Hugging Face API
 type HFModel struct {
-	ModelID   string   `json:"modelId"`
-	ID        string   `json:"id"`
-	Likes     int      `json:"likes"`
-	Downloads int      `json:"downloads"`
-	Tags      []string `json:"tags"`
-	PipelineTag string `json:"pipeline_tag"`
+	ModelID     string   `json:"modelId"`
+	ID          string   `json:"id"`
+	Likes       int      `json:"likes"`
+	Downloads   int      `json:"downloads"`
+	Tags        []string `json:"tags"`
+	PipelineTag string   `json:"pipeline_tag"`
 }
 
 // GlobalAbsorptionService implements the Global Absorption Protocol

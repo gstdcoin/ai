@@ -8,7 +8,7 @@ import (
 
 // LendingService calculates loan terms based on Gold Reserve backing
 type LendingService struct {
-	db *sql.DB
+	db          *sql.DB
 	poolMonitor *PoolMonitorService
 }
 
@@ -34,11 +34,11 @@ func (s *LendingService) CalculateLoanTerms(gstdAmount float64) (*LoanOffer, err
 	// 1. Get current Gold Price (implied from Reserve Log or constant/mock for MVP if oracle down)
 	// Ideally we get this from PoolMonitorService or DB
 	// For "Maximum Entropy", we use the latest logged value from DB
-	
+
 	// Fetch latest reserve stats to determine GSTD price
 	// Price of GSTD = (Total Gold Reserve * Gold Price) / Total GSTD Supply
 	// Simplified: We assume 1 GSTD ~= 1 XAUt for simplicity or use the pool ratio
-	
+
 	// Real implementation: Fetch from golden_reserve_log
 	// If empty, fallback to safe defaults for calculation
 	// Real implementation: Fetch from golden_reserve_log or PoolMonitor
@@ -52,13 +52,13 @@ func (s *LendingService) CalculateLoanTerms(gstdAmount float64) (*LoanOffer, err
 			gstdPriceUSD = price
 		}
 	}
-	
+
 	// Apply "The Golden Rule": LTV 60%
 	ltv := 0.60
 	apr := 1.5 // 1.5% Annual
-	
+
 	maxLoanUSD := gstdAmount * gstdPriceUSD * ltv
-	
+
 	return &LoanOffer{
 		CollateralGSTD: gstdAmount,
 		LoanAmountUSD:  math.Floor(maxLoanUSD*100) / 100,

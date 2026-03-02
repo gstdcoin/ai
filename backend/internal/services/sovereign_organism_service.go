@@ -30,13 +30,13 @@ type EquilibriumState struct {
 	BackingRatio     float64   `json:"backing_ratio"`  // Ratio of Gold/Assets vs GSTD Supply
 	DeflationRate    float64   `json:"deflation_rate"` // Current burn speed
 	LastAdjustmentAt time.Time `json:"last_adjustment_at"`
-	Revenue24h       float64   `json:"revenue_24h"`       // Monetization: 24h platform revenue
-	GoldReserve      float64   `json:"gold_reserve"`     // Gold reserve balance GSTD
-	ProtocolFund     float64   `json:"protocol_fund"`    // Protocol fund balance GSTD
-	LastDecision     string    `json:"last_decision"`     // STIMULATE | ACCELERATE | BUYBACK | STABLE | LEARN
+	Revenue24h       float64   `json:"revenue_24h"`   // Monetization: 24h platform revenue
+	GoldReserve      float64   `json:"gold_reserve"`  // Gold reserve balance GSTD
+	ProtocolFund     float64   `json:"protocol_fund"` // Protocol fund balance GSTD
+	LastDecision     string    `json:"last_decision"` // STIMULATE | ACCELERATE | BUYBACK | STABLE | LEARN
 	LastDecisionAt   time.Time `json:"last_decision_at"`
-	TasksPending     int64     `json:"tasks_pending"`     // From orchestrator
-	TasksCompleted   int64     `json:"tasks_completed"`   // From orchestrator
+	TasksPending     int64     `json:"tasks_pending"`   // From orchestrator
+	TasksCompleted   int64     `json:"tasks_completed"` // From orchestrator
 }
 
 // OrganismNotifier sends organism decision alerts (e.g. Telegram)

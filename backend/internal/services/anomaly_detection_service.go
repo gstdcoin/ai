@@ -11,7 +11,7 @@ import (
 // AnomalyDetectionService - Cosmic Genesis: Anticipatory Defense
 // Detects Sybil/51% attacks via PoW pattern deviations by region
 type AnomalyDetectionService struct {
-	db     *sql.DB
+	db       *sql.DB
 	telegram *TelegramService
 }
 

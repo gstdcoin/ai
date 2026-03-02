@@ -575,19 +575,19 @@ func (h *OrchestratorHandler) GetClientEscrows(c *gin.Context) {
 		}
 
 		escrows = append(escrows, map[string]interface{}{
-			"id":                 id,
-			"task_id":            taskID,
-			"creator_wallet":     creatorWallet,
-			"budget_gstd":        budgetGSTD,
-			"platform_fee_gstd":  platformFeeGSTD,
-			"total_locked_gstd":  totalLockedGSTD,
-			"difficulty":         difficulty,
-			"task_type":          taskType,
-			"geography":          geography,
-			"status":             status,
-			"locked_at":          lockedAt,
-			"workers_paid":       workersPaid,
-			"total_paid_gstd":    totalPaidGSTD,
+			"id":                id,
+			"task_id":           taskID,
+			"creator_wallet":    creatorWallet,
+			"budget_gstd":       budgetGSTD,
+			"platform_fee_gstd": platformFeeGSTD,
+			"total_locked_gstd": totalLockedGSTD,
+			"difficulty":        difficulty,
+			"task_type":         taskType,
+			"geography":         geography,
+			"status":            status,
+			"locked_at":         lockedAt,
+			"workers_paid":      workersPaid,
+			"total_paid_gstd":   totalPaidGSTD,
 		})
 	}
 
@@ -649,4 +649,3 @@ func (h *OrchestratorHandler) GetClientSpendHistory(c *gin.Context) {
 
 	c.JSON(http.StatusOK, history)
 }
-

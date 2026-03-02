@@ -15,7 +15,7 @@ import (
 
 const (
 	defaultServerBandwidthBps = 100 * 1024 * 1024 // 100 Mbps
-	externalBandwidthPct      = 0.30               // 30%
+	externalBandwidthPct      = 0.30              // 30%
 )
 
 var (
@@ -115,7 +115,7 @@ func (t *throttledTransport) RoundTrip(req *http.Request) (*http.Response, error
 	orig := resp.Body
 	resp.Body = &throttledReadCloser{
 		ReadCloser: orig,
-		tr: throttledReader{r: orig, limiter: t.limiter},
+		tr:         throttledReader{r: orig, limiter: t.limiter},
 	}
 	return resp, nil
 }

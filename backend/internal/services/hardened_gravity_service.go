@@ -18,7 +18,7 @@ type HardenedGravityService struct {
 
 func NewHardenedGravityService(db *sql.DB, r *redis.Client) *HardenedGravityService {
 	return &HardenedGravityService{
-		db:      db, 
+		db:      db,
 		redis:   r,
 		physics: NewPhysicsService(db),
 	}
@@ -29,8 +29,8 @@ func NewHardenedGravityService(db *sql.DB, r *redis.Client) *HardenedGravityServ
 func (s *HardenedGravityService) CalculateEGS(compensation float64, gstd float64, entropy float64) float64 {
 	T := math.Max(entropy, 0.01) // Prevent division by zero
 	gstdCapped := math.Min(gstd, 1000000.0)
-	utilityFactor := 1.0 + math.Log10(1.0 + gstdCapped/10000.0)
-	
+	utilityFactor := 1.0 + math.Log10(1.0+gstdCapped/10000.0)
+
 	// Physics Law: Gravity is inversely proportional to Network Temperature (Noise)
 	return (compensation * utilityFactor) / T
 }

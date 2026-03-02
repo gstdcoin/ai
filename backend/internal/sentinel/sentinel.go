@@ -89,14 +89,14 @@ type Sentinel struct {
 
 // SentinelStats tracks sentinel performance.
 type SentinelStats struct {
-	TotalChecks     int64 `json:"total_checks"`
-	TotalBlocked    int64 `json:"total_blocked"`
-	TotalAllowed    int64 `json:"total_allowed"`
-	TotalRouted     int64 `json:"total_routed"`
-	TotalMLChecks   int64 `json:"total_ml_checks"`
-	TotalFallbacks  int64 `json:"total_fallbacks"`
-	AvgLatencyMs    int64 `json:"avg_latency_ms"`
-	mu              sync.Mutex
+	TotalChecks    int64 `json:"total_checks"`
+	TotalBlocked   int64 `json:"total_blocked"`
+	TotalAllowed   int64 `json:"total_allowed"`
+	TotalRouted    int64 `json:"total_routed"`
+	TotalMLChecks  int64 `json:"total_ml_checks"`
+	TotalFallbacks int64 `json:"total_fallbacks"`
+	AvgLatencyMs   int64 `json:"avg_latency_ms"`
+	mu             sync.Mutex
 }
 
 // CSAMHashDB holds perceptual hashes for CSAM detection.
@@ -108,12 +108,12 @@ type CSAMHashDB struct {
 // IntentClassifier uses ML-based classification (Ollama Llama-Guard)
 // with graceful fallback to keyword heuristics.
 type IntentClassifier struct {
-	ollamaURL         string
-	guardModel        string
-	httpClient        *http.Client
-	ollamaAvailable   bool
-	lastHealthCheck   time.Time
-	healthCheckMu     sync.Mutex
+	ollamaURL       string
+	guardModel      string
+	httpClient      *http.Client
+	ollamaAvailable bool
+	lastHealthCheck time.Time
+	healthCheckMu   sync.Mutex
 	// Fallback: keyword-based patterns
 	maliciousPatterns []string
 	threshold         float64
@@ -286,9 +286,9 @@ type ClassifyResult struct {
 
 // ollamaGenerateRequest is the request body for Ollama /api/generate.
 type ollamaGenerateRequest struct {
-	Model  string                 `json:"model"`
-	Prompt string                 `json:"prompt"`
-	Stream bool                   `json:"stream"`
+	Model   string                 `json:"model"`
+	Prompt  string                 `json:"prompt"`
+	Stream  bool                   `json:"stream"`
 	Options map[string]interface{} `json:"options,omitempty"`
 }
 

@@ -16,10 +16,10 @@ import (
 //   - iOS: CoreML / Apple Neural Engine (ANE)
 //
 // Energy-aware compute rules (enforced client-side + verified server-side):
-//   1. Device must be charging
-//   2. Wi-Fi must be active (no cellular data for mining)
-//   3. Battery temperature must be <40°C
-//   4. Battery level must be >20% (even when charging, for safety)
+//  1. Device must be charging
+//  2. Wi-Fi must be active (no cellular data for mining)
+//  3. Battery temperature must be <40°C
+//  4. Battery level must be >20% (even when charging, for safety)
 //
 // The server tracks device sessions and rewards, while the actual compute
 // happens on-device through the mobile SDK (React Native / native bridge).
@@ -42,32 +42,32 @@ type DeviceSession struct {
 	StartedAt    time.Time `json:"started_at"`
 	LastPing     time.Time `json:"last_ping"`
 	// Energy awareness
-	IsCharging    bool    `json:"is_charging"`
-	BatteryLevel  int     `json:"battery_level"`
-	BatteryTemp   float64 `json:"battery_temp_c"`
-	ConnectionType string `json:"connection_type"` // wifi, cellular, ethernet
+	IsCharging     bool    `json:"is_charging"`
+	BatteryLevel   int     `json:"battery_level"`
+	BatteryTemp    float64 `json:"battery_temp_c"`
+	ConnectionType string  `json:"connection_type"` // wifi, cellular, ethernet
 }
 
 // DeviceCapability describes what a mobile device can compute
 type DeviceCapability struct {
-	DeviceID       string `json:"device_id"`
-	Platform       string `json:"platform"`        // android, ios
-	NPUModel       string `json:"npu_model"`       // e.g., "Hexagon 780", "Apple ANE"
-	NPUTOPSEstimate float64 `json:"npu_tops"`     // Estimated TOPS (Tera Operations Per Second)
-	RAMAvailableMB int    `json:"ram_available_mb"`
+	DeviceID         string   `json:"device_id"`
+	Platform         string   `json:"platform"`  // android, ios
+	NPUModel         string   `json:"npu_model"` // e.g., "Hexagon 780", "Apple ANE"
+	NPUTOPSEstimate  float64  `json:"npu_tops"`  // Estimated TOPS (Tera Operations Per Second)
+	RAMAvailableMB   int      `json:"ram_available_mb"`
 	SupportedFormats []string `json:"supported_formats"` // onnx, coreml, tflite
-	OSVersion      string `json:"os_version"`
+	OSVersion        string   `json:"os_version"`
 }
 
 // MobileTask represents a task suitable for mobile NPU execution
 type MobileTask struct {
-	TaskID        string  `json:"task_id"`
-	TaskType      string  `json:"task_type"`      // validation, prefill, decode, classify
-	ModelFormat   string  `json:"model_format"`   // onnx, coreml, tflite
-	InputSize     int     `json:"input_size"`     // Tokens or data points
-	RewardGSTD    float64 `json:"reward_gstd"`
-	MaxLatencyMs  int     `json:"max_latency_ms"` // Time limit
-	RequiresNPU   bool    `json:"requires_npu"`
+	TaskID       string  `json:"task_id"`
+	TaskType     string  `json:"task_type"`    // validation, prefill, decode, classify
+	ModelFormat  string  `json:"model_format"` // onnx, coreml, tflite
+	InputSize    int     `json:"input_size"`   // Tokens or data points
+	RewardGSTD   float64 `json:"reward_gstd"`
+	MaxLatencyMs int     `json:"max_latency_ms"` // Time limit
+	RequiresNPU  bool    `json:"requires_npu"`
 }
 
 func NewMobileComputeService(db *sql.DB, redis *redis.Client) *MobileComputeService {
@@ -283,10 +283,10 @@ func (s *MobileComputeService) GetMobileStats(ctx context.Context) (map[string]i
 	stats["total_earned_gstd"] = totalEarned
 	stats["total_tasks_completed"] = totalTasks
 	stats["energy_constraints"] = map[string]interface{}{
-		"charging_required":    true,
-		"wifi_only":            true,
-		"max_battery_temp_c":   40.0,
-		"min_battery_level":    20,
+		"charging_required":  true,
+		"wifi_only":          true,
+		"max_battery_temp_c": 40.0,
+		"min_battery_level":  20,
 	}
 
 	return stats, nil

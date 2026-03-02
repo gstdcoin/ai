@@ -7,9 +7,9 @@ import (
 )
 
 type GenesisHandler struct {
-	service   *services.GenesisService
-	nodes     *services.NodeService
-	modelSvc  *services.AgentModelService
+	service  *services.GenesisService
+	nodes    *services.NodeService
+	modelSvc *services.AgentModelService
 }
 
 func NewGenesisHandler(gs *services.GenesisService, ns *services.NodeService, modelSvc *services.AgentModelService) *GenesisHandler {
@@ -37,8 +37,8 @@ func (h *GenesisHandler) IgniteAgent(c *gin.Context) {
 	}
 
 	c.JSON(200, gin.H{
-		"token": token,
-		"instructions": "Use this token in X-Genesis-Token header for all machine-to-machine calls.",
+		"token":              token,
+		"instructions":       "Use this token in X-Genesis-Token header for all machine-to-machine calls.",
 		"sovereignty_status": "enabled",
 	})
 }
@@ -81,7 +81,7 @@ func (h *GenesisHandler) SubmitModelUpdate(c *gin.Context) {
 	}
 	var req struct {
 		AgentID    string                 `json:"agent_id" binding:"required"`
-		WeightsURL string                `json:"weights_url" binding:"required"`
+		WeightsURL string                 `json:"weights_url" binding:"required"`
 		Metrics    map[string]interface{} `json:"metrics"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {

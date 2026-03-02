@@ -161,4 +161,3 @@ func (m *MigrationService) markMigrationApplied(ctx context.Context, name string
 	`, name)
 	return err
 }
-

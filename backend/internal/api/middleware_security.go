@@ -13,23 +13,23 @@ func SanitizeError(err error) string {
 	}
 
 	errMsg := err.Error()
-	
+
 	// Remove file paths
 	errMsg = strings.ReplaceAll(errMsg, "/home/", "***/")
 	errMsg = strings.ReplaceAll(errMsg, "/app/", "***/")
 	errMsg = strings.ReplaceAll(errMsg, "/var/", "***/")
 	errMsg = strings.ReplaceAll(errMsg, "/tmp/", "***/")
-	
+
 	// Remove database connection strings
 	if strings.Contains(errMsg, "postgresql://") || strings.Contains(errMsg, "redis://") {
 		return "Connection error"
 	}
-	
+
 	// Remove stack traces
 	if idx := strings.Index(errMsg, "\n"); idx > 0 {
 		errMsg = errMsg[:idx]
 	}
-	
+
 	// Ascension: Ghost Admin — never leak secrets via errors
 	sensitivePatterns := []string{
 		"sql:", "database", "connection", "credentials", "secret", "key", "token",
@@ -42,7 +42,7 @@ func SanitizeError(err error) string {
 			return "Internal server error"
 		}
 	}
-	
+
 	return errMsg
 }
 
@@ -50,7 +50,7 @@ func SanitizeError(err error) string {
 func ErrorHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Next()
-		
+
 		// Check for errors in response
 		if len(c.Errors) > 0 {
 			for _, err := range c.Errors {
@@ -59,4 +59,3 @@ func ErrorHandler() gin.HandlerFunc {
 		}
 	}
 }
-

@@ -52,7 +52,7 @@ func NewBitchatBridgeService(db *sql.DB) *BitchatBridgeService {
 		db:         db,
 		httpClient: &http.Client{Timeout: 15 * time.Second},
 		apiBaseURL: strings.TrimSuffix(apiBaseURL, "/"),
-		enabled:   enabled,
+		enabled:    enabled,
 	}
 }
 

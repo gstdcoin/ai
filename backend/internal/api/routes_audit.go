@@ -20,7 +20,7 @@ func getReservesAudit(db *sql.DB, tonService *services.TONService, tonConfig con
 			if r := recover(); r != nil {
 				log.Printf("Panic in getReservesAudit: %v", r)
 				c.JSON(200, gin.H{
-					"gold_reserve_xaut":  0.0,
+					"gold_reserve_xaut": 0.0,
 					"circulating_gstd":  0.0,
 					"reserve_ratio":     0.0,
 					"audit_timestamp":   nil,
@@ -75,12 +75,12 @@ func getReservesAudit(db *sql.DB, tonService *services.TONService, tonConfig con
 		}
 
 		c.JSON(http.StatusOK, gin.H{
-			"gold_reserve_xaut":  goldReserveXAUt,
-			"gold_reserve_gstd":  goldReserveGSTD,
-			"circulating_gstd":   circulatingGSTD,
-			"total_supply_gstd":  totalSupplyGSTD,
-			"reserve_ratio":      reserveRatio,
-			"audit_timestamp":    time.Now().UTC().Format(time.RFC3339),
+			"gold_reserve_xaut": goldReserveXAUt,
+			"gold_reserve_gstd": goldReserveGSTD,
+			"circulating_gstd":  circulatingGSTD,
+			"total_supply_gstd": totalSupplyGSTD,
+			"reserve_ratio":     reserveRatio,
+			"audit_timestamp":   time.Now().UTC().Format(time.RFC3339),
 			"status":            "ok",
 			"message":           "Night Audit: Gold reserves vs tokens verification",
 		})

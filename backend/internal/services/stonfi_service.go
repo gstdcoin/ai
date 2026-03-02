@@ -13,9 +13,9 @@ import (
 )
 
 type StonFiService struct {
-	apiURL    string
-	client    *http.Client
-	routerAddr string
+	apiURL      string
+	client      *http.Client
+	routerAddr  string
 	poolMonitor *PoolMonitorService
 }
 
@@ -26,14 +26,14 @@ func (s *StonFiService) SetPoolMonitor(pm *PoolMonitorService) {
 func NewStonFiService(stonFiRouter string) *StonFiService {
 	// Mainnet STON.fi API
 	apiURL := "https://api.ston.fi"
-	
+
 	// Use provided router address or default mainnet router
 	if stonFiRouter == "" {
 		stonFiRouter = "EQA98Z99S-9u1As_7p8n7H_H_H_H_H_H_H_H_H_H_H_H_H_H_"
 	}
-	
+
 	return &StonFiService{
-		apiURL:    apiURL,
+		apiURL:     apiURL,
 		routerAddr: stonFiRouter,
 		client: &http.Client{
 			Timeout: 30 * time.Second,
@@ -42,13 +42,13 @@ func NewStonFiService(stonFiRouter string) *StonFiService {
 }
 
 type SwapQuote struct {
-	AmountOut string `json:"amount_out"`
+	AmountOut    string `json:"amount_out"`
 	MinAmountOut string `json:"min_amount_out"`
-	PriceImpact string `json:"price_impact"`
+	PriceImpact  string `json:"price_impact"`
 }
 
 type SwapResponse struct {
-	TxHash string `json:"tx_hash"`
+	TxHash    string `json:"tx_hash"`
 	AmountOut string `json:"amount_out"`
 }
 
@@ -81,7 +81,7 @@ func (s *StonFiService) SwapGSTDToXAUt(ctx context.Context, gstdAmount float64, 
 	// 1. Construct swap transaction using router contract
 	// 2. Sign with treasury wallet
 	// 3. Broadcast to TON network
-	
+
 	// For now, we'll use STON.fi API to create swap transaction
 	// In production, this should use wallet service for signing
 	txHash, err := s.executeSwap(ctx, amountIn, gstdAddr, xautAddr, quote)
@@ -109,11 +109,11 @@ func (s *StonFiService) executeSwap(
 	url := fmt.Sprintf("%s/v1/swap", s.apiURL)
 
 	swapReq := map[string]interface{}{
-		"router":        s.routerAddr,
-		"token_in":      tokenIn,
-		"token_out":     tokenOut,
-		"amount_in":     strconv.FormatInt(amountIn, 10),
-		"min_amount_out": quote.MinAmountOut,
+		"router":             s.routerAddr,
+		"token_in":           tokenIn,
+		"token_out":          tokenOut,
+		"amount_in":          strconv.FormatInt(amountIn, 10),
+		"min_amount_out":     quote.MinAmountOut,
 		"slippage_tolerance": "0.01", // 1% slippage tolerance
 	}
 
@@ -138,14 +138,14 @@ func (s *StonFiService) executeSwap(
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
 		log.Printf("STON.fi swap execution error (status %d): %s", resp.StatusCode, string(body))
-		
+
 		// If swap endpoint doesn't support direct execution, return pending hash
 		if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusMethodNotAllowed {
 			log.Printf("⚠️  STON.fi API doesn't support direct swap execution")
 			log.Printf("   Swap requires wallet service integration for signing")
 			return fmt.Sprintf("pending_swap_%d", time.Now().Unix()), nil
 		}
-		
+
 		return "", fmt.Errorf("STON.fi swap error (HTTP %d): %s", resp.StatusCode, string(body))
 	}
 
@@ -162,7 +162,7 @@ func (s *StonFiService) executeSwap(
 func (s *StonFiService) GetSwapQuote(ctx context.Context, amountIn int64, tokenIn, tokenOut string) (*SwapQuote, error) {
 	// Fallback/Simulated logic for demo if API fails or for unlisted pairs
 	// For TON -> GSTD (where TON="TON" and GSTD="GSTD_ADDR")
-	
+
 	// Real API Call Attempt
 	// Try standard quote first
 	url := fmt.Sprintf("%s/v1/reverse_quote?offer_address=%s&ask_address=%s&units=%d&slippage_tolerance=0.01",
@@ -175,14 +175,14 @@ func (s *StonFiService) GetSwapQuote(ctx context.Context, amountIn int64, tokenI
 			defer resp.Body.Close()
 			if resp.StatusCode == http.StatusOK {
 				var quoteResponse struct {
-					OfferUnits string `json:"offer_units"`
-					AskUnits   string `json:"ask_units"`
+					OfferUnits  string `json:"offer_units"`
+					AskUnits    string `json:"ask_units"`
 					PriceImpact string `json:"price_impact"`
 				}
 				if err := json.NewDecoder(resp.Body).Decode(&quoteResponse); err == nil {
 					return &SwapQuote{
 						AmountOut:    quoteResponse.AskUnits,
-						MinAmountOut: quoteResponse.AskUnits, 
+						MinAmountOut: quoteResponse.AskUnits,
 						PriceImpact:  quoteResponse.PriceImpact,
 					}, nil
 				}
@@ -197,31 +197,31 @@ func (s *StonFiService) GetSwapQuote(ctx context.Context, amountIn int64, tokenI
 
 	// Pool Addresses
 	const (
-		Pool_GSTD_TON = "EQBAKUBvV_ppbcMCPnWQXKfV1IIHtve5ImYA8-wg0hpMzNH8"
+		Pool_GSTD_TON  = "EQBAKUBvV_ppbcMCPnWQXKfV1IIHtve5ImYA8-wg0hpMzNH8"
 		Pool_XAUT_GSTD = "EQA--JXG8VSyBJmLMqb2J2t4Pya0TS9SXHh7vHh8Iez25sLp"
 	)
 
 	// Token Addresses
 	const (
-		Token_TON   = "TON"
-		Token_GSTD  = "EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO"
-		Token_XAUT  = "EQA1R_LuQCLHlMgOo1S4G7Y7W1cd0FrAkbA10Zq7rddKxi9k" // From Pool Data
+		Token_TON  = "TON"
+		Token_GSTD = "EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO"
+		Token_XAUT = "EQA1R_LuQCLHlMgOo1S4G7Y7W1cd0FrAkbA10Zq7rddKxi9k" // From Pool Data
 		// Note: Keep legacy XAUt address check if needed, but prioritized pool data
 	)
 
 	// GSTD/TON Pool logic
-	if (tokenIn == Token_TON && tokenOut == Token_GSTD) || 
-	   (tokenOut == Token_TON && tokenIn == Token_GSTD) ||
-       (tokenOut == "GSTD_ADDR" || tokenIn == "GSTD_ADDR") { 
+	if (tokenIn == Token_TON && tokenOut == Token_GSTD) ||
+		(tokenOut == Token_TON && tokenIn == Token_GSTD) ||
+		(tokenOut == "GSTD_ADDR" || tokenIn == "GSTD_ADDR") {
 		poolUrl = "https://api.ston.fi/v1/pools/" + Pool_GSTD_TON
 		isGSTD = true
-	} 
-	
+	}
+
 	// XAUT/GSTD Direct Pool logic
 	// Check against known XAUt address OR the legacy one from config
 	isXautIn := (tokenIn == Token_XAUT || tokenIn == "EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV_Riwa854wa")
 	isXautOut := (tokenOut == Token_XAUT || tokenOut == "EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixqV_Riwa854wa")
-	
+
 	if (isXautIn && tokenOut == Token_GSTD) || (isXautOut && tokenIn == Token_GSTD) {
 		poolUrl = "https://api.ston.fi/v1/pools/" + Pool_XAUT_GSTD
 		isXAUt = true
@@ -249,8 +249,8 @@ func (s *StonFiService) GetSwapQuote(ctx context.Context, amountIn int64, tokenI
 
 	var poolData struct {
 		Pool struct {
-			Reserve0 string `json:"reserve0"` 
-			Reserve1 string `json:"reserve1"` 
+			Reserve0 string `json:"reserve0"`
+			Reserve1 string `json:"reserve1"`
 			Token0   string `json:"token0_address"`
 			Token1   string `json:"token1_address"`
 		} `json:"pool"`
@@ -259,27 +259,33 @@ func (s *StonFiService) GetSwapQuote(ctx context.Context, amountIn int64, tokenI
 	if err := json.NewDecoder(respPool.Body).Decode(&poolData); err != nil {
 		return nil, fmt.Errorf("failed to decode pool data: %w", err)
 	}
-	
+
 	var reserveIn, reserveOut float64
 	var r0, r1 float64
-	
+
 	r0, _ = strconv.ParseFloat(poolData.Pool.Reserve0, 64)
 	r1, _ = strconv.ParseFloat(poolData.Pool.Reserve1, 64)
 
 	// Determine matching logic
 	// We need to match tokenIn to Token0 or Token1
-	
+
 	matchedIn := false
-	
+
 	// Normalization for comparison (handle aliases)
 	actualTokenIn := tokenIn
-	if tokenIn == "TON" { actualTokenIn = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c" } 
+	if tokenIn == "TON" {
+		actualTokenIn = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"
+	}
 	// If input was "GSTD_ADDR", map to actual
-	if tokenIn == "GSTD_ADDR" { actualTokenIn = Token_GSTD }
-	
+	if tokenIn == "GSTD_ADDR" {
+		actualTokenIn = Token_GSTD
+	}
+
 	// If using aliases for XAUt in request but pool has real address
-	if isXautIn { actualTokenIn = poolData.Pool.Token0 } // Slight hack: if we know it's the XAUt pool pair, we can deduce.
-	
+	if isXautIn {
+		actualTokenIn = poolData.Pool.Token0
+	} // Slight hack: if we know it's the XAUt pool pair, we can deduce.
+
 	// Better logic:
 	if actualTokenIn == poolData.Pool.Token0 {
 		matchedIn = true
@@ -291,18 +297,30 @@ func (s *StonFiService) GetSwapQuote(ctx context.Context, amountIn int64, tokenI
 		if tokenIn == "TON" && (poolData.Pool.Token0 == "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c") {
 			matchedIn = true
 		} else if isXautIn {
-             // If we are in XAUT pool, and input was XAUT, assume it matches the non-GSTD token
-             if poolData.Pool.Token0 != Token_GSTD { matchedIn = true } else { matchedIn = false }
+			// If we are in XAUT pool, and input was XAUT, assume it matches the non-GSTD token
+			if poolData.Pool.Token0 != Token_GSTD {
+				matchedIn = true
+			} else {
+				matchedIn = false
+			}
 		} else if isGSTD && !isDirectPair {
-             // GSTD/TON pool
-             if tokenIn == "TON" {
-                 // Check if Token0 is TON
-                 if poolData.Pool.Token0 == "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c" { matchedIn = true } else { matchedIn = false }
-             } else {
-                 // Input is GSTD
-                 if poolData.Pool.Token0 == Token_GSTD { matchedIn = true } else { matchedIn = false }
-             }
-        }
+			// GSTD/TON pool
+			if tokenIn == "TON" {
+				// Check if Token0 is TON
+				if poolData.Pool.Token0 == "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c" {
+					matchedIn = true
+				} else {
+					matchedIn = false
+				}
+			} else {
+				// Input is GSTD
+				if poolData.Pool.Token0 == Token_GSTD {
+					matchedIn = true
+				} else {
+					matchedIn = false
+				}
+			}
+		}
 	}
 
 	if matchedIn {
@@ -312,23 +330,29 @@ func (s *StonFiService) GetSwapQuote(ctx context.Context, amountIn int64, tokenI
 		reserveIn = r1
 		reserveOut = r0
 	}
-	
+
 	amtInFloat := float64(amountIn)
 	// Output = (ReserveOut * AmountIn) / (ReserveIn + AmountIn)
 	// Add 99.7% fee consideration? (30 protocol + 20 lp fee?) usually 0.3%
 	// Standard Constant Product with fee: Out = (Ry * x * 0.997) / (Rx + x * 0.997)
 	amountOut := (reserveOut * amtInFloat) / (reserveIn + amtInFloat)
-	
+
 	targetName := "Unknown"
-	if isGSTD { targetName = "GSTD" }
-	if isXAUt { targetName = "XAUt" }
-    if isDirectPair { targetName = "GSTD/XAUt" }
+	if isGSTD {
+		targetName = "GSTD"
+	}
+	if isXAUt {
+		targetName = "XAUt"
+	}
+	if isDirectPair {
+		targetName = "GSTD/XAUt"
+	}
 
 	log.Printf("✅ Direct Pool Swap (%s): In %.2f -> Out %.2f (Reserves: %.0f / %.0f)", targetName, amtInFloat/1e9, amountOut/1e9, reserveIn, reserveOut)
 
 	return &SwapQuote{
 		AmountOut:    fmt.Sprintf("%.0f", amountOut),
-		MinAmountOut: fmt.Sprintf("%.0f", amountOut*0.95), 
+		MinAmountOut: fmt.Sprintf("%.0f", amountOut*0.95),
 		PriceImpact:  "0.05",
 	}, nil
 }
@@ -339,13 +363,13 @@ func (s *StonFiService) BuildSwapPayload(ctx context.Context, userWallet string,
 	// Opcode: 0x25938561 (swap)
 	// This is a simplified example. In reality, we'd build the full cell.
 	// For the Agent MVP, we return a "ready-to-sign" structure.
-	
+
 	return map[string]interface{}{
-		"to":             s.routerAddr,
-		"value":          strconv.FormatInt(amountIn, 10),
-		"body_boc":       "te6cckEBAQEAAAA...", // Mock BOC
-		"comment":        "Swap via STON.fi (GSTD Autonomous)",
-		"min_out":        quote.MinAmountOut,
+		"to":       s.routerAddr,
+		"value":    strconv.FormatInt(amountIn, 10),
+		"body_boc": "te6cckEBAQEAAAA...", // Mock BOC
+		"comment":  "Swap via STON.fi (GSTD Autonomous)",
+		"min_out":  quote.MinAmountOut,
 	}, nil
 }
 
@@ -396,7 +420,7 @@ func (s *StonFiService) SimulateLiquidityProvision(ctx context.Context, poolAddr
 // Returns tx params for the admin wallet to sign and broadcast
 func (s *StonFiService) BuildProvideLiquidityPayload(ctx context.Context, poolAddress, walletAddress, gstdAddr, xautAddr string, amountGSTD, amountXAUt float64) (map[string]interface{}, error) {
 	tokenAUnits := strconv.FormatInt(int64(amountXAUt*1e9), 10) // XAUt = token0 in pool
-	tokenBUnits := strconv.FormatInt(int64(amountGSTD*1e9), 10)  // GSTD = token1 in pool
+	tokenBUnits := strconv.FormatInt(int64(amountGSTD*1e9), 10) // GSTD = token1 in pool
 
 	sim, err := s.SimulateLiquidityProvision(ctx, poolAddress, walletAddress, xautAddr, gstdAddr, tokenAUnits, tokenBUnits)
 	if err != nil {
@@ -410,17 +434,17 @@ func (s *StonFiService) BuildProvideLiquidityPayload(ctx context.Context, poolAd
 	}
 
 	return map[string]interface{}{
-		"action":           "provide_liquidity",
-		"router_address":   routerAddr,
-		"pool_address":     poolAddress,
-		"wallet_address":   walletAddress,
-		"token_a":         xautAddr,
-		"token_b":         gstdAddr,
-		"token_a_units":   sim.TokenAUnits,
-		"token_b_units":   sim.TokenBUnits,
-		"min_lp_units":    sim.MinLpUnits,
-		"provision_type":  sim.ProvisionType,
-		"comment":         "GSTD Dynamic Gold Backing - Ston.fi Arbitrary Provision",
+		"action":         "provide_liquidity",
+		"router_address": routerAddr,
+		"pool_address":   poolAddress,
+		"wallet_address": walletAddress,
+		"token_a":        xautAddr,
+		"token_b":        gstdAddr,
+		"token_a_units":  sim.TokenAUnits,
+		"token_b_units":  sim.TokenBUnits,
+		"min_lp_units":   sim.MinLpUnits,
+		"provision_type": sim.ProvisionType,
+		"comment":        "GSTD Dynamic Gold Backing - Ston.fi Arbitrary Provision",
 	}, nil
 }
 
@@ -514,4 +538,3 @@ func (s *StonFiService) GetWalletPoolPosition(ctx context.Context, walletAddress
 	}
 	return data, nil
 }
-

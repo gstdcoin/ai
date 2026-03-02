@@ -25,7 +25,7 @@ type BurnConfig struct {
 func NewBurnService(db *sql.DB, config *BurnConfig) *BurnService {
 	if config == nil {
 		config = &BurnConfig{
-			BurnRate:    0.05, // 5%
+			BurnRate:    0.05,                                               // 5%
 			BurnAddress: "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c", // TON Black Hole
 		}
 	}
@@ -79,14 +79,14 @@ func (s *BurnService) ProcessTransactionWithBurn(ctx context.Context, req *Trans
 
 	// Calculate breakdown
 	burnAmount := s.CalculateBurnAmount(totalAmount)
-	platformFee := totalAmount * 0.05 // 5% platform fee
+	platformFee := totalAmount * 0.05                      // 5% platform fee
 	workerReward := totalAmount - burnAmount - platformFee // 90%
 
 	breakdown := &TransactionBreakdown{
-		TotalAmount:        totalAmount,
-		WorkerReward:       workerReward,
-		PlatformFee:        platformFee,
-		BurnAmount:         burnAmount,
+		TotalAmount:         totalAmount,
+		WorkerReward:        workerReward,
+		PlatformFee:         platformFee,
+		BurnAmount:          burnAmount,
 		WorkerRewardPercent: 90.0,
 		PlatformFeePercent:  5.0,
 		BurnPercent:         5.0,

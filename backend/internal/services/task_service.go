@@ -23,7 +23,7 @@ type TaskService struct {
 	gravityService    *HardenedGravityService
 	entropyService    *EntropyService
 	encryptionService *EncryptionService
-	hub               interface{} // *api.WSHub (avoid circular import)
+	hub               interface{}  // *api.WSHub (avoid circular import)
 	hubMu             sync.RWMutex // Protects hub from race conditions
 	redisStreams      *RedisStreamsService
 	redisPubSub       *RedisPubSubService // Redis Pub/Sub for horizontal scaling
@@ -73,28 +73,28 @@ func (s *TaskService) BroadcastTaskToHub(ctx context.Context, task *models.Task)
 	// Publish for both 'pending' and 'queued' status (queued is used in new payment flow)
 	if s.redisPubSub != nil && (task.Status == "pending" || task.Status == "queued") {
 		payload := map[string]interface{}{
-			"task_id":              task.TaskID,
-			"requester_address":    task.RequesterAddress,
-			"task_type":            task.TaskType,
-			"operation":            task.Operation,
-			"labor_compensation":   task.LaborCompensationGSTD,
-			"gravity_score":        task.PriorityScore,
-			"min_trust_score":      task.MinTrustScore,
-			"redundancy_factor":   task.RedundancyFactor,
-			"confidence_depth":     task.ConfidenceDepth,
+			"task_id":            task.TaskID,
+			"requester_address":  task.RequesterAddress,
+			"task_type":          task.TaskType,
+			"operation":          task.Operation,
+			"labor_compensation": task.LaborCompensationGSTD,
+			"gravity_score":      task.PriorityScore,
+			"min_trust_score":    task.MinTrustScore,
+			"redundancy_factor":  task.RedundancyFactor,
+			"confidence_depth":   task.ConfidenceDepth,
 		}
 		if err := s.redisPubSub.PublishTask(ctx, task.TaskID, task.TaskType, task.Status, payload); err != nil {
 			log.Printf("⚠️  Failed to publish task to Redis Pub/Sub: %v", err)
 			// Continue to local hub broadcast even if Redis fails
 		}
 	}
-	
+
 	// Also broadcast to local WebSocket hub (for this server instance)
 	// Use RWMutex to prevent race conditions
 	s.hubMu.RLock()
 	hub := s.hub
 	s.hubMu.RUnlock()
-	
+
 	if hub != nil {
 		// Use type assertion to call BroadcastTask
 		// This avoids circular import between api and services
@@ -117,7 +117,7 @@ func (s *TaskService) CreateTask(ctx context.Context, requesterAddress string, d
 	//   - Confidence depth calculation (always 1 with balance 0)
 	// If GSTD support is needed in future, restore balance check here
 	gstdBalance := 0.0
-	
+
 	entropy, _ := s.entropyService.GetEntropy(ctx, descriptor.Operation)
 
 	// Physics-based Gravity Score (EGS v3)
@@ -151,37 +151,36 @@ func (s *TaskService) CreateTask(ctx context.Context, requesterAddress string, d
 		log.Printf("🔒 Task %s: payload encrypted for executor (Data Airlock)", taskID)
 	}
 
-    // REAL ESCROW LOGIC (Atomic Transaction)
-    tx, err := s.db.BeginTx(ctx, nil)
-    if err != nil {
-        return nil, fmt.Errorf("failed to begin transaction: %w", err)
-    }
-    defer tx.Rollback()
+	// REAL ESCROW LOGIC (Atomic Transaction)
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
 
-    // 1. Deduct from User Balance & Add to Escrow
-    // Check if user has enough funds (cost + fee)
-    // Assuming totalCost and platformFee are calculated elsewhere or need to be added here.
-    // For now, using descriptor.Reward.AmountGSTD as the base cost.
-    // The instruction implies `totalCost` and `platformFee` variables exist or should be defined.
-    // Let's define them based on the previous logic.
-    platformFee := descriptor.Reward.AmountGSTD * 0.05 // 5% platform fee
-    totalCost := descriptor.Reward.AmountGSTD + platformFee
+	// 1. Deduct from User Balance & Add to Escrow
+	// Check if user has enough funds (cost + fee)
+	// Assuming totalCost and platformFee are calculated elsewhere or need to be added here.
+	// For now, using descriptor.Reward.AmountGSTD as the base cost.
+	// The instruction implies `totalCost` and `platformFee` variables exist or should be defined.
+	// Let's define them based on the previous logic.
+	platformFee := descriptor.Reward.AmountGSTD * 0.05 // 5% platform fee
+	totalCost := descriptor.Reward.AmountGSTD + platformFee
 
-    res, err := tx.ExecContext(ctx, `
+	res, err := tx.ExecContext(ctx, `
         UPDATE users 
         SET gstd_balance = gstd_balance - $1, 
             gstd_escrow_balance = COALESCE(gstd_escrow_balance, 0) + $1
         WHERE wallet_address = $2 AND gstd_balance >= $1
     `, totalCost, requesterAddress)
-    if err != nil {
-        return nil, fmt.Errorf("failed to process escrow: %w", err)
-    }
-    
-    rows, _ := res.RowsAffected()
-    if rows == 0 {
-        return nil, fmt.Errorf("INSUFFICIENT FUNDS: You need %.4f GSTD (Budget + 5%% Fee) to create this task.", totalCost)
-    }
+	if err != nil {
+		return nil, fmt.Errorf("failed to process escrow: %w", err)
+	}
 
+	rows, _ := res.RowsAffected()
+	if rows == 0 {
+		return nil, fmt.Errorf("INSUFFICIENT FUNDS: You need %.4f GSTD (Budget + 5%% Fee) to create this task.", totalCost)
+	}
 
 	// 2. Insert task
 	_, err = tx.ExecContext(ctx, `
@@ -198,43 +197,42 @@ func (s *TaskService) CreateTask(ctx context.Context, requesterAddress string, d
 		descriptor.MinTrust, descriptor.IsPrivate, confidenceDepth, redundancy, isSpotCheck, entropy,
 		false, "", 0, "", payloadToStore)
 
+	if err != nil {
+		return nil, fmt.Errorf("failed to create task record: %w", err)
+	}
 
-    if err != nil {
-        return nil, fmt.Errorf("failed to create task record: %w", err)
-    }
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+	}
 
-    if err := tx.Commit(); err != nil {
-        return nil, fmt.Errorf("failed to commit transaction: %w", err)
-    }
-
-    log.Printf("💰 Task %s Created: Deducted %.4f GSTD from %s. Status: PENDING (ESCROW_LOCKED)", 
-        taskID, totalCost, requesterAddress)
+	log.Printf("💰 Task %s Created: Deducted %.4f GSTD from %s. Status: PENDING (ESCROW_LOCKED)",
+		taskID, totalCost, requesterAddress)
 
 	task := &models.Task{
-		TaskID:              taskID,
-		RequesterAddress:    requesterAddress,
+		TaskID:                taskID,
+		RequesterAddress:      requesterAddress,
 		LaborCompensationGSTD: finalCompensation,
-		PriorityScore:        gravityScore,
-		Status:              "pending",
-		MinTrustScore:       descriptor.MinTrust,
-		IsPrivate:           descriptor.IsPrivate,
-		RedundancyFactor:    redundancy,
-		ConfidenceDepth:     confidenceDepth,
-		IsSpotCheck:         isSpotCheck,
+		PriorityScore:         gravityScore,
+		Status:                "pending",
+		MinTrustScore:         descriptor.MinTrust,
+		IsPrivate:             descriptor.IsPrivate,
+		RedundancyFactor:      redundancy,
+		ConfidenceDepth:       confidenceDepth,
+		IsSpotCheck:           isSpotCheck,
 	}
 
 	// Publish task to Redis Streams for distribution
 	if s.redisStreams != nil {
 		taskData := map[string]interface{}{
-			"task_id":              task.TaskID,
-			"requester_address":    task.RequesterAddress,
-			"task_type":            descriptor.TaskType,
-			"operation":            descriptor.Operation,
-			"labor_compensation":   finalCompensation,
-			"gravity_score":        gravityScore,
-			"min_trust_score":       descriptor.MinTrust,
-			"redundancy_factor":    redundancy,
-			"confidence_depth":     confidenceDepth,
+			"task_id":            task.TaskID,
+			"requester_address":  task.RequesterAddress,
+			"task_type":          descriptor.TaskType,
+			"operation":          descriptor.Operation,
+			"labor_compensation": finalCompensation,
+			"gravity_score":      gravityScore,
+			"min_trust_score":    descriptor.MinTrust,
+			"redundancy_factor":  redundancy,
+			"confidence_depth":   confidenceDepth,
 		}
 		if err := s.redisStreams.PublishTask(ctx, task.TaskID, taskData); err != nil {
 			// Log error but don't fail task creation
@@ -246,7 +244,7 @@ func (s *TaskService) CreateTask(ctx context.Context, requesterAddress string, d
 	// Note: Task starts as 'awaiting_escrow', will be broadcast when status changes to 'pending'
 	// The broadcast will happen automatically when escrow is confirmed via the escrow service
 	// For immediate availability, we also broadcast to Redis Streams (done above)
-	
+
 	// If task is already in 'pending' status (shouldn't happen, but safety check)
 	if task.Status == "pending" {
 		s.BroadcastTaskToHub(ctx, task)
@@ -314,7 +312,7 @@ func (s *TaskService) GetTaskByID(ctx context.Context, taskID string) (*models.T
 	var gravityScore sql.NullFloat64
 	var assignedAt, completedAt, timeoutAt sql.NullTime
 	var assignedDevice sql.NullString
-	
+
 	err := s.db.QueryRowContext(ctx, `
 		SELECT task_id, requester_address, task_type, operation, model,
 		       labor_compensation_gstd, 
@@ -336,33 +334,33 @@ func (s *TaskService) GetTaskByID(ctx context.Context, taskID string) (*models.T
 		&t.EscrowStatus, &t.ConfidenceDepth, &assignedDevice, &t.MinTrustScore,
 		&t.ResultData,
 	)
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Handle nullable fields
 	if gravityScore.Valid {
 		t.PriorityScore = gravityScore.Float64
 	} else {
 		t.PriorityScore = 0.0
 	}
-	
+
 	if assignedAt.Valid {
 		t.AssignedAt = &assignedAt.Time
 	}
-	
+
 	if completedAt.Valid {
 		t.CompletedAt = &completedAt.Time
 	}
-	
+
 	if timeoutAt.Valid {
 		t.TimeoutAt = &timeoutAt.Time
 	}
-	
+
 	if assignedDevice.Valid {
 		t.AssignedDevice = &assignedDevice.String
 	}
-	
+
 	return &t, nil
 }

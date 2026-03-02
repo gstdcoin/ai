@@ -30,9 +30,9 @@ func getLastIntegrityCheckTime() time.Time {
 // If CPU load rises: switch to Predictive Silence (reduce emissions).
 
 const (
-	homeostasisAccuracyDropThreshold = 5.0   // % drop to trigger CodeLayerBoost
-	homeostasisTickDurationThreshold  = 30.0 // seconds — above this → PredictiveSilence
-	homeostasisGoroutineThreshold     = 150  // high goroutine count → PredictiveSilence
+	homeostasisAccuracyDropThreshold = 5.0  // % drop to trigger CodeLayerBoost
+	homeostasisTickDurationThreshold = 30.0 // seconds — above this → PredictiveSilence
+	homeostasisGoroutineThreshold    = 150  // high goroutine count → PredictiveSilence
 )
 
 var (

@@ -107,7 +107,7 @@ func (c *PolymarketClient) extractVectors(raw json.RawMessage) []MarketPrice {
 			YesPct:        yesPct,
 			OneHourChange: oneHour,
 			Closed:        m.Closed,
-			UpdatedAt:    time.Now(),
+			UpdatedAt:     time.Now(),
 		}
 		if m.Closed && m.ResolvedBy != "" {
 			mp.ResolvedYes = parseResolved(m.OutcomePrices)

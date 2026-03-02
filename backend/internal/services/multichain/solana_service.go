@@ -9,13 +9,13 @@ import (
 type SolanaService interface {
 	// CheckBalance returns the balance of a wallet on Solana
 	CheckBalance(ctx context.Context, walletAddr string) (float64, error)
-	
+
 	// LockFunds locks tokens in a Solana smart contract (Escrow equivalent)
 	LockFunds(ctx context.Context, senderKey, amount, taskID string) (string, error)
-	
+
 	// CreateSplToken mints or transfers SPL tokens (GSTD-Solana)
 	TransferSPL(ctx context.Context, fromKey, toAddr, amount string) (string, error)
-	
+
 	// GetTPS returns current Solana network performance stats
 	GetTPS(ctx context.Context) (float64, error)
 }

@@ -88,25 +88,25 @@ func (s *PayoutManifestService) GenerateManifest(ctx context.Context) (*PayoutMa
 
 // CalculateHash generates a SHA256 hash of the manifest data (excluding the hash itself)
 func (s *PayoutManifestService) CalculateHash(manifest *PayoutManifest) (string, error) {
-	// We create a temporary structure to ensure consistent JSON ordering if needed, 
+	// We create a temporary structure to ensure consistent JSON ordering if needed,
 	// though Go's json.Marshal is generally consistent for simple structs.
 	type ManifestData struct {
 		Timestamp   int64          `json:"timestamp"`
 		Workers     []WorkerReward `json:"workers"`
 		TotalAmount float64        `json:"total_amount"`
 	}
-	
+
 	data := ManifestData{
 		Timestamp:   manifest.Timestamp,
 		Workers:     manifest.Workers,
 		TotalAmount: manifest.TotalAmount,
 	}
-	
+
 	jsonData, err := json.Marshal(data)
 	if err != nil {
 		return "", err
 	}
-	
+
 	hash := sha256.Sum256(jsonData)
 	return "0x" + hex.EncodeToString(hash[:]), nil
 }
@@ -124,6 +124,6 @@ func (s *PayoutManifestService) MarkAsProcessed(ctx context.Context, workerIDs [
 		  AND status = 'completed'
 		  AND executor_payout_status = 'pending'
 	`, txHash, workerIDs)
-	
+
 	return err
 }

@@ -26,7 +26,7 @@ func NewPayoutRetryService(db *sql.DB, rewardEngine *RewardEngine) *PayoutRetryS
 // Start begins the retry service
 func (prs *PayoutRetryService) Start(ctx context.Context) {
 	log.Println("PayoutRetryService: Starting retry mechanism")
-	
+
 	ticker := time.NewTicker(prs.checkInterval)
 	defer ticker.Stop()
 
@@ -186,4 +186,3 @@ func (prs *PayoutRetryService) RetryPayoutByID(ctx context.Context, id int) erro
 	}
 	return nil
 }
-

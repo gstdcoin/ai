@@ -19,22 +19,22 @@ type MonetizationMetrics struct {
 	EscrowFees24h     float64 `json:"escrow_fees_24h"`     // Task escrow 5%
 	SkillPurchases24h float64 `json:"skill_purchases_24h"` // Skill marketplace
 	SettlementFees24h float64 `json:"settlement_fees_24h"` // Proxy inference 5%
-	InferenceFees24h float64 `json:"inference_fees_24h"`  // Brain/Hive API
+	InferenceFees24h  float64 `json:"inference_fees_24h"`  // Brain/Hive API
 	TotalRevenue24h   float64 `json:"total_revenue_24h"`
 
 	// Velocity
-	RevenueTPS     float64 `json:"revenue_tps"`     // Revenue events per second
-	GoldConverted  float64 `json:"gold_converted"`   // GSTD→XAUt last 24h
-	LastUpdatedAt  string  `json:"last_updated_at"`
+	RevenueTPS    float64 `json:"revenue_tps"`    // Revenue events per second
+	GoldConverted float64 `json:"gold_converted"` // GSTD→XAUt last 24h
+	LastUpdatedAt string  `json:"last_updated_at"`
 }
 
 // MonetizationMetricsService provides centralized revenue tracking for the sovereign organism
 type MonetizationMetricsService struct {
-	db    *sql.DB
+	db     *sql.DB
 	escrow *EscrowService
-	mu    sync.RWMutex
-	cache MonetizationMetrics
-	at    time.Time
+	mu     sync.RWMutex
+	cache  MonetizationMetrics
+	at     time.Time
 }
 
 // NewMonetizationMetricsService creates the service

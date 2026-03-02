@@ -100,20 +100,20 @@ func (s *NodeService) RegisterNode(ctx context.Context, walletAddress string, na
 	if isUpdate {
 		node.CreatedAt = existing.CreatedAt
 		node.TrustScore = existing.TrustScore
-		
+
 		_, err = s.db.ExecContext(ctx, `
 			UPDATE nodes 
 			SET name = $1, status = $2, cpu_model = $3, ram_gb = $4, country = $5, 
 			    latitude = $6, longitude = $7, is_spoofing = $8, last_seen = $9, updated_at = $10
 			WHERE wallet_address = $11
-		`, node.Name, node.Status, node.CPUModel, node.RAMGB, node.Country, 
-		   node.Latitude, node.Longitude, node.IsSpoofing, node.LastSeen, node.UpdatedAt, walletAddress)
+		`, node.Name, node.Status, node.CPUModel, node.RAMGB, node.Country,
+			node.Latitude, node.Longitude, node.IsSpoofing, node.LastSeen, node.UpdatedAt, walletAddress)
 	} else {
 		_, err = s.db.ExecContext(ctx, `
 			INSERT INTO nodes (id, wallet_address, name, status, cpu_model, ram_gb, trust_score, country, latitude, longitude, is_spoofing, last_seen, created_at, updated_at)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-		`, node.ID, node.WalletAddress, node.Name, node.Status, node.CPUModel, node.RAMGB, node.TrustScore, node.Country, 
-		   node.Latitude, node.Longitude, node.IsSpoofing, node.LastSeen, node.CreatedAt, node.UpdatedAt)
+		`, node.ID, node.WalletAddress, node.Name, node.Status, node.CPUModel, node.RAMGB, node.TrustScore, node.Country,
+			node.Latitude, node.Longitude, node.IsSpoofing, node.LastSeen, node.CreatedAt, node.UpdatedAt)
 	}
 
 	if err != nil {
@@ -175,7 +175,7 @@ func (s *NodeService) GetMyNodes(ctx context.Context, walletAddress string) ([]*
 	}
 	defer rows.Close()
 
-		var nodes []*models.Node
+	var nodes []*models.Node
 	for rows.Next() {
 		var node models.Node
 		var country sql.NullString
@@ -230,7 +230,7 @@ func (s *NodeService) DecreaseTrustScore(ctx context.Context, walletAddress stri
 		    updated_at = NOW()
 		WHERE wallet_address = $2
 	`, penalty, walletAddress)
-	
+
 	return err
 }
 
@@ -239,7 +239,7 @@ func (s *NodeService) GetNodeByWalletAddress(ctx context.Context, walletAddress 
 	var node models.Node
 	var country sql.NullString
 	var lat, lon sql.NullFloat64
-	
+
 	err := s.db.QueryRowContext(ctx, `
 		SELECT id, wallet_address, name, status, cpu_model, ram_gb, trust_score, country, latitude, longitude, is_spoofing, last_seen, created_at, updated_at
 		FROM nodes
@@ -261,11 +261,11 @@ func (s *NodeService) GetNodeByWalletAddress(ctx context.Context, walletAddress 
 		&node.CreatedAt,
 		&node.UpdatedAt,
 	)
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if country.Valid {
 		node.Country = &country.String
 	}
@@ -275,7 +275,7 @@ func (s *NodeService) GetNodeByWalletAddress(ctx context.Context, walletAddress 
 	if lon.Valid {
 		node.Longitude = &lon.Float64
 	}
-	
+
 	return &node, nil
 }
 
@@ -321,16 +321,16 @@ func (s *NodeService) GetNodeByID(ctx context.Context, nodeID string) (*models.N
 	return &node, nil
 }
 
-// UpdateHeartbeat updates the last_seen timestamp. 
+// UpdateHeartbeat updates the last_seen timestamp.
 // OPTIMIZED: Uses Redis-first approach for 1M+ user scale, batching DB updates.
 func (s *NodeService) UpdateHeartbeat(ctx context.Context, walletAddress string) error {
 	now := time.Now()
-	
+
 	// 1. Always update Redis immediately (fast path)
 	if s.redis != nil {
 		onlineKey := fmt.Sprintf("worker:online:%s", walletAddress)
 		s.redis.Set(ctx, onlineKey, "online", 120*time.Second) // 2 min TTL
-		
+
 		// Add to batch update set in Redis
 		s.redis.SAdd(ctx, "workers:heartbeat:pending", walletAddress)
 		s.redis.HSet(ctx, "workers:heartbeat:times", walletAddress, now.Unix())
@@ -339,7 +339,7 @@ func (s *NodeService) UpdateHeartbeat(ctx context.Context, walletAddress string)
 	// 2. Synchronous DB update is only done periodically or if Redis is down
 	// In high-load scenario, we skip this and let background worker handle it.
 	// For backward compatibility and low-load, we still do it but wrap in logic.
-	
+
 	return nil
 }
 
@@ -393,13 +393,12 @@ func (s *NodeService) RegisterSubNode(ctx context.Context, masterWallet, subID, 
 	return err
 }
 
-
 // GetPublicActiveNodes returns basic info about all online nodes with pagination support
 func (s *NodeService) GetPublicActiveNodes(ctx context.Context, limit, offset int) ([]map[string]interface{}, error) {
 	if limit <= 0 || limit > 500 {
 		limit = 100 // Default/Max limit for public map to prevent DB strain
 	}
-	
+
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT id, status, latitude, longitude
 		FROM nodes
@@ -479,9 +478,9 @@ func (s *NodeService) UpdateHealthStats(ctx context.Context, identifier string, 
 
 // MaintenanceAlert - Owner's Advocate AI: Predictive maintenance suggestion
 type MaintenanceAlert struct {
-	NodeID    string `json:"node_id"`
-	Severity  string `json:"severity"` // info, warning, critical
-	Message   string `json:"message"`
+	NodeID         string `json:"node_id"`
+	Severity       string `json:"severity"` // info, warning, critical
+	Message        string `json:"message"`
 	Recommendation string `json:"recommendation"`
 }
 
@@ -515,7 +514,7 @@ func (s *NodeService) GetMaintenanceAlerts(ctx context.Context, wallet string) (
 				if batInt > 0 && batInt < 20 {
 					alerts = append(alerts, MaintenanceAlert{
 						NodeID: id, Severity: "warning",
-						Message:       fmt.Sprintf("Node %s: Battery at %d%%", name, batInt),
+						Message:        fmt.Sprintf("Node %s: Battery at %d%%", name, batInt),
 						Recommendation: "Consider charging or switching to Eco mode to preserve battery.",
 					})
 				}
@@ -524,7 +523,7 @@ func (s *NodeService) GetMaintenanceAlerts(ctx context.Context, wallet string) (
 		if !addedGeneric {
 			alerts = append(alerts, MaintenanceAlert{
 				NodeID: id, Severity: "info",
-				Message:       "Owner's Advocate: Hardware care tip",
+				Message:        "Owner's Advocate: Hardware care tip",
 				Recommendation: "If you notice high fan speeds, consider cleaning the device to maintain mining efficiency.",
 			})
 			addedGeneric = true

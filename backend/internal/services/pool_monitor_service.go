@@ -48,8 +48,8 @@ type PoolMonitorService struct {
 // NewPoolMonitorService creates a new monitor tied to TON config and DB.
 func NewPoolMonitorService(cfg config.TONConfig, db *sql.DB) *PoolMonitorService {
 	return &PoolMonitorService{
-		db:     db,
-		tonCfg: cfg,
+		db:         db,
+		tonCfg:     cfg,
 		httpClient: &http.Client{Timeout: 10 * time.Second},
 	}
 }
@@ -394,4 +394,3 @@ func getStr(m map[string]interface{}, key string) string {
 	}
 	return ""
 }
-

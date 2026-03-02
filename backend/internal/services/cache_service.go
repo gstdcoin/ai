@@ -70,10 +70,9 @@ func (c *CacheService) InvalidatePattern(ctx context.Context, pattern string) er
 
 // Cache keys
 const (
-	CacheKeyDeviceTrust    = "device:trust:%s"
-	CacheKeyTaskList       = "tasks:available:%s:%s" // deviceID:region
-	CacheKeyGSTDBalance    = "gstd:balance:%s"
-	CacheKeyNetworkTemp     = "network:temperature"
-	CacheKeyTaskStats       = "stats:tasks:%s" // date
+	CacheKeyDeviceTrust = "device:trust:%s"
+	CacheKeyTaskList    = "tasks:available:%s:%s" // deviceID:region
+	CacheKeyGSTDBalance = "gstd:balance:%s"
+	CacheKeyNetworkTemp = "network:temperature"
+	CacheKeyTaskStats   = "stats:tasks:%s" // date
 )
-

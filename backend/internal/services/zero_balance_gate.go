@@ -13,11 +13,11 @@ import (
 // which can then be used for their own queries.
 //
 // Flow:
-//   1. User sends chat query with balance=0
-//   2. Gateway checks balance via ZeroBalanceGate
-//   3. Gate returns WorkCredit: "process N validation tasks to earn enough for your query"
-//   4. Frontend auto-starts WorkerService in background
-//   5. Once earned, the original query is processed
+//  1. User sends chat query with balance=0
+//  2. Gateway checks balance via ZeroBalanceGate
+//  3. Gate returns WorkCredit: "process N validation tasks to earn enough for your query"
+//  4. Frontend auto-starts WorkerService in background
+//  5. Once earned, the original query is processed
 type ZeroBalanceGateService struct {
 	db *sql.DB
 }
@@ -130,7 +130,12 @@ func (s *ZeroBalanceGateService) GetWorkStats(ctx context.Context, walletAddress
 		"total_tasks_completed": totalTasks,
 		"current_balance":       balance,
 		"earning_rate_per_hour": recentRate,
-		"mode":                  func() string { if balance > 0.01 { return "master" }; return "worker" }(),
+		"mode": func() string {
+			if balance > 0.01 {
+				return "master"
+			}
+			return "worker"
+		}(),
 	}, nil
 }
 

@@ -34,18 +34,18 @@ type CleanCoreService struct {
 
 // PropagationEvent is broadcast when a model is loaded for shard-first distribution
 type PropagationEvent struct {
-	ModelID   string    `json:"model_id"`
+	ModelID   string       `json:"model_id"`
 	Manifest  *LFSManifest `json:"manifest,omitempty"`
-	Timestamp time.Time `json:"timestamp"`
+	Timestamp time.Time    `json:"timestamp"`
 }
 
 // ProofOfStorageRecord represents a node's proof that it holds model shards
 type ProofOfStorageRecord struct {
-	NodeID     string   `json:"node_id"`
-	WalletAddr string   `json:"wallet_address"`
-	ModelID    string   `json:"model_id"`
-	BlockIDs   []string `json:"block_ids"`
-	ProofHash  string   `json:"proof_hash"`
+	NodeID     string    `json:"node_id"`
+	WalletAddr string    `json:"wallet_address"`
+	ModelID    string    `json:"model_id"`
+	BlockIDs   []string  `json:"block_ids"`
+	ProofHash  string    `json:"proof_hash"`
 	VerifiedAt time.Time `json:"verified_at"`
 }
 

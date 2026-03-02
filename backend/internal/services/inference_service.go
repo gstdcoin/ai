@@ -25,7 +25,7 @@ type InferenceService struct {
 	model          string
 	client         *http.Client
 	highPriorityCh chan *inferenceJob // Marketplace, paid inference
-	lowPriorityCh  chan *inferenceJob  // Free AI chats
+	lowPriorityCh  chan *inferenceJob // Free AI chats
 	workerCount    int
 	wg             sync.WaitGroup
 }
@@ -58,8 +58,8 @@ func NewInferenceService() *InferenceService {
 		ollamaURL:      ollamaURL,
 		model:          model,
 		client:         &http.Client{Timeout: 30 * time.Second}, // Shadow Audit: 30s limit to prevent worker pool starvation
-		highPriorityCh: make(chan *inferenceJob, 32),           // Marketplace first
-		lowPriorityCh:  make(chan *inferenceJob, 32),           // Free chats when overloaded
+		highPriorityCh: make(chan *inferenceJob, 32),            // Marketplace first
+		lowPriorityCh:  make(chan *inferenceJob, 32),            // Free chats when overloaded
 		workerCount:    workerCount,
 	}
 	svc.startWorkers()

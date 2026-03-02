@@ -21,8 +21,8 @@ import (
 // - Integrity check (SHA256 per block)
 // - On-the-fly quantization (FP32→INT8) for bandwidth optimization
 type SwarmLFSService struct {
-	mu        sync.RWMutex
-	manifests map[string]*LFSManifest
+	mu         sync.RWMutex
+	manifests  map[string]*LFSManifest
 	blockStore map[string][]byte // model:blockID -> raw or quantized payload
 }
 
@@ -49,16 +49,16 @@ type LFSBlockRef struct {
 
 // LFSBlock is the wire format for streaming (Integrity + optional quantization)
 type LFSBlock struct {
-	BlockID   string  `json:"block_id"`
-	Seq       int     `json:"seq"`
-	Total     int     `json:"total"`
-	SizeBytes int     `json:"size_bytes"`
-	Hash      string  `json:"hash"`
-	Quantized bool    `json:"quantized"`
-	Dtype     string  `json:"dtype"`
-	Scale     float64 `json:"scale,omitempty"`
-	ZeroPoint float64 `json:"zero_point,omitempty"`
-	PayloadB64 string `json:"payload_b64"`
+	BlockID    string  `json:"block_id"`
+	Seq        int     `json:"seq"`
+	Total      int     `json:"total"`
+	SizeBytes  int     `json:"size_bytes"`
+	Hash       string  `json:"hash"`
+	Quantized  bool    `json:"quantized"`
+	Dtype      string  `json:"dtype"`
+	Scale      float64 `json:"scale,omitempty"`
+	ZeroPoint  float64 `json:"zero_point,omitempty"`
+	PayloadB64 string  `json:"payload_b64"`
 }
 
 // NewSwarmLFSService creates the LFS service
@@ -192,13 +192,13 @@ func (s *SwarmLFSService) GetBlock(ctx context.Context, modelID, blockID string,
 	}
 
 	block := &LFSBlock{
-		BlockID:   blockID,
-		Seq:       seq,
-		Total:     total,
-		SizeBytes: len(payload),
-		Hash:      "sha256:" + hash,
-		Quantized: quantize,
-		Dtype:     "int8",
+		BlockID:    blockID,
+		Seq:        seq,
+		Total:      total,
+		SizeBytes:  len(payload),
+		Hash:       "sha256:" + hash,
+		Quantized:  quantize,
+		Dtype:      "int8",
 		PayloadB64: payloadB64,
 	}
 	if quantize {

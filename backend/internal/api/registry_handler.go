@@ -13,10 +13,10 @@ import (
 // RegistryJoinRequest — Unified Identity: flexible payload for /registry/join
 type RegistryJoinRequest struct {
 	// Common
-	WalletAddress     string                 `json:"wallet_address"`
-	ReferralCode      string                 `json:"referral_code"`
-	Source            string                 `json:"source"` // swarm, browser, telegram, agent, desktop
-	PlatformFingerprint string               `json:"platform_fingerprint"`
+	WalletAddress       string `json:"wallet_address"`
+	ReferralCode        string `json:"referral_code"`
+	Source              string `json:"source"` // swarm, browser, telegram, agent, desktop
+	PlatformFingerprint string `json:"platform_fingerprint"`
 
 	// Node-style (agents, swarm, desktop)
 	Name  string                 `json:"name"`
@@ -34,8 +34,8 @@ type RegistryJoinRequest struct {
 
 // RegistryJoinResponse — unified response
 type RegistryJoinResponse struct {
-	Type       string      `json:"type"`        // "node" | "device"
-	ID         string      `json:"id"`           // node_id or device_id
+	Type       string      `json:"type"` // "node" | "device"
+	ID         string      `json:"id"`   // node_id or device_id
 	Wallet     string      `json:"wallet"`
 	Message    string      `json:"message"`
 	Registered interface{} `json:"registered,omitempty"`

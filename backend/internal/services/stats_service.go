@@ -121,22 +121,22 @@ func (s *StatsService) GetGlobalStats(ctx context.Context) (*GlobalStats, error)
 }
 
 type NetworkStats struct {
-	ActiveWorkers      int     `json:"active_workers"`
-	TotalGSTDPaid      float64 `json:"total_gstd_paid"`
-	Tasks24h           int     `json:"tasks_24h"`
-	Temperature        float64 `json:"temperature"`
-	Pressure           float64 `json:"pressure"`
-	TotalHashrate      float64 `json:"total_hashrate"`
-	GoldReserve        float64 `json:"gold_reserve"`
-	GoldenReserveXAUt  float64 `json:"golden_reserve_xaut"`
-	GSTDPriceUSD       float64 `json:"gstd_price_usd"`
-	LastAuditDate      string  `json:"last_audit_date"`
-	AuditVerified      bool    `json:"audit_verified"`
-	BackingRatio       float64 `json:"backing_ratio"`
-	TotalBurnedGSTD    float64 `json:"total_burned"`     // Admin Treasury View
-	TotalXAUtBought    float64 `json:"total_xaut_bought"` // Admin Treasury View
-	NetworkIQ          float64 `json:"network_iq"`        // Public Proof of Intelligence (Leviathan)
-	GlobalBrainLatencyMs int   `json:"global_brain_latency_ms"` // Avg ping from network_measurements
+	ActiveWorkers        int     `json:"active_workers"`
+	TotalGSTDPaid        float64 `json:"total_gstd_paid"`
+	Tasks24h             int     `json:"tasks_24h"`
+	Temperature          float64 `json:"temperature"`
+	Pressure             float64 `json:"pressure"`
+	TotalHashrate        float64 `json:"total_hashrate"`
+	GoldReserve          float64 `json:"gold_reserve"`
+	GoldenReserveXAUt    float64 `json:"golden_reserve_xaut"`
+	GSTDPriceUSD         float64 `json:"gstd_price_usd"`
+	LastAuditDate        string  `json:"last_audit_date"`
+	AuditVerified        bool    `json:"audit_verified"`
+	BackingRatio         float64 `json:"backing_ratio"`
+	TotalBurnedGSTD      float64 `json:"total_burned"`            // Admin Treasury View
+	TotalXAUtBought      float64 `json:"total_xaut_bought"`       // Admin Treasury View
+	NetworkIQ            float64 `json:"network_iq"`              // Public Proof of Intelligence (Leviathan)
+	GlobalBrainLatencyMs int     `json:"global_brain_latency_ms"` // Avg ping from network_measurements
 }
 
 func (s *StatsService) GetNetworkStats(ctx context.Context) (*NetworkStats, error) {

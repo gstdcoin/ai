@@ -78,8 +78,8 @@ func SetupHyperExpansionRoutes(
 func brainQueryPaid(knowledge *services.KnowledgeService, db *sql.DB, tonConfig config.TONConfig) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			Topic string  `json:"topic" binding:"required"`
-			Limit int     `json:"limit"`
+			Topic      string  `json:"topic" binding:"required"`
+			Limit      int     `json:"limit"`
 			AmountGSTD float64 `json:"amount_gstd"` // Payment for knowledge access
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -121,11 +121,11 @@ func brainQueryPaid(knowledge *services.KnowledgeService, db *sql.DB, tonConfig 
 		`, req.AmountGSTD)
 
 		c.JSON(200, gin.H{
-			"status":   "ok",
-			"topic":    req.Topic,
-			"results":  items,
+			"status":    "ok",
+			"topic":     req.Topic,
+			"results":   items,
 			"paid_gstd": req.AmountGSTD,
-			"message":  "Knowledge accessed. Revenue directed to Gold Pool.",
+			"message":   "Knowledge accessed. Revenue directed to Gold Pool.",
 		})
 	}
 }
@@ -155,9 +155,9 @@ func oracleOpinion(knowledge *services.KnowledgeService) gin.HandlerFunc {
 		c.JSON(200, gin.H{
 			"jsonrpc": "2.0",
 			"result": map[string]interface{}{
-				"opinion":   opinion,
-				"sources":   len(items),
-				"query":     query,
+				"opinion": opinion,
+				"sources": len(items),
+				"query":   query,
 			},
 		})
 	}
@@ -194,10 +194,10 @@ func leaderboardByH3(db *sql.DB) gin.HandlerFunc {
 				continue
 			}
 			items = append(items, map[string]interface{}{
-				"h3_index":   h3,
-				"node_count": count,
+				"h3_index":    h3,
+				"node_count":  count,
 				"total_trust": trust,
-				"country":    country,
+				"country":     country,
 			})
 		}
 		c.JSON(200, gin.H{"leaderboard": items})
@@ -231,9 +231,9 @@ func getMilestones(db *sql.DB) gin.HandlerFunc {
 			}
 			items = append(items, map[string]interface{}{
 				"milestone_type": mType,
-				"badge_name":    badgeName,
-				"badge_icon":    badgeIcon,
-				"achieved_at":   achievedAt,
+				"badge_name":     badgeName,
+				"badge_icon":     badgeIcon,
+				"achieved_at":    achievedAt,
 			})
 		}
 		c.JSON(200, gin.H{"milestones": items})
@@ -266,7 +266,7 @@ func checkMilestones(db *sql.DB) gin.HandlerFunc {
 
 		c.JSON(200, gin.H{
 			"tasks_completed": tasksCompleted,
-			"message":        "Milestones checked. Achievements may increase free AI limits.",
+			"message":         "Milestones checked. Achievements may increase free AI limits.",
 		})
 	}
 }

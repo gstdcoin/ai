@@ -14,23 +14,23 @@ import (
 // User-friendly format: [tag 1b][workchain 1b][account_id 32b][crc 2b] base64url encoded
 func ConvertRawToUserFriendly(rawAddress string) (string, error) {
 	rawAddress = strings.TrimSpace(rawAddress)
-	
+
 	// If already in user-friendly format, return as is
 	if strings.HasPrefix(rawAddress, "EQ") || strings.HasPrefix(rawAddress, "UQ") ||
 		strings.HasPrefix(rawAddress, "kQ") || strings.HasPrefix(rawAddress, "0Q") {
 		return rawAddress, nil
 	}
-	
+
 	// Check if it's raw format
 	if !strings.HasPrefix(rawAddress, "0:") && !strings.HasPrefix(rawAddress, "-1:") {
 		// Just return raw if we can't parse it, though likely invalid
 		return rawAddress, fmt.Errorf("address is not in raw format")
 	}
-	
+
 	// Parse Workchain
 	var workchainByte byte = 0x00
 	hexPart := ""
-	
+
 	if strings.HasPrefix(rawAddress, "0:") {
 		workchainByte = 0x00
 		hexPart = rawAddress[2:]
@@ -38,7 +38,7 @@ func ConvertRawToUserFriendly(rawAddress string) (string, error) {
 		workchainByte = 0xff
 		hexPart = rawAddress[3:]
 	}
-	
+
 	// Normalize hex part
 	if len(hexPart) < 64 {
 		return rawAddress, fmt.Errorf("invalid raw address length: need 64 hex characters, got %d", len(hexPart))
@@ -46,35 +46,35 @@ func ConvertRawToUserFriendly(rawAddress string) (string, error) {
 	if len(hexPart) > 64 {
 		hexPart = hexPart[:64]
 	}
-	
+
 	// Perform Hex Decode
 	accountID, err := hex.DecodeString(hexPart)
 	if err != nil {
 		return rawAddress, fmt.Errorf("invalid hex in raw address: %w", err)
 	}
-	
+
 	// Construct the 34-byte data: Tag + Workchain + AccountID
 	// Tag: 0x11 for Bounceable (default), 0x51 for Non-bounceable (UQ)
 	// We use 0x11 (Bounceable) -> starts with EQ for wc 0
 	tag := byte(0x11)
-	
+
 	data := make([]byte, 34)
 	data[0] = tag
 	data[1] = workchainByte
 	copy(data[2:], accountID)
-	
+
 	// Calculate CRC16-CCITT (XMODEM)
 	crc := crc16(data)
-	
+
 	// Append CRC (2 bytes, big-endian)
 	fullData := make([]byte, 36)
 	copy(fullData, data)
 	fullData[34] = byte(crc >> 8)
 	fullData[35] = byte(crc & 0xFF)
-	
+
 	// Base64 URL Encode
 	userFriendly := base64.URLEncoding.EncodeToString(fullData)
-	
+
 	log.Printf("Converted address: %s -> %s", rawAddress, userFriendly)
 	return userFriendly, nil
 }

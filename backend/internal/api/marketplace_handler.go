@@ -52,15 +52,15 @@ func SetupMarketplaceRoutes(router *gin.RouterGroup, handler *MarketplaceHandler
 		marketplace.POST("/tasks/:id/complete", handler.CompleteTask)
 		marketplace.DELETE("/tasks/:id", handler.DeleteTask)
 		marketplace.GET("/tasks/:id/receipts", handler.GetTaskReceipts)
-		
+
 		// Worker endpoints
 		marketplace.GET("/worker/stats", handler.GetWorkerStats)
 		marketplace.GET("/worker/earnings", handler.GetWorkerEarnings)
-		
+
 		// Creator endpoints
 		marketplace.GET("/my-tasks", handler.GetMyTasks)
 		marketplace.GET("/my-transactions", handler.GetMyTransactions)
-		
+
 		// Platform stats
 		marketplace.GET("/funds", handler.GetPlatformFunds)
 	}
@@ -77,11 +77,11 @@ func SetupMarketplaceProtectedRoutes(router *gin.RouterGroup, handler *Marketpla
 		marketplace.POST("/tasks/:id/complete", handler.CompleteTask)
 		marketplace.DELETE("/tasks/:id", handler.DeleteTask)
 		marketplace.GET("/tasks/:id/receipts", handler.GetTaskReceipts)
-		
+
 		// Worker endpoints
 		marketplace.GET("/worker/stats", handler.GetWorkerStats)
 		marketplace.GET("/worker/earnings", handler.GetWorkerEarnings)
-		
+
 		// Creator endpoints
 		marketplace.GET("/my-tasks", handler.GetMyTasks)
 		marketplace.GET("/my-transactions", handler.GetMyTransactions)
@@ -92,7 +92,7 @@ func SetupMarketplaceProtectedRoutes(router *gin.RouterGroup, handler *Marketpla
 		// Cancel & Refund (creator actions)
 		marketplace.POST("/tasks/:id/cancel", handler.CancelTask)
 		marketplace.POST("/tasks/:id/refund", handler.RefundTask)
-		
+
 		// Crowdfunding
 		marketplace.POST("/tasks/:id/contribute", handler.ContributeToTask)
 	}
@@ -100,15 +100,15 @@ func SetupMarketplaceProtectedRoutes(router *gin.RouterGroup, handler *Marketpla
 
 // CreateTaskRequest represents a task creation request
 type CreateTaskRequest struct {
-	TaskType         string  `json:"task_type" binding:"required"`     // network_survey, js_script, wasm_binary
+	TaskType         string  `json:"task_type" binding:"required"` // network_survey, js_script, wasm_binary
 	Operation        string  `json:"operation"`
 	BudgetGSTD       float64 `json:"budget_gstd" binding:"required"`
-	Difficulty       string  `json:"difficulty"`                        // easy, medium, hard
+	Difficulty       string  `json:"difficulty"` // easy, medium, hard
 	MaxWorkers       int     `json:"max_workers"`
 	EstimatedTimeSec int     `json:"estimated_time_sec"`
 	MinTrustScore    float64 `json:"min_trust_score"`
 	Geography        struct {
-		Type      string   `json:"type"`      // global, countries
+		Type      string   `json:"type"` // global, countries
 		Countries []string `json:"countries"`
 	} `json:"geography"`
 	InputSource string `json:"input_source"`
@@ -134,7 +134,7 @@ func (h *MarketplaceHandler) GetAvailableTasks(c *gin.Context) {
 	}
 
 	country := c.DefaultQuery("country", "")
-	
+
 	tasks, err := h.marketplace.GetAvailableTasks(c.Request.Context(), wallet, 0, 0, country)
 	if err != nil {
 		log.Printf("⚠️  Failed to get available tasks: %v", err)
@@ -203,7 +203,7 @@ func (h *MarketplaceHandler) CreateTaskWithEscrow(c *gin.Context) {
 
 	// Create task first (simplified - in production, use TaskService)
 	taskID := generateTaskID()
-	
+
 	// Insert task into database
 	_, err := h.db.ExecContext(c.Request.Context(), `
 		INSERT INTO tasks (
@@ -242,22 +242,22 @@ func (h *MarketplaceHandler) CreateTaskWithEscrow(c *gin.Context) {
 	if err != nil {
 		log.Printf("❌ Failed to create escrow: %v", err)
 		// Rollback task creation
-		h.db.ExecContext(c.Request.Context(), 
+		h.db.ExecContext(c.Request.Context(),
 			"DELETE FROM tasks WHERE task_id = $1", taskID)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to lock funds"})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"task_id":          taskID,
-		"escrow_id":        escrow.ID,
-		"budget_gstd":      req.BudgetGSTD,
-		"platform_fee":     escrow.PlatformFeeGSTD,
-		"total_locked":     escrow.TotalLockedGSTD,
-		"max_workers":      req.MaxWorkers,
+		"task_id":           taskID,
+		"escrow_id":         escrow.ID,
+		"budget_gstd":       req.BudgetGSTD,
+		"platform_fee":      escrow.PlatformFeeGSTD,
+		"total_locked":      escrow.TotalLockedGSTD,
+		"max_workers":       req.MaxWorkers,
 		"reward_per_worker": rewardPerWorker * 0.95, // 95% to worker
-		"status":           "pending",
-		"message":          "Task created and funds locked in escrow",
+		"status":            "pending",
+		"message":           "Task created and funds locked in escrow",
 	})
 }
 
@@ -353,7 +353,7 @@ func (h *MarketplaceHandler) CompleteTask(c *gin.Context) {
 // @Router /marketplace/tasks/{id}/receipts [get]
 func (h *MarketplaceHandler) GetTaskReceipts(c *gin.Context) {
 	taskID := c.Param("id")
-	
+
 	receipts, err := h.marketplace.GetTaskReceipts(c.Request.Context(), taskID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -496,7 +496,7 @@ func (h *MarketplaceHandler) GetPlatformFunds(c *gin.Context) {
 // @Router /marketplace/stats [get]
 func (h *MarketplaceHandler) GetMarketplaceStats(c *gin.Context) {
 	ctx := c.Request.Context()
-	
+
 	var totalTasks, activeTasks, completedTasks int
 	var totalVolume, totalPayouts float64
 	var activeWorkers int
@@ -586,20 +586,20 @@ func (h *MarketplaceHandler) DeleteTask(c *gin.Context) {
 	// Check status - can only delete if pending or queued (not claimed yet)
 	if status != "pending" && status != "queued" {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "cannot delete task",
+			"error":  "cannot delete task",
 			"reason": "task is already " + status + " - can only delete pending or queued tasks",
 		})
 		return
 	}
 
 	// Delete escrow record first (if exists)
-	_, _ = h.db.ExecContext(c.Request.Context(), 
+	_, _ = h.db.ExecContext(c.Request.Context(),
 		"DELETE FROM task_escrow WHERE task_id = $1", taskID)
 
 	// Delete the task
-	result, err := h.db.ExecContext(c.Request.Context(), 
+	result, err := h.db.ExecContext(c.Request.Context(),
 		"DELETE FROM tasks WHERE task_id = $1 AND requester_address = $2", taskID, walletAddress)
-	
+
 	if err != nil {
 		log.Printf("❌ Failed to delete task: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete task"})
@@ -662,7 +662,7 @@ func (h *MarketplaceHandler) RefundTask(c *gin.Context) {
 
 	if status != "locked" {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "escrow cannot be refunded",
+			"error":  "escrow cannot be refunded",
 			"reason": "status is " + status + " (only locked escrow with no workers paid can be refunded)",
 		})
 		return
@@ -670,7 +670,7 @@ func (h *MarketplaceHandler) RefundTask(c *gin.Context) {
 
 	if workersPaid > 0 {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "escrow cannot be refunded",
+			"error":  "escrow cannot be refunded",
 			"reason": "workers have already been paid",
 		})
 		return
@@ -693,10 +693,10 @@ func (h *MarketplaceHandler) RefundTask(c *gin.Context) {
 
 	log.Printf("✅ Escrow refunded for task %s to %s (%.6f GSTD)", taskID, wallet, totalLockedGSTD)
 	c.JSON(http.StatusOK, gin.H{
-		"task_id":      taskID,
-		"status":       "refunded",
-		"amount_gstd":  totalLockedGSTD,
-		"message":      "Refund processed successfully",
+		"task_id":     taskID,
+		"status":      "refunded",
+		"amount_gstd": totalLockedGSTD,
+		"message":     "Refund processed successfully",
 	})
 }
 
@@ -718,11 +718,11 @@ func (h *MarketplaceHandler) PayoutTask(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"task_id":      taskID,
-		"status":       "paid",
-		"tx_id":        tx.TxID,
+		"task_id":     taskID,
+		"status":      "paid",
+		"tx_id":       tx.TxID,
 		"amount_gstd": tx.AmountGSTD,
-		"message":      "Rewards distributed successfully",
+		"message":     "Rewards distributed successfully",
 	})
 }
 
@@ -755,26 +755,26 @@ func (h *MarketplaceHandler) ContributeToTask(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "amount must be positive"})
 		return
 	}
-    
-    // Check if task exists and is active
-    var status string
-    var maxWorkers int
-    err := h.db.QueryRowContext(c.Request.Context(), "SELECT status, COALESCE(max_workers, 1) FROM tasks WHERE task_id = $1", taskID).Scan(&status, &maxWorkers)
-    if err != nil {
-         if err == sql.ErrNoRows {
-             c.JSON(http.StatusNotFound, gin.H{"error": "task not found"})
-         } else {
-             log.Printf("Failed to get task status: %v", err)
-             c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check task"})
-         }
-         return
-    }
-    
-    // Allow contributions to pending, queued, or assigned tasks (not completed/failed)
-    if status == "completed" || status == "failed" {
-         c.JSON(http.StatusBadRequest, gin.H{"error": "cannot contribute to completed or failed task"})
-         return
-    }
+
+	// Check if task exists and is active
+	var status string
+	var maxWorkers int
+	err := h.db.QueryRowContext(c.Request.Context(), "SELECT status, COALESCE(max_workers, 1) FROM tasks WHERE task_id = $1", taskID).Scan(&status, &maxWorkers)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusNotFound, gin.H{"error": "task not found"})
+		} else {
+			log.Printf("Failed to get task status: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check task"})
+		}
+		return
+	}
+
+	// Allow contributions to pending, queued, or assigned tasks (not completed/failed)
+	if status == "completed" || status == "failed" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot contribute to completed or failed task"})
+		return
+	}
 
 	// Begin transaction
 	tx, err := h.db.BeginTx(c.Request.Context(), nil)
@@ -791,12 +791,12 @@ func (h *MarketplaceHandler) ContributeToTask(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check balance"})
 		return
 	}
-	
+
 	if balance < req.AmountGSTD {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "insufficient balance"})
 		return
 	}
-	
+
 	// 2. Deduct from user
 	_, err = tx.ExecContext(c.Request.Context(), `
 		UPDATE users SET balance = balance - $1 WHERE wallet_address = $2
@@ -816,11 +816,11 @@ func (h *MarketplaceHandler) ContributeToTask(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to record contribution"})
 		return
 	}
-	
+
 	// 4. Update task rewards
 	// Increase total_reward_pool, reward_gstd, and reward_per_worker
 	rewardIncreasePerWorker := req.AmountGSTD / float64(maxWorkers)
-	
+
 	_, err = tx.ExecContext(c.Request.Context(), `
 		UPDATE tasks 
 		SET total_reward_pool = COALESCE(total_reward_pool, 0) + $2,
@@ -835,7 +835,7 @@ func (h *MarketplaceHandler) ContributeToTask(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update task reward"})
 		return
 	}
-	
+
 	// 5. Update Escrow record (funds are now locked in escrow system)
 	// We assume escrow_id exists on task
 	_, err = tx.ExecContext(c.Request.Context(), `
@@ -844,9 +844,9 @@ func (h *MarketplaceHandler) ContributeToTask(c *gin.Context) {
         WHERE task_id = $1
 	`, taskID, req.AmountGSTD)
 	if err != nil {
-	    // It's possible task has no escrow if it was created without one (unlikely for marketplace). 
-	    // But ignoring error is risky. Let's log.
-	    log.Printf("Warning: Failed to update escrow for contribution: %v", err)
+		// It's possible task has no escrow if it was created without one (unlikely for marketplace).
+		// But ignoring error is risky. Let's log.
+		log.Printf("Warning: Failed to update escrow for contribution: %v", err)
 	}
 
 	// 6. Record transaction history
@@ -856,11 +856,11 @@ func (h *MarketplaceHandler) ContributeToTask(c *gin.Context) {
 			task_id, description, status
 		) VALUES ($1, $2, 'escrow', $3, 'contribution', $4, $5, 'confirmed')
 	`, "TX-"+randomString(10), walletAddress, req.AmountGSTD, taskID, "Community contribution to task reward")
-	
+
 	if err != nil {
-	    log.Printf("Failed to record transaction: %v", err)
-	    c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to record transaction"})
-	    return
+		log.Printf("Failed to record transaction: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to record transaction"})
+		return
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -869,9 +869,9 @@ func (h *MarketplaceHandler) ContributeToTask(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Contribution added successfully",
-		"task_id": taskID,
-		"amount_added": req.AmountGSTD,
+		"message":          "Contribution added successfully",
+		"task_id":          taskID,
+		"amount_added":     req.AmountGSTD,
 		"new_total_reward": "updated", // client can refresh
 	})
 }

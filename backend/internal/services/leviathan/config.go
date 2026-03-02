@@ -7,22 +7,22 @@ import (
 
 // Config holds Leviathan module configuration. All optional — module is disabled if LEVIATHAN_ENABLED != "true".
 type Config struct {
-	Enabled            bool
-	DeltaTriggerPct    float64
-	AlphaThresholdPct  float64
-	TelegramBotToken   string
-	TelegramChatID     string
-	ShadowDBPath       string
-	GammaAPIBase       string
-	GammaWSURL         string
-	PollIntervalSec    int
-	SourceWeightNews   float64
-	SourceWeightTG     float64
-	SourceWeightWhale  float64
-	LowAlphaPruneMin   int     // Data Distillation: delete low-alpha cache after N min (default 5)
-	TruthVerifyHours   int     // Truth Verification: Gamma API check every N hours (default 6)
-	GNewsAPIKey        string  // Global Senses: NewsCheck (required for verdict)
-	CryptoPanicAPIKey  string  // Global Senses: SentimentCheck on crypto markets
+	Enabled           bool
+	DeltaTriggerPct   float64
+	AlphaThresholdPct float64
+	TelegramBotToken  string
+	TelegramChatID    string
+	ShadowDBPath      string
+	GammaAPIBase      string
+	GammaWSURL        string
+	PollIntervalSec   int
+	SourceWeightNews  float64
+	SourceWeightTG    float64
+	SourceWeightWhale float64
+	LowAlphaPruneMin  int    // Data Distillation: delete low-alpha cache after N min (default 5)
+	TruthVerifyHours  int    // Truth Verification: Gamma API check every N hours (default 6)
+	GNewsAPIKey       string // Global Senses: NewsCheck (required for verdict)
+	CryptoPanicAPIKey string // Global Senses: SentimentCheck on crypto markets
 }
 
 // LoadConfig loads config from environment.

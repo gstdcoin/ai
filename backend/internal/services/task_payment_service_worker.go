@@ -19,7 +19,7 @@ func (s *TaskPaymentService) GetPendingTasks(ctx context.Context, limit, offset 
 	if limit <= 0 || limit > 1000 {
 		limit = 100
 	}
-	
+
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT task_id, creator_wallet, requester_address, task_type, status,
 		       budget_gstd, reward_gstd, deposit_id, payment_memo, payload,
@@ -133,7 +133,7 @@ func (s *TaskPaymentService) SubmitWorkerResult(
 	if err != nil {
 		return fmt.Errorf("task not found: %w", err)
 	}
-	
+
 	// Handle NULL assigned_device
 	if assignedDevice.Valid {
 		task.AssignedDevice = &assignedDevice.String
@@ -172,7 +172,6 @@ func (s *TaskPaymentService) SubmitWorkerResult(
 		}
 	}
 
-
 	// Update task status to completed and store result (atomic operation with WHERE status check)
 	resultStr := string(result)
 	resultExec, err := tx.ExecContext(ctx, `
@@ -194,7 +193,7 @@ func (s *TaskPaymentService) SubmitWorkerResult(
 	if err != nil {
 		return fmt.Errorf("failed to check rows affected: %w", err)
 	}
-	
+
 	if rowsAffected == 0 {
 		return fmt.Errorf("failed to update task status - task may have been completed by another worker (race condition prevented)")
 	}
@@ -239,7 +238,7 @@ func (s *TaskPaymentService) SubmitWorkerResult(
 		// Fallback to GSTD reward if not available
 		rewardGSTD = *task.RewardGSTD
 	}
-	
+
 	// Get telegram service from TaskPaymentService if available
 	// Note: We need to pass telegramService through the call chain
 	// For now, we'll add it as a parameter or use a global notification service
@@ -247,4 +246,3 @@ func (s *TaskPaymentService) SubmitWorkerResult(
 
 	return nil
 }
-

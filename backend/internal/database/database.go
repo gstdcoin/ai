@@ -32,6 +32,3 @@ func NewConnection(cfg config.DatabaseConfig) (*sql.DB, error) {
 
 	return db, nil
 }
-
-
-

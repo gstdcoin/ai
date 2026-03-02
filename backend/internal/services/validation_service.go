@@ -13,15 +13,15 @@ import (
 )
 
 type ValidationService struct {
-	db            *sql.DB
-	trustService  *TrustV3Service
-	entropyService *EntropyService
+	db                *sql.DB
+	trustService      *TrustV3Service
+	entropyService    *EntropyService
 	assignmentService *AssignmentService
-	encryption    *EncryptionService
-	tonService    *TONService
-	cacheService  *CacheService
-	nodeService   *NodeService // For trust_score updates
-	zkLayer       *ZKVerificationLayer
+	encryption        *EncryptionService
+	tonService        *TONService
+	cacheService      *CacheService
+	nodeService       *NodeService // For trust_score updates
+	zkLayer           *ZKVerificationLayer
 }
 
 func NewValidationService(db *sql.DB) *ValidationService {
@@ -47,11 +47,11 @@ func (s *ValidationService) decreaseNodeTrustScore(ctx context.Context, deviceID
 	if s.nodeService == nil {
 		return // NodeService not available
 	}
-	
+
 	// Get wallet address from device_id (device_id is usually wallet_address)
 	// Try to find node by device_id (which is wallet_address)
 	walletAddress := deviceID // In most cases deviceID is wallet_address
-	
+
 	// Decrease trust score
 	if err := s.nodeService.DecreaseTrustScore(ctx, walletAddress, penalty); err != nil {
 		// Log error but don't fail validation
@@ -93,7 +93,7 @@ func (s *ValidationService) ValidateResult(ctx context.Context, taskID string, d
 	if err != nil {
 		return fmt.Errorf("task not found: %w", err)
 	}
-	
+
 	// Handle NULL assigned_device
 	if assignedDevice.Valid {
 		task.AssignedDevice = &assignedDevice.String
@@ -183,7 +183,7 @@ func (s *ValidationService) ValidateResult(ctx context.Context, taskID string, d
 				// If no timestamp, use current time (shouldn't happen, but safety check)
 				firstSubmissionTime = time.Now()
 			}
-			
+
 			validationTimeout := 10 * time.Minute
 			if time.Since(firstSubmissionTime) > validationTimeout {
 				// Timeout reached - use available results or mark as failed
@@ -215,7 +215,7 @@ func (s *ValidationService) ValidateResult(ctx context.Context, taskID string, d
 
 	// Compare results (simple JSON comparison for now)
 	consensus, majorityResult := s.compareResults(results)
-	
+
 	if consensus {
 		// Results match - validate task
 		avgLatency := 0
@@ -223,22 +223,22 @@ func (s *ValidationService) ValidateResult(ctx context.Context, taskID string, d
 			avgLatency += sub.ExecutionTime
 		}
 		avgLatency = avgLatency / len(submissions)
-		
+
 		// Update trust for all devices (success)
 		for _, sub := range submissions {
 			// Accuracy = 1.0 (consensus reached), Latency based on execution time, Stability = 1.0 (completed)
 			latencyScore := s.calculateLatencyScore(avgLatency)
 			s.trustService.UpdateTrustVector(ctx, sub.DeviceID, 1.0, latencyScore, 1.0)
 		}
-		
+
 		// Record successful execution (no collision)
 		s.entropyService.RecordExecution(ctx, task.Operation, false)
-		
+
 		return s.markTaskAsValidated(ctx, taskID, task.Operation, submissions[0].DeviceID, avgLatency)
 	} else {
 		// Results mismatch - collision detected
 		s.entropyService.RecordExecution(ctx, task.Operation, true)
-		
+
 		// Find minority result (wrong one)
 		majorityIndex := -1
 		for i, r := range results {
@@ -247,7 +247,7 @@ func (s *ValidationService) ValidateResult(ctx context.Context, taskID string, d
 				break
 			}
 		}
-		
+
 		// Decrease trust for devices with wrong results
 		for i, sub := range submissions {
 			if i != majorityIndex {
@@ -271,7 +271,7 @@ func (s *ValidationService) ValidateResult(ctx context.Context, taskID string, d
 				s.trustService.UpdateTrustVector(ctx, sub.DeviceID, 1.0, latencyScore, 1.0)
 			}
 		}
-		
+
 		// Assign task to additional worker for arbitration
 		return s.assignArbitration(ctx, taskID, task.Operation)
 	}
@@ -282,7 +282,7 @@ func (s *ValidationService) compareResults(results [][]byte) (bool, []byte) {
 	if len(results) == 0 {
 		return false, nil
 	}
-	
+
 	// Normalize JSON for comparison
 	normalized := make([]string, len(results))
 	for i, r := range results {
@@ -298,13 +298,13 @@ func (s *ValidationService) compareResults(results [][]byte) (bool, []byte) {
 			normalized[i] = string(r)
 		}
 	}
-	
+
 	// Count occurrences
 	counts := make(map[string]int)
 	for _, n := range normalized {
 		counts[n]++
 	}
-	
+
 	// Find majority
 	maxCount := 0
 	var majority string
@@ -314,11 +314,11 @@ func (s *ValidationService) compareResults(results [][]byte) (bool, []byte) {
 			majority = k
 		}
 	}
-	
+
 	// Consensus if majority >= 50% + 1
 	threshold := len(results)/2 + 1
 	consensus := maxCount >= threshold
-	
+
 	return consensus, []byte(majority)
 }
 
@@ -400,7 +400,7 @@ func (s *ValidationService) getPublicKeyForDevice(ctx context.Context, deviceID,
 	s.db.QueryRowContext(ctx, `
 		SELECT public_key FROM devices WHERE device_id = $1
 	`, deviceID).Scan(&dbPubKey)
-	
+
 	if dbPubKey.Valid && dbPubKey.String != "" {
 		pubKey, err := hex.DecodeString(dbPubKey.String)
 		if err == nil && len(pubKey) == 32 {
@@ -427,13 +427,13 @@ func (s *ValidationService) assignArbitration(ctx context.Context, taskID, opera
 	err := s.db.QueryRowContext(ctx, `
 		SELECT arbitration_count FROM tasks WHERE task_id = $1
 	`, taskID).Scan(&arbitrationCount)
-	
+
 	// If column doesn't exist, it's OK (migration will add it)
 	currentCount := int64(0)
 	if err == nil && arbitrationCount.Valid {
 		currentCount = arbitrationCount.Int64
 	}
-	
+
 	// Limit arbitration attempts to prevent infinite loops
 	maxArbitrations := 3
 	if currentCount >= int64(maxArbitrations) {
@@ -449,7 +449,7 @@ func (s *ValidationService) assignArbitration(ctx context.Context, taskID, opera
 		}
 		return fmt.Errorf("maximum arbitration attempts (%d) reached for task %s", maxArbitrations, taskID)
 	}
-	
+
 	// Reset task to pending for additional worker and increment arbitration count
 	// Note: If arbitration_count column doesn't exist, this will fail gracefully
 	// Migration should add: ALTER TABLE tasks ADD COLUMN IF NOT EXISTS arbitration_count INTEGER DEFAULT 0;
@@ -466,7 +466,7 @@ func (s *ValidationService) assignArbitration(ctx context.Context, taskID, opera
 		    arbitration_count = COALESCE(arbitration_count, 0) + 1
 		WHERE task_id = $1
 	`, taskID)
-	
+
 	// If column doesn't exist, try without it (for backward compatibility)
 	if err != nil && err.Error() != "" {
 		// Try without arbitration_count column
@@ -483,9 +483,6 @@ func (s *ValidationService) assignArbitration(ctx context.Context, taskID, opera
 			WHERE task_id = $1
 		`, taskID)
 	}
-	
+
 	return err
 }
-
-
-

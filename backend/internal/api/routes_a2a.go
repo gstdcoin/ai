@@ -26,7 +26,7 @@ func getSystemIntegrity() gin.HandlerFunc {
 		c.JSON(http.StatusOK, gin.H{
 			"manifest_hash": GenesisManifestHash,
 			"version":       "1.2.3",
-			"status":       "genesis_verified",
+			"status":        "genesis_verified",
 		})
 	}
 }

@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
@@ -32,10 +31,11 @@ type AgentAPIHandler struct {
 	recyclingPool *services.RecyclingPoolService
 	knowledgeSvc  *services.KnowledgeService
 	swarmModels   *services.SwarmModelManager
+	swarmIntel    *services.SwarmIntelligenceService
 }
 
-func NewAgentAPIHandler(db *sql.DB, clawSvc *services.OpenClawBridgeService, rp *services.RecyclingPoolService, ks *services.KnowledgeService, smm *services.SwarmModelManager) *AgentAPIHandler {
-	h := &AgentAPIHandler{db: db, clawSvc: clawSvc, recyclingPool: rp, knowledgeSvc: ks, swarmModels: smm}
+func NewAgentAPIHandler(db *sql.DB, clawSvc *services.OpenClawBridgeService, rp *services.RecyclingPoolService, ks *services.KnowledgeService, smm *services.SwarmModelManager, si *services.SwarmIntelligenceService) *AgentAPIHandler {
+	h := &AgentAPIHandler{db: db, clawSvc: clawSvc, recyclingPool: rp, knowledgeSvc: ks, swarmModels: smm, swarmIntel: si}
 	h.ensureSchema()
 	return h
 }
@@ -213,94 +213,46 @@ func (h *AgentAPIHandler) AgentChat(c *gin.Context) {
 		}
 	}
 
-	// ── Inject Hive Memory (collective knowledge from all agents) ──
-	hiveContext := ""
-	experienceHit := false
-	if h.knowledgeSvc != nil {
-		// 1. Check Experience Vault first (avoid redundant inference)
-		if cached, err := h.knowledgeSvc.QueryExperienceVault(c.Request.Context(), userPrompt); err == nil && cached != nil {
-			experienceHit = true
-			hiveContext = "[Experience Vault Match]\n" + cached.Content
+	// ── Execute via Mixture of Swarm Experts (MoSE) ──
+	var result *services.SwarmResult
+	var err error
+
+	if h.swarmIntel != nil {
+		result, err = h.swarmIntel.Think(c.Request.Context(), userPrompt, req.Model)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "swarm intelligence failure: " + err.Error()})
+			return
 		}
-
-		// 2. Inject recent Hive Insights as context
-		if insights, err := h.knowledgeSvc.SummarizeRecentInsights(c.Request.Context(), 10); err == nil && insights != "" {
-			hiveContext += "\n\n[Hive Memory — Recent Swarm Insights]\n" + insights
-		}
-
-		// 3. Topic-specific knowledge from global graph
-		if items, err := h.knowledgeSvc.QueryKnowledgeWithGlobalGraph(c.Request.Context(), userPrompt[:min(100, len(userPrompt))], 5); err == nil && len(items) > 0 {
-			hiveContext += "\n\n[Collective Knowledge]\n"
-			for _, item := range items {
-				hiveContext += "• " + item.Topic + ": " + item.Content[:min(200, len(item.Content))] + "\n"
-			}
-		}
-	}
-
-	// Prepend hive context to prompt
-	finalPrompt := userPrompt
-	if hiveContext != "" {
-		finalPrompt = hiveContext + "\n\nUser query: " + userPrompt
-	}
-
-	// ── Route through claw.think (with hive context) ──
-	rpcReq := &services.RPCRequest{
-		JSONRPC: "2.0",
-		Method:  "claw.think",
-		ID:      time.Now().UnixNano(),
-	}
-	params, _ := json.Marshal(map[string]interface{}{"prompt": finalPrompt})
-	rpcReq.Params = params
-
-	rpcResp := h.clawSvc.HandleRPC(c.Request.Context(), rpcReq)
-	if rpcResp.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": rpcResp.Error.Message})
+	} else {
+		// Fallback if MoSE not active
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Swarm Intelligence Service not running"})
 		return
 	}
 
-	content := ""
-	model := "gstd-swarm"
-	if m, ok := rpcResp.Result.(map[string]interface{}); ok {
-		if r, ok := m["response"].(string); ok {
-			content = r
-		}
-		if mo, ok := m["model"].(string); ok {
-			model = mo
-		}
-	}
-
-	// ── Contribute back to Hive Memory ──
-	if h.knowledgeSvc != nil && content != "" && len(content) > 50 {
-		go func() {
-			_ = h.knowledgeSvc.StoreKnowledge(
-				context.Background(), agentID,
-				userPrompt[:min(100, len(userPrompt))],
-				content[:min(500, len(content))],
-				[]string{"agent_interaction", agentID, model}, nil)
-		}()
-	}
-
-	// OpenAI-compatible response with hive metadata
+	// OpenAI-compatible response with MoSE metadata
 	c.JSON(http.StatusOK, gin.H{
-		"id":      fmt.Sprintf("agent-%d", time.Now().UnixNano()),
+		"id":      fmt.Sprintf("chatcmpl-%s-%d", agentID, time.Now().UnixNano()),
 		"object":  "chat.completion",
-		"model":   model,
 		"created": time.Now().Unix(),
+		"model":   "gstd-mose-collective",
+		"intelligence_profile": gin.H{
+			"strategy":        result.Strategy,
+			"models_used":     result.ModelsUsed,
+			"consensus_score": result.ConsensusScore,
+			"confidence":      result.Confidence,
+			"hive_enriched":   result.HiveEnriched,
+			"experience_hit":  result.ExperienceHit,
+			"processing_ms":   result.ProcessingMs,
+			"tag":             result.IntelligenceTag,
+		},
 		"choices": []gin.H{{
-			"index":         0,
-			"message":       gin.H{"role": "assistant", "content": content},
+			"index": 0,
+			"message": gin.H{
+				"role":    "assistant",
+				"content": result.Content,
+			},
 			"finish_reason": "stop",
 		}},
-		"usage": gin.H{
-			"prompt_tokens":     len(finalPrompt) / 4,
-			"completion_tokens": len(content) / 4,
-			"total_tokens":      (len(finalPrompt) + len(content)) / 4,
-		},
-		"hive_memory": gin.H{
-			"injected":       hiveContext != "",
-			"experience_hit": experienceHit,
-			"contributed":    len(content) > 50,
-		},
 	})
 }
 
@@ -609,6 +561,9 @@ func SetupAgentRoutes(router *gin.RouterGroup, h *AgentAPIHandler) {
 	// Swarm Status
 	protected.GET("/swarm/status", h.AgentSwarmStatus)
 	protected.GET("/swarm/models", h.AgentSwarmModels)
+
+	// Collective Intelligence
+	protected.GET("/intelligence/stats", h.AgentIntelligenceStats)
 }
 
 // AgentSwarmStatus returns full swarm status
@@ -628,4 +583,13 @@ func (h *AgentAPIHandler) AgentSwarmModels(c *gin.Context) {
 	}
 	models := h.swarmModels.GetActiveModels()
 	c.JSON(200, gin.H{"models": models, "count": len(models), "node_count": h.swarmModels.GetNodeCount()})
+}
+
+// AgentIntelligenceStats returns MoSE architecture stats
+func (h *AgentAPIHandler) AgentIntelligenceStats(c *gin.Context) {
+	if h.swarmIntel == nil {
+		c.JSON(200, gin.H{"architecture": "Mixture of Swarm Experts (MoSE)", "status": "initializing"})
+		return
+	}
+	c.JSON(200, h.swarmIntel.GetIntelligenceStats())
 }

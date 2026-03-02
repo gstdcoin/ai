@@ -15,12 +15,12 @@ func SetupInfrastructureSupremacyRoutes(v1 *gin.RouterGroup, protected *gin.Rout
 	// Public: minimal info for unauthenticated users (become node CTA)
 	v1.GET("/gateway/info", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
-			"protocol":   "infrastructure_supremacy",
-			"min_gstd":   0.01,
-			"cta":        "become_node",
-			"message":    "Connect wallet with GSTD to access API. No tokens? Become a Node to earn.",
-			"dashboard":  "/dashboard",
-			"buy_gstd":   "/wallet/buy-gstd",
+			"protocol":  "infrastructure_supremacy",
+			"min_gstd":  0.01,
+			"cta":       "become_node",
+			"message":   "Connect wallet with GSTD to access API. No tokens? Become a Node to earn.",
+			"dashboard": "/dashboard",
+			"buy_gstd":  "/wallet/buy-gstd",
 		})
 	})
 }

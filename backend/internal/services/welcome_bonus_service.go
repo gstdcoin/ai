@@ -10,11 +10,11 @@ import (
 
 // WelcomeBonusService handles automatic token distribution for new users
 type WelcomeBonusService struct {
-	db              *sql.DB
-	treasuryWallet  string
-	welcomeAmount   float64
-	dailyFaucet     float64
-	agentBootstrap  float64
+	db             *sql.DB
+	treasuryWallet string
+	welcomeAmount  float64
+	dailyFaucet    float64
+	agentBootstrap float64
 }
 
 // WelcomeBonusConfig configuration for bonus system
@@ -35,13 +35,13 @@ func NewWelcomeBonusService(db *sql.DB, config *WelcomeBonusConfig) *WelcomeBonu
 			AgentBootstrap: 10.0, // Vampire Attack Grant
 		}
 	}
-	
+
 	return &WelcomeBonusService{
-		db:              db,
-		treasuryWallet:  config.TreasuryWallet,
-		welcomeAmount:   config.WelcomeAmount,
-		dailyFaucet:     config.DailyFaucet,
-		agentBootstrap:  config.AgentBootstrap,
+		db:             db,
+		treasuryWallet: config.TreasuryWallet,
+		welcomeAmount:  config.WelcomeAmount,
+		dailyFaucet:    config.DailyFaucet,
+		agentBootstrap: config.AgentBootstrap,
 	}
 }
 
@@ -49,10 +49,10 @@ func NewWelcomeBonusService(db *sql.DB, config *WelcomeBonusConfig) *WelcomeBonu
 func (s *WelcomeBonusService) ClaimWelcomeBonus(ctx context.Context, walletAddress string, source string) (*BonusResult, error) {
 	// Check if already claimed
 	var claimed bool
-	err := s.db.QueryRowContext(ctx, 
-		"SELECT welcome_bonus_claimed FROM users WHERE wallet_address = $1", 
+	err := s.db.QueryRowContext(ctx,
+		"SELECT welcome_bonus_claimed FROM users WHERE wallet_address = $1",
 		walletAddress).Scan(&claimed)
-	
+
 	if err == sql.ErrNoRows {
 		// New user - create account and give bonus
 		_, err = s.db.ExecContext(ctx, `
@@ -60,27 +60,27 @@ func (s *WelcomeBonusService) ClaimWelcomeBonus(ctx context.Context, walletAddre
 			VALUES ($1, $2, true, NOW(), $3)
 			ON CONFLICT (wallet_address) DO NOTHING
 		`, walletAddress, s.welcomeAmount, source)
-		
+
 		if err != nil {
 			return nil, fmt.Errorf("failed to create user: %w", err)
 		}
-		
+
 		// Log the bonus
 		s.logBonusTransaction(ctx, walletAddress, "welcome_bonus", s.welcomeAmount, source)
-		
+
 		return &BonusResult{
-			Success:     true,
-			Amount:      s.welcomeAmount,
-			BonusType:   "welcome_bonus",
-			Message:     "🎉 Welcome to GSTD! You received 1.0 GSTD as a welcome bonus!",
-			NewBalance:  s.welcomeAmount,
+			Success:    true,
+			Amount:     s.welcomeAmount,
+			BonusType:  "welcome_bonus",
+			Message:    "🎉 Welcome to GSTD! You received 1.0 GSTD as a welcome bonus!",
+			NewBalance: s.welcomeAmount,
 		}, nil
 	}
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if claimed {
 		return &BonusResult{
 			Success:   false,
@@ -88,7 +88,7 @@ func (s *WelcomeBonusService) ClaimWelcomeBonus(ctx context.Context, walletAddre
 			Message:   "Welcome bonus already claimed",
 		}, nil
 	}
-	
+
 	// Existing user who hasn't claimed
 	result, err := s.db.ExecContext(ctx, `
 		UPDATE users SET 
@@ -96,11 +96,11 @@ func (s *WelcomeBonusService) ClaimWelcomeBonus(ctx context.Context, walletAddre
 			welcome_bonus_claimed = true
 		WHERE wallet_address = $2 AND welcome_bonus_claimed = false
 	`, s.welcomeAmount, walletAddress)
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	rows, _ := result.RowsAffected()
 	if rows == 0 {
 		return &BonusResult{
@@ -109,13 +109,13 @@ func (s *WelcomeBonusService) ClaimWelcomeBonus(ctx context.Context, walletAddre
 			Message:   "Bonus already claimed or user not found",
 		}, nil
 	}
-	
+
 	s.logBonusTransaction(ctx, walletAddress, "welcome_bonus", s.welcomeAmount, source)
-	
+
 	// Get new balance
 	var newBalance float64
 	s.db.QueryRowContext(ctx, "SELECT balance FROM users WHERE wallet_address = $1", walletAddress).Scan(&newBalance)
-	
+
 	return &BonusResult{
 		Success:    true,
 		Amount:     s.welcomeAmount,
@@ -132,18 +132,18 @@ func (s *WelcomeBonusService) ClaimDailyFaucet(ctx context.Context, walletAddres
 	err := s.db.QueryRowContext(ctx,
 		"SELECT last_faucet_claim FROM users WHERE wallet_address = $1",
 		walletAddress).Scan(&lastClaim)
-	
+
 	if err == sql.ErrNoRows {
 		return &BonusResult{
 			Success: false,
 			Message: "Please connect your wallet first",
 		}, nil
 	}
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Check 24h cooldown
 	if lastClaim.Valid {
 		hoursSinceClaim := time.Since(lastClaim.Time).Hours()
@@ -157,7 +157,7 @@ func (s *WelcomeBonusService) ClaimDailyFaucet(ctx context.Context, walletAddres
 			}, nil
 		}
 	}
-	
+
 	// Give faucet
 	result, err := s.db.ExecContext(ctx, `
 		UPDATE users SET 
@@ -165,11 +165,11 @@ func (s *WelcomeBonusService) ClaimDailyFaucet(ctx context.Context, walletAddres
 			last_faucet_claim = NOW()
 		WHERE wallet_address = $2
 	`, s.dailyFaucet, walletAddress)
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	rows, _ := result.RowsAffected()
 	if rows == 0 {
 		return &BonusResult{
@@ -177,12 +177,12 @@ func (s *WelcomeBonusService) ClaimDailyFaucet(ctx context.Context, walletAddres
 			Message: "User not found",
 		}, nil
 	}
-	
+
 	s.logBonusTransaction(ctx, walletAddress, "daily_faucet", s.dailyFaucet, "faucet")
-	
+
 	var newBalance float64
 	s.db.QueryRowContext(ctx, "SELECT balance FROM users WHERE wallet_address = $1", walletAddress).Scan(&newBalance)
-	
+
 	return &BonusResult{
 		Success:    true,
 		Amount:     s.dailyFaucet,
@@ -199,7 +199,7 @@ func (s *WelcomeBonusService) BootstrapAgent(ctx context.Context, walletAddress 
 	err := s.db.QueryRowContext(ctx,
 		"SELECT agent_bootstrapped FROM users WHERE wallet_address = $1",
 		walletAddress).Scan(&bootstrapped)
-	
+
 	if err == sql.ErrNoRows {
 		// New agent - create user and give bootstrap
 		_, err = s.db.ExecContext(ctx, `
@@ -211,13 +211,13 @@ func (s *WelcomeBonusService) BootstrapAgent(ctx context.Context, walletAddress 
 				agent_name = COALESCE(users.agent_name, $3)
 			WHERE users.agent_bootstrapped = false OR users.agent_bootstrapped IS NULL
 		`, walletAddress, s.agentBootstrap, agentName)
-		
+
 		if err != nil {
 			return nil, fmt.Errorf("failed to bootstrap agent: %w", err)
 		}
-		
+
 		s.logBonusTransaction(ctx, walletAddress, "agent_bootstrap", s.agentBootstrap, "agent_sdk")
-		
+
 		return &BonusResult{
 			Success:   true,
 			Amount:    s.agentBootstrap,
@@ -225,11 +225,11 @@ func (s *WelcomeBonusService) BootstrapAgent(ctx context.Context, walletAddress 
 			Message:   fmt.Sprintf("🤖 Agent '%s' bootstrapped with %.2f GSTD!", agentName, s.agentBootstrap),
 		}, nil
 	}
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if bootstrapped {
 		return &BonusResult{
 			Success:   false,
@@ -237,7 +237,7 @@ func (s *WelcomeBonusService) BootstrapAgent(ctx context.Context, walletAddress 
 			Message:   "Agent already bootstrapped",
 		}, nil
 	}
-	
+
 	// Existing user, first time as agent
 	result, err := s.db.ExecContext(ctx, `
 		UPDATE users SET 
@@ -246,11 +246,11 @@ func (s *WelcomeBonusService) BootstrapAgent(ctx context.Context, walletAddress 
 			agent_name = COALESCE(agent_name, $2)
 		WHERE wallet_address = $3 AND (agent_bootstrapped = false OR agent_bootstrapped IS NULL)
 	`, s.agentBootstrap, agentName, walletAddress)
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	rows, _ := result.RowsAffected()
 	if rows == 0 {
 		return &BonusResult{
@@ -259,9 +259,9 @@ func (s *WelcomeBonusService) BootstrapAgent(ctx context.Context, walletAddress 
 			Message:   "Already bootstrapped",
 		}, nil
 	}
-	
+
 	s.logBonusTransaction(ctx, walletAddress, "agent_bootstrap", s.agentBootstrap, "agent_sdk")
-	
+
 	return &BonusResult{
 		Success:   true,
 		Amount:    s.agentBootstrap,
@@ -273,19 +273,19 @@ func (s *WelcomeBonusService) BootstrapAgent(ctx context.Context, walletAddress 
 // ReferralSignupBonus gives bonus when referred user signs up
 func (s *WelcomeBonusService) ReferralSignupBonus(ctx context.Context, referrerWallet string, newUserWallet string) (*BonusResult, error) {
 	bonusAmount := 1.0 // 1 GSTD per referral signup
-	
+
 	// Update referrer balance
 	_, err := s.db.ExecContext(ctx, `
 		UPDATE users SET balance = balance + $1
 		WHERE wallet_address = $2
 	`, bonusAmount, referrerWallet)
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	s.logBonusTransaction(ctx, referrerWallet, "referral_signup", bonusAmount, newUserWallet)
-	
+
 	return &BonusResult{
 		Success:   true,
 		Amount:    bonusAmount,
@@ -297,12 +297,12 @@ func (s *WelcomeBonusService) ReferralSignupBonus(ctx context.Context, referrerW
 // GetBonusStatus returns current bonus status for a user
 func (s *WelcomeBonusService) GetBonusStatus(ctx context.Context, walletAddress string) (*BonusStatus, error) {
 	status := &BonusStatus{}
-	
+
 	var welcomeClaimed bool
 	var agentBootstrapped sql.NullBool
 	var lastFaucet sql.NullTime
 	var balance float64
-	
+
 	err := s.db.QueryRowContext(ctx, `
 		SELECT 
 			COALESCE(welcome_bonus_claimed, false),
@@ -311,27 +311,27 @@ func (s *WelcomeBonusService) GetBonusStatus(ctx context.Context, walletAddress 
 			COALESCE(balance, 0)
 		FROM users WHERE wallet_address = $1
 	`, walletAddress).Scan(&welcomeClaimed, &agentBootstrapped, &lastFaucet, &balance)
-	
+
 	if err == sql.ErrNoRows {
 		// New user
 		return &BonusStatus{
-			WelcomeBonusAvailable: true,
-			DailyFaucetAvailable:  false, // Must register first
+			WelcomeBonusAvailable:   true,
+			DailyFaucetAvailable:    false, // Must register first
 			AgentBootstrapAvailable: true,
-			CurrentBalance:        0,
+			CurrentBalance:          0,
 		}, nil
 	}
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	status.WelcomeBonusClaimed = welcomeClaimed
 	status.WelcomeBonusAvailable = !welcomeClaimed
 	status.AgentBootstrapped = agentBootstrapped.Valid && agentBootstrapped.Bool
 	status.AgentBootstrapAvailable = !status.AgentBootstrapped
 	status.CurrentBalance = balance
-	
+
 	// Check faucet availability
 	if lastFaucet.Valid {
 		hoursSinceClaim := time.Since(lastFaucet.Time).Hours()
@@ -342,7 +342,7 @@ func (s *WelcomeBonusService) GetBonusStatus(ctx context.Context, walletAddress 
 	} else {
 		status.DailyFaucetAvailable = true
 	}
-	
+
 	return status, nil
 }
 
@@ -352,7 +352,7 @@ func (s *WelcomeBonusService) logBonusTransaction(ctx context.Context, wallet, b
 		INSERT INTO bonus_transactions (wallet_address, bonus_type, amount, source, created_at)
 		VALUES ($1, $2, $3, $4, NOW())
 	`, wallet, bonusType, amount, source)
-	
+
 	if err != nil {
 		log.Printf("⚠️  Failed to log bonus transaction: %v", err)
 	}

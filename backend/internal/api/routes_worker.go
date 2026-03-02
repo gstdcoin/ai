@@ -2,10 +2,10 @@ package api
 
 import (
 	"context"
+	"distributed-computing-platform/internal/services"
 	"encoding/json"
 	"fmt"
 	"strconv"
-	"distributed-computing-platform/internal/services"
 
 	"github.com/gin-gonic/gin"
 )
@@ -118,4 +118,3 @@ func submitWorkerResult(
 		c.JSON(200, gin.H{"message": "Result submitted successfully"})
 	}
 }
-

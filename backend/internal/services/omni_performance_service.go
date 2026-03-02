@@ -15,11 +15,11 @@ const (
 )
 
 var ultraModels = map[string]bool{
-	"llama3.3:70b":     true,
-	"llama3.1:70b":     true,
+	"llama3.3:70b":      true,
+	"llama3.1:70b":      true,
 	"qwen2.5-coder:32b": true,
-	"deepseek-r1":     true,
-	"deepseek-r1:70b": true,
+	"deepseek-r1":       true,
+	"deepseek-r1:70b":   true,
 }
 
 // OmniPerformanceService handles Ultra-Inference access control
@@ -56,8 +56,8 @@ type UltraAccessResult struct {
 // Requires: 100 GSTD in gstd_frozen (staking) OR 1 GSTD available for one-time session.
 func (s *OmniPerformanceService) CheckUltraAccess(ctx context.Context, wallet string) (*UltraAccessResult, error) {
 	res := &UltraAccessResult{
-		Mode:        "standard",
-		SessionCost: UltraSessionCostGSTD,
+		Mode:         "standard",
+		SessionCost:  UltraSessionCostGSTD,
 		RequiresGate: true,
 	}
 	if wallet == "" {

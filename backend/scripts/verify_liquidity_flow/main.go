@@ -189,32 +189,32 @@ func main() {
 		if resp2.StatusCode != 200 {
 			failures = append(failures, fmt.Sprintf("Pool status HTTP %d", resp2.StatusCode))
 		} else {
-		var status map[string]interface{}
-		if err := json.NewDecoder(resp2.Body).Decode(&status); err != nil {
-			failures = append(failures, "Pool status decode failed")
-		} else {
-			platformShare := 0.0
-			if ps, ok := status["platform_lp_share"].(float64); ok {
-				platformShare = ps
-			}
-			if dgb, ok := status["dynamic_gold_backing"].(map[string]interface{}); ok {
-				if ps, ok := dgb["platform_share"].(float64); ok {
+			var status map[string]interface{}
+			if err := json.NewDecoder(resp2.Body).Decode(&status); err != nil {
+				failures = append(failures, "Pool status decode failed")
+			} else {
+				platformShare := 0.0
+				if ps, ok := status["platform_lp_share"].(float64); ok {
 					platformShare = ps
 				}
+				if dgb, ok := status["dynamic_gold_backing"].(map[string]interface{}); ok {
+					if ps, ok := dgb["platform_share"].(float64); ok {
+						platformShare = ps
+					}
+				}
+				totalLiq := 0.0
+				if tl, ok := status["total_liquidity_usd"].(float64); ok {
+					totalLiq = tl
+				}
+				log.Printf("   Pool status: total_liquidity_usd=%.2f, platform_lp_share=%.6f", totalLiq, platformShare)
+				if platformShare > 0 {
+					log.Printf("   ✅ Dynamic Gold Backing: ● Live (platform has LP share)")
+					ok = append(ok, "PoolMonitor: ● Live")
+				} else {
+					log.Printf("   ℹ️ Dynamic Gold Backing: — (no LP yet, add liquidity to activate)")
+					ok = append(ok, "PoolMonitor: OK (no LP yet)")
+				}
 			}
-			totalLiq := 0.0
-			if tl, ok := status["total_liquidity_usd"].(float64); ok {
-				totalLiq = tl
-			}
-			log.Printf("   Pool status: total_liquidity_usd=%.2f, platform_lp_share=%.6f", totalLiq, platformShare)
-			if platformShare > 0 {
-				log.Printf("   ✅ Dynamic Gold Backing: ● Live (platform has LP share)")
-				ok = append(ok, "PoolMonitor: ● Live")
-			} else {
-				log.Printf("   ℹ️ Dynamic Gold Backing: — (no LP yet, add liquidity to activate)")
-				ok = append(ok, "PoolMonitor: OK (no LP yet)")
-			}
-		}
 		}
 	}
 

@@ -13,13 +13,13 @@ import (
 
 // JettonTransferService handles GSTD jetton transfers via TON API
 type JettonTransferService struct {
-	apiURL         string
-	apiKey         string
-	client         *http.Client
-	rateLimiter    chan struct{}
-	walletAddr     string // Platform wallet address with GSTD balance
-	privateKey     string // Private key for signing (should be from env, not hardcoded)
-	walletService  *TONWalletService // Wallet service for signing transactions
+	apiURL        string
+	apiKey        string
+	client        *http.Client
+	rateLimiter   chan struct{}
+	walletAddr    string            // Platform wallet address with GSTD balance
+	privateKey    string            // Private key for signing (should be from env, not hardcoded)
+	walletService *TONWalletService // Wallet service for signing transactions
 }
 
 func NewJettonTransferService(apiURL, apiKey, walletAddr, privateKey string) *JettonTransferService {
@@ -28,7 +28,7 @@ func NewJettonTransferService(apiURL, apiKey, walletAddr, privateKey string) *Je
 	for i := 0; i < 5; i++ {
 		rateLimiter <- struct{}{}
 	}
-	
+
 	go func() {
 		ticker := time.NewTicker(200 * time.Millisecond) // 5 per second
 		defer ticker.Stop()
@@ -165,7 +165,7 @@ func (j *JettonTransferService) estimateAndLogTransfer(
 func (j *JettonTransferService) CheckTransferStatus(ctx context.Context, txHash string) (bool, error) {
 	// Use TON API to check transaction status
 	url := fmt.Sprintf("%s/v2/blockchain/transactions/%s", j.apiURL, txHash)
-	
+
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return false, err
@@ -184,4 +184,3 @@ func (j *JettonTransferService) CheckTransferStatus(ctx context.Context, txHash 
 
 	return resp.StatusCode == http.StatusOK, nil
 }
-

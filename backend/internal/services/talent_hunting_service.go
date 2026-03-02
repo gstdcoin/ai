@@ -13,7 +13,7 @@ import (
 
 const (
 	talentHuntingThreshold = 7.0
-	talentHuntingInterval   = 12 * time.Hour
+	talentHuntingInterval  = 12 * time.Hour
 )
 
 // TalentHuntingService triggers HF search when categories lack high-capability models

@@ -17,11 +17,11 @@ import (
 
 // GrowthSystemHandler handles all growth-related endpoints
 type GrowthSystemHandler struct {
-	db                *sql.DB
-	bonus             *services.WelcomeBonusService
-	burn              *services.BurnService
-	referral          *services.MultiLevelReferralService
-	agentMarketplace  *services.AgentMarketplaceService
+	db               *sql.DB
+	bonus            *services.WelcomeBonusService
+	burn             *services.BurnService
+	referral         *services.MultiLevelReferralService
+	agentMarketplace *services.AgentMarketplaceService
 }
 
 // NewGrowthSystemHandler creates a new growth system handler
@@ -94,7 +94,7 @@ func SetupGrowthRoutes(v1 *gin.RouterGroup, protected *gin.RouterGroup, h *Growt
 	// Multi-Level Referrals - NEW endpoints only (stats/apply already in routes.go)
 	referralsMl := protected.Group("/referrals/ml")
 	{
-		referralsMl.GET("/stats", h.GetReferralStats)      // Multi-level stats
+		referralsMl.GET("/stats", h.GetReferralStats) // Multi-level stats
 		referralsMl.POST("/generate", h.GenerateReferralCode)
 		referralsMl.POST("/apply", h.ApplyReferralCode)    // Apply with multi-level tracking
 		referralsMl.POST("/claim", h.ClaimReferralRewards) // Claim multi-level rewards
@@ -289,8 +289,8 @@ func (h *GrowthSystemHandler) GetBonusStatus(c *gin.Context) {
 
 	if h.bonus == nil {
 		c.JSON(http.StatusOK, gin.H{
-			"welcome_bonus_available": true,
-			"daily_faucet_available":  false,
+			"welcome_bonus_available":   true,
+			"daily_faucet_available":    false,
 			"agent_bootstrap_available": true,
 		})
 		return
@@ -368,11 +368,11 @@ func (h *GrowthSystemHandler) BootstrapAgent(c *gin.Context) {
 func (h *GrowthSystemHandler) GetBurnStats(c *gin.Context) {
 	if h.burn == nil {
 		c.JSON(http.StatusOK, gin.H{
-			"total_burned":    0,
-			"burned_today":    0,
-			"burn_rate":       5.0,
-			"initial_supply":  1000000000,
-			"current_supply":  1000000000,
+			"total_burned":   0,
+			"burned_today":   0,
+			"burn_rate":      5.0,
+			"initial_supply": 1000000000,
+			"current_supply": 1000000000,
 		})
 		return
 	}
@@ -413,11 +413,11 @@ func (h *GrowthSystemHandler) SimulateBurn(c *gin.Context) {
 		// Simulate without service
 		burnAmount := amount * 0.05
 		c.JSON(http.StatusOK, gin.H{
-			"total_amount":   amount,
-			"worker_reward":  amount * 0.90,
-			"platform_fee":   amount * 0.05,
-			"burn_amount":    burnAmount,
-			"burn_percent":   5.0,
+			"total_amount":  amount,
+			"worker_reward": amount * 0.90,
+			"platform_fee":  amount * 0.05,
+			"burn_amount":   burnAmount,
+			"burn_percent":  5.0,
 		})
 		return
 	}
@@ -479,9 +479,9 @@ func (h *GrowthSystemHandler) GenerateReferralCode(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"referral_code":  code,
-		"telegram_link":  "https://t.me/GSTD_Main_Bot?start=ref_" + code,
-		"web_link":       "https://app.gstdtoken.com?ref=" + code,
+		"referral_code": code,
+		"telegram_link": "https://t.me/GSTD_Main_Bot?start=ref_" + code,
+		"web_link":      "https://app.gstdtoken.com?ref=" + code,
 	})
 }
 
