@@ -31,10 +31,11 @@ type AgentAPIHandler struct {
 	clawSvc       *services.OpenClawBridgeService
 	recyclingPool *services.RecyclingPoolService
 	knowledgeSvc  *services.KnowledgeService
+	swarmModels   *services.SwarmModelManager
 }
 
-func NewAgentAPIHandler(db *sql.DB, clawSvc *services.OpenClawBridgeService, rp *services.RecyclingPoolService, ks *services.KnowledgeService) *AgentAPIHandler {
-	h := &AgentAPIHandler{db: db, clawSvc: clawSvc, recyclingPool: rp, knowledgeSvc: ks}
+func NewAgentAPIHandler(db *sql.DB, clawSvc *services.OpenClawBridgeService, rp *services.RecyclingPoolService, ks *services.KnowledgeService, smm *services.SwarmModelManager) *AgentAPIHandler {
+	h := &AgentAPIHandler{db: db, clawSvc: clawSvc, recyclingPool: rp, knowledgeSvc: ks, swarmModels: smm}
 	h.ensureSchema()
 	return h
 }
@@ -604,4 +605,27 @@ func SetupAgentRoutes(router *gin.RouterGroup, h *AgentAPIHandler) {
 
 	// Shared Resources
 	protected.GET("/resources", h.AgentResources)
+
+	// Swarm Status
+	protected.GET("/swarm/status", h.AgentSwarmStatus)
+	protected.GET("/swarm/models", h.AgentSwarmModels)
+}
+
+// AgentSwarmStatus returns full swarm status
+func (h *AgentAPIHandler) AgentSwarmStatus(c *gin.Context) {
+	if h.swarmModels == nil {
+		c.JSON(200, gin.H{"status": "swarm_model_manager_not_initialized"})
+		return
+	}
+	c.JSON(200, h.swarmModels.GetSwarmStatus())
+}
+
+// AgentSwarmModels returns available models
+func (h *AgentAPIHandler) AgentSwarmModels(c *gin.Context) {
+	if h.swarmModels == nil {
+		c.JSON(200, gin.H{"models": []string{"qwen2.5-coder:7b"}})
+		return
+	}
+	models := h.swarmModels.GetActiveModels()
+	c.JSON(200, gin.H{"models": models, "count": len(models), "node_count": h.swarmModels.GetNodeCount()})
 }
