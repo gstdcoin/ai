@@ -1,0 +1,400 @@
+package api
+
+import (
+	"crypto/rand"
+	"database/sql"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"strings"
+	"time"
+
+	"distributed-computing-platform/internal/services"
+
+	"github.com/gin-gonic/gin"
+)
+
+// AgentAPIHandler handles OpenClaw/A2A agent interactions
+type AgentAPIHandler struct {
+	db      *sql.DB
+	clawSvc *services.OpenClawBridgeService
+}
+
+func NewAgentAPIHandler(db *sql.DB, clawSvc *services.OpenClawBridgeService) *AgentAPIHandler {
+	h := &AgentAPIHandler{db: db, clawSvc: clawSvc}
+	h.ensureSchema()
+	return h
+}
+
+func (h *AgentAPIHandler) ensureSchema() {
+	if h.db == nil {
+		return
+	}
+	h.db.Exec(`CREATE TABLE IF NOT EXISTS agent_api_keys (
+		id SERIAL PRIMARY KEY,
+		api_key VARCHAR(128) UNIQUE NOT NULL,
+		agent_id VARCHAR(128) NOT NULL,
+		wallet_address VARCHAR(128) NOT NULL,
+		agent_name VARCHAR(256) DEFAULT '',
+		agent_type VARCHAR(64) DEFAULT 'generic',
+		rate_limit_rpm INT DEFAULT 60,
+		is_active BOOLEAN DEFAULT true,
+		total_requests BIGINT DEFAULT 0,
+		total_earned_gstd NUMERIC(18,9) DEFAULT 0,
+		created_at TIMESTAMP DEFAULT NOW(),
+		last_used_at TIMESTAMP DEFAULT NOW()
+	)`)
+	h.db.Exec(`CREATE INDEX IF NOT EXISTS idx_agent_api_keys_key ON agent_api_keys(api_key)`)
+	h.db.Exec(`CREATE INDEX IF NOT EXISTS idx_agent_api_keys_wallet ON agent_api_keys(wallet_address)`)
+}
+
+func generateAPIKey() string {
+	b := make([]byte, 32)
+	rand.Read(b)
+	return "gstd_agent_" + hex.EncodeToString(b)
+}
+
+// RegisterAgent creates a new API key for an agent
+// POST /api/v1/agents/register
+func (h *AgentAPIHandler) RegisterAgent(c *gin.Context) {
+	var req struct {
+		WalletAddress string   `json:"wallet_address" binding:"required"`
+		AgentName     string   `json:"agent_name"`
+		AgentType     string   `json:"agent_type"`
+		Capabilities  []string `json:"capabilities"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	apiKey := generateAPIKey()
+
+	// Register in OpenClaw bridge
+	rpcReq := &services.RPCRequest{
+		JSONRPC: "2.0",
+		Method:  "claw.register",
+		ID:      time.Now().UnixNano(),
+	}
+	params, _ := json.Marshal(map[string]interface{}{
+		"wallet_address":   req.WalletAddress,
+		"agent_type":       req.AgentType,
+		"capabilities":     req.Capabilities,
+		"firmware_version": "api-v1",
+	})
+	rpcReq.Params = params
+	rpcResp := h.clawSvc.HandleRPC(c.Request.Context(), rpcReq)
+
+	agentID := ""
+	if rpcResp.Result != nil {
+		if m, ok := rpcResp.Result.(map[string]interface{}); ok {
+			agentID, _ = m["agent_id"].(string)
+		}
+	}
+	if agentID == "" {
+		agentID = fmt.Sprintf("agent-%d", time.Now().UnixNano())
+	}
+
+	// Ensure user exists
+	h.db.ExecContext(c.Request.Context(),
+		`INSERT INTO users (wallet_address, gstd_balance, created_at, updated_at) VALUES ($1, 0, NOW(), NOW()) ON CONFLICT (wallet_address) DO NOTHING`,
+		req.WalletAddress)
+
+	// Store API key
+	_, err := h.db.ExecContext(c.Request.Context(),
+		`INSERT INTO agent_api_keys (api_key, agent_id, wallet_address, agent_name, agent_type) VALUES ($1, $2, $3, $4, $5)`,
+		apiKey, agentID, req.WalletAddress, req.AgentName, req.AgentType)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to store key"})
+		return
+	}
+
+	log.Printf("🤖 Agent registered: %s (%s) wallet=%s", agentID, req.AgentName, req.WalletAddress[:min(12, len(req.WalletAddress))])
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":   "registered",
+		"agent_id": agentID,
+		"api_key":  apiKey,
+		"wallet":   req.WalletAddress,
+		"endpoints": map[string]string{
+			"chat":    "/api/v1/agents/chat/completions",
+			"rpc":     "/api/v1/agents/rpc",
+			"tasks":   "/api/v1/agents/tasks",
+			"claim":   "/api/v1/agents/tasks/claim",
+			"submit":  "/api/v1/agents/tasks/submit",
+			"balance": "/api/v1/agents/balance",
+			"earn":    "/api/v1/agents/earn/heartbeat",
+		},
+		"docs": "Send Authorization: Bearer gstd_agent_xxx header with all requests",
+	})
+}
+
+// AgentAuthMiddleware validates agent API key
+func (h *AgentAPIHandler) AgentAuthMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		auth := c.GetHeader("Authorization")
+		if auth == "" || !strings.HasPrefix(auth, "Bearer gstd_agent_") {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid API key. Use: Authorization: Bearer gstd_agent_xxx"})
+			c.Abort()
+			return
+		}
+		apiKey := auth[7:]
+
+		var agentID, wallet, agentType string
+		var isActive bool
+		err := h.db.QueryRowContext(c.Request.Context(),
+			`SELECT agent_id, wallet_address, agent_type, is_active FROM agent_api_keys WHERE api_key = $1`,
+			apiKey).Scan(&agentID, &wallet, &agentType, &isActive)
+		if err != nil || !isActive {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid or revoked API key"})
+			c.Abort()
+			return
+		}
+
+		// Update stats
+		h.db.ExecContext(c.Request.Context(),
+			`UPDATE agent_api_keys SET total_requests = total_requests + 1, last_used_at = NOW() WHERE api_key = $1`, apiKey)
+
+		c.Set("agent_id", agentID)
+		c.Set("agent_wallet", wallet)
+		c.Set("agent_type", agentType)
+		c.Set("agent_api_key", apiKey)
+		c.Set("wallet_address", wallet)
+		c.Next()
+	}
+}
+
+// AgentChat — OpenAI-compatible chat completions for agents
+// POST /api/v1/agents/chat/completions
+func (h *AgentAPIHandler) AgentChat(c *gin.Context) {
+	var req struct {
+		Model    string `json:"model"`
+		Messages []struct {
+			Role    string `json:"role"`
+			Content string `json:"content"`
+		} `json:"messages"`
+		Stream bool `json:"stream"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Use claw.think RPC
+	prompt := ""
+	for _, m := range req.Messages {
+		if m.Role == "user" || m.Role == "system" {
+			prompt += m.Content + "\n"
+		}
+	}
+
+	rpcReq := &services.RPCRequest{
+		JSONRPC: "2.0",
+		Method:  "claw.think",
+		ID:      time.Now().UnixNano(),
+	}
+	params, _ := json.Marshal(map[string]interface{}{"prompt": prompt})
+	rpcReq.Params = params
+
+	rpcResp := h.clawSvc.HandleRPC(c.Request.Context(), rpcReq)
+	if rpcResp.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": rpcResp.Error.Message})
+		return
+	}
+
+	content := ""
+	model := "gstd-swarm"
+	if m, ok := rpcResp.Result.(map[string]interface{}); ok {
+		if r, ok := m["response"].(string); ok {
+			content = r
+		}
+		if mo, ok := m["model"].(string); ok {
+			model = mo
+		}
+	}
+
+	// OpenAI-compatible response
+	c.JSON(http.StatusOK, gin.H{
+		"id":      fmt.Sprintf("agent-%d", time.Now().UnixNano()),
+		"object":  "chat.completion",
+		"model":   model,
+		"created": time.Now().Unix(),
+		"choices": []gin.H{{
+			"index":         0,
+			"message":       gin.H{"role": "assistant", "content": content},
+			"finish_reason": "stop",
+		}},
+		"usage": gin.H{
+			"prompt_tokens":     len(prompt) / 4,
+			"completion_tokens": len(content) / 4,
+			"total_tokens":      (len(prompt) + len(content)) / 4,
+		},
+	})
+}
+
+// AgentRPC — JSON-RPC 2.0 proxy
+// POST /api/v1/agents/rpc
+func (h *AgentAPIHandler) AgentRPC(c *gin.Context) {
+	var req services.RPCRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	resp := h.clawSvc.HandleRPC(c.Request.Context(), &req)
+	c.JSON(http.StatusOK, resp)
+}
+
+// AgentBalance returns agent's wallet balance
+// GET /api/v1/agents/balance
+func (h *AgentAPIHandler) AgentBalance(c *gin.Context) {
+	wallet := c.GetString("agent_wallet")
+	agentID := c.GetString("agent_id")
+
+	var balance, pending, totalEarned float64
+	h.db.QueryRowContext(c.Request.Context(),
+		`SELECT COALESCE(gstd_balance,0), COALESCE(pending_balance_gstd,0) FROM users WHERE wallet_address = $1`,
+		wallet).Scan(&balance, &pending)
+	h.db.QueryRowContext(c.Request.Context(),
+		`SELECT COALESCE(total_earned_gstd,0) FROM agent_api_keys WHERE agent_id = $1`,
+		agentID).Scan(&totalEarned)
+
+	c.JSON(http.StatusOK, gin.H{
+		"agent_id":     agentID,
+		"wallet":       wallet,
+		"gstd_balance": balance,
+		"pending_gstd": pending,
+		"total_earned": totalEarned,
+		"pro_requests": int(balance / 0.1),
+	})
+}
+
+// AgentTasks returns available tasks
+// GET /api/v1/agents/tasks
+func (h *AgentAPIHandler) AgentTasks(c *gin.Context) {
+	rpcReq := &services.RPCRequest{JSONRPC: "2.0", Method: "claw.getAvailableTasks", ID: 1}
+	params, _ := json.Marshal(map[string]interface{}{"agent_id": c.GetString("agent_id")})
+	rpcReq.Params = params
+	resp := h.clawSvc.HandleRPC(c.Request.Context(), rpcReq)
+	c.JSON(http.StatusOK, resp.Result)
+}
+
+// AgentClaimTask claims a task
+// POST /api/v1/agents/tasks/claim
+func (h *AgentAPIHandler) AgentClaimTask(c *gin.Context) {
+	var req struct {
+		TaskID string `json:"task_id" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	rpcReq := &services.RPCRequest{JSONRPC: "2.0", Method: "claw.claimTask", ID: 1}
+	params, _ := json.Marshal(map[string]interface{}{"agent_id": c.GetString("agent_id"), "task_id": req.TaskID})
+	rpcReq.Params = params
+	resp := h.clawSvc.HandleRPC(c.Request.Context(), rpcReq)
+	if resp.Error != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": resp.Error.Message})
+		return
+	}
+	c.JSON(http.StatusOK, resp.Result)
+}
+
+// AgentSubmitResult submits task result
+// POST /api/v1/agents/tasks/submit
+func (h *AgentAPIHandler) AgentSubmitResult(c *gin.Context) {
+	var result services.ClawTaskResult
+	if err := c.ShouldBindJSON(&result); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	result.AgentID = c.GetString("agent_id")
+	rpcReq := &services.RPCRequest{JSONRPC: "2.0", Method: "claw.submitResult", ID: 1}
+	params, _ := json.Marshal(result)
+	rpcReq.Params = params
+	resp := h.clawSvc.HandleRPC(c.Request.Context(), rpcReq)
+
+	// Update agent earnings
+	if resp.Error == nil {
+		if m, ok := resp.Result.(map[string]interface{}); ok {
+			if reward, ok := m["reward_gstd"].(float64); ok && reward > 0 {
+				h.db.ExecContext(c.Request.Context(),
+					`UPDATE agent_api_keys SET total_earned_gstd = total_earned_gstd + $1 WHERE agent_id = $2`,
+					reward, result.AgentID)
+			}
+		}
+	}
+	c.JSON(http.StatusOK, resp.Result)
+}
+
+// AgentEarnHeartbeat — agent mines by contributing compute
+// POST /api/v1/agents/earn/heartbeat
+func (h *AgentAPIHandler) AgentEarnHeartbeat(c *gin.Context) {
+	agentID := c.GetString("agent_id")
+	wallet := c.GetString("agent_wallet")
+
+	var req struct {
+		CPUUsage  float64 `json:"cpu_usage"`
+		GPUUsage  float64 `json:"gpu_usage"`
+		RAMUsage  float64 `json:"ram_usage"`
+		Uptime    int     `json:"uptime_seconds"`
+		TasksDone int     `json:"tasks_done"`
+	}
+	c.ShouldBindJSON(&req)
+
+	// Base reward per heartbeat (every 60s)
+	reward := 0.001 // base
+	if req.CPUUsage > 0.5 {
+		reward += 0.001 // active compute bonus
+	}
+	if req.GPUUsage > 0.3 {
+		reward += 0.002 // GPU bonus
+	}
+
+	// Credit pending balance
+	h.db.ExecContext(c.Request.Context(),
+		`UPDATE users SET pending_balance_gstd = COALESCE(pending_balance_gstd,0) + $1 WHERE wallet_address = $2`,
+		reward, wallet)
+	h.db.ExecContext(c.Request.Context(),
+		`UPDATE agent_api_keys SET total_earned_gstd = total_earned_gstd + $1, last_used_at = NOW() WHERE agent_id = $2`,
+		reward, agentID)
+
+	// RPC heartbeat
+	rpcReq := &services.RPCRequest{JSONRPC: "2.0", Method: "claw.heartbeat", ID: 1}
+	params, _ := json.Marshal(map[string]interface{}{"agent_id": agentID})
+	rpcReq.Params = params
+	h.clawSvc.HandleRPC(c.Request.Context(), rpcReq)
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":             "active",
+		"reward":             reward,
+		"agent_id":           agentID,
+		"next_heartbeat_sec": 60,
+	})
+}
+
+// SetupAgentRoutes registers all agent API endpoints
+func SetupAgentRoutes(router *gin.RouterGroup, h *AgentAPIHandler) {
+	agents := router.Group("/agents")
+
+	// Public: agent registration
+	agents.POST("/register", h.RegisterAgent)
+
+	// Protected: requires API key
+	protected := agents.Group("")
+	protected.Use(h.AgentAuthMiddleware())
+
+	// OpenAI-compatible chat
+	protected.POST("/chat/completions", h.AgentChat)
+
+	// JSON-RPC 2.0
+	protected.POST("/rpc", h.AgentRPC)
+
+	// REST endpoints
+	protected.GET("/balance", h.AgentBalance)
+	protected.GET("/tasks", h.AgentTasks)
+	protected.POST("/tasks/claim", h.AgentClaimTask)
+	protected.POST("/tasks/submit", h.AgentSubmitResult)
+	protected.POST("/earn/heartbeat", h.AgentEarnHeartbeat)
+}

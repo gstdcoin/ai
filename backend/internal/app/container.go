@@ -884,6 +884,11 @@ func StartApplication(container *dig.Container) error {
 			zbGateService, recyclingPool, kvCacheService,
 			dataAirlock, openClawBridge)
 
+		// 4b1a. Agent API: OpenClaw/A2A agent endpoints
+		agentHandler := api.NewAgentAPIHandler(db, openClawBridge)
+		api.SetupAgentRoutes(v1Group, agentHandler)
+		log.Printf("🤖 Agent API: ACTIVE — POST /api/v1/agents/register, /agents/chat/completions")
+
 		// 4b2. Universal Mesh Protocol: public infer, XAUt monetization
 		api.SetupUniversalMeshRoutes(v1Group, universalMeshService, contributionMonetization)
 		log.Printf("🌐 Universal Mesh Protocol: ACTIVE — GET /api/v1/infer, GET /api/v1/mesh/shares")
