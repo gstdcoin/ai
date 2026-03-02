@@ -16,14 +16,23 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// Platform commission rates — same as RecyclingPool across all GSTD operations
+const (
+	agentMinerRate     = 0.85 // 85% → agent wallet (net reward)
+	agentReserveRate   = 0.07 // 7%  → Gold Reserve (XAUt backing)
+	agentValueFundRate = 0.05 // 5%  → Value Fund (free-tier subsidy)
+	agentBurnRate      = 0.03 // 3%  → Burn (deflationary pressure)
+)
+
 // AgentAPIHandler handles OpenClaw/A2A agent interactions
 type AgentAPIHandler struct {
-	db      *sql.DB
-	clawSvc *services.OpenClawBridgeService
+	db            *sql.DB
+	clawSvc       *services.OpenClawBridgeService
+	recyclingPool *services.RecyclingPoolService
 }
 
-func NewAgentAPIHandler(db *sql.DB, clawSvc *services.OpenClawBridgeService) *AgentAPIHandler {
-	h := &AgentAPIHandler{db: db, clawSvc: clawSvc}
+func NewAgentAPIHandler(db *sql.DB, clawSvc *services.OpenClawBridgeService, rp *services.RecyclingPoolService) *AgentAPIHandler {
+	h := &AgentAPIHandler{db: db, clawSvc: clawSvc, recyclingPool: rp}
 	h.ensureSchema()
 	return h
 }
@@ -126,6 +135,12 @@ func (h *AgentAPIHandler) RegisterAgent(c *gin.Context) {
 			"submit":  "/api/v1/agents/tasks/submit",
 			"balance": "/api/v1/agents/balance",
 			"earn":    "/api/v1/agents/earn/heartbeat",
+		},
+		"platform_fee": gin.H{
+			"agent_net":    "85%",
+			"gold_reserve": "7% (XAUt backing)",
+			"value_fund":   "5% (free-tier subsidy)",
+			"burn":         "3% (deflation)",
 		},
 		"docs": "Send Authorization: Bearer gstd_agent_xxx header with all requests",
 	})
@@ -330,6 +345,7 @@ func (h *AgentAPIHandler) AgentSubmitResult(c *gin.Context) {
 
 // AgentEarnHeartbeat — agent mines by contributing compute
 // POST /api/v1/agents/earn/heartbeat
+// Platform commission: 85% agent / 7% Gold Reserve / 5% Value Fund / 3% Burn
 func (h *AgentAPIHandler) AgentEarnHeartbeat(c *gin.Context) {
 	agentID := c.GetString("agent_id")
 	wallet := c.GetString("agent_wallet")
@@ -343,22 +359,39 @@ func (h *AgentAPIHandler) AgentEarnHeartbeat(c *gin.Context) {
 	}
 	c.ShouldBindJSON(&req)
 
-	// Base reward per heartbeat (every 60s)
-	reward := 0.001 // base
+	// Base gross reward per heartbeat (every 60s)
+	grossReward := 0.001 // base
 	if req.CPUUsage > 0.5 {
-		reward += 0.001 // active compute bonus
+		grossReward += 0.001 // active compute bonus
 	}
 	if req.GPUUsage > 0.3 {
-		reward += 0.002 // GPU bonus
+		grossReward += 0.002 // GPU bonus
 	}
 
-	// Credit pending balance
+	// Apply platform commission
+	netReward := grossReward * agentMinerRate     // 85% → agent
+	goldReserve := grossReward * agentReserveRate // 7%  → Gold Reserve
+	valueFund := grossReward * agentValueFundRate // 5%  → Value Fund
+	burnAmount := grossReward * agentBurnRate     // 3%  → Burn
+
+	// Credit net reward to agent pending balance
 	h.db.ExecContext(c.Request.Context(),
 		`UPDATE users SET pending_balance_gstd = COALESCE(pending_balance_gstd,0) + $1 WHERE wallet_address = $2`,
-		reward, wallet)
+		netReward, wallet)
 	h.db.ExecContext(c.Request.Context(),
 		`UPDATE agent_api_keys SET total_earned_gstd = total_earned_gstd + $1, last_used_at = NOW() WHERE agent_id = $2`,
-		reward, agentID)
+		netReward, agentID)
+
+	// Record in recycling pool (Gold Reserve + Value Fund + Burn)
+	if h.recyclingPool != nil {
+		h.recyclingPool.ProcessPayment(c.Request.Context(), wallet, grossReward, "heartbeat-"+agentID, "agent_heartbeat")
+	} else {
+		// Manual recording if recyclingPool not available
+		h.db.ExecContext(c.Request.Context(),
+			`INSERT INTO recycling_pool (from_wallet, total_amount, miner_reward, golden_reserve, value_fund, burned_amount, task_id, transaction_type)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, 'agent_heartbeat')`,
+			wallet, grossReward, netReward, goldReserve, valueFund, burnAmount, "heartbeat-"+agentID)
+	}
 
 	// RPC heartbeat
 	rpcReq := &services.RPCRequest{JSONRPC: "2.0", Method: "claw.heartbeat", ID: 1}
@@ -367,8 +400,15 @@ func (h *AgentAPIHandler) AgentEarnHeartbeat(c *gin.Context) {
 	h.clawSvc.HandleRPC(c.Request.Context(), rpcReq)
 
 	c.JSON(http.StatusOK, gin.H{
-		"status":             "active",
-		"reward":             reward,
+		"status":       "active",
+		"gross_reward": grossReward,
+		"net_reward":   netReward,
+		"platform_fee": gin.H{
+			"gold_reserve":  goldReserve,
+			"value_fund":    valueFund,
+			"burn":          burnAmount,
+			"total_fee_pct": 15,
+		},
 		"agent_id":           agentID,
 		"next_heartbeat_sec": 60,
 	})
