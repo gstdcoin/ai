@@ -15,16 +15,16 @@ import (
 func ValidateTaskRequest() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			RequesterAddress string  `json:"requester_address" binding:"required"`
-			TaskType         string  `json:"task_type" binding:"required,oneof=inference human validation agent"`
-			Operation        string  `json:"operation" binding:"required,min=1,max=50"`
-			Model            string  `json:"model" binding:"max=100"`
-			InputSource      string  `json:"input_source" binding:"required,min=1"`
-			InputHash        string  `json:"input_hash" binding:"max=255"`
-			TimeLimitSec     int     `json:"time_limit_sec" binding:"required,min=1,max=300"`
-			MaxEnergyMwh     int     `json:"max_energy_mwh" binding:"required,min=1,max=1000"`
+			RequesterAddress      string  `json:"requester_address" binding:"required"`
+			TaskType              string  `json:"task_type" binding:"required,oneof=inference human validation agent"`
+			Operation             string  `json:"operation" binding:"required,min=1,max=50"`
+			Model                 string  `json:"model" binding:"max=100"`
+			InputSource           string  `json:"input_source" binding:"required,min=1"`
+			InputHash             string  `json:"input_hash" binding:"max=255"`
+			TimeLimitSec          int     `json:"time_limit_sec" binding:"required,min=1,max=300"`
+			MaxEnergyMwh          int     `json:"max_energy_mwh" binding:"required,min=1,max=1000"`
 			LaborCompensationGSTD float64 `json:"labor_compensation_gstd" binding:"required,min=0.001"`
-			ValidationMethod string  `json:"validation_method" binding:"required,oneof=reference majority ai_check human"`
+			ValidationMethod      string  `json:"validation_method" binding:"required,oneof=reference majority ai_check human"`
 		}
 
 		if err := c.ShouldBindBodyWith(&req, binding.JSON); err != nil {
@@ -56,9 +56,9 @@ func ValidateDeviceRequest(errorLogger *services.ErrorLogger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		var req struct {
-			DeviceID     string `json:"device_id" binding:"required,min=1,max=255"`
+			DeviceID      string `json:"device_id" binding:"required,min=1,max=255"`
 			WalletAddress string `json:"wallet_address" binding:"required"`
-			DeviceType   string `json:"device_type" binding:"required,oneof=android ios desktop browser"`
+			DeviceType    string `json:"device_type" binding:"required,oneof=android ios desktop browser"`
 		}
 
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -104,10 +104,10 @@ func ValidateDeviceRequest(errorLogger *services.ErrorLogger) gin.HandlerFunc {
 func ValidateResultSubmission() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			DeviceID        string `json:"device_id" binding:"required"`
+			DeviceID        string      `json:"device_id" binding:"required"`
 			Result          interface{} `json:"result" binding:"required"`
-			Proof           string `json:"proof" binding:"required"`
-			ExecutionTimeMs int    `json:"execution_time_ms" binding:"required,min=0,max=300000"`
+			Proof           string      `json:"proof" binding:"required"`
+			ExecutionTimeMs int         `json:"execution_time_ms" binding:"required,min=0,max=300000"`
 		}
 
 		if err := c.ShouldBindBodyWith(&req, binding.JSON); err != nil {
@@ -118,7 +118,6 @@ func ValidateResultSubmission() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-
 
 		// Validate proof format (hex or base64)
 		if len(req.Proof) < 64 {
@@ -143,13 +142,13 @@ func isValidTONAddress(address string) bool {
 	if address == "" {
 		return false
 	}
-	
+
 	// Remove whitespace
 	address = strings.TrimSpace(address)
-	
+
 	// Remove dashes (user-friendly format with dashes)
 	addressNoDashes := strings.ReplaceAll(address, "-", "")
-	
+
 	// Check length (TON addresses are 48 characters in raw/base64 format)
 	// Raw format: 0: + 48 hex chars = 50 chars
 	// User-friendly: 48 base64 chars
@@ -157,7 +156,7 @@ func isValidTONAddress(address string) bool {
 	if len(addressNoDashes) < 10 {
 		return false
 	}
-	
+
 	// Check for raw format (0:...)
 	if strings.HasPrefix(address, "0:") {
 		// Raw format: 0: + 48 hex characters
@@ -175,7 +174,7 @@ func isValidTONAddress(address string) bool {
 			}
 		}
 	}
-	
+
 	// Check for user-friendly format (EQ, UQ, kQ, 0Q)
 	validPrefixes := []string{"EQ", "UQ", "kQ", "0Q"}
 	for _, prefix := range validPrefixes {
@@ -187,8 +186,8 @@ func isValidTONAddress(address string) bool {
 				// Validate base64url characters
 				valid := true
 				for _, c := range base64Part {
-					if !((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || 
-						 (c >= '0' && c <= '9') || c == '_' || c == '-') {
+					if !((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+						(c >= '0' && c <= '9') || c == '_' || c == '-') {
 						valid = false
 						break
 					}
@@ -199,7 +198,7 @@ func isValidTONAddress(address string) bool {
 			}
 		}
 	}
-	
+
 	// Also accept addresses that look like TON addresses (more lenient)
 	// If it starts with valid prefix and has reasonable length, accept it
 	// This handles edge cases and different TON address formats
@@ -214,7 +213,7 @@ func isValidTONAddress(address string) bool {
 			return true
 		}
 	}
-	
+
 	return false
 }
 
@@ -223,12 +222,11 @@ func sanitizeValidationError(err error) string {
 	if err == nil {
 		return "validation error"
 	}
-	
+
 	errStr := err.Error()
 	// Remove sensitive information
 	errStr = strings.ReplaceAll(errStr, "password", "***")
 	errStr = strings.ReplaceAll(errStr, "private_key", "***")
-	
+
 	return errStr
 }
-

@@ -25,11 +25,11 @@ import (
 //   - Historical latency data from Redis
 //   - Kademlia-inspired distance metric (XOR of hashed coordinates)
 type GeoRoutingService struct {
-	db          *sql.DB
-	redis       *redis.Client
-	geoService  *GeoService
-	mu          sync.RWMutex
-	rttCache    map[string]float64 // nodeID → last measured RTT (ms)
+	db         *sql.DB
+	redis      *redis.Client
+	geoService *GeoService
+	mu         sync.RWMutex
+	rttCache   map[string]float64 // nodeID → last measured RTT (ms)
 }
 
 // RoutedNode represents a node with routing metadata

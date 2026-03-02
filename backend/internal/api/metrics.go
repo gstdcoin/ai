@@ -30,33 +30,33 @@ func NewMetricsService(db *sql.DB, redisClient *redis.Client) *MetricsService {
 func (m *MetricsService) GetMetrics() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		
+
 		// Database metrics
 		var dbConnections int
 		m.db.QueryRowContext(ctx, "SELECT count(*) FROM pg_stat_activity WHERE datname = current_database()").Scan(&dbConnections)
-		
+
 		var dbSize int64
 		m.db.QueryRowContext(ctx, "SELECT pg_database_size(current_database())").Scan(&dbSize)
-		
+
 		// Task metrics
 		var totalTasks, pendingTasks, completedTasks, failedTasks int
 		m.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM tasks").Scan(&totalTasks)
 		m.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM tasks WHERE status = 'pending'").Scan(&pendingTasks)
 		m.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM tasks WHERE status = 'completed'").Scan(&completedTasks)
 		m.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM tasks WHERE status = 'failed'").Scan(&failedTasks)
-		
+
 		// Device metrics
 		var totalDevices, activeDevices int
 		m.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM devices").Scan(&totalDevices)
 		m.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM devices WHERE is_active = true AND last_seen_at > NOW() - INTERVAL '5 minutes'").Scan(&activeDevices)
-		
+
 		// Redis metrics
 		redisInfo, _ := m.redisClient.Info(ctx, "stats").Result()
 		redisMemory, _ := m.redisClient.Info(ctx, "memory").Result()
-		
+
 		// Uptime
 		uptime := time.Since(m.startTime).Seconds()
-		
+
 		// Prometheus format
 		metrics := `# HELP gstd_platform_uptime_seconds Platform uptime in seconds
 # TYPE gstd_platform_uptime_seconds gauge
@@ -98,7 +98,7 @@ gstd_devices_active ` + formatInt(activeDevices) + `
 # ` + redisInfo + `
 # ` + redisMemory + `
 `
-		
+
 		c.Data(http.StatusOK, "text/plain; version=0.0.4", []byte(metrics))
 	}
 }

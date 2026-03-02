@@ -11,29 +11,29 @@ import (
 // Each node (PC, server, phone) receives a share of XAUt proportional to its contribution.
 // A2A Symbio: referrers get 1% of referred node's compute_units as bonus.
 type ContributionMonetizationService struct {
-	db         *sql.DB
+	db          *sql.DB
 	poolMonitor *PoolMonitorService
-	referral   *ReferralService // optional: for compute referral bonus
+	referral    *ReferralService // optional: for compute referral bonus
 }
 
 // ContributionRecord represents a single compute contribution
 type ContributionRecord struct {
 	NodeID       string  `json:"node_id"`
-	WalletAddr  string  `json:"wallet_address"`
-	Platform    string  `json:"platform"` // mobile, desktop, server
+	WalletAddr   string  `json:"wallet_address"`
+	Platform     string  `json:"platform"` // mobile, desktop, server
 	ComputeUnits float64 `json:"compute_units"`
-	TaskID      string  `json:"task_id"`
-	Model       string  `json:"model"`
+	TaskID       string  `json:"task_id"`
+	Model        string  `json:"model"`
 }
 
 // XAUtShare represents a node's share of XAUt for an epoch
 type XAUtShare struct {
-	WalletAddr    string  `json:"wallet_address"`
-	Platform      string  `json:"platform"`
-	ComputeUnits  float64 `json:"compute_units"`
-	SharePct      float64 `json:"share_pct"`
-	XAUtAmount    float64 `json:"xaut_amount"`
-	EpochEnd      string  `json:"epoch_end"`
+	WalletAddr   string  `json:"wallet_address"`
+	Platform     string  `json:"platform"`
+	ComputeUnits float64 `json:"compute_units"`
+	SharePct     float64 `json:"share_pct"`
+	XAUtAmount   float64 `json:"xaut_amount"`
+	EpochEnd     string  `json:"epoch_end"`
 }
 
 // NewContributionMonetizationService creates the service

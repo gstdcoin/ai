@@ -12,11 +12,11 @@ import (
 
 // MaintenanceService handles autonomous platform maintenance and acts as a personal assistant
 type MaintenanceService struct {
-	db                 *sql.DB
-	taskService        *TaskService
-	errorLogger        *ErrorLogger
-	telegramService    *TelegramService
-	hardwareGrants     *HardwareGrantsService
+	db              *sql.DB
+	taskService     *TaskService
+	errorLogger     *ErrorLogger
+	telegramService *TelegramService
+	hardwareGrants  *HardwareGrantsService
 }
 
 func NewMaintenanceService(db *sql.DB, taskService *TaskService, errorLogger *ErrorLogger, telegramService *TelegramService, hardwareGrants *HardwareGrantsService) *MaintenanceService {
@@ -45,11 +45,11 @@ func (s *MaintenanceService) Start(ctx context.Context) {
 	}
 
 	// Different intervals for different tasks
-	pruneTicker := time.NewTicker(24 * time.Hour)       // Daily cleanup
-	briefingTicker := time.NewTicker(24 * time.Hour)   // Daily Report
-	repairTicker := time.NewTicker(30 * time.Minute)   // Frequent repairs
-	monitorTicker := time.NewTicker(15 * time.Minute)  // System Health Pulse
-	grantsTicker := time.NewTicker(24 * time.Hour)     // Daily: Treasury → Hardware Grants
+	pruneTicker := time.NewTicker(24 * time.Hour)     // Daily cleanup
+	briefingTicker := time.NewTicker(24 * time.Hour)  // Daily Report
+	repairTicker := time.NewTicker(30 * time.Minute)  // Frequent repairs
+	monitorTicker := time.NewTicker(15 * time.Minute) // System Health Pulse
+	grantsTicker := time.NewTicker(24 * time.Hour)    // Daily: Treasury → Hardware Grants
 
 	defer pruneTicker.Stop()
 	defer briefingTicker.Stop()
@@ -196,8 +196,8 @@ func (s *MaintenanceService) ensureSystemIntegrity(ctx context.Context) {
 
 // checkTreasuryAndAllocateGrants: when Treasury (Gold Reserve) has significant profit, allocate grants to scarce H3 regions
 const (
-	grantsTreasuryThresholdGSTD = 100  // Minimum treasury balance to trigger grants
-	grantsMaxAllocationGSTD     = 50   // Max GSTD per allocation cycle
+	grantsTreasuryThresholdGSTD = 100 // Minimum treasury balance to trigger grants
+	grantsMaxAllocationGSTD     = 50  // Max GSTD per allocation cycle
 	grantsCooldownDays          = 7   // Don't allocate more than once per week
 )
 
@@ -323,7 +323,7 @@ func (s *MaintenanceService) sendDailyBriefing(ctx context.Context) {
 
 	var newUsers24h int
 	s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM users WHERE created_at > NOW() - INTERVAL '24 hours'").Scan(&newUsers24h)
-	
+
 	var totalPaid float64
 	s.db.QueryRowContext(ctx, "SELECT COALESCE(SUM(executor_reward_gstd), 0) FROM payout_transactions WHERE status = 'confirmed' AND created_at > NOW() - INTERVAL '24 hours'").Scan(&totalPaid)
 
@@ -350,8 +350,8 @@ func (s *MaintenanceService) GetAutonomyStats(ctx context.Context) (map[string]i
 	var activeMaintenance bool = true
 
 	return map[string]interface{}{
-		"status":              "active",
-		"self_healed_tasks":   selfHealedTasks,
+		"status":             "active",
+		"self_healed_tasks":  selfHealedTasks,
 		"maintenance_active": activeMaintenance,
 		"last_cycle":         time.Now().Format(time.RFC3339),
 		"briefing_enabled":   s.telegramService != nil,

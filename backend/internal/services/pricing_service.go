@@ -44,10 +44,10 @@ func (s *PricingService) CalculateSuggestedBudget(ctx context.Context, taskType 
 	// 4. Pressure Factor (Demand/Supply)
 	// If more tasks than nodes, price increases exponentially
 	pressure := float64(pendingTasks+1) / float64(activeNodes+1)
-	
+
 	// Analogy to Gas Fees: Multiplier = base + log2(1 + pressure)
 	multiplier := 1.0 + math.Log2(1.0+pressure)
-	
+
 	suggested := basePrice * multiplier
 
 	return suggested, nil

@@ -29,7 +29,7 @@ func (s *TimeoutService) SetErrorLogger(errorLogger *ErrorLogger) {
 func (s *TimeoutService) CheckTimeouts(ctx context.Context) error {
 	// Find tasks that are assigned but haven't been updated in timeout period
 	timeoutDuration := 5 * time.Minute // 5 minutes timeout for execution
-	
+
 	// SECURITY: Use parameterized query to prevent SQL injection
 	// Return both task_id and assigned_device for logging
 	query := `
@@ -42,7 +42,7 @@ func (s *TimeoutService) CheckTimeouts(ctx context.Context) error {
 		  AND (timeout_at < NOW() OR (assigned_at < NOW() - INTERVAL '1 second' * $1 AND timeout_at IS NULL))
 		RETURNING task_id, assigned_device
 	`
-	
+
 	rows, err := s.db.QueryContext(ctx, query, int(timeoutDuration.Seconds()))
 	if err != nil {
 		return err
@@ -50,10 +50,10 @@ func (s *TimeoutService) CheckTimeouts(ctx context.Context) error {
 	defer rows.Close()
 
 	var reassignedTasks []struct {
-		TaskID        string
+		TaskID         string
 		AssignedDevice sql.NullString
 	}
-	
+
 	for rows.Next() {
 		var taskID string
 		var assignedDevice sql.NullString
@@ -61,7 +61,7 @@ func (s *TimeoutService) CheckTimeouts(ctx context.Context) error {
 			continue
 		}
 		reassignedTasks = append(reassignedTasks, struct {
-			TaskID        string
+			TaskID         string
 			AssignedDevice sql.NullString
 		}{TaskID: taskID, AssignedDevice: assignedDevice})
 	}
@@ -74,7 +74,7 @@ func (s *TimeoutService) CheckTimeouts(ctx context.Context) error {
 				deviceID = task.AssignedDevice.String
 			}
 			log.Printf("TimeoutService: Task %s timed out (device: %s) - status changed to 'timeout'", task.TaskID, deviceID)
-			
+
 			// Log timeout to database if errorLogger is available
 			if s.errorLogger != nil {
 				s.errorLogger.LogError(ctx, "TASK_TIMEOUT", fmt.Errorf("task %s timed out", task.TaskID), SeverityWarning, map[string]interface{}{
@@ -105,4 +105,3 @@ func (s *TimeoutService) StartTimeoutChecker(ctx context.Context, interval time.
 		}
 	}
 }
-

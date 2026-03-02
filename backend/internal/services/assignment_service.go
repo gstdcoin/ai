@@ -66,7 +66,7 @@ func (s *AssignmentService) AssignTask(ctx context.Context, taskID string, devic
 		// Try devices table
 		err = tx.QueryRowContext(ctx, "SELECT wallet_address FROM devices WHERE device_id = $1", deviceID).Scan(&walletAddress)
 	}
-	
+
 	if err != nil {
 		// If fails (e.g. device not found or wallet_address is null), use deviceID as fallback
 		// or proceed (risk of bypass, but prevents bricking if DB inconsistent)
@@ -85,7 +85,7 @@ func (s *AssignmentService) AssignTask(ctx context.Context, taskID string, devic
 	`, requiredStake, walletAddress)
 
 	if err != nil {
-		// If column doesn't exist, we might fail here. 
+		// If column doesn't exist, we might fail here.
 		// In production we'd migrate. For now we assume scheme compliance.
 		return fmt.Errorf("system error during stake check: %w", err)
 	}
@@ -107,7 +107,7 @@ func (s *AssignmentService) AssignTask(ctx context.Context, taskID string, devic
 		  AND t.status = 'assigned' 
 		  AND t.timeout_at > NOW()
 	`, walletAddress).Scan(&activeCount)
-	
+
 	// Limit is 3 active tasks per wallet (temporary measure)
 	if err == nil && activeCount >= 3 {
 		log.Printf("⚠️  Rate limit exceeded for wallet %s: %d active tasks (limit 3)", walletAddress, activeCount)
@@ -134,7 +134,7 @@ func (s *AssignmentService) AssignTask(ctx context.Context, taskID string, devic
 	if err != nil {
 		return fmt.Errorf("failed to check rows affected: %w", err)
 	}
-	
+
 	if rowsAffected == 0 {
 		return fmt.Errorf("task assignment failed - task may have been assigned to another worker (race condition prevented)")
 	}
@@ -158,20 +158,20 @@ func (s *AssignmentService) GetAvailableTasks(ctx context.Context, deviceID stri
 		FROM nodes WHERE id = $1
 	`, deviceID).Scan(&deviceTrust, &deviceRegion)
 	if err != nil {
-        // Try devices table as fallback (legacy)
-        err = s.db.QueryRowContext(ctx, `
+		// Try devices table as fallback (legacy)
+		err = s.db.QueryRowContext(ctx, `
             SELECT COALESCE(trust_score, 0.1) as trust, 
                    COALESCE(region, '') as region 
             FROM devices WHERE device_id = $1
         `, deviceID).Scan(&deviceTrust, &deviceRegion)
-        
-        if err != nil {
-            // Fallback for new/unknown devices
-            deviceTrust = 0.1
-            deviceRegion = sql.NullString{String: "unknown", Valid: true}
-        }
+
+		if err != nil {
+			// Fallback for new/unknown devices
+			deviceTrust = 0.1
+			deviceRegion = sql.NullString{String: "unknown", Valid: true}
+		}
 	}
-	
+
 	// regionStr removed - not used in query below
 	// regionStr := "unknown"
 	// if deviceRegion.Valid {
@@ -210,7 +210,7 @@ func (s *AssignmentService) GetAvailableTasks(ctx context.Context, deviceID stri
 		var task models.Task
 		var completedAt sql.NullTime
 		var assignedDevice sql.NullString
-		
+
 		err := rows.Scan(
 			&task.TaskID, &task.RequesterAddress, &task.TaskType, &task.Operation,
 			&task.Model, &task.LaborCompensationGSTD, &task.PriorityScore,
@@ -220,7 +220,7 @@ func (s *AssignmentService) GetAvailableTasks(ctx context.Context, deviceID stri
 			log.Printf("GetAvailableTasks: Scan error: %v", err)
 			continue // Skip invalid rows
 		}
-		
+
 		// Set optional fields
 		if completedAt.Valid {
 			task.CompletedAt = &completedAt.Time
@@ -228,7 +228,7 @@ func (s *AssignmentService) GetAvailableTasks(ctx context.Context, deviceID stri
 		if assignedDevice.Valid {
 			task.AssignedDevice = &assignedDevice.String
 		}
-		
+
 		// Set defaults for optional fields that may not exist in DB
 		task.InputSource = ""
 		task.InputHash = ""
@@ -238,7 +238,7 @@ func (s *AssignmentService) GetAvailableTasks(ctx context.Context, deviceID stri
 		task.EscrowAddress = ""
 		task.EscrowAmountGSTD = 0.0
 		task.IsPrivate = false
-		
+
 		tasks = append(tasks, &task)
 	}
 
@@ -263,6 +263,7 @@ func (s *AssignmentService) ClaimTask(ctx context.Context, taskID string, device
 	// Assign task
 	return s.AssignTask(ctx, taskID, deviceID)
 }
+
 // GetTasksByDevice returns tasks currently assigned to a device
 func (s *AssignmentService) GetTasksByDevice(ctx context.Context, deviceID string) ([]*models.Task, error) {
 	query := `
@@ -289,7 +290,7 @@ func (s *AssignmentService) GetTasksByDevice(ctx context.Context, deviceID strin
 		var task models.Task
 		var completedAt sql.NullTime
 		var assignedDevice sql.NullString
-		
+
 		err := rows.Scan(
 			&task.TaskID, &task.RequesterAddress, &task.TaskType, &task.Operation,
 			&task.Model, &task.LaborCompensationGSTD, &task.PriorityScore,
@@ -298,14 +299,14 @@ func (s *AssignmentService) GetTasksByDevice(ctx context.Context, deviceID strin
 		if err != nil {
 			continue
 		}
-		
+
 		if completedAt.Valid {
 			task.CompletedAt = &completedAt.Time
 		}
 		if assignedDevice.Valid {
 			task.AssignedDevice = &assignedDevice.String
 		}
-		
+
 		tasks = append(tasks, &task)
 	}
 

@@ -68,7 +68,7 @@ func (s *APIKeyService) GetKeys(ctx context.Context, walletAddress string) ([]ma
 		if err := rows.Scan(&key, &label, &count, &lastUsedNull, &createdAt); err != nil {
 			return nil, err
 		}
-		
+
 		keyData := map[string]interface{}{
 			"api_key":     key,
 			"label":       label,

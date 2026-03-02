@@ -22,9 +22,9 @@ const (
 // - Autonomous Expansion: at IQ 95.0, create Sub-agents for narrow niches
 // - Golden Age Verification: every IQ increase correlates with golden standard update
 type OmnipotenceService struct {
-	db           *sql.DB
+	db             *sql.DB
 	platformWallet string
-	interval     time.Duration
+	interval       time.Duration
 }
 
 // NewOmnipotenceService creates the service.

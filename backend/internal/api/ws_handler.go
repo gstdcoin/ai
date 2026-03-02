@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"sync"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -41,29 +41,29 @@ var upgrader = websocket.Upgrader{
 
 // WSClient represents a WebSocket client (device/worker)
 type WSClient struct {
-	conn               *websocket.Conn
-	deviceID           string
-	walletAddress      string // Set on connect from query; used for Fleet Command
-	trustScore         float64
-	send               chan []byte
-	hub                *WSHub
-	assignmentService  *services.AssignmentService
-	deviceService      *services.DeviceService
+	conn                *websocket.Conn
+	deviceID            string
+	walletAddress       string // Set on connect from query; used for Fleet Command
+	trustScore          float64
+	send                chan []byte
+	hub                 *WSHub
+	assignmentService   *services.AssignmentService
+	deviceService       *services.DeviceService
 	fleetCommandService *services.FleetCommandService
 }
 
 // WSHub manages WebSocket connections
 type WSHub struct {
-	clients       map[*WSClient]bool
-	broadcast     chan *TaskNotification
-	announcement  chan *SystemAnnouncement
-	register      chan *WSClient
-	unregister    chan *WSClient
-	mu            sync.RWMutex
-	redisPubSub   interface{} // *services.RedisPubSubService (avoid circular import)
-	redisMsgChan  <-chan interface{} // Channel for Redis Pub/Sub messages (TaskMessage) - receive-only
-	eventBuffer   []*TaskNotification
-	bufferSize    int
+	clients      map[*WSClient]bool
+	broadcast    chan *TaskNotification
+	announcement chan *SystemAnnouncement
+	register     chan *WSClient
+	unregister   chan *WSClient
+	mu           sync.RWMutex
+	redisPubSub  interface{}        // *services.RedisPubSubService (avoid circular import)
+	redisMsgChan <-chan interface{} // Channel for Redis Pub/Sub messages (TaskMessage) - receive-only
+	eventBuffer  []*TaskNotification
+	bufferSize   int
 }
 
 // SystemAnnouncement represents a global message to all agents
@@ -83,20 +83,20 @@ type TaskNotification struct {
 // NewWSHub creates a new WebSocket hub
 func NewWSHub() *WSHub {
 	return &WSHub{
-		clients:     make(map[*WSClient]bool),
-		broadcast:   make(chan *TaskNotification, 256),
+		clients:      make(map[*WSClient]bool),
+		broadcast:    make(chan *TaskNotification, 256),
 		announcement: make(chan *SystemAnnouncement, 64),
-		register:    make(chan *WSClient),
-		unregister:  make(chan *WSClient),
-		bufferSize:  100, // Keep last 100 events
-		eventBuffer: make([]*TaskNotification, 0, 100),
+		register:     make(chan *WSClient),
+		unregister:   make(chan *WSClient),
+		bufferSize:   100, // Keep last 100 events
+		eventBuffer:  make([]*TaskNotification, 0, 100),
 	}
 }
 
 // SetRedisPubSub sets the Redis Pub/Sub service and starts subscription
 func (h *WSHub) SetRedisPubSub(redisPubSub interface{}) {
 	h.redisPubSub = redisPubSub
-	
+
 	// Use type assertion to call Subscribe method
 	// We need to check if it's *services.RedisPubSubService
 	if pubSub, ok := redisPubSub.(*services.RedisPubSubService); ok {
@@ -105,10 +105,10 @@ func (h *WSHub) SetRedisPubSub(redisPubSub interface{}) {
 			log.Printf("❌ Failed to subscribe to Redis Pub/Sub: %v", err)
 			return
 		}
-		
+
 		h.redisMsgChan = msgChan
 		log.Printf("✅ WSHub subscribed to Redis Pub/Sub channel: gstd_tasks_channel")
-		
+
 		// Start goroutine to receive messages from Redis
 		go h.handleRedisMessages()
 	} else {
@@ -121,12 +121,12 @@ func (h *WSHub) handleRedisMessages() {
 	if h.redisMsgChan == nil {
 		return
 	}
-	
+
 	for msgInterface := range h.redisMsgChan {
 		if msgInterface == nil {
 			continue
 		}
-		
+
 		// Type assert to get TaskMessage fields
 		// We need to use reflection or type assertion
 		msgMap, ok := msgInterface.(map[string]interface{})
@@ -134,34 +134,34 @@ func (h *WSHub) handleRedisMessages() {
 			// Try to unmarshal from JSON if it's a byte slice
 			continue
 		}
-		
+
 		taskID, _ := msgMap["task_id"].(string)
 		taskType, _ := msgMap["task_type"].(string)
 		status, _ := msgMap["status"].(string)
 		payload, _ := msgMap["payload"].(map[string]interface{})
-		
+
 		// Only process tasks with 'pending' or 'queued' status
 		if status != "pending" && status != "queued" {
 			continue
 		}
-		
+
 		log.Printf("📥 Received task from Redis Pub/Sub: %s (status: %s)", taskID, status)
-		
+
 		// Convert to models.Task
 		task := &models.Task{
-			TaskID:              taskID,
-			TaskType:            taskType,
-			Status:              status,
-			RequesterAddress:    getStringFromPayload(payload, "requester_address"),
+			TaskID:                taskID,
+			TaskType:              taskType,
+			Status:                status,
+			RequesterAddress:      getStringFromPayload(payload, "requester_address"),
 			LaborCompensationGSTD: getFloatFromPayload(payload, "labor_compensation"),
-			PriorityScore:        getFloatFromPayload(payload, "gravity_score"),
+			PriorityScore:         getFloatFromPayload(payload, "gravity_score"),
 		}
-		
+
 		// Extract MinTrustScore if available
 		if minTrust, ok := payload["min_trust_score"].(float64); ok {
 			task.MinTrustScore = minTrust
 		}
-		
+
 		// Broadcast to local WebSocket clients
 		h.BroadcastTask(task)
 	}
@@ -223,7 +223,7 @@ func (h *WSHub) Run() {
 				}
 			}
 			h.mu.RUnlock()
-		
+
 		case announcement := <-h.announcement:
 			msg, _ := json.Marshal(announcement)
 			h.mu.RLock()
@@ -261,9 +261,9 @@ func (h *WSHub) BroadcastAnnouncement(msgType, text string, payload interface{})
 		Payload:   payload,
 		Timestamp: time.Now(),
 	}
-	
+
 	log.Printf("📣 Global Announcement: [%s] %s", msgType, text)
-	
+
 	select {
 	case h.announcement <- announcement:
 	default:
@@ -465,4 +465,3 @@ func HandleWebSocket(hub *WSHub, deviceService *services.DeviceService, assignme
 		go client.readPump()
 	}
 }
-

@@ -15,10 +15,10 @@ func GetGaslessStatus(gasless *services.GaslessUserService) gin.HandlerFunc {
 		}
 		count, _ := gasless.GetSubsidyCount(c.Request.Context())
 		c.JSON(200, gin.H{
-			"subsidy_count":         count,
-			"subsidy_limit":         5000,
+			"subsidy_count":           count,
+			"subsidy_limit":           5000,
 			"internal_swap_available": true,
-			"min_gstd_for_swap":     0.1,
+			"min_gstd_for_swap":       0.1,
 		})
 	}
 }

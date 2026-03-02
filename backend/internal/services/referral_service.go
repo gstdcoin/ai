@@ -46,16 +46,16 @@ func (s *ReferralService) GetUserStats(ctx context.Context, walletAddress string
 	}
 
 	// Get total earned (paid)
-	err = s.db.QueryRowContext(ctx, 
-		"SELECT COALESCE(SUM(amount_gstd), 0) FROM referral_rewards WHERE referrer_address = $1 AND status = 'paid'", 
+	err = s.db.QueryRowContext(ctx,
+		"SELECT COALESCE(SUM(amount_gstd), 0) FROM referral_rewards WHERE referrer_address = $1 AND status = 'paid'",
 		walletAddress).Scan(&stats.TotalEarned)
 	if err != nil {
 		log.Printf("Error summing earned rewards: %v", err)
 	}
 
 	// Get pending rewards
-	err = s.db.QueryRowContext(ctx, 
-		"SELECT COALESCE(SUM(amount_gstd), 0) FROM referral_rewards WHERE referrer_address = $1 AND status = 'pending'", 
+	err = s.db.QueryRowContext(ctx,
+		"SELECT COALESCE(SUM(amount_gstd), 0) FROM referral_rewards WHERE referrer_address = $1 AND status = 'pending'",
 		walletAddress).Scan(&stats.PendingRewards)
 	if err != nil {
 		log.Printf("Error summing pending rewards: %v", err)
@@ -81,7 +81,7 @@ func (s *ReferralService) ProcessReferralReward(ctx context.Context, workerAddre
 		}
 		return err
 	}
-	
+
 	if referrerAddress == "" {
 		return nil
 	}

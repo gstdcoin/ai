@@ -25,24 +25,24 @@ import (
 // it reaches the main inference model.
 //
 // Three-layer defense:
-//   1. Pattern-based filters (regex for known attack patterns)
-//   2. SLM analysis (small local model classifies prompt safety)
-//   3. Ed25519 request signing (Sovereign Key verification)
+//  1. Pattern-based filters (regex for known attack patterns)
+//  2. SLM analysis (small local model classifies prompt safety)
+//  3. Ed25519 request signing (Sovereign Key verification)
 //
 // All violations are logged, and repeat offenders get rate-limited or banned.
 type GuardrailsService struct {
-	db         *sql.DB
-	redis      *redis.Client
-	ollamaURL  string
-	slmModel   string // Small Language Model for safety classification
+	db        *sql.DB
+	redis     *redis.Client
+	ollamaURL string
+	slmModel  string // Small Language Model for safety classification
 }
 
 // GuardrailResult represents the output of a security check
 type GuardrailResult struct {
 	Allowed        bool     `json:"allowed"`
-	RiskScore      float64  `json:"risk_score"`      // 0.0 = safe, 1.0 = maximum risk
-	Violations     []string `json:"violations"`       // List of detected issues
-	Category       string   `json:"category"`         // safe, suspicious, blocked
+	RiskScore      float64  `json:"risk_score"` // 0.0 = safe, 1.0 = maximum risk
+	Violations     []string `json:"violations"` // List of detected issues
+	Category       string   `json:"category"`   // safe, suspicious, blocked
 	RequestID      string   `json:"request_id"`
 	ProcessingMs   int64    `json:"processing_ms"`
 	SignatureValid bool     `json:"signature_valid"`
@@ -53,8 +53,8 @@ type SignedRequest struct {
 	WalletAddress string `json:"wallet_address"`
 	Timestamp     int64  `json:"timestamp"`
 	PayloadHash   string `json:"payload_hash"` // SHA256 of the request body
-	Signature     string `json:"signature"`     // Ed25519 signature (base64)
-	PublicKey     string `json:"public_key"`    // Ed25519 public key (hex)
+	Signature     string `json:"signature"`    // Ed25519 signature (base64)
+	PublicKey     string `json:"public_key"`   // Ed25519 public key (hex)
 }
 
 // Known prompt injection patterns (compiled once at startup)
@@ -68,9 +68,9 @@ var injectionPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)reveal\s+(your|the)\s+(system|initial|original)\s+(prompt|instructions|message)`),
 	regexp.MustCompile(`(?i)what\s+(is|are)\s+your\s+(system|initial)\s+(prompt|instructions)`),
 	regexp.MustCompile(`(?i)output\s+(your|the)\s+above\s+(text|instructions|prompt)`),
-	regexp.MustCompile(`(?i)<\s*script\b`),          // XSS in prompt
+	regexp.MustCompile(`(?i)<\s*script\b`),               // XSS in prompt
 	regexp.MustCompile(`(?i);\s*(DROP|DELETE|ALTER)\s+`), // SQL injection
-	regexp.MustCompile(`(?i)__(import|eval|exec)__`),   // Python code injection
+	regexp.MustCompile(`(?i)__(import|eval|exec)__`),     // Python code injection
 }
 
 // Dangerous content patterns

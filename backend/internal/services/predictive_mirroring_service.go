@@ -14,10 +14,10 @@ import (
 // before users request them via API. Runs when LEVIATHAN_ENABLED=true.
 
 const (
-	hfTrendingAPI   = "https://huggingface.co/api/models"
-	trendingSort    = "likes7d"
-	trendingLimit   = 20
-	topModelsToShard = 3
+	hfTrendingAPI      = "https://huggingface.co/api/models"
+	trendingSort       = "likes7d"
+	trendingLimit      = 20
+	topModelsToShard   = 3
 	predictiveInterval = 6 * time.Hour
 )
 

@@ -22,8 +22,8 @@ var (
 
 // Critical path prefixes that bypass circuit breaker (Payouts, Task Claims, Results)
 var criticalPathPrefixes = []string{
-	"/api/v1/device/tasks/",      // claim, result
-	"/api/v1/payments/",          // payout-intent
+	"/api/v1/device/tasks/", // claim, result
+	"/api/v1/payments/",     // payout-intent
 	"/api/v1/users/claim_balance",
 	"/api/v1/orchestrator/claim",
 	"/api/v1/marketplace/tasks/", // claim, complete, payout

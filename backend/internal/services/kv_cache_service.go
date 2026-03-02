@@ -17,10 +17,10 @@ import (
 // KV-cache states are stored on edge nodes close to the user.
 //
 // Architecture:
-//   1. First request: full prompt processed, KV-cache generated
-//   2. KV-cache hash stored in Redis with edge node mapping
-//   3. Follow-up messages: only send new tokens + cache reference
-//   4. Edge node loads cached KV state → 5-10x faster continuation
+//  1. First request: full prompt processed, KV-cache generated
+//  2. KV-cache hash stored in Redis with edge node mapping
+//  3. Follow-up messages: only send new tokens + cache reference
+//  4. Edge node loads cached KV state → 5-10x faster continuation
 //
 // This dramatically reduces Time-to-First-Token for multi-turn conversations.
 type KVCacheService struct {
@@ -33,22 +33,22 @@ type CachedContext struct {
 	SessionID     string    `json:"session_id"`
 	WalletAddress string    `json:"wallet_address"`
 	Model         string    `json:"model"`
-	TokenCount    int       `json:"token_count"`    // Tokens in cached context
-	MessageCount  int       `json:"message_count"`  // Messages in conversation
-	NodeID        string    `json:"node_id"`        // Edge node holding the cache
-	ContextHash   string    `json:"context_hash"`   // SHA256 of message history
+	TokenCount    int       `json:"token_count"`   // Tokens in cached context
+	MessageCount  int       `json:"message_count"` // Messages in conversation
+	NodeID        string    `json:"node_id"`       // Edge node holding the cache
+	ContextHash   string    `json:"context_hash"`  // SHA256 of message history
 	CreatedAt     time.Time `json:"created_at"`
 	ExpiresAt     time.Time `json:"expires_at"`
-	SizeBytes     int64     `json:"size_bytes"`     // Estimated KV-cache size
+	SizeBytes     int64     `json:"size_bytes"` // Estimated KV-cache size
 }
 
 // CacheHit represents the result of a cache lookup
 type CacheHit struct {
-	Found         bool   `json:"found"`
-	CacheID       string `json:"cache_id,omitempty"`
-	NodeID        string `json:"node_id,omitempty"`       // Route to this node for fast inference
-	TokensSaved   int    `json:"tokens_saved,omitempty"`  // How many tokens we skip
-	NewTokensOnly int    `json:"new_tokens_only"`         // Tokens to process
+	Found         bool    `json:"found"`
+	CacheID       string  `json:"cache_id,omitempty"`
+	NodeID        string  `json:"node_id,omitempty"`      // Route to this node for fast inference
+	TokensSaved   int     `json:"tokens_saved,omitempty"` // How many tokens we skip
+	NewTokensOnly int     `json:"new_tokens_only"`        // Tokens to process
 	SpeedupFactor float64 `json:"speedup_factor"`         // Estimated speedup (e.g., 5.2x)
 }
 

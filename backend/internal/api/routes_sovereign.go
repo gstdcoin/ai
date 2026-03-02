@@ -262,19 +262,21 @@ func SetupSovereignRoutes(
 
 		protected.POST("/airlock/create", func(c *gin.Context) {
 			var req struct {
-				DataOwnerWallet string                   `json:"data_owner_wallet"`
-				EdgeNodeID      string                   `json:"edge_node_id"`
-				SandboxType     string                   `json:"sandbox_type"`
-				ModelHash       string                   `json:"model_hash"`
-				DataRegion      string                   `json:"data_region"`
-				Policy          *services.DataPolicy     `json:"policy"`
+				DataOwnerWallet string               `json:"data_owner_wallet"`
+				EdgeNodeID      string               `json:"edge_node_id"`
+				SandboxType     string               `json:"sandbox_type"`
+				ModelHash       string               `json:"model_hash"`
+				DataRegion      string               `json:"data_region"`
+				Policy          *services.DataPolicy `json:"policy"`
 			}
 			if err := c.ShouldBindJSON(&req); err != nil {
 				c.JSON(400, gin.H{"error": "invalid request"})
 				return
 			}
 			wallet := c.GetString("wallet_address")
-			if wallet == "" { wallet = c.GetString("user_id") }
+			if wallet == "" {
+				wallet = c.GetString("user_id")
+			}
 			session := &services.AirlockSession{
 				RequesterWallet: wallet,
 				DataOwnerWallet: req.DataOwnerWallet,

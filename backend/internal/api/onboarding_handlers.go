@@ -98,7 +98,7 @@ func (h *TelegramOnboardHandler) OnboardNewUser(c *gin.Context) {
 	if source == "" {
 		source = "telegram"
 	}
-	
+
 	result, err := h.bonus.ClaimWelcomeBonus(ctx, req.WalletAddress, source)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to claim bonus: " + err.Error()})
@@ -109,10 +109,10 @@ func (h *TelegramOnboardHandler) OnboardNewUser(c *gin.Context) {
 	refCode, _ := h.referral.GenerateReferralCode(ctx, req.WalletAddress)
 
 	c.JSON(http.StatusOK, gin.H{
-		"success":        result.Success,
-		"welcome_bonus":  result,
-		"referral_code":  refCode,
-		"referral_link":  "https://t.me/GSTD_Main_Bot?start=ref_" + refCode,
+		"success":       result.Success,
+		"welcome_bonus": result,
+		"referral_code": refCode,
+		"referral_link": "https://t.me/GSTD_Main_Bot?start=ref_" + refCode,
 		"next_steps": []string{
 			"Start earning by enabling worker mode",
 			"Complete tasks to earn GSTD",

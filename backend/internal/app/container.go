@@ -886,9 +886,10 @@ func StartApplication(container *dig.Container) error {
 
 		// 4b1a. Agent API: OpenClaw/A2A agent endpoints
 		swarmModelMgr := services.NewSwarmModelManager(db, os.Getenv("OLLAMA_URL"))
-		agentHandler := api.NewAgentAPIHandler(db, openClawBridge, recyclingPool, knowledgeService, swarmModelMgr)
+		swarmIntel := services.NewSwarmIntelligenceService(db, os.Getenv("OLLAMA_URL"), knowledgeService, swarmModelMgr)
+		agentHandler := api.NewAgentAPIHandler(db, openClawBridge, recyclingPool, knowledgeService, swarmModelMgr, swarmIntel)
 		api.SetupAgentRoutes(v1Group, agentHandler)
-		log.Printf("🤖 Agent API: ACTIVE — POST /api/v1/agents/register, /agents/chat/completions")
+		log.Printf("🤖 Agent API: ACTIVE — MoSE Intelligence, /api/v1/agents/*")
 
 		// 4b2. Universal Mesh Protocol: public infer, XAUt monetization
 		api.SetupUniversalMeshRoutes(v1Group, universalMeshService, contributionMonetization)

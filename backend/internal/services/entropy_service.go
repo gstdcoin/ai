@@ -30,7 +30,7 @@ func (s *EntropyService) RecordExecution(ctx context.Context, operation string, 
 			entropy_score = CAST(operation_entropy.collision_count + $2 AS DECIMAL) / NULLIF(operation_entropy.total_executions + 1, 0),
 			last_updated = NOW()
 	`, operation, collisionInc)
-	
+
 	return err
 }
 
@@ -42,4 +42,3 @@ func (s *EntropyService) GetEntropy(ctx context.Context, operation string) (floa
 	}
 	return entropy, err
 }
-

@@ -12,9 +12,9 @@ import (
 // - Anti-Price Barrier: 24h BaseInferenceFee adjustment by GSTD/XAUt (micro-request <= $0.01)
 // - Shard Integrity Watchdog: availability check, reward boost when < 80%
 type DynamicEquilibriumService struct {
-	db         *sql.DB
+	db          *sql.DB
 	poolMonitor *PoolMonitorService
-	interval   time.Duration
+	interval    time.Duration
 }
 
 // BaseInferenceFeeGSTD returns the current base fee (from DB, adjusted daily)
@@ -155,20 +155,20 @@ func (s *DynamicEquilibriumService) Start(ctx context.Context) {
 		}
 	}()
 
-		// Shard Watchdog + Node Influx Expansion: every 15 min
-		go func() {
-			ticker := time.NewTicker(15 * time.Minute)
-			defer ticker.Stop()
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case <-ticker.C:
-					s.RunShardIntegrityWatchdog(ctx)
-					s.RunNodeInfluxExpansion(ctx)
-				}
+	// Shard Watchdog + Node Influx Expansion: every 15 min
+	go func() {
+		ticker := time.NewTicker(15 * time.Minute)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				s.RunShardIntegrityWatchdog(ctx)
+				s.RunNodeInfluxExpansion(ctx)
 			}
-		}()
+		}
+	}()
 
 	log.Printf("⚖️ Dynamic Equilibrium: Anti-Price Barrier (24h) + Shard Watchdog (15m) ACTIVE")
 }

@@ -28,7 +28,7 @@ func (re *RetryEngine) HandleTaskFailure(ctx context.Context, taskID string, rea
 	// 1. Get current retry count
 	var retryCount int
 	var maxRetries int = 3 // Hardcoded policy for now
-	
+
 	err := re.db.QueryRowContext(ctx, "SELECT retry_count FROM tasks WHERE task_id = $1", taskID).Scan(&retryCount)
 	if err != nil {
 		return fmt.Errorf("failed to fetch task metadata: %w", err)
@@ -76,7 +76,7 @@ func (re *RetryEngine) HandleTaskFailure(ctx context.Context, taskID string, rea
 
 func (re *RetryEngine) moveToDeadLetterQueue(ctx context.Context, taskID, reason string) error {
 	log.Printf("❌ Task %s moved to DLQ (Max retries exceeded)", taskID)
-	
+
 	_, err := re.db.ExecContext(ctx, `
 		UPDATE tasks 
 		SET status = 'failed', 
@@ -84,7 +84,7 @@ func (re *RetryEngine) moveToDeadLetterQueue(ctx context.Context, taskID, reason
 		    completed_at = NOW()
 		WHERE task_id = $1
 	`, taskID, reason)
-	
+
 	if err == nil {
 		// Notify admins or trigger alert
 		// notifications.SendDLQAlert(taskID, reason)

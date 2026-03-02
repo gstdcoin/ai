@@ -15,20 +15,19 @@ func inferenceFeeGSTD(latencyMs int64) float64 {
 	return GetBaseInferenceFeeGSTD() * GetInferenceFeeMultiplier()
 }
 
-
 // UniversalMeshService orchestrates inference across Mobile, Desktop, and Server.
 // Implements the Universal Mesh Protocol: dynamic weight distribution and collective inference.
 // Clean Core: when cleanCore is set, infer first tries Proxy-Balancer (decentralized) before server.
 type UniversalMeshService struct {
-	db               *sql.DB
-	inference        *InferenceService
-	mobile           *MobileComputeService
-	pipeline         *PipelineParallelismService
-	contributions    *ContributionMonetizationService
-	cleanCore        *CleanCoreService // optional: decentralized inference, proxy to nodes
-	settlement       *SettlementService // optional: ProcessPayment on proxy infer success
-	supremeCoord     *SupremeCoordinatorService // optional: Golden Incentive, request tracking
-	agentRating      *AgentRatingService // optional: Eternal Synergy — Reputation Shield
+	db            *sql.DB
+	inference     *InferenceService
+	mobile        *MobileComputeService
+	pipeline      *PipelineParallelismService
+	contributions *ContributionMonetizationService
+	cleanCore     *CleanCoreService          // optional: decentralized inference, proxy to nodes
+	settlement    *SettlementService         // optional: ProcessPayment on proxy infer success
+	supremeCoord  *SupremeCoordinatorService // optional: Golden Incentive, request tracking
+	agentRating   *AgentRatingService        // optional: Eternal Synergy — Reputation Shield
 }
 
 // ErrReputationShieldPaymentRequired is returned when low-rated agent must pay 2x fee
@@ -45,19 +44,19 @@ func (e *ReputationShieldError) Error() string {
 // InferRequest is the public inference request
 type InferRequest struct {
 	Prompt            string `form:"prompt" json:"prompt"`
-	Model             string `form:"model" json:"model"`                       // light, medium, full
-	Stream            bool   `form:"stream" json:"stream"`                     // SSE streaming
+	Model             string `form:"model" json:"model"`                         // light, medium, full
+	Stream            bool   `form:"stream" json:"stream"`                       // SSE streaming
 	PriorityPlatform  string `form:"priority_platform" json:"priority_platform"` // mobile, desktop, server — Mesh Routing for Agents
-	RequesterWallet   string `form:"-" json:"-"`                               // from X-Wallet-Address / X-GSTD-Target-Wallet — Eternal Synergy Reputation Shield
-	UseInternalCredit bool   `form:"-" json:"-"`                               // X-Use-Internal-Credit: 1 — Zero-Start micro-loan
+	RequesterWallet   string `form:"-" json:"-"`                                 // from X-Wallet-Address / X-GSTD-Target-Wallet — Eternal Synergy Reputation Shield
+	UseInternalCredit bool   `form:"-" json:"-"`                                 // X-Use-Internal-Credit: 1 — Zero-Start micro-loan
 }
 
 // InferResponse is the public inference response
 type InferResponse struct {
-	Response    string   `json:"response"`
-	Model       string   `json:"model"`
-	Platform    string   `json:"platform"` // mobile, desktop, server
-	LatencyMs   int64    `json:"latency_ms"`
+	Response     string   `json:"response"`
+	Model        string   `json:"model"`
+	Platform     string   `json:"platform"` // mobile, desktop, server
+	LatencyMs    int64    `json:"latency_ms"`
 	Contributors []string `json:"contributors,omitempty"`
 }
 
@@ -214,7 +213,7 @@ func (s *UniversalMeshService) Infer(ctx context.Context, req *InferRequest) (*I
 	if s.contributions != nil {
 		_ = s.contributions.Record(ctx, &ContributionRecord{
 			NodeID:       "server-orchestrator",
-			WalletAddr:  "",
+			WalletAddr:   "",
 			Platform:     platform,
 			ComputeUnits: computeUnits,
 			TaskID:       "",
@@ -350,7 +349,6 @@ func (s *UniversalMeshService) resolveModelName(model string) string {
 		return "qwen2.5-coder:7b"
 	}
 }
-
 
 // ErrInferPromptRequired is returned when prompt is empty
 var ErrInferPromptRequired = &inferError{msg: "prompt is required"}

@@ -115,4 +115,3 @@ func (s *RedisStreamsService) ReadTasks(ctx context.Context, consumerName string
 func (s *RedisStreamsService) AcknowledgeTask(ctx context.Context, messageID string) error {
 	return s.client.XAck(ctx, TaskStreamKey, TaskGroupName, messageID).Err()
 }
-

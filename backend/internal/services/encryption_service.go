@@ -141,4 +141,3 @@ func parsePublicKey(pemOrBase64 string) (*rsa.PublicKey, error) {
 	}
 	return nil, fmt.Errorf("not an RSA public key")
 }
-

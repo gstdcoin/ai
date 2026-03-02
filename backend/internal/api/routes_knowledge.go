@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
+
 func storeKnowledge(service *services.KnowledgeService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {

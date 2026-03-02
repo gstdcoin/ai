@@ -99,7 +99,7 @@ func getAdminAgentsLeaderboard(db *sql.DB) gin.HandlerFunc {
 				continue
 			}
 			leaderboard = append(leaderboard, gin.H{
-				"rank":        rank,
+				"rank":       rank,
 				"wallet":     wallet,
 				"total_gstd": totalGSTD,
 				"period":     "7d",
@@ -109,7 +109,7 @@ func getAdminAgentsLeaderboard(db *sql.DB) gin.HandlerFunc {
 
 		c.JSON(200, gin.H{
 			"leaderboard": leaderboard,
-			"period":     "7d",
+			"period":      "7d",
 			"updated_at":  time.Now().Format(time.RFC3339),
 		})
 	}
@@ -154,12 +154,12 @@ func getAdminArchitectVision(db *sql.DB) gin.HandlerFunc {
 		}
 
 		c.JSON(200, gin.H{
-			"nodes_influx_7d":       nodesLast7d,
-			"tasks_completed_7d":   tasksLast7d,
-			"tasks_per_node_ratio": ratio,
-			"projected_nodes_30d":  int(projectedNodes30d),
+			"nodes_influx_7d":         nodesLast7d,
+			"tasks_completed_7d":      tasksLast7d,
+			"tasks_per_node_ratio":    ratio,
+			"projected_nodes_30d":     int(projectedNodes30d),
 			"estimated_iq_growth_30d": projectedTasks30d,
-			"message":              "Estimated IQ growth for next 30 days based on current Node Influx",
+			"message":                 "Estimated IQ growth for next 30 days based on current Node Influx",
 		})
 	}
 }
@@ -236,7 +236,7 @@ func getAdminHealth(
 				"status": redisStatus,
 			},
 			"last_xaut_swaps": swaps,
-			"pending_retries":  pendingRetries,
+			"pending_retries": pendingRetries,
 			"treasury": gin.H{
 				"total_burned_gstd": totalBurned,
 				"total_xaut_bought": totalXAUtBought,
@@ -394,10 +394,10 @@ func approveWithdrawal(db *sql.DB, rewardEngine *services.RewardEngine) gin.Hand
 		}()
 
 		c.JSON(200, gin.H{
-			"message": "Withdrawal approved",
+			"message":       "Withdrawal approved",
 			"withdrawal_id": withdrawalID,
-			"task_id": taskID.String,
-			"amount_gstd": amountGSTD,
+			"task_id":       taskID.String,
+			"amount_gstd":   amountGSTD,
 		})
 	}
 }
@@ -424,8 +424,8 @@ func broadcastAnnouncement(hub *WSHub, ks *services.KnowledgeService) gin.Handle
 		_ = ks.StoreKnowledge(c.Request.Context(), "SYSTEM", "bulletin", req.Message, []string{req.Type, "global"}, nil)
 
 		c.JSON(200, gin.H{
-			"status": "success",
-			"message": "Announcement broadcasted and synchronized to the Hive Memory",
+			"status":    "success",
+			"message":   "Announcement broadcasted and synchronized to the Hive Memory",
 			"timestamp": time.Now(),
 		})
 	}
@@ -784,4 +784,3 @@ func randomTaskIDSuffix() string {
 	}
 	return string(b)
 }
-

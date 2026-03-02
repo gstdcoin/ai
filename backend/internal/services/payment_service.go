@@ -15,7 +15,7 @@ import (
 type PaymentService struct {
 	db          *sql.DB
 	tonCfg      config.TONConfig
-	tonService  *TONService // For checking contract balance
+	tonService  *TONService  // For checking contract balance
 	nodeService *NodeService // For resolving node_id to wallet_address
 }
 
@@ -39,16 +39,16 @@ func (s *PaymentService) SetNodeService(nodeService *NodeService) {
 // PayoutIntent describes a TonConnect pull-model transaction executor will sign
 // Executor pays gas; transfer happens via escrow contract (tonCfg.ContractAddress).
 type PayoutIntent struct {
-	ToAddress        string  `json:"to_address"`
-	AmountNano       int64   `json:"amount_nano"` // usually 0; contract releases escrow
-	PayloadComment   string  `json:"payload_comment"`
-	ExecutorReward   float64 `json:"executor_reward_gstd"`
-	PlatformFee      float64 `json:"platform_fee_gstd"`
-	TaskID           string  `json:"task_id"`
-	ExecutorAddress  string  `json:"executor_address"`
-	Nonce            int64   `json:"nonce"` // Replay attack protection
-	QueryID          *int64  `json:"query_id,omitempty"` // Transaction query ID for tracking
-	IdempotencyKey   string  `json:"idempotency_key"` // For idempotent requests
+	ToAddress       string  `json:"to_address"`
+	AmountNano      int64   `json:"amount_nano"` // usually 0; contract releases escrow
+	PayloadComment  string  `json:"payload_comment"`
+	ExecutorReward  float64 `json:"executor_reward_gstd"`
+	PlatformFee     float64 `json:"platform_fee_gstd"`
+	TaskID          string  `json:"task_id"`
+	ExecutorAddress string  `json:"executor_address"`
+	Nonce           int64   `json:"nonce"`              // Replay attack protection
+	QueryID         *int64  `json:"query_id,omitempty"` // Transaction query ID for tracking
+	IdempotencyKey  string  `json:"idempotency_key"`    // For idempotent requests
 }
 
 // BuildPayoutIntent prepares a TonConnect-compatible pull transaction.
@@ -65,11 +65,11 @@ func (s *PaymentService) BuildPayoutIntent(ctx context.Context, taskID string, e
 
 	// Check if intent already exists (idempotency)
 	var existingIntent struct {
-		IdempotencyKey   string
-		Nonce            int64
-		QueryID          sql.NullInt64
-		ExecutorReward   float64
-		PlatformFee      float64
+		IdempotencyKey string
+		Nonce          int64
+		QueryID        sql.NullInt64
+		ExecutorReward float64
+		PlatformFee    float64
 	}
 	err = tx.QueryRowContext(ctx, `
 		SELECT idempotency_key, nonce, query_id, executor_reward_gstd, platform_fee_gstd
@@ -86,7 +86,7 @@ func (s *PaymentService) BuildPayoutIntent(ctx context.Context, taskID string, e
 	if err == nil {
 		// Intent already exists - return existing one (idempotency)
 		log.Printf("BuildPayoutIntent: Returning existing intent for task %s (idempotency)", taskID)
-		
+
 		// Get task info for response
 		var task models.Task
 		var assignedDevice sql.NullString
@@ -112,16 +112,16 @@ func (s *PaymentService) BuildPayoutIntent(ctx context.Context, taskID string, e
 		}
 
 		intent := &PayoutIntent{
-			ToAddress:       s.tonCfg.ContractAddress,
-			AmountNano:      minGasFee,
-			PayloadComment:  fmt.Sprintf("WITHDRAW|task:%s|exec:%s|fee:%d|reward:%d|nonce:%d", 
+			ToAddress:  s.tonCfg.ContractAddress,
+			AmountNano: minGasFee,
+			PayloadComment: fmt.Sprintf("WITHDRAW|task:%s|exec:%s|fee:%d|reward:%d|nonce:%d",
 				taskID, executorAddress, platformFeeNano, executorRewardNano, existingIntent.Nonce),
 			ExecutorReward:  existingIntent.ExecutorReward,
 			PlatformFee:     existingIntent.PlatformFee,
 			TaskID:          taskID,
 			ExecutorAddress: executorAddress,
 			Nonce:           existingIntent.Nonce,
-			QueryID:        queryID,
+			QueryID:         queryID,
 			IdempotencyKey:  existingIntent.IdempotencyKey,
 		}
 
@@ -179,10 +179,10 @@ func (s *PaymentService) BuildPayoutIntent(ctx context.Context, taskID string, e
 	// GASLESS FEATURE: If user has low TON, they can pay fee in GSTD
 	// The contract supports this via "pay_gas_in_jetton" op (simulated here)
 	// We deduct extra GSTD to cover the 0.01 TON gas
-	
+
 	// Exchange rate: 1 TON = 200 GSTD (approx) -> 0.01 TON = 2 GSTD
-	gasFeeInGSTD := 2.0 
-	
+	gasFeeInGSTD := 2.0
+
 	// Deduct gas fee from reward
 	finalExecutorReward := executorReward - gasFeeInGSTD
 	if finalExecutorReward <= 0 {
@@ -191,7 +191,7 @@ func (s *PaymentService) BuildPayoutIntent(ctx context.Context, taskID string, e
 
 	executorRewardNano := int64(finalExecutorReward * 1e9)
 	platformFeeNano := int64((platformFee + gasFeeInGSTD) * 1e9) // Platform takes gas fee
-	minGasFee := int64(10000000) // 0.01 TON
+	minGasFee := int64(10000000)                                 // 0.01 TON
 	totalRequiredNano := executorRewardNano + platformFeeNano + minGasFee
 
 	// SECURITY: Check contract balance before creating intent
@@ -248,9 +248,9 @@ func (s *PaymentService) BuildPayoutIntent(ctx context.Context, taskID string, e
 	}
 
 	intent := &PayoutIntent{
-		ToAddress:       s.tonCfg.ContractAddress,
-		AmountNano:      minGasFee,
-		PayloadComment:  fmt.Sprintf("WITHDRAW|task:%s|exec:%s|fee:%d|reward:%d|nonce:%d", 
+		ToAddress:  s.tonCfg.ContractAddress,
+		AmountNano: minGasFee,
+		PayloadComment: fmt.Sprintf("WITHDRAW|task:%s|exec:%s|fee:%d|reward:%d|nonce:%d",
 			taskID, executorAddress, platformFeeNano, executorRewardNano, nonce),
 		ExecutorReward:  executorReward,
 		PlatformFee:     platformFee,
@@ -285,8 +285,8 @@ func normalizeAddress(addr string) string {
 // CommissionBalance represents accumulated platform commission
 type CommissionBalance struct {
 	TotalCommission float64 `json:"total_commission"` // Total accumulated commission in TON
-	PendingTasks    int     `json:"pending_tasks"`     // Number of tasks with pending commission
-	ClaimedTasks    int     `json:"claimed_tasks"`     // Number of tasks with claimed commission
+	PendingTasks    int     `json:"pending_tasks"`    // Number of tasks with pending commission
+	ClaimedTasks    int     `json:"claimed_tasks"`    // Number of tasks with claimed commission
 }
 
 // GetCommissionBalance calculates total accumulated commission for admin
@@ -315,7 +315,3 @@ func (s *PaymentService) GetCommissionBalance(ctx context.Context) (*CommissionB
 		ClaimedTasks:    claimedTasks,
 	}, nil
 }
-
-
-
-

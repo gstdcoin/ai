@@ -19,7 +19,7 @@ func NewTrustService(db *sql.DB) *TrustService {
 // Formula: P(v) = 1 - (Trust_device * Efficiency_requester)
 func (s *TrustService) CalculateRedundancy(trustScore float64, efficiencyFactor float64) int {
 	probValidation := 1.0 - (trustScore * efficiencyFactor)
-	
+
 	if probValidation < 0.2 { // Very high trust
 		return 1
 	} else if probValidation < 0.6 { // Medium trust
@@ -39,10 +39,10 @@ func (s *TrustService) UpdateDeviceTrust(ctx context.Context, deviceID string, s
 	newTrust := currentTrust
 	if success {
 		// Linear growth, max 1.0
-		newTrust = math.Min(1.0, currentTrust + 0.01)
+		newTrust = math.Min(1.0, currentTrust+0.01)
 	} else {
 		// Aggressive penalty for failures
-		newTrust = math.Max(0.0, currentTrust - 0.1)
+		newTrust = math.Max(0.0, currentTrust-0.1)
 	}
 
 	_, err = s.db.ExecContext(ctx, `
@@ -52,7 +52,6 @@ func (s *TrustService) UpdateDeviceTrust(ctx context.Context, deviceID string, s
 		    last_seen_at = NOW() 
 		WHERE device_id = $3
 	`, newTrust, latencyMs, deviceID)
-	
+
 	return err
 }
-

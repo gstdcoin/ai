@@ -26,15 +26,15 @@ type ProofOfWorkService struct {
 
 // PoWChallenge represents a proof-of-work challenge for a task
 type PoWChallenge struct {
-	TaskID       string    `json:"task_id"`
-	Challenge    string    `json:"challenge"`    // Random hex string
-	Difficulty   int       `json:"difficulty"`   // Number of leading zero bits required
-	CreatedAt    time.Time `json:"created_at"`
-	ExpiresAt    time.Time `json:"expires_at"`
-	WorkerWallet string    `json:"worker_wallet"`
-	Verified     bool      `json:"verified"`
+	TaskID       string     `json:"task_id"`
+	Challenge    string     `json:"challenge"`  // Random hex string
+	Difficulty   int        `json:"difficulty"` // Number of leading zero bits required
+	CreatedAt    time.Time  `json:"created_at"`
+	ExpiresAt    time.Time  `json:"expires_at"`
+	WorkerWallet string     `json:"worker_wallet"`
+	Verified     bool       `json:"verified"`
 	VerifiedAt   *time.Time `json:"verified_at,omitempty"`
-	Nonce        string    `json:"nonce,omitempty"`
+	Nonce        string     `json:"nonce,omitempty"`
 }
 
 // PoWResult represents the result of a PoW verification
@@ -52,10 +52,10 @@ func NewProofOfWorkService(db *sql.DB) *ProofOfWorkService {
 		challenges:     make(map[string]*PoWChallenge),
 		baseDifficulty: 16, // 16 bits = ~65536 average attempts, ~100ms on modern CPU
 	}
-	
+
 	// Start cleanup goroutine
 	go service.cleanupExpiredChallenges()
-	
+
 	return service
 }
 
@@ -67,14 +67,14 @@ func (s *ProofOfWorkService) GenerateChallenge(ctx context.Context, taskID, work
 	if _, err := rand.Read(challengeBytes); err != nil {
 		return nil, fmt.Errorf("failed to generate challenge: %w", err)
 	}
-	
+
 	challenge := hex.EncodeToString(challengeBytes)
-	
+
 	// Calculate difficulty based on reward
 	// Base: 16 bits for 0.1 GSTD
 	// Scale: +2 bits per 10x reward
 	difficulty := s.calculateDifficulty(rewardGSTD)
-	
+
 	// Create challenge with 5 minute expiry
 	powChallenge := &PoWChallenge{
 		TaskID:       taskID,
@@ -85,22 +85,22 @@ func (s *ProofOfWorkService) GenerateChallenge(ctx context.Context, taskID, work
 		WorkerWallet: workerWallet,
 		Verified:     false,
 	}
-	
+
 	// Store challenge
 	s.challengesMutex.Lock()
 	key := s.getChallengeKey(taskID, workerWallet)
 	s.challenges[key] = powChallenge
 	s.challengesMutex.Unlock()
-	
+
 	// Persist to database for crash recovery
 	if err := s.persistChallenge(ctx, powChallenge); err != nil {
 		log.Printf("Warning: failed to persist PoW challenge: %v", err)
 		// Continue - in-memory is sufficient for short-lived challenges
 	}
-	
-	log.Printf("PoW: Generated challenge for task %s, difficulty=%d bits, expires=%v", 
+
+	log.Printf("PoW: Generated challenge for task %s, difficulty=%d bits, expires=%v",
 		taskID, difficulty, powChallenge.ExpiresAt)
-	
+
 	return powChallenge, nil
 }
 
@@ -109,13 +109,13 @@ func (s *ProofOfWorkService) GenerateChallenge(ctx context.Context, taskID, work
 // Must have `difficulty` leading zero bits
 func (s *ProofOfWorkService) VerifyProof(ctx context.Context, taskID, workerWallet, nonce string) (*PoWResult, error) {
 	startTime := time.Now()
-	
+
 	// Get challenge
 	s.challengesMutex.RLock()
 	key := s.getChallengeKey(taskID, workerWallet)
 	challenge, exists := s.challenges[key]
 	s.challengesMutex.RUnlock()
-	
+
 	if !exists {
 		// Try to load from database
 		var err error
@@ -124,12 +124,12 @@ func (s *ProofOfWorkService) VerifyProof(ctx context.Context, taskID, workerWall
 			return &PoWResult{Valid: false}, fmt.Errorf("no active challenge found for task %s", taskID)
 		}
 	}
-	
+
 	// Check expiry
 	if time.Now().After(challenge.ExpiresAt) {
 		return &PoWResult{Valid: false}, fmt.Errorf("challenge expired")
 	}
-	
+
 	// Check if already verified
 	if challenge.Verified {
 		return &PoWResult{Valid: false}, fmt.Errorf("challenge already verified")
@@ -147,20 +147,20 @@ func (s *ProofOfWorkService) VerifyProof(ctx context.Context, taskID, workerWall
 	data := challenge.Challenge + taskID + workerWallet + nonce
 	hash := sha256.Sum256([]byte(data))
 	hashHex := hex.EncodeToString(hash[:])
-	
+
 	// Count leading zero bits
 	leadingZeros := countLeadingZeroBits(hash[:])
-	
+
 	// Check if meets difficulty
 	valid := leadingZeros >= challenge.Difficulty
-	
+
 	result := &PoWResult{
 		Valid:        valid,
 		HashResult:   hashHex,
 		LeadingZeros: leadingZeros,
 		TimeTakenMs:  time.Since(startTime).Milliseconds(),
 	}
-	
+
 	if valid {
 		// Mark as verified
 		s.challengesMutex.Lock()
@@ -169,19 +169,19 @@ func (s *ProofOfWorkService) VerifyProof(ctx context.Context, taskID, workerWall
 		challenge.VerifiedAt = &now
 		challenge.Nonce = nonce
 		s.challengesMutex.Unlock()
-		
+
 		// Update database
 		if err := s.markChallengeVerified(ctx, taskID, workerWallet, nonce); err != nil {
 			log.Printf("Warning: failed to persist PoW verification: %v", err)
 		}
-		
-		log.Printf("PoW: ✅ Valid proof for task %s, hash=%s, zeros=%d/%d", 
+
+		log.Printf("PoW: ✅ Valid proof for task %s, hash=%s, zeros=%d/%d",
 			taskID, hashHex[:16], leadingZeros, challenge.Difficulty)
 	} else {
-		log.Printf("PoW: ❌ Invalid proof for task %s, zeros=%d/%d required", 
+		log.Printf("PoW: ❌ Invalid proof for task %s, zeros=%d/%d required",
 			taskID, leadingZeros, challenge.Difficulty)
 	}
-	
+
 	return result, nil
 }
 
@@ -191,11 +191,11 @@ func (s *ProofOfWorkService) GetChallenge(ctx context.Context, taskID, workerWal
 	key := s.getChallengeKey(taskID, workerWallet)
 	challenge, exists := s.challenges[key]
 	s.challengesMutex.RUnlock()
-	
+
 	if !exists {
 		return s.loadChallenge(ctx, taskID, workerWallet)
 	}
-	
+
 	return challenge, nil
 }
 
@@ -205,11 +205,11 @@ func (s *ProofOfWorkService) IsVerified(ctx context.Context, taskID, workerWalle
 	key := s.getChallengeKey(taskID, workerWallet)
 	challenge, exists := s.challenges[key]
 	s.challengesMutex.RUnlock()
-	
+
 	if exists && challenge.Verified {
 		return true
 	}
-	
+
 	// Check database
 	challenge, err := s.loadChallenge(ctx, taskID, workerWallet)
 	return err == nil && challenge != nil && challenge.Verified
@@ -221,17 +221,17 @@ func (s *ProofOfWorkService) calculateDifficulty(rewardGSTD float64) int {
 	if rewardGSTD <= 0 {
 		return s.baseDifficulty
 	}
-	
+
 	// Base: 16 bits for 0.1 GSTD (~100ms on modern CPU)
 	// +2 bits per 10x reward increase
 	// Max: 24 bits (~25 seconds on modern CPU)
-	
+
 	baseReward := 0.1
 	scaleFactor := math.Log10(rewardGSTD / baseReward)
 	additionalBits := int(scaleFactor * 2)
-	
+
 	difficulty := s.baseDifficulty + additionalBits
-	
+
 	// Clamp to reasonable range
 	if difficulty < 12 {
 		difficulty = 12 // Minimum ~16ms
@@ -239,7 +239,7 @@ func (s *ProofOfWorkService) calculateDifficulty(rewardGSTD float64) int {
 	if difficulty > 24 {
 		difficulty = 24 // Maximum ~25s
 	}
-	
+
 	return difficulty
 }
 
@@ -256,7 +256,7 @@ func (s *ProofOfWorkService) persistChallenge(ctx context.Context, challenge *Po
 		ON CONFLICT (task_id, worker_wallet) 
 		DO UPDATE SET challenge = $3, difficulty = $4, created_at = $5, expires_at = $6, verified = $7
 	`
-	
+
 	_, err := s.db.ExecContext(ctx, query,
 		challenge.TaskID,
 		challenge.WorkerWallet,
@@ -266,7 +266,7 @@ func (s *ProofOfWorkService) persistChallenge(ctx context.Context, challenge *Po
 		challenge.ExpiresAt,
 		challenge.Verified,
 	)
-	
+
 	return err
 }
 
@@ -277,11 +277,11 @@ func (s *ProofOfWorkService) loadChallenge(ctx context.Context, taskID, workerWa
 		FROM pow_challenges
 		WHERE task_id = $1 AND worker_wallet = $2
 	`
-	
+
 	challenge := &PoWChallenge{}
 	var verifiedAt sql.NullTime
 	var nonce sql.NullString
-	
+
 	err := s.db.QueryRowContext(ctx, query, taskID, workerWallet).Scan(
 		&challenge.TaskID,
 		&challenge.WorkerWallet,
@@ -293,27 +293,27 @@ func (s *ProofOfWorkService) loadChallenge(ctx context.Context, taskID, workerWa
 		&verifiedAt,
 		&nonce,
 	)
-	
+
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if verifiedAt.Valid {
 		challenge.VerifiedAt = &verifiedAt.Time
 	}
 	if nonce.Valid {
 		challenge.Nonce = nonce.String
 	}
-	
+
 	// Cache in memory
 	s.challengesMutex.Lock()
 	key := s.getChallengeKey(taskID, workerWallet)
 	s.challenges[key] = challenge
 	s.challengesMutex.Unlock()
-	
+
 	return challenge, nil
 }
 
@@ -324,7 +324,7 @@ func (s *ProofOfWorkService) markChallengeVerified(ctx context.Context, taskID, 
 		SET verified = true, verified_at = NOW(), nonce = $3
 		WHERE task_id = $1 AND worker_wallet = $2
 	`
-	
+
 	_, err := s.db.ExecContext(ctx, query, taskID, workerWallet, nonce)
 	return err
 }
@@ -333,7 +333,7 @@ func (s *ProofOfWorkService) markChallengeVerified(ctx context.Context, taskID, 
 func (s *ProofOfWorkService) cleanupExpiredChallenges() {
 	ticker := time.NewTicker(1 * time.Minute)
 	defer ticker.Stop()
-	
+
 	for range ticker.C {
 		s.challengesMutex.Lock()
 		now := time.Now()
@@ -343,10 +343,10 @@ func (s *ProofOfWorkService) cleanupExpiredChallenges() {
 			}
 		}
 		s.challengesMutex.Unlock()
-		
+
 		// Also cleanup database
 		ctx := context.Background()
-		_, err := s.db.ExecContext(ctx, 
+		_, err := s.db.ExecContext(ctx,
 			"DELETE FROM pow_challenges WHERE expires_at < NOW() AND verified = false")
 		if err != nil {
 			log.Printf("Warning: failed to cleanup expired PoW challenges: %v", err)
@@ -358,13 +358,13 @@ func (s *ProofOfWorkService) cleanupExpiredChallenges() {
 func (s *ProofOfWorkService) GetDifficultyEstimate(difficulty int) string {
 	// Average attempts = 2^difficulty
 	avgAttempts := math.Pow(2, float64(difficulty))
-	
+
 	// Modern CPU can do ~1M SHA256/sec in JS, ~10M in native
 	// Web Worker: ~500K/sec
 	hashesPerSecond := 500000.0
-	
+
 	estimatedSeconds := avgAttempts / hashesPerSecond
-	
+
 	if estimatedSeconds < 1 {
 		return fmt.Sprintf("~%dms", int(estimatedSeconds*1000))
 	} else if estimatedSeconds < 60 {
@@ -383,7 +383,7 @@ func countLeadingZeroBits(data []byte) int {
 		} else {
 			// Count leading zeros in this byte
 			for i := 7; i >= 0; i-- {
-				if (b >> i) & 1 == 0 {
+				if (b>>i)&1 == 0 {
 					count++
 				} else {
 					return count
@@ -403,7 +403,7 @@ func ValidateNonceFormat(nonce string) error {
 	if len(nonce) > 64 {
 		return fmt.Errorf("nonce too long (max 64 chars)")
 	}
-	
+
 	// Check if it's hex
 	if strings.HasPrefix(nonce, "0x") {
 		if _, err := hex.DecodeString(nonce[2:]); err != nil {
@@ -415,6 +415,6 @@ func ValidateNonceFormat(nonce string) error {
 			return fmt.Errorf("nonce must be numeric or hex: %w", err)
 		}
 	}
-	
+
 	return nil
 }

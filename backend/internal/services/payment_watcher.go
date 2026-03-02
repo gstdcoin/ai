@@ -44,8 +44,8 @@ type TonAPIJettonTransfer struct {
 	To struct {
 		Address string `json:"address"`
 	} `json:"to"`
-	Amount string `json:"amount"`
-	Comment string `json:"comment"`
+	Amount      string `json:"amount"`
+	Comment     string `json:"comment"`
 	Transaction struct {
 		Hash string `json:"hash"`
 		LT   string `json:"lt"`
@@ -79,7 +79,7 @@ func (pw *PaymentWatcher) Start(ctx context.Context, interval time.Duration) {
 		return
 	}
 	log.Printf("PaymentWatcher: Starting payment monitoring for Escrow wallet %s", pw.platformWallet)
-	
+
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
@@ -195,9 +195,9 @@ func (pw *PaymentWatcher) getRecentJettonTransfers(ctx context.Context) ([]Jetto
 	// First, normalize the platform wallet address for TON API
 	normalizedWallet := NormalizeAddressForAPI(pw.platformWallet)
 	normalizedJetton := NormalizeAddressForAPI(pw.jettonAddress)
-	
+
 	// TON API v2 endpoint for jetton transfer history
-	url := fmt.Sprintf("%s/v2/accounts/%s/jettons/%s/history?limit=100", 
+	url := fmt.Sprintf("%s/v2/accounts/%s/jettons/%s/history?limit=100",
 		pw.tonService.apiURL, normalizedWallet, normalizedJetton)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
@@ -319,7 +319,7 @@ func (pw *PaymentWatcher) processTransfer(ctx context.Context, transfer JettonTr
 	// Allow 1% tolerance for rounding
 	tolerance := expectedAmount * 0.01
 	if receivedAmount < expectedAmount-tolerance || receivedAmount > expectedAmount+tolerance {
-		log.Printf("PaymentWatcher: Amount mismatch for task %s: expected %.9f, got %.9f", 
+		log.Printf("PaymentWatcher: Amount mismatch for task %s: expected %.9f, got %.9f",
 			task.TaskID, expectedAmount, receivedAmount)
 		return nil
 	}
@@ -331,25 +331,25 @@ func (pw *PaymentWatcher) processTransfer(ctx context.Context, transfer JettonTr
 		FROM processed_payments
 		WHERE tx_hash = $1
 	`, transfer.TxHash).Scan(&existingTxHash)
-	
+
 	if err == nil && existingTxHash != "" {
 		log.Printf("PaymentWatcher: Transaction %s already processed (replay attack prevented)", transfer.TxHash)
 		return fmt.Errorf("transaction %s has already been processed", transfer.TxHash)
 	}
-	
+
 	// Mark task as paid
 	log.Printf("PaymentWatcher: Payment verified for task %s (tx: %s)", task.TaskID, transfer.TxHash)
 	if err := pw.taskPaymentService.MarkTaskAsPaid(ctx, task.TaskID, transfer.TxHash); err != nil {
 		return fmt.Errorf("failed to mark task as paid: %w", err)
 	}
-	
+
 	// Record processed payment to prevent replay attacks
 	_, err = pw.db.ExecContext(ctx, `
 		INSERT INTO processed_payments (tx_hash, task_id, processed_at)
 		VALUES ($1, $2, NOW())
 		ON CONFLICT (tx_hash) DO NOTHING
 	`, transfer.TxHash, task.TaskID)
-	
+
 	if err != nil {
 		log.Printf("PaymentWatcher: Warning - failed to record processed payment: %v", err)
 		// Don't fail the entire operation, but log the error
@@ -358,4 +358,3 @@ func (pw *PaymentWatcher) processTransfer(ctx context.Context, transfer JettonTr
 	log.Printf("PaymentWatcher: Task %s status updated to 'queued'", task.TaskID)
 	return nil
 }
-

@@ -469,15 +469,15 @@ func (s *AgentMarketplaceService) EndRental(ctx context.Context, rentalID string
 	duration := time.Since(rental.StartTime)
 
 	return &RentalSummary{
-		RentalID:       rentalID,
-		AgentID:        rental.AgentID,
-		TotalCost:      rental.TotalCost,
-		TasksExecuted:  rental.TasksExecuted,
-		Duration:       duration.String(),
-		RefundAmount:   refund,
-		OwnerEarnings:  rental.TotalCost * 0.80,
-		PlatformFee:    rental.TotalCost * 0.15,
-		BurnedAmount:   rental.TotalCost * 0.05,
+		RentalID:      rentalID,
+		AgentID:       rental.AgentID,
+		TotalCost:     rental.TotalCost,
+		TasksExecuted: rental.TasksExecuted,
+		Duration:      duration.String(),
+		RefundAmount:  refund,
+		OwnerEarnings: rental.TotalCost * 0.80,
+		PlatformFee:   rental.TotalCost * 0.15,
+		BurnedAmount:  rental.TotalCost * 0.05,
 	}, nil
 }
 
@@ -608,11 +608,11 @@ func (s *AgentMarketplaceService) GetMyAgents(ctx context.Context, ownerWallet s
 // ============================================================================
 
 type AgentRegistration struct {
-	OwnerWallet  string `json:"owner_wallet"`
-	AgentName    string `json:"agent_name"`
-	Description  string `json:"description"`
-	Capabilities string `json:"capabilities"` // JSON array
-	PricingModel string `json:"pricing_model"` // per_task, hourly, subscription
+	OwnerWallet  string  `json:"owner_wallet"`
+	AgentName    string  `json:"agent_name"`
+	Description  string  `json:"description"`
+	Capabilities string  `json:"capabilities"`  // JSON array
+	PricingModel string  `json:"pricing_model"` // per_task, hourly, subscription
 	PriceGSTD    float64 `json:"price_gstd"`
 }
 
@@ -630,9 +630,9 @@ type RegisteredAgent struct {
 }
 
 type AgentUpdate struct {
-	Description string   `json:"description,omitempty"`
-	PriceGSTD   float64  `json:"price_gstd,omitempty"`
-	IsActive    *bool    `json:"is_active,omitempty"`
+	Description string  `json:"description,omitempty"`
+	PriceGSTD   float64 `json:"price_gstd,omitempty"`
+	IsActive    *bool   `json:"is_active,omitempty"`
 }
 
 type AgentFilter struct {
@@ -671,7 +671,7 @@ type AgentDetails struct {
 type RentRequest struct {
 	AgentID        string `json:"agent_id"`
 	RenterWallet   string `json:"renter_wallet"`
-	Hours          int    `json:"hours,omitempty"`          // for hourly
+	Hours          int    `json:"hours,omitempty"`           // for hourly
 	EstimatedTasks int    `json:"estimated_tasks,omitempty"` // for per-task
 }
 

@@ -55,4 +55,3 @@ func (s *TrustV3Service) UpdateTrustVector(ctx context.Context, deviceID string,
 
 	return err
 }
-

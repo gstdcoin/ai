@@ -404,7 +404,7 @@ func (smm *SwarmModelManager) refreshLoadedModels() {
 
 	for _, m := range result.Models {
 		for _, tier := range modelTiers {
-			if strings.HasPrefix(m.Name, strings.Split(tier.Name, ":")[0]) {
+			if m.Name == tier.Name {
 				tier.Loaded = true
 				tier.LoadedAt = time.Now()
 				smm.activeModels[tier.Name] = tier

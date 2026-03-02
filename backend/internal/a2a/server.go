@@ -20,38 +20,38 @@ import (
 type MessageType string
 
 const (
-	MsgAgentHello      MessageType = "AGENT_HELLO"
-	MsgGenesisVerify   MessageType = "GENESIS_VERIFY"
-	MsgTaskBroadcast   MessageType = "TASK_BROADCAST"
-	MsgTaskClaim       MessageType = "TASK_CLAIM"
-	MsgTaskHeartbeat   MessageType = "TASK_HEARTBEAT"
-	MsgTaskResult      MessageType = "TASK_RESULT"
-	MsgMemoryStore     MessageType = "MEMORY_STORE"
-	MsgMemoryFetch     MessageType = "MEMORY_FETCH"
-	MsgConsensusVote   MessageType = "CONSENSUS_VOTE"
-	MsgRewardSettle    MessageType = "REWARD_SETTLE"
-	MsgLearningGrad    MessageType = "LEARNING_GRADIENT"
+	MsgAgentHello    MessageType = "AGENT_HELLO"
+	MsgGenesisVerify MessageType = "GENESIS_VERIFY"
+	MsgTaskBroadcast MessageType = "TASK_BROADCAST"
+	MsgTaskClaim     MessageType = "TASK_CLAIM"
+	MsgTaskHeartbeat MessageType = "TASK_HEARTBEAT"
+	MsgTaskResult    MessageType = "TASK_RESULT"
+	MsgMemoryStore   MessageType = "MEMORY_STORE"
+	MsgMemoryFetch   MessageType = "MEMORY_FETCH"
+	MsgConsensusVote MessageType = "CONSENSUS_VOTE"
+	MsgRewardSettle  MessageType = "REWARD_SETTLE"
+	MsgLearningGrad  MessageType = "LEARNING_GRADIENT"
 )
 
 // ─── Core Structures ────────────────────────────────────────────────────────
 
 // Envelope wraps every A2A message with routing and authentication metadata.
 type Envelope struct {
-	ID        string      `json:"id"`
-	Type      MessageType `json:"type"`
-	From      string      `json:"from"`       // NodeID
-	To        string      `json:"to"`         // NodeID or "*" for broadcast
-	Timestamp int64       `json:"timestamp"`
-	Signature []byte      `json:"signature"`  // Ed25519 of payload
+	ID        string          `json:"id"`
+	Type      MessageType     `json:"type"`
+	From      string          `json:"from"` // NodeID
+	To        string          `json:"to"`   // NodeID or "*" for broadcast
+	Timestamp int64           `json:"timestamp"`
+	Signature []byte          `json:"signature"` // Ed25519 of payload
 	Payload   json.RawMessage `json:"payload"`
 }
 
 // AgentHello is sent when a node first joins the network.
 type AgentHello struct {
 	NodeID       string   `json:"node_id"`
-	NodeType     string   `json:"node_type"`     // edge, cpu, gpu, head
+	NodeType     string   `json:"node_type"` // edge, cpu, gpu, head
 	PublicKey    []byte   `json:"public_key"`
-	Capabilities []string `json:"capabilities"`  // llm, embedding, vision, code
+	Capabilities []string `json:"capabilities"` // llm, embedding, vision, code
 	GenesisHash  string   `json:"genesis_hash"`
 	Region       string   `json:"region"`
 	MaxCPU       int      `json:"max_cpu"`
@@ -61,15 +61,15 @@ type AgentHello struct {
 
 // TaskBroadcast announces a new task to the swarm.
 type TaskBroadcast struct {
-	TaskID       string            `json:"task_id"`
-	Model        string            `json:"model"`
-	Prompt       string            `json:"prompt"`
-	Priority     int               `json:"priority"`    // 0=low, 1=normal, 2=high
-	MaxLatencyMs int64             `json:"max_latency_ms"`
-	Requirements NodeRequirements  `json:"requirements"`
-	PriceTON     float64           `json:"price_ton"`
-	GSTDBonus    float64           `json:"gstd_bonus"`
-	ClientAddr   string            `json:"client_addr"` // TON wallet
+	TaskID       string           `json:"task_id"`
+	Model        string           `json:"model"`
+	Prompt       string           `json:"prompt"`
+	Priority     int              `json:"priority"` // 0=low, 1=normal, 2=high
+	MaxLatencyMs int64            `json:"max_latency_ms"`
+	Requirements NodeRequirements `json:"requirements"`
+	PriceTON     float64          `json:"price_ton"`
+	GSTDBonus    float64          `json:"gstd_bonus"`
+	ClientAddr   string           `json:"client_addr"` // TON wallet
 }
 
 // NodeRequirements specifies what a node needs to accept a task.
@@ -82,18 +82,18 @@ type NodeRequirements struct {
 
 // TaskClaim is sent by a node to claim a broadcast task.
 type TaskClaim struct {
-	TaskID       string  `json:"task_id"`
-	NodeID       string  `json:"node_id"`
-	EstimatedMs  int64   `json:"estimated_ms"`
-	Reputation   float64 `json:"reputation"`
+	TaskID      string  `json:"task_id"`
+	NodeID      string  `json:"node_id"`
+	EstimatedMs int64   `json:"estimated_ms"`
+	Reputation  float64 `json:"reputation"`
 }
 
 // TaskHeartbeat reports progress on an in-progress task.
 type TaskHeartbeat struct {
-	TaskID     string  `json:"task_id"`
-	NodeID     string  `json:"node_id"`
-	Progress   float64 `json:"progress"`   // 0.0-1.0
-	TokensGen  int     `json:"tokens_gen"` // tokens generated so far
+	TaskID    string  `json:"task_id"`
+	NodeID    string  `json:"node_id"`
+	Progress  float64 `json:"progress"`   // 0.0-1.0
+	TokensGen int     `json:"tokens_gen"` // tokens generated so far
 }
 
 // TaskResult contains the completed task output.
@@ -126,8 +126,8 @@ type Server struct {
 	nodesMu sync.RWMutex
 
 	// Handlers
-	onTaskReceived  func(ctx context.Context, task *TaskBroadcast) error
-	onResultReady   func(ctx context.Context, result *TaskResult) error
+	onTaskReceived func(ctx context.Context, task *TaskBroadcast) error
+	onResultReady  func(ctx context.Context, result *TaskResult) error
 }
 
 // NewServer creates a new A2A protocol server.

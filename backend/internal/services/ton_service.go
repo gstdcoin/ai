@@ -11,9 +11,9 @@ import (
 )
 
 type TONService struct {
-	apiURL      string
-	apiKey      string
-	client      *http.Client
+	apiURL       string
+	apiKey       string
+	client       *http.Client
 	cacheService *CacheService // Redis cache for public keys
 	// Rate limiter: 10 requests per second
 	rateLimiter chan struct{}
@@ -23,12 +23,12 @@ func NewTONService(apiURL string, apiKey string) *TONService {
 	// Create rate limiter: allow 100 requests per second (increased from 10 for new API key)
 	// Use buffered channel as token bucket
 	rateLimiter := make(chan struct{}, 100)
-	
+
 	// Pre-fill with tokens (all 100 available at start)
 	for i := 0; i < 100; i++ {
 		rateLimiter <- struct{}{}
 	}
-	
+
 	// Refill tokens at rate of 100 per second (1 per 10ms)
 	go func() {
 		ticker := time.NewTicker(10 * time.Millisecond)
@@ -84,7 +84,7 @@ func (s *TONService) GetJettonBalance(ctx context.Context, address string, jetto
 
 	// Cache key
 	cacheKey := fmt.Sprintf("ton:balance:%s:%s", normalizedAddress, normalizedJetton)
-	
+
 	// Try cache first (1 minute TTL)
 	if s.cacheService != nil {
 		var cachedBalance float64
@@ -92,13 +92,13 @@ func (s *TONService) GetJettonBalance(ctx context.Context, address string, jetto
 			return cachedBalance, nil
 		}
 	}
-	
+
 	// Используем TON API v2 для получения баланса конкретного Jetton
 	// Direct endpoint for a single jetton balance
 	url := fmt.Sprintf("%s/v2/accounts/%s/jettons/%s", s.apiURL, normalizedAddress, normalizedJetton)
 
 	log.Printf("GetJettonBalance: Fetching specific balance for address=%s, jetton=%s", normalizedAddress, normalizedJetton)
-	
+
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return 0, err
@@ -152,7 +152,7 @@ func (s *TONService) GetJettonBalance(ctx context.Context, address string, jetto
 		}
 		body, _ := io.ReadAll(resp.Body)
 		log.Printf("GetJettonBalance: API error (%d): %s", resp.StatusCode, string(body))
-		return 0, nil 
+		return 0, nil
 	}
 
 	var result struct {
@@ -285,7 +285,7 @@ func (s *TONService) CheckGSTDBalance(ctx context.Context, address string, jetto
 	if err != nil {
 		return false, err
 	}
-	
+
 	return balance >= 0.000001, nil
 }
 
@@ -294,10 +294,10 @@ func (s *TONService) CheckGSTDBalance(ctx context.Context, address string, jetto
 func (s *TONService) GetPublicKey(ctx context.Context, address string) ([]byte, error) {
 	// Normalize address for TON API (convert raw to user-friendly if needed)
 	normalizedAddress := NormalizeAddressForAPI(address)
-	
+
 	// Cache key for public key
 	cacheKey := fmt.Sprintf("ton:pubkey:%s", normalizedAddress)
-	
+
 	// Try to get from cache first (24 hour TTL)
 	if s.cacheService != nil {
 		var cachedPubKey []byte
@@ -307,17 +307,17 @@ func (s *TONService) GetPublicKey(ctx context.Context, address string) ([]byte, 
 			}
 		}
 	}
-	
+
 	// Wait for rate limiter
 	select {
 	case <-s.rateLimiter:
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
-	
+
 	// Use TON API to get account info and extract public key
 	url := fmt.Sprintf("%s/v2/accounts/%s", s.apiURL, normalizedAddress)
-	
+
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, err
@@ -437,10 +437,10 @@ func (s *TONService) GetContractBalance(ctx context.Context, contractAddress str
 
 	// Normalize address format for TON API
 	normalizedAddress := NormalizeAddressForAPI(contractAddress)
-	
+
 	// Use TON API v2 to get account balance
 	url := fmt.Sprintf("%s/v2/accounts/%s", s.apiURL, normalizedAddress)
-	
+
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return 0, err
@@ -497,10 +497,10 @@ func (s *TONService) GetContractTransactions(ctx context.Context, contractAddres
 
 	// Normalize address format for TON API
 	normalizedAddress := NormalizeAddressForAPI(contractAddress)
-	
+
 	// Use TON API v2 to get transactions
 	url := fmt.Sprintf("%s/v2/accounts/%s/transactions?limit=%d", s.apiURL, normalizedAddress, limit)
-	
+
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, err
@@ -551,5 +551,3 @@ type Transaction struct {
 	} `json:"out_msgs"`
 	Success bool `json:"success"`
 }
-
-

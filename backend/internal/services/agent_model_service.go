@@ -24,10 +24,10 @@ func NewAgentModelService(db *sql.DB) *AgentModelService {
 
 // ModelUpdateMetrics holds optional training metrics
 type ModelUpdateMetrics struct {
-	Loss       float64 `json:"loss,omitempty"`
-	Accuracy   float64 `json:"accuracy,omitempty"`
-	Epochs     int     `json:"epochs,omitempty"`
-	BaseModel  string  `json:"base_model,omitempty"`
+	Loss       float64                `json:"loss,omitempty"`
+	Accuracy   float64                `json:"accuracy,omitempty"`
+	Epochs     int                    `json:"epochs,omitempty"`
+	BaseModel  string                 `json:"base_model,omitempty"`
 	CustomData map[string]interface{} `json:"-"`
 }
 

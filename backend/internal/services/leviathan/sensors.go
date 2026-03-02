@@ -290,8 +290,8 @@ func (e *ExternalContext) PoliticalWeightingMultiplier() float64 {
 
 // GlobalSenses runs NewsCheck, SentimentCheck, HistoricalCheck in parallel.
 type GlobalSenses struct {
-	cfg *Config
-	pm  *PolymarketClient
+	cfg    *Config
+	pm     *PolymarketClient
 	client *http.Client
 }
 

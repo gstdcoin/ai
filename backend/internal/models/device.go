@@ -19,15 +19,15 @@ type Device struct {
 	LastSeenAt            time.Time `json:"last_seen_at" db:"last_seen_at"`
 	IsActive              bool      `json:"is_active" db:"is_active"`
 	SlashingCount         int       `json:"slashing_count" db:"slashing_count"`
-	
+
 	// Enterprise features (from v2_enterprise_updates migration)
-	TrustScore            *float64  `json:"trust_score,omitempty" db:"trust_score"`
-	Region                *string   `json:"region,omitempty" db:"region"`
-	LatencyFingerprint    *int      `json:"latency_fingerprint,omitempty" db:"latency_fingerprint"`
-	
+	TrustScore         *float64 `json:"trust_score,omitempty" db:"trust_score"`
+	Region             *string  `json:"region,omitempty" db:"region"`
+	LatencyFingerprint *int     `json:"latency_fingerprint,omitempty" db:"latency_fingerprint"`
+
 	// Global layer features (from v3_global_layer migration)
-	AccuracyScore         *float64  `json:"accuracy_score,omitempty" db:"accuracy_score"`
-	LatencyScore          *float64  `json:"latency_score,omitempty" db:"latency_score"`
-	StabilityScore        *float64  `json:"stability_score,omitempty" db:"stability_score"`
-	LastReputationUpdate  *time.Time `json:"last_reputation_update,omitempty" db:"last_reputation_update"`
+	AccuracyScore        *float64   `json:"accuracy_score,omitempty" db:"accuracy_score"`
+	LatencyScore         *float64   `json:"latency_score,omitempty" db:"latency_score"`
+	StabilityScore       *float64   `json:"stability_score,omitempty" db:"stability_score"`
+	LastReputationUpdate *time.Time `json:"last_reputation_update,omitempty" db:"last_reputation_update"`
 }

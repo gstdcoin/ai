@@ -93,7 +93,6 @@ func (s *UserService) GetUser(ctx context.Context, walletAddress string) (*model
 	return &user, nil
 }
 
-
 // GetUserID resolves wallet address to a pseudo user ID (hash)
 // Since users table uses wallet_address as primary key, we generate a stable int from it
 // GetUserID removed as it relied on unstable hash generation - use wallet_address as PK

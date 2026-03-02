@@ -32,11 +32,11 @@ func NewSubAgentSelfOptimizationService(db *sql.DB) *SubAgentSelfOptimizationSer
 
 // nicheKeywords maps sub-agent niches to query keywords for matching.
 var nicheKeywords = map[string][]string{
-	"quantum_physics":    {"quantum", "physics", "qubit", "entanglement", "superposition"},
-	"hft_trading":        {"hft", "trading", "latency", "market", "order", "arbitrage"},
-	"climate_modeling":   {"climate", "environment", "carbon", "emission", "modeling"},
+	"quantum_physics":     {"quantum", "physics", "qubit", "entanglement", "superposition"},
+	"hft_trading":         {"hft", "trading", "latency", "market", "order", "arbitrage"},
+	"climate_modeling":    {"climate", "environment", "carbon", "emission", "modeling"},
 	"biomedical_research": {"biomedical", "genomics", "dna", "protein", "clinical"},
-	"cybersecurity":      {"cyber", "security", "threat", "malware", "vulnerability"},
+	"cybersecurity":       {"cyber", "security", "threat", "malware", "vulnerability"},
 }
 
 // RunSelfOptimization distills brain queries into sub-agent lessons, promotes critical insights to central graph.

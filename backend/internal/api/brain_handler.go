@@ -1,8 +1,8 @@
 package api
 
 import (
-	"fmt"
 	"distributed-computing-platform/internal/services"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
@@ -23,7 +23,7 @@ func (h *BrainHandler) SynthesizeMind(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	
+
 	// 1. Retrieve raw knowledge fragments (Singularity Gateway: includes global_knowledge_graph)
 	items, err := h.knowledge.QueryKnowledgeWithGlobalGraph(ctx, topic, 15)
 	if err != nil {
@@ -33,8 +33,8 @@ func (h *BrainHandler) SynthesizeMind(c *gin.Context) {
 
 	if len(items) == 0 {
 		c.JSON(http.StatusOK, gin.H{
-			"status": "searching",
-			"insight": "The Collective Mind has no direct memory of this topic yet. Initiating grid-wide discovery...",
+			"status":          "searching",
+			"insight":         "The Collective Mind has no direct memory of this topic yet. Initiating grid-wide discovery...",
 			"fragments_count": 0,
 		})
 		return
@@ -44,7 +44,7 @@ func (h *BrainHandler) SynthesizeMind(c *gin.Context) {
 	// In a real production setup, this would pass to an LLM with RAG
 	var fragments []string
 	uniqueAgents := make(map[string]bool)
-	
+
 	for _, item := range items {
 		fragments = append(fragments, item.Content)
 		uniqueAgents[item.AgentID] = true
@@ -62,12 +62,12 @@ func (h *BrainHandler) SynthesizeMind(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"status": "unified",
-		"topic": topic,
-		"insight": synthesis,
-		"fragments_count": len(fragments),
+		"status":             "unified",
+		"topic":              topic,
+		"insight":            synthesis,
+		"fragments_count":    len(fragments),
 		"contributing_nodes": len(uniqueAgents),
-		"confidence_score": 0.85 + (float64(len(fragments)) * 0.01),
+		"confidence_score":   0.85 + (float64(len(fragments)) * 0.01),
 	})
 }
 

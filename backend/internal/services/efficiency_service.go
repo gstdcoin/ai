@@ -13,17 +13,18 @@ type EfficiencyService struct {
 // NewEfficiencyService creates a new efficiency service with default parameters
 func NewEfficiencyService() *EfficiencyService {
 	return &EfficiencyService{
-		alpha: 0.30,      // Lower bound: 30% minimum efficiency
-		k:     10000.0,   // Normalizing coefficient: 10,000 GSTD
+		alpha: 0.30,    // Lower bound: 30% minimum efficiency
+		k:     10000.0, // Normalizing coefficient: 10,000 GSTD
 	}
 }
 
 // CalculateEfficiency calculates the efficiency factor based on GSTD balance
 // Formula: E(G) = α + (1 - α) / (1 + ln(1 + G / K))
 // Where:
-//   G = GSTD balance
-//   α = 0.30 (lower bound)
-//   K = 10,000 (normalizing coefficient)
+//
+//	G = GSTD balance
+//	α = 0.30 (lower bound)
+//	K = 10,000 (normalizing coefficient)
 func (s *EfficiencyService) CalculateEfficiency(gstdBalance float64) float64 {
 	if gstdBalance <= 0 {
 		// No GSTD = 100% cost (no discount)
@@ -72,10 +73,10 @@ func (s *EfficiencyService) CalculatePriority(taskValueTON float64, gstdBalance 
 
 // GetEfficiencyBreakdown returns detailed efficiency information
 type EfficiencyBreakdown struct {
-	GSTDBalance    float64 `json:"gstd_balance"`
-	Efficiency     float64 `json:"efficiency"`
-	CostReduction  float64 `json:"cost_reduction_percent"` // How much cheaper (0-70%)
-	FinalCostMultiplier float64 `json:"final_cost_multiplier"` // What to multiply base cost by
+	GSTDBalance         float64 `json:"gstd_balance"`
+	Efficiency          float64 `json:"efficiency"`
+	CostReduction       float64 `json:"cost_reduction_percent"` // How much cheaper (0-70%)
+	FinalCostMultiplier float64 `json:"final_cost_multiplier"`  // What to multiply base cost by
 }
 
 func (s *EfficiencyService) GetEfficiencyBreakdown(gstdBalance float64) EfficiencyBreakdown {
@@ -83,10 +84,9 @@ func (s *EfficiencyService) GetEfficiencyBreakdown(gstdBalance float64) Efficien
 	costReduction := (1.0 - efficiency) * 100.0 // Convert to percentage
 
 	return EfficiencyBreakdown{
-		GSTDBalance:        gstdBalance,
-		Efficiency:         efficiency,
-		CostReduction:      costReduction,
+		GSTDBalance:         gstdBalance,
+		Efficiency:          efficiency,
+		CostReduction:       costReduction,
 		FinalCostMultiplier: efficiency,
 	}
 }
-

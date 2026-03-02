@@ -10,7 +10,7 @@ import (
 // MultiTokenGateway prepares logic for USDT/TON -> GSTD conversion via Ston.fi (Buy-Pressure)
 // Concept: External payment in USDT or TON is converted to GSTD for worker payouts.
 type MultiTokenGateway struct {
-	db    *sql.DB
+	db     *sql.DB
 	stonFi *StonFiService
 }
 

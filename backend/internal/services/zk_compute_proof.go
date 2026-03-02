@@ -14,13 +14,13 @@ import (
 // that LLM inference was performed on the correct model weights.
 //
 // Approach: Advanced Integrity Verification
-//   1. Model weights are chunked and hashed into a verification structure
-//   2. Each inference node commits to its weight hash before computation
-//   3. After inference, the node provides:
-//      - Output tokens
-//      - Verification proof path (proving it used specific weight chunks)
-//      - Intermediate activation hashes (sampled at random layers)
-//   4. Validators can verify the proof without re-running inference
+//  1. Model weights are chunked and hashed into a verification structure
+//  2. Each inference node commits to its weight hash before computation
+//  3. After inference, the node provides:
+//     - Output tokens
+//     - Verification proof path (proving it used specific weight chunks)
+//     - Intermediate activation hashes (sampled at random layers)
+//  4. Validators can verify the proof without re-running inference
 //
 // This is a practical approximation of advanced verification for LLM inference,
 // which is computationally infeasible for full proofs today.
@@ -29,19 +29,19 @@ type ZKComputeProofService struct{}
 
 // ComputeProof represents a proof of correct computation
 type ComputeProof struct {
-	ProofID           string              `json:"proof_id"`
-	TaskID            string              `json:"task_id"`
-	NodeID            string              `json:"node_id"`
-	ModelName         string              `json:"model_name"`
-	ModelWeightRoot   string              `json:"model_weight_root"`   // Merkle root of model weights
-	InputHash         string              `json:"input_hash"`          // SHA256 of input prompt
-	OutputHash        string              `json:"output_hash"`         // SHA256 of output
-	ActivationSamples []ActivationSample  `json:"activation_samples"`  // Random layer activation hashes
-	MerkleProofPath   []string            `json:"merkle_proof_path"`   // Proof path from used weights to root
-	ComputeTimeMs     int64               `json:"compute_time_ms"`
-	Timestamp         int64               `json:"timestamp"`
-	Signature         string              `json:"signature"`           // Node's Ed25519 signature
-	IsValid           bool                `json:"is_valid"`
+	ProofID           string             `json:"proof_id"`
+	TaskID            string             `json:"task_id"`
+	NodeID            string             `json:"node_id"`
+	ModelName         string             `json:"model_name"`
+	ModelWeightRoot   string             `json:"model_weight_root"`  // Merkle root of model weights
+	InputHash         string             `json:"input_hash"`         // SHA256 of input prompt
+	OutputHash        string             `json:"output_hash"`        // SHA256 of output
+	ActivationSamples []ActivationSample `json:"activation_samples"` // Random layer activation hashes
+	MerkleProofPath   []string           `json:"merkle_proof_path"`  // Proof path from used weights to root
+	ComputeTimeMs     int64              `json:"compute_time_ms"`
+	Timestamp         int64              `json:"timestamp"`
+	Signature         string             `json:"signature"` // Node's Ed25519 signature
+	IsValid           bool               `json:"is_valid"`
 }
 
 // ActivationSample captures a hash of intermediate layer activations
@@ -54,11 +54,11 @@ type ActivationSample struct {
 
 // ModelWeightCommitment stores the expected Merkle root for each model
 type ModelWeightCommitment struct {
-	ModelName  string `json:"model_name"`
-	MerkleRoot string `json:"merkle_root"`
-	TotalChunks int   `json:"total_chunks"`
-	ChunkSize   int   `json:"chunk_size_mb"`
-	UpdatedAt  int64  `json:"updated_at"`
+	ModelName   string `json:"model_name"`
+	MerkleRoot  string `json:"merkle_root"`
+	TotalChunks int    `json:"total_chunks"`
+	ChunkSize   int    `json:"chunk_size_mb"`
+	UpdatedAt   int64  `json:"updated_at"`
 }
 
 // Known model weight commitments (pre-computed Merkle roots)

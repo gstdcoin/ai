@@ -41,33 +41,33 @@ type CocoonBridgeService struct {
 
 // CocoonStats tracks Cocoon usage for monitoring.
 type CocoonStats struct {
-	TotalRequests     int64   `json:"total_requests"`
-	SuccessfulInfer   int64   `json:"successful_inferences"`
-	FailedInfer       int64   `json:"failed_inferences"`
-	TotalTokensUsed   int64   `json:"total_tokens_used"`
-	TotalTONSpent     float64 `json:"total_ton_spent"`
+	TotalRequests      int64   `json:"total_requests"`
+	SuccessfulInfer    int64   `json:"successful_inferences"`
+	FailedInfer        int64   `json:"failed_inferences"`
+	TotalTokensUsed    int64   `json:"total_tokens_used"`
+	TotalTONSpent      float64 `json:"total_ton_spent"`
 	TotalGSTDCollected float64 `json:"total_gstd_collected"`
-	AvgLatencyMs      int64   `json:"avg_latency_ms"`
-	TEEVerifications  int64   `json:"tee_verifications"`
-	LastRequestAt     int64   `json:"last_request_at"`
+	AvgLatencyMs       int64   `json:"avg_latency_ms"`
+	TEEVerifications   int64   `json:"tee_verifications"`
+	LastRequestAt      int64   `json:"last_request_at"`
 }
 
 // CocoonHealthStatus tracks Cocoon proxy health.
 type CocoonHealthStatus struct {
-	Available       bool    `json:"available"`
-	ProxyReachable  bool    `json:"proxy_reachable"`
-	LastCheck       int64   `json:"last_check"`
-	ResponseTimeMs  int64   `json:"response_time_ms"`
+	Available       bool     `json:"available"`
+	ProxyReachable  bool     `json:"proxy_reachable"`
+	LastCheck       int64    `json:"last_check"`
+	ResponseTimeMs  int64    `json:"response_time_ms"`
 	ModelsAvailable []string `json:"models_available"`
 }
 
 // CocoonInferRequest is the inference request to Cocoon proxy.
 type CocoonInferRequest struct {
-	Model       string            `json:"model"`
-	Messages    []CocoonMessage   `json:"messages"`
-	MaxTokens   int               `json:"max_tokens,omitempty"`
-	Temperature float64           `json:"temperature,omitempty"`
-	Stream      bool              `json:"stream"`
+	Model       string          `json:"model"`
+	Messages    []CocoonMessage `json:"messages"`
+	MaxTokens   int             `json:"max_tokens,omitempty"`
+	Temperature float64         `json:"temperature,omitempty"`
+	Stream      bool            `json:"stream"`
 }
 
 // CocoonMessage is a chat message in Cocoon format.
@@ -109,50 +109,50 @@ type CocoonAttestation struct {
 
 // CocoonModel defines a model available through Cocoon.
 type CocoonModel struct {
-	ID          string  `json:"id"`
-	Name        string  `json:"name"`
-	Description string  `json:"description"`
-	CostTON     float64 `json:"cost_ton"`     // Cost in TON per request
-	CostGSTD    float64 `json:"cost_gstd"`    // Cost in GSTD (our markup)
-	MaxTokens   int     `json:"max_tokens"`
-	Category    string  `json:"category"`     // "fast", "pro", "ultra"
-	Available   bool    `json:"available"`
-	Confidential bool  `json:"confidential"` // always true for Cocoon
+	ID           string  `json:"id"`
+	Name         string  `json:"name"`
+	Description  string  `json:"description"`
+	CostTON      float64 `json:"cost_ton"`  // Cost in TON per request
+	CostGSTD     float64 `json:"cost_gstd"` // Cost in GSTD (our markup)
+	MaxTokens    int     `json:"max_tokens"`
+	Category     string  `json:"category"` // "fast", "pro", "ultra"
+	Available    bool    `json:"available"`
+	Confidential bool    `json:"confidential"` // always true for Cocoon
 }
 
 // CocoonModels defines models available through Cocoon network.
 var CocoonModels = []CocoonModel{
 	{
-		ID:          "cocoon-auto",
-		Name:        "Cocoon Auto",
-		Description: "Confidential compute — optimal model selected automatically by Cocoon network",
-		CostTON:     0.001,
-		CostGSTD:    0.02,
-		MaxTokens:   4096,
-		Category:    "fast",
-		Available:   true,
+		ID:           "cocoon-auto",
+		Name:         "Cocoon Auto",
+		Description:  "Confidential compute — optimal model selected automatically by Cocoon network",
+		CostTON:      0.001,
+		CostGSTD:     0.02,
+		MaxTokens:    4096,
+		Category:     "fast",
+		Available:    true,
 		Confidential: true,
 	},
 	{
-		ID:          "cocoon-qwen3-0.6b",
-		Name:        "Cocoon Qwen3 0.6B",
-		Description: "Fast confidential inference — TEE-protected lightweight model",
-		CostTON:     0.0005,
-		CostGSTD:    0.01,
-		MaxTokens:   4096,
-		Category:    "fast",
-		Available:   true,
+		ID:           "cocoon-qwen3-0.6b",
+		Name:         "Cocoon Qwen3 0.6B",
+		Description:  "Fast confidential inference — TEE-protected lightweight model",
+		CostTON:      0.0005,
+		CostGSTD:     0.01,
+		MaxTokens:    4096,
+		Category:     "fast",
+		Available:    true,
 		Confidential: true,
 	},
 	{
-		ID:          "cocoon-llama3-70b",
-		Name:        "Cocoon LLaMA 3 70B",
-		Description: "Ultra confidential inference — maximum power with TEE privacy",
-		CostTON:     0.01,
-		CostGSTD:    0.15,
-		MaxTokens:   8192,
-		Category:    "ultra",
-		Available:   true,
+		ID:           "cocoon-llama3-70b",
+		Name:         "Cocoon LLaMA 3 70B",
+		Description:  "Ultra confidential inference — maximum power with TEE privacy",
+		CostTON:      0.01,
+		CostGSTD:     0.15,
+		MaxTokens:    8192,
+		Category:     "ultra",
+		Available:    true,
 		Confidential: true,
 	},
 }

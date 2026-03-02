@@ -19,7 +19,7 @@ func NewPhysicsService(db *sql.DB) *PhysicsService {
 func (s *PhysicsService) GetCurrentState(ctx context.Context) (T, P, GradE float64) {
 	// Temperature (T) = Global Entropy
 	s.db.QueryRowContext(ctx, "SELECT AVG(entropy_score) FROM operation_entropy").Scan(&T)
-	
+
 	// Pressure (P) = Tasks / Active Nodes
 	var tasks, nodes int
 	s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM tasks WHERE status = 'pending'").Scan(&tasks)
@@ -30,7 +30,7 @@ func (s *PhysicsService) GetCurrentState(ctx context.Context) (T, P, GradE float
 		WHERE last_seen_at > NOW() - INTERVAL '5 minutes' 
 		  AND is_active = true
 	`).Scan(&nodes)
-	
+
 	if nodes > 0 {
 		P = float64(tasks) / float64(nodes)
 	}
@@ -44,4 +44,3 @@ func (s *PhysicsService) CertaintyToGravity(certainty float64, gstdBalance float
 	// Gravity = Certainty / (1 + ln(1 + G/K))
 	return certainty / (1.0 + math.Log1p(gstdBalance/10000.0))
 }
-

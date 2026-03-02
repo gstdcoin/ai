@@ -13,22 +13,22 @@ import (
 
 // TelemetryService handles Genesis Task telemetry storage with resilience
 type TelemetryService struct {
-	db             *sql.DB
-	redisClient    *redis.Client
-	maxRequests    int
-	windowSize     time.Duration
+	db          *sql.DB
+	redisClient *redis.Client
+	maxRequests int
+	windowSize  time.Duration
 }
 
 // TelemetryData represents the telemetry payload from Genesis Task
 type TelemetryData struct {
-	TaskID        string            `json:"task_id"`
-	DeviceID      string            `json:"device_id"`
-	WalletAddress string            `json:"wallet_address"`
-	Timestamp     string            `json:"timestamp"`
-	GPS           *GPSData          `json:"gps,omitempty"`
-	Connection    *ConnectionData   `json:"connection,omitempty"`
-	Device        *DeviceData       `json:"device,omitempty"`
-	UserAgent     string            `json:"userAgent"`
+	TaskID        string          `json:"task_id"`
+	DeviceID      string          `json:"device_id"`
+	WalletAddress string          `json:"wallet_address"`
+	Timestamp     string          `json:"timestamp"`
+	GPS           *GPSData        `json:"gps,omitempty"`
+	Connection    *ConnectionData `json:"connection,omitempty"`
+	Device        *DeviceData     `json:"device,omitempty"`
+	UserAgent     string          `json:"userAgent"`
 }
 
 type GPSData struct {
@@ -79,17 +79,17 @@ func (s *TelemetryService) CheckRateLimit(ctx context.Context, walletAddress str
 		// Redis failed, fallback to DB
 		log.Printf("⚠️  Redis rate limit check failed, falling back to DB: %v", err)
 	}
-	
+
 	// Fallback to database
 	var requestCount int
 	var windowStart time.Time
-	
+
 	err := s.db.QueryRowContext(ctx, `
 		SELECT request_count, window_start
 		FROM telemetry_rate_limits
 		WHERE wallet_address = $1
 	`, walletAddress).Scan(&requestCount, &windowStart)
-	
+
 	if err == sql.ErrNoRows {
 		// First request from this wallet
 		_, err = s.db.ExecContext(ctx, `
@@ -100,11 +100,11 @@ func (s *TelemetryService) CheckRateLimit(ctx context.Context, walletAddress str
 		`, walletAddress)
 		return false, err
 	}
-	
+
 	if err != nil {
 		return false, err
 	}
-	
+
 	// Check if window has expired
 	if time.Since(windowStart) > s.windowSize {
 		// Reset window
@@ -115,14 +115,14 @@ func (s *TelemetryService) CheckRateLimit(ctx context.Context, walletAddress str
 		`, walletAddress)
 		return false, err
 	}
-	
+
 	// Increment counter
 	_, err = s.db.ExecContext(ctx, `
 		UPDATE telemetry_rate_limits
 		SET request_count = request_count + 1, last_request = NOW()
 		WHERE wallet_address = $1
 	`, walletAddress)
-	
+
 	return requestCount >= s.maxRequests, err
 }
 
@@ -146,7 +146,7 @@ func (s *TelemetryService) storeInPostgres(ctx context.Context, data *TelemetryD
 			clientTimestamp = &t
 		}
 	}
-	
+
 	// Calculate H3 indexes (simplified - in production use h3-go library)
 	var h3R7, h3R9 *string
 	var lat, lng, accuracy, altitude, speed *float64
@@ -162,7 +162,7 @@ func (s *TelemetryService) storeInPostgres(ctx context.Context, data *TelemetryD
 		altitude = data.GPS.Altitude
 		speed = data.GPS.Speed
 	}
-	
+
 	var connType, effectiveType *string
 	var downlink *float64
 	var rtt *int
@@ -174,7 +174,7 @@ func (s *TelemetryService) storeInPostgres(ctx context.Context, data *TelemetryD
 		rtt = &data.Connection.RTT
 		saveData = data.Connection.SaveData
 	}
-	
+
 	var platform, vendor *string
 	var cores *int
 	var memory *float64
@@ -184,7 +184,7 @@ func (s *TelemetryService) storeInPostgres(ctx context.Context, data *TelemetryD
 		cores = &data.Device.Cores
 		memory = data.Device.Memory
 	}
-	
+
 	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO topology_metrics (
 			task_id, device_id, wallet_address, client_timestamp,
@@ -207,7 +207,7 @@ func (s *TelemetryService) storeInPostgres(ctx context.Context, data *TelemetryD
 		platform, vendor, cores, memory,
 		data.UserAgent,
 	)
-	
+
 	return err
 }
 
@@ -216,12 +216,12 @@ func (s *TelemetryService) queueToRedis(ctx context.Context, data *TelemetryData
 		// No Redis available, try to queue in DB
 		return s.queueToDB(ctx, data)
 	}
-	
+
 	payload, err := json.Marshal(data)
 	if err != nil {
 		return err
 	}
-	
+
 	// Add to Redis list for later processing
 	return s.redisClient.RPush(ctx, "telemetry_queue", payload).Err()
 }
@@ -231,12 +231,12 @@ func (s *TelemetryService) queueToDB(ctx context.Context, data *TelemetryData) e
 	if err != nil {
 		return err
 	}
-	
+
 	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO telemetry_queue (payload, status)
 		VALUES ($1, 'pending')
 	`, payload)
-	
+
 	return err
 }
 
@@ -253,13 +253,13 @@ func (s *TelemetryService) ProcessQueue(ctx context.Context) error {
 				log.Printf("⚠️  Error reading from Redis queue: %v", err)
 				break
 			}
-			
+
 			var data TelemetryData
 			if err := json.Unmarshal([]byte(payload), &data); err != nil {
 				log.Printf("⚠️  Error parsing queued telemetry: %v", err)
 				continue
 			}
-			
+
 			if err := s.storeInPostgres(ctx, &data); err != nil {
 				log.Printf("⚠️  Error storing queued telemetry: %v", err)
 				// Re-queue for later
@@ -267,7 +267,7 @@ func (s *TelemetryService) ProcessQueue(ctx context.Context) error {
 			}
 		}
 	}
-	
+
 	// Process DB queue
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT id, payload
@@ -280,21 +280,21 @@ func (s *TelemetryService) ProcessQueue(ctx context.Context) error {
 		return err
 	}
 	defer rows.Close()
-	
+
 	for rows.Next() {
 		var id int
 		var payload []byte
 		if err := rows.Scan(&id, &payload); err != nil {
 			continue
 		}
-		
+
 		var data TelemetryData
 		if err := json.Unmarshal(payload, &data); err != nil {
 			// Mark as failed
 			s.db.ExecContext(ctx, `UPDATE telemetry_queue SET status = 'failed', last_error = $1 WHERE id = $2`, err.Error(), id)
 			continue
 		}
-		
+
 		if err := s.storeInPostgres(ctx, &data); err != nil {
 			// Increment retry count
 			s.db.ExecContext(ctx, `UPDATE telemetry_queue SET retry_count = retry_count + 1, last_error = $1 WHERE id = $2`, err.Error(), id)
@@ -303,6 +303,6 @@ func (s *TelemetryService) ProcessQueue(ctx context.Context) error {
 			s.db.ExecContext(ctx, `UPDATE telemetry_queue SET status = 'completed', processed_at = NOW() WHERE id = $1`, id)
 		}
 	}
-	
+
 	return nil
 }

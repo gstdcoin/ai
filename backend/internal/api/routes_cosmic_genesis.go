@@ -203,7 +203,7 @@ func swarmMultiplier(db *sql.DB) gin.HandlerFunc {
 			"swarm_multiplier": math.Round(mult*100) / 100,
 			"uptime_hours":     math.Round(uptimeHours*10) / 10,
 			"uptime_days":      math.Round(uptimeHours/24*10) / 10,
-			"message":         "Longer node uptime = higher golden accumulation multiplier",
+			"message":          "Longer node uptime = higher golden accumulation multiplier",
 		})
 	}
 }

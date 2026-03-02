@@ -39,10 +39,10 @@ func HandleInfer(mesh *services.UniversalMeshService) gin.HandlerFunc {
 			var shieldErr *services.ReputationShieldError
 			if errors.As(err, &shieldErr) {
 				c.JSON(http.StatusPaymentRequired, gin.H{
-					"error":           "reputation_shield",
-					"message":         "2x inference fee required for low-rated agent. Top up balance.",
-					"required_fee":    shieldErr.RequiredFee,
-					"currency":        "GSTD",
+					"error":        "reputation_shield",
+					"message":      "2x inference fee required for low-rated agent. Top up balance.",
+					"required_fee": shieldErr.RequiredFee,
+					"currency":     "GSTD",
 				})
 				return
 			}
@@ -82,9 +82,9 @@ func HandleMeshShares(contrib *services.ContributionMonetizationService) gin.Han
 		xautPrice := contrib.GetXAUtPriceUSD()
 
 		c.JSON(http.StatusOK, gin.H{
-			"shares":       shares,
-			"total_units":  total,
-			"epoch_hours":  epochHours,
+			"shares":         shares,
+			"total_units":    total,
+			"epoch_hours":    epochHours,
 			"xaut_price_usd": xautPrice,
 		})
 	}

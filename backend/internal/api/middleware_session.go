@@ -31,7 +31,7 @@ func ValidateSession(redisClient *redis.Client, apiKeyService APIKeyValidator, s
 	if len(sessionTTL) > 0 && sessionTTL[0] > 0 {
 		ttl = sessionTTL[0]
 	}
-	
+
 	return func(c *gin.Context) {
 		// If Redis is not available, treat as authentication service failure
 		if redisClient == nil {
@@ -109,7 +109,7 @@ func ValidateSession(redisClient *redis.Client, apiKeyService APIKeyValidator, s
 
 			log.Printf("❌ ValidateSession: No session token provided for path: %s", c.Request.URL.Path)
 			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "session token required",
+				"error":   "session token required",
 				"message": "Please login or provide a valid API Key (Bearer token) to access this resource",
 			})
 			c.Abort()
@@ -122,7 +122,7 @@ func ValidateSession(redisClient *redis.Client, apiKeyService APIKeyValidator, s
 		if err != nil {
 			log.Printf("❌ ValidateSession: Redis error checking session: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "session validation failed",
+				"error":   "session validation failed",
 				"message": "Unable to validate session, please try again",
 			})
 			c.Abort()
@@ -132,7 +132,7 @@ func ValidateSession(redisClient *redis.Client, apiKeyService APIKeyValidator, s
 		if exists == 0 {
 			log.Printf("❌ ValidateSession: Session not found or expired: %s", sessionToken[:min(8, len(sessionToken))])
 			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "invalid or expired session",
+				"error":   "invalid or expired session",
 				"message": "Your session has expired, please login again",
 			})
 			c.Abort()
@@ -142,7 +142,7 @@ func ValidateSession(redisClient *redis.Client, apiKeyService APIKeyValidator, s
 		// Update last_access timestamp and extend TTL (Sliding Session)
 		pipe := redisClient.Pipeline()
 		pipe.HSet(ctx, sessionKey, "last_access", time.Now().Unix())
-		pipe.Expire(ctx, sessionKey, ttl)  // Use configurable TTL
+		pipe.Expire(ctx, sessionKey, ttl) // Use configurable TTL
 		if _, err := pipe.Exec(ctx); err != nil {
 			log.Printf("⚠️  ValidateSession: Failed to update session stats: %v", err)
 			// Continue anyway - not critical

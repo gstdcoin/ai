@@ -13,18 +13,18 @@ import (
 // ClawHub.ai robotic agents to use GSTD as their primary Brain.
 //
 // OpenClaw robots can:
-//   1. Register as compute nodes (physical actuators)
-//   2. Receive tasks from the GSTD network
-//   3. Report results with physical-world proofs
-//   4. Earn GSTD for physical task completion
-//   5. Use earned GSTD for inference (planning, vision, NLP)
+//  1. Register as compute nodes (physical actuators)
+//  2. Receive tasks from the GSTD network
+//  3. Report results with physical-world proofs
+//  4. Earn GSTD for physical task completion
+//  5. Use earned GSTD for inference (planning, vision, NLP)
 //
 // Protocol: JSON-RPC 2.0 over HTTP
 // Authentication: x402 (GSTD token) or API Key
 type OpenClawBridgeService struct {
-	db             *sql.DB
-	inferenceSvc   *InferenceService
-	knowledgeSvc   *KnowledgeService
+	db           *sql.DB
+	inferenceSvc *InferenceService
+	knowledgeSvc *KnowledgeService
 }
 
 // ============================================================================
@@ -59,17 +59,17 @@ type RPCError struct {
 
 // ClawAgent represents a physical robot registered on the network
 type ClawAgent struct {
-	AgentID        string   `json:"agent_id"`
-	WalletAddress  string   `json:"wallet_address"`
-	AgentType      string   `json:"agent_type"`       // manipulator, drone, mobile_robot, sensor_array
-	Capabilities   []string `json:"capabilities"`      // pick_and_place, navigate, inspect, measure
-	Location       *GeoPoint `json:"location,omitempty"`
-	FirmwareVersion string  `json:"firmware_version"`
-	Status         string   `json:"status"`            // online, busy, offline, maintenance
-	TotalTasks     int      `json:"total_tasks"`
-	TotalEarned    float64  `json:"total_earned_gstd"`
-	TrustScore     float64  `json:"trust_score"`
-	RegisteredAt   string   `json:"registered_at"`
+	AgentID         string    `json:"agent_id"`
+	WalletAddress   string    `json:"wallet_address"`
+	AgentType       string    `json:"agent_type"`   // manipulator, drone, mobile_robot, sensor_array
+	Capabilities    []string  `json:"capabilities"` // pick_and_place, navigate, inspect, measure
+	Location        *GeoPoint `json:"location,omitempty"`
+	FirmwareVersion string    `json:"firmware_version"`
+	Status          string    `json:"status"` // online, busy, offline, maintenance
+	TotalTasks      int       `json:"total_tasks"`
+	TotalEarned     float64   `json:"total_earned_gstd"`
+	TrustScore      float64   `json:"trust_score"`
+	RegisteredAt    string    `json:"registered_at"`
 }
 
 type GeoPoint struct {
@@ -79,15 +79,15 @@ type GeoPoint struct {
 
 // ClawTask represents a physical task for a robot
 type ClawTask struct {
-	TaskID         string                 `json:"task_id"`
-	TaskType       string                 `json:"task_type"`        // pick_and_place, inspect, navigate, custom
-	Description    string                 `json:"description"`
-	Parameters     map[string]interface{} `json:"parameters"`       // Task-specific params
-	RewardGSTD     float64                `json:"reward_gstd"`
-	RequesterWallet string               `json:"requester_wallet"`
-	RequiredCapabilities []string         `json:"required_capabilities"`
-	MaxDurationSec int                    `json:"max_duration_sec"`
-	Status         string                 `json:"status"`
+	TaskID               string                 `json:"task_id"`
+	TaskType             string                 `json:"task_type"` // pick_and_place, inspect, navigate, custom
+	Description          string                 `json:"description"`
+	Parameters           map[string]interface{} `json:"parameters"` // Task-specific params
+	RewardGSTD           float64                `json:"reward_gstd"`
+	RequesterWallet      string                 `json:"requester_wallet"`
+	RequiredCapabilities []string               `json:"required_capabilities"`
+	MaxDurationSec       int                    `json:"max_duration_sec"`
+	Status               string                 `json:"status"`
 }
 
 // ClawTaskResult represents the outcome of a physical task
@@ -218,7 +218,9 @@ func (s *OpenClawBridgeService) rpcRegisterAgent(ctx context.Context, req *RPCRe
 }
 
 func (s *OpenClawBridgeService) rpcHeartbeat(ctx context.Context, req *RPCRequest) *RPCResponse {
-	var params struct{ AgentID string `json:"agent_id"` }
+	var params struct {
+		AgentID string `json:"agent_id"`
+	}
 	json.Unmarshal(req.Params, &params)
 
 	s.db.ExecContext(ctx, "UPDATE claw_agents SET status = 'online' WHERE agent_id = $1", params.AgentID)
@@ -226,7 +228,9 @@ func (s *OpenClawBridgeService) rpcHeartbeat(ctx context.Context, req *RPCReques
 }
 
 func (s *OpenClawBridgeService) rpcGetStatus(ctx context.Context, req *RPCRequest) *RPCResponse {
-	var params struct{ AgentID string `json:"agent_id"` }
+	var params struct {
+		AgentID string `json:"agent_id"`
+	}
 	json.Unmarshal(req.Params, &params)
 
 	var agent ClawAgent
@@ -254,7 +258,10 @@ func (s *OpenClawBridgeService) rpcGetTasks(ctx context.Context, req *RPCRequest
 
 	var tasks []map[string]interface{}
 	for rows.Next() {
-		var t struct{ ID, Type, Desc, Status string; Reward float64 }
+		var t struct {
+			ID, Type, Desc, Status string
+			Reward                 float64
+		}
 		rows.Scan(&t.ID, &t.Type, &t.Desc, &t.Reward, &t.Status)
 		tasks = append(tasks, map[string]interface{}{"task_id": t.ID, "task_type": t.Type, "description": t.Desc, "reward_gstd": t.Reward})
 	}

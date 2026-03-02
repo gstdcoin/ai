@@ -3,7 +3,7 @@ package api
 import (
 	"distributed-computing-platform/internal/services"
 	"log"
-	
+
 	"github.com/gin-gonic/gin"
 )
 

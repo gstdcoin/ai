@@ -34,12 +34,12 @@ func RequireGSTDBalance(db *sql.DB, minBalanceGSTD float64) gin.HandlerFunc {
 
 		if balance < minBalanceGSTD {
 			c.JSON(http.StatusPaymentRequired, gin.H{
-				"error":   "insufficient_gstd_balance",
-				"code":    "PAYMENT_REQUIRED",
-				"balance": balance,
+				"error":    "insufficient_gstd_balance",
+				"code":     "PAYMENT_REQUIRED",
+				"balance":  balance,
 				"required": minBalanceGSTD,
-				"cta":     "become_node",
-				"message": "Insufficient GSTD balance. Top up your wallet or become a Node to earn GSTD.",
+				"cta":      "become_node",
+				"message":  "Insufficient GSTD balance. Top up your wallet or become a Node to earn GSTD.",
 				"actions": []map[string]string{
 					{"action": "become_node", "label": "Become a Node", "url": "/dashboard?mode=producer"},
 					{"action": "buy_gstd", "label": "Buy GSTD", "url": "/wallet/buy-gstd"},

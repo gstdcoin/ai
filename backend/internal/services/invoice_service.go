@@ -19,17 +19,17 @@ const (
 )
 
 type Invoice struct {
-	ID             string                 `json:"id"`
-	IssuerAddress  string                 `json:"issuer_address"`
-	PayerAddress   string                 `json:"payer_address"`
-	AmountGSTD     float64                `json:"amount_gstd"`
-	Description    string                 `json:"description"`
-	TaskID         string                 `json:"task_id,omitempty"`
-	Status         InvoiceStatus          `json:"status"`
-	PaymentTxHash  string                 `json:"payment_tx_hash,omitempty"`
-	CreatedAt      time.Time              `json:"created_at"`
-	ExpiresAt      time.Time              `json:"expires_at"`
-	Metadata       map[string]interface{} `json:"metadata"`
+	ID            string                 `json:"id"`
+	IssuerAddress string                 `json:"issuer_address"`
+	PayerAddress  string                 `json:"payer_address"`
+	AmountGSTD    float64                `json:"amount_gstd"`
+	Description   string                 `json:"description"`
+	TaskID        string                 `json:"task_id,omitempty"`
+	Status        InvoiceStatus          `json:"status"`
+	PaymentTxHash string                 `json:"payment_tx_hash,omitempty"`
+	CreatedAt     time.Time              `json:"created_at"`
+	ExpiresAt     time.Time              `json:"expires_at"`
+	Metadata      map[string]interface{} `json:"metadata"`
 }
 
 type InvoiceService struct {

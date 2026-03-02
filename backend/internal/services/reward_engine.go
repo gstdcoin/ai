@@ -11,14 +11,14 @@ import (
 )
 
 type RewardEngine struct {
-	db                  *sql.DB
-	tonService          *TONService
-	stonFiService       *StonFiService
-	jettonTransfer      *JettonTransferService
-	tonConfig           config.TONConfig
-	treasuryWallet      string
-	xautJettonAddr      string
-	payoutRetry         *PayoutRetryService
+	db             *sql.DB
+	tonService     *TONService
+	stonFiService  *StonFiService
+	jettonTransfer *JettonTransferService
+	tonConfig      config.TONConfig
+	treasuryWallet string
+	xautJettonAddr string
+	payoutRetry    *PayoutRetryService
 }
 
 // SetPayoutRetry sets the payout retry service
@@ -38,7 +38,7 @@ func NewRewardEngine(
 	if adminWallet == "" {
 		log.Printf("⚠️  ADMIN_WALLET not configured - commission will not be sent")
 	}
-	
+
 	xautJettonAddr := tonConfig.XAUtJettonAddress
 	if xautJettonAddr == "" {
 		xautJettonAddr = "EQCyD8v6khUUrce9BCvHOaBC9PrvlV9S7D5v67O80p444XAr" // Mainnet XAUt
@@ -48,11 +48,11 @@ func NewRewardEngine(
 	// Users sign and pay gas fees themselves via TonConnect
 	// Platform wallet is optional - only needed for admin operations (if any)
 	// Workers claim rewards via escrow contract, paying gas fees themselves
-	
+
 	var jettonTransfer *JettonTransferService
 	walletAddr := tonConfig.PlatformWalletAddress
 	privateKey := tonConfig.PlatformWalletPrivateKey
-	
+
 	// Only initialize if both are provided (for optional admin operations)
 	if privateKey != "" && walletAddr != "" {
 		jettonTransfer = NewJettonTransferService(
@@ -103,14 +103,14 @@ func (re *RewardEngine) DistributeRewards(ctx context.Context, task *models.Task
 	// PULL-MODEL: Workers claim rewards themselves via escrow contract
 	// Platform only generates payout intent, workers sign and pay gas fees
 	// No automatic transfers - workers use TonConnect to claim via escrow
-	log.Printf("Reward available for claim: %.9f GSTD to worker %s (task: %s)", 
+	log.Printf("Reward available for claim: %.9f GSTD to worker %s (task: %s)",
 		workerReward, workerWallet, task.TaskID)
 	log.Printf("Worker can claim via: POST /api/v1/payments/payout-intent with task_id=%s", task.TaskID)
 
 	// Platform fee is collected when worker claims (handled by escrow contract)
 	// No need to process platform fee separately - escrow contract handles it
 	log.Printf("Platform fee (%.9f GSTD) will be collected when worker claims via escrow", platformFee)
-	
+
 	// Log accumulation in Golden Reserve (2.5% gold share of 5% platform fee)
 	goldShare := platformFee * 0.5
 	if err := re.logGoldenReserveAccumulation(ctx, goldShare, task.TaskID); err != nil {
@@ -136,7 +136,7 @@ func (re *RewardEngine) DistributeRewards(ctx context.Context, task *models.Task
 func (re *RewardEngine) sendGSTDToWorker(ctx context.Context, workerWallet string, amount float64, taskID string) error {
 	// PULL-MODEL: No automatic transfers
 	// Workers claim rewards via escrow contract using payout intent
-	log.Printf("PULL-MODEL: Worker %s can claim %.9f GSTD for task %s via escrow contract", 
+	log.Printf("PULL-MODEL: Worker %s can claim %.9f GSTD for task %s via escrow contract",
 		workerWallet, amount, taskID)
 	return nil
 }
@@ -198,5 +198,3 @@ func (re *RewardEngine) createGoldenReserveTable(ctx context.Context) {
 		log.Printf("Error creating golden_reserve_log table: %v", err)
 	}
 }
-
-

@@ -22,7 +22,7 @@ func (r *DeviceRepository) GetByID(ctx context.Context, deviceID string) (*model
 	var device models.Device
 	var lastSeenAt time.Time
 	var cachedModels sql.NullString
-	
+
 	// Query all fields including last_seen_at and is_active
 	err := r.db.QueryRowContext(ctx, `
 		SELECT device_id, wallet_address, device_type, reputation,
@@ -55,20 +55,20 @@ func (r *DeviceRepository) GetByID(ctx context.Context, deviceID string) (*model
 		&device.StabilityScore,
 		&device.LastReputationUpdate,
 	)
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	device.LastSeenAt = lastSeenAt
-	
+
 	// Parse cached_models array if present
 	if cachedModels.Valid && cachedModels.String != "" {
 		// Simple parsing - in production, use proper array parsing
 		// For now, we'll leave it as empty slice
 		device.CachedModels = []string{}
 	}
-	
+
 	return &device, nil
 }
 
@@ -89,13 +89,13 @@ func (r *DeviceRepository) GetByWalletAddress(ctx context.Context, walletAddress
 		return nil, err
 	}
 	defer rows.Close()
-	
+
 	var devices []*models.Device
 	for rows.Next() {
 		var device models.Device
 		var lastSeenAt time.Time
 		var cachedModels sql.NullString
-		
+
 		err := rows.Scan(
 			&device.DeviceID,
 			&device.WalletAddress,
@@ -121,15 +121,15 @@ func (r *DeviceRepository) GetByWalletAddress(ctx context.Context, walletAddress
 		if err != nil {
 			continue
 		}
-		
+
 		device.LastSeenAt = lastSeenAt
 		if cachedModels.Valid && cachedModels.String != "" {
 			device.CachedModels = []string{}
 		}
-		
+
 		devices = append(devices, &device)
 	}
-	
+
 	return devices, nil
 }
 
@@ -138,7 +138,7 @@ func (r *DeviceRepository) GetAllActive(ctx context.Context, limit int) ([]*mode
 	if limit <= 0 {
 		limit = 100
 	}
-	
+
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT device_id, wallet_address, device_type, reputation,
 		       total_tasks, successful_tasks, failed_tasks,
@@ -155,13 +155,13 @@ func (r *DeviceRepository) GetAllActive(ctx context.Context, limit int) ([]*mode
 		return nil, err
 	}
 	defer rows.Close()
-	
+
 	var devices []*models.Device
 	for rows.Next() {
 		var device models.Device
 		var lastSeenAt time.Time
 		var cachedModels sql.NullString
-		
+
 		err := rows.Scan(
 			&device.DeviceID,
 			&device.WalletAddress,
@@ -187,15 +187,15 @@ func (r *DeviceRepository) GetAllActive(ctx context.Context, limit int) ([]*mode
 		if err != nil {
 			continue
 		}
-		
+
 		device.LastSeenAt = lastSeenAt
 		if cachedModels.Valid && cachedModels.String != "" {
 			device.CachedModels = []string{}
 		}
-		
+
 		devices = append(devices, &device)
 	}
-	
+
 	return devices, nil
 }
 
@@ -239,7 +239,7 @@ func (r *DeviceRepository) CountActiveDevices(ctx context.Context, intervalMinut
 	if intervalMinutes <= 0 {
 		intervalMinutes = 5 // Default to 5 minutes
 	}
-	
+
 	var count int
 	err := r.db.QueryRowContext(ctx, `
 		SELECT COALESCE(COUNT(*), 0) 
@@ -247,10 +247,10 @@ func (r *DeviceRepository) CountActiveDevices(ctx context.Context, intervalMinut
 		WHERE last_seen_at > NOW() - INTERVAL '1 minute' * $1 
 		  AND is_active = true
 	`, intervalMinutes).Scan(&count)
-	
+
 	if err != nil {
 		return 0, err
 	}
-	
+
 	return count, nil
 }

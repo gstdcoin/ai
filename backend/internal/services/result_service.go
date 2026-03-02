@@ -12,12 +12,12 @@ import (
 
 // ResultService handles task results and delivery to requesters
 type ResultService struct {
-	db          *sql.DB
-	encryption  *EncryptionService
-	payment     *PaymentService
-	tonConfig   config.TONConfig
-	telegram    *TelegramService
-	zkProof     *ZKComputeProofService // Absolute Point: ZK evidence for task completion
+	db         *sql.DB
+	encryption *EncryptionService
+	payment    *PaymentService
+	tonConfig  config.TONConfig
+	telegram   *TelegramService
+	zkProof    *ZKComputeProofService // Absolute Point: ZK evidence for task completion
 }
 
 func NewResultService(db *sql.DB, encryption *EncryptionService, payment *PaymentService, tonConfig config.TONConfig) *ResultService {
@@ -43,10 +43,10 @@ type SubmitResultRequest struct {
 	TaskID        string          `json:"task_id"`
 	DeviceID      string          `json:"device_id"`
 	Result        json.RawMessage `json:"result"`
-	Proof         string          `json:"proof"`    // Wallet signature (hex)
+	Proof         string          `json:"proof"` // Wallet signature (hex)
 	ExecutionTime int64           `json:"execution_time_ms"`
 	Signature     string          `json:"signature"` // Alternative field name
-	ZKProof       json.RawMessage `json:"zk_proof"` // Absolute Point: optional ZK compute proof (mathematically verifiable)
+	ZKProof       json.RawMessage `json:"zk_proof"`  // Absolute Point: optional ZK compute proof (mathematically verifiable)
 }
 
 // SubmitResult processes result submission from device
@@ -155,7 +155,7 @@ func (s *ResultService) SubmitResult(ctx context.Context, req SubmitResultReques
 func (s *ResultService) GetResult(ctx context.Context, taskID string, requesterAddress string) (json.RawMessage, error) {
 	var encryptedResult, nonce string
 	var status string
-	
+
 	err := s.db.QueryRowContext(ctx, `
 		SELECT result_data, result_nonce, status
 		FROM tasks 
@@ -193,7 +193,7 @@ func (s *ResultService) ProcessPayment(ctx context.Context, taskID string) error
 	if err != nil {
 		return err
 	}
-	
+
 	// Handle NULL assigned_device
 	if assignedDevice.Valid {
 		task.AssignedDevice = &assignedDevice.String
@@ -225,61 +225,61 @@ func (s *ResultService) ProcessPayment(ctx context.Context, taskID string) error
 		return err
 	}
 
-    // REWARD DISTRIBUTION (Internal Ledger)
-    if assignedDevice.Valid {
-        var workerWallet string
-        s.db.QueryRowContext(ctx, "SELECT wallet_address FROM nodes WHERE id = $1", assignedDevice.String).Scan(&workerWallet)
-        
-        if workerWallet == "" {
-            // Check devices table if not in nodes
-            s.db.QueryRowContext(ctx, "SELECT wallet_address FROM devices WHERE device_id = $1", assignedDevice.String).Scan(&workerWallet)
-        }
-        
-        if workerWallet != "" {
-            // 0. Release Stake
-            var stakeAmount float64
-            s.db.QueryRowContext(ctx, "SELECT COALESCE(stake_amount_gstd, 0) FROM worker_task_assignments WHERE task_id = $1 AND worker_wallet = $2", taskID, workerWallet).Scan(&stakeAmount)
-            // Fallback to tasks table if not found (direct assignment)
-            if stakeAmount == 0 {
-                 s.db.QueryRowContext(ctx, "SELECT COALESCE(stake_amount_gstd, 0) FROM tasks WHERE task_id = $1", taskID).Scan(&stakeAmount)
-            }
+	// REWARD DISTRIBUTION (Internal Ledger)
+	if assignedDevice.Valid {
+		var workerWallet string
+		s.db.QueryRowContext(ctx, "SELECT wallet_address FROM nodes WHERE id = $1", assignedDevice.String).Scan(&workerWallet)
 
-            if stakeAmount > 0 {
-                s.db.ExecContext(ctx, "UPDATE users SET gstd_frozen = GREATEST(0, gstd_frozen - $1) WHERE wallet_address = $2", stakeAmount, workerWallet)
-                log.Printf("🔓 Released stake %.4f GSTD for Worker %s", stakeAmount, workerWallet)
-            }
+		if workerWallet == "" {
+			// Check devices table if not in nodes
+			s.db.QueryRowContext(ctx, "SELECT wallet_address FROM devices WHERE device_id = $1", assignedDevice.String).Scan(&workerWallet)
+		}
 
-            // 1. Credit Worker
-            s.db.ExecContext(ctx, "UPDATE users SET gstd_balance = gstd_balance + $1 WHERE wallet_address = $2", executorReward, workerWallet)
-            log.Printf("💰 Credited %.4f GSTD to Worker %s", executorReward, workerWallet)
+		if workerWallet != "" {
+			// 0. Release Stake
+			var stakeAmount float64
+			s.db.QueryRowContext(ctx, "SELECT COALESCE(stake_amount_gstd, 0) FROM worker_task_assignments WHERE task_id = $1 AND worker_wallet = $2", taskID, workerWallet).Scan(&stakeAmount)
+			// Fallback to tasks table if not found (direct assignment)
+			if stakeAmount == 0 {
+				s.db.QueryRowContext(ctx, "SELECT COALESCE(stake_amount_gstd, 0) FROM tasks WHERE task_id = $1", taskID).Scan(&stakeAmount)
+			}
 
-            // 1b. Deduct from Creator Escrow
-            s.db.ExecContext(ctx, "UPDATE users SET gstd_escrow_balance = GREATEST(0, gstd_escrow_balance - $1) WHERE wallet_address = $2", (executorReward + platformFee), task.RequesterAddress)
+			if stakeAmount > 0 {
+				s.db.ExecContext(ctx, "UPDATE users SET gstd_frozen = GREATEST(0, gstd_frozen - $1) WHERE wallet_address = $2", stakeAmount, workerWallet)
+				log.Printf("🔓 Released stake %.4f GSTD for Worker %s", stakeAmount, workerWallet)
+			}
 
-            // 2. Referral Split Trigger
-            // "Smart Referral Economy": 1% Total (20% of Fee) to Referrer, 4% Total (80% of Fee) to Treasury
-            var referrerID sql.NullString
-            err := s.db.QueryRowContext(ctx, "SELECT referred_by FROM users WHERE wallet_address = $1", workerWallet).Scan(&referrerID)
-            
-            treasuryCut := platformFee
-            if err == nil && referrerID.Valid && referrerID.String != "" {
-                referralBonus := platformFee * 0.20 // 1% of Task Value (if Fee is 5%)
-                treasuryCut = platformFee * 0.80    // 4% of Task Value
-                
-                // Credit Referrer
-                s.db.ExecContext(ctx, "UPDATE users SET gstd_balance = gstd_balance + $1 WHERE wallet_address = $2", referralBonus, referrerID.String)
-                log.Printf("🤝 Referral Bonus: %.4f GSTD to %s (from Task %s)", referralBonus, referrerID.String, taskID)
-                
-                // Record Referral Transaction (for history/stats)
-                // Assuming transactions table or just referring to logs/users update
-                // The prompt asked to "Add to transactions table REFERRAL_BONUS". 
-                // Since I can't easily add table migration here, I will assume it exists or skip explicit transaction log if complex,
-                // but user asked for "Economy Logic". The Balance Update is the key.
-            }
-            
-            log.Printf("🏛 Treasury Collected: %.4f GSTD (Fee)", treasuryCut)
-        }
-    }
+			// 1. Credit Worker
+			s.db.ExecContext(ctx, "UPDATE users SET gstd_balance = gstd_balance + $1 WHERE wallet_address = $2", executorReward, workerWallet)
+			log.Printf("💰 Credited %.4f GSTD to Worker %s", executorReward, workerWallet)
+
+			// 1b. Deduct from Creator Escrow
+			s.db.ExecContext(ctx, "UPDATE users SET gstd_escrow_balance = GREATEST(0, gstd_escrow_balance - $1) WHERE wallet_address = $2", (executorReward + platformFee), task.RequesterAddress)
+
+			// 2. Referral Split Trigger
+			// "Smart Referral Economy": 1% Total (20% of Fee) to Referrer, 4% Total (80% of Fee) to Treasury
+			var referrerID sql.NullString
+			err := s.db.QueryRowContext(ctx, "SELECT referred_by FROM users WHERE wallet_address = $1", workerWallet).Scan(&referrerID)
+
+			treasuryCut := platformFee
+			if err == nil && referrerID.Valid && referrerID.String != "" {
+				referralBonus := platformFee * 0.20 // 1% of Task Value (if Fee is 5%)
+				treasuryCut = platformFee * 0.80    // 4% of Task Value
+
+				// Credit Referrer
+				s.db.ExecContext(ctx, "UPDATE users SET gstd_balance = gstd_balance + $1 WHERE wallet_address = $2", referralBonus, referrerID.String)
+				log.Printf("🤝 Referral Bonus: %.4f GSTD to %s (from Task %s)", referralBonus, referrerID.String, taskID)
+
+				// Record Referral Transaction (for history/stats)
+				// Assuming transactions table or just referring to logs/users update
+				// The prompt asked to "Add to transactions table REFERRAL_BONUS".
+				// Since I can't easily add table migration here, I will assume it exists or skip explicit transaction log if complex,
+				// but user asked for "Economy Logic". The Balance Update is the key.
+			}
+
+			log.Printf("🏛 Treasury Collected: %.4f GSTD (Fee)", treasuryCut)
+		}
+	}
 
 	// Log successful update with reward information
 	log.Printf("✅ Task %s completed: executor_reward_gstd=%.9f, platform_fee_gstd=%.9f, total_compensation=%.9f",
@@ -291,7 +291,7 @@ func (s *ResultService) ProcessPayment(ctx context.Context, taskID string) error
 			bgCtx := context.Background()
 			var taskType string
 			s.db.QueryRowContext(bgCtx, "SELECT task_type FROM tasks WHERE task_id = $1", taskID).Scan(&taskType)
-			
+
 			executor := ""
 			if assignedDevice.Valid {
 				s.db.QueryRowContext(bgCtx, "SELECT wallet_address FROM nodes WHERE id = $1", assignedDevice.String).Scan(&executor)
@@ -305,4 +305,3 @@ func (s *ResultService) ProcessPayment(ctx context.Context, taskID string) error
 
 	return nil
 }
-

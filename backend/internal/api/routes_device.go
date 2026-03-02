@@ -177,15 +177,15 @@ func claimTask(assignmentService *services.AssignmentService, deviceService *ser
 func submitResult(resultService *services.ResultService, validationService *services.ValidationService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		taskID := c.Param("id")
-		
-        // Using a map to bind flexible JSON
-        var req services.SubmitResultRequest
+
+		// Using a map to bind flexible JSON
+		var req services.SubmitResultRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
 			log.Printf("submitResult: Binding error: %v", err)
 			c.JSON(400, gin.H{"error": err.Error()})
 			return
 		}
-        req.TaskID = taskID
+		req.TaskID = taskID
 		// Fallback device_id for autonomous agents (from wallet)
 		if req.DeviceID == "" {
 			if w, ok := c.Get("wallet_address"); ok {

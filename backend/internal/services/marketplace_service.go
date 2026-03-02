@@ -17,20 +17,20 @@ type MarketplaceService struct {
 
 // AvailableTask represents a task in the marketplace
 type AvailableTask struct {
-	TaskID           string   `json:"task_id"`
-	TaskType         string   `json:"task_type"`
-	Operation        string   `json:"operation"`
-	Difficulty       string   `json:"difficulty"`
-	RewardGSTD       float64  `json:"reward_gstd"`
-	EstimatedTimeSec int      `json:"estimated_time_sec"`
-	CreatorWallet    string   `json:"creator_wallet"`
-	Geography        string   `json:"geography"`        // "global" or comma-separated countries
-	RequiredCPU      int      `json:"required_cpu"`
-	RequiredRAM      float64  `json:"required_ram_gb"`
-	WorkersNeeded    int      `json:"workers_needed"`
-	WorkersCompleted int      `json:"workers_completed"`
-	CreatedAt        string   `json:"created_at"`
-	MinTrustScore    float64  `json:"min_trust_score"`
+	TaskID           string  `json:"task_id"`
+	TaskType         string  `json:"task_type"`
+	Operation        string  `json:"operation"`
+	Difficulty       string  `json:"difficulty"`
+	RewardGSTD       float64 `json:"reward_gstd"`
+	EstimatedTimeSec int     `json:"estimated_time_sec"`
+	CreatorWallet    string  `json:"creator_wallet"`
+	Geography        string  `json:"geography"` // "global" or comma-separated countries
+	RequiredCPU      int     `json:"required_cpu"`
+	RequiredRAM      float64 `json:"required_ram_gb"`
+	WorkersNeeded    int     `json:"workers_needed"`
+	WorkersCompleted int     `json:"workers_completed"`
+	CreatedAt        string  `json:"created_at"`
+	MinTrustScore    float64 `json:"min_trust_score"`
 }
 
 // WorkerStats represents worker statistics
@@ -45,18 +45,18 @@ type WorkerStats struct {
 
 // TaskReceipt represents a task completion receipt
 type TaskReceipt struct {
-	ReceiptID        string  `json:"receipt_id"`
-	TaskID           string  `json:"task_id"`
-	WorkerWallet     string  `json:"worker_wallet"`
-	CreatorWallet    string  `json:"creator_wallet"`
-	RewardGSTD       float64 `json:"reward_gstd"`
-	PlatformFeeGSTD  float64 `json:"platform_fee_gstd"`
-	QualityScore     float64 `json:"quality_score"`
-	ExecutionTimeMs  int     `json:"execution_time_ms"`
-	CompletedAt      string  `json:"completed_at"`
-	TransactionID    string  `json:"transaction_id"`
-	DevFundGSTD      float64 `json:"dev_fund_gstd"`
-	GoldReserveGSTD  float64 `json:"gold_reserve_gstd"`
+	ReceiptID       string  `json:"receipt_id"`
+	TaskID          string  `json:"task_id"`
+	WorkerWallet    string  `json:"worker_wallet"`
+	CreatorWallet   string  `json:"creator_wallet"`
+	RewardGSTD      float64 `json:"reward_gstd"`
+	PlatformFeeGSTD float64 `json:"platform_fee_gstd"`
+	QualityScore    float64 `json:"quality_score"`
+	ExecutionTimeMs int     `json:"execution_time_ms"`
+	CompletedAt     string  `json:"completed_at"`
+	TransactionID   string  `json:"transaction_id"`
+	DevFundGSTD     float64 `json:"dev_fund_gstd"`
+	GoldReserveGSTD float64 `json:"gold_reserve_gstd"`
 }
 
 func NewMarketplaceService(db *sql.DB, escrowService *EscrowService, referral *ReferralService) *MarketplaceService {
@@ -148,7 +148,7 @@ func (s *MarketplaceService) ClaimTask(ctx context.Context, taskID, workerWallet
 		SELECT status, COALESCE(max_workers, 1), COALESCE(workers_completed, 0), COALESCE(reward_per_worker, labor_compensation_gstd, 0)
 		FROM tasks WHERE task_id = $1 FOR UPDATE
 	`, taskID).Scan(&status, &maxWorkers, &workersCompleted, &reward)
-	
+
 	if err != nil {
 		return fmt.Errorf("task not found: %w", err)
 	}
@@ -349,7 +349,7 @@ func (s *MarketplaceService) checkAndFinalizeTask(ctx context.Context, taskID st
 func (s *MarketplaceService) GetWorkerStats(ctx context.Context, workerWallet string) (*WorkerStats, error) {
 	var stats WorkerStats
 	var lastTaskAt sql.NullTime
-	
+
 	err := s.db.QueryRowContext(ctx, `
 		SELECT 
 			worker_wallet,

@@ -47,14 +47,14 @@ func SetupPipelineRoutes(v1 *gin.RouterGroup, protected *gin.RouterGroup, pipeli
 		}
 
 		node := &services.PipelineNode{
-			NodeID:        req.NodeID,
-			WalletAddr:    walletAddress,
-			VRAM_MB:       req.VRAM_MB,
-			RAM_MB:        req.RAM_MB,
-			GPUModel:      req.GPUModel,
+			NodeID:         req.NodeID,
+			WalletAddr:     walletAddress,
+			VRAM_MB:        req.VRAM_MB,
+			RAM_MB:         req.RAM_MB,
+			GPUModel:       req.GPUModel,
 			Bandwidth_Mbps: req.BandwidthMbps,
-			Region:        req.Region,
-			EndpointURL:   req.EndpointURL,
+			Region:         req.Region,
+			EndpointURL:    req.EndpointURL,
 		}
 
 		if err := pipelineService.RegisterNode(c.Request.Context(), node); err != nil {

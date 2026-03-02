@@ -9,9 +9,9 @@ import (
 
 // DistributionService handles automatic reward distribution and platform fees
 type DistributionService struct {
-	db         *sql.DB
-	tonConfig  config.TONConfig
-	payment    *PaymentService
+	db        *sql.DB
+	tonConfig config.TONConfig
+	payment   *PaymentService
 }
 
 func NewDistributionService(db *sql.DB, tonConfig config.TONConfig, payment *PaymentService) *DistributionService {
@@ -122,4 +122,3 @@ func (s *DistributionService) HandleRefund(ctx context.Context, taskID string) e
 
 	return err
 }
-
