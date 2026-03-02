@@ -198,10 +198,15 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 		wallet = c.GetHeader("X-GSTD-Target-Wallet")
 	}
 
+	// Bot pre-paid: AIChat already deducted, skip gateway deduction
+	isPrepaid := c.Request.Header.Get("X-GSTD-Prepaid") == "true"
+
 	// Consumer Adoption: Allow anonymous free-tier (basic models only)
 	// Wallet required for paid models (Pro, Ultra)
 	anonymousFree := false
-	if wallet == "" {
+	if isPrepaid {
+		anonymousFree = true // skip deduction, already paid by bot handler
+	} else if wallet == "" {
 		// Allow free tier without wallet for chat.gstdtoken.com onboarding
 		modelLower := strings.ToLower(req.Model)
 		isFreeModel := modelLower == "" || modelLower == "auto" || modelLower == "gstd-flash" || modelLower == "omega-auto" || modelLower == "cocoon-auto"
@@ -261,6 +266,9 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 	} else if req.Model == "omega-auto" || req.Model == "auto" || req.Model == "" {
 		// Auto model: pick best based on content (like Telegram)
 		ollamaModel = analyzeIntelligenceNeedOllama(promptMsgs)
+	} else if req.Model == "omega-pro" {
+		// Pro tier: best available model
+		ollamaModel = "qwen2.5-coder:32b"
 	} else if strings.HasPrefix(req.Model, "gpt") || strings.HasPrefix(req.Model, "gpt-") {
 		ollamaModel = "qwen2.5-coder:7b"
 	} else if req.Model != "" {

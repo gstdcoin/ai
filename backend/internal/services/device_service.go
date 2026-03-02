@@ -24,15 +24,15 @@ func NewDeviceService(db *sql.DB) *DeviceService {
 
 // RegisterDevice registers a new device or updates existing device
 type RegisterDeviceRequest struct {
-	DeviceID      string `json:"device_id"`      // Unique device fingerprint
-	WalletAddress string `json:"wallet_address"`  // Wallet address (can be same for multiple devices)
-	DeviceType    string `json:"device_type"`    // android, ios, desktop
-	DeviceInfo    string `json:"device_info"`    // Additional device info
-	PoWNonce      string `json:"pow_nonce"`      // Proof of Work Nonce
-	CPUScore      int    `json:"cpu_score"`      // Benchmark score
-	RAMGB         float64 `json:"ram_gb"`       // Available RAM
-	PublicKey     string `json:"public_key"`     // Agent public key (hex)
-	ReferralCode  string `json:"referral_code"`   // Hyper-Expansion: ref_XXX from Telegram start param (5% forever)
+	DeviceID      string  `json:"device_id"`      // Unique device fingerprint
+	WalletAddress string  `json:"wallet_address"` // Wallet address (can be same for multiple devices)
+	DeviceType    string  `json:"device_type"`    // android, ios, desktop
+	DeviceInfo    string  `json:"device_info"`    // Additional device info
+	PoWNonce      string  `json:"pow_nonce"`      // Proof of Work Nonce
+	CPUScore      int     `json:"cpu_score"`      // Benchmark score
+	RAMGB         float64 `json:"ram_gb"`         // Available RAM
+	PublicKey     string  `json:"public_key"`     // Agent public key (hex)
+	ReferralCode  string  `json:"referral_code"`  // Hyper-Expansion: ref_XXX from Telegram start param (5% forever)
 }
 
 func (s *DeviceService) RegisterDevice(ctx context.Context, req RegisterDeviceRequest) error {
@@ -47,7 +47,7 @@ func (s *DeviceService) RegisterDevice(ctx context.Context, req RegisterDeviceRe
 	// 1. Verify PoW (Simple check: Hash(Wallet+Nonce) ends with "00")
 	// In production, this difficulty would be dynamic
 	// For now, we assume frontend provides a valid nonce
-	
+
 	// 2. Calculate AI Orchestration Score (Neural Task Distribution)
 	// Score = (CPUScore * 0.7) + (RAM_GB * 100 * 0.3) + (Reputation * 1000)
 	// This allows the "Brain" to pick the best device
@@ -102,15 +102,18 @@ func (s *DeviceService) GetDevicesByWallet(ctx context.Context, walletAddress st
 		}
 
 		devices = append(devices, map[string]interface{}{
-			"device_id":              deviceID,
-			"wallet_address":         walletAddr,
-			"device_type":            deviceType,
-			"reputation":             reputation,
-			"total_tasks":            totalTasks,
-			"successful_tasks":       successfulTasks,
+			"device_id":                deviceID,
+			"wallet_address":           walletAddr,
+			"device_type":              deviceType,
+			"reputation":               reputation,
+			"total_tasks":              totalTasks,
+			"successful_tasks":         successfulTasks,
 			"average_response_time_ms": avgTime,
-			"last_seen_at":           lastSeen,
+			"last_seen_at":             lastSeen,
 		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return devices, nil
@@ -145,15 +148,18 @@ func (s *DeviceService) GetDevices(ctx context.Context) ([]map[string]interface{
 		}
 
 		devices = append(devices, map[string]interface{}{
-			"device_id":               deviceID,
-			"wallet_address":          maskWallet(walletAddress),
-			"device_type":             deviceType,
-			"reputation":              reputation,
-			"total_tasks":             totalTasks,
-			"successful_tasks":        successfulTasks,
+			"device_id":                deviceID,
+			"wallet_address":           maskWallet(walletAddress),
+			"device_type":              deviceType,
+			"reputation":               reputation,
+			"total_tasks":              totalTasks,
+			"successful_tasks":         successfulTasks,
 			"average_response_time_ms": avgTime,
-			"last_seen_at":            lastSeen,
+			"last_seen_at":             lastSeen,
 		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return devices, nil

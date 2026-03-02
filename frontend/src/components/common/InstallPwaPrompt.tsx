@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Download, X } from 'lucide-react';
 import { useTranslation } from 'next-i18next';
+import { logger } from '../../lib/logger';
 
 export const InstallPwaPrompt: React.FC = () => {
     const { t } = useTranslation('common');
@@ -32,7 +33,7 @@ export const InstallPwaPrompt: React.FC = () => {
 
         // Wait for the user to respond to the prompt
         const { outcome } = await deferredPrompt.userChoice;
-        console.log(`User response to the install prompt: ${outcome}`);
+        logger.info(`User response to the install prompt: ${outcome}`);
 
         // We've used the prompt, and can't use it again, throw it away
         setDeferredPrompt(null);

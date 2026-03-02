@@ -521,6 +521,7 @@ func StartApplication(container *dig.Container) error {
 		taskPaymentService.SetTaskService(taskService)
 		taskPaymentService.SetTelegramService(telegramService)
 		telegramService.SetGSTDPriceProvider(poolMonitor)
+		telegramService.SetSmartRouter(smartRouter)
 		stonFiService.SetPoolMonitor(poolMonitor)
 		poolMonitor.SetStonFi(stonFiService)
 		taskOrchestrator.SetPoWService(powService)

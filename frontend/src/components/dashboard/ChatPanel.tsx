@@ -107,8 +107,8 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
-    if (params.get('viral', 'Viral') === '1') {
-      const model = params.get('model', 'Model') || 'unknown';
+    if (params.get('viral') === '1') {
+      const model = params.get('model') || 'unknown';
       const key = `gstd_viral_click_${model}`;
       if (!sessionStorage.getItem(key)) {
         sessionStorage.setItem(key, '1');

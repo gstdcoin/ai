@@ -621,6 +621,9 @@ func (s *EscrowService) GetTransactionHistory(ctx context.Context, wallet string
 		}
 		transactions = append(transactions, tx)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
 	return transactions, nil
 }
@@ -642,6 +645,9 @@ func (s *EscrowService) GetPlatformFunds(ctx context.Context) (map[string]float6
 		if err := rows.Scan(&fundType, &balance); err == nil {
 			funds[fundType] = balance
 		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return funds, nil

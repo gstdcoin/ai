@@ -48,7 +48,7 @@ export default function WorkerTaskCard({ task, onTaskCompleted }: WorkerTaskCard
     workerService.targetTaskId = task.task_id;
 
     // Haptic feedback on button press
-    triggerHapticImpact('medium', 'Medium');
+    triggerHapticImpact('medium');
 
     setIsRunning(true);
     setProgress({

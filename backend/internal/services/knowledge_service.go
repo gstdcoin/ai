@@ -67,6 +67,7 @@ func (s *KnowledgeService) QueryKnowledgeWithGlobalGraph(ctx context.Context, to
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 	seen := make(map[string]bool)
 	var results []KnowledgeItem
 	for rows.Next() {
@@ -80,7 +81,6 @@ func (s *KnowledgeService) QueryKnowledgeWithGlobalGraph(ctx context.Context, to
 			results = append(results, item)
 		}
 	}
-	rows.Close()
 
 	// 2. Global Knowledge Graph (consolidated Leviathan experience) — prioritize for complex queries
 	globalLimit := limit / 2

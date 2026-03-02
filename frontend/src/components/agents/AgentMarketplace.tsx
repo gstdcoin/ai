@@ -168,6 +168,7 @@ export default function AgentMarketplace() {
 }
 
 function AgentCard({ agent, onRent, featured = false }: { agent: Agent, onRent: () => void, featured?: boolean }) {
+    const { t } = useTranslation('common');
     return (
         <div className={`group relative glass-card p-6 overflow-hidden transition-all duration-500 hover:border-violet-500/30 ${featured ? 'border-amber-500/20' : 'border-white/5'}`}>
             {/* Hover Shine */}

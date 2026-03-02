@@ -24,6 +24,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
     onComplete,
     walletAddress
 }) => {
+    const { t: tTrans } = useTranslation('common');
     const [currentStep, setCurrentStep] = useState(0);
     const [loading, setLoading] = useState(false);
     const [completed, setCompleted] = useState(false);
@@ -75,9 +76,8 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
         }
     };
 
-    const t = (key: string, params?: Record<string, string | number>) => {
-  const { t } = useTranslation('common');
-        let text = translations[language]?.[key] || translations.en[key] || key;
+    const tLocal = (key: string, defaultVal?: string, params?: Record<string, string | number>) => {
+        let text = translations[language]?.[key] || translations.en[key] || defaultVal || key;
         if (params) {
             Object.entries(params).forEach(([k, v]) => {
                 text = text.replace(`{${k}}`, String(v));
@@ -89,37 +89,37 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
     const steps: OnboardingStep[] = [
         {
             order: 1,
-            title: t('welcome', 'Welcome'),
-            description: t('welcomeDesc', 'Welcome to the GSTD platform'),
+            title: tLocal('welcome', 'Welcome'),
+            description: tLocal('welcomeDesc', 'Welcome to the GSTD platform'),
             action: 'welcome',
             helpText: 'No technical knowledge required. We\'ll guide you.',
             skippable: false,
         },
         {
             order: 2,
-            title: t('connectWallet', 'Connect Wallet'),
-            description: t('connectWalletDesc', 'Connect your TON wallet to get started'),
+            title: tLocal('connectWallet', 'Connect Wallet'),
+            description: tLocal('connectWalletDesc', 'Connect your TON wallet to get started'),
             action: 'connect_wallet',
             skippable: false,
         },
         {
             order: 3,
-            title: t('claimBonus', 'Claim Bonus'),
-            description: t('claimBonusDesc', { amount: welcomeBonus || 1.0 }),
+            title: tLocal('claimBonus', 'Claim Bonus'),
+            description: tLocal('claimBonusDesc', 'You received {amount} GSTD!', { amount: welcomeBonus || 1.0 }),
             action: 'claim_welcome',
             skippable: false,
         },
         {
             order: 4,
-            title: t('tryAI', 'Try AI'),
-            description: t('tryAIDesc', 'Chat with sovereign AI for free'),
+            title: tLocal('tryAI', 'Try AI'),
+            description: tLocal('tryAIDesc', 'Chat with sovereign AI for free'),
             action: 'first_task',
             skippable: true,
         },
         {
             order: 5,
-            title: t('allSet', 'All Set!'),
-            description: t('allSetDesc', 'You\'re ready to use GSTD'),
+            title: tLocal('allSet', 'All Set!'),
+            description: tLocal('allSetDesc', 'You\'re ready to use GSTD'),
             action: 'complete',
             skippable: false,
         },
@@ -170,13 +170,13 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
             <div className="fixed inset-0 bg-gradient-to-br from-purple-900/95 to-black/95 flex items-center justify-center z-50">
                 <div className="text-center max-w-md px-6">
                     <div className="text-6xl mb-6">🎉</div>
-                    <h1 className="text-3xl font-bold text-white mb-4">{t('allSet', 'All Set!')}</h1>
-                    <p className="text-gray-300 mb-8">{t('allSetDesc', 'You\'re ready to use GSTD')}</p>
+                    <h1 className="text-3xl font-bold text-white mb-4">{tLocal('allSet', 'All Set!')}</h1>
+                    <p className="text-gray-300 mb-8">{tLocal('allSetDesc', 'You\'re ready to use GSTD')}</p>
                     <button
                         onClick={onComplete}
                         className="px-8 py-4 bg-gradient-to-r from-yellow-400 to-orange-500 text-black font-bold rounded-xl hover:scale-105 transition-transform"
                     >
-                        {t('finish', 'Finish')}
+                        {tLocal('finish', 'Finish')}
                     </button>
                 </div>
             </div>
@@ -222,7 +222,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                             onClick={handleSkip}
                             className="flex-1 py-3 text-gray-400 hover:text-white transition-colors"
                         >
-                            {t('skip', 'Skip')}
+                            {tLocal('skip', 'Skip')}
                         </button>
                     )}
                     <button
@@ -233,7 +233,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
               disabled:opacity-50 disabled:cursor-not-allowed
               ${!currentStepData.skippable ? 'w-full' : ''}`}
                     >
-                        {loading ? t('loading', 'Loading...') : (currentStep === steps.length - 1 ? t('finish', 'Finish') : t('next', 'Next'))}
+                        {loading ? tLocal('loading', 'Loading...') : (currentStep === steps.length - 1 ? tLocal('finish', 'Finish') : tLocal('next', 'Next'))}
                     </button>
                 </div>
 
@@ -243,10 +243,10 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                         <div
                             key={index}
                             className={`w-2 h-2 rounded-full transition-colors ${index === currentStep
-                                    ? 'bg-yellow-400'
-                                    : index < currentStep
-                                        ? 'bg-green-500'
-                                        : 'bg-white/20'
+                                ? 'bg-yellow-400'
+                                : index < currentStep
+                                    ? 'bg-green-500'
+                                    : 'bg-white/20'
                                 }`}
                         />
                     ))}

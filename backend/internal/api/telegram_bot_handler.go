@@ -279,6 +279,10 @@ func (h *TelegramBotHandler) ClaimTask(c *gin.Context) {
 
 // AIChat handles AI chat requests from Telegram bot.
 // POST /api/v1/telegram/bot/ai
+//
+// Two tiers — free is ALWAYS available:
+// - Free: basic model + Collective Memory (shared context), unlimited
+// - Pro:  best models + Cocoon (learns per-user), 0.1 GSTD per request (auto if balance > 0)
 func (h *TelegramBotHandler) AIChat(c *gin.Context) {
 	if h == nil || h.db == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "service_unavailable"})
@@ -298,33 +302,210 @@ func (h *TelegramBotHandler) AIChat(c *gin.Context) {
 		return
 	}
 
-	// Resolve wallet for the telegram user
-	var wallet string
-	err := h.db.QueryRowContext(c.Request.Context(), `
-		SELECT wallet_address FROM telegram_users WHERE telegram_id = $1 AND wallet_address IS NOT NULL
-	`, req.TelegramID).Scan(&wallet)
+	const costPerRequest = 0.1 // GSTD per Pro request
 
-	// If not linked, use a temporary tg-{id} wallet
-	if err != nil || wallet == "" {
+	// Resolve wallet: linked or temp
+	var linkedWallet string
+	_ = h.db.QueryRowContext(c.Request.Context(), `
+		SELECT wallet_address FROM telegram_users WHERE telegram_id = $1 AND wallet_address IS NOT NULL
+	`, req.TelegramID).Scan(&linkedWallet)
+
+	wallet := linkedWallet
+	if wallet == "" {
 		wallet = fmt.Sprintf("tg-%d", req.TelegramID)
 	}
 
-	// Prepare virtual context for GatewayHandler
+	// Ensure user row exists
+	_, _ = h.db.ExecContext(c.Request.Context(), `
+		INSERT INTO users (wallet_address, balance, gstd_balance, created_at, updated_at)
+		VALUES ($1, 0, 0, NOW(), NOW())
+		ON CONFLICT (wallet_address) DO NOTHING
+	`, wallet)
+
+	// Get GSTD balance
+	var balance float64
+	_ = h.db.QueryRowContext(c.Request.Context(), `
+		SELECT COALESCE(gstd_balance, 0) + COALESCE(balance, 0) FROM users WHERE wallet_address = $1
+	`, wallet).Scan(&balance)
+
+	// Auto-select tier: if user has GSTD → Pro, else → Free (always works)
+	tier := "free"
+	model := "omega-auto" // Free: basic model + Collective Memory
+
+	if balance >= costPerRequest {
+		// ⚡ Pro: best models + Cocoon (learns from interactions)
+		tier = "pro"
+		model = "omega-pro"
+
+		// Commission split: 10% → Gold Reserve, 5% → Burn, 85% → operating
+		goldFee := costPerRequest * 0.10 // 10% gold reserve
+		burnFee := costPerRequest * 0.05 // 5% deflationary burn
+
+		_, _ = h.db.ExecContext(c.Request.Context(), `
+			UPDATE users SET
+				gstd_balance = GREATEST(COALESCE(gstd_balance, 0) - $1, 0),
+				ai_requests_count = COALESCE(ai_requests_count, 0) + 1,
+				cocoon_interactions = COALESCE(cocoon_interactions, 0) + 1,
+				updated_at = NOW()
+			WHERE wallet_address = $2
+		`, costPerRequest, wallet)
+
+		// Route commission to Gold Reserve
+		_, _ = h.db.ExecContext(c.Request.Context(), `
+			INSERT INTO platform_funds (fund_type, balance_gstd) VALUES ('gold_reserve', $1)
+			ON CONFLICT (fund_type) DO UPDATE SET balance_gstd = platform_funds.balance_gstd + $1
+		`, goldFee)
+		// Record gold reserve transaction
+		_, _ = h.db.ExecContext(c.Request.Context(), `
+			INSERT INTO platform_fund_transactions (fund_type, amount_gstd, tx_type, from_address, description)
+			VALUES ('gold_reserve', $1, 'deposit', $2, 'AI Pro commission 10%')
+		`, goldFee, wallet)
+
+		// Burn 5% (reduce total supply tracking)
+		_, _ = h.db.ExecContext(c.Request.Context(), `
+			INSERT INTO platform_funds (fund_type, balance_gstd) VALUES ('burn_fund', $1)
+			ON CONFLICT (fund_type) DO UPDATE SET balance_gstd = platform_funds.balance_gstd + $1
+		`, burnFee)
+		_, _ = h.db.ExecContext(c.Request.Context(), `
+			INSERT INTO platform_fund_transactions (fund_type, amount_gstd, tx_type, from_address, description)
+			VALUES ('burn_fund', $1, 'deposit', $2, 'AI Pro burn 5%')
+		`, burnFee, wallet)
+
+		balance -= costPerRequest
+	} else {
+		// 🆓 Free: basic model + Collective Memory (always available)
+		_, _ = h.db.ExecContext(c.Request.Context(), `
+			UPDATE users SET
+				ai_requests_count = COALESCE(ai_requests_count, 0) + 1,
+				updated_at = NOW()
+			WHERE wallet_address = $1
+		`, wallet)
+	}
+
+	// Cocoon context: how many interactions this user has (Pro users get smarter responses)
+	var cocoonLevel int
+	_ = h.db.QueryRowContext(c.Request.Context(), `
+		SELECT COALESCE(cocoon_interactions, 0) FROM users WHERE wallet_address = $1
+	`, wallet).Scan(&cocoonLevel)
+
+	// Prepare request for GatewayHandler
 	c.Set("wallet_address", wallet)
 
-	// Mock request body for GatewayHandler
+	// Build system prompt based on tier
+	systemPrompt := "You are GSTD Swarm AI. Answer concisely and helpfully. You have access to Collective Memory — shared knowledge from all users."
+	if tier == "pro" && cocoonLevel > 0 {
+		systemPrompt = fmt.Sprintf(
+			"You are GSTD Swarm AI in Cocoon Pro mode. This user has %d prior interactions — adapt to their style and interests. "+
+				"Use advanced reasoning, extended context, and deep analysis. You learn from each conversation to become smarter. "+
+				"Access: Collective Memory + personal Cocoon memory.",
+			cocoonLevel)
+	}
+
 	chatReq := map[string]interface{}{
-		"model": "omega-auto",
+		"model": model,
 		"messages": []map[string]string{
+			{"role": "system", "content": systemPrompt},
 			{"role": "user", "content": req.Text},
 		},
 	}
 	jsonBody, _ := json.Marshal(chatReq)
 	c.Request.Body = io.NopCloser(bytes.NewBuffer(jsonBody))
 	c.Request.Header.Set("Content-Type", "application/json")
+	// Mark as prepaid so Gateway doesn't double-deduct
+	c.Request.Header.Set("X-GSTD-Prepaid", "true")
 
-	// Call GatewayHandler.HandleChatCompletions
+	// Response headers for the bot to render footer
+	c.Header("X-GSTD-Tier", tier)
+	c.Header("X-GSTD-Balance", fmt.Sprintf("%.2f", balance))
+	c.Header("X-GSTD-Cocoon", fmt.Sprintf("%d", cocoonLevel))
+
 	h.gateway.HandleChatCompletions(c)
+}
+
+// ClaimReward claims pending mining rewards into available balance
+// POST /api/v1/telegram/bot/claim_reward
+func (h *TelegramBotHandler) ClaimReward(c *gin.Context) {
+	if h == nil || h.db == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "service_unavailable"})
+		return
+	}
+	var req struct {
+		TelegramID int64 `json:"telegram_id" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Find wallet (linked or tg-{id})
+	var wallet string
+	_ = h.db.QueryRowContext(c.Request.Context(), `
+		SELECT wallet_address FROM telegram_users WHERE telegram_id = $1 AND wallet_address IS NOT NULL
+	`, req.TelegramID).Scan(&wallet)
+	if wallet == "" {
+		wallet = fmt.Sprintf("tg-%d", req.TelegramID)
+	}
+
+	// Check pending balance
+	var pending float64
+	err := h.db.QueryRowContext(c.Request.Context(), `
+		SELECT COALESCE(pending_balance_gstd, 0) FROM users WHERE wallet_address = $1
+	`, wallet).Scan(&pending)
+	if err != nil || pending < 0.01 {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"claimed": 0,
+			"message": "no_pending_rewards",
+		})
+		return
+	}
+
+	// Commission on claim: 10% → Gold Reserve, 5% → Burn
+	goldFee := pending * 0.10
+	burnFee := pending * 0.05
+	net := pending - goldFee - burnFee // 85% to user
+
+	// Move pending → available (net after commission)
+	_, err = h.db.ExecContext(c.Request.Context(), `
+		UPDATE users SET
+			pending_balance_gstd = 0,
+			gstd_balance = COALESCE(gstd_balance, 0) + $1,
+			updated_at = NOW()
+		WHERE wallet_address = $2
+	`, net, wallet)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "claim_failed"})
+		return
+	}
+
+	// Route commission
+	_, _ = h.db.ExecContext(c.Request.Context(), `
+		INSERT INTO platform_funds (fund_type, balance_gstd) VALUES ('gold_reserve', $1)
+		ON CONFLICT (fund_type) DO UPDATE SET balance_gstd = platform_funds.balance_gstd + $1
+	`, goldFee)
+	_, _ = h.db.ExecContext(c.Request.Context(), `
+		INSERT INTO platform_fund_transactions (fund_type, amount_gstd, tx_type, from_address, description)
+		VALUES ('gold_reserve', $1, 'deposit', $2, 'Claim commission 10%')
+	`, goldFee, wallet)
+	_, _ = h.db.ExecContext(c.Request.Context(), `
+		INSERT INTO platform_funds (fund_type, balance_gstd) VALUES ('burn_fund', $1)
+		ON CONFLICT (fund_type) DO UPDATE SET balance_gstd = platform_funds.balance_gstd + $1
+	`, burnFee)
+	_, _ = h.db.ExecContext(c.Request.Context(), `
+		INSERT INTO platform_fund_transactions (fund_type, amount_gstd, tx_type, from_address, description)
+		VALUES ('burn_fund', $1, 'deposit', $2, 'Claim burn 5%')
+	`, burnFee, wallet)
+
+	log.Printf("[Claim] %s: %.4f pending → %.4f net (gold=%.4f, burn=%.4f)", wallet, pending, net, goldFee, burnFee)
+
+	c.JSON(http.StatusOK, gin.H{
+		"success":       true,
+		"claimed_gross": pending,
+		"commission":    goldFee + burnFee,
+		"claimed_net":   net,
+		"gold_reserve":  goldFee,
+		"burned":        burnFee,
+	})
 }
 
 // CompleteTask completes a marketplace task

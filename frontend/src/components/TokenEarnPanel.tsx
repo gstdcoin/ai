@@ -18,11 +18,11 @@ interface TokenEarnPanelProps {
 }
 
 export const TokenEarnPanel: React.FC<TokenEarnPanelProps> = ({
-  const { t } = useTranslation('common');
     walletAddress,
     language = 'en',
     onClaimSuccess
 }) => {
+    const { t } = useTranslation('common');
     const [loading, setLoading] = useState<string | null>(null);
     const [claimedToday, setClaimedToday] = useState(false);
     const [welcomeClaimed, setWelcomeClaimed] = useState(false);
