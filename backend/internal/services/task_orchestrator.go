@@ -581,7 +581,7 @@ func (o *TaskOrchestrator) monitorAssignedTasks(ctx context.Context) {
 					o.RetryTask(ctx, taskID, "worker_offline")
 				}
 			}
-			rows.Close()
+			rows.Close() // intentional: new query follows in next tick
 		}
 	}
 }
@@ -714,7 +714,7 @@ func (o *TaskOrchestrator) refreshQueue(ctx context.Context) {
 					o.EnqueueTask(ctx, task)
 				}
 			}
-			rows.Close()
+			rows.Close() // intentional: next tick opens new rows
 		}
 	}
 }
@@ -751,7 +751,7 @@ func (o *TaskOrchestrator) monitorWorkerCapacity(ctx context.Context) {
 					newCapacity[wallet] = count
 				}
 			}
-			rows.Close()
+			rows.Close() // intentional: next tick opens new rows
 
 			o.mutex.Lock()
 			o.workerCapacity = newCapacity

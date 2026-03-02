@@ -19,36 +19,37 @@ import (
 // This enables running a 70B model on nodes with only 8GB VRAM each.
 //
 // Architecture:
-//   70B model (140GB FP16) → 40 layers
-//   8GB VRAM per node → ~3-4 layers per node
-//   Minimum 10-12 nodes for full 70B pipeline
+//
+//	70B model (140GB FP16) → 40 layers
+//	8GB VRAM per node → ~3-4 layers per node
+//	Minimum 10-12 nodes for full 70B pipeline
 //
 // Flow:
-//   1. User sends prompt
-//   2. Coordinator finds available pipeline route (nodes holding consecutive layers)
-//   3. Prompt is tokenized and embeddings computed on first node
-//   4. Hidden states flow through pipeline: Node1(layers 0-3) → Node2(layers 4-7) → ...
-//   5. Final node generates output tokens
-//   6. Tokens streamed back to user
+//  1. User sends prompt
+//  2. Coordinator finds available pipeline route (nodes holding consecutive layers)
+//  3. Prompt is tokenized and embeddings computed on first node
+//  4. Hidden states flow through pipeline: Node1(layers 0-3) → Node2(layers 4-7) → ...
+//  5. Final node generates output tokens
+//  6. Tokens streamed back to user
 type PipelineParallelismService struct {
-	db          *sql.DB
-	redis       *redis.Client
-	mu          sync.RWMutex
-	pipelines   map[string]*Pipeline // Active pipeline sessions
-	layerMap    map[string][]int     // nodeID → assigned layers
-	nodeHealth  map[string]time.Time // nodeID → last heartbeat
+	db         *sql.DB
+	redis      *redis.Client
+	mu         sync.RWMutex
+	pipelines  map[string]*Pipeline // Active pipeline sessions
+	layerMap   map[string][]int     // nodeID → assigned layers
+	nodeHealth map[string]time.Time // nodeID → last heartbeat
 }
 
 // Pipeline represents an active inference pipeline across nodes
 type Pipeline struct {
-	ID            string    `json:"id"`
-	ModelName     string    `json:"model_name"`
-	TotalLayers   int       `json:"total_layers"`
-	NodesInvolved []string  `json:"nodes_involved"`
+	ID            string       `json:"id"`
+	ModelName     string       `json:"model_name"`
+	TotalLayers   int          `json:"total_layers"`
+	NodesInvolved []string     `json:"nodes_involved"`
 	LayerRanges   []LayerRange `json:"layer_ranges"`
-	Status        string    `json:"status"` // assembling, ready, running, completed, failed
-	CreatedAt     time.Time `json:"created_at"`
-	Redundancy    int       `json:"redundancy"` // How many backup paths exist
+	Status        string       `json:"status"` // assembling, ready, running, completed, failed
+	CreatedAt     time.Time    `json:"created_at"`
+	Redundancy    int          `json:"redundancy"` // How many backup paths exist
 }
 
 // LayerRange defines which layers a node handles
@@ -62,27 +63,27 @@ type LayerRange struct {
 
 // ModelSpec describes a model's pipeline requirements
 type ModelSpec struct {
-	Name         string  `json:"name"`
-	TotalLayers  int     `json:"total_layers"`
-	LayerSizeMB  float64 `json:"layer_size_mb"`  // Size per layer in VRAM
-	EmbedSizeMB  float64 `json:"embed_size_mb"`  // Embedding layer size
+	Name              string  `json:"name"`
+	TotalLayers       int     `json:"total_layers"`
+	LayerSizeMB       float64 `json:"layer_size_mb"` // Size per layer in VRAM
+	EmbedSizeMB       float64 `json:"embed_size_mb"` // Embedding layer size
 	KVCacheMBPerToken float64 `json:"kv_cache_mb_per_token"`
-	MinVRAMPerNode int  `json:"min_vram_per_node_mb"`
+	MinVRAMPerNode    int     `json:"min_vram_per_node_mb"`
 }
 
 // PipelineNode represents a worker node's capabilities for pipeline inference
 type PipelineNode struct {
-	NodeID        string    `json:"node_id"`
-	WalletAddr    string    `json:"wallet_address"`
-	VRAM_MB       int       `json:"vram_mb"`
-	RAM_MB        int       `json:"ram_mb"`
-	GPUModel      string    `json:"gpu_model"`
-	Bandwidth_Mbps int      `json:"bandwidth_mbps"`
-	AssignedLayers []int   `json:"assigned_layers"`
-	IsOnline      bool      `json:"is_online"`
-	LastSeen      time.Time `json:"last_seen"`
-	Region        string    `json:"region"` // For geo-aware routing
-	EndpointURL   string    `json:"endpoint_url"` // Clean Core: HTTP endpoint for proxied inference
+	NodeID         string    `json:"node_id"`
+	WalletAddr     string    `json:"wallet_address"`
+	VRAM_MB        int       `json:"vram_mb"`
+	RAM_MB         int       `json:"ram_mb"`
+	GPUModel       string    `json:"gpu_model"`
+	Bandwidth_Mbps int       `json:"bandwidth_mbps"`
+	AssignedLayers []int     `json:"assigned_layers"`
+	IsOnline       bool      `json:"is_online"`
+	LastSeen       time.Time `json:"last_seen"`
+	Region         string    `json:"region"`       // For geo-aware routing
+	EndpointURL    string    `json:"endpoint_url"` // Clean Core: HTTP endpoint for proxied inference
 }
 
 // Known model specifications
@@ -208,8 +209,8 @@ func (s *PipelineParallelismService) AssemblePipeline(ctx context.Context, model
 
 	// 2. Calculate how many layers each node can hold
 	type nodeAlloc struct {
-		node       PipelineNode
-		maxLayers  int
+		node      PipelineNode
+		maxLayers int
 	}
 
 	var allocations []nodeAlloc
@@ -314,32 +315,32 @@ func (s *PipelineParallelismService) GetPipelineStatus(ctx context.Context) (map
 			SELECT vram_mb FROM pipeline_nodes WHERE is_online = true AND vram_mb >= $1
 		`, spec.MinVRAMPerNode)
 		if rows != nil {
+			defer rows.Close()
 			for rows.Next() {
 				var vram int
 				rows.Scan(&vram)
 				availableVRAM := float64(vram - 512)
 				totalLayersAvailable += int(math.Floor(availableVRAM / spec.LayerSizeMB))
 			}
-			rows.Close()
 		}
 
 		canRun := totalLayersAvailable >= spec.TotalLayers
 		supportedModels = append(supportedModels, map[string]interface{}{
-			"model":           name,
-			"total_layers":    spec.TotalLayers,
+			"model":            name,
+			"total_layers":     spec.TotalLayers,
 			"layers_available": totalLayersAvailable,
-			"can_run":         canRun,
-			"coverage":        fmt.Sprintf("%.0f%%", math.Min(float64(totalLayersAvailable)/float64(spec.TotalLayers)*100, 100)),
+			"can_run":          canRun,
+			"coverage":         fmt.Sprintf("%.0f%%", math.Min(float64(totalLayersAvailable)/float64(spec.TotalLayers)*100, 100)),
 		})
 	}
 
 	return map[string]interface{}{
-		"total_nodes":        totalNodes,
-		"online_nodes":       onlineNodes,
-		"total_vram_gb":      float64(totalVRAM) / 1024,
-		"active_sessions":    activeSessions,
-		"supported_models":   supportedModels,
-		"pipeline_ready":     onlineNodes >= 2,
+		"total_nodes":      totalNodes,
+		"online_nodes":     onlineNodes,
+		"total_vram_gb":    float64(totalVRAM) / 1024,
+		"active_sessions":  activeSessions,
+		"supported_models": supportedModels,
+		"pipeline_ready":   onlineNodes >= 2,
 	}, nil
 }
 
@@ -374,7 +375,7 @@ const RedundancyFactor = 3
 // LayerReplica tracks which nodes hold copies of specific layers
 type LayerReplica struct {
 	LayerIndex int      `json:"layer_index"`
-	NodeIDs    []string `json:"node_ids"` // Nodes holding this layer (target: 3)
+	NodeIDs    []string `json:"node_ids"`    // Nodes holding this layer (target: 3)
 	IsCritical bool     `json:"is_critical"` // true if below redundancy threshold
 }
 
@@ -451,9 +452,9 @@ func (s *PipelineParallelismService) repairLayers(ctx context.Context, criticalL
 	defer rows.Close()
 
 	type spareNode struct {
-		nodeID  string
-		vramMB  int
-		layers  []int
+		nodeID    string
+		vramMB    int
+		layers    []int
 		spareVRAM int
 	}
 

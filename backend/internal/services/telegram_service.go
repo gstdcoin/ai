@@ -24,13 +24,19 @@ type GSTDPriceProvider interface {
 }
 
 type TelegramService struct {
-	botToken   string
-	chatID     string
-	db         *sql.DB
-	client     *http.Client
-	enabled    bool
-	apiBaseURL string
-	gstdPrice  GSTDPriceProvider
+	botToken    string
+	chatID      string
+	db          *sql.DB
+	client      *http.Client
+	enabled     bool
+	apiBaseURL  string
+	gstdPrice   GSTDPriceProvider
+	smartRouter *SmartRouter
+}
+
+// SetSmartRouter wires the Omega SmartRouter for inline query AI.
+func (s *TelegramService) SetSmartRouter(r *SmartRouter) {
+	s.smartRouter = r
 }
 
 // NewTelegramService initializes the Telegram service.
@@ -117,7 +123,7 @@ func (s *TelegramService) getBotAPIToken() string {
 
 // callBotAPI relays /connect, /take, /complete, balance, nodes to internal bot API (for webhook mode).
 // Returns (response, nil) on success, ("", err) on error, ("", nil) when not a bot command.
-func (s *TelegramService) callBotAPI(ctx context.Context, text, senderIDStr, username, firstName, chatID string) (string, error) {
+func (s *TelegramService) callBotAPI(ctx context.Context, text, senderIDStr, username, firstName, chatID, lang string) (string, error) {
 	base := strings.TrimSuffix(s.apiBaseURL, "/")
 	token := s.getBotAPIToken()
 	if token == "" {
@@ -247,9 +253,9 @@ func (s *TelegramService) callBotAPI(ctx context.Context, text, senderIDStr, use
 
 	// 💎 Balance (button or command)
 	if text == "💎 Balance" || text == "💎 My Balance" || text == "💎 Баланс" || (text == "/balance" && s.chatID != "" && senderIDStr != s.chatID) {
-		req, _ := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/api/v1/telegram/bot/balance?telegram_id=%s", base, senderIDStr), nil)
-		req.Header.Set("X-Bot-Token", token)
-		resp, err := s.client.Do(req)
+		balReq, _ := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/api/v1/telegram/bot/balance?telegram_id=%s", base, senderIDStr), nil)
+		balReq.Header.Set("X-Bot-Token", token)
+		resp, err := s.client.Do(balReq)
 		if err != nil {
 			return "", err
 		}
@@ -262,17 +268,70 @@ func (s *TelegramService) callBotAPI(ctx context.Context, text, senderIDStr, use
 		if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
 			return "", err
 		}
-		if !r.Linked {
-			return "💎 **My Balance**\n\n⚠️ Wallet not linked.\n\nUse /connect <wallet_address> to link your TON wallet.", nil
-		}
+
+		proReqs := int(r.BalanceGSTD / 0.1)
 		gstdPriceUSD := 0.02
 		if s.gstdPrice != nil {
 			if p, err := s.gstdPrice.GetGSTDPriceUSD(ctx); err == nil && p > 0 {
 				gstdPriceUSD = p
 			}
 		}
-		usd := (r.BalanceGSTD + r.PendingGSTD) * gstdPriceUSD
-		return fmt.Sprintf("💎 **My Balance**\n\n**%.4f GSTD** (available)\n**%.4f GSTD** (pending)\n\n≈ $%.2f USD", r.BalanceGSTD, r.PendingGSTD, usd), nil
+		usd := r.BalanceGSTD * gstdPriceUSD
+
+		// Get cocoon level
+		var cocoonLvl int
+		if s.db != nil {
+			tgWallet := fmt.Sprintf("tg-%s", senderIDStr)
+			_ = s.db.QueryRowContext(ctx, `SELECT COALESCE(cocoon_interactions, 0) FROM users WHERE wallet_address = $1`, tgWallet).Scan(&cocoonLvl)
+		}
+
+		var msg string
+		if lang == "ru" {
+			msg = fmt.Sprintf("💎 <b>Мой Баланс</b>\n\n"+
+				"💰 <b>%.4f GSTD</b> ≈ $%.2f\n"+
+				"⚡ Pro запросов: <b>%d</b>\n",
+				r.BalanceGSTD, usd, proReqs)
+			if cocoonLvl > 0 {
+				msg += fmt.Sprintf("🧠 Cocoon уровень: <b>%d</b>\n", cocoonLvl)
+			}
+			if r.PendingGSTD > 0 {
+				net := r.PendingGSTD * 0.85
+				msg += fmt.Sprintf("\n⏳ <b>Награда за майнинг: %.4f GSTD</b>\n", r.PendingGSTD)
+				msg += fmt.Sprintf("   └ После комиссии: <b>%.4f GSTD</b>\n", net)
+				msg += "   └ 10% → Золотой Резерв, 5% → Сжигание\n"
+			}
+			msg += "\n<i>🆓 Бесплатная модель доступна всегда\n"
+			msg += "⚡ Pro = 0.1 GSTD/запрос ($0.005)</i>"
+		} else {
+			msg = fmt.Sprintf("💎 <b>My Balance</b>\n\n"+
+				"💰 <b>%.4f GSTD</b> ≈ $%.2f\n"+
+				"⚡ Pro requests: <b>%d</b>\n",
+				r.BalanceGSTD, usd, proReqs)
+			if cocoonLvl > 0 {
+				msg += fmt.Sprintf("🧠 Cocoon level: <b>%d</b>\n", cocoonLvl)
+			}
+			if r.PendingGSTD > 0 {
+				net := r.PendingGSTD * 0.85
+				msg += fmt.Sprintf("\n⏳ <b>Mining reward: %.4f GSTD</b>\n", r.PendingGSTD)
+				msg += fmt.Sprintf("   └ After commission: <b>%.4f GSTD</b>\n", net)
+				msg += "   └ 10% → Gold Reserve, 5% → Burn\n"
+			}
+			msg += "\n<i>🆓 Free model always available\n"
+			msg += "⚡ Pro = 0.1 GSTD/request ($0.005)</i>"
+		}
+
+		// If pending > 0, show Claim button
+		if r.PendingGSTD >= 0.01 {
+			btnText := "🎁 Claim Reward"
+			if lang == "ru" {
+				btnText = "🎁 Забрать награду"
+			}
+			markup := fmt.Sprintf(`{"inline_keyboard":[[{"text":"%s","callback_data":"claim_reward"}]]}`, btnText)
+			_ = s.SendMessageToChatWithMarkup(ctx, chatID, msg, markup)
+			return "", nil
+		}
+
+		return msg, nil
 	}
 
 	// 🚀 Nodes (button or command)
@@ -302,16 +361,16 @@ func (s *TelegramService) callBotAPI(ctx context.Context, text, senderIDStr, use
 		return sb.String(), nil
 	}
 
-	// 🤖 AI Chat (fallback for non-command text)
+	// 🤖 AI Chat (fallback for non-command text) — always available
 	if text != "" && !strings.HasPrefix(text, "/") {
 		body, _ := json.Marshal(map[string]interface{}{
 			"telegram_id": telegramID,
 			"text":        text,
 		})
-		req, _ := http.NewRequestWithContext(ctx, "POST", base+"/api/v1/telegram/bot/ai", strings.NewReader(string(body)))
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("X-Bot-Token", token)
-		resp, err := s.client.Do(req)
+		aiReq, _ := http.NewRequestWithContext(ctx, "POST", base+"/api/v1/telegram/bot/ai", strings.NewReader(string(body)))
+		aiReq.Header.Set("Content-Type", "application/json")
+		aiReq.Header.Set("X-Bot-Token", token)
+		resp, err := s.client.Do(aiReq)
 		if err != nil {
 			return "", err
 		}
@@ -326,10 +385,65 @@ func (s *TelegramService) callBotAPI(ctx context.Context, text, senderIDStr, use
 				} `json:"choices"`
 			}
 			if err := json.NewDecoder(resp.Body).Decode(&r); err == nil && len(r.Choices) > 0 {
-				return r.Choices[0].Message.Content, nil
+				aiResponse := r.Choices[0].Message.Content
+
+				// Build tier footer
+				tier := resp.Header.Get("X-GSTD-Tier")
+				balanceStr := resp.Header.Get("X-GSTD-Balance")
+				cocoonStr := resp.Header.Get("X-GSTD-Cocoon")
+
+				footer := "\n\n━━━━━━━━━━━\n"
+				if tier == "pro" {
+					if lang == "ru" {
+						footer += fmt.Sprintf("⚡ Cocoon Pro · Ур.%s · %s GSTD", cocoonStr, balanceStr)
+					} else {
+						footer += fmt.Sprintf("⚡ Cocoon Pro · Lvl %s · %s GSTD", cocoonStr, balanceStr)
+					}
+				} else {
+					if lang == "ru" {
+						footer += "🆓 Коллективная Память"
+					} else {
+						footer += "🆓 Collective Memory"
+					}
+				}
+
+				aiResponse += footer
+
+				// Every 10th free request — subtle Pro upgrade hint
+				if tier == "free" {
+					var totalReqs int
+					if s.db != nil {
+						tgWallet := fmt.Sprintf("tg-%s", senderIDStr)
+						_ = s.db.QueryRowContext(ctx, `
+							SELECT COALESCE(ai_requests_count, 0) FROM users WHERE wallet_address = $1
+						`, tgWallet).Scan(&totalReqs)
+					}
+					if totalReqs > 0 && totalReqs%10 == 0 {
+						webAppURL := os.Getenv("APP_PUBLIC_URL")
+						if webAppURL == "" {
+							webAppURL = "https://app.gstdtoken.com"
+						}
+
+						var hintMsg string
+						if lang == "ru" {
+							hintMsg = "\n\n💡 <i>Попробуй</i> <b>⚡ Pro</b> <i>— Cocoon учится и становится умнее с каждым запросом. 10⭐ = 100 Pro запросов.</i>"
+						} else {
+							hintMsg = "\n\n💡 <i>Try</i> <b>⚡ Pro</b> <i>— Cocoon learns and gets smarter with each request. 10⭐ = 100 Pro requests.</i>"
+						}
+
+						btnText := "⚡ Unlock Pro"
+						if lang == "ru" {
+							btnText = "⚡ Включить Pro"
+						}
+
+						markup := fmt.Sprintf(`{"inline_keyboard":[[{"text":"%s","callback_data":"public_buy_stars"}]]}`, btnText)
+						_ = s.SendMessageToChatWithMarkup(ctx, chatID, aiResponse+hintMsg, markup)
+						return "", nil
+					}
+				}
+
+				return aiResponse, nil
 			}
-		} else if resp.StatusCode == 402 {
-			return "⚠️ **Insufficient GSTD**\n\nTop up your balance or run a worker to earn GSTD for expanded AI conversations.", nil
 		}
 	}
 
@@ -428,6 +542,20 @@ type telegramUpdate struct {
 		TotalAmount    int    `json:"total_amount"`
 		InvoicePayload string `json:"invoice_payload"`
 	} `json:"pre_checkout_query"`
+	InlineQuery *telegramInlineQuery `json:"inline_query"`
+}
+
+// telegramInlineQuery represents a Telegram inline query.
+type telegramInlineQuery struct {
+	ID   string `json:"id"`
+	From *struct {
+		ID           int64  `json:"id"`
+		FirstName    string `json:"first_name"`
+		Username     string `json:"username"`
+		LanguageCode string `json:"language_code"`
+	} `json:"from"`
+	Query  string `json:"query"`
+	Offset string `json:"offset"`
 }
 
 func botLang(langCode string) string {
@@ -440,102 +568,128 @@ func botLang(langCode string) string {
 // --- Messages Configuration ---
 
 var msgStart = map[string]string{
-	"en": `🌍 <b>GSTD — Sovereign Intelligence</b>
+	"en": `🤖 <b>GSTD — Sovereign AI in Telegram</b>
 
-Welcome to the world's first <b>Gold-Backed Decentralized AI</b>.
+<b>Just write anything</b> — I answer right away. Always free.
 
-🧬 <b>What is GSTD?</b>
-A planetary computing organism that solves humanity's hardest problems — from drug discovery to climate modeling — powered by millions of devices like yours.
+🆓 <b>Free</b> — Collective Memory, basic model, unlimited
+⚡ <b>Pro</b> — Cocoon (learns your style), best models, Swarm analysis
 
-💰 <b>How it works:</b>
-• <b>Use AI</b> — Uncensored, sovereign chat. Pay with GSTD.
-• <b>Earn GSTD</b> — Turn your phone into a Neural Node.
-• <b>Sponsor Research</b> — Fund global signal analysis.
+<b>How to unlock Pro:</b>
+1. Tap <b>🔗 Link Wallet</b> — connect your TON wallet
+2. Top up GSTD — via ⭐️ Stars or earn in the Swarm
+3. Ask anything — Cocoon gets smarter with each request
 
-GSTD token is backed by <b>physical gold (XAUt)</b> on every transaction.
+💡 <b>10⭐ ($0.50) = 100 Pro requests</b>
+ChatGPT = $20/mo. GSTD Pro = <b>40× cheaper</b>.
 
-👇 <b>Choose an action to begin:</b>`,
-	"ru": `🌍 <b>GSTD — Суверенный Интеллект</b>
+👇 <b>Type your question or tap a button!</b>`,
+	"ru": `🤖 <b>GSTD — Суверенный ИИ в Telegram</b>
 
-Добро пожаловать в первый в мире <b>децентрализованный ИИ, обеспеченный золотом</b>.
+<b>Просто напиши что угодно</b> — я отвечу сразу. Всегда бесплатно.
 
-🧬 <b>Что такое GSTD?</b>
-Планетарный вычислительный организм, решающий сложнейшие проблемы человечества — от создания лекарств до моделирования климата — на миллионах устройств, таких как ваше.
+🆓 <b>Бесплатно</b> — Коллективная Память, базовая модель, без лимитов
+⚡ <b>Pro</b> — Cocoon (учится под тебя), лучшие модели, анализ через Рой
 
-💰 <b>Как это работает:</b>
-• <b>ИИ без цензуры</b> — Суверенный чат. Оплата в GSTD.
-• <b>Заработок GSTD</b> — Превратите телефон в Нейро-Узел.
-• <b>Спонсируйте науку</b> — Запускайте анализ глобальных данных.
+<b>Как открыть Pro:</b>
+1. Нажми <b>🔗 Привязать кошелёк</b> — подключи TON
+2. Пополни GSTD — через ⭐️ Stars или заработай в Рое
+3. Спрашивай что угодно — Cocoon умнеет с каждым запросом
 
-Токен GSTD обеспечен <b>физическим золотом (XAUt)</b> при каждой транзакции.
+💡 <b>10⭐ ($0.50) = 100 Pro запросов</b>
+ChatGPT = $20/мес. GSTD Pro = <b>в 40 раз дешевле</b>.
 
-👇 <b>Выберите действие:</b>`,
+👇 <b>Пиши вопрос или нажми кнопку!</b>`,
 }
 
 var msgWalletAsNode = map[string]string{
-	"en": `🧠 <b>Become a Neural Node</b>
+	"en": `🧠 <b>Earn GSTD — Become a Neural Node</b>
 
-Your TON wallet and device unite to become a brain cell of the Sovereign Organism.
+Your phone becomes a node of the decentralized supercomputer.
+You earn GSTD while the Swarm solves real global problems.
 
-<b>1.</b> Tap <b>Neural Node</b> below
-<b>2.</b> Connect your TON wallet in the Web App
-<b>3.</b> Process real global datasets and earn GSTD
+<b>How it works:</b>
+1. Tap <b>🧠 Earn GSTD</b> below — opens the dashboard
+2. Press <b>🔥 Ignite Node</b> — your phone starts computing
+3. GSTD is credited automatically — spend it on Pro AI
 
-<i>Help cure disease, model climate, and map the stars. Your phone, humanity's future.</i>`,
-	"ru": `🧠 <b>Стать Нейро-Узлом</b>
+💡 <b>No battery drain</b> — smart throttling protects your device
+💡 <b>Earn even while sleeping</b> — Wake Lock keeps it running
 
-Ваш TON-кошелёк и устройство становятся нейроном Суверенного Организма.
+<i>Every phone in the Swarm makes AI smarter for everyone.</i>`,
+	"ru": `🧠 <b>Заработай GSTD — Стань Нейро-Узлом</b>
 
-<b>1.</b> Нажмите <b>Нейро-Узел</b> ниже
-<b>2.</b> Подключите TON-кошелёк в Web App
-<b>3.</b> Обрабатывайте глобальные данные и зарабатывайте GSTD
+Твой телефон становится узлом децентрализованного суперкомпьютера.
+Ты зарабатываешь GSTD, пока Рой решает глобальные задачи.
 
-<i>Помогайте лечить болезни и моделировать климат. Ваш телефон — будущее человечества.</i>`,
+<b>Как это работает:</b>
+1. Нажми <b>🧠 Заработать</b> ниже — откроется панель
+2. Нажми <b>🔥 Включить Узел</b> — телефон начнёт считать
+3. GSTD начисляется автоматически — трать на Pro ИИ
+
+💡 <b>Батарея не садится</b> — умный троттлинг бережёт устройство
+💡 <b>Зарабатывай даже во сне</b> — Wake Lock не даёт уснуть
+
+<i>Каждый телефон в Рое делает ИИ умнее для всех.</i>`,
 }
 
 var msgHelp = map[string]string{
-	"en": `📖 <b>Complete Guide</b>
+	"en": `📖 <b>How It Works</b>
 
-<b>🖥 Platform Features:</b>
-• <b>📱 Open App</b> — Full dashboard with AI chat, tasks, and wallet
-• <b>🧠 Neural Node</b> — Earn GSTD by lending your device's compute power
-• <b>🌍 Monitor</b> — 16 live planetary signals awaiting Swarm analysis
-• <b>💬 Hive Mind</b> — Uncensored AI chat (OpenAI-compatible)
-• <b>🛒 Marketplace</b> — Buy/sell compute tasks
-• <b>🤖 Agent Node</b> — Advanced miner for PC/server
+<b>🆓 Free (always available):</b>
+• Basic AI model + Collective Memory
+• No limits, no wallet needed
+• Just type and get answers
 
-<b>💰 Economics:</b>
-• 85% of every payment → goes to compute workers
-• 10% → Gold Reserve (XAUt backing)
-• 5% → Deflationary burn (supply decreasing forever)
+<b>⚡ Cocoon Pro (GSTD):</b>
+• Best models — learn your style over time
+• Swarm-powered analysis + extended context
+• Cocoon gets smarter with each request
+• 0.1 GSTD per request ($0.005)
 
-<b>🔗 Useful Links:</b>
-• Website: app.gstdtoken.com
-• Monitor: monitor.gstdtoken.com
-• GitHub: github.com/gstdcoin
+<b>💰 How to get GSTD:</b>
+• <b>⭐ Stars</b> — 10⭐ ($0.50) = 100 Pro requests
+• <b>🧠 Swarm</b> — earn free GSTD by computing
+• <b>💱 STON.fi</b> — buy on DEX for TON
 
-<b>GSTD</b> — the lifeblood of the Sovereign Organism. Backed by gold.`,
-	"ru": `📖 <b>Полное руководство</b>
+<b>🔗 Wallet:</b>
+Tap <b>🔗 Link Wallet</b> to connect TON.
+Needed for: Pro tier, earning, withdrawals.
 
-<b>🖥 Возможности платформы:</b>
-• <b>📱 Приложение</b> — Полный пульт управления с ИИ-чатом и кошельком
-• <b>🧠 Нейро-Узел</b> — Зарабатывайте GSTD, предоставляя мощности устройства
-• <b>🌍 Монитор</b> — 16 планетарных сигналов, ждущих анализа Роя
-• <b>💬 Разум Роя</b> — ИИ-чат без цензуры (OpenAI-совместимый)
-• <b>🛒 Маркетплейс</b> — Покупка/продажа вычислительных задач
-• <b>🤖 Агент-Узел</b> — Продвинутый майнер для ПК/сервера
+<b>📊 Economics:</b>
+• 85% of payments → compute workers
+• 10% → Gold Reserve (XAUt)
+• 5% → Token burn (deflationary)
 
-<b>💰 Экономика:</b>
-• 85% каждого платежа → исполнителям задач
-• 10% → Золотой Резерв (обеспечение XAUt)
-• 5% → Дефляционное сжигание (предложение уменьшается навсегда)
+<i>GSTD — gold-backed AI fuel. Your phone = a supercomputer.</i>`,
+	"ru": `📖 <b>Как это работает</b>
 
-<b>🔗 Полезные ссылки:</b>
-• Сайт: app.gstdtoken.com
-• Монитор: monitor.gstdtoken.com
-• GitHub: github.com/gstdcoin
+<b>🆓 Бесплатно (всегда доступно):</b>
+• Базовая модель ИИ + Коллективная Память
+• Без лимитов, кошелёк не нужен
+• Просто пиши и получай ответы
 
-<b>GSTD</b> — кровеносная система Суверенного Организма. Обеспечена золотом.`,
+<b>⚡ Cocoon Pro (GSTD):</b>
+• Лучшие модели — учатся под твой стиль
+• Анализ через Рой + расширенный контекст
+• Cocoon умнеет с каждым запросом
+• 0.1 GSTD за запрос ($0.005)
+
+<b>💰 Как получить GSTD:</b>
+• <b>⭐ Stars</b> — 10⭐ ($0.50) = 100 Pro запросов
+• <b>🧠 Рой</b> — зарабатывай бесплатно вычислениями
+• <b>💱 STON.fi</b> — купи на бирже за TON
+
+<b>🔗 Кошелёк:</b>
+Нажми <b>🔗 Привязать кошелёк</b> для подключения TON.
+Нужен для: Pro режима, заработка, вывода.
+
+<b>📊 Экономика:</b>
+• 85% платежей → исполнителям задач
+• 10% → Золотой Резерв (XAUt)
+• 5% → Сжигание токенов (дефляция)
+
+<i>GSTD — топливо ИИ, обеспеченное золотом. Твой телефон = суперкомпьютер.</i>`,
 }
 
 var msgAdminOnly = map[string]string{
@@ -603,6 +757,11 @@ func (s *TelegramService) ProcessWebhook(ctx context.Context, body []byte) error
 		return nil
 	}
 
+	// Handle inline_query (@GSTDBot <query> in any chat)
+	if upd.InlineQuery != nil {
+		return s.handleInlineQuery(ctx, upd.InlineQuery)
+	}
+
 	// Handle callback_query (inline button clicks)
 	if upd.CallbackQuery != nil {
 		return s.handleCallbackQuery(ctx, &upd)
@@ -644,23 +803,20 @@ func (s *TelegramService) ProcessWebhook(ctx context.Context, body []byte) error
 			payload = strings.ToLower(parts[1])
 		}
 
-		btnApp := "📱 Open App"
-		btnMining := "🧠 Neural Node"
-		btnBalance := "💰 Balance"
-		btnBuy := "💰 Buy GSTD"
-		btnStars := "⭐️ Buy with Stars"
-		btnConnect := "🔗 Connect Wallet"
-		btnMonitor := "🌍 Monitor"
+		// Simplified buttons — only buttons, no /commands
+		btnBalance := "💎 Balance"
+		btnStars := "⭐️ Top Up"
+		btnWallet := "🔗 Link Wallet"
+		btnMining := "🧠 Earn GSTD"
+		btnApp := "📱 App"
 		btnHelp := "📖 Help"
 
 		if lang == "ru" {
-			btnApp = "📱 Приложение"
-			btnMining = "🧠 Нейро-Узел"
 			btnBalance = "💎 Баланс"
-			btnBuy = "💰 Купить GSTD"
-			btnStars = "⭐️ за Stars"
-			btnConnect = "🔗 Кошелек"
-			btnMonitor = "🌍 Монитор"
+			btnStars = "⭐️ Пополнить"
+			btnWallet = "🔗 Привязать кошелёк"
+			btnMining = "🧠 Заработать"
+			btnApp = "📱 Приложение"
 			btnHelp = "📖 Помощь"
 		}
 
@@ -701,17 +857,15 @@ func (s *TelegramService) ProcessWebhook(ctx context.Context, body []byte) error
 
 			miningWebAppURL := webAppURL + "/?source=telegram&mode=mining"
 
-			// Persistent keyboard for mining flow too
+			// Keyboard for mining flow
 			replyKb := fmt.Sprintf(`{"keyboard":[
-				[{"text":"%s","web_app":{"url":"%s"}},{"text":"%s","web_app":{"url":"%s"}}],
 				[{"text":"%s"},{"text":"%s"}],
-				[{"text":"%s"},{"text":"%s"}],
-				[{"text":"%s"},{"text":"%s"}]
+				[{"text":"%s","web_app":{"url":"%s"}}],
+				[{"text":"%s","web_app":{"url":"%s"}},{"text":"%s"}]
 			],"resize_keyboard":true,"is_persistent":true,"one_time_keyboard":false}`,
-				btnApp, webAppURL, btnMining, miningWebAppURL,
-				btnBalance, btnBuy,
-				btnStars, btnConnect,
-				btnMonitor, btnHelp)
+				btnBalance, btnStars,
+				btnMining, miningWebAppURL,
+				btnWallet, webAppURL, btnHelp)
 			return s.SendMessageToChatWithMarkup(ctx, chatID, msg, replyKb)
 		}
 
@@ -721,20 +875,28 @@ func (s *TelegramService) ProcessWebhook(ctx context.Context, body []byte) error
 			msg = msgStart["en"]
 		}
 
-		appURL := webAppURL
-		miningURL := webAppURL + "/?source=telegram&mode=mining"
+		// Auto-provision internal temporary wallet for free tier
+		if s.db != nil && senderIDStr != "" {
+			tgWallet := fmt.Sprintf("tg-%s", senderIDStr)
+			_, _ = s.db.ExecContext(ctx, `
+				INSERT INTO users (wallet_address, balance, gstd_balance, created_at, updated_at)
+				VALUES ($1, 0, 0, NOW(), NOW())
+				ON CONFLICT (wallet_address) DO NOTHING
+			`, tgWallet)
+		}
 
-		// Persistent ReplyKeyboard — always visible, replaces commands
+		miningURL := webAppURL + "/?source=telegram&mode=mining"
+		walletURL := webAppURL + "/?source=telegram&action=connect"
+
+		// Button-only keyboard: Balance/TopUp | Wallet/Earn (TWA) | App/Help
 		replyKeyboard := fmt.Sprintf(`{"keyboard":[
+			[{"text":"%s"},{"text":"%s"}],
 			[{"text":"%s","web_app":{"url":"%s"}},{"text":"%s","web_app":{"url":"%s"}}],
-			[{"text":"%s"},{"text":"%s"}],
-			[{"text":"%s"},{"text":"%s"}],
-			[{"text":"%s"},{"text":"%s"}]
+			[{"text":"%s","web_app":{"url":"%s"}},{"text":"%s"}]
 		],"resize_keyboard":true,"is_persistent":true,"one_time_keyboard":false}`,
-			btnApp, appURL, btnMining, miningURL,
-			btnBalance, btnBuy,
-			btnStars, btnConnect,
-			btnMonitor, btnHelp)
+			btnBalance, btnStars,
+			btnWallet, walletURL, btnMining, miningURL,
+			btnApp, webAppURL, btnHelp)
 
 		return s.SendMessageToChatWithMarkup(ctx, chatID, msg, replyKeyboard)
 	}
@@ -806,17 +968,15 @@ func (s *TelegramService) ProcessWebhook(ctx context.Context, body []byte) error
 		return s.SendMessageToChatWithMarkup(ctx, chatID, markdownToHTML(msg), replyMarkup)
 	}
 
-	// ⭐️ Buy with Stars (button or command)
-	if text == "⭐️ Buy with Stars" || text == "⭐️ за Stars" || text == "/buy_stars" {
+	// ⭐️ Top Up / Buy Fuel (button)
+	if text == "⭐️ Top Up" || text == "⭐️ Пополнить" || text == "⭐️ Buy Fuel" || text == "⭐️ Купить топливо" || text == "⭐️ Buy with Stars" || text == "⭐️ за Stars" || text == "/fuel" {
 		title := "GSTD Tokens (via Stars)"
 		desc := "Purchase 100 GSTD using Telegram Stars for computing and AI tasks."
 		if lang == "ru" {
 			title = "GSTD Токены (за Звёзды)"
-			desc = "Покупка 100 GSTD за Telegram Stars для вычислений и ИИ-задач."
+			desc = "10 GSTD = 100 запросов к ИИ. Дешевле любой подписки!"
 		}
-		// Assuming 1 Telegram Star = 1 GSTD point for simplicity, or 100 stars = 100 GSTD.
-		// Set amount = 100 Stars
-		return s.sendInvoiceWithStars(ctx, chatID, title, desc, "gstd_100_stars", 100)
+		return s.sendInvoiceWithStars(ctx, chatID, title, desc, "gstd_fuel_10", 10)
 	}
 
 	// Bot API commands (relay to internal /telegram/bot/* for full task flow when webhook is active)
@@ -825,7 +985,7 @@ func (s *TelegramService) ProcessWebhook(ctx context.Context, body []byte) error
 		if senderID != nil {
 			username, firstName = senderID.Username, senderID.FirstName
 		}
-		if res, err := s.callBotAPI(ctx, text, senderIDStr, username, firstName, chatID); res != "" || err != nil {
+		if res, err := s.callBotAPI(ctx, text, senderIDStr, username, firstName, chatID, lang); res != "" || err != nil {
 			if err != nil {
 				return s.SendMessageToChat(ctx, chatID, "❌ "+err.Error())
 			}
@@ -960,11 +1120,69 @@ GSTD работает на миллионах связанных устройс�
 
 		case "public_stats":
 			return s.sendNetworkStats(ctx, chatID, lang)
+
+		case "public_buy_stars":
+			title := "GSTD AI Fuel (100 requests)"
+			desc := "Buy 10 GSTD = 100 AI requests in the bot."
+			if lang == "ru" {
+				title = "GSTD Топливо (100 запросов)"
+				desc = "Купить 10 GSTD = 100 запросов к ИИ в боте."
+			}
+			return s.sendInvoiceWithStars(ctx, chatID, title, desc, "gstd_fuel_10", 10)
 		}
 		return nil
 	}
+	// 2. Claim Reward callback
+	if data == "claim_reward" {
+		_ = s.answerCallbackQuery(ctx, cq.ID, "")
+		base := strings.TrimSuffix(s.apiBaseURL, "/")
+		token := s.getBotAPIToken()
 
-	// 2. Admin Callbacks
+		body, _ := json.Marshal(map[string]interface{}{"telegram_id": cq.From.ID})
+		claimReq, _ := http.NewRequestWithContext(ctx, "POST", base+"/api/v1/telegram/bot/claim_reward", strings.NewReader(string(body)))
+		claimReq.Header.Set("Content-Type", "application/json")
+		claimReq.Header.Set("X-Bot-Token", token)
+		resp, err := s.client.Do(claimReq)
+		if err != nil {
+			return s.SendMessageToChat(ctx, chatID, "❌ Error claiming reward")
+		}
+		defer resp.Body.Close()
+
+		var result struct {
+			Success     bool    `json:"success"`
+			ClaimedNet  float64 `json:"claimed_net"`
+			GoldReserve float64 `json:"gold_reserve"`
+			Burned      float64 `json:"burned"`
+		}
+		json.NewDecoder(resp.Body).Decode(&result)
+
+		if !result.Success {
+			if lang == "ru" {
+				return s.SendMessageToChat(ctx, chatID, "ℹ️ Нет наград для получения. Включи 🧠 Нейро-Узел чтобы начать зарабатывать!")
+			}
+			return s.SendMessageToChat(ctx, chatID, "ℹ️ No rewards to claim. Turn on 🧠 Neural Node to start earning!")
+		}
+
+		var msg string
+		if lang == "ru" {
+			msg = fmt.Sprintf("✅ <b>Награда получена!</b>\n\n"+
+				"💰 Зачислено: <b>%.4f GSTD</b>\n"+
+				"🏆 В Золотой Резерв: <b>%.4f GSTD</b> (10%%)\n"+
+				"🔥 Сожжено: <b>%.4f GSTD</b> (5%%)\n\n"+
+				"<i>GSTD добавлены к балансу. Используй для ⚡ Pro!</i>",
+				result.ClaimedNet, result.GoldReserve, result.Burned)
+		} else {
+			msg = fmt.Sprintf("✅ <b>Reward Claimed!</b>\n\n"+
+				"💰 Received: <b>%.4f GSTD</b>\n"+
+				"🏆 Gold Reserve: <b>%.4f GSTD</b> (10%%)\n"+
+				"🔥 Burned: <b>%.4f GSTD</b> (5%%)\n\n"+
+				"<i>GSTD added to your balance. Use for ⚡ Pro!</i>",
+				result.ClaimedNet, result.GoldReserve, result.Burned)
+		}
+		return s.SendMessageToChat(ctx, chatID, msg)
+	}
+
+	// 3. Admin Callbacks
 	if s.chatID == "" || senderIDStr != s.chatID {
 		_ = s.answerCallbackQuery(ctx, cq.ID, msgAdminOnly[lang])
 		return nil
@@ -1428,4 +1646,260 @@ func (s *TelegramService) CreateInvoiceLinkWithStars(ctx context.Context, title 
 		return "", fmt.Errorf("failed to create invoice link (check telegram bot token or payload)")
 	}
 	return tgResp.Result, nil
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// INLINE QUERY — Viral AI in any Telegram chat
+//
+// When a user types "@GSTDBot <query>" in ANY chat (group/private/channel comments),
+// Telegram sends an inline_query. We route through L1 Cache / L2.7 Groq for
+// instant response, then the user taps the result → message appears in chat
+// with GSTD branding. Every message = free organic advertisement.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// handleInlineQuery processes inline queries from Telegram.
+func (s *TelegramService) handleInlineQuery(ctx context.Context, iq *telegramInlineQuery) error {
+	query := strings.TrimSpace(iq.Query)
+
+	// Ignore short queries to prevent API spam
+	if len(query) < 3 {
+		// Show a helpful placeholder
+		return s.answerInlineQuery(ctx, iq.ID, []map[string]interface{}{
+			{
+				"type":        "article",
+				"id":          "hint",
+				"title":       "✨ Напишите вопрос (от 3 символов)",
+				"description": "Пример: @GSTDBot расскажи шутку про программистов",
+				"input_message_content": map[string]interface{}{
+					"message_text": "🧠 <b>GSTD Swarm AI</b> — Суверенный ИИ нового поколения\n\n⚡ Используй: <code>@GSTDBot твой вопрос</code> в любом чате\n\n🔗 Подключи Нейро-Узел: @GSTDBot",
+					"parse_mode":   "HTML",
+				},
+				"thumbnail_url": "https://app.gstdtoken.com/icon-512x512.png",
+			},
+		}, 300)
+	}
+
+	lang := "en"
+	if iq.From != nil {
+		lang = botLang(iq.From.LanguageCode)
+	}
+
+	// ── Generate AI Response (Speed Priority: L1 Cache → L2.7 Groq → L2.5 HF) ──
+	var aiResponse string
+	var modelUsed string
+	var tier int
+
+	if s.smartRouter != nil {
+		chatReq := &OmegaChatRequest{
+			Model: "omega-auto", // SmartRouter will pick L1/L2.7/L2.5
+			Messages: []map[string]interface{}{
+				{
+					"role":    "system",
+					"content": "You are GSTD Swarm AI. Answer in the same language as the question. Be concise, witty, and accurate. Max 3-4 sentences. Add relevant emoji.",
+				},
+				{
+					"role":    "user",
+					"content": query,
+				},
+			},
+			Temperature: 0.8,
+			MaxTokens:   256, // Short for speed
+			Stream:      false,
+		}
+
+		decision, err := s.smartRouter.Route(ctx, chatReq)
+		if err == nil && decision != nil && decision.Response != "" {
+			aiResponse = decision.Response
+			modelUsed = decision.ActualModel
+			tier = decision.Tier
+		} else {
+			log.Printf("[InlineQuery] SmartRouter error: %v", err)
+		}
+	}
+
+	// Fallback if SmartRouter unavailable or failed
+	if aiResponse == "" {
+		// Try calling bot AI endpoint as fallback
+		aiResponse = s.inlineQueryFallback(ctx, query)
+		modelUsed = "fallback"
+		tier = 0
+	}
+
+	if aiResponse == "" {
+		aiResponse = "🤔 Рой обдумывает ваш запрос... Попробуйте через пару секунд!"
+	}
+
+	// ── Format the viral message ──
+	// Truncate AI response for Telegram inline preview
+	previewTitle := aiResponse
+	if len(previewTitle) > 80 {
+		// Find last space before 80 chars for clean truncation
+		cut := 77
+		for cut > 0 && previewTitle[cut] != ' ' {
+			cut--
+		}
+		if cut == 0 {
+			cut = 77
+		}
+		previewTitle = previewTitle[:cut] + "..."
+	}
+
+	// The message that will be sent to the chat when user taps the result
+	tierEmoji := "🛡️"
+	tierLabel := "Sovereign Swarm"
+	switch tier {
+	case 1:
+		tierEmoji = "⚡"
+		tierLabel = "Cache"
+	case 2:
+		tierEmoji = "🛡️"
+		tierLabel = "Sovereign Swarm"
+	case 3:
+		tierEmoji = "🔐"
+		tierLabel = "Cocoon TEE"
+	case 4:
+		tierEmoji = "☁️"
+		tierLabel = "Cloud"
+	}
+
+	// ── Build the full message (viral format) ──
+	var messageText string
+	if lang == "ru" {
+		messageText = fmt.Sprintf(
+			"🤖 <b>Запрос:</b> %s\n\n"+
+				"⚡ <b>Ответ GSTD AI:</b>\n%s\n\n"+
+				"━━━━━━━━━━━━━━━━━━━\n"+
+				"%s <i>%s</i> · <code>%s</code>\n"+
+				"🧠 <b>Рой ИИ:</b> <a href=\"https://t.me/GstdAppBot\">@GstdAppBot</a> — Попробуй сам!",
+			escapeHTML(query), escapeHTML(aiResponse), tierEmoji, tierLabel, modelUsed,
+		)
+	} else {
+		messageText = fmt.Sprintf(
+			"🤖 <b>Query:</b> %s\n\n"+
+				"⚡ <b>GSTD AI:</b>\n%s\n\n"+
+				"━━━━━━━━━━━━━━━━━━━\n"+
+				"%s <i>%s</i> · <code>%s</code>\n"+
+				"🧠 <b>AI Swarm:</b> <a href=\"https://t.me/GstdAppBot\">@GstdAppBot</a> — Try it yourself!",
+			escapeHTML(query), escapeHTML(aiResponse), tierEmoji, tierLabel, modelUsed,
+		)
+	}
+
+	descriptionText := aiResponse
+	if len(descriptionText) > 150 {
+		descriptionText = descriptionText[:147] + "..."
+	}
+
+	results := []map[string]interface{}{
+		{
+			"type":        "article",
+			"id":          fmt.Sprintf("ai-%d", time.Now().UnixNano()),
+			"title":       "⚡ " + previewTitle,
+			"description": descriptionText,
+			"input_message_content": map[string]interface{}{
+				"message_text":             messageText,
+				"parse_mode":               "HTML",
+				"disable_web_page_preview": true,
+			},
+			"thumbnail_url": "https://app.gstdtoken.com/icon-512x512.png",
+			"reply_markup": map[string]interface{}{
+				"inline_keyboard": [][]map[string]interface{}{
+					{
+						{"text": "🧠 Открой AI-рой", "url": "https://t.me/GstdAppBot"},
+						{"text": "🌍 Монитор", "url": "https://monitor.gstdtoken.com"},
+					},
+				},
+			},
+		},
+	}
+
+	log.Printf("[InlineQuery] user=%d query=%q model=%s tier=%d len=%d",
+		iq.From.ID, query, modelUsed, tier, len(aiResponse))
+
+	return s.answerInlineQuery(ctx, iq.ID, results, 30) // Cache for 30s
+}
+
+// inlineQueryFallback tries to get AI response via the bot API endpoint.
+func (s *TelegramService) inlineQueryFallback(ctx context.Context, query string) string {
+	base := s.apiBaseURL
+	token := os.Getenv("BOT_API_TOKEN")
+	if token == "" {
+		token = s.botToken
+	}
+
+	body, _ := json.Marshal(map[string]interface{}{
+		"telegram_id": "0",
+		"text":        query,
+	})
+	req, _ := http.NewRequestWithContext(ctx, "POST", base+"/api/v1/telegram/bot/ai", strings.NewReader(string(body)))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Bot-Token", token)
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return ""
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == 200 {
+		var r struct {
+			Choices []struct {
+				Message struct {
+					Content string `json:"content"`
+				} `json:"message"`
+			} `json:"choices"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&r); err == nil && len(r.Choices) > 0 {
+			return r.Choices[0].Message.Content
+		}
+	}
+	return ""
+}
+
+// answerInlineQuery sends results back to Telegram for an inline query.
+func (s *TelegramService) answerInlineQuery(ctx context.Context, queryID string, results []map[string]interface{}, cacheTime int) error {
+	if s.botToken == "" {
+		return nil
+	}
+
+	apiURL := fmt.Sprintf("https://api.telegram.org/bot%s/answerInlineQuery", s.botToken)
+
+	payload := map[string]interface{}{
+		"inline_query_id": queryID,
+		"results":         results,
+		"cache_time":      cacheTime,
+		"is_personal":     true,
+	}
+
+	bodyData, _ := json.Marshal(payload)
+	req, err := http.NewRequestWithContext(ctx, "POST", apiURL, bytes.NewReader(bodyData))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		log.Printf("[InlineQuery] answerInlineQuery error: %v", err)
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		var errResp struct {
+			OK          bool   `json:"ok"`
+			Description string `json:"description"`
+		}
+		json.NewDecoder(resp.Body).Decode(&errResp)
+		log.Printf("[InlineQuery] Telegram API error: %d %s", resp.StatusCode, errResp.Description)
+	}
+
+	return nil
+}
+
+// escapeHTML escapes HTML special characters for Telegram HTML parse mode.
+func escapeHTML(s string) string {
+	s = strings.ReplaceAll(s, "&", "&amp;")
+	s = strings.ReplaceAll(s, "<", "&lt;")
+	s = strings.ReplaceAll(s, ">", "&gt;")
+	return s
 }

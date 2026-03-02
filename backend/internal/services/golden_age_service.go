@@ -17,13 +17,13 @@ import (
 // - Global Proof-of-Gold: Sunday ticker audit
 // - Swarm Expansion: ticker when active nodes < 1000
 type GoldenAgeService struct {
-	db              *sql.DB
-	settlement      *SettlementService
-	stats           *StatsService
-	interval        time.Duration
-	mu              sync.RWMutex
-	feeMultiplier   float64
-	lastSwarmEmit   time.Time
+	db            *sql.DB
+	settlement    *SettlementService
+	stats         *StatsService
+	interval      time.Duration
+	mu            sync.RWMutex
+	feeMultiplier float64
+	lastSwarmEmit time.Time
 }
 
 const (
@@ -36,12 +36,12 @@ const (
 
 // feeMultiplierGlobal is used by inferenceFeeGSTD for Dynamic Fee Scaling
 var (
-	feeMultiplierGlobal    = 1.0
-	feeMultiplierGlobalMu  sync.RWMutex
-	baseInferenceFeeGSTD   = 0.01
-	baseInferenceFeeMu     sync.RWMutex
-	workerRewardBoost      = 1.0
-	workerRewardBoostMu    sync.RWMutex
+	feeMultiplierGlobal   = 1.0
+	feeMultiplierGlobalMu sync.RWMutex
+	baseInferenceFeeGSTD  = 0.01
+	baseInferenceFeeMu    sync.RWMutex
+	workerRewardBoost     = 1.0
+	workerRewardBoostMu   sync.RWMutex
 )
 
 // GetBaseInferenceFeeGSTD returns the current base fee (Anti-Price Barrier adjusted)
@@ -109,8 +109,8 @@ func NewGoldenAgeService(db *sql.DB, settlement *SettlementService, stats *Stats
 	return &GoldenAgeService{
 		db:            db,
 		settlement:    settlement,
-		stats:        stats,
-		interval:     5 * time.Minute, // check every 5 min
+		stats:         stats,
+		interval:      5 * time.Minute, // check every 5 min
 		feeMultiplier: 1.0,
 	}
 }
@@ -232,6 +232,7 @@ func (s *GoldenAgeService) runPayoutWaveIfNeeded(ctx context.Context) {
 			SELECT referrer_address, SUM(amount_gstd) FROM referral_rewards WHERE status = 'pending' GROUP BY referrer_address
 		`)
 		if err == nil {
+			defer rows.Close()
 			for rows.Next() {
 				var addr string
 				var amt float64

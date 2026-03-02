@@ -18,16 +18,17 @@ import (
 // we send a "computational container" to the data.
 //
 // GDPR (EU) and FZ-152 (Russia) compliant by design:
-//   1. User data stays on their device or their chosen edge node
-//   2. A sandboxed execution environment is shipped TO the data
-//   3. Only the output (result + ZK-proof) leaves the sandbox
-//   4. LoRA weight updates are sanitized with Differential Privacy before export
+//  1. User data stays on their device or their chosen edge node
+//  2. A sandboxed execution environment is shipped TO the data
+//  3. Only the output (result + ZK-proof) leaves the sandbox
+//  4. LoRA weight updates are sanitized with Differential Privacy before export
 //
 // Architecture:
-//   User → Data stays local → Sandbox container sent to user's edge node
-//   Sandbox executes → Generates result + Merkle proof
-//   Only proof + result returned to requester
-//   Raw data is NEVER transmitted over the network
+//
+//	User → Data stays local → Sandbox container sent to user's edge node
+//	Sandbox executes → Generates result + Merkle proof
+//	Only proof + result returned to requester
+//	Raw data is NEVER transmitted over the network
 type DataAirlockService struct {
 	db    *sql.DB
 	redis *redis.Client
@@ -36,41 +37,41 @@ type DataAirlockService struct {
 
 // AirlockSession represents an isolated computation session
 type AirlockSession struct {
-	SessionID      string    `json:"session_id"`
-	RequesterWallet string   `json:"requester_wallet"`
-	DataOwnerWallet string   `json:"data_owner_wallet"`
-	EdgeNodeID     string    `json:"edge_node_id"`      // Node where data resides
-	SandboxType    string    `json:"sandbox_type"`       // wasm, docker, onnx
-	ModelHash      string    `json:"model_hash"`         // Hash of computation to execute
-	Status         string    `json:"status"`             // created, deployed, executing, verified, completed, failed
-	DataRegion     string    `json:"data_region"`        // ISO 3166 region code (EU, RU, US, etc.)
-	ComplianceMode string    `json:"compliance_mode"`    // gdpr, fz152, hipaa, none
-	CreatedAt      time.Time `json:"created_at"`
-	CompletedAt    *time.Time `json:"completed_at,omitempty"`
+	SessionID       string     `json:"session_id"`
+	RequesterWallet string     `json:"requester_wallet"`
+	DataOwnerWallet string     `json:"data_owner_wallet"`
+	EdgeNodeID      string     `json:"edge_node_id"`    // Node where data resides
+	SandboxType     string     `json:"sandbox_type"`    // wasm, docker, onnx
+	ModelHash       string     `json:"model_hash"`      // Hash of computation to execute
+	Status          string     `json:"status"`          // created, deployed, executing, verified, completed, failed
+	DataRegion      string     `json:"data_region"`     // ISO 3166 region code (EU, RU, US, etc.)
+	ComplianceMode  string     `json:"compliance_mode"` // gdpr, fz152, hipaa, none
+	CreatedAt       time.Time  `json:"created_at"`
+	CompletedAt     *time.Time `json:"completed_at,omitempty"`
 }
 
 // AirlockResult is what comes out of the sandbox — ONLY this crosses the boundary
 type AirlockResult struct {
-	SessionID      string        `json:"session_id"`
-	OutputHash     string        `json:"output_hash"`      // SHA256 of the result
-	OutputData     string        `json:"output_data"`       // The actual result (encrypted)
-	ComputeProof   *ComputeProof `json:"compute_proof"`    // ZK proof that computation was correct
-	LoRADelta      *LoRAUpdate   `json:"lora_delta,omitempty"` // DP-sanitized weight update (optional)
-	DataTouched    bool          `json:"data_touched"`      // Whether user data was accessed
-	DataExfiltrated bool         `json:"data_exfiltrated"` // MUST always be false
-	ComplianceLog  []string      `json:"compliance_log"`   // Audit trail
+	SessionID       string        `json:"session_id"`
+	OutputHash      string        `json:"output_hash"`          // SHA256 of the result
+	OutputData      string        `json:"output_data"`          // The actual result (encrypted)
+	ComputeProof    *ComputeProof `json:"compute_proof"`        // ZK proof that computation was correct
+	LoRADelta       *LoRAUpdate   `json:"lora_delta,omitempty"` // DP-sanitized weight update (optional)
+	DataTouched     bool          `json:"data_touched"`         // Whether user data was accessed
+	DataExfiltrated bool          `json:"data_exfiltrated"`     // MUST always be false
+	ComplianceLog   []string      `json:"compliance_log"`       // Audit trail
 }
 
 // DataPolicy defines what operations are allowed on the data
 type DataPolicy struct {
-	AllowInference   bool   `json:"allow_inference"`    // Can run inference on data
-	AllowTraining    bool   `json:"allow_training"`     // Can use data for training (LoRA)
-	AllowExport      bool   `json:"allow_export"`       // Can export raw results
-	RequireZKProof   bool   `json:"require_zk_proof"`   // Must prove computation integrity
-	RequireDP        bool   `json:"require_dp"`         // Must add differential privacy to outputs
-	MaxOutputSize    int    `json:"max_output_size"`    // Max bytes for output
-	Region           string `json:"region"`             // Data must stay in this region
-	RetentionHours   int    `json:"retention_hours"`    // Auto-delete after this time
+	AllowInference bool   `json:"allow_inference"`  // Can run inference on data
+	AllowTraining  bool   `json:"allow_training"`   // Can use data for training (LoRA)
+	AllowExport    bool   `json:"allow_export"`     // Can export raw results
+	RequireZKProof bool   `json:"require_zk_proof"` // Must prove computation integrity
+	RequireDP      bool   `json:"require_dp"`       // Must add differential privacy to outputs
+	MaxOutputSize  int    `json:"max_output_size"`  // Max bytes for output
+	Region         string `json:"region"`           // Data must stay in this region
+	RetentionHours int    `json:"retention_hours"`  // Auto-delete after this time
 }
 
 func NewDataAirlockService(db *sql.DB, redis *redis.Client, zk *ZKComputeProofService) *DataAirlockService {
@@ -234,13 +235,13 @@ func (s *DataAirlockService) GetAirlockStats(ctx context.Context) (map[string]in
 	`)
 	regions := map[string]int{}
 	if rows != nil {
+		defer rows.Close()
 		for rows.Next() {
 			var region string
 			var count int
 			rows.Scan(&region, &count)
 			regions[region] = count
 		}
-		rows.Close()
 	}
 
 	stats["total_sessions"] = total

@@ -1,4 +1,5 @@
 import { toast } from 'sonner';
+import { logger } from './logger';
 
 type MessageHandler = (data: any) => void;
 
@@ -39,7 +40,7 @@ class WebSocketClient {
             this.ws = new WebSocket(wsUrl);
 
             this.ws.onopen = () => {
-                console.log('✅ WebSocket Connected');
+                logger.info('WebSocket Connected');
                 this._isConnected = true;
                 this.reconnectAttempts = 0;
                 this.flushQueue();
@@ -47,7 +48,7 @@ class WebSocketClient {
 
                 // State Recovery: Request missed events since last disconnect
                 if (this.lastEventTimestamp > 0) {
-                    console.log(`📡 Requesting event replay since ${new Date(this.lastEventTimestamp).toISOString()}`);
+                    logger.info(`Requesting event replay since ${new Date(this.lastEventTimestamp).toISOString()}`);
                     this.send('replay_events', { since: this.lastEventTimestamp });
                 }
 
@@ -67,7 +68,7 @@ class WebSocketClient {
 
                     this.emit(message.type, message.payload);
                 } catch (e) {
-                    console.error('Failed to parse WS message:', event.data);
+                    logger.error('Failed to parse WS message:', e);
                 }
             };
 
@@ -76,12 +77,12 @@ class WebSocketClient {
             };
 
             this.ws.onerror = (error) => {
-                console.error('WebSocket Error:', error);
+                logger.error('WebSocket Error:', error);
                 // Don't close here, onclose will trigger
             };
 
         } catch (e) {
-            console.error('WebSocket Connection Failed:', e);
+            logger.error('WebSocket Connection Failed:', e);
             this.handleDisconnect('Connection failed');
         }
     }
@@ -95,7 +96,7 @@ class WebSocketClient {
 
         if (this.reconnectAttempts < this.maxReconnectAttempts) {
             const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000);
-            console.log(`♻️ Reconnecting in ${delay}ms... (Attempt ${this.reconnectAttempts + 1})`);
+            logger.info(`Reconnecting in ${delay}ms... (Attempt ${this.reconnectAttempts + 1})`);
             setTimeout(() => this.connect(), delay);
             this.reconnectAttempts++;
         } else {

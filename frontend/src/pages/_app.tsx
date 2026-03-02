@@ -11,6 +11,7 @@ import WalletListener from '../components/common/WalletListener';
 import VercelSwarmHeartbeat from '../components/common/VercelSwarmHeartbeat';
 import EcosystemNav from '../components/layout/EcosystemNav';
 import EcosystemFooter from '../components/layout/EcosystemFooter';
+import { logger } from '../lib/logger';
 import '../styles/globals.css';
 
 // Get manifestUrl from environment variable or use fallback
@@ -36,18 +37,18 @@ function App({ Component, pageProps }: AppProps) {
       const webApp = initTelegramWebApp();
 
       if (webApp) {
-        console.log('✅ Telegram WebApp initialized');
-        console.log('Theme:', webApp.themeParams);
-        console.log('Color scheme:', webApp.colorScheme);
+        logger.info('Telegram WebApp initialized');
+        logger.debug('Theme: ' + JSON.stringify(webApp.themeParams));
+        logger.debug('Color scheme: ' + webApp.colorScheme);
       } else {
-        console.log('ℹ️ Not running in Telegram WebApp');
+        logger.info('Not running in Telegram WebApp');
       }
 
       setIsMounted(true);
 
       // Global unhandled rejection handler - log but don't crash
       const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-        console.error('[Unhandled Rejection]', event.reason);
+        logger.error('[Unhandled Rejection]', event.reason);
       };
       window.addEventListener('unhandledrejection', handleUnhandledRejection);
 
@@ -56,10 +57,10 @@ function App({ Component, pageProps }: AppProps) {
         navigator.serviceWorker
           .register('/sw.js')
           .then((registration) => {
-            console.log('Service Worker registered:', registration.scope);
+            logger.info('Service Worker registered: ' + registration.scope);
           })
           .catch((error) => {
-            console.error('Service Worker registration failed:', error);
+            logger.error('Service Worker registration failed:', error);
           });
       }
 

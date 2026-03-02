@@ -243,8 +243,8 @@ type OmegaChatRequest struct {
 var sovereignModelMap = map[string]string{
 	"flash":       "qwen2.5-coder:7b",
 	"omega-flash": "qwen2.5-coder:7b",
-	"pro":         "llama3.1:8b",
-	"omega-pro":   "llama3.1:8b",
+	"pro":         "qwen2.5-coder:32b",
+	"omega-pro":   "qwen2.5-coder:32b",
 	"ultra":       "deepseek-r1:14b",
 	"omega-ultra": "deepseek-r1:14b",
 	"code":        "qwen2.5-coder:7b",

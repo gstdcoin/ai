@@ -54,7 +54,7 @@ export default function ShareSuccessCard() {
         toast.success('Shared!', 'Success card shared to Telegram Stories or other apps');
       } else {
         const url = URL.createObjectURL(blob);
-        const a = document.createElement('a', 'a');
+        const a = document.createElement('a');
         a.href = url;
         a.download = 'gstd-success.png';
         a.click();

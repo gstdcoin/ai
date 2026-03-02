@@ -15,7 +15,7 @@ import (
 // - Archon Oversight: hourly settlement_ledger vs golden_reserve reconciliation
 
 const (
-	eternalFlameNodeFailoverThreshold = 30 * time.Second
+	eternalFlameNodeFailoverThreshold  = 30 * time.Second
 	eternalFlameAutoScaleThresholdGSTD = 10000.0
 	eternalFlameAutoScaleBonusPct      = 0.05
 )
@@ -56,6 +56,7 @@ func (s *EternalFlameService) RunGlobalAvailability(ctx context.Context) {
 	if err != nil {
 		return
 	}
+	defer rows.Close()
 	var failedPipelineNodes []string
 	for rows.Next() {
 		var nodeID string
@@ -63,7 +64,6 @@ func (s *EternalFlameService) RunGlobalAvailability(ctx context.Context) {
 			failedPipelineNodes = append(failedPipelineNodes, nodeID)
 		}
 	}
-	rows.Close()
 
 	for _, nodeID := range failedPipelineNodes {
 		_, _ = s.db.ExecContext(ctx, `UPDATE pipeline_nodes SET is_online = false WHERE node_id = $1`, nodeID)
@@ -84,6 +84,7 @@ func (s *EternalFlameService) RunGlobalAvailability(ctx context.Context) {
 	if err != nil {
 		return
 	}
+	defer rows2.Close()
 	var failedWallets []string
 	for rows2.Next() {
 		var id, wallet string
@@ -91,7 +92,6 @@ func (s *EternalFlameService) RunGlobalAvailability(ctx context.Context) {
 			failedWallets = append(failedWallets, wallet)
 		}
 	}
-	rows2.Close()
 
 	for _, w := range failedWallets {
 		_, _ = s.db.ExecContext(ctx, `UPDATE nodes SET status = 'offline' WHERE wallet_address = $1`, w)

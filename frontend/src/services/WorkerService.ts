@@ -8,12 +8,24 @@ export type PowerProfile = 'eco' | 'balance' | 'max';
 type WorkerState = 'idle' | 'igniting' | 'running' | 'paused' | 'error';
 type WorkerCallback = (data: any) => void;
 
+export interface ComputeMetrics {
+    tflops: number;
+    totalOps: number;
+    totalGSTD: number;
+    sessionUptime: number;
+    batteryLevel: number;
+    isCharging: boolean;
+    effectiveProfile: string;
+    tflopsHistory: Array<{ ts: number; tflops: number; profile: string; battery: number }>;
+}
+
 class WorkerService {
     private worker: Worker | null = null;
     public state: WorkerState = 'idle';
     public powerProfile: PowerProfile = 'balance';
     private subscribers: Function[] = [];
     private statsSubscribers: Function[] = [];
+    private metricsSubscribers: Function[] = [];
     private taskLoop: any = null;
     private ws: WebSocket | null = null;
     private heartbeatInterval: any = null;
@@ -23,9 +35,24 @@ class WorkerService {
     private deviceId: string = 'browser-' + Math.random().toString(36).substring(7);
     public targetTaskId: string | null = null;
 
+    // ═══ Wake Lock ═══
+    private wakeLock: WakeLockSentinel | null = null;
+
+    // ═══ Compute Metrics ═══
+    public metrics: ComputeMetrics = {
+        tflops: 0,
+        totalOps: 0,
+        totalGSTD: 0,
+        sessionUptime: 0,
+        batteryLevel: 100,
+        isCharging: false,
+        effectiveProfile: 'balance',
+        tflopsHistory: [],
+    };
+    private metricsInterval: any = null;
+
     constructor() {
         if (typeof window !== 'undefined') {
-            // Load pending results
             try {
                 const saved = localStorage.getItem('gstd_pending_results');
                 if (saved) this.pendingQueue = JSON.parse(saved);
@@ -40,7 +67,7 @@ class WorkerService {
         if (typeof window !== 'undefined') {
             localStorage.setItem('gstd_pending_results', JSON.stringify(this.pendingQueue));
         }
-            logger.debug(`[Resilience] Result saved to Queue. Total pending: ${this.pendingQueue.length}`);
+        logger.debug(`[Resilience] Result saved to Queue. Total pending: ${this.pendingQueue.length}`);
         toast.info('Network Issue: Result Queued for Upload');
     }
 
@@ -49,7 +76,6 @@ class WorkerService {
 
         logger.debug(`[Resilience] Processing Queue (${this.pendingQueue.length} items)...`);
 
-        // Clone and clear to prevent loops, will re-add failures
         const batch = [...this.pendingQueue];
         this.pendingQueue = [];
         localStorage.setItem('gstd_pending_results', '[]');
@@ -63,9 +89,10 @@ class WorkerService {
 
     private initWorker() {
         try {
-            logger.debug('[Mining Loop] Step 1: Init Mobile Worker...');
+            logger.debug('[Compute Node] Init TWA Compute Worker...');
             this.worker = new Worker('/mobile_worker.js');
             this.worker.postMessage({ type: 'set_power_profile', profile: this.powerProfile });
+
             if (typeof document !== 'undefined') {
                 document.addEventListener('visibilitychange', () => {
                     const active = document.visibilityState === 'visible';
@@ -74,32 +101,40 @@ class WorkerService {
             }
 
             this.worker.onmessage = (event) => {
-                const { status, result, reason } = event.data;
-                this.processingTask = false; // Reset Backpressure
+                const data = event.data;
+                this.processingTask = false;
 
-                if (status === 'completed') {
-                    logger.debug('[Mining Loop] Step 4: Hashing Completed', result);
+                if (data.status === 'completed') {
+                    logger.debug('[Compute Node] Task completed', data.result);
 
-                    // Add Success Sound (Optional)
+                    // Play reward sound
                     try {
                         const audio = new Audio('/sounds/coin.mp3');
-                        audio.volume = 0.5;
-                        audio.play().catch(() => { }); // Ignore interaction errors
+                        audio.volume = 0.3;
+                        audio.play().catch(() => { });
                     } catch (e) { }
 
-                    // DEPIN INNOVATION: Proof of Connectivity & ZK Reporting
-                    // We generate a "proof" hash locally to verify work integrity
-                    const proofHash = btoa(result.latency_ms + '-' + Math.random());
+                    // Update local metrics
+                    this.metrics.tflops = data.result.tflops || 0;
+                    this.metrics.totalOps++;
+                    this.metrics.totalGSTD += data.result.reward_gstd || 0;
+                    this.metrics.batteryLevel = data.result.battery_pct || 100;
+                    this.metrics.effectiveProfile = data.result.power_profile || 'balance';
+
+                    const proofHash = btoa(data.result.latency_ms + '-' + Math.random());
 
                     this.notifyStats({
                         completed: true,
-                        latency: result.latency_ms,
-                        reward: 0.00001
+                        latency: data.result.latency_ms,
+                        reward: data.result.reward_gstd || 0.00001,
+                        tflops: data.result.tflops || 0,
+                        battery: data.result.battery_pct,
+                        profile: data.result.power_profile,
                     });
 
                     const payload = {
                         type: 'task_completed',
-                        result: result,
+                        result: data.result,
                         proof: {
                             hash: proofHash,
                             connectivity_score: navigator.onLine ? 1.0 : 0.0,
@@ -107,15 +142,39 @@ class WorkerService {
                         }
                     };
 
-                    // Resilience Logic
                     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
                         this.ws.send(JSON.stringify(payload));
                     } else {
                         this.saveToQueue(payload);
                     }
 
-                } else if (status === 'skipped') {
-                    logger.debug('Worker skipped task:', reason);
+                } else if (data.status === 'skipped') {
+                    logger.debug('Worker skipped task:', data.reason);
+                    this.notifyStats({
+                        skipped: true,
+                        reason: data.reason,
+                        battery: data.batteryLevel,
+                        profile: data.effectiveProfile,
+                    });
+
+                } else if (data.status === 'metrics' || data.status === 'metrics_update') {
+                    // Update metrics from worker
+                    if (data.tflops !== undefined) this.metrics.tflops = data.tflops;
+                    if (data.totalOps !== undefined) this.metrics.totalOps = data.totalOps;
+                    if (data.totalGSTD !== undefined) this.metrics.totalGSTD = data.totalGSTD;
+                    if (data.batteryLevel !== undefined) this.metrics.batteryLevel = data.batteryLevel;
+                    if (data.isCharging !== undefined) this.metrics.isCharging = data.isCharging;
+                    if (data.effectiveProfile !== undefined) this.metrics.effectiveProfile = data.effectiveProfile;
+                    if (data.tflopsHistory) this.metrics.tflopsHistory = data.tflopsHistory;
+                    if (data.sessionUptime !== undefined) this.metrics.sessionUptime = data.sessionUptime;
+
+                    this.notifyMetrics();
+
+                } else if (data.status === 'workload_adjusted') {
+                    this.metrics.batteryLevel = data.batteryLevel || 100;
+                    this.metrics.isCharging = data.isCharging || false;
+                    this.metrics.effectiveProfile = data.mode || data.effectiveProfile || 'balance';
+                    this.notifyMetrics();
                 }
             };
 
@@ -126,6 +185,37 @@ class WorkerService {
         } catch (e) {
             logger.error('Failed to init worker', e);
             this.state = 'error';
+        }
+    }
+
+    // ═══ Wake Lock API ═══
+    private async acquireWakeLock() {
+        try {
+            if ('wakeLock' in navigator) {
+                this.wakeLock = await (navigator as any).wakeLock.request('screen');
+                logger.debug('[WakeLock] Screen wake lock acquired');
+                this.wakeLock?.addEventListener('release', () => {
+                    logger.debug('[WakeLock] Released');
+                    // Re-acquire on visibility change
+                    if (this.state === 'running') {
+                        document.addEventListener('visibilitychange', () => {
+                            if (document.visibilityState === 'visible' && this.state === 'running') {
+                                this.acquireWakeLock();
+                            }
+                        }, { once: true });
+                    }
+                });
+            }
+        } catch (err) {
+            logger.debug('[WakeLock] Not available or denied', err);
+        }
+    }
+
+    private releaseWakeLock() {
+        if (this.wakeLock) {
+            this.wakeLock.release();
+            this.wakeLock = null;
+            logger.debug('[WakeLock] Released manually');
         }
     }
 
@@ -140,22 +230,28 @@ class WorkerService {
 
         this.state = 'igniting';
         this.notifyState();
-        logger.debug('[Mining Loop] Step 2: Auth & State Sync...');
+        logger.debug('[Compute Node] Igniting...');
 
-        // Connect Sync
+        // Acquire Wake Lock
+        this.acquireWakeLock();
+
+        // Connect WebSocket
         this.connectWebSocket();
+
+        // Start metrics polling
+        this.startMetricsPolling();
 
         setTimeout(() => {
             if (this.state === 'error') return;
             this.state = 'running';
             this.notifyState();
-            toast.success(this.targetTaskId ? `Processing Task: ${this.targetTaskId}` : 'GSTD Mining Ignited: Processing Tasks');
+            toast.success(this.targetTaskId ? `Processing Task: ${this.targetTaskId}` : '🔥 Neural Node Ignited');
             this.startTaskLoop();
         }, 1000);
     }
 
     private connectWebSocket() {
-        logger.debug('[Mining Loop] Step 3: Establishing Socket Connection...');
+        logger.debug('[Compute Node] Establishing Socket Connection...');
         const baseWs = process.env.NEXT_PUBLIC_WS_URL || WS_URL;
         const wsUrl = baseWs.includes('/ws') ? baseWs : `${baseWs.replace(/\/+$/, '')}/ws`;
         const walletAddress = typeof window !== 'undefined' ? useWalletStore.getState().address : null;
@@ -164,8 +260,8 @@ class WorkerService {
         this.ws = new WebSocket(`${wsUrl}?${params.toString()}`);
 
         this.ws.onopen = () => {
-            logger.debug('[Mining Loop] Socket Connected');
-            this.retryCount = 0; // Reset backoff
+            logger.debug('[Compute Node] Socket Connected');
+            this.retryCount = 0;
             this.startHeartbeat();
             this.processQueue();
         };
@@ -191,24 +287,22 @@ class WorkerService {
 
         const handleReconnect = () => {
             if (this.state === 'paused') return;
-
-            const delay = Math.min(1000 * (2 ** this.retryCount), 30000); // Max 30s
-            logger.debug(`[Mining Loop] Reconnecting in ${delay}ms...`);
+            const delay = Math.min(1000 * (2 ** this.retryCount), 30000);
+            logger.debug(`[Compute Node] Reconnecting in ${delay}ms...`);
             this.retryCount++;
-
             setTimeout(() => {
                 if (this.state !== 'paused') this.connectWebSocket();
             }, delay);
         };
 
         this.ws.onerror = (e) => {
-            logger.error('[Mining Loop] Socket Error', e);
+            logger.error('[Compute Node] Socket Error', e);
             if (this.retryCount === 0) toast.error('Connection Lost. Reconnecting...');
             handleReconnect();
         };
 
         this.ws.onclose = () => {
-            logger.debug('[Mining Loop] Socket Closed');
+            logger.debug('[Compute Node] Socket Closed');
             handleReconnect();
         };
     }
@@ -220,7 +314,6 @@ class WorkerService {
         this.heartbeatInterval = setInterval(() => {
             if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
 
-            // Check for timeout (Extended for Mobile Stability)
             if (Date.now() - this.lastHeartbeatAck > 60000) {
                 logger.error('Heartbeat Timeout: Backend not responding');
                 this.state = 'error';
@@ -230,8 +323,13 @@ class WorkerService {
                 return;
             }
 
-            this.ws.send(JSON.stringify({ type: 'heartbeat', device_id: this.deviceId }));
-        }, 3000); // Heartbeat every 3s
+            this.ws.send(JSON.stringify({
+                type: 'heartbeat',
+                device_id: this.deviceId,
+                tflops: this.metrics.tflops,
+                battery: this.metrics.batteryLevel,
+            }));
+        }, 3000);
     }
 
     private processingTask: boolean = false;
@@ -243,13 +341,12 @@ class WorkerService {
         this.taskLoop = setInterval(() => {
             if (this.state !== 'running' || !this.worker) return;
 
-            // BACKPRESSURE: Don't overload the worker on slow mobile devices
             if (this.processingTask) {
                 if (Date.now() - this.lastTaskTime > 30000) {
-                    logger.warn('[Mining Loop] Task Timeout - Resetting Backpressure');
+                    logger.warn('[Compute Node] Task Timeout - Resetting');
                     this.processingTask = false;
                 } else {
-                    return; // Wait for current task
+                    return;
                 }
             }
 
@@ -267,18 +364,30 @@ class WorkerService {
             };
 
             this.worker.postMessage(task);
-        }, 1000); // Check every second, but backpressure controls actual flow
+        }, 1000);
+    }
+
+    private startMetricsPolling() {
+        if (this.metricsInterval) clearInterval(this.metricsInterval);
+
+        this.metricsInterval = setInterval(() => {
+            if (this.worker && this.state === 'running') {
+                this.worker.postMessage({ type: 'get_metrics' });
+            }
+        }, 3000); // Every 3 seconds
     }
 
     public pause() {
         this.state = 'paused';
         if (this.taskLoop) clearInterval(this.taskLoop);
+        if (this.metricsInterval) clearInterval(this.metricsInterval);
+        this.releaseWakeLock();
         this.notifyState();
     }
 
     public subscribe(callback: (state: WorkerState) => void) {
         this.subscribers.push(callback);
-        callback(this.state); // Initial state
+        callback(this.state);
         return () => {
             this.subscribers = this.subscribers.filter(cb => cb !== callback);
         };
@@ -291,6 +400,14 @@ class WorkerService {
         };
     }
 
+    public subscribeMetrics(callback: (metrics: ComputeMetrics) => void) {
+        this.metricsSubscribers.push(callback);
+        callback(this.metrics);
+        return () => {
+            this.metricsSubscribers = this.metricsSubscribers.filter(cb => cb !== callback);
+        };
+    }
+
     private notifyState() {
         this.subscribers.forEach(cb => cb(this.state));
     }
@@ -299,17 +416,22 @@ class WorkerService {
         this.statsSubscribers.forEach(cb => cb(data));
     }
 
+    private notifyMetrics() {
+        this.metricsSubscribers.forEach(cb => cb(this.metrics));
+    }
+
     public terminate() {
         this.pause();
         this.worker?.terminate();
         this.worker = null;
         if (this.ws) this.ws.close();
         if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
+        this.releaseWakeLock();
         this.state = 'idle';
         this.notifyState();
     }
 
-    /** Symbiotic Management: Set power profile (Eco / Balance / Max) */
+    /** Set power profile (Eco / Balance / Max) */
     public setPowerProfile(profile: PowerProfile) {
         this.powerProfile = profile;
         if (this.worker) {

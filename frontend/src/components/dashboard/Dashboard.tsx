@@ -15,6 +15,7 @@ import { apiGet, apiPost } from '../../lib/apiClient';
 import Sidebar from '../layout/Sidebar';
 import { ComponentErrorBoundary } from '../common/ComponentErrorBoundary';
 import { workerService } from '../../services/WorkerService';
+import { ComputeNodePanel } from './ComputeNodePanel';
 import { InstallPwaPrompt } from '../common/InstallPwaPrompt';
 import { isTelegramWebApp, triggerHapticImpact } from '../../lib/telegram';
 
@@ -204,74 +205,31 @@ function Dashboard({ initialTab, sourceTelegram, modeMining }: DashboardProps = 
                     </div>
                   </div>
 
-                  {/* Mining Control + Network Stats */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {/* Mining Button */}
-                    <button
-                      onClick={handleToggleMining}
-                      disabled={isIgniting}
-                      style={{
-                        background: isMining
-                          ? 'rgba(239,68,68,0.06)'
-                          : 'rgba(6,182,212,0.06)',
-                        border: `1px solid ${isMining ? 'rgba(239,68,68,0.15)' : 'rgba(6,182,212,0.15)'}`,
-                        borderRadius: 16,
-                        padding: '20px',
-                      }}
-                      className="flex items-center justify-between text-left transition-all active:scale-[0.98] group"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`p-3 rounded-xl ${isMining ? 'bg-red-500/15' : 'bg-cyan-500/15'}`}>
-                          {isIgniting ? (
-                            <div className="w-5 h-5 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
-                          ) : isMining ? (
-                            <Activity size={20} className="text-red-400" />
-                          ) : (
-                            <Zap size={20} className="text-cyan-400" />
-                          )}
-                        </div>
-                        <div>
-                          <div className={`text-base font-bold ${isMining ? 'text-red-400' : 'text-cyan-400'}`}>
-                            {isIgniting ? t('node_starting', 'Starting...') : isMining ? t('node_running', 'Running') : t('start_node', 'Start Node')}
-                          </div>
-                          <div className="text-[11px] text-gray-600">{t('node_status', 'Status')}: {isMining ? t('active', 'Active') : t('idle', 'Idle')}</div>
-                        </div>
-                      </div>
-                      <span className={`px-3 py-1.5 rounded-lg text-xs font-bold ${isMining ? 'bg-red-500/15 text-red-400' : 'bg-cyan-500/15 text-cyan-400'}`}>
-                        {isMining ? t('stop_node', 'Stop') : t('mining_start', 'Start')}
-                      </span>
-                    </button>
+                  {/* ═══ TWA COMPUTE NODE — Cyber Dashboard ═══ */}
+                  <ComponentErrorBoundary name="ComputeNodePanel">
+                    <ComputeNodePanel />
+                  </ComponentErrorBoundary>
 
-                    {/* Network Quick Stats */}
-                    <div style={{
-                      background: 'rgba(8,8,26,0.8)',
-                      border: '1px solid rgba(255,255,255,0.06)',
-                      borderRadius: 16,
-                      padding: '20px',
-                    }}>
-                      <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-3">{t('network_status', 'Network')}</div>
-                      <div className="space-y-3">
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center gap-2 text-[13px] text-gray-400">
-                            <Server size={14} className="text-violet-400" />
-                            {t('workers_online', 'Workers')}
-                          </div>
-                          <span className="text-sm font-bold text-white tabular-nums">{networkStats?.active_workers || 0}</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center gap-2 text-[13px] text-gray-400">
-                            <Activity size={14} className="text-sky-400" />
-                            {t('tasks_today', 'Tasks 24h')}
-                          </div>
-                          <span className="text-sm font-bold text-white tabular-nums">{networkStats?.tasks_24h || 0}</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center gap-2 text-[13px] text-gray-400">
-                            <Users size={14} className="text-emerald-400" />
-                            {t('your_referral', 'Referral')}
-                          </div>
-                          <span className="text-sm font-bold text-emerald-400 tabular-nums">{referralMultiplier.toFixed(2)}×</span>
-                        </div>
+                  {/* Network Quick Stats */}
+                  <div style={{
+                    background: 'rgba(8,8,26,0.8)',
+                    border: '1px solid rgba(255,255,255,0.06)',
+                    borderRadius: 16,
+                    padding: '20px',
+                  }}>
+                    <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-3">{t('network_status', 'Network')}</div>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="text-center">
+                        <div className="text-[10px] text-gray-600 mb-1"><Server size={14} className="inline text-violet-400 mr-1" />{t('workers_online', 'Workers')}</div>
+                        <div className="text-lg font-bold text-white tabular-nums">{networkStats?.active_workers || 0}</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-[10px] text-gray-600 mb-1"><Activity size={14} className="inline text-sky-400 mr-1" />{t('tasks_today', 'Tasks 24h')}</div>
+                        <div className="text-lg font-bold text-white tabular-nums">{networkStats?.tasks_24h || 0}</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-[10px] text-gray-600 mb-1"><Users size={14} className="inline text-emerald-400 mr-1" />{t('your_referral', 'Referral')}</div>
+                        <div className="text-lg font-bold text-emerald-400 tabular-nums">{referralMultiplier.toFixed(2)}×</div>
                       </div>
                     </div>
                   </div>

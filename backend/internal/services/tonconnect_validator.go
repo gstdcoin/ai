@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -53,12 +52,7 @@ func (v *TonConnectValidator) ValidateSignature(
 	maxAge time.Duration,
 	publicKeyHex string, // Optional: public key from frontend
 ) error {
-	// Development mode: skip validation if SKIP_AUTH_VALIDATION=true
-	if os.Getenv("SKIP_AUTH_VALIDATION") == "true" {
-		log.Printf("⚠️  DEVELOPMENT MODE: Skipping TonConnect signature validation for wallet %s", walletAddress)
-		return nil
-	}
-
+	// SECURITY: Auth validation is always enforced. No bypass mechanism.
 	// Detailed logging
 	log.Printf("🔐 TonConnect validation started for wallet: %s", walletAddress)
 	log.Printf("📦 Payload received: %s", payload)
@@ -100,16 +94,16 @@ func (v *TonConnectValidator) ValidateSignature(
 	// 2. Validate timestamp (not older than maxAge)
 	now := time.Now().Unix()
 	age := time.Duration(now-payloadData.Timestamp) * time.Second
-	log.Printf("⏰ Timestamp validation: now=%d, payload_timestamp=%d, age=%v, maxAge=%v", 
+	log.Printf("⏰ Timestamp validation: now=%d, payload_timestamp=%d, age=%v, maxAge=%v",
 		now, payloadData.Timestamp, age, maxAge)
-	
+
 	if age > maxAge {
 		log.Printf("❌ Expired timestamp: age %v exceeds maximum %v", age, maxAge)
 		return fmt.Errorf("Expired timestamp: signature is %v old, maximum allowed is %v", age, maxAge)
 	}
-	
+
 	if payloadData.Timestamp > now+60 { // Allow 1 minute clock skew
-		log.Printf("❌ Timestamp in the future: payload_timestamp=%d, now=%d, diff=%d seconds", 
+		log.Printf("❌ Timestamp in the future: payload_timestamp=%d, now=%d, diff=%d seconds",
 			payloadData.Timestamp, now, payloadData.Timestamp-now)
 		return fmt.Errorf("signature timestamp is in the future")
 	}
@@ -150,8 +144,8 @@ func (v *TonConnectValidator) ValidateSignature(
 	var pubKey []byte
 	var pubKeySource string
 	var verifiedOffline bool
-	
-	// 6. Get public key 
+
+	// 6. Get public key
 	// FIRST try to verify the provided public key against the address (Offline)
 	// This allows uninitialized wallets to login securely
 	if publicKeyHex != "" {
@@ -177,7 +171,7 @@ func (v *TonConnectValidator) ValidateSignature(
 		if publicKeyHex != "" {
 			log.Printf("⚠️  Offline verification failed or key ignored. Fetching from TON API.")
 		}
-	
+
 		// Always fetch from TON API if not verified offline
 		log.Printf("🔑 Fetching public key from TON API for wallet: %s", walletAddress)
 		if v.tonService == nil {
@@ -195,7 +189,7 @@ func (v *TonConnectValidator) ValidateSignature(
 			log.Printf("❌ Invalid public key length from API: expected 32 bytes, got %d", len(pubKeyFromAPI))
 			return fmt.Errorf("Invalid public key length: expected 32 bytes, got %d", len(pubKeyFromAPI))
 		}
-		
+
 		pubKey = pubKeyFromAPI
 		pubKeySource = "TON API (Strict)"
 		log.Printf("✅ Public key from TON API: %s (first 16 chars)", hex.EncodeToString(pubKey[:16]))
@@ -214,7 +208,7 @@ func (v *TonConnectValidator) ValidateSignature(
 		log.Printf("   Public key: %s", hex.EncodeToString(pubKey))
 		log.Printf("   Hash: %s", hex.EncodeToString(hash[:]))
 		log.Printf("   Signature: %s (first 32 bytes)", hex.EncodeToString(sigBytes[:32]))
-		
+
 		// Log invalid signature to database if errorLogger is available
 		if v.errorLogger != nil {
 			v.errorLogger.LogError(ctx, "tonconnect_invalid_signature", fmt.Errorf("Ed25519 verification failed"), SeverityError, map[string]interface{}{
@@ -223,7 +217,7 @@ func (v *TonConnectValidator) ValidateSignature(
 				"pub_key_source": pubKeySource,
 			})
 		}
-		
+
 		return fmt.Errorf("Invalid signature: Ed25519 verification failed")
 	}
 
@@ -231,7 +225,7 @@ func (v *TonConnectValidator) ValidateSignature(
 	log.Printf("   - Nonce: %s", payloadData.Nonce)
 	log.Printf("   - Age: %v", age)
 	log.Printf("   - Public key source: %s", pubKeySource)
-	
+
 	return nil
 }
 
@@ -251,7 +245,7 @@ func GenerateLoginPayload(nonce string) string {
 		Nonce:     nonce,
 		Timestamp: timestamp,
 	}
-	
+
 	// Return as JSON string
 	jsonData, _ := json.Marshal(payload)
 	return string(jsonData)

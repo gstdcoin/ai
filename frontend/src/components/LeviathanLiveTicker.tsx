@@ -24,7 +24,7 @@ function parseAlphaFromMessage(msg: string): number | null {
  * Guardian Mode: Critical Alerting (Alpha 30%+ pulse), Energy Efficiency (throttle when tab hidden)
  */
 /** Omnipresence: Multilingual Ticker — translate key phrases, keep technical terms (Alpha, Int-Logic, Verified) */
-function translateTickerMessage(msg: string, t: (k: string) => string): string {
+function translateTickerMessage(msg: string, t: any): string {
   if (msg.startsWith('🔍 Scan:')) return '🔍 ' + t('ticker_scan', 'Scan') + ': ' + msg.slice(8);
   if (msg.includes('Alpha found:')) return msg.replace('Alpha found:', t('ticker_alpha', 'Alpha found') + ':');
   if (msg.startsWith('🎓 Learning:')) return '🎓 ' + t('ticker_learning', 'Learning') + ': ' + msg.slice(12);
@@ -225,8 +225,8 @@ export default function LeviathanLiveTicker() {
   return (
     <div
       className={`overflow-hidden border-b py-2 z-[9999] opacity-100 transition-colors duration-300 ${supremeOpportunity
-          ? 'border-amber-500/60 bg-amber-500/10 animate-supreme-pulse'
-          : 'border-white/5 bg-black/30'
+        ? 'border-amber-500/60 bg-amber-500/10 animate-supreme-pulse'
+        : 'border-white/5 bg-black/30'
         }`}
       style={{ position: 'fixed', top: 0, left: 0, width: '100%' }}
     >

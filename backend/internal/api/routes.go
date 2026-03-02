@@ -538,6 +538,7 @@ func SetupRoutes(
 		tgBot.POST("/claim", tgBotHandler.ClaimTask)
 		tgBot.POST("/complete", tgBotHandler.CompleteTask)
 		tgBot.POST("/ai", tgBotHandler.AIChat)
+		tgBot.POST("/claim_reward", tgBotHandler.ClaimReward)
 
 		// Stars purchase — credits GSTD to linked wallet
 		v1.POST("/telegram/buy-stars", buyStarsHandler(dbConn, welcomeBonusService))
@@ -615,6 +616,12 @@ func SetupRoutes(
 		v1.GET("/chat/sovereignty-index", gatewayHandler.GetSovereigntyIndex)
 
 		log.Printf("✅ Growth System & Onboarding routes registered (Omega Gateway Active)")
+
+		// ═══ UNIVERSAL SWARM EMBED API ═══
+		// Embeddable AI: /api/v1/swarm/infer, /swarm/info, /swarm/widget.js
+		// Any device, any platform — one API to rule them all
+		swarmEmbedHandler := NewSwarmEmbedHandler(dbConn, smartRouter, apiKeyService)
+		SetupSwarmEmbedRoutes(v1, swarmEmbedHandler)
 	}
 
 	// WebSocket endpoint

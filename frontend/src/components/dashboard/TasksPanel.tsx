@@ -56,7 +56,7 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
 
   const triggerConfetti = () => {
     // Simple confetti effect using canvas
-    const canvas = document.createElement('canvas', 'Canvas');
+    const canvas = document.createElement('canvas');
     canvas.style.position = 'fixed';
     canvas.style.top = '0';
     canvas.style.left = '0';
@@ -364,7 +364,7 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
     try {
       await apiDelete(`/tasks/${task.task_id}`);
       toast.success(t('task_deleted', 'Task deleted successfully') || 'Task deleted successfully');
-      triggerHapticImpact('medium', 'Medium');
+      triggerHapticImpact('medium');
       loadTasks();
     } catch (error: any) {
       logger.error('Failed to delete task', error);
@@ -395,7 +395,7 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
           type="button"
           onClick={() => {
             setFilter('all');
-            triggerHapticImpact('light', 'Light');
+            triggerHapticImpact('light');
           }}
           className={`px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm sm:text-base min-h-[44px] ${filter === 'all'
             ? 'glass-button-gold'
@@ -410,7 +410,7 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
               type="button"
               onClick={() => {
                 setFilter('my');
-                triggerHapticImpact('light', 'Light');
+                triggerHapticImpact('light');
               }}
               className={`px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm sm:text-base min-h-[44px] ${filter === 'my'
                 ? 'glass-button-gold'
@@ -423,7 +423,7 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
               type="button"
               onClick={() => {
                 setFilter('available');
-                triggerHapticImpact('light', 'Light');
+                triggerHapticImpact('light');
               }}
               className={`px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm sm:text-base min-h-[44px] ${filter === 'available'
                 ? 'glass-button-gold'
@@ -549,7 +549,7 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
                             type="button"
                             onClick={() => {
                               setSelectedTaskId(task.task_id);
-                              triggerHapticImpact('light', 'Light');
+                              triggerHapticImpact('light');
                             }}
                             className="text-gold-900 hover:text-gold-700 text-xs sm:text-sm font-medium"
                           >
