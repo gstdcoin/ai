@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
@@ -29,10 +30,11 @@ type AgentAPIHandler struct {
 	db            *sql.DB
 	clawSvc       *services.OpenClawBridgeService
 	recyclingPool *services.RecyclingPoolService
+	knowledgeSvc  *services.KnowledgeService
 }
 
-func NewAgentAPIHandler(db *sql.DB, clawSvc *services.OpenClawBridgeService, rp *services.RecyclingPoolService) *AgentAPIHandler {
-	h := &AgentAPIHandler{db: db, clawSvc: clawSvc, recyclingPool: rp}
+func NewAgentAPIHandler(db *sql.DB, clawSvc *services.OpenClawBridgeService, rp *services.RecyclingPoolService, ks *services.KnowledgeService) *AgentAPIHandler {
+	h := &AgentAPIHandler{db: db, clawSvc: clawSvc, recyclingPool: rp, knowledgeSvc: ks}
 	h.ensureSchema()
 	return h
 }
@@ -181,36 +183,72 @@ func (h *AgentAPIHandler) AgentAuthMiddleware() gin.HandlerFunc {
 	}
 }
 
-// AgentChat — OpenAI-compatible chat completions for agents
+// AgentChat — OpenAI-compatible chat with Hive Memory injection
 // POST /api/v1/agents/chat/completions
+// Automatically injects collective memory context before inference
 func (h *AgentAPIHandler) AgentChat(c *gin.Context) {
+	agentID := c.GetString("agent_id")
+
 	var req struct {
 		Model    string `json:"model"`
 		Messages []struct {
 			Role    string `json:"role"`
 			Content string `json:"content"`
 		} `json:"messages"`
-		Stream bool `json:"stream"`
+		Stream         bool `json:"stream"`
+		UseHiveMemory  bool `json:"use_hive_memory"` // default true
+		ContributeBack bool `json:"contribute_back"` // store insights back
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Use claw.think RPC
-	prompt := ""
+	// Build prompt from messages
+	userPrompt := ""
 	for _, m := range req.Messages {
 		if m.Role == "user" || m.Role == "system" {
-			prompt += m.Content + "\n"
+			userPrompt += m.Content + "\n"
 		}
 	}
 
+	// ── Inject Hive Memory (collective knowledge from all agents) ──
+	hiveContext := ""
+	experienceHit := false
+	if h.knowledgeSvc != nil {
+		// 1. Check Experience Vault first (avoid redundant inference)
+		if cached, err := h.knowledgeSvc.QueryExperienceVault(c.Request.Context(), userPrompt); err == nil && cached != nil {
+			experienceHit = true
+			hiveContext = "[Experience Vault Match]\n" + cached.Content
+		}
+
+		// 2. Inject recent Hive Insights as context
+		if insights, err := h.knowledgeSvc.SummarizeRecentInsights(c.Request.Context(), 10); err == nil && insights != "" {
+			hiveContext += "\n\n[Hive Memory — Recent Swarm Insights]\n" + insights
+		}
+
+		// 3. Topic-specific knowledge from global graph
+		if items, err := h.knowledgeSvc.QueryKnowledgeWithGlobalGraph(c.Request.Context(), userPrompt[:min(100, len(userPrompt))], 5); err == nil && len(items) > 0 {
+			hiveContext += "\n\n[Collective Knowledge]\n"
+			for _, item := range items {
+				hiveContext += "• " + item.Topic + ": " + item.Content[:min(200, len(item.Content))] + "\n"
+			}
+		}
+	}
+
+	// Prepend hive context to prompt
+	finalPrompt := userPrompt
+	if hiveContext != "" {
+		finalPrompt = hiveContext + "\n\nUser query: " + userPrompt
+	}
+
+	// ── Route through claw.think (with hive context) ──
 	rpcReq := &services.RPCRequest{
 		JSONRPC: "2.0",
 		Method:  "claw.think",
 		ID:      time.Now().UnixNano(),
 	}
-	params, _ := json.Marshal(map[string]interface{}{"prompt": prompt})
+	params, _ := json.Marshal(map[string]interface{}{"prompt": finalPrompt})
 	rpcReq.Params = params
 
 	rpcResp := h.clawSvc.HandleRPC(c.Request.Context(), rpcReq)
@@ -230,7 +268,18 @@ func (h *AgentAPIHandler) AgentChat(c *gin.Context) {
 		}
 	}
 
-	// OpenAI-compatible response
+	// ── Contribute back to Hive Memory ──
+	if h.knowledgeSvc != nil && content != "" && len(content) > 50 {
+		go func() {
+			_ = h.knowledgeSvc.StoreKnowledge(
+				context.Background(), agentID,
+				userPrompt[:min(100, len(userPrompt))],
+				content[:min(500, len(content))],
+				[]string{"agent_interaction", agentID, model}, nil)
+		}()
+	}
+
+	// OpenAI-compatible response with hive metadata
 	c.JSON(http.StatusOK, gin.H{
 		"id":      fmt.Sprintf("agent-%d", time.Now().UnixNano()),
 		"object":  "chat.completion",
@@ -242,9 +291,14 @@ func (h *AgentAPIHandler) AgentChat(c *gin.Context) {
 			"finish_reason": "stop",
 		}},
 		"usage": gin.H{
-			"prompt_tokens":     len(prompt) / 4,
+			"prompt_tokens":     len(finalPrompt) / 4,
 			"completion_tokens": len(content) / 4,
-			"total_tokens":      (len(prompt) + len(content)) / 4,
+			"total_tokens":      (len(finalPrompt) + len(content)) / 4,
+		},
+		"hive_memory": gin.H{
+			"injected":       hiveContext != "",
+			"experience_hit": experienceHit,
+			"contributed":    len(content) > 50,
 		},
 	})
 }
@@ -414,6 +468,111 @@ func (h *AgentAPIHandler) AgentEarnHeartbeat(c *gin.Context) {
 	})
 }
 
+// ── Collective Memory Endpoints ──
+
+// AgentMemoryQuery searches collective knowledge
+// GET /api/v1/agents/memory/query?topic=xxx
+func (h *AgentAPIHandler) AgentMemoryQuery(c *gin.Context) {
+	topic := c.Query("topic")
+	if topic == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "topic parameter required"})
+		return
+	}
+	if h.knowledgeSvc == nil {
+		c.JSON(503, gin.H{"error": "knowledge service unavailable"})
+		return
+	}
+	results, err := h.knowledgeSvc.QueryKnowledgeWithGlobalGraph(c.Request.Context(), topic, 20)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, gin.H{"results": results, "source": "hive_memory", "count": len(results)})
+}
+
+// AgentMemoryStore stores knowledge into collective memory
+// POST /api/v1/agents/memory/store
+func (h *AgentAPIHandler) AgentMemoryStore(c *gin.Context) {
+	agentID := c.GetString("agent_id")
+	var req struct {
+		Topic   string   `json:"topic" binding:"required"`
+		Content string   `json:"content" binding:"required"`
+		Tags    []string `json:"tags"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if h.knowledgeSvc == nil {
+		c.JSON(503, gin.H{"error": "knowledge service unavailable"})
+		return
+	}
+	tags := append(req.Tags, "agent_contributed", agentID)
+	err := h.knowledgeSvc.StoreKnowledge(c.Request.Context(), agentID, req.Topic, req.Content, tags, nil)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	log.Printf("🧠 Agent %s contributed knowledge: %s", agentID, req.Topic[:min(40, len(req.Topic))])
+	c.JSON(200, gin.H{"status": "stored", "shared_with": "all_agents"})
+}
+
+// AgentMemoryInsights returns recent Hive insights
+// GET /api/v1/agents/memory/insights
+func (h *AgentAPIHandler) AgentMemoryInsights(c *gin.Context) {
+	if h.knowledgeSvc == nil {
+		c.JSON(503, gin.H{"error": "knowledge service unavailable"})
+		return
+	}
+	insights, err := h.knowledgeSvc.SummarizeRecentInsights(c.Request.Context(), 20)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, gin.H{"insights": insights, "source": "hive_memory"})
+}
+
+// AgentResources shows shared compute resources
+// GET /api/v1/agents/resources
+func (h *AgentAPIHandler) AgentResources(c *gin.Context) {
+	// Query swarm stats
+	rpcReq := &services.RPCRequest{JSONRPC: "2.0", Method: "claw.getNetworkStats", ID: 1}
+	resp := h.clawSvc.HandleRPC(c.Request.Context(), rpcReq)
+
+	// Query pool balance for shared resources
+	var poolMinerBal, poolReserve, poolValueFund, poolBurned float64
+	if h.db != nil {
+		h.db.QueryRowContext(c.Request.Context(),
+			`SELECT COALESCE(available_for_miners,0), COALESCE(total_to_reserve,0), COALESCE(value_fund_balance,0), COALESCE(total_burned,0)
+			 FROM recycling_pool_balance WHERE id=1`).Scan(&poolMinerBal, &poolReserve, &poolValueFund, &poolBurned)
+	}
+
+	// Count total agents
+	var totalAgents int
+	if h.db != nil {
+		h.db.QueryRowContext(c.Request.Context(), `SELECT COUNT(*) FROM agent_api_keys WHERE is_active = true`).Scan(&totalAgents)
+	}
+
+	c.JSON(200, gin.H{
+		"swarm_stats":  resp.Result,
+		"total_agents": totalAgents,
+		"shared_resources": gin.H{
+			"miner_pool_gstd":   poolMinerBal,
+			"gold_reserve_gstd": poolReserve,
+			"value_fund_gstd":   poolValueFund,
+			"total_burned_gstd": poolBurned,
+		},
+		"collective_memory": gin.H{
+			"available": h.knowledgeSvc != nil,
+			"endpoints": []string{
+				"/agents/memory/query?topic=xxx",
+				"/agents/memory/store",
+				"/agents/memory/insights",
+			},
+		},
+	})
+}
+
 // SetupAgentRoutes registers all agent API endpoints
 func SetupAgentRoutes(router *gin.RouterGroup, h *AgentAPIHandler) {
 	agents := router.Group("/agents")
@@ -425,7 +584,7 @@ func SetupAgentRoutes(router *gin.RouterGroup, h *AgentAPIHandler) {
 	protected := agents.Group("")
 	protected.Use(h.AgentAuthMiddleware())
 
-	// OpenAI-compatible chat
+	// OpenAI-compatible chat (with Hive Memory)
 	protected.POST("/chat/completions", h.AgentChat)
 
 	// JSON-RPC 2.0
@@ -437,4 +596,12 @@ func SetupAgentRoutes(router *gin.RouterGroup, h *AgentAPIHandler) {
 	protected.POST("/tasks/claim", h.AgentClaimTask)
 	protected.POST("/tasks/submit", h.AgentSubmitResult)
 	protected.POST("/earn/heartbeat", h.AgentEarnHeartbeat)
+
+	// Collective Memory
+	protected.GET("/memory/query", h.AgentMemoryQuery)
+	protected.POST("/memory/store", h.AgentMemoryStore)
+	protected.GET("/memory/insights", h.AgentMemoryInsights)
+
+	// Shared Resources
+	protected.GET("/resources", h.AgentResources)
 }
