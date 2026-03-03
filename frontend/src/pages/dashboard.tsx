@@ -14,11 +14,11 @@ export default function DashboardPage() {
     const [tonConnectUI] = useTonConnectUI();
     const [hydrated, setHydrated] = useState(false);
 
-    // Wait for TonConnect to restore session — single reliable timeout
+    // Wait for TonConnect to restore session — give enough time for cross-domain navigation
     useEffect(() => {
         const timer = setTimeout(() => {
             setHydrated(true);
-        }, 1500);
+        }, 3000); // Increased from 1500ms for cross-domain session restoration
 
         // Early resolve if store already has connection
         const state = useWalletStore.getState();
@@ -33,8 +33,16 @@ export default function DashboardPage() {
             }
         });
 
-        return () => { unsub(); clearTimeout(timer); };
-    }, []);
+        // Also listen for TonConnect status changes
+        const unsubTc = tonConnectUI.onStatusChange((wallet) => {
+            if (wallet) {
+                setHydrated(true);
+                clearTimeout(timer);
+            }
+        });
+
+        return () => { unsub(); unsubTc(); clearTimeout(timer); };
+    }, [tonConnectUI]);
 
     // Redirect if not connected after hydration
     useEffect(() => {
@@ -43,7 +51,8 @@ export default function DashboardPage() {
         const wallet = tonConnectUI.wallet;
         const storeState = useWalletStore.getState();
         if (!wallet && !storeState.isConnected) {
-            router.push('/');
+            // Always redirect to the main landing page, not back to monitor/chat
+            router.replace('/');
         }
     }, [hydrated, isConnected, tonConnectUI, router]);
 

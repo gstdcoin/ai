@@ -594,7 +594,7 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 
 	// Consumer Adoption: SettlementService + RecyclingPool — record payment (skip when Free Tier or First-Query Bonus)
 	if wallet != "" && fee > 0 && !useFreeTier && !anonymousFree {
-		// RecyclingPool: 85% → miners, 7% → Golden Reserve, 5% → Value Fund, 3% → burn
+		// RecyclingPool: 85% → miners, 7% → Golden Reserve, 5% → Value Fund, 3% → Cocoon Fund (Binance TON)
 		if h.recyclingPool != nil {
 			_, rpErr := h.recyclingPool.ProcessPayment(c.Request.Context(), wallet, fee, "chat-"+ollamaModel, "inference")
 			if rpErr != nil {
@@ -765,13 +765,19 @@ func (h *GatewayHandler) GetCocoonStatus(c *gin.Context) {
 	stats := h.cocoonBridge.GetStats()
 	health := h.cocoonBridge.HealthCheck(c.Request.Context())
 	models := h.cocoonBridge.GetModels()
+	statusNote := ""
+	if !h.cocoonBridge.IsEnabled() {
+		statusNote = "Cocoon API is in beta — whitelist access required. Contact t.me/cocoon for API key."
+	}
 	c.JSON(200, gin.H{
-		"enabled":  h.cocoonBridge.IsEnabled(),
-		"stats":    stats,
-		"health":   health,
-		"models":   models,
-		"protocol": "Cocoon — Confidential Compute Open Network (Telegram)",
-		"docs":     "https://cocoon.org/developers",
+		"enabled":     h.cocoonBridge.IsEnabled(),
+		"status_note": statusNote,
+		"stats":       stats,
+		"health":      health,
+		"models":      models,
+		"protocol":    "Cocoon — Confidential Compute Open Network (Telegram)",
+		"docs":        "https://cocoon.org/developers",
+		"github":      "https://github.com/TelegramMessenger/cocoon",
 	})
 }
 
