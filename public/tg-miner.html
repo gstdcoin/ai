@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>GSTD — Personal AI + Miner + Mini-node</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #030014;
+      --card: rgba(255,255,255,0.03);
+      --border: rgba(255,255,255,0.08);
+      --text: #fff;
+      --muted: #6b7280;
+      --accent: #8b5cf6;
+      --green: #10b981;
+      --gold: #f59e0b;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    .container { max-width: 420px; margin: 0 auto; padding: 16px; }
+    
+    /* Header */
+    .header { text-align: center; padding: 20px 0 16px; }
+    .header h1 { font-size: 20px; font-weight: 900; letter-spacing: -0.5px; }
+    .header h1 span { background: linear-gradient(90deg, #8b5cf6, #06b6d4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 12px; border-radius: 20px;
+      background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.2);
+      font-size: 11px; font-weight: 700; color: #10b981;
+      margin-top: 8px;
+    }
+    .status-badge .dot { width: 6px; height: 6px; border-radius: 50%; background: #10b981; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    .full-dashboard-link {
+      display: block; margin-top: 12px; padding: 10px 16px;
+      background: linear-gradient(135deg, rgba(139,92,246,0.2), rgba(6,182,212,0.2));
+      border: 1px solid rgba(139,92,246,0.3); border-radius: 12px;
+      color: #a78bfa; font-size: 12px; font-weight: 600; text-decoration: none;
+      text-align: center; transition: all 0.2s;
+    }
+    .full-dashboard-link:hover { background: rgba(139,92,246,0.3); color: #fff; }
+    .quick-nav { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; justify-content: center; }
+    .quick-nav a {
+      padding: 8px 14px; border-radius: 10px; font-size: 11px; font-weight: 700;
+      text-decoration: none; transition: all 0.2s;
+      background: var(--card); border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .quick-nav a:hover { border-color: rgba(139,92,246,0.4); color: #a78bfa; }
+    
+    /* Power Button */
+    .power-section { text-align: center; padding: 24px 0; }
+    .power-btn {
+      width: 140px; height: 140px; border-radius: 50%;
+      border: 3px solid var(--border);
+      background: var(--card);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto; cursor: pointer; transition: all 0.5s;
+      position: relative; overflow: hidden;
+    }
+    .power-btn.active {
+      border-color: rgba(16,185,129,0.4);
+      background: rgba(16,185,129,0.05);
+      box-shadow: 0 0 60px rgba(16,185,129,0.15);
+    }
+    .power-btn svg { width: 48px; height: 48px; transition: all 0.3s; }
+    .power-btn.active svg { color: #10b981; filter: drop-shadow(0 0 10px rgba(16,185,129,0.5)); }
+    .power-label { margin-top: 12px; font-size: 13px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 2px; }
+    
+    /* Stats Grid */
+    .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 16px 0; }
+    .stat-card {
+      padding: 16px; border-radius: 16px;
+      background: var(--card); border: 1px solid var(--border);
+    }
+    .stat-label { font-size: 9px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 4px; }
+    .stat-value { font-size: 22px; font-weight: 900; font-variant-numeric: tabular-nums; }
+    .stat-value.gold { color: var(--gold); }
+    .stat-value.green { color: var(--green); }
+    .stat-value.accent { color: var(--accent); }
+    
+    /* Task Log */
+    .log-section { margin-top: 16px; }
+    .log-title { font-size: 10px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 8px; }
+    .log-list { max-height: 200px; overflow-y: auto; }
+    .log-item {
+      padding: 10px 12px; border-radius: 12px;
+      background: var(--card); border: 1px solid var(--border);
+      margin-bottom: 6px; font-size: 12px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .log-item .reward { color: var(--green); font-weight: 800; }
+    .log-item .time { color: var(--muted); font-size: 10px; }
+    
+    /* Settings */
+    .settings { margin-top: 16px; padding: 16px; border-radius: 16px; background: var(--card); border: 1px solid var(--border); }
+    .setting-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; }
+    .setting-label { font-size: 12px; font-weight: 600; }
+    .setting-desc { font-size: 10px; color: var(--muted); }
+    .toggle {
+      width: 44px; height: 24px; border-radius: 12px;
+      background: rgba(255,255,255,0.1); cursor: pointer;
+      position: relative; transition: background 0.3s;
+    }
+    .toggle.on { background: rgba(16,185,129,0.3); }
+    .toggle .knob {
+      width: 20px; height: 20px; border-radius: 50%;
+      background: #fff; position: absolute; top: 2px; left: 2px;
+      transition: transform 0.3s;
+    }
+    .toggle.on .knob { transform: translateX(20px); background: #10b981; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1><span>GSTD</span> — Personal AI + Miner + Mini-node</h1>
+      <p style="font-size:11px;color:var(--muted);margin-top:4px;">Your assistant in Telegram</p>
+      <div class="status-badge" id="statusBadge">
+        <div class="dot"></div>
+        <span id="statusText">Ready</span>
+      </div>
+      <div class="quick-nav">
+        <a href="https://app.gstdtoken.com/dashboard">🤖 AI Chat</a>
+        <a href="https://app.gstdtoken.com/agent">📡 Agent Node</a>
+      </div>
+      <a href="https://app.gstdtoken.com" class="full-dashboard-link" id="fullDashboardLink">
+        📱 Full dashboard (chat, tasks, wallet)
+      </a>
+    </div>
+
+    <div class="power-section">
+      <div style="font-size:9px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;">⛏ Miner · Mini-node</div>
+      <div class="power-btn" id="powerBtn" onclick="toggleMining()">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M5.636 5.636a9 9 0 1012.728 0M12 3v9" />
+        </svg>
+      </div>
+      <div class="power-label" id="powerLabel">TAP TO START</div>
+    </div>
+
+    <div class="stats">
+      <div class="stat-card">
+        <div class="stat-label">Earned Today</div>
+        <div class="stat-value gold" id="earnedToday">0.00</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total Balance</div>
+        <div class="stat-value green" id="totalBalance">0.00</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Tasks Done</div>
+        <div class="stat-value accent" id="tasksDone">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Uptime</div>
+        <div class="stat-value" id="uptime" style="color:#06b6d4">0:00</div>
+      </div>
+    </div>
+
+    <div class="settings">
+      <div class="setting-row">
+        <div>
+          <div class="setting-label">WiFi Only</div>
+          <div class="setting-desc">Mine only on WiFi</div>
+        </div>
+        <div class="toggle on" id="toggleWifi" onclick="toggleSetting('wifi')">
+          <div class="knob"></div>
+        </div>
+      </div>
+      <div class="setting-row">
+        <div>
+          <div class="setting-label">Charging Only</div>
+          <div class="setting-desc">Mine only when charging</div>
+        </div>
+        <div class="toggle on" id="toggleCharging" onclick="toggleSetting('charging')">
+          <div class="knob"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="log-section">
+      <div class="log-title">Recent Tasks</div>
+      <div class="log-list" id="logList">
+        <div class="log-item" style="justify-content:center; color:var(--muted)">
+          Tap the button to start mining
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API = 'https://app.gstdtoken.com/api/v1';
+    let isMining = false;
+    let taskInterval = null;
+    let uptimeStart = null;
+    let uptimeInterval = null;
+    let stats = { earned: 0, tasks: 0, balance: 0 };
+    let settings = { wifi: true, charging: true };
+    let sessionToken = null;
+
+    // Telegram WebApp init
+    const tg = window.Telegram?.WebApp;
+    if (tg) {
+      tg.ready();
+      tg.expand();
+      tg.setHeaderColor('#030014');
+      tg.setBackgroundColor('#030014');
+    }
+
+    // Load saved state
+    try {
+      const saved = JSON.parse(localStorage.getItem('gstd_miner') || '{}');
+      if (saved.stats) stats = saved.stats;
+      if (saved.settings) settings = saved.settings;
+      if (saved.sessionToken) sessionToken = saved.sessionToken;
+      updateUI();
+    } catch(e) {}
+
+    function saveState() {
+      localStorage.setItem('gstd_miner', JSON.stringify({ stats, settings, sessionToken }));
+    }
+
+    function toggleMining() {
+      if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('heavy');
+      
+      if (isMining) {
+        stopMining();
+      } else {
+        startMining();
+      }
+    }
+
+    async function startMining() {
+      // Check conditions
+      if (settings.wifi && navigator.connection?.type === 'cellular') {
+        addLog('⚠️ WiFi required', '');
+        return;
+      }
+
+      isMining = true;
+      uptimeStart = Date.now();
+      
+      document.getElementById('powerBtn').classList.add('active');
+      document.getElementById('powerLabel').textContent = 'MINING...';
+      document.getElementById('statusText').textContent = 'Mining Active';
+      document.getElementById('statusBadge').style.borderColor = 'rgba(16,185,129,0.3)';
+
+      // Start task loop
+      taskInterval = setInterval(fetchAndProcessTask, 15000); // Every 15s
+      uptimeInterval = setInterval(updateUptime, 1000);
+      
+      // Process first task immediately
+      fetchAndProcessTask();
+      
+      if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+      saveState();
+    }
+
+    function stopMining() {
+      isMining = false;
+      clearInterval(taskInterval);
+      clearInterval(uptimeInterval);
+      
+      document.getElementById('powerBtn').classList.remove('active');
+      document.getElementById('powerLabel').textContent = 'TAP TO START';
+      document.getElementById('statusText').textContent = 'Paused';
+      
+      saveState();
+    }
+
+    async function fetchAndProcessTask() {
+      if (!isMining) return;
+
+      try {
+        // Request a validation task from the network
+        const headers = { 'Content-Type': 'application/json' };
+        if (sessionToken) headers['X-Session-Token'] = sessionToken;
+
+        const res = await fetch(`${API}/marketplace/tasks?status=pending&limit=1`, { headers });
+        if (!res.ok) return;
+        
+        const data = await res.json();
+        const tasks = data.tasks || [];
+        
+        if (tasks.length === 0) {
+          addLog('🔍 No tasks available', new Date().toLocaleTimeString());
+          return;
+        }
+
+        const task = tasks[0];
+        
+        // Simulate task processing (validation/inference)
+        addLog(`⚙️ Processing: ${task.task_type || 'inference'}`, new Date().toLocaleTimeString());
+        
+        await new Promise(r => setTimeout(r, 2000 + Math.random() * 3000));
+        
+        // Calculate reward
+        const reward = task.labor_compensation_gstd || 0.001 + Math.random() * 0.005;
+        stats.earned += reward;
+        stats.tasks += 1;
+        stats.balance += reward;
+        
+        addLog(`✅ +${reward.toFixed(4)} GSTD`, new Date().toLocaleTimeString());
+        updateUI();
+        saveState();
+        
+        if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+      } catch(e) {
+        console.error('Task fetch error:', e);
+      }
+    }
+
+    function addLog(text, time) {
+      const list = document.getElementById('logList');
+      // Remove placeholder
+      if (stats.tasks === 0 && list.children.length === 1) {
+        list.innerHTML = '';
+      }
+      
+      const item = document.createElement('div');
+      item.className = 'log-item';
+      item.innerHTML = `<span>${text}</span><span class="time">${time}</span>`;
+      list.prepend(item);
+      
+      // Keep max 20 entries
+      while (list.children.length > 20) list.removeChild(list.lastChild);
+    }
+
+    function updateUI() {
+      document.getElementById('earnedToday').textContent = stats.earned.toFixed(4);
+      document.getElementById('totalBalance').textContent = stats.balance.toFixed(2);
+      document.getElementById('tasksDone').textContent = stats.tasks;
+    }
+
+    function updateUptime() {
+      if (!uptimeStart) return;
+      const seconds = Math.floor((Date.now() - uptimeStart) / 1000);
+      const h = Math.floor(seconds / 3600);
+      const m = Math.floor((seconds % 3600) / 60);
+      const s = seconds % 60;
+      document.getElementById('uptime').textContent = 
+        h > 0 ? `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}` 
+               : `${m}:${String(s).padStart(2,'0')}`;
+    }
+
+    function toggleSetting(key) {
+      settings[key] = !settings[key];
+      const el = document.getElementById(key === 'wifi' ? 'toggleWifi' : 'toggleCharging');
+      el.classList.toggle('on');
+      saveState();
+      if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+    }
+  </script>
+</body>
+</html>
