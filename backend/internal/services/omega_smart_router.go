@@ -105,6 +105,7 @@ type SovereigntyMetrics struct {
 	SovereignSwarm     int64 `json:"sovereign_swarm"`        // L2: Ollama
 	SovereignPhantomHF int64 `json:"sovereign_phantom_hf"`   // L2.5: HuggingFace
 	SovereignPhantomGQ int64 `json:"sovereign_phantom_groq"` // L2.7: Groq
+	SovereignMoA       int64 `json:"sovereign_moa"`          // L2.8: Mixture-of-Agents
 	SovereignCocoon    int64 `json:"sovereign_cocoon"`       // L3: Cocoon TEE
 	SovereignCache     int64 `json:"sovereign_cache"`        // L1: Vault
 	FallbackCommerce   int64 `json:"fallback_commercial"`    // L4: LiteLLM
@@ -181,7 +182,7 @@ func (pe *PhantomEndpoint) RecordFailure(isRateLimit bool) {
 // ─── SmartRouter ────────────────────────────────────────────────────────────
 
 // SmartRouter manages the Sovereign-First routing logic.
-// Priority: L1 Cache → L2 Swarm → L2.5 HuggingFace → L2.7 Groq → L3 Cocoon → L4 Commercial
+// Priority: L1 Cache → L2 Swarm → L2.5 HuggingFace → L2.7 Groq → L2.8 MoA → L3 Cocoon → L4 Commercial
 type SmartRouter struct {
 	vault         *ExperienceVault
 	oracle        *GSTDOracleService
@@ -200,6 +201,15 @@ type SmartRouter struct {
 	groqKey     string
 	groqClient  *http.Client
 	phantomGroq PhantomEndpoint
+
+	// L2.8: Mixture-of-Agents Consensus Engine
+	moa *MoAEngine
+
+	// L3/L4: Sovereign Power Pool (replaces Cocoon + LiteLLM)
+	sovereignPool *SovereignPowerPool
+
+	// Web Search — real-time internet context injection
+	webSearch *WebSearchService
 }
 
 // ModelPricing defines cost structure for each model
@@ -308,6 +318,15 @@ func NewSmartRouter(vault *ExperienceVault, oracle *GSTDOracleService) *SmartRou
 	router.phantomHF = PhantomEndpoint{Provider: PhantomHuggingFace, Healthy: router.hfToken != ""}
 	router.phantomGroq = PhantomEndpoint{Provider: PhantomGroq, Healthy: router.groqKey != ""}
 
+	// Initialize MoA engine (L2.8)
+	router.moa = NewMoAEngine(router.groqKey, router.hfToken)
+
+	// Initialize Sovereign Power Pool (L3 + L4) — replaces Cocoon + LiteLLM
+	router.sovereignPool = NewSovereignPowerPool(router.groqKey, router.hfToken, os.Getenv("OPENROUTER_API_KEY"))
+
+	// Initialize Web Search Service (real-time context injection)
+	router.webSearch = NewWebSearchService(os.Getenv("BRAVE_SEARCH_API_KEY"))
+
 	router.pricingTable = map[string]ModelPricing{
 		// Sovereign Models (L2 — Swarm / Ollama)
 		"qwen2.5-coder:7b": {0.0, 0.0, "swarm", true},
@@ -316,10 +335,11 @@ func NewSmartRouter(vault *ExperienceVault, oracle *GSTDOracleService) *SmartRou
 		"phi-3-mini":       {0.0, 0.0, "swarm", true},
 		"gemma-2b":         {0.0, 0.0, "swarm", true},
 		"mistral:7b":       {0.0, 0.0, "swarm", true},
-		// Phantom Nodes (L2.5/L2.7 — free-tier, sovereign)
+		// Phantom Nodes (L2.5/L2.7/L2.8 — free-tier, sovereign)
 		"meta-llama/Meta-Llama-3-8B-Instruct": {0.0, 0.0, "phantom_hf", true},
 		"Qwen/Qwen2.5-72B-Instruct":           {0.0, 0.0, "phantom_hf", true},
 		"llama-3.3-70b-versatile":             {0.0, 0.0, "phantom_groq", true},
+		"moa-consensus":                       {0.0, 0.0, "moa", true},
 		// Commercial Fallback (L4 — LiteLLM → OpenAI/Anthropic/etc.)
 		"deepseek-r1":       {0.0, 0.0, "litellm", false},
 		"gpt-4o":            {0.00125, 0.00375, "litellm", false},
@@ -337,12 +357,16 @@ func NewSmartRouter(vault *ExperienceVault, oracle *GSTDOracleService) *SmartRou
 	if router.groqKey != "" {
 		phantomStatus = append(phantomStatus, "Groq=✓")
 	}
+	moaStatus := "MoA=✗"
+	if router.moa.IsAvailable() {
+		moaStatus = "MoA=✓"
+	}
 	if len(phantomStatus) == 0 {
 		phantomStatus = append(phantomStatus, "none (set HF_TOKEN / GROQ_API_KEY)")
 	}
 
-	log.Printf("🔀 [OmegaRouter] Sovereign-First routing active (L1→Cache L2→Swarm L2.5→HF L2.7→Groq L3→Cocoon L4→Commercial) phantom=[%s]",
-		strings.Join(phantomStatus, ", "))
+	log.Printf("🔀 [OmegaRouter] Sovereign-First routing active (L1→Cache L2→Swarm L2.5→HF L2.7→Groq L2.8→MoA L3→Cocoon L4→Commercial) phantom=[%s] %s",
+		strings.Join(phantomStatus, ", "), moaStatus)
 	return router
 }
 
@@ -374,6 +398,48 @@ func (r *SmartRouter) Route(ctx context.Context, req *OmegaChatRequest) (*Routin
 	resolvedModel := req.Model
 	if req.Model == "omega-auto" || req.Model == "auto" || req.Model == "" {
 		resolvedModel = r.analyzeIntelligenceNeed(req.Messages)
+	}
+
+	// ─── Web Search Context Injection (pre-routing) ──────────────────────
+	// If the query needs real-time info, fetch it and inject into context.
+	// This gives the swarm up-to-date knowledge beyond training data.
+	if r.webSearch != nil && !req.Stream {
+		var userQuery string
+		for _, m := range req.Messages {
+			if role, _ := m["role"].(string); role == "user" {
+				if content, _ := m["content"].(string); content != "" {
+					userQuery = content
+				}
+			}
+		}
+		if userQuery != "" && NeedsSearch(userQuery) {
+			searchCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			webCtx, err := r.webSearch.Search(searchCtx, userQuery)
+			cancel()
+			if err == nil && webCtx.HasResults {
+				// Inject search results into system message
+				injected := false
+				for i, m := range req.Messages {
+					if role, _ := m["role"].(string); role == "system" {
+						if content, _ := m["content"].(string); content != "" {
+							req.Messages[i]["content"] = content + webCtx.ContextText
+							injected = true
+							break
+						}
+					}
+				}
+				if !injected {
+					// No system message — prepend as first message
+					sysMsg := map[string]interface{}{
+						"role":    "system",
+						"content": "You are a helpful sovereign AI assistant." + webCtx.ContextText,
+					}
+					req.Messages = append([]map[string]interface{}{sysMsg}, req.Messages...)
+				}
+				log.Printf("[OmegaRouter] 🌐 Web search injected: %d results for '%s'",
+					len(webCtx.Results), userQuery[:minInt(len(userQuery), 40)])
+			}
+		}
 	}
 
 	// ─── L2: GSTD Swarm (Ollama — sovereign) ───────────────────────────
@@ -448,60 +514,117 @@ func (r *SmartRouter) Route(ctx context.Context, req *OmegaChatRequest) (*Routin
 			}
 			return decision, nil
 		}
-		log.Printf("[OmegaRouter] L2.7 Groq failed (%v), continuing to L3/L4", err)
+		log.Printf("[OmegaRouter] L2.7 Groq failed (%v), continuing to L2.8/L3/L4", err)
 	}
 
-	// ─── L3: Cocoon TEE (if model explicitly requests it) ───────────────
-	if IsCocoonModel(resolvedModel) || IsCocoonModel(req.Model) {
-		atomic.AddInt64(&r.sovereignty.SovereignCocoon, 1)
-		// Cocoon is handled by CocoonBridgeService in GatewayHandler, not here.
-		// Return a marker decision that tells GatewayHandler to redirect.
-		return &RoutingDecision{
-			Tier: 3, TierName: "Cocoon TEE", Model: req.Model, ActualModel: resolvedModel,
-			Provider: "cocoon", TransactionID: txID, CostGSTD: CocoonCostGSTD(resolvedModel),
-			Sovereign: true,
-		}, nil
-	}
-
-	// ─── L4: Commercial API Fallback (LiteLLM → OpenAI/Anthropic) ──────
-	// This is the LAST resort. Every request here lowers Sovereignty Index.
-	atomic.AddInt64(&r.sovereignty.FallbackCommerce, 1)
-	log.Printf("[OmegaRouter] ⚠ L4 Commercial fallback for model=%s", resolvedModel)
-
-	if req.Stream {
-		resp, err := r.proxyLiteLLM(ctx, req, resolvedModel)
-		if err != nil {
-			return nil, err
+	// ─── L2.8: MoA Consensus (Mixture-of-Agents SOTA) ────────────────────
+	// Activates for: non-streaming, groq available, complex or ultra-tier queries.
+	// Runs 3 proposers in parallel, synthesizes with llama-3.3-70b. Zero cost.
+	if r.moa.IsAvailable() && !req.Stream && r.isMoAWorthy(req) {
+		// Use a fresh background context — parent ctx may be cancelled by earlier tier failures
+		moaCtx, cancel := context.WithTimeout(context.Background(), 18*time.Second)
+		result, err := r.moa.Run(moaCtx, req.Messages)
+		cancel()
+		if err == nil && result.Answer != "" {
+			atomic.AddInt64(&r.sovereignty.SovereignMoA, 1)
+			decision := &RoutingDecision{
+				Tier: 2, TierName: "MoA Consensus", Model: req.Model, ActualModel: "moa-consensus",
+				Provider: "moa", Response: result.Answer,
+				LatencyMs: result.TotalLatencyMs, TransactionID: txID, Sovereign: true,
+			}
+			if r.vault != nil {
+				go r.vault.Store(context.Background(), msgsSimple, "moa-consensus", result.Answer, 0.97)
+			}
+			log.Printf("[OmegaRouter] L2.8 MoA ✓ drafts=%d latency=%dms models=%v",
+				result.DraftsReceived, result.TotalLatencyMs, result.Models)
+			return decision, nil
 		}
-		return &RoutingDecision{
-			Tier: 4, TierName: "Commercial Fallback", Model: req.Model, ActualModel: resolvedModel,
-			Provider: "litellm", StreamResponse: resp, TransactionID: txID, Sovereign: false,
-		}, nil
+		log.Printf("[OmegaRouter] L2.8 MoA failed (%v), continuing to L3/L4", err)
 	}
 
-	respStr, promptT, compT, err := r.callLiteLLM(ctx, req, resolvedModel)
-	if err != nil {
-		return nil, err
+	// ─── L3: Sovereign Power Pool (replaces Cocoon TEE) ──────────────────
+	// Kimi K2 (2T MoE), LLaMA4 Maverick (128 experts), Groq Compound, Qwen3-32B
+	// All free, SOTA-quality, no TEE beta access required.
+	if r.sovereignPool != nil && r.sovereignPool.IsAvailable() {
+		poolCtx, poolCancel := context.WithTimeout(context.Background(), 25*time.Second)
+
+		if req.Stream {
+			stream, actualModel, err := r.sovereignPool.CallL3SovereignStream(poolCtx, req.Messages, req.MaxTokens)
+			poolCancel()
+			if err == nil {
+				atomic.AddInt64(&r.sovereignty.SovereignCocoon, 1) // reuse metric slot
+				return &RoutingDecision{
+					Tier: 3, TierName: "Sovereign Power (L3)", Model: req.Model, ActualModel: actualModel,
+					Provider: "sovereign_pool", StreamResponse: &http.Response{Body: stream},
+					TransactionID: txID, Sovereign: true, CostGSTD: 0.0,
+				}, nil
+			}
+			log.Printf("[OmegaRouter] L3 SovereignPool stream failed (%v), falling to L4", err)
+		} else {
+			respStr, actualModel, err := r.sovereignPool.CallL3Sovereign(poolCtx, req.Messages, req.MaxTokens)
+			poolCancel()
+			if err == nil && respStr != "" {
+				atomic.AddInt64(&r.sovereignty.SovereignCocoon, 1)
+				decision := &RoutingDecision{
+					Tier: 3, TierName: "Sovereign Power (L3)", Model: req.Model, ActualModel: actualModel,
+					Provider: "sovereign_pool", Response: respStr,
+					LatencyMs: time.Since(start).Milliseconds(), TransactionID: txID,
+					Sovereign: true, CostGSTD: 0.0,
+				}
+				if r.vault != nil {
+					go r.vault.Store(context.Background(), msgsSimple, actualModel, respStr, 0.94)
+				}
+				log.Printf("[OmegaRouter] L3 SovereignPool ✓ model=%s latency=%dms", actualModel, decision.LatencyMs)
+				return decision, nil
+			}
+			poolCancel()
+			log.Printf("[OmegaRouter] L3 SovereignPool failed (%v), falling to L4", err)
+		}
 	}
 
-	gstdPrice := 0.02
-	if r.oracle != nil {
-		gstdPrice = r.oracle.GetPrice()
-	}
-	pricing := r.pricingTable[resolvedModel]
-	costGSTD := (float64(promptT)*pricing.InputUSDPer1K/1000 + float64(compT)*pricing.OutputUSDPer1K/1000) * 1.30 / gstdPrice
+	// ─── L4: Omega Fallback (replaces LiteLLM Commercial) ───────────────
+	// GPT-OSS-120B (free via Groq!), Qwen2.5-72B (HF), LLaMA4 Scout.
+	// Zero cost. Sovereignty index preserved — NO commercial API calls.
+	atomic.AddInt64(&r.sovereignty.FallbackCommerce, 1)
+	log.Printf("[OmegaRouter] ⚡ L4 Omega fallback for model=%s (free pool)", resolvedModel)
 
-	decision := &RoutingDecision{
-		Tier: 4, TierName: "Commercial Fallback", Model: req.Model, ActualModel: resolvedModel,
-		Provider: "litellm", Response: respStr, PromptTokens: promptT, CompletionTokens: compT,
-		TotalTokens: promptT + compT, CostGSTD: costGSTD, LatencyMs: time.Since(start).Milliseconds(),
-		TransactionID: txID, Sovereign: false,
+	if r.sovereignPool != nil && r.sovereignPool.IsAvailable() {
+		omegaCtx, omegaCancel := context.WithTimeout(context.Background(), 30*time.Second)
+
+		if req.Stream {
+			stream, actualModel, err := r.sovereignPool.CallL4OmegaStream(omegaCtx, req.Messages, req.MaxTokens)
+			omegaCancel()
+			if err == nil {
+				return &RoutingDecision{
+					Tier: 4, TierName: "Omega Fallback (L4)", Model: req.Model, ActualModel: actualModel,
+					Provider: "omega_pool", StreamResponse: &http.Response{Body: stream},
+					TransactionID: txID, Sovereign: true, CostGSTD: 0.0,
+				}, nil
+			}
+			log.Printf("[OmegaRouter] L4 Omega stream failed: %v", err)
+			omegaCancel()
+		} else {
+			respStr, actualModel, err := r.sovereignPool.CallL4Omega(omegaCtx, req.Messages, req.MaxTokens)
+			omegaCancel()
+			if err == nil && respStr != "" {
+				decision := &RoutingDecision{
+					Tier: 4, TierName: "Omega Fallback (L4)", Model: req.Model, ActualModel: actualModel,
+					Provider: "omega_pool", Response: respStr,
+					LatencyMs: time.Since(start).Milliseconds(), TransactionID: txID,
+					Sovereign: true, CostGSTD: 0.0,
+				}
+				if r.vault != nil {
+					go r.vault.Store(context.Background(), msgsSimple, actualModel, respStr, 0.92)
+				}
+				log.Printf("[OmegaRouter] L4 Omega ✓ model=%s latency=%dms", actualModel, decision.LatencyMs)
+				return decision, nil
+			}
+			log.Printf("[OmegaRouter] L4 Omega failed: %v", err)
+		}
 	}
 
-	if r.vault != nil {
-		go r.vault.Store(context.Background(), msgsSimple, resolvedModel, respStr, 0.95)
-	}
-	return decision, nil
+	// ─── Ultimate Fallback: if ALL sovereign pools exhausted ─────────────
+	return nil, fmt.Errorf("all sovereign routing tiers exhausted for model=%s — GSTD Swarm at capacity, please retry", resolvedModel)
 }
 
 // analyzeIntelligenceNeed selects the best SOVEREIGN model for auto-routing.
@@ -523,6 +646,38 @@ func (r *SmartRouter) analyzeIntelligenceNeed(messages []map[string]interface{})
 	}
 	// Default → sovereign general
 	return "llama3.1:8b"
+}
+
+// isMoAWorthy returns true if the query deserves Mixture-of-Agents treatment.
+// MoA gives SOTA quality but takes ~5-8s — only use for complex queries.
+// Short/simple queries are already handled faster by L2.7 Groq Speed Lane.
+func (r *SmartRouter) isMoAWorthy(req *OmegaChatRequest) bool {
+	// Explicit MoA model request
+	model := strings.ToLower(req.Model)
+	if model == "moa-consensus" || model == "moa" || strings.Contains(model, "ultra") {
+		return true
+	}
+
+	// Measure total prompt complexity
+	totalLen := 0
+	for _, m := range req.Messages {
+		if c, ok := m["content"].(string); ok {
+			totalLen += len(c)
+		}
+	}
+
+	// Short queries (<200 chars) — already handled by Groq speed lane (L2.7)
+	// Don't waste MoA on simple greetings/lookups
+	if totalLen < 200 {
+		return false
+	}
+
+	// Long/complex queries → MoA provides significantly better quality
+	if totalLen >= 200 {
+		return true
+	}
+
+	return false
 }
 
 // GetAvailableModels returns models grouped by sovereignty level.
@@ -555,11 +710,13 @@ func (r *SmartRouter) GetSovereigntyMetrics() map[string]interface{} {
 		"sovereign_swarm":        atomic.LoadInt64(&r.sovereignty.SovereignSwarm),
 		"sovereign_phantom_hf":   atomic.LoadInt64(&r.sovereignty.SovereignPhantomHF),
 		"sovereign_phantom_groq": atomic.LoadInt64(&r.sovereignty.SovereignPhantomGQ),
+		"sovereign_moa":          atomic.LoadInt64(&r.sovereignty.SovereignMoA),
 		"sovereign_cocoon":       atomic.LoadInt64(&r.sovereignty.SovereignCocoon),
 		"sovereign_cache":        atomic.LoadInt64(&r.sovereignty.SovereignCache),
 		"fallback_commercial":    atomic.LoadInt64(&r.sovereignty.FallbackCommerce),
 		"phantom_hf_available":   r.phantomHF.IsAvailable(),
 		"phantom_groq_available": r.phantomGroq.IsAvailable(),
+		"moa_available":          r.moa.IsAvailable(),
 		"target":                 99.9,
 	}
 }

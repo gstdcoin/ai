@@ -16,6 +16,35 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// Fund wallet addresses — loaded from env or use defaults.
+// These wallets receive platform fee allocations on every paid operation.
+//
+//	development_fund  → Binance TON deposit (project expenses, infra, marketing)
+//	cocoon_fund       → Admin wallet (pays for Cocoon AI confidential compute)
+//	gold_reserve      → STON.fi XAUt/GSTD pool EQA--JXG...Iez25sLp
+//	                    (GSTD is swapped → XAUt and added as pool liquidity)
+func fundWallet(fundType string) string {
+	switch fundType {
+	case "development_fund":
+		if w := os.Getenv("DEVELOPMENT_FUND_WALLET"); w != "" {
+			return w
+		}
+		return "UQA5HpVG96CBqR000VmY9PjyFCwUbuaiWWYv7lrZtEyD_Z3P"
+	case "cocoon_fund":
+		if w := os.Getenv("COCOON_FUND_WALLET"); w != "" {
+			return w
+		}
+		return "UQCkXFlNRsubUp7Uh7lg_ScUqLCiff1QCLsdQU0a7kphqQED"
+	case "gold_reserve":
+		if w := os.Getenv("STONFI_XAUT_GSTD_POOL"); w != "" {
+			return w
+		}
+		return "EQA--JXG8VSyBJmLMqb2J2t4Pya0TS9SXHh7vHh8Iez25sLp"
+	default:
+		return os.Getenv("ADMIN_WALLET")
+	}
+}
+
 // RequireBotToken validates X-Bot-Token header (for Telegram bot API calls)
 func RequireBotToken() gin.HandlerFunc {
 	botKey := os.Getenv("BOT_API_KEY")
@@ -337,9 +366,9 @@ func (h *TelegramBotHandler) AIChat(c *gin.Context) {
 		tier = "pro"
 		model = "omega-pro"
 
-		// Commission split: 10% → Gold Reserve, 5% → Burn, 85% → operating
-		goldFee := costPerRequest * 0.10 // 10% gold reserve
-		burnFee := costPerRequest * 0.05 // 5% deflationary burn
+		// Commission split: 10% → Development Fund (admin wallet), 5% → Cocoon Fund (Binance TON)
+		developmentFee := costPerRequest * 0.10 // 10% → development_fund (admin wallet)
+		cocoonFee := costPerRequest * 0.05      // 5% → cocoon_fund (Binance TON deposit for Cocoon payments)
 
 		_, _ = h.db.ExecContext(c.Request.Context(), `
 			UPDATE users SET
@@ -350,26 +379,25 @@ func (h *TelegramBotHandler) AIChat(c *gin.Context) {
 			WHERE wallet_address = $2
 		`, costPerRequest, wallet)
 
-		// Route commission to Gold Reserve
+		// Route 10% to Development Fund (admin wallet = project dev fund)
 		_, _ = h.db.ExecContext(c.Request.Context(), `
-			INSERT INTO platform_funds (fund_type, balance_gstd) VALUES ('gold_reserve', $1)
+			INSERT INTO platform_funds (fund_type, balance_gstd) VALUES ('development_fund', $1)
 			ON CONFLICT (fund_type) DO UPDATE SET balance_gstd = platform_funds.balance_gstd + $1
-		`, goldFee)
-		// Record gold reserve transaction
+		`, developmentFee)
 		_, _ = h.db.ExecContext(c.Request.Context(), `
 			INSERT INTO platform_fund_transactions (fund_type, amount_gstd, tx_type, from_address, description)
-			VALUES ('gold_reserve', $1, 'deposit', $2, 'AI Pro commission 10%')
-		`, goldFee, wallet)
+			VALUES ('development_fund', $1, 'deposit', $2, 'AI Pro dev fund 10%')
+		`, developmentFee, wallet)
 
-		// Burn 5% (reduce total supply tracking)
+		// Route 5% to Cocoon Fund (Binance TON deposit — pays for Cocoon AI work)
 		_, _ = h.db.ExecContext(c.Request.Context(), `
-			INSERT INTO platform_funds (fund_type, balance_gstd) VALUES ('burn_fund', $1)
+			INSERT INTO platform_funds (fund_type, balance_gstd) VALUES ('cocoon_fund', $1)
 			ON CONFLICT (fund_type) DO UPDATE SET balance_gstd = platform_funds.balance_gstd + $1
-		`, burnFee)
+		`, cocoonFee)
 		_, _ = h.db.ExecContext(c.Request.Context(), `
 			INSERT INTO platform_fund_transactions (fund_type, amount_gstd, tx_type, from_address, description)
-			VALUES ('burn_fund', $1, 'deposit', $2, 'AI Pro burn 5%')
-		`, burnFee, wallet)
+			VALUES ('cocoon_fund', $1, 'deposit', $2, 'AI Pro cocoon payment 5%')
+		`, cocoonFee, wallet)
 
 		balance -= costPerRequest
 	} else {
@@ -460,10 +488,10 @@ func (h *TelegramBotHandler) ClaimReward(c *gin.Context) {
 		return
 	}
 
-	// Commission on claim: 10% → Gold Reserve, 5% → Burn
-	goldFee := pending * 0.10
-	burnFee := pending * 0.05
-	net := pending - goldFee - burnFee // 85% to user
+	// Commission on claim: 10% → Development Fund (admin wallet), 5% → Cocoon Fund (Binance TON)
+	developmentFee := pending * 0.10
+	cocoonFee := pending * 0.05
+	net := pending - developmentFee - cocoonFee // 85% to user
 
 	// Move pending → available (net after commission)
 	_, err = h.db.ExecContext(c.Request.Context(), `
@@ -478,33 +506,35 @@ func (h *TelegramBotHandler) ClaimReward(c *gin.Context) {
 		return
 	}
 
-	// Route commission
+	// Route 10% to Development Fund (admin wallet)
 	_, _ = h.db.ExecContext(c.Request.Context(), `
-		INSERT INTO platform_funds (fund_type, balance_gstd) VALUES ('gold_reserve', $1)
+		INSERT INTO platform_funds (fund_type, balance_gstd) VALUES ('development_fund', $1)
 		ON CONFLICT (fund_type) DO UPDATE SET balance_gstd = platform_funds.balance_gstd + $1
-	`, goldFee)
+	`, developmentFee)
 	_, _ = h.db.ExecContext(c.Request.Context(), `
 		INSERT INTO platform_fund_transactions (fund_type, amount_gstd, tx_type, from_address, description)
-		VALUES ('gold_reserve', $1, 'deposit', $2, 'Claim commission 10%')
-	`, goldFee, wallet)
-	_, _ = h.db.ExecContext(c.Request.Context(), `
-		INSERT INTO platform_funds (fund_type, balance_gstd) VALUES ('burn_fund', $1)
-		ON CONFLICT (fund_type) DO UPDATE SET balance_gstd = platform_funds.balance_gstd + $1
-	`, burnFee)
-	_, _ = h.db.ExecContext(c.Request.Context(), `
-		INSERT INTO platform_fund_transactions (fund_type, amount_gstd, tx_type, from_address, description)
-		VALUES ('burn_fund', $1, 'deposit', $2, 'Claim burn 5%')
-	`, burnFee, wallet)
+		VALUES ('development_fund', $1, 'deposit', $2, 'Claim dev fund 10%')
+	`, developmentFee, wallet)
 
-	log.Printf("[Claim] %s: %.4f pending → %.4f net (gold=%.4f, burn=%.4f)", wallet, pending, net, goldFee, burnFee)
+	// Route 5% to Cocoon Fund (Binance TON deposit — pays for Cocoon AI compute)
+	_, _ = h.db.ExecContext(c.Request.Context(), `
+		INSERT INTO platform_funds (fund_type, balance_gstd) VALUES ('cocoon_fund', $1)
+		ON CONFLICT (fund_type) DO UPDATE SET balance_gstd = platform_funds.balance_gstd + $1
+	`, cocoonFee)
+	_, _ = h.db.ExecContext(c.Request.Context(), `
+		INSERT INTO platform_fund_transactions (fund_type, amount_gstd, tx_type, from_address, description)
+		VALUES ('cocoon_fund', $1, 'deposit', $2, 'Claim cocoon payment 5%')
+	`, cocoonFee, wallet)
+
+	log.Printf("[Claim] %s: %.4f pending → %.4f net (dev=%.4f, cocoon=%.4f)", wallet, pending, net, developmentFee, cocoonFee)
 
 	c.JSON(http.StatusOK, gin.H{
-		"success":       true,
-		"claimed_gross": pending,
-		"commission":    goldFee + burnFee,
-		"claimed_net":   net,
-		"gold_reserve":  goldFee,
-		"burned":        burnFee,
+		"success":          true,
+		"claimed_gross":    pending,
+		"commission":       developmentFee + cocoonFee,
+		"claimed_net":      net,
+		"development_fund": developmentFee,
+		"cocoon_fund":      cocoonFee,
 	})
 }
 

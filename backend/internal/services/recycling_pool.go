@@ -14,7 +14,7 @@ import (
 //	85% → Miner rewards (network support)
 //	 7% → Golden Reserve (XAUt backing)
 //	 5% → Value Fund (free query subsidy → growth flywheel)
-//	 3% → Burn (deflationary pressure)
+//	 3% → Cocoon Fund (Binance TON deposit — pays for Cocoon AI compute)
 //
 // Value Fund flywheel: paid queries fund free queries → more users → more paid queries
 type RecyclingPoolService struct {
@@ -29,7 +29,7 @@ type PoolTransaction struct {
 	MinerReward     float64   `json:"miner_reward"`   // 85% → recycled to miners
 	GoldenReserve   float64   `json:"golden_reserve"` // 7%  → XAUt backing
 	ValueFund       float64   `json:"value_fund"`     // 5%  → free query subsidy fund
-	BurnedAmount    float64   `json:"burned_amount"`  // 3%  → permanently destroyed
+	CocoonFund      float64   `json:"cocoon_fund"`    // 3%  → Binance TON deposit (Cocoon AI payments)
 	TaskID          string    `json:"task_id"`
 	TransactionType string    `json:"transaction_type"` // inference, training, validation
 	CreatedAt       time.Time `json:"created_at"`
@@ -41,13 +41,12 @@ type PoolStats struct {
 	TotalToMiners     float64 `json:"total_to_miners"`     // Total paid out to miners
 	TotalToReserve    float64 `json:"total_to_reserve"`    // Total sent to Golden Reserve
 	TotalToValueFund  float64 `json:"total_to_value_fund"` // Total sent to Value Fund
-	TotalBurned       float64 `json:"total_burned"`        // Total permanently destroyed
+	TotalToCocoon     float64 `json:"total_to_cocoon"`     // Total sent to Cocoon Fund (Binance TON)
 	CurrentPoolSize   float64 `json:"current_pool_size"`   // Available for miner rewards
 	ValueFundBalance  float64 `json:"value_fund_balance"`  // Available for free query subsidy
 	CirculationRate   float64 `json:"circulation_rate"`    // Tokens/hour flowing
 	FreeQueriesFunded int64   `json:"free_queries_funded"` // Total free queries subsidized
 	FixedSupply       float64 `json:"fixed_supply"`        // 1,000,000,000
-	EffectiveSupply   float64 `json:"effective_supply"`    // Supply minus burned
 }
 
 func NewRecyclingPoolService(db *sql.DB) *RecyclingPoolService {
@@ -101,13 +100,13 @@ func (s *RecyclingPoolService) ensureSchema() {
 
 // ProcessPayment splits a user payment through the recycling pool.
 // Returns the breakdown of how tokens are distributed.
-// Distribution: 85% miners, 7% golden reserve, 5% value fund, 3% burn.
+// Distribution: 85% miners, 7% golden reserve, 5% value fund, 3% cocoon fund.
 func (s *RecyclingPoolService) ProcessPayment(ctx context.Context, fromWallet string, amount float64, taskID string, txType string) (*PoolTransaction, error) {
 	// Distribution rates (total = 100%)
 	minerRate := 0.85     // 85% → network support (miners/nodes)
 	reserveRate := 0.07   // 7%  → Golden Reserve (XAUt backing)
-	valueFundRate := 0.05 // 5% → Value Fund (free query subsidy flywheel)
-	burnRate := 0.03      // 3%  → burn (deflationary pressure)
+	valueFundRate := 0.05 // 5%  → Value Fund (free query subsidy flywheel)
+	cocoonRate := 0.03    // 3%  → Cocoon Fund (Binance TON deposit for Cocoon AI payments)
 
 	tx := &PoolTransaction{
 		FromWallet:      fromWallet,
@@ -115,7 +114,7 @@ func (s *RecyclingPoolService) ProcessPayment(ctx context.Context, fromWallet st
 		MinerReward:     amount * minerRate,
 		GoldenReserve:   amount * reserveRate,
 		ValueFund:       amount * valueFundRate,
-		BurnedAmount:    amount * burnRate,
+		CocoonFund:      amount * cocoonRate,
 		TaskID:          taskID,
 		TransactionType: txType,
 		CreatedAt:       time.Now(),
@@ -125,7 +124,7 @@ func (s *RecyclingPoolService) ProcessPayment(ctx context.Context, fromWallet st
 	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO recycling_pool (from_wallet, total_amount, miner_reward, golden_reserve, value_fund, burned_amount, task_id, transaction_type)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-	`, tx.FromWallet, tx.TotalAmount, tx.MinerReward, tx.GoldenReserve, tx.ValueFund, tx.BurnedAmount, tx.TaskID, tx.TransactionType)
+	`, tx.FromWallet, tx.TotalAmount, tx.MinerReward, tx.GoldenReserve, tx.ValueFund, tx.CocoonFund, tx.TaskID, tx.TransactionType)
 	if err != nil {
 		return nil, err
 	}
@@ -141,13 +140,13 @@ func (s *RecyclingPoolService) ProcessPayment(ctx context.Context, fromWallet st
 			total_burned = total_burned + $5,
 			updated_at = NOW()
 		WHERE id = 1
-	`, tx.MinerReward, tx.TotalAmount, tx.GoldenReserve, tx.ValueFund, tx.BurnedAmount)
+	`, tx.MinerReward, tx.TotalAmount, tx.GoldenReserve, tx.ValueFund, tx.CocoonFund)
 	if err != nil {
 		log.Printf("RecyclingPool: Failed to update balance: %v", err)
 	}
 
-	log.Printf("♻️ Recycled %.4f GSTD: %.4f→miners, %.4f→reserve, %.4f→valueFund, %.4f→burned",
-		amount, tx.MinerReward, tx.GoldenReserve, tx.ValueFund, tx.BurnedAmount)
+	log.Printf("♻️ Recycled %.4f GSTD: %.4f→miners, %.4f→reserve, %.4f→valueFund, %.4f→cocoonFund",
+		amount, tx.MinerReward, tx.GoldenReserve, tx.ValueFund, tx.CocoonFund)
 
 	return tx, nil
 }
@@ -228,15 +227,13 @@ func (s *RecyclingPoolService) GetPoolStats(ctx context.Context) (*PoolStats, er
 	err := s.db.QueryRowContext(ctx, `
 		SELECT available_for_miners, total_recycled, total_to_miners, total_to_reserve,
 		       COALESCE(total_to_value_fund, 0), COALESCE(value_fund_balance, 0),
-		       COALESCE(free_queries_funded, 0), total_burned
+		       COALESCE(free_queries_funded, 0), COALESCE(total_burned, 0)
 		FROM recycling_pool_balance WHERE id = 1
 	`).Scan(&stats.CurrentPoolSize, &stats.TotalRecycled, &stats.TotalToMiners, &stats.TotalToReserve,
-		&stats.TotalToValueFund, &stats.ValueFundBalance, &stats.FreeQueriesFunded, &stats.TotalBurned)
+		&stats.TotalToValueFund, &stats.ValueFundBalance, &stats.FreeQueriesFunded, &stats.TotalToCocoon)
 	if err != nil {
 		return stats, nil // Return defaults
 	}
-
-	stats.EffectiveSupply = stats.FixedSupply - stats.TotalBurned
 
 	// Calculate circulation rate (tokens recycled per hour, last 24h)
 	s.db.QueryRowContext(ctx, `

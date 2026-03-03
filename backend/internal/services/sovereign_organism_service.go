@@ -287,18 +287,9 @@ func (s *SovereignOrganismService) accelerateValueAccrual(ctx context.Context) {
 }
 
 func (s *SovereignOrganismService) triggerEmergencyBuyback(ctx context.Context) {
-	log.Println("🔥 [Sovereign Organism] Emergency Buyback Triggered: Price below support.")
-	if s.burn == nil {
-		log.Println("⚠️ [Organism] BurnService nil, skipping RecordBurn")
-		return
-	}
-	s.burn.RecordBurn(ctx, &BurnRecord{
-		TransactionID:   "emergency-buyback-" + organismGenerateID()[:4],
-		TransactionType: "EMERGENCY_STABILIZATION",
-		OriginalAmount:  10000.0,
-		BurnAmount:      10000.0,
-		SourceWallet:    "PLATFORM_TREASURY",
-	})
+	// Price below $0.01 support — just log, do NOT fake-burn tokens.
+	// Real buyback requires on-chain TON transaction via TreasuryService + admin action.
+	log.Println("⚠️  [Sovereign Organism] Price below $0.01 support — buyback signal. Admin action required.")
 }
 
 func (s *SovereignOrganismService) updateGlobalStateDB(ctx context.Context) {
