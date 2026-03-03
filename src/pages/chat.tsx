@@ -112,7 +112,7 @@ export default function ChatPage() {
             ];
 
             const apiBase = typeof window !== 'undefined' && window.location.hostname.includes('gstdtoken.com')
-                ? 'https://app.gstdtoken.com' : '';
+                ? '' : '';
 
             const mixTier = selectedModel.replace('mix-', '') || 'free';
 
