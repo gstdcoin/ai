@@ -1,15 +1,33 @@
 import { useTranslation } from 'next-i18next';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import Head from 'next/head';
-import { Send, Plus, Trash2, Copy, Check, Menu, X, ChevronDown, Shield, Bot, Wallet, ExternalLink, Sparkles } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import { Send, Plus, Trash2, Copy, Check, Menu, X, ChevronDown, Bot, Wallet, ExternalLink, Sparkles, Lock, Zap, Brain, Globe, RotateCcw, Square, Code, FileText, MessageSquare } from 'lucide-react';
 import { useWalletStore } from '../store/walletStore';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 // ─── Types ───────────────────────────────────────────────────────
+interface CollectiveInfo {
+    tier: string;
+    tierName: string;
+    badge: string;
+    expertCount: number;
+    experts?: Array<{ name: string; specialty?: string; latency?: number }>;
+    latency_ms?: number;
+    cost_gstd?: number;
+    phase?: string;
+}
+
 interface Message {
     id: string;
     role: 'user' | 'assistant' | 'system';
     content: string;
     model?: string;
+    provider?: string;
+    isReasoning?: boolean;
+    isStreaming?: boolean;
+    collectiveInfo?: CollectiveInfo;
     timestamp: number;
 }
 
@@ -18,46 +36,185 @@ interface Conversation {
     title: string;
     messages: Message[];
     model: string;
+    tier: string;
     createdAt: number;
 }
+
+// ─── Code Block Component ─────────────────────────────────────────
+function CodeBlock({ inline, className, children, ...props }: any) {
+    const [copied, setCopied] = useState(false);
+    const match = /language-(\w+)/.exec(className || '');
+    const lang = match?.[1] || '';
+    const code = String(children).replace(/\n$/, '');
+
+    if (inline) {
+        return <code className="bg-white/[0.08] text-violet-300 px-1.5 py-0.5 rounded text-[13px] font-mono">{children}</code>;
+    }
+
+    const handleCopy = () => {
+        navigator.clipboard.writeText(code);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    return (
+        <div className="relative group my-3 rounded-xl overflow-hidden border border-white/[0.08] bg-[#0d0d1a]">
+            <div className="flex items-center justify-between px-4 py-2 bg-white/[0.04] border-b border-white/[0.06]">
+                <span className="text-[11px] text-gray-500 font-mono uppercase tracking-wider">{lang || 'code'}</span>
+                <button
+                    onClick={handleCopy}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] text-gray-500 hover:text-gray-200 hover:bg-white/[0.06] transition font-medium"
+                >
+                    {copied ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                    {copied ? 'Copied!' : 'Copy'}
+                </button>
+            </div>
+            <pre className="overflow-x-auto px-4 py-3 text-[13px] leading-relaxed">
+                <code className={`font-mono text-gray-300 ${className || ''}`} {...props}>
+                    {children}
+                </code>
+            </pre>
+        </div>
+    );
+}
+
+// ─── Thinking Indicator ──────────────────────────────────────────
+function ThinkingIndicator({ isReasoning, collectivePhase }: { isReasoning?: boolean; collectivePhase?: string | null }) {
+    const phaseLabels: Record<string, { label: string; detail: string }> = {
+        consulting: { label: '🔬 Consulting experts...', detail: 'Querying multiple AI models in parallel' },
+        synthesizing: { label: '⚡ Synthesizing consensus...', detail: 'Cross-verifying and combining expert answers' },
+        streaming: { label: '🧠 Collective Intelligence responding...', detail: 'Delivering synthesized expert consensus' },
+    };
+    const phase = collectivePhase && phaseLabels[collectivePhase];
+
+    return (
+        <div className="flex items-center gap-3 py-3 px-4 rounded-xl bg-violet-500/[0.04] border border-violet-500/10 my-2">
+            <div className="relative w-6 h-6">
+                <div className="absolute inset-0 rounded-full border-2 border-violet-500/30 border-t-violet-400 animate-spin" />
+                <Brain size={12} className="absolute inset-0 m-auto text-violet-400" />
+            </div>
+            <div>
+                <span className="text-sm text-violet-300 font-medium">
+                    {phase ? phase.label : isReasoning ? 'Deep reasoning...' : 'Thinking...'}
+                </span>
+                <span className="text-[11px] text-gray-600 ml-2">
+                    {phase ? phase.detail : isReasoning ? 'Analyzing step by step' : 'Generating response'}
+                </span>
+            </div>
+        </div>
+    );
+}
+
+// ─── Markdown Message Renderer ────────────────────────────────────
+function MarkdownMessage({ content }: { content: string }) {
+    return (
+        <div className="prose prose-invert prose-sm max-w-none
+            prose-headings:text-white prose-headings:font-bold prose-headings:mt-4 prose-headings:mb-2
+            prose-h1:text-xl prose-h2:text-lg prose-h3:text-base
+            prose-p:text-gray-200 prose-p:leading-relaxed prose-p:my-2
+            prose-strong:text-white prose-strong:font-semibold
+            prose-em:text-gray-300
+            prose-a:text-violet-400 prose-a:no-underline hover:prose-a:underline
+            prose-ul:my-2 prose-ol:my-2 prose-li:text-gray-200 prose-li:my-0.5
+            prose-blockquote:border-violet-500/30 prose-blockquote:bg-violet-500/[0.04] prose-blockquote:rounded-r-lg prose-blockquote:py-1 prose-blockquote:text-gray-300
+            prose-table:border-white/10 prose-th:text-gray-300 prose-td:text-gray-400
+            prose-hr:border-white/10
+        ">
+            <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                    code: CodeBlock as any,
+                    table: ({ children }) => (
+                        <div className="overflow-x-auto my-3 rounded-lg border border-white/[0.08]">
+                            <table className="w-full text-sm">{children}</table>
+                        </div>
+                    ),
+                    th: ({ children }) => (
+                        <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 bg-white/[0.04] border-b border-white/[0.06]">{children}</th>
+                    ),
+                    td: ({ children }) => (
+                        <td className="px-3 py-2 text-[13px] text-gray-300 border-b border-white/[0.04]">{children}</td>
+                    ),
+                }}
+            >
+                {content}
+            </ReactMarkdown>
+        </div>
+    );
+}
+
 
 // ─── Chat Page ───────────────────────────────────────────────────
 export default function ChatPage() {
     const { t } = useTranslation('common');
 
+    // ─── Groq Models (all FREE, ultra-fast) ─────────────────────────
     const MODELS = [
-        { id: 'mix-free', name: '🆓 Free', desc: t('smartmix_free', 'Single fast model'), tier: 'free', cost: 0 },
-        { id: 'mix-standard', name: '⚡ Standard', desc: t('smartmix_standard', 'Smart routing · 0.01 GSTD'), tier: 'standard', cost: 0.01 },
-        { id: 'mix-pro', name: '🔥 Pro', desc: t('smartmix_pro', 'Dual-model synthesis · 0.05 GSTD'), tier: 'pro', cost: 0.05 },
-        { id: 'mix-ultra', name: '🧠 Ultra', desc: t('smartmix_ultra', 'Triple consensus · 0.15 GSTD'), tier: 'ultra', cost: 0.15 },
+        { id: 'llama-3.3-70b', name: 'Llama 3.3 70B', desc: 'Meta · General purpose', icon: '🦙' },
+        { id: 'llama-4-scout', name: 'Llama 4 Scout', desc: 'Meta · Latest, multi-expert', icon: '🔭' },
+        { id: 'llama-4-maverick', name: 'Llama 4 Maverick', desc: 'Meta · Creative, 128 experts', icon: '🚀' },
+        { id: 'qwen3-32b', name: 'Qwen3 32B', desc: 'Alibaba · Math & analysis', icon: '🔮', isReasoning: true },
+        { id: 'gpt-oss-120b', name: 'GPT-OSS 120B', desc: 'OpenAI · Open-source, large', icon: '🧪', isReasoning: true },
+        { id: 'gpt-oss-20b', name: 'GPT-OSS 20B', desc: 'OpenAI · Open-source, fast', icon: '⚗️' },
+        { id: 'kimi-k2', name: 'Kimi K2', desc: 'Moonshot · Long-context', icon: '🌙' },
+        { id: 'llama-3.1-8b', name: 'Llama 3.1 8B', desc: 'Meta · Fastest lightweight', icon: '⚡' },
     ];
+
+    // ─── Collective Intelligence Tiers ─────────────────────────────
+    const INTELLIGENCE_TIERS = [
+        {
+            id: 'free', name: 'Single Expert', badge: '🆓', cost: 0, expertCount: 1,
+            desc: 'One AI model responds instantly',
+            color: 'text-gray-400', bg: 'bg-white/[0.03]', border: 'border-white/[0.06]',
+        },
+        {
+            id: 'standard', name: 'Council of 3', badge: '🔬', cost: 0.05, expertCount: 3,
+            desc: '3 AI experts reach consensus for higher accuracy',
+            color: 'text-blue-400', bg: 'bg-blue-500/[0.06]', border: 'border-blue-500/20',
+        },
+        {
+            id: 'pro', name: 'Panel of 5', badge: '🔥', cost: 0.15, expertCount: 5,
+            desc: '5 experts with cross-verification & deep synthesis',
+            color: 'text-amber-400', bg: 'bg-amber-500/[0.06]', border: 'border-amber-500/20',
+        },
+        {
+            id: 'ultra', name: 'Swarm of 7', badge: '🧠', cost: 0.50, expertCount: 7,
+            desc: '7 experts + reasoning chains + full verification',
+            color: 'text-violet-400', bg: 'bg-violet-500/[0.06]', border: 'border-violet-500/20',
+        },
+    ];
+
     const { isConnected, gstdBalance, address } = useWalletStore();
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [activeConvId, setActiveConvId] = useState<string | null>(null);
     const [input, setInput] = useState('');
     const [isStreaming, setIsStreaming] = useState(false);
-    const [selectedModel, setSelectedModel] = useState('mix-free');
-    const [showModelPicker, setShowModelPicker] = useState(false);
+    const [selectedModel] = useState('llama-3.3-70b');
+    const [selectedTier, setSelectedTier] = useState('free');
+    const [showTierPicker, setShowTierPicker] = useState(false);
     const [showSidebar, setShowSidebar] = useState(false);
     const [copiedId, setCopiedId] = useState<string | null>(null);
+    const [collectivePhase, setCollectivePhase] = useState<string | null>(null);
+    const abortRef = useRef<AbortController | null>(null);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
 
     const activeConv = conversations.find(c => c.id === activeConvId) || null;
     const currentModel = MODELS.find(m => m.id === selectedModel) || MODELS[0];
+    const currentTier = INTELLIGENCE_TIERS.find(t => t.id === selectedTier) || INTELLIGENCE_TIERS[0];
 
     // Auto-scroll
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [activeConv?.messages]);
+    }, [activeConv?.messages, activeConv?.messages?.length, activeConv?.messages?.[activeConv.messages.length - 1]?.content]);
 
     // Auto-resize textarea
     const handleInputChange = useCallback((val: string) => {
         setInput(val);
         if (inputRef.current) {
             inputRef.current.style.height = 'auto';
-            inputRef.current.style.height = Math.min(inputRef.current.scrollHeight, 160) + 'px';
+            inputRef.current.style.height = Math.min(inputRef.current.scrollHeight, 200) + 'px';
         }
     }, []);
 
@@ -68,6 +225,7 @@ export default function ChatPage() {
             title: firstMessage?.slice(0, 50) || t('new_chat', 'New chat'),
             messages: [],
             model: selectedModel,
+            tier: selectedTier,
             createdAt: Date.now(),
         };
         setConversations(prev => [conv, ...prev]);
@@ -75,10 +233,11 @@ export default function ChatPage() {
         return id;
     };
 
-    const handleSend = async () => {
-        if (!input.trim() || isStreaming) return;
-        const userMessage = input.trim();
-        setInput('');
+    // ─── Send Message (with SSE streaming) ──────────────────────
+    const handleSend = async (overrideMessage?: string) => {
+        const userMessage = (overrideMessage || input).trim();
+        if (!userMessage || isStreaming) return;
+        if (!overrideMessage) setInput('');
         if (inputRef.current) inputRef.current.style.height = 'auto';
 
         let convId = activeConvId;
@@ -91,65 +250,196 @@ export default function ChatPage() {
             timestamp: Date.now(),
         };
 
+        const tierInfo = currentTier;
+
         setConversations(prev => prev.map(c =>
             c.id === convId ? { ...c, messages: [...c.messages, userMsg], title: c.messages.length === 0 ? userMessage.slice(0, 50) : c.title } : c
         ));
 
+        // Check balance for paid tiers
+        if (tierInfo.cost > 0 && gstdBalance < tierInfo.cost) {
+            const errMsg: Message = {
+                id: 'msg_' + Date.now() + '_err',
+                role: 'assistant',
+                content: `⚠️ **Insufficient GSTD balance**\n\nYou need **${tierInfo.cost} GSTD** for ${tierInfo.name} but have **${gstdBalance.toFixed(2)} GSTD**.\n\nSwitch to **🆓 Single Expert** (free) or top up your balance.`,
+                timestamp: Date.now(),
+            };
+            setConversations(prev => prev.map(c =>
+                c.id === convId ? { ...c, messages: [...c.messages, errMsg] } : c
+            ));
+            return;
+        }
+
         setIsStreaming(true);
+        setCollectivePhase(selectedTier !== 'free' ? 'consulting' : null);
         const aiMsgId = 'msg_' + Date.now() + '_ai';
-        const aiMsg: Message = { id: aiMsgId, role: 'assistant', content: '', model: selectedModel, timestamp: Date.now() };
+        const aiMsg: Message = {
+            id: aiMsgId,
+            role: 'assistant',
+            content: '',
+            model: selectedModel,
+            isReasoning: false,
+            isStreaming: true,
+            timestamp: Date.now()
+        };
 
         setConversations(prev => prev.map(c =>
             c.id === convId ? { ...c, messages: [...c.messages, aiMsg] } : c
         ));
 
+        const controller = new AbortController();
+        abortRef.current = controller;
+
         try {
             const conv = conversations.find(c => c.id === convId);
             const apiMessages = [
-                { role: 'system', content: 'You are GSTD — a sovereign decentralized AI. Respond in the user\'s language. Be helpful, concise, and direct.' },
+                { role: 'system', content: 'You are GSTD — a sovereign decentralized AI powered by the Swarm. You have Collective Memory from all users. Respond in the user\'s language. Use markdown formatting: headers, bold, lists, code blocks with language tags. Be helpful, detailed, and well-structured.' },
                 ...(conv?.messages || []).map(m => ({ role: m.role, content: m.content })),
                 { role: 'user' as const, content: userMessage }
             ];
 
-            const apiBase = typeof window !== 'undefined' && window.location.hostname.includes('gstdtoken.com')
-                ? '' : '';
-
-            const mixTier = selectedModel.replace('mix-', '') || 'free';
-
-            const response = await fetch(`${apiBase}/api/v1/chat/smartmix`, {
+            const response = await fetch('/api/chat', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    ...(address ? { 'X-Wallet-Address': address, 'X-GSTD-Target-Wallet': address } : {}),
-                    ...(localStorage.getItem('session_token') ? { 'X-Session-Token': localStorage.getItem('session_token')! } : {}),
+                    ...(address ? { 'X-Wallet-Address': address } : {}),
                 },
                 body: JSON.stringify({
                     model: selectedModel,
                     messages: apiMessages,
-                    mix_tier: mixTier,
-                    stream: false,
+                    tier: selectedTier,
+                    stream: true,
                 }),
+                signal: controller.signal,
             });
 
             if (!response.ok) throw new Error(`Error ${response.status}`);
 
-            const json = await response.json();
-            const fullContent = json.choices?.[0]?.message?.content || 'No response received.';
+            // ─── Parse SSE stream ────────────────────────────────
+            const reader = response.body?.getReader();
+            if (!reader) throw new Error('No reader');
+            const decoder = new TextDecoder();
+            let buffer = '';
+            let fullContent = '';
+            let collectiveInfo: CollectiveInfo | undefined;
 
-            // Build SmartMix footer
-            const sm = json.smart_mix;
-            const smFooter = sm ? `\n\n---\n🔬 ${sm.tier?.toUpperCase()} · ${sm.strategy} · ${sm.models_used?.length || 1} models · ${sm.latency_ms}ms${sm.cost_gstd > 0 ? ` · ${sm.cost_gstd} GSTD` : ' · Free'}` : '';
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+
+                let currentEvent = 'delta';
+                for (const line of lines) {
+                    if (line.startsWith('event: ')) {
+                        currentEvent = line.slice(7).trim();
+                        continue;
+                    }
+                    if (!line.startsWith('data: ')) continue;
+                    const data = line.slice(6).trim();
+                    try {
+                        const parsed = JSON.parse(data);
+                        if (parsed.content) {
+                            fullContent += parsed.content;
+                            setConversations(prev => prev.map(c =>
+                                c.id === convId ? {
+                                    ...c,
+                                    messages: c.messages.map(m =>
+                                        m.id === aiMsgId ? { ...m, content: fullContent, isStreaming: true } : m
+                                    )
+                                } : c
+                            ));
+                        }
+                        // Track collective phases
+                        if (parsed.phase) {
+                            setCollectivePhase(parsed.phase);
+                        }
+                        // Capture collective metadata from done event
+                        if (parsed.latency_ms !== undefined) {
+                            collectiveInfo = {
+                                tier: parsed.tier || selectedTier,
+                                tierName: parsed.tierName || currentTier.name,
+                                badge: parsed.badge || currentTier.badge,
+                                expertCount: parsed.expertCount || 1,
+                                experts: parsed.experts,
+                                latency_ms: parsed.latency_ms,
+                                cost_gstd: parsed.cost_gstd || 0,
+                            };
+                        }
+                    } catch { }
+                }
+            }
+
+            // Finalize message
+            const tierBadge = collectiveInfo?.badge || '🆓';
+            const tierName = collectiveInfo?.tierName || 'Single Expert';
+            const expertCount = collectiveInfo?.expertCount || 1;
+            const latencyMs = collectiveInfo?.latency_ms || 0;
+            const costGstd = collectiveInfo?.cost_gstd || 0;
+
+            const footer = latencyMs > 0 ? `\n\n---\n*${tierBadge} ${tierName} · ${expertCount} expert${expertCount > 1 ? 's' : ''} · ${latencyMs}ms${costGstd > 0 ? ` · ${costGstd} GSTD` : ' · Free'}*` : '';
 
             setConversations(prev => prev.map(c =>
-                c.id === convId ? { ...c, messages: c.messages.map(m => m.id === aiMsgId ? { ...m, content: fullContent + smFooter } : m) } : c
+                c.id === convId ? {
+                    ...c,
+                    messages: c.messages.map(m =>
+                        m.id === aiMsgId ? {
+                            ...m, content: fullContent + footer, isStreaming: false,
+                            model: selectedModel, collectiveInfo,
+                        } : m
+                    )
+                } : c
             ));
         } catch (err: any) {
-            setConversations(prev => prev.map(c =>
-                c.id === convId ? { ...c, messages: c.messages.map(m => m.id === aiMsgId ? { ...m, content: `Error: ${err?.message || 'Network error'}. Try again.` } : m) } : c
-            ));
+            if (err?.name === 'AbortError') {
+                setConversations(prev => prev.map(c =>
+                    c.id === convId ? {
+                        ...c,
+                        messages: c.messages.map(m =>
+                            m.id === aiMsgId ? { ...m, isStreaming: false, content: m.content || '⏹ Generation stopped.' } : m
+                        )
+                    } : c
+                ));
+            } else {
+                setConversations(prev => prev.map(c =>
+                    c.id === convId ? {
+                        ...c,
+                        messages: c.messages.map(m =>
+                            m.id === aiMsgId ? { ...m, content: `Error: ${err?.message || 'Network error'}. Try again.`, isStreaming: false } : m
+                        )
+                    } : c
+                ));
+            }
         } finally {
             setIsStreaming(false);
+            setCollectivePhase(null);
+            abortRef.current = null;
         }
+    };
+
+    // ─── Stop generation ──────────────────────────────────────────
+    const handleStop = () => {
+        abortRef.current?.abort();
+    };
+
+    // ─── Regenerate last response ─────────────────────────────────
+    const handleRegenerate = () => {
+        if (!activeConv || isStreaming) return;
+        const msgs = activeConv.messages;
+        // Find last user message
+        let lastUserIdx = -1;
+        for (let i = msgs.length - 1; i >= 0; i--) {
+            if (msgs[i].role === 'user') { lastUserIdx = i; break; }
+        }
+        if (lastUserIdx === -1) return;
+        const lastUserMsg = msgs[lastUserIdx].content;
+        // Remove last AI message
+        setConversations(prev => prev.map(c =>
+            c.id === activeConvId ? { ...c, messages: c.messages.slice(0, lastUserIdx) } : c
+        ));
+        // Re-send
+        setTimeout(() => handleSend(lastUserMsg), 100);
     };
 
     const copyMessage = (id: string, content: string) => {
@@ -167,13 +457,21 @@ export default function ChatPage() {
         return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     };
 
+    // ─── Quick Suggestions ────────────────────────────────────────
+    const suggestions = [
+        { icon: '💻', text: 'Write a Python script', prompt: 'Write a Python script to analyze a CSV file and create a summary report with statistics' },
+        { icon: '📝', text: 'Explain a concept', prompt: 'Explain how neural networks work in simple terms with examples' },
+        { icon: '🔧', text: 'Debug my code', prompt: 'Help me debug this code and explain what went wrong' },
+        { icon: '🌍', text: 'Translate text', prompt: 'Translate the following text and explain any cultural nuances' },
+    ];
+
     // ─── Render ──────────────────────────────────────────────────
     return (
         <div className="h-screen flex bg-[#030014] text-white overflow-hidden" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
             <Head>
                 <title>GSTD Chat — Sovereign AI</title>
-                <meta name="description" content="Sovereign decentralized AI chat powered by the GSTD Swarm" />
-                <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+                <meta name="description" content="GSTD Collective Intelligence — 8 AI models reach consensus for superior answers. Free single expert or paid collective tiers." />
+                <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
             </Head>
 
             {/* Mobile overlay */}
@@ -222,6 +520,7 @@ export default function ChatPage() {
                                 : 'text-gray-400 hover:bg-white/[0.04] hover:text-gray-200 border border-transparent'
                                 }`}
                         >
+                            <MessageSquare size={13} className="flex-shrink-0 opacity-50" />
                             <span className="truncate flex-1">{conv.title}</span>
                             <button
                                 onClick={(e) => { e.stopPropagation(); deleteConversation(conv.id); }}
@@ -233,8 +532,22 @@ export default function ChatPage() {
                     ))}
                 </div>
 
-                {/* Wallet status */}
-                <div className="p-4 border-t border-white/[0.06]">
+                {/* Wallet & model info */}
+                <div className="p-4 border-t border-white/[0.06] space-y-3">
+                    {/* Active tier badge */}
+                    <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${currentTier.bg} border ${currentTier.border}`}>
+                        <span className="text-sm">{currentTier.badge}</span>
+                        <div className="flex-1 min-w-0">
+                            <div className={`text-[11px] font-medium truncate ${currentTier.color}`}>{currentTier.name}</div>
+                            <div className="text-[9px] text-gray-600">{currentTier.expertCount} {currentTier.expertCount === 1 ? 'expert' : 'experts'}</div>
+                        </div>
+                        {currentTier.cost > 0 ? (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 font-bold">{currentTier.cost} GSTD</span>
+                        ) : (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold">FREE</span>
+                        )}
+                    </div>
+
                     {isConnected ? (
                         <div className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
                             <div className="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center flex-shrink-0">
@@ -248,7 +561,7 @@ export default function ChatPage() {
                         </div>
                     ) : (
                         <a href="/?source=chat" className="flex items-center justify-center gap-2 p-3 rounded-xl bg-violet-500/10 border border-violet-500/20 text-sm text-violet-400 hover:bg-violet-500/15 transition-all font-medium">
-                            <Wallet size={14} /> Connect wallet
+                            <Wallet size={14} /> {t('connect_wallet', 'Connect Wallet')}
                             <ExternalLink size={12} />
                         </a>
                     )}
@@ -265,49 +578,56 @@ export default function ChatPage() {
                             {showSidebar ? <X size={18} /> : <Menu size={18} />}
                         </button>
 
-                        {/* Model picker */}
+                        {/* Collective Intelligence tier picker */}
                         <div className="relative">
                             <button
-                                onClick={() => setShowModelPicker(!showModelPicker)}
-                                className="flex items-center gap-2 px-3 py-1.5 rounded-xl hover:bg-white/5 transition text-sm font-medium text-gray-200 border border-transparent hover:border-white/10"
+                                onClick={() => { setShowTierPicker(!showTierPicker); }}
+                                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl transition text-sm font-medium border ${selectedTier !== 'free'
+                                    ? `${currentTier.bg} ${currentTier.color} ${currentTier.border}`
+                                    : 'text-gray-400 border-transparent hover:bg-white/5 hover:border-white/10'
+                                    }`}
                             >
-                                <div className="w-5 h-5 rounded-md bg-violet-500/20 flex items-center justify-center">
-                                    <Bot size={12} className="text-violet-400" />
-                                </div>
-                                {currentModel.name}
-                                {currentModel.tier === 'tee' && <Shield size={12} className="text-emerald-400" />}
-                                <ChevronDown size={13} className={`text-gray-500 transition-transform ${showModelPicker ? 'rotate-180' : ''}`} />
+                                <span className="text-base">{currentTier.badge}</span>
+                                <span className="hidden sm:inline">{currentTier.name}</span>
+                                <ChevronDown size={13} className={`opacity-50 transition-transform ${showTierPicker ? 'rotate-180' : ''}`} />
                             </button>
 
-                            {showModelPicker && (
+                            {showTierPicker && (
                                 <>
-                                    <div className="fixed inset-0 z-40" onClick={() => setShowModelPicker(false)} />
-                                    <div className="absolute top-full left-0 mt-2 w-64 bg-[#0e0e1c] border border-white/10 rounded-xl shadow-2xl z-50 py-1.5 overflow-hidden">
-                                        <div className="px-3 py-2 border-b border-white/[0.06]">
-                                            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{t('select_model', 'Select model')}</span>
+                                    <div className="fixed inset-0 z-40" onClick={() => setShowTierPicker(false)} />
+                                    <div className="absolute top-full left-0 mt-2 w-80 bg-[#0e0e1c] border border-white/10 rounded-xl shadow-2xl z-50 py-1 overflow-hidden">
+                                        <div className="px-3 py-2 border-b border-white/[0.04]">
+                                            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">🧠 Collective Intelligence Level</span>
                                         </div>
-                                        {MODELS.map(m => (
+                                        {INTELLIGENCE_TIERS.map(tier => (
                                             <button
-                                                key={m.id}
-                                                onClick={() => { setSelectedModel(m.id); setShowModelPicker(false); }}
-                                                className={`w-full flex items-center gap-3 px-3 py-2.5 transition text-left text-[13px] ${selectedModel === m.id ? 'bg-violet-500/10 text-white' : 'text-gray-400 hover:bg-white/[0.04]'
-                                                    }`}
+                                                key={tier.id}
+                                                onClick={() => { setSelectedTier(tier.id); setShowTierPicker(false); }}
+                                                className={`w-full px-3 py-3 transition text-left ${selectedTier === tier.id ? `${tier.bg} text-white` : 'text-gray-400 hover:bg-white/[0.04]'}`}
                                             >
-                                                <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${selectedModel === m.id ? 'bg-violet-500/20' : 'bg-white/5'}`}>
-                                                    <Bot size={13} className={selectedModel === m.id ? 'text-violet-400' : 'text-gray-500'} />
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-1.5">
-                                                        <span className="font-medium">{m.name}</span>
-                                                        {m.cost > 0 && (
-                                                            <span className="text-[9px] px-1.5 rounded bg-violet-500/15 text-violet-400 font-bold">{m.cost} GSTD</span>
-                                                        )}
+                                                <div className="flex items-center gap-3">
+                                                    <span className="text-xl">{tier.badge}</span>
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[13px] font-semibold">{tier.name}</span>
+                                                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/5 text-gray-500">{tier.expertCount} {tier.expertCount === 1 ? 'expert' : 'experts'}</span>
+                                                            {tier.cost > 0 ? (
+                                                                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 font-bold">{tier.cost} GSTD</span>
+                                                            ) : (
+                                                                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold">FREE</span>
+                                                            )}
+                                                        </div>
+                                                        <div className="text-[11px] text-gray-600 mt-0.5">{tier.desc}</div>
                                                     </div>
-                                                    <div className="text-[11px] text-gray-600 truncate">{m.desc}</div>
+                                                    {selectedTier === tier.id && <Check size={15} className="text-violet-400" />}
                                                 </div>
-                                                {selectedModel === m.id && <Check size={15} className="text-violet-400 flex-shrink-0" />}
                                             </button>
                                         ))}
+                                        <div className="px-3 py-2 border-t border-white/[0.04] bg-white/[0.02]">
+                                            <p className="text-[10px] text-gray-600 leading-relaxed">
+                                                💡 Paid tiers query multiple AI models in parallel and synthesize a consensus answer — like having a panel of expert doctors instead of one.
+                                            </p>
+                                        </div>
                                     </div>
                                 </>
                             )}
@@ -328,75 +648,71 @@ export default function ChatPage() {
                 {/* Messages area */}
                 <div className="flex-1 overflow-y-auto chat-scrollbar">
                     {!activeConv || activeConv.messages.length === 0 ? (
-                        /* ─── Empty state ──────────────────────────────── */
+                        /* ─── Empty state with suggestions ─── */
                         <div className="flex flex-col items-center justify-center h-full px-4">
                             <div className="text-center max-w-lg">
-                                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-600/20 to-cyan-500/20 border border-violet-500/15 flex items-center justify-center mx-auto mb-6 shadow-[0_0_40px_rgba(139,92,246,0.1)]">
-                                    <Bot size={28} className="text-violet-400" />
+                                <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-violet-600/20 to-cyan-500/20 border border-violet-500/15 flex items-center justify-center mx-auto mb-6 shadow-[0_0_60px_rgba(139,92,246,0.12)]">
+                                    <Bot size={36} className="text-violet-400" />
                                 </div>
-                                <h1 className="text-2xl font-bold mb-2 text-white">{t('how_can_help', 'How can I help?')}</h1>
-                                <p className="text-sm text-gray-500 mb-8">Powered by the GSTD Sovereign Swarm — Private, Decentralized, Uncensored</p>
+                                <h1 className="text-3xl sm:text-4xl font-bold mb-3 text-white">{t('how_can_help', 'How can I help?')}</h1>
+                                <p className="text-sm text-gray-500 leading-relaxed max-w-md mx-auto mb-8">
+                                    Collective Intelligence — 8 Groq models · Llama 4 · GPT-OSS · Kimi K2 · Paid: expert consensus
+                                </p>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-md mx-auto">
-                                    {[
-                                        { text: "Explain quantum computing", icon: "🧮" },
-                                        { text: "Write a Python web scraper", icon: "🐍" },
-                                        { text: "Compare PoW vs PoS", icon: "⛓️" },
-                                        { text: "Design a REST API", icon: "🏗️" },
-                                    ].map((prompt, i) => (
+                                {/* Suggestions grid */}
+                                <div className="grid grid-cols-2 gap-3 max-w-md mx-auto">
+                                    {suggestions.map((s, i) => (
                                         <button
                                             key={i}
-                                            onClick={() => { handleInputChange(prompt.text); inputRef.current?.focus(); }}
-                                            className="group text-left px-4 py-3.5 rounded-xl border border-white/[0.06] hover:border-violet-500/20 hover:bg-violet-500/[0.04] transition-all text-[13px] text-gray-400 hover:text-gray-200 flex items-center gap-3"
+                                            onClick={() => handleSend(s.prompt)}
+                                            className="flex items-start gap-3 p-4 rounded-xl border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/[0.12] transition-all text-left group"
                                         >
-                                            <span className="text-lg">{prompt.icon}</span>
-                                            <span>{prompt.text}</span>
+                                            <span className="text-xl">{s.icon}</span>
+                                            <span className="text-[13px] text-gray-400 group-hover:text-gray-200 transition leading-snug">{s.text}</span>
                                         </button>
                                     ))}
                                 </div>
-
-                                {!isConnected && (
-                                    <div className="mt-8 p-4 rounded-xl border border-amber-500/20 bg-amber-500/[0.04]">
-                                        <p className="text-xs text-amber-400/80">
-                                            <Wallet size={12} className="inline mr-1.5 -mt-0.5" />
-                                            Connect your wallet for session tracking and GSTD token features
-                                        </p>
-                                    </div>
-                                )}
                             </div>
                         </div>
                     ) : (
                         /* ─── Messages ─────────────────────────────────── */
                         <div className="max-w-3xl mx-auto py-6 px-4 sm:px-6 space-y-1">
                             {activeConv.messages.map((msg, idx) => (
-                                <div key={msg.id} className={`group py-4 ${idx > 0 ? '' : ''}`}>
+                                <div key={msg.id} className={`group py-4`}>
                                     {msg.role === 'assistant' ? (
                                         <div className="flex gap-3">
                                             <div className="w-7 h-7 rounded-lg bg-violet-500/15 flex items-center justify-center flex-shrink-0 mt-0.5">
                                                 <Bot size={14} className="text-violet-400" />
                                             </div>
                                             <div className="flex-1 min-w-0 space-y-2">
-                                                <div className="text-[13px] sm:text-sm leading-relaxed text-gray-200 whitespace-pre-wrap break-words">
-                                                    {msg.content || (
-                                                        <span className="text-gray-600 flex items-center gap-2 py-1">
-                                                            <span className="flex gap-1">
-                                                                <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-bounce" style={{ animationDelay: '0ms' }} />
-                                                                <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-bounce" style={{ animationDelay: '150ms' }} />
-                                                                <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-bounce" style={{ animationDelay: '300ms' }} />
-                                                            </span>
-                                                            <span className="text-xs">{t('thinking', 'Thinking...')}</span>
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                {msg.content && (
-                                                    <div className="flex items-center gap-3 pt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <button onClick={() => copyMessage(msg.id, msg.content)} className="flex items-center gap-1.5 text-gray-600 hover:text-gray-300 transition text-xs">
-                                                            {copiedId === msg.id ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
-                                                            <span>{copiedId === msg.id ? t('copied', 'Copied') : t('copy', 'Copy')}</span>
+                                                {/* Content or thinking */}
+                                                {!msg.content && msg.isStreaming ? (
+                                                    <ThinkingIndicator isReasoning={msg.isReasoning} collectivePhase={collectivePhase} />
+                                                ) : msg.content ? (
+                                                    <MarkdownMessage content={msg.content} />
+                                                ) : (
+                                                    <ThinkingIndicator isReasoning={msg.isReasoning} collectivePhase={collectivePhase} />
+                                                )}
+
+                                                {/* Streaming cursor */}
+                                                {msg.isStreaming && msg.content && (
+                                                    <span className="inline-block w-2 h-5 bg-violet-400 animate-pulse rounded-sm ml-0.5" />
+                                                )}
+
+                                                {/* Action buttons */}
+                                                {msg.content && !msg.isStreaming && (
+                                                    <div className="flex items-center gap-2 pt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <button onClick={() => copyMessage(msg.id, msg.content)} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-gray-600 hover:text-gray-200 hover:bg-white/[0.06] transition text-xs font-medium">
+                                                            {copiedId === msg.id ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
+                                                            {copiedId === msg.id ? 'Copied' : 'Copy'}
                                                         </button>
-                                                        {msg.model && (
-                                                            <span className="text-[10px] text-gray-700 px-2 py-0.5 rounded-full bg-white/[0.03] border border-white/[0.04]">
-                                                                {MODELS.find(m => m.id === msg.model)?.name || msg.model}
+                                                        <button onClick={handleRegenerate} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-gray-600 hover:text-gray-200 hover:bg-white/[0.06] transition text-xs font-medium">
+                                                            <RotateCcw size={13} />
+                                                            Regenerate
+                                                        </button>
+                                                        {msg.collectiveInfo && (
+                                                            <span className="text-[10px] text-gray-700 px-2 py-1 rounded-full bg-white/[0.03] border border-white/[0.04]">
+                                                                {msg.collectiveInfo.badge} {msg.collectiveInfo.expertCount} expert{msg.collectiveInfo.expertCount > 1 ? 's' : ''} · {msg.collectiveInfo.latency_ms}ms
                                                             </span>
                                                         )}
                                                         <span className="text-[10px] text-gray-700">{formatTime(msg.timestamp)}</span>
@@ -423,33 +739,44 @@ export default function ChatPage() {
                     )}
                 </div>
 
-                {/* ─── Input ────────────────────────────────────────── */}
-                <div className="border-t border-white/[0.06] p-3 sm:p-4 bg-[#030014]/80 backdrop-blur-sm">
-                    <div className="max-w-3xl mx-auto">
-                        <div className="flex items-end gap-2 bg-white/[0.025] border border-white/[0.08] rounded-2xl p-2.5 sm:p-3 focus-within:border-violet-500/25 transition-all shadow-[0_-4px_30px_rgba(0,0,0,0.3)]">
+                {/* ─── Input area ─────────────────────────────────────── */}
+                <div className="border-t border-white/[0.06] p-3 sm:p-5 bg-gradient-to-t from-[#030014] via-[#030014]/95 to-transparent">
+                    <div className="max-w-3xl mx-auto w-full">
+                        <div className="relative flex items-end gap-0 bg-white/[0.04] border border-white/[0.08] rounded-2xl px-4 sm:px-5 py-3 sm:py-3.5 focus-within:border-violet-500/30 focus-within:shadow-[0_0_30px_rgba(139,92,246,0.08)] transition-all shadow-[0_-8px_40px_rgba(0,0,0,0.4)]">
                             <textarea
                                 ref={inputRef}
                                 value={input}
                                 onChange={(e) => handleInputChange(e.target.value)}
-                                onKeyDown={(e) => { if (e.key === t('enter', 'Enter') && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                                placeholder={t('message_placeholder', 'Message GSTD…')}
+                                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+                                placeholder={`Message GSTD ${currentTier.name}…`}
                                 rows={1}
-                                className="flex-1 bg-transparent outline-none resize-none text-[13px] sm:text-sm text-gray-200 placeholder:text-gray-600 max-h-40 py-1"
-                                style={{ minHeight: '24px' }}
+                                disabled={isStreaming}
+                                className="flex-1 bg-transparent outline-none resize-none text-sm sm:text-[15px] text-gray-200 placeholder:text-gray-600 max-h-48 py-1 leading-relaxed disabled:opacity-50"
+                                style={{ minHeight: '28px' }}
                             />
-                            <button
-                                onClick={handleSend}
-                                disabled={!input.trim() || isStreaming}
-                                className={`p-2.5 rounded-xl transition-all flex-shrink-0 ${input.trim() && !isStreaming
-                                    ? 'text-white bg-violet-600 hover:bg-violet-500 shadow-lg shadow-violet-500/20'
-                                    : 'text-gray-700 cursor-not-allowed bg-white/[0.03]'
-                                    }`}
-                            >
-                                <Send size={16} />
-                            </button>
+                            {isStreaming ? (
+                                <button
+                                    onClick={handleStop}
+                                    className="p-2.5 sm:p-3 rounded-2xl transition-all flex-shrink-0 ml-2 text-white bg-rose-600 hover:bg-rose-500 shadow-lg shadow-rose-500/25"
+                                    title="Stop generating"
+                                >
+                                    <Square size={18} />
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={() => handleSend()}
+                                    disabled={!input.trim()}
+                                    className={`p-2.5 sm:p-3 rounded-2xl transition-all flex-shrink-0 ml-2 ${input.trim()
+                                        ? 'text-white bg-violet-600 hover:bg-violet-500 shadow-lg shadow-violet-500/25 scale-100 hover:scale-105'
+                                        : 'text-gray-600 cursor-not-allowed bg-white/[0.04]'
+                                        }`}
+                                >
+                                    <Send size={18} />
+                                </button>
+                            )}
                         </div>
-                        <p className="text-[10px] text-gray-700 text-center mt-2">
-                            GSTD Sovereign AI · Decentralized · Private · Uncensored
+                        <p className="text-[10px] text-gray-700 text-center mt-2.5">
+                            {currentTier.badge} {currentTier.name} · {currentTier.expertCount} {currentTier.expertCount === 1 ? 'expert' : 'experts'}{currentTier.cost > 0 ? ` · ${currentTier.cost} GSTD` : ' · Free'} · Shift+Enter for new line
                         </p>
                     </div>
                 </div>
@@ -460,6 +787,7 @@ export default function ChatPage() {
                 .chat-scrollbar::-webkit-scrollbar-track { background: transparent; }
                 .chat-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 4px; }
                 .chat-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.12); }
+                @keyframes cursor-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
             `}</style>
         </div>
     );
