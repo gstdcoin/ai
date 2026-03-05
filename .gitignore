@@ -36,8 +36,3 @@ next-env.d.ts
 
 
 .husky/
-
-# System
-nohup.out
-.DS_Store
-*.swp

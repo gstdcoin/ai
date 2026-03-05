@@ -1,13 +1,12 @@
 import { useTranslation } from 'next-i18next';
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import Head from 'next/head';
 import {
-    Globe2, Sprout, HeartPulse, Droplets, BookOpen, Sun,
-    Activity, ShieldCheck, Code, Zap, Database, CheckCircle,
-    Target, Dna, ArrowRight, TrendingUp, Cpu, Star, Lock, BrainCircuit, Share2, Radio, AlertTriangle, MapPin, Network,
-    Satellite, Microscope, Wind, Waves, Shield, Search, Filter, BarChart3, Users, Clock, ChevronRight, ExternalLink,
-    GraduationCap, Hammer, Leaf, Wheat, Baby, Scale, Fingerprint, Flame, Building2, PersonStanding, Brain,
-    Trophy, Crown, Swords, Medal, Flag, Sparkles, Timer, Gift, Rocket, Heart, Award
+    Globe2, Sprout, HeartPulse, Droplets, Sun,
+    Activity, ShieldCheck, Zap, Database, CheckCircle,
+    Target, Dna, TrendingUp, Star, BrainCircuit, Radio, AlertTriangle, MapPin, Network,
+    Satellite, Microscope, Wind, Waves, Shield, Search, BarChart3, Users, ExternalLink,
+    GraduationCap, Leaf, Wheat, Baby, Scale, Flame, Building2, PersonStanding, Brain
 } from 'lucide-react';
 import { toast } from '../../lib/toast';
 import { apiGet, apiPost } from '../../lib/apiClient';
@@ -367,121 +366,6 @@ const SEVERITY_I18N: Record<string, string> = {
     'medium': 'medium',
 };
 
-// ═══════════════════════════════════════════════════════════════════════════
-// GAMIFICATION & COMPETITION SYSTEM
-// ═══════════════════════════════════════════════════════════════════════════
-
-interface Guild {
-    id: string;
-    name: string;
-    emblem: string;
-    members: number;
-    totalXP: number;
-    signalsSponsored: number;
-    rank: number;
-    streak: number;
-    specialty: string;
-    color: string;
-    leader: string;
-}
-
-interface LeaderboardEntry {
-    rank: number;
-    name: string;
-    guild?: string;
-    xp: number;
-    signals: number;
-    badge: string;
-    level: number;
-    trend: 'up' | 'down' | 'same';
-}
-
-interface Challenge {
-    id: string;
-    title: string;
-    description: string;
-    type: 'daily' | 'weekly' | 'seasonal';
-    xpReward: number;
-    gstdReward: number;
-    progress: number;
-    target: number;
-    icon: any;
-    color: string;
-    timeLeft: string;
-    participants: number;
-}
-
-// Rank tiers based on XP
-const RANK_TIERS = [
-    { name: 'Neuron', minXP: 0, badge: '🧬', color: 'text-slate-400' },
-    { name: 'Synapse', minXP: 100, badge: '⚡', color: 'text-blue-400' },
-    { name: 'Cortex', minXP: 500, badge: '🧠', color: 'text-violet-400' },
-    { name: 'Sentinel', minXP: 2000, badge: '🛡️', color: 'text-emerald-400' },
-    { name: 'Oracle', minXP: 5000, badge: '🔮', color: 'text-amber-400' },
-    { name: 'Architect', minXP: 15000, badge: '⚗️', color: 'text-cyan-400' },
-    { name: 'Sovereign', minXP: 50000, badge: '👑', color: 'text-yellow-400' },
-];
-
-const MOCK_GUILDS: Guild[] = [
-    { id: 'g1', name: 'Climate Guardians', emblem: '🌍', members: 342, totalXP: 89400, signalsSponsored: 156, rank: 1, streak: 14, specialty: 'Climate', color: 'from-emerald-600/20 to-green-600/20', leader: 'EcoNode_42' },
-    { id: 'g2', name: 'MedSwarm', emblem: '🧬', members: 278, totalXP: 76200, signalsSponsored: 128, rank: 2, streak: 9, specialty: 'Health', color: 'from-purple-600/20 to-pink-600/20', leader: 'ProteinFolder' },
-    { id: 'g3', name: 'Cyber Sentinels', emblem: '🛡️', members: 195, totalXP: 61800, signalsSponsored: 97, rank: 3, streak: 21, specialty: 'Cyber Security', color: 'from-red-600/20 to-orange-600/20', leader: 'ShieldMaster' },
-    { id: 'g4', name: 'Ocean Collective', emblem: '🌊', members: 164, totalXP: 48300, signalsSponsored: 84, rank: 4, streak: 7, specialty: 'Biodiversity', color: 'from-cyan-600/20 to-blue-600/20', leader: 'DeepDiver' },
-    { id: 'g5', name: 'Quake Hunters', emblem: '🌋', members: 143, totalXP: 39100, signalsSponsored: 67, rank: 5, streak: 5, specialty: 'Geophysics', color: 'from-orange-600/20 to-amber-600/20', leader: 'SeismicSense' },
-    { id: 'g6', name: 'Data Rebels', emblem: '📡', members: 231, totalXP: 52700, signalsSponsored: 93, rank: 6, streak: 12, specialty: 'Science & Energy', color: 'from-blue-600/20 to-indigo-600/20', leader: 'ParticleX' },
-    { id: 'g7', name: 'Hunger Zero', emblem: '🌾', members: 187, totalXP: 44900, signalsSponsored: 79, rank: 7, streak: 8, specialty: 'Food & Water', color: 'from-yellow-600/20 to-lime-600/20', leader: 'FarmOracle' },
-    { id: 'g8', name: 'Freedom Net', emblem: '✊', members: 156, totalXP: 37200, signalsSponsored: 61, rank: 8, streak: 6, specialty: 'Humanitarian', color: 'from-rose-600/20 to-fuchsia-600/20', leader: 'LibertyNode' },
-];
-
-const MOCK_LEADERBOARD: LeaderboardEntry[] = [
-    { rank: 1, name: 'EcoNode_42', guild: 'Climate Guardians', xp: 24680, signals: 89, badge: '👑', level: 6, trend: 'same' },
-    { rank: 2, name: 'ProteinFolder', guild: 'MedSwarm', xp: 21340, signals: 76, badge: '⚗️', level: 6, trend: 'up' },
-    { rank: 3, name: 'ShieldMaster', guild: 'Cyber Sentinels', xp: 19870, signals: 71, badge: '⚗️', level: 6, trend: 'down' },
-    { rank: 4, name: 'DeepDiver', guild: 'Ocean Collective', xp: 16420, signals: 58, badge: '🔮', level: 5, trend: 'up' },
-    { rank: 5, name: 'ParticleX', guild: 'Data Rebels', xp: 14900, signals: 53, badge: '🔮', level: 5, trend: 'up' },
-    { rank: 6, name: 'SeismicSense', guild: 'Quake Hunters', xp: 12750, signals: 45, badge: '🔮', level: 5, trend: 'same' },
-    { rank: 7, name: 'NeuralNomad', xp: 11200, signals: 40, badge: '🔮', level: 5, trend: 'up' },
-    { rank: 8, name: 'FarmOracle', guild: 'Hunger Zero', xp: 9800, signals: 35, badge: '🛡️', level: 4, trend: 'down' },
-    { rank: 9, name: 'QuantumLeap', guild: 'Data Rebels', xp: 8400, signals: 30, badge: '🛡️', level: 4, trend: 'up' },
-    { rank: 10, name: 'LibertyNode', guild: 'Freedom Net', xp: 7100, signals: 25, badge: '🛡️', level: 4, trend: 'same' },
-];
-
-const ACTIVE_CHALLENGES: Challenge[] = [
-    {
-        id: 'dc1', title: 'First Light', description: 'Sponsor any signal today',
-        type: 'daily', xpReward: 50, gstdReward: 10, progress: 0, target: 1,
-        icon: Sun, color: 'text-amber-400', timeLeft: '18h', participants: 1247
-    },
-    {
-        id: 'dc2', title: 'Triple Threat', description: 'Sponsor 3 different category signals',
-        type: 'daily', xpReward: 150, gstdReward: 30, progress: 1, target: 3,
-        icon: Target, color: 'text-rose-400', timeLeft: '18h', participants: 489
-    },
-    {
-        id: 'wc1', title: 'Climate Champion', description: 'Sponsor 5 Climate signals this week',
-        type: 'weekly', xpReward: 500, gstdReward: 100, progress: 2, target: 5,
-        icon: Leaf, color: 'text-emerald-400', timeLeft: '4d', participants: 2156
-    },
-    {
-        id: 'wc2', title: 'Guild Rally', description: 'Your guild sponsors 20 signals collectively',
-        type: 'weekly', xpReward: 800, gstdReward: 200, progress: 12, target: 20,
-        icon: Flag, color: 'text-violet-400', timeLeft: '4d', participants: 3891
-    },
-    {
-        id: 'sc1', title: 'Planetary Defender', description: 'Sponsor signals in all 10 categories',
-        type: 'seasonal', xpReward: 5000, gstdReward: 1000, progress: 6, target: 10,
-        icon: Globe2, color: 'text-cyan-400', timeLeft: '23d', participants: 892
-    },
-    {
-        id: 'sc2', title: 'Swarm Sovereign', description: 'Reach 50,000 XP total',
-        type: 'seasonal', xpReward: 10000, gstdReward: 2500, progress: 24680, target: 50000,
-        icon: Crown, color: 'text-yellow-400', timeLeft: '23d', participants: 47
-    },
-];
-
-// Right panel tab type
-type PanelTab = 'overview' | 'arena' | 'guilds' | 'challenges';
-
 export default function HumanityMonitor() {
     const { t } = useTranslation('common');
 
@@ -497,10 +381,6 @@ export default function HumanityMonitor() {
         totalUsers: 0, tasksCompleted: 0, totalBurned: 0
     });
     const [sovereigntyIndex, setSovereigntyIndex] = useState(100.0);
-    const [panelTab, setPanelTab] = useState<PanelTab>('overview');
-    const [guildLeaderboard, setGuildLeaderboard] = useState(MOCK_GUILDS);
-    const [userLeaderboard, setUserLeaderboard] = useState(MOCK_LEADERBOARD);
-    const [challenges, setChallenges] = useState(ACTIVE_CHALLENGES);
 
     // Merge static signal definitions with real backend progress data
     const signalsWithRealData = useMemo(() => {
@@ -535,7 +415,7 @@ export default function HumanityMonitor() {
             try {
                 const data = await apiGet<any>('/monitor/signals').catch(() => null);
                 if (data?.signals) setSignalStats(data.signals);
-            } catch (e) { }
+            } catch { /* signals fetch is non-critical */ }
         };
         fetchSignals();
         const interval = setInterval(fetchSignals, 8000);
@@ -561,7 +441,7 @@ export default function HumanityMonitor() {
                         totalBurned: mkt.total_burned || 0
                     });
                 }
-            } catch (e) { }
+            } catch { /* unified fetch is non-critical */ }
         };
         fetchData();
         const interval = setInterval(fetchData, 4000);
@@ -574,7 +454,7 @@ export default function HumanityMonitor() {
             try {
                 const data = await apiGet<any>('/chat/sovereignty-index').catch(() => null);
                 if (data?.sovereignty_index !== undefined) setSovereigntyIndex(data.sovereignty_index);
-            } catch (e) { }
+            } catch { /* sovereignty fetch is non-critical */ }
         };
         fetchSov();
         const interval = setInterval(fetchSov, 5000);
@@ -688,8 +568,8 @@ export default function HumanityMonitor() {
                                 { label: t('signals', 'Signals'), value: `${criticalCount} critical`, color: 'text-rose-400', icon: AlertTriangle },
                                 { label: t('contributors', 'Contributors'), value: totalContributors.toLocaleString(), color: 'text-violet-400', icon: Users },
                                 { label: t('reward_pool', 'Reward Pool'), value: totalRewardPool.toLocaleString() + ' GSTD', color: 'text-emerald-400', icon: Database },
-                            ].map((s, i) => (
-                                <div key={i} className="px-3 py-2.5 bg-slate-900/60 border border-slate-700/50 rounded-xl backdrop-blur-xl flex items-center gap-2.5">
+                            ].map((s) => (
+                                <div key={s.label} className="px-3 py-2.5 bg-slate-900/60 border border-slate-700/50 rounded-xl backdrop-blur-xl flex items-center gap-2.5">
                                     <s.icon className={`w-4 h-4 ${s.color} opacity-60 flex-shrink-0`} />
                                     <div className="flex flex-col min-w-0">
                                         <span className="text-[8px] font-black uppercase tracking-widest text-slate-500 truncate">{s.label}</span>
@@ -793,322 +673,84 @@ export default function HumanityMonitor() {
                         )}
                     </div>
 
-                    {/* ─── RIGHT PANEL (Tabbed: Overview | Arena | Guilds | Challenges) ─── */}
+                    {/* ─── RIGHT PANEL ─────────────────────────────────────── */}
                     <div className="w-full lg:w-1/4 flex flex-col gap-4">
-                        {/* Tab Navigation */}
-                        <div className="flex gap-1 bg-slate-900/80 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-1.5">
-                            {([
-                                { id: 'overview' as PanelTab, icon: BarChart3, label: t('overview', 'Overview') },
-                                { id: 'arena' as PanelTab, icon: Trophy, label: t('arena', 'Arena') },
-                                { id: 'guilds' as PanelTab, icon: Shield, label: t('guilds', 'Guilds') },
-                                { id: 'challenges' as PanelTab, icon: Swords, label: t('quests', 'Quests') },
-                            ]).map(tab => (
-                                <button key={tab.id} onClick={() => setPanelTab(tab.id)}
-                                    className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl text-[10px] font-bold transition-all ${panelTab === tab.id
-                                        ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30 shadow-[0_0_12px_rgba(139,92,246,0.1)]'
-                                        : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50 border border-transparent'}`}>
-                                    <tab.icon className="w-3.5 h-3.5" />
-                                    <span className="hidden sm:inline">{tab.label}</span>
-                                </button>
-                            ))}
+                        {/* Network Overview */}
+                        <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-4">
+                            <h3 className="text-[10px] font-black uppercase tracking-widest text-violet-400 mb-3 flex items-center gap-2">
+                                <BarChart3 className="w-3.5 h-3.5" />{t('planetary_overview', 'Planetary Overview')}</h3>
+                            <div className="space-y-2.5">
+                                {[
+                                    { l: t('total_signals', 'Total Signals'), v: String(ACTIVE_SIGNALS.length), c: 'text-white' },
+                                    { l: t('critical_priority', 'Critical Priority'), v: String(criticalCount), c: 'text-rose-400' },
+                                    { l: t('categories', 'Categories'), v: String(CATEGORIES.length - 1), c: 'text-sky-400' },
+                                    { l: t('total_contributors', 'Total Contributors'), v: totalContributors.toLocaleString(), c: 'text-violet-400' },
+                                    { l: t('reward_pool', 'Reward Pool'), v: totalRewardPool.toLocaleString() + ' GSTD', c: 'text-emerald-400' },
+                                ].map((r) => (
+                                    <div key={r.l} className="flex justify-between items-center">
+                                        <span className="text-[10px] text-slate-400">{r.l}</span>
+                                        <span className={`text-xs font-bold ${r.c}`}>{r.v}</span>
+                                    </div>
+                                ))}
+                                <div className="pt-2 border-t border-slate-800">
+                                    <div className="flex justify-between items-center mb-1.5">
+                                        <span className="text-[10px] text-slate-400">{t('avg_progress', 'Avg. Progress')}</span>
+                                        <span className="text-xs font-bold text-sky-400">{avgProgress}%</span>
+                                    </div>
+                                    <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                        <div className="h-full bg-sky-500 rounded-full transition-all" style={{ width: `${avgProgress}%` }} />
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
-                        {/* ═══ TAB: OVERVIEW ═══ */}
-                        {panelTab === 'overview' && (
-                            <>
-                                {/* Network Overview */}
-                                <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-4">
-                                    <h3 className="text-[10px] font-black uppercase tracking-widest text-violet-400 mb-3 flex items-center gap-2">
-                                        <BarChart3 className="w-3.5 h-3.5" />{t('planetary_overview', 'Planetary Overview')}</h3>
-                                    <div className="space-y-2.5">
-                                        {[
-                                            { l: t('total_signals', 'Total Signals'), v: String(ACTIVE_SIGNALS.length), c: 'text-white' },
-                                            { l: t('critical_priority', 'Critical Priority'), v: String(criticalCount), c: 'text-rose-400' },
-                                            { l: t('categories', 'Categories'), v: String(CATEGORIES.length - 1), c: 'text-sky-400' },
-                                            { l: t('total_contributors', 'Total Contributors'), v: totalContributors.toLocaleString(), c: 'text-violet-400' },
-                                            { l: t('reward_pool', 'Reward Pool'), v: totalRewardPool.toLocaleString() + ' GSTD', c: 'text-emerald-400' },
-                                        ].map((r, i) => (
-                                            <div key={i} className="flex justify-between items-center">
-                                                <span className="text-[10px] text-slate-400">{r.l}</span>
-                                                <span className={`text-xs font-bold ${r.c}`}>{r.v}</span>
-                                            </div>
-                                        ))}
-                                        <div className="pt-2 border-t border-slate-800">
-                                            <div className="flex justify-between items-center mb-1.5">
-                                                <span className="text-[10px] text-slate-400">{t('avg_progress', 'Avg. Progress')}</span>
-                                                <span className="text-xs font-bold text-sky-400">{avgProgress}%</span>
-                                            </div>
-                                            <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                                                <div className="h-full bg-sky-500 rounded-full transition-all" style={{ width: `${avgProgress}%` }} />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Category Breakdown */}
-                                <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-4">
-                                    <h3 className="text-[10px] font-black uppercase tracking-widest text-sky-400 mb-3 flex items-center gap-2">
-                                        <Target className="w-3.5 h-3.5" />{t('problems_by_domain', 'Problems by Domain')}</h3>
-                                    <div className="space-y-2">
-                                        {CATEGORIES.filter(c => c !== 'All').map(cat => {
-                                            const count = ACTIVE_SIGNALS.filter(s => s.category === cat).length;
-                                            const pct = Math.round((count / ACTIVE_SIGNALS.length) * 100);
-                                            return (
-                                                <button key={cat} onClick={() => setActiveCategory(cat)}
-                                                    className="w-full flex items-center justify-between text-left hover:bg-slate-800/50 rounded-lg px-2 py-1 transition-colors">
-                                                    <span className="text-[10px] font-bold text-slate-300">{t(CATEGORY_I18N[cat] || cat, cat)}</span>
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-16 h-1 bg-slate-800 rounded-full overflow-hidden">
-                                                            <div className="h-full bg-sky-500/60 rounded-full" style={{ width: `${pct}%` }} />
-                                                        </div>
-                                                        <span className="text-[10px] text-slate-500 tabular-nums w-4 text-right">{count}</span>
-                                                    </div>
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-
-                                {/* Live Feed */}
-                                <div className="flex-1 bg-slate-900/80 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-4 flex flex-col min-h-[200px]">
-                                    <h3 className="text-[10px] font-black uppercase tracking-[0.15em] text-sky-400 mb-3 flex items-center gap-2">
-                                        <Activity className="w-3.5 h-3.5" />{t('live_network_feed', 'Live Network Feed')}</h3>
-                                    <div className="flex-1 overflow-y-auto pr-1 space-y-2.5 custom-scrollbar">
-                                        {liveLogs.length === 0 ? (
-                                            <div className="text-slate-500 text-xs text-center py-8 flex flex-col items-center gap-2">
-                                                <Radio className="w-5 h-5 animate-pulse opacity-50" />{t('awaiting_transmissions', 'Awaiting transmissions...')}</div>
-                                        ) : (
-                                            liveLogs.map((log, i) => (
-                                                <div key={i} className="pb-2 border-b border-slate-800/80 last:border-0">
-                                                    <div className="flex justify-between items-center mb-0.5">
-                                                        <span className="text-[8px] font-black uppercase text-sky-400 bg-sky-500/10 px-1.5 py-0.5 rounded">{log.chain || 'NODE'}</span>
-                                                        <span className="text-[9px] text-slate-600 font-mono">{new Date(log.timestamp).toLocaleTimeString()}</span>
-                                                    </div>
-                                                    <p className="text-[10px] leading-relaxed text-slate-400 pl-2 border-l border-slate-800">{log.message}</p>
-                                                </div>
-                                            ))
-                                        )}
-                                    </div>
-                                </div>
-                            </>
-                        )}
-
-                        {/* ═══ TAB: ARENA (Leaderboard) ═══ */}
-                        {panelTab === 'arena' && (
-                            <>
-                                {/* Current Season Banner */}
-                                <div className="bg-gradient-to-br from-violet-600/20 via-purple-600/10 to-pink-600/20 backdrop-blur-xl border border-violet-500/30 rounded-2xl p-4 relative overflow-hidden">
-                                    <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-violet-500/10 blur-[50px]" />
-                                    <div className="relative z-10">
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <Sparkles className="w-4 h-4 text-violet-400" />
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-violet-300">{t('season', 'Season')} 1 — {t('genesis', 'Genesis')}</span>
-                                        </div>
-                                        <div className="flex items-center justify-between">
-                                            <div>
-                                                <p className="text-xs text-slate-400">{t('total_xp_earned', 'Total XP Earned')}</p>
-                                                <p className="text-lg font-black text-white tabular-nums">247,830 <span className="text-violet-400 text-xs">XP</span></p>
-                                            </div>
-                                            <div className="text-right">
-                                                <p className="text-xs text-slate-400">{t('ends_in', 'Ends in')}</p>
-                                                <p className="text-sm font-bold text-amber-400 flex items-center gap-1"><Timer className="w-3 h-3" />23d 14h</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Rank Tiers */}
-                                <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-4">
-                                    <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-400 mb-3 flex items-center gap-2">
-                                        <Medal className="w-3.5 h-3.5" />{t('rank_tiers', 'Rank Tiers')}</h3>
-                                    <div className="flex flex-wrap gap-1.5">
-                                        {RANK_TIERS.map((tier, i) => (
-                                            <div key={i} className="flex items-center gap-1 px-2 py-1 bg-slate-800/60 rounded-lg border border-slate-700/40">
-                                                <span className="text-sm">{tier.badge}</span>
-                                                <span className={`text-[9px] font-bold ${tier.color}`}>{tier.name}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Individual Leaderboard */}
-                                <div className="flex-1 bg-slate-900/80 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-4 flex flex-col">
-                                    <h3 className="text-[10px] font-black uppercase tracking-widest text-amber-400 mb-3 flex items-center gap-2">
-                                        <Trophy className="w-3.5 h-3.5" />{t('top_contributors', 'Top Contributors')}</h3>
-                                    <div className="space-y-1.5 overflow-y-auto custom-scrollbar">
-                                        {userLeaderboard.map((entry, i) => (
-                                            <div key={i} className={`flex items-center gap-2 px-2.5 py-2 rounded-xl transition-all ${i < 3
-                                                ? 'bg-gradient-to-r from-amber-500/5 to-transparent border border-amber-500/10'
-                                                : 'hover:bg-slate-800/50'}`}>
-                                                {/* Rank */}
-                                                <div className={`w-5 h-5 flex items-center justify-center rounded-md text-[10px] font-black ${i === 0 ? 'bg-amber-500/20 text-amber-400' : i === 1 ? 'bg-slate-400/20 text-slate-300' : i === 2 ? 'bg-orange-500/20 text-orange-400' : 'text-slate-500'}`}>
-                                                    {entry.rank}
-                                                </div>
-                                                {/* Badge + Name */}
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-1">
-                                                        <span className="text-sm">{entry.badge}</span>
-                                                        <span className="text-[11px] font-bold text-white truncate">{entry.name}</span>
-                                                        {entry.trend === 'up' && <TrendingUp className="w-2.5 h-2.5 text-emerald-400 flex-shrink-0" />}
-                                                        {entry.trend === 'down' && <TrendingUp className="w-2.5 h-2.5 text-rose-400 transform rotate-180 flex-shrink-0" />}
-                                                    </div>
-                                                    {entry.guild && <span className="text-[8px] text-slate-500">{entry.guild}</span>}
-                                                </div>
-                                                {/* XP */}
-                                                <div className="text-right flex-shrink-0">
-                                                    <p className="text-[10px] font-bold text-violet-400 tabular-nums">{(entry.xp / 1000).toFixed(1)}K</p>
-                                                    <p className="text-[8px] text-slate-600">{entry.signals} {t('signals_short', 'sig')}</p>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </>
-                        )}
-
-                        {/* ═══ TAB: GUILDS ═══ */}
-                        {panelTab === 'guilds' && (
-                            <>
-                                {/* Guild War Banner */}
-                                <div className="bg-gradient-to-br from-rose-600/15 via-orange-600/10 to-amber-600/15 backdrop-blur-xl border border-rose-500/20 rounded-2xl p-4 relative overflow-hidden">
-                                    <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-rose-500/10 blur-[50px]" />
-                                    <div className="relative z-10">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <Swords className="w-4 h-4 text-rose-400 animate-pulse" />
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-rose-300">{t('guild_war', 'Guild War')} — {t('active', 'Active')}</span>
-                                        </div>
-                                        <p className="text-xs text-slate-400 mb-2">{t('guild_war_desc', 'Guilds compete to sponsor the most signals. Top 3 win bonus XP + GSTD rewards!')}</p>
-                                        <div className="flex items-center gap-4">
-                                            <div className="flex items-center gap-1">
-                                                <span className="text-lg">🏆</span>
-                                                <span className="text-[10px] font-bold text-amber-400">{t('prize_pool', 'Prize')}: 5,000 GSTD</span>
-                                            </div>
-                                            <div className="flex items-center gap-1">
-                                                <Timer className="w-3 h-3 text-slate-400" />
-                                                <span className="text-[10px] text-slate-400">4d 6h</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Guild Leaderboard */}
-                                <div className="flex-1 bg-slate-900/80 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-4 flex flex-col">
-                                    <h3 className="text-[10px] font-black uppercase tracking-widest text-rose-400 mb-3 flex items-center gap-2">
-                                        <Flag className="w-3.5 h-3.5" />{t('guild_rankings', 'Guild Rankings')}</h3>
-                                    <div className="space-y-2 overflow-y-auto custom-scrollbar">
-                                        {guildLeaderboard.map((guild, i) => (
-                                            <div key={guild.id} className={`group relative bg-gradient-to-r ${guild.color} border rounded-xl p-3 transition-all hover:scale-[1.01] ${i < 3 ? 'border-amber-500/20' : 'border-slate-700/40'}`}>
-                                                <div className="flex items-center gap-2.5">
-                                                    {/* Rank + Emblem*/}
-                                                    <div className="flex flex-col items-center gap-0.5">
-                                                        <span className={`text-[10px] font-black ${i === 0 ? 'text-amber-400' : i === 1 ? 'text-slate-300' : i === 2 ? 'text-orange-400' : 'text-slate-500'}`}>#{guild.rank}</span>
-                                                        <span className="text-xl">{guild.emblem}</span>
-                                                    </div>
-                                                    {/* Info */}
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="flex items-center gap-1.5">
-                                                            <span className="text-[11px] font-bold text-white truncate">{guild.name}</span>
-                                                            {guild.streak >= 7 && (
-                                                                <span className="text-[8px] px-1 py-0.5 bg-orange-500/15 border border-orange-500/20 rounded text-orange-400 flex items-center gap-0.5 flex-shrink-0">
-                                                                    🔥 {guild.streak}d
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                        <div className="flex items-center gap-2 mt-0.5">
-                                                            <span className="text-[9px] text-slate-400 flex items-center gap-0.5"><Users className="w-2.5 h-2.5" />{guild.members}</span>
-                                                            <span className="text-[9px] text-slate-400">•</span>
-                                                            <span className="text-[9px] text-slate-400">{guild.specialty}</span>
-                                                        </div>
-                                                    </div>
-                                                    {/* Stats */}
-                                                    <div className="text-right flex-shrink-0">
-                                                        <p className="text-[10px] font-bold text-violet-400 tabular-nums">{(guild.totalXP / 1000).toFixed(1)}K XP</p>
-                                                        <p className="text-[8px] text-slate-500">{guild.signalsSponsored} {t('signals_short', 'sig')}</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Create / Join Guild CTA */}
-                                <button className="w-full bg-slate-900/80 backdrop-blur-xl border border-dashed border-violet-500/30 rounded-2xl p-4 hover:border-violet-400/50 hover:bg-violet-500/5 transition-all group text-center">
-                                    <div className="flex items-center justify-center gap-2 mb-1">
-                                        <Users className="w-4 h-4 text-violet-400 group-hover:scale-110 transition-transform" />
-                                        <span className="text-sm font-bold text-white">{t('create_or_join', 'Create or Join a Guild')}</span>
-                                    </div>
-                                    <p className="text-[10px] text-slate-500">{t('guild_cta_desc', 'Team up with other defenders. Compete together. Earn bonus rewards.')}</p>
-                                </button>
-                            </>
-                        )}
-
-                        {/* ═══ TAB: CHALLENGES (Quests) ═══ */}
-                        {panelTab === 'challenges' && (
-                            <>
-                                {/* Daily / Weekly / Seasonal Sections */}
-                                {(['daily', 'weekly', 'seasonal'] as const).map(type => {
-                                    const typeChallenges = challenges.filter(c => c.type === type);
-                                    const typeConfig = {
-                                        daily: { icon: Sun, color: 'text-amber-400', label: t('daily_quests', 'Daily Quests'), border: 'border-amber-500/20' },
-                                        weekly: { icon: Flag, color: 'text-violet-400', label: t('weekly_quests', 'Weekly Quests'), border: 'border-violet-500/20' },
-                                        seasonal: { icon: Crown, color: 'text-yellow-400', label: t('seasonal_quests', 'Seasonal Quests'), border: 'border-yellow-500/20' },
-                                    }[type];
+                        {/* Category Breakdown */}
+                        <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-4">
+                            <h3 className="text-[10px] font-black uppercase tracking-widest text-sky-400 mb-3 flex items-center gap-2">
+                                <Target className="w-3.5 h-3.5" />{t('problems_by_domain', 'Problems by Domain')}</h3>
+                            <div className="space-y-2">
+                                {CATEGORIES.filter(c => c !== 'All').map(cat => {
+                                    const count = ACTIVE_SIGNALS.filter(s => s.category === cat).length;
+                                    const pct = Math.round((count / ACTIVE_SIGNALS.length) * 100);
                                     return (
-                                        <div key={type} className={`bg-slate-900/80 backdrop-blur-xl border ${typeConfig.border} rounded-2xl p-4`}>
-                                            <h3 className={`text-[10px] font-black uppercase tracking-widest ${typeConfig.color} mb-3 flex items-center gap-2`}>
-                                                <typeConfig.icon className="w-3.5 h-3.5" />{typeConfig.label}
-                                            </h3>
-                                            <div className="space-y-3">
-                                                {typeChallenges.map(challenge => {
-                                                    const pct = Math.min(100, Math.round((challenge.progress / challenge.target) * 100));
-                                                    const isComplete = pct >= 100;
-                                                    return (
-                                                        <div key={challenge.id} className={`relative rounded-xl px-3 py-2.5 border transition-all ${isComplete ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-slate-800/40 border-slate-700/30 hover:border-slate-600/50'}`}>
-                                                            <div className="flex items-start gap-2">
-                                                                <div className={`p-1.5 rounded-lg ${isComplete ? 'bg-emerald-500/10' : 'bg-slate-800/80'} flex-shrink-0 mt-0.5`}>
-                                                                    {isComplete
-                                                                        ? <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
-                                                                        : <challenge.icon className={`w-3.5 h-3.5 ${challenge.color}`} />}
-                                                                </div>
-                                                                <div className="flex-1 min-w-0">
-                                                                    <div className="flex items-center justify-between">
-                                                                        <span className={`text-[11px] font-bold ${isComplete ? 'text-emerald-300 line-through' : 'text-white'}`}>{challenge.title}</span>
-                                                                        <div className="flex items-center gap-1 flex-shrink-0 ml-2">
-                                                                            <Timer className="w-2.5 h-2.5 text-slate-500" />
-                                                                            <span className="text-[9px] text-slate-500">{challenge.timeLeft}</span>
-                                                                        </div>
-                                                                    </div>
-                                                                    <p className="text-[9px] text-slate-500 mt-0.5">{challenge.description}</p>
-                                                                    {/* Progress bar */}
-                                                                    <div className="mt-2">
-                                                                        <div className="flex justify-between items-center mb-0.5">
-                                                                            <span className="text-[8px] text-slate-500 tabular-nums">{challenge.progress}/{challenge.target}</span>
-                                                                            <span className={`text-[8px] font-bold ${isComplete ? 'text-emerald-400' : 'text-slate-400'}`}>{pct}%</span>
-                                                                        </div>
-                                                                        <div className="w-full h-1 bg-slate-800 rounded-full overflow-hidden">
-                                                                            <div className={`h-full rounded-full transition-all duration-700 ${isComplete ? 'bg-emerald-500' : pct > 50 ? 'bg-violet-500' : 'bg-sky-500'}`}
-                                                                                style={{ width: `${pct}%` }} />
-                                                                        </div>
-                                                                    </div>
-                                                                    {/* Rewards */}
-                                                                    <div className="flex items-center gap-3 mt-1.5">
-                                                                        <span className="text-[8px] text-violet-400 flex items-center gap-0.5"><Sparkles className="w-2.5 h-2.5" />{challenge.xpReward} XP</span>
-                                                                        <span className="text-[8px] text-emerald-400 flex items-center gap-0.5"><Database className="w-2.5 h-2.5" />{challenge.gstdReward} GSTD</span>
-                                                                        <span className="text-[8px] text-slate-500 flex items-center gap-0.5 ml-auto"><Users className="w-2.5 h-2.5" />{challenge.participants.toLocaleString()}</span>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })}
+                                        <button key={cat} onClick={() => setActiveCategory(cat)}
+                                            className="w-full flex items-center justify-between text-left hover:bg-slate-800/50 rounded-lg px-2 py-1 transition-colors">
+                                            <span className="text-[10px] font-bold text-slate-300">{t(CATEGORY_I18N[cat] || cat, cat)}</span>
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-16 h-1 bg-slate-800 rounded-full overflow-hidden">
+                                                    <div className="h-full bg-sky-500/60 rounded-full" style={{ width: `${pct}%` }} />
+                                                </div>
+                                                <span className="text-[10px] text-slate-500 tabular-nums w-4 text-right">{count}</span>
                                             </div>
-                                        </div>
+                                        </button>
                                     );
                                 })}
-                            </>
-                        )}
+                            </div>
+                        </div>
 
-                        {/* Join CTA (always visible) */}
+                        {/* Live Feed */}
+                        <div className="flex-1 bg-slate-900/80 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-4 flex flex-col min-h-[300px]">
+                            <h3 className="text-[10px] font-black uppercase tracking-[0.15em] text-sky-400 mb-3 flex items-center gap-2">
+                                <Activity className="w-3.5 h-3.5" />{t('live_network_feed', 'Live Network Feed')}</h3>
+                            <div className="flex-1 overflow-y-auto pr-1 space-y-2.5 custom-scrollbar">
+                                {liveLogs.length === 0 ? (
+                                    <div className="text-slate-500 text-xs text-center py-8 flex flex-col items-center gap-2">
+                                        <Radio className="w-5 h-5 animate-pulse opacity-50" />{t('awaiting_transmissions', 'Awaiting transmissions...')}</div>
+                                ) : (
+                                    liveLogs.map((log) => (
+                                        <div key={log.id} className="pb-2 border-b border-slate-800/80 last:border-0">
+                                            <div className="flex justify-between items-center mb-0.5">
+                                                <span className="text-[8px] font-black uppercase text-sky-400 bg-sky-500/10 px-1.5 py-0.5 rounded">{log.chain || 'NODE'}</span>
+                                                <span className="text-[9px] text-slate-600 font-mono">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                                            </div>
+                                            <p className="text-[10px] leading-relaxed text-slate-400 pl-2 border-l border-slate-800">{log.message}</p>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Join CTA */}
                         <a href="https://t.me/GstdAppBot" target="_blank" rel="noopener noreferrer"
                             className="block bg-gradient-to-br from-sky-600/20 to-violet-600/20 border border-sky-500/30 rounded-2xl p-4 hover:border-sky-400/50 transition-all group">
                             <h3 className="text-sm font-black text-white mb-1 flex items-center gap-2">
@@ -1125,7 +767,7 @@ export default function HumanityMonitor() {
             {/* ─── SPONSOR MODAL ───────────────────────────────────────── */}
             {selectedSignal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-md" onClick={() => !isPurchasing && setSelectedSignal(null)} />
+                    <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-md" role="button" tabIndex={0} aria-label="Close modal" onClick={() => !isPurchasing && setSelectedSignal(null)} onKeyDown={(e) => e.key === 'Escape' && !isPurchasing && setSelectedSignal(null)} />
                     <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-md w-full relative z-10 shadow-[0_0_60px_rgba(0,0,0,0.8)] animate-in fade-in zoom-in duration-300 max-h-[90vh] overflow-y-auto custom-scrollbar">
 
                         <div className={"w-12 h-12 rounded-xl border flex items-center justify-center mb-4 mx-auto " + selectedSignal.bgColor + " " + getSeverityStyles(selectedSignal.severity).split(' ')[2]}>
