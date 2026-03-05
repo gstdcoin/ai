@@ -6,8 +6,8 @@ export default function EcosystemFooter() {
     const { t } = useTranslation('common');
 
     const links = [
-        { label: t('footer_dashboard', 'Dashboard'), href: '/dashboard' },
-        { label: t('footer_chat', 'Chat'), href: 'https://chat.gstdtoken.com/chat', external: true },
+        { label: t('footer_dashboard', 'Dashboard'), href: 'https://app.gstdtoken.com/dashboard', external: true },
+        { label: t('footer_chat', 'Chat'), href: 'https://app.gstdtoken.com/chat', external: true },
         { label: t('footer_monitor', 'Monitor'), href: 'https://monitor.gstdtoken.com', external: true },
         { label: t('footer_bot', 'GSTD Bot'), href: 'https://gstdbot.gstdtoken.com', external: true },
         { label: t('footer_telegram', 'Telegram'), href: 'https://t.me/GstdAppBot', external: true },

@@ -45,6 +45,8 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder /app/next-i18next.config.js ./
+# Ensure i18n locale files are available (standalone doesn't include public/)
+COPY --from=builder /app/public/locales ./public/locales
 
 USER nextjs
 

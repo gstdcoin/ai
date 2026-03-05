@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"io"
@@ -20,23 +21,24 @@ import (
 
 // GatewayHandler handles OpenAI-compatible chat completions and API key management.
 type GatewayHandler struct {
-	apiKeyService    *services.APIKeyService
-	taskService      *services.TaskService
-	db               *sql.DB
-	redis            *redis.Client
-	guardrails       *services.GuardrailsService
-	omniPerformance  *services.OmniPerformanceService
-	knowledgeService *services.KnowledgeService
-	settlement       *services.SettlementService
-	stats            *services.StatsService
-	router           *infRouter.Router
-	recyclingPool    *services.RecyclingPoolService
-	cocoonBridge     *services.CocoonBridgeService      // Cocoon Confidential Compute
-	cocoonSymbiosis  *services.CocoonSwarmSymbiosis     // Cocoon→Hive Memory
-	hybridRouter     *services.HybridIntelligenceRouter // Swarm ↔ Cocoon ↔ Ollama tier routing
-	smartRouter      *services.SmartRouter              // Omega Sovereign-First routing
-	ollamaURL        string
-	client           *http.Client
+	apiKeyService     *services.APIKeyService
+	taskService       *services.TaskService
+	db                *sql.DB
+	redis             *redis.Client
+	guardrails        *services.GuardrailsService
+	omniPerformance   *services.OmniPerformanceService
+	knowledgeService  *services.KnowledgeService
+	settlement        *services.SettlementService
+	stats             *services.StatsService
+	router            *infRouter.Router
+	recyclingPool     *services.RecyclingPoolService
+	cocoonBridge      *services.CocoonBridgeService      // Cocoon Confidential Compute
+	cocoonSymbiosis   *services.CocoonSwarmSymbiosis     // Cocoon→Hive Memory
+	hybridRouter      *services.HybridIntelligenceRouter // Swarm ↔ Cocoon ↔ Ollama tier routing
+	smartRouter       *services.SmartRouter              // Omega Sovereign-First routing
+	onchainSettlement *services.OnchainSettlementService // Real on-chain GSTD Jetton settlement
+	ollamaURL         string
+	client            *http.Client
 }
 
 // CompareModeQueueThreshold: Genesis Launch — when compare-mode queue exceeds this, prioritize balance > 500 GSTD
@@ -125,6 +127,11 @@ func (h *GatewayHandler) SetSmartRouter(sr *services.SmartRouter) {
 	h.smartRouter = sr
 }
 
+// SetOnchainSettlement wires the on-chain GSTD settlement service.
+func (h *GatewayHandler) SetOnchainSettlement(os *services.OnchainSettlementService) {
+	h.onchainSettlement = os
+}
+
 // analyzeIntelligenceNeedOllama picks best Ollama model from message content (omega-auto).
 func analyzeIntelligenceNeedOllama(msgs []map[string]string) string {
 	var text string
@@ -209,7 +216,7 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 	} else if wallet == "" {
 		// Allow free tier without wallet for chat.gstdtoken.com onboarding
 		modelLower := strings.ToLower(req.Model)
-		isFreeModel := modelLower == "" || modelLower == "auto" || modelLower == "gstd-flash" || modelLower == "omega-auto" || modelLower == "cocoon-auto"
+		isFreeModel := modelLower == "" || modelLower == "auto" || modelLower == "gstd-flash" || modelLower == "omega-auto" || modelLower == "cocoon-auto" || modelLower == "mix-free" || modelLower == "mix-standard"
 		if !isFreeModel {
 			c.JSON(402, gin.H{
 				"error":   "wallet_required",
@@ -396,6 +403,11 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 			}
 		}
 		log.Printf("[Consumer Adoption] %.4f GSTD deducted from %s for %s", fee, wallet[:min(12, len(wallet))], ollamaModel)
+
+		// On-chain settlement: queue real Jetton transfer asynchronously
+		if h.onchainSettlement != nil && h.onchainSettlement.IsEnabled() {
+			go h.onchainSettlement.QueueSettlement(context.Background(), wallet, fee, ollamaModel, "inference")
+		}
 	}
 
 	prompt := ""

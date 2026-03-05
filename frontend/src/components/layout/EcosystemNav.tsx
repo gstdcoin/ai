@@ -20,17 +20,24 @@ export default function EcosystemNav() {
     const router = useRouter();
     const [mobileOpen, setMobileOpen] = useState(false);
 
+    // All links must be absolute to work across subdomains (app, monitor, gstdbot)
+    const APP_BASE = 'https://app.gstdtoken.com';
+    const isOnApp = typeof window !== 'undefined' && window.location.hostname === 'app.gstdtoken.com';
+
     const navItems: NavItem[] = [
-        { key: 'nav_dashboard', href: '/dashboard', icon: <LayoutDashboard size={16} /> },
-        { key: 'nav_chat', href: '/chat', icon: <MessageSquare size={16} /> },
+        { key: 'nav_dashboard', href: `${APP_BASE}/dashboard`, icon: <LayoutDashboard size={16} />, external: !isOnApp },
+        { key: 'nav_chat', href: `${APP_BASE}/chat`, icon: <MessageSquare size={16} />, external: !isOnApp },
         { key: 'nav_monitor', href: 'https://monitor.gstdtoken.com', icon: <Activity size={16} />, external: true },
         { key: 'nav_bot', href: 'https://gstdbot.gstdtoken.com', icon: <Bot size={16} />, external: true },
         { key: 'nav_telegram', href: 'https://t.me/GstdAppBot', icon: <ExternalLink size={14} />, external: true },
     ];
 
     const isActive = (href: string) => {
-        if (href.startsWith('http')) return false;
-        return router.pathname === href;
+        const path = router.pathname;
+        if (href.includes('/dashboard') && path === '/dashboard') return true;
+        if (href.includes('/chat') && path === '/chat') return true;
+        if (href.includes('monitor.gstdtoken.com') && typeof window !== 'undefined' && window.location.hostname === 'monitor.gstdtoken.com') return true;
+        return false;
     };
 
     const changeLang = () => {
