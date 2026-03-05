@@ -14,13 +14,12 @@ export default function DashboardPage() {
     const [tonConnectUI] = useTonConnectUI();
     const [hydrated, setHydrated] = useState(false);
 
-    // Wait for TonConnect to restore session — give enough time for cross-domain navigation
+    // Wait for TonConnect to restore session
     useEffect(() => {
         const timer = setTimeout(() => {
             setHydrated(true);
-        }, 3000); // Increased from 1500ms for cross-domain session restoration
+        }, 2500);
 
-        // Early resolve if store already has connection
         const state = useWalletStore.getState();
         if (state.isConnected && state.address) {
             setHydrated(true);
@@ -33,7 +32,6 @@ export default function DashboardPage() {
             }
         });
 
-        // Also listen for TonConnect status changes
         const unsubTc = tonConnectUI.onStatusChange((wallet) => {
             if (wallet) {
                 setHydrated(true);
@@ -43,18 +41,6 @@ export default function DashboardPage() {
 
         return () => { unsub(); unsubTc(); clearTimeout(timer); };
     }, [tonConnectUI]);
-
-    // Redirect if not connected after hydration
-    useEffect(() => {
-        if (!hydrated) return;
-        // Check real TonConnect state, not just zustand
-        const wallet = tonConnectUI.wallet;
-        const storeState = useWalletStore.getState();
-        if (!wallet && !storeState.isConnected) {
-            // Always redirect to the main landing page, not back to monitor/chat
-            router.replace('/');
-        }
-    }, [hydrated, isConnected, tonConnectUI, router]);
 
     // Loading state
     if (!hydrated) {
@@ -68,23 +54,33 @@ export default function DashboardPage() {
         );
     }
 
-    // Not connected — show prompt
+    // Not connected — show dashboard with wallet connect prompt (NOT redirect)
     if (!isConnected && !address) {
         return (
-            <div className="min-h-screen bg-[#030014] flex items-center justify-center" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
-                <div className="text-center space-y-6 p-8 max-w-sm">
-                    <div className="text-5xl">🔐</div>
-                    <h2 className="text-xl font-bold text-white">{t('connect_wallet', 'Connect Wallet')}</h2>
-                    <p className="text-sm text-gray-400">{t('connect_wallet_to_access', 'Connect your TON wallet to access the dashboard')}</p>
-                    <button
-                        onClick={() => tonConnectUI.openModal()}
-                        className="inline-block px-6 py-3 rounded-xl bg-violet-600 text-white font-semibold hover:bg-violet-500 transition-colors mr-3"
-                    >
-                        {t('connect_wallet', 'Connect Wallet')}
-                    </button>
-                    <a href="/" className="inline-block px-6 py-3 rounded-xl bg-white/10 text-white font-semibold hover:bg-white/20 transition-colors">
-                        {t('back_to_platform', 'Back to Platform')}
-                    </a>
+            <div className="min-h-screen bg-[#030014]" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
+                <div className="flex items-center justify-center min-h-screen">
+                    <div className="text-center space-y-6 p-8 max-w-md" style={{
+                        background: 'rgba(139, 92, 246, 0.05)',
+                        border: '1px solid rgba(139, 92, 246, 0.15)',
+                        borderRadius: 16,
+                        backdropFilter: 'blur(20px)',
+                    }}>
+                        <div className="text-5xl">🔐</div>
+                        <h2 className="text-xl font-bold text-white">{t('connect_wallet', 'Connect Wallet')}</h2>
+                        <p className="text-sm text-gray-400">{t('connect_wallet_dashboard', 'Connect your TON wallet to access the full dashboard with balances, nodes, and AI chat.')}</p>
+                        <div className="flex gap-3 justify-center flex-wrap">
+                            <button
+                                onClick={() => tonConnectUI.openModal()}
+                                className="px-6 py-3 rounded-xl bg-violet-600 text-white font-semibold hover:bg-violet-500 transition-colors"
+                            >
+                                🔗 {t('connect_wallet', 'Connect Wallet')}
+                            </button>
+                            <a href="/chat" className="px-6 py-3 rounded-xl bg-white/10 text-white font-semibold hover:bg-white/20 transition-colors" style={{ textDecoration: 'none' }}>
+                                💬 {t('open_chat', 'Open Chat')}
+                            </a>
+                        </div>
+                        <p className="text-xs text-gray-600">{t('dashboard_free_chat', 'AI Chat is free — connect wallet for Pro/Ultra tiers')}</p>
+                    </div>
                 </div>
             </div>
         );

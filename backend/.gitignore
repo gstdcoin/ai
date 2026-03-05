@@ -1,44 +1,28 @@
-# Binaries for programs and plugins
+# Binaries
 *.exe
-*.exe~
 *.dll
 *.so
 *.dylib
+main
+/bin/
+/tmp/
 
-# Test binary, built with `go test -c`
-*.test
-
-# Output of the go coverage tool
-*.out
-
-# Dependency directories
+# Go
 vendor/
-
-# Go workspace file
-go.work
-
-# Environment variables
-.env
-.env.local
 
 # IDE
 .idea/
 .vscode/
 *.swp
 *.swo
-*~
 
-# Build output
-server
-dist/
+# OS
+.DS_Store
+Thumbs.db
 
+# Env
+.env
+*.env.local
 
-
-
-# Build artifacts
-main
-server-test
-tmp_bin
-*.db
-*.db-shm
-*.db-wal
+# Docker
+docker-compose.override.yml

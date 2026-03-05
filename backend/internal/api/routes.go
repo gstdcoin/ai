@@ -157,6 +157,17 @@ func SetupRoutes(
 		gatewayHandler.SetSmartRouter(smartRouter)
 	}
 
+	// On-chain GSTD Settlement: contract-based pull model
+	// Flow: User→GSTD→SettlementMaster→85%Workers/10%Treasury/5%Protocol
+	// Server records intents, users deposit/withdraw via TonConnect wallet signature
+	onchainSettlement := services.NewOnchainSettlementService(db.(*sql.DB), tonConfig)
+	if onchainSettlement.IsEnabled() {
+		gatewayHandler.SetOnchainSettlement(onchainSettlement)
+		go onchainSettlement.Start(context.Background())
+		log.Printf("⛓️  On-chain Settlement: ACTIVE (contract=%s, pull-model, batch every 60s)",
+			tonConfig.ContractAddress[:min(12, len(tonConfig.ContractAddress))])
+	}
+
 	// Initialize Genesis System (Self-Generating APIs)
 	var genesisRedis *redis.Client
 	if rc, ok := redisClient.(*redis.Client); ok {
@@ -298,6 +309,69 @@ func SetupRoutes(
 		v1.GET("/monitor/signals", getMonitorSignals(monitorSignalService))
 		v1.GET("/monitor/signals/:id", getMonitorSignal(monitorSignalService))
 		v1.POST("/monitor/signals/:id/sponsor", sponsorMonitorSignal(monitorSignalService, db.(*sql.DB)))
+
+		// On-chain Settlement: contract-based pull model (public transparency)
+		v1.GET("/monitor/onchain-settlement", func(c *gin.Context) {
+			stats := onchainSettlement.GetStats(c.Request.Context())
+			c.JSON(200, gin.H{
+				"onchain_settlement": stats,
+				"contract_flow": gin.H{
+					"deposit":  "User signs GSTD Jetton transfer to SettlementMaster contract via TonConnect",
+					"settle":   "Contract splits: 85% Workers (miners), 10% Pool (Gold Reserve), 5% Admin (Buyback & Burn)",
+					"withdraw": "Worker signs Withdraw message → contract sends earnings to worker wallet",
+				},
+				"split": gin.H{
+					"worker_pct": 85,
+					"pool_pct":   10, "pool_address": tonConfig.PoolAddress, "pool_desc": "Gold Reserve (GSTD/XAUt)",
+					"admin_pct": 5, "admin_address": tonConfig.AdminWallet, "admin_desc": "Buyback & Burn",
+				},
+				"contract_address": tonConfig.ContractAddress,
+				"jetton_address":   tonConfig.GSTDJettonAddress,
+			})
+		})
+
+		// Settlement: Get deposit payload for TonConnect (user sends GSTD to contract)
+		v1.GET("/settlement/deposit-payload", func(c *gin.Context) {
+			amount := c.DefaultQuery("amount", "1.0")
+			wallet := c.Query("wallet")
+			if wallet == "" {
+				c.JSON(400, gin.H{"error": "wallet parameter required"})
+				return
+			}
+			var amountFloat float64
+			fmt.Sscanf(amount, "%f", &amountFloat)
+			if amountFloat <= 0 {
+				c.JSON(400, gin.H{"error": "amount must be positive"})
+				return
+			}
+			payload := onchainSettlement.GetDepositPayload(amountFloat, wallet)
+			c.JSON(200, gin.H{
+				"payload":     payload,
+				"instruction": "Sign this transaction in TonConnect to deposit GSTD into the Settlement contract",
+			})
+		})
+
+		// Settlement: Get withdraw payload for TonConnect (worker claims earnings)
+		v1.GET("/settlement/withdraw-payload", func(c *gin.Context) {
+			amount := c.DefaultQuery("amount", "0")
+			wallet := c.Query("wallet")
+			taskID := c.DefaultQuery("task_id", "")
+			if wallet == "" {
+				c.JSON(400, gin.H{"error": "wallet parameter required"})
+				return
+			}
+			var amountFloat float64
+			fmt.Sscanf(amount, "%f", &amountFloat)
+			if amountFloat <= 0 {
+				c.JSON(400, gin.H{"error": "amount must be positive"})
+				return
+			}
+			payload := onchainSettlement.GetWithdrawPayload(amountFloat, wallet, taskID)
+			c.JSON(200, gin.H{
+				"payload":     payload,
+				"instruction": "Sign this Withdraw message in TonConnect to claim your earnings from the contract",
+			})
+		})
 
 		// @Summary Get pool status
 		// @Description Returns GSTD/XAUt liquidity pool status
@@ -607,7 +681,8 @@ func SetupRoutes(
 		// OpenAI-compatible chat: /api/v1/chat/* (GSTD pricing, balance checks)
 		omegaHandler := NewOmegaGatewayHandler(gatewayHandler, apiKeyService)
 		v1.POST("/chat/completions", omegaHandler.HandleChatCompletions)
-		v1.GET("/chat/ultra-status", gatewayHandler.GetUltraStatus) // Optional auth: X-GSTD-Target-Wallet
+		v1.POST("/chat/smartmix", omegaHandler.HandleChatCompletions) // Alias for frontend SmartMix tiers
+		v1.GET("/chat/ultra-status", gatewayHandler.GetUltraStatus)   // Optional auth: X-GSTD-Target-Wallet
 		v1.GET("/models", omegaHandler.HandleListModels)
 		// Cocoon Confidential Compute — TEE-protected inference on TON blockchain
 		// Docs: https://cocoon.org/developers
@@ -1277,8 +1352,12 @@ func getHealth(db *sql.DB, tonService *services.TONService, tonConfig config.TON
 				balanceNano, err := tonService.GetContractBalance(ctx, tonConfig.ContractAddress)
 				if err != nil {
 					contractStatus = "error"
-					// Don't spam logs with rate limit errors
-					if !strings.Contains(err.Error(), "429") {
+					// Cache errors for 60s to avoid log spam
+					if rClient != nil {
+						rClient.Set(ctx, cacheKey, float64(0), 60*time.Second)
+					}
+					// Don't spam logs with rate limit or recurring API errors
+					if !strings.Contains(err.Error(), "429") && !strings.Contains(err.Error(), "base32") && !strings.Contains(err.Error(), "401") {
 						log.Printf("Health check: Failed to get contract balance: %v", err)
 					}
 				} else {

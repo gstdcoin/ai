@@ -73,7 +73,17 @@ const nextConfig = {
     const apiDest = process.env.VERCEL
       ? 'https://app.gstdtoken.com/api/:path*'
       : 'http://localhost:8080/api/:path*';
-    return [{ source: '/api/:path*', destination: apiDest }];
+    return {
+      beforeFiles: [],
+      afterFiles: [
+        // Exclude /api/chat — handled by Next.js API route (Neural Router)
+        { source: '/api/v1/:path*', destination: apiDest.replace('/api/:path*', '/api/v1/:path*') },
+      ],
+      fallback: [
+        // All other /api/* routes go to Go backend
+        { source: '/api/:path*', destination: apiDest },
+      ],
+    };
   },
 };
 

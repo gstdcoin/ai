@@ -44,6 +44,39 @@ interface LogEntry {
 // Each signal is connected to real open-data sources and produces actionable
 // results that feed back into the Collective Memory and train the Swarm.
 // ═══════════════════════════════════════════════════════════════════════════
+// Signal i18n key mapping for title/description
+const SIGNAL_I18N: Record<string, { title: string; desc?: string; impact?: string }> = {
+    'nasa_eosdis': { title: 'sig_nasa_title', desc: 'sig_nasa_desc', impact: 'sig_nasa_impact' },
+    'wildfire_sentinel': { title: 'sig_wildfire_title', desc: 'sig_wildfire_desc', impact: 'sig_wildfire_impact' },
+    'copernicus_marine': { title: 'sig_ocean_title', desc: 'sig_ocean_desc' },
+    'air_quality_mesh': { title: 'sig_air_title' },
+    'carbon_sink': { title: 'sig_carbon_title' },
+    'who_pubmed': { title: 'sig_pandemic_title', desc: 'sig_pandemic_desc' },
+    'alphafold_protein': { title: 'sig_orphan_title' },
+    'antibiotic_resistance': { title: 'sig_superbug_title' },
+    'mental_health_nlp': { title: 'sig_mental_title' },
+    'gdelt_crisis': { title: 'sig_crisis_title', desc: 'sig_crisis_desc' },
+    'darknet_tracker': { title: 'sig_trafficking_title' },
+    'osm_disaster': { title: 'sig_disaster_title' },
+    'refugee_flow': { title: 'sig_refugee_title' },
+    'famine_prediction': { title: 'sig_famine_title' },
+    'water_stress': { title: 'sig_water_title' },
+    'seismic_array': { title: 'sig_seismic_title' },
+    'tsunami_model': { title: 'sig_tsunami_title' },
+    'deepfake_firewall': { title: 'sig_deepfake_title' },
+    'critical_infra': { title: 'sig_infra_title' },
+    'cern_physics': { title: 'sig_cern_title' },
+    'fusion_sim': { title: 'sig_fusion_title' },
+    'space_debris': { title: 'sig_debris_title' },
+    'education_gap': { title: 'sig_education_title' },
+    'poverty_mapping': { title: 'sig_poverty_title' },
+    'child_mortality': { title: 'sig_child_title' },
+    'financial_contagion': { title: 'sig_financial_title' },
+    'corruption_trace': { title: 'sig_corruption_title' },
+    'biodiversity_loss': { title: 'sig_biodiversity_title' },
+    'ocean_plastic': { title: 'sig_plastic_title' },
+};
+
 const ACTIVE_SIGNALS: GlobalSignal[] = [
     // ─── CLIMATE & ENVIRONMENT ───────────────────────────────────────
     {
@@ -313,8 +346,28 @@ const CATEGORY_COLORS: Record<string, string> = {
     'Biodiversity': 'text-green-400 bg-green-500/10 border-green-500/20',
 };
 
+const CATEGORY_I18N: Record<string, string> = {
+    'All': 'all_signals',
+    'Climate': 'cat_climate',
+    'Health': 'cat_health',
+    'Humanitarian': 'cat_humanitarian',
+    'Food & Water': 'cat_food_water',
+    'Geophysics': 'cat_geophysics',
+    'Cyber Security': 'cat_cyber_security',
+    'Science & Energy': 'cat_science_energy',
+    'Society': 'cat_society',
+    'Economy': 'cat_economy',
+    'Biodiversity': 'cat_biodiversity',
+};
+
+const SEVERITY_I18N: Record<string, string> = {
+    'critical': 'critical',
+    'high': 'high',
+    'medium': 'medium',
+};
+
 export default function HumanityMonitor() {
-  const { t } = useTranslation('common');
+    const { t } = useTranslation('common');
 
     const [selectedSignal, setSelectedSignal] = useState<GlobalSignal | null>(null);
     const [isPurchasing, setIsPurchasing] = useState(false);
@@ -495,15 +548,15 @@ export default function HumanityMonitor() {
                             </div>
                             <div>
                                 <h1 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight text-white flex items-center gap-3 flex-wrap">
-                                    HUMANITY'S SUPERCOMPUTER
+                                    {t('humanitys_supercomputer', "HUMANITY'S SUPERCOMPUTER")}
                                     <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-[10px] font-bold text-emerald-400 tracking-widest uppercase flex items-center gap-1.5 relative">
                                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping absolute left-2" />
                                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 relative" />
-                                        <span className="ml-1">{ACTIVE_SIGNALS.length} Signals</span>
+                                        <span className="ml-1">{ACTIVE_SIGNALS.length} {t('signals', 'Signals')}</span>
                                     </span>
                                 </h1>
                                 <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-xl leading-relaxed">
-                                    Every signal is a real problem facing humanity. Sponsor analysis with Telegram Stars → Swarm solves it → Results train the Global Brain forever.
+                                    {t('monitor_subtitle', 'Every signal is a real problem facing humanity. Sponsor analysis with Telegram Stars → Swarm solves it → Results train the Global Brain forever.')}
                                 </p>
                             </div>
                         </div>
@@ -531,7 +584,7 @@ export default function HumanityMonitor() {
                     <div className="flex flex-col sm:flex-row gap-3">
                         <div className="relative flex-1 max-w-sm">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                            <input type="text" placeholder="Search signals, sources, topics..." value={searchQuery}
+                            <input type="text" placeholder={t('search_signals', 'Search signals, sources, topics...')} value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="w-full pl-10 pr-4 py-2 bg-slate-900/60 border border-slate-700/50 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-sky-500/50 backdrop-blur-xl" />
                         </div>
@@ -541,7 +594,7 @@ export default function HumanityMonitor() {
                                     className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all ${activeCategory === cat
                                         ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30'
                                         : 'bg-slate-800/50 text-slate-400 border border-slate-700/30 hover:bg-slate-700/50'}`}>
-                                    {cat === 'All' ? `All (${ACTIVE_SIGNALS.length})` : cat}
+                                    {cat === 'All' ? `${t('all_signals', 'All')} (${ACTIVE_SIGNALS.length})` : t(CATEGORY_I18N[cat] || cat, cat)}
                                 </button>
                             ))}
                         </div>
@@ -560,10 +613,10 @@ export default function HumanityMonitor() {
                                     <div className="flex items-start justify-between mb-2.5 relative z-10">
                                         <div className="flex flex-col gap-1.5 flex-1 min-w-0">
                                             <div className="flex flex-wrap items-center gap-1.5">
-                                                <span className={"text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border " + getSeverityStyles(signal.severity)}>{signal.severity}</span>
-                                                <span className={"text-[8px] font-bold px-1.5 py-0.5 rounded border " + (CATEGORY_COLORS[signal.category] || 'text-slate-400 bg-slate-800 border-slate-700')}>{signal.category}</span>
+                                                <span className={"text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border " + getSeverityStyles(signal.severity)}>{t(SEVERITY_I18N[signal.severity] || signal.severity, signal.severity)}</span>
+                                                <span className={"text-[8px] font-bold px-1.5 py-0.5 rounded border " + (CATEGORY_COLORS[signal.category] || 'text-slate-400 bg-slate-800 border-slate-700')}>{t(CATEGORY_I18N[signal.category] || signal.category, signal.category)}</span>
                                             </div>
-                                            <h2 className="text-sm font-bold text-slate-100 leading-tight group-hover:text-white transition-colors">{signal.title}</h2>
+                                            <h2 className="text-sm font-bold text-slate-100 leading-tight group-hover:text-white transition-colors">{SIGNAL_I18N[signal.id] ? t(SIGNAL_I18N[signal.id].title, signal.title) : signal.title}</h2>
                                         </div>
                                         <div className={`p-1.5 rounded-lg ${signal.bgColor} flex-shrink-0 ml-2`}>
                                             <signal.icon className={`w-4 h-4 ${signal.color}`} />
@@ -575,12 +628,12 @@ export default function HumanityMonitor() {
                                         <span className="flex items-center gap-0.5"><Database className="w-2.5 h-2.5" />{signal.dataVolume}</span>
                                     </div>
 
-                                    <p className="text-[11px] text-slate-400 leading-relaxed mb-2 relative z-10 line-clamp-2">{signal.description}</p>
+                                    <p className="text-[11px] text-slate-400 leading-relaxed mb-2 relative z-10 line-clamp-2">{SIGNAL_I18N[signal.id]?.desc ? t(SIGNAL_I18N[signal.id].desc!, signal.description) : signal.description}</p>
 
                                     {signal.impact && (
                                         <div className="text-[10px] text-amber-400/80 bg-amber-500/5 border border-amber-500/10 rounded-lg px-2 py-1 mb-3 relative z-10 flex items-start gap-1">
                                             <AlertTriangle className="w-3 h-3 flex-shrink-0 mt-0.5" />
-                                            <span>{signal.impact}</span>
+                                            <span>{SIGNAL_I18N[signal.id]?.impact ? t(SIGNAL_I18N[signal.id].impact!, signal.impact!) : signal.impact}</span>
                                         </div>
                                     )}
 
@@ -662,7 +715,7 @@ export default function HumanityMonitor() {
                                     return (
                                         <button key={cat} onClick={() => setActiveCategory(cat)}
                                             className="w-full flex items-center justify-between text-left hover:bg-slate-800/50 rounded-lg px-2 py-1 transition-colors">
-                                            <span className="text-[10px] font-bold text-slate-300">{cat}</span>
+                                            <span className="text-[10px] font-bold text-slate-300">{t(CATEGORY_I18N[cat] || cat, cat)}</span>
                                             <div className="flex items-center gap-2">
                                                 <div className="w-16 h-1 bg-slate-800 rounded-full overflow-hidden">
                                                     <div className="h-full bg-sky-500/60 rounded-full" style={{ width: `${pct}%` }} />
@@ -701,10 +754,10 @@ export default function HumanityMonitor() {
                         <a href="https://t.me/GstdAppBot" target="_blank" rel="noopener noreferrer"
                             className="block bg-gradient-to-br from-sky-600/20 to-violet-600/20 border border-sky-500/30 rounded-2xl p-4 hover:border-sky-400/50 transition-all group">
                             <h3 className="text-sm font-black text-white mb-1 flex items-center gap-2">
-                                Become a Neuron <ExternalLink className="w-3 h-3 text-sky-400 group-hover:translate-x-0.5 transition-transform" />
+                                {t('become_a_neuron', 'Become a Neuron')} <ExternalLink className="w-3 h-3 text-sky-400 group-hover:translate-x-0.5 transition-transform" />
                             </h3>
                             <p className="text-[10px] text-slate-400 leading-relaxed">
-                                Your device becomes a brain cell of the planetary supercomputer. Earn GSTD while solving humanity's problems.
+                                {t('neuron_desc', "Your device becomes a brain cell of the planetary supercomputer. Earn GSTD while solving humanity's problems.")}
                             </p>
                         </a>
                     </div>
@@ -729,7 +782,7 @@ export default function HumanityMonitor() {
                         {selectedSignal.impact && (
                             <div className="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-xl px-3 py-2 mb-4 flex items-start gap-2">
                                 <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                                <span><strong>Why it matters:</strong> {selectedSignal.impact}</span>
+                                <span><strong>{t('why_it_matters', 'Why it matters:')}</strong> {selectedSignal.impact}</span>
                             </div>
                         )}
 
@@ -738,9 +791,9 @@ export default function HumanityMonitor() {
                             <div className="flex justify-between items-center"><span className="text-xs text-slate-400">{t('data_source', 'Data Source')}</span><span className="text-[10px] font-mono text-sky-400">{selectedSignal.source}</span></div>
                             <div className="flex justify-between items-center"><span className="text-xs text-slate-400">{t('data_volume', 'Data Volume')}</span><span className="text-xs text-slate-300">{selectedSignal.dataVolume}</span></div>
                             <div className="border-t border-slate-800 pt-2.5 space-y-2">
-                                <div className="flex justify-between"><span className="text-xs text-slate-400">→ Swarm Workers (85%)</span><span className="text-xs font-bold text-emerald-400">+{selectedSignal.gstdReward} GSTD</span></div>
-                                <div className="flex justify-between"><span className="text-xs text-slate-400">→ Gold Reserve (10%)</span><span className="text-xs font-bold text-amber-400">+{selectedSignal.platformFee} GSTD</span></div>
-                                <div className="flex justify-between"><span className="text-xs text-slate-400">→ Results stored in</span><span className="text-[10px] font-bold text-violet-400">{t('collective_memory', 'Collective Memory')}</span></div>
+                                <div className="flex justify-between"><span className="text-xs text-slate-400">{t('swarm_workers_85', '→ Swarm Workers (85%)')}</span><span className="text-xs font-bold text-emerald-400">+{selectedSignal.gstdReward} GSTD</span></div>
+                                <div className="flex justify-between"><span className="text-xs text-slate-400">{t('gold_reserve_10', '→ Gold Reserve (10%)')}</span><span className="text-xs font-bold text-amber-400">+{selectedSignal.platformFee} GSTD</span></div>
+                                <div className="flex justify-between"><span className="text-xs text-slate-400">{t('results_stored_in', '→ Results stored in')}</span><span className="text-[10px] font-bold text-violet-400">{t('collective_memory', 'Collective Memory')}</span></div>
                             </div>
                             <div className="flex justify-between items-center pt-2.5 border-t border-slate-800">
                                 <span className="text-sm font-bold text-white">{t('sponsorship', 'Sponsorship')}</span>
@@ -754,9 +807,9 @@ export default function HumanityMonitor() {
                             <div className="flex flex-col gap-2.5">
                                 <div className="h-10 flex items-center justify-center bg-slate-800/50 rounded-xl border border-slate-700">
                                     <span className="text-sm font-bold text-sky-400 animate-pulse">
-                                        {purchaseStep === 1 && "Confirming Stars..."}
-                                        {purchaseStep === 2 && "Minting GSTD & Deploying Swarm..."}
-                                        {purchaseStep === 3 && "Signal Dispatched to Swarm!"}
+                                        {purchaseStep === 1 && t('confirming_stars', 'Confirming Stars...')}
+                                        {purchaseStep === 2 && t('minting_deploying', 'Minting GSTD & Deploying Swarm...')}
+                                        {purchaseStep === 3 && t('signal_dispatched', 'Signal Dispatched to Swarm!')}
                                     </span>
                                 </div>
                                 <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
@@ -788,7 +841,7 @@ import { GetStaticProps } from 'next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 
 export const getStaticProps: GetStaticProps = async ({ locale }) => ({
-  props: {
-    ...(await serverSideTranslations(locale || 'en', ['common'])),
-  },
+    props: {
+        ...(await serverSideTranslations(locale || 'en', ['common'])),
+    },
 });
