@@ -182,7 +182,7 @@ func (s *AssignmentService) GetAvailableTasks(ctx context.Context, deviceID stri
 	// Use simplified query with only guaranteed columns to avoid SQL errors
 	// If extended columns are needed, they should be added via migrations first
 	query := `
-		SELECT task_id, requester_address, task_type, operation, model,
+		SELECT task_id, requester_address, task_type, operation, COALESCE(model, ''),
 		       labor_compensation_gstd,
 		       COALESCE(priority_score, 0.0) as priority_score,
 		       status, created_at,
@@ -267,7 +267,7 @@ func (s *AssignmentService) ClaimTask(ctx context.Context, taskID string, device
 // GetTasksByDevice returns tasks currently assigned to a device
 func (s *AssignmentService) GetTasksByDevice(ctx context.Context, deviceID string) ([]*models.Task, error) {
 	query := `
-		SELECT task_id, requester_address, task_type, operation, model,
+		SELECT task_id, requester_address, task_type, operation, COALESCE(model, ''),
 		       labor_compensation_gstd,
 		       COALESCE(priority_score, 0.0) as priority_score,
 		       status, created_at,

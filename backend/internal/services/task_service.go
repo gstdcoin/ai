@@ -271,7 +271,7 @@ func (s *TaskService) CreateTask(ctx context.Context, requesterAddress string, d
 
 func (s *TaskService) GetTasks(ctx context.Context, requesterAddress *string) ([]*models.Task, error) {
 	query := `
-		SELECT task_id, requester_address, task_type, operation, model,
+		SELECT task_id, requester_address, task_type, operation, COALESCE(model, ''),
 		       labor_compensation_gstd, COALESCE(priority_score, 0.0) as gravity_score, status, created_at,
 		       COALESCE(escrow_status, 'none') as escrow_status, COALESCE(confidence_depth, 0) as confidence_depth,
 		       COALESCE(p2p_verified, false) as p2p_verified
@@ -314,7 +314,7 @@ func (s *TaskService) GetTaskByID(ctx context.Context, taskID string) (*models.T
 	var assignedDevice sql.NullString
 
 	err := s.db.QueryRowContext(ctx, `
-		SELECT task_id, requester_address, task_type, operation, model,
+		SELECT task_id, requester_address, task_type, operation, COALESCE(model, ''),
 		       labor_compensation_gstd, 
 		       COALESCE(priority_score, 0.0) as gravity_score,
 		       status, created_at, 
