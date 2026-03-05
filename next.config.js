@@ -26,8 +26,8 @@ const nextConfig = {
   compress: true,
   poweredByHeader: false,
   generateEtags: false,
-  // Output standalone for Docker; Vercel ignores this
-  ...(process.env.VERCEL ? {} : { output: 'standalone' }),
+  // Note: standalone mode removed — `next start` handles static files directly.
+  // For Docker deployments, use the Dockerfile multi-stage build approach.
   // Ignore TypeScript errors during build (eslint config removed as it is deprecated in next.config.js)
   typescript: {
     ignoreBuildErrors: true,

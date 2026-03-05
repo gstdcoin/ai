@@ -33,20 +33,16 @@ WORKDIR /app
 ENV NODE_ENV production
 ENV NEXT_TELEMETRY_DISABLED 1
 
-# Install wget for healthcheck
-# RUN apk add --no-cache wget
-
-# RUN addgroup --system --gid 1001 nodejs
-# RUN adduser --system --uid 1001 nextjs
 RUN groupadd -g 1001 -r nodejs
 RUN useradd -u 1001 -r -g nodejs nextjs
 
+# Copy build output and necessary files
 COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-COPY --from=builder /app/next-i18next.config.js ./
-# Ensure i18n locale files are available (standalone doesn't include public/)
-COPY --from=builder /app/public/locales ./public/locales
+COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/next.config.js ./next.config.js
+COPY --from=builder /app/next-i18next.config.js ./next-i18next.config.js
 
 USER nextjs
 
@@ -55,6 +51,5 @@ EXPOSE 3000
 ENV PORT 3000
 ENV HOSTNAME "0.0.0.0"
 
-CMD ["node", "server.js"]
-
+CMD ["npx", "next", "start", "-p", "3000"]
 
