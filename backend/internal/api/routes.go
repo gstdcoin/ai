@@ -22,6 +22,11 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+const (
+	errTaskIDRequired = "task id is required"
+	errTaskNotFound   = "task not found"
+)
+
 func SetupRoutes(
 	router *gin.Engine,
 	taskService *services.TaskService,
@@ -882,7 +887,7 @@ func getTask(service *services.TaskService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		taskID := c.Param("id")
 		if taskID == "" {
-			c.JSON(400, gin.H{"error": "task id is required"})
+			c.JSON(400, gin.H{"error": errTaskIDRequired})
 			return
 		}
 
@@ -890,7 +895,7 @@ func getTask(service *services.TaskService) gin.HandlerFunc {
 		task, err := service.GetTaskByID(c.Request.Context(), taskID)
 		if err != nil {
 			if err == sql.ErrNoRows {
-				c.JSON(404, gin.H{"error": "task not found"})
+				c.JSON(404, gin.H{"error": errTaskNotFound})
 				return
 			}
 			c.JSON(500, gin.H{"error": SanitizeError(err)})
@@ -904,14 +909,14 @@ func getTaskWithPayment(taskPaymentService *services.TaskPaymentService) gin.Han
 	return func(c *gin.Context) {
 		taskID := c.Param("id")
 		if taskID == "" {
-			c.JSON(400, gin.H{"error": "task id is required"})
+			c.JSON(400, gin.H{"error": errTaskIDRequired})
 			return
 		}
 
 		task, err := taskPaymentService.GetTaskByID(c.Request.Context(), taskID)
 		if err != nil {
 			if err == sql.ErrNoRows {
-				c.JSON(404, gin.H{"error": "task not found"})
+				c.JSON(404, gin.H{"error": errTaskNotFound})
 				return
 			}
 			c.JSON(500, gin.H{"error": err.Error()})
@@ -936,7 +941,7 @@ func deleteTask(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		taskID := c.Param("id")
 		if taskID == "" {
-			c.JSON(400, gin.H{"error": "task id is required"})
+			c.JSON(400, gin.H{"error": errTaskIDRequired})
 			return
 		}
 
@@ -955,7 +960,7 @@ func deleteTask(db *sql.DB) gin.HandlerFunc {
 
 		if err != nil {
 			if err == sql.ErrNoRows {
-				c.JSON(404, gin.H{"error": "task not found"})
+				c.JSON(404, gin.H{"error": errTaskNotFound})
 				return
 			}
 			log.Printf("Failed to get task: %v", err)
