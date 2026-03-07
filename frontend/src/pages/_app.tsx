@@ -96,8 +96,12 @@ function App({ Component, pageProps }: AppProps) {
         >
           {isMounted && <WalletListener />}
           {isMounted && <VercelSwarmHeartbeat />}
-          {router.pathname !== '/tma' && <EcosystemNav />}
-          <main style={{ paddingTop: router.pathname !== '/tma' ? 56 : 0, paddingBottom: router.pathname === '/dashboard' ? 80 : 0, minHeight: '100vh' }}>
+          {router.pathname !== '/tma' && router.pathname !== '/dashboard' && <EcosystemNav />}
+          <main style={{
+            paddingTop: (router.pathname === '/tma' || router.pathname === '/dashboard') ? 0 : 56,
+            paddingBottom: router.pathname === '/dashboard' ? 80 : 0,
+            minHeight: '100vh',
+          }}>
             <Component {...pageProps} />
           </main>
           {router.pathname !== '/tma' && router.pathname !== '/dashboard' && router.pathname !== '/chat' && router.pathname !== '/appstore' && !router.pathname.startsWith('/node') && <EcosystemFooter />}
