@@ -19,7 +19,7 @@ const getManifestUrl = (): string => {
   if (typeof window !== 'undefined') {
     // Check for environment variable in browser
     const envUrl = process.env.NEXT_PUBLIC_TONCONNECT_MANIFEST_URL;
-    if (envUrl && envUrl.startsWith('https://')) {
+    if (envUrl?.startsWith('https://')) {
       return envUrl;
     }
   }
@@ -70,9 +70,10 @@ function App({ Component, pageProps }: AppProps) {
 
   const manifestUrl = getManifestUrl();
 
-  // Определить тему для TonConnect на основе Telegram
+  const colorScheme = getTelegramColorScheme();
+  const isLight = colorScheme === 'light';
   const telegramTheme = isTelegramWebApp()
-    ? (getTelegramColorScheme() === 'light' ? THEME.LIGHT : THEME.DARK)
+    ? (isLight ? THEME.LIGHT : THEME.DARK)
     : THEME.DARK;
 
   // Определить язык для TonConnect на основе текущей локали приложения

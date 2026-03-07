@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { TonConnectButton } from '@tonconnect/ui-react';
 import {
-    LayoutDashboard, MessageSquare, Activity, Bot, Globe, ChevronDown,
+    LayoutDashboard, MessageSquare, Activity, Bot,
     ExternalLink, Menu, X, Package, Server
 } from 'lucide-react';
 
@@ -51,8 +51,8 @@ export default function EcosystemNav() {
     return (
         <nav style={{
             position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000,
-            background: 'rgba(3, 0, 20, 0.85)', backdropFilter: 'blur(20px)',
-            borderBottom: '1px solid rgba(255,255,255,0.06)',
+            background: 'var(--g-color-base-float)', backdropFilter: 'blur(20px)',
+            borderBottom: '1px solid var(--g-color-line-generic)',
             padding: '0 16px', height: 56,
         }}>
             <div style={{
@@ -61,14 +61,14 @@ export default function EcosystemNav() {
             }}>
                 {/* Logo */}
                 <Link href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <img src="/logo.png" alt="GSTD" style={{ width: 32, height: 32, borderRadius: '50%' }} />
                     <span style={{
-                        fontWeight: 800, fontSize: 18, color: 'white',
-                        background: 'linear-gradient(135deg, #8b5cf6, #06b6d4)',
-                        WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                        fontWeight: 800, fontSize: 18, color: 'var(--g-color-brand)',
                     }}>GSTD</span>
                     <span style={{
                         fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
-                        background: '#8b5cf6', color: 'white', letterSpacing: 0.5,
+                        background: 'var(--g-color-brand-light)', color: 'var(--g-color-brand)',
+                        letterSpacing: 0.5,
                     }}>{t('ecosystem', 'ECOSYSTEM')}</span>
                 </Link>
 
@@ -95,8 +95,8 @@ export default function EcosystemNav() {
                                     display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px',
                                     borderRadius: 8, fontSize: 13, fontWeight: active ? 600 : 500,
                                     textDecoration: 'none',
-                                    color: active ? 'white' : 'rgba(255,255,255,0.5)',
-                                    background: active ? 'rgba(139,92,246,0.15)' : 'transparent',
+                                    color: active ? 'var(--g-color-brand)' : 'var(--g-color-text-secondary)',
+                                    background: active ? 'var(--g-color-brand-light)' : 'transparent',
                                     transition: 'all 0.2s',
                                 }}
                             >
@@ -110,12 +110,12 @@ export default function EcosystemNav() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     {/* Language toggle */}
                     <button onClick={changeLang} style={{
-                        background: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
+                        background: 'transparent', border: '1px solid var(--g-color-line-generic)',
                         borderRadius: 6, padding: '4px 8px', fontSize: 11, fontWeight: 600,
-                        color: 'rgba(255,255,255,0.5)', cursor: 'pointer', transition: 'all 0.2s',
+                        color: 'var(--g-color-text-secondary)', cursor: 'pointer', transition: 'all 0.2s',
                     }}
-                        onMouseEnter={(e) => { e.currentTarget.style.color = 'white'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}
+                        onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--g-color-brand)'; e.currentTarget.style.borderColor = 'var(--g-color-brand-light)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--g-color-text-secondary)'; e.currentTarget.style.borderColor = 'var(--g-color-line-generic)'; }}
                     >
                         {router.locale === 'ru' ? 'EN' : 'RU'}
                     </button>
@@ -138,8 +138,8 @@ export default function EcosystemNav() {
             {mobileOpen && (
                 <div style={{
                     position: 'absolute', top: 56, left: 0, right: 0,
-                    background: 'rgba(3, 0, 20, 0.95)', backdropFilter: 'blur(20px)',
-                    borderBottom: '1px solid rgba(255,255,255,0.06)', padding: '8px 16px',
+                    background: 'var(--g-color-base-modal)', backdropFilter: 'blur(20px)',
+                    borderBottom: '1px solid var(--g-color-line-generic)', padding: '8px 16px',
                 }}>
                     {navItems.map((item) => {
                         const label = t(item.key, item.key.replace('nav_', ''));
@@ -163,12 +163,12 @@ export default function EcosystemNav() {
                 </div>
             )}
 
-            <style jsx global>{`
+            <style dangerouslySetInnerHTML={{ __html: `
         @media (max-width: 768px) {
           .ecosystem-nav-desktop { display: none !important; }
           .ecosystem-nav-mobile-btn { display: block !important; }
         }
-      `}</style>
+      ` }} />
         </nav>
     );
 }

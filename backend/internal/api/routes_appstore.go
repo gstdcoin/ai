@@ -170,13 +170,15 @@ func SetupAppStoreRoutes(v1 *gin.RouterGroup, db *sql.DB) {
 
 // ─── App Store Catalog ───────────────────────────────────────
 
+const devGSTDTeam = "GSTD Team"
+
 func getGSTDAppCatalog() []AppManifest {
 	return []AppManifest{
 		{
 			ID: "gstd-miner", Name: "GSTD Miner", Version: "2.0.0",
 			Category: "earning", Tagline: "Earn GSTD by completing AI tasks",
 			Description: "Turn your device into a productive node in the GSTD network. Complete distributed AI tasks and earn GSTD tokens automatically. Supports CPU and GPU acceleration.",
-			Developer:   "GSTD Team", Website: "https://gstdtoken.com",
+			Developer:   devGSTDTeam, Website: "https://gstdtoken.com",
 			Icon: "⛏️", Port: 8091, DockerImage: "ghcr.io/gstdcoin/gstd-miner:latest",
 			Status: "available", Featured: true, Earnings: "~10-200 GSTD/day",
 			GSTDReward: 50, MinRAMGB: 2, MinDiskGB: 5,
@@ -185,7 +187,7 @@ func getGSTDAppCatalog() []AppManifest {
 			ID: "gstd-chat", Name: "GSTD Sovereign AI", Version: "3.2.0",
 			Category: "ai", Tagline: "Private, censorship-free AI assistant",
 			Description: "Access the Hive Mind through a beautiful chat interface. Multiple AI models, sovereign compute, zero corporate control. Supports multi-model consensus (SmartMix).",
-			Developer:   "GSTD Team", Website: "https://chat.gstdtoken.com",
+			Developer:   devGSTDTeam, Website: "https://chat.gstdtoken.com",
 			Icon: "🧠", Port: 3000, DockerImage: "ghcr.io/gstdcoin/gstd-chat:latest",
 			Status: "available", Featured: true, MinRAMGB: 1, MinDiskGB: 2,
 		},
@@ -250,7 +252,7 @@ func getGSTDAppCatalog() []AppManifest {
 			ID: "gstd-monitor", Name: "GSTD Network Monitor", Version: "1.0.0",
 			Category: "monitoring", Tagline: "Real-time network monitoring & analytics",
 			Description: "Watch the GSTD network in real-time. See active nodes, task distribution, earnings analytics, and network health metrics.",
-			Developer:   "GSTD Team", Website: "https://monitor.gstdtoken.com",
+			Developer:   devGSTDTeam, Website: "https://monitor.gstdtoken.com",
 			Icon: "📊", Port: 3001, DockerImage: "ghcr.io/gstdcoin/gstd-monitor:latest",
 			Status: "available", MinRAMGB: 1, MinDiskGB: 1,
 		},
