@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>GSTD Sovereign AI</title>
   <meta name="description" content="GSTD Sovereign AI — Decentralized AI Chat powered by Groq"/>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 120 120' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='60' cy='60' r='55' fill='%23FFD700' stroke='%23FFB300' stroke-width='2'/%3E%3Ctext x='60' y='72' text-anchor='middle' font-size='42' font-weight='bold' fill='%230a1929'%3EG%3C/text%3E%3C/svg%3E"/>
+  <link rel="icon" type="image/png" href="logo.png"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
@@ -23,7 +23,7 @@
     .app{display:flex;height:100vh;flex-direction:column}
     header{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;z-index:10}
     .logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px;text-decoration:none;color:var(--text)}
-    .logo-icon{width:36px;height:36px;flex-shrink:0}
+    .logo-icon{width:36px;height:36px;flex-shrink:0;border-radius:50%;object-fit:cover}
     .logo-text{display:flex;flex-direction:column;line-height:1.2}
     .logo-text .name{font-size:16px;font-weight:700;background:linear-gradient(135deg,var(--gold),var(--gold2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
     .logo-text .sub{font-size:11px;color:var(--text3);font-weight:500;letter-spacing:.5px}
@@ -55,10 +55,10 @@
     /* Messages */
     .msg{max-width:800px;width:100%;margin:0 auto;display:flex;gap:12px;animation:fadeIn .3s ease}
     @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-    .msg-avatar{width:32px;height:32px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;overflow:hidden}
+    .msg-avatar{width:32px;height:32px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;overflow:hidden}
     .msg-user .msg-avatar{background:linear-gradient(135deg,#3b82f6,#1d4ed8)}
-    .msg-ai .msg-avatar{background:linear-gradient(135deg,var(--gold),var(--gold2))}
-    .msg-ai .msg-avatar svg{width:22px;height:22px}
+    .msg-ai .msg-avatar{background:transparent}
+    .msg-ai .msg-avatar img{width:32px;height:32px;border-radius:50%}
     .msg-content{flex:1;padding:14px 18px;border-radius:var(--radius);font-size:14px;line-height:1.7;white-space:pre-wrap;word-break:break-word}
     .msg-user .msg-content{background:var(--bg3);color:var(--text)}
     .msg-ai .msg-content{background:var(--bg2);border:1px solid var(--border);color:var(--text)}
@@ -74,7 +74,7 @@
 
     /* Welcome */
     .welcome{text-align:center;margin:auto;max-width:540px;padding:40px 20px}
-    .welcome-logo{width:72px;height:72px;margin:0 auto 20px}
+    .welcome-logo{width:80px;height:80px;margin:0 auto 20px;border-radius:50%;box-shadow:0 4px 30px var(--gold-glow)}
     .welcome h1{font-size:28px;font-weight:700;background:linear-gradient(135deg,var(--gold),var(--gold2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}
     .welcome .subtitle{color:var(--text2);font-size:15px;line-height:1.6;margin-bottom:28px}
     .model-tiers{display:flex;gap:16px;margin-bottom:28px;justify-content:center;flex-wrap:wrap}
@@ -144,18 +144,13 @@
 <body>
 <div class="app">
   <header>
-    <a href="https://app.gstdtoken.com" class="logo" target="_blank">
-      <svg class="logo-icon" width="36" height="36" viewBox="0 0 120 120" fill="none">
-        <defs><linearGradient id="gG" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FFD700"/><stop offset="50%" stop-color="#FFC91A"/><stop offset="100%" stop-color="#FFB300"/></linearGradient></defs>
-        <circle cx="60" cy="60" r="55" fill="url(#gG)" stroke="#FFD700" stroke-width="2"/>
-        <g opacity="0.25"><circle cx="25" cy="25" r="2" fill="#0a1929"/><circle cx="95" cy="25" r="2" fill="#0a1929"/><circle cx="25" cy="95" r="2" fill="#0a1929"/><circle cx="95" cy="95" r="2" fill="#0a1929"/><line x1="25" y1="25" x2="95" y2="25" stroke="#0a1929" stroke-width="1"/><line x1="25" y1="95" x2="95" y2="95" stroke="#0a1929" stroke-width="1"/></g>
-        <g transform="translate(60,60)"><ellipse cx="-12" cy="0" rx="8" ry="12" fill="url(#gG)" stroke="#FFB300" stroke-width=".5"/><ellipse cx="12" cy="0" rx="8" ry="12" fill="url(#gG)" stroke="#FFB300" stroke-width=".5"/><circle cx="0" cy="0" r="2.5" fill="#FFD700"/></g>
-      </svg>
+    <div class="logo">
+      <img class="logo-icon" src="logo.png" alt="GSTD" width="36" height="36"/>
       <div class="logo-text">
         <span class="name">GSTD</span>
         <span class="sub">SOVEREIGN AI</span>
       </div>
-    </a>
+    </div>
     <div class="header-center">
       <select class="model-select" id="modelSelect"></select>
       <button class="new-chat-btn" onclick="newChat()" id="newChatBtn">+ <span data-i18n="newChat">New Chat</span></button>
@@ -171,12 +166,7 @@
 
   <div class="chat-area" id="chatArea">
     <div class="welcome" id="welcome">
-      <svg class="welcome-logo" viewBox="0 0 120 120" fill="none">
-        <defs><linearGradient id="wG" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FFD700"/><stop offset="50%" stop-color="#FFC91A"/><stop offset="100%" stop-color="#FFB300"/></linearGradient></defs>
-        <circle cx="60" cy="60" r="55" fill="url(#wG)" stroke="#FFD700" stroke-width="2"/>
-        <g opacity="0.25"><circle cx="25" cy="25" r="2" fill="#0a1929"/><circle cx="95" cy="25" r="2" fill="#0a1929"/><circle cx="25" cy="95" r="2" fill="#0a1929"/><circle cx="95" cy="95" r="2" fill="#0a1929"/><line x1="25" y1="25" x2="95" y2="25" stroke="#0a1929" stroke-width="1"/><line x1="25" y1="95" x2="95" y2="95" stroke="#0a1929" stroke-width="1"/></g>
-        <g transform="translate(60,60)"><ellipse cx="-12" cy="0" rx="8" ry="12" fill="url(#wG)" stroke="#FFB300" stroke-width=".5"/><ellipse cx="12" cy="0" rx="8" ry="12" fill="url(#wG)" stroke="#FFB300" stroke-width=".5"/><circle cx="0" cy="0" r="2.5" fill="#FFD700"/></g>
-      </svg>
+      <img class="welcome-logo" src="logo.png" alt="GSTD Sovereign AI" width="80" height="80"/>
       <h1>GSTD Sovereign AI</h1>
       <p class="subtitle" data-i18n="welcomeText">Decentralized AI chat powered by Groq. Free models available instantly. Connect your GSTD wallet for advanced Pro models.</p>
       <div class="model-tiers">
@@ -471,7 +461,7 @@ function sendQuick(text) {
   sendMessage();
 }
 
-const LOGO_SVG = `<svg viewBox="0 0 120 120" fill="none"><defs><linearGradient id="aG" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FFD700"/><stop offset="100%" stop-color="#FFB300"/></linearGradient></defs><circle cx="60" cy="60" r="55" fill="url(#aG)"/><g transform="translate(60,60)"><ellipse cx="-12" cy="0" rx="8" ry="12" fill="url(#aG)" stroke="#FFB300" stroke-width=".5"/><ellipse cx="12" cy="0" rx="8" ry="12" fill="url(#aG)" stroke="#FFB300" stroke-width=".5"/><circle cx="0" cy="0" r="2.5" fill="#FFD700"/></g></svg>`;
+const LOGO_IMG = `<img src="logo.png" alt="GSTD" width="32" height="32" style="border-radius:50%"/>`;
 
 async function sendMessage() {
   const input = document.getElementById('input');
@@ -571,7 +561,7 @@ function addMessage(role, text, streaming = false) {
   const area = document.getElementById('chatArea');
   const div = document.createElement('div');
   div.className = `msg msg-${role}`;
-  const avatar = role === 'user' ? '👤' : LOGO_SVG;
+  const avatar = role === 'user' ? '👤' : LOGO_IMG;
   div.innerHTML = `
     <div class="msg-avatar">${avatar}</div>
     <div class="msg-content">
