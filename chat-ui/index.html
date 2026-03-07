@@ -47,29 +47,31 @@
       --g-focus-ring:0 0 0 2px rgba(255,215,0,.4);
     }
 
-    /* ── Dark Theme (default) ─── */
+    /* ── Dark Theme (synced with globals.css) ─── */
     [data-theme="dark"]{
-      --g-color-base-background:#0d0d14;
-      --g-color-base-float:#151520;
-      --g-color-base-float-elevated:#1c1c2e;
-      --g-color-base-float-heavy:#242440;
-      --g-color-base-modal:#151520;
-      --g-color-base-selection:rgba(124,58,237,.15);
-      --g-color-base-selection-hover:rgba(124,58,237,.25);
+      --g-color-base-background:#030014;
+      --g-color-base-float:#08081a;
+      --g-color-base-float-elevated:#0d0d25;
+      --g-color-base-float-heavy:#14142e;
+      --g-color-base-modal:#0a0a1e;
+      --g-color-base-selection:rgba(139,92,246,.12);
+      --g-color-base-selection-hover:rgba(139,92,246,.20);
       --g-color-text-primary:rgba(255,255,255,.95);
       --g-color-text-secondary:rgba(255,255,255,.55);
       --g-color-text-hint:rgba(255,255,255,.3);
       --g-color-text-brand:#FFD700;
       --g-color-text-link:#a78bfa;
-      --g-color-line-generic:rgba(255,255,255,.07);
-      --g-color-line-hover:rgba(255,255,255,.14);
+      --g-color-line-generic:rgba(255,255,255,.06);
+      --g-color-line-hover:rgba(255,255,255,.12);
       --g-color-line-focus:rgba(255,215,0,.5);
       --g-color-brand:#FFD700;
       --g-color-brand-hover:#FFE347;
-      --g-color-brand-dark:#B8960A;
-      --g-color-brand-text:#0d0d14;
-      --g-color-accent:#7c3aed;
-      --g-color-accent-hover:#9155f5;
+      --g-color-brand-active:#E6C200;
+      --g-color-brand-light:rgba(255,215,0,.12);
+      --g-color-brand-text:#030014;
+      --g-color-accent:#8b5cf6;
+      --g-color-accent-hover:#a78bfa;
+      --g-color-accent-light:rgba(139,92,246,.12);
       --g-color-positive:#34d399;
       --g-color-positive-bg:rgba(52,211,153,.12);
       --g-color-danger:#f87171;
@@ -77,10 +79,10 @@
       --g-color-warning:#fbbf24;
       --g-color-warning-bg:rgba(251,191,36,.1);
       --g-color-info-bg:rgba(255,215,0,.08);
-      --shadow-1:0 1px 3px rgba(0,0,0,.3),0 1px 2px rgba(0,0,0,.2);
-      --shadow-2:0 4px 14px rgba(0,0,0,.35),0 2px 6px rgba(0,0,0,.2);
-      --shadow-3:0 8px 30px rgba(0,0,0,.4),0 4px 12px rgba(0,0,0,.25);
-      --shadow-glow:0 0 30px rgba(255,215,0,.12);
+      --shadow-1:0 1px 4px rgba(0,0,0,.25),0 1px 2px rgba(0,0,0,.15);
+      --shadow-2:0 4px 16px rgba(0,0,0,.30),0 2px 6px rgba(0,0,0,.20);
+      --shadow-3:0 8px 32px rgba(0,0,0,.35),0 4px 12px rgba(0,0,0,.25);
+      --shadow-glow:0 0 24px rgba(255,215,0,.10),0 4px 16px rgba(0,0,0,.25);
     }
 
     html,body{height:100%;font:var(--g-text-body-1);background:var(--g-color-base-background);color:var(--g-color-text-primary);overflow:hidden;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
@@ -115,7 +117,7 @@
     .g-btn:disabled{opacity:.4;cursor:not-allowed;pointer-events:none}
 
     /* Button variants */
-    .g-btn--action{background:linear-gradient(135deg,var(--g-color-brand),var(--g-color-brand-dark));color:var(--g-color-brand-text)}
+    .g-btn--action{background:linear-gradient(135deg,var(--g-color-brand),var(--g-color-brand-active));color:var(--g-color-brand-text)}
     .g-btn--action:hover{background:linear-gradient(135deg,var(--g-color-brand-hover),var(--g-color-brand));box-shadow:0 2px 12px rgba(255,215,0,.2)}
     .g-btn--outline{background:transparent;border:1px solid var(--g-color-line-generic);color:var(--g-color-text-secondary)}
     .g-btn--outline:hover{background:var(--g-color-base-float-elevated);border-color:var(--g-color-line-hover);color:var(--g-color-text-primary)}
