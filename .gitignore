@@ -126,3 +126,4 @@ frontend/.vercel/
 .wget-hsts
 .claude/
 gstdbot/
+.sonarlint/
