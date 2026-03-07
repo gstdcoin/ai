@@ -38,8 +38,8 @@ ENV NEXT_TELEMETRY_DISABLED 1
 
 # RUN addgroup --system --gid 1001 nodejs
 # RUN adduser --system --uid 1001 nextjs
-RUN groupadd -g 1001 -r nodejs
-RUN useradd -u 1001 -r -g nodejs nextjs
+RUN groupadd -g 1001 -r nodejs && \
+    useradd -u 1001 -r -g nodejs nextjs
 
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./

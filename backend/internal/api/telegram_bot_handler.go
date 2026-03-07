@@ -538,6 +538,139 @@ func (h *TelegramBotHandler) ClaimReward(c *gin.Context) {
 	})
 }
 
+// Topup credits GSTD to user after a successful Telegram Stars payment.
+// POST /api/v1/telegram/bot/topup
+//
+// Logic:
+//  1. Validate payment (check for duplicate telegram_payment_charge_id)
+//  2. Calculate GSTD amount server-side using real market price
+//  3. Find linked wallet from telegram_users, fallback to tg-{id}
+//  4. Credit GSTD atomically + record in stars_purchases
+//  5. Return gstd_credited + wallet_address to bot for confirmation message
+func (h *TelegramBotHandler) Topup(c *gin.Context) {
+	if h == nil || h.db == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "service_unavailable"})
+		return
+	}
+	var req struct {
+		TelegramID               int64  `json:"telegram_id" binding:"required"`
+		StarsAmount              int    `json:"stars_amount" binding:"required"`
+		TelegramPaymentChargeID  string `json:"telegram_payment_charge_id" binding:"required"`
+		ProviderPaymentChargeID  string `json:"provider_payment_charge_id"`
+		Payload                  string `json:"payload"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if req.StarsAmount <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "stars_amount must be positive"})
+		return
+	}
+
+	// ── Dedup: check if this payment was already processed ──
+	var exists bool
+	if err := h.db.QueryRowContext(c.Request.Context(),
+		`SELECT EXISTS(SELECT 1 FROM stars_purchases WHERE telegram_payment_charge_id = $1)`,
+		req.TelegramPaymentChargeID,
+	).Scan(&exists); err == nil && exists {
+		c.JSON(http.StatusConflict, gin.H{"error": "payment already processed"})
+		return
+	}
+
+	// ── Server-side GSTD price calculation (never trust client) ──
+	const starUSD = 0.013 // 1 Telegram Star ≈ $0.013
+	gstdPrice := getGSTDPrice(h.db)
+	if gstdPrice <= 0 {
+		gstdPrice = 0.00028 // safe fallback
+	}
+	gstdPerStar := starUSD / gstdPrice
+	gstdAmount := float64(int(float64(req.StarsAmount) * gstdPerStar)) // floor to integer
+
+	// ── Resolve wallet: linked TON wallet preferred, fallback to tg-{id} ──
+	var walletAddress string
+	_ = h.db.QueryRowContext(c.Request.Context(),
+		`SELECT wallet_address FROM telegram_users WHERE telegram_id = $1 AND wallet_address IS NOT NULL`,
+		req.TelegramID,
+	).Scan(&walletAddress)
+
+	if walletAddress == "" || (len(walletAddress) > 3 && walletAddress[:3] == "tg-") {
+		walletAddress = fmt.Sprintf("tg-%d", req.TelegramID)
+	}
+
+	// ── Atomic transaction: ensure user + credit GSTD + record purchase ──
+	tx, err := h.db.BeginTx(c.Request.Context(), nil)
+	if err != nil {
+		log.Printf("[Topup] Transaction begin failed: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "transaction_failed"})
+		return
+	}
+	defer tx.Rollback()
+
+	// Ensure user exists
+	_, err = tx.ExecContext(c.Request.Context(),
+		`INSERT INTO users (wallet_address, gstd_balance, created_at, updated_at)
+		 VALUES ($1, 0, NOW(), NOW())
+		 ON CONFLICT (wallet_address) DO NOTHING`,
+		walletAddress,
+	)
+	if err != nil {
+		log.Printf("[Topup] Ensure user failed: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "user_setup_failed"})
+		return
+	}
+
+	// Credit GSTD
+	result, err := tx.ExecContext(c.Request.Context(),
+		`UPDATE users SET gstd_balance = COALESCE(gstd_balance, 0) + $1, updated_at = NOW()
+		 WHERE wallet_address = $2`,
+		gstdAmount, walletAddress,
+	)
+	if err != nil {
+		log.Printf("[Topup] Credit failed: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "credit_failed"})
+		return
+	}
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		log.Printf("[Topup] ⚠️ No user found for wallet %s after insert", walletAddress)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "user_not_found"})
+		return
+	}
+
+	// Record purchase
+	_, err = tx.ExecContext(c.Request.Context(),
+		`INSERT INTO stars_purchases (telegram_payment_charge_id, telegram_id, stars_amount, gstd_credited, wallet_address, created_at)
+		 VALUES ($1, $2, $3, $4, $5, NOW())
+		 ON CONFLICT (telegram_payment_charge_id) DO NOTHING`,
+		req.TelegramPaymentChargeID, req.TelegramID, req.StarsAmount, gstdAmount, walletAddress,
+	)
+	if err != nil {
+		log.Printf("[Topup] Record purchase failed: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "record_failed"})
+		return
+	}
+
+	if err = tx.Commit(); err != nil {
+		log.Printf("[Topup] Commit failed: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "commit_failed"})
+		return
+	}
+
+	usdPaid := float64(req.StarsAmount) * starUSD
+	log.Printf("[Topup] ✅ %.2f GSTD credited to %s (TG:%d, %d⭐=$%.2f, rate:1⭐=%.0f GSTD)",
+		gstdAmount, walletAddress, req.TelegramID, req.StarsAmount, usdPaid, gstdPerStar)
+
+	c.JSON(http.StatusOK, gin.H{
+		"success":        true,
+		"gstd_credited":  gstdAmount,
+		"wallet_address": walletAddress,
+		"stars_paid":     req.StarsAmount,
+		"gstd_price":     gstdPrice,
+		"rate_per_star":  gstdPerStar,
+	})
+}
+
 // CompleteTask completes a marketplace task
 // POST /api/v1/telegram/bot/complete
 func (h *TelegramBotHandler) CompleteTask(c *gin.Context) {

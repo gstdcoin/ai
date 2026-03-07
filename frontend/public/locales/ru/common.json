@@ -571,6 +571,8 @@
   "become_neuron_desc": "Ваше устройство станет клеткой мозга планетарного суперкомпьютера",
   "nav_dashboard": "Панель",
   "nav_chat": "Чат",
+  "nav_appstore": "Магазин",
+  "nav_node": "Нода",
   "nav_monitor": "Монитор",
   "nav_bot": "GSTD Бот",
   "nav_telegram": "Телеграм",

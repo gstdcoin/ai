@@ -613,6 +613,7 @@ func SetupRoutes(
 		tgBot.POST("/complete", tgBotHandler.CompleteTask)
 		tgBot.POST("/ai", tgBotHandler.AIChat)
 		tgBot.POST("/claim_reward", tgBotHandler.ClaimReward)
+		tgBot.POST("/topup", tgBotHandler.Topup)
 
 		// Stars purchase — credits GSTD to linked wallet
 		v1.POST("/telegram/buy-stars", buyStarsHandler(dbConn))
@@ -698,6 +699,10 @@ func SetupRoutes(
 		swarmEmbedHandler := NewSwarmEmbedHandler(dbConn, smartRouter, apiKeyService)
 		SetupSwarmEmbedRoutes(v1, swarmEmbedHandler)
 	}
+
+	// ═══ GSTD APP STORE & NODE DASHBOARD (Umbrel-style) ═══
+	// Provides: App catalog, live system usage, widgets, notifications, settings, backups
+	SetupAppStoreRoutes(v1, dbConn)
 
 	// WebSocket endpoint
 	router.GET("/ws", HandleWebSocket(hub, deviceService, assignmentService, fleetCommandService))
@@ -1390,9 +1395,9 @@ func getHealth(db *sql.DB, tonService *services.TONService, tonConfig config.TON
 				"balance_ton": contractBalance,
 			},
 			"sovereign_ai": gin.H{
-				"status":         "active",
-				"ollama_enabled": true,
-				"models":         []string{"qwen2.5-coder:7b", "llama3.1:8b"},
+				"status":         "groq",
+				"ollama_enabled": os.Getenv("OLLAMA_URL") != "" && !strings.Contains(os.Getenv("OLLAMA_URL"), "gstd_ollama"),
+				"inference":      "Groq Cloud (8 models)",
 			},
 			"timestamp": time.Now().Unix(),
 		})

@@ -173,8 +173,8 @@ func (s *SovereignOrganismService) performHeartbeat(ctx context.Context) {
 		log.Println("[Sovereign Organism] 📉 Low Activity Detected. Triggering Stimulation.")
 		// s.notifyDecision(ctx, "STIMULATE", "Low activity (Health %.2f). Stimulating network.", s.state.HealthScore)
 		s.stimulateNetwork(ctx)
-	} else if s.state.TasksPending < 2 {
-		// Queue nearly empty — seed work so swarm has tasks to claim
+	} else if s.state.TasksPending < 100 {
+		// Queue low — seed work so swarm has tasks to claim (threshold 100 to avoid spam)
 		decision = "STIMULATE"
 		s.state.LastDecision = decision
 		s.state.LastDecisionAt = now
