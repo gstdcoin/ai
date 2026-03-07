@@ -1,0 +1,879 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>GSTD Sovereign AI</title>
+    <meta
+      name="description"
+      content="GSTD Sovereign AI — децентрализованный чат с ИИ через Groq"
+    />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      :root {
+        --bg: #0a0a0f;
+        --bg2: #12121a;
+        --bg3: #1a1a2e;
+        --bg4: #252540;
+        --text: #e4e4ef;
+        --text2: #9999b0;
+        --text3: #66668a;
+        --accent: #7c3aed;
+        --accent2: #a855f7;
+        --accent-glow: rgba(124, 58, 237, 0.3);
+        --green: #22c55e;
+        --red: #ef4444;
+        --gold: #f59e0b;
+        --border: rgba(255, 255, 255, 0.06);
+        --radius: 14px;
+      }
+      html,
+      body {
+        height: 100%;
+        font-family: "Inter", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        overflow: hidden;
+      }
+
+      /* Layout */
+      .app {
+        display: flex;
+        height: 100vh;
+        flex-direction: column;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 20px;
+        background: var(--bg2);
+        border-bottom: 1px solid var(--border);
+        flex-shrink: 0;
+        z-index: 10;
+      }
+      .logo {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 700;
+        font-size: 18px;
+      }
+      .logo-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, var(--accent), var(--accent2));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+      }
+      .header-right {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      /* Wallet */
+      .wallet-btn {
+        padding: 8px 16px;
+        border-radius: 10px;
+        border: 1px solid var(--accent);
+        background: transparent;
+        color: var(--accent2);
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-family: inherit;
+      }
+      .wallet-btn:hover {
+        background: var(--accent-glow);
+        border-color: var(--accent2);
+      }
+      .wallet-btn.connected {
+        border-color: var(--green);
+        color: var(--green);
+        font-size: 12px;
+      }
+      .wallet-badge {
+        font-size: 11px;
+        color: var(--text3);
+        padding: 4px 10px;
+        border-radius: 8px;
+        background: var(--bg3);
+      }
+
+      /* Model select */
+      .model-select {
+        padding: 8px 12px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: var(--bg3);
+        color: var(--text);
+        font-size: 13px;
+        font-family: inherit;
+        cursor: pointer;
+        outline: none;
+        min-width: 180px;
+      }
+      .model-select:focus {
+        border-color: var(--accent);
+      }
+      .model-select option {
+        background: var(--bg2);
+        color: var(--text);
+      }
+      .model-tier {
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-weight: 600;
+        margin-left: 6px;
+      }
+      .tier-free {
+        background: rgba(34, 197, 94, 0.15);
+        color: var(--green);
+      }
+      .tier-pro {
+        background: rgba(245, 158, 11, 0.15);
+        color: var(--gold);
+      }
+
+      /* Chat */
+      .chat-area {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        scroll-behavior: smooth;
+      }
+      .chat-area::-webkit-scrollbar {
+        width: 6px;
+      }
+      .chat-area::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .chat-area::-webkit-scrollbar-thumb {
+        background: var(--bg4);
+        border-radius: 3px;
+      }
+
+      /* Messages */
+      .msg {
+        max-width: 800px;
+        width: 100%;
+        margin: 0 auto;
+        display: flex;
+        gap: 12px;
+        animation: fadeIn 0.3s ease;
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .msg-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 10px;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+      }
+      .msg-user .msg-avatar {
+        background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+      }
+      .msg-ai .msg-avatar {
+        background: linear-gradient(135deg, var(--accent), var(--accent2));
+      }
+      .msg-content {
+        flex: 1;
+        padding: 14px 18px;
+        border-radius: var(--radius);
+        font-size: 14px;
+        line-height: 1.7;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      .msg-user .msg-content {
+        background: var(--bg3);
+        color: var(--text);
+      }
+      .msg-ai .msg-content {
+        background: var(--bg2);
+        border: 1px solid var(--border);
+        color: var(--text);
+      }
+      .msg-ai .msg-content code {
+        background: var(--bg4);
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 13px;
+      }
+      .msg-ai .msg-content pre {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 14px;
+        overflow-x: auto;
+        margin: 10px 0;
+      }
+      .msg-ai .msg-content pre code {
+        background: none;
+        padding: 0;
+      }
+      .msg-meta {
+        font-size: 11px;
+        color: var(--text3);
+        margin-top: 6px;
+      }
+      .typing {
+        display: inline-flex;
+        gap: 4px;
+        padding: 4px 0;
+      }
+      .typing span {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--accent);
+        animation: bounce 0.6s infinite alternate;
+      }
+      .typing span:nth-child(2) {
+        animation-delay: 0.2s;
+      }
+      .typing span:nth-child(3) {
+        animation-delay: 0.4s;
+      }
+      @keyframes bounce {
+        to {
+          opacity: 0.3;
+          transform: translateY(-4px);
+        }
+      }
+
+      /* Welcome */
+      .welcome {
+        text-align: center;
+        margin: auto;
+        max-width: 500px;
+        padding: 40px 20px;
+      }
+      .welcome h1 {
+        font-size: 28px;
+        font-weight: 700;
+        background: linear-gradient(135deg, var(--text), var(--accent2));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 12px;
+      }
+      .welcome p {
+        color: var(--text2);
+        font-size: 15px;
+        line-height: 1.6;
+        margin-bottom: 24px;
+      }
+      .quick-prompts {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: center;
+      }
+      .quick-prompt {
+        padding: 10px 16px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: var(--bg2);
+        color: var(--text2);
+        font-size: 13px;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-family: inherit;
+      }
+      .quick-prompt:hover {
+        border-color: var(--accent);
+        color: var(--text);
+        background: var(--bg3);
+      }
+
+      /* Input */
+      .input-area {
+        padding: 16px 20px;
+        background: var(--bg2);
+        border-top: 1px solid var(--border);
+        flex-shrink: 0;
+      }
+      .input-wrap {
+        max-width: 800px;
+        margin: 0 auto;
+        display: flex;
+        gap: 10px;
+        align-items: flex-end;
+      }
+      .input-wrap textarea {
+        flex: 1;
+        padding: 14px 18px;
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        background: var(--bg3);
+        color: var(--text);
+        font-size: 14px;
+        font-family: inherit;
+        resize: none;
+        outline: none;
+        line-height: 1.5;
+        max-height: 200px;
+        min-height: 48px;
+        transition: border-color 0.2s;
+      }
+      .input-wrap textarea:focus {
+        border-color: var(--accent);
+      }
+      .input-wrap textarea::placeholder {
+        color: var(--text3);
+      }
+      .send-btn {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        border: none;
+        background: linear-gradient(135deg, var(--accent), var(--accent2));
+        color: #fff;
+        font-size: 20px;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .send-btn:hover {
+        transform: scale(1.05);
+        box-shadow: 0 4px 20px var(--accent-glow);
+      }
+      .send-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+      }
+      .footer-info {
+        text-align: center;
+        font-size: 11px;
+        color: var(--text3);
+        margin-top: 8px;
+      }
+
+      /* Wallet modal */
+      .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(4px);
+        z-index: 100;
+        display: none;
+        align-items: center;
+        justify-content: center;
+      }
+      .modal-overlay.active {
+        display: flex;
+      }
+      .modal {
+        background: var(--bg2);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        padding: 32px;
+        max-width: 420px;
+        width: 90%;
+        animation: fadeIn 0.2s ease;
+      }
+      .modal h2 {
+        font-size: 20px;
+        font-weight: 700;
+        margin-bottom: 8px;
+      }
+      .modal p {
+        color: var(--text2);
+        font-size: 14px;
+        margin-bottom: 20px;
+      }
+      .modal input {
+        width: 100%;
+        padding: 12px 16px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: var(--bg3);
+        color: var(--text);
+        font-size: 14px;
+        font-family: inherit;
+        outline: none;
+        margin-bottom: 12px;
+      }
+      .modal input:focus {
+        border-color: var(--accent);
+      }
+      .modal-actions {
+        display: flex;
+        gap: 10px;
+      }
+      .modal-actions button {
+        flex: 1;
+        padding: 12px;
+        border-radius: 10px;
+        border: none;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        font-family: inherit;
+        transition: all 0.2s;
+      }
+      .btn-primary {
+        background: linear-gradient(135deg, var(--accent), var(--accent2));
+        color: #fff;
+      }
+      .btn-primary:hover {
+        box-shadow: 0 4px 20px var(--accent-glow);
+      }
+      .btn-secondary {
+        background: var(--bg3);
+        color: var(--text2);
+        border: 1px solid var(--border) !important;
+      }
+
+      /* Toast */
+      .toast {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 14px 20px;
+        border-radius: 12px;
+        font-size: 13px;
+        font-weight: 500;
+        z-index: 200;
+        animation: slideIn 0.3s ease;
+        border: 1px solid var(--border);
+      }
+      .toast.success {
+        background: rgba(34, 197, 94, 0.15);
+        color: var(--green);
+        border-color: rgba(34, 197, 94, 0.3);
+      }
+      .toast.error {
+        background: rgba(239, 68, 68, 0.15);
+        color: var(--red);
+        border-color: rgba(239, 68, 68, 0.3);
+      }
+      @keyframes slideIn {
+        from {
+          transform: translateX(100%);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+
+      @media (max-width: 640px) {
+        header {
+          padding: 10px 14px;
+        }
+        .logo span:last-child {
+          display: none;
+        }
+        .model-select {
+          min-width: 120px;
+          font-size: 12px;
+        }
+        .chat-area {
+          padding: 14px;
+        }
+        .msg-content {
+          padding: 10px 14px;
+          font-size: 13px;
+        }
+        .welcome h1 {
+          font-size: 22px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header>
+        <div class="logo">
+          <div class="logo-icon">⚡</div>
+          <span>GSTD</span>
+          <span style="color: var(--text3); font-weight: 400"
+            >Sovereign AI</span
+          >
+        </div>
+        <div class="header-right">
+          <select class="model-select" id="modelSelect"></select>
+          <button class="wallet-btn" id="walletBtn" onclick="toggleWallet()">
+            🔗 Connect Wallet
+          </button>
+        </div>
+      </header>
+
+      <div class="chat-area" id="chatArea">
+        <div class="welcome" id="welcome">
+          <h1>GSTD Sovereign AI</h1>
+          <p>
+            Децентрализованный ИИ-чат на базе Groq. Бесплатные модели доступны
+            сразу. Подключите кошелёк GSTD для продвинутых моделей.
+          </p>
+          <div class="quick-prompts">
+            <button class="quick-prompt" onclick="sendQuick('Расскажи о себе')">
+              🤖 Расскажи о себе
+            </button>
+            <button
+              class="quick-prompt"
+              onclick="sendQuick('Напиши haiku о блокчейне')"
+            >
+              ✨ Haiku
+            </button>
+            <button
+              class="quick-prompt"
+              onclick="sendQuick('Что такое GSTD токен?')"
+            >
+              🪙 Что такое GSTD?
+            </button>
+            <button
+              class="quick-prompt"
+              onclick="sendQuick('Напиши код сортировки на Python')"
+            >
+              💻 Код на Python
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="input-area">
+        <div class="input-wrap">
+          <textarea
+            id="input"
+            rows="1"
+            placeholder="Напишите сообщение..."
+            onkeydown="handleKey(event)"
+            oninput="autoResize(this)"
+          ></textarea>
+          <button
+            class="send-btn"
+            id="sendBtn"
+            onclick="sendMessage()"
+            disabled
+          >
+            ➤
+          </button>
+        </div>
+        <div class="footer-info">
+          GSTD Sovereign AI • Powered by Groq •
+          <span id="modelLabel">llama-3.3-70b</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Wallet Modal -->
+    <div class="modal-overlay" id="walletModal">
+      <div class="modal">
+        <h2>🔗 Connect GSTD Wallet</h2>
+        <p>
+          Введите адрес вашего GSTD кошелька для доступа к продвинутым моделям
+          (GPT-OSS 120B, Llama 4, Kimi K2).
+        </p>
+        <input
+          type="text"
+          id="walletInput"
+          placeholder="0x... или gstd1..."
+          autocomplete="off"
+        />
+        <div class="modal-actions">
+          <button class="btn-secondary" onclick="closeWallet()">Отмена</button>
+          <button class="btn-primary" onclick="connectWallet()">
+            Подключить
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const GROQ_KEY =
+        "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";
+      const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
+
+      const MODELS = [
+        { id: "llama-3.3-70b-versatile", name: "Llama 3.3 70B", tier: "free" },
+        { id: "llama-3.1-8b-instant", name: "Llama 3.1 8B Fast", tier: "free" },
+        { id: "qwen/qwen3-32b", name: "Qwen3 32B", tier: "free" },
+        {
+          id: "meta-llama/llama-4-scout-17b-16e-instruct",
+          name: "Llama 4 Scout",
+          tier: "pro",
+        },
+        {
+          id: "meta-llama/llama-4-maverick-17b-128e-instruct",
+          name: "Llama 4 Maverick",
+          tier: "pro",
+        },
+        { id: "openai/gpt-oss-120b", name: "GPT-OSS 120B", tier: "pro" },
+        { id: "openai/gpt-oss-20b", name: "GPT-OSS 20B", tier: "pro" },
+        { id: "moonshotai/kimi-k2-instruct", name: "Kimi K2", tier: "pro" },
+      ];
+
+      let messages = [];
+      let wallet = localStorage.getItem("gstd_wallet") || "";
+      let isStreaming = false;
+
+      // Init
+      function init() {
+        const sel = document.getElementById("modelSelect");
+        MODELS.forEach((m) => {
+          const opt = document.createElement("option");
+          opt.value = m.id;
+          opt.textContent = `${m.name} ${m.tier === "pro" ? "👑" : "✓"}`;
+          sel.appendChild(opt);
+        });
+        sel.addEventListener("change", () => {
+          const m = MODELS.find((x) => x.id === sel.value);
+          if (m?.tier === "pro" && !wallet) {
+            showToast("Подключите кошелёк для Pro моделей", "error");
+            sel.value = MODELS[0].id;
+            return;
+          }
+          document.getElementById("modelLabel").textContent =
+            m?.name || sel.value;
+        });
+        document.getElementById("modelLabel").textContent = MODELS[0].name;
+        updateWalletUI();
+        document.getElementById("input").addEventListener("input", () => {
+          document.getElementById("sendBtn").disabled = !document
+            .getElementById("input")
+            .value.trim();
+        });
+      }
+
+      function updateWalletUI() {
+        const btn = document.getElementById("walletBtn");
+        if (wallet) {
+          btn.textContent =
+            "✓ " + wallet.slice(0, 6) + "..." + wallet.slice(-4);
+          btn.classList.add("connected");
+        } else {
+          btn.textContent = "🔗 Connect Wallet";
+          btn.classList.remove("connected");
+        }
+      }
+
+      function toggleWallet() {
+        if (wallet) {
+          wallet = "";
+          localStorage.removeItem("gstd_wallet");
+          updateWalletUI();
+          showToast("Кошелёк отключён", "success");
+          // Reset to free model
+          document.getElementById("modelSelect").value = MODELS[0].id;
+          document.getElementById("modelLabel").textContent = MODELS[0].name;
+        } else {
+          document.getElementById("walletModal").classList.add("active");
+          document.getElementById("walletInput").focus();
+        }
+      }
+
+      function closeWallet() {
+        document.getElementById("walletModal").classList.remove("active");
+      }
+
+      function connectWallet() {
+        const addr = document.getElementById("walletInput").value.trim();
+        if (!addr || addr.length < 10) {
+          showToast("Введите корректный адрес кошелька", "error");
+          return;
+        }
+        wallet = addr;
+        localStorage.setItem("gstd_wallet", wallet);
+        closeWallet();
+        updateWalletUI();
+        showToast("Кошелёк подключён! Pro модели доступны.", "success");
+      }
+
+      function showToast(msg, type = "success") {
+        const t = document.createElement("div");
+        t.className = `toast ${type}`;
+        t.textContent = msg;
+        document.body.appendChild(t);
+        setTimeout(() => t.remove(), 3000);
+      }
+
+      function handleKey(e) {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          sendMessage();
+        }
+      }
+
+      function autoResize(el) {
+        el.style.height = "auto";
+        el.style.height = Math.min(el.scrollHeight, 200) + "px";
+      }
+
+      function sendQuick(text) {
+        document.getElementById("input").value = text;
+        document.getElementById("sendBtn").disabled = false;
+        sendMessage();
+      }
+
+      async function sendMessage() {
+        const input = document.getElementById("input");
+        const text = input.value.trim();
+        if (!text || isStreaming) return;
+
+        const model = document.getElementById("modelSelect").value;
+        const modelInfo = MODELS.find((m) => m.id === model);
+
+        if (modelInfo?.tier === "pro" && !wallet) {
+          showToast("Подключите кошелёк для Pro моделей", "error");
+          return;
+        }
+
+        // Hide welcome
+        const w = document.getElementById("welcome");
+        if (w) w.style.display = "none";
+
+        // Add user message
+        addMessage("user", text);
+        messages.push({ role: "user", content: text });
+        input.value = "";
+        input.style.height = "auto";
+        document.getElementById("sendBtn").disabled = true;
+        isStreaming = true;
+
+        // Add AI placeholder
+        const aiDiv = addMessage("ai", "", true);
+        const contentEl = aiDiv.querySelector(".msg-text");
+        const metaEl = aiDiv.querySelector(".msg-meta");
+
+        try {
+          const startTime = Date.now();
+          const res = await fetch(GROQ_URL, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${GROQ_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model,
+              messages: [
+                {
+                  role: "system",
+                  content:
+                    "You are GSTD Sovereign AI, a helpful assistant powered by the GSTD decentralized network. Answer in the same language as the user. Be concise and helpful.",
+                },
+                ...messages.slice(-20),
+              ],
+              stream: true,
+              max_tokens: 4096,
+              temperature: 0.7,
+            }),
+          });
+
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.error?.message || `HTTP ${res.status}`);
+          }
+
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          let fullText = "";
+          let buffer = "";
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop();
+
+            for (const line of lines) {
+              if (!line.startsWith("data: ") || line === "data: [DONE]")
+                continue;
+              try {
+                const data = JSON.parse(line.slice(6));
+                const delta = data.choices?.[0]?.delta?.content;
+                if (delta) {
+                  fullText += delta;
+                  contentEl.textContent = fullText;
+                  scrollToBottom();
+                }
+              } catch {}
+            }
+          }
+
+          const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+          const tokens = fullText.split(/\s+/).length;
+          metaEl.textContent = `${modelInfo?.name || model} • ${elapsed}s • ~${tokens} tokens`;
+          messages.push({ role: "assistant", content: fullText });
+        } catch (err) {
+          contentEl.textContent = `⚠️ Ошибка: ${err.message}`;
+          contentEl.style.color = "var(--red)";
+        }
+
+        isStreaming = false;
+        document.getElementById("sendBtn").disabled = !input.value.trim();
+      }
+
+      function addMessage(role, text, streaming = false) {
+        const area = document.getElementById("chatArea");
+        const div = document.createElement("div");
+        div.className = `msg msg-${role}`;
+        div.innerHTML = `
+    <div class="msg-avatar">${role === "user" ? "👤" : "⚡"}</div>
+    <div class="msg-content">
+      <div class="msg-text">${streaming ? '<div class="typing"><span></span><span></span><span></span></div>' : escapeHtml(text)}</div>
+      <div class="msg-meta">${role === "user" ? "" : ""}</div>
+    </div>`;
+        area.appendChild(div);
+        scrollToBottom();
+        return div;
+      }
+
+      function escapeHtml(s) {
+        return s
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+      }
+
+      function scrollToBottom() {
+        const area = document.getElementById("chatArea");
+        area.scrollTop = area.scrollHeight;
+      }
+
+      init();
+    </script>
+  </body>
+</html>
