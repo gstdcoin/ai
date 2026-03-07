@@ -1,17 +1,22 @@
 import React from 'react';
 import { useTranslation } from 'next-i18next';
 import { useWalletStore } from '../../store/walletStore';
-import { Share2, LogOut, Home, Activity, Server } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { useRouter } from 'next/router';
 import LanguageSwitcher from './LanguageSwitcher';
-import { toast } from '../../lib/toast';
-import { Tooltip } from '../ui/Tooltip';
 import { wsClient } from '../../lib/websocket';
 
 interface HeaderProps {
   onLogout: () => void;
   isPublic?: boolean;
 }
+
+const NAV_ITEMS = [
+  { key: 'dashboard', href: '/dashboard', label: 'Dashboard' },
+  { key: 'chat', href: '/chat', label: 'Chat' },
+  { key: 'appstore', href: '/appstore', label: 'App Store' },
+  { key: 'node', href: '/node', label: 'Node' },
+];
 
 export default React.memo(function Header({ onLogout, isPublic = false }: HeaderProps) {
   const { t } = useTranslation('common');
@@ -28,22 +33,38 @@ export default React.memo(function Header({ onLogout, isPublic = false }: Header
     return () => clearInterval(interval);
   }, []);
 
+  const isActive = (href: string) => {
+    if (href === '/dashboard') return router.pathname === '/dashboard' || router.pathname === '/';
+    return router.pathname.startsWith(href);
+  };
+
   if (isPublic) {
     return (
-      <header className="glass-dark border-b border-white/10 sticky top-0 z-30">
-        <div className="px-4 sm:px-6 py-4 flex items-center justify-between">
-          <a href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <div className="flex-shrink-0">
-              <img src="/logo.png" alt="GSTD Logo" className="w-10 h-10" />
-            </div>
-            <h1 className="text-xl font-bold text-white font-display">
-              <span className="bg-gradient-to-r from-gold-400 to-gold-600 bg-clip-text text-transparent">GSTD</span>
-              <span className="text-gray-300 ml-2">{t('documentation', 'Documentation')}</span>
-            </h1>
+      <header
+        className="sticky top-0 z-30"
+        style={{
+          background: 'var(--g-color-base-float)',
+          borderBottom: '1px solid var(--g-color-line-generic)',
+        }}
+      >
+        <div className="flex items-center justify-between px-4 sm:px-6" style={{ height: 56 }}>
+          <a href="/" className="flex items-center gap-3" style={{ textDecoration: 'none' }}>
+            <img src="/logo.png" alt="GSTD" className="w-9 h-9 rounded-full" />
+            <span className="text-lg font-bold" style={{ color: 'var(--g-color-brand)' }}>
+              GSTD
+              <span className="text-sm font-normal ml-2" style={{ color: 'var(--g-color-text-hint)' }}>
+                {t('documentation', 'Documentation')}
+              </span>
+            </span>
           </a>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <LanguageSwitcher />
-            <a href="/" className="text-sm font-medium text-white/70 hover:text-white transition-colors">{t('back_to_platform', 'Back to Platform')}</a>
+            <a
+              href="/"
+              className="g-btn g-btn--outline g-btn--s"
+            >
+              {t('back_to_platform', 'Back to Platform')}
+            </a>
           </div>
         </div>
       </header>
@@ -51,67 +72,152 @@ export default React.memo(function Header({ onLogout, isPublic = false }: Header
   }
 
   return (
-    <header className="glass-dark border-b border-white/10 sticky top-0 z-40">
-      <div className="px-3 sm:px-6 py-2.5 sm:py-3">
-        <div className="flex items-center justify-between gap-2 sm:gap-4">
+    <header
+      className="sticky top-0 z-40"
+      style={{
+        background: 'var(--g-color-base-float)',
+        borderBottom: '1px solid var(--g-color-line-generic)',
+      }}
+    >
+      <div className="px-3 sm:px-5" style={{ height: 56, display: 'flex', alignItems: 'center' }}>
+        <div className="flex items-center justify-between w-full gap-2 sm:gap-4">
+          {/* Logo + Brand */}
           <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-            {/* Logo */}
-            <div className="flex-shrink-0 relative">
+            <div className="relative flex-shrink-0">
               <img
                 src="/logo.png"
-                alt="GSTD Logo"
-                className="w-8 h-8 sm:w-10 sm:h-10 transition-transform hover:scale-110 duration-300"
+                alt="GSTD"
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full"
+                style={{ boxShadow: 'var(--g-shadow-s)' }}
               />
-              <div className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border border-gray-900 ${isWsConnected ? 'bg-emerald-500 shadow-[0_0_8px_#10b981]' : 'bg-red-500 animate-pulse'}`} />
+              <div
+                className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full"
+                style={{
+                  background: isWsConnected ? 'var(--g-color-positive)' : 'var(--g-color-danger)',
+                  border: '2px solid var(--g-color-base-float)',
+                  boxShadow: isWsConnected ? '0 0 6px var(--g-color-positive)' : 'none',
+                }}
+              />
             </div>
             <div className="hidden sm:block">
-              <h1 className="text-lg sm:text-xl font-black text-white font-display flex items-center gap-1.5 tracking-tighter uppercase whitespace-nowrap">
-                <span className="bg-gradient-to-r from-cyan-400 via-violet-500 to-fuchsia-500 bg-clip-text text-transparent">GSTD</span>
-                <span className="text-gray-500 text-sm hidden sm:inline">/ CONTROL</span>
-              </h1>
+              <div className="flex items-center gap-1.5">
+                <span
+                  className="text-base font-extrabold tracking-tight uppercase"
+                  style={{ color: 'var(--g-color-brand)' }}
+                >
+                  GSTD
+                </span>
+                <span
+                  className="text-xs font-medium uppercase"
+                  style={{ color: 'var(--g-color-text-hint)', letterSpacing: '1px' }}
+                >
+                  Ecosystem
+                </span>
+              </div>
               {address && (
-                <p className="text-[9px] text-gray-600 font-mono tracking-widest uppercase">
+                <p
+                  className="font-mono"
+                  style={{ fontSize: 10, color: 'var(--g-color-text-hint)', letterSpacing: '0.5px' }}
+                >
                   {address.slice(0, 6)}…{address.slice(-4)}
                 </p>
               )}
             </div>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-4 overflow-hidden">
-            {/* Balance */}
-            <div className="flex items-center gap-3 sm:gap-6">
+          {/* Navigation Links */}
+          <nav className="hidden md:flex items-center gap-1" role="navigation">
+            {NAV_ITEMS.map((item) => (
+              <a
+                key={item.key}
+                href={item.href}
+                className={`g-btn g-btn--flat g-btn--s ${isActive(item.href) ? 'active' : ''}`}
+                style={isActive(item.href) ? {
+                  color: 'var(--g-color-text-primary)',
+                  background: 'var(--g-color-base-float-heavy)',
+                  borderColor: 'var(--g-color-line-accent)',
+                  borderWidth: 1,
+                  borderStyle: 'solid',
+                } : {}}
+              >
+                {t(item.key, item.label)}
+              </a>
+            ))}
+            <a
+              href="https://monitor.gstdtoken.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="g-btn g-btn--flat g-btn--s"
+            >
+              Monitor ↗
+            </a>
+          </nav>
+
+          {/* Right side: Balances + Actions */}
+          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+            {/* Balances */}
+            <div className="flex items-center gap-3">
               <div className="text-right hidden sm:block">
-                <span className="text-[9px] text-gray-600 font-black uppercase tracking-widest block mb-0.5">TON</span>
-                <span className="text-sm font-black text-white tabular-nums">{tonBalance || '0.00'}</span>
+                <span
+                  className="block font-bold uppercase"
+                  style={{ fontSize: 9, color: 'var(--g-color-text-hint)', letterSpacing: '1px', marginBottom: 1 }}
+                >
+                  TON
+                </span>
+                <span className="text-sm font-bold tabular-nums" style={{ color: 'var(--g-color-text-primary)' }}>
+                  {tonBalance || '0.00'}
+                </span>
               </div>
               <div className="text-right">
-                <span className="text-[9px] text-cyan-900 font-black uppercase tracking-widest block mb-0.5">GSTD</span>
-                <span className="text-sm font-black text-cyan-400 tabular-nums">{gstdBalance?.toFixed(2) || '0.00'}</span>
+                <span
+                  className="block font-bold uppercase"
+                  style={{ fontSize: 9, color: 'var(--g-color-brand)', letterSpacing: '1px', marginBottom: 1 }}
+                >
+                  GSTD
+                </span>
+                <span className="text-sm font-bold tabular-nums" style={{ color: 'var(--g-color-brand)' }}>
+                  {gstdBalance?.toFixed(2) || '0.00'}
+                </span>
               </div>
             </div>
 
-            {/* Quick Metrics */}
-            <div className="hidden lg:flex items-center gap-6 px-4 py-1.5 rounded-xl bg-white/[0.02] border border-white/5">
-              <div className="flex items-center gap-2">
-                <span className="text-[9px] text-gray-600 font-black uppercase tracking-widest">{t('grid', 'Grid')}</span>
-                <span className="text-[10px] font-black text-orange-400 font-mono" id="network-temperature">0 T</span>
+            {/* Network Metrics (desktop only) */}
+            <div
+              className="hidden lg:flex items-center gap-4 px-3 py-1.5"
+              style={{
+                borderRadius: 'var(--g-border-radius-l)',
+                background: 'var(--g-color-base-hover)',
+                border: '1px solid var(--g-color-line-generic)',
+              }}
+            >
+              <div className="flex items-center gap-1.5">
+                <span style={{ fontSize: 9, color: 'var(--g-color-text-hint)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px' }}>
+                  {t('grid', 'Grid')}
+                </span>
+                <span className="font-mono font-bold" style={{ fontSize: 10, color: 'var(--g-color-warning)' }} id="network-temperature">
+                  0 T
+                </span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[9px] text-gray-600 font-black uppercase tracking-widest">{t('load', 'Load')}</span>
-                <span className="text-[10px] font-black text-cyan-400 font-mono" id="computational-pressure">0 P</span>
+              <div className="flex items-center gap-1.5">
+                <span style={{ fontSize: 9, color: 'var(--g-color-text-hint)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px' }}>
+                  {t('load', 'Load')}
+                </span>
+                <span className="font-mono font-bold" style={{ fontSize: 10, color: 'var(--g-color-info)' }} id="computational-pressure">
+                  0 P
+                </span>
               </div>
             </div>
 
-            {/* Language & Profile */}
-            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-              <LanguageSwitcher />
-              <button
-                onClick={onLogout}
-                className="p-2 rounded-lg bg-white/5 border border-white/10 text-gray-500 hover:text-white transition-all active:scale-90"
-              >
-                <LogOut size={16} />
-              </button>
-            </div>
+            {/* Language + Logout */}
+            <LanguageSwitcher />
+            <button
+              onClick={onLogout}
+              className="g-btn g-btn--flat g-btn--icon g-btn--s"
+              style={{ width: 32, height: 32, color: 'var(--g-color-text-hint)' }}
+              title={t('logout', 'Logout')}
+            >
+              <LogOut size={16} />
+            </button>
           </div>
         </div>
       </div>
