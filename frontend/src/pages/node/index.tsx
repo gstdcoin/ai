@@ -158,17 +158,17 @@ export default function NodeDashboardPage() {
       </Head>
 
       {/* ═══ TOP BAR ═══ */}
-      <div className="sticky top-14 z-30 backdrop-blur-2xl bg-[#030014]/80 border-b border-white/[0.04]">
+      <div className="sticky top-14 z-30" style={{ background: 'var(--g-color-base-float)', borderBottom: '1px solid var(--g-color-line-generic)', backdropFilter: 'blur(20px)' }}>
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-              <Server size={18} />
+            <div className="flex items-center justify-center" style={{ width: 36, height: 36, borderRadius: 'var(--g-border-radius-l)', background: 'linear-gradient(135deg, var(--g-color-brand), #E6C200)', boxShadow: 'var(--g-shadow-brand)' }}>
+              <Server size={18} color="#030014" />
             </div>
             <div>
               <h1 className="text-lg font-black tracking-tight">Node Dashboard</h1>
               <div className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Online</span>
+                <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--g-color-positive)' }} />
+                <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--g-color-positive)' }}>Online</span>
                 {usage && (
                   <span className="text-[10px] text-gray-600 ml-1">· {formatUptime(usage.uptime_seconds)} uptime</span>
                 )}
@@ -221,9 +221,10 @@ export default function NodeDashboardPage() {
               onClick={() => setActiveTab(tab)}
               className={`py-2.5 text-sm font-bold capitalize transition-all border-b-2 ${
                 activeTab === tab
-                  ? 'text-white border-violet-500'
+                  ? 'text-white border-gold-900'
                   : 'text-gray-600 border-transparent hover:text-gray-400'
               }`}
+              style={activeTab === tab ? { color: 'var(--g-color-brand)' } : {}}
             >{tab}</button>
           ))}
         </div>
@@ -556,7 +557,15 @@ export default function NodeDashboardPage() {
               </div>
 
               {/* Save */}
-              <button className="w-full py-3 rounded-xl bg-gradient-to-r from-violet-600 to-cyan-600 text-white font-bold text-sm shadow-lg shadow-violet-500/20 hover:shadow-violet-500/40 hover:scale-[1.01] active:scale-[0.99] transition-all">
+              <button
+                className="w-full py-3 text-sm font-bold transition-all hover:scale-[1.01] active:scale-[0.99]"
+                style={{
+                  borderRadius: 'var(--g-border-radius-xl)',
+                  background: 'linear-gradient(135deg, var(--g-color-brand), #E6C200)',
+                  color: 'var(--g-color-brand-text)',
+                  boxShadow: 'var(--g-shadow-brand)',
+                }}
+              >
                 Save Settings
               </button>
             </div>
