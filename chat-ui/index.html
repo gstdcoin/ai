@@ -1,879 +1,608 @@
-<!doctype html>
-<html lang="ru">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>GSTD Sovereign AI</title>
-    <meta
-      name="description"
-      content="GSTD Sovereign AI — децентрализованный чат с ИИ через Groq"
-    />
-    <link
-      rel="icon"
-      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>"
-    />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
-    <style>
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
-      :root {
-        --bg: #0a0a0f;
-        --bg2: #12121a;
-        --bg3: #1a1a2e;
-        --bg4: #252540;
-        --text: #e4e4ef;
-        --text2: #9999b0;
-        --text3: #66668a;
-        --accent: #7c3aed;
-        --accent2: #a855f7;
-        --accent-glow: rgba(124, 58, 237, 0.3);
-        --green: #22c55e;
-        --red: #ef4444;
-        --gold: #f59e0b;
-        --border: rgba(255, 255, 255, 0.06);
-        --radius: 14px;
-      }
-      html,
-      body {
-        height: 100%;
-        font-family: "Inter", sans-serif;
-        background: var(--bg);
-        color: var(--text);
-        overflow: hidden;
-      }
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>GSTD Sovereign AI</title>
+  <meta name="description" content="GSTD Sovereign AI — Decentralized AI Chat powered by Groq"/>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 120 120' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='60' cy='60' r='55' fill='%23FFD700' stroke='%23FFB300' stroke-width='2'/%3E%3Ctext x='60' y='72' text-anchor='middle' font-size='42' font-weight='bold' fill='%230a1929'%3EG%3C/text%3E%3C/svg%3E"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    :root{
+      --bg:#0a0a0f;--bg2:#12121a;--bg3:#1a1a2e;--bg4:#252540;
+      --text:#e4e4ef;--text2:#9999b0;--text3:#66668a;
+      --accent:#7c3aed;--accent2:#a855f7;--accent-glow:rgba(124,58,237,.3);
+      --gold:#FFD700;--gold2:#FFB300;--gold-glow:rgba(255,215,0,.2);
+      --green:#22c55e;--red:#ef4444;
+      --border:rgba(255,255,255,.06);--radius:14px;
+    }
+    html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);overflow:hidden}
 
-      /* Layout */
-      .app {
-        display: flex;
-        height: 100vh;
-        flex-direction: column;
-      }
-      header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 12px 20px;
-        background: var(--bg2);
-        border-bottom: 1px solid var(--border);
-        flex-shrink: 0;
-        z-index: 10;
-      }
-      .logo {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        font-weight: 700;
-        font-size: 18px;
-      }
-      .logo-icon {
-        width: 32px;
-        height: 32px;
-        border-radius: 8px;
-        background: linear-gradient(135deg, var(--accent), var(--accent2));
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 18px;
-      }
-      .header-right {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-      }
+    /* Layout */
+    .app{display:flex;height:100vh;flex-direction:column}
+    header{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;z-index:10}
+    .logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px;text-decoration:none;color:var(--text)}
+    .logo-icon{width:36px;height:36px;flex-shrink:0}
+    .logo-text{display:flex;flex-direction:column;line-height:1.2}
+    .logo-text .name{font-size:16px;font-weight:700;background:linear-gradient(135deg,var(--gold),var(--gold2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .logo-text .sub{font-size:11px;color:var(--text3);font-weight:500;letter-spacing:.5px}
+    .header-center{display:flex;align-items:center;gap:10px}
+    .header-right{display:flex;align-items:center;gap:10px}
 
-      /* Wallet */
-      .wallet-btn {
-        padding: 8px 16px;
-        border-radius: 10px;
-        border: 1px solid var(--accent);
-        background: transparent;
-        color: var(--accent2);
-        font-size: 13px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.2s;
-        font-family: inherit;
-      }
-      .wallet-btn:hover {
-        background: var(--accent-glow);
-        border-color: var(--accent2);
-      }
-      .wallet-btn.connected {
-        border-color: var(--green);
-        color: var(--green);
-        font-size: 12px;
-      }
-      .wallet-badge {
-        font-size: 11px;
-        color: var(--text3);
-        padding: 4px 10px;
-        border-radius: 8px;
-        background: var(--bg3);
-      }
+    /* Language */
+    .lang-btn{padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text3);font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit}
+    .lang-btn.active{background:var(--bg4);color:var(--text);border-color:var(--accent)}
+    .lang-btn:hover{border-color:var(--text3)}
 
-      /* Model select */
-      .model-select {
-        padding: 8px 12px;
-        border-radius: 10px;
-        border: 1px solid var(--border);
-        background: var(--bg3);
-        color: var(--text);
-        font-size: 13px;
-        font-family: inherit;
-        cursor: pointer;
-        outline: none;
-        min-width: 180px;
-      }
-      .model-select:focus {
-        border-color: var(--accent);
-      }
-      .model-select option {
-        background: var(--bg2);
-        color: var(--text);
-      }
-      .model-tier {
-        font-size: 10px;
-        padding: 2px 6px;
-        border-radius: 4px;
-        font-weight: 600;
-        margin-left: 6px;
-      }
-      .tier-free {
-        background: rgba(34, 197, 94, 0.15);
-        color: var(--green);
-      }
-      .tier-pro {
-        background: rgba(245, 158, 11, 0.15);
-        color: var(--gold);
-      }
+    /* Wallet */
+    .wallet-btn{padding:8px 16px;border-radius:10px;border:1px solid var(--gold);background:transparent;color:var(--gold);font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit;white-space:nowrap}
+    .wallet-btn:hover{background:var(--gold-glow);border-color:var(--gold2)}
+    .wallet-btn.connected{border-color:var(--green);color:var(--green);font-size:12px}
 
-      /* Chat */
-      .chat-area {
-        flex: 1;
-        overflow-y: auto;
-        padding: 20px;
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
-        scroll-behavior: smooth;
-      }
-      .chat-area::-webkit-scrollbar {
-        width: 6px;
-      }
-      .chat-area::-webkit-scrollbar-track {
-        background: transparent;
-      }
-      .chat-area::-webkit-scrollbar-thumb {
-        background: var(--bg4);
-        border-radius: 3px;
-      }
+    /* Model select */
+    .model-select{padding:8px 12px;border-radius:10px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;font-family:inherit;cursor:pointer;outline:none;min-width:200px}
+    .model-select:focus{border-color:var(--accent)}
+    .model-select option{background:var(--bg2);color:var(--text)}
+    .model-select optgroup{color:var(--gold);font-weight:600}
 
-      /* Messages */
-      .msg {
-        max-width: 800px;
-        width: 100%;
-        margin: 0 auto;
-        display: flex;
-        gap: 12px;
-        animation: fadeIn 0.3s ease;
-      }
-      @keyframes fadeIn {
-        from {
-          opacity: 0;
-          transform: translateY(8px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-      .msg-avatar {
-        width: 32px;
-        height: 32px;
-        border-radius: 10px;
-        flex-shrink: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 14px;
-      }
-      .msg-user .msg-avatar {
-        background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-      }
-      .msg-ai .msg-avatar {
-        background: linear-gradient(135deg, var(--accent), var(--accent2));
-      }
-      .msg-content {
-        flex: 1;
-        padding: 14px 18px;
-        border-radius: var(--radius);
-        font-size: 14px;
-        line-height: 1.7;
-        white-space: pre-wrap;
-        word-break: break-word;
-      }
-      .msg-user .msg-content {
-        background: var(--bg3);
-        color: var(--text);
-      }
-      .msg-ai .msg-content {
-        background: var(--bg2);
-        border: 1px solid var(--border);
-        color: var(--text);
-      }
-      .msg-ai .msg-content code {
-        background: var(--bg4);
-        padding: 2px 6px;
-        border-radius: 4px;
-        font-size: 13px;
-      }
-      .msg-ai .msg-content pre {
-        background: var(--bg);
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        padding: 14px;
-        overflow-x: auto;
-        margin: 10px 0;
-      }
-      .msg-ai .msg-content pre code {
-        background: none;
-        padding: 0;
-      }
-      .msg-meta {
-        font-size: 11px;
-        color: var(--text3);
-        margin-top: 6px;
-      }
-      .typing {
-        display: inline-flex;
-        gap: 4px;
-        padding: 4px 0;
-      }
-      .typing span {
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        background: var(--accent);
-        animation: bounce 0.6s infinite alternate;
-      }
-      .typing span:nth-child(2) {
-        animation-delay: 0.2s;
-      }
-      .typing span:nth-child(3) {
-        animation-delay: 0.4s;
-      }
-      @keyframes bounce {
-        to {
-          opacity: 0.3;
-          transform: translateY(-4px);
-        }
-      }
+    /* Chat */
+    .chat-area{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:16px;scroll-behavior:smooth}
+    .chat-area::-webkit-scrollbar{width:6px}
+    .chat-area::-webkit-scrollbar-track{background:transparent}
+    .chat-area::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:3px}
 
-      /* Welcome */
-      .welcome {
-        text-align: center;
-        margin: auto;
-        max-width: 500px;
-        padding: 40px 20px;
-      }
-      .welcome h1 {
-        font-size: 28px;
-        font-weight: 700;
-        background: linear-gradient(135deg, var(--text), var(--accent2));
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        margin-bottom: 12px;
-      }
-      .welcome p {
-        color: var(--text2);
-        font-size: 15px;
-        line-height: 1.6;
-        margin-bottom: 24px;
-      }
-      .quick-prompts {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        justify-content: center;
-      }
-      .quick-prompt {
-        padding: 10px 16px;
-        border-radius: 12px;
-        border: 1px solid var(--border);
-        background: var(--bg2);
-        color: var(--text2);
-        font-size: 13px;
-        cursor: pointer;
-        transition: all 0.2s;
-        font-family: inherit;
-      }
-      .quick-prompt:hover {
-        border-color: var(--accent);
-        color: var(--text);
-        background: var(--bg3);
-      }
+    /* Messages */
+    .msg{max-width:800px;width:100%;margin:0 auto;display:flex;gap:12px;animation:fadeIn .3s ease}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+    .msg-avatar{width:32px;height:32px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;overflow:hidden}
+    .msg-user .msg-avatar{background:linear-gradient(135deg,#3b82f6,#1d4ed8)}
+    .msg-ai .msg-avatar{background:linear-gradient(135deg,var(--gold),var(--gold2))}
+    .msg-ai .msg-avatar svg{width:22px;height:22px}
+    .msg-content{flex:1;padding:14px 18px;border-radius:var(--radius);font-size:14px;line-height:1.7;white-space:pre-wrap;word-break:break-word}
+    .msg-user .msg-content{background:var(--bg3);color:var(--text)}
+    .msg-ai .msg-content{background:var(--bg2);border:1px solid var(--border);color:var(--text)}
+    .msg-ai .msg-content code{background:var(--bg4);padding:2px 6px;border-radius:4px;font-size:13px}
+    .msg-ai .msg-content pre{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;overflow-x:auto;margin:10px 0}
+    .msg-ai .msg-content pre code{background:none;padding:0}
+    .msg-meta{font-size:11px;color:var(--text3);margin-top:6px}
+    .typing{display:inline-flex;gap:4px;padding:4px 0}
+    .typing span{width:6px;height:6px;border-radius:50%;background:var(--gold);animation:bounce .6s infinite alternate}
+    .typing span:nth-child(2){animation-delay:.2s}
+    .typing span:nth-child(3){animation-delay:.4s}
+    @keyframes bounce{to{opacity:.3;transform:translateY(-4px)}}
 
-      /* Input */
-      .input-area {
-        padding: 16px 20px;
-        background: var(--bg2);
-        border-top: 1px solid var(--border);
-        flex-shrink: 0;
-      }
-      .input-wrap {
-        max-width: 800px;
-        margin: 0 auto;
-        display: flex;
-        gap: 10px;
-        align-items: flex-end;
-      }
-      .input-wrap textarea {
-        flex: 1;
-        padding: 14px 18px;
-        border-radius: var(--radius);
-        border: 1px solid var(--border);
-        background: var(--bg3);
-        color: var(--text);
-        font-size: 14px;
-        font-family: inherit;
-        resize: none;
-        outline: none;
-        line-height: 1.5;
-        max-height: 200px;
-        min-height: 48px;
-        transition: border-color 0.2s;
-      }
-      .input-wrap textarea:focus {
-        border-color: var(--accent);
-      }
-      .input-wrap textarea::placeholder {
-        color: var(--text3);
-      }
-      .send-btn {
-        width: 48px;
-        height: 48px;
-        border-radius: 12px;
-        border: none;
-        background: linear-gradient(135deg, var(--accent), var(--accent2));
-        color: #fff;
-        font-size: 20px;
-        cursor: pointer;
-        transition: all 0.2s;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-      }
-      .send-btn:hover {
-        transform: scale(1.05);
-        box-shadow: 0 4px 20px var(--accent-glow);
-      }
-      .send-btn:disabled {
-        opacity: 0.4;
-        cursor: not-allowed;
-        transform: none;
-        box-shadow: none;
-      }
-      .footer-info {
-        text-align: center;
-        font-size: 11px;
-        color: var(--text3);
-        margin-top: 8px;
-      }
+    /* Welcome */
+    .welcome{text-align:center;margin:auto;max-width:540px;padding:40px 20px}
+    .welcome-logo{width:72px;height:72px;margin:0 auto 20px}
+    .welcome h1{font-size:28px;font-weight:700;background:linear-gradient(135deg,var(--gold),var(--gold2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}
+    .welcome .subtitle{color:var(--text2);font-size:15px;line-height:1.6;margin-bottom:28px}
+    .model-tiers{display:flex;gap:16px;margin-bottom:28px;justify-content:center;flex-wrap:wrap}
+    .tier-card{padding:16px;border-radius:14px;border:1px solid var(--border);background:var(--bg2);text-align:left;min-width:200px;flex:1;max-width:240px}
+    .tier-card h3{font-size:14px;font-weight:600;margin-bottom:6px;display:flex;align-items:center;gap:6px}
+    .tier-card.free h3{color:var(--green)}
+    .tier-card.pro h3{color:var(--gold)}
+    .tier-card ul{list-style:none;font-size:12px;color:var(--text2);line-height:1.8}
+    .tier-card ul li::before{content:'✓ ';color:var(--green)}
+    .tier-card.pro ul li::before{content:'👑 ';color:var(--gold)}
+    .quick-prompts{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+    .quick-prompt{padding:10px 16px;border-radius:12px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-size:13px;cursor:pointer;transition:all .2s;font-family:inherit}
+    .quick-prompt:hover{border-color:var(--accent);color:var(--text);background:var(--bg3)}
 
-      /* Wallet modal */
-      .modal-overlay {
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.6);
-        backdrop-filter: blur(4px);
-        z-index: 100;
-        display: none;
-        align-items: center;
-        justify-content: center;
-      }
-      .modal-overlay.active {
-        display: flex;
-      }
-      .modal {
-        background: var(--bg2);
-        border: 1px solid var(--border);
-        border-radius: 20px;
-        padding: 32px;
-        max-width: 420px;
-        width: 90%;
-        animation: fadeIn 0.2s ease;
-      }
-      .modal h2 {
-        font-size: 20px;
-        font-weight: 700;
-        margin-bottom: 8px;
-      }
-      .modal p {
-        color: var(--text2);
-        font-size: 14px;
-        margin-bottom: 20px;
-      }
-      .modal input {
-        width: 100%;
-        padding: 12px 16px;
-        border-radius: 10px;
-        border: 1px solid var(--border);
-        background: var(--bg3);
-        color: var(--text);
-        font-size: 14px;
-        font-family: inherit;
-        outline: none;
-        margin-bottom: 12px;
-      }
-      .modal input:focus {
-        border-color: var(--accent);
-      }
-      .modal-actions {
-        display: flex;
-        gap: 10px;
-      }
-      .modal-actions button {
-        flex: 1;
-        padding: 12px;
-        border-radius: 10px;
-        border: none;
-        font-size: 14px;
-        font-weight: 600;
-        cursor: pointer;
-        font-family: inherit;
-        transition: all 0.2s;
-      }
-      .btn-primary {
-        background: linear-gradient(135deg, var(--accent), var(--accent2));
-        color: #fff;
-      }
-      .btn-primary:hover {
-        box-shadow: 0 4px 20px var(--accent-glow);
-      }
-      .btn-secondary {
-        background: var(--bg3);
-        color: var(--text2);
-        border: 1px solid var(--border) !important;
-      }
+    /* Input */
+    .input-area{padding:16px 20px;background:var(--bg2);border-top:1px solid var(--border);flex-shrink:0}
+    .input-wrap{max-width:800px;margin:0 auto;display:flex;gap:10px;align-items:flex-end}
+    .input-wrap textarea{flex:1;padding:14px 18px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:14px;font-family:inherit;resize:none;outline:none;line-height:1.5;max-height:200px;min-height:48px;transition:border-color .2s}
+    .input-wrap textarea:focus{border-color:var(--accent)}
+    .input-wrap textarea::placeholder{color:var(--text3)}
+    .send-btn{width:48px;height:48px;border-radius:12px;border:none;background:linear-gradient(135deg,var(--gold),var(--gold2));color:#0a1929;font-size:20px;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:700}
+    .send-btn:hover{transform:scale(1.05);box-shadow:0 4px 20px var(--gold-glow)}
+    .send-btn:disabled{opacity:.3;cursor:not-allowed;transform:none;box-shadow:none}
+    .footer-info{text-align:center;font-size:11px;color:var(--text3);margin-top:8px}
 
-      /* Toast */
-      .toast {
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        padding: 14px 20px;
-        border-radius: 12px;
-        font-size: 13px;
-        font-weight: 500;
-        z-index: 200;
-        animation: slideIn 0.3s ease;
-        border: 1px solid var(--border);
-      }
-      .toast.success {
-        background: rgba(34, 197, 94, 0.15);
-        color: var(--green);
-        border-color: rgba(34, 197, 94, 0.3);
-      }
-      .toast.error {
-        background: rgba(239, 68, 68, 0.15);
-        color: var(--red);
-        border-color: rgba(239, 68, 68, 0.3);
-      }
-      @keyframes slideIn {
-        from {
-          transform: translateX(100%);
-          opacity: 0;
-        }
-        to {
-          transform: translateX(0);
-          opacity: 1;
-        }
-      }
+    /* Wallet modal */
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);z-index:100;display:none;align-items:center;justify-content:center}
+    .modal-overlay.active{display:flex}
+    .modal{background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:32px;max-width:440px;width:90%;animation:fadeIn .2s ease}
+    .modal h2{font-size:20px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+    .modal p{color:var(--text2);font-size:14px;margin-bottom:20px;line-height:1.6}
+    .modal input{width:100%;padding:14px 16px;border-radius:10px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:14px;font-family:inherit;outline:none;margin-bottom:14px}
+    .modal input:focus{border-color:var(--gold)}
+    .modal-actions{display:flex;gap:10px}
+    .modal-actions button{flex:1;padding:12px;border-radius:10px;border:none;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s}
+    .btn-primary{background:linear-gradient(135deg,var(--gold),var(--gold2));color:#0a1929}
+    .btn-primary:hover{box-shadow:0 4px 20px var(--gold-glow)}
+    .btn-secondary{background:var(--bg3);color:var(--text2);border:1px solid var(--border)!important}
 
-      @media (max-width: 640px) {
-        header {
-          padding: 10px 14px;
-        }
-        .logo span:last-child {
-          display: none;
-        }
-        .model-select {
-          min-width: 120px;
-          font-size: 12px;
-        }
-        .chat-area {
-          padding: 14px;
-        }
-        .msg-content {
-          padding: 10px 14px;
-          font-size: 13px;
-        }
-        .welcome h1 {
-          font-size: 22px;
-        }
-      }
-    </style>
-  </head>
-  <body>
-    <div class="app">
-      <header>
-        <div class="logo">
-          <div class="logo-icon">⚡</div>
-          <span>GSTD</span>
-          <span style="color: var(--text3); font-weight: 400"
-            >Sovereign AI</span
-          >
-        </div>
-        <div class="header-right">
-          <select class="model-select" id="modelSelect"></select>
-          <button class="wallet-btn" id="walletBtn" onclick="toggleWallet()">
-            🔗 Connect Wallet
-          </button>
-        </div>
-      </header>
+    /* Pro locked overlay in model select */
+    .pro-locked{opacity:.5}
 
-      <div class="chat-area" id="chatArea">
-        <div class="welcome" id="welcome">
-          <h1>GSTD Sovereign AI</h1>
-          <p>
-            Децентрализованный ИИ-чат на базе Groq. Бесплатные модели доступны
-            сразу. Подключите кошелёк GSTD для продвинутых моделей.
-          </p>
-          <div class="quick-prompts">
-            <button class="quick-prompt" onclick="sendQuick('Расскажи о себе')">
-              🤖 Расскажи о себе
-            </button>
-            <button
-              class="quick-prompt"
-              onclick="sendQuick('Напиши haiku о блокчейне')"
-            >
-              ✨ Haiku
-            </button>
-            <button
-              class="quick-prompt"
-              onclick="sendQuick('Что такое GSTD токен?')"
-            >
-              🪙 Что такое GSTD?
-            </button>
-            <button
-              class="quick-prompt"
-              onclick="sendQuick('Напиши код сортировки на Python')"
-            >
-              💻 Код на Python
-            </button>
-          </div>
-        </div>
+    /* Toast */
+    .toast{position:fixed;top:20px;right:20px;padding:14px 20px;border-radius:12px;font-size:13px;font-weight:500;z-index:200;animation:slideIn .3s ease;border:1px solid var(--border);max-width:360px}
+    .toast.success{background:rgba(34,197,94,.15);color:var(--green);border-color:rgba(34,197,94,.3)}
+    .toast.error{background:rgba(239,68,68,.15);color:var(--red);border-color:rgba(239,68,68,.3)}
+    .toast.info{background:rgba(255,215,0,.1);color:var(--gold);border-color:rgba(255,215,0,.3)}
+    @keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+
+    /* New chat btn */
+    .new-chat-btn{padding:6px 14px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:12px;cursor:pointer;transition:all .2s;font-family:inherit}
+    .new-chat-btn:hover{background:var(--bg4);color:var(--text);border-color:var(--text3)}
+
+    @media(max-width:640px){
+      header{padding:10px 14px;flex-wrap:wrap;gap:8px}
+      .logo-text .sub{display:none}
+      .model-select{min-width:130px;font-size:12px}
+      .chat-area{padding:14px}
+      .msg-content{padding:10px 14px;font-size:13px}
+      .welcome h1{font-size:22px}
+      .model-tiers{flex-direction:column;align-items:center}
+      .tier-card{max-width:100%}
+      .header-center{order:3;width:100%;justify-content:center}
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <a href="https://app.gstdtoken.com" class="logo" target="_blank">
+      <svg class="logo-icon" width="36" height="36" viewBox="0 0 120 120" fill="none">
+        <defs><linearGradient id="gG" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FFD700"/><stop offset="50%" stop-color="#FFC91A"/><stop offset="100%" stop-color="#FFB300"/></linearGradient></defs>
+        <circle cx="60" cy="60" r="55" fill="url(#gG)" stroke="#FFD700" stroke-width="2"/>
+        <g opacity="0.25"><circle cx="25" cy="25" r="2" fill="#0a1929"/><circle cx="95" cy="25" r="2" fill="#0a1929"/><circle cx="25" cy="95" r="2" fill="#0a1929"/><circle cx="95" cy="95" r="2" fill="#0a1929"/><line x1="25" y1="25" x2="95" y2="25" stroke="#0a1929" stroke-width="1"/><line x1="25" y1="95" x2="95" y2="95" stroke="#0a1929" stroke-width="1"/></g>
+        <g transform="translate(60,60)"><ellipse cx="-12" cy="0" rx="8" ry="12" fill="url(#gG)" stroke="#FFB300" stroke-width=".5"/><ellipse cx="12" cy="0" rx="8" ry="12" fill="url(#gG)" stroke="#FFB300" stroke-width=".5"/><circle cx="0" cy="0" r="2.5" fill="#FFD700"/></g>
+      </svg>
+      <div class="logo-text">
+        <span class="name">GSTD</span>
+        <span class="sub">SOVEREIGN AI</span>
       </div>
-
-      <div class="input-area">
-        <div class="input-wrap">
-          <textarea
-            id="input"
-            rows="1"
-            placeholder="Напишите сообщение..."
-            onkeydown="handleKey(event)"
-            oninput="autoResize(this)"
-          ></textarea>
-          <button
-            class="send-btn"
-            id="sendBtn"
-            onclick="sendMessage()"
-            disabled
-          >
-            ➤
-          </button>
-        </div>
-        <div class="footer-info">
-          GSTD Sovereign AI • Powered by Groq •
-          <span id="modelLabel">llama-3.3-70b</span>
-        </div>
-      </div>
+    </a>
+    <div class="header-center">
+      <select class="model-select" id="modelSelect"></select>
+      <button class="new-chat-btn" onclick="newChat()" id="newChatBtn">+ <span data-i18n="newChat">New Chat</span></button>
     </div>
+    <div class="header-right">
+      <div style="display:flex;gap:4px">
+        <button class="lang-btn active" id="langEN" onclick="setLang('en')">EN</button>
+        <button class="lang-btn" id="langRU" onclick="setLang('ru')">RU</button>
+      </div>
+      <button class="wallet-btn" id="walletBtn" onclick="toggleWallet()">🔗 Connect Wallet</button>
+    </div>
+  </header>
 
-    <!-- Wallet Modal -->
-    <div class="modal-overlay" id="walletModal">
-      <div class="modal">
-        <h2>🔗 Connect GSTD Wallet</h2>
-        <p>
-          Введите адрес вашего GSTD кошелька для доступа к продвинутым моделям
-          (GPT-OSS 120B, Llama 4, Kimi K2).
-        </p>
-        <input
-          type="text"
-          id="walletInput"
-          placeholder="0x... или gstd1..."
-          autocomplete="off"
-        />
-        <div class="modal-actions">
-          <button class="btn-secondary" onclick="closeWallet()">Отмена</button>
-          <button class="btn-primary" onclick="connectWallet()">
-            Подключить
-          </button>
+  <div class="chat-area" id="chatArea">
+    <div class="welcome" id="welcome">
+      <svg class="welcome-logo" viewBox="0 0 120 120" fill="none">
+        <defs><linearGradient id="wG" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FFD700"/><stop offset="50%" stop-color="#FFC91A"/><stop offset="100%" stop-color="#FFB300"/></linearGradient></defs>
+        <circle cx="60" cy="60" r="55" fill="url(#wG)" stroke="#FFD700" stroke-width="2"/>
+        <g opacity="0.25"><circle cx="25" cy="25" r="2" fill="#0a1929"/><circle cx="95" cy="25" r="2" fill="#0a1929"/><circle cx="25" cy="95" r="2" fill="#0a1929"/><circle cx="95" cy="95" r="2" fill="#0a1929"/><line x1="25" y1="25" x2="95" y2="25" stroke="#0a1929" stroke-width="1"/><line x1="25" y1="95" x2="95" y2="95" stroke="#0a1929" stroke-width="1"/></g>
+        <g transform="translate(60,60)"><ellipse cx="-12" cy="0" rx="8" ry="12" fill="url(#wG)" stroke="#FFB300" stroke-width=".5"/><ellipse cx="12" cy="0" rx="8" ry="12" fill="url(#wG)" stroke="#FFB300" stroke-width=".5"/><circle cx="0" cy="0" r="2.5" fill="#FFD700"/></g>
+      </svg>
+      <h1>GSTD Sovereign AI</h1>
+      <p class="subtitle" data-i18n="welcomeText">Decentralized AI chat powered by Groq. Free models available instantly. Connect your GSTD wallet for advanced Pro models.</p>
+      <div class="model-tiers">
+        <div class="tier-card free">
+          <h3>✓ <span data-i18n="freeModels">Free Models</span></h3>
+          <ul>
+            <li>Llama 3.3 70B</li>
+            <li>Llama 3.1 8B Fast</li>
+            <li>Qwen3 32B</li>
+          </ul>
+        </div>
+        <div class="tier-card pro">
+          <h3>👑 <span data-i18n="proModels">Pro Models</span> <small style="font-size:10px;color:var(--text3);font-weight:400" data-i18n="walletRequired">(wallet required)</small></h3>
+          <ul>
+            <li>Llama 4 Scout 17B</li>
+            <li>Llama 4 Maverick 128E</li>
+            <li>GPT-OSS 120B</li>
+            <li>GPT-OSS 20B</li>
+            <li>Kimi K2</li>
+          </ul>
         </div>
       </div>
+      <div class="quick-prompts" id="quickPrompts"></div>
     </div>
+  </div>
 
-    <script>
-      const GROQ_KEY =
-        "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";
-      const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
+  <div class="input-area">
+    <div class="input-wrap">
+      <textarea id="input" rows="1" data-i18n-placeholder="inputPlaceholder" placeholder="Type a message..." onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+      <button class="send-btn" id="sendBtn" onclick="sendMessage()" disabled>➤</button>
+    </div>
+    <div class="footer-info">GSTD Sovereign AI • Powered by Groq • <span id="modelLabel">Llama 3.3 70B</span></div>
+  </div>
+</div>
 
-      const MODELS = [
-        { id: "llama-3.3-70b-versatile", name: "Llama 3.3 70B", tier: "free" },
-        { id: "llama-3.1-8b-instant", name: "Llama 3.1 8B Fast", tier: "free" },
-        { id: "qwen/qwen3-32b", name: "Qwen3 32B", tier: "free" },
-        {
-          id: "meta-llama/llama-4-scout-17b-16e-instruct",
-          name: "Llama 4 Scout",
-          tier: "pro",
-        },
-        {
-          id: "meta-llama/llama-4-maverick-17b-128e-instruct",
-          name: "Llama 4 Maverick",
-          tier: "pro",
-        },
-        { id: "openai/gpt-oss-120b", name: "GPT-OSS 120B", tier: "pro" },
-        { id: "openai/gpt-oss-20b", name: "GPT-OSS 20B", tier: "pro" },
-        { id: "moonshotai/kimi-k2-instruct", name: "Kimi K2", tier: "pro" },
-      ];
+<!-- Wallet Modal -->
+<div class="modal-overlay" id="walletModal">
+  <div class="modal">
+    <h2>🔗 <span data-i18n="connectWallet">Connect GSTD Wallet</span></h2>
+    <p data-i18n="walletDesc">Enter your GSTD wallet address to unlock Pro models (GPT-OSS 120B, Llama 4, Kimi K2).</p>
+    <input type="text" id="walletInput" data-i18n-placeholder="walletPlaceholder" placeholder="0x... or gstd1..." autocomplete="off"/>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeWallet()" data-i18n="cancel">Cancel</button>
+      <button class="btn-primary" onclick="connectWallet()" data-i18n="connect">Connect</button>
+    </div>
+  </div>
+</div>
 
-      let messages = [];
-      let wallet = localStorage.getItem("gstd_wallet") || "";
-      let isStreaming = false;
+<script>
+// ═══ i18n ════════════════════════════════════════════════════
+const i18n = {
+  en: {
+    newChat: 'New Chat',
+    welcomeText: 'Decentralized AI chat powered by Groq. Free models available instantly. Connect your GSTD wallet for advanced Pro models.',
+    freeModels: 'Free Models',
+    proModels: 'Pro Models',
+    walletRequired: '(wallet required)',
+    inputPlaceholder: 'Type a message...',
+    connectWallet: 'Connect GSTD Wallet',
+    walletDesc: 'Enter your GSTD wallet address to unlock Pro models (GPT-OSS 120B, Llama 4, Kimi K2).',
+    walletPlaceholder: '0x... or gstd1...',
+    cancel: 'Cancel',
+    connect: 'Connect',
+    walletConnected: 'Wallet connected! Pro models unlocked.',
+    walletDisconnected: 'Wallet disconnected',
+    walletInvalid: 'Enter a valid wallet address',
+    proRequiresWallet: 'Connect wallet to use Pro models',
+    connectWalletBtn: '🔗 Connect Wallet',
+    systemPrompt: 'You are GSTD Sovereign AI, a helpful assistant powered by the GSTD decentralized network. Answer in the same language as the user. Be concise and helpful.',
+    quickPrompts: [
+      { icon: '🤖', text: 'Tell me about yourself' },
+      { icon: '✨', text: 'Write a haiku about blockchain' },
+      { icon: '🪙', text: 'What is GSTD token?' },
+      { icon: '💻', text: 'Write a Python sorting algorithm' }
+    ],
+    freeLabel: '— Free —',
+    proLabel: '— Pro (wallet) —',
+    errorPrefix: '⚠️ Error: '
+  },
+  ru: {
+    newChat: 'Новый чат',
+    welcomeText: 'Децентрализованный ИИ-чат на базе Groq. Бесплатные модели доступны сразу. Подключите кошелёк GSTD для продвинутых моделей.',
+    freeModels: 'Бесплатные модели',
+    proModels: 'Pro модели',
+    walletRequired: '(нужен кошелёк)',
+    inputPlaceholder: 'Напишите сообщение...',
+    connectWallet: 'Подключить кошелёк GSTD',
+    walletDesc: 'Введите адрес вашего GSTD кошелька для доступа к Pro моделям (GPT-OSS 120B, Llama 4, Kimi K2).',
+    walletPlaceholder: '0x... или gstd1...',
+    cancel: 'Отмена',
+    connect: 'Подключить',
+    walletConnected: 'Кошелёк подключён! Pro модели доступны.',
+    walletDisconnected: 'Кошелёк отключён',
+    walletInvalid: 'Введите корректный адрес кошелька',
+    proRequiresWallet: 'Подключите кошелёк для Pro моделей',
+    connectWalletBtn: '🔗 Кошелёк',
+    systemPrompt: 'Ты GSTD Sovereign AI — полезный ИИ-ассистент в децентрализованной сети GSTD. Отвечай на языке пользователя. Будь кратким и полезным.',
+    quickPrompts: [
+      { icon: '🤖', text: 'Расскажи о себе' },
+      { icon: '✨', text: 'Напиши haiku о блокчейне' },
+      { icon: '🪙', text: 'Что такое GSTD токен?' },
+      { icon: '💻', text: 'Напиши сортировку на Python' }
+    ],
+    freeLabel: '— Бесплатные —',
+    proLabel: '— Pro (кошелёк) —',
+    errorPrefix: '⚠️ Ошибка: '
+  }
+};
 
-      // Init
-      function init() {
-        const sel = document.getElementById("modelSelect");
-        MODELS.forEach((m) => {
-          const opt = document.createElement("option");
-          opt.value = m.id;
-          opt.textContent = `${m.name} ${m.tier === "pro" ? "👑" : "✓"}`;
-          sel.appendChild(opt);
-        });
-        sel.addEventListener("change", () => {
-          const m = MODELS.find((x) => x.id === sel.value);
-          if (m?.tier === "pro" && !wallet) {
-            showToast("Подключите кошелёк для Pro моделей", "error");
-            sel.value = MODELS[0].id;
-            return;
-          }
-          document.getElementById("modelLabel").textContent =
-            m?.name || sel.value;
-        });
-        document.getElementById("modelLabel").textContent = MODELS[0].name;
-        updateWalletUI();
-        document.getElementById("input").addEventListener("input", () => {
-          document.getElementById("sendBtn").disabled = !document
-            .getElementById("input")
-            .value.trim();
-        });
-      }
+let lang = localStorage.getItem('gstd_lang') || 'en';
 
-      function updateWalletUI() {
-        const btn = document.getElementById("walletBtn");
-        if (wallet) {
-          btn.textContent =
-            "✓ " + wallet.slice(0, 6) + "..." + wallet.slice(-4);
-          btn.classList.add("connected");
-        } else {
-          btn.textContent = "🔗 Connect Wallet";
-          btn.classList.remove("connected");
-        }
-      }
+function setLang(l) {
+  lang = l;
+  localStorage.setItem('gstd_lang', l);
+  document.getElementById('langEN').classList.toggle('active', l === 'en');
+  document.getElementById('langRU').classList.toggle('active', l === 'ru');
+  document.documentElement.lang = l;
+  applyLang();
+}
 
-      function toggleWallet() {
-        if (wallet) {
-          wallet = "";
-          localStorage.removeItem("gstd_wallet");
-          updateWalletUI();
-          showToast("Кошелёк отключён", "success");
-          // Reset to free model
-          document.getElementById("modelSelect").value = MODELS[0].id;
-          document.getElementById("modelLabel").textContent = MODELS[0].name;
-        } else {
-          document.getElementById("walletModal").classList.add("active");
-          document.getElementById("walletInput").focus();
-        }
-      }
+function t(key) { return i18n[lang]?.[key] || i18n.en[key] || key; }
 
-      function closeWallet() {
-        document.getElementById("walletModal").classList.remove("active");
-      }
+function applyLang() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.dataset.i18n;
+    if (i18n[lang]?.[key]) el.textContent = i18n[lang][key];
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    const key = el.dataset.i18nPlaceholder;
+    if (i18n[lang]?.[key]) el.placeholder = i18n[lang][key];
+  });
+  // Wallet button
+  if (!wallet) document.getElementById('walletBtn').textContent = t('connectWalletBtn');
+  // Rebuild quick prompts
+  buildQuickPrompts();
+  // Rebuild model select
+  buildModelSelect();
+}
 
-      function connectWallet() {
-        const addr = document.getElementById("walletInput").value.trim();
-        if (!addr || addr.length < 10) {
-          showToast("Введите корректный адрес кошелька", "error");
-          return;
-        }
-        wallet = addr;
-        localStorage.setItem("gstd_wallet", wallet);
-        closeWallet();
-        updateWalletUI();
-        showToast("Кошелёк подключён! Pro модели доступны.", "success");
-      }
+// ═══ Config ═══════════════════════════════════════════════════
+const GROQ_KEY = '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';
+const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
-      function showToast(msg, type = "success") {
-        const t = document.createElement("div");
-        t.className = `toast ${type}`;
-        t.textContent = msg;
-        document.body.appendChild(t);
-        setTimeout(() => t.remove(), 3000);
-      }
+const MODELS = [
+  { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B', tier: 'free' },
+  { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B Fast', tier: 'free' },
+  { id: 'qwen/qwen3-32b', name: 'Qwen3 32B', tier: 'free' },
+  { id: 'meta-llama/llama-4-scout-17b-16e-instruct', name: 'Llama 4 Scout 17B', tier: 'pro' },
+  { id: 'meta-llama/llama-4-maverick-17b-128e-instruct', name: 'Llama 4 Maverick 128E', tier: 'pro' },
+  { id: 'openai/gpt-oss-120b', name: 'GPT-OSS 120B', tier: 'pro' },
+  { id: 'openai/gpt-oss-20b', name: 'GPT-OSS 20B', tier: 'pro' },
+  { id: 'moonshotai/kimi-k2-instruct', name: 'Kimi K2', tier: 'pro' },
+];
 
-      function handleKey(e) {
-        if (e.key === "Enter" && !e.shiftKey) {
-          e.preventDefault();
-          sendMessage();
-        }
-      }
+let messages = [];
+let wallet = localStorage.getItem('gstd_wallet') || '';
+let isStreaming = false;
 
-      function autoResize(el) {
-        el.style.height = "auto";
-        el.style.height = Math.min(el.scrollHeight, 200) + "px";
-      }
+// ═══ Init ═════════════════════════════════════════════════════
+function init() {
+  setLang(lang);
+  updateWalletUI();
+  document.getElementById('input').addEventListener('input', () => {
+    document.getElementById('sendBtn').disabled = !document.getElementById('input').value.trim();
+  });
+}
 
-      function sendQuick(text) {
-        document.getElementById("input").value = text;
-        document.getElementById("sendBtn").disabled = false;
-        sendMessage();
-      }
+function buildModelSelect() {
+  const sel = document.getElementById('modelSelect');
+  sel.innerHTML = '';
+  const freeGroup = document.createElement('optgroup');
+  freeGroup.label = t('freeLabel');
+  const proGroup = document.createElement('optgroup');
+  proGroup.label = t('proLabel');
 
-      async function sendMessage() {
-        const input = document.getElementById("input");
-        const text = input.value.trim();
-        if (!text || isStreaming) return;
+  MODELS.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m.id;
+    const lock = (m.tier === 'pro' && !wallet) ? ' 🔒' : '';
+    opt.textContent = `${m.name}${lock}`;
+    if (m.tier === 'free') freeGroup.appendChild(opt);
+    else proGroup.appendChild(opt);
+  });
 
-        const model = document.getElementById("modelSelect").value;
-        const modelInfo = MODELS.find((m) => m.id === model);
+  sel.appendChild(freeGroup);
+  sel.appendChild(proGroup);
 
-        if (modelInfo?.tier === "pro" && !wallet) {
-          showToast("Подключите кошелёк для Pro моделей", "error");
-          return;
-        }
+  sel.onchange = () => {
+    const m = MODELS.find(x => x.id === sel.value);
+    if (m?.tier === 'pro' && !wallet) {
+      showToast(t('proRequiresWallet'), 'info');
+      document.getElementById('walletModal').classList.add('active');
+      sel.value = MODELS[0].id;
+      return;
+    }
+    document.getElementById('modelLabel').textContent = m?.name || sel.value;
+  };
+  document.getElementById('modelLabel').textContent = MODELS.find(x => x.id === sel.value)?.name || MODELS[0].name;
+}
 
-        // Hide welcome
-        const w = document.getElementById("welcome");
-        if (w) w.style.display = "none";
+function buildQuickPrompts() {
+  const container = document.getElementById('quickPrompts');
+  if (!container) return;
+  container.innerHTML = '';
+  t('quickPrompts').forEach(p => {
+    const btn = document.createElement('button');
+    btn.className = 'quick-prompt';
+    btn.textContent = `${p.icon} ${p.text}`;
+    btn.onclick = () => sendQuick(p.text);
+    container.appendChild(btn);
+  });
+}
 
-        // Add user message
-        addMessage("user", text);
-        messages.push({ role: "user", content: text });
-        input.value = "";
-        input.style.height = "auto";
-        document.getElementById("sendBtn").disabled = true;
-        isStreaming = true;
+// ═══ Wallet ═══════════════════════════════════════════════════
+function updateWalletUI() {
+  const btn = document.getElementById('walletBtn');
+  if (wallet) {
+    btn.textContent = '✓ ' + wallet.slice(0, 6) + '...' + wallet.slice(-4);
+    btn.classList.add('connected');
+  } else {
+    btn.textContent = t('connectWalletBtn');
+    btn.classList.remove('connected');
+  }
+  buildModelSelect();
+}
 
-        // Add AI placeholder
-        const aiDiv = addMessage("ai", "", true);
-        const contentEl = aiDiv.querySelector(".msg-text");
-        const metaEl = aiDiv.querySelector(".msg-meta");
+function toggleWallet() {
+  if (wallet) {
+    wallet = '';
+    localStorage.removeItem('gstd_wallet');
+    updateWalletUI();
+    showToast(t('walletDisconnected'), 'success');
+    document.getElementById('modelSelect').value = MODELS[0].id;
+    document.getElementById('modelLabel').textContent = MODELS[0].name;
+  } else {
+    document.getElementById('walletModal').classList.add('active');
+    setTimeout(() => document.getElementById('walletInput').focus(), 100);
+  }
+}
 
+function closeWallet() {
+  document.getElementById('walletModal').classList.remove('active');
+}
+
+function connectWallet() {
+  const addr = document.getElementById('walletInput').value.trim();
+  if (!addr || addr.length < 10) {
+    showToast(t('walletInvalid'), 'error');
+    return;
+  }
+  wallet = addr;
+  localStorage.setItem('gstd_wallet', wallet);
+  closeWallet();
+  updateWalletUI();
+  showToast(t('walletConnected'), 'success');
+}
+
+// ═══ Chat ═════════════════════════════════════════════════════
+function newChat() {
+  messages = [];
+  document.getElementById('chatArea').innerHTML = '';
+  const w = document.getElementById('welcome');
+  if (!w) {
+    // Re-create welcome
+    location.reload();
+  }
+}
+
+function showToast(msg, type = 'success') {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 200) + 'px';
+}
+
+function sendQuick(text) {
+  document.getElementById('input').value = text;
+  document.getElementById('sendBtn').disabled = false;
+  sendMessage();
+}
+
+const LOGO_SVG = `<svg viewBox="0 0 120 120" fill="none"><defs><linearGradient id="aG" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FFD700"/><stop offset="100%" stop-color="#FFB300"/></linearGradient></defs><circle cx="60" cy="60" r="55" fill="url(#aG)"/><g transform="translate(60,60)"><ellipse cx="-12" cy="0" rx="8" ry="12" fill="url(#aG)" stroke="#FFB300" stroke-width=".5"/><ellipse cx="12" cy="0" rx="8" ry="12" fill="url(#aG)" stroke="#FFB300" stroke-width=".5"/><circle cx="0" cy="0" r="2.5" fill="#FFD700"/></g></svg>`;
+
+async function sendMessage() {
+  const input = document.getElementById('input');
+  const text = input.value.trim();
+  if (!text || isStreaming) return;
+
+  const model = document.getElementById('modelSelect').value;
+  const modelInfo = MODELS.find(m => m.id === model);
+
+  if (modelInfo?.tier === 'pro' && !wallet) {
+    showToast(t('proRequiresWallet'), 'info');
+    document.getElementById('walletModal').classList.add('active');
+    return;
+  }
+
+  // Hide welcome
+  const w = document.getElementById('welcome');
+  if (w) w.style.display = 'none';
+
+  // Add user message
+  addMessage('user', text);
+  messages.push({ role: 'user', content: text });
+  input.value = '';
+  input.style.height = 'auto';
+  document.getElementById('sendBtn').disabled = true;
+  isStreaming = true;
+
+  // Add AI placeholder
+  const aiDiv = addMessage('ai', '', true);
+  const contentEl = aiDiv.querySelector('.msg-text');
+  const metaEl = aiDiv.querySelector('.msg-meta');
+
+  try {
+    const startTime = Date.now();
+    const res = await fetch(GROQ_URL, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${GROQ_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: 'system', content: t('systemPrompt') },
+          ...messages.slice(-20)
+        ],
+        stream: true,
+        max_tokens: 4096,
+        temperature: 0.7
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error?.message || `HTTP ${res.status}`);
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let fullText = '';
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ') || line === 'data: [DONE]') continue;
         try {
-          const startTime = Date.now();
-          const res = await fetch(GROQ_URL, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${GROQ_KEY}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              model,
-              messages: [
-                {
-                  role: "system",
-                  content:
-                    "You are GSTD Sovereign AI, a helpful assistant powered by the GSTD decentralized network. Answer in the same language as the user. Be concise and helpful.",
-                },
-                ...messages.slice(-20),
-              ],
-              stream: true,
-              max_tokens: 4096,
-              temperature: 0.7,
-            }),
-          });
-
-          if (!res.ok) {
-            const err = await res.json().catch(() => ({}));
-            throw new Error(err.error?.message || `HTTP ${res.status}`);
+          const data = JSON.parse(line.slice(6));
+          const delta = data.choices?.[0]?.delta?.content;
+          if (delta) {
+            fullText += delta;
+            contentEl.textContent = fullText;
+            scrollToBottom();
           }
-
-          const reader = res.body.getReader();
-          const decoder = new TextDecoder();
-          let fullText = "";
-          let buffer = "";
-
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split("\n");
-            buffer = lines.pop();
-
-            for (const line of lines) {
-              if (!line.startsWith("data: ") || line === "data: [DONE]")
-                continue;
-              try {
-                const data = JSON.parse(line.slice(6));
-                const delta = data.choices?.[0]?.delta?.content;
-                if (delta) {
-                  fullText += delta;
-                  contentEl.textContent = fullText;
-                  scrollToBottom();
-                }
-              } catch {}
-            }
-          }
-
-          const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-          const tokens = fullText.split(/\s+/).length;
-          metaEl.textContent = `${modelInfo?.name || model} • ${elapsed}s • ~${tokens} tokens`;
-          messages.push({ role: "assistant", content: fullText });
-        } catch (err) {
-          contentEl.textContent = `⚠️ Ошибка: ${err.message}`;
-          contentEl.style.color = "var(--red)";
-        }
-
-        isStreaming = false;
-        document.getElementById("sendBtn").disabled = !input.value.trim();
+        } catch {}
       }
+    }
 
-      function addMessage(role, text, streaming = false) {
-        const area = document.getElementById("chatArea");
-        const div = document.createElement("div");
-        div.className = `msg msg-${role}`;
-        div.innerHTML = `
-    <div class="msg-avatar">${role === "user" ? "👤" : "⚡"}</div>
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+    const tokens = fullText.split(/\s+/).length;
+    metaEl.textContent = `${modelInfo?.name || model} • ${elapsed}s • ~${tokens} tokens`;
+    messages.push({ role: 'assistant', content: fullText });
+
+  } catch (err) {
+    contentEl.textContent = t('errorPrefix') + err.message;
+    contentEl.style.color = 'var(--red)';
+  }
+
+  isStreaming = false;
+  document.getElementById('sendBtn').disabled = !input.value.trim();
+}
+
+function addMessage(role, text, streaming = false) {
+  const area = document.getElementById('chatArea');
+  const div = document.createElement('div');
+  div.className = `msg msg-${role}`;
+  const avatar = role === 'user' ? '👤' : LOGO_SVG;
+  div.innerHTML = `
+    <div class="msg-avatar">${avatar}</div>
     <div class="msg-content">
       <div class="msg-text">${streaming ? '<div class="typing"><span></span><span></span><span></span></div>' : escapeHtml(text)}</div>
-      <div class="msg-meta">${role === "user" ? "" : ""}</div>
+      <div class="msg-meta"></div>
     </div>`;
-        area.appendChild(div);
-        scrollToBottom();
-        return div;
-      }
+  area.appendChild(div);
+  scrollToBottom();
+  return div;
+}
 
-      function escapeHtml(s) {
-        return s
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;");
-      }
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
 
-      function scrollToBottom() {
-        const area = document.getElementById("chatArea");
-        area.scrollTop = area.scrollHeight;
-      }
+function scrollToBottom() {
+  const area = document.getElementById('chatArea');
+  area.scrollTop = area.scrollHeight;
+}
 
-      init();
-    </script>
-  </body>
+// Close modal on backdrop click
+document.getElementById('walletModal').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('walletModal')) closeWallet();
+});
+
+// Enter in wallet input
+document.getElementById('walletInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') connectWallet();
+});
+
+init();
+</script>
+</body>
 </html>
