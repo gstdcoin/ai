@@ -1,7 +1,7 @@
 # ═══════════════════════════════════════════════════════════════
-# GSTD × Open WebUI — Sovereign AI Chat Interface
-# Connected to Groq API directly (OpenAI-compatible)
-# Access via https://chat.gstdtoken.com
+# GSTD × Open WebUI — Sovereign AI Chat (No Login)
+# Direct access — no authorization required
+# Premium models: via GSTD wallet + tokens
 # ═══════════════════════════════════════════════════════════════
 
 services:
@@ -11,14 +11,21 @@ services:
     restart: unless-stopped
     network_mode: host
     environment:
-      # ─── Port (host networking) ───
+      # ─── Port ───
       - PORT=3100
 
-      # ─── Connect DIRECTLY to Groq API (OpenAI-compatible) ───
+      # ─── NO AUTH — instant chat access ───
+      - WEBUI_AUTH=false
+      - ENABLE_SIGNUP=false
+      - ENABLE_LOGIN_FORM=false
+      - ENABLE_PERSISTENT_CONFIG=false
+      - DEFAULT_USER_ROLE=admin
+
+      # ─── Groq API (OpenAI-compatible) ───
       - OPENAI_API_BASE_URL=https://api.groq.com/openai/v1
       - OPENAI_API_KEY=${GROQ_API_KEY:-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}
 
-      # ─── Disable Ollama ───
+      # ─── No Ollama ───
       - OLLAMA_BASE_URL=
       - ENABLE_OLLAMA_API=false
 
@@ -26,21 +33,19 @@ services:
       - WEBUI_NAME=GSTD Sovereign AI
       - WEBUI_URL=https://chat.gstdtoken.com
 
-      # ─── Auth ───
-      - WEBUI_AUTH=true
-      - ENABLE_SIGNUP=true
-      - DEFAULT_USER_ROLE=user
+      # ─── Security ───
+      - WEBUI_SECRET_KEY=ems2VO7R1YZL4JNU_4EhIeRBFEZt1TWN7G04kxv5XU4=
 
-      # ─── Admin ───
-      - WEBUI_SECRET_KEY=${OPENWEBUI_SECRET:-gstd_sovereign_secret_2026}
-
-      # ─── Features ───
+      # ─── Disable unneeded features ───
       - ENABLE_RAG_WEB_SEARCH=false
       - ENABLE_IMAGE_GENERATION=false
       - ENABLE_COMMUNITY_SHARING=false
 
       # ─── Performance ───
       - AIOHTTP_CLIENT_TIMEOUT=120
+
+      # ─── Auto-create default user on startup ───
+      - ADMIN_EMAIL=admin@gstdtoken.com
 
     volumes:
       - openwebui_data:/app/backend/data
