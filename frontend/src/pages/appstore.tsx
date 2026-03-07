@@ -116,27 +116,28 @@ export default function AppStorePage() {
       </Head>
 
       {/* ═══ HEADER ═══ */}
-      <div className="sticky top-14 z-30 backdrop-blur-2xl bg-[#030014]/80 border-b border-white/[0.04]">
+      <div className="sticky top-14 z-30" style={{ background: 'var(--g-color-base-float)', borderBottom: '1px solid var(--g-color-line-generic)', backdropFilter: 'blur(20px)' }}>
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center text-xl font-black shadow-lg shadow-violet-500/20">
-              <Package size={20} />
+            <div className="flex items-center justify-center text-xl font-black" style={{ width: 40, height: 40, borderRadius: 'var(--g-border-radius-xl)', background: 'linear-gradient(135deg, var(--g-color-brand), #E6C200)', boxShadow: 'var(--g-shadow-brand)' }}>
+              <Package size={20} color="#030014" />
             </div>
             <div>
               <h1 className="text-xl font-black tracking-tight">App Store</h1>
-              <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">{apps.length} Apps Available</p>
+              <p className="text-[10px] uppercase tracking-widest font-bold" style={{ color: 'var(--g-color-text-hint)' }}>{apps.length} Apps Available</p>
             </div>
           </div>
 
           {/* Search */}
           <div className="flex-1 max-w-md relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2" size={16} style={{ color: 'var(--g-color-text-hint)' }} />
             <input
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="Search apps..."
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06] text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-violet-500/40 focus:bg-white/[0.06] transition-all"
+              className="g-input"
+              style={{ paddingLeft: 36, height: 40, borderRadius: 'var(--g-border-radius-l)' }}
             />
           </div>
         </div>
@@ -359,7 +360,13 @@ export default function AppStorePage() {
                 <button
                   onClick={() => handleInstall(selectedApp.id)}
                   disabled={installing === selectedApp.id}
-                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-cyan-600 text-white font-bold text-sm shadow-lg shadow-violet-500/20 hover:shadow-violet-500/40 hover:scale-105 active:scale-95 transition-all"
+                  className="px-5 py-2.5 text-sm font-bold transition-all hover:scale-105 active:scale-95"
+                  style={{
+                    borderRadius: 'var(--g-border-radius-xl)',
+                    background: 'linear-gradient(135deg, var(--g-color-brand), #E6C200)',
+                    color: 'var(--g-color-brand-text)',
+                    boxShadow: 'var(--g-shadow-brand)',
+                  }}
                 >
                   {installing === selectedApp.id ? 'Installing...' : 'Install'}
                 </button>
