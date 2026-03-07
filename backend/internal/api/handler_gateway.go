@@ -208,11 +208,25 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 	// Bot pre-paid: AIChat already deducted, skip gateway deduction
 	isPrepaid := c.Request.Header.Get("X-GSTD-Prepaid") == "true"
 
+	// Open WebUI internal access: allow full model access without wallet
+	openwebuiKey := os.Getenv("OPENWEBUI_INTERNAL_KEY")
+	if openwebuiKey == "" {
+		openwebuiKey = "gstd_sovereign_key"
+	}
+	authHeader := c.GetHeader("Authorization")
+	isOpenWebUI := strings.TrimPrefix(authHeader, "Bearer ") == openwebuiKey
+
 	// Consumer Adoption: Allow anonymous free-tier (basic models only)
 	// Wallet required for paid models (Pro, Ultra)
 	anonymousFree := false
 	if isPrepaid {
 		anonymousFree = true // skip deduction, already paid by bot handler
+	} else if isOpenWebUI {
+		// Open WebUI has internal access — allow all models without wallet
+		anonymousFree = true
+		if wallet == "" {
+			wallet = "openwebui-" + c.ClientIP()
+		}
 	} else if wallet == "" {
 		// Allow free tier without wallet for chat.gstdtoken.com onboarding
 		modelLower := strings.ToLower(req.Model)
