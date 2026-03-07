@@ -1,0 +1,57 @@
+# ═══════════════════════════════════════════════════════════════
+# GSTD × Open WebUI — Sovereign AI Chat Interface
+# Connected to GSTD Backend (Groq-powered OpenAI-compatible API)
+# Access via https://chat.gstdtoken.com
+# ═══════════════════════════════════════════════════════════════
+version: "3.8"
+
+services:
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:latest
+    container_name: gstd_open_webui
+    restart: unless-stopped
+    ports:
+      - "3100:8080"
+    environment:
+      # ─── Connect to GSTD Backend (OpenAI-compatible API) ───
+      - OPENAI_API_BASE_URL=http://host.docker.internal:8080/v1
+      - OPENAI_API_KEY=gstd_sovereign_key
+
+      # ─── Disable Ollama (we use Groq via GSTD backend) ───
+      - OLLAMA_BASE_URL=
+      - ENABLE_OLLAMA_API=false
+
+      # ─── Branding ───
+      - WEBUI_NAME=GSTD Sovereign AI
+      - WEBUI_URL=https://chat.gstdtoken.com
+
+      # ─── Auth & Security ───
+      - WEBUI_AUTH=false
+      - ENABLE_SIGNUP=false
+      - DEFAULT_USER_ROLE=user
+
+      # ─── Admin ───
+      - WEBUI_SECRET_KEY=${OPENWEBUI_SECRET:-gstd_sovereign_secret_2026}
+
+      # ─── Features ───
+      - ENABLE_RAG_WEB_SEARCH=false
+      - ENABLE_IMAGE_GENERATION=false
+      - ENABLE_COMMUNITY_SHARING=false
+
+      # ─── Performance ───
+      - AIOHTTP_CLIENT_TIMEOUT=120
+
+    volumes:
+      - openwebui_data:/app/backend/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  openwebui_data:
+    driver: local

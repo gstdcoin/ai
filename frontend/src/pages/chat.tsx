@@ -1,8 +1,8 @@
 import { useTranslation } from 'next-i18next';
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Head from 'next/head';
-import dynamic from 'next/dynamic';
-import { Send, Plus, Trash2, Copy, Check, Menu, X, ChevronDown, Bot, Wallet, ExternalLink, Sparkles, Lock, Zap, Brain, Globe, RotateCcw, Square, Code, FileText, MessageSquare } from 'lucide-react';
+
+import { Send, Plus, Trash2, Copy, Check, Menu, X, ChevronDown, Bot, Wallet, ExternalLink, Sparkles, Brain, RotateCcw, Square, MessageSquare } from 'lucide-react';
 import { useWalletStore } from '../store/walletStore';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -69,7 +69,7 @@ function CodeBlock({ inline, className, children, ...props }: any) {
                     {copied ? 'Copied!' : 'Copy'}
                 </button>
             </div>
-            <pre className="overflow-x-auto px-4 py-3 text-[13px] leading-relaxed">
+            <pre className="overflow-x-auto max-w-full px-4 py-3 text-[13px] leading-relaxed">
                 <code className={`font-mono text-gray-300 ${className || ''}`} {...props}>
                     {children}
                 </code>
@@ -108,7 +108,7 @@ function ThinkingIndicator({ isReasoning, collectivePhase }: { isReasoning?: boo
 // ─── Markdown Message Renderer ────────────────────────────────────
 function MarkdownMessage({ content }: { content: string }) {
     return (
-        <div className="prose prose-invert prose-sm max-w-none
+        <div className="prose prose-invert prose-sm max-w-full overflow-hidden break-words
             prose-headings:text-white prose-headings:font-bold prose-headings:mt-4 prose-headings:mb-2
             prose-h1:text-xl prose-h2:text-lg prose-h3:text-base
             prose-p:text-gray-200 prose-p:leading-relaxed prose-p:my-2
@@ -200,8 +200,43 @@ export default function ChatPage() {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
 
+    const STORAGE_KEY = 'gstd_chat_history';
+    const MAX_STORED_CONVERSATIONS = 50;
+
+    // Load conversations from localStorage on mount
+    useEffect(() => {
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    // Restore conversations without streaming state
+                    const restored = parsed.map((c: any) => ({
+                        ...c,
+                        messages: c.messages?.map((m: any) => ({ ...m, isStreaming: false })) || [],
+                    }));
+                    setConversations(restored);
+                    setActiveConvId(restored[0]?.id || null);
+                }
+            }
+        } catch { /* ignore corrupt localStorage */ }
+    }, []);
+
+    // Save conversations to localStorage on change
+    useEffect(() => {
+        if (conversations.length === 0) return;
+        try {
+            // Keep only last N conversations, strip streaming state
+            const toSave = conversations.slice(0, MAX_STORED_CONVERSATIONS).map(c => ({
+                ...c,
+                messages: c.messages.map(m => ({ ...m, isStreaming: false })),
+            }));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+        } catch { /* localStorage full or unavailable */ }
+    }, [conversations]);
+
     const activeConv = conversations.find(c => c.id === activeConvId) || null;
-    const currentModel = MODELS.find(m => m.id === selectedModel) || MODELS[0];
+    // currentModel available via MODELS[0] when needed
     const currentTier = INTELLIGENCE_TIERS.find(t => t.id === selectedTier) || INTELLIGENCE_TIERS[0];
 
     // Auto-scroll
@@ -467,7 +502,7 @@ export default function ChatPage() {
 
     // ─── Render ──────────────────────────────────────────────────
     return (
-        <div className="h-screen flex bg-[#030014] text-white overflow-hidden" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
+        <div className="h-screen w-screen max-w-full flex bg-[#030014] text-white overflow-hidden" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
             <Head>
                 <title>GSTD Chat — Sovereign AI</title>
                 <meta name="description" content="GSTD Collective Intelligence — 8 AI models reach consensus for superior answers. Free single expert or paid collective tiers." />
@@ -569,7 +604,7 @@ export default function ChatPage() {
             </aside>
 
             {/* ─── Main ────────────────────────────────────────────── */}
-            <main className="flex-1 flex flex-col min-w-0">
+            <main className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
 
                 {/* Header */}
                 <header className="h-14 flex items-center justify-between px-4 border-b border-white/[0.06] flex-shrink-0 bg-[#030014]/80 backdrop-blur-sm">
@@ -646,7 +681,7 @@ export default function ChatPage() {
                 </header>
 
                 {/* Messages area */}
-                <div className="flex-1 overflow-y-auto chat-scrollbar">
+                <div className="flex-1 overflow-y-auto overflow-x-hidden chat-scrollbar">
                     {!activeConv || activeConv.messages.length === 0 ? (
                         /* ─── Empty state with suggestions ─── */
                         <div className="flex flex-col items-center justify-center h-full px-4">
@@ -676,7 +711,7 @@ export default function ChatPage() {
                         </div>
                     ) : (
                         /* ─── Messages ─────────────────────────────────── */
-                        <div className="max-w-3xl mx-auto py-6 px-4 sm:px-6 space-y-1">
+                        <div className="max-w-3xl mx-auto py-6 px-4 sm:px-6 space-y-1 w-full overflow-hidden">
                             {activeConv.messages.map((msg, idx) => (
                                 <div key={msg.id} className={`group py-4`}>
                                     {msg.role === 'assistant' ? (
@@ -684,7 +719,7 @@ export default function ChatPage() {
                                             <div className="w-7 h-7 rounded-lg bg-violet-500/15 flex items-center justify-center flex-shrink-0 mt-0.5">
                                                 <Bot size={14} className="text-violet-400" />
                                             </div>
-                                            <div className="flex-1 min-w-0 space-y-2">
+                                            <div className="flex-1 min-w-0 max-w-full overflow-hidden space-y-2">
                                                 {/* Content or thinking */}
                                                 {!msg.content && msg.isStreaming ? (
                                                     <ThinkingIndicator isReasoning={msg.isReasoning} collectivePhase={collectivePhase} />
@@ -783,11 +818,16 @@ export default function ChatPage() {
             </main>
 
             <style jsx global>{`
+                html, body { overflow-x: hidden !important; max-width: 100vw !important; }
                 .chat-scrollbar::-webkit-scrollbar { width: 4px; }
                 .chat-scrollbar::-webkit-scrollbar-track { background: transparent; }
                 .chat-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 4px; }
                 .chat-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.12); }
                 @keyframes cursor-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+                .prose pre { max-width: 100%; overflow-x: auto; }
+                .prose code { word-break: break-all; }
+                .prose table { display: block; max-width: 100%; overflow-x: auto; }
+                .prose img { max-width: 100%; height: auto; }
             `}</style>
         </div>
     );

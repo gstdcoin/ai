@@ -2,11 +2,11 @@ import { useTranslation } from 'next-i18next';
 import React, { useEffect, useState, useMemo } from 'react';
 import Head from 'next/head';
 import {
-    Globe2, Sprout, HeartPulse, Droplets, BookOpen, Sun,
-    Activity, ShieldCheck, Code, Zap, Database, CheckCircle,
-    Target, Dna, ArrowRight, TrendingUp, Cpu, Star, Lock, BrainCircuit, Share2, Radio, AlertTriangle, MapPin, Network,
-    Satellite, Microscope, Wind, Waves, Shield, Search, Filter, BarChart3, Users, Clock, ChevronRight, ExternalLink,
-    GraduationCap, Hammer, Leaf, Wheat, Baby, Scale, Fingerprint, Flame, Building2, PersonStanding, Brain
+    Globe2, Sprout, HeartPulse, Droplets, Sun,
+    Activity, ShieldCheck, Zap, Database, CheckCircle,
+    Target, Dna, TrendingUp, Star, BrainCircuit, Radio, AlertTriangle, MapPin, Network,
+    Satellite, Microscope, Wind, Waves, Shield, Search, BarChart3, Users, ExternalLink,
+    GraduationCap, Leaf, Wheat, Baby, Scale, Flame, Building2, PersonStanding, Brain
 } from 'lucide-react';
 import { toast } from '../../lib/toast';
 import { apiGet, apiPost } from '../../lib/apiClient';
@@ -415,7 +415,7 @@ export default function HumanityMonitor() {
             try {
                 const data = await apiGet<any>('/monitor/signals').catch(() => null);
                 if (data?.signals) setSignalStats(data.signals);
-            } catch (e) { }
+            } catch { /* signals fetch is non-critical */ }
         };
         fetchSignals();
         const interval = setInterval(fetchSignals, 8000);
@@ -441,7 +441,7 @@ export default function HumanityMonitor() {
                         totalBurned: mkt.total_burned || 0
                     });
                 }
-            } catch (e) { }
+            } catch { /* unified fetch is non-critical */ }
         };
         fetchData();
         const interval = setInterval(fetchData, 4000);
@@ -454,7 +454,7 @@ export default function HumanityMonitor() {
             try {
                 const data = await apiGet<any>('/chat/sovereignty-index').catch(() => null);
                 if (data?.sovereignty_index !== undefined) setSovereigntyIndex(data.sovereignty_index);
-            } catch (e) { }
+            } catch { /* sovereignty fetch is non-critical */ }
         };
         fetchSov();
         const interval = setInterval(fetchSov, 5000);
@@ -568,8 +568,8 @@ export default function HumanityMonitor() {
                                 { label: t('signals', 'Signals'), value: `${criticalCount} critical`, color: 'text-rose-400', icon: AlertTriangle },
                                 { label: t('contributors', 'Contributors'), value: totalContributors.toLocaleString(), color: 'text-violet-400', icon: Users },
                                 { label: t('reward_pool', 'Reward Pool'), value: totalRewardPool.toLocaleString() + ' GSTD', color: 'text-emerald-400', icon: Database },
-                            ].map((s, i) => (
-                                <div key={i} className="px-3 py-2.5 bg-slate-900/60 border border-slate-700/50 rounded-xl backdrop-blur-xl flex items-center gap-2.5">
+                            ].map((s) => (
+                                <div key={s.label} className="px-3 py-2.5 bg-slate-900/60 border border-slate-700/50 rounded-xl backdrop-blur-xl flex items-center gap-2.5">
                                     <s.icon className={`w-4 h-4 ${s.color} opacity-60 flex-shrink-0`} />
                                     <div className="flex flex-col min-w-0">
                                         <span className="text-[8px] font-black uppercase tracking-widest text-slate-500 truncate">{s.label}</span>
@@ -686,8 +686,8 @@ export default function HumanityMonitor() {
                                     { l: t('categories', 'Categories'), v: String(CATEGORIES.length - 1), c: 'text-sky-400' },
                                     { l: t('total_contributors', 'Total Contributors'), v: totalContributors.toLocaleString(), c: 'text-violet-400' },
                                     { l: t('reward_pool', 'Reward Pool'), v: totalRewardPool.toLocaleString() + ' GSTD', c: 'text-emerald-400' },
-                                ].map((r, i) => (
-                                    <div key={i} className="flex justify-between items-center">
+                                ].map((r) => (
+                                    <div key={r.l} className="flex justify-between items-center">
                                         <span className="text-[10px] text-slate-400">{r.l}</span>
                                         <span className={`text-xs font-bold ${r.c}`}>{r.v}</span>
                                     </div>
@@ -737,8 +737,8 @@ export default function HumanityMonitor() {
                                     <div className="text-slate-500 text-xs text-center py-8 flex flex-col items-center gap-2">
                                         <Radio className="w-5 h-5 animate-pulse opacity-50" />{t('awaiting_transmissions', 'Awaiting transmissions...')}</div>
                                 ) : (
-                                    liveLogs.map((log, i) => (
-                                        <div key={i} className="pb-2 border-b border-slate-800/80 last:border-0">
+                                    liveLogs.map((log) => (
+                                        <div key={log.id} className="pb-2 border-b border-slate-800/80 last:border-0">
                                             <div className="flex justify-between items-center mb-0.5">
                                                 <span className="text-[8px] font-black uppercase text-sky-400 bg-sky-500/10 px-1.5 py-0.5 rounded">{log.chain || 'NODE'}</span>
                                                 <span className="text-[9px] text-slate-600 font-mono">{new Date(log.timestamp).toLocaleTimeString()}</span>
@@ -767,7 +767,7 @@ export default function HumanityMonitor() {
             {/* ─── SPONSOR MODAL ───────────────────────────────────────── */}
             {selectedSignal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-md" onClick={() => !isPurchasing && setSelectedSignal(null)} />
+                    <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-md" role="button" tabIndex={0} aria-label="Close modal" onClick={() => !isPurchasing && setSelectedSignal(null)} onKeyDown={(e) => e.key === 'Escape' && !isPurchasing && setSelectedSignal(null)} />
                     <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-md w-full relative z-10 shadow-[0_0_60px_rgba(0,0,0,0.8)] animate-in fade-in zoom-in duration-300 max-h-[90vh] overflow-y-auto custom-scrollbar">
 
                         <div className={"w-12 h-12 rounded-xl border flex items-center justify-center mb-4 mx-auto " + selectedSignal.bgColor + " " + getSeverityStyles(selectedSignal.severity).split(' ')[2]}>

@@ -160,9 +160,16 @@ func (s *TelegramService) callBotAPI(ctx context.Context, text, senderIDStr, use
 		}
 		json.NewDecoder(resp.Body).Decode(&r)
 		if resp.StatusCode != 200 || r.Error != "" {
-			return "", fmt.Errorf("%s", r.Error)
+			if lang == "ru" {
+				return "❌ Ошибка привязки кошелька. Проверьте адрес и попробуйте снова.", nil
+			}
+			return "❌ Failed to link wallet. Check the address and try again.", nil
 		}
-		return "✅ Wallet linked! Wallet-as-Node active — you can claim tasks.", nil
+		shortW := wallet[:6] + "..." + wallet[len(wallet)-4:]
+		if lang == "ru" {
+			return fmt.Sprintf("✅ <b>Кошелёк привязан!</b>\n\n📋 %s\n<code>%s</code>\n\n💰 Все купленные GSTD будут зачисляться на этот кошелёк.", shortW, wallet), nil
+		}
+		return fmt.Sprintf("✅ <b>Wallet Linked!</b>\n\n📋 %s\n<code>%s</code>\n\n💰 All purchased GSTD will be credited to this wallet.", shortW, wallet), nil
 	}
 
 	// /take <task_id>
@@ -901,6 +908,25 @@ func (s *TelegramService) ProcessWebhook(ctx context.Context, body []byte) error
 		return s.SendMessageToChatWithMarkup(ctx, chatID, msg, replyKeyboard)
 	}
 
+	// 💎 Balance (button)
+	if text == "💎 Balance" || text == "💎 Баланс" {
+		return s.handleBalanceButton(ctx, chatID, senderIDStr, lang)
+	}
+
+	// ⭐️ Top Up (button) — show tiers with Stars invoice
+	if text == "⭐️ Top Up" || text == "⭐️ Пополнить" {
+		return s.handleTopUpButton(ctx, chatID, senderIDStr, lang)
+	}
+
+	// 🧠 Earn (button)
+	if text == "🧠 Earn" || text == "🧠 Заработать" {
+		msg := "🧠 <b>Earn GSTD</b>\n\nBecome a Neural Node — your device computes for the Swarm and earns GSTD.\n\n📱 <a href=\"https://app.gstdtoken.com/?source=telegram&mode=mining\">Open Mining Dashboard</a>"
+		if lang == "ru" {
+			msg = "🧠 <b>Заработать GSTD</b>\n\nСтань Нейро-Узлом — твоё устройство вычисляет для Роя и зарабатывает GSTD.\n\n📱 <a href=\"https://app.gstdtoken.com/?source=telegram&mode=mining\">Открыть панель майнинга</a>"
+		}
+		return s.SendMessageToChat(ctx, chatID, msg)
+	}
+
 	// 📖 Help (button or command)
 	if text == "📖 Help" || text == "📖 Помощь" || text == "/help" {
 		msg := msgHelp[lang]
@@ -925,13 +951,36 @@ func (s *TelegramService) ProcessWebhook(ctx context.Context, body []byte) error
 		return s.SendMessageToChatWithMarkup(ctx, chatID, msg, markup)
 	}
 
-	// 🔗 Connect Wallet (button)
-	if text == "🔗 Connect Wallet" || text == "🔗 Кошелек" || text == "/connect" {
-		msg := "🔗 **Connect Your TON Wallet**\n\nJust send me your TON wallet address in chat. (e.g. `EQDv...`)\n\nDon't have a wallet? Get one here:\n• [Tonkeeper](https://tonkeeper.com/)\n• [MyTonWallet](https://mytonwallet.io/)\n\nAlternatively, you can tap **📱 Open App** and connect via TON Connect."
-		if lang == "ru" {
-			msg = "🔗 **Привязка кошелька**\n\nПросто отправьте мне адрес вашего TON-кошелька в чат. (например, `EQDv...`)\n\nНет кошелька? Скачайте здесь:\n• [Tonkeeper](https://tonkeeper.com/)\n• [MyTonWallet](https://mytonwallet.io/)\n\nТакже вы можете нажать **📱 Open App** и привязать его через TON Connect."
+	// 🔗 Connect Wallet (button) — cover all variants from both webhook and grammY keyboards
+	if text == "🔗 Connect Wallet" || text == "🔗 Кошелек" || text == "🔗 Кошелёк" ||
+		text == "🔗 Wallet" || text == "🔗 Привязать кошелёк" || text == "🔗 Link Wallet" ||
+		text == "/connect" {
+		// Check if wallet is already linked
+		if s.db != nil && senderIDStr != "" {
+			var existingWallet string
+			tgIDForWallet, _ := strconv.ParseInt(senderIDStr, 10, 64)
+			if tgIDForWallet > 0 {
+				_ = s.db.QueryRowContext(ctx,
+					`SELECT wallet_address FROM telegram_users WHERE telegram_id = $1 AND wallet_address IS NOT NULL`,
+					tgIDForWallet,
+				).Scan(&existingWallet)
+			}
+			if existingWallet != "" && !strings.HasPrefix(existingWallet, "tg-") {
+				shortW := existingWallet[:6] + "..." + existingWallet[len(existingWallet)-4:]
+				if lang == "ru" {
+					msg := fmt.Sprintf("🔗 <b>Ваш кошелёк</b>\n\n✅ Привязан: <code>%s</code>\n📋 %s\n\n💡 Чтобы сменить кошелёк, отправьте новый адрес TON-кошелька в чат.\n\nНапример: <code>EQDv...</code>", existingWallet, shortW)
+					return s.SendMessageToChat(ctx, chatID, msg)
+				}
+				msg := fmt.Sprintf("🔗 <b>Your Wallet</b>\n\n✅ Linked: <code>%s</code>\n📋 %s\n\n💡 To change wallet, send a new TON wallet address in the chat.\n\nExample: <code>EQDv...</code>", existingWallet, shortW)
+				return s.SendMessageToChat(ctx, chatID, msg)
+			}
 		}
-		return s.SendMessageToChat(ctx, chatID, markdownToHTML(msg))
+		if lang == "ru" {
+			msg := "🔗 <b>Привязка кошелька</b>\n\n⚠️ Кошелёк не привязан.\n\nОтправьте адрес вашего TON-кошелька прямо в чат.\n\nНапример: <code>EQDv...</code>\n\n❓ Нет кошелька?\n• <a href=\"https://tonkeeper.com\">Tonkeeper</a>\n• <a href=\"https://mytonwallet.io\">MyTonWallet</a>\n\n💡 <i>После привязки кошелька все купленные GSTD будут зачисляться на него.</i>"
+			return s.SendMessageToChatWithMarkup(ctx, chatID, msg, "")
+		}
+		msg := "🔗 <b>Connect Wallet</b>\n\n⚠️ No wallet linked.\n\nSend your TON wallet address in the chat.\n\nExample: <code>EQDv...</code>\n\n❓ No wallet?\n• <a href=\"https://tonkeeper.com\">Tonkeeper</a>\n• <a href=\"https://mytonwallet.io\">MyTonWallet</a>\n\n💡 <i>After linking, all purchased GSTD will be credited to your wallet.</i>"
+		return s.SendMessageToChatWithMarkup(ctx, chatID, msg, "")
 	}
 
 	// Just typing an address
@@ -1182,7 +1231,40 @@ GSTD работает на миллионах связанных устройс�
 		return s.SendMessageToChat(ctx, chatID, msg)
 	}
 
-	// 3. Admin Callbacks
+	// 3. Buy Stars callbacks: buy_stars_10, buy_stars_50, buy_stars_200
+	if strings.HasPrefix(data, "buy_stars_") {
+		_ = s.answerCallbackQuery(ctx, cq.ID, "")
+		amountStr := strings.TrimPrefix(data, "buy_stars_")
+		starsAmount := 10
+		fmt.Sscanf(amountStr, "%d", &starsAmount)
+		if starsAmount <= 0 {
+			starsAmount = 10
+		}
+
+		const starUSD = 0.013
+		var gstdPrice float64
+		if s.db != nil {
+			_ = s.db.QueryRow(`SELECT COALESCE(gstd_price_usd_at_set, 0) FROM inference_fee_config ORDER BY updated_at DESC LIMIT 1`).Scan(&gstdPrice)
+		}
+		if gstdPrice <= 0 {
+			gstdPrice = 0.00028
+		}
+		gstdPerStar := starUSD / gstdPrice
+		gstdAmount := int(float64(starsAmount) * gstdPerStar)
+		proReqs := gstdAmount / 3
+
+		title := fmt.Sprintf("%d GSTD (%d Pro requests)", gstdAmount, proReqs)
+		desc := fmt.Sprintf("%d⭐ = $%.2f = %d GSTD", starsAmount, float64(starsAmount)*starUSD, gstdAmount)
+		if lang == "ru" {
+			title = fmt.Sprintf("%d GSTD (%d Pro запросов)", gstdAmount, proReqs)
+			desc = fmt.Sprintf("%d⭐ = $%.2f = %d GSTD", starsAmount, float64(starsAmount)*starUSD, gstdAmount)
+		}
+
+		payload := fmt.Sprintf("gstd_purchase_%s_%d", senderIDStr, time.Now().UnixMilli())
+		return s.sendInvoiceWithStars(ctx, chatID, title, desc, payload, starsAmount)
+	}
+
+	// 4. Admin Callbacks
 	if s.chatID == "" || senderIDStr != s.chatID {
 		_ = s.answerCallbackQuery(ctx, cq.ID, msgAdminOnly[lang])
 		return nil
@@ -1535,9 +1617,32 @@ func (s *TelegramService) handleSuccessfulPayment(ctx context.Context, upd *tele
 	sp := upd.Message.SuccessfulPayment
 	tgID := upd.Message.From.ID
 	chatID := strconv.FormatInt(upd.Message.Chat.ID, 10)
+	lang := botLang(upd.Message.From.LanguageCode)
 
-	gstdCredited := float64(sp.TotalAmount) // e.g. 100 stars = 100 GSTD
+	// ── Calculate GSTD amount using real market price ──
+	const starUSD = 0.013
+	var gstdPrice float64
+	if s.db != nil {
+		_ = s.db.QueryRow(`SELECT COALESCE(gstd_price_usd_at_set, 0) FROM inference_fee_config ORDER BY updated_at DESC LIMIT 1`).Scan(&gstdPrice)
+	}
+	if gstdPrice <= 0 {
+		gstdPrice = 0.00028
+	}
+	gstdPerStar := starUSD / gstdPrice
+	gstdCredited := float64(int(float64(sp.TotalAmount) * gstdPerStar))
+
+	// ── Resolve wallet: linked TON wallet first, fallback to tg-{id} ──
 	walletAddr := fmt.Sprintf("tg-%d", tgID)
+	if s.db != nil {
+		var linkedWallet string
+		err := s.db.QueryRowContext(ctx,
+			`SELECT wallet_address FROM telegram_users WHERE telegram_id = $1 AND wallet_address IS NOT NULL`,
+			tgID,
+		).Scan(&linkedWallet)
+		if err == nil && linkedWallet != "" && !strings.HasPrefix(linkedWallet, "tg-") {
+			walletAddr = linkedWallet
+		}
+	}
 
 	taskIDLaunched := ""
 
@@ -1563,7 +1668,7 @@ func (s *TelegramService) handleSuccessfulPayment(ctx context.Context, upd *tele
 					) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
 				`, taskIDLaunched, walletAddr, rewardVal, rewardVal, "queued", "signal_analysis", `{"signal_id": "`+taskIDLaunched+`"}`)
 
-				// Notify the Global Channel/Monitor channel if needed
+				// Notify the Global Channel
 				msgAlert := fmt.Sprintf("🌍 <b>Global Signal Analysis Sponsored!</b>\n\n"+
 					"<b>Signal:</b> %s\n"+
 					"<b>Sponsorship:</b> %d ⭐️\n"+
@@ -1577,7 +1682,7 @@ func (s *TelegramService) handleSuccessfulPayment(ctx context.Context, upd *tele
 
 	if s.db != nil {
 		// Ensure user exists
-		_, _ = s.db.ExecContext(ctx, `INSERT INTO users (wallet_address, balance, created_at, updated_at) VALUES ($1, 0, NOW(), NOW()) ON CONFLICT (wallet_address) DO NOTHING`, walletAddr)
+		_, _ = s.db.ExecContext(ctx, `INSERT INTO users (wallet_address, balance, gstd_balance, created_at, updated_at) VALUES ($1, 0, 0, NOW(), NOW()) ON CONFLICT (wallet_address) DO NOTHING`, walletAddr)
 
 		// Insert purchase record & add balance
 		tx, err := s.db.BeginTx(ctx, nil)
@@ -1589,22 +1694,35 @@ func (s *TelegramService) handleSuccessfulPayment(ctx context.Context, upd *tele
 			`, sp.TelegramPaymentChargeID, tgID, sp.TotalAmount, gstdCredited, walletAddr).Scan(&insertedID)
 
 			if err != sql.ErrNoRows && err == nil {
-				// Added the balance precisely only if not conflict.
 				_, _ = tx.ExecContext(ctx, `UPDATE users SET gstd_balance = COALESCE(gstd_balance, 0) + $1 WHERE wallet_address = $2`, gstdCredited, walletAddr)
 			}
 			_ = tx.Commit()
 		}
 	}
 
-	msg := fmt.Sprintf("✅ <b>Payment Successful!</b>\n\nYou have purchased <b>%.0f GSTD</b> with %d Telegram Stars.\n\nThe GSTD has been credited to your internal bot wallet <code>%s</code>.", gstdCredited, sp.TotalAmount, walletAddr)
-	if taskIDLaunched != "" {
-		msg += fmt.Sprintf("\n\n🚀 <b>Signal task %s has been launched automatically!</b>", taskIDLaunched)
+	// Build confirmation message
+	shortWallet := walletAddr
+	if len(walletAddr) > 12 {
+		shortWallet = walletAddr[:6] + "..." + walletAddr[len(walletAddr)-4:]
 	}
 
-	if botLang(upd.Message.From.LanguageCode) == "ru" {
-		msg = fmt.Sprintf("✅ <b>Оплата успешна!</b>\n\nВы успешно приобрели <b>%.0f GSTD</b> за %d Telegram Stars.\n\nGSTD были зачислены на ваш внутренний кошелёк <code>%s</code>.", gstdCredited, sp.TotalAmount, walletAddr)
-		if taskIDLaunched != "" {
+	var msg string
+	if lang == "ru" {
+		msg = fmt.Sprintf("✅ <b>Оплата успешна!</b>\n\n⭐ %d Stars → <b>%.0f GSTD</b> зачислено\n💼 Кошелёк: <code>%s</code>", sp.TotalAmount, gstdCredited, shortWallet)
+		if strings.HasPrefix(walletAddr, "tg-") {
+			msg += "\n\n⚠️ <i>Привяжите TON-кошелёк кнопкой 🔗 Кошелек для вывода GSTD.</i>"
+		}
+	} else {
+		msg = fmt.Sprintf("✅ <b>Payment Successful!</b>\n\n⭐ %d Stars → <b>%.0f GSTD</b> credited\n💼 Wallet: <code>%s</code>", sp.TotalAmount, gstdCredited, shortWallet)
+		if strings.HasPrefix(walletAddr, "tg-") {
+			msg += "\n\n⚠️ <i>Link your TON wallet via 🔗 Wallet button to withdraw GSTD.</i>"
+		}
+	}
+	if taskIDLaunched != "" {
+		if lang == "ru" {
 			msg += fmt.Sprintf("\n\n🚀 <b>Анализ сигнала %s успешно запущен!</b>", taskIDLaunched)
+		} else {
+			msg += fmt.Sprintf("\n\n🚀 <b>Signal task %s has been launched automatically!</b>", taskIDLaunched)
 		}
 	}
 
@@ -1902,4 +2020,143 @@ func escapeHTML(s string) string {
 	s = strings.ReplaceAll(s, "<", "&lt;")
 	s = strings.ReplaceAll(s, ">", "&gt;")
 	return s
+}
+
+// handleBalanceButton shows user's GSTD balance
+func (s *TelegramService) handleBalanceButton(ctx context.Context, chatID, senderIDStr, lang string) error {
+	if s.db == nil {
+		return s.SendMessageToChat(ctx, chatID, "❌ Service unavailable")
+	}
+	tgID, _ := strconv.ParseInt(senderIDStr, 10, 64)
+	if tgID == 0 {
+		return nil
+	}
+
+	// Find wallet
+	var wallet string
+	_ = s.db.QueryRowContext(ctx,
+		`SELECT wallet_address FROM telegram_users WHERE telegram_id = $1 AND wallet_address IS NOT NULL`,
+		tgID,
+	).Scan(&wallet)
+	if wallet == "" {
+		wallet = fmt.Sprintf("tg-%d", tgID)
+	}
+
+	var balance, pending float64
+	_ = s.db.QueryRowContext(ctx,
+		`SELECT COALESCE(gstd_balance, 0) + COALESCE(balance, 0), COALESCE(pending_balance_gstd, 0) FROM users WHERE wallet_address = $1`,
+		wallet,
+	).Scan(&balance, &pending)
+
+	proReqs := int(balance / 3.4) // SmartMix standard cost
+
+	var msg string
+	if lang == "ru" {
+		msg = fmt.Sprintf("💎 <b>Мой Баланс</b>\n\n💰 <b>%.4f GSTD</b>\n⚡ Pro запросов: <b>%d</b>", balance, proReqs)
+		if pending > 0 {
+			msg += fmt.Sprintf("\n\n⏳ <b>Награда: %.4f GSTD</b>", pending)
+		}
+		msg += "\n\n<i>🆓 Бесплатная модель всегда доступна\n⚡ Pro = 3.4 GSTD/запрос</i>"
+	} else {
+		msg = fmt.Sprintf("💎 <b>My Balance</b>\n\n💰 <b>%.4f GSTD</b>\n⚡ Pro requests: <b>%d</b>", balance, proReqs)
+		if pending > 0 {
+			msg += fmt.Sprintf("\n\n⏳ <b>Mining reward: %.4f GSTD</b>", pending)
+		}
+		msg += "\n\n<i>🆓 Free model always available\n⚡ Pro = 3.4 GSTD/request</i>"
+	}
+
+	markup := ""
+	if pending >= 0.01 {
+		btnText := "🎁 Claim Reward"
+		if lang == "ru" {
+			btnText = "🎁 Забрать награду"
+		}
+		markup = fmt.Sprintf(`{"inline_keyboard":[[{"text":"%s","callback_data":"claim_reward"}]]}`, btnText)
+	}
+
+	return s.SendMessageToChatWithMarkup(ctx, chatID, msg, markup)
+}
+
+// handleTopUpButton shows Stars purchase tiers with inline keyboard
+func (s *TelegramService) handleTopUpButton(ctx context.Context, chatID, senderIDStr, lang string) error {
+	const starUSD = 0.013
+	var gstdPrice float64
+	if s.db != nil {
+		_ = s.db.QueryRow(`SELECT COALESCE(gstd_price_usd_at_set, 0) FROM inference_fee_config ORDER BY updated_at DESC LIMIT 1`).Scan(&gstdPrice)
+	}
+	if gstdPrice <= 0 {
+		gstdPrice = 0.00028
+	}
+	gstdPerStar := starUSD / gstdPrice
+
+	// Check wallet
+	tgID, _ := strconv.ParseInt(senderIDStr, 10, 64)
+	var walletStatus, hasWalletIcon string
+	hasWallet := false
+	if s.db != nil && tgID > 0 {
+		var w string
+		_ = s.db.QueryRowContext(ctx,
+			`SELECT wallet_address FROM telegram_users WHERE telegram_id = $1 AND wallet_address IS NOT NULL`,
+			tgID,
+		).Scan(&w)
+		if w != "" && !strings.HasPrefix(w, "tg-") {
+			hasWallet = true
+			shortW := w[:6] + "..." + w[len(w)-4:]
+			if lang == "ru" {
+				walletStatus = fmt.Sprintf("💼 <b>Кошелёк:</b> %s ✅", shortW)
+			} else {
+				walletStatus = fmt.Sprintf("💼 <b>Wallet:</b> %s ✅", shortW)
+			}
+			hasWalletIcon = " ✅"
+		}
+	}
+	if !hasWallet {
+		if lang == "ru" {
+			walletStatus = "💼 <b>Кошелёк:</b> не привязан\n⚠️ <i>Привяжите кошелёк кнопкой 🔗 Кошелек, чтобы получать GSTD</i>"
+		} else {
+			walletStatus = "💼 <b>Wallet:</b> not linked\n⚠️ <i>Link wallet via 🔗 Wallet button to receive GSTD</i>"
+		}
+	}
+	_ = hasWalletIcon
+
+	type tier struct {
+		stars int
+		label string
+	}
+	tiers := []tier{{10, "Starter"}, {50, "Pro"}, {200, "Ultra"}}
+
+	var tierLines []string
+	for _, t := range tiers {
+		gstd := int(float64(t.stars) * gstdPerStar)
+		proReqs := gstd / 3 // approximate
+		usd := fmt.Sprintf("%.2f", float64(t.stars)*starUSD)
+		tierLines = append(tierLines, fmt.Sprintf("%d⭐ = <b>%d GSTD</b> = %d Pro ($%s)", t.stars, gstd, proReqs, usd))
+	}
+
+	var msg string
+	if lang == "ru" {
+		msg = fmt.Sprintf("⭐️ <b>Пополнить GSTD через Stars</b>\n\n%s\n\n📊 <b>Курс:</b> 1⭐ = %.0f GSTD ($%.3f)\n\n%s",
+			walletStatus, gstdPerStar, starUSD, strings.Join(tierLines, "\n"))
+	} else {
+		msg = fmt.Sprintf("⭐️ <b>Top Up GSTD via Stars</b>\n\n%s\n\n📊 <b>Rate:</b> 1⭐ = %.0f GSTD ($%.3f)\n\n%s",
+			walletStatus, gstdPerStar, starUSD, strings.Join(tierLines, "\n"))
+	}
+
+	// Build inline keyboard with buy buttons
+	var btns []string
+	for _, t := range tiers {
+		gstd := int(float64(t.stars) * gstdPerStar)
+		btns = append(btns, fmt.Sprintf(`{"text":"%d⭐ → %d GSTD","callback_data":"buy_stars_%d"}`, t.stars, gstd, t.stars))
+	}
+	markup := `{"inline_keyboard":[[` + strings.Join(btns, ",") + `]]`
+	if !hasWallet {
+		linkText := "🔗 Link Wallet"
+		if lang == "ru" {
+			linkText = "🔗 Привязать кошелёк"
+		}
+		markup += fmt.Sprintf(`,[{"text":"%s","callback_data":"public_connect"}]`, linkText)
+	}
+	markup += `}`
+
+	return s.SendMessageToChatWithMarkup(ctx, chatID, msg, markup)
 }

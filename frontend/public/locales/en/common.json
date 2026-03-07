@@ -571,6 +571,8 @@
   "become_neuron_desc": "Your device becomes a brain cell of the planetary supercomputer",
   "nav_dashboard": "Dashboard",
   "nav_chat": "Chat",
+  "nav_appstore": "App Store",
+  "nav_node": "Node",
   "nav_monitor": "Monitor",
   "nav_bot": "GSTD Bot",
   "nav_telegram": "Telegram",

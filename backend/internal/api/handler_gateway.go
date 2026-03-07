@@ -742,16 +742,21 @@ func (h *GatewayHandler) GetUltraStatus(c *gin.Context) {
 	})
 }
 
-// ListModels returns available models for the gateway.
+// ListModels returns available models for the gateway (OpenAI-compatible for Open WebUI).
 func (h *GatewayHandler) ListModels(c *gin.Context) {
-	// Query Ollama for models
-	resp, err := h.client.Get(h.ollamaURL + "/api/tags")
+	// All GSTD Sovereign AI models (Groq-powered)
 	models := []gin.H{
-		{"id": "gpt-3.5-turbo", "object": "model"},
-		{"id": "gpt-4", "object": "model"},
-		{"id": "qwen2.5-coder:7b", "object": "model"},
-		{"id": "llama3.1:8b", "object": "model"},
+		{"id": "llama-3.3-70b-versatile", "object": "model", "owned_by": "meta", "created": 1700000000},
+		{"id": "meta-llama/llama-4-scout-17b-16e-instruct", "object": "model", "owned_by": "meta", "created": 1710000000},
+		{"id": "meta-llama/llama-4-maverick-17b-128e-instruct", "object": "model", "owned_by": "meta", "created": 1710000000},
+		{"id": "qwen/qwen3-32b", "object": "model", "owned_by": "alibaba", "created": 1709000000},
+		{"id": "openai/gpt-oss-120b", "object": "model", "owned_by": "openai", "created": 1711000000},
+		{"id": "openai/gpt-oss-20b", "object": "model", "owned_by": "openai", "created": 1711000000},
+		{"id": "moonshotai/kimi-k2-instruct", "object": "model", "owned_by": "moonshot", "created": 1712000000},
+		{"id": "llama-3.1-8b-instant", "object": "model", "owned_by": "meta", "created": 1700000000},
 	}
+	// Also query Ollama for local models
+	resp, err := h.client.Get(h.ollamaURL + "/api/tags")
 	if err == nil && resp != nil {
 		defer resp.Body.Close()
 		var data struct {
@@ -761,7 +766,7 @@ func (h *GatewayHandler) ListModels(c *gin.Context) {
 		}
 		if json.NewDecoder(resp.Body).Decode(&data) == nil {
 			for _, m := range data.Models {
-				models = append(models, gin.H{"id": m.Name, "object": "model"})
+				models = append(models, gin.H{"id": m.Name, "object": "model", "owned_by": "ollama"})
 			}
 		}
 	}

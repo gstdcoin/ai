@@ -121,6 +121,18 @@ var modelTiers = []ModelInfo{
 }
 
 func NewSwarmModelManager(db *sql.DB, ollamaURL string) *SwarmModelManager {
+	// Validate Ollama connectivity at startup — disable if unreachable
+	if ollamaURL != "" {
+		client := &http.Client{Timeout: 3 * time.Second}
+		resp, err := client.Get(ollamaURL + "/api/tags")
+		if err != nil {
+			log.Printf("⚠️ [SwarmModels] Ollama at %s unreachable (%v) — disabling local model management. Using Groq Cloud instead.", ollamaURL, err)
+			ollamaURL = ""
+		} else {
+			resp.Body.Close()
+		}
+	}
+
 	smm := &SwarmModelManager{
 		db:             db,
 		ollamaURL:      ollamaURL,

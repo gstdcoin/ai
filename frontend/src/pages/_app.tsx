@@ -99,7 +99,7 @@ function App({ Component, pageProps }: AppProps) {
           <main style={{ paddingTop: router.pathname !== '/tma' ? 56 : 0, paddingBottom: router.pathname === '/dashboard' ? 80 : 0, minHeight: '100vh' }}>
             <Component {...pageProps} />
           </main>
-          {router.pathname !== '/tma' && router.pathname !== '/dashboard' && router.pathname !== '/chat' && <EcosystemFooter />}
+          {router.pathname !== '/tma' && router.pathname !== '/dashboard' && router.pathname !== '/chat' && router.pathname !== '/appstore' && !router.pathname.startsWith('/node') && <EcosystemFooter />}
           <Toaster position="top-right" richColors closeButton />
         </TonConnectUIProvider>
       </TelegramThemeProvider>
