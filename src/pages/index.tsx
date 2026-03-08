@@ -1,11 +1,10 @@
-import Image from 'next/image';
 import Link from 'next/link';
 import { GetStaticProps } from 'next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useTranslation } from 'next-i18next';
 import { useState, useEffect, useRef } from 'react';
 import { API_BASE_URL } from '../lib/config';
-import { Activity, Zap, MessageSquare, ArrowRight, Bot, Server, Shield, Globe, Lock, Wifi, Wrench, HardDrive } from 'lucide-react';
+import { Activity, Zap, MessageSquare, ArrowRight, Bot, Server, Shield, Globe, Lock, Wifi, Wrench, HardDrive, Brain, Building2 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
 const AmbientMesh = dynamic(() => import('../components/home/AmbientMesh'), { ssr: false });
@@ -271,6 +270,66 @@ export default function Home() {
                   <p className="text-xs text-gray-400">{t('gold_backed_desc', 'GSTD is secured by physical gold reserves. Decentralized. Uncensored.')}</p>
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* ═══════ SUPER-PREMIUM TIERS ═══════ */}
+          <div className="w-full max-w-5xl mx-auto mb-20 stagger-in">
+            <div className="text-center mb-10">
+              <h3 className="text-2xl sm:text-3xl font-black text-white mb-3">{t('super_premium', 'Super-Premium Tiers')}</h3>
+              <p className="text-sm text-gray-400 max-w-xl mx-auto">{t('super_premium_desc', 'Unlock enterprise capabilities. All token distributions go through the platform with 5% commission. Signed transactions only.')}</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Validator */}
+              <div className="group p-6 rounded-3xl glass-pro gradient-border shine-on-hover transition-all duration-500 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-violet-500/5 rounded-full blur-[60px]" />
+                <div className="w-12 h-12 rounded-2xl bg-violet-500/15 flex items-center justify-center mb-4">
+                  <Shield className="text-violet-400" size={24} />
+                </div>
+                <h4 className="text-lg font-black text-white mb-1">🔷 TON Validator</h4>
+                <div className="text-xs text-violet-400 font-bold mb-3">1,000,000 GSTD</div>
+                <p className="text-xs text-gray-400 leading-relaxed mb-4">{t('validator_desc', 'Run a TON validator. Other nodes see your validator and can stake. Earn commission on staking rewards. 12-20% APY.')}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20">Staking</span>
+                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20">12-20% APY</span>
+                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20">Signed TX</span>
+                </div>
+              </div>
+
+              {/* Training */}
+              <div className="group p-6 rounded-3xl glass-pro gradient-border shine-on-hover transition-all duration-500 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-[60px]" />
+                <div className="w-12 h-12 rounded-2xl bg-cyan-500/15 flex items-center justify-center mb-4">
+                  <Brain className="text-cyan-400" size={24} />
+                </div>
+                <h4 className="text-lg font-black text-white mb-1">🧠 Model Training</h4>
+                <div className="text-xs text-cyan-400 font-bold mb-3">10,000,000 GSTD</div>
+                <p className="text-xs text-gray-400 leading-relaxed mb-4">{t('training_desc', 'Train custom AI models on swarm GPU/CPU resources. Tokens spent are distributed among contributing nodes. Use the collective power.')}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">GPU + CPU</span>
+                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">Distributed</span>
+                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">Swarm Memory</span>
+                </div>
+              </div>
+
+              {/* Enterprise */}
+              <div className="group p-6 rounded-3xl glass-pro gradient-border shine-on-hover transition-all duration-500 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-[60px]" />
+                <div className="w-12 h-12 rounded-2xl bg-amber-500/15 flex items-center justify-center mb-4">
+                  <Building2 className="text-amber-400" size={24} />
+                </div>
+                <h4 className="text-lg font-black text-white mb-1">🏢 Enterprise Swarm</h4>
+                <div className="text-xs text-amber-400 font-bold mb-3">100,000,000 GSTD</div>
+                <p className="text-xs text-gray-400 leading-relaxed mb-4">{t('enterprise_desc', 'Rent the swarm for distributed computing. Fault-tolerant, enterprise-grade. GSTD tokens distributed among participating nodes.')}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">Data Centers</span>
+                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">Fault-Tolerant</span>
+                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">SLA</span>
+                </div>
+              </div>
+            </div>
+            <div className="text-center mt-6">
+              <p className="text-[11px] text-gray-600">💰 5% platform commission · 95% distributed to node operators · All transactions signed by initiator</p>
             </div>
           </div>
 
