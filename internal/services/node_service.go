@@ -393,6 +393,16 @@ func (s *NodeService) RegisterSubNode(ctx context.Context, masterWallet, subID, 
 	return err
 }
 
+// GetActiveNodeCount returns count of nodes online in last 5 minutes
+func (s *NodeService) GetActiveNodeCount(ctx context.Context) (int, error) {
+	var count int
+	err := s.db.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM nodes 
+		WHERE status = 'online' AND last_seen > NOW() - INTERVAL '5 minutes'
+	`).Scan(&count)
+	return count, err
+}
+
 // GetPublicActiveNodes returns basic info about all online nodes with pagination support
 func (s *NodeService) GetPublicActiveNodes(ctx context.Context, limit, offset int) ([]map[string]interface{}, error) {
 	if limit <= 0 || limit > 500 {

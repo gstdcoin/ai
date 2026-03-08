@@ -209,7 +209,13 @@ func UpdateHeartbeat(service *services.NodeService) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(200, gin.H{"status": "ok", "timestamp": time.Now().Unix()})
+		// Return active peers count so node can display real swarm data
+		peersOnline := 0
+		if count, err := service.GetActiveNodeCount(c.Request.Context()); err == nil {
+			peersOnline = count
+		}
+
+		c.JSON(200, gin.H{"status": "ok", "timestamp": time.Now().Unix(), "peers_online": peersOnline})
 	}
 }
 
