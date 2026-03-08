@@ -619,8 +619,15 @@ func SetupRoutes(
 		// Payments (protected)
 		protected.POST("/payments/payout-intent", createPayoutIntent(paymentService))
 
-		// Nodes (protected) — use geoService from DI container
-		SetupNodeRoutes(protected, nodeService, geoService, telegramService, multiLevelReferralService, fleetCommandService)
+		// Nodes — public endpoints (GSTD Node OS sends X-Wallet-Address, no session)
+		// These MUST be public so autonomous nodes can register and heartbeat
+		v1.POST("/nodes/register", registerNode(nodeService, geoService, telegramService, multiLevelReferralService))
+		v1.POST("/nodes/heartbeat", UpdateHeartbeat(nodeService))
+		v1.GET("/nodes/public", getPublicNodes(nodeService))
+		v1.POST("/nodes/activate-wallet", activateWalletAsNode(nodeService))
+
+		// Nodes — protected endpoints (require session for fleet management)
+		SetupNodeProtectedRoutes(protected, nodeService, geoService, telegramService, multiLevelReferralService, fleetCommandService)
 
 		// Task Payment (protected)
 		protected.POST("/tasks/create", createTaskWithPayment(taskPaymentService, taskRateLimiter))
