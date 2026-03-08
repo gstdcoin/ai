@@ -14,8 +14,6 @@ interface HeaderProps {
 const NAV_ITEMS = [
   { key: 'dashboard', href: '/dashboard', label: 'Dashboard' },
   { key: 'chat', href: '/chat', label: 'Chat' },
-  { key: 'appstore', href: '/appstore', label: 'App Store' },
-  { key: 'node', href: '/node', label: 'Node' },
 ];
 
 export default React.memo(function Header({ onLogout, isPublic = false }: HeaderProps) {
