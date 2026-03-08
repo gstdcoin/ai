@@ -5,7 +5,7 @@ import { useTranslation } from 'next-i18next';
 import { TonConnectButton } from '@tonconnect/ui-react';
 import {
     LayoutDashboard, MessageSquare, Activity, Bot,
-    ExternalLink, Menu, X, Package, Server
+    ExternalLink, Menu, X
 } from 'lucide-react';
 
 interface NavItem {
@@ -20,27 +20,20 @@ export default function EcosystemNav() {
     const router = useRouter();
     const [mobileOpen, setMobileOpen] = useState(false);
 
-    // All links must be absolute to work across subdomains (app, monitor, gstdbot)
-    const APP_BASE = 'https://app.gstdtoken.com';
-    const isOnApp = typeof window !== 'undefined' && window.location.hostname === 'app.gstdtoken.com';
-
+    // Internal links use relative paths for same-window navigation
     const navItems: NavItem[] = [
-        { key: 'nav_dashboard', href: `${APP_BASE}/dashboard`, icon: <LayoutDashboard size={16} />, external: !isOnApp },
-        { key: 'nav_chat', href: `${APP_BASE}/chat`, icon: <MessageSquare size={16} />, external: !isOnApp },
-        { key: 'nav_appstore', href: `${APP_BASE}/appstore`, icon: <Package size={16} />, external: !isOnApp },
-        { key: 'nav_node', href: `${APP_BASE}/node`, icon: <Server size={16} />, external: !isOnApp },
-        { key: 'nav_monitor', href: 'https://monitor.gstdtoken.com', icon: <Activity size={16} />, external: true },
-        { key: 'nav_bot', href: 'https://gstdbot.gstdtoken.com', icon: <Bot size={16} />, external: true },
+        { key: 'nav_dashboard', href: '/dashboard', icon: <LayoutDashboard size={16} /> },
+        { key: 'nav_chat', href: '/chat', icon: <MessageSquare size={16} /> },
+        { key: 'nav_monitor', href: '/monitor', icon: <Activity size={16} /> },
+        { key: 'nav_bot', href: 'https://gstdbot.gstdtoken.com', icon: <Bot size={16} /> },
         { key: 'nav_telegram', href: 'https://t.me/GstdAppBot', icon: <ExternalLink size={14} />, external: true },
     ];
 
     const isActive = (href: string) => {
-        const path = router.pathname;
-        if (href.includes('/dashboard') && path === '/dashboard') return true;
-        if (href.includes('/chat') && path === '/chat') return true;
-        if (href.includes('/appstore') && path === '/appstore') return true;
-        if (href.includes('/node') && path.startsWith('/node')) return true;
-        if (href.includes('monitor.gstdtoken.com') && typeof window !== 'undefined' && window.location.hostname === 'monitor.gstdtoken.com') return true;
+        const p = router.pathname;
+        if (href === '/dashboard' && p === '/dashboard') return true;
+        if (href === '/chat' && p === '/chat') return true;
+        if (href === '/monitor' && p.startsWith('/monitor')) return true;
         return false;
     };
 
@@ -79,6 +72,18 @@ export default function EcosystemNav() {
                         const label = t(item.key, item.key.replace('nav_', ''));
                         return item.external ? (
                             <a key={item.key} href={item.href} target="_blank" rel="noopener noreferrer"
+                                style={{
+                                    display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px',
+                                    borderRadius: 8, fontSize: 13, fontWeight: 500, textDecoration: 'none',
+                                    color: 'rgba(255,255,255,0.5)', transition: 'all 0.2s',
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.color = 'white'}
+                                onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.5)'}
+                            >
+                                {item.icon} {label}
+                            </a>
+                        ) : item.href.startsWith('http') ? (
+                            <a key={item.key} href={item.href}
                                 style={{
                                     display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px',
                                     borderRadius: 8, fontSize: 13, fontWeight: 500, textDecoration: 'none',
@@ -143,7 +148,7 @@ export default function EcosystemNav() {
                 }}>
                     {navItems.map((item) => {
                         const label = t(item.key, item.key.replace('nav_', ''));
-                        const Component = item.external ? 'a' : Link;
+                        const Component = item.external ? 'a' : (item.href.startsWith('http') ? 'a' : Link);
                         const props = item.external
                             ? { href: item.href, target: '_blank', rel: 'noopener noreferrer' }
                             : { href: item.href };
