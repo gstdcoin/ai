@@ -413,6 +413,88 @@ func SetupRoutes(
 		// Night Audit: публичная проверка соответствия золотых резервов количеству токенов (ТЗ 3.Б)
 		v1.GET("/audit/reserves", getReservesAudit(db.(*sql.DB), tonService, tonConfig, poolMonitorService))
 
+		// Network health — aggregated system status (public)
+		v1.GET("/network/health", func(c *gin.Context) {
+			sqlDB := db.(*sql.DB)
+			// Node counts
+			var totalNodes, activeNodes int
+			_ = sqlDB.QueryRowContext(c.Request.Context(), `SELECT COUNT(*), COUNT(*) FILTER (WHERE status = 'online' AND last_seen > NOW() - INTERVAL '5 minutes') FROM nodes`).Scan(&totalNodes, &activeNodes)
+			// Task counts
+			var totalTasks, completed, active, queued int
+			_ = sqlDB.QueryRowContext(c.Request.Context(), `SELECT COUNT(*), COUNT(*) FILTER (WHERE status = 'completed'), COUNT(*) FILTER (WHERE status = 'processing'), COUNT(*) FILTER (WHERE status = 'pending') FROM tasks`).Scan(&totalTasks, &completed, &active, &queued)
+			// Avg trust
+			var avgTrust float64
+			_ = sqlDB.QueryRowContext(c.Request.Context(), `SELECT COALESCE(AVG(trust_score), 0) FROM nodes WHERE status = 'online'`).Scan(&avgTrust)
+
+			status := "healthy"
+			if activeNodes == 0 {
+				status = "degraded"
+			}
+			c.JSON(200, gin.H{
+				"status": status,
+				"nodes":  gin.H{"total": totalNodes, "active": activeNodes},
+				"tasks":  gin.H{"total": totalTasks, "completed": completed, "active": active, "queued": queued},
+				"trust":  gin.H{"average": avgTrust},
+				"uptime": gin.H{"backend": true, "database": true, "redis": redisClient != nil},
+			})
+		})
+
+		// Settlement history — last N on-chain settlement events (public transparency)
+		v1.GET("/settlement/history", func(c *gin.Context) {
+			sqlDB := db.(*sql.DB)
+			limit := 20
+			rows, err := sqlDB.QueryContext(c.Request.Context(),
+				`SELECT tx_id, from_wallet, to_wallet, amount_gstd, tx_type, COALESCE(description,''), created_at
+				 FROM transaction_history
+				 WHERE tx_type IN ('settlement','deposit','withdraw','stake','unstake','transfer')
+				 ORDER BY created_at DESC LIMIT $1`, limit)
+			if err != nil {
+				c.JSON(200, gin.H{"history": []interface{}{}, "count": 0})
+				return
+			}
+			defer rows.Close()
+			var history []gin.H
+			for rows.Next() {
+				var txID, from, to, txType, desc string
+				var amount float64
+				var createdAt time.Time
+				if err := rows.Scan(&txID, &from, &to, &amount, &txType, &desc, &createdAt); err != nil {
+					continue
+				}
+				history = append(history, gin.H{
+					"tx_id": txID, "from": from, "to": to, "amount": amount,
+					"type": txType, "description": desc, "timestamp": createdAt.Format(time.RFC3339),
+				})
+			}
+			if history == nil {
+				history = []gin.H{}
+			}
+			c.JSON(200, gin.H{"history": history, "count": len(history)})
+		})
+
+		// Tasks stats — aggregated counts (public)
+		v1.GET("/tasks/stats", func(c *gin.Context) {
+			sqlDB := db.(*sql.DB)
+			var total, completed, active, queued, failed int
+			_ = sqlDB.QueryRowContext(c.Request.Context(),
+				`SELECT COUNT(*),
+				        COUNT(*) FILTER (WHERE status = 'completed'),
+				        COUNT(*) FILTER (WHERE status = 'processing'),
+				        COUNT(*) FILTER (WHERE status = 'pending'),
+				        COUNT(*) FILTER (WHERE status = 'failed')
+				 FROM tasks`).Scan(&total, &completed, &active, &queued, &failed)
+			c.JSON(200, gin.H{
+				"total": total, "completed": completed, "active": active,
+				"queued": queued, "failed": failed,
+				"success_rate": func() float64 {
+					if total == 0 {
+						return 0
+					}
+					return float64(completed) * 100 / float64(total)
+				}(),
+			})
+		})
+
 		// Metrics endpoint (Prometheus format) - public
 		metricsService := NewMetricsService(db.(*sql.DB), redisClient.(*redis.Client))
 		v1.GET("/metrics", metricsService.GetMetrics())
