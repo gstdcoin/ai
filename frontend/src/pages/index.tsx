@@ -5,11 +5,9 @@ import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useTranslation } from 'next-i18next';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
-import { useTonConnectUI } from '@tonconnect/ui-react';
 import WalletConnect from '../components/WalletConnect';
-import { useWalletStore } from '../store/walletStore';
 import { API_BASE_URL } from '../lib/config';
-import { Shield, Globe, Activity, Zap, MessageSquare, Server, ArrowRight, Bot, TrendingUp } from 'lucide-react';
+import { Activity, Zap, MessageSquare, ArrowRight, Bot } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
 // Lazy-load heavy canvas components (no SSR)
@@ -55,8 +53,6 @@ function StatCard({ value, label, color }: { value: string; label: string; color
 export default function Home() {
   const { t } = useTranslation('common');
   const router = useRouter();
-  const { isConnected } = useWalletStore();
-  const [tonConnectUI] = useTonConnectUI();
   const [networkStats, setNetworkStats] = useState<NetworkStats | null>(null);
   const [isClient, setIsClient] = useState(false);
 
@@ -79,26 +75,7 @@ export default function Home() {
     router.push(router.pathname, router.asPath, { locale: router.locale === 'ru' ? 'en' : 'ru' });
   };
 
-  // Redirect to dashboard ONLY if TonConnect wallet is truly connected
-  // (not just persisted state from localStorage)
-  useEffect(() => {
-    if (!isClient) return;
-    const checkRealConnection = () => {
-      const wallet = tonConnectUI.wallet;
-      if (wallet && isConnected) {
-        const source = router.query.source as string;
-        const mode = router.query.mode as string;
-        const params = new URLSearchParams();
-        if (source) params.set('source', source);
-        if (mode) params.set('mode', mode);
-        const q = params.toString() ? '?' + params.toString() : '';
-        router.push('/dashboard' + q);
-      }
-    };
-    // Check after TonConnect SDK has restored session (give it time)
-    const timer = setTimeout(checkRealConnection, 1500);
-    return () => clearTimeout(timer);
-  }, [isClient, isConnected, tonConnectUI, router]);
+  // No auto-redirect — users choose Chat or Monitor from nav
 
   const goldReserve = networkStats?.gold_reserve?.toFixed(4) || '—';
   const activeNodes = networkStats?.active_workers?.toLocaleString() || '—';
@@ -197,13 +174,14 @@ export default function Home() {
                 <span>{t('try_sovereign_ai', 'Try Sovereign AI') || 'Try Sovereign AI'}</span>
                 <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
               </Link>
-              <button
-                onClick={() => tonConnectUI.openModal()}
+              <a
+                href="https://gstdbot.gstdtoken.com"
                 className="group relative w-full sm:w-auto inline-flex items-center justify-center gap-3 px-8 py-4 rounded-2xl glass-pro text-white font-bold text-lg hover:scale-[1.03] active:scale-[0.98] transition-all duration-300 shine-on-hover"
+                style={{ textDecoration: 'none' }}
               >
                 <Zap size={22} className="text-emerald-400 group-hover:scale-110 transition-transform" />
-                <span>{t('launch_dashboard', 'Launch Dashboard') || 'Launch Dashboard'}</span>
-              </button>
+                <span>{t('run_a_node', 'Run a Node')}</span>
+              </a>
             </div>
           </div>
 
@@ -218,12 +196,13 @@ export default function Home() {
                 <p className="text-gray-400 mb-8 leading-relaxed font-medium">
                   {t('tap_hive_desc', 'Use the Global Brain to solve any task. Pay with GSTD to route your queries through the collective intelligence of thousands of nodes. True privacy, open-source models, zero corporate control.')}
                 </p>
-                <button
-                  onClick={() => tonConnectUI.openModal()}
+                <Link
+                  href="/chat"
                   className="flex items-center gap-2 text-violet-400 font-black hover:gap-3 transition-all"
+                  style={{ textDecoration: 'none' }}
                 >
                   {t('access_intelligence', 'Access Intelligence')} <ArrowRight size={16} />
-                </button>
+                </Link>
               </div>
             </div>
 
@@ -236,12 +215,13 @@ export default function Home() {
                 <p className="text-gray-400 mb-8 leading-relaxed font-medium">
                   {t('become_node_desc', 'Turn your phone or PC into a neuron of the Sovereign Organism. Earn GSTD dynamically while your device processes distributed AI tasks contributing to the greater good of humanity.')}
                 </p>
-                <button
-                  onClick={() => tonConnectUI.openModal()}
+                <a
+                  href="https://gstdbot.gstdtoken.com"
                   className="flex items-center gap-2 text-emerald-400 font-black hover:gap-3 transition-all"
+                  style={{ textDecoration: 'none' }}
                 >
                   {t('ignite_your_node', 'Ignite Your Node')} <ArrowRight size={16} />
-                </button>
+                </a>
               </div>
             </div>
           </div>
