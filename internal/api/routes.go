@@ -580,6 +580,13 @@ func SetupRoutes(
 		protected.GET("/wallet/gstd-balance", getGSTDBalance(tonService, tonConfig))
 		protected.GET("/wallet/efficiency", getEfficiency(tonService, tonConfig))
 		protected.GET("/wallet/jetton-address", getJettonAddress(tonService, tonConfig))
+		protected.POST("/wallet/transfer", walletTransfer(dbConn))
+		protected.GET("/wallet/history", walletHistory(dbConn))
+
+		// Staking (protected for write, public for read)
+		protected.POST("/staking/stake", stakingStake(dbConn))
+		protected.POST("/staking/unstake", stakingUnstake(dbConn))
+		v1.GET("/staking/info", stakingInfo(dbConn))
 
 		// TON Wallet Gateway: Direct GSTD purchase via Ston.fi (Ascension)
 		v1.GET("/wallet/buy-gstd", getBuyGSTDLink(tonService, tonConfig))
