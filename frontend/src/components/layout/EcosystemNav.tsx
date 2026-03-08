@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { TonConnectButton } from '@tonconnect/ui-react';
 import {
-    LayoutDashboard, MessageSquare, Activity, Bot,
+    MessageSquare, Activity, Bot,
     ExternalLink, Menu, X
 } from 'lucide-react';
 
@@ -22,7 +22,6 @@ export default function EcosystemNav() {
 
     // Internal links use relative paths for same-window navigation
     const navItems: NavItem[] = [
-        { key: 'nav_dashboard', href: '/dashboard', icon: <LayoutDashboard size={16} /> },
         { key: 'nav_chat', href: '/chat', icon: <MessageSquare size={16} /> },
         { key: 'nav_monitor', href: '/monitor', icon: <Activity size={16} /> },
         { key: 'nav_bot', href: 'https://gstdbot.gstdtoken.com', icon: <Bot size={16} /> },
@@ -31,7 +30,6 @@ export default function EcosystemNav() {
 
     const isActive = (href: string) => {
         const p = router.pathname;
-        if (href === '/dashboard' && p === '/dashboard') return true;
         if (href === '/chat' && p === '/chat') return true;
         if (href === '/monitor' && p.startsWith('/monitor')) return true;
         return false;

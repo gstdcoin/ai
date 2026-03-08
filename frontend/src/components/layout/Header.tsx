@@ -12,7 +12,6 @@ interface HeaderProps {
 }
 
 const NAV_ITEMS = [
-  { key: 'dashboard', href: '/dashboard', label: 'Dashboard' },
   { key: 'chat', href: '/chat', label: 'Chat' },
 ];
 
@@ -32,7 +31,6 @@ export default React.memo(function Header({ onLogout, isPublic = false }: Header
   }, []);
 
   const isActive = (href: string) => {
-    if (href === '/dashboard') return router.pathname === '/dashboard' || router.pathname === '/';
     return router.pathname.startsWith(href);
   };
 
