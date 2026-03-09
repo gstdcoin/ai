@@ -650,7 +650,7 @@ func StartApplication(container *dig.Container) error {
 			}
 		}()
 
-		// 🚀 1M User Optimization: Periodically flush batched heartbeats
+		// 🚀 1M User Optimization: Periodically flush batched heartbeats + mark stale offline
 		go func() {
 			ticker := time.NewTicker(45 * time.Second)
 			defer ticker.Stop()
@@ -662,6 +662,11 @@ func StartApplication(container *dig.Container) error {
 						log.Printf("⚠️  Heartbeat Flush Error: %v", err)
 					} else if affected > 0 {
 						log.Printf("💓 Batched %d heartbeats to database", affected)
+					}
+					// Auto-deactivate stale nodes (no heartbeat for 10 min)
+					stale, _ := nodeService.MarkStaleNodesOffline(ctx, 10*time.Minute)
+					if stale > 0 {
+						log.Printf("⚠️ Marked %d stale nodes offline (10min threshold)", stale)
 					}
 				case <-ctx.Done():
 					return
@@ -916,25 +921,26 @@ func StartApplication(container *dig.Container) error {
 		// 5. Ollama connectivity check (inference gateway)
 		ollamaURL := os.Getenv("OLLAMA_URL")
 		if ollamaURL == "" {
-			ollamaURL = "http://host.docker.internal:11434"
+			log.Printf("ℹ️ OLLAMA_URL not set — local Ollama disabled, using Groq Cloud")
+		} else {
+			go func() {
+				c := &http.Client{Timeout: 5 * time.Second}
+				resp, err := c.Get(ollamaURL + "/api/tags")
+				if err != nil {
+					log.Printf("⚠️ Ollama unreachable at %s — using Groq Cloud fallback", ollamaURL)
+					return
+				}
+				defer resp.Body.Close()
+				var data struct {
+					Models []struct{ Name string } `json:"models"`
+				}
+				if json.NewDecoder(resp.Body).Decode(&data) == nil {
+					log.Printf("✅ Ollama: %d model(s) available at %s", len(data.Models), ollamaURL)
+				} else {
+					log.Printf("✅ Ollama reachable at %s", ollamaURL)
+				}
+			}()
 		}
-		go func() {
-			c := &http.Client{Timeout: 5 * time.Second}
-			resp, err := c.Get(ollamaURL + "/api/tags")
-			if err != nil {
-				log.Printf("⚠️ CRITICAL: Ollama unreachable at %s — /chat/completions will fail. Start Ollama: ollama serve", ollamaURL)
-				return
-			}
-			defer resp.Body.Close()
-			var data struct {
-				Models []struct{ Name string } `json:"models"`
-			}
-			if json.NewDecoder(resp.Body).Decode(&data) == nil {
-				log.Printf("✅ Ollama: %d model(s) available at %s", len(data.Models), ollamaURL)
-			} else {
-				log.Printf("✅ Ollama reachable at %s", ollamaURL)
-			}
-		}()
 
 		log.Printf("NEURAL PULSE: ACTIVE - INTELLIGENCE IS FLOWING")
 		log.Printf("DATA AIRLOCK: ENGAGED - PRIVACY IS ABSOLUTE")

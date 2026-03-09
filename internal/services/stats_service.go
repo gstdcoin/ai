@@ -153,11 +153,11 @@ func (s *StatsService) scanFloat(ctx context.Context, dst *float64, query string
 func (s *StatsService) GetNetworkStats(ctx context.Context) (*NetworkStats, error) {
 	stats := &NetworkStats{}
 
-	// 1. Network size — max of registered nodes vs devices (may overlap)
-	var totalNodes, totalDevices int
-	s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM nodes`).Scan(&totalNodes)
-	s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM devices`).Scan(&totalDevices)
-	stats.ActiveWorkers = max(totalNodes, totalDevices)
+	// 1. Network size — count only ONLINE nodes and active devices
+	var onlineNodes, activeDevices int
+	s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM nodes WHERE status='online' AND last_seen > NOW()-INTERVAL '5 min'`).Scan(&onlineNodes)
+	s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM devices WHERE is_active=true AND last_seen_at > NOW()-INTERVAL '5 min'`).Scan(&activeDevices)
+	stats.ActiveWorkers = max(onlineNodes, activeDevices)
 
 	// 2–3. Aggregate task and payout stats
 	s.scanFloat(ctx, &stats.TotalGSTDPaid, `SELECT COALESCE(SUM(labor_compensation_gstd), 0) FROM tasks WHERE status = 'completed'`)
@@ -178,7 +178,7 @@ func (s *StatsService) GetNetworkStats(ctx context.Context) (*NetworkStats, erro
 		stats.Pressure = float64(pendingTasks)
 	}
 
-	// 6. Total Hashrate (PFLOPS) - estimate from network size
+	// 6. Total Hashrate (PFLOPS) - estimate from ACTIVE workers only
 	stats.TotalHashrate = float64(stats.ActiveWorkers) * 0.5
 
 	// 7. Gold Reserve (Get from latest log)

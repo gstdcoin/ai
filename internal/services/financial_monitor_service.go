@@ -88,10 +88,9 @@ func NewFinancialMonitorService(db *sql.DB, pm *PoolMonitorService, ton *TONServ
 }
 
 func (s *FinancialMonitorService) Start(ctx context.Context) {
-	s.generateSimulatedFlows()
 	s.updateGlobalMetrics()
 
-	ticker := time.NewTicker(2 * time.Second)
+	ticker := time.NewTicker(5 * time.Second)
 	go func() {
 		for {
 			select {
@@ -99,49 +98,14 @@ func (s *FinancialMonitorService) Start(ctx context.Context) {
 				return
 			case <-ticker.C:
 				s.ingestRealDataFromDB(ctx)
-				s.generateSimulatedFlows() // Mixed with real flows for visual density
 				s.updateGlobalMetrics()
 			}
 		}
 	}()
-	log.Println("[FinancialMonitor] Sovereign Monitoring Engine started.")
+	log.Println("[FinancialMonitor] Sovereign Monitoring Engine started (real data only).")
 }
 
-func (s *FinancialMonitorService) generateSimulatedFlows() {
-	s.flows.mu.Lock()
-	defer s.flows.mu.Unlock()
-
-	chains := []string{"TON", "SOL", "XRP", "SWARM"}
-	types := []string{"AI_TASK", "ASSET_TRANSFER", "ANOMALY", "LIQUIDITY_PROVISION"}
-
-	event := FinancialEvent{
-		ID:        s.generateID(),
-		Type:      types[rand.Intn(len(types))],
-		Chain:     chains[rand.Intn(len(chains))],
-		Amount:    rand.Float64() * 5000,
-		Timestamp: time.Now(),
-		Lat:       (rand.Float64() - 0.5) * 140,
-		Lng:       (rand.Float64() - 0.5) * 360,
-		TargetLat: (rand.Float64() - 0.5) * 140,
-		TargetLng: (rand.Float64() - 0.5) * 360,
-	}
-
-	switch event.Type {
-	case "AI_TASK":
-		event.Message = "Neural inference assigned to Swarm Node"
-	case "ASSET_TRANSFER":
-		event.Message = "Cross-chain pool settlement routed"
-	case "ANOMALY":
-		event.Message = "Volatility detected, AI hedging active"
-	case "LIQUIDITY_PROVISION":
-		event.Message = "Global treasury reserve rebalanced"
-	}
-
-	s.flows.RecentEvents = append([]FinancialEvent{event}, s.flows.RecentEvents...)
-	if len(s.flows.RecentEvents) > 100 {
-		s.flows.RecentEvents = s.flows.RecentEvents[:100]
-	}
-}
+// generateSimulatedFlows removed — only real on-chain data is shown
 
 func (s *FinancialMonitorService) updateGlobalMetrics() {
 	s.flows.mu.Lock()
@@ -160,7 +124,7 @@ func (s *FinancialMonitorService) updateGlobalMetrics() {
 		if s.db != nil {
 			_ = s.db.QueryRow(`SELECT COUNT(*) FROM transaction_history WHERE created_at > NOW() - INTERVAL '5 minutes'`).Scan(&tpsCount)
 		}
-		s.flows.GlobalTPS = math.Max(8.0, float64(tpsCount)/300.0) // 8 TPS floor when cold
+		s.flows.GlobalTPS = float64(tpsCount) / 300.0 // Real TPS, no artificial floor
 
 		// Alpha Score based on Price Stability/Performance + Network Activity
 		stability := 1.0
@@ -178,10 +142,17 @@ func (s *FinancialMonitorService) updateGlobalMetrics() {
 		s.flows.ProtocolFundGSTD = m.ProtocolFund
 	}
 
-	// 2. Autonomous Task Generation — lower threshold for more swarm activity (0.92 instead of 0.98)
-	if s.flows.AIAlphaScore > 0.92 && s.orchestrator != nil && time.Since(s.lastTaskAt) > 90*time.Second {
-		s.lastTaskAt = time.Now()
-		go s.createSwarmAnalysisTask()
+	// 2. Autonomous Task Generation — only when nodes are available to process
+	if s.flows.AIAlphaScore > 0.92 && s.orchestrator != nil && time.Since(s.lastTaskAt) > 5*time.Minute {
+		// Check if there are active nodes to process the task
+		var activeNodes int
+		if s.db != nil {
+			_ = s.db.QueryRow(`SELECT COUNT(*) FROM nodes WHERE status = 'online' AND last_seen > NOW() - INTERVAL '5 minutes'`).Scan(&activeNodes)
+		}
+		if activeNodes > 0 {
+			s.lastTaskAt = time.Now()
+			go s.createSwarmAnalysisTask()
+		}
 	}
 }
 

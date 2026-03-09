@@ -28,3 +28,21 @@ Thumbs.db
 docker-compose.override.yml
 node_modules
 .next/
+
+# Compiled binary
+gstd-backend
+gstd-v*
+
+# Cross-contamination (frontend files that should NOT be in backend)
+src/
+public/
+package.json
+package-lock.json
+start.sh
+next.config.js
+next-env.d.ts
+tailwind.config.js
+postcss.config.js
+tsconfig.json
+.eslintrc.json
+.build-version

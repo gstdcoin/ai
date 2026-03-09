@@ -541,3 +541,20 @@ func (s *NodeService) GetMaintenanceAlerts(ctx context.Context, wallet string) (
 	}
 	return alerts, nil
 }
+
+// MarkStaleNodesOffline sets status='offline' for nodes that missed heartbeats.
+// Should be called periodically (e.g., every 5 minutes from background goroutine).
+func (s *NodeService) MarkStaleNodesOffline(ctx context.Context, staleThreshold time.Duration) (int64, error) {
+	if staleThreshold == 0 {
+		staleThreshold = 10 * time.Minute
+	}
+	result, err := s.db.ExecContext(ctx, `
+		UPDATE nodes SET status = 'offline', updated_at = NOW()
+		WHERE status = 'online' AND last_seen < NOW() - $1::interval
+	`, fmt.Sprintf("%d seconds", int(staleThreshold.Seconds())))
+	if err != nil {
+		return 0, fmt.Errorf("mark stale nodes offline: %w", err)
+	}
+	affected, _ := result.RowsAffected()
+	return affected, nil
+}

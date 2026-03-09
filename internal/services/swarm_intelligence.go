@@ -292,7 +292,14 @@ func (s *SwarmIntelligenceService) executeConsensus(ctx context.Context, prompt,
 				votes[r.Model] = r.Content[:min(100, len(r.Content))]
 			}
 		case <-ctx.Done():
-			break
+			return &SwarmResult{
+				Content:         "Request cancelled",
+				Strategy:        StrategyConsensus,
+				ModelsUsed:      []string{},
+				ConsensusScore:  0,
+				Confidence:      0,
+				IntelligenceTag: "cancelled",
+			}, ctx.Err()
 		}
 	}
 

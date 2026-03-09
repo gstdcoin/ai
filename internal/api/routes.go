@@ -877,6 +877,96 @@ func SetupRoutes(
 		v1.GET("/nodes/public", getPublicNodes(nodeService))
 		v1.POST("/nodes/activate-wallet", activateWalletAsNode(nodeService))
 
+		// ─── Node OS Polling Endpoints (public, called every 5-30s by nodes) ───
+		// These MUST be public — autonomous nodes use X-Wallet-Address header
+		v1.POST("/tasks/poll", func(c *gin.Context) {
+			wallet := c.GetHeader("X-Wallet-Address")
+			if wallet == "" {
+				c.JSON(400, gin.H{"error": "X-Wallet-Address header required"})
+				return
+			}
+			// Query for tasks assigned to this node/wallet
+			var taskID, taskType, payload string
+			err := dbConn.QueryRowContext(c.Request.Context(),
+				`SELECT id, type, COALESCE(payload, '{}')
+				 FROM tasks
+				 WHERE status = 'pending'
+				   AND (assigned_wallet = $1 OR assigned_wallet IS NULL)
+				 ORDER BY priority DESC, created_at ASC
+				 LIMIT 1`, wallet).Scan(&taskID, &taskType, &payload)
+			if err != nil {
+				c.JSON(200, gin.H{"task": nil, "message": "no tasks available"})
+				return
+			}
+			c.JSON(200, gin.H{
+				"task": gin.H{
+					"id":      taskID,
+					"type":    taskType,
+					"payload": payload,
+				},
+			})
+		})
+
+		v1.POST("/training/poll", func(c *gin.Context) {
+			wallet := c.GetHeader("X-Wallet-Address")
+			if wallet == "" {
+				c.JSON(400, gin.H{"error": "X-Wallet-Address header required"})
+				return
+			}
+			// Training tasks — federated learning rounds
+			var targetID, modelName string
+			var round int
+			err := dbConn.QueryRowContext(c.Request.Context(),
+				`SELECT id, model_name, current_round
+				 FROM federated_model_targets
+				 WHERE status = 'active'
+				 ORDER BY created_at DESC
+				 LIMIT 1`).Scan(&targetID, &modelName, &round)
+			if err != nil {
+				c.JSON(200, gin.H{"training": nil, "message": "no training rounds available"})
+				return
+			}
+			c.JSON(200, gin.H{
+				"training": gin.H{
+					"id":    targetID,
+					"model": modelName,
+					"round": round,
+				},
+			})
+		})
+
+		v1.POST("/resources/publish", func(c *gin.Context) {
+			wallet := c.GetHeader("X-Wallet-Address")
+			if wallet == "" {
+				c.JSON(400, gin.H{"error": "X-Wallet-Address header required"})
+				return
+			}
+			var req struct {
+				CPU    float64  `json:"cpu_available"`
+				RAM    float64  `json:"ram_available"`
+				GPU    string   `json:"gpu,omitempty"`
+				Models []string `json:"models,omitempty"`
+			}
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(400, gin.H{"error": err.Error()})
+				return
+			}
+			// Update node resource availability
+			_, _ = dbConn.ExecContext(c.Request.Context(),
+				`UPDATE nodes SET
+					specs = jsonb_set(
+						COALESCE(specs, '{}'),
+						'{resources}',
+						$2::jsonb
+					),
+					last_seen = NOW(),
+					status = 'online'
+				 WHERE wallet_address = $1`,
+				wallet,
+				fmt.Sprintf(`{"cpu_available":%.1f,"ram_available":%.1f,"gpu":"%s"}`, req.CPU, req.RAM, req.GPU))
+			c.JSON(200, gin.H{"status": "published", "wallet": wallet})
+		})
+
 		// Nodes — protected endpoints (require session for fleet management)
 		SetupNodeProtectedRoutes(protected, nodeService, geoService, telegramService, multiLevelReferralService, fleetCommandService)
 
@@ -1691,7 +1781,7 @@ func getHealth(db *sql.DB, tonService *services.TONService, tonConfig config.TON
 			},
 			"sovereign_ai": gin.H{
 				"status":         "groq",
-				"ollama_enabled": os.Getenv("OLLAMA_URL") != "" && !strings.Contains(os.Getenv("OLLAMA_URL"), "gstd_ollama"),
+				"ollama_enabled": false, // Ollama container not deployed; inference via Groq Cloud
 				"inference":      "Groq Cloud (8 models)",
 			},
 			"timestamp": time.Now().Unix(),
