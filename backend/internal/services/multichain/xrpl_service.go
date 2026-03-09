@@ -2,44 +2,40 @@ package multichain
 
 import (
 	"context"
+	"fmt"
 )
 
 // XRPLService manages institutional payment gateway
 // Purpose: Cross-border payments, CBDC compatibility, Large-scale settlements
+// Status: ROADMAP — not yet implemented. All methods return ErrNotImplemented.
 type XRPLService interface {
-	// SubmitPayment submits an XRP Ledger payment transaction
 	SubmitPayment(ctx context.Context, fromAddr, secret, toAddr, amount, memo string) (string, error)
-
-	// CreateEscrow creates an escrow on XRPL
 	CreateEscrow(ctx context.Context, fromAddr, secret, toAddr, amount string, finishAfter int64) (string, error)
-
-	// GetTrustLine checks if a trustline for GSTD exists
 	GetTrustLine(ctx context.Context, account, issuer string) (float64, error)
 }
 
-// XRPLServiceImpl is a placeholder implementation
+var ErrXRPLNotImplemented = fmt.Errorf("XRPL bridge not implemented (roadmap feature)")
+
+// XRPLServiceImpl is a stub — returns errors instead of mock data.
 type XRPLServiceImpl struct {
 	WebSocketURL string
 }
 
 func NewXRPLService(url string) *XRPLServiceImpl {
 	if url == "" {
-		url = "wss://s1.ripple.com" // Public mainnet node
+		url = "wss://s1.ripple.com"
 	}
 	return &XRPLServiceImpl{WebSocketURL: url}
 }
 
 func (s *XRPLServiceImpl) SubmitPayment(ctx context.Context, fromAddr, secret, toAddr, amount, memo string) (string, error) {
-	// Would use xrpl-go or raw JSON-RPC over WS
-	return "tx_xrpl_PAYMENT_HASH", nil
+	return "", ErrXRPLNotImplemented
 }
 
 func (s *XRPLServiceImpl) CreateEscrow(ctx context.Context, fromAddr, secret, toAddr, amount string, finishAfter int64) (string, error) {
-	// Creates Ledger Escrow
-	return "tx_xrpl_ESCROW_CREATE_HASH", nil
+	return "", ErrXRPLNotImplemented
 }
 
 func (s *XRPLServiceImpl) GetTrustLine(ctx context.Context, account, issuer string) (float64, error) {
-	// Checks if account trusts issuer for GSTD
-	return 10000.0, nil
+	return 0, ErrXRPLNotImplemented
 }

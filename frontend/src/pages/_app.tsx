@@ -19,7 +19,7 @@ const getManifestUrl = (): string => {
   if (typeof window !== 'undefined') {
     // Check for environment variable in browser
     const envUrl = process.env.NEXT_PUBLIC_TONCONNECT_MANIFEST_URL;
-    if (envUrl?.startsWith('https://')) {
+    if (envUrl && envUrl.startsWith('https://')) {
       return envUrl;
     }
   }
@@ -70,10 +70,9 @@ function App({ Component, pageProps }: AppProps) {
 
   const manifestUrl = getManifestUrl();
 
-  const colorScheme = getTelegramColorScheme();
-  const isLight = colorScheme === 'light';
+  // Определить тему для TonConnect на основе Telegram
   const telegramTheme = isTelegramWebApp()
-    ? (isLight ? THEME.LIGHT : THEME.DARK)
+    ? (getTelegramColorScheme() === 'light' ? THEME.LIGHT : THEME.DARK)
     : THEME.DARK;
 
   // Определить язык для TonConnect на основе текущей локали приложения
@@ -97,14 +96,10 @@ function App({ Component, pageProps }: AppProps) {
           {isMounted && <WalletListener />}
           {isMounted && <VercelSwarmHeartbeat />}
           {router.pathname !== '/tma' && <EcosystemNav />}
-          <main style={{
-            paddingTop: router.pathname === '/tma' ? 0 : 56,
-            paddingBottom: 0,
-            minHeight: '100vh',
-          }}>
+          <main style={{ paddingTop: router.pathname !== '/tma' ? 56 : 0, paddingBottom: router.pathname === '/dashboard' ? 80 : 0, minHeight: '100vh' }}>
             <Component {...pageProps} />
           </main>
-          {router.pathname !== '/tma' && router.pathname !== '/chat' && <EcosystemFooter />}
+          {router.pathname !== '/tma' && router.pathname !== '/dashboard' && router.pathname !== '/chat' && <EcosystemFooter />}
           <Toaster position="top-right" richColors closeButton />
         </TonConnectUIProvider>
       </TelegramThemeProvider>

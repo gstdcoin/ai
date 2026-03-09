@@ -6,12 +6,13 @@ export default function EcosystemFooter() {
     const { t } = useTranslation('common');
 
     const links = [
-        { label: t('footer_chat', 'Chat'), href: '/chat', external: false },
-        { label: t('footer_monitor', 'Monitor'), href: '/monitor', external: false },
-        { label: t('footer_bot', 'Run a Node'), href: 'https://gstdbot.gstdtoken.com', external: true },
+        { label: t('footer_dashboard', 'Dashboard'), href: 'https://app.gstdtoken.com/dashboard', external: true },
+        { label: t('footer_chat', 'Chat'), href: 'https://app.gstdtoken.com/chat', external: true },
+        { label: t('footer_monitor', 'Monitor'), href: 'https://monitor.gstdtoken.com', external: true },
+        { label: t('footer_bot', 'GSTD Bot'), href: 'https://gstdbot.gstdtoken.com', external: true },
         { label: t('footer_telegram', 'Telegram'), href: 'https://t.me/GstdAppBot', external: true },
-        { label: 'Docker Hub', href: 'https://hub.docker.com/r/goldenbit/gstd-node', external: true },
         { label: t('footer_github', 'GitHub'), href: 'https://github.com/gstdcoin', external: true },
+        { label: t('api', 'API'), href: 'https://gstdbot.gstdtoken.com/v1/models', external: true },
     ];
 
     return (

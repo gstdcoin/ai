@@ -1,4 +1,4 @@
-version: "3.9"
+# GSTD Platform — Docker Compose Production
 
 # GSTD Platform — Docker Compose
 # Usage: docker compose up -d --build
@@ -17,7 +17,8 @@ services:
       - postgres_data:/var/lib/postgresql/data
     environment:
       POSTGRES_DB: distributed_computing
-      POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-Gstd_Secure_2026}
+      # POSTGRES_HOST_AUTH_METHOD removed — password required
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -31,7 +32,7 @@ services:
     image: redis:7-alpine
     container_name: gstd_redis_prod
     restart: always
-    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD:-GstdRedis2026}
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -42,7 +43,7 @@ services:
 
   # ─── Backend (Go) ─── Blue-Green, 4 instances ─
   backend-blue:
-    image: gstd-backend-blue:v104
+    image: gstd-backend-blue:v113
     <<: *backend-env
     restart: unless-stopped
     depends_on:

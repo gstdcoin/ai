@@ -61,23 +61,6 @@ module.exports = {
         'glass': '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
         'gold': '0 4px 20px rgba(255, 215, 0, 0.3)',
         'sea': '0 4px 20px rgba(38, 141, 244, 0.3)',
-        // Gravity UI shadows
-        'g-s': 'var(--g-shadow-s)',
-        'g-m': 'var(--g-shadow-m)',
-        'g-l': 'var(--g-shadow-l)',
-        'g-xl': 'var(--g-shadow-xl)',
-        'g-brand': 'var(--g-shadow-brand)',
-        'g-accent': 'var(--g-shadow-accent)',
-      },
-      borderRadius: {
-        // Gravity UI radius
-        'g-xs': 'var(--g-border-radius-xs)',
-        'g-s': 'var(--g-border-radius-s)',
-        'g-m': 'var(--g-border-radius-m)',
-        'g-l': 'var(--g-border-radius-l)',
-        'g-xl': 'var(--g-border-radius-xl)',
-        'g-2xl': 'var(--g-border-radius-2xl)',
-        'g-pill': 'var(--g-border-radius-pill)',
       },
       backgroundImage: {
         'gradient-sea': 'linear-gradient(135deg, #0a1929 0%, #1a3f6d 100%)',

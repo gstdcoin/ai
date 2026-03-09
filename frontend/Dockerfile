@@ -1,60 +1,59 @@
-FROM node:20 AS base
-ENV NODE_OPTIONS="--max-old-space-size=4096"
+# Multi-stage Dockerfile for GSTD Backend
+# Stage 1: Build (h3-go requires CGO)
+FROM golang:1.24-alpine AS builder
 
-# Install dependencies only when needed
-FROM base AS deps
-# RUN apk update && apk add --no-cache libc6-compat || apk add --no-cache gcompat || true
+# Install build deps for CGO (h3-go uses C bindings)
+RUN apk add --no-cache gcc musl-dev
+
 WORKDIR /app
 
-COPY package.json ./
-# Install dependencies - use npm install to handle package-lock.json sync issues
-# Update @twa-dev/sdk to latest if needed
-# Install dependencies - use npm install to handle package-lock.json sync issues
-# Update @twa-dev/sdk to latest if needed
-RUN npm install --legacy-peer-deps && \
-    npm list @twa-dev/sdk || npm install @twa-dev/sdk@latest --save
+# Copy go mod files first for better caching
+COPY go.mod go.sum ./
 
-# Rebuild the source code only when needed
-FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+# Download dependencies
+RUN go mod download
+
+# Copy source code
 COPY . .
 
-ARG NEXT_PUBLIC_API_URL
-ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
-ENV NEXT_TELEMETRY_DISABLED 1
+# Build with CGO for h3-go (geo indexing)
+RUN CGO_ENABLED=1 GOOS=linux go build -a \
+    -ldflags '-w -s' \
+    -o server ./main.go
 
-RUN npm run build
+# Stage 2: Runtime
+FROM alpine:latest
+# FROM gstd-backend:latest
 
-# Production image, copy all the files and run next
-FROM base AS runner
+USER root
+
+
+# Install CA certificates for HTTPS requests
+RUN apk --no-cache add ca-certificates tzdata
+
+# Create non-root user
+RUN addgroup -g 1000 appuser && \
+    adduser -D -u 1000 -G appuser appuser
+
 WORKDIR /app
 
-ENV NODE_ENV production
-ENV NEXT_TELEMETRY_DISABLED 1
+# Copy binary from builder
+COPY --from=builder /app/server .
+COPY --from=builder /app/migrations ./migrations
+COPY .env .env
 
-# Install wget for healthcheck
-# RUN apk add --no-cache wget
+# Change ownership
+RUN chown -R appuser:appuser /app
 
-# RUN addgroup --system --gid 1001 nodejs
-# RUN adduser --system --uid 1001 nextjs
-RUN groupadd -g 1001 -r nodejs && \
-    useradd -u 1001 -r -g nodejs nextjs
+# Switch to non-root user
+USER appuser
 
-COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-COPY --from=builder /app/next-i18next.config.js ./
-# Ensure i18n locale files are available (standalone doesn't include public/)
-COPY --from=builder /app/public/locales ./public/locales
+# Expose port
+EXPOSE 8080
 
-USER nextjs
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/api/v1/health || exit 1
 
-EXPOSE 3000
-
-ENV PORT 3000
-ENV HOSTNAME "0.0.0.0"
-
-CMD ["node", "server.js"]
-
-
+# Run the server
+CMD ["./server"]

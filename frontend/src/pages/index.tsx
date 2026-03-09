@@ -1,11 +1,10 @@
-import Image from 'next/image';
 import Link from 'next/link';
 import { GetStaticProps } from 'next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useTranslation } from 'next-i18next';
 import { useState, useEffect, useRef } from 'react';
 import { API_BASE_URL } from '../lib/config';
-import { Activity, Zap, MessageSquare, ArrowRight, Bot, Server, Shield, Globe } from 'lucide-react';
+import { Activity, Zap, MessageSquare, ArrowRight, Bot, Server, Shield, Globe, Lock, Wifi, Wrench, HardDrive, Brain, Building2 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
 const AmbientMesh = dynamic(() => import('../components/home/AmbientMesh'), { ssr: false });
@@ -121,7 +120,7 @@ export default function Home() {
             </h1>
 
             <p className="text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed mb-10">
-              {t('hero_desc', 'GSTD forms a decentralized planetary brain. By contributing your unused compute power, you become a neural node—helping humanity solve complex global problems. Access the Hive Mind, or')}{' '}
+              {t('hero_desc', 'GSTD forms a decentralized planetary brain. By contributing your unused compute power, you become a neural node—helping humanity solve complex global problems. 77 apps, wallet auth, auto-SSL, self-diagnostics. Access the Hive Mind, or')}{' '}
               <span className="text-emerald-400 font-bold">{t('connect_devices', 'connect your devices')}</span>{' '}
               {t('connect_devices_earn', 'to earn GSTD.')}
             </p>
@@ -172,7 +171,7 @@ export default function Home() {
               </div>
               <h2 className="text-xl font-black tracking-tight mb-3 text-white">{t('become_node', 'Become a Neural Node')}</h2>
               <p className="text-gray-400 mb-6 leading-relaxed text-sm">
-                {t('become_node_desc', 'Turn your phone or PC into a neuron of the Sovereign Organism. Earn GSTD dynamically while your device processes distributed AI tasks contributing to the greater good of humanity.')}
+                {t('become_node_desc', 'Turn any computer into a sovereign AI node. 77 apps, wallet auth, Let\'s Encrypt SSL, DynDNS, self-diagnostics, earnings calculator. One command to install, Telegram to manage.')}
               </p>
               <a href="https://gstdbot.gstdtoken.com" className="flex items-center gap-2 text-emerald-400 font-black hover:gap-3 transition-all text-sm" style={{ textDecoration: 'none' }}>
                 {t('ignite_your_node', 'Ignite Your Node')} <ArrowRight size={14} />
@@ -191,6 +190,40 @@ export default function Home() {
               <a href="https://t.me/goldstandardcoin" className="flex items-center gap-2 text-amber-400 font-black hover:gap-3 transition-all text-sm" style={{ textDecoration: 'none' }}>
                 {t('telegram', 'Telegram')} <ArrowRight size={14} />
               </a>
+            </div>
+          </div>
+
+          {/* ═══════ NODE OS FEATURES STRIP ═══════ */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-20 stagger-in">
+            <div className="p-4 rounded-2xl glass-pro text-center">
+              <Lock className="mx-auto text-violet-400 mb-2" size={20} />
+              <div className="text-xs font-bold text-white">Wallet Auth</div>
+              <div className="text-[10px] text-gray-500">TON Connect</div>
+            </div>
+            <div className="p-4 rounded-2xl glass-pro text-center">
+              <Shield className="mx-auto text-emerald-400 mb-2" size={20} />
+              <div className="text-xs font-bold text-white">Auto SSL</div>
+              <div className="text-[10px] text-gray-500">Let's Encrypt</div>
+            </div>
+            <div className="p-4 rounded-2xl glass-pro text-center">
+              <Wifi className="mx-auto text-cyan-400 mb-2" size={20} />
+              <div className="text-xs font-bold text-white">DynDNS</div>
+              <div className="text-[10px] text-gray-500">5 providers</div>
+            </div>
+            <div className="p-4 rounded-2xl glass-pro text-center">
+              <Wrench className="mx-auto text-amber-400 mb-2" size={20} />
+              <div className="text-xs font-bold text-white">Self-Heal</div>
+              <div className="text-[10px] text-gray-500">8 auto-checks</div>
+            </div>
+            <div className="p-4 rounded-2xl glass-pro text-center">
+              <HardDrive className="mx-auto text-rose-400 mb-2" size={20} />
+              <div className="text-xs font-bold text-white">77 Apps</div>
+              <div className="text-[10px] text-gray-500">Docker store</div>
+            </div>
+            <div className="p-4 rounded-2xl glass-pro text-center">
+              <Bot className="mx-auto text-indigo-400 mb-2" size={20} />
+              <div className="text-xs font-bold text-white">Telegram</div>
+              <div className="text-[10px] text-gray-500">Remote control</div>
             </div>
           </div>
 
@@ -240,15 +273,75 @@ export default function Home() {
             </div>
           </div>
 
+          {/* ═══════ SUPER-PREMIUM TIERS ═══════ */}
+          <div className="w-full max-w-5xl mx-auto mb-20 stagger-in">
+            <div className="text-center mb-10">
+              <h3 className="text-2xl sm:text-3xl font-black text-white mb-3">{t('super_premium', 'Super-Premium Tiers')}</h3>
+              <p className="text-sm text-gray-400 max-w-xl mx-auto">{t('super_premium_desc', 'Unlock enterprise capabilities. All token distributions go through the platform with 5% commission. Signed transactions only.')}</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Validator */}
+              <div className="group p-6 rounded-3xl glass-pro gradient-border shine-on-hover transition-all duration-500 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-violet-500/5 rounded-full blur-[60px]" />
+                <div className="w-12 h-12 rounded-2xl bg-violet-500/15 flex items-center justify-center mb-4">
+                  <Shield className="text-violet-400" size={24} />
+                </div>
+                <h4 className="text-lg font-black text-white mb-1">🔷 TON Validator</h4>
+                <div className="text-xs text-violet-400 font-bold mb-3">1,000,000 GSTD</div>
+                <p className="text-xs text-gray-400 leading-relaxed mb-4">{t('validator_desc', 'Run a TON validator. Other nodes see your validator and can stake. Earn commission on staking rewards. 12-20% APY.')}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20">Staking</span>
+                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20">12-20% APY</span>
+                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20">Signed TX</span>
+                </div>
+              </div>
+
+              {/* Training */}
+              <div className="group p-6 rounded-3xl glass-pro gradient-border shine-on-hover transition-all duration-500 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-[60px]" />
+                <div className="w-12 h-12 rounded-2xl bg-cyan-500/15 flex items-center justify-center mb-4">
+                  <Brain className="text-cyan-400" size={24} />
+                </div>
+                <h4 className="text-lg font-black text-white mb-1">🧠 Model Training</h4>
+                <div className="text-xs text-cyan-400 font-bold mb-3">10,000,000 GSTD</div>
+                <p className="text-xs text-gray-400 leading-relaxed mb-4">{t('training_desc', 'Train custom AI models on swarm GPU/CPU resources. Tokens spent are distributed among contributing nodes. Use the collective power.')}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">GPU + CPU</span>
+                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">Distributed</span>
+                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">Swarm Memory</span>
+                </div>
+              </div>
+
+              {/* Enterprise */}
+              <div className="group p-6 rounded-3xl glass-pro gradient-border shine-on-hover transition-all duration-500 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-[60px]" />
+                <div className="w-12 h-12 rounded-2xl bg-amber-500/15 flex items-center justify-center mb-4">
+                  <Building2 className="text-amber-400" size={24} />
+                </div>
+                <h4 className="text-lg font-black text-white mb-1">🏢 Enterprise Swarm</h4>
+                <div className="text-xs text-amber-400 font-bold mb-3">100,000,000 GSTD</div>
+                <p className="text-xs text-gray-400 leading-relaxed mb-4">{t('enterprise_desc', 'Rent the swarm for distributed computing. Fault-tolerant, enterprise-grade. GSTD tokens distributed among participating nodes.')}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">Data Centers</span>
+                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">Fault-Tolerant</span>
+                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">SLA</span>
+                </div>
+              </div>
+            </div>
+            <div className="text-center mt-6">
+              <p className="text-[11px] text-gray-600">💰 5% platform commission · 95% distributed to node operators · All transactions signed by initiator</p>
+            </div>
+          </div>
+
           {/* ═══════ QUICK INSTALL ═══════ */}
           <div className="w-full max-w-3xl mx-auto stagger-in">
             <div className="p-8 rounded-3xl glass-pro gradient-border text-center">
               <h3 className="text-lg font-bold text-white mb-2">⚡ {t('deploy_in_seconds', 'Deploy in seconds')}</h3>
               <p className="text-sm text-gray-400 mb-6">{t('install_desc', 'Run your own GSTD Node and start earning')}</p>
               <div className="bg-black/40 rounded-xl p-4 font-mono text-sm text-emerald-400 border border-emerald-500/20 mb-4 flex items-center justify-between gap-4">
-                <code>docker run -d -p 8080:8080 goldenbit/gstd-node</code>
+                <code>curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash</code>
                 <button 
-                  onClick={() => { navigator.clipboard.writeText('docker run -d -p 8080:8080 goldenbit/gstd-node'); }}
+                  onClick={() => { navigator.clipboard.writeText('curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash'); }}
                   className="text-xs text-gray-400 hover:text-white border border-white/10 rounded px-3 py-1 transition-colors whitespace-nowrap"
                 >Copy</button>
               </div>

@@ -564,9 +564,9 @@ export default function HumanityMonitor() {
                         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 w-full md:w-auto">
                             {[
                                 { label: t('sovereignty', 'Sovereignty'), value: sovereigntyIndex.toFixed(1) + '%', color: sovereigntyIndex > 90 ? 'text-emerald-400' : sovereigntyIndex > 70 ? 'text-amber-400' : 'text-rose-400', icon: Shield },
+                                { label: t('active_nodes', 'Active Nodes'), value: stats.activeNodes > 0 ? stats.activeNodes.toLocaleString() : '—', color: 'text-cyan-400', icon: Globe2 },
                                 { label: t('health', 'Health'), value: (stats.health * 100).toFixed(0) + '%', color: stats.health > 0.8 ? 'text-emerald-400' : 'text-amber-400', icon: Activity },
                                 { label: t('signals', 'Signals'), value: `${criticalCount} critical`, color: 'text-rose-400', icon: AlertTriangle },
-                                { label: t('contributors', 'Contributors'), value: totalContributors.toLocaleString(), color: 'text-violet-400', icon: Users },
                                 { label: t('reward_pool', 'Reward Pool'), value: totalRewardPool.toLocaleString() + ' GSTD', color: 'text-emerald-400', icon: Database },
                             ].map((s) => (
                                 <div key={s.label} className="px-3 py-2.5 bg-slate-900/60 border border-slate-700/50 rounded-xl backdrop-blur-xl flex items-center gap-2.5">
@@ -682,6 +682,7 @@ export default function HumanityMonitor() {
                             <div className="space-y-2.5">
                                 {[
                                     { l: t('total_signals', 'Total Signals'), v: String(ACTIVE_SIGNALS.length), c: 'text-white' },
+                                    { l: t('active_nodes', 'Active Nodes'), v: stats.activeNodes > 0 ? stats.activeNodes.toLocaleString() : '—', c: 'text-cyan-400' },
                                     { l: t('critical_priority', 'Critical Priority'), v: String(criticalCount), c: 'text-rose-400' },
                                     { l: t('categories', 'Categories'), v: String(CATEGORIES.length - 1), c: 'text-sky-400' },
                                     { l: t('total_contributors', 'Total Contributors'), v: totalContributors.toLocaleString(), c: 'text-violet-400' },
@@ -751,13 +752,13 @@ export default function HumanityMonitor() {
                         </div>
 
                         {/* Join CTA */}
-                        <a href="https://t.me/GstdAppBot" target="_blank" rel="noopener noreferrer"
+                        <a href="https://gstdbot.gstdtoken.com" target="_blank" rel="noopener noreferrer"
                             className="block bg-gradient-to-br from-sky-600/20 to-violet-600/20 border border-sky-500/30 rounded-2xl p-4 hover:border-sky-400/50 transition-all group">
                             <h3 className="text-sm font-black text-white mb-1 flex items-center gap-2">
-                                {t('become_a_neuron', 'Become a Neuron')} <ExternalLink className="w-3 h-3 text-sky-400 group-hover:translate-x-0.5 transition-transform" />
+                                {t('run_your_node', 'Run Your Own Node')} <ExternalLink className="w-3 h-3 text-sky-400 group-hover:translate-x-0.5 transition-transform" />
                             </h3>
                             <p className="text-[10px] text-slate-400 leading-relaxed">
-                                {t('neuron_desc', "Your device becomes a brain cell of the planetary supercomputer. Earn GSTD while solving humanity's problems.")}
+                                {t('node_cta_desc', '77 apps, wallet auth, Let\'s Encrypt SSL, DynDNS, self-diagnostics. Earn GSTD while your device powers the swarm network.')}
                             </p>
                         </a>
                     </div>

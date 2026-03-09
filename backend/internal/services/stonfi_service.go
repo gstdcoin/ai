@@ -266,6 +266,11 @@ func (s *StonFiService) GetSwapQuote(ctx context.Context, amountIn int64, tokenI
 	r0, _ = strconv.ParseFloat(poolData.Pool.Reserve0, 64)
 	r1, _ = strconv.ParseFloat(poolData.Pool.Reserve1, 64)
 
+	// Return error when pool has no liquidity (no simulated reserves)
+	if r0 == 0 && r1 == 0 {
+		return nil, fmt.Errorf("pool has no liquidity (0 reserves) — add real liquidity on STON.fi")
+	}
+
 	// Determine matching logic
 	// We need to match tokenIn to Token0 or Token1
 
@@ -367,7 +372,7 @@ func (s *StonFiService) BuildSwapPayload(ctx context.Context, userWallet string,
 	return map[string]interface{}{
 		"to":       s.routerAddr,
 		"value":    strconv.FormatInt(amountIn, 10),
-		"body_boc": "te6cckEBAQEAAAA...", // Mock BOC
+		"body_boc": "", // Requires wallet service integration for real BOC generation
 		"comment":  "Swap via STON.fi (GSTD Autonomous)",
 		"min_out":  quote.MinAmountOut,
 	}, nil
