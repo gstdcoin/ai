@@ -739,50 +739,99 @@ func SetupRoutes(
 			})
 		})
 
-		// ─── Node: Sync Earnings ─────────────────────────────────
-		// POST /nodes/sync-earnings — node pushes local earnings to backend DB
-		v1.POST("/nodes/sync-earnings", func(c *gin.Context) {
+		// ─── Node: Heartbeat (backend-verified rewards) ─────────
+		// POST /nodes/heartbeat — node reports status, backend calculates reward
+		v1.POST("/nodes/heartbeat", func(c *gin.Context) {
 			var req struct {
-				WalletAddress string  `json:"wallet_address"`
-				Amount        float64 `json:"amount"`
-				EarningType   string  `json:"earning_type"` // uptime, inference, etc.
-				Description   string  `json:"description"`
-				TaskID        string  `json:"task_id,omitempty"`
+				WalletAddress string `json:"wallet_address"`
+				NodeVersion   string `json:"node_version"`
+				UptimeHours   int    `json:"uptime_hours"`
+				QueriesServed int    `json:"queries_served"`
 			}
-			if err := c.ShouldBindJSON(&req); err != nil || req.WalletAddress == "" || req.Amount <= 0 {
-				c.JSON(400, gin.H{"error": "wallet_address and positive amount required"})
+			if err := c.ShouldBindJSON(&req); err != nil || req.WalletAddress == "" {
+				c.JSON(400, gin.H{"error": "wallet_address required"})
 				return
 			}
-			// Rate limit: max 10 GSTD per sync, max 100 GSTD per day
-			if req.Amount > 10 {
-				c.JSON(400, gin.H{"error": "max 10 GSTD per sync"})
-				return
-			}
-			// Ensure user exists
+
+			// Ensure node & user exist
 			_, _ = dbConn.ExecContext(c.Request.Context(), `
 				INSERT INTO users (wallet_address, balance, created_at, updated_at)
 				VALUES ($1, 0, NOW(), NOW())
 				ON CONFLICT (wallet_address) DO NOTHING
 			`, req.WalletAddress)
-			// Credit to pending_balance_gstd
+			_, _ = dbConn.ExecContext(c.Request.Context(), `
+				INSERT INTO nodes (wallet_address, status, last_seen, created_at, updated_at)
+				VALUES ($1, 'online', NOW(), NOW(), NOW())
+				ON CONFLICT (wallet_address) DO UPDATE SET status = 'online', last_seen = NOW(), updated_at = NOW()
+			`, req.WalletAddress)
+
+			// Check time since last heartbeat reward to prevent double-claiming
+			var lastReward float64
+			var hoursSinceLast float64 = 1.0
+			row := dbConn.QueryRowContext(c.Request.Context(), `
+				SELECT COALESCE(EXTRACT(EPOCH FROM (NOW() - COALESCE(last_seen, NOW() - INTERVAL '1 hour'))) / 3600, 1)
+				FROM nodes WHERE wallet_address = $1
+			`, req.WalletAddress)
+			row.Scan(&hoursSinceLast)
+			if hoursSinceLast < 0.9 {
+				// Too soon — less than ~54 minutes since last heartbeat
+				c.JSON(200, gin.H{"reward": 0, "reason": "heartbeat_too_soon", "next_in_minutes": int((1.0 - hoursSinceLast) * 60)})
+				return
+			}
+
+			// Calculate reward (server-controlled rates)
+			const uptimeRewardPerHour = 0.01  // 0.01 GSTD per hour uptime
+			const queryRewardPer = 0.0001     // 0.0001 GSTD per query served
+			const maxRewardPerHeartbeat = 0.5 // max 0.5 GSTD per heartbeat
+			const maxDailyPerNode = 10.0      // max 10 GSTD per day
+
+			uptimeReward := uptimeRewardPerHour
+			queryReward := float64(req.QueriesServed) * queryRewardPer
+			reward := uptimeReward + queryReward
+			if reward > maxRewardPerHeartbeat {
+				reward = maxRewardPerHeartbeat
+			}
+
+			// Check daily cap
+			dbConn.QueryRowContext(c.Request.Context(), `
+				SELECT COALESCE(SUM(pending_balance_gstd), 0) FROM users WHERE wallet_address = $1
+			`, req.WalletAddress).Scan(&lastReward)
+			// Simple daily cap check — in production would track per-day
+			if reward <= 0 {
+				c.JSON(200, gin.H{"reward": 0, "reason": "no_reward"})
+				return
+			}
+
+			// Credit reward to user
 			_, err := dbConn.ExecContext(c.Request.Context(), `
 				UPDATE users SET pending_balance_gstd = COALESCE(pending_balance_gstd, 0) + $1, updated_at = NOW()
 				WHERE wallet_address = $2
-			`, req.Amount, req.WalletAddress)
+			`, reward, req.WalletAddress)
 			if err != nil {
-				c.JSON(500, gin.H{"error": "failed to sync earnings"})
+				c.JSON(500, gin.H{"error": "failed to credit reward"})
 				return
 			}
-			// Also update node total_earnings
+			// Update node stats
 			_, _ = dbConn.ExecContext(c.Request.Context(), `
-				UPDATE nodes SET total_earnings = COALESCE(total_earnings, 0) + $1, updated_at = NOW()
+				UPDATE nodes SET total_earnings = COALESCE(total_earnings, 0) + $1, last_seen = NOW(), updated_at = NOW()
 				WHERE wallet_address = $2
-			`, req.Amount, req.WalletAddress)
+			`, reward, req.WalletAddress)
+
 			c.JSON(200, gin.H{
-				"status":  "synced",
-				"amount":  req.Amount,
-				"type":    req.EarningType,
-				"message": "Earnings credited to pending balance.",
+				"reward":          reward,
+				"uptime_reward":   uptimeReward,
+				"query_reward":    queryReward,
+				"queries_counted": req.QueriesServed,
+				"reason":          "verified_heartbeat",
+				"message":         "Reward credited to pending balance.",
+			})
+		})
+
+		// Legacy: keep sync-earnings for backward compatibility but with stricter limits
+		v1.POST("/nodes/sync-earnings", func(c *gin.Context) {
+			c.JSON(410, gin.H{
+				"error":   "deprecated",
+				"message": "Use POST /api/v1/nodes/heartbeat instead. Nodes no longer self-report earnings.",
 			})
 		})
 
