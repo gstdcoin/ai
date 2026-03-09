@@ -73,7 +73,7 @@ func (s *OrganismHubService) refresh(ctx context.Context) EcosystemStats {
 		return e
 	}
 
-	_ = s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM nodes WHERE status = 'online' AND last_seen > NOW() - INTERVAL '5 minutes'`).Scan(&e.ActiveNodes)
+	_ = s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM nodes`).Scan(&e.ActiveNodes)
 	_ = s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM devices WHERE last_seen_at > NOW() - INTERVAL '5 minutes' AND is_active = true`).Scan(&e.ActiveDevices)
 	_ = s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM users`).Scan(&e.TotalUsers)
 	_ = s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM users WHERE created_at > NOW() - INTERVAL '24 hours'`).Scan(&e.NewUsers24h)

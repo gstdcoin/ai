@@ -124,6 +124,7 @@ type NetworkStats struct {
 	ActiveWorkers        int     `json:"active_workers"`
 	TotalGSTDPaid        float64 `json:"total_gstd_paid"`
 	Tasks24h             int     `json:"tasks_24h"`
+	TotalTasks           int     `json:"total_tasks"`
 	Temperature          float64 `json:"temperature"`
 	Pressure             float64 `json:"pressure"`
 	TotalHashrate        float64 `json:"total_hashrate"`
@@ -139,71 +140,49 @@ type NetworkStats struct {
 	GlobalBrainLatencyMs int     `json:"global_brain_latency_ms"` // Avg ping from network_measurements
 }
 
+// scanInt runs a single-row query and scans into *dst; on error, *dst is left unchanged.
+func (s *StatsService) scanInt(ctx context.Context, dst *int, query string) {
+	_ = s.db.QueryRowContext(ctx, query).Scan(dst)
+}
+
+// scanFloat runs a single-row query and scans into *dst; on error, *dst is left unchanged.
+func (s *StatsService) scanFloat(ctx context.Context, dst *float64, query string) {
+	_ = s.db.QueryRowContext(ctx, query).Scan(dst)
+}
+
 func (s *StatsService) GetNetworkStats(ctx context.Context) (*NetworkStats, error) {
 	stats := &NetworkStats{}
 
-	// 1. Total active workers (last 30 seconds for "Live" status)
-	err := s.db.QueryRowContext(ctx, `
-		SELECT COUNT(*) FROM devices WHERE is_active = true AND last_seen_at > NOW() - INTERVAL '30 seconds'
-	`).Scan(&stats.ActiveWorkers)
-	if err != nil {
-		stats.ActiveWorkers = 0
-	}
+	// 1. Network size — max of registered nodes vs devices (may overlap)
+	var totalNodes, totalDevices int
+	s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM nodes`).Scan(&totalNodes)
+	s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM devices`).Scan(&totalDevices)
+	stats.ActiveWorkers = max(totalNodes, totalDevices)
 
-	// 2. Total GSTD paid (all time)
-	err = s.db.QueryRowContext(ctx, `
-		SELECT COALESCE(SUM(labor_compensation_gstd), 0) FROM tasks WHERE status = 'completed'
-	`).Scan(&stats.TotalGSTDPaid)
-	if err != nil {
-		stats.TotalGSTDPaid = 0
-	}
+	// 2–3. Aggregate task and payout stats
+	s.scanFloat(ctx, &stats.TotalGSTDPaid, `SELECT COALESCE(SUM(labor_compensation_gstd), 0) FROM tasks WHERE status = 'completed'`)
+	s.scanInt(ctx, &stats.Tasks24h, `SELECT COUNT(*) FROM tasks WHERE status = 'completed' AND completed_at > NOW() - INTERVAL '24 hours'`)
+	s.scanInt(ctx, &stats.TotalTasks, `SELECT COUNT(*) FROM tasks WHERE status = 'completed'`)
 
-	// 3. Tasks completed in last 24h
-	err = s.db.QueryRowContext(ctx, `
-		SELECT COUNT(*) FROM tasks WHERE status = 'completed' AND completed_at > NOW() - INTERVAL '24 hours'
-	`).Scan(&stats.Tasks24h)
-	if err != nil {
-		stats.Tasks24h = 0
-	}
+	// 4. Network Temperature (Average Entropy Score)
+	stats.Temperature = 0.1
+	s.scanFloat(ctx, &stats.Temperature, `SELECT COALESCE(AVG(entropy_score), 0.1) FROM operation_entropy`)
 
-	// 4. Calculate Netork Temperature (Average Entropy Score)
-	err = s.db.QueryRowContext(ctx, `
-		SELECT COALESCE(AVG(entropy_score), 0.1) FROM operation_entropy
-	`).Scan(&stats.Temperature)
-	if err != nil {
-		stats.Temperature = 0.1
-	}
-
-	// 5. Calculate Computational Pressure (Queued + Processing) / ActiveNodes
+	// 5. Computational Pressure
 	var pendingTasks int
-	err = s.db.QueryRowContext(ctx, `
-		SELECT COUNT(*) FROM tasks WHERE status IN ('pending', 'queued', 'assigned', 'executing')
-	`).Scan(&pendingTasks)
+	s.scanInt(ctx, &pendingTasks, `SELECT COUNT(*) FROM tasks WHERE status IN ('pending', 'queued', 'assigned', 'executing')`)
 
-	activeNodes := stats.ActiveWorkers
-	if activeNodes == 0 {
-		// Try to count from nodes table if devices is 0 (nodes use last_seen)
-		s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM nodes WHERE last_seen > NOW() - INTERVAL '30 seconds' AND status = 'online'").Scan(&activeNodes)
-	}
-
-	if activeNodes > 0 {
-		stats.Pressure = float64(pendingTasks) / float64(activeNodes)
+	if stats.ActiveWorkers > 0 {
+		stats.Pressure = float64(pendingTasks) / float64(stats.ActiveWorkers)
 	} else {
 		stats.Pressure = float64(pendingTasks)
 	}
 
-	// 6. Total Hashrate (PFLOPS) - estimate from active nodes (nodes use last_seen)
-	var activeNodeCount int
-	_ = s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM nodes WHERE last_seen > NOW() - INTERVAL '30 seconds' AND status = 'online'`).Scan(&activeNodeCount)
-	stats.TotalHashrate = float64(activeNodeCount) * 0.5
+	// 6. Total Hashrate (PFLOPS) - estimate from network size
+	stats.TotalHashrate = float64(stats.ActiveWorkers) * 0.5
 
 	// 7. Gold Reserve (Get from latest log)
-	err = s.db.QueryRowContext(ctx, `
-        SELECT COALESCE(xaut_amount, 0) FROM golden_reserve_log ORDER BY timestamp DESC LIMIT 1
-    `).Scan(&stats.GoldReserve)
-	if err != nil {
-		stats.GoldReserve = 0
-	}
+	s.scanFloat(ctx, &stats.GoldReserve, `SELECT COALESCE(xaut_amount, 0) FROM golden_reserve_log ORDER BY timestamp DESC LIMIT 1`)
 	// Populate GoldenReserveXAUt from GoldReserve for consistency
 	stats.GoldenReserveXAUt = stats.GoldReserve
 
@@ -214,14 +193,12 @@ func (s *StatsService) GetNetworkStats(ctx context.Context) (*NetworkStats, erro
 	}
 
 	// 8. Nightly Audit Stats
-	err = s.db.QueryRowContext(ctx, `
+	if err := s.db.QueryRowContext(ctx, `
 		SELECT TO_CHAR(audit_date, 'YYYY-MM-DD'), verified, COALESCE(backing_ratio_percent, 0)
 		FROM nightly_audits 
 		ORDER BY audit_date DESC 
 		LIMIT 1
-	`).Scan(&stats.LastAuditDate, &stats.AuditVerified, &stats.BackingRatio)
-	if err != nil {
-		// Default if no audit yet
+	`).Scan(&stats.LastAuditDate, &stats.AuditVerified, &stats.BackingRatio); err != nil {
 		stats.LastAuditDate = ""
 		stats.AuditVerified = false
 		stats.BackingRatio = 0
@@ -255,11 +232,6 @@ func (s *StatsService) GetTaskCompletionHistory(ctx context.Context, period stri
 	var query string
 	var data []TaskCompletionData
 
-	// Default to daily if period not specified
-	if period == "" {
-		period = "day"
-	}
-
 	switch period {
 	case "hour":
 		// Last 24 hours, grouped by hour
@@ -272,19 +244,6 @@ func (s *StatsService) GetTaskCompletionHistory(ctx context.Context, period stri
 			WHERE status = 'completed' 
 				AND completed_at > NOW() - INTERVAL '24 hours'
 			GROUP BY TO_CHAR(completed_at, 'YYYY-MM-DD HH24:00')
-			ORDER BY date ASC
-		`
-	case "day":
-		// Last 30 days, grouped by day
-		query = `
-			SELECT 
-				TO_CHAR(completed_at, 'YYYY-MM-DD') as date,
-				COUNT(*) as count,
-				COALESCE(SUM(labor_compensation_gstd), 0) as gstd
-			FROM tasks
-			WHERE status = 'completed' 
-				AND completed_at > NOW() - INTERVAL '30 days'
-			GROUP BY TO_CHAR(completed_at, 'YYYY-MM-DD')
 			ORDER BY date ASC
 		`
 	case "week":
@@ -301,7 +260,7 @@ func (s *StatsService) GetTaskCompletionHistory(ctx context.Context, period stri
 			ORDER BY date ASC
 		`
 	default:
-		// Default to daily
+		// "day" and any unrecognized period — last 30 days grouped by day
 		query = `
 			SELECT 
 				TO_CHAR(completed_at, 'YYYY-MM-DD') as date,

@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "postbuild": "mkdir -p .next/standalone/.next/static .next/standalone/public && cp -r .next/static/* .next/standalone/.next/static/ 2>/dev/null; cp -r public/* .next/standalone/public/ && echo 'Postbuild: static assets copied to standalone'",
     "start": "next start",
     "lint": "eslint src",
     "prepare": "husky install"

@@ -56,7 +56,8 @@ export default function EcosystemNav() {
                 alignItems: 'center', justifyContent: 'space-between', height: '100%',
             }}>
                 {/* Logo */}
-                <Link href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Link href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <img src="/logo.png" alt="GSTD" style={{ width: 32, height: 32, borderRadius: '50%' }} />
                     <span style={{
                         fontWeight: 800, fontSize: 18, color: 'white',
                         background: 'linear-gradient(135deg, #8b5cf6, #06b6d4)',
