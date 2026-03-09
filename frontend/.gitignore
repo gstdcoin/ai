@@ -28,3 +28,10 @@ Thumbs.db
 docker-compose.override.yml
 node_modules
 .next/
+
+# Leaked backend binaries (cross-contamination prevention)
+gstd-backend
+gstd-v*
+
+# Build output
+nohup.out
