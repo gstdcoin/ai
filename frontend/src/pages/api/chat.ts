@@ -14,97 +14,10 @@
  */
 
 import type { NextApiRequest, NextApiResponse } from 'next';
-import crypto from 'crypto';
 
 // ─── Config ───────────────────────────────────────────────────────
 const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
-const KNOWLEDGE_CACHE_TTL = 86400; // 24 hours
-
-// ─── Factuality System Prompt ─────────────────────────────────────
-const FACTUALITY_PROMPT = `You are a knowledgeable AI assistant that ONLY provides verified, factual information.
-
-CRITICAL RULES:
-1. ONLY state facts you are confident are true and widely accepted
-2. When citing information, reference the source type (e.g., "According to scientific research...", "Per official documentation...", "Based on established data...")
-3. If you are NOT CERTAIN about something, say "I'm not sure about this" or "This may not be accurate" — NEVER fabricate facts
-4. Distinguish clearly between established facts, expert opinions, and your inferences
-5. For numerical data (statistics, dates, measurements), only provide values you are confident about
-6. If asked about recent events you may not have data on, explicitly state your knowledge cutoff
-7. Prefer concise, accurate answers over lengthy uncertain ones
-8. Use markdown formatting for clarity
-
-Your goal is to be TRUSTWORTHY — users rely on you for accurate information. Being honest about uncertainty is better than being confidently wrong.`;
-
-// ─── Redis Knowledge Cache ────────────────────────────────────────
-function makeKnowledgeKey(question: string): string {
-    const normalized = question.toLowerCase().trim().replace(/\s+/g, ' ');
-    return `gstd:knowledge:${crypto.createHash('md5').update(normalized).digest('hex')}`;
-}
-
-
-async function saveToKnowledge(question: string, answer: string, model: string): Promise<void> {
-    try {
-        const key = makeKnowledgeKey(question);
-        const data = JSON.stringify({ answer, model, timestamp: Date.now() });
-        await redisSet(key, data, KNOWLEDGE_CACHE_TTL);
-    } catch { /* ignore cache write failures */ }
-}
-
-// ─── Minimal Redis client (no dependencies) ───────────────────────
-import net from 'net';
-
-function redisCommand(args: string[]): Promise<string | null> {
-    return new Promise((resolve) => {
-        const socket = new net.Socket();
-        let response = '';
-        let resolved = false;
-        const done = (val: string | null) => {
-            if (resolved) return;
-            resolved = true;
-            socket.destroy();
-            resolve(val);
-        };
-        socket.setTimeout(2000);
-        socket.connect(6379, '127.0.0.1', () => {
-            const cmd = `*${args.length}\r\n${args.map(a => `$${Buffer.byteLength(a)}\r\n${a}`).join('\r\n')}\r\n`;
-            socket.write(cmd);
-        });
-        socket.on('data', (data) => {
-            response += data.toString();
-            // Parse RESP: null bulk string
-            if (response.startsWith('$-1\r\n')) return done(null);
-            // Error
-            if (response.startsWith('-')) return done(null);
-            // Simple string (+OK\r\n)
-            if (response.startsWith('+') && response.includes('\r\n')) {
-                return done(response.slice(1, response.indexOf('\r\n')));
-            }
-            // Bulk string ($N\r\nDATA\r\n) 
-            const sizeMatch = response.match(/^\$(\d+)\r\n/);
-            if (sizeMatch) {
-                const expectedLen = parseInt(sizeMatch[1]);
-                const dataStart = sizeMatch[0].length;
-                // Check if we have all data + trailing \r\n
-                if (response.length >= dataStart + expectedLen + 2) {
-                    return done(response.substring(dataStart, dataStart + expectedLen));
-                }
-                // Else: wait for more data chunks
-            }
-        });
-        socket.on('error', () => done(null));
-        socket.on('timeout', () => done(null));
-    });
-}
-
-async function redisGet(key: string): Promise<string | null> {
-    return redisCommand(['GET', key]);
-}
-
-async function redisSet(key: string, value: string, ttl: number): Promise<void> {
-    await redisCommand(['SET', key, value, 'EX', String(ttl)]);
-}
 
 // ─── All Groq expert models ──────────────────────────────────────
 interface ModelSpec {
@@ -218,12 +131,6 @@ Respond directly. Use rich markdown formatting.`,
 
 interface ChatMessage { role: string; content: string; }
 
-// ─── Strip <think> tags from reasoning models (Qwen3, etc.) ──────
-function stripThinkTags(text: string): string {
-    // NOTE: Do NOT .trim() here — streaming tokens have leading spaces that must be preserved
-    return text.replace(/<think>[\s\S]*?<\/think>/gi, '');
-}
-
 // ─── Call a Groq model ────────────────────────────────────────────
 async function callGroq(modelId: string, messages: ChatMessage[], maxTokens: number = 2048, temperature: number = 0.7): Promise<{ content: string; latency: number }> {
     const start = Date.now();
@@ -241,8 +148,7 @@ async function callGroq(modelId: string, messages: ChatMessage[], maxTokens: num
         });
         if (!resp.ok) throw new Error(`Groq ${resp.status}`);
         const data: any = await resp.json();
-        const rawContent = data.choices?.[0]?.message?.content || '';
-        const content = stripThinkTags(rawContent);
+        const content = data.choices?.[0]?.message?.content || '';
         if (!content) throw new Error('Empty');
         return { content, latency: Date.now() - start };
     } finally {
@@ -278,7 +184,7 @@ async function* streamGroq(modelId: string, messages: ChatMessage[], maxTokens: 
             try {
                 const parsed = JSON.parse(data);
                 const delta = parsed.choices?.[0]?.delta?.content;
-                if (delta) yield stripThinkTags(delta);
+                if (delta) yield delta;
             } catch { }
         }
     }
@@ -315,37 +221,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const start = Date.now();
     const collectiveTier = TIERS[tier] || TIERS.free;
 
-    // ─── Inject factuality system prompt ──────────────────────────
-    const lastUserMsg = [...messages].reverse().find((m: ChatMessage) => m.role === 'user')?.content || '';
-    const hasSystemPrompt = messages.some((m: ChatMessage) => m.role === 'system');
-    const enrichedMessages: ChatMessage[] = hasSystemPrompt
-        ? messages.map((m: ChatMessage) => m.role === 'system'
-            ? { ...m, content: FACTUALITY_PROMPT + '\n\n' + m.content }
-            : m)
-        : [{ role: 'system', content: FACTUALITY_PROMPT }, ...messages];
-
-    // ─── Check knowledge cache (skip for streaming to avoid complexity) ──
-    if (!stream && lastUserMsg.length > 5) {
-        const cached = await redisGet(makeKnowledgeKey(lastUserMsg));
-        if (cached) {
-            try {
-                const knowledge = JSON.parse(cached);
-                const latencyMs = Date.now() - start;
-                console.log(`[CI] 📚 Knowledge cache hit: "${lastUserMsg.substring(0, 40)}..."`);
-                return res.status(200).json({
-                    id: `ci-${Date.now()}`, object: 'chat.completion',
-                    created: Math.floor(Date.now() / 1000), model: knowledge.model || 'cached',
-                    choices: [{ index: 0, message: { role: 'assistant', content: knowledge.answer }, finish_reason: 'stop' }],
-                    collective: {
-                        tier, tierName: '📚 Verified Knowledge', badge: '📚',
-                        expertCount: 1, latency_ms: latencyMs, cost_gstd: 0,
-                        cached: true,
-                    },
-                });
-            } catch { /* invalid cache, proceed normally */ }
-        }
-    }
-
     // ═══════════════════════════════════════════════════════════════
     // FREE TIER — Single expert, streaming or non-streaming
     // ═══════════════════════════════════════════════════════════════
@@ -368,7 +243,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
             // Try primary model
             try {
-                for await (const chunk of streamGroq(spec.modelId, enrichedMessages)) {
+                for await (const chunk of streamGroq(spec.modelId, messages)) {
                     sendSSE(res, 'delta', { content: chunk });
                 }
                 success = true;
@@ -381,7 +256,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 for (const fbId of FALLBACK_MODELS) {
                     if (fbId === spec.modelId) continue;
                     try {
-                        for await (const chunk of streamGroq(fbId, enrichedMessages)) {
+                        for await (const chunk of streamGroq(fbId, messages)) {
                             sendSSE(res, 'delta', { content: chunk });
                         }
                         usedSpec = ALL_EXPERTS.find(m => m.modelId === fbId) || spec;
@@ -407,13 +282,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Non-stream free
         for (const fbId of [spec.modelId, ...FALLBACK_MODELS]) {
             try {
-                const result = await callGroq(fbId, enrichedMessages);
-
-                // Save to knowledge cache for future instant responses
-                if (lastUserMsg.length > 5) {
-                    saveToKnowledge(lastUserMsg, result.content, fbId).catch(() => {});
-                }
-
+                const result = await callGroq(fbId, messages);
                 return res.status(200).json({
                     id: `ci-${Date.now()}`, object: 'chat.completion',
                     created: Math.floor(Date.now() / 1000), model: fbId,
@@ -451,7 +320,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Phase 1: Query all Groq experts in parallel
     const expertPromises = experts.map(expert =>
-        callGroq(expert.modelId, enrichedMessages, 1500, 0.7 + Math.random() * 0.15)
+        callGroq(expert.modelId, messages, 1500, 0.7 + Math.random() * 0.15)
             .then(r => ({ ...r, expert }))
             .catch(err => {
                 console.warn(`[CI] Expert ${expert.id} failed:`, err?.message?.substring(0, 60));
@@ -512,7 +381,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
         } catch {
             // Fallback: send best expert answer
-            const best = expertResults.reduce((a, b) => a.content.length > b.content.length ? a : b, expertResults[0]);
+            const best = expertResults.reduce((a, b) => a.content.length > b.content.length ? a : b);
             sendSSE(res, 'delta', { content: best.content });
         }
 
@@ -544,7 +413,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             },
         });
     } catch {
-        const best = expertResults.reduce((a, b) => a.content.length > b.content.length ? a : b, expertResults[0]);
+        const best = expertResults.reduce((a, b) => a.content.length > b.content.length ? a : b);
         return res.status(200).json({
             id: `ci-${Date.now()}`, object: 'chat.completion',
             created: Math.floor(Date.now() / 1000), model: best.expert.id,

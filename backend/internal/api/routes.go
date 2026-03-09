@@ -413,6 +413,88 @@ func SetupRoutes(
 		// Night Audit: публичная проверка соответствия золотых резервов количеству токенов (ТЗ 3.Б)
 		v1.GET("/audit/reserves", getReservesAudit(db.(*sql.DB), tonService, tonConfig, poolMonitorService))
 
+		// Network health — aggregated system status (public)
+		v1.GET("/network/health", func(c *gin.Context) {
+			sqlDB := db.(*sql.DB)
+			// Node counts
+			var totalNodes, activeNodes int
+			_ = sqlDB.QueryRowContext(c.Request.Context(), `SELECT COUNT(*), COUNT(*) FILTER (WHERE status = 'online' AND last_seen > NOW() - INTERVAL '5 minutes') FROM nodes`).Scan(&totalNodes, &activeNodes)
+			// Task counts
+			var totalTasks, completed, active, queued int
+			_ = sqlDB.QueryRowContext(c.Request.Context(), `SELECT COUNT(*), COUNT(*) FILTER (WHERE status = 'completed'), COUNT(*) FILTER (WHERE status = 'processing'), COUNT(*) FILTER (WHERE status = 'pending') FROM tasks`).Scan(&totalTasks, &completed, &active, &queued)
+			// Avg trust
+			var avgTrust float64
+			_ = sqlDB.QueryRowContext(c.Request.Context(), `SELECT COALESCE(AVG(trust_score), 0) FROM nodes WHERE status = 'online'`).Scan(&avgTrust)
+
+			status := "healthy"
+			if activeNodes == 0 {
+				status = "degraded"
+			}
+			c.JSON(200, gin.H{
+				"status": status,
+				"nodes":  gin.H{"total": totalNodes, "active": activeNodes},
+				"tasks":  gin.H{"total": totalTasks, "completed": completed, "active": active, "queued": queued},
+				"trust":  gin.H{"average": avgTrust},
+				"uptime": gin.H{"backend": true, "database": true, "redis": redisClient != nil},
+			})
+		})
+
+		// Settlement history — last N on-chain settlement events (public transparency)
+		v1.GET("/settlement/history", func(c *gin.Context) {
+			sqlDB := db.(*sql.DB)
+			limit := 20
+			rows, err := sqlDB.QueryContext(c.Request.Context(),
+				`SELECT tx_id, from_wallet, to_wallet, amount_gstd, tx_type, COALESCE(description,''), created_at
+				 FROM transaction_history
+				 WHERE tx_type IN ('settlement','deposit','withdraw','stake','unstake','transfer')
+				 ORDER BY created_at DESC LIMIT $1`, limit)
+			if err != nil {
+				c.JSON(200, gin.H{"history": []interface{}{}, "count": 0})
+				return
+			}
+			defer rows.Close()
+			var history []gin.H
+			for rows.Next() {
+				var txID, from, to, txType, desc string
+				var amount float64
+				var createdAt time.Time
+				if err := rows.Scan(&txID, &from, &to, &amount, &txType, &desc, &createdAt); err != nil {
+					continue
+				}
+				history = append(history, gin.H{
+					"tx_id": txID, "from": from, "to": to, "amount": amount,
+					"type": txType, "description": desc, "timestamp": createdAt.Format(time.RFC3339),
+				})
+			}
+			if history == nil {
+				history = []gin.H{}
+			}
+			c.JSON(200, gin.H{"history": history, "count": len(history)})
+		})
+
+		// Tasks stats — aggregated counts (public)
+		v1.GET("/tasks/stats", func(c *gin.Context) {
+			sqlDB := db.(*sql.DB)
+			var total, completed, active, queued, failed int
+			_ = sqlDB.QueryRowContext(c.Request.Context(),
+				`SELECT COUNT(*),
+				        COUNT(*) FILTER (WHERE status = 'completed'),
+				        COUNT(*) FILTER (WHERE status = 'processing'),
+				        COUNT(*) FILTER (WHERE status = 'pending'),
+				        COUNT(*) FILTER (WHERE status = 'failed')
+				 FROM tasks`).Scan(&total, &completed, &active, &queued, &failed)
+			c.JSON(200, gin.H{
+				"total": total, "completed": completed, "active": active,
+				"queued": queued, "failed": failed,
+				"success_rate": func() float64 {
+					if total == 0 {
+						return 0
+					}
+					return float64(completed) * 100 / float64(total)
+				}(),
+			})
+		})
+
 		// Metrics endpoint (Prometheus format) - public
 		metricsService := NewMetricsService(db.(*sql.DB), redisClient.(*redis.Client))
 		v1.GET("/metrics", metricsService.GetMetrics())
@@ -580,15 +662,151 @@ func SetupRoutes(
 		protected.GET("/wallet/gstd-balance", getGSTDBalance(tonService, tonConfig))
 		protected.GET("/wallet/efficiency", getEfficiency(tonService, tonConfig))
 		protected.GET("/wallet/jetton-address", getJettonAddress(tonService, tonConfig))
+		protected.POST("/wallet/transfer", walletTransfer(dbConn))
+		protected.GET("/wallet/history", walletHistory(dbConn))
+
+		// Staking (protected for write, public for read)
+		protected.POST("/staking/stake", stakingStake(dbConn))
+		protected.POST("/staking/unstake", stakingUnstake(dbConn))
+		v1.GET("/staking/info", stakingInfo(dbConn))
 
 		// TON Wallet Gateway: Direct GSTD purchase via Ston.fi (Ascension)
 		v1.GET("/wallet/buy-gstd", getBuyGSTDLink(tonService, tonConfig))
 
+		// Node Wallet Balance (public, by address — used by GSTD Node OS)
+		v1.GET("/wallet/:address/balance", func(c *gin.Context) {
+			address := c.Param("address")
+			if address == "" {
+				c.JSON(400, gin.H{"error": "wallet address required"})
+				return
+			}
+			// Look up balance in DB
+			var gstdBalance float64
+			var pendingBalance float64
+			err := dbConn.QueryRowContext(c.Request.Context(),
+				`SELECT COALESCE(gstd_balance, 0), COALESCE(pending_balance, 0) FROM users WHERE wallet_address = $1`,
+				address).Scan(&gstdBalance, &pendingBalance)
+			if err != nil {
+				// Node doesn't have a user yet — return zeros (node will create user on first task)
+				c.JSON(200, gin.H{"gstd": 0, "ton": 0, "pending": 0, "total_earned": 0})
+				return
+			}
+			// Also get total earned from earnings history
+			var totalEarned float64
+			_ = dbConn.QueryRowContext(c.Request.Context(),
+				`SELECT COALESCE(SUM(amount), 0) FROM earnings WHERE wallet_address = $1`,
+				address).Scan(&totalEarned)
+
+			c.JSON(200, gin.H{
+				"gstd":         gstdBalance,
+				"ton":          0,
+				"pending":      pendingBalance,
+				"total_earned": totalEarned,
+			})
+		})
+
 		// Payments (protected)
 		protected.POST("/payments/payout-intent", createPayoutIntent(paymentService))
 
-		// Nodes (protected) — use geoService from DI container
-		SetupNodeRoutes(protected, nodeService, geoService, telegramService, multiLevelReferralService, fleetCommandService)
+		// Nodes — public endpoints (GSTD Node OS sends X-Wallet-Address, no session)
+		// These MUST be public so autonomous nodes can register and heartbeat
+		v1.POST("/nodes/register", registerNode(nodeService, geoService, telegramService, multiLevelReferralService))
+		v1.POST("/nodes/heartbeat", UpdateHeartbeat(nodeService))
+		v1.GET("/nodes/public", getPublicNodes(nodeService))
+		v1.POST("/nodes/activate-wallet", activateWalletAsNode(nodeService))
+
+		// ─── Node OS Polling Endpoints (public, called every 5-30s by nodes) ───
+		// These MUST be public — autonomous nodes use X-Wallet-Address header
+		v1.POST("/tasks/poll", func(c *gin.Context) {
+			wallet := c.GetHeader("X-Wallet-Address")
+			if wallet == "" {
+				c.JSON(400, gin.H{"error": "X-Wallet-Address header required"})
+				return
+			}
+			// Query for tasks assigned to this node/wallet
+			var taskID, taskType, payload string
+			err := dbConn.QueryRowContext(c.Request.Context(),
+				`SELECT id, type, COALESCE(payload, '{}')
+				 FROM tasks
+				 WHERE status = 'pending'
+				   AND (assigned_wallet = $1 OR assigned_wallet IS NULL)
+				 ORDER BY priority DESC, created_at ASC
+				 LIMIT 1`, wallet).Scan(&taskID, &taskType, &payload)
+			if err != nil {
+				c.JSON(200, gin.H{"task": nil, "message": "no tasks available"})
+				return
+			}
+			c.JSON(200, gin.H{
+				"task": gin.H{
+					"id":      taskID,
+					"type":    taskType,
+					"payload": payload,
+				},
+			})
+		})
+
+		v1.POST("/training/poll", func(c *gin.Context) {
+			wallet := c.GetHeader("X-Wallet-Address")
+			if wallet == "" {
+				c.JSON(400, gin.H{"error": "X-Wallet-Address header required"})
+				return
+			}
+			// Training tasks — federated learning rounds
+			var targetID, modelName string
+			var round int
+			err := dbConn.QueryRowContext(c.Request.Context(),
+				`SELECT id, model_name, current_round
+				 FROM federated_model_targets
+				 WHERE status = 'active'
+				 ORDER BY created_at DESC
+				 LIMIT 1`).Scan(&targetID, &modelName, &round)
+			if err != nil {
+				c.JSON(200, gin.H{"training": nil, "message": "no training rounds available"})
+				return
+			}
+			c.JSON(200, gin.H{
+				"training": gin.H{
+					"id":    targetID,
+					"model": modelName,
+					"round": round,
+				},
+			})
+		})
+
+		v1.POST("/resources/publish", func(c *gin.Context) {
+			wallet := c.GetHeader("X-Wallet-Address")
+			if wallet == "" {
+				c.JSON(400, gin.H{"error": "X-Wallet-Address header required"})
+				return
+			}
+			var req struct {
+				CPU    float64  `json:"cpu_available"`
+				RAM    float64  `json:"ram_available"`
+				GPU    string   `json:"gpu,omitempty"`
+				Models []string `json:"models,omitempty"`
+			}
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(400, gin.H{"error": err.Error()})
+				return
+			}
+			// Update node resource availability
+			_, _ = dbConn.ExecContext(c.Request.Context(),
+				`UPDATE nodes SET
+					specs = jsonb_set(
+						COALESCE(specs, '{}'),
+						'{resources}',
+						$2::jsonb
+					),
+					last_seen = NOW(),
+					status = 'online'
+				 WHERE wallet_address = $1`,
+				wallet,
+				fmt.Sprintf(`{"cpu_available":%.1f,"ram_available":%.1f,"gpu":"%s"}`, req.CPU, req.RAM, req.GPU))
+			c.JSON(200, gin.H{"status": "published", "wallet": wallet})
+		})
+
+		// Nodes — protected endpoints (require session for fleet management)
+		SetupNodeProtectedRoutes(protected, nodeService, geoService, telegramService, multiLevelReferralService, fleetCommandService)
 
 		// Task Payment (protected)
 		protected.POST("/tasks/create", createTaskWithPayment(taskPaymentService, taskRateLimiter))
@@ -1401,7 +1619,7 @@ func getHealth(db *sql.DB, tonService *services.TONService, tonConfig config.TON
 			},
 			"sovereign_ai": gin.H{
 				"status":         "groq",
-				"ollama_enabled": os.Getenv("OLLAMA_URL") != "" && !strings.Contains(os.Getenv("OLLAMA_URL"), "gstd_ollama"),
+				"ollama_enabled": false, // Ollama container not deployed; inference via Groq Cloud
 				"inference":      "Groq Cloud (8 models)",
 			},
 			"timestamp": time.Now().Unix(),

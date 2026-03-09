@@ -5,13 +5,15 @@ import { Globe } from 'lucide-react';
 
 export default function LanguageSwitcher() {
   const router = useRouter();
-  const { t } = useTranslation('common');
+  const { t, i18n } = useTranslation('common');
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   const changeLanguage = (locale: string) => {
     if (!router || !locale) return;
+
+    // Update URL with full navigation to trigger next-i18next reload
     const { pathname, asPath, query } = router;
     router.push({ pathname, query }, asPath, { locale, scroll: false });
     setIsOpen(false);
@@ -19,6 +21,7 @@ export default function LanguageSwitcher() {
 
   const currentLocale = router.locale || 'en';
 
+  // Close menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -33,7 +36,9 @@ export default function LanguageSwitcher() {
 
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
     }
   }, [isOpen]);
 
@@ -42,14 +47,13 @@ export default function LanguageSwitcher() {
       <button
         ref={buttonRef}
         onClick={() => setIsOpen(!isOpen)}
-        className="g-btn g-btn--flat g-btn--s"
+        className="glass-button flex items-center gap-2 text-white touch-manipulation"
         aria-label={t('change_language', 'Change language') || 'Change language'}
         aria-expanded={isOpen}
         type="button"
-        style={{ gap: 6 }}
       >
-        <Globe size={16} />
-        <span className="hidden sm:inline font-semibold uppercase" style={{ fontSize: 11 }}>
+        <Globe size={18} />
+        <span className="hidden sm:inline font-medium uppercase">
           {currentLocale === 'ru' ? 'RU' : 'EN'}
         </span>
       </button>
@@ -57,40 +61,30 @@ export default function LanguageSwitcher() {
       {isOpen && (
         <div
           ref={menuRef}
-          className="absolute right-0 top-full mt-1 z-50 overflow-hidden"
+          className="absolute right-0 sm:right-0 left-auto sm:left-auto top-full mt-2 z-50 glass-dark rounded-lg shadow-glass overflow-hidden min-w-[120px] max-w-[200px]"
           style={{
-            background: 'var(--g-color-base-float-elevated)',
-            border: '1px solid var(--g-color-line-hover)',
-            borderRadius: 'var(--g-border-radius-l)',
-            boxShadow: 'var(--g-shadow-l)',
-            minWidth: 120,
-            animation: 'g-modal-in 150ms ease forwards',
+            right: '0',
+            left: 'auto',
+            transform: 'translateX(0)'
           }}
         >
           <button
             onClick={() => changeLanguage('en')}
-            className="w-full px-4 py-2.5 text-left text-sm transition-colors touch-manipulation flex items-center gap-2"
-            style={{
-              color: currentLocale === 'en' ? 'var(--g-color-brand)' : 'var(--g-color-text-secondary)',
-              background: currentLocale === 'en' ? 'var(--g-color-brand-light)' : 'transparent',
-              fontWeight: currentLocale === 'en' ? 600 : 400,
-            }}
+            className={`
+              w-full px-4 py-2 text-left text-sm transition-colors touch-manipulation
+              ${currentLocale === 'en' ? 'bg-gold-900/20 text-gold-900' : 'text-gray-300 hover:bg-white/5 active:bg-white/10'}
+            `}
             type="button"
-          >
-            🇺🇸 {t('english', 'English')}
-          </button>
-          <div style={{ height: 1, background: 'var(--g-color-line-generic)' }} />
+          >{t('english', 'English')}</button>
           <button
             onClick={() => changeLanguage('ru')}
-            className="w-full px-4 py-2.5 text-left text-sm transition-colors touch-manipulation flex items-center gap-2"
-            style={{
-              color: currentLocale === 'ru' ? 'var(--g-color-brand)' : 'var(--g-color-text-secondary)',
-              background: currentLocale === 'ru' ? 'var(--g-color-brand-light)' : 'transparent',
-              fontWeight: currentLocale === 'ru' ? 600 : 400,
-            }}
+            className={`
+              w-full px-4 py-2 text-left text-sm transition-colors touch-manipulation
+              ${currentLocale === 'ru' ? 'bg-gold-900/20 text-gold-900' : 'text-gray-300 hover:bg-white/5 active:bg-white/10'}
+            `}
             type="button"
           >
-            🇷🇺 Русский
+            Русский
           </button>
         </div>
       )}

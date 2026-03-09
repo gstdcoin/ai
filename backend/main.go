@@ -1,12 +1,16 @@
 package main
 
 import (
+	"context"
 	"distributed-computing-platform/internal/app"
 	"distributed-computing-platform/internal/config"
-	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
+
+	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 )
 
 func main() {
@@ -43,6 +47,17 @@ func main() {
 	if ginMode == "release" {
 		log.Printf("🔒 Running in Release Mode")
 	}
+
+	// Graceful shutdown handler
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	go func() {
+		<-ctx.Done()
+		log.Printf("🛑 Received shutdown signal, gracefully stopping...")
+		// Give in-flight requests time to complete
+		os.Exit(0)
+	}()
 
 	// 2. Build and Start Application using DI Container
 	container := app.BuildContainer()

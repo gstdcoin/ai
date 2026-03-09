@@ -159,6 +159,9 @@ func (o *TaskOrchestrator) EnqueueTask(ctx context.Context, task *TaskQueueItem)
 		"pow_difficulty":  task.PoWDifficulty,
 	}).Err(); err != nil {
 		log.Printf("Warning: failed to store task details: %v", err)
+	} else {
+		// Set TTL to prevent orphaned keys from accumulating forever
+		o.redis.Expire(ctx, detailsKey, 24*time.Hour)
 	}
 
 	log.Printf("📥 Task %s enqueued with priority score %.2f", task.TaskID, score)

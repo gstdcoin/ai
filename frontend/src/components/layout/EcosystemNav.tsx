@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { TonConnectButton } from '@tonconnect/ui-react';
 import {
-    MessageSquare, Activity, Bot,
+    LayoutDashboard, MessageSquare, Activity, Bot, Globe, ChevronDown,
     ExternalLink, Menu, X
 } from 'lucide-react';
 
@@ -20,18 +20,23 @@ export default function EcosystemNav() {
     const router = useRouter();
     const [mobileOpen, setMobileOpen] = useState(false);
 
-    // Internal links use relative paths for same-window navigation
+    // All links must be absolute to work across subdomains (app, monitor, gstdbot)
+    const APP_BASE = 'https://app.gstdtoken.com';
+    const isOnApp = typeof window !== 'undefined' && window.location.hostname === 'app.gstdtoken.com';
+
     const navItems: NavItem[] = [
-        { key: 'nav_chat', href: '/chat', icon: <MessageSquare size={16} /> },
-        { key: 'nav_monitor', href: '/monitor', icon: <Activity size={16} /> },
-        { key: 'nav_bot', href: 'https://gstdbot.gstdtoken.com', icon: <Bot size={16} /> },
+        { key: 'nav_dashboard', href: `${APP_BASE}/dashboard`, icon: <LayoutDashboard size={16} />, external: !isOnApp },
+        { key: 'nav_chat', href: `${APP_BASE}/chat`, icon: <MessageSquare size={16} />, external: !isOnApp },
+        { key: 'nav_monitor', href: 'https://monitor.gstdtoken.com', icon: <Activity size={16} />, external: true },
+        { key: 'nav_bot', href: 'https://gstdbot.gstdtoken.com', icon: <Bot size={16} />, external: true },
         { key: 'nav_telegram', href: 'https://t.me/GstdAppBot', icon: <ExternalLink size={14} />, external: true },
     ];
 
     const isActive = (href: string) => {
-        const p = router.pathname;
-        if (href === '/chat' && p === '/chat') return true;
-        if (href === '/monitor' && p.startsWith('/monitor')) return true;
+        const path = router.pathname;
+        if (href.includes('/dashboard') && path === '/dashboard') return true;
+        if (href.includes('/chat') && path === '/chat') return true;
+        if (href.includes('monitor.gstdtoken.com') && typeof window !== 'undefined' && window.location.hostname === 'monitor.gstdtoken.com') return true;
         return false;
     };
 
@@ -42,8 +47,8 @@ export default function EcosystemNav() {
     return (
         <nav style={{
             position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000,
-            background: 'var(--g-color-base-float)', backdropFilter: 'blur(20px)',
-            borderBottom: '1px solid var(--g-color-line-generic)',
+            background: 'rgba(3, 0, 20, 0.85)', backdropFilter: 'blur(20px)',
+            borderBottom: '1px solid rgba(255,255,255,0.06)',
             padding: '0 16px', height: 56,
         }}>
             <div style={{
@@ -51,15 +56,16 @@ export default function EcosystemNav() {
                 alignItems: 'center', justifyContent: 'space-between', height: '100%',
             }}>
                 {/* Logo */}
-                <Link href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Link href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 10 }}>
                     <img src="/logo.png" alt="GSTD" style={{ width: 32, height: 32, borderRadius: '50%' }} />
                     <span style={{
-                        fontWeight: 800, fontSize: 18, color: 'var(--g-color-brand)',
+                        fontWeight: 800, fontSize: 18, color: 'white',
+                        background: 'linear-gradient(135deg, #8b5cf6, #06b6d4)',
+                        WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
                     }}>GSTD</span>
                     <span style={{
                         fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
-                        background: 'var(--g-color-brand-light)', color: 'var(--g-color-brand)',
-                        letterSpacing: 0.5,
+                        background: '#8b5cf6', color: 'white', letterSpacing: 0.5,
                     }}>{t('ecosystem', 'ECOSYSTEM')}</span>
                 </Link>
 
@@ -80,26 +86,14 @@ export default function EcosystemNav() {
                             >
                                 {item.icon} {label}
                             </a>
-                        ) : item.href.startsWith('http') ? (
-                            <a key={item.key} href={item.href}
-                                style={{
-                                    display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px',
-                                    borderRadius: 8, fontSize: 13, fontWeight: 500, textDecoration: 'none',
-                                    color: 'rgba(255,255,255,0.5)', transition: 'all 0.2s',
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.color = 'white'}
-                                onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.5)'}
-                            >
-                                {item.icon} {label}
-                            </a>
                         ) : (
                             <Link key={item.key} href={item.href}
                                 style={{
                                     display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px',
                                     borderRadius: 8, fontSize: 13, fontWeight: active ? 600 : 500,
                                     textDecoration: 'none',
-                                    color: active ? 'var(--g-color-brand)' : 'var(--g-color-text-secondary)',
-                                    background: active ? 'var(--g-color-brand-light)' : 'transparent',
+                                    color: active ? 'white' : 'rgba(255,255,255,0.5)',
+                                    background: active ? 'rgba(139,92,246,0.15)' : 'transparent',
                                     transition: 'all 0.2s',
                                 }}
                             >
@@ -113,12 +107,12 @@ export default function EcosystemNav() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     {/* Language toggle */}
                     <button onClick={changeLang} style={{
-                        background: 'transparent', border: '1px solid var(--g-color-line-generic)',
+                        background: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
                         borderRadius: 6, padding: '4px 8px', fontSize: 11, fontWeight: 600,
-                        color: 'var(--g-color-text-secondary)', cursor: 'pointer', transition: 'all 0.2s',
+                        color: 'rgba(255,255,255,0.5)', cursor: 'pointer', transition: 'all 0.2s',
                     }}
-                        onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--g-color-brand)'; e.currentTarget.style.borderColor = 'var(--g-color-brand-light)'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--g-color-text-secondary)'; e.currentTarget.style.borderColor = 'var(--g-color-line-generic)'; }}
+                        onMouseEnter={(e) => { e.currentTarget.style.color = 'white'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}
                     >
                         {router.locale === 'ru' ? 'EN' : 'RU'}
                     </button>
@@ -141,12 +135,12 @@ export default function EcosystemNav() {
             {mobileOpen && (
                 <div style={{
                     position: 'absolute', top: 56, left: 0, right: 0,
-                    background: 'var(--g-color-base-modal)', backdropFilter: 'blur(20px)',
-                    borderBottom: '1px solid var(--g-color-line-generic)', padding: '8px 16px',
+                    background: 'rgba(3, 0, 20, 0.95)', backdropFilter: 'blur(20px)',
+                    borderBottom: '1px solid rgba(255,255,255,0.06)', padding: '8px 16px',
                 }}>
                     {navItems.map((item) => {
                         const label = t(item.key, item.key.replace('nav_', ''));
-                        const Component = item.external ? 'a' : (item.href.startsWith('http') ? 'a' : Link);
+                        const Component = item.external ? 'a' : Link;
                         const props = item.external
                             ? { href: item.href, target: '_blank', rel: 'noopener noreferrer' }
                             : { href: item.href };
@@ -166,12 +160,12 @@ export default function EcosystemNav() {
                 </div>
             )}
 
-            <style dangerouslySetInnerHTML={{ __html: `
+            <style jsx global>{`
         @media (max-width: 768px) {
           .ecosystem-nav-desktop { display: none !important; }
           .ecosystem-nav-mobile-btn { display: block !important; }
         }
-      ` }} />
+      `}</style>
         </nav>
     );
 }

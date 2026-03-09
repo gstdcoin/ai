@@ -21,14 +21,46 @@ nginx/
 # Build artifacts
 node_modules/
 .next/
+.next-backup/
 dist/
 out/
+nohup.out
 backend/server
 backend/backend
 backend/backend-app
 backend/distributed-computing-platform
 backend/backend.log
 *.log
+
+# Go compiled binaries (prevent cross-directory contamination)
+gstd-backend
+gstd-v*
+backend/gstd-backend
+frontend/gstd-backend
+frontend/gstd-v*
+
+# Cross-directory contamination prevention
+# Go backend files should NOT be in frontend/
+frontend/main.go
+frontend/go.mod
+frontend/go.sum
+frontend/Makefile
+frontend/.golangci.yml
+frontend/internal/
+frontend/cmd/
+frontend/migrations/
+# Frontend files should NOT be in backend/
+backend/next.config.js
+backend/next-env.d.ts
+backend/next-i18next.config.js
+backend/tailwind.config.js
+backend/postcss.config.js
+backend/tsconfig.json
+backend/tsconfig.eslint.json
+backend/vercel.json
+backend/.eslintrc.json
+backend/.lintstagedrc.json
+backend/eslint.config.mjs
 
 # System packages
 snap/

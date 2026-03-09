@@ -496,7 +496,7 @@ export default function ChatPage() {
     const suggestions = [
         { icon: '💻', text: 'Write a Python script', prompt: 'Write a Python script to analyze a CSV file and create a summary report with statistics' },
         { icon: '📝', text: 'Explain a concept', prompt: 'Explain how neural networks work in simple terms with examples' },
-        { icon: '🔧', text: 'Debug my code', prompt: 'Help me debug this code and explain what went wrong' },
+        { icon: '🐝', text: 'Run a Node', prompt: 'How do I install and configure a GSTD Node with wallet auth, SSL, and DynDNS?' },
         { icon: '🌍', text: 'Translate text', prompt: 'Translate the following text and explain any cultural nuances' },
     ];
 
@@ -504,8 +504,8 @@ export default function ChatPage() {
     return (
         <div className="h-screen w-screen max-w-full flex bg-[#030014] text-white overflow-hidden" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
             <Head>
-                <title>GSTD Chat — Sovereign AI</title>
-                <meta name="description" content="GSTD Collective Intelligence — 8 AI models reach consensus for superior answers. Free single expert or paid collective tiers." />
+                <title>GSTD Chat — Sovereign AI · Powered by Swarm Network</title>
+                <meta name="description" content="GSTD Collective Intelligence — 8 AI models reach consensus. Powered by 50+ nodes with wallet auth, auto-SSL, self-diagnostics. Free single expert or paid collective tiers." />
                 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
             </Head>
 
@@ -691,7 +691,7 @@ export default function ChatPage() {
                                 </div>
                                 <h1 className="text-3xl sm:text-4xl font-bold mb-3 text-white">{t('how_can_help', 'How can I help?')}</h1>
                                 <p className="text-sm text-gray-500 leading-relaxed max-w-md mx-auto mb-8">
-                                    Collective Intelligence — 8 Groq models · Llama 4 · GPT-OSS · Kimi K2 · Paid: expert consensus
+                                    Collective Intelligence — 8 Groq models · Powered by {'>'}50 swarm nodes · Wallet auth · 77 apps
                                 </p>
 
                                 {/* Suggestions grid */}

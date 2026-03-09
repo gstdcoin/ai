@@ -209,7 +209,13 @@ func UpdateHeartbeat(service *services.NodeService) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(200, gin.H{"status": "ok", "timestamp": time.Now().Unix()})
+		// Return active peers count so node can display real swarm data
+		peersOnline := 0
+		if count, err := service.GetActiveNodeCount(c.Request.Context()); err == nil {
+			peersOnline = count
+		}
+
+		c.JSON(200, gin.H{"status": "ok", "timestamp": time.Now().Unix(), "peers_online": peersOnline})
 	}
 }
 
@@ -300,13 +306,20 @@ func activateWalletAsNode(service *services.NodeService) gin.HandlerFunc {
 	}
 }
 
-// SetupNodeRoutes registers node-related routes
+// SetupNodeRoutes registers all node-related routes (for backward compat)
 func SetupNodeRoutes(group *gin.RouterGroup, service *services.NodeService, geoService *services.GeoService, telegramService *services.TelegramService, referral *services.MultiLevelReferralService, fleetCommandService *services.FleetCommandService) {
 	group.POST("/nodes/register", registerNode(service, geoService, telegramService, referral))
 	group.POST("/nodes/activate-wallet", activateWalletAsNode(service))
 	group.GET("/nodes/my", getMyNodes(service))
 	group.GET("/nodes/public", getPublicNodes(service))
 	group.POST("/nodes/heartbeat", UpdateHeartbeat(service))
+	group.POST("/nodes/fleet/command", fleetCommand(fleetCommandService))
+	group.GET("/nodes/maintenance-alerts", maintenanceAlerts(service))
+}
+
+// SetupNodeProtectedRoutes registers only the protected node endpoints (require session)
+func SetupNodeProtectedRoutes(group *gin.RouterGroup, service *services.NodeService, geoService *services.GeoService, telegramService *services.TelegramService, referral *services.MultiLevelReferralService, fleetCommandService *services.FleetCommandService) {
+	group.GET("/nodes/my", getMyNodes(service))
 	group.POST("/nodes/fleet/command", fleetCommand(fleetCommandService))
 	group.GET("/nodes/maintenance-alerts", maintenanceAlerts(service))
 }

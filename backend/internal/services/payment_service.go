@@ -175,43 +175,20 @@ func (s *PaymentService) BuildPayoutIntent(ctx context.Context, taskID string, e
 		return nil, fmt.Errorf("invalid reward amount")
 	}
 
-	// Convert to nanoTON for contract
-	// GASLESS FEATURE: If user has low TON, they can pay fee in GSTD
-	// The contract supports this via "pay_gas_in_jetton" op (simulated here)
-	// We deduct extra GSTD to cover the 0.01 TON gas
+	// PULL-MODEL: User pays gas in TON directly (no GSTD deduction)
+	// Minimum gas fee for TON transaction: ~0.01 TON
+	executorRewardNano := int64(executorReward * 1e9)
+	platformFeeNano := int64(platformFee * 1e9)
+	minGasFee := int64(10000000) // 0.01 TON — paid by executor in TON
 
-	// Exchange rate: 1 TON = 200 GSTD (approx) -> 0.01 TON = 2 GSTD
-	gasFeeInGSTD := 2.0
-
-	// Deduct gas fee from reward
-	finalExecutorReward := executorReward - gasFeeInGSTD
-	if finalExecutorReward <= 0 {
-		return nil, fmt.Errorf("reward too low to cover gasless fee")
-	}
-
-	executorRewardNano := int64(finalExecutorReward * 1e9)
-	platformFeeNano := int64((platformFee + gasFeeInGSTD) * 1e9) // Platform takes gas fee
-	minGasFee := int64(10000000)                                 // 0.01 TON
-	totalRequiredNano := executorRewardNano + platformFeeNano + minGasFee
-
-	// SECURITY: Check contract balance before creating intent
-	if s.tonService == nil {
-		return nil, fmt.Errorf("TON service not configured")
-	}
-
-	if s.tonCfg.ContractAddress == "" {
-		return nil, fmt.Errorf("contract address not configured")
-	}
-
-	contractBalance, err := s.tonService.GetContractBalance(ctx, s.tonCfg.ContractAddress)
-	if err != nil {
-		return nil, fmt.Errorf("failed to check contract balance: %w", err)
-	}
-
-	if contractBalance < totalRequiredNano {
-		return nil, fmt.Errorf("insufficient contract balance: need %d nanoTON (%.9f TON), have %d nanoTON (%.9f TON)",
-			totalRequiredNano, float64(totalRequiredNano)/1e9,
-			contractBalance, float64(contractBalance)/1e9)
+	// Contract balance check (warning only — executor pays gas anyway)
+	if s.tonService != nil && s.tonCfg.ContractAddress != "" {
+		contractBalance, err := s.tonService.GetContractBalance(ctx, s.tonCfg.ContractAddress)
+		if err != nil {
+			log.Printf("Warning: failed to check contract balance: %v", err)
+		} else if contractBalance < minGasFee {
+			log.Printf("Warning: contract balance low (%d nanoTON) — executor pays gas", contractBalance)
+		}
 	}
 
 	// Generate nonce (timestamp-based for now, will be replaced by contract nonce)
@@ -261,8 +238,8 @@ func (s *PaymentService) BuildPayoutIntent(ctx context.Context, taskID string, e
 		IdempotencyKey:  idempotencyKey,
 	}
 
-	log.Printf("BuildPayoutIntent: Created new intent for task %s (query_id: %d, balance: %d nanoTON)",
-		taskID, queryID, contractBalance)
+	log.Printf("BuildPayoutIntent: Created new intent for task %s (query_id: %d, reward: %.4f GSTD)",
+		taskID, queryID, executorReward)
 
 	return intent, nil
 }

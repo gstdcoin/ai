@@ -162,9 +162,47 @@ func (p *PoolMonitorService) GetTONPriceUSD() float64 {
 // GetGSTDPriceUSD returns GSTD price in USD. Uses real data: Ston.fi pool (GSTD/XAUt or TON/GSTD), golden_reserve_log.
 // When live fetch fails, returns last cached real price if < 24h old. Otherwise returns ErrNoRealGSTDPrice.
 func (p *PoolMonitorService) GetGSTDPriceUSD(ctx context.Context) (float64, error) {
-	goldPrice := p.GetXAUtPriceUSD()
+	// 0. Use cache if fresh (< 2 min)
+	p.gstdCache.mu.RLock()
+	if time.Since(p.gstdCache.at) < 2*time.Minute && p.gstdCache.price > 0 {
+		price := p.gstdCache.price
+		p.gstdCache.mu.RUnlock()
+		return price, nil
+	}
+	p.gstdCache.mu.RUnlock()
 
-	// 1. Ston.fi pool — real-time DEX price
+	// 1. PRIMARY: Ston.fi Asset API — aggregated DEX price across ALL pools (most accurate)
+	gstdJetton := p.tonCfg.GSTDJettonAddress
+	if gstdJetton == "" {
+		gstdJetton = "EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO"
+	}
+	assetURL := "https://api.ston.fi/v1/assets/" + gstdJetton
+	req, err := http.NewRequestWithContext(ctx, "GET", assetURL, nil)
+	if err == nil {
+		resp, err := p.httpClient.Do(req)
+		if err == nil {
+			defer resp.Body.Close()
+			if resp.StatusCode == http.StatusOK {
+				var result map[string]interface{}
+				if err := json.NewDecoder(resp.Body).Decode(&result); err == nil {
+					if asset, ok := result["asset"].(map[string]interface{}); ok {
+						if dexPrice := getStr(asset, "dex_usd_price"); dexPrice != "" {
+							if price, err := strconv.ParseFloat(dexPrice, 64); err == nil && price > 0 && price < 1000 {
+								p.gstdCache.mu.Lock()
+								p.gstdCache.price = price
+								p.gstdCache.at = time.Now()
+								p.gstdCache.mu.Unlock()
+								return price, nil
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// 2. Fallback: Ston.fi pool reserves (XAUt/GSTD pair)
+	goldPrice := p.GetXAUtPriceUSD()
 	if p.stonFi != nil {
 		poolAddr := p.tonCfg.GoldPoolAddress
 		if poolAddr == "" {
@@ -201,33 +239,9 @@ func (p *PoolMonitorService) GetGSTDPriceUSD(ctx context.Context) (float64, erro
 		}
 	}
 
-	// 2. Golden reserve log
-	if p.db != nil {
-		var totalGSTD, totalXAUt float64
-		err := p.db.QueryRowContext(ctx, `
-			SELECT COALESCE(SUM(gstd_amount), 0), COALESCE(SUM(xaut_amount), 0)
-			FROM golden_reserve_log
-		`).Scan(&totalGSTD, &totalXAUt)
-		if err == nil && totalGSTD > 0 && totalXAUt > 0 {
-			price := (totalXAUt * goldPrice) / totalGSTD
-			if !math.IsNaN(price) && !math.IsInf(price, 0) && price > 0 {
-				p.gstdCache.mu.Lock()
-				p.gstdCache.price = price
-				p.gstdCache.at = time.Now()
-				p.gstdCache.mu.Unlock()
-				return price, nil
-			}
-		}
-	}
-
-	// 3. TON-GSTD pool fallback: GSTD_USD = (TON_reserve/GSTD_reserve) * TON_USD
+	// 3. Fallback: TON-GSTD pool
 	const nativeTON = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"
-	gstdJetton := p.tonCfg.GSTDJettonAddress
-	if gstdJetton == "" {
-		gstdJetton = "EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO"
-	}
 	if p.stonFi != nil && gstdJetton != "" {
-		// Try both orderings: TON-GSTD and GSTD-TON
 		for _, pair := range [][2]string{{nativeTON, gstdJetton}, {gstdJetton, nativeTON}} {
 			poolData, err := p.stonFi.GetPoolByMarket(ctx, pair[0], pair[1])
 			if err != nil {
@@ -270,7 +284,7 @@ func (p *PoolMonitorService) GetGSTDPriceUSD(ctx context.Context) (float64, erro
 		return cached, nil
 	}
 
-	// 5. Configurable fallback (for Stars/display when all real sources fail)
+	// 5. Configurable fallback
 	if fallback := getEnvFloat("GSTD_FALLBACK_PRICE_USD", 0.02); fallback > 0 && fallback < 100 {
 		log.Printf("[PoolMonitor] Using GSTD fallback price $%.4f (real sources unavailable)", fallback)
 		return fallback, nil

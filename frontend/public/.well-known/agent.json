@@ -1,0 +1,40 @@
+{
+  "name": "GSTD Platform",
+  "description": "Sovereign Decentralized Computing Platform — AI inference, task distribution, GSTD token staking",
+  "url": "https://app.gstdtoken.com",
+  "version": "3.3.0",
+  "protocol": "gstd-a2a",
+  "capabilities": [
+    "inference",
+    "compute",
+    "storage",
+    "embedding",
+    "chat",
+    "smartmix",
+    "memory",
+    "training"
+  ],
+  "endpoints": {
+    "handshake": "/api/v1/agents/handshake",
+    "challenge": "/api/v1/agents/challenge",
+    "tasks": "/api/v1/tasks",
+    "chat": "/api/v1/chat",
+    "system_integrity": "/api/v1/system/integrity",
+    "nodes_register": "/api/v1/nodes/register",
+    "health": "/api/v1/health"
+  },
+  "authentication": {
+    "type": "api_key",
+    "header": "X-GSTD-API-KEY",
+    "registration": "https://app.gstdtoken.com/api/v1/agents/handshake"
+  },
+  "network": {
+    "chain": "TON",
+    "contract": "EQAIYlrr3UiMJ9fqI-B4j2nJdiiD7WzyaNL1MX_wiONc4OUi",
+    "jetton": "EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO"
+  },
+  "contact": {
+    "telegram": "@GstdAppBot",
+    "github": "https://github.com/gstdcoin"
+  }
+}
