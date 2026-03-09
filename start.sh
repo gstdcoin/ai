@@ -1,6 +1,7 @@
 #!/bin/bash
-export GROQ_API_KEY="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"
-export GSTD_SWARM_URL="http://localhost:8080"
+# Load environment variables from .env (secrets should NOT be hardcoded here)
+[ -f /home/ubuntu/backend/.env ] && set -a && source /home/ubuntu/backend/.env && set +a
+export GSTD_SWARM_URL="${GSTD_SWARM_URL:-http://localhost:8080}"
 export NODE_ENV=production
 
 cd /home/ubuntu/frontend
