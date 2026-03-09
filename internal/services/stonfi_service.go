@@ -266,6 +266,32 @@ func (s *StonFiService) GetSwapQuote(ctx context.Context, amountIn int64, tokenI
 	r0, _ = strconv.ParseFloat(poolData.Pool.Reserve0, 64)
 	r1, _ = strconv.ParseFloat(poolData.Pool.Reserve1, 64)
 
+	// ─── Simulated Pool Fallback (pre-liquidity phase) ────────────
+	// When on-chain pool has 0 reserves, use virtual reserves based on
+	// current market price to provide meaningful quotes
+	if r0 == 0 && r1 == 0 {
+		log.Printf("[StonFi] Pool has 0 reserves, using simulated pool")
+		// Virtual pool: 100,000 TON / 339,379,969 GSTD (≈ $0.000295 per GSTD)
+		if isGSTD {
+			r0 = 100_000_000_000_000     // 100K TON in nanotons
+			r1 = 339_379_969_000_000_000 // ~339M GSTD in nano
+			// If we have PoolMonitor, use real price
+			if s.poolMonitor != nil {
+				price, _ := s.poolMonitor.GetGSTDPriceUSD(ctx)
+				if price > 0 {
+					// 1 GSTD = price USD, 1 TON ≈ $3.39
+					tonPriceUSD := 3.39
+					gstdPerTon := tonPriceUSD / price
+					r0 = 100_000_000_000_000 // 100K TON
+					r1 = gstdPerTon * 100_000 * 1e9
+				}
+			}
+		} else if isXAUt {
+			r0 = 10_000_000_000      // 10 XAUt
+			r1 = 100_000_000_000_000 // 100K GSTD
+		}
+	}
+
 	// Determine matching logic
 	// We need to match tokenIn to Token0 or Token1
 

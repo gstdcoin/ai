@@ -25,24 +25,55 @@ func NewMarketHandler(db *sql.DB) *MarketHandler {
 }
 
 // GetSwapQuote returns a real/simulated quote for buying GSTD
+// Supports: ?amount_ton=1 (legacy) OR ?from=TON&to=GSTD&amount=1 (universal)
 func (h *MarketHandler) GetSwapQuote(c *gin.Context) {
-	var req struct {
-		AmountTON float64 `form:"amount_ton"`
+	var amountTON float64
+
+	// Universal format: ?from=TON&to=GSTD&amount=1
+	if amt, err := strconv.ParseFloat(c.Query("amount"), 64); err == nil && amt > 0 {
+		amountTON = amt
 	}
-	if err := c.BindQuery(&req); err != nil {
-		c.JSON(400, gin.H{"error": "amount_ton is required"})
-		return
+	// Legacy format: ?amount_ton=1
+	if amt, err := strconv.ParseFloat(c.Query("amount_ton"), 64); err == nil && amt > 0 {
+		amountTON = amt
 	}
 
-	amountIn := int64(req.AmountTON * 1e9) // Convert to nanotons
-	// Swapping TON -> GSTD
-	quote, err := h.stonFiService.GetSwapQuote(c.Request.Context(), amountIn, "TON", "GSTD_ADDR")
+	if amountTON <= 0 {
+		amountTON = 1.0 // Default: 1 TON
+	}
+
+	amountIn := int64(amountTON * 1e9) // Convert to nanotons
+
+	// Determine token pair
+	tokenIn := "TON"
+	tokenOut := "GSTD_ADDR"
+	from := c.Query("from")
+	to := c.Query("to")
+	if from == "GSTD" && to == "TON" {
+		tokenIn = "GSTD_ADDR"
+		tokenOut = "TON"
+	}
+
+	quote, err := h.stonFiService.GetSwapQuote(c.Request.Context(), amountIn, tokenIn, tokenOut)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(200, quote)
+	// Add human-readable fields
+	amountOut, _ := strconv.ParseFloat(quote.AmountOut, 64)
+	gstdAmount := amountOut / 1e9 // nano → whole tokens
+
+	c.JSON(200, gin.H{
+		"amount_out":     quote.AmountOut,
+		"min_amount_out": quote.MinAmountOut,
+		"price_impact":   quote.PriceImpact,
+		"rate":           gstdAmount,
+		"gstd_amount":    gstdAmount,
+		"from":           from,
+		"to":             to,
+		"amount_in":      amountTON,
+	})
 }
 
 // PrepareSwapTransaction builds the payload for an autonomous agent to sign
