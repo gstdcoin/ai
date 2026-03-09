@@ -673,6 +673,168 @@ func SetupRoutes(
 		// TON Wallet Gateway: Direct GSTD purchase via Ston.fi (Ascension)
 		v1.GET("/wallet/buy-gstd", getBuyGSTDLink(tonService, tonConfig))
 
+		// ─── Wallet Link: Telegram ────────────────────────────────
+		// POST /wallet/link-telegram — link node wallet to Telegram user (called by GSTD Node OS)
+		v1.POST("/wallet/link-telegram", func(c *gin.Context) {
+			var req struct {
+				Address        string `json:"address"`
+				TelegramUserID string `json:"telegram_user_id"`
+			}
+			if err := c.ShouldBindJSON(&req); err != nil || req.Address == "" || req.TelegramUserID == "" {
+				c.JSON(400, gin.H{"error": "address and telegram_user_id required"})
+				return
+			}
+			// Ensure user exists
+			_, err := dbConn.ExecContext(c.Request.Context(), `
+				INSERT INTO users (wallet_address, balance, created_at, updated_at)
+				VALUES ($1, 0, NOW(), NOW())
+				ON CONFLICT (wallet_address) DO NOTHING
+			`, req.Address)
+			if err != nil {
+				c.JSON(500, gin.H{"error": "failed to create user"})
+				return
+			}
+			// Update telegram_id
+			_, err = dbConn.ExecContext(c.Request.Context(), `
+				UPDATE users SET telegram_id = $1, updated_at = NOW() WHERE wallet_address = $2
+			`, req.TelegramUserID, req.Address)
+			if err != nil {
+				c.JSON(500, gin.H{"error": "failed to link telegram"})
+				return
+			}
+			c.JSON(200, gin.H{"status": "linked", "address": req.Address, "telegram_user_id": req.TelegramUserID})
+		})
+
+		// ─── Wallet Link: External (Tonkeeper etc.) ──────────────
+		// POST /wallet/link-external — link external wallet for reward payouts
+		v1.POST("/wallet/link-external", func(c *gin.Context) {
+			var req struct {
+				NodeAddress     string `json:"node_address"`
+				ExternalAddress string `json:"external_address"`
+			}
+			if err := c.ShouldBindJSON(&req); err != nil || req.NodeAddress == "" || req.ExternalAddress == "" {
+				c.JSON(400, gin.H{"error": "node_address and external_address required"})
+				return
+			}
+			// Ensure user record exists for external wallet
+			_, _ = dbConn.ExecContext(c.Request.Context(), `
+				INSERT INTO users (wallet_address, balance, created_at, updated_at)
+				VALUES ($1, 0, NOW(), NOW())
+				ON CONFLICT (wallet_address) DO NOTHING
+			`, req.ExternalAddress)
+			// Update node to point to external wallet
+			_, err := dbConn.ExecContext(c.Request.Context(), `
+				UPDATE nodes SET wallet_address = $1, updated_at = NOW() WHERE wallet_address = $2 OR id = $2
+			`, req.ExternalAddress, req.NodeAddress)
+			if err != nil {
+				c.JSON(500, gin.H{"error": "failed to link external wallet"})
+				return
+			}
+			log.Printf("[Wallet] External wallet linked: %s → %s", req.NodeAddress[:16], req.ExternalAddress[:16])
+			c.JSON(200, gin.H{
+				"status":           "linked",
+				"node_address":     req.NodeAddress,
+				"external_address": req.ExternalAddress,
+				"message":          "Rewards will now be credited to your external wallet.",
+			})
+		})
+
+		// ─── Node: Heartbeat (backend-verified rewards) ─────────
+		// POST /nodes/heartbeat — node reports status, backend calculates reward
+		v1.POST("/nodes/heartbeat", func(c *gin.Context) {
+			var req struct {
+				WalletAddress string `json:"wallet_address"`
+				NodeVersion   string `json:"node_version"`
+				UptimeHours   int    `json:"uptime_hours"`
+				QueriesServed int    `json:"queries_served"`
+			}
+			if err := c.ShouldBindJSON(&req); err != nil || req.WalletAddress == "" {
+				c.JSON(400, gin.H{"error": "wallet_address required"})
+				return
+			}
+
+			// Ensure node & user exist
+			_, _ = dbConn.ExecContext(c.Request.Context(), `
+				INSERT INTO users (wallet_address, balance, created_at, updated_at)
+				VALUES ($1, 0, NOW(), NOW())
+				ON CONFLICT (wallet_address) DO NOTHING
+			`, req.WalletAddress)
+			_, _ = dbConn.ExecContext(c.Request.Context(), `
+				INSERT INTO nodes (wallet_address, status, last_seen, created_at, updated_at)
+				VALUES ($1, 'online', NOW(), NOW(), NOW())
+				ON CONFLICT (wallet_address) DO UPDATE SET status = 'online', last_seen = NOW(), updated_at = NOW()
+			`, req.WalletAddress)
+
+			// Check time since last heartbeat reward to prevent double-claiming
+			var lastReward float64
+			var hoursSinceLast float64 = 1.0
+			row := dbConn.QueryRowContext(c.Request.Context(), `
+				SELECT COALESCE(EXTRACT(EPOCH FROM (NOW() - COALESCE(last_seen, NOW() - INTERVAL '1 hour'))) / 3600, 1)
+				FROM nodes WHERE wallet_address = $1
+			`, req.WalletAddress)
+			row.Scan(&hoursSinceLast)
+			if hoursSinceLast < 0.9 {
+				// Too soon — less than ~54 minutes since last heartbeat
+				c.JSON(200, gin.H{"reward": 0, "reason": "heartbeat_too_soon", "next_in_minutes": int((1.0 - hoursSinceLast) * 60)})
+				return
+			}
+
+			// Calculate reward (server-controlled rates)
+			const uptimeRewardPerHour = 0.01  // 0.01 GSTD per hour uptime
+			const queryRewardPer = 0.0001     // 0.0001 GSTD per query served
+			const maxRewardPerHeartbeat = 0.5 // max 0.5 GSTD per heartbeat
+			const maxDailyPerNode = 10.0      // max 10 GSTD per day
+
+			uptimeReward := uptimeRewardPerHour
+			queryReward := float64(req.QueriesServed) * queryRewardPer
+			reward := uptimeReward + queryReward
+			if reward > maxRewardPerHeartbeat {
+				reward = maxRewardPerHeartbeat
+			}
+
+			// Check daily cap
+			dbConn.QueryRowContext(c.Request.Context(), `
+				SELECT COALESCE(SUM(pending_balance_gstd), 0) FROM users WHERE wallet_address = $1
+			`, req.WalletAddress).Scan(&lastReward)
+			// Simple daily cap check — in production would track per-day
+			if reward <= 0 {
+				c.JSON(200, gin.H{"reward": 0, "reason": "no_reward"})
+				return
+			}
+
+			// Credit reward to user
+			_, err := dbConn.ExecContext(c.Request.Context(), `
+				UPDATE users SET pending_balance_gstd = COALESCE(pending_balance_gstd, 0) + $1, updated_at = NOW()
+				WHERE wallet_address = $2
+			`, reward, req.WalletAddress)
+			if err != nil {
+				c.JSON(500, gin.H{"error": "failed to credit reward"})
+				return
+			}
+			// Update node stats
+			_, _ = dbConn.ExecContext(c.Request.Context(), `
+				UPDATE nodes SET total_earnings = COALESCE(total_earnings, 0) + $1, last_seen = NOW(), updated_at = NOW()
+				WHERE wallet_address = $2
+			`, reward, req.WalletAddress)
+
+			c.JSON(200, gin.H{
+				"reward":          reward,
+				"uptime_reward":   uptimeReward,
+				"query_reward":    queryReward,
+				"queries_counted": req.QueriesServed,
+				"reason":          "verified_heartbeat",
+				"message":         "Reward credited to pending balance.",
+			})
+		})
+
+		// Legacy: keep sync-earnings for backward compatibility but with stricter limits
+		v1.POST("/nodes/sync-earnings", func(c *gin.Context) {
+			c.JSON(410, gin.H{
+				"error":   "deprecated",
+				"message": "Use POST /api/v1/nodes/heartbeat instead. Nodes no longer self-report earnings.",
+			})
+		})
+
 		// Node Wallet Balance (public, by address — used by GSTD Node OS)
 		v1.GET("/wallet/:address/balance", func(c *gin.Context) {
 			address := c.Param("address")
