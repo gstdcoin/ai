@@ -489,38 +489,40 @@ func getNodeDashboard(db *sql.DB) gin.HandlerFunc {
 			usage.Disk.Percent = diskInfo.UsedPercent
 		}
 
-		// Count installed apps and active nodes from DB
-		var nodeCount int
-		var taskCount int
+		// Real data from DB
+		var nodeCount, taskCount, tasksDone int
+		var totalEarned float64
 		if db != nil {
-			db.QueryRow("SELECT COUNT(*) FROM nodes WHERE status='active'").Scan(&nodeCount)
+			db.QueryRow("SELECT COUNT(*) FROM nodes").Scan(&nodeCount)
 			db.QueryRow("SELECT COUNT(*) FROM tasks WHERE status IN ('pending','running')").Scan(&taskCount)
+			db.QueryRow("SELECT COUNT(*) FROM tasks WHERE status = 'completed'").Scan(&tasksDone)
+			db.QueryRow("SELECT COALESCE(SUM(pending_balance_gstd), 0) FROM users").Scan(&totalEarned)
 		}
 
 		c.JSON(200, gin.H{
 			"system_usage": usage,
 			"node_info": gin.H{
-				"version":     "3.2.0",
+				"version":     "3.3.0",
 				"uptime":      usage.Uptime,
 				"node_type":   "edge",
 				"status":      "online",
-				"active_apps": 3,
+				"active_apps": 2,
 			},
 			"network": gin.H{
 				"connected":     true,
 				"active_nodes":  nodeCount,
 				"pending_tasks": taskCount,
-				"peers":         42,
+				"tasks_done":    tasksDone,
+				"peers":         nodeCount,
 				"latency_ms":    12,
 			},
 			"earnings": gin.H{
-				"today":     "12.5",
-				"this_week": "87.3",
-				"total":     "1,234.5",
-				"currency":  "GSTD",
+				"total":    fmt.Sprintf("%.4f", totalEarned),
+				"currency": "GSTD",
+				"note":     "Pending balance — claimable to linked wallet",
 			},
-			"installed_apps":      []string{"gstd-miner", "gstd-chat"},
-			"notifications_count": 3,
+			"installed_apps":      []string{"gstd-chat"},
+			"notifications_count": 0,
 		})
 	}
 }
@@ -529,15 +531,23 @@ func getNodeDashboard(db *sql.DB) gin.HandlerFunc {
 
 func getNodeWidgets(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// Real data from DB for widgets
+		var widgetTasks int
+		var widgetNodes int
+		var widgetEarned float64
+		if db != nil {
+			db.QueryRow("SELECT COUNT(*) FROM tasks WHERE status = 'completed'").Scan(&widgetTasks)
+			db.QueryRow("SELECT COUNT(*) FROM nodes").Scan(&widgetNodes)
+			db.QueryRow("SELECT COALESCE(SUM(pending_balance_gstd), 0) FROM users").Scan(&widgetEarned)
+		}
 		widgets := []NodeWidget{
-			{ID: "earnings", Type: "stat", Title: "Today's Earnings", Value: "12.5 GSTD", Icon: "💰", Color: "#10b981", Size: "medium", Order: 1},
+			{ID: "earnings", Type: "stat", Title: "Total Earned", Value: fmt.Sprintf("%.4f GSTD", widgetEarned), Icon: "💰", Color: "#10b981", Size: "medium", Order: 1},
 			{ID: "cpu", Type: "progress", Title: "CPU Usage", Value: 0, Icon: "⚡", Color: "#8b5cf6", Size: "small", Order: 2},
 			{ID: "memory", Type: "progress", Title: "Memory", Value: 0, Icon: "🧠", Color: "#06b6d4", Size: "small", Order: 3},
 			{ID: "disk", Type: "progress", Title: "Storage", Value: 0, Icon: "💾", Color: "#f59e0b", Size: "small", Order: 4},
-			{ID: "tasks", Type: "stat", Title: "Tasks Completed", Value: "1,234", Icon: "✅", Color: "#22c55e", Size: "small", Order: 5},
+			{ID: "tasks", Type: "stat", Title: "Tasks Completed", Value: fmt.Sprintf("%d", widgetTasks), Icon: "✅", Color: "#22c55e", Size: "small", Order: 5},
 			{ID: "uptime", Type: "stat", Title: "Uptime", Value: formatUptime(time.Since(startTime)), Icon: "⏱️", Color: "#a855f7", Size: "small", Order: 6},
-			{ID: "peers", Type: "stat", Title: "Connected Peers", Value: "42", Icon: "🌐", Color: "#3b82f6", Size: "small", Order: 7},
-			{ID: "network-iq", Type: "stat", Title: "Network IQ", Value: "148", Icon: "🧬", Color: "#ec4899", Size: "small", Order: 8},
+			{ID: "peers", Type: "stat", Title: "Network Nodes", Value: fmt.Sprintf("%d", widgetNodes), Icon: "🌐", Color: "#3b82f6", Size: "small", Order: 7},
 		}
 
 		// Fill live CPU/RAM/Disk data
@@ -575,33 +585,10 @@ func reorderWidgets() gin.HandlerFunc {
 
 func getNotifications() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		notifications := []Notification{
-			{
-				ID: "n1", Type: "reward", Title: "GSTD Earned!",
-				Message:   "You earned 12.5 GSTD for completing 34 tasks today.",
-				Timestamp: time.Now().Add(-2 * time.Hour), Read: false,
-			},
-			{
-				ID: "n2", Type: "info", Title: "New App Available",
-				Message:   "Home Assistant is now available in the GSTD App Store.",
-				Timestamp: time.Now().Add(-6 * time.Hour), Read: false,
-				Action: "View App", ActionURL: "/appstore/home-assistant",
-			},
-			{
-				ID: "n3", Type: "success", Title: "Node Updated",
-				Message:   "Your GSTD Node has been updated to version 3.2.0.",
-				Timestamp: time.Now().Add(-24 * time.Hour), Read: true,
-			},
-			{
-				ID: "n4", Type: "warning", Title: "Disk Space Low",
-				Message:   "You have less than 10GB of free disk space. Consider cleaning up or expanding storage.",
-				Timestamp: time.Now().Add(-48 * time.Hour), Read: true,
-			},
-		}
-
+		// Return empty — real notifications will come from event system
 		c.JSON(200, gin.H{
-			"notifications": notifications,
-			"unread_count":  2,
+			"notifications": []Notification{},
+			"unread_count":  0,
 		})
 	}
 }
