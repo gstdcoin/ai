@@ -272,7 +272,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
             sendSSE(res, 'done', {
                 tier: 'free', tierName: 'Single Expert', badge: '🆓',
-                model: usedSpec.modelId, expertCount: 1,
+                model: usedSpec.name, modelId: usedSpec.modelId, expertCount: 1,
                 latency_ms: Date.now() - start, cost_gstd: 0,
             });
             res.end();

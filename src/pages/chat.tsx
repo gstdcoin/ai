@@ -24,10 +24,12 @@ interface Message {
     role: 'user' | 'assistant' | 'system';
     content: string;
     model?: string;
+    actualModel?: string;
     provider?: string;
     isReasoning?: boolean;
     isStreaming?: boolean;
     collectiveInfo?: CollectiveInfo;
+    latencyMs?: number;
     timestamp: number;
 }
 
@@ -402,26 +404,26 @@ export default function ChatPage() {
                                 cost_gstd: parsed.cost_gstd || 0,
                             };
                         }
+                        // Capture actual model from done event
+                        if (parsed.model) {
+                            collectiveInfo = { ...collectiveInfo!, actualModel: parsed.model } as any;
+                        }
                     } catch { }
                 }
             }
 
-            // Finalize message
-            const tierBadge = collectiveInfo?.badge || '🆓';
-            const tierName = collectiveInfo?.tierName || 'Single Expert';
-            const expertCount = collectiveInfo?.expertCount || 1;
-            const latencyMs = collectiveInfo?.latency_ms || 0;
-            const costGstd = collectiveInfo?.cost_gstd || 0;
-
-            const footer = latencyMs > 0 ? `\n\n---\n*${tierBadge} ${tierName} · ${expertCount} expert${expertCount > 1 ? 's' : ''} · ${latencyMs}ms${costGstd > 0 ? ` · ${costGstd} GSTD` : ' · Free'}*` : '';
+            // Finalize message — store metadata separately, NOT in content
+            const totalLatencyMs = collectiveInfo?.latency_ms || (Date.now() - aiMsg.timestamp);
+            const actualModelName = (collectiveInfo as any)?.actualModel || selectedModel;
 
             setConversations(prev => prev.map(c =>
                 c.id === convId ? {
                     ...c,
                     messages: c.messages.map(m =>
                         m.id === aiMsgId ? {
-                            ...m, content: fullContent + footer, isStreaming: false,
-                            model: selectedModel, collectiveInfo,
+                            ...m, content: fullContent, isStreaming: false,
+                            model: selectedModel, actualModel: actualModelName,
+                            collectiveInfo, latencyMs: totalLatencyMs,
                         } : m
                     )
                 } : c
@@ -734,9 +736,30 @@ export default function ChatPage() {
                                                     <span className="inline-block w-2 h-5 bg-violet-400 animate-pulse rounded-sm ml-0.5" />
                                                 )}
 
+                                                {/* Model & latency badge (always visible) */}
+                                                {msg.content && !msg.isStreaming && (msg.latencyMs || msg.collectiveInfo) && (
+                                                    <div className="flex items-center flex-wrap gap-2 pt-1.5">
+                                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/[0.04] border border-white/[0.06] text-[11px] text-gray-500">
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400/80 flex-shrink-0" />
+                                                            {msg.collectiveInfo?.badge || '🆓'}
+                                                            <span className="text-gray-400 font-medium">{msg.actualModel || msg.model || 'auto'}</span>
+                                                            <span className="text-gray-600">·</span>
+                                                            <span className="text-gray-400">{((msg.latencyMs || 0) / 1000).toFixed(1)}s</span>
+                                                            {msg.collectiveInfo && msg.collectiveInfo.expertCount > 1 && (
+                                                                <><span className="text-gray-600">·</span><span className="text-gray-400">{msg.collectiveInfo.expertCount} experts</span></>
+                                                            )}
+                                                            {msg.collectiveInfo?.cost_gstd ? (
+                                                                <><span className="text-gray-600">·</span><span className="text-amber-400/80">{msg.collectiveInfo.cost_gstd} GSTD</span></>
+                                                            ) : (
+                                                                <><span className="text-gray-600">·</span><span className="text-emerald-400/80">Free</span></>
+                                                            )}
+                                                        </span>
+                                                    </div>
+                                                )}
+
                                                 {/* Action buttons */}
                                                 {msg.content && !msg.isStreaming && (
-                                                    <div className="flex items-center gap-2 pt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <div className="flex items-center gap-2 pt-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                         <button onClick={() => copyMessage(msg.id, msg.content)} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-gray-600 hover:text-gray-200 hover:bg-white/[0.06] transition text-xs font-medium">
                                                             {copiedId === msg.id ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
                                                             {copiedId === msg.id ? 'Copied' : 'Copy'}
@@ -745,11 +768,6 @@ export default function ChatPage() {
                                                             <RotateCcw size={13} />
                                                             Regenerate
                                                         </button>
-                                                        {msg.collectiveInfo && (
-                                                            <span className="text-[10px] text-gray-700 px-2 py-1 rounded-full bg-white/[0.03] border border-white/[0.04]">
-                                                                {msg.collectiveInfo.badge} {msg.collectiveInfo.expertCount} expert{msg.collectiveInfo.expertCount > 1 ? 's' : ''} · {msg.collectiveInfo.latency_ms}ms
-                                                            </span>
-                                                        )}
                                                         <span className="text-[10px] text-gray-700">{formatTime(msg.timestamp)}</span>
                                                     </div>
                                                 )}
