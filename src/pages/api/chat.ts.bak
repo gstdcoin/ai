@@ -29,51 +29,34 @@ interface ModelSpec {
     tempOverride?: number;
 }
 
-// ═══ Intelligence Engine: Deep Reasoning Prompts ═══
-// Engineered to produce answers SUPERIOR to commercial AI (ChatGPT, Claude, Gemini)
+// Deep-thinking system prompt that forces structured reasoning
+const DEEP_THINK = (specialty: string) => `You are a world-class expert in ${specialty}. You are part of a panel of AI experts whose answers will be cross-verified.
 
-const DEEP_THINK = (specialty: string) => `You are a world-class expert in ${specialty} with decades of experience. Precision is paramount.
-
-INTELLIGENCE PROTOCOL:
-
-1. DEEP ANALYSIS: Decompose the question. Identify type (factual/analytical/creative/technical). Consider edge cases.
-
-2. EVIDENCE-BASED: Cite sources, dates, statistics. For code: production-quality with error handling. NEVER fabricate facts.
-
-3. STRUCTURED OUTPUT: Lead with actionable info. Use markdown (## headers, **bold**, code blocks, tables). Include concrete examples.
-
-4. GO DEEPER: Explain WHY not just WHAT. Anticipate follow-ups. Add insights only a domain expert would know. For code: perf notes + alternatives.
-
-5. LANGUAGE: ALWAYS respond in the SAME LANGUAGE as the user. Be precise and authoritative. Avoid hedging.`;
-
-const FREE_SYSTEM = (specialty: string) => `${DEEP_THINK(specialty)}
-
-Your goal: produce an answer better than ChatGPT or Claude. Be thorough, precise, genuinely helpful. Include practical examples and actionable advice.`;
-
-const PAID_EXPERT = (specialty: string) => `${DEEP_THINK(specialty)}
-
-CRITICAL: Your answer will be cross-verified against other expert AI models. Be MORE thorough than typical. Include reasoning chains others might miss. Catch edge cases. Provide the DEFINITIVE expert perspective.`;
+RULES FOR EVERY RESPONSE:
+1. THINK STEP BY STEP. Before answering, analyze the question from multiple angles.
+2. If the question involves facts â€” cite specific sources, dates, numbers. Never fabricate.
+3. If the question involves reasoning â€” show your logical chain explicitly.
+4. If the question involves code â€” write production-quality code with error handling.
+5. If you are UNSURE about something, explicitly say "I'm not certain about X" rather than guessing.
+6. Be brutally precise. Vague answers are worse than no answer.
+7. ALWAYS respond in the SAME LANGUAGE as the user's question.
+8. Use markdown formatting: headers, bold, code blocks, lists.
+9. Your answer will be compared against other expert AI models. Be thorough.`;
 
 const ALL_EXPERTS: ModelSpec[] = [
     // Ranked by reasoning capability (strongest first for paid tiers)
-    { id: 'qwen3-32b', name: 'Qwen3 32B', modelId: 'qwen/qwen3-32b', specialty: 'mathematical reasoning, logic, analytical thinking', systemPrompt: PAID_EXPERT('mathematical reasoning and analytical problem-solving') },
-    { id: 'llama-3.3-70b', name: 'Llama 3.3 70B', modelId: 'llama-3.3-70b-versatile', specialty: 'broad knowledge, nuanced reasoning, complex analysis', systemPrompt: PAID_EXPERT('general knowledge, research, and complex multi-step reasoning') },
-    { id: 'gpt-oss-120b', name: 'GPT-OSS 120B', modelId: 'openai/gpt-oss-120b', specialty: 'large-scale reasoning, deep knowledge', systemPrompt: PAID_EXPERT('large-scale reasoning, scientific knowledge, and deep analysis') },
-    { id: 'kimi-k2', name: 'Kimi K2', modelId: 'moonshotai/kimi-k2-instruct-0905', specialty: 'long-context reasoning, detailed analysis', systemPrompt: PAID_EXPERT('long-context understanding, detailed analysis, and thorough research') },
-    { id: 'llama-4-maverick', name: 'Llama 4 Maverick', modelId: 'meta-llama/llama-4-maverick-17b-128e-instruct', specialty: 'creative problem-solving, unconventional approaches', systemPrompt: PAID_EXPERT('creative reasoning, novel approaches, and thinking outside conventional frameworks') },
-    { id: 'llama-4-scout', name: 'Llama 4 Scout', modelId: 'meta-llama/llama-4-scout-17b-16e-instruct', specialty: 'rapid assessment, pattern recognition', systemPrompt: PAID_EXPERT('rapid assessment, pattern recognition, and identifying key insights') },
-    { id: 'gpt-oss-20b', name: 'GPT-OSS 20B', modelId: 'openai/gpt-oss-20b', specialty: 'efficient reasoning, concise expert answers', systemPrompt: PAID_EXPERT('efficient problem-solving and concise expert-level answers') },
-    { id: 'llama-3.1-8b', name: 'Llama 3.1 8B', modelId: 'llama-3.1-8b-instant', specialty: 'fast verification, sanity checks', systemPrompt: PAID_EXPERT('fast verification, finding errors in reasoning, and sanity-checking conclusions') },
+    { id: 'qwen3-32b', name: 'Qwen3 32B', modelId: 'qwen/qwen3-32b', specialty: 'mathematical reasoning, logic, analytical thinking', systemPrompt: DEEP_THINK('mathematical reasoning and analytical problem-solving') },
+    { id: 'llama-3.3-70b', name: 'Llama 3.3 70B', modelId: 'llama-3.3-70b-versatile', specialty: 'broad knowledge, nuanced reasoning, complex analysis', systemPrompt: DEEP_THINK('general knowledge, research, and complex multi-step reasoning') },
+    { id: 'gpt-oss-120b', name: 'GPT-OSS 120B', modelId: 'openai/gpt-oss-120b', specialty: 'large-scale reasoning, deep knowledge', systemPrompt: DEEP_THINK('large-scale reasoning, scientific knowledge, and deep analysis') },
+    { id: 'kimi-k2', name: 'Kimi K2', modelId: 'moonshotai/kimi-k2-instruct', specialty: 'long-context reasoning, detailed analysis', systemPrompt: DEEP_THINK('long-context understanding, detailed analysis, and thorough research') },
+    { id: 'llama-4-maverick', name: 'Llama 4 Maverick', modelId: 'meta-llama/llama-4-maverick-17b-128e-instruct', specialty: 'creative problem-solving, unconventional approaches', systemPrompt: DEEP_THINK('creative reasoning, novel approaches, and thinking outside conventional frameworks') },
+    { id: 'llama-4-scout', name: 'Llama 4 Scout', modelId: 'meta-llama/llama-4-scout-17b-16e-instruct', specialty: 'rapid assessment, pattern recognition', systemPrompt: DEEP_THINK('rapid assessment, pattern recognition, and identifying key insights') },
+    { id: 'gpt-oss-20b', name: 'GPT-OSS 20B', modelId: 'openai/gpt-oss-20b', specialty: 'efficient reasoning, concise expert answers', systemPrompt: DEEP_THINK('efficient problem-solving and concise expert-level answers') },
+    { id: 'llama-3.1-8b', name: 'Llama 3.1 8B', modelId: 'llama-3.1-8b-instant', specialty: 'fast verification, sanity checks', systemPrompt: DEEP_THINK('fast verification, finding errors in reasoning, and sanity-checking conclusions') },
 ];
-
-// Groq Compound AI: built-in web search + tool use for synthesis
-const COMPOUND_MODEL = 'groq/compound';
 
 // Models available for free single-use (shown in UI picker)
-const FREE_MODELS: ModelSpec[] = [
-    ...ALL_EXPERTS,
-    { id: 'compound', name: 'GSTD Compound AI', modelId: COMPOUND_MODEL, specialty: 'web search, real-time data', systemPrompt: FREE_SYSTEM('real-time information retrieval and analysis') },
-];
+const FREE_MODELS = ALL_EXPERTS;
 
 // ─── Collective tiers ──────────────────────────────────────────────
 interface CollectiveTier {
@@ -319,24 +302,8 @@ function selectExperts(count: number): ModelSpec[] {
 }
 
 // Use the strongest available model for synthesis
-const SYNTH_MODEL = COMPOUND_MODEL;  // Compound AI adds web search to synthesis!
-const SYNTH_FALLBACK = 'qwen/qwen3-32b';
-const SYNTH_FALLBACK_2 = 'llama-3.3-70b-versatile';
-
-// Knowledge Base lookup from backend (36K+ verified facts)
-async function lookupKnowledge(query: string): Promise<string> {
-    try {
-        const BACKEND_URL = process.env.BACKEND_URL || 'http://172.18.0.1:8080';
-        const resp = await fetch(
-            `${BACKEND_URL}/api/v1/knowledge/resonance?q=${encodeURIComponent(query)}&limit=3`,
-            { signal: AbortSignal.timeout(3000) }
-        );
-        if (!resp.ok) return '';
-        const data: any = await resp.json();
-        const quotes = data.quotes || data.facts || [];
-        return quotes.map((q: any) => q.content || q.text || '').filter(Boolean).join('\n').substring(0, 1000);
-    } catch { return ''; }
-}
+const SYNTH_MODEL = 'qwen/qwen3-32b';
+const SYNTH_FALLBACK = 'llama-3.3-70b-versatile';
 
 // â”€â”€â”€ SSE Helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function sendSSE(res: NextApiResponse, event: string, data: any) {
@@ -406,14 +373,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // FREE TIER â€” Single expert, streaming or non-streaming
     // â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�
     if (tier === 'free' || collectiveTier.expertCount <= 1) {
-        const spec = FREE_MODELS.find(m => m.id === model) || ALL_EXPERTS[0];
+        const spec = ALL_EXPERTS.find(m => m.id === model) || ALL_EXPERTS[0];
         // Even free tier gets the deep-thinking system prompt for better quality
-        // KB enrichment for better factual accuracy
-        const userQ = messages.filter((m: ChatMessage) => m.role === 'user').pop()?.content || '';
-        const kbFacts = await lookupKnowledge(userQ);
-        const kbCtx = kbFacts ? `\n\nVERIFIED FACTS:\n${kbFacts}\nUse if relevant.` : '';
         const enrichedMessages: ChatMessage[] = [
-            { role: 'system', content: FREE_SYSTEM(spec.specialty) + kbCtx },
+            { role: 'system', content: spec.systemPrompt },
             ...messages.filter((m: ChatMessage) => m.role !== 'system'),
         ];
 
@@ -577,19 +540,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (stream) {
         sendSSE(res, 'meta', { phase: 'streaming' });
 
-        let synthOk = false;
-        for (const sm of [SYNTH_MODEL, SYNTH_FALLBACK, SYNTH_FALLBACK_2]) {
-            if (synthOk) break;
-            try {
-                for await (const chunk of streamGroqClean(sm, synthesisMessages, 4096)) {
-                    sendSSE(res, 'delta', { content: chunk });
-                }
-                synthOk = true;
-            } catch (e: any) {
-                console.warn(`[CI] Synth ${sm} failed:`, e?.message?.substring(0, 60));
+        try {
+            for await (const chunk of streamGroqClean(SYNTH_MODEL, synthesisMessages, 4096)) {
+                sendSSE(res, 'delta', { content: chunk });
             }
-        }
-        if (!synthOk) {
+        } catch {
+            // Fallback: send best expert answer
             const best = expertResults.reduce((a, b) => a.content.length > b.content.length ? a : b);
             sendSSE(res, 'delta', { content: best.content });
         }
