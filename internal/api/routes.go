@@ -172,6 +172,14 @@ func SetupRoutes(
 		log.Printf("⛓️  On-chain Settlement: ACTIVE (contract=%s, pull-model, batch every 60s)",
 			tonConfig.ContractAddress[:min(12, len(tonConfig.ContractAddress))])
 	}
+	gatewayHandler.SetBurnService(burnService) // 5% burn on every paid chat inference
+
+	// ═══ STAKING REWARD DISTRIBUTOR ═══
+	// Distributes daily APY rewards to stakers from Golden Reserve pool
+	// Pool is funded by 50% of chat inference fees
+	stakingRewards := services.NewStakingRewardService(db.(*sql.DB))
+	go stakingRewards.Start(context.Background())
+	log.Println("💰 Staking Reward Distributor: ACTIVE (24h cycle, funded by chat fees → Golden Reserve)")
 
 	// Initialize Genesis System (Self-Generating APIs)
 	var genesisRedis *redis.Client

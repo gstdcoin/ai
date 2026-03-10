@@ -37,6 +37,7 @@ type GatewayHandler struct {
 	hybridRouter      *services.HybridIntelligenceRouter // Swarm ↔ Cocoon ↔ Ollama tier routing
 	smartRouter       *services.SmartRouter              // Omega Sovereign-First routing
 	onchainSettlement *services.OnchainSettlementService // Real on-chain GSTD Jetton settlement
+	burnService       *services.BurnService              // Token burn on every paid inference
 	ollamaURL         string
 	client            *http.Client
 }
@@ -105,6 +106,11 @@ func (h *GatewayHandler) SetRedis(r *redis.Client) {
 // SetRecyclingPool wires RecyclingPool for closed-loop token economy (93% miners, 7% Golden Reserve).
 func (h *GatewayHandler) SetRecyclingPool(rp *services.RecyclingPoolService) {
 	h.recyclingPool = rp
+}
+
+// SetBurnService wires BurnService for deflationary burn on every paid inference.
+func (h *GatewayHandler) SetBurnService(bs *services.BurnService) {
+	h.burnService = bs
 }
 
 // SetCocoonBridge wires CocoonBridgeService for confidential compute via Cocoon TEE network.
@@ -417,6 +423,36 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 			}
 		}
 		log.Printf("[Consumer Adoption] %.4f GSTD deducted from %s for %s", fee, wallet[:min(12, len(wallet))], ollamaModel)
+
+		// ═══ FEE SPLIT: 50% Golden Reserve (staking rewards), 5% Burn, 45% Platform ═══
+		go func() {
+			bgCtx := context.Background()
+			reserveFee := fee * 0.50 // 50% → Golden Reserve (funds staking APY)
+			burnFee := fee * 0.05   // 5% → Permanent token burn
+			// remaining 45% stays as platform revenue (already deducted from user)
+
+			// 1. Golden Reserve deposit (source for staking rewards)
+			if h.db != nil && reserveFee > 0 {
+				_, err := h.db.ExecContext(bgCtx, `
+					INSERT INTO golden_reserve_log (task_id, gstd_amount, treasury_wallet, timestamp)
+					VALUES ($1, $2, 'STAKING_POOL', NOW())`,
+					"chat-fee-"+wallet[:min(8, len(wallet))], reserveFee)
+				if err != nil {
+					log.Printf("⚠️  Golden Reserve deposit failed: %v", err)
+				}
+			}
+
+			// 2. Token burn (permanent deflationary pressure)
+			if h.burnService != nil && burnFee > 0 {
+				h.burnService.RecordBurn(bgCtx, &services.BurnRecord{
+					TransactionID:   "chat-" + wallet[:min(8, len(wallet))] + "-" + time.Now().Format("150405"),
+					TransactionType: "chat_inference",
+					OriginalAmount:  fee,
+					BurnAmount:      burnFee,
+					SourceWallet:    wallet,
+				})
+			}
+		}()
 
 		// On-chain settlement: queue real Jetton transfer asynchronously
 		if h.onchainSettlement != nil && h.onchainSettlement.IsEnabled() {
