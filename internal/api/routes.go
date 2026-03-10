@@ -762,9 +762,32 @@ func SetupRoutes(
 				return
 			}
 
+			// Validate TON wallet address format — only real wallets accepted
+			wallet := strings.TrimSpace(req.WalletAddress)
+			isValidTON := false
+			if strings.HasPrefix(wallet, "0:") && len(wallet) >= 50 {
+				isValidTON = true // Raw format
+			} else {
+				validPrefixes := []string{"EQ", "UQ", "kQ", "0Q"}
+				for _, prefix := range validPrefixes {
+					if strings.HasPrefix(wallet, prefix) && len(wallet) >= 46 && len(wallet) <= 50 {
+						isValidTON = true
+						break
+					}
+				}
+			}
+			if !isValidTON {
+				c.JSON(400, gin.H{
+					"error":   "invalid_wallet",
+					"message": "A valid TON wallet address is required (EQ.../UQ... format). Connect your wallet via TonConnect to get started.",
+				})
+				return
+			}
+			req.WalletAddress = wallet
+
 			// Ensure node & user exist
 			_, _ = dbConn.ExecContext(c.Request.Context(), `
-				INSERT INTO users (wallet_address, balance, created_at, updated_at)
+				INSERT INTO users (wallet_address, gstd_balance, created_at, updated_at)
 				VALUES ($1, 0, NOW(), NOW())
 				ON CONFLICT (wallet_address) DO NOTHING
 			`, req.WalletAddress)
