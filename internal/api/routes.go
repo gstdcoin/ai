@@ -760,10 +760,10 @@ func SetupRoutes(
 				ON CONFLICT (wallet_address) DO NOTHING
 			`, req.WalletAddress)
 			_, _ = dbConn.ExecContext(c.Request.Context(), `
-				INSERT INTO nodes (wallet_address, status, last_seen, created_at, updated_at)
-				VALUES ($1, 'online', NOW(), NOW(), NOW())
+				INSERT INTO nodes (id, wallet_address, name, status, last_seen, created_at, updated_at)
+				VALUES (gen_random_uuid(), $1, COALESCE($2, 'GSTD Node'), 'online', NOW(), NOW(), NOW())
 				ON CONFLICT (wallet_address) DO UPDATE SET status = 'online', last_seen = NOW(), updated_at = NOW()
-			`, req.WalletAddress)
+			`, req.WalletAddress, req.NodeVersion)
 
 			// Check time since last heartbeat reward to prevent double-claiming
 			var lastReward float64
@@ -873,7 +873,7 @@ func SetupRoutes(
 		// Nodes — public endpoints (GSTD Node OS sends X-Wallet-Address, no session)
 		// These MUST be public so autonomous nodes can register and heartbeat
 		v1.POST("/nodes/register", registerNode(nodeService, geoService, telegramService, multiLevelReferralService))
-		v1.POST("/nodes/heartbeat", UpdateHeartbeat(nodeService))
+		// NOTE: /nodes/heartbeat is already registered above (line ~744) with reward calculation
 		v1.GET("/nodes/public", getPublicNodes(nodeService))
 		v1.POST("/nodes/activate-wallet", activateWalletAsNode(nodeService))
 

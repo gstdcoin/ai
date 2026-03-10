@@ -16,8 +16,8 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build with CGO for h3-go (geo indexing)
-RUN CGO_ENABLED=1 GOOS=linux go build -a \
+# Build with CGO for h3-go (geo indexing) — limit parallelism to avoid OOM
+RUN CGO_ENABLED=1 GOOS=linux GOGC=50 go build -a -p 2 \
     -ldflags '-w -s' \
     -o server ./main.go
 

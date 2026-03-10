@@ -232,6 +232,30 @@ func (s *SovereignOrganismService) stimulateNetwork(ctx context.Context) {
 		s.equilibrium.RunAntiPriceBarrier(ctx)
 	}
 
+	// Guard: don't spam stimulus tasks — check existing queued count
+	if s.db != nil {
+		var queuedCount int
+		err := s.db.QueryRowContext(ctx, `
+			SELECT COUNT(*) FROM tasks 
+			WHERE task_id LIKE 'stimulus-%' AND status = 'queued'
+		`).Scan(&queuedCount)
+		if err == nil && queuedCount >= 20 {
+			// Already enough stimulus tasks in queue — skip
+			log.Printf("[Organism] Stimulus skip: %d queued tasks already exist (max 20)", queuedCount)
+			return
+		}
+
+		// Auto-expire old stimulus tasks (older than 1 hour) to prevent DB bloat
+		res, _ := s.db.ExecContext(ctx, `
+			UPDATE tasks SET status = 'expired', updated_at = NOW()
+			WHERE task_id LIKE 'stimulus-%' AND status = 'queued' 
+			AND created_at < NOW() - INTERVAL '1 hour'
+		`)
+		if expired, _ := res.RowsAffected(); expired > 0 {
+			log.Printf("[Organism] Expired %d stale stimulus tasks", expired)
+		}
+	}
+
 	taskID := "stimulus-" + organismGenerateID()[:6]
 	reward := 100.0
 
