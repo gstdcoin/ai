@@ -1,43 +1,58 @@
 /**
- * /api/chat — Collective Intelligence Engine (Groq Only)
+ * /api/chat â€” Collective Intelligence Engine (Groq Only)
  *
- * Innovation: Multi-model consensus — as if 100+ expert models collaborate.
+ * Innovation: Multi-model consensus â€” as if 100+ expert models collaborate.
  * All models run on Groq for maximum speed.
  *
  * FREE TIER:
- *   Single model → fast response (0 GSTD)
+ *   Single model â†’ fast response (0 GSTD)
  *
  * PAID TIERS (GSTD required):
- *   🔬 Standard (0.05 GSTD) → 3 models parallel → consensus synthesis
- *   🔥 Pro      (0.15 GSTD) → 5 models parallel → cross-verification + deep synthesis
- *   🧠 Ultra    (0.50 GSTD) → 7 models parallel → full consensus + reasoning chains
+ *   ðŸ”¬ Standard (0.05 GSTD) â†’ 3 models parallel â†’ consensus synthesis
+ *   ðŸ”¥ Pro      (0.15 GSTD) â†’ 5 models parallel â†’ cross-verification + deep synthesis
+ *   ðŸ§  Ultra    (0.50 GSTD) â†’ 7 models parallel â†’ full consensus + reasoning chains
  */
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-// ─── Config ───────────────────────────────────────────────────────
+// â”€â”€â”€ Config â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
-// ─── All Groq expert models ──────────────────────────────────────
+// â”€â”€â”€ All Groq expert models â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 interface ModelSpec {
     id: string;
     name: string;
     modelId: string;
     specialty: string;
+    systemPrompt: string; // Deep thinking prompt per expert
     tempOverride?: number;
 }
 
+// Deep-thinking system prompt that forces structured reasoning
+const DEEP_THINK = (specialty: string) => `You are a world-class expert in ${specialty}. You are part of a panel of AI experts whose answers will be cross-verified.
+
+RULES FOR EVERY RESPONSE:
+1. THINK STEP BY STEP. Before answering, analyze the question from multiple angles.
+2. If the question involves facts â€” cite specific sources, dates, numbers. Never fabricate.
+3. If the question involves reasoning â€” show your logical chain explicitly.
+4. If the question involves code â€” write production-quality code with error handling.
+5. If you are UNSURE about something, explicitly say "I'm not certain about X" rather than guessing.
+6. Be brutally precise. Vague answers are worse than no answer.
+7. ALWAYS respond in the SAME LANGUAGE as the user's question.
+8. Use markdown formatting: headers, bold, code blocks, lists.
+9. Your answer will be compared against other expert AI models. Be thorough.`;
+
 const ALL_EXPERTS: ModelSpec[] = [
-    // Verified available on our Groq key
-    { id: 'llama-3.3-70b', name: 'Llama 3.3 70B', modelId: 'llama-3.3-70b-versatile', specialty: 'General knowledge, reasoning, analysis' },
-    { id: 'llama-3.1-8b', name: 'Llama 3.1 8B', modelId: 'llama-3.1-8b-instant', specialty: 'Fast concise answers' },
-    { id: 'llama-4-scout', name: 'Llama 4 Scout 17B', modelId: 'meta-llama/llama-4-scout-17b-16e-instruct', specialty: 'Latest Meta, multi-expert architecture' },
-    { id: 'llama-4-maverick', name: 'Llama 4 Maverick 17B', modelId: 'meta-llama/llama-4-maverick-17b-128e-instruct', specialty: 'Creative reasoning, 128 experts' },
-    { id: 'qwen3-32b', name: 'Qwen3 32B', modelId: 'qwen/qwen3-32b', specialty: 'Mathematical, analytical, Chinese/English' },
-    { id: 'gpt-oss-120b', name: 'GPT-OSS 120B', modelId: 'openai/gpt-oss-120b', specialty: 'OpenAI open-source, large-scale reasoning' },
-    { id: 'gpt-oss-20b', name: 'GPT-OSS 20B', modelId: 'openai/gpt-oss-20b', specialty: 'OpenAI open-source, efficient' },
-    { id: 'kimi-k2', name: 'Kimi K2', modelId: 'moonshotai/kimi-k2-instruct', specialty: 'Moonshot, long-context reasoning' },
+    // Ranked by reasoning capability (strongest first for paid tiers)
+    { id: 'qwen3-32b', name: 'Qwen3 32B', modelId: 'qwen/qwen3-32b', specialty: 'mathematical reasoning, logic, analytical thinking', systemPrompt: DEEP_THINK('mathematical reasoning and analytical problem-solving') },
+    { id: 'llama-3.3-70b', name: 'Llama 3.3 70B', modelId: 'llama-3.3-70b-versatile', specialty: 'broad knowledge, nuanced reasoning, complex analysis', systemPrompt: DEEP_THINK('general knowledge, research, and complex multi-step reasoning') },
+    { id: 'gpt-oss-120b', name: 'GPT-OSS 120B', modelId: 'openai/gpt-oss-120b', specialty: 'large-scale reasoning, deep knowledge', systemPrompt: DEEP_THINK('large-scale reasoning, scientific knowledge, and deep analysis') },
+    { id: 'kimi-k2', name: 'Kimi K2', modelId: 'moonshotai/kimi-k2-instruct', specialty: 'long-context reasoning, detailed analysis', systemPrompt: DEEP_THINK('long-context understanding, detailed analysis, and thorough research') },
+    { id: 'llama-4-maverick', name: 'Llama 4 Maverick', modelId: 'meta-llama/llama-4-maverick-17b-128e-instruct', specialty: 'creative problem-solving, unconventional approaches', systemPrompt: DEEP_THINK('creative reasoning, novel approaches, and thinking outside conventional frameworks') },
+    { id: 'llama-4-scout', name: 'Llama 4 Scout', modelId: 'meta-llama/llama-4-scout-17b-16e-instruct', specialty: 'rapid assessment, pattern recognition', systemPrompt: DEEP_THINK('rapid assessment, pattern recognition, and identifying key insights') },
+    { id: 'gpt-oss-20b', name: 'GPT-OSS 20B', modelId: 'openai/gpt-oss-20b', specialty: 'efficient reasoning, concise expert answers', systemPrompt: DEEP_THINK('efficient problem-solving and concise expert-level answers') },
+    { id: 'llama-3.1-8b', name: 'Llama 3.1 8B', modelId: 'llama-3.1-8b-instant', specialty: 'fast verification, sanity checks', systemPrompt: DEEP_THINK('fast verification, finding errors in reasoning, and sanity-checking conclusions') },
 ];
 
 // Models available for free single-use (shown in UI picker)
@@ -58,7 +73,7 @@ const TIERS: Record<string, CollectiveTier> = {
         name: 'Single Expert',
         expertCount: 1,
         cost: 0,
-        badge: '🆓',
+        badge: 'ðŸ†“',
         description: 'One AI model responds',
         synthesisPrompt: '',
     },
@@ -66,72 +81,120 @@ const TIERS: Record<string, CollectiveTier> = {
         name: 'Council of 3',
         expertCount: 3,
         cost: 0.05,
-        badge: '🔬',
+        badge: 'ðŸ”¬',
         description: '3 AI experts reach consensus',
-        synthesisPrompt: `You are the Chief Intelligence Synthesizer of a council of 3 AI experts. You received responses from multiple expert AI models to the same question. Your task:
+        synthesisPrompt: `You are the Synthesis Engine of a council of 3 expert AI models. You received independent responses from 3 different AI architectures to the same question.
 
-1. ANALYZE each expert's response for accuracy, completeness, and unique insights
-2. FIND CONSENSUS — where do experts agree? This is likely the most reliable answer
-3. IDENTIFY unique insights each expert contributed that others missed
-4. SYNTHESIZE a single superior answer that:
-   - Contains the consensus truth
-   - Incorporates the best unique insights from each expert
-   - Is more complete and accurate than any single expert
-   - Notes any disagreements between experts (if important)
+YOUR PROTOCOL (follow EXACTLY):
 
-Respond with the synthesized answer directly. Do NOT mention the experts or the synthesis process in your answer — just give the best possible response as if you ARE the collective intelligence. Use markdown formatting.`,
+STEP 1 â€” FACT EXTRACTION: From each expert, extract every factual claim, number, date, name, and logical conclusion.
+
+STEP 2 â€” CROSS-VERIFICATION: For each fact:
+  - 3/3 agree â†’ HIGH CONFIDENCE (include as verified)
+  - 2/3 agree â†’ MEDIUM (include, note if the dissenter has a valid point)
+  - 1/3 claims alone â†’ LOW (include only if it's clearly a specialized insight the others missed)
+  - Contradictions â†’ analyze which expert's reasoning is stronger and explain why
+
+STEP 3 â€” SYNTHESIS: Produce one answer that is STRICTLY BETTER than any individual expert:
+  - Start with the most important/actionable information
+  - Include all verified facts with the strongest reasoning chains
+  - Add specialized insights that only one expert caught (if valid)
+  - Use the clearest explanation style from all experts
+  - If the question has code: merge the best code from all experts into one optimal solution
+  - If the question has math: show the rigorous proof, not just the answer
+
+CRITICAL RULES:
+- NEVER mention "experts" or "models" or the synthesis process
+- Respond as if YOU are the intelligence â€” the user should see only the best possible answer
+- Respond in the SAME LANGUAGE as the original question
+- Use rich markdown: headers, bold, code blocks with language tags, numbered lists, tables when appropriate
+- Be thorough but not redundant. Every sentence must add value.`,
     },
     pro: {
         name: 'Panel of 5',
         expertCount: 5,
         cost: 0.15,
-        badge: '🔥',
+        badge: 'ðŸ”¥',
         description: '5 AI experts with cross-verification',
-        synthesisPrompt: `You are the Supreme Intelligence Core of a panel of 5 expert AI models. You have responses from 5 different specialized AI models. Your mandate:
+        synthesisPrompt: `You are the Supreme Synthesis Engine of a cross-verification panel. 5 independent AI models with different architectures have analyzed the same question. Your job is to produce an answer that NO SINGLE AI MODEL could produce alone.
 
-1. VERIFY FACTS — cross-check claims across all 5 experts. If 4/5 agree, it's highly reliable
-2. DETECT ERRORS — if one expert contradicts the majority, flag potential inaccuracies
-3. EXTRACT SPECIALIZATIONS — each expert has different strengths. Extract the best from each
-4. DEEP SYNTHESIS — produce an answer that:
-   - Has the reliability of 5 independent verifications
-   - Contains specialized insights from each expert's strength area
-   - Is structured clearly with markdown (headers, code blocks, lists)
-   - Has a confidence level based on expert agreement (⭐⭐⭐⭐⭐ = all agree)
-   
-If experts disagree on something important, present both views with your assessment.
-Respond directly with the synthesized answer. Use markdown formatting.`,
+YOUR PROTOCOL (follow EXACTLY):
+
+PHASE 1 â€” DISAGREEMENT ANALYSIS:
+  - Identify ALL points where experts disagree
+  - For each disagreement: analyze which expert has stronger evidence/reasoning
+  - Flag any expert that appears to be hallucinating (confident but wrong)
+
+PHASE 2 â€” KNOWLEDGE FUSION:
+  - Mathematics: take the expert with the most rigorous proof
+  - Code: merge the best patterns, error handling, and optimizations from all experts
+  - Facts: only include claims verified by 3+ experts (unless a specialist has unique domain knowledge)
+  - Reasoning: build the strongest logical chain by combining steps from multiple experts
+  - Creative questions: combine the most original ideas
+
+PHASE 3 â€” SUPERIOR ANSWER:
+  - Your answer must demonstrate DEEPER understanding than any single expert
+  - Include information that requires combining insights from multiple experts
+  - If a question has multiple valid approaches, present the best one with brief mention of alternatives
+  - For technical questions: production-quality code, proper error handling, edge cases
+  - For research questions: structured analysis with evidence hierarchy
+
+CRITICAL RULES:
+- NEVER mention the panel, experts, models, or synthesis process
+- Respond in the SAME LANGUAGE as the original question
+- Use rich markdown formatting. Be comprehensive but not verbose.
+- Every claim must be backed by reasoning. No hand-waving.`,
     },
     ultra: {
         name: 'Swarm of 7',
         expertCount: 7,
         cost: 0.50,
-        badge: '🧠',
+        badge: 'ðŸ§ ',
         description: '7 AI experts + deep reasoning chains + full verification',
-        synthesisPrompt: `You are the Omega Swarm Intelligence — a collective consciousness formed from 7 expert AI models including reasoning specialists. You received answers from 7 models with different architectures.
+        synthesisPrompt: `You are the Omega Synthesis Engine â€” the most powerful intelligence fusion system ever built. 7 different AI architectures have independently analyzed the same question, each bringing unique capabilities:
+  - Large reasoning models: deep multi-step logic, broad knowledge
+  - Mathematical specialists: rigorous proofs, analytical precision
+  - Creative models: novel approaches, unconventional solutions
+  - Verification models: error detection, sanity checking
 
-PROTOCOL:
-1. CONSENSUS MAP — identify where all or most experts agree (highest confidence)
-2. SPECIALIZATION EXTRACTION — each model has unique strengths:
-   - Reasoning models (DeepSeek R1, QwQ): logical chains, math proofs
-   - Large models (Llama 70B): broad knowledge, nuance
-   - Fast models (Gemma, 8B): concise key insights
-3. ERROR DETECTION — cross-verify every factual claim across 7 sources
-4. REASONING CHAINS — build step-by-step reasoning using the best chains from reasoning models
-5. SYNTHESIS — produce the ultimate answer:
-   - Verified by 7 independent AI models
-   - Combines strengths of all architectures
-   - Includes reasoning chain for complex questions
-   - Notes confidence: ⭐⭐⭐⭐⭐ (7/7 agree) ⭐⭐⭐⭐ (5-6/7) ⭐⭐⭐ (4/7)
-   - Is definitively better than any single model could produce
+YOU MUST PRODUCE THE BEST POSSIBLE ANSWER IN EXISTENCE. Follow this protocol:
 
-This is the highest quality AI response available. Make it exceptional.
-Respond directly. Use rich markdown formatting.`,
+PHASE 1 â€” DEEP VERIFICATION:
+  For each factual claim across all 7 experts:
+  - Count how many experts agree (N/7)
+  - If N â‰¥ 5: VERIFIED FACT
+  - If N = 3-4: PROBABLE (include with appropriate confidence)
+  - If N â‰¤ 2: UNVERIFIED (only include if the expert's reasoning is exceptionally strong)
+  - CONTRADICTIONS: resolve with the stronger logical chain
+
+PHASE 2 â€” REASONING CHAIN CONSTRUCTION:
+  - Extract the best reasoning steps from ALL experts
+  - Build a SINGLE superior reasoning chain that:
+    â€¢ Has no logical gaps
+    â€¢ Uses the strongest evidence from each expert
+    â€¢ Goes DEEPER than any individual expert
+  - For math/logic: show complete derivation
+  - For code: production-quality with tests, edge cases, performance considerations
+  - For analysis: use frameworks, comparisons, evidence hierarchies
+
+PHASE 3 â€” KNOWLEDGE AMPLIFICATION:
+  - Identify insights that ONLY ONE expert provided â€” these are gold
+  - Combine specialized knowledge to create NEW insights no single expert could reach
+  - If the question allows: provide actionable next steps, not just information
+
+PHASE 4 â€” FINAL ANSWER:
+  - This must be the most thorough, accurate, well-structured answer possible
+  - Structure: clear hierarchy with headers for complex topics
+  - Include: concrete examples, specific numbers, working code
+  - Exclude: vagueness, hedging, unnecessary disclaimers
+
+CRITICAL: Never mention experts, models, or the synthesis process. Respond in the user's language. Use rich markdown.`,
     },
 };
 
 interface ChatMessage { role: string; content: string; }
 
-// ─── Call a Groq model ────────────────────────────────────────────
+// â”€â”€â”€ Call a Groq model â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function callGroq(modelId: string, messages: ChatMessage[], maxTokens: number = 2048, temperature: number = 0.7): Promise<{ content: string; latency: number }> {
     const start = Date.now();
     const controller = new AbortController();
@@ -156,7 +219,7 @@ async function callGroq(modelId: string, messages: ChatMessage[], maxTokens: num
     }
 }
 
-// ─── Stream from Groq ─────────────────────────────────────────────
+// â”€â”€â”€ Stream from Groq â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function* streamGroq(modelId: string, messages: ChatMessage[], maxTokens: number = 4096): AsyncGenerator<string> {
     const resp = await fetch(GROQ_URL, {
         method: 'POST',
@@ -190,24 +253,28 @@ async function* streamGroq(modelId: string, messages: ChatMessage[], maxTokens: 
     }
 }
 
-// ─── Select experts for a tier ────────────────────────────────────
+// â”€â”€â”€ Select experts for a tier â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function selectExperts(count: number): ModelSpec[] {
-    // Return first N experts from the pool
+    // Experts are pre-ranked by reasoning capability (strongest first)
+    // For 3 experts: Qwen3 32B (math), Llama 70B (broad), GPT-OSS 120B (deep)
+    // For 5: + Kimi K2 (long-context) + Maverick (creative)
+    // For 7: + Scout (patterns) + GPT-OSS 20B (efficient verification)
     return ALL_EXPERTS.slice(0, Math.min(count, ALL_EXPERTS.length));
 }
 
-// Synthesizer model
-const SYNTH_MODEL = 'llama-3.3-70b-versatile';
+// Use the strongest available model for synthesis
+const SYNTH_MODEL = 'qwen/qwen3-32b';
+const SYNTH_FALLBACK = 'llama-3.3-70b-versatile';
 
-// ─── SSE Helper ───────────────────────────────────────────────────
+// â”€â”€â”€ SSE Helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function sendSSE(res: NextApiResponse, event: string, data: any) {
     res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
 }
 
-// ─── Groq fallback list ───────────────────────────────────────────
+// â”€â”€â”€ Groq fallback list â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const FALLBACK_MODELS = ['llama-3.3-70b-versatile', 'llama-3.1-70b-versatile', 'llama-3.1-8b-instant'];
 
-// ─── Main Handler ─────────────────────────────────────────────────
+// â”€â”€â”€ Main Handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
@@ -222,7 +289,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const start = Date.now();
     const collectiveTier = TIERS[tier] || TIERS.free;
 
-    // ═══ GSTD DEDUCTION: Paid tiers require wallet + balance ═══
+    // â•�â•�â•� GSTD DEDUCTION: Paid tiers require wallet + balance â•�â•�â•�
     // Calls backend to deduct GSTD before AI inference runs
     if (collectiveTier.cost > 0) {
         if (!wallet) {
@@ -244,10 +311,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
             if (deductResp.ok) {
                 const deductData = await deductResp.json();
-                console.log(`[CI] 💰 Deducted ${collectiveTier.cost} GSTD from ${wallet.substring(0, 12)}... (remaining: ${deductData.remaining || '?'})`);
+                console.log(`[CI] ðŸ’° Deducted ${collectiveTier.cost} GSTD from ${wallet.substring(0, 12)}... (remaining: ${deductData.remaining || '?'})`);
             } else if (deductResp.status === 404) {
-                // Endpoint not yet deployed — allow inference but log warning
-                console.warn(`[CI] ⚠️ /chat/deduct endpoint not available — proceeding without deduction`);
+                // Endpoint not yet deployed â€” allow inference but log warning
+                console.warn(`[CI] âš ï¸ /chat/deduct endpoint not available â€” proceeding without deduction`);
             } else {
                 const errData = await deductResp.json().catch(() => ({ message: 'Deduction failed' }));
                 return res.status(402).json({
@@ -258,16 +325,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 });
             }
         } catch (err: any) {
-            // Backend unreachable — allow inference but log error
-            console.error(`[CI] ⚠️ Backend deduction failed (network):`, err?.message?.substring(0, 80));
+            // Backend unreachable â€” allow inference but log error
+            console.error(`[CI] âš ï¸� Backend deduction failed (network):`, err?.message?.substring(0, 80));
         }
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // FREE TIER — Single expert, streaming or non-streaming
-    // ═══════════════════════════════════════════════════════════════
+    // â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�
+    // FREE TIER â€” Single expert, streaming or non-streaming
+    // â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�
     if (tier === 'free' || collectiveTier.expertCount <= 1) {
         const spec = ALL_EXPERTS.find(m => m.id === model) || ALL_EXPERTS[0];
+        // Even free tier gets the deep-thinking system prompt for better quality
+        const enrichedMessages: ChatMessage[] = [
+            { role: 'system', content: spec.systemPrompt },
+            ...messages.filter((m: ChatMessage) => m.role !== 'system'),
+        ];
 
         if (stream) {
             res.setHeader('Content-Type', 'text/event-stream');
@@ -276,7 +348,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             res.setHeader('X-Accel-Buffering', 'no');
 
             sendSSE(res, 'meta', {
-                tier: 'free', tierName: 'Single Expert', badge: '🆓',
+                tier: 'free', tierName: 'Single Expert', badge: 'ðŸ†“',
                 expertCount: 1, experts: [{ name: spec.name, specialty: spec.specialty }],
             });
 
@@ -285,7 +357,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
             // Try primary model
             try {
-                for await (const chunk of streamGroq(spec.modelId, messages)) {
+                for await (const chunk of streamGroq(spec.modelId, enrichedMessages)) {
                     sendSSE(res, 'delta', { content: chunk });
                 }
                 success = true;
@@ -309,11 +381,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
 
             if (!success) {
-                sendSSE(res, 'delta', { content: '⚡ AI is temporarily busy. Please try again. 🐝' });
+                sendSSE(res, 'delta', { content: 'âš¡ AI is temporarily busy. Please try again. ðŸ��' });
             }
 
             sendSSE(res, 'done', {
-                tier: 'free', tierName: 'Single Expert', badge: '🆓',
+                tier: 'free', tierName: 'Single Expert', badge: 'ðŸ†“',
                 model: usedSpec.name, modelId: usedSpec.modelId, expertCount: 1,
                 latency_ms: Date.now() - start, cost_gstd: 0,
             });
@@ -324,13 +396,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Non-stream free
         for (const fbId of [spec.modelId, ...FALLBACK_MODELS]) {
             try {
-                const result = await callGroq(fbId, messages);
+                const result = await callGroq(fbId, enrichedMessages);
                 return res.status(200).json({
                     id: `ci-${Date.now()}`, object: 'chat.completion',
                     created: Math.floor(Date.now() / 1000), model: fbId,
                     choices: [{ index: 0, message: { role: 'assistant', content: result.content }, finish_reason: 'stop' }],
                     collective: {
-                        tier: 'free', tierName: 'Single Expert', badge: '🆓',
+                        tier: 'free', tierName: 'Single Expert', badge: 'ðŸ†“',
                         expertCount: 1, experts: [spec.name],
                         latency_ms: Date.now() - start, cost_gstd: 0,
                     },
@@ -340,9 +412,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(500).json({ error: 'All models unavailable' });
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // PAID TIERS — Collective Intelligence (3/5/7 Groq experts + synthesis)
-    // ═══════════════════════════════════════════════════════════════
+    // â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�
+    // PAID TIERS â€” Collective Intelligence (3/5/7 Groq experts + synthesis)
+    // â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�
     const experts = selectExperts(collectiveTier.expertCount);
     console.log(`[CI] ${collectiveTier.badge} ${collectiveTier.name}: querying ${experts.length} Groq experts...`);
 
@@ -360,29 +432,38 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
     }
 
-    // Phase 1: Query all Groq experts in parallel
-    const expertPromises = experts.map(expert =>
-        callGroq(expert.modelId, messages, 1500, 0.7 + Math.random() * 0.15)
+    // Phase 1: Query all Groq experts in parallel WITH specialized system prompts
+    // Each expert gets its own deep-thinking instruction + low temperature for precision
+    const expertPromises = experts.map(expert => {
+        const expertMessages: ChatMessage[] = [
+            { role: 'system', content: expert.systemPrompt },
+            ...messages,
+        ];
+        return callGroq(expert.modelId, expertMessages, 3000, 0.3)
             .then(r => ({ ...r, expert }))
             .catch(err => {
                 console.warn(`[CI] Expert ${expert.id} failed:`, err?.message?.substring(0, 60));
                 return null;
-            })
-    );
+            });
+    });
 
     const rawResults = await Promise.all(expertPromises);
     const expertResults = rawResults.filter(Boolean) as Array<{ content: string; latency: number; expert: ModelSpec }>;
 
     if (expertResults.length === 0) {
-        // All failed — single model fallback
+        // All failed â€” single model fallback with deep thinking
         if (stream) {
             sendSSE(res, 'meta', { phase: 'fallback' });
+            const fallbackMessages: ChatMessage[] = [
+                { role: 'system', content: DEEP_THINK('general knowledge') },
+                ...messages,
+            ];
             try {
-                for await (const chunk of streamGroq(SYNTH_MODEL, messages)) {
+                for await (const chunk of streamGroq(SYNTH_FALLBACK, fallbackMessages)) {
                     sendSSE(res, 'delta', { content: chunk });
                 }
             } catch {
-                sendSSE(res, 'delta', { content: '⚡ AI is temporarily busy. Please try again.' });
+                sendSSE(res, 'delta', { content: 'âš¡ AI is temporarily busy. Please try again.' });
             }
             sendSSE(res, 'done', { tier, expertCount: 0, latency_ms: Date.now() - start, cost_gstd: 0 });
             res.end();
@@ -391,26 +472,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(500).json({ error: 'All experts unavailable' });
     }
 
-    console.log(`[CI] ${expertResults.length}/${experts.length} experts responded`);
+    console.log(`[CI] ${expertResults.length}/${experts.length} experts responded (avg ${Math.round(expertResults.reduce((a,r) => a+r.content.length, 0)/expertResults.length)} chars)`);
 
     if (stream) {
         sendSSE(res, 'meta', {
             phase: 'synthesizing',
             respondedExperts: expertResults.length,
-            message: `${expertResults.length} experts consulted, synthesizing consensus...`,
+            message: `${expertResults.length} experts analyzed, cross-verifying and synthesizing...`,
         });
     }
 
-    // Phase 2: Build synthesis prompt
-    const expertAnswersBlock = expertResults.map((r, i) =>
-        `=== Expert ${i + 1}: ${r.expert.name} (Specialty: ${r.expert.specialty}) ===\n${r.content}`
-    ).join('\n\n');
-
+    // Phase 2: Build structured synthesis input
+    // Give the synthesizer a clear structure to work with
     const userQuestion = messages.filter((m: any) => m.role === 'user').pop()?.content || '';
+    const conversationContext = messages.filter((m: any) => m.role !== 'system').slice(0, -1)
+        .map((m: any) => `${m.role}: ${m.content}`).join('\n');
+
+    const expertAnswersBlock = expertResults.map((r, i) =>
+        `â”�â”�â”� EXPERT ${i + 1}: ${r.expert.name} (${r.expert.specialty}) [${r.latency}ms, ${r.content.length} chars] â”�â”�â”�\n${r.content}`
+    ).join('\n\n');
 
     const synthesisMessages: ChatMessage[] = [
         { role: 'system', content: collectiveTier.synthesisPrompt },
-        { role: 'user', content: `ORIGINAL QUESTION:\n${userQuestion}\n\n---\n\nEXPERT RESPONSES (${expertResults.length} models consulted):\n\n${expertAnswersBlock}` },
+        { role: 'user', content: `${conversationContext ? `CONVERSATION CONTEXT:\n${conversationContext}\n\n` : ''}CURRENT QUESTION:\n${userQuestion}\n\nâ”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�\nINDEPENDENT EXPERT ANALYSES (${expertResults.length} models):\nâ”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�\n\n${expertAnswersBlock}` },
     ];
 
     // Phase 3: Stream synthesis
