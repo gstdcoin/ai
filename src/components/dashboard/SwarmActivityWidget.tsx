@@ -16,25 +16,35 @@ export const SwarmActivityWidget: React.FC = () => {
     const [stats, setStats] = useState<SwarmStats | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    // Mock data for visual presentation since API might not have all these yet
+    // Honest fallback — show real zeros, not fake millions
     const fallbackStats: SwarmStats = {
-        activeAgents: 14250,
-        tasksProcessed24h: 3450900,
-        totalGstdLocked: 52000000,
-        totalYield: 15.4,
+        activeAgents: 0,
+        tasksProcessed24h: 0,
+        totalGstdLocked: 0,
+        totalYield: 12.0,
         omniChainRoutes: [
-            { chain: 'TON', volume: 1540000, tvl: 45000000 },
-            { chain: 'Solana', volume: 820000, tvl: 4500000 },
-            { chain: 'XRPL', volume: 450000, tvl: 2500000 },
+            { chain: 'TON', volume: 0, tvl: 0 },
         ]
     };
 
     useEffect(() => {
         const fetchStats = async () => {
             try {
-                const response = await apiGet<any>('/network/swarm-stats');
-                if (response && response.activeAgents) {
-                    setStats(response as SwarmStats);
+                // Try swarm-stats first, fall back to network/stats
+                let response = await apiGet<any>('/network/swarm-stats');
+                if (!response || !response.activeAgents) {
+                    response = await apiGet<any>('/network/stats');
+                }
+                if (response) {
+                    setStats({
+                        activeAgents: response.activeAgents || response.active_workers || response.active_devices_count || 0,
+                        tasksProcessed24h: response.tasksProcessed24h || response.tasks_24h || response.tasks_last_24h || 0,
+                        totalGstdLocked: response.totalGstdLocked || response.total_gstd_distributed || 0,
+                        totalYield: response.totalYield || 12.0,
+                        omniChainRoutes: response.omniChainRoutes || [
+                            { chain: 'TON', volume: response.total_tasks || 0, tvl: response.total_gstd_paid || 0 },
+                        ]
+                    });
                 } else {
                     setStats(fallbackStats);
                 }
