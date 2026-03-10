@@ -350,7 +350,22 @@ export default function ChatPage() {
                 signal: controller.signal,
             });
 
-            if (!response.ok) throw new Error(`Error ${response.status}`);
+            if (!response.ok) {
+                // Handle 402 (insufficient balance) with user-friendly message
+                if (response.status === 402) {
+                    const errData = await response.json().catch(() => ({}));
+                    const errMsg: Message = {
+                        id: 'msg_' + Date.now() + '_err', role: 'assistant',
+                        content: `⚠️ **${errData.error === 'wallet_required' ? 'Wallet Required' : 'Insufficient GSTD Balance'}**\n\n${errData.message || 'Connect wallet or switch to free tier.'}\n\n${errData.cost ? `**Cost:** ${errData.cost} GSTD` : ''} ${errData.balance !== undefined ? `| **Balance:** ${errData.balance.toFixed(4)} GSTD` : ''}\n\n💡 Switch to **🆓 Single Expert** (free) or [top up your wallet](/dashboard).`,
+                        timestamp: Date.now(),
+                    };
+                    setConversations(prev => prev.map(c => c.id === convId ? { ...c, messages: [...c.messages, errMsg] } : c));
+                    setIsStreaming(false);
+                    setCollectivePhase(null);
+                    return;
+                }
+                throw new Error(`Error ${response.status}`);
+            }
 
             // ─── Parse SSE stream ────────────────────────────────
             const reader = response.body?.getReader();

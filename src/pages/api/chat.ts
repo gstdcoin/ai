@@ -218,8 +218,50 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: 'messages required' });
     }
 
+    const wallet = (req.headers['x-wallet-address'] as string) || '';
     const start = Date.now();
     const collectiveTier = TIERS[tier] || TIERS.free;
+
+    // ═══ GSTD DEDUCTION: Paid tiers require wallet + balance ═══
+    // Calls backend to deduct GSTD before AI inference runs
+    if (collectiveTier.cost > 0) {
+        if (!wallet) {
+            return res.status(402).json({
+                error: 'wallet_required',
+                message: `Connect your wallet to use ${collectiveTier.name} (${collectiveTier.cost} GSTD). Free tier is available without wallet.`,
+                cost: collectiveTier.cost,
+            });
+        }
+
+        // Deduct GSTD via backend API
+        const BACKEND_URL = process.env.BACKEND_URL || 'http://172.18.0.1:8080';
+        try {
+            const deductResp = await fetch(`${BACKEND_URL}/api/v1/chat/deduct`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ wallet_address: wallet, amount: collectiveTier.cost, tier, tier_name: collectiveTier.name }),
+            });
+
+            if (deductResp.ok) {
+                const deductData = await deductResp.json();
+                console.log(`[CI] 💰 Deducted ${collectiveTier.cost} GSTD from ${wallet.substring(0, 12)}... (remaining: ${deductData.remaining || '?'})`);
+            } else if (deductResp.status === 404) {
+                // Endpoint not yet deployed — allow inference but log warning
+                console.warn(`[CI] ⚠️ /chat/deduct endpoint not available — proceeding without deduction`);
+            } else {
+                const errData = await deductResp.json().catch(() => ({ message: 'Deduction failed' }));
+                return res.status(402).json({
+                    error: 'insufficient_balance',
+                    message: errData.message || `Need ${collectiveTier.cost} GSTD for ${collectiveTier.name}. Top up or switch to free tier.`,
+                    cost: collectiveTier.cost,
+                    balance: errData.balance || 0,
+                });
+            }
+        } catch (err: any) {
+            // Backend unreachable — allow inference but log error
+            console.error(`[CI] ⚠️ Backend deduction failed (network):`, err?.message?.substring(0, 80));
+        }
+    }
 
     // ═══════════════════════════════════════════════════════════════
     // FREE TIER — Single expert, streaming or non-streaming
