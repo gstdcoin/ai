@@ -1098,6 +1098,9 @@ func SetupRoutes(
 		v1.GET("/chat/hybrid-status", gatewayHandler.GetHybridStatus)
 		v1.GET("/chat/sovereignty-index", gatewayHandler.GetSovereigntyIndex)
 
+		// ═══ CHAT DEDUCTION — Called by frontend for paid Collective Intelligence tiers ═══
+		v1.POST("/chat/deduct", chatDeductHandler(dbConn, burnService))
+
 		log.Printf("✅ Growth System & Onboarding routes registered (Omega Gateway Active)")
 
 		// ═══ UNIVERSAL SWARM EMBED API ═══
