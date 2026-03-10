@@ -194,6 +194,12 @@ CRITICAL: Never mention experts, models, or the synthesis process. Respond in th
 
 interface ChatMessage { role: string; content: string; }
 
+// Strip <think>...</think> reasoning blocks from model output
+// These are internal chain-of-thought tokens that shouldn't be shown to users
+function stripThinkBlocks(text: string): string {
+    return text.replace(/<think>[\s\S]*?<\/think>\s*/g, '').trim();
+}
+
 // â”€â”€â”€ Call a Groq model â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function callGroq(modelId: string, messages: ChatMessage[], maxTokens: number = 2048, temperature: number = 0.7): Promise<{ content: string; latency: number }> {
     const start = Date.now();
@@ -213,7 +219,7 @@ async function callGroq(modelId: string, messages: ChatMessage[], maxTokens: num
         const data: any = await resp.json();
         const content = data.choices?.[0]?.message?.content || '';
         if (!content) throw new Error('Empty');
-        return { content, latency: Date.now() - start };
+        return { content: stripThinkBlocks(content), latency: Date.now() - start };
     } finally {
         clearTimeout(timeout);
     }
@@ -249,6 +255,39 @@ async function* streamGroq(modelId: string, messages: ChatMessage[], maxTokens: 
                 const delta = parsed.choices?.[0]?.delta?.content;
                 if (delta) yield delta;
             } catch { }
+        }
+    }
+}
+
+// Streaming variant that filters <think> blocks in real-time
+async function* streamGroqClean(modelId: string, messages: ChatMessage[], maxTokens: number = 4096): AsyncGenerator<string> {
+    let insideThink = false;
+    let thinkBuffer = '';
+    for await (const chunk of streamGroq(modelId, messages, maxTokens)) {
+        if (insideThink) {
+            thinkBuffer += chunk;
+            if (thinkBuffer.includes('</think>')) {
+                // End of think block — emit everything after </think>
+                const afterThink = thinkBuffer.split('</think>').slice(1).join('</think>').replace(/^\s+/, '');
+                insideThink = false;
+                thinkBuffer = '';
+                if (afterThink) yield afterThink;
+            }
+        } else if (chunk.includes('<think>')) {
+            // Start of think block
+            const parts = chunk.split('<think>');
+            if (parts[0]) yield parts[0]; // emit text before <think>
+            thinkBuffer = parts.slice(1).join('<think>');
+            if (thinkBuffer.includes('</think>')) {
+                const afterThink = thinkBuffer.split('</think>').slice(1).join('</think>').replace(/^\s+/, '');
+                insideThink = false;
+                thinkBuffer = '';
+                if (afterThink) yield afterThink;
+            } else {
+                insideThink = true;
+            }
+        } else {
+            yield chunk;
         }
     }
 }
@@ -357,7 +396,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
             // Try primary model
             try {
-                for await (const chunk of streamGroq(spec.modelId, enrichedMessages)) {
+                for await (const chunk of streamGroqClean(spec.modelId, enrichedMessages)) {
                     sendSSE(res, 'delta', { content: chunk });
                 }
                 success = true;
@@ -370,7 +409,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 for (const fbId of FALLBACK_MODELS) {
                     if (fbId === spec.modelId) continue;
                     try {
-                        for await (const chunk of streamGroq(fbId, messages)) {
+                        for await (const chunk of streamGroqClean(fbId, messages)) {
                             sendSSE(res, 'delta', { content: chunk });
                         }
                         usedSpec = ALL_EXPERTS.find(m => m.modelId === fbId) || spec;
@@ -459,7 +498,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 ...messages,
             ];
             try {
-                for await (const chunk of streamGroq(SYNTH_FALLBACK, fallbackMessages)) {
+                for await (const chunk of streamGroqClean(SYNTH_FALLBACK, fallbackMessages)) {
                     sendSSE(res, 'delta', { content: chunk });
                 }
             } catch {
@@ -502,7 +541,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         sendSSE(res, 'meta', { phase: 'streaming' });
 
         try {
-            for await (const chunk of streamGroq(SYNTH_MODEL, synthesisMessages, 4096)) {
+            for await (const chunk of streamGroqClean(SYNTH_MODEL, synthesisMessages, 4096)) {
                 sendSSE(res, 'delta', { content: chunk });
             }
         } catch {
