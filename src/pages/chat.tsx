@@ -191,7 +191,7 @@ export default function ChatPage() {
     const [activeConvId, setActiveConvId] = useState<string | null>(null);
     const [input, setInput] = useState('');
     const [isStreaming, setIsStreaming] = useState(false);
-    const [selectedModel] = useState('llama-3.3-70b');
+    const [selectedModel, setSelectedModel] = useState('compound');
     const [selectedTier, setSelectedTier] = useState('free');
     const [showTierPicker, setShowTierPicker] = useState(false);
     const [showSidebar, setShowSidebar] = useState(false);
@@ -330,7 +330,7 @@ export default function ChatPage() {
         try {
             const conv = conversations.find(c => c.id === convId);
             const apiMessages = [
-                { role: 'system', content: 'You are GSTD — a sovereign decentralized AI powered by the Swarm. You have Collective Memory from all users. Respond in the user\'s language. Use markdown formatting: headers, bold, lists, code blocks with language tags. Be helpful, detailed, and well-structured.' },
+                { role: 'system', content: 'You are GSTD Sovereign AI — a decentralized intelligence engine powered by multi-model consensus. You have a Collective Memory of 36,000+ verified facts. Respond in the user\'s language. Use rich markdown: ## headers, **bold** terms, ```code``` with language tags, tables, numbered lists. Be exceptionally thorough, precise, and well-structured. Go deeper than surface-level — explain WHY, not just WHAT. Anticipate follow-up questions.' },
                 ...(conv?.messages || []).map(m => ({ role: m.role, content: m.content })),
                 { role: 'user' as const, content: userMessage }
             ];
@@ -684,6 +684,24 @@ export default function ChatPage() {
                                 </>
                             )}
                         </div>
+
+                        {/* Model selector for free tier */}
+                        {selectedTier === 'free' && (
+                            <select
+                                value={selectedModel}
+                                onChange={(e) => setSelectedModel(e.target.value)}
+                                className="px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-gray-300 outline-none hover:border-violet-500/30 transition cursor-pointer"
+                                title="Select AI model"
+                            >
+                                <option value="compound">🌐 Compound AI (Web Search)</option>
+                                <option value="llama-3.3-70b">🦙 Llama 3.3 70B</option>
+                                <option value="qwen3-32b">🧮 Qwen3 32B (Math)</option>
+                                <option value="gpt-oss-120b">🧠 GPT-OSS 120B</option>
+                                <option value="kimi-k2">📚 Kimi K2 262K</option>
+                                <option value="llama-4-maverick">🎨 Llama 4 Maverick</option>
+                                <option value="llama-4-scout">🔍 Llama 4 Scout</option>
+                            </select>
+                        )}
                     </div>
 
                     <div className="flex items-center gap-3">
