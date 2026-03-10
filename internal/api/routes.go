@@ -744,6 +744,7 @@ func SetupRoutes(
 		v1.POST("/nodes/heartbeat", func(c *gin.Context) {
 			var req struct {
 				WalletAddress string `json:"wallet_address"`
+				NodeName      string `json:"node_name"`
 				NodeVersion   string `json:"node_version"`
 				UptimeHours   int    `json:"uptime_hours"`
 				QueriesServed int    `json:"queries_served"`
@@ -759,11 +760,19 @@ func SetupRoutes(
 				VALUES ($1, 0, NOW(), NOW())
 				ON CONFLICT (wallet_address) DO NOTHING
 			`, req.WalletAddress)
+			nodeName := req.NodeName
+			if nodeName == "" {
+				if req.NodeVersion != "" {
+					nodeName = "GSTD Node v" + req.NodeVersion
+				} else {
+					nodeName = "GSTD Node"
+				}
+			}
 			_, _ = dbConn.ExecContext(c.Request.Context(), `
 				INSERT INTO nodes (id, wallet_address, name, status, last_seen, created_at, updated_at)
-				VALUES (gen_random_uuid(), $1, COALESCE($2, 'GSTD Node'), 'online', NOW(), NOW(), NOW())
+				VALUES (gen_random_uuid(), $1, $2, 'online', NOW(), NOW(), NOW())
 				ON CONFLICT (wallet_address) DO UPDATE SET status = 'online', last_seen = NOW(), updated_at = NOW()
-			`, req.WalletAddress, req.NodeVersion)
+			`, req.WalletAddress, nodeName)
 
 			// Check time since last heartbeat reward to prevent double-claiming
 			var lastReward float64
@@ -816,6 +825,11 @@ func SetupRoutes(
 				UPDATE nodes SET total_earnings = COALESCE(total_earnings, 0) + $1, last_seen = NOW(), updated_at = NOW()
 				WHERE wallet_address = $2
 			`, reward, req.WalletAddress)
+			// Update Redis worker:online status for active_workers count
+			if genesisRedis != nil {
+				onlineKey := fmt.Sprintf("worker:online:%s", req.WalletAddress)
+				genesisRedis.Set(c.Request.Context(), onlineKey, "online", 90*time.Second)
+			}
 
 			c.JSON(200, gin.H{
 				"reward":          reward,
