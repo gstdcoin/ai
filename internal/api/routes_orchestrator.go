@@ -89,6 +89,13 @@ func (h *OrchestratorHandler) GetWalletBalance(c *gin.Context) {
 		WHERE creator_wallet = $1 AND status = 'locked'
 	`, wallet).Scan(&balance.LockedInEscrow)
 
+	// Get off-chain GSTD balance from DB (bonuses, faucets, referrals, burns)
+	var dbBalance float64
+	h.db.QueryRowContext(c.Request.Context(), `
+		SELECT COALESCE(gstd_balance, 0) FROM users WHERE wallet_address = $1
+	`, wallet).Scan(&dbBalance)
+	balance.GSTDBalance = dbBalance
+
 	// Fetch real balances from blockchain if TONService is available
 	if h.ton != nil {
 		// Get TON Balance
@@ -99,15 +106,12 @@ func (h *OrchestratorHandler) GetWalletBalance(c *gin.Context) {
 			log.Printf("Failed to get TON balance for %s: %v", wallet, err)
 		}
 
-		// Get GSTD Balance
-		// Get GSTD Jetton Address from env or constant
+		// Add on-chain GSTD balance if available
 		gstdAddress := os.Getenv("GSTD_JETTON_ADDRESS")
 		if gstdAddress != "" {
 			gstdBal, err := h.ton.GetJettonBalance(c.Request.Context(), wallet, gstdAddress)
 			if err == nil {
-				balance.GSTDBalance = gstdBal
-			} else {
-				log.Printf("Failed to get GSTD balance for %s: %v", wallet, err)
+				balance.GSTDBalance += gstdBal // DB balance + on-chain balance
 			}
 		}
 	}
