@@ -53,11 +53,11 @@ type SovereignModel struct {
 // L3SovereignModels — топовые бесплатные модели (заменяют Cocoon TEE)
 var L3SovereignModels = []SovereignModel{
 	{
-		ID:       "moonshotai/kimi-k2-instruct",
+		ID:       "moonshotai/kimi-k2-instruct-0905",
 		Provider: "groq",
 		Tier:     "l3_sovereign",
 		MaxTok:   8192,
-		Notes:    "Kimi K2 — 2T param MoE, SOTA coding+reasoning, бесплатно на Groq",
+		Notes:    "Kimi K2 0905 — 2T param MoE, 262K context, SOTA coding+reasoning, бесплатно на Groq",
 	},
 	{
 		ID:       "meta-llama/llama-4-maverick-17b-128e-instruct",
@@ -151,7 +151,7 @@ func (p *SovereignPowerPool) IsAvailable() bool {
 // These are all free-tier, no rate limit issues, SOTA quality.
 func (p *SovereignPowerPool) CallL3Sovereign(ctx context.Context, messages []map[string]interface{}, maxTokens int) (string, string, error) {
 	if maxTokens == 0 {
-		maxTokens = 1500
+		maxTokens = 3000 // Deeper responses for sovereign quality
 	}
 
 	for _, model := range L3SovereignModels {
@@ -173,7 +173,7 @@ func (p *SovereignPowerPool) CallL3Sovereign(ctx context.Context, messages []map
 // CallL3SovereignStream returns a streaming response from L3 models.
 func (p *SovereignPowerPool) CallL3SovereignStream(ctx context.Context, messages []map[string]interface{}, maxTokens int) (io.ReadCloser, string, error) {
 	if maxTokens == 0 {
-		maxTokens = 1500
+		maxTokens = 3000
 	}
 
 	for _, model := range L3SovereignModels {
@@ -195,7 +195,7 @@ func (p *SovereignPowerPool) CallL3SovereignStream(ctx context.Context, messages
 // GPT-OSS-120B is the crown jewel here: OpenAI's 120B model, free via Groq.
 func (p *SovereignPowerPool) CallL4Omega(ctx context.Context, messages []map[string]interface{}, maxTokens int) (string, string, error) {
 	if maxTokens == 0 {
-		maxTokens = 2000
+		maxTokens = 4000 // L4 gets extra depth as final fallback
 	}
 
 	for _, model := range L4OmegaModels {
@@ -217,7 +217,7 @@ func (p *SovereignPowerPool) CallL4Omega(ctx context.Context, messages []map[str
 // CallL4OmegaStream returns a streaming response from L4 models.
 func (p *SovereignPowerPool) CallL4OmegaStream(ctx context.Context, messages []map[string]interface{}, maxTokens int) (io.ReadCloser, string, error) {
 	if maxTokens == 0 {
-		maxTokens = 2000
+		maxTokens = 4000
 	}
 
 	for _, model := range L4OmegaModels {
@@ -272,7 +272,7 @@ func (p *SovereignPowerPool) callGroq(ctx context.Context, model string, message
 		"model":       model,
 		"messages":    messages,
 		"max_tokens":  maxTokens,
-		"temperature": 0.7,
+		"temperature": 0.4,
 		"stream":      false,
 	})
 
@@ -504,7 +504,7 @@ func resolvePoolModel(model string) string {
 	lower := strings.ToLower(model)
 	switch {
 	case strings.Contains(lower, "kimi") || strings.Contains(lower, "k2"):
-		return "moonshotai/kimi-k2-instruct"
+		return "moonshotai/kimi-k2-instruct-0905"
 	case strings.Contains(lower, "maverick") || strings.Contains(lower, "llama-4"):
 		return "meta-llama/llama-4-maverick-17b-128e-instruct"
 	case strings.Contains(lower, "compound"):
