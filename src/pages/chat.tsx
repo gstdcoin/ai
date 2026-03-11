@@ -154,7 +154,6 @@ export default function ChatPage() {
     const MODELS = [
         { id: 'llama-3.3-70b', name: 'Llama 3.3 70B', desc: 'Meta · General purpose', icon: '🦙' },
         { id: 'llama-4-scout', name: 'Llama 4 Scout', desc: 'Meta · Latest, multi-expert', icon: '🔭' },
-        { id: 'llama-4-maverick', name: 'Llama 4 Maverick', desc: 'Meta · Creative, 128 experts', icon: '🚀' },
         { id: 'qwen3-32b', name: 'Qwen3 32B', desc: 'Alibaba · Math & analysis', icon: '🔮', isReasoning: true },
         { id: 'gpt-oss-120b', name: 'GPT-OSS 120B', desc: 'OpenAI · Open-source, large', icon: '🧪', isReasoning: true },
         { id: 'gpt-oss-20b', name: 'GPT-OSS 20B', desc: 'OpenAI · Open-source, fast', icon: '⚗️' },
@@ -698,7 +697,6 @@ export default function ChatPage() {
                                 <option value="qwen3-32b">🧮 Qwen3 32B (Math)</option>
                                 <option value="gpt-oss-120b">🧠 GPT-OSS 120B</option>
                                 <option value="kimi-k2">📚 Kimi K2 262K</option>
-                                <option value="llama-4-maverick">🎨 Llama 4 Maverick</option>
                                 <option value="llama-4-scout">🔍 Llama 4 Scout</option>
                             </select>
                         )}

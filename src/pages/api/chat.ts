@@ -60,7 +60,6 @@ const ALL_EXPERTS: ModelSpec[] = [
     { id: 'llama-3.3-70b', name: 'Llama 3.3 70B', modelId: 'llama-3.3-70b-versatile', specialty: 'broad knowledge, nuanced reasoning, complex analysis', systemPrompt: PAID_EXPERT('general knowledge, research, and complex multi-step reasoning') },
     { id: 'gpt-oss-120b', name: 'GPT-OSS 120B', modelId: 'openai/gpt-oss-120b', specialty: 'large-scale reasoning, deep knowledge', systemPrompt: PAID_EXPERT('large-scale reasoning, scientific knowledge, and deep analysis') },
     { id: 'kimi-k2', name: 'Kimi K2', modelId: 'moonshotai/kimi-k2-instruct-0905', specialty: 'long-context reasoning, detailed analysis', systemPrompt: PAID_EXPERT('long-context understanding, detailed analysis, and thorough research') },
-    { id: 'llama-4-maverick', name: 'Llama 4 Maverick', modelId: 'meta-llama/llama-4-maverick-17b-128e-instruct', specialty: 'creative problem-solving, unconventional approaches', systemPrompt: PAID_EXPERT('creative reasoning, novel approaches, and thinking outside conventional frameworks') },
     { id: 'llama-4-scout', name: 'Llama 4 Scout', modelId: 'meta-llama/llama-4-scout-17b-16e-instruct', specialty: 'rapid assessment, pattern recognition', systemPrompt: PAID_EXPERT('rapid assessment, pattern recognition, and identifying key insights') },
     { id: 'gpt-oss-20b', name: 'GPT-OSS 20B', modelId: 'openai/gpt-oss-20b', specialty: 'efficient reasoning, concise expert answers', systemPrompt: PAID_EXPERT('efficient problem-solving and concise expert-level answers') },
     { id: 'llama-3.1-8b', name: 'Llama 3.1 8B', modelId: 'llama-3.1-8b-instant', specialty: 'fast verification, sanity checks', systemPrompt: PAID_EXPERT('fast verification, finding errors in reasoning, and sanity-checking conclusions') },
@@ -313,7 +312,7 @@ async function* streamGroqClean(modelId: string, messages: ChatMessage[], maxTok
 function selectExperts(count: number): ModelSpec[] {
     // Experts are pre-ranked by reasoning capability (strongest first)
     // For 3 experts: Qwen3 32B (math), Llama 70B (broad), GPT-OSS 120B (deep)
-    // For 5: + Kimi K2 (long-context) + Maverick (creative)
+    // For 5: + Kimi K2 (long-context) + Scout (patterns)
     // For 7: + Scout (patterns) + GPT-OSS 20B (efficient verification)
     return ALL_EXPERTS.slice(0, Math.min(count, ALL_EXPERTS.length));
 }
