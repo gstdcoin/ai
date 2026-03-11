@@ -94,8 +94,9 @@ func SetupRoutes(
 		"https://app.gstdtoken.com":     true,
 		"https://api.gstdtoken.com":     true,
 		"https://chat.gstdtoken.com":    true,
+		"https://gstdbot.gstdtoken.com": true,
 		"https://monitor.gstdtoken.com": true,
-		"http://localhost:3000":         true,
+		"http://localhost:3000":          true,
 		"http://127.0.0.1:3000":         true,
 		"https://web.telegram.org":      true,
 		"https://t.me":                  true,
@@ -856,6 +857,28 @@ func SetupRoutes(
 				UPDATE nodes SET total_earnings = COALESCE(total_earnings, 0) + $1, last_seen = NOW(), updated_at = NOW()
 				WHERE wallet_address = $2
 			`, reward, req.WalletAddress)
+
+			// ═══ Node Wallet Binding: record reward for owner ═══
+			// If this node has an active wallet binding, accumulate reward for the owner
+			var ownerWallet string
+			bindErr := dbConn.QueryRowContext(c.Request.Context(),
+				`SELECT owner_wallet FROM node_wallet_bindings WHERE node_address = $1 AND is_active = true LIMIT 1`,
+				req.WalletAddress).Scan(&ownerWallet)
+			if bindErr == nil && ownerWallet != "" {
+				// Write to pending rewards (tokens stay in "contract" until claimed)
+				_, _ = dbConn.ExecContext(c.Request.Context(),
+					`INSERT INTO node_pending_rewards (owner_wallet, node_id, amount_gstd, reward_type, description)
+					 SELECT $1, COALESCE(b.node_id, 'unknown'), $2, 'uptime', $3
+					 FROM node_wallet_bindings b WHERE b.owner_wallet = $1 AND b.node_address = $4 AND b.is_active = true LIMIT 1`,
+					ownerWallet, reward, fmt.Sprintf("Heartbeat reward: %.4f GSTD (uptime=%dh, queries=%d)", reward, req.UptimeHours, req.QueriesServed), req.WalletAddress)
+
+				// Update binding stats
+				_, _ = dbConn.ExecContext(c.Request.Context(),
+					`UPDATE node_wallet_bindings SET last_heartbeat = NOW(), total_earned_gstd = total_earned_gstd + $1
+					 WHERE node_address = $2 AND is_active = true`,
+					reward, req.WalletAddress)
+			}
+
 			// Update Redis worker:online status for active_workers count
 			if genesisRedis != nil {
 				onlineKey := fmt.Sprintf("worker:online:%s", req.WalletAddress)
@@ -879,6 +902,354 @@ func SetupRoutes(
 				"message": "Use POST /api/v1/nodes/heartbeat instead. Nodes no longer self-report earnings.",
 			})
 		})
+
+		// ═══════════════════════════════════════════════════════════════
+		// Node Wallet Binding — owner binds TON wallet to node(s)
+		// - One wallet can own multiple nodes
+		// - One node can have only one active owner at a time
+		// - If user loses node, they rebind from another node
+		// - Rewards stay in "contract" (DB) until claimed
+		// ═══════════════════════════════════════════════════════════════
+
+		// POST /nodes/bind-wallet — bind owner wallet to a node
+		v1.POST("/nodes/bind-wallet", func(c *gin.Context) {
+			var req struct {
+				NodeID      string `json:"node_id" binding:"required"`
+				OwnerWallet string `json:"owner_wallet" binding:"required"`
+				NodeAddress string `json:"node_address"` // node's internal wallet
+			}
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(400, gin.H{"error": "node_id and owner_wallet required"})
+				return
+			}
+			if len(req.OwnerWallet) < 10 {
+				c.JSON(400, gin.H{"error": "invalid wallet address"})
+				return
+			}
+
+			ctx := c.Request.Context()
+
+			// Deactivate any previous binding for this node
+			_, _ = dbConn.ExecContext(ctx,
+				`UPDATE node_wallet_bindings SET is_active = false, unbound_at = NOW() WHERE node_id = $1 AND is_active = true`,
+				req.NodeID)
+
+			// Create new binding
+			var bindingID int
+			err := dbConn.QueryRowContext(ctx,
+				`INSERT INTO node_wallet_bindings (node_id, owner_wallet, node_address, bound_at, is_active)
+				 VALUES ($1, $2, $3, NOW(), true)
+				 RETURNING id`,
+				req.NodeID, req.OwnerWallet, req.NodeAddress).Scan(&bindingID)
+			if err != nil {
+				c.JSON(500, gin.H{"error": "failed to bind wallet", "details": err.Error()})
+				return
+			}
+
+			// Ensure user_wallets entry exists
+			_, _ = dbConn.ExecContext(ctx,
+				`INSERT INTO user_wallets (address) VALUES ($1) ON CONFLICT (address) DO NOTHING`,
+				req.OwnerWallet)
+
+			c.JSON(200, gin.H{
+				"ok":         true,
+				"binding_id": bindingID,
+				"node_id":    req.NodeID,
+				"owner":      req.OwnerWallet,
+				"message":    "Wallet bound to node. Rewards will accumulate until claimed.",
+			})
+		})
+
+		// POST /nodes/unbind-wallet — unbind wallet from node
+		v1.POST("/nodes/unbind-wallet", func(c *gin.Context) {
+			var req struct {
+				NodeID      string `json:"node_id" binding:"required"`
+				OwnerWallet string `json:"owner_wallet" binding:"required"`
+			}
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(400, gin.H{"error": "node_id and owner_wallet required"})
+				return
+			}
+
+			result, err := dbConn.ExecContext(c.Request.Context(),
+				`UPDATE node_wallet_bindings SET is_active = false, unbound_at = NOW()
+				 WHERE node_id = $1 AND owner_wallet = $2 AND is_active = true`,
+				req.NodeID, req.OwnerWallet)
+			if err != nil {
+				c.JSON(500, gin.H{"error": "unbind failed"})
+				return
+			}
+			rows, _ := result.RowsAffected()
+			if rows == 0 {
+				c.JSON(404, gin.H{"error": "no active binding found"})
+				return
+			}
+			c.JSON(200, gin.H{"ok": true, "message": "Wallet unbound. Pending rewards are preserved and can still be claimed."})
+		})
+
+		// GET /nodes/my-nodes?wallet=<address> — get all nodes bound to wallet
+		v1.GET("/nodes/my-nodes", func(c *gin.Context) {
+			wallet := c.Query("wallet")
+			if wallet == "" {
+				c.JSON(400, gin.H{"error": "wallet parameter required"})
+				return
+			}
+
+			rows, err := dbConn.QueryContext(c.Request.Context(),
+				`SELECT b.node_id, b.node_address, b.bound_at, b.total_earned_gstd, b.last_heartbeat,
+				        COALESCE(n.status, 'unknown') as node_status,
+				        COALESCE(n.name, 'Node') as node_name,
+				        COALESCE((SELECT SUM(amount_gstd) FROM node_pending_rewards WHERE owner_wallet = b.owner_wallet AND node_id = b.node_id AND claimed_at IS NULL), 0) as pending_gstd
+				 FROM node_wallet_bindings b
+				 LEFT JOIN nodes n ON n.id = b.node_id
+				 WHERE b.owner_wallet = $1 AND b.is_active = true
+				 ORDER BY b.bound_at DESC`,
+				wallet)
+			if err != nil {
+				c.JSON(500, gin.H{"error": "query failed"})
+				return
+			}
+			defer rows.Close()
+
+			type NodeBinding struct {
+				NodeID        string  `json:"node_id"`
+				NodeAddress   *string `json:"node_address"`
+				BoundAt       string  `json:"bound_at"`
+				TotalEarned   float64 `json:"total_earned_gstd"`
+				LastHeartbeat *string `json:"last_heartbeat"`
+				NodeStatus    string  `json:"node_status"`
+				NodeName      string  `json:"node_name"`
+				PendingGSTD   float64 `json:"pending_gstd"`
+			}
+
+			var nodes []NodeBinding
+			for rows.Next() {
+				var nb NodeBinding
+				if err := rows.Scan(&nb.NodeID, &nb.NodeAddress, &nb.BoundAt, &nb.TotalEarned, &nb.LastHeartbeat, &nb.NodeStatus, &nb.NodeName, &nb.PendingGSTD); err != nil {
+					continue
+				}
+				nodes = append(nodes, nb)
+			}
+			if nodes == nil {
+				nodes = []NodeBinding{}
+			}
+
+			// Total pending across all nodes
+			var totalPending float64
+			_ = dbConn.QueryRowContext(c.Request.Context(),
+				`SELECT COALESCE(SUM(amount_gstd), 0) FROM node_pending_rewards WHERE owner_wallet = $1 AND claimed_at IS NULL`,
+				wallet).Scan(&totalPending)
+
+			c.JSON(200, gin.H{
+				"wallet":        wallet,
+				"nodes":         nodes,
+				"total_nodes":   len(nodes),
+				"total_pending": totalPending,
+			})
+		})
+
+		// GET /nodes/pending-rewards?wallet=<address> — get all unclaimed rewards
+		v1.GET("/nodes/pending-rewards", func(c *gin.Context) {
+			wallet := c.Query("wallet")
+			if wallet == "" {
+				c.JSON(400, gin.H{"error": "wallet parameter required"})
+				return
+			}
+
+			rows, err := dbConn.QueryContext(c.Request.Context(),
+				`SELECT id, node_id, amount_gstd, reward_type, COALESCE(description, ''), created_at
+				 FROM node_pending_rewards
+				 WHERE owner_wallet = $1 AND claimed_at IS NULL
+				 ORDER BY created_at DESC LIMIT 100`,
+				wallet)
+			if err != nil {
+				c.JSON(500, gin.H{"error": "query failed"})
+				return
+			}
+			defer rows.Close()
+
+			type Reward struct {
+				ID          int     `json:"id"`
+				NodeID      string  `json:"node_id"`
+				Amount      float64 `json:"amount_gstd"`
+				RewardType  string  `json:"reward_type"`
+				Description string  `json:"description"`
+				CreatedAt   string  `json:"created_at"`
+			}
+			var rewards []Reward
+			var totalPending float64
+			for rows.Next() {
+				var r Reward
+				if err := rows.Scan(&r.ID, &r.NodeID, &r.Amount, &r.RewardType, &r.Description, &r.CreatedAt); err != nil {
+					continue
+				}
+				totalPending += r.Amount
+				rewards = append(rewards, r)
+			}
+			if rewards == nil {
+				rewards = []Reward{}
+			}
+
+			c.JSON(200, gin.H{
+				"wallet":        wallet,
+				"rewards":       rewards,
+				"total_pending": totalPending,
+				"count":         len(rewards),
+			})
+		})
+
+		// POST /nodes/claim-rewards — claim all pending rewards to wallet balance
+		// "Tokens stay in contract until requested"
+		v1.POST("/nodes/claim-rewards", func(c *gin.Context) {
+			var req struct {
+				OwnerWallet string `json:"owner_wallet" binding:"required"`
+			}
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(400, gin.H{"error": "owner_wallet required"})
+				return
+			}
+
+			ctx := c.Request.Context()
+			tx, err := dbConn.BeginTx(ctx, nil)
+			if err != nil {
+				c.JSON(500, gin.H{"error": "transaction failed"})
+				return
+			}
+			defer tx.Rollback()
+
+			// Get total unclaimed rewards
+			var totalAmount float64
+			var rewardsCount int
+			err = tx.QueryRowContext(ctx,
+				`SELECT COALESCE(SUM(amount_gstd), 0), COUNT(*)
+				 FROM node_pending_rewards
+				 WHERE owner_wallet = $1 AND claimed_at IS NULL`,
+				req.OwnerWallet).Scan(&totalAmount, &rewardsCount)
+			if err != nil || totalAmount <= 0 {
+				c.JSON(200, gin.H{"ok": true, "claimed": 0, "message": "No pending rewards to claim"})
+				return
+			}
+
+			// Mark all rewards as claimed
+			_, err = tx.ExecContext(ctx,
+				`UPDATE node_pending_rewards SET claimed_at = NOW() WHERE owner_wallet = $1 AND claimed_at IS NULL`,
+				req.OwnerWallet)
+			if err != nil {
+				c.JSON(500, gin.H{"error": "claim update failed"})
+				return
+			}
+
+			// Credit to user_wallets balance
+			_, err = tx.ExecContext(ctx,
+				`INSERT INTO user_wallets (address, gstd_balance) VALUES ($1, $2)
+				 ON CONFLICT (address) DO UPDATE SET gstd_balance = user_wallets.gstd_balance + $2, updated_at = NOW()`,
+				req.OwnerWallet, totalAmount)
+			if err != nil {
+				c.JSON(500, gin.H{"error": "balance credit failed"})
+				return
+			}
+
+			// Record claim
+			_, _ = tx.ExecContext(ctx,
+				`INSERT INTO node_reward_claims (owner_wallet, total_claimed_gstd, rewards_count) VALUES ($1, $2, $3)`,
+				req.OwnerWallet, totalAmount, rewardsCount)
+
+			// Record in earnings history
+			_, _ = tx.ExecContext(ctx,
+				`INSERT INTO earnings_history (wallet_address, amount_gstd, source_type, reference_id)
+				 VALUES ($1, $2, 'node_claim', $3)`,
+				req.OwnerWallet, totalAmount, fmt.Sprintf("claim_%d_rewards", rewardsCount))
+
+			if err := tx.Commit(); err != nil {
+				c.JSON(500, gin.H{"error": "commit failed"})
+				return
+			}
+
+			c.JSON(200, gin.H{
+				"ok":             true,
+				"claimed_gstd":   totalAmount,
+				"rewards_count":  rewardsCount,
+				"wallet":         req.OwnerWallet,
+				"message":        fmt.Sprintf("%.4f GSTD claimed from %d rewards. Tokens credited to your wallet.", totalAmount, rewardsCount),
+			})
+		})
+
+		// ═══════════════════════════════════════════════════════════════
+		// Auto-Claim: rewards older than 90 days automatically go to
+		// owner's wallet. Tokens never stay locked forever.
+		// ═══════════════════════════════════════════════════════════════
+
+		// GET /nodes/auto-claim-status — check how many rewards are near expiry
+		v1.GET("/nodes/auto-claim-status", func(c *gin.Context) {
+			type ExpiryInfo struct {
+				Wallet       string  `json:"wallet"`
+				TotalPending float64 `json:"total_pending"`
+				OldestDays   int     `json:"oldest_days"`
+				RewardsCount int     `json:"rewards_count"`
+			}
+			rows, err := dbConn.QueryContext(c.Request.Context(),
+				`SELECT owner_wallet,
+				        SUM(amount_gstd) as total,
+				        EXTRACT(DAY FROM NOW() - MIN(created_at))::int as oldest_days,
+				        COUNT(*) as cnt
+				 FROM node_pending_rewards
+				 WHERE claimed_at IS NULL
+				 GROUP BY owner_wallet
+				 ORDER BY oldest_days DESC
+				 LIMIT 50`)
+			if err != nil {
+				c.JSON(500, gin.H{"error": "query failed"})
+				return
+			}
+			defer rows.Close()
+
+			var items []ExpiryInfo
+			var totalStuckGSTD float64
+			for rows.Next() {
+				var item ExpiryInfo
+				if err := rows.Scan(&item.Wallet, &item.TotalPending, &item.OldestDays, &item.RewardsCount); err != nil {
+					continue
+				}
+				totalStuckGSTD += item.TotalPending
+				items = append(items, item)
+			}
+			if items == nil {
+				items = []ExpiryInfo{}
+			}
+
+			c.JSON(200, gin.H{
+				"wallets":            items,
+				"total_wallets":      len(items),
+				"total_stuck_gstd":   totalStuckGSTD,
+				"auto_claim_days":    90,
+				"message":            "Rewards older than 90 days are auto-claimed to owner wallets every 6 hours.",
+			})
+		})
+
+		// POST /nodes/force-auto-claim — manually trigger auto-claim for expired rewards
+		v1.POST("/nodes/force-auto-claim", func(c *gin.Context) {
+			claimed, err := autoClaimExpiredRewards(dbConn, c.Request.Context())
+			if err != nil {
+				c.JSON(500, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(200, gin.H{"ok": true, "auto_claimed": claimed})
+		})
+
+		// Background: auto-claim expired rewards every 6 hours
+		go func() {
+			time.Sleep(5 * time.Minute) // Initial delay
+			ticker := time.NewTicker(6 * time.Hour)
+			defer ticker.Stop()
+			for range ticker.C {
+				claimed, err := autoClaimExpiredRewards(dbConn, context.Background())
+				if err != nil {
+					log.Printf("[AutoClaim] Error: %v", err)
+				} else if claimed > 0 {
+					log.Printf("[AutoClaim] ✅ Auto-claimed %.4f GSTD from expired rewards", claimed)
+				}
+			}
+		}()
 
 		// Node Wallet Balance (public, by address — used by GSTD Node OS)
 		v1.GET("/wallet/:address/balance", func(c *gin.Context) {
@@ -1151,6 +1522,94 @@ func getAutonomyStats(service *services.MaintenanceService) gin.HandlerFunc {
 		c.JSON(200, stats)
 	}
 }
+
+// autoClaimExpiredRewards processes rewards older than 90 days.
+// Tokens that sit unclaimed for too long are automatically credited
+// to the owner's wallet balance so they don't stay locked forever.
+func autoClaimExpiredRewards(db *sql.DB, ctx context.Context) (float64, error) {
+	const expiryDays = 90
+
+	// Find all wallets with expired unclaimed rewards
+	rows, err := db.QueryContext(ctx,
+		`SELECT owner_wallet, SUM(amount_gstd), COUNT(*)
+		 FROM node_pending_rewards
+		 WHERE claimed_at IS NULL AND created_at < NOW() - INTERVAL '1 day' * $1
+		 GROUP BY owner_wallet`, expiryDays)
+	if err != nil {
+		return 0, fmt.Errorf("query expired rewards: %w", err)
+	}
+	defer rows.Close()
+
+	type expiredWallet struct {
+		wallet string
+		amount float64
+		count  int
+	}
+	var wallets []expiredWallet
+	for rows.Next() {
+		var w expiredWallet
+		if err := rows.Scan(&w.wallet, &w.amount, &w.count); err != nil {
+			continue
+		}
+		wallets = append(wallets, w)
+	}
+
+	if len(wallets) == 0 {
+		return 0, nil
+	}
+
+	var totalClaimed float64
+	for _, w := range wallets {
+		tx, err := db.BeginTx(ctx, nil)
+		if err != nil {
+			continue
+		}
+
+		// Mark expired rewards as auto-claimed
+		_, err = tx.ExecContext(ctx,
+			`UPDATE node_pending_rewards
+			 SET claimed_at = NOW(), claim_tx_id = 'auto_claim_90d'
+			 WHERE owner_wallet = $1 AND claimed_at IS NULL AND created_at < NOW() - INTERVAL '1 day' * $2`,
+			w.wallet, expiryDays)
+		if err != nil {
+			tx.Rollback()
+			continue
+		}
+
+		// Credit to wallet balance
+		_, err = tx.ExecContext(ctx,
+			`INSERT INTO user_wallets (address, gstd_balance) VALUES ($1, $2)
+			 ON CONFLICT (address) DO UPDATE SET gstd_balance = user_wallets.gstd_balance + $2, updated_at = NOW()`,
+			w.wallet, w.amount)
+		if err != nil {
+			tx.Rollback()
+			continue
+		}
+
+		// Record auto-claim
+		_, _ = tx.ExecContext(ctx,
+			`INSERT INTO node_reward_claims (owner_wallet, total_claimed_gstd, rewards_count, status)
+			 VALUES ($1, $2, $3, 'auto_claimed')`,
+			w.wallet, w.amount, w.count)
+
+		// Record in earnings history
+		_, _ = tx.ExecContext(ctx,
+			`INSERT INTO earnings_history (wallet_address, amount_gstd, source_type, reference_id)
+			 VALUES ($1, $2, 'auto_claim', $3)`,
+			w.wallet, w.amount, fmt.Sprintf("auto_claim_90d_%d_rewards", w.count))
+
+		if err := tx.Commit(); err != nil {
+			continue
+		}
+
+		totalClaimed += w.amount
+		log.Printf("[AutoClaim] Wallet %s: %.4f GSTD from %d expired rewards auto-credited",
+			w.wallet[:min(16, len(w.wallet))], w.amount, w.count)
+	}
+
+	return totalClaimed, nil
+}
+
 
 func isMobile(ua string) bool {
 	// Simple heuristic

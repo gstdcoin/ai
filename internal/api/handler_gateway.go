@@ -798,7 +798,6 @@ func (h *GatewayHandler) ListModels(c *gin.Context) {
 	models := []gin.H{
 		{"id": "llama-3.3-70b-versatile", "object": "model", "owned_by": "meta", "created": 1700000000},
 		{"id": "meta-llama/llama-4-scout-17b-16e-instruct", "object": "model", "owned_by": "meta", "created": 1710000000},
-		{"id": "meta-llama/llama-4-maverick-17b-128e-instruct", "object": "model", "owned_by": "meta", "created": 1710000000},
 		{"id": "qwen/qwen3-32b", "object": "model", "owned_by": "alibaba", "created": 1709000000},
 		{"id": "openai/gpt-oss-120b", "object": "model", "owned_by": "openai", "created": 1711000000},
 		{"id": "openai/gpt-oss-20b", "object": "model", "owned_by": "openai", "created": 1711000000},

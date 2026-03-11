@@ -7,7 +7,7 @@ package services
 //
 //  L3: Sovereign Tier (бесплатные SOTA модели через Groq + HF)
 //    • groq/compound          — Groq Compound (умный агрегатор)
-//    • meta-llama/llama-4-maverick-17b-128e — LLaMA 4 Maverick (MoE 128 experts!)
+//    • meta-llama/llama-4-scout-17b-16e  — LLaMA 4 Scout (MoE 16 experts)
 //    • moonshotai/kimi-k2-instruct — Kimi K2 (2T параметров MoE, SOTA coding)
 //    • qwen/qwen3-32b         — Qwen3 32B (топ open-source)
 //
@@ -60,11 +60,11 @@ var L3SovereignModels = []SovereignModel{
 		Notes:    "Kimi K2 0905 — 2T param MoE, 262K context, SOTA coding+reasoning, бесплатно на Groq",
 	},
 	{
-		ID:       "meta-llama/llama-4-maverick-17b-128e-instruct",
+		ID:       "meta-llama/llama-4-scout-17b-16e-instruct",
 		Provider: "groq",
 		Tier:     "l3_sovereign",
 		MaxTok:   8192,
-		Notes:    "LLaMA 4 Maverick — 128 MoE experts, лучше LLaMA 3 70B",
+		Notes:    "LLaMA 4 Scout — 16 MoE experts, fast and capable",
 	},
 	{
 		ID:       "groq/compound",
@@ -505,8 +505,8 @@ func resolvePoolModel(model string) string {
 	switch {
 	case strings.Contains(lower, "kimi") || strings.Contains(lower, "k2"):
 		return "moonshotai/kimi-k2-instruct-0905"
-	case strings.Contains(lower, "maverick") || strings.Contains(lower, "llama-4"):
-		return "meta-llama/llama-4-maverick-17b-128e-instruct"
+	case strings.Contains(lower, "maverick") || strings.Contains(lower, "llama-4") || strings.Contains(lower, "scout"):
+		return "meta-llama/llama-4-scout-17b-16e-instruct"
 	case strings.Contains(lower, "compound"):
 		return "groq/compound"
 	case strings.Contains(lower, "qwen3"):
