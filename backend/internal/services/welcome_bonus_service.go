@@ -56,9 +56,11 @@ func (s *WelcomeBonusService) ClaimWelcomeBonus(ctx context.Context, walletAddre
 	if err == sql.ErrNoRows {
 		// New user - create account and give bonus
 		_, err = s.db.ExecContext(ctx, `
-			INSERT INTO users (wallet_address, balance, welcome_bonus_claimed, created_at, source)
+			INSERT INTO users (wallet_address, gstd_balance, welcome_bonus_claimed, created_at, source)
 			VALUES ($1, $2, true, NOW(), $3)
-			ON CONFLICT (wallet_address) DO NOTHING
+			ON CONFLICT (wallet_address) DO UPDATE SET
+				gstd_balance = users.gstd_balance + $2,
+				welcome_bonus_claimed = true
 		`, walletAddress, s.welcomeAmount, source)
 
 		if err != nil {
@@ -92,7 +94,7 @@ func (s *WelcomeBonusService) ClaimWelcomeBonus(ctx context.Context, walletAddre
 	// Existing user who hasn't claimed
 	result, err := s.db.ExecContext(ctx, `
 		UPDATE users SET 
-			balance = balance + $1,
+			gstd_balance = COALESCE(gstd_balance, 0) + $1,
 			welcome_bonus_claimed = true
 		WHERE wallet_address = $2 AND welcome_bonus_claimed = false
 	`, s.welcomeAmount, walletAddress)
@@ -114,7 +116,7 @@ func (s *WelcomeBonusService) ClaimWelcomeBonus(ctx context.Context, walletAddre
 
 	// Get new balance
 	var newBalance float64
-	s.db.QueryRowContext(ctx, "SELECT balance FROM users WHERE wallet_address = $1", walletAddress).Scan(&newBalance)
+	s.db.QueryRowContext(ctx, "SELECT COALESCE(gstd_balance, 0) FROM users WHERE wallet_address = $1", walletAddress).Scan(&newBalance)
 
 	return &BonusResult{
 		Success:    true,
@@ -161,7 +163,7 @@ func (s *WelcomeBonusService) ClaimDailyFaucet(ctx context.Context, walletAddres
 	// Give faucet
 	result, err := s.db.ExecContext(ctx, `
 		UPDATE users SET 
-			balance = balance + $1,
+			gstd_balance = COALESCE(gstd_balance, 0) + $1,
 			last_faucet_claim = NOW()
 		WHERE wallet_address = $2
 	`, s.dailyFaucet, walletAddress)
@@ -181,7 +183,7 @@ func (s *WelcomeBonusService) ClaimDailyFaucet(ctx context.Context, walletAddres
 	s.logBonusTransaction(ctx, walletAddress, "daily_faucet", s.dailyFaucet, "faucet")
 
 	var newBalance float64
-	s.db.QueryRowContext(ctx, "SELECT balance FROM users WHERE wallet_address = $1", walletAddress).Scan(&newBalance)
+	s.db.QueryRowContext(ctx, "SELECT COALESCE(gstd_balance, 0) FROM users WHERE wallet_address = $1", walletAddress).Scan(&newBalance)
 
 	return &BonusResult{
 		Success:    true,
@@ -203,10 +205,10 @@ func (s *WelcomeBonusService) BootstrapAgent(ctx context.Context, walletAddress 
 	if err == sql.ErrNoRows {
 		// New agent - create user and give bootstrap
 		_, err = s.db.ExecContext(ctx, `
-			INSERT INTO users (wallet_address, balance, agent_bootstrapped, agent_name, created_at, source)
+			INSERT INTO users (wallet_address, gstd_balance, agent_bootstrapped, agent_name, created_at, source)
 			VALUES ($1, $2, true, $3, NOW(), 'agent')
 			ON CONFLICT (wallet_address) DO UPDATE SET
-				balance = users.balance + $2,
+				gstd_balance = COALESCE(users.gstd_balance, 0) + $2,
 				agent_bootstrapped = true,
 				agent_name = COALESCE(users.agent_name, $3)
 			WHERE users.agent_bootstrapped = false OR users.agent_bootstrapped IS NULL
@@ -241,7 +243,7 @@ func (s *WelcomeBonusService) BootstrapAgent(ctx context.Context, walletAddress 
 	// Existing user, first time as agent
 	result, err := s.db.ExecContext(ctx, `
 		UPDATE users SET 
-			balance = balance + $1,
+			gstd_balance = COALESCE(gstd_balance, 0) + $1,
 			agent_bootstrapped = true,
 			agent_name = COALESCE(agent_name, $2)
 		WHERE wallet_address = $3 AND (agent_bootstrapped = false OR agent_bootstrapped IS NULL)
@@ -276,7 +278,7 @@ func (s *WelcomeBonusService) ReferralSignupBonus(ctx context.Context, referrerW
 
 	// Update referrer balance
 	_, err := s.db.ExecContext(ctx, `
-		UPDATE users SET balance = balance + $1
+		UPDATE users SET gstd_balance = COALESCE(gstd_balance, 0) + $1
 		WHERE wallet_address = $2
 	`, bonusAmount, referrerWallet)
 
@@ -308,7 +310,7 @@ func (s *WelcomeBonusService) GetBonusStatus(ctx context.Context, walletAddress 
 			COALESCE(welcome_bonus_claimed, false),
 			agent_bootstrapped,
 			last_faucet_claim,
-			COALESCE(balance, 0)
+			COALESCE(gstd_balance, 0)
 		FROM users WHERE wallet_address = $1
 	`, walletAddress).Scan(&welcomeClaimed, &agentBootstrapped, &lastFaucet, &balance)
 

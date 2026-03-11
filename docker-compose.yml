@@ -1,1 +1,114 @@
-docker-compose.prod.yml
+# GSTD Platform — Docker Compose Production
+
+# GSTD Platform — Docker Compose
+# Usage: docker compose up -d --build
+# Scaling: docker compose up -d --scale backend-blue=4
+
+x-backend-env: &backend-env
+  env_file: ./backend/.env
+
+services:
+  # ─── PostgreSQL ───────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    container_name: gstd_postgres_prod
+    restart: always
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: distributed_computing
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-Gstd_Secure_2026}
+      # POSTGRES_HOST_AUTH_METHOD removed — password required
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - gstd_network
+
+  # ─── Redis ────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: gstd_redis_prod
+    restart: always
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD:-GstdRedis2026}
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-GstdRedis2026}", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks:
+      - gstd_network
+
+  # ─── Backend (Go) ─── Blue-Green, 4 instances ─
+  backend-blue:
+    image: gstd-backend-blue:v134
+    pull_policy: never
+    <<: *backend-env
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider http://localhost:8080/api/v1/health || exit 1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      replicas: 1
+    ports:
+      - "8080:8080"
+    networks:
+      - gstd_network
+
+  # ─── Telegram Bot ─────────────────────────────
+  telegram-bot:
+    image: gstd-bot:v26
+    pull_policy: never
+    container_name: gstd-telegram-bot
+    restart: unless-stopped
+    env_file: ./gstdbot/.env
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-8306755226:AAF8nzfixha-_l5tUZfVbiCqOHJB-rtojIQ}
+      - TELEGRAM_ADMIN_IDS=${TELEGRAM_ADMIN_IDS:-5700385228}
+      - GSTD_SWARM_URL=http://backend-blue:8080
+      - GSTD_API_URL=https://api.gstdtoken.com/api/v1
+      - GSTD_MEMORY=false
+      - REDIS_URL=redis://gstd_redis_prod:6379
+    depends_on:
+      - backend-blue
+    networks:
+      - gstd_network
+
+  # ─── Nginx Load Balancer ──────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: gstd_nginx_lb
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    depends_on:
+      - backend-blue
+    networks:
+      - gstd_network
+
+volumes:
+  postgres_data:
+
+networks:
+  gstd_network:
+    name: ubuntu_gstd_network
+    driver: bridge

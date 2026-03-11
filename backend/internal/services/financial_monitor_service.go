@@ -223,9 +223,29 @@ func (s *FinancialMonitorService) ingestRealDataFromDB(ctx context.Context) {
 }
 
 func (s *FinancialMonitorService) createSwarmAnalysisTask() {
+	ctx := context.Background()
+
+	// Guard: don't spam — check existing queued count
+	if s.db != nil {
+		var queuedCount int
+		err := s.db.QueryRowContext(ctx, `
+			SELECT COUNT(*) FROM tasks 
+			WHERE task_id LIKE 'swarm-fin-analysis-%' AND status = 'queued'
+		`).Scan(&queuedCount)
+		if err == nil && queuedCount >= 10 {
+			return // Already enough tasks in queue
+		}
+
+		// Auto-expire old analysis tasks (older than 30 min)
+		s.db.ExecContext(ctx, `
+			UPDATE tasks SET status = 'expired', updated_at = NOW()
+			WHERE task_id LIKE 'swarm-fin-analysis-%' AND status = 'queued' 
+			AND created_at < NOW() - INTERVAL '30 minutes'
+		`)
+	}
+
 	taskID := "swarm-fin-analysis-" + s.generateID()[:6]
 	reward := 50.0
-	ctx := context.Background()
 
 	if s.db != nil {
 		_, _ = s.db.ExecContext(ctx, `

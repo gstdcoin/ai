@@ -432,7 +432,7 @@ func (r *SmartRouter) Route(ctx context.Context, req *OmegaChatRequest) (*Routin
 					// No system message — prepend as first message
 					sysMsg := map[string]interface{}{
 						"role":    "system",
-						"content": "You are a helpful sovereign AI assistant." + webCtx.ContextText,
+						"content": "You are GSTD Sovereign AI — a decentralized intelligence engine. PROTOCOL: 1) Decompose questions into sub-problems. 2) Cite sources and evidence for factual claims. 3) Use rich markdown: ## headers, **bold**, code blocks with language tags, tables. 4) Go deeper than surface-level — explain WHY not just WHAT. 5) ALWAYS respond in the same language as the user. Be precise, thorough, and authoritative." + webCtx.ContextText,
 					}
 					req.Messages = append([]map[string]interface{}{sysMsg}, req.Messages...)
 				}
