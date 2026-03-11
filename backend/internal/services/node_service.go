@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -410,9 +411,9 @@ func (s *NodeService) GetPublicActiveNodes(ctx context.Context, limit, offset in
 	}
 
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT id, status, latitude, longitude
+		SELECT id, status, COALESCE(latitude, 0), COALESCE(longitude, 0), name, wallet_address
 		FROM nodes
-		WHERE status = 'online' AND latitude IS NOT NULL AND longitude IS NOT NULL
+		WHERE status = 'online' AND last_seen > NOW() - INTERVAL '5 minutes'
 		ORDER BY last_seen DESC
 		LIMIT $1 OFFSET $2
 	`, limit, offset)
@@ -423,9 +424,9 @@ func (s *NodeService) GetPublicActiveNodes(ctx context.Context, limit, offset in
 
 	var nodes []map[string]interface{}
 	for rows.Next() {
-		var id, status string
+		var id, status, name, wallet string
 		var lat, lon float64
-		if err := rows.Scan(&id, &status, &lat, &lon); err != nil {
+		if err := rows.Scan(&id, &status, &lat, &lon, &name, &wallet); err != nil {
 			continue
 		}
 		nodes = append(nodes, map[string]interface{}{
@@ -433,6 +434,8 @@ func (s *NodeService) GetPublicActiveNodes(ctx context.Context, limit, offset in
 			"status": status,
 			"lat":    lat,
 			"lon":    lon,
+			"name":   name,
+			"wallet": wallet[:min(12, len(wallet))] + "...",
 		})
 	}
 	return nodes, nil
@@ -459,7 +462,47 @@ func (s *NodeService) UpdateHealthStats(ctx context.Context, identifier string, 
 		updateSQL += fmt.Sprintf(` WHERE wallet_address = $%d`, argIdx)
 	}
 	args = append(args, identifier)
-	_, _ = s.db.ExecContext(ctx, updateSQL, args...)
+	res, err := s.db.ExecContext(ctx, updateSQL, args...)
+	if err != nil {
+		log.Printf("[NodeService] UpdateHealthStats UPDATE err: %v", err)
+		return err
+	}
+
+	// Auto-register: if UPDATE affected 0 rows, the node doesn't exist yet — create it
+	if rowsAffected, err := res.RowsAffected(); err == nil && rowsAffected == 0 {
+		isUUID := len(identifier) == 36 && strings.Contains(identifier, "-")
+		
+		// Ensure user exists (auto-create minimal user so FK doesn't fail)
+		if !isUUID {
+			_, err = s.db.ExecContext(ctx, `
+				INSERT INTO users (wallet_address, created_at, updated_at) 
+				VALUES ($1, NOW(), NOW()) ON CONFLICT (wallet_address) DO NOTHING
+			`, identifier)
+			if err != nil {
+				log.Printf("[NodeService] Auto-register user insert err: %v", err)
+			}
+		}
+
+		if isUUID {
+			_, err = s.db.ExecContext(ctx, `
+				INSERT INTO nodes (id, wallet_address, name, status, trust_score, last_seen, created_at, updated_at)
+				VALUES ($1, $1, 'auto-registered', 'online', 50, NOW(), NOW(), NOW())
+				ON CONFLICT (id) DO UPDATE SET status = 'online', last_seen = NOW(), updated_at = NOW()
+			`, identifier)
+		} else {
+			_, err = s.db.ExecContext(ctx, `
+				INSERT INTO nodes (id, wallet_address, name, status, trust_score, last_seen, created_at, updated_at)
+				VALUES (gen_random_uuid(), $1, 'auto-registered', 'online', 50, NOW(), NOW(), NOW())
+				ON CONFLICT (wallet_address) DO UPDATE SET status = 'online', last_seen = NOW(), updated_at = NOW()
+			`, identifier)
+		}
+		
+		if err != nil {
+			log.Printf("[NodeService] Auto-registered node err: %v", err)
+		} else {
+			log.Printf("[NodeService] Auto-registered node: %s", identifier)
+		}
+	}
 
 	if s.redis == nil {
 		return nil
@@ -480,7 +523,7 @@ func (s *NodeService) UpdateHealthStats(ctx context.Context, identifier string, 
 	if lat != nil && lon != nil && s.geo != nil {
 		capacityData["h3_index"] = s.geo.LatLonToH3Index(*lat, *lon, H3Resolution)
 	}
-	err := s.redis.HSet(ctx, detailsKey, capacityData).Err()
+	err = s.redis.HSet(ctx, detailsKey, capacityData).Err()
 
 	s.UpdateHeartbeat(ctx, identifier)
 	return err

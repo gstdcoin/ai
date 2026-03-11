@@ -24,10 +24,12 @@ interface Message {
     role: 'user' | 'assistant' | 'system';
     content: string;
     model?: string;
+    actualModel?: string;
     provider?: string;
     isReasoning?: boolean;
     isStreaming?: boolean;
     collectiveInfo?: CollectiveInfo;
+    latencyMs?: number;
     timestamp: number;
 }
 
@@ -152,7 +154,6 @@ export default function ChatPage() {
     const MODELS = [
         { id: 'llama-3.3-70b', name: 'Llama 3.3 70B', desc: 'Meta · General purpose', icon: '🦙' },
         { id: 'llama-4-scout', name: 'Llama 4 Scout', desc: 'Meta · Latest, multi-expert', icon: '🔭' },
-        { id: 'llama-4-maverick', name: 'Llama 4 Maverick', desc: 'Meta · Creative, 128 experts', icon: '🚀' },
         { id: 'qwen3-32b', name: 'Qwen3 32B', desc: 'Alibaba · Math & analysis', icon: '🔮', isReasoning: true },
         { id: 'gpt-oss-120b', name: 'GPT-OSS 120B', desc: 'OpenAI · Open-source, large', icon: '🧪', isReasoning: true },
         { id: 'gpt-oss-20b', name: 'GPT-OSS 20B', desc: 'OpenAI · Open-source, fast', icon: '⚗️' },
@@ -189,7 +190,7 @@ export default function ChatPage() {
     const [activeConvId, setActiveConvId] = useState<string | null>(null);
     const [input, setInput] = useState('');
     const [isStreaming, setIsStreaming] = useState(false);
-    const [selectedModel] = useState('llama-3.3-70b');
+    const [selectedModel, setSelectedModel] = useState('compound');
     const [selectedTier, setSelectedTier] = useState('free');
     const [showTierPicker, setShowTierPicker] = useState(false);
     const [showSidebar, setShowSidebar] = useState(false);
@@ -328,7 +329,7 @@ export default function ChatPage() {
         try {
             const conv = conversations.find(c => c.id === convId);
             const apiMessages = [
-                { role: 'system', content: 'You are GSTD — a sovereign decentralized AI powered by the Swarm. You have Collective Memory from all users. Respond in the user\'s language. Use markdown formatting: headers, bold, lists, code blocks with language tags. Be helpful, detailed, and well-structured.' },
+                { role: 'system', content: 'You are GSTD Sovereign AI — a decentralized intelligence engine powered by multi-model consensus. You have a Collective Memory of 36,000+ verified facts. Respond in the user\'s language. Use rich markdown: ## headers, **bold** terms, ```code``` with language tags, tables, numbered lists. Be exceptionally thorough, precise, and well-structured. Go deeper than surface-level — explain WHY, not just WHAT. Anticipate follow-up questions.' },
                 ...(conv?.messages || []).map(m => ({ role: m.role, content: m.content })),
                 { role: 'user' as const, content: userMessage }
             ];
@@ -348,7 +349,22 @@ export default function ChatPage() {
                 signal: controller.signal,
             });
 
-            if (!response.ok) throw new Error(`Error ${response.status}`);
+            if (!response.ok) {
+                // Handle 402 (insufficient balance) with user-friendly message
+                if (response.status === 402) {
+                    const errData = await response.json().catch(() => ({}));
+                    const errMsg: Message = {
+                        id: 'msg_' + Date.now() + '_err', role: 'assistant',
+                        content: `⚠️ **${errData.error === 'wallet_required' ? 'Wallet Required' : 'Insufficient GSTD Balance'}**\n\n${errData.message || 'Connect wallet or switch to free tier.'}\n\n${errData.cost ? `**Cost:** ${errData.cost} GSTD` : ''} ${errData.balance !== undefined ? `| **Balance:** ${errData.balance.toFixed(4)} GSTD` : ''}\n\n💡 Switch to **🆓 Single Expert** (free) or [top up your wallet](/dashboard).`,
+                        timestamp: Date.now(),
+                    };
+                    setConversations(prev => prev.map(c => c.id === convId ? { ...c, messages: [...c.messages, errMsg] } : c));
+                    setIsStreaming(false);
+                    setCollectivePhase(null);
+                    return;
+                }
+                throw new Error(`Error ${response.status}`);
+            }
 
             // ─── Parse SSE stream ────────────────────────────────
             const reader = response.body?.getReader();
@@ -402,26 +418,26 @@ export default function ChatPage() {
                                 cost_gstd: parsed.cost_gstd || 0,
                             };
                         }
+                        // Capture actual model from done event
+                        if (parsed.model) {
+                            collectiveInfo = { ...collectiveInfo!, actualModel: parsed.model } as any;
+                        }
                     } catch { }
                 }
             }
 
-            // Finalize message
-            const tierBadge = collectiveInfo?.badge || '🆓';
-            const tierName = collectiveInfo?.tierName || 'Single Expert';
-            const expertCount = collectiveInfo?.expertCount || 1;
-            const latencyMs = collectiveInfo?.latency_ms || 0;
-            const costGstd = collectiveInfo?.cost_gstd || 0;
-
-            const footer = latencyMs > 0 ? `\n\n---\n*${tierBadge} ${tierName} · ${expertCount} expert${expertCount > 1 ? 's' : ''} · ${latencyMs}ms${costGstd > 0 ? ` · ${costGstd} GSTD` : ' · Free'}*` : '';
+            // Finalize message — store metadata separately, NOT in content
+            const totalLatencyMs = collectiveInfo?.latency_ms || (Date.now() - aiMsg.timestamp);
+            const actualModelName = (collectiveInfo as any)?.actualModel || selectedModel;
 
             setConversations(prev => prev.map(c =>
                 c.id === convId ? {
                     ...c,
                     messages: c.messages.map(m =>
                         m.id === aiMsgId ? {
-                            ...m, content: fullContent + footer, isStreaming: false,
-                            model: selectedModel, collectiveInfo,
+                            ...m, content: fullContent, isStreaming: false,
+                            model: selectedModel, actualModel: actualModelName,
+                            collectiveInfo, latencyMs: totalLatencyMs,
                         } : m
                     )
                 } : c
@@ -667,6 +683,23 @@ export default function ChatPage() {
                                 </>
                             )}
                         </div>
+
+                        {/* Model selector for free tier */}
+                        {selectedTier === 'free' && (
+                            <select
+                                value={selectedModel}
+                                onChange={(e) => setSelectedModel(e.target.value)}
+                                className="px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-gray-300 outline-none hover:border-violet-500/30 transition cursor-pointer"
+                                title="Select AI model"
+                            >
+                                <option value="compound">🌐 Compound AI (Web Search)</option>
+                                <option value="llama-3.3-70b">🦙 Llama 3.3 70B</option>
+                                <option value="qwen3-32b">🧮 Qwen3 32B (Math)</option>
+                                <option value="gpt-oss-120b">🧠 GPT-OSS 120B</option>
+                                <option value="kimi-k2">📚 Kimi K2 262K</option>
+                                <option value="llama-4-scout">🔍 Llama 4 Scout</option>
+                            </select>
+                        )}
                     </div>
 
                     <div className="flex items-center gap-3">
@@ -734,9 +767,30 @@ export default function ChatPage() {
                                                     <span className="inline-block w-2 h-5 bg-violet-400 animate-pulse rounded-sm ml-0.5" />
                                                 )}
 
+                                                {/* Model & latency badge (always visible) */}
+                                                {msg.content && !msg.isStreaming && (msg.latencyMs || msg.collectiveInfo) && (
+                                                    <div className="flex items-center flex-wrap gap-2 pt-1.5">
+                                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/[0.04] border border-white/[0.06] text-[11px] text-gray-500">
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400/80 flex-shrink-0" />
+                                                            {msg.collectiveInfo?.badge || '🆓'}
+                                                            <span className="text-gray-400 font-medium">{msg.actualModel || msg.model || 'auto'}</span>
+                                                            <span className="text-gray-600">·</span>
+                                                            <span className="text-gray-400">{((msg.latencyMs || 0) / 1000).toFixed(1)}s</span>
+                                                            {msg.collectiveInfo && msg.collectiveInfo.expertCount > 1 && (
+                                                                <><span className="text-gray-600">·</span><span className="text-gray-400">{msg.collectiveInfo.expertCount} experts</span></>
+                                                            )}
+                                                            {msg.collectiveInfo?.cost_gstd ? (
+                                                                <><span className="text-gray-600">·</span><span className="text-amber-400/80">{msg.collectiveInfo.cost_gstd} GSTD</span></>
+                                                            ) : (
+                                                                <><span className="text-gray-600">·</span><span className="text-emerald-400/80">Free</span></>
+                                                            )}
+                                                        </span>
+                                                    </div>
+                                                )}
+
                                                 {/* Action buttons */}
                                                 {msg.content && !msg.isStreaming && (
-                                                    <div className="flex items-center gap-2 pt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <div className="flex items-center gap-2 pt-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                         <button onClick={() => copyMessage(msg.id, msg.content)} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-gray-600 hover:text-gray-200 hover:bg-white/[0.06] transition text-xs font-medium">
                                                             {copiedId === msg.id ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
                                                             {copiedId === msg.id ? 'Copied' : 'Copy'}
@@ -745,11 +799,6 @@ export default function ChatPage() {
                                                             <RotateCcw size={13} />
                                                             Regenerate
                                                         </button>
-                                                        {msg.collectiveInfo && (
-                                                            <span className="text-[10px] text-gray-700 px-2 py-1 rounded-full bg-white/[0.03] border border-white/[0.04]">
-                                                                {msg.collectiveInfo.badge} {msg.collectiveInfo.expertCount} expert{msg.collectiveInfo.expertCount > 1 ? 's' : ''} · {msg.collectiveInfo.latency_ms}ms
-                                                            </span>
-                                                        )}
                                                         <span className="text-[10px] text-gray-700">{formatTime(msg.timestamp)}</span>
                                                     </div>
                                                 )}
