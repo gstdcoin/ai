@@ -462,25 +462,46 @@ func (s *NodeService) UpdateHealthStats(ctx context.Context, identifier string, 
 		updateSQL += fmt.Sprintf(` WHERE wallet_address = $%d`, argIdx)
 	}
 	args = append(args, identifier)
-	res, _ := s.db.ExecContext(ctx, updateSQL, args...)
+	res, err := s.db.ExecContext(ctx, updateSQL, args...)
+	if err != nil {
+		log.Printf("[NodeService] UpdateHealthStats UPDATE err: %v", err)
+		return err
+	}
 
 	// Auto-register: if UPDATE affected 0 rows, the node doesn't exist yet — create it
-	if rowsAffected, _ := res.RowsAffected(); rowsAffected == 0 {
+	if rowsAffected, err := res.RowsAffected(); err == nil && rowsAffected == 0 {
 		isUUID := len(identifier) == 36 && strings.Contains(identifier, "-")
+		
+		// Ensure user exists (auto-create minimal user so FK doesn't fail)
+		if !isUUID {
+			_, err = s.db.ExecContext(ctx, `
+				INSERT INTO users (wallet_address, created_at, updated_at) 
+				VALUES ($1, NOW(), NOW()) ON CONFLICT (wallet_address) DO NOTHING
+			`, identifier)
+			if err != nil {
+				log.Printf("[NodeService] Auto-register user insert err: %v", err)
+			}
+		}
+
 		if isUUID {
-			_, _ = s.db.ExecContext(ctx, `
+			_, err = s.db.ExecContext(ctx, `
 				INSERT INTO nodes (id, wallet_address, name, status, trust_score, last_seen, created_at, updated_at)
 				VALUES ($1, $1, 'auto-registered', 'online', 50, NOW(), NOW(), NOW())
 				ON CONFLICT (id) DO UPDATE SET status = 'online', last_seen = NOW(), updated_at = NOW()
 			`, identifier)
 		} else {
-			_, _ = s.db.ExecContext(ctx, `
+			_, err = s.db.ExecContext(ctx, `
 				INSERT INTO nodes (id, wallet_address, name, status, trust_score, last_seen, created_at, updated_at)
 				VALUES (gen_random_uuid(), $1, 'auto-registered', 'online', 50, NOW(), NOW(), NOW())
 				ON CONFLICT (wallet_address) DO UPDATE SET status = 'online', last_seen = NOW(), updated_at = NOW()
 			`, identifier)
 		}
-		log.Printf("[NodeService] Auto-registered node: %s", identifier)
+		
+		if err != nil {
+			log.Printf("[NodeService] Auto-registered node err: %v", err)
+		} else {
+			log.Printf("[NodeService] Auto-registered node: %s", identifier)
+		}
 	}
 
 	if s.redis == nil {
@@ -502,7 +523,7 @@ func (s *NodeService) UpdateHealthStats(ctx context.Context, identifier string, 
 	if lat != nil && lon != nil && s.geo != nil {
 		capacityData["h3_index"] = s.geo.LatLonToH3Index(*lat, *lon, H3Resolution)
 	}
-	err := s.redis.HSet(ctx, detailsKey, capacityData).Err()
+	err = s.redis.HSet(ctx, detailsKey, capacityData).Err()
 
 	s.UpdateHeartbeat(ctx, identifier)
 	return err

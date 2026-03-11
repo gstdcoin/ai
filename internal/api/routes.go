@@ -6,12 +6,15 @@ import (
 	"distributed-computing-platform/internal/config"
 	"distributed-computing-platform/internal/models"
 	"distributed-computing-platform/internal/services"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 
 	infRouter "distributed-computing-platform/internal/inference"
 
@@ -1332,11 +1335,11 @@ func SetupRoutes(
 			// Query for tasks assigned to this node/wallet
 			var taskID, taskType, payload string
 			err := dbConn.QueryRowContext(c.Request.Context(),
-				`SELECT id, type, COALESCE(payload, '{}')
+				`SELECT task_id, task_type, COALESCE(payload, '{}')
 				 FROM tasks
 				 WHERE status = 'pending'
-				   AND (assigned_wallet = $1 OR assigned_wallet IS NULL)
-				 ORDER BY priority DESC, created_at ASC
+				   AND (executor_address = $1 OR executor_address IS NULL)
+				 ORDER BY priority_score DESC, created_at ASC
 				 LIMIT 1`, wallet).Scan(&taskID, &taskType, &payload)
 			if err != nil {
 				c.JSON(200, gin.H{"task": nil, "message": "no tasks available"})
@@ -1346,8 +1349,100 @@ func SetupRoutes(
 				"task": gin.H{
 					"id":      taskID,
 					"type":    taskType,
-					"payload": payload,
+					"payload": json.RawMessage(payload),
 				},
+			})
+		})
+
+		v1.POST("/tasks/complete", func(c *gin.Context) {
+			wallet := c.GetHeader("X-Wallet-Address")
+			if wallet == "" {
+				c.JSON(400, gin.H{"error": "X-Wallet-Address header required"})
+				return
+			}
+			var req struct {
+				TaskID        string      `json:"task_id"`
+				NodeID        string      `json:"node_id"`
+				Result        interface{} `json:"result"`
+				WalletAddress string      `json:"wallet_address"`
+			}
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(400, gin.H{"error": err.Error()})
+				return
+			}
+
+			// Convert result to JSON string to save in the database
+			resultJSON, _ := json.Marshal(req.Result)
+			_, err := dbConn.ExecContext(c.Request.Context(),
+				`UPDATE tasks SET status = 'completed', completed_at = NOW(), result = $1, executor_address = $2 WHERE task_id = $3`,
+				string(resultJSON), wallet, req.TaskID)
+			
+			if err != nil {
+				c.JSON(500, gin.H{"error": "Failed to complete task"})
+				return
+			}
+			
+			// Simple autonomous reward logic for demonstration: 
+			// In real prod, this goes through taskPaymentService.
+			// The node is doing it natively via Swarm, so we grant some GSTD.
+			
+			c.JSON(200, gin.H{"status": "success", "message": "Task completed"})
+		})
+
+		v1.POST("/tasks/fail", func(c *gin.Context) {
+			wallet := c.GetHeader("X-Wallet-Address")
+			if wallet == "" {
+				c.JSON(400, gin.H{"error": "X-Wallet-Address header required"})
+				return
+			}
+			var req struct {
+				TaskID string `json:"task_id"`
+				Error  string `json:"error"`
+			}
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(400, gin.H{"error": err.Error()})
+				return
+			}
+			
+			_, _ = dbConn.ExecContext(c.Request.Context(),
+				`UPDATE tasks SET status = 'failed', updated_at = NOW(), result = $1 WHERE task_id = $2`, req.Error, req.TaskID)
+			
+			c.JSON(200, gin.H{"status": "success", "message": "Task marked as failed"})
+		})
+
+		v1.POST("/bridge/request", func(c *gin.Context) {
+			// This endpoint allows users to request a token bridge across chains
+			var req struct {
+				SourceChain string  `json:"source_chain"`
+				DestChain   string  `json:"dest_chain"`
+				Amount      float64 `json:"amount"`
+				TxHash      string  `json:"tx_hash"`
+				UserAddress string  `json:"user_address"`
+			}
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(400, gin.H{"error": err.Error()})
+				return
+			}
+
+			// Generate payload for the swarm node
+			payloadJSON, _ := json.Marshal(req)
+			
+			// Insert bridge_verify task into tasks pool
+			taskID := uuid.New().String()
+			_, err := dbConn.ExecContext(c.Request.Context(),
+				`INSERT INTO tasks (task_id, task_type, payload, status, priority_score, created_at, requester_address)
+				 VALUES ($1, 'bridge_verify', $2, 'pending', 10, NOW(), 'bridge-system')`,
+				taskID, string(payloadJSON))
+			
+			if err != nil {
+				c.JSON(500, gin.H{"error": "Failed to schedule bridge validation"})
+				return
+			}
+
+			c.JSON(200, gin.H{
+				"status": "pending_validation",
+				"message": "Bridge request queued for decentralized validation",
+				"task_id": taskID,
 			})
 		})
 
