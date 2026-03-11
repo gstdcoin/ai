@@ -800,20 +800,47 @@ func SetupRoutes(
 					nodeName = "GSTD Node"
 				}
 			}
-			_, _ = dbConn.ExecContext(c.Request.Context(), `
-				INSERT INTO nodes (id, wallet_address, name, status, last_seen, created_at, updated_at)
-				VALUES (gen_random_uuid(), $1, $2, 'online', NOW(), NOW(), NOW())
-				ON CONFLICT (wallet_address) DO UPDATE SET status = 'online', last_seen = NOW(), updated_at = NOW()
-			`, req.WalletAddress, nodeName)
 
-			// Check time since last heartbeat reward to prevent double-claiming
-			var lastReward float64
+			log.Printf("[HEARTBEAT-V130] wallet=%s nodeName=%s", req.WalletAddress, nodeName)
+
+			// Check time since last heartbeat BEFORE updating last_seen
 			var hoursSinceLast float64 = 1.0
 			row := dbConn.QueryRowContext(c.Request.Context(), `
-				SELECT COALESCE(EXTRACT(EPOCH FROM (NOW() - COALESCE(last_seen, NOW() - INTERVAL '1 hour'))) / 3600, 1)
+				SELECT COALESCE(EXTRACT(EPOCH FROM (NOW() - last_seen)) / 3600, 1)
 				FROM nodes WHERE wallet_address = $1
 			`, req.WalletAddress)
-			row.Scan(&hoursSinceLast)
+			_ = row.Scan(&hoursSinceLast)
+			// If wallet not found, hoursSinceLast stays 1.0 (new node, always reward)
+
+			// Ensure user exists (nodes.wallet_address FK → users.wallet_address)
+			_, _ = dbConn.ExecContext(c.Request.Context(), `
+				INSERT INTO users (wallet_address, created_at, updated_at)
+				VALUES ($1, NOW(), NOW())
+				ON CONFLICT (wallet_address) DO NOTHING
+			`, req.WalletAddress)
+
+			// Try UPDATE existing node first
+			res, err := dbConn.ExecContext(c.Request.Context(), `
+				UPDATE nodes SET status = 'online', last_seen = NOW(), updated_at = NOW(), name = $2
+				WHERE wallet_address = $1
+			`, req.WalletAddress, nodeName)
+			rowsAffected := int64(0)
+			if err != nil {
+				log.Printf("[heartbeat] UPDATE error: %v", err)
+			} else {
+				rowsAffected, _ = res.RowsAffected()
+			}
+			// If no existing node, INSERT
+			if rowsAffected == 0 {
+				if _, err := dbConn.ExecContext(c.Request.Context(), `
+					INSERT INTO nodes (id, wallet_address, name, status, last_seen, created_at, updated_at)
+					VALUES (gen_random_uuid()::text, $1, $2, 'online', NOW(), NOW(), NOW())
+				`, req.WalletAddress, nodeName); err != nil {
+					log.Printf("[heartbeat] INSERT error: %v", err)
+				}
+			}
+			log.Printf("[heartbeat] wallet=%s rows_updated=%d", req.WalletAddress, rowsAffected)
+
 			if hoursSinceLast < 0.9 {
 				// Too soon — less than ~54 minutes since last heartbeat
 				c.JSON(200, gin.H{"reward": 0, "reason": "heartbeat_too_soon", "next_in_minutes": int((1.0 - hoursSinceLast) * 60)})
@@ -834,6 +861,7 @@ func SetupRoutes(
 			}
 
 			// Check daily cap
+			var lastReward float64
 			dbConn.QueryRowContext(c.Request.Context(), `
 				SELECT COALESCE(SUM(pending_balance_gstd), 0) FROM users WHERE wallet_address = $1
 			`, req.WalletAddress).Scan(&lastReward)
@@ -844,7 +872,7 @@ func SetupRoutes(
 			}
 
 			// Credit reward to user
-			_, err := dbConn.ExecContext(c.Request.Context(), `
+			_, err = dbConn.ExecContext(c.Request.Context(), `
 				UPDATE users SET pending_balance_gstd = COALESCE(pending_balance_gstd, 0) + $1, updated_at = NOW()
 				WHERE wallet_address = $2
 			`, reward, req.WalletAddress)
