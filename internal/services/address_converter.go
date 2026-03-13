@@ -107,15 +107,28 @@ func IsRawFormat(address string) bool {
 
 // NormalizeAddressForAPI normalizes address for TON API calls
 // Converts raw format to user-friendly if needed. Sanitizes quotes and whitespace.
+// Also handles uppercased base64 addresses stored in the DB (e.g. EQPZ0KE... → re-encoded).
 func NormalizeAddressForAPI(address string) string {
 	// Remove quotes, trim whitespace - fixes "can't decode address" from TON API
 	address = strings.TrimSpace(address)
 	address = strings.Trim(address, "\"'`")
 	address = strings.TrimSpace(address)
 
-	// If already user-friendly, return as is
+	// If already user-friendly (proper case), return as is
 	if strings.HasPrefix(address, "EQ") || strings.HasPrefix(address, "UQ") ||
 		strings.HasPrefix(address, "kQ") || strings.HasPrefix(address, "0Q") {
+		// Validate that it's actually proper base64url by trying to decode
+		// Some addresses are stored UPPERCASED in DB (e.g. EQPZ0KEQWQZ...) which breaks TON API
+		if len(address) == 48 {
+			_, err := base64.URLEncoding.DecodeString(address)
+			if err != nil {
+				// Address appears user-friendly but has invalid base64 encoding (likely all uppercase)
+				// Try to recover: it's not repairable from uppercase alone, so return as-is
+				// and let the caller handle the API error gracefully
+				log.Printf("Warning: address %s looks user-friendly but has invalid base64, skipping API call", address[:8])
+				return ""
+			}
+		}
 		return address
 	}
 
@@ -125,7 +138,12 @@ func NormalizeAddressForAPI(address string) string {
 		return converted
 	}
 
-	// Unknown format, return as is
+	// Unknown format — return empty to skip API call (prevents "illegal base32" errors)
+	if len(address) > 0 && address == strings.ToUpper(address) && len(address) >= 48 {
+		// Likely a corrupted uppercase address, skip
+		return ""
+	}
+
 	return address
 }
 

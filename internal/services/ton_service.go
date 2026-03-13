@@ -82,6 +82,11 @@ func (s *TONService) GetJettonBalance(ctx context.Context, address string, jetto
 	normalizedAddress := normalizeTONAddress(address)
 	normalizedJetton := NormalizeAddressForAPI(jettonAddress)
 
+	// Skip API call if address normalization failed (corrupted/uppercase address)
+	if normalizedAddress == "" || normalizedJetton == "" {
+		return 0, nil
+	}
+
 	// Cache key
 	cacheKey := fmt.Sprintf("ton:balance:%s:%s", normalizedAddress, normalizedJetton)
 
@@ -437,6 +442,11 @@ func (s *TONService) GetContractBalance(ctx context.Context, contractAddress str
 
 	// Normalize address format for TON API
 	normalizedAddress := NormalizeAddressForAPI(contractAddress)
+
+	// Skip API call if address normalization failed (corrupted/uppercase address)
+	if normalizedAddress == "" {
+		return 0, fmt.Errorf("invalid address format: %s", contractAddress[:min(16, len(contractAddress))])
+	}
 
 	// Use TON API v2 to get account balance
 	url := fmt.Sprintf("%s/v2/accounts/%s", s.apiURL, normalizedAddress)
