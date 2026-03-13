@@ -2,10 +2,9 @@ import { GetStaticProps } from 'next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
-import Link from 'next/link';
 import {
   Server, Trophy, Flame, Zap, TrendingUp, Clock, Shield,
-  ChevronRight, ExternalLink, Star, Cpu, ArrowRight, Users
+  ChevronRight, ExternalLink, Star, Cpu, ArrowRight, Users, Smartphone, MessageCircle
 } from 'lucide-react';
 import { API_BASE_URL } from '../lib/config';
 
@@ -41,7 +40,7 @@ export default function NodesPage() {
     <>
       <Head>
         <title>Node Rewards — GSTD</title>
-        <meta name="description" content="Run a GSTD node and earn rewards. Tier system from Bronze to Diamond with streak bonuses and task multipliers." />
+        <meta name="description" content="Run a GSTD node and earn rewards. Desktop and mobile nodes with tier system, streak bonuses, and task multipliers." />
       </Head>
 
       <div style={{ minHeight: '100vh', background: '#030014', paddingTop: 80, fontFamily: "'Inter', system-ui, sans-serif" }}>
@@ -59,10 +58,61 @@ export default function NodesPage() {
             <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.4)', maxWidth: 500, margin: '0 auto 20px' }}>
               Power the decentralized GSTD network and earn rewards for uptime, task completion, and loyalty streaks.
             </p>
-            <a href="https://gstdbot.gstdtoken.com" target="_blank" rel="noopener"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 24px', borderRadius: 12, background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)', color: 'white', fontSize: 14, fontWeight: 700, textDecoration: 'none', transition: 'all 0.3s' }}>
-              <Cpu size={16} /> Install Node OS <ExternalLink size={12} />
-            </a>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <a href="https://t.me/GstdAppBot" target="_blank" rel="noopener"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 24px', borderRadius: 12, background: 'linear-gradient(135deg, #0088cc, #0066aa)', color: 'white', fontSize: 14, fontWeight: 700, textDecoration: 'none', transition: 'all 0.3s' }}>
+                <Smartphone size={16} /> Мобильная нода <ExternalLink size={12} />
+              </a>
+              <a href="https://gstdbot.gstdtoken.com" target="_blank" rel="noopener"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 24px', borderRadius: 12, background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)', color: 'white', fontSize: 14, fontWeight: 700, textDecoration: 'none', transition: 'all 0.3s' }}>
+                <Cpu size={16} /> Desktop Node OS <ExternalLink size={12} />
+              </a>
+            </div>
+          </div>
+
+          {/* ═══════════ Mobile Node CTA ═══════════ */}
+          <div style={{
+            padding: '28px 24px', borderRadius: 20, marginBottom: 32,
+            background: 'linear-gradient(135deg, rgba(0,136,204,0.08), rgba(0,136,204,0.02))',
+            border: '1px solid rgba(0,136,204,0.15)',
+            position: 'relative', overflow: 'hidden',
+          }}>
+            <div style={{ position: 'absolute', top: -30, right: -30, width: 120, height: 120, borderRadius: '50%', background: 'radial-gradient(circle, rgba(0,136,204,0.1), transparent)', pointerEvents: 'none' }} />
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
+              <div style={{ width: 48, height: 48, borderRadius: 12, background: 'linear-gradient(135deg, #0088cc, #0066aa)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Smartphone size={24} style={{ color: 'white' }} />
+              </div>
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <h3 style={{ fontSize: 18, fontWeight: 800, color: 'white', marginBottom: 6 }}>
+                  📱 Мобильная нода — прямо в Telegram
+                </h3>
+                <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginBottom: 14, lineHeight: 1.5 }}>
+                  Превратите свой смартфон в ноду GSTD. Откройте бота в Telegram → нажмите «Start Node» → зарабатывайте GSTD.
+                  CPU, RAM и сеть вашего телефона вносят вклад в децентрализованный рой.
+                </p>
+                <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 14 }}>
+                  {[
+                    { icon: '⚡', text: 'Мгновенный старт' },
+                    { icon: '💰', text: 'Заработок 24/7' },
+                    { icon: '🔗', text: 'Авто-привязка кошелька' },
+                    { icon: '📊', text: 'Реальные ресурсы' },
+                  ].map(f => (
+                    <div key={f.text} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>
+                      <span>{f.icon}</span> {f.text}
+                    </div>
+                  ))}
+                </div>
+                <a href="https://t.me/GstdAppBot" target="_blank" rel="noopener"
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 8,
+                    padding: '10px 20px', borderRadius: 10,
+                    background: 'linear-gradient(135deg, #0088cc, #006daa)',
+                    color: 'white', fontSize: 13, fontWeight: 700, textDecoration: 'none',
+                  }}>
+                  <MessageCircle size={16} /> Открыть @GstdAppBot <ArrowRight size={14} />
+                </a>
+              </div>
+            </div>
           </div>
 
           {/* Network Stats */}
@@ -209,23 +259,57 @@ export default function NodesPage() {
             )}
           </div>
 
-          {/* CTA */}
+          {/* CTA — Two options */}
           <div style={{
             textAlign: 'center', padding: '40px 24px', borderRadius: 20, marginBottom: 48,
             background: 'linear-gradient(135deg, rgba(139,92,246,0.06), rgba(16,185,129,0.04))',
             border: '1px solid rgba(139,92,246,0.1)',
           }}>
             <h3 style={{ fontSize: 22, fontWeight: 800, color: 'white', marginBottom: 8 }}>Ready to earn?</h3>
-            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 16 }}>
-              Install GSTD Node OS in one command and start earning immediately. First join bonus: <b style={{ color: '#34d399' }}>10 GSTD</b>
+            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 20 }}>
+              Choose how to run your GSTD node — from your phone or desktop.
             </p>
-            <div style={{ background: 'rgba(0,0,0,0.3)', padding: '10px 16px', borderRadius: 10, fontFamily: 'monospace', fontSize: 13, color: '#a78bfa', marginBottom: 16 }}>
+
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 20 }}>
+              {/* Mobile Node — Telegram */}
+              <a href="https://t.me/GstdAppBot" target="_blank" rel="noopener"
+                style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+                  padding: '20px 24px', borderRadius: 14, textDecoration: 'none',
+                  background: 'rgba(0,136,204,0.08)', border: '1px solid rgba(0,136,204,0.2)',
+                  flex: '1 1 180px', maxWidth: 240, transition: 'all 0.3s',
+                }}>
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg, #0088cc, #0066aa)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Smartphone size={20} style={{ color: 'white' }} />
+                </div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#5bbfe0' }}>📱 Мобильная нода</div>
+                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', textAlign: 'center' }}>
+                  Запустите в Telegram<br />Мгновенный старт
+                </div>
+              </a>
+
+              {/* Desktop Node */}
+              <a href="https://gstdbot.gstdtoken.com" target="_blank" rel="noopener"
+                style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+                  padding: '20px 24px', borderRadius: 14, textDecoration: 'none',
+                  background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.15)',
+                  flex: '1 1 180px', maxWidth: 240, transition: 'all 0.3s',
+                }}>
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Server size={20} style={{ color: 'white' }} />
+                </div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#a78bfa' }}>🖥 Desktop Node OS</div>
+                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', textAlign: 'center' }}>
+                  Установите на сервер<br />Максимальный заработок
+                </div>
+              </a>
+            </div>
+
+            <div style={{ background: 'rgba(0,0,0,0.3)', padding: '10px 16px', borderRadius: 10, fontFamily: 'monospace', fontSize: 13, color: '#a78bfa', marginBottom: 8 }}>
               curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash
             </div>
-            <a href="https://gstdbot.gstdtoken.com" target="_blank" rel="noopener"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 20px', borderRadius: 10, background: 'linear-gradient(135deg, #34d399, #059669)', color: 'white', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>
-              Get Started <ArrowRight size={14} />
-            </a>
+            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)' }}>Desktop installation command</div>
           </div>
 
         </div>
