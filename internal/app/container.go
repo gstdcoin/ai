@@ -884,10 +884,7 @@ func StartApplication(container *dig.Container) error {
 		v1Group := router.Group("/api/v1")
 		protectedGroup := router.Group("/api/v1")
 		api.SetupPipelineRoutes(v1Group, protectedGroup, pipelineService)
-		api.SetupSovereignRoutes(v1Group, protectedGroup,
-			guardrailsService, federatedEngine, mobileCompute,
-			zbGateService, recyclingPool, kvCacheService,
-			dataAirlock, openClawBridge)
+		api.SetupSovereignRoutes(v1Group, db)
 
 		// 4b1a. Agent API: OpenClaw/A2A agent endpoints
 		swarmModelMgr := services.NewSwarmModelManager(db, os.Getenv("OLLAMA_URL"))

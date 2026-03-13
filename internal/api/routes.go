@@ -946,6 +946,20 @@ func SetupRoutes(
 				dbConn.Exec(
 					`INSERT INTO node_rewards_ledger (node_address, reward_type, amount, description)
 					 VALUES ($1, 'uptime', $2, 'heartbeat')`, nodeAddr, rwd)
+
+				// ═══ SOVEREIGN INTEGRATION: Track supply + revenue ═══
+				// Update tokenomics circulating supply
+				dbConn.Exec(
+					`UPDATE tokenomics_halving SET current_circulating = current_circulating + $1, 
+					 total_minted_in_epoch = total_minted_in_epoch + $1 WHERE epoch_number = (SELECT MAX(epoch_number) FROM tokenomics_halving)`, rwd)
+				// Record revenue for node operators (heartbeat counts as compute contribution)
+				dbConn.Exec(
+					`INSERT INTO revenue_sharing (epoch_date, total_platform_revenue, node_operator_share, total_eligible_nodes)
+					 VALUES (CURRENT_DATE, $1, $1 * 0.85, 1)
+					 ON CONFLICT (epoch_date) DO UPDATE SET 
+					 total_platform_revenue = revenue_sharing.total_platform_revenue + $1,
+					 node_operator_share = revenue_sharing.node_operator_share + ($1 * 0.85),
+					 total_eligible_nodes = (SELECT COUNT(*) FROM nodes WHERE status='online' OR last_seen > NOW() - INTERVAL '24 hours')`, rwd)
 			}(req.WalletAddress, reward)
 
 			c.JSON(200, gin.H{
@@ -955,6 +969,12 @@ func SetupRoutes(
 				"queries_counted": req.QueriesServed,
 				"reason":          "verified_heartbeat",
 				"message":         "Reward credited to pending balance.",
+				"sovereign": gin.H{
+					"revenue_share_pct":  85,
+					"burn_rate_pct":      2,
+					"auto_compound_hint": true,
+					"staking_apy_range":  "8-72%",
+				},
 			})
 		})
 
