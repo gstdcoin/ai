@@ -4,7 +4,7 @@ import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useTranslation } from 'next-i18next';
 import { useState, useEffect, useRef } from 'react';
 import { API_BASE_URL } from '../lib/config';
-import { Activity, Zap, MessageSquare, ArrowRight, Bot, Server, Shield, Globe, Lock, Wifi, Wrench, HardDrive, Brain, Building2 } from 'lucide-react';
+import { Activity, Zap, MessageSquare, ArrowRight, Bot, Server, Shield, Globe, Lock, Wifi, Wrench, HardDrive, Brain, Building2, ArrowRightLeft } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
 const AmbientMesh = dynamic(() => import('../components/home/AmbientMesh'), { ssr: false });
@@ -194,7 +194,7 @@ export default function Home() {
           </div>
 
           {/* ═══════ NODE OS FEATURES STRIP ═══════ */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-20 stagger-in">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 mb-20 stagger-in">
             <div className="p-4 rounded-2xl glass-pro text-center">
               <Lock className="mx-auto text-violet-400 mb-2" size={20} />
               <div className="text-xs font-bold text-white">Wallet Auth</div>
@@ -220,6 +220,11 @@ export default function Home() {
               <div className="text-xs font-bold text-white">77 Apps</div>
               <div className="text-[10px] text-gray-500">Docker store</div>
             </div>
+            <a href="/bridge" style={{ textDecoration: 'none' }} className="p-4 rounded-2xl glass-pro text-center hover:scale-[1.05] transition-transform">
+              <ArrowRightLeft className="mx-auto text-orange-400 mb-2" size={20} />
+              <div className="text-xs font-bold text-white">Bridge</div>
+              <div className="text-[10px] text-gray-500">Cross-chain</div>
+            </a>
             <div className="p-4 rounded-2xl glass-pro text-center">
               <Bot className="mx-auto text-indigo-400 mb-2" size={20} />
               <div className="text-xs font-bold text-white">Telegram</div>

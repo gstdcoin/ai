@@ -1139,5 +1139,8 @@
   "sig_pandemic_desc": "Semantic analysis of 40M+ medical papers, hospital discharge records, and wastewater surveillance to predict disease outbreak vectors 30+ days ahead.",
   "sig_crisis_desc": "Analyze massive global event logs (300M+ news articles/year) to identify emerging humanitarian aid gaps, famine signals, and displacement vectors 2-4 weeks early.",
   "sig_nasa_impact": "Early warning for 2.3B people in equatorial zones",
-  "sig_wildfire_impact": "Prevent $50B+ annual wildfire damage"
+  "sig_wildfire_impact": "Prevent $50B+ annual wildfire damage",
+  "nav_bridge": "Bridge",
+  "nav_nodes": "Nodes",
+  "footer_bridge": "Bridge"
 }

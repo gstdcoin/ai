@@ -68,7 +68,9 @@ func registerNode(service *services.NodeService, geoService *services.GeoService
 
 		// Determine country by IP (non-blocking, continue if fails)
 		var country *string
-		if geoService != nil && ipAddress != "" {
+		isPrivateIP := strings.HasPrefix(ipAddress, "172.") || strings.HasPrefix(ipAddress, "10.") ||
+			strings.HasPrefix(ipAddress, "192.168.") || strings.HasPrefix(ipAddress, "127.") || ipAddress == ""
+		if geoService != nil && ipAddress != "" && !isPrivateIP {
 			countryCode, err := geoService.GetCountryByIP(c.Request.Context(), ipAddress)
 			if err != nil {
 				log.Printf("⚠️  Failed to determine country for IP %s: %v", ipAddress, err)

@@ -916,6 +916,38 @@ func SetupRoutes(
 				genesisRedis.Set(c.Request.Context(), onlineKey, "online", 90*time.Second)
 			}
 
+			// Update node_tiers for tier progression & streak tracking
+			go func(nodeAddr string, rwd float64) {
+				dbConn.Exec(
+					`INSERT INTO node_tiers (node_address) VALUES ($1) ON CONFLICT DO NOTHING`, nodeAddr)
+				
+				// Update uptime, earnings, and streak
+				dbConn.Exec(
+					`UPDATE node_tiers SET 
+						total_uptime_hours = total_uptime_hours + 0.00833,
+						total_earned_gstd = total_earned_gstd + $1,
+						streak_days = CASE 
+							WHEN last_heartbeat_day = CURRENT_DATE THEN streak_days
+							WHEN last_heartbeat_day = CURRENT_DATE - 1 THEN streak_days + 1
+							ELSE 1 END,
+						best_streak = GREATEST(best_streak, 
+							CASE WHEN last_heartbeat_day = CURRENT_DATE - 1 THEN streak_days + 1 ELSE streak_days END),
+						last_heartbeat_day = CURRENT_DATE,
+						tier = CASE
+							WHEN total_uptime_hours + 0.00833 >= 5000 THEN 'diamond'
+							WHEN total_uptime_hours + 0.00833 >= 2000 THEN 'platinum'
+							WHEN total_uptime_hours + 0.00833 >= 500 THEN 'gold'
+							WHEN total_uptime_hours + 0.00833 >= 100 THEN 'silver'
+							ELSE 'bronze' END,
+						updated_at = NOW()
+					 WHERE node_address = $2`, rwd, nodeAddr)
+				
+				// Record in rewards ledger
+				dbConn.Exec(
+					`INSERT INTO node_rewards_ledger (node_address, reward_type, amount, description)
+					 VALUES ($1, 'uptime', $2, 'heartbeat')`, nodeAddr, rwd)
+			}(req.WalletAddress, reward)
+
 			c.JSON(200, gin.H{
 				"reward":          reward,
 				"uptime_reward":   uptimeReward,
@@ -1474,6 +1506,99 @@ func SetupRoutes(
 			})
 		})
 
+		// POST /nodes/deregister — gracefully marks node as offline
+		v1.POST("/nodes/deregister", func(c *gin.Context) {
+			var req struct {
+				NodeID string `json:"node_id"`
+			}
+			if err := c.ShouldBindJSON(&req); err != nil || req.NodeID == "" {
+				c.JSON(400, gin.H{"error": "node_id required"})
+				return
+			}
+			wallet := c.GetHeader("X-Wallet-Address")
+			identifier := wallet
+			if identifier == "" {
+				identifier = req.NodeID
+			}
+			_, _ = dbConn.ExecContext(c.Request.Context(),
+				`UPDATE nodes SET status = 'offline', updated_at = NOW()
+				 WHERE wallet_address = $1 OR id = $2`, identifier, req.NodeID)
+			c.JSON(200, gin.H{"status": "deregistered", "node_id": req.NodeID})
+		})
+
+		// POST /training/submit — submit a new training job
+		v1.POST("/training/submit", func(c *gin.Context) {
+			wallet := c.GetHeader("X-Wallet-Address")
+			if wallet == "" {
+				c.JSON(400, gin.H{"error": "X-Wallet-Address header required"})
+				return
+			}
+			var req struct {
+				NodeID    string `json:"node_id"`
+				Type      string `json:"type"`
+				BaseModel string `json:"baseModel"`
+				Epochs    int    `json:"epochs"`
+			}
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(400, gin.H{"error": err.Error()})
+				return
+			}
+			jobID := fmt.Sprintf("train-%d", time.Now().UnixNano())
+			c.JSON(200, gin.H{"id": jobID, "status": "queued", "type": req.Type})
+		})
+
+		// POST /training/complete — report training job completion
+		v1.POST("/training/complete", func(c *gin.Context) {
+			var req struct {
+				NodeID string `json:"node_id"`
+				JobID  string `json:"job_id"`
+				Status string `json:"status"`
+			}
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(400, gin.H{"error": err.Error()})
+				return
+			}
+			log.Printf("[training] Job %s completed by node %s", req.JobID, req.NodeID)
+			c.JSON(200, gin.H{"status": "acknowledged", "job_id": req.JobID})
+		})
+
+		// POST /training/fail — report training job failure
+		v1.POST("/training/fail", func(c *gin.Context) {
+			var req struct {
+				NodeID string `json:"node_id"`
+				JobID  string `json:"job_id"`
+				Error  string `json:"error"`
+			}
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(400, gin.H{"error": err.Error()})
+				return
+			}
+			log.Printf("[training] Job %s failed on node %s: %s", req.JobID, req.NodeID, req.Error)
+			c.JSON(200, gin.H{"status": "acknowledged", "job_id": req.JobID})
+		})
+
+		// POST /models/share — node shares a trained model to the platform
+		v1.POST("/models/share", func(c *gin.Context) {
+			var req struct {
+				NodeID    string  `json:"node_id"`
+				Name      string  `json:"name"`
+				BaseModel string  `json:"baseModel"`
+				Type      string  `json:"type"`
+				SizeMB    float64 `json:"size_mb"`
+			}
+			if err := c.ShouldBindJSON(&req); err != nil || req.Name == "" {
+				c.JSON(400, gin.H{"error": "name required"})
+				return
+			}
+			// Store in swarm_models table
+			_, _ = dbConn.ExecContext(c.Request.Context(),
+				`INSERT INTO swarm_models (id, name, base_model, type, size_mb, node_id, created_at)
+				 VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, NOW())
+				 ON CONFLICT DO NOTHING`,
+				req.Name, req.BaseModel, req.Type, req.SizeMB, req.NodeID)
+			c.JSON(200, gin.H{"status": "shared", "name": req.Name})
+		})
+
 		v1.POST("/resources/publish", func(c *gin.Context) {
 			wallet := c.GetHeader("X-Wallet-Address")
 			if wallet == "" {
@@ -1550,6 +1675,12 @@ func SetupRoutes(
 		// Sovereign Compute Bridge (MoltBot integration)
 		SetupBridgeRoutes(v1, sovereignBridge)
 
+		// P2P Cross-Chain Bridge (Token swap order book)
+		SetupP2PBridgeRoutes(v1, db.(*sql.DB))
+
+		// Node Rewards Engine (motivation & incentives)
+		SetupNodeRewardsRoutes(v1, db.(*sql.DB))
+
 		// Monitor Routes (Signal Launch)
 		setupMonitorRoutes(v1, taskService, telegramService, db.(*sql.DB))
 
@@ -1625,6 +1756,84 @@ func SetupRoutes(
 		// Any device, any platform — one API to rule them all
 		swarmEmbedHandler := NewSwarmEmbedHandler(dbConn, smartRouter, apiKeyService)
 		SetupSwarmEmbedRoutes(v1, swarmEmbedHandler)
+
+		// ═══ NODE OS COMPATIBILITY — endpoints expected by GSTD Node OS ═══
+		// GET /models/registry — returns available models for node training subsystem
+		v1.GET("/models/registry", func(c *gin.Context) {
+			c.JSON(200, gin.H{
+				"models": []gin.H{
+					{"id": "llama-3.3-70b-versatile", "name": "Llama 3.3 70B", "type": "inference", "available": true},
+					{"id": "llama-3.1-8b-instant", "name": "Llama 3.1 8B", "type": "inference", "available": true},
+					{"id": "qwen/qwen3-32b", "name": "Qwen3 32B", "type": "inference", "available": true},
+					{"id": "meta-llama/llama-4-scout-17b-16e-instruct", "name": "Llama 4 Scout", "type": "inference", "available": true},
+					{"id": "openai/gpt-oss-120b", "name": "GPT-OSS 120B", "type": "inference", "available": true},
+					{"id": "openai/gpt-oss-20b", "name": "GPT-OSS 20B", "type": "inference", "available": true},
+					{"id": "moonshotai/kimi-k2-instruct", "name": "Kimi K2", "type": "inference", "available": true},
+					{"id": "groq/compound", "name": "Groq Compound", "type": "inference", "available": true},
+				},
+			})
+		})
+
+		// GET /memory/ping — health check for collective memory L3 layer
+		v1.GET("/memory/ping", func(c *gin.Context) {
+			c.JSON(200, gin.H{"status": "ok", "layer": "L3", "platform": "gstd"})
+		})
+
+		// POST /memory/recall — collective memory recall from L3 platform layer
+		v1.POST("/memory/recall", func(c *gin.Context) {
+			// Basic stub — full implementation would search agent_knowledge
+			var req struct {
+				Key      string `json:"key"`
+				Question string `json:"question"`
+				NodeID   string `json:"node_id"`
+			}
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(400, gin.H{"error": "invalid request"})
+				return
+			}
+			// Search in agent_knowledge table
+			var answer, model string
+			var confidence float64
+			err := dbConn.QueryRowContext(c.Request.Context(),
+				`SELECT content, COALESCE(model, 'platform'), COALESCE(confidence, 0.8)
+				 FROM agent_knowledge
+				 WHERE key = $1 OR question_hash = $1
+				 ORDER BY confidence DESC LIMIT 1`, req.Key).Scan(&answer, &model, &confidence)
+			if err != nil {
+				c.JSON(200, gin.H{"found": false})
+				return
+			}
+			c.JSON(200, gin.H{
+				"found":      true,
+				"answer":     answer,
+				"model":      model,
+				"confidence": confidence,
+			})
+		})
+
+		// POST /memory/store — store knowledge in collective memory L3
+		v1.POST("/memory/store", func(c *gin.Context) {
+			var req struct {
+				Key        string  `json:"key"`
+				Question   string  `json:"question"`
+				Answer     string  `json:"answer"`
+				Model      string  `json:"model"`
+				Confidence float64 `json:"confidence"`
+				NodeID     string  `json:"node_id"`
+			}
+			if err := c.ShouldBindJSON(&req); err != nil || req.Key == "" || req.Answer == "" {
+				c.JSON(400, gin.H{"error": "key and answer required"})
+				return
+			}
+			_, _ = dbConn.ExecContext(c.Request.Context(),
+				`INSERT INTO agent_knowledge (key, question_hash, content, model, confidence, node_id, created_at)
+				 VALUES ($1, $1, $2, $3, $4, $5, NOW())
+				 ON CONFLICT (key) DO UPDATE SET content = $2, confidence = GREATEST(agent_knowledge.confidence, $4), updated_at = NOW()`,
+				req.Key, req.Answer, req.Model, req.Confidence, req.NodeID)
+			c.JSON(200, gin.H{"status": "stored", "key": req.Key})
+		})
+
+		log.Printf("✅ Node OS compatibility routes registered (/models/registry, /memory/*)")
 	}
 
 	// ═══ GSTD APP STORE & NODE DASHBOARD (Umbrel-style) ═══

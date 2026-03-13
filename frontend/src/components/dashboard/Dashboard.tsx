@@ -10,7 +10,7 @@ import DevicesPanel from './DevicesPanel';
 import { Tab } from '../../types/tabs';
 import { useTonConnectUI } from '@tonconnect/ui-react';
 import { toast } from '../../lib/toast';
-import { Activity, Server, Wallet, Zap, MessageSquare, Globe, Copy, Users, TrendingUp, ArrowRight } from 'lucide-react';
+import { Activity, Server, Wallet, Zap, MessageSquare, Globe, Copy, Users, TrendingUp, ArrowRight, ArrowRightLeft } from 'lucide-react';
 import { apiGet, apiPost } from '../../lib/apiClient';
 import Sidebar from '../layout/Sidebar';
 import { ComponentErrorBoundary } from '../common/ComponentErrorBoundary';
@@ -235,7 +235,7 @@ function Dashboard({ initialTab, sourceTelegram, modeMining }: DashboardProps = 
                   </div>
 
                   {/* Quick Actions */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <a
                       href="/chat"
                       style={{
@@ -256,6 +256,28 @@ function Dashboard({ initialTab, sourceTelegram, modeMining }: DashboardProps = 
                         </div>
                       </div>
                       <ArrowRight size={14} className="text-gray-600 group-hover:text-violet-400 transition-colors" />
+                    </a>
+
+                    <a
+                      href="/bridge"
+                      style={{
+                        background: 'rgba(249,115,22,0.04)',
+                        border: '1px solid rgba(249,115,22,0.10)',
+                        borderRadius: 14,
+                        padding: '16px 20px',
+                      }}
+                      className="flex items-center justify-between group hover:border-orange-500/20 transition-all"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-orange-500/10">
+                          <ArrowRightLeft size={16} className="text-orange-400" />
+                        </div>
+                        <div>
+                          <div className="text-sm font-semibold text-white">{t('bridge', 'Bridge')}</div>
+                          <div className="text-[11px] text-gray-600">{t('bridge_desc', 'Cross-chain')}</div>
+                        </div>
+                      </div>
+                      <ArrowRight size={14} className="text-gray-600 group-hover:text-orange-400 transition-colors" />
                     </a>
 
                     <a
