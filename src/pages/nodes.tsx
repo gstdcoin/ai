@@ -125,8 +125,8 @@ export default function NodesPage() {
                 { v: network.total_tasks, l: t('nodes_tasks_done'), c: '#a78bfa', i: <Shield size={16} /> },
                 { v: `${Math.round(network.total_rewards_gstd)}`, l: t('nodes_gstd_earned'), c: '#facc15', i: <TrendingUp size={16} /> },
                 { v: `${Math.round(network.total_uptime_h)}h`, l: t('nodes_total_uptime'), c: '#fb923c', i: <Clock size={16} /> },
-              ].map((s, i) => (
-                <div key={i} style={{ textAlign: 'center', padding: '14px 8px', borderRadius: 12, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
+              ].map((s) => (
+                <div key={s.l} style={{ textAlign: 'center', padding: '14px 8px', borderRadius: 12, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
                   <div style={{ color: s.c, marginBottom: 6 }}>{s.i}</div>
                   <div style={{ fontSize: 20, fontWeight: 800, color: 'white' }}>{s.v}</div>
                   <div style={{ fontSize: 9, fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase' }}>{s.l}</div>
@@ -233,14 +233,18 @@ export default function NodesPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {leaders.slice(0, 20).map((l, i) => {
                   const ts = TIER_STYLES[l.tier] || TIER_STYLES.bronze;
+                  const isTopThree = i < 3;
+                  const rankColors = ['#FFD700', '#C0C0C0', '#CD7F32'];
+                  const rankColor = isTopThree ? rankColors[i] : 'rgba(255,255,255,0.3)';
+                  const rankIcons = ['🥇', '🥈', '🥉'];
                   return (
                     <div key={l.rank} style={{
                       display: 'flex', alignItems: 'center', padding: '10px 14px', borderRadius: 12,
-                      background: i < 3 ? ts.bg : 'rgba(255,255,255,0.02)',
-                      border: `1px solid ${i < 3 ? ts.border : 'rgba(255,255,255,0.04)'}`,
+                      background: isTopThree ? ts.bg : 'rgba(255,255,255,0.02)',
+                      border: `1px solid ${isTopThree ? ts.border : 'rgba(255,255,255,0.04)'}`,
                     }}>
-                      <div style={{ width: 28, fontSize: i < 3 ? 16 : 12, fontWeight: 800, color: i === 0 ? '#FFD700' : i === 1 ? '#C0C0C0' : i === 2 ? '#CD7F32' : 'rgba(255,255,255,0.3)', textAlign: 'center' }}>
-                        {i < 3 ? ['🥇', '🥈', '🥉'][i] : `#${l.rank}`}
+                      <div style={{ width: 28, fontSize: isTopThree ? 16 : 12, fontWeight: 800, color: rankColor, textAlign: 'center' }}>
+                        {isTopThree ? rankIcons[i] : `#${l.rank}`}
                       </div>
                       <span style={{ fontSize: 14, marginRight: 6 }}>{l.tier_icon}</span>
                       <div style={{ flex: 1, minWidth: 0 }}>
@@ -316,9 +320,9 @@ export default function NodesPage() {
         </div>
       </div>
 
-      <style jsx global>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-      `}</style>
+      ` }} />
     </>
   );
 }
