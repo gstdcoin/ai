@@ -30,10 +30,10 @@ description: Current ecosystem state — always read FIRST before any changes
 │                                                             │
 │  ┌─── BACKEND (Go) ──────────────────────────────────┐     │
 │  │  Container: ubuntu-backend-blue-1                  │     │
-│  │  Image:     gstd-backend-blue:v142                 │     │
+│  │  Image:     gstd-backend-blue:v143                 │     │
 │  │  Port:      8080                                   │     │
 │  │  DB:        distributed_computing                  │     │
-│  │  Rollback:  gstd-backend-blue:v123                 │     │
+│  │  Rollback:  gstd-backend-blue:v142                 │     │
 │  └────────────────────────────────────────────────────┘     │
 │                                                             │
 │  ┌─── FRONTEND (Next.js 16.1.6) ─────────────────────┐     │
@@ -45,7 +45,7 @@ description: Current ecosystem state — always read FIRST before any changes
 │                                                             │
 │  ┌─── TELEGRAM BOT (TypeScript) ─────────────────────┐     │
 │  │  Container: gstd-telegram-bot                      │     │
-│  │  Image:     gstd-bot:v29                           │     │
+│  │  Image:     gstd-bot:v34                           │     │
 │  │  Path:      /home/ubuntu/gstdbot                   │     │
 │  └────────────────────────────────────────────────────┘     │
 │                                                             │
@@ -69,9 +69,9 @@ description: Current ecosystem state — always read FIRST before any changes
 
 | Component | Version/Image | Path | Container |
 |-----------|---------------|------|-----------|
-| **Backend** | `gstd-backend-blue:v142` | `/home/ubuntu/backend` | `ubuntu-backend-blue-1` |
+| **Backend** | `gstd-backend-blue:v143` | `/home/ubuntu/backend` | `ubuntu-backend-blue-1` |
 | **Frontend** | Next.js 16.1.6 | `/home/ubuntu/frontend` | *systemd gstd-frontend* |
-| **Telegram Bot** | `gstd-bot:v29` | `/home/ubuntu/gstdbot` | `gstd-telegram-bot` |
+| **Telegram Bot** | `gstd-bot:v34` | `/home/ubuntu/gstdbot` | `gstd-telegram-bot` |
 | **Chat UI** | Static HTML | `/home/ubuntu/chat-ui` | *served by nginx* |
 | **PostgreSQL** | `postgres:15-alpine` | — | `gstd_postgres_prod` |
 | **Redis** | `redis:7-alpine` | — | `gstd_redis_prod` |
