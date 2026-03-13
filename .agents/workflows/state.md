@@ -15,7 +15,7 @@ description: Current ecosystem state — always read FIRST before any changes
 │                    GSTD ECOSYSTEM                           │
 │                 Server: 82.115.48.228                       │
 │                 OS: Ubuntu 24.04                            │
-│                 Last Update: 2026-03-11                     │
+│                 Last Update: 2026-03-13                     │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  ┌─── NGINX (gstd_nginx_lb) ─── Port 80/443 ─────────┐    │
@@ -30,7 +30,7 @@ description: Current ecosystem state — always read FIRST before any changes
 │                                                             │
 │  ┌─── BACKEND (Go) ──────────────────────────────────┐     │
 │  │  Container: ubuntu-backend-blue-1                  │     │
-│  │  Image:     gstd-backend-blue:v124                 │     │
+│  │  Image:     gstd-backend-blue:v142                 │     │
 │  │  Port:      8080                                   │     │
 │  │  DB:        distributed_computing                  │     │
 │  │  Rollback:  gstd-backend-blue:v123                 │     │
@@ -45,7 +45,7 @@ description: Current ecosystem state — always read FIRST before any changes
 │                                                             │
 │  ┌─── TELEGRAM BOT (TypeScript) ─────────────────────┐     │
 │  │  Container: gstd-telegram-bot                      │     │
-│  │  Image:     gstd-bot:v21                           │     │
+│  │  Image:     gstd-bot:v29                           │     │
 │  │  Path:      /home/ubuntu/gstdbot                   │     │
 │  └────────────────────────────────────────────────────┘     │
 │                                                             │
@@ -69,9 +69,9 @@ description: Current ecosystem state — always read FIRST before any changes
 
 | Component | Version/Image | Path | Container |
 |-----------|---------------|------|-----------|
-| **Backend** | `gstd-backend-blue:v134` | `/home/ubuntu/backend` | `ubuntu-backend-blue-1` |
-| **Frontend** | Next.js 16.1.6 | `/home/ubuntu/frontend` | *nohup process* |
-| **Telegram Bot** | `gstd-bot:v26` | `/home/ubuntu/gstdbot` | `gstd-telegram-bot` |
+| **Backend** | `gstd-backend-blue:v142` | `/home/ubuntu/backend` | `ubuntu-backend-blue-1` |
+| **Frontend** | Next.js 16.1.6 | `/home/ubuntu/frontend` | *systemd gstd-frontend* |
+| **Telegram Bot** | `gstd-bot:v29` | `/home/ubuntu/gstdbot` | `gstd-telegram-bot` |
 | **Chat UI** | Static HTML | `/home/ubuntu/chat-ui` | *served by nginx* |
 | **PostgreSQL** | `postgres:15-alpine` | — | `gstd_postgres_prod` |
 | **Redis** | `redis:7-alpine` | — | `gstd_redis_prod` |

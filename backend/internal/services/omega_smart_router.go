@@ -209,7 +209,7 @@ type SmartRouter struct {
 	sovereignPool *SovereignPowerPool
 
 	// Web Search — real-time internet context injection
-	webSearch *WebSearchService
+	WebSearch *WebSearchService
 }
 
 // ModelPricing defines cost structure for each model
@@ -325,7 +325,7 @@ func NewSmartRouter(vault *ExperienceVault, oracle *GSTDOracleService) *SmartRou
 	router.sovereignPool = NewSovereignPowerPool(router.groqKey, router.hfToken, os.Getenv("OPENROUTER_API_KEY"))
 
 	// Initialize Web Search Service (real-time context injection)
-	router.webSearch = NewWebSearchService(os.Getenv("BRAVE_SEARCH_API_KEY"))
+	router.WebSearch = NewWebSearchService(os.Getenv("BRAVE_SEARCH_API_KEY"))
 
 	router.pricingTable = map[string]ModelPricing{
 		// Sovereign Models (L2 — Swarm / Ollama)
@@ -403,7 +403,7 @@ func (r *SmartRouter) Route(ctx context.Context, req *OmegaChatRequest) (*Routin
 	// ─── Web Search Context Injection (pre-routing) ──────────────────────
 	// If the query needs real-time info, fetch it and inject into context.
 	// This gives the swarm up-to-date knowledge beyond training data.
-	if r.webSearch != nil && !req.Stream {
+	if r.WebSearch != nil && !req.Stream {
 		var userQuery string
 		for _, m := range req.Messages {
 			if role, _ := m["role"].(string); role == "user" {
@@ -414,7 +414,7 @@ func (r *SmartRouter) Route(ctx context.Context, req *OmegaChatRequest) (*Routin
 		}
 		if userQuery != "" && NeedsSearch(userQuery) {
 			searchCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			webCtx, err := r.webSearch.Search(searchCtx, userQuery)
+			webCtx, err := r.WebSearch.Search(searchCtx, userQuery)
 			cancel()
 			if err == nil && webCtx.HasResults {
 				// Inject search results into system message

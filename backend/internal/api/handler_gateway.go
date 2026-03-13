@@ -166,6 +166,15 @@ func chatCostGSTD(model string) float64 {
 	if strings.Contains(m, "32b") {
 		return 0.05
 	}
+	if strings.Contains(m, "mix-ultra") {
+		return 0.50
+	}
+	if strings.Contains(m, "mix-pro") {
+		return 0.15
+	}
+	if strings.Contains(m, "mix-standard") {
+		return 0.05
+	}
 	return 0.01 // 7b, 8b, default
 }
 
@@ -468,6 +477,24 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 			lastUserMsg = m["content"]
 		}
 	}
+
+	// For paid queries (fee > 0), do "confirmation of data from the internet"
+	// This implements the requested "internet confirmation for GSTD paid requests" scheme
+	if fee > 0 && h.smartRouter != nil && h.smartRouter.WebSearch != nil && lastUserMsg != "" && services.NeedsSearch(lastUserMsg) {
+		searchCtx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+		if webCtx, err := h.smartRouter.WebSearch.Search(searchCtx, lastUserMsg); err == nil && webCtx.HasResults {
+			log.Printf("🌐 [Gateway] Real-time Internet Data confirmed and injected (Paid GSTD Feature)")
+			
+			systemMsg := map[string]string{
+				"role": "system", 
+				"content": "You are GSTD Sovereign AI — an intelligence engine. Here is the verified internet data for the user's query. Use it to provide an extremely accurate answer. " + webCtx.ContextText,
+			}
+			promptMsgs = append([]map[string]string{systemMsg}, promptMsgs...)
+			
+			prompt = "[VERIFIED INTERNET DATA]:\n" + webCtx.ContextText + "\n" + prompt
+		}
+		cancel()
+	}
 	prompt += "assistant: "
 
 	// Public Proof-of-Work: swarm stats for frontend
@@ -485,6 +512,11 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 			h.respondWithUsage(c, req.Model, cached.Content, true, activeDevices, fee)
 			return
 		}
+	}
+
+	if strings.HasPrefix(req.Model, "mix-") {
+		h.handleSmartMix(c, req.Model, promptMsgs, req.Stream, activeDevices, fee)
+		return
 	}
 
 	ollamaReq := map[string]interface{}{
