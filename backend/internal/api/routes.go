@@ -912,6 +912,7 @@ func SetupRoutes(
 				NodeVersion   string `json:"node_version"`
 				UptimeHours   int    `json:"uptime_hours"`
 				QueriesServed int    `json:"queries_served"`
+				IsMobile      bool   `json:"is_mobile"`
 			}
 			if err := c.ShouldBindJSON(&req); err != nil || req.WalletAddress == "" {
 				c.JSON(400, gin.H{"error": "wallet_address required"})
@@ -974,11 +975,18 @@ func SetupRoutes(
 				ON CONFLICT (wallet_address) DO NOTHING
 			`, req.WalletAddress)
 
+			// Track Mobile status
+			deviceType := "pc"
+			if req.IsMobile {
+				deviceType = "mobile"
+			}
+
 			// Try UPDATE existing node first
 			res, err := dbConn.ExecContext(c.Request.Context(), `
-				UPDATE nodes SET status = 'online', last_seen = NOW(), updated_at = NOW(), name = $2
+				UPDATE nodes SET status = 'online', last_seen = NOW(), updated_at = NOW(), name = $2,
+				specs = jsonb_set(COALESCE(specs, '{}'::jsonb), '{device_type}', $3::jsonb)
 				WHERE wallet_address = $1
-			`, req.WalletAddress, nodeName)
+			`, req.WalletAddress, nodeName, fmt.Sprintf(`"%s"`, deviceType))
 			rowsAffected := int64(0)
 			if err != nil {
 				log.Printf("[heartbeat] UPDATE error: %v", err)
@@ -987,10 +995,11 @@ func SetupRoutes(
 			}
 			// If no existing node, INSERT
 			if rowsAffected == 0 {
+				specsJSON := fmt.Sprintf(`{"device_type": "%s"}`, deviceType)
 				if _, err := dbConn.ExecContext(c.Request.Context(), `
-					INSERT INTO nodes (id, wallet_address, name, status, last_seen, created_at, updated_at)
-					VALUES (gen_random_uuid()::text, $1, $2, 'online', NOW(), NOW(), NOW())
-				`, req.WalletAddress, nodeName); err != nil {
+					INSERT INTO nodes (id, wallet_address, name, status, last_seen, created_at, updated_at, specs)
+					VALUES (gen_random_uuid()::text, $1, $2, 'online', NOW(), NOW(), NOW(), $3)
+				`, req.WalletAddress, nodeName, specsJSON); err != nil {
 					log.Printf("[heartbeat] INSERT error: %v", err)
 				}
 			}

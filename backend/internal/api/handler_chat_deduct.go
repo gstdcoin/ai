@@ -80,11 +80,12 @@ func chatDeductHandler(db *sql.DB, burnService *services.BurnService) gin.Handle
 
 		log.Printf("💰 [Chat Deduct] %.4f GSTD from %s for %s", req.Amount, req.WalletAddress[:min(12, len(req.WalletAddress))], req.TierName)
 
-		// ═══ FEE SPLIT: 50% Golden Reserve, 5% Burn, 45% Platform ═══
+		// ═══ FEE SPLIT: 50% Golden Reserve, 5% Burn, 20% Mobile Nodes, 25% Platform ═══
 		go func() {
 			bgCtx := context.Background()
 			reserveFee := req.Amount * 0.50
 			burnFee := req.Amount * 0.05
+			mobileFee := req.Amount * 0.20 // Phone Nodes Network Support Fee
 
 			// 1. Golden Reserve (staking reward pool)
 			if reserveFee > 0 {
@@ -106,6 +107,38 @@ func chatDeductHandler(db *sql.DB, burnService *services.BurnService) gin.Handle
 					BurnAmount:      burnFee,
 					SourceWallet:    req.WalletAddress,
 				})
+			}
+
+			// 3. Mobile Nodes Network Support Cut
+			if mobileFee > 0 {
+				// Find active nodes running in "mobile" app mode
+				rows, err := db.QueryContext(bgCtx, `
+					SELECT wallet_address, id 
+					FROM nodes 
+					WHERE status = 'online' AND specs->>'device_type' = 'mobile' AND last_seen > NOW() - INTERVAL '15 minutes'
+				`)
+				if err == nil {
+					defer rows.Close()
+					type nTarget struct{ w, i string }
+					var targets []nTarget
+					for rows.Next() {
+						var w, i string
+						if rows.Scan(&w, &i) == nil {
+							targets = append(targets, nTarget{w, i})
+						}
+					}
+					
+					if len(targets) > 0 {
+						rewardPerNode := mobileFee / float64(len(targets))
+						for _, t := range targets {
+							_, _ = db.ExecContext(bgCtx, `
+								INSERT INTO node_pending_rewards (owner_wallet, node_id, amount_gstd, reward_type, description, created_at)
+								VALUES ($1, $2, $3, 'tx_fee', 'Mobile Node Network Support Fee (Swarm L1)', NOW())
+							`, t.w, t.i, rewardPerNode)
+						}
+						log.Printf("📱 [Mobile Nodes] Distributed %.4f GSTD fee among %d active phone nodes", mobileFee, len(targets))
+					}
+				}
 			}
 		}()
 
