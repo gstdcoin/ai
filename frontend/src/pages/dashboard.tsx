@@ -89,7 +89,7 @@ export default function DashboardPage() {
     // Show dashboard for authorized users
     return (
         <Dashboard
-            initialTab={(router.query.tab as string) || (router.query.mode === 'mining' || router.query.mining === '1' ? 'home' : 'home')}
+            initialTab={(router.query.tab as string) || 'home'}
             sourceTelegram={router.query.source === 'telegram'}
             modeMining={router.query.mode === 'mining' || router.query.mining === '1'}
         />
