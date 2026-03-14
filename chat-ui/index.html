@@ -404,6 +404,7 @@ function applyLang() {
 // Server-side API: KB lookup + factuality + <think> stripping + SmartMix
 const CHAT_API='https://app.gstdtoken.com/api/chat';
 const MODELS=[
+  {id:'compound',name:'GSTD Compound AI',tier:'free'},
   {id:'llama-3.3-70b',name:'Llama 3.3 70B',tier:'free'},
   {id:'llama-3.1-8b',name:'Llama 3.1 8B Fast',tier:'free'},
   {id:'qwen3-32b',name:'Qwen3 32B',tier:'free'},
@@ -411,8 +412,14 @@ const MODELS=[
   {id:'gpt-oss-120b',name:'GPT-OSS 120B',tier:'pro'},
   {id:'gpt-oss-20b',name:'GPT-OSS 20B',tier:'pro'},
   {id:'kimi-k2',name:'Kimi K2',tier:'pro'},
-  {id:'compound',name:'GSTD Compound AI',tier:'free'},
 ];
+const TIERS=[
+  {id:'free',name:'Single Expert',badge:'🆓',cost:0,experts:1},
+  {id:'standard',name:'Council of 3',badge:'🔬',cost:0.05,experts:3},
+  {id:'pro',name:'Panel of 5',badge:'🔥',cost:0.15,experts:5},
+  {id:'ultra',name:'Swarm of 7',badge:'🧠',cost:0.50,experts:7},
+];
+let selectedTier='free';
 let messages=[], wallet=localStorage.getItem('gstd_wallet')||'', isStreaming=false;
 
 // ═══ Init ═════════════════════════════════════════════════════
@@ -465,6 +472,8 @@ async function sendMessage() {
   if(!text||isStreaming)return;
   const model=document.getElementById('modelSelect').value, modelInfo=MODELS.find(m=>m.id===model);
   if(modelInfo?.tier==='pro'&&!wallet){showToast(t('proRequiresWallet'),'info');document.getElementById('walletModal').classList.add('active');return;}
+  const tier=TIERS.find(t=>t.id===selectedTier)||TIERS[0];
+  if(tier.cost>0&&!wallet){showToast(t('proRequiresWallet'),'info');document.getElementById('walletModal').classList.add('active');return;}
   const w=document.getElementById('welcome');if(w)w.style.display='none';
   addMessage('user',text); messages.push({role:'user',content:text});
   input.value='';input.style.height='auto';document.getElementById('sendBtn').disabled=true;isStreaming=true;
@@ -474,7 +483,7 @@ async function sendMessage() {
     const headers={'Content-Type':'application/json'};
     if(wallet) headers['X-Wallet-Address']=wallet;
     const res=await fetch(CHAT_API,{method:'POST',headers,
-      body:JSON.stringify({model,messages:messages.slice(-20),stream:true})});
+      body:JSON.stringify({model,messages:messages.slice(-20),stream:true,tier:selectedTier})});
     if(!res.ok){const err=await res.json().catch(()=>({}));throw new Error(err.error?.message||err.message||`HTTP ${res.status}`);}
     const reader=res.body.getReader(), decoder=new TextDecoder();let fullText='',buffer='',meta=null;
     while(true){const {done,value}=await reader.read();if(done)break;
@@ -489,8 +498,8 @@ async function sendMessage() {
           if(data.tier)meta=data;
         }catch{}}}
     const elapsed=((Date.now()-startTime)/1000).toFixed(1), tokens=fullText.split(/\s+/).length;
-    const tierBadge=meta?.badge||'🆓';
-    metaEl.textContent=`${tierBadge} ${meta?.tierName||modelInfo?.name||model} · ${elapsed}s · ~${tokens} tokens`;
+    const tierBadge=meta?.badge||tier.badge;
+    metaEl.textContent=`${tierBadge} ${meta?.tierName||tier.name} · ${elapsed}s · ~${tokens} tokens`;
     messages.push({role:'assistant',content:fullText});
   } catch(err){contentEl.textContent=t('errorPrefix')+err.message;contentEl.style.color='var(--g-color-danger)';}
   isStreaming=false;document.getElementById('sendBtn').disabled=!input.value.trim();

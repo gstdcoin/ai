@@ -363,7 +363,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const { model = 'llama-3.3-70b', messages, stream = false, tier = 'free' } = req.body;
+    const { model = 'compound', messages, stream = false, tier = 'free' } = req.body;
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
         return res.status(400).json({ error: 'messages required' });
     }

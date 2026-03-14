@@ -90,7 +90,6 @@ export default function DashboardPage() {
     return (
         <Dashboard
             initialTab={(router.query.tab as string) || (router.query.mode === 'mining' || router.query.mining === '1' ? 'home' : 'home')}
-            initialMode={(router.query.mode as 'standard' | 'ultra') || undefined}
             sourceTelegram={router.query.source === 'telegram'}
             modeMining={router.query.mode === 'mining' || router.query.mining === '1'}
         />
