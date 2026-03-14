@@ -1,7 +1,10 @@
 package config
 
 import (
+	"encoding/json"
 	"fmt"
+	"log"
+	"net/http"
 	"os"
 	"strings"
 )
@@ -108,11 +111,11 @@ func Load() *Config {
 			GoldPoolAddress:          getEnv("GOLD_POOL_ADDRESS", "EQA--JXG8VSyBJmLMqb2J2t4Pya0TS9SXHh7vHh8Iez25sLp"), // Ston.fi Arbitrary Provision target
 			PlatformFeePercent:       getEnvFloat("PLATFORM_FEE_PERCENT", 5.0),
 			WithdrawalLockThreshold:  getEnvFloat("WITHDRAWAL_LOCK_THRESHOLD", 500.0),
-			PlatformWalletAddress:    getEnv("PLATFORM_WALLET_ADDRESS", ""),     // Optional: only for admin operations
-			PlatformWalletPrivateKey: getEnv("PLATFORM_WALLET_PRIVATE_KEY", ""), // Optional: not needed for pull-model
-			PlatformWalletSeed:       getEnv("PLATFORM_WALLET_SEED", ""),        // Optional: not needed for pull-model
+			PlatformWalletAddress:    getEnv("PLATFORM_WALLET_ADDRESS", ""),
+			PlatformWalletPrivateKey: getVaultOrEnv("platform/private_key", "PLATFORM_WALLET_PRIVATE_KEY"),
+			PlatformWalletSeed:       getVaultOrEnv("platform/seed", "PLATFORM_WALLET_SEED"),
 			LiteserverConfigURL:      getEnv("LITESERVER_CONFIG_URL", "https://ton-blockchain.github.io/global.config.json"),
-			HighloadWalletSeed:       getEnv("HIGHLOAD_WALLET_SEED", ""), // 24-word seed for batch payouts
+			HighloadWalletSeed:       getVaultOrEnv("highload/seed", "HIGHLOAD_WALLET_SEED"), // 24-word seed for batch payouts from HashiCorp Vault
 			TONAPIKeys:               getEnv("TON_API_KEYS", ""),         // Comma-separated for rotation (if primary < 100/s)
 		},
 		Server: ServerConfig{
@@ -144,6 +147,40 @@ func getEnv(key, defaultValue string) string {
 		return strings.TrimSpace(strings.Trim(value, "\"'`"))
 	}
 	return strings.TrimSpace(strings.Trim(defaultValue, "\"'`"))
+}
+
+// getVaultOrEnv attempts to read sensitive keys from HashiCorp Vault first.
+// If VAULT_ADDR and VAULT_TOKEN are not set, it securely falls back to OS ENV with a warning.
+func getVaultOrEnv(vaultSecretPath string, envFallback string) string {
+	vaultURL := os.Getenv("VAULT_ADDR")
+	vaultToken := os.Getenv("VAULT_TOKEN")
+
+	if vaultURL == "" || vaultToken == "" {
+		log.Printf("⚠️ SEC-WARN: HashiCorp Vault not configured. Falling back to .env for %s", envFallback)
+		return getEnv(envFallback, "")
+	}
+
+	req, _ := http.NewRequest("GET", fmt.Sprintf("%s/v1/secret/data/%s", vaultURL, vaultSecretPath), nil)
+	req.Header.Set("X-Vault-Token", vaultToken)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil || resp.StatusCode != 200 {
+		log.Printf("⚠️ SEC-WARN: Failed to read from Vault for %s. Falling back to .env. Error: %v", envFallback, err)
+		return getEnv(envFallback, "")
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Data struct {
+			Data map[string]string `json:"data"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err == nil && result.Data.Data["value"] != "" {
+		log.Printf("🔒 SEC-INFO: Successfully retrieved %s from HashiCorp Vault.", envFallback)
+		return result.Data.Data["value"]
+	}
+
+	return getEnv(envFallback, "")
 }
 
 func getEnvFloat(key string, defaultValue float64) float64 {
