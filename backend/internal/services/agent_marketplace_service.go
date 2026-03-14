@@ -303,17 +303,33 @@ func (s *AgentMarketplaceService) RentAgent(ctx context.Context, req *RentReques
 		return nil, fmt.Errorf("failed to create rental: %w", err)
 	}
 
-	// Reserve funds (escrow-like hold)
+	// Process instant payment for the duration/tasks
 	_, err = s.db.ExecContext(ctx, `
-		UPDATE users SET balance = balance - $1, reserved_balance = COALESCE(reserved_balance, 0) + $1
+		UPDATE users SET balance = balance - $1
 		WHERE wallet_address = $2
 	`, estimatedCost, req.RenterWallet)
 
 	if err != nil {
 		// Rollback rental
 		s.db.ExecContext(ctx, "DELETE FROM agent_rentals WHERE id = $1", rentalID)
-		return nil, fmt.Errorf("failed to reserve funds: %w", err)
+		return nil, fmt.Errorf("failed to process payment: %w", err)
 	}
+
+	// Pay owner 80% immediately
+	ownerReward := estimatedCost * 0.80
+	_, err = s.db.ExecContext(ctx, `
+		UPDATE users SET balance = COALESCE(balance, 0) + $1
+		WHERE wallet_address = $2
+	`, ownerReward, ownerWallet)
+
+	// Record burn for the remaining 20%
+	s.burn.RecordBurn(ctx, &BurnRecord{
+		TransactionID:   rentalID,
+		TransactionType: "marketplace_rental",
+		OriginalAmount:  estimatedCost,
+		BurnAmount:      estimatedCost * 0.20,
+		SourceWallet:    req.RenterWallet,
+	})
 
 	log.Printf("🤝 Rental started: agent %s to %s (cost: %.4f GSTD)", req.AgentID[:8], req.RenterWallet[:16], estimatedCost)
 
