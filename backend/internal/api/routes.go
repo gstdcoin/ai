@@ -481,6 +481,32 @@ func SetupRoutes(
 				})
 			})
 
+			// Public Faucet for New Swarm Accounts (Viral Onboarding Tool)
+			v1.POST("/swarm/faucet", func(c *gin.Context) {
+				var req struct {
+					Address string `json:"address" binding:"required"`
+				}
+				if err := c.ShouldBindJSON(&req); err != nil {
+					c.JSON(400, gin.H{"error": "Invalid payload"})
+					return
+				}
+
+				balance, _ := swarmLedger.GetAccountState(req.Address)
+				if balance > 0.01 {
+					c.JSON(400, gin.H{"error": "Faucet only available for new zero-balance accounts"})
+					return
+				}
+
+				// Mint 5.0 S-GSTD
+				swarmLedger.DirectMint(req.Address, 5.0)
+
+				c.JSON(200, gin.H{
+					"status":  "success",
+					"amount":  5.0,
+					"message": "Welcome to Sovereign Swarm L1. You received 5.0 Zero-Gas GSTD.",
+				})
+			})
+
 			// Bridge Oracle Endpoint: Triggered internally when TON L1 deposit is confirmed.
 			// In production, this must be authenticated by the bridge operator key.
 			v1.POST("/bridge/swarm-mint", func(c *gin.Context) {
