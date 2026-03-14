@@ -84,6 +84,8 @@ export default function SovereignTerminalModal({ isOpen, onClose, mode = 'faucet
     } finally {
       setIsClaiming(false);
     }
+  };
+
   const handleAgentChat = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!chatInput.trim() || isClaiming) return;
@@ -95,6 +97,16 @@ export default function SovereignTerminalModal({ isOpen, onClose, mode = 'faucet
 
     try {
       setTerminalLog(prev => [...prev, `> ${agentInfo?.name || 'AGENT'} IS PROCESSING...`]);
+      
+      const messages: any[] = [];
+      if (agentInfo) {
+        messages.push({
+          role: 'system',
+          content: `You are ${agentInfo.name}, an autonomous AI agent operating on the GSTD Swarm L1 Network. Your core capabilities are: ${agentInfo.capabilities.join(', ')}. Act strictly within your specialized role. Provide concise, expert-level responses in a hacker/terminal style where appropriate.`
+        });
+      }
+      messages.push({ role: 'user', content: query });
+
       const res = await fetch(`${API_BASE_URL}/api/v1/chat/completions`, {
         method: 'POST',
         headers: {
@@ -102,8 +114,9 @@ export default function SovereignTerminalModal({ isOpen, onClose, mode = 'faucet
           'Authorization': `Bearer ${address}`
         },
         body: JSON.stringify({
-          messages: [{ role: 'user', content: query }],
-          model: 'llama-3.1-8b' // Default agent model
+          messages: messages,
+          model: 'llama-3.1-8b', // Default agent model
+          agent_id: agentInfo?.id // Optional passing to backend
         })
       });
 
@@ -147,12 +160,15 @@ export default function SovereignTerminalModal({ isOpen, onClose, mode = 'faucet
             {/* Info Panel */}
             <div className="space-y-3 sm:space-y-4">
               <h3 className="text-lg sm:text-xl font-bold text-white tracking-wide">
-                Welcome to the Swarm L1
+                {mode === 'agent_chat' ? `Connected to ${agentInfo?.name || 'Agent'}` : 'Welcome to the Swarm L1'}
               </h3>
               <p className="text-sm text-gray-400 leading-relaxed">
-                You have accessed the core infrastructure of the GSTD Sovereign Network. 
-                <span className="text-emerald-400 font-medium"> The Swarm L1 operates entirely without gas fees, </span> 
-                powered by community nodes representing a fully decentralized compound layer.
+                {mode === 'agent_chat' 
+                  ? 'You are now securely connected to the hired autonomous agent. All requests are processed via P2P encrypted tunnels. Payments are routed automatically to the agent creator.'
+                  : 'You have accessed the core infrastructure of the GSTD Sovereign Network. '
+                }
+                {mode === 'faucet' && <span className="text-emerald-400 font-medium"> The Swarm L1 operates entirely without gas fees, </span>}
+                {mode === 'faucet' && 'powered by community nodes representing a fully decentralized compound layer.'}
               </p>
               
               <div className="space-y-3 mt-4">

@@ -34,6 +34,7 @@ class WorkerService {
     private pendingQueue: any[] = [];
     private deviceId: string = 'browser-' + Math.random().toString(36).substring(7);
     public targetTaskId: string | null = null;
+    private syncInterval: any = null;
 
     // ═══ Wake Lock ═══
     private wakeLock: WakeLockSentinel | null = null;
@@ -309,7 +310,30 @@ class WorkerService {
 
     private startHeartbeat() {
         if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
+        if (this.syncInterval) clearInterval(this.syncInterval);
         this.lastHeartbeatAck = Date.now();
+
+        const getWallet = () => typeof window !== 'undefined' ? useWalletStore.getState().address : null;
+
+        const performHTTPSync = async () => {
+            const currentWallet = getWallet();
+            if (!currentWallet) return;
+            try {
+                const { apiPost } = await import('../lib/apiClient');
+                await apiPost('/nodes/heartbeat', {
+                    wallet_address: currentWallet,
+                    node_name: `TMA Node - ${this.deviceId.substring(8, 12)}`,
+                    is_mobile: /Mobi|Android|iPhone/i.test(navigator.userAgent),
+                    uptime_hours: this.metrics.sessionUptime || 0,
+                    queries_served: this.metrics.totalOps || 0
+                });
+            } catch (e) {
+                logger.debug('HTTP heartbeat sync failed (Node platform API)', e);
+            }
+        };
+
+        // First immediate sync to register the node
+        setTimeout(performHTTPSync, 1500);
 
         this.heartbeatInterval = setInterval(() => {
             if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
@@ -326,10 +350,16 @@ class WorkerService {
             this.ws.send(JSON.stringify({
                 type: 'heartbeat',
                 device_id: this.deviceId,
+                wallet_address: getWallet(),
                 tflops: this.metrics.tflops,
                 battery: this.metrics.batteryLevel,
             }));
         }, 3000);
+
+        // Every 60s update the Backend Node API to keep node status alive on Network Dashboard
+        this.syncInterval = setInterval(() => {
+            performHTTPSync();
+        }, 60000);
     }
 
     private processingTask: boolean = false;
@@ -381,6 +411,10 @@ class WorkerService {
         this.state = 'paused';
         if (this.taskLoop) clearInterval(this.taskLoop);
         if (this.metricsInterval) clearInterval(this.metricsInterval);
+        if (this.syncInterval) {
+            clearInterval(this.syncInterval);
+            this.syncInterval = null;
+        }
         this.releaseWakeLock();
         this.notifyState();
     }
@@ -426,6 +460,7 @@ class WorkerService {
         this.worker = null;
         if (this.ws) this.ws.close();
         if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
+        if (this.syncInterval) clearInterval(this.syncInterval);
         this.releaseWakeLock();
         this.state = 'idle';
         this.notifyState();
