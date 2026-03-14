@@ -15,7 +15,7 @@ description: Current ecosystem state — always read FIRST before any changes
 │                    GSTD ECOSYSTEM                           │
 │                 Server: 82.115.48.228                       │
 │                 OS: Ubuntu 24.04                            │
-│                 Last Update: 2026-03-14                     │
+│                 Last Update: 2026-03-14 (compound unification)│
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  ┌─── NGINX (gstd_nginx_lb) ─── Port 80/443 ─────────┐    │
@@ -52,7 +52,7 @@ description: Current ecosystem state — always read FIRST before any changes
 │                                                             │
 │  ┌─── TELEGRAM BOT (TypeScript) ─────────────────────┐     │
 │  │  Container: gstd-telegram-bot                      │     │
-│  │  Image:     gstd-bot:v37                           │     │
+│  │  Image:     gstd-bot:v38                           │     │
 │  │  Path:      /home/ubuntu/gstdbot                   │     │
 │  └────────────────────────────────────────────────────┘     │
 │                                                             │
@@ -78,7 +78,7 @@ description: Current ecosystem state — always read FIRST before any changes
 |-----------|---------------|------|-----------|
 | **Backend** | `gstd-backend-blue:v148` ×4 | `/home/ubuntu/backend` | `ubuntu-backend-blue-{1..4}` |
 | **Frontend** | `gstd-frontend:v2` (Docker) | `/home/ubuntu/frontend` | `ubuntu-frontend-1` |
-| **Telegram Bot** | `gstd-bot:v37` | `/home/ubuntu/gstdbot` | `gstd-telegram-bot` |
+| **Telegram Bot** | `gstd-bot:v38` | `/home/ubuntu/gstdbot` | `gstd-telegram-bot` |
 | **GSTD Bridge** | `gstd-bridge:latest` | `/home/ubuntu/gstd-bridge` | `gstd-bridge-test` |
 | **Chat UI** | Static HTML | `/home/ubuntu/chat-ui` | *served by nginx* |
 | **PostgreSQL** | `postgres:15-alpine` | — | `gstd_postgres_prod` |
@@ -196,7 +196,7 @@ systemctl is-active gstd-frontend
 | `openai/gpt-oss-120b` | GPT-OSS 120B | ✅ Active |
 | `openai/gpt-oss-20b` | GPT-OSS 20B | ✅ Active |
 | `moonshotai/kimi-k2-instruct` | Kimi K2 | ✅ Active |
-| `groq/compound` | Groq Compound | ✅ Active |
+| `groq/compound` | Groq Compound | ✅ Active (**DEFAULT**) |
 
 ## 🛡️ CORS Allowed Origins (backend routes.go)
 
