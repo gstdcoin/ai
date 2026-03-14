@@ -511,8 +511,13 @@ func SetupRoutes(
 			// In production, this must be authenticated by the bridge operator key.
 			v1.POST("/bridge/swarm-mint", func(c *gin.Context) {
 				apiKey := c.GetHeader("X-Bridge-Key")
-				// Simple prototype auth
-				if apiKey != "genesis-oracle-key-42" {
+				
+				expectedKey := os.Getenv("BRIDGE_ORACLE_KEY")
+				if expectedKey == "" {
+					expectedKey = "genesis-oracle-key-42"
+				}
+
+				if apiKey != expectedKey {
 					c.JSON(401, gin.H{"error": "unauthorized bridge oracle"})
 					return
 				}
