@@ -200,7 +200,20 @@ func (h *TelegramBotHandler) GetBalance(c *gin.Context) {
 	if pending.Valid {
 		p = pending.Float64
 	}
-	c.JSON(http.StatusOK, gin.H{"linked": true, "wallet": wallet, "balance_gstd": b, "pending_gstd": p})
+
+	var swarmBalance float64
+	swarmResp, err := http.Get(fmt.Sprintf("http://127.0.0.1:8080/api/v1/swarm/account/%s", wallet))
+	if err == nil {
+		defer swarmResp.Body.Close()
+		var sData struct {
+			Balance float64 `json:"balance"`
+		}
+		if json.NewDecoder(swarmResp.Body).Decode(&sData) == nil {
+			swarmBalance = sData.Balance
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"linked": true, "wallet": wallet, "balance_gstd": b, "swarm_balance": swarmBalance, "pending_gstd": p})
 }
 
 // GetNodes returns nodes/devices for telegram_id (device_id = tg-{id})

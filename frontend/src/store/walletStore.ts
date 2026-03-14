@@ -15,6 +15,7 @@ interface WalletState {
   address: string | null;
   tonBalance: string | null;
   gstdBalance: number | null;
+  swarmBalance: number | null;
   pendingEarnings: number | null;
   user: User | null;
   // Worker state persistence for TWA
@@ -23,7 +24,7 @@ interface WalletState {
   connect: (address: string) => void;
   disconnect: () => void;
   setAddress: (address: string | null) => void;
-  updateBalance: (ton: string, gstd: string | number, pending?: number) => void;
+  updateBalance: (ton: string, gstd: string | number, swarm?: number | null, pending?: number) => void;
   setUser: (user: User | null) => void;
   setWorkerActive: (active: boolean) => void;
   isHydrated: boolean;
@@ -58,6 +59,7 @@ export const useWalletStore = create<WalletState>()(
       address: null,
       tonBalance: null,
       gstdBalance: null,
+      swarmBalance: null,
       pendingEarnings: null,
       user: null,
       workerActive: false,
@@ -73,6 +75,7 @@ export const useWalletStore = create<WalletState>()(
         address: null,
         tonBalance: null,
         gstdBalance: null,
+        swarmBalance: null,
         user: null,
         workerActive: false,
         lastActiveTimestamp: null
@@ -82,9 +85,10 @@ export const useWalletStore = create<WalletState>()(
         isConnected: !!address,
         lastActiveTimestamp: address ? Date.now() : null
       }),
-      updateBalance: (ton: string, gstd: string | number, pending?: number) => set({
+      updateBalance: (ton: string, gstd: string | number, swarm?: number | null, pending?: number) => set({
         tonBalance: ton,
         gstdBalance: Number(gstd),
+        swarmBalance: swarm !== undefined ? swarm : null,
         pendingEarnings: pending !== undefined ? pending : null
       }),
       setUser: (user: User | null) => set({ user }),

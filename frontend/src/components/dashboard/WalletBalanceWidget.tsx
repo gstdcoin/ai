@@ -21,6 +21,7 @@ import { toast } from '../../lib/toast';
 interface WalletBalance {
     gstd_balance: number;
     ton_balance: number;
+    swarm_balance: number;
     pending_earnings: number;
     pending_payouts: number;
     total_earned: number;
@@ -64,11 +65,15 @@ export const WalletBalanceWidget: React.FC = () => {
             const balanceData = await apiGet<any>(`/wallet/balance?wallet=${address}&address=${address}`); // Support both param names
 
             // Fetch Off-Chain Pending Balance (Viral Economy)
-            const pendingData = await apiGet<{ pending_balance: number }>(`/users/pending_balance`);
+            const pendingData = await apiGet<{ pending_balance: number }>(`/users/pending_balance`).catch(() => ({ pending_balance: 0 }));
+
+            // Fetch Swarm L1 Balance
+            const swarmData = await apiGet<any>(`/swarm/account/${address}`).catch(() => ({ balance: 0 }));
 
             const newBalance: WalletBalance = {
                 gstd_balance: balanceData.gstd_balance ?? balanceData.balance ?? 0,
                 ton_balance: balanceData.ton_balance ?? 0,
+                swarm_balance: swarmData?.balance ?? 0,
                 pending_earnings: balanceData.pending_earnings ?? pendingData.pending_balance ?? 0,
                 pending_payouts: balanceData.pending_payouts ?? 0,
                 total_earned: balanceData.total_earned ?? 0,
@@ -76,7 +81,7 @@ export const WalletBalanceWidget: React.FC = () => {
             };
 
             setBalance(newBalance);
-            updateBalance("0", newBalance.gstd_balance, newBalance.pending_earnings);
+            updateBalance("0", newBalance.gstd_balance, newBalance.swarm_balance, newBalance.pending_earnings);
       setSyncStatus('ok');
 
         } catch (error) {
@@ -151,18 +156,40 @@ export const WalletBalanceWidget: React.FC = () => {
             </div>
 
             <div className="space-y-4">
-                {/* GSTD Balance */}
-                <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-xl p-4 border border-blue-500/20">
+                {/* Swarm GSTD Balance (Zero-Gas) */}
+                <div className="bg-gradient-to-r from-emerald-500/10 to-teal-500/10 rounded-xl p-4 border border-emerald-500/40 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-2 opacity-10">
+                        <Wallet className="w-16 h-16 text-emerald-500" />
+                    </div>
                     <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-400">GSTD</span>
-                        <span className="text-xs px-2 py-0.5 bg-blue-500/20 text-blue-300 rounded-full">
-                            {t('wallet.mainToken')}
+                        <span className="text-sm text-emerald-400 font-medium tracking-wide">Swarm Balance</span>
+                        <span className="text-[10px] px-2 py-0.5 bg-emerald-500/20 text-emerald-300 rounded-full font-semibold uppercase">
+                            Zero Gas (L1)
                         </span>
                     </div>
-                    <p className="text-3xl font-bold text-white mt-2">
+                    <div className="mt-2 flex items-baseline gap-2">
+                        <p className="text-3xl font-bold text-white drop-shadow-md">
+                            {(balance?.swarm_balance || 0).toLocaleString(undefined, { maximumFractionDigits: 4 })}
+                        </p>
+                        <span className="text-sm text-emerald-500 font-bold">GSTD</span>
+                    </div>
+                    <p className="text-xs text-emerald-200/50 mt-1">
+                        Use for AI, Node fees, and Microtransactions
+                    </p>
+                </div>
+
+                {/* TON GSTD Balance */}
+                <div className="bg-gradient-to-r from-blue-500/5 to-purple-500/5 rounded-xl p-4 border border-blue-500/20">
+                    <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-400">Wallet GSTD</span>
+                        <span className="text-[10px] px-2 py-0.5 bg-blue-500/20 text-blue-300 rounded-full font-semibold">
+                            TON L1
+                        </span>
+                    </div>
+                    <p className="text-2xl font-semibold text-white mt-2">
                         {(balance?.gstd_balance || 0).toLocaleString(undefined, { maximumFractionDigits: 4 })}
                     </p>
-                    <p className="text-sm text-gray-500 mt-1">
+                    <p className="text-xs text-gray-500 mt-1">
                         ≈ ${((balance?.gstd_balance || 0) * 0.01).toFixed(2)} USD
                     </p>
                 </div>
@@ -183,11 +210,11 @@ export const WalletBalanceWidget: React.FC = () => {
                 {/* Actions */}
                 <div className="grid grid-cols-2 gap-3">
                     <button
-                        onClick={() => toast.info('Bridge Coming Soon', 'Direct GSTD/XAUt bridge will be available in Phase 2.')}
+                        onClick={() => toast.info('Bridge Opening Soon', 'The Zero-Gas Bridge interface will be available shortly on the frontend.')}
                         className="py-2.5 px-4 rounded-xl bg-orange-500/10 text-orange-400 hover:bg-orange-500/20 border border-orange-500/20 transition-all font-medium text-sm flex items-center justify-center gap-2"
                     >
                         <RefreshCw className="w-4 h-4" />
-                        Bridge / Swap
+                        Deposit to Swarm
                     </button>
                     <button
                         onClick={() => window.open('https://tonviewer.com/' + address, '_blank')}

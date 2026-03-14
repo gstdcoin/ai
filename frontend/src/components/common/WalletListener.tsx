@@ -92,13 +92,15 @@ export default function WalletListener() {
 
                         // Fetch balance + pending earnings
                         try {
-                            const [balanceData, pendingData] = await Promise.all([
+                            const [balanceData, pendingData, swarmData] = await Promise.all([
                                 apiGet<any>('/users/balance'),
                                 apiGet<any>('/users/pending_balance').catch(() => ({ pending_balance: 0 })),
+                                apiGet<any>(`/swarm/account/${walletAddress}`).catch(() => ({ balance: null })),
                             ]);
                             useWalletStore.getState().updateBalance(
                                 (balanceData.ton || 0).toString(),
                                 balanceData.gstd || 0,
+                                swarmData?.balance ?? null,
                                 pendingData.pending_balance || 0
                             );
 
@@ -111,10 +113,14 @@ export default function WalletListener() {
                                     if (bonus?.amount && bonus.amount > 0) {
                                         toast.success(`+${bonus.amount} GSTD`, 'Welcome bonus!');
                                         // Refresh balance
-                                        const freshBalance = await apiGet<any>('/users/balance');
+                                        const [freshBalance, freshSwarm] = await Promise.all([
+                                            apiGet<any>('/users/balance'),
+                                            apiGet<any>(`/swarm/account/${walletAddress}`).catch(() => ({ balance: null }))
+                                        ]);
                                         useWalletStore.getState().updateBalance(
                                             (freshBalance.ton || 0).toString(),
                                             freshBalance.gstd || 0,
+                                            freshSwarm?.balance ?? null,
                                             pendingData.pending_balance || 0
                                         );
                                     }
@@ -151,13 +157,15 @@ export default function WalletListener() {
 
         const fetchBalance = async () => {
             try {
-                const [balanceData, pendingData] = await Promise.all([
+                const [balanceData, pendingData, swarmData] = await Promise.all([
                     apiGet<any>('/users/balance'),
                     apiGet<any>('/users/pending_balance').catch(() => ({ pending_balance: 0 })),
+                    apiGet<any>(`/swarm/account/${state.address}`).catch(() => ({ balance: null })),
                 ]);
                 useWalletStore.getState().updateBalance(
                     (balanceData.ton || 0).toString(),
                     balanceData.gstd || 0,
+                    swarmData?.balance ?? null,
                     pendingData.pending_balance || 0
                 );
             } catch (e) {
