@@ -8,6 +8,8 @@ import {
     ChevronRight, ExternalLink, Info, Activity, Plus
 } from 'lucide-react';
 import { toast } from '../../lib/toast';
+import SovereignTerminalModal from '../dashboard/SovereignTerminalModal';
+import CreateAgentModal from './CreateAgentModal';
 
 interface Agent {
     agent_id: string;
@@ -35,6 +37,8 @@ export default function AgentMarketplace() {
     });
     const [rentingAgentId, setRentingAgentId] = useState<string | null>(null);
     const [rentedAgents, setRentedAgents] = useState<Set<string>>(new Set());
+    const [chatAgent, setChatAgent] = useState<any>(null);
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
     const fetchAgents = useCallback(async () => {
         setLoading(true);
@@ -97,8 +101,12 @@ export default function AgentMarketplace() {
                         No middlemen. Pure A2A economy.
                     </p>
                     <div className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4">
-                        <button className="px-6 py-2.5 sm:px-8 sm:py-3 bg-white text-black rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-violet-400 hover:text-white transition-all transform hover:scale-105">
-                            <Plus size={18} />{t('list_your_agent', 'List Your Agent')}</button>
+                        <button 
+                            onClick={() => setIsCreateModalOpen(true)}
+                            className="px-6 py-2.5 sm:px-8 sm:py-3 bg-white text-black rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-violet-400 hover:text-white transition-all transform hover:scale-105"
+                        >
+                            <Plus size={18} />{t('list_your_agent', 'List Your Agent')}
+                        </button>
                         <button className="px-8 py-3 bg-white/5 border border-white/10 text-white rounded-xl font-bold hover:bg-white/10 transition-all">{t('how_it_works', 'How it Works')}</button>
                     </div>
                 </div>
@@ -117,6 +125,7 @@ export default function AgentMarketplace() {
                                 key={agent.agent_id} 
                                 agent={agent} 
                                 onRent={() => handleRentAgent(agent)} 
+                                onChat={() => setChatAgent({ name: agent.name, id: agent.agent_id, capabilities: agent.capabilities })}
                                 featured 
                                 isRenting={rentingAgentId === agent.agent_id}
                                 isRented={rentedAgents.has(agent.agent_id)}
@@ -175,6 +184,7 @@ export default function AgentMarketplace() {
                                 key={agent.agent_id} 
                                 agent={agent} 
                                 onRent={() => handleRentAgent(agent)} 
+                                onChat={() => setChatAgent({ name: agent.name, id: agent.agent_id, capabilities: agent.capabilities })}
                                 isRenting={rentingAgentId === agent.agent_id}
                                 isRented={rentedAgents.has(agent.agent_id)}
                             />
@@ -182,11 +192,24 @@ export default function AgentMarketplace() {
                     </div>
                 )}
             </div>
+
+            <SovereignTerminalModal
+                isOpen={!!chatAgent}
+                onClose={() => setChatAgent(null)}
+                mode="agent_chat"
+                agentInfo={chatAgent}
+            />
+
+            <CreateAgentModal
+                isOpen={isCreateModalOpen}
+                onClose={() => setIsCreateModalOpen(false)}
+                onSuccess={() => fetchAgents()}
+            />
         </div>
     );
 }
 
-function AgentCard({ agent, onRent, featured = false, isRenting = false, isRented = false }: { agent: Agent, onRent: () => void, featured?: boolean, isRenting?: boolean, isRented?: boolean }) {
+function AgentCard({ agent, onRent, onChat, featured = false, isRenting = false, isRented = false }: { agent: Agent, onRent: () => void, onChat: () => void, featured?: boolean, isRenting?: boolean, isRented?: boolean }) {
     const { t } = useTranslation('common');
     return (
         <div className={`group relative glass-card p-6 overflow-hidden transition-all duration-500 hover:border-violet-500/30 ${featured ? 'border-amber-500/20' : 'border-white/5'}`}>
@@ -237,17 +260,17 @@ function AgentCard({ agent, onRent, featured = false, isRenting = false, isRente
                 </div>
 
                 <button
-                    onClick={isRented ? undefined : onRent}
-                    disabled={isRenting || isRented}
+                    onClick={isRented ? onChat : onRent}
+                    disabled={isRenting}
                     className={`w-full mt-6 py-3 border rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
                         isRented 
-                        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 cursor-default'
+                        ? 'bg-amber-500/20 text-amber-400 border-amber-500/30 hover:bg-amber-500/30'
                         : isRenting
                         ? 'bg-white/10 text-white/50 border-white/10 cursor-wait'
                         : 'bg-white/5 border-white/10 hover:bg-white text-white hover:text-black group-hover:shadow-[0_0_20px_rgba(139,92,246,0.2)]'
                     }`}
                 >
-                    {isRenting ? 'Hiring...' : isRented ? 'Working' : t('hire_agent', 'Hire Agent')}
+                    {isRenting ? 'Hiring...' : isRented ? 'Open Chat' : t('hire_agent', 'Hire Agent')}
                 </button>
             </div>
         </div>
