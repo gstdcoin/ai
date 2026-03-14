@@ -4,7 +4,7 @@
 # One command to install, run, and manage your GSTD compute node.
 #
 # Usage:
-#   curl -fsSL https://app.gstdtoken.com/node-setup.sh | bash
+#   curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash
 #   or
 #   bash node-runner.sh start
 #
@@ -459,7 +459,7 @@ show_help() {
     echo -e "  ${GREEN}help${NC}        Show this help"
     echo ""
     echo -e "${BOLD}Quick Start:${NC}"
-    echo -e "  ${MAGENTA}curl -fsSL https://app.gstdtoken.com/node-setup.sh | bash${NC}"
+    echo -e "  ${MAGENTA}curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash${NC}"
     echo ""
     echo -e "${BOLD}After install:${NC}"
     echo -e "  1. Set your TON wallet in ${MAGENTA}~/.gstd/.env${NC}"

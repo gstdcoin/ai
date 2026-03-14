@@ -1,16 +1,51 @@
-node_modules
-# vendor
-bin
-server
+# Node.js (frontend cross-contamination prevention)
+node_modules/
+.next/
+package.json
+package-lock.json
+*.config.js
+*.config.mjs
+next-env.d.ts
+tsconfig*.json
+vercel.json
+.eslintrc*
+.lintstagedrc*
+.husky/
+
+# Go compiled binaries
+gstd-backend
+gstd-v*
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Version control
 .git
 .gitignore
 .dockerignore
+
+# Docker
 Dockerfile
-docker-compose.yml
-docker-compose.prod.yml
+Dockerfile.*
+docker-compose*.yml
+
+# Documentation (keep docs/*.go for swagger, exclude .md only)
 README.md
-docs.go
-swagger.json
-swagger.yaml
-*.log
+docs/*.md
+docs/*.json
+docs/*.yaml
+
+# IDE / OS
+.idea/
+.vscode/
 .DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Build artifacts
+*.log
+nohup.out
+bin/
+tmp/

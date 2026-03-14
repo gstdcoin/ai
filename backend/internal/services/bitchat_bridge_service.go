@@ -86,8 +86,7 @@ func (s *BitchatBridgeService) tick(ctx context.Context) {
 		if msg == nil {
 			continue
 		}
-		// TODO: integrate with bitchat (bitchat-python, native API, or relay process)
-		// For now: log the message that would be broadcast
+		// FUTURE: integrate with bitchat mesh (bitchat-python SDK or relay). Set BITCHAT_BRIDGE_ENABLED=1
 		if err := s.sendToBitchat(ctx, msg); err != nil {
 			log.Printf("[BitchatBridge] send: %v", err)
 		}
@@ -152,7 +151,7 @@ func (s *BitchatBridgeService) buildGstdTask(t taskRow) *GstdTaskMessage {
 // sendToBitchat broadcasts the message. Placeholder: logs until bitchat API/SDK integration.
 func (s *BitchatBridgeService) sendToBitchat(ctx context.Context, msg *GstdTaskMessage) error {
 	raw, _ := json.Marshal(msg)
-	// TODO: use bitchat-python, permissionlesstech/bitchat SDK, or relay process
+	// FUTURE: replace with bitchat-python SDK or permissionlesstech/bitchat relay
 	log.Printf("[BitchatBridge] would broadcast gstd:task %s: %s", msg.Payload["task_id"], string(raw))
 	return nil
 }
@@ -167,7 +166,7 @@ func (s *BitchatBridgeService) IngestResult(ctx context.Context, raw []byte) err
 	if m.Type != "gstd:result" || m.Payload.TaskID == "" || m.Payload.DeviceID == "" {
 		return nil // ignore invalid
 	}
-	// TODO: POST /device/tasks/:id/result with bridge auth
+	// FUTURE: POST /device/tasks/:id/result with bridge auth when bitchat SDK integrated
 	log.Printf("[BitchatBridge] would submit result task=%s device=%s", m.Payload.TaskID, m.Payload.DeviceID)
 	return nil
 }

@@ -1,13 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'next-i18next';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  LineChart, Line, AreaChart, Area
+  AreaChart, Area
 } from 'recharts';
-import { SkeletonLoader } from '../common/SkeletonLoader';
 import { logger } from '../../lib/logger';
 import { apiGet } from '../../lib/apiClient';
-import { API_BASE_URL } from '../../lib/config';
 import { toast } from '../../lib/toast';
 import { RefreshCw } from 'lucide-react';
 import InvestmentSavingsWidget from './InvestmentSavingsWidget';
@@ -44,19 +42,7 @@ export default function StatsPanel() {
   const [completionData, setCompletionData] = useState<TaskCompletionData[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadStats();
-    loadPoolStatus();
-    loadCompletionData();
-    const interval = setInterval(() => {
-      loadStats();
-      loadPoolStatus();
-      loadCompletionData();
-    }, 15000); // Update every 15 seconds (increased from 10)
-    return () => clearInterval(interval);
-  }, []);
-
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     try {
       const data = await apiGet<Stats>('/stats');
 
@@ -78,9 +64,9 @@ export default function StatsPanel() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
-  const loadPoolStatus = async () => {
+  const loadPoolStatus = useCallback(async () => {
     try {
       const data = await apiGet<PoolStatus>('/pool/status');
 
@@ -91,9 +77,9 @@ export default function StatsPanel() {
       logger.error('Error loading pool status', error);
       // Don't show toast for pool status errors as it's not critical
     }
-  };
+  }, []);
 
-  const loadCompletionData = async () => {
+  const loadCompletionData = useCallback(async () => {
     try {
       const data = await apiGet<{ data: TaskCompletionData[] }>('/stats/tasks/completion', { period: 'day' });
 
@@ -104,7 +90,19 @@ export default function StatsPanel() {
       logger.error('Error loading task completion data', error);
       // Don't show toast for completion data errors as it's not critical
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadStats();
+    loadPoolStatus();
+    loadCompletionData();
+    const interval = setInterval(() => {
+      loadStats();
+      loadPoolStatus();
+      loadCompletionData();
+    }, 15000); // Update every 15 seconds (increased from 10)
+    return () => clearInterval(interval);
+  }, [loadStats, loadPoolStatus, loadCompletionData]);
 
   const handleRefresh = async () => {
     setLoading(true);

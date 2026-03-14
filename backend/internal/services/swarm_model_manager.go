@@ -13,6 +13,12 @@ import (
 	"time"
 )
 
+const (
+	defaultModelName = "qwen2.5-coder:7b"
+	llama31Family    = "llama3.1"
+	contentTypeJSON  = "application/json"
+)
+
 // SwarmModelManager handles automatic model distribution and updates across the swarm.
 // As the swarm grows, it auto-pulls smarter models and keeps them updated.
 //
@@ -62,7 +68,7 @@ type ModelInfo struct {
 var modelTiers = []ModelInfo{
 	// ── Tier 1-2: Small Fast (any node can run) ──
 	{
-		Name: "qwen2.5-coder:7b", Family: "qwen2.5-coder", Size: "4.7GB", Tier: 1, MinNodes: 1,
+		Name: defaultModelName, Family: "qwen2.5-coder", Size: "4.7GB", Tier: 1, MinNodes: 1,
 		Capabilities: []string{"code", "general", "fast", "debug", "refactor"},
 		CostGSTD:     0.05, Intelligence: "basic", ParamCount: "7B", UpdatePolicy: "latest",
 	},
@@ -74,7 +80,7 @@ var modelTiers = []ModelInfo{
 
 	// ── Tier 3-4: Specialized (10+ nodes) ──
 	{
-		Name: "llama3.1:8b", Family: "llama3.1", Size: "4.7GB", Tier: 3, MinNodes: 10,
+		Name: "llama3.1:8b", Family: llama31Family, Size: "4.7GB", Tier: 3, MinNodes: 10,
 		Capabilities: []string{"conversation", "creative", "multilingual", "writing", "chat"},
 		CostGSTD:     0.06, Intelligence: "advanced", ParamCount: "8B", UpdatePolicy: "latest",
 	},
@@ -93,7 +99,7 @@ var modelTiers = []ModelInfo{
 
 	// ── Tier 6: Large 70B (100+ nodes — GPT-4 class) ──
 	{
-		Name: "llama3.1:70b", Family: "llama3.1", Size: "40GB", Tier: 6, MinNodes: 100,
+		Name: "llama3.1:70b", Family: llama31Family, Size: "40GB", Tier: 6, MinNodes: 100,
 		Capabilities: []string{"gpt4_class", "reasoning", "creative", "code", "analysis", "research"},
 		CostGSTD:     0.20, Intelligence: "frontier", ParamCount: "70B", UpdatePolicy: "latest",
 	},
@@ -107,7 +113,7 @@ var modelTiers = []ModelInfo{
 
 	// ── Tier 8: Ultra 405B (500+ nodes — most intelligent open model) ──
 	{
-		Name: "llama3.1:405b", Family: "llama3.1", Size: "230GB", Tier: 8, MinNodes: 500,
+		Name: "llama3.1:405b", Family: llama31Family, Size: "230GB", Tier: 8, MinNodes: 500,
 		Capabilities: []string{"ultra", "gpt4o_class", "research", "code_architect", "creative_genius", "polymath"},
 		CostGSTD:     0.50, Intelligence: "ultra", ParamCount: "405B", UpdatePolicy: "stable",
 	},
@@ -274,7 +280,8 @@ func (smm *SwarmModelManager) getModelDigest(name string) string {
 	}
 
 	body, _ := json.Marshal(map[string]string{"name": name})
-	resp, err := http.Post(smm.ollamaURL+"/api/show", "application/json", strings.NewReader(string(body)))
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Post(smm.ollamaURL+"/api/show", contentTypeJSON, strings.NewReader(string(body)))
 	if err != nil {
 		return ""
 	}
@@ -299,7 +306,7 @@ func (smm *SwarmModelManager) pullModelUpdate(model ModelInfo, oldDigest string)
 	})
 
 	req, _ := http.NewRequest("POST", smm.ollamaURL+"/api/pull", strings.NewReader(string(body)))
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", contentTypeJSON)
 
 	client := &http.Client{Timeout: 60 * time.Minute} // large models need more time
 	resp, err := client.Do(req)
@@ -351,7 +358,7 @@ func (smm *SwarmModelManager) pullModel(model ModelInfo) {
 	})
 
 	req, _ := http.NewRequest("POST", smm.ollamaURL+"/api/pull", strings.NewReader(string(body)))
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", contentTypeJSON)
 
 	client := &http.Client{Timeout: 120 * time.Minute} // 405B can take hours
 	resp, err := client.Do(req)
@@ -398,7 +405,8 @@ func (smm *SwarmModelManager) refreshLoadedModels() {
 		return
 	}
 
-	resp, err := http.Get(smm.ollamaURL + "/api/tags")
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Get(smm.ollamaURL + "/api/tags")
 	if err != nil {
 		return
 	}
@@ -529,6 +537,34 @@ func (smm *SwarmModelManager) GetSwarmStatus() map[string]interface{} {
 	}
 }
 
+// findBestModel returns the highest-tier loaded model (must be called under RLock)
+func (smm *SwarmModelManager) findBestModel() string {
+	bestTier := 0
+	bestName := defaultModelName
+	for _, m := range smm.activeModels {
+		if m.Loaded && m.Tier > bestTier {
+			bestTier = m.Tier
+			bestName = m.Name
+		}
+	}
+	return bestName
+}
+
+// scoreModel returns capability match score for a model against a query
+func scoreModel(m ModelInfo, lower string) int {
+	s := 0
+	for _, cap := range m.Capabilities {
+		if strings.Contains(lower, cap) {
+			s += 10
+		}
+	}
+	if strings.Contains(lower, "complex") || strings.Contains(lower, "research") ||
+		strings.Contains(lower, "architect") {
+		s += m.Tier
+	}
+	return s
+}
+
 // RouteRequest selects the best model for a given task based on capabilities
 func (smm *SwarmModelManager) RouteRequest(capability string) string {
 	smm.mu.RLock()
@@ -536,7 +572,6 @@ func (smm *SwarmModelManager) RouteRequest(capability string) string {
 
 	lower := strings.ToLower(capability)
 
-	// Score each model by capability match
 	type scored struct {
 		name  string
 		score int
@@ -548,24 +583,12 @@ func (smm *SwarmModelManager) RouteRequest(capability string) string {
 		if !m.Loaded {
 			continue
 		}
-		s := 0
-		for _, cap := range m.Capabilities {
-			if strings.Contains(lower, cap) {
-				s += 10
-			}
-		}
-		// Prefer higher-tier models for complex queries
-		if strings.Contains(lower, "complex") || strings.Contains(lower, "research") ||
-			strings.Contains(lower, "architect") {
-			s += m.Tier // bonus for bigger models
-		}
-		if s > 0 {
+		if s := scoreModel(m, lower); s > 0 {
 			matches = append(matches, scored{m.Name, s, m.Tier})
 		}
 	}
 
 	if len(matches) > 0 {
-		// Sort by score desc, tier desc (prefer smartest matching model)
 		sort.Slice(matches, func(i, j int) bool {
 			if matches[i].score == matches[j].score {
 				return matches[i].tier > matches[j].tier
@@ -575,30 +598,12 @@ func (smm *SwarmModelManager) RouteRequest(capability string) string {
 		return matches[0].name
 	}
 
-	// Default: highest tier available
-	bestTier := 0
-	bestName := "qwen2.5-coder:7b"
-	for _, m := range smm.activeModels {
-		if m.Loaded && m.Tier > bestTier {
-			bestTier = m.Tier
-			bestName = m.Name
-		}
-	}
-	return bestName
+	return smm.findBestModel()
 }
 
 // RouteBestModel returns the smartest available model
 func (smm *SwarmModelManager) RouteBestModel() string {
 	smm.mu.RLock()
 	defer smm.mu.RUnlock()
-
-	bestTier := 0
-	bestName := "qwen2.5-coder:7b"
-	for _, m := range smm.activeModels {
-		if m.Loaded && m.Tier > bestTier {
-			bestTier = m.Tier
-			bestName = m.Name
-		}
-	}
-	return bestName
+	return smm.findBestModel()
 }

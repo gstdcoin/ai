@@ -82,7 +82,7 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
         if (typeof gstd === 'number' && gstd >= 0) {
           useWalletStore.getState().updateBalance('0', gstd);
         }
-      } catch { /* silent */ }
+      } catch (_e) { /* silent */ }
     };
     if (gstdBalance == null) fetchBalance();
   }, [address, gstdBalance]);
@@ -402,7 +402,7 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
                 } : m
               ));
             }
-          } catch { /* skip malformed SSE chunks */ }
+          } catch (_e) { /* skip malformed SSE chunks */ }
         }
       }
 

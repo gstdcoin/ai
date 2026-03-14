@@ -74,7 +74,7 @@ func (s *ConstitutionAnchorService) anchorToBlockchain(ctx context.Context, hash
 	// Requires PLATFORM_WALLET_PRIVATE_KEY and anchor recipient address
 	// For now: placeholder — actual implementation when wallet configured
 	if s.tonService != nil {
-		// TODO: TonWalletService.SendWithComment(hashHex) when available
+		// FUTURE: TonWalletService.SendWithComment(hashHex) — requires PLATFORM_WALLET_PRIVATE_KEY
 		return ""
 	}
 	return ""

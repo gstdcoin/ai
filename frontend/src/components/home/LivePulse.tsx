@@ -95,7 +95,7 @@ export default function LivePulse({ className = '' }: { className?: string }) {
                 }
 
                 prevStatsRef.current = { ...stats };
-            } catch {
+            } catch (_e) {
                 // Silent — no fake events on error
             }
         };

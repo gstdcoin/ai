@@ -12,10 +12,10 @@ description: Full GSTD ecosystem health check and audit
 docker ps -a --format "table {{.Names}}\t{{.Image}}\t{{.Status}}" 2>&1
 ```
 
-## 2. Check backend health
+## 2. Check backend health (inside Docker network)
 
 ```bash
-curl -s http://localhost:8080/api/v1/health | python3 -m json.tool
+docker exec ubuntu-backend-blue-1 wget -qO- http://localhost:8080/api/v1/health 2>&1 | python3 -m json.tool
 ```
 
 ## 3. Check external endpoints
@@ -41,9 +41,9 @@ SELECT 'tasks', COUNT(*), COUNT(*) FILTER(WHERE status='completed') FROM tasks;"
 ## 5. Check Redis health
 
 ```bash
-docker exec gstd_redis_prod redis-cli -a GstdRedis2026 ping
-docker exec gstd_redis_prod redis-cli -a GstdRedis2026 dbsize
-docker exec gstd_redis_prod redis-cli -a GstdRedis2026 info memory | head -5
+docker exec gstd_redis_prod redis-cli -a ${REDIS_PASSWORD:-GstdRedis2026} ping 2>/dev/null
+docker exec gstd_redis_prod redis-cli -a ${REDIS_PASSWORD:-GstdRedis2026} dbsize 2>/dev/null
+docker exec gstd_redis_prod redis-cli -a ${REDIS_PASSWORD:-GstdRedis2026} info memory 2>/dev/null | head -5
 ```
 
 ## 6. Check backend logs for errors
@@ -71,9 +71,21 @@ docker system df 2>&1
 docker logs --tail 10 gstd-telegram-bot 2>&1
 ```
 
-## 10. Check frontend status
+## 10. Check frontend status (systemd)
 
 ```bash
-curl -s -o /dev/null -w '%{http_code}' http://localhost:3000 && echo " frontend OK"
-pgrep -f "next-serve" | head -1
+systemctl is-active gstd-frontend && echo "frontend OK"
+curl -s -o /dev/null -w '%{http_code}' http://localhost:3000 && echo " responds OK"
+```
+
+## 11. Check bridge status
+
+```bash
+docker logs --tail 5 gstd-bridge-test 2>&1
+```
+
+## 12. Check image cleanup (should be current + rollback only)
+
+```bash
+docker images --format "{{.Repository}}:{{.Tag}} {{.Size}}" | grep -E "gstd|backend|bot|bridge" | sort
 ```

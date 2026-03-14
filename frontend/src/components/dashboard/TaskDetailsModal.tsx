@@ -1,4 +1,4 @@
-import { useState, useEffect, memo } from 'react';
+import { useState, useEffect, memo, useCallback } from 'react';
 import { useTranslation } from 'next-i18next';
 import { useWalletStore } from '../../store/walletStore';
 import { logger } from '../../lib/logger';
@@ -26,7 +26,7 @@ interface TaskDetails {
   executor_payout_status?: string;
   min_trust_score?: number;
   confidence_depth?: number;
-  result?: any;
+  result?: unknown;
 }
 
 function TaskDetailsModal({ taskId, onClose }: TaskDetailsModalProps) {
@@ -34,14 +34,10 @@ function TaskDetailsModal({ taskId, onClose }: TaskDetailsModalProps) {
   const { address } = useWalletStore();
   const [task, setTask] = useState<TaskDetails | null>(null);
   const [loading, setLoading] = useState(true);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<unknown>(null);
   const [loadingResult, setLoadingResult] = useState(false);
 
-  useEffect(() => {
-    loadTaskDetails();
-  }, [taskId]);
-
-  const loadTaskDetails = async () => {
+  const loadTaskDetails = useCallback(async () => {
     setLoading(true);
     try {
       const data = await apiGet<TaskDetails>(`/tasks/${taskId}`);
@@ -51,7 +47,11 @@ function TaskDetailsModal({ taskId, onClose }: TaskDetailsModalProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [taskId]);
+
+  useEffect(() => {
+    loadTaskDetails();
+  }, [loadTaskDetails]);
 
   const loadResult = async () => {
     if (!address) return;

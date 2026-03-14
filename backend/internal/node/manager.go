@@ -6,7 +6,10 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"runtime"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -261,12 +264,30 @@ func detectCapabilities() *SystemCapabilities {
 		Arch:     runtime.GOARCH,
 	}
 
-	// Memory detection (simplified; production uses OS-specific APIs)
-	var memStats runtime.MemStats
-	runtime.ReadMemStats(&memStats)
-	caps.TotalMemGB = float64(memStats.Sys) / (1024 * 1024 * 1024)
-	if caps.TotalMemGB < 1 {
-		caps.TotalMemGB = 4 // minimum fallback
+	// L5 fix: Read real system memory from /proc/meminfo on Linux
+	caps.TotalMemGB = 4 // fallback
+	if runtime.GOOS == "linux" {
+		if data, err := os.ReadFile("/proc/meminfo"); err == nil {
+			for _, line := range strings.Split(string(data), "\n") {
+				if strings.HasPrefix(line, "MemTotal:") {
+					fields := strings.Fields(line)
+					if len(fields) >= 2 {
+						if kb, err := strconv.ParseFloat(fields[1], 64); err == nil {
+							caps.TotalMemGB = kb / (1024 * 1024)
+						}
+					}
+					break
+				}
+			}
+		}
+	} else {
+		// macOS/other: use Go runtime as approximation
+		var memStats runtime.MemStats
+		runtime.ReadMemStats(&memStats)
+		caps.TotalMemGB = float64(memStats.Sys) / (1024 * 1024 * 1024)
+		if caps.TotalMemGB < 1 {
+			caps.TotalMemGB = 4
+		}
 	}
 
 	// GPU detection would use nvidia-smi or similar
@@ -325,9 +346,4 @@ type EarningEstimate struct {
 	DaysToFirst int     `json:"days_to_first_gstd"`
 }
 
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
+// M8: Removed custom max() — Go 1.21+ has builtin max()

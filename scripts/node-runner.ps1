@@ -10,7 +10,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$GSTDVersion = "1.0.0"
+$GSTDVersion = "3.2.0"
 $GSTDDir = Join-Path $env:USERPROFILE ".gstd"
 $GSTDAPI = if ($env:GSTD_API) { $env:GSTD_API } else { "https://app.gstdtoken.com" }
 

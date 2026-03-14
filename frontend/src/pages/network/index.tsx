@@ -1,6 +1,6 @@
 import { useTranslation } from 'next-i18next';
 import Link from 'next/link';
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import Head from 'next/head';
 import { apiGet } from '@/lib/apiClient';
 
@@ -53,13 +53,7 @@ export default function NetworkMapPage() {
     const lastClickRef = useRef(0);
     const clickCountRef = useRef(0);
 
-    useEffect(() => {
-        fetchPoints();
-        const interval = setInterval(fetchPoints, 10000); // Live updates
-        return () => clearInterval(interval);
-    }, []);
-
-    const fetchPoints = async () => {
+    const fetchPoints = useCallback(async () => {
         try {
             const data = await apiGet<NetworkPoint[]>('/network/map');
             setPoints(data || []);
@@ -68,7 +62,13 @@ export default function NetworkMapPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        fetchPoints();
+        const interval = setInterval(fetchPoints, 10000); // Live updates
+        return () => clearInterval(interval);
+    }, [fetchPoints]);
 
     // Calculate stats
     const stats = useMemo(() => {

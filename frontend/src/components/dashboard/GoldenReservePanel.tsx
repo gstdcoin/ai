@@ -72,7 +72,7 @@ export default function GoldenReservePanel() {
 
       if (poolRes.status === 'fulfilled' && poolRes.value) setPoolStatus(poolRes.value);
       if (statsRes.status === 'fulfilled' && statsRes.value) setPublicStats(statsRes.value);
-    } catch { /* silent */ }
+    } catch (_e) { /* silent */ }
     setLoading(false);
   }, []);
 

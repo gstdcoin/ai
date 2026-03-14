@@ -88,7 +88,7 @@ func (s *NodeService) RegisterNode(ctx context.Context, walletAddress string, na
 		Status:        status,
 		CPUModel:      cpuModel,
 		RAMGB:         ramGB,
-		TrustScore:    0.3,
+		TrustScore:    0.5,
 		Country:       country,
 		Latitude:      lat,
 		Longitude:     lon,
@@ -149,7 +149,7 @@ func (s *NodeService) ActivateWalletAsNode(ctx context.Context, walletAddress st
 	`, walletAddress)
 	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO nodes (id, wallet_address, name, status, trust_score, last_seen, created_at, updated_at)
-		VALUES ($1, $2, $3, 'online', 0.3, NOW(), NOW(), NOW())
+		VALUES ($1, $2, $3, 'online', 0.5, NOW(), NOW(), NOW())
 		ON CONFLICT (id) DO UPDATE SET status = 'online', last_seen = NOW(), updated_at = NOW()
 	`, walletAddress, walletAddress, name)
 	if err != nil {
@@ -330,7 +330,7 @@ func (s *NodeService) UpdateHeartbeat(ctx context.Context, walletAddress string)
 	// 1. Always update Redis immediately (fast path)
 	if s.redis != nil {
 		onlineKey := fmt.Sprintf("worker:online:%s", walletAddress)
-		s.redis.Set(ctx, onlineKey, "online", 120*time.Second) // 2 min TTL
+		s.redis.Set(ctx, onlineKey, "online", 90*time.Second) // 90s TTL (standardized)
 
 		// Add to batch update set in Redis
 		s.redis.SAdd(ctx, "workers:heartbeat:pending", walletAddress)
@@ -486,13 +486,13 @@ func (s *NodeService) UpdateHealthStats(ctx context.Context, identifier string, 
 		if isUUID {
 			_, err = s.db.ExecContext(ctx, `
 				INSERT INTO nodes (id, wallet_address, name, status, trust_score, last_seen, created_at, updated_at)
-				VALUES ($1, $1, 'auto-registered', 'online', 50, NOW(), NOW(), NOW())
+				VALUES ($1, $1, 'auto-registered', 'online', 0.5, NOW(), NOW(), NOW())
 				ON CONFLICT (id) DO UPDATE SET status = 'online', last_seen = NOW(), updated_at = NOW()
 			`, identifier)
 		} else {
 			_, err = s.db.ExecContext(ctx, `
 				INSERT INTO nodes (id, wallet_address, name, status, trust_score, last_seen, created_at, updated_at)
-				VALUES (gen_random_uuid(), $1, 'auto-registered', 'online', 50, NOW(), NOW(), NOW())
+				VALUES (gen_random_uuid(), $1, 'auto-registered', 'online', 0.5, NOW(), NOW(), NOW())
 				ON CONFLICT (wallet_address) DO UPDATE SET status = 'online', last_seen = NOW(), updated_at = NOW()
 			`, identifier)
 		}

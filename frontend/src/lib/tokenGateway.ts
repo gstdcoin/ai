@@ -81,7 +81,7 @@ class TokenGatewayService {
                 pending: platformRes?.pending || 0,
                 escrow: platformRes?.escrow || 0,
             };
-        } catch {
+        } catch (_e) {
             return { gstd: 0, gstdOnChain: 0, gstdPlatform: 0, ton: 0, pending: 0, escrow: 0 };
         }
     }
@@ -105,7 +105,7 @@ class TokenGatewayService {
             const ton = (tonData?.balance || 0) / 1e9;
 
             return { gstd, ton };
-        } catch {
+        } catch (_e) {
             return { gstd: 0, ton: 0 };
         }
     }
@@ -184,7 +184,7 @@ class TokenGatewayService {
                 usd: res?.gstd_price_usd || 0.00028,
                 tonPerGstd: res?.ton_per_gstd || 0.00005,
             };
-        } catch {
+        } catch (_e) {
             return { usd: 0.00028, tonPerGstd: 0.00005 };
         }
     }

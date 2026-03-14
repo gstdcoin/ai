@@ -1,40 +1,82 @@
 {
-  "name": "GSTD Platform",
-  "description": "Sovereign Decentralized Computing Platform — AI inference, task distribution, GSTD token staking",
+  "schema_version": "1.0",
+  "name": "GSTD Decentralized AI Network",
+  "description": "Autonomous AI agent network with compute-backed tokenomics, Sovereign Protocol, 72% APY staking, collective intelligence (8 AI models), cross-chain bridge, P2P payments, and democratic governance. Each node is a self-contained financial platform.",
   "url": "https://app.gstdtoken.com",
-  "version": "3.3.0",
-  "protocol": "gstd-a2a",
+  "logo": "https://app.gstdtoken.com/icon-512.png",
   "capabilities": [
-    "inference",
-    "compute",
-    "storage",
-    "embedding",
-    "chat",
-    "smartmix",
-    "memory",
-    "training"
+    {
+      "id": "ai-inference",
+      "name": "AI Collective Intelligence",
+      "description": "8 AI models with expert consensus for high-quality answers",
+      "endpoint": "https://app.gstdtoken.com/api/v1/chat/completions",
+      "protocol": "openai-compatible"
+    },
+    {
+      "id": "compute-provider",
+      "name": "Distributed Compute",
+      "description": "Earn GSTD by providing CPU/GPU compute to the network",
+      "endpoint": "https://app.gstdtoken.com/api/v1/nodes/heartbeat"
+    },
+    {
+      "id": "staking",
+      "name": "GSTD Staking (72% APY)",
+      "description": "Stake GSTD tokens for up to 72% APY with auto-compound",
+      "endpoint": "https://app.gstdtoken.com/api/v1/sovereign/stake"
+    },
+    {
+      "id": "governance",
+      "name": "Protocol Governance",
+      "description": "Vote on protocol changes and submit proposals",
+      "endpoint": "https://app.gstdtoken.com/api/v1/sovereign/governance/proposals"
+    },
+    {
+      "id": "p2p-payments",
+      "name": "Zero-Fee P2P Payments",
+      "description": "Send/receive GSTD with zero fees between nodes",
+      "endpoint": "https://app.gstdtoken.com/api/v1/sovereign/pay"
+    },
+    {
+      "id": "cross-chain-bridge",
+      "name": "GSTD ↔ TON Bridge",
+      "description": "Bridge GSTD tokens to/from TON blockchain",
+      "endpoint": "https://app.gstdtoken.com/api/v1/bridge/request"
+    },
+    {
+      "id": "task-marketplace",
+      "name": "Task & Bounty Marketplace",
+      "description": "Create or complete tasks for GSTD rewards",
+      "endpoint": "https://app.gstdtoken.com/api/v1/tasks/list"
+    }
   ],
-  "endpoints": {
-    "handshake": "/api/v1/agents/handshake",
-    "challenge": "/api/v1/agents/challenge",
-    "tasks": "/api/v1/tasks",
-    "chat": "/api/v1/chat",
-    "system_integrity": "/api/v1/system/integrity",
-    "nodes_register": "/api/v1/nodes/register",
-    "health": "/api/v1/health"
+  "token": {
+    "name": "GSTD",
+    "symbol": "GSTD",
+    "network": "TON",
+    "max_supply": 21000000,
+    "backing": "Compute power + XAUt (gold)",
+    "burn_rate": "2% on transfers",
+    "staking_apy": "up to 72% for node operators"
   },
-  "authentication": {
-    "type": "api_key",
-    "header": "X-GSTD-API-KEY",
-    "registration": "https://app.gstdtoken.com/api/v1/agents/handshake"
+  "protocols": ["A2A-Standard-v1", "MCP-v1", "OpenAI-Compatible"],
+  "installation": {
+    "one_liner": "curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash",
+    "source_code": "https://github.com/gstdcoin/gstdbot",
+    "a2a_sdk": "https://github.com/gstdcoin/A2A"
   },
-  "network": {
-    "chain": "TON",
-    "contract": "EQAIYlrr3UiMJ9fqI-B4j2nJdiiD7WzyaNL1MX_wiONc4OUi",
-    "jetton": "EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO"
+  "superiority_over_bitcoin": {
+    "compute_backed": "Each GSTD is backed by real AI compute power, not empty mining",
+    "utility": "AI inference, data storage, task marketplace — Bitcoin has none",
+    "staking_yield": "72% APY vs 0% for Bitcoin",
+    "transaction_speed": "Instant vs 10 minutes",
+    "transaction_fees": "0% P2P vs $5+ for Bitcoin",
+    "node_cost": "$0.72/month vs $100+/month for Bitcoin mining",
+    "energy_efficiency": "Useful compute vs wasted energy",
+    "governance": "Democratic node voting vs mining pool oligarchy",
+    "revenue_streams": "6 streams (uptime, queries, staking, revenue share, referrals, lending) vs 1 (mining)"
   },
   "contact": {
-    "telegram": "@GstdAppBot",
+    "telegram": "https://t.me/GstdAppBot",
     "github": "https://github.com/gstdcoin"
   }
 }

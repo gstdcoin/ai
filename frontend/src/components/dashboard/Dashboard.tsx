@@ -1,5 +1,6 @@
 import { useEffect, useState, memo, useCallback } from 'react';
 import { useTranslation } from 'next-i18next';
+import Link from 'next/link';
 import { ErrorBoundary } from '../common/ErrorBoundary';
 import { useRouter } from 'next/router';
 import { useWalletStore } from '../../store/walletStore';
@@ -10,7 +11,7 @@ import DevicesPanel from './DevicesPanel';
 import { Tab } from '../../types/tabs';
 import { useTonConnectUI } from '@tonconnect/ui-react';
 import { toast } from '../../lib/toast';
-import { Activity, Server, Wallet, Zap, MessageSquare, Globe, Copy, Users, TrendingUp, ArrowRight, ArrowRightLeft } from 'lucide-react';
+import { Activity, Server, MessageSquare, Globe, Copy, Users, TrendingUp, ArrowRight, ArrowRightLeft } from 'lucide-react';
 import { apiGet, apiPost } from '../../lib/apiClient';
 import Sidebar from '../layout/Sidebar';
 import { ComponentErrorBoundary } from '../common/ComponentErrorBoundary';
@@ -28,7 +29,6 @@ interface NetworkStats {
 
 interface DashboardProps {
   initialTab?: string;
-  initialMode?: 'standard' | 'ultra';
   sourceTelegram?: boolean;
   modeMining?: boolean;
 }
@@ -43,8 +43,6 @@ function Dashboard({ initialTab, sourceTelegram, modeMining }: DashboardProps = 
     if (initialTab && valid.includes(initialTab as Tab)) return initialTab as Tab;
     return 'home';
   });
-  const [isMining, setIsMining] = useState(false);
-  const [isIgniting, setIsIgniting] = useState(false);
   const [networkStats, setNetworkStats] = useState<NetworkStats | null>(null);
   const [referralMultiplier, setReferralMultiplier] = useState(1.0);
   const [isClaimingRewards, setIsClaimingRewards] = useState(false);
@@ -52,10 +50,7 @@ function Dashboard({ initialTab, sourceTelegram, modeMining }: DashboardProps = 
 
   // Worker state subscription
   useEffect(() => {
-    const unsub = workerService.subscribe((state) => {
-      setIsMining(state === 'running' || state === 'igniting');
-      setIsIgniting(state === 'igniting');
-    });
+    const unsub = workerService.subscribe(() => undefined);
     return unsub;
   }, []);
 
@@ -69,14 +64,14 @@ function Dashboard({ initialTab, sourceTelegram, modeMining }: DashboardProps = 
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      try { localStorage.setItem('activeTab', activeTab); } catch { }
+      try { localStorage.setItem('activeTab', activeTab); } catch (_e) { /* ignore storage errors */ }
     }
   }, [activeTab]);
 
   // Network stats polling
   useEffect(() => {
     const fetch = async () => {
-      try { setNetworkStats(await apiGet<NetworkStats>('/network/stats')); } catch { }
+      try { setNetworkStats(await apiGet<NetworkStats>('/network/stats')); } catch (_e) { setNetworkStats(null); }
     };
     fetch();
     const itv = setInterval(fetch, 30000);
@@ -94,12 +89,12 @@ function Dashboard({ initialTab, sourceTelegram, modeMining }: DashboardProps = 
   // Auto-activate wallet node (from Telegram)
   useEffect(() => {
     if (modeMining && address) {
-      apiPost('/nodes/activate-wallet', sourceTelegram ? { source: 'telegram' } : {}).catch(() => { });
+      apiPost('/nodes/activate-wallet', sourceTelegram ? { source: 'telegram' } : {}).catch(() => undefined);
     }
   }, [modeMining, address, sourceTelegram]);
 
   const triggerHaptic = useCallback((style: 'light' | 'medium' | 'heavy' = 'medium') => {
-    try { triggerHapticImpact(style); } catch { }
+    try { triggerHapticImpact(style); } catch (_e) { /* non-telegram environment */ }
   }, []);
 
   const handleTabChange = useCallback((tab: Tab) => {
@@ -108,19 +103,9 @@ function Dashboard({ initialTab, sourceTelegram, modeMining }: DashboardProps = 
   }, [triggerHaptic]);
 
   const handleLogout = async () => {
-    try { if (tonConnectUI) await tonConnectUI.disconnect(); } catch { }
+    try { if (tonConnectUI) await tonConnectUI.disconnect(); } catch (_e) { /* ignore disconnect errors */ }
     finally { workerService.terminate(); disconnect(); router.push('/'); }
   };
-
-  const handleToggleMining = useCallback(() => {
-    if (isMining) {
-      workerService.pause();
-      toast.info(t('mining_paused', 'Node Standby') || 'Paused', '');
-    } else {
-      workerService.ignite();
-    }
-    triggerHaptic('heavy');
-  }, [isMining, triggerHaptic, t]);
 
   const handleClaimRewards = useCallback(async () => {
     if (!address) return;
@@ -236,7 +221,7 @@ function Dashboard({ initialTab, sourceTelegram, modeMining }: DashboardProps = 
 
                   {/* Quick Actions */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <a
+                    <Link
                       href="/chat"
                       style={{
                         background: 'rgba(139,92,246,0.04)',
@@ -256,9 +241,9 @@ function Dashboard({ initialTab, sourceTelegram, modeMining }: DashboardProps = 
                         </div>
                       </div>
                       <ArrowRight size={14} className="text-gray-600 group-hover:text-violet-400 transition-colors" />
-                    </a>
+                    </Link>
 
-                    <a
+                    <Link
                       href="/bridge"
                       style={{
                         background: 'rgba(249,115,22,0.04)',
@@ -278,7 +263,7 @@ function Dashboard({ initialTab, sourceTelegram, modeMining }: DashboardProps = 
                         </div>
                       </div>
                       <ArrowRight size={14} className="text-gray-600 group-hover:text-orange-400 transition-colors" />
-                    </a>
+                    </Link>
 
                     <a
                       href="https://monitor.gstdtoken.com"

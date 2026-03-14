@@ -57,7 +57,7 @@ function translateTickerMessage(msg: string, t: any): string {
     const hours = m ? (m[1] || m[2] || m[3] || m[4] || '?') : '?';
     const c = msg.match(/\((\d+)\s*(цепочек|chains)\)/);
     const count = c ? c[1] : '?';
-    return '🔮 ' + (t('ticker_forecast', 'Forecast: Expecting market reaction in {{hours}}h based on experience ({{coun...') || 'Forecast') + `: ${hours}h (${count} chains)`;
+    return '🔮 ' + (t('ticker_forecast', 'Forecast: Expecting market reaction in {{hours}}h based on experience ({{count}} chains)') || 'Forecast') + `: ${hours}h (${count} chains)`;
   }
   return msg;
 }
@@ -77,7 +77,7 @@ export default function LeviathanLiveTicker() {
   const supremeUntilRef = useRef<number>(0);
   const pendingItemsRef = useRef<string[]>([]);
   const throttleTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const connectRef = useRef<() => void>(() => { });
+  const connectRef = useRef<() => void>(() => undefined);
 
   const connect = useCallback(() => {
     if (esRef.current) {
@@ -125,7 +125,6 @@ export default function LeviathanLiveTicker() {
       setTimeout(() => connectRef.current(), RECONNECT_DELAY_MS);
     };
 
-    connectRef.current = connect;
     return es;
   }, []);
 
@@ -171,6 +170,7 @@ export default function LeviathanLiveTicker() {
   }, []);
 
   useEffect(() => {
+    connectRef.current = connect;
     connect();
 
     const checkStuck = setInterval(() => {
