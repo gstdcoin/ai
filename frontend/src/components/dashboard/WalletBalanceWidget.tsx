@@ -16,7 +16,8 @@ import {
     Copy,
     Check
 } from 'lucide-react';
-import { toast } from '../../lib/toast';
+import { API_BASE_URL } from '../../lib/config';
+import SovereignTerminalModal from './SovereignTerminalModal';
 
 interface WalletBalance {
     gstd_balance: number;
@@ -53,14 +54,15 @@ export const WalletBalanceWidget: React.FC = () => {
     const { address, updateBalance } = useWalletStore();
     const [balance, setBalance] = useState<WalletBalance | null>(null);
     const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [syncStatus, setSyncStatus] = useState<'pending' | 'ok' | 'error'>('pending');
+    const [refreshing, setRefreshing] = useState(false);
+    const [syncStatus, setSyncStatus] = useState<'pending' | 'ok' | 'error'>('pending');
+    const [isTerminalOpen, setIsTerminalOpen] = useState(false);
 
     const fetchBalance = useCallback(async () => {
         if (!address) return;
 
         try {
-      setSyncStatus('pending');
+            setSyncStatus('pending');
             // Fetch On-Chain Balance
             const balanceData = await apiGet<any>(`/wallet/balance?wallet=${address}&address=${address}`); // Support both param names
 
@@ -82,11 +84,11 @@ export const WalletBalanceWidget: React.FC = () => {
 
             setBalance(newBalance);
             updateBalance("0", newBalance.gstd_balance, newBalance.swarm_balance, newBalance.pending_earnings);
-      setSyncStatus('ok');
+            setSyncStatus('ok');
 
         } catch (error) {
             console.error('Failed to fetch balance:', error);
-      setSyncStatus('error');
+            setSyncStatus('error');
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -124,32 +126,32 @@ export const WalletBalanceWidget: React.FC = () => {
                     </div>
                     <div>
                         <h3 className="text-lg font-semibold text-white">{t('wallet.balance')}</h3>
-              <p className="text-sm text-gray-400 flex items-center gap-2">
-                {t('wallet.realTime')}
-                <span className="inline-flex items-center gap-1 text-[11px] font-medium">
-                  <span
-                    className={`w-2 h-2 rounded-full ${
-                      syncStatus === 'ok'
-                        ? 'bg-emerald-400 shadow-[0_0_6px_#34d399]'
-                        : syncStatus === 'error'
-                        ? 'bg-red-500 animate-pulse'
-                        : 'bg-yellow-400 animate-pulse'
-                    }`}
-                  />
-                  {syncStatus === 'ok'
-                    ? (t('wallet.onChainConfirmed') || 'On-chain confirmed')
-                    : syncStatus === 'error'
-                    ? (t('wallet.outOfSync') || 'Out of sync, retry')
-                    : (t('wallet.syncing') || 'Syncing…')}
-                </span>
-              </p>
+                        <p className="text-sm text-gray-400 flex items-center gap-2">
+                            {t('wallet.realTime')}
+                            <span className="inline-flex items-center gap-1 text-[11px] font-medium">
+                                <span
+                                    className={`w-2 h-2 rounded-full ${
+                                        syncStatus === 'ok'
+                                            ? 'bg-emerald-400 shadow-[0_0_6px_#34d399]'
+                                            : syncStatus === 'error'
+                                                ? 'bg-red-500 animate-pulse'
+                                                : 'bg-yellow-400 animate-pulse'
+                                    }`}
+                                />
+                                {syncStatus === 'ok'
+                                    ? (t('wallet.onChainConfirmed') || 'On-chain confirmed')
+                                    : syncStatus === 'error'
+                                        ? (t('wallet.outOfSync') || 'Out of sync, retry')
+                                        : (t('wallet.syncing') || 'Syncing…')}
+                            </span>
+                        </p>
                     </div>
                 </div>
                 <button
                     onClick={handleRefresh}
                     disabled={refreshing}
-            className="p-2 rounded-lg bg-gray-700/50 hover:bg-gray-600/50 transition-colors disabled:opacity-50"
-            title={t('wallet.forceSync') || 'Force Sync (re-query blockchain)'}
+                    className="p-2 rounded-lg bg-gray-700/50 hover:bg-gray-600/50 transition-colors disabled:opacity-50"
+                    title={t('wallet.forceSync') || 'Force Sync (re-query blockchain)'}
                 >
                     <RefreshCw className={`w-4 h-4 text-gray-400 ${refreshing ? 'animate-spin' : ''}`} />
                 </button>
@@ -210,7 +212,7 @@ export const WalletBalanceWidget: React.FC = () => {
                 {/* Actions */}
                 <div className="grid grid-cols-2 gap-3">
                     <button
-                        onClick={() => toast.info('Bridge Opening Soon', 'The Zero-Gas Bridge interface will be available shortly on the frontend.')}
+                        onClick={() => setIsTerminalOpen(true)}
                         className="py-2.5 px-4 rounded-xl bg-orange-500/10 text-orange-400 hover:bg-orange-500/20 border border-orange-500/20 transition-all font-medium text-sm flex items-center justify-center gap-2"
                     >
                         <RefreshCw className="w-4 h-4" />
@@ -258,6 +260,10 @@ export const WalletBalanceWidget: React.FC = () => {
                     </div>
                 )}
             </div>
+            <SovereignTerminalModal
+                isOpen={isTerminalOpen}
+                onClose={() => setIsTerminalOpen(false)}
+            />
         </div>
     );
 };
