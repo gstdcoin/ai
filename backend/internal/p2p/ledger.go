@@ -107,6 +107,7 @@ func (l *Ledger) ProcessMessage(ctx context.Context, payload []byte) error {
 
 	// Calculate network fee (1% distributed to active mobile nodes)
 	fee := 0.0
+	// No fees for Bridge operations (Mint/Burn), purely utility
 	if tx.Type == TxTransfer || tx.Type == TxComputeTask || tx.Type == TxSmartDeploy {
 		fee = tx.Amount * 0.01 // 1% commission for network support
 	}
@@ -120,14 +121,32 @@ func (l *Ledger) ProcessMessage(ctx context.Context, payload []byte) error {
 		}
 	}
 
-	senderBalance := l.State.Balances[tx.Sender]
-	if senderBalance < tx.Amount {
-		return fmt.Errorf("insufficient funds: sender=%s, balance=%f, requested=%f", tx.Sender, senderBalance, tx.Amount)
+	// Insufficient funds check (Except Heartbeat and Mint)
+	if tx.Type != TxNodeHeartbeat && tx.Type != TxMint {
+		senderBalance := l.State.Balances[tx.Sender]
+		if senderBalance < tx.Amount {
+			return fmt.Errorf("insufficient funds: sender=%s, balance=%f, requested=%f", tx.Sender, senderBalance, tx.Amount)
+		}
 	}
 
-	// Apply balances and increment nonce
-	l.State.Balances[tx.Sender] -= tx.Amount
-	l.State.Balances[tx.Receiver] += netAmount
+	// Apply balances
+	if tx.Type == TxMint {
+		// Bridge Minting: Creating Wrapped-GSTD on Swarm L1
+		// (In production, tx.Sender here must be cryptographically white-listed as the Oracle/Bridge)
+		l.State.Balances[tx.Receiver] += tx.Amount
+		log.Printf("🌉 [Bridge -> Swarm] Minted %.2f W-GSTD to %s", tx.Amount, tx.Receiver[:12])
+	} else if tx.Type == TxBurn {
+		// Bridge Burning: Destroying Wrapped-GSTD to unlock TON GSTD
+		// tx.Receiver contains the TON L1 target address (e.g. UQ...)
+		l.State.Balances[tx.Sender] -= tx.Amount
+		log.Printf("🔥 [Swarm -> Bridge] Burned %.2f W-GSTD from %s (Destined for TON: %s)", tx.Amount, tx.Sender[:12], tx.Receiver)
+	} else if tx.Type != TxNodeHeartbeat {
+		// Standard P2P L1 logic
+		l.State.Balances[tx.Sender] -= tx.Amount
+		l.State.Balances[tx.Receiver] += netAmount
+	}
+
+	// Always increment nonce except for soft-heartbeats
 	if tx.Type != TxNodeHeartbeat {
 		l.State.Nonce[tx.Sender]++
 	}
@@ -135,7 +154,9 @@ func (l *Ledger) ProcessMessage(ctx context.Context, payload []byte) error {
 	l.State.RewardPool += fee
 	l.State.Mempool[tx.ID] = &tx
 
-	log.Printf("✅ [Swarm Ledger] Transcation %s APPLIED: %s -> %s (Amount: %.2f, Fee: %.4f)", tx.ID, tx.Sender[:8], tx.Receiver[:8], tx.Amount, fee)
+	if tx.Type != TxNodeHeartbeat {
+		log.Printf("✅ [Swarm Ledger] Transaction %s APPLIED: %s -> %s (Amount: %.2f, Type: %s, Fee: %.4f)", tx.ID[:8], tx.Sender[:8], tx.Receiver[:8], tx.Amount, tx.Type, fee)
+	}
 
 	return nil
 }
@@ -295,6 +316,13 @@ func (l *Ledger) GetAccountState(address string) (balance float64, nonce int64) 
 	l.State.mu.RLock()
 	defer l.State.mu.RUnlock()
 	return l.State.Balances[address], l.State.Nonce[address]
+}
+
+// DirectMint allows the Bridge Oracle to issue Wrapped GSTD without constructing a full signed primitive.
+func (l *Ledger) DirectMint(receiver string, amount float64) {
+	l.State.mu.Lock()
+	l.State.Balances[receiver] += amount
+	l.State.mu.Unlock()
 }
 
 // SubmitTransaction allows the local REST API to submit a transaction to the Ledger,
