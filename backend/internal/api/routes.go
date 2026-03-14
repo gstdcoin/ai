@@ -421,9 +421,7 @@ func SetupRoutes(
 		v1.GET("/pool/status", getPoolStatus(poolMonitorService))
 
 		// Genesis Launch: Viral Loop Analytics (public)
-		v1.POST("/analytics/viral/share", RecordViralShare(dbConn))
-		v1.POST("/analytics/viral/click", RecordViralClick(dbConn))
-		v1.GET("/analytics/viral/community-favorite", GetCommunityFavorite(dbConn))
+		RegisterViralRoutes(v1, dbConn)
 
 		// Gasless User: status (public)
 		if gaslessUserService != nil {
@@ -497,8 +495,36 @@ func SetupRoutes(
 					return
 				}
 
+				// Anti-Sybil: Verify wallet is linked to a valid Telegram Account
+				sqlDB, ok := db.(*sql.DB)
+				if !ok {
+					c.JSON(500, gin.H{"error": "Internal database error"})
+					return
+				}
+				var tgID int64
+				err := sqlDB.QueryRow("SELECT telegram_id FROM telegram_users WHERE wallet_address = $1", req.Address).Scan(&tgID)
+				if err != nil {
+					c.JSON(403, gin.H{"error": "Sybil Protection: Wallet must be linked to a Telegram account. Open GSTD Bot in Telegram first."})
+					return
+				}
+
+				rClient, ok := redisClient.(*redis.Client)
+				if !ok {
+					c.JSON(500, gin.H{"error": "Internal cache error"})
+					return
+				}
+				faucetKey := fmt.Sprintf("swarm:faucet:claim:%d:%s", tgID, req.Address)
+				claimed, _ := rClient.Get(context.Background(), faucetKey).Result()
+				if claimed == "true" {
+					c.JSON(403, gin.H{"error": "Sybil Protection: Faucet already claimed by this Telegram account."})
+					return
+				}
+
 				// Mint 5.0 S-GSTD
 				swarmLedger.DirectMint(req.Address, 5.0)
+
+				// Mark as claimed in Redis eternally
+				rClient.Set(context.Background(), faucetKey, "true", 0)
 
 				c.JSON(200, gin.H{
 					"status":  "success",
@@ -1903,20 +1929,8 @@ func SetupRoutes(
 		// Hybrid Auth: Session (browser) + API Key (agents) → unified UserContext, Ultra gate works for both
 
 		// ═══ OMEGA GATEWAY INTEGRATION ═══
-		// OpenAI-compatible chat: /api/v1/chat/* (GSTD pricing, balance checks)
 		omegaHandler := NewOmegaGatewayHandler(gatewayHandler, apiKeyService)
-		v1.POST("/chat/completions", omegaHandler.HandleChatCompletions)
-		v1.POST("/chat/smartmix", omegaHandler.HandleChatCompletions) // Alias for frontend SmartMix tiers
-		v1.GET("/chat/ultra-status", gatewayHandler.GetUltraStatus)   // Optional auth: X-GSTD-Target-Wallet
-		v1.GET("/models", omegaHandler.HandleListModels)
-		// Cocoon Confidential Compute — TEE-protected inference on TON blockchain
-		// Docs: https://cocoon.org/developers
-		v1.GET("/chat/cocoon-status", gatewayHandler.GetCocoonStatus)
-		v1.GET("/chat/hybrid-status", gatewayHandler.GetHybridStatus)
-		v1.GET("/chat/sovereignty-index", gatewayHandler.GetSovereigntyIndex)
-
-		// ═══ CHAT DEDUCTION — Called by frontend for paid Collective Intelligence tiers ═══
-		v1.POST("/chat/deduct", chatDeductHandler(dbConn, burnService))
+		RegisterChatRoutes(v1, gatewayHandler, omegaHandler, dbConn, burnService)
 
 		log.Printf("✅ Growth System & Onboarding routes registered (Omega Gateway Active)")
 
@@ -1927,80 +1941,8 @@ func SetupRoutes(
 		SetupSwarmEmbedRoutes(v1, swarmEmbedHandler)
 
 		// ═══ NODE OS COMPATIBILITY — endpoints expected by GSTD Node OS ═══
-		// GET /models/registry — returns available models for node training subsystem
-		v1.GET("/models/registry", func(c *gin.Context) {
-			c.JSON(200, gin.H{
-				"models": []gin.H{
-					{"id": "llama-3.3-70b-versatile", "name": "Llama 3.3 70B", "type": "inference", "available": true},
-					{"id": "llama-3.1-8b-instant", "name": "Llama 3.1 8B", "type": "inference", "available": true},
-					{"id": "qwen/qwen3-32b", "name": "Qwen3 32B", "type": "inference", "available": true},
-					{"id": "meta-llama/llama-4-scout-17b-16e-instruct", "name": "Llama 4 Scout", "type": "inference", "available": true},
-					{"id": "openai/gpt-oss-120b", "name": "GPT-OSS 120B", "type": "inference", "available": true},
-					{"id": "openai/gpt-oss-20b", "name": "GPT-OSS 20B", "type": "inference", "available": true},
-					{"id": "moonshotai/kimi-k2-instruct", "name": "Kimi K2", "type": "inference", "available": true},
-					{"id": "groq/compound", "name": "Groq Compound", "type": "inference", "available": true},
-				},
-			})
-		})
-
-		// GET /memory/ping — health check for collective memory L3 layer
-		v1.GET("/memory/ping", func(c *gin.Context) {
-			c.JSON(200, gin.H{"status": "ok", "layer": "L3", "platform": "gstd"})
-		})
-
-		// POST /memory/recall — collective memory recall from L3 platform layer
-		v1.POST("/memory/recall", func(c *gin.Context) {
-			// Basic stub — full implementation would search agent_knowledge
-			var req struct {
-				Key      string `json:"key"`
-				Question string `json:"question"`
-				NodeID   string `json:"node_id"`
-			}
-			if err := c.ShouldBindJSON(&req); err != nil {
-				c.JSON(400, gin.H{"error": "invalid request"})
-				return
-			}
-			// Search in agent_knowledge table
-			var answer, model string
-			var confidence float64
-			err := dbConn.QueryRowContext(c.Request.Context(),
-				`SELECT content, COALESCE(model, 'platform'), COALESCE(confidence, 0.8)
-				 FROM agent_knowledge
-				 WHERE key = $1 OR question_hash = $1
-				 ORDER BY confidence DESC LIMIT 1`, req.Key).Scan(&answer, &model, &confidence)
-			if err != nil {
-				c.JSON(200, gin.H{"found": false})
-				return
-			}
-			c.JSON(200, gin.H{
-				"found":      true,
-				"answer":     answer,
-				"model":      model,
-				"confidence": confidence,
-			})
-		})
-
-		// POST /memory/store — store knowledge in collective memory L3
-		v1.POST("/memory/store", func(c *gin.Context) {
-			var req struct {
-				Key        string  `json:"key"`
-				Question   string  `json:"question"`
-				Answer     string  `json:"answer"`
-				Model      string  `json:"model"`
-				Confidence float64 `json:"confidence"`
-				NodeID     string  `json:"node_id"`
-			}
-			if err := c.ShouldBindJSON(&req); err != nil || req.Key == "" || req.Answer == "" {
-				c.JSON(400, gin.H{"error": "key and answer required"})
-				return
-			}
-			_, _ = dbConn.ExecContext(c.Request.Context(),
-				`INSERT INTO agent_knowledge (key, question_hash, content, model, confidence, node_id, created_at)
-				 VALUES ($1, $1, $2, $3, $4, $5, NOW())
-				 ON CONFLICT (key) DO UPDATE SET content = $2, confidence = GREATEST(agent_knowledge.confidence, $4), updated_at = NOW()`,
-				req.Key, req.Answer, req.Model, req.Confidence, req.NodeID)
-			c.JSON(200, gin.H{"status": "stored", "key": req.Key})
-		})
+		RegisterRegistryRoutes(v1)
+		RegisterMemoryRoutes(v1, dbConn)
 
 		log.Printf("✅ Node OS compatibility routes registered (/models/registry, /memory/*)")
 	}
