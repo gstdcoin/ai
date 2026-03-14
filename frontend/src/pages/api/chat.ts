@@ -281,41 +281,51 @@ async function* streamGroq(modelId: string, messages: ChatMessage[], maxTokens: 
                 const delta = parsed.choices?.[0]?.delta?.content;
                 if (delta) yield delta;
             } catch (_e) {
+                // Skip malformed SSE JSON chunk — non-critical during streaming
                 continue;
             }
         }
     }
 }
 
+// Helper: process a chunk through the <think> block filter
+function processThinkChunk(
+    chunk: string,
+    state: { insideThink: boolean; thinkBuffer: string }
+): string[] {
+    const output: string[] = [];
+    if (state.insideThink) {
+        state.thinkBuffer += chunk;
+        if (state.thinkBuffer.includes('</think>')) {
+            const afterThink = state.thinkBuffer.split('</think>').slice(1).join('</think>').replace(/^\s+/, '');
+            state.insideThink = false;
+            state.thinkBuffer = '';
+            if (afterThink) output.push(afterThink);
+        }
+    } else if (chunk.includes('<think>')) {
+        const parts = chunk.split('<think>');
+        if (parts[0]) output.push(parts[0]);
+        state.thinkBuffer = parts.slice(1).join('<think>');
+        if (state.thinkBuffer.includes('</think>')) {
+            const afterThink = state.thinkBuffer.split('</think>').slice(1).join('</think>').replace(/^\s+/, '');
+            state.insideThink = false;
+            state.thinkBuffer = '';
+            if (afterThink) output.push(afterThink);
+        } else {
+            state.insideThink = true;
+        }
+    } else {
+        output.push(chunk);
+    }
+    return output;
+}
+
 // Streaming variant that filters <think> blocks in real-time
 async function* streamGroqClean(modelId: string, messages: ChatMessage[], maxTokens: number = 4096): AsyncGenerator<string> {
-    let insideThink = false;
-    let thinkBuffer = '';
+    const state = { insideThink: false, thinkBuffer: '' };
     for await (const chunk of streamGroq(modelId, messages, maxTokens)) {
-        if (insideThink) {
-            thinkBuffer += chunk;
-            if (thinkBuffer.includes('</think>')) {
-                // End of think block — emit everything after </think>
-                const afterThink = thinkBuffer.split('</think>').slice(1).join('</think>').replace(/^\s+/, '');
-                insideThink = false;
-                thinkBuffer = '';
-                if (afterThink) yield afterThink;
-            }
-        } else if (chunk.includes('<think>')) {
-            // Start of think block
-            const parts = chunk.split('<think>');
-            if (parts[0]) yield parts[0]; // emit text before <think>
-            thinkBuffer = parts.slice(1).join('<think>');
-            if (thinkBuffer.includes('</think>')) {
-                const afterThink = thinkBuffer.split('</think>').slice(1).join('</think>').replace(/^\s+/, '');
-                insideThink = false;
-                thinkBuffer = '';
-                if (afterThink) yield afterThink;
-            } else {
-                insideThink = true;
-            }
-        } else {
-            yield chunk;
+        for (const part of processThinkChunk(chunk, state)) {
+            yield part;
         }
     }
 }
@@ -346,7 +356,17 @@ async function lookupKnowledge(query: string): Promise<string> {
         const data: any = await resp.json();
         const quotes = data.quotes || data.facts || [];
         return quotes.map((q: any) => q.content || q.text || '').filter(Boolean).join('\n').substring(0, 1000);
-    } catch (_e) { return ''; }
+    } catch (_e) {
+        // Knowledge lookup is optional — return empty on failure
+        return '';
+    }
+}
+
+// ─── Consensus Message Helper ─────────────────────────────────────────────────
+function getConsensusMessage(score: number): string {
+    if (score > 85) return `High consensus (${score}%) experts strongly agree`;
+    if (score > 60) return `Good consensus (${score}%) partial disagreement resolved`;
+    return `Diverse perspectives (${score}%) synthesizing best arguments`;
 }
 
 // â”€â”€â”€ SSE Helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -372,7 +392,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const start = Date.now();
     const collectiveTier = TIERS[tier] || TIERS.free;
 
-    // â•�â•�â•� GSTD DEDUCTION: Paid tiers require wallet + balance â•�â•�â•�
+    // â•â•â• GSTD DEDUCTION: Paid tiers require wallet + balance â•â•â•
     // Calls backend to deduct GSTD before AI inference runs
     if (collectiveTier.cost > 0) {
         if (!wallet) {
@@ -413,9 +433,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
     }
 
-    // â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // FREE TIER â€” Single expert, streaming or non-streaming
-    // â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     if (tier === 'free' || collectiveTier.expertCount <= 1) {
         const spec = FREE_MODELS.find(m => m.id === model) || ALL_EXPERTS[0];
         // Even free tier gets the deep-thinking system prompt for better quality
@@ -511,6 +531,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                                         sendSSE(res, 'delta', { content: d });
                                     }
                                 } catch (_e) {
+                                    // Malformed SSE chunk during sprint race — skip
                                     continue;
                                 }
                             }
@@ -530,7 +551,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     winnerModel = 'llama-3.1-8b-instant';
                     success = true;
                 } catch (_e) {
-                    // Fallback stream also failed; handled below by generic busy message.
+                    // Fallback stream also failed — handled below by generic busy message
+                    console.warn('[Sprint] Fallback stream failed:', (_e as Error)?.message?.substring(0, 60));
                 }
             }
             if (!success) {
@@ -564,15 +586,16 @@ tier: 'free', tierName: 'Single Expert', badge: 'ðŸ†“',
                     },
                 });
             } catch (_e) {
+                // Non-stream model failed — try next in fallback list
                 continue;
             }
         }
         return res.status(500).json({ error: 'All models unavailable' });
     }
 
-    // â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // PAID TIERS â€” Collective Intelligence (3/5/7 Groq experts + synthesis)
-    // â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�â•�
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     const experts = selectExperts(collectiveTier.expertCount);
     console.log(`[CI] ${collectiveTier.badge} ${collectiveTier.name}: querying ${experts.length} Groq experts...`);
 
@@ -621,13 +644,14 @@ tier: 'free', tierName: 'Single Expert', badge: 'ðŸ†“',
                     sendSSE(res, 'delta', { content: chunk });
                 }
             } catch (_e) {
-                sendSSE(res, 'delta', { content: 'âš¡ AI is temporarily busy. Please try again.' });
+                console.warn('[CI] Fallback stream failed:', (_e as Error)?.message?.substring(0, 60));
+                sendSSE(res, 'delta', { content: '⚡ AI is temporarily busy. Please try again.' });
             }
             sendSSE(res, 'done', { tier, expertCount: 0, latency_ms: Date.now() - start, cost_gstd: 0 });
             res.end();
             return;
         }
-        return res.status(500).json({ error: 'All experts unavailable' });
+        return res.status(500).json({ error: 'All models unavailable' });
     }
 
     console.log(`[CI] ${expertResults.length}/${experts.length} experts responded (avg ${Math.round(expertResults.reduce((a,r) => a+r.content.length, 0)/expertResults.length)} chars)`);
@@ -665,9 +689,7 @@ tier: 'free', tierName: 'Single Expert', badge: 'ðŸ†“',
         sendSSE(res, 'consensus', {
             score: consensusScore, respondedExperts: expertResults.length, totalExperts: experts.length,
             avgLatency: Math.round(expertResults.reduce((a, r) => a + r.latency, 0) / expertResults.length),
-            message: consensusScore > 85 ? `High consensus (${consensusScore}%) experts strongly agree`
-                : consensusScore > 60 ? `Good consensus (${consensusScore}%) partial disagreement resolved`
-                : `Diverse perspectives (${consensusScore}%) synthesizing best arguments`,
+            message: getConsensusMessage(consensusScore),
         });
 
         sendSSE(res, 'meta', {
@@ -686,9 +708,10 @@ tier: 'free', tierName: 'Single Expert', badge: 'ðŸ†“',
         `â”�â”�â”� EXPERT ${i + 1}: ${r.expert.name} (${r.expert.specialty}) [${r.latency}ms, ${r.content.length} chars] â”�â”�â”�\n${r.content}`
     ).join('\n\n');
 
+    const contextPrefix = conversationContext ? `CONVERSATION CONTEXT:\n${conversationContext}\n\n` : '';
     const synthesisMessages: ChatMessage[] = [
         { role: 'system', content: collectiveTier.synthesisPrompt },
-        { role: 'user', content: `${conversationContext ? `CONVERSATION CONTEXT:\n${conversationContext}\n\n` : ''}CURRENT QUESTION:\n${userQuestion}\n\nâ”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�\nINDEPENDENT EXPERT ANALYSES (${expertResults.length} models):\nâ”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�â”�\n\n${expertAnswersBlock}` },
+        { role: 'user', content: contextPrefix + `CURRENT QUESTION:\n${userQuestion}\n\n${'─'.repeat(45)}\nINDEPENDENT EXPERT ANALYSES (${expertResults.length} models):\n${'─'.repeat(45)}\n\n${expertAnswersBlock}` },
     ];
 
     // Phase 3: Stream synthesis
@@ -708,7 +731,7 @@ tier: 'free', tierName: 'Single Expert', badge: 'ðŸ†“',
             }
         }
         if (!synthOk) {
-            const best = expertResults.reduce((a, b) => a.content.length > b.content.length ? a : b);
+            const best = expertResults.reduce((a, b) => a.content.length > b.content.length ? a : b, expertResults[0]);
             sendSSE(res, 'delta', { content: best.content });
         }
 
@@ -740,7 +763,8 @@ tier: 'free', tierName: 'Single Expert', badge: 'ðŸ†“',
             },
         });
     } catch (_e) {
-        const best = expertResults.reduce((a, b) => a.content.length > b.content.length ? a : b);
+        console.warn('[CI] Synthesis failed, using best expert response:', (_e as Error)?.message?.substring(0, 60));
+        const best = expertResults.reduce((a, b) => a.content.length > b.content.length ? a : b, expertResults[0]);
         return res.status(200).json({
             id: `ci-${Date.now()}`, object: 'chat.completion',
             created: Math.floor(Date.now() / 1000), model: best.expert.id,

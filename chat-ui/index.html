@@ -442,8 +442,16 @@ function buildModelSelect() {
   document.getElementById('modelLabel').textContent=MODELS.find(x=>x.id===sel.value)?.name||MODELS[0].name;
 }
 function buildQuickPrompts() {
-  const c=document.getElementById('quickPrompts');if(!c)return;c.innerHTML='';
-  t('quickPrompts').forEach(p=>{const b=document.createElement('button');b.className='quick-prompt';b.textContent=`${p.icon} ${p.text}`;b.onclick=()=>sendQuick(p.text);c.appendChild(b);});
+  const c=document.getElementById('quickPrompts');
+  if(!c) return;
+  c.innerHTML='';
+  t('quickPrompts').forEach(p=>{
+    const b=document.createElement('button');
+    b.className='quick-prompt';
+    b.textContent=`${p.icon} ${p.text}`;
+    b.onclick=()=>sendQuick(p.text);
+    c.appendChild(b);
+  });
 }
 
 // ═══ Wallet ═══════════════════════════════════════════════════
@@ -467,12 +475,40 @@ function handleKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMe
 function autoResize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,200)+'px';}
 function sendQuick(text){document.getElementById('input').value=text;document.getElementById('sendBtn').disabled=false;sendMessage();}
 
+function parseSSEBuffer(buffer, onData) {
+  const lines=buffer.split('\n');
+  const remainder=lines.pop();
+  for(const line of lines){
+    if(!line.startsWith('data: ')) continue;
+    const payload=line.slice(6).trim();
+    if(!payload||payload==='[DONE]') continue;
+    try{ onData(JSON.parse(payload)); }catch{ /* skip malformed SSE */ }
+  }
+  return remainder;
+}
+
+async function streamResponse(res, contentEl) {
+  const reader=res.body.getReader(), decoder=new TextDecoder();
+  let fullText='',buffer='',meta=null;
+  while(true){
+    const {done,value}=await reader.read();
+    if(done) break;
+    buffer+=decoder.decode(value,{stream:true});
+    buffer=parseSSEBuffer(buffer, data=>{
+      if(data.content){fullText+=data.content;contentEl.textContent=fullText;scrollToBottom();}
+      if(data.tier) meta=data;
+    });
+  }
+  return {fullText, meta};
+}
+
 async function sendMessage() {
   const input=document.getElementById('input'), text=input.value.trim();
   if(!text||isStreaming)return;
-  const model=document.getElementById('modelSelect').value, modelInfo=MODELS.find(m=>m.id===model);
+  const model=document.getElementById('modelSelect').value;
+  const modelInfo=MODELS.find(m=>m.id===model);
   if(modelInfo?.tier==='pro'&&!wallet){showToast(t('proRequiresWallet'),'info');document.getElementById('walletModal').classList.add('active');return;}
-  const tier=TIERS.find(t=>t.id===selectedTier)||TIERS[0];
+  const tier=TIERS.find(ti=>ti.id===selectedTier)||TIERS[0];
   if(tier.cost>0&&!wallet){showToast(t('proRequiresWallet'),'info');document.getElementById('walletModal').classList.add('active');return;}
   const w=document.getElementById('welcome');if(w)w.style.display='none';
   addMessage('user',text); messages.push({role:'user',content:text});
@@ -484,20 +520,13 @@ async function sendMessage() {
     if(wallet) headers['X-Wallet-Address']=wallet;
     const res=await fetch(CHAT_API,{method:'POST',headers,
       body:JSON.stringify({model,messages:messages.slice(-20),stream:true,tier:selectedTier})});
-    if(!res.ok){const err=await res.json().catch(()=>({}));throw new Error(err.error?.message||err.message||`HTTP ${res.status}`);}
-    const reader=res.body.getReader(), decoder=new TextDecoder();let fullText='',buffer='',meta=null;
-    while(true){const {done,value}=await reader.read();if(done)break;
-      buffer+=decoder.decode(value,{stream:true});const lines=buffer.split('\n');buffer=lines.pop();
-      for(const line of lines){
-        if(!line.startsWith('event: ')&&!line.startsWith('data: '))continue;
-        if(line.startsWith('event: ')){continue;}
-        const payload=line.slice(6).trim();
-        if(!payload||payload==='[DONE]')continue;
-        try{const data=JSON.parse(payload);
-          if(data.content){fullText+=data.content;contentEl.textContent=fullText;scrollToBottom();}
-          if(data.tier)meta=data;
-        }catch{}}}
-    const elapsed=((Date.now()-startTime)/1000).toFixed(1), tokens=fullText.split(/\s+/).length;
+    if(!res.ok){
+      const err=await res.json().catch(()=>({}));
+      throw new Error(err.error?.message||err.message||`HTTP ${res.status}`);
+    }
+    const {fullText, meta}=await streamResponse(res, contentEl);
+    const elapsed=((Date.now()-startTime)/1000).toFixed(1);
+    const tokens=fullText.split(/\s+/).length;
     const tierBadge=meta?.badge||tier.badge;
     metaEl.textContent=`${tierBadge} ${meta?.tierName||tier.name} · ${elapsed}s · ~${tokens} tokens`;
     messages.push({role:'assistant',content:fullText});
