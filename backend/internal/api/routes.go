@@ -472,11 +472,7 @@ func SetupRoutes(
 
 			v1.GET("/swarm/account/:address", func(c *gin.Context) {
 				addr := c.Param("address")
-				
-				swarmLedger.State.mu.RLock()
-				balance := swarmLedger.State.Balances[addr]
-				nonce := swarmLedger.State.Nonce[addr]
-				swarmLedger.State.mu.RUnlock()
+				balance, nonce := swarmLedger.GetAccountState(addr)
 				
 				c.JSON(200, gin.H{
 					"address": addr,
