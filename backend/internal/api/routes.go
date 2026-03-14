@@ -17,6 +17,7 @@ import (
 	"github.com/google/uuid"
 
 	infRouter "distributed-computing-platform/internal/inference"
+	"distributed-computing-platform/internal/p2p"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/gzip"
@@ -89,6 +90,7 @@ func SetupRoutes(
 	cocoonSymbiosis *services.CocoonSwarmSymbiosis,
 	hybridRouter *services.HybridIntelligenceRouter,
 	smartRouter *services.SmartRouter,
+	swarmLedger *p2p.Ledger,
 ) {
 	log.Printf("🔧 SetupRoutes: Starting route setup, redisClient type: %T", redisClient)
 
@@ -440,6 +442,36 @@ func SetupRoutes(
 			lfs.POST("/verify", lfsHandler.VerifyBlock)
 		}
 		log.Printf("✅ Swarm LFS routes registered (/lfs/manifest, /lfs/stream)")
+
+		// Swarm Network (Layer-1 P2P)
+		if swarmLedger != nil {
+			v1.POST("/swarm/tx", func(c *gin.Context) {
+				var tx p2p.Transaction
+				if err := c.ShouldBindJSON(&tx); err != nil {
+					c.JSON(400, gin.H{"error": "invalid transaction payload"})
+					return
+				}
+				
+				if err := swarmLedger.SubmitTransaction(c.Request.Context(), &tx); err != nil {
+					// Distinguish between Sentinel AI rejections and simple bad signatures
+					if strings.Contains(err.Error(), "sentinel") {
+						c.JSON(403, gin.H{"error": "transaction blocked by swarm sentinel", "reason": err.Error()})
+					} else {
+						c.JSON(400, gin.H{"error": "transaction rejected", "details": err.Error()})
+					}
+					return
+				}
+				
+				c.JSON(200, gin.H{"status": "accepted", "tx_id": tx.ID, "message": "Transaction submitted to swarm mempool"})
+			})
+			
+			v1.GET("/swarm/mempool", func(c *gin.Context) {
+				c.JSON(200, gin.H{
+					"mempool_size": len(swarmLedger.State.Mempool),
+					// Could return specific Txs or just size for monitor
+				})
+			})
+		}
 
 		v1.GET("/network/autonomy", getAutonomyStats(maintenanceService))
 		// Night Audit: публичная проверка соответствия золотых резервов количеству токенов (ТЗ 3.Б)
