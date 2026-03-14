@@ -17,7 +17,8 @@ import GoldenAccumulationChart from '../components/tma/GoldenAccumulationChart';
 import GoldenGatewayTransactions from '../components/tma/GoldenGatewayTransactions';
 import { useWalletStore } from '../store/walletStore';
 import WalletConnect from '../components/WalletConnect';
-import { Zap, Wallet, Coins, Activity } from 'lucide-react';
+import AgentMarketplace from '../components/agents/AgentMarketplace';
+import { Zap, Wallet, Coins, Activity, Bot } from 'lucide-react';
 
 interface TMAStats {
   node_status: 'online' | 'offline' | 'mining';
@@ -29,7 +30,7 @@ interface TMAStats {
   tasks_completed_24h: number;
 }
 
-type TabId = 'overview' | 'worker' | 'golden';
+type TabId = 'overview' | 'worker' | 'golden' | 'agents';
 
 export default function TMAPage() {
   const { t } = useTranslation('common');
@@ -99,6 +100,7 @@ export default function TMAPage() {
     { id: 'overview', label: t('dashboard', 'Dashboard'), icon: <Activity className="w-4 h-4" /> },
     { id: 'worker', label: t('cta_worker', 'Ignite Node'), icon: <Zap className="w-4 h-4" /> },
     { id: 'golden', label: t('gold_reserve_title', 'Gold Reserve Fund'), icon: <Coins className="w-4 h-4" /> },
+    { id: 'agents', label: t('hire_agents', 'AI Workers'), icon: <Bot className="w-4 h-4" /> },
   ];
 
   return (
@@ -213,6 +215,12 @@ export default function TMAPage() {
                 </a>
               </>
             )}
+          </div>
+        )}
+
+        {tab === 'agents' && (
+          <div className="space-y-4">
+            <AgentMarketplace />
           </div>
         )}
       </div>

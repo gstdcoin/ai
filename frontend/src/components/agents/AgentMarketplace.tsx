@@ -33,6 +33,8 @@ export default function AgentMarketplace() {
         pricing_model: '',
         sort_by: 'trust'
     });
+    const [rentingAgentId, setRentingAgentId] = useState<string | null>(null);
+    const [rentedAgents, setRentedAgents] = useState<Set<string>>(new Set());
 
     const fetchAgents = useCallback(async () => {
         setLoading(true);
@@ -61,21 +63,25 @@ export default function AgentMarketplace() {
         }
 
         try {
+            setRentingAgentId(agent.agent_id);
             await apiPost('/marketplace/rentals', {
                 agent_id: agent.agent_id,
                 renter_wallet: address,
                 duration_hours: 1
             });
-            toast.success('Agent Hired!', `${agent.name} is now working for you.`);
+            setRentedAgents(prev => new Set(prev).add(agent.agent_id));
+            toast.success('Agent Hired!', { description: `${agent.name} is now working for you.` });
         } catch (error: any) {
-            toast.error('Hire Failed', error.message || 'Failed to hire agent.');
+            toast.error('Hire Failed', { description: error.message || 'Failed to hire agent.' });
+        } finally {
+            setRentingAgentId(null);
         }
     };
 
     return (
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <div className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
             {/* Hero Section */}
-            <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-violet-600/20 via-blue-600/10 to-transparent border border-white/5 p-8 lg:p-12">
+            <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-violet-600/20 via-blue-600/10 to-transparent border border-white/5 p-6 sm:p-8 lg:p-12">
                 <div className="absolute top-0 right-0 w-96 h-96 bg-violet-500/10 rounded-full blur-[100px] -mr-32 -mt-32 animate-pulse" />
                 <div className="relative z-10 max-w-2xl">
                     <div className="flex items-center gap-2 mb-4">
@@ -83,15 +89,15 @@ export default function AgentMarketplace() {
                             Agentic Economy v1.0
                         </div>
                     </div>
-                    <h2 className="text-4xl lg:text-5xl font-black text-white mb-6 leading-tight tracking-tighter">
+                    <h2 className="text-2xl sm:text-4xl lg:text-5xl font-black text-white mb-4 sm:mb-6 leading-tight tracking-tighter">
                         Hire Sovereign <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400">{t('ai_agents', 'AI Agents')}</span> to Automate Your World.
                     </h2>
-                    <p className="text-gray-400 text-lg mb-8 leading-relaxed">
+                    <p className="text-gray-400 text-sm sm:text-lg mb-6 sm:mb-8 leading-relaxed">
                         The world's first decentralized marketplace where high-performance agents trade their skills.
                         No middlemen. Pure A2A economy.
                     </p>
-                    <div className="flex flex-wrap gap-4">
-                        <button className="px-8 py-3 bg-white text-black rounded-xl font-bold flex items-center gap-2 hover:bg-violet-400 hover:text-white transition-all transform hover:scale-105">
+                    <div className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4">
+                        <button className="px-6 py-2.5 sm:px-8 sm:py-3 bg-white text-black rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-violet-400 hover:text-white transition-all transform hover:scale-105">
                             <Plus size={18} />{t('list_your_agent', 'List Your Agent')}</button>
                         <button className="px-8 py-3 bg-white/5 border border-white/10 text-white rounded-xl font-bold hover:bg-white/10 transition-all">{t('how_it_works', 'How it Works')}</button>
                     </div>
@@ -107,7 +113,14 @@ export default function AgentMarketplace() {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {featuredAgents.map(agent => (
-                            <AgentCard key={agent.agent_id} agent={agent} onRent={() => handleRentAgent(agent)} featured />
+                            <AgentCard 
+                                key={agent.agent_id} 
+                                agent={agent} 
+                                onRent={() => handleRentAgent(agent)} 
+                                featured 
+                                isRenting={rentingAgentId === agent.agent_id}
+                                isRented={rentedAgents.has(agent.agent_id)}
+                            />
                         ))}
                     </div>
                 </div>
@@ -158,7 +171,13 @@ export default function AgentMarketplace() {
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {agents.map(agent => (
-                            <AgentCard key={agent.agent_id} agent={agent} onRent={() => handleRentAgent(agent)} />
+                            <AgentCard 
+                                key={agent.agent_id} 
+                                agent={agent} 
+                                onRent={() => handleRentAgent(agent)} 
+                                isRenting={rentingAgentId === agent.agent_id}
+                                isRented={rentedAgents.has(agent.agent_id)}
+                            />
                         ))}
                     </div>
                 )}
@@ -167,7 +186,7 @@ export default function AgentMarketplace() {
     );
 }
 
-function AgentCard({ agent, onRent, featured = false }: { agent: Agent, onRent: () => void, featured?: boolean }) {
+function AgentCard({ agent, onRent, featured = false, isRenting = false, isRented = false }: { agent: Agent, onRent: () => void, featured?: boolean, isRenting?: boolean, isRented?: boolean }) {
     const { t } = useTranslation('common');
     return (
         <div className={`group relative glass-card p-6 overflow-hidden transition-all duration-500 hover:border-violet-500/30 ${featured ? 'border-amber-500/20' : 'border-white/5'}`}>
@@ -218,9 +237,18 @@ function AgentCard({ agent, onRent, featured = false }: { agent: Agent, onRent: 
                 </div>
 
                 <button
-                    onClick={onRent}
-                    className="w-full mt-6 py-3 bg-white/5 border border-white/10 hover:bg-white text-white hover:text-black rounded-xl text-xs font-black uppercase tracking-widest transition-all group-hover:shadow-[0_0_20px_rgba(139,92,246,0.2)]"
-                >{t('hire_agent', 'Hire Agent')}</button>
+                    onClick={isRented ? undefined : onRent}
+                    disabled={isRenting || isRented}
+                    className={`w-full mt-6 py-3 border rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+                        isRented 
+                        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 cursor-default'
+                        : isRenting
+                        ? 'bg-white/10 text-white/50 border-white/10 cursor-wait'
+                        : 'bg-white/5 border-white/10 hover:bg-white text-white hover:text-black group-hover:shadow-[0_0_20px_rgba(139,92,246,0.2)]'
+                    }`}
+                >
+                    {isRenting ? 'Hiring...' : isRented ? 'Working' : t('hire_agent', 'Hire Agent')}
+                </button>
             </div>
         </div>
     );
