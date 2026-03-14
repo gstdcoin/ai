@@ -975,35 +975,54 @@ func SetupRoutes(
 				ON CONFLICT (wallet_address) DO NOTHING
 			`, req.WalletAddress)
 
+			// Trust Scoring Logic: MasterNodes require >10000 GSTD, Mobiles start basic.
+			var totalBalance float64
+			_ = dbConn.QueryRowContext(c.Request.Context(), `
+				SELECT COALESCE(gstd_balance, 0) + COALESCE(balance, 0) FROM users WHERE wallet_address = $1
+			`, req.WalletAddress).Scan(&totalBalance)
+
+			trustScore := 0.5
+			nodeTier := "basic"
+
 			// Track Mobile status
 			deviceType := "pc"
 			if req.IsMobile {
 				deviceType = "mobile"
+				nodeTier = "mobile_basic"
+				// Mobile trust relies on continuous uptime, start at 0.5
 			}
+			
+			if totalBalance >= 10000.0 && !req.IsMobile {
+				nodeTier = "masternode"   // Bank Node
+				trustScore = 1.0          // High priority Swarm routing
+			}
+
+			specsJSONStr := fmt.Sprintf(`{"device_type": "%s", "tier": "%s"}`, deviceType, nodeTier)
 
 			// Try UPDATE existing node first
 			res, err := dbConn.ExecContext(c.Request.Context(), `
 				UPDATE nodes SET status = 'online', last_seen = NOW(), updated_at = NOW(), name = $2,
-				specs = jsonb_set(COALESCE(specs, '{}'::jsonb), '{device_type}', $3::jsonb)
+				trust_score = $3,
+				specs = COALESCE(specs, '{}'::jsonb) || $4::jsonb
 				WHERE wallet_address = $1
-			`, req.WalletAddress, nodeName, fmt.Sprintf(`"%s"`, deviceType))
+			`, req.WalletAddress, nodeName, trustScore, specsJSONStr)
 			rowsAffected := int64(0)
 			if err != nil {
 				log.Printf("[heartbeat] UPDATE error: %v", err)
 			} else {
 				rowsAffected, _ = res.RowsAffected()
 			}
+			
 			// If no existing node, INSERT
 			if rowsAffected == 0 {
-				specsJSON := fmt.Sprintf(`{"device_type": "%s"}`, deviceType)
 				if _, err := dbConn.ExecContext(c.Request.Context(), `
-					INSERT INTO nodes (id, wallet_address, name, status, last_seen, created_at, updated_at, specs)
-					VALUES (gen_random_uuid()::text, $1, $2, 'online', NOW(), NOW(), NOW(), $3)
-				`, req.WalletAddress, nodeName, specsJSON); err != nil {
+					INSERT INTO nodes (id, wallet_address, name, status, last_seen, created_at, updated_at, trust_score, specs)
+					VALUES (gen_random_uuid()::text, $1, $2, 'online', NOW(), NOW(), NOW(), $3, $4::jsonb)
+				`, req.WalletAddress, nodeName, trustScore, specsJSONStr); err != nil {
 					log.Printf("[heartbeat] INSERT error: %v", err)
 				}
 			}
-			log.Printf("[heartbeat] wallet=%s rows_updated=%d", req.WalletAddress, rowsAffected)
+			log.Printf("[heartbeat] wallet=%s rows_updated=%d tier=%s score=%.2f", req.WalletAddress, rowsAffected, nodeTier, trustScore)
 
 			if hoursSinceLast < 0.9 {
 				// Too soon — less than ~54 minutes since last heartbeat

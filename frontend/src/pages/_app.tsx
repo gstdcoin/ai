@@ -11,6 +11,7 @@ import WalletListener from '../components/common/WalletListener';
 import VercelSwarmHeartbeat from '../components/common/VercelSwarmHeartbeat';
 import EcosystemNav from '../components/layout/EcosystemNav';
 import EcosystemFooter from '../components/layout/EcosystemFooter';
+import AutoClaimWorker from '../components/common/AutoClaimWorker';
 import { logger } from '../lib/logger';
 import '../styles/globals.css';
 
@@ -95,6 +96,7 @@ function App({ Component, pageProps }: AppProps) {
         >
           {isMounted && <WalletListener />}
           {isMounted && <VercelSwarmHeartbeat />}
+          {isMounted && <AutoClaimWorker />}
           {router.pathname !== '/tma' && <EcosystemNav />}
           <main style={{ paddingTop: router.pathname !== '/tma' ? 56 : 0, paddingBottom: router.pathname === '/dashboard' ? 80 : 0, minHeight: '100vh' }}>
             <Component {...pageProps} />
