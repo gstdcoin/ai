@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/mr-tron/base58"
 )
 
 // TransactionType defines the intent of the swarm transaction.
@@ -27,11 +29,12 @@ type Transaction struct {
 	Type      TransactionType `json:"type"`
 	Sender    string          `json:"sender"`    // TON Wallet Address (e.g. UQ...)
 	Receiver  string          `json:"receiver"`  // Destination address (optional for some types)
-	Amount    float64         `json:"amount"`    // GSTD amount
-	Payload   string          `json:"payload"`   // Action payload, AI prompt, or contract code
-	Timestamp int64           `json:"timestamp"` // Unix epoch
+	Amount    float64         `json:"amount"`    // Number of GSTD
+	Payload   string          `json:"payload"`   // Computation task or contract data
+	Timestamp int64           `json:"timestamp"` // Unix time (anti-replay window)
+	Nonce     int64           `json:"nonce"`     // Strict ordering anti-replay sequence
 	PubKey    string          `json:"pub_key"`   // Hex-encoded Ed25519 Public Key
-	Signature string          `json:"signature"` // Base64-encoded signature of the transaction hash
+	Signature string          `json:"signature"` // Ed25519 signature of the hash
 }
 
 // Hash payload structure matches what the client signs.
@@ -42,17 +45,22 @@ type TxHashEnvelope struct {
 	Amount    float64         `json:"amount"`
 	Payload   string          `json:"payload"`
 	Timestamp int64           `json:"timestamp"`
+	Nonce     int64           `json:"nonce"`
 }
 
 // Hash returns the SHA-256 hash of the transaction data (without signature).
 func (tx *Transaction) Hash() []byte {
-	env := TxHashEnvelope{
-		Type:      tx.Type,
-		Sender:    tx.Sender,
-		Receiver:  tx.Receiver,
-		Amount:    tx.Amount,
-		Payload:   tx.Payload,
-		Timestamp: tx.Timestamp,
+	// Note to self: The keys in the map must match perfectly the lexicographical order
+	// expected by JSON marshal if clients implement it in other languages.
+	// We use sorted key serialization below or canonical JSON in real protocols.
+	env := map[string]interface{}{
+		"amount":    tx.Amount,
+		"nonce":     tx.Nonce,
+		"payload":   tx.Payload,
+		"receiver":  tx.Receiver,
+		"sender":    tx.Sender,
+		"timestamp": tx.Timestamp,
+		"type":      tx.Type,
 	}
 	data, _ := json.Marshal(env)
 	h := sha256.Sum256(data)
@@ -94,13 +102,39 @@ func (tx *Transaction) Verify() error {
 		return fmt.Errorf("invalid signature")
 	}
 
+	// -------------------------------------------------------------
+	// INDEPENDENCE LAYER: Swarm Native Addresses (SNA)
+	// -------------------------------------------------------------
+	// We cannot use TON "UQ..." addresses directly in P2P consensus
+	// because TON addresses are hashes of (Code+Data), not just PubKeys.
+	// P2P networks must be able to verify ownership instantly offline.
+	// 
+	// Therefore, a user's identity on Swarm is mathematically bound to 
+	// their TON Ed25519 public key in a base58 format: gstd<Base58_PubKey>
+	// -------------------------------------------------------------
+	expectedSwarmAddress := GenerateSwarmAddress(pubKeyBytes)
+	if tx.Sender != expectedSwarmAddress {
+		return fmt.Errorf("spoofing attempt: tx.Sender (%s) does not match public key derivation (%s)", tx.Sender, expectedSwarmAddress)
+	}
+
 	return nil
 }
 
+// GenerateSwarmAddress mathematically derives a Swarm Native Address (SNA) from an Ed25519 public key.
+func GenerateSwarmAddress(pubKey []byte) string {
+	b58 := base58.Encode(pubKey)
+	return "gstd" + b58
+}
+
 // BuildTransaction creates and signs a new transaction (used by the Swarm Node itself for rewards)
-func BuildTransaction(txType TransactionType, sender, receiver string, amount float64, payload string, privKey ed25519.PrivateKey) (*Transaction, error) {
+func BuildTransaction(txType TransactionType, sender, receiver string, amount float64, payload string, nonce int64, privKey ed25519.PrivateKey) (*Transaction, error) {
 	pubKey := privKey.Public().(ed25519.PublicKey)
 	
+	// If sender is empty, auto-derive the Swarm address
+	if sender == "" {
+		sender = GenerateSwarmAddress(pubKey)
+	}
+
 	tx := &Transaction{
 		Type:      txType,
 		Sender:    sender,
@@ -108,6 +142,7 @@ func BuildTransaction(txType TransactionType, sender, receiver string, amount fl
 		Amount:    amount,
 		Payload:   payload,
 		Timestamp: time.Now().Unix(),
+		Nonce:     nonce,
 		PubKey:    hex.EncodeToString(pubKey),
 	}
 
