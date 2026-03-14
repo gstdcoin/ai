@@ -20,6 +20,7 @@ import (
 	"distributed-computing-platform/internal/hive"
 	infRouter "distributed-computing-platform/internal/inference"
 	nodeMgr "distributed-computing-platform/internal/node"
+	"distributed-computing-platform/internal/p2p"
 	"distributed-computing-platform/internal/queue"
 	"distributed-computing-platform/internal/sentinel"
 	"distributed-computing-platform/internal/services"
@@ -369,6 +370,10 @@ func BuildContainer() *dig.Container {
 		return settlementClient.NewClient(contractAddr)
 	})
 
+	// Swarm Economy Layer-1 P2P Node
+	c.Provide(p2p.NewSwarmNode)
+	c.Provide(p2p.NewLedger) // Autonomous Mempool + Consensus Sentinel
+
 	// 4. Gin Router
 	c.Provide(func() *gin.Engine {
 		return gin.New()
@@ -502,6 +507,8 @@ func StartApplication(container *dig.Container) error {
 		organism *services.SovereignOrganismService,
 		monetizationService *services.MonetizationMetricsService,
 		organismHub *services.OrganismHubService,
+		swarmNode *p2p.SwarmNode,
+		swarmLedger *p2p.Ledger,
 	) {
 		// 1. Cross-dependency wiring
 		tonService.SetCacheService(cacheService)
@@ -748,12 +755,21 @@ func StartApplication(container *dig.Container) error {
 		}())
 		log.Printf("   Hybrid Router:   %v", hybridRouter != nil)
 		log.Printf("   Cocoon Symbiosis: %v", cocoonSymbiosis != nil)
+		if swarmNode != nil {
+			log.Printf("   Swarm P2P:       true (ID=%s)", swarmNode.Host.ID().String())
+			if swarmLedger != nil {
+				go swarmLedger.StartMempoolWorker(ctx)
+				log.Printf("   Swarm Ledger:    ACTIVE — Autonomous Mempool + Sentinel Consensus")
+			}
+		}
 		log.Printf("══════════════════════════════════════════")
 
 		// Suppress unused variable warnings for services that are used passively
 		_ = hiveStore
 		_ = sentinelEngine
 		_ = llmRouter
+		_ = swarmNode
+		_ = swarmLedger
 
 		// 3b. Leviathan: optional prediction-market analytics (LEVIATHAN_ENABLED=true)
 		leviathan.StartIfEnabled(ctx)
@@ -875,6 +891,7 @@ func StartApplication(container *dig.Container) error {
 			cocoonSymbiosis,
 			hybridRouter,
 			smartRouter,
+			swarmLedger,
 		)
 
 		// 4a. Leviathan Live Stream (SSE) — Protocol: Live Stream, No-DB, 30s memory
