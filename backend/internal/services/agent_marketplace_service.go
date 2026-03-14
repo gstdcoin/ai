@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+const ErrMsgAgentNotFound = "agent not found"
+
 // AgentMarketplaceService handles the Agent Marketplace ("Airbnb for AI Agents")
 type AgentMarketplaceService struct {
 	db       *sql.DB
@@ -78,7 +80,7 @@ func (s *AgentMarketplaceService) UpdateAgent(ctx context.Context, agentID strin
 	var currentOwner string
 	err := s.db.QueryRowContext(ctx, "SELECT owner_wallet FROM agent_registry WHERE id = $1", agentID).Scan(&currentOwner)
 	if err != nil {
-		return fmt.Errorf("agent not found")
+		return fmt.Errorf(ErrMsgAgentNotFound)
 	}
 	if currentOwner != ownerWallet {
 		return fmt.Errorf("not authorized to update this agent")
@@ -227,7 +229,7 @@ func (s *AgentMarketplaceService) GetAgentDetails(ctx context.Context, agentID s
 	)
 
 	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("agent not found")
+		return nil, fmt.Errorf(ErrMsgAgentNotFound)
 	}
 	if err != nil {
 		return nil, err
@@ -259,7 +261,7 @@ func (s *AgentMarketplaceService) RentAgent(ctx context.Context, req *RentReques
 	`, req.AgentID).Scan(&ownerWallet, &priceGSTD, &pricingModel, &isActive)
 
 	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("agent not found")
+		return nil, fmt.Errorf(ErrMsgAgentNotFound)
 	}
 	if err != nil {
 		return nil, err
@@ -304,15 +306,20 @@ func (s *AgentMarketplaceService) RentAgent(ctx context.Context, req *RentReques
 	}
 
 	// Process instant payment for the duration/tasks
-	_, err = s.db.ExecContext(ctx, `
+	res, err := s.db.ExecContext(ctx, `
 		UPDATE users SET balance = balance - $1
-		WHERE wallet_address = $2
+		WHERE wallet_address = $2 AND balance >= $1
 	`, estimatedCost, req.RenterWallet)
 
 	if err != nil {
-		// Rollback rental
 		s.db.ExecContext(ctx, "DELETE FROM agent_rentals WHERE id = $1", rentalID)
 		return nil, fmt.Errorf("failed to process payment: %w", err)
+	}
+
+	rowsAffected, _ := res.RowsAffected()
+	if rowsAffected == 0 {
+		s.db.ExecContext(ctx, "DELETE FROM agent_rentals WHERE id = $1", rentalID)
+		return nil, fmt.Errorf("insufficient balance during atomic deduction")
 	}
 
 	// Pay owner 80% immediately

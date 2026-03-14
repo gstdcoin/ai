@@ -74,9 +74,9 @@ export default function AgentMarketplace() {
                 duration_hours: 1
             });
             setRentedAgents(prev => new Set(prev).add(agent.agent_id));
-            toast.success('Agent Hired!', { description: `${agent.name} is now working for you.` });
+            toast.success('Agent Hired!', `${agent.name} is now working for you.`);
         } catch (error: any) {
-            toast.error('Hire Failed', { description: error.message || 'Failed to hire agent.' });
+            toast.error('Hire Failed', error.message || 'Failed to hire agent.');
         } finally {
             setRentingAgentId(null);
         }
