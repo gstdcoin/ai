@@ -464,11 +464,24 @@ func SetupRoutes(
 				
 				c.JSON(200, gin.H{"status": "accepted", "tx_id": tx.ID, "message": "Transaction submitted to swarm mempool"})
 			})
-			
 			v1.GET("/swarm/mempool", func(c *gin.Context) {
 				c.JSON(200, gin.H{
 					"mempool_size": len(swarmLedger.State.Mempool),
-					// Could return specific Txs or just size for monitor
+				})
+			})
+
+			v1.GET("/swarm/account/:address", func(c *gin.Context) {
+				addr := c.Param("address")
+				
+				swarmLedger.State.mu.RLock()
+				balance := swarmLedger.State.Balances[addr]
+				nonce := swarmLedger.State.Nonce[addr]
+				swarmLedger.State.mu.RUnlock()
+				
+				c.JSON(200, gin.H{
+					"address": addr,
+					"balance": balance,
+					"nonce":   nonce,
 				})
 			})
 		}
