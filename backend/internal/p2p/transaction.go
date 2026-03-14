@@ -14,9 +14,10 @@ import (
 type TransactionType string
 
 const (
-	TxTransfer    TransactionType = "transfer"      // Standard GSTD transfer
-	TxComputeTask TransactionType = "compute_task"  // Request for AI compute
-	TxSmartDeploy TransactionType = "smart_deploy"  // Deploy a Swarm Contract
+	TxTransfer      TransactionType = "transfer"       // Standard GSTD transfer
+	TxComputeTask   TransactionType = "compute_task"   // Request for AI compute
+	TxSmartDeploy   TransactionType = "smart_deploy"   // Deploy a Swarm Contract
+	TxNodeHeartbeat TransactionType = "node_heartbeat" // Mobile node reporting active status
 )
 
 // Transaction represents a primitive unit of work or value transfer in the Swarm.

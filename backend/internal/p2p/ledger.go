@@ -17,8 +17,10 @@ type LedgerState struct {
 	mu       sync.RWMutex
 	Balances map[string]float64 // Address -> GSTD Balance
 	Nonce    map[string]int64   // Address -> Transaction count
-	Mempool  map[string]*Transaction
-	BlockHeight uint64
+	Mempool      map[string]*Transaction
+	BlockHeight  uint64
+	ActiveNodes  map[string]int64   // Address -> Last heartbeat timestamp
+	RewardPool   float64            // Accumulated fees from tx commissions
 }
 
 // Ledger holds the state and handles incoming transactions via the Sentinel.
@@ -39,6 +41,8 @@ func NewLedger(node *SwarmNode, s *sentinel.Sentinel) *Ledger {
 			Nonce:    make(map[string]int64),
 			Mempool:  make(map[string]*Transaction),
 			BlockHeight: 0,
+			ActiveNodes: make(map[string]int64),
+			RewardPool:  0.0,
 		},
 	}
 
@@ -92,17 +96,32 @@ func (l *Ledger) ProcessMessage(ctx context.Context, payload []byte) error {
 	l.State.mu.Lock()
 	defer l.State.mu.Unlock()
 
+	// Handle Heartbeats (Zero amount, purely to register active status)
+	if tx.Type == TxNodeHeartbeat {
+		l.State.ActiveNodes[tx.Sender] = time.Now().Unix()
+		log.Printf("📱 [Swarm Ledger] Mobile Node Heartbeat registered: %s", tx.Sender[:8])
+		return nil
+	}
+
+	// Calculate network fee (1% distributed to active mobile nodes)
+	fee := 0.0
+	if tx.Type == TxTransfer || tx.Type == TxComputeTask || tx.Type == TxSmartDeploy {
+		fee = tx.Amount * 0.01 // 1% commission for network support
+	}
+	netAmount := tx.Amount - fee
+
 	senderBalance := l.State.Balances[tx.Sender]
 	if senderBalance < tx.Amount {
 		return fmt.Errorf("insufficient funds: sender=%s, balance=%f, requested=%f", tx.Sender, senderBalance, tx.Amount)
 	}
 
-	// We apply it immediately to the local mempool state for fast routing
+	// Apply balances
 	l.State.Balances[tx.Sender] -= tx.Amount
-	l.State.Balances[tx.Receiver] += tx.Amount
+	l.State.Balances[tx.Receiver] += netAmount
+	l.State.RewardPool += fee
 	l.State.Mempool[tx.ID] = &tx
 
-	log.Printf("✅ [Swarm Ledger] Transcation %s APPLIED: %s -> %s (Amount: %.2f GSTD)", tx.ID, tx.Sender[:8], tx.Receiver[:8], tx.Amount)
+	log.Printf("✅ [Swarm Ledger] Transcation %s APPLIED: %s -> %s (Amount: %.2f, Fee: %.4f)", tx.ID, tx.Sender[:8], tx.Receiver[:8], tx.Amount, fee)
 
 	return nil
 }
@@ -139,6 +158,54 @@ func (l *Ledger) StartMempoolWorker(ctx context.Context) {
 			}
 		}
 	}
+}
+
+// StartRewardDistributor periodically distributes the accumulated reward pool
+// equally among all actively participating mobile nodes.
+func (l *Ledger) StartRewardDistributor(ctx context.Context) {
+	log.Printf("💰 [Swarm Ledger] Mobile Rewards Distributor started (runs every 10 seconds for Genesis)")
+	ticker := time.NewTicker(10 * time.Second) // 10s distribution cycle
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			l.distributeRewards()
+		}
+	}
+}
+
+func (l *Ledger) distributeRewards() {
+	l.State.mu.Lock()
+	defer l.State.mu.Unlock()
+
+	if l.State.RewardPool <= 0 {
+		return // Nothing to distribute
+	}
+
+	// Find active nodes (heartbeat within last 60 seconds for rapid testing)
+	now := time.Now().Unix()
+	var activeAddrs []string
+	for addr, lastBeat := range l.State.ActiveNodes {
+		if now-lastBeat <= 60 {
+			activeAddrs = append(activeAddrs, addr)
+		}
+	}
+
+	if len(activeAddrs) == 0 {
+		return // No active nodes to receive rewards right now
+	}
+
+	// Distributed equally
+	rewardPerNode := l.State.RewardPool / float64(len(activeAddrs))
+	for _, addr := range activeAddrs {
+		l.State.Balances[addr] += rewardPerNode
+	}
+
+	log.Printf("🏆 [Swarm Ledger] Distributed %.4f GSTD to %d active mobile nodes (%.4f each)", l.State.RewardPool, len(activeAddrs), rewardPerNode)
+	l.State.RewardPool = 0
 }
 
 // SubmitTransaction allows the local REST API to submit a transaction to the Ledger,
