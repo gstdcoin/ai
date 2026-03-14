@@ -484,8 +484,8 @@ func recordHeartbeatReward(db *sql.DB) gin.HandlerFunc {
 		} else if streakDays >= 7 { streakMult = 1.1
 		}
 
-		// Heartbeat reward: tier base * streak * (30sec = 1/120 hour)
-		reward := basePH * streakMult / 120.0
+		// Heartbeat reward: tier base * streak * 1 hour
+		reward := basePH * streakMult
 
 		// Record reward
 		db.ExecContext(ctx,
@@ -494,7 +494,7 @@ func recordHeartbeatReward(db *sql.DB) gin.HandlerFunc {
 			req.NodeAddress, reward,
 			fmt.Sprintf("Heartbeat: %s tier, %dd streak, %.4f GSTD", tier, streakDays, reward))
 
-		// Update uptime (30 sec = 0.00833 hours)
+		// Update uptime (1 hour per heartbeat, rate-limited to ~60min intervals)
 		today := time.Now().Format("2006-01-02")
 		newStreak := streakDays
 		if lastDay == nil || *lastDay != today {
@@ -512,7 +512,7 @@ func recordHeartbeatReward(db *sql.DB) gin.HandlerFunc {
 		}
 
 		// Calculate new tier
-		newUptimeHours := uptimeHours + 0.00833
+		newUptimeHours := uptimeHours + 1.0
 		newTier := "bronze"
 		newMult := 1.0
 		for _, td := range TierDefs {
@@ -525,7 +525,7 @@ func recordHeartbeatReward(db *sql.DB) gin.HandlerFunc {
 		bestStreak := newStreak
 		db.ExecContext(ctx,
 			`UPDATE node_tiers SET 
-				total_uptime_hours = total_uptime_hours + 0.00833,
+				total_uptime_hours = total_uptime_hours + 1.0,
 				total_earned_gstd = total_earned_gstd + $1,
 				streak_days = $2,
 				best_streak = GREATEST(best_streak, $2),

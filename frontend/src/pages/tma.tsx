@@ -68,7 +68,7 @@ export default function TMAPage() {
           active_workers: publicData.active_devices_count || 0,
           tasks_completed_24h: publicData.completed_tasks || 0,
         });
-      } catch {
+      } catch (_e) {
         setStats({
           node_status: 'offline',
           hashrate: 0,

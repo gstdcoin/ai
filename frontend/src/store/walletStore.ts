@@ -46,7 +46,7 @@ const getCustomStorage = () => {
     localStorage.setItem('__test__', 'test');
     localStorage.removeItem('__test__');
     return localStorage;
-  } catch {
+  } catch (_e) {
     return sessionStorage;
   }
 };

@@ -1,7 +1,6 @@
 // Task Worker - Background execution loop for processing tasks
-import { useWalletStore } from '../store/walletStore';
 import { logger } from './logger';
-import { WS_URL, API_BASE_URL } from './config';
+import { WS_URL } from './config';
 import { collectTelemetry, ITelemetry } from './apiClient';
 
 export interface TaskNotification {
@@ -22,7 +21,7 @@ export interface TaskNotification {
 }
 
 // Wasm module cache
-let wasmModuleCache: Map<string, WebAssembly.Module> = new Map();
+const wasmModuleCache: Map<string, WebAssembly.Module> = new Map();
 
 export class TaskWorker {
   private ws: WebSocket | null = null;
@@ -77,12 +76,12 @@ export class TaskWorker {
               this.onTaskReceived(notification);
             }
           }
-        } catch (error) {
+        } catch (_e) {
           // Failed to parse message
         }
       };
 
-      this.ws.onerror = (error) => {
+      this.ws.onerror = () => {
         // WebSocket error
         if (this.onError) {
           this.onError(new Error('WebSocket connection error'));
@@ -175,13 +174,16 @@ async function executeWasm(wasmModule: WebAssembly.Module, inputData: any): Prom
     const instance = await WebAssembly.instantiate(wasmModule, {
       env: { memory },
       wasi_snapshot_preview1: {
-        proc_exit: () => { },
-        fd_write: () => { },
+        proc_exit: () => 0,
+        fd_write: () => 0,
       },
     });
 
     // Call the main function if it exists
-    const mainFunc = (instance.exports.main as Function) || (instance.exports._start as Function);
+    type MainFunction = (arg?: unknown) => unknown;
+    const mainExport = instance.exports.main as MainFunction | undefined;
+    const startExport = instance.exports._start as MainFunction | undefined;
+    const mainFunc = mainExport || startExport;
     if (mainFunc) {
       const result = mainFunc(inputData);
       return { result, success: true };
@@ -361,8 +363,6 @@ export async function submitTaskResult(
   executionTimeMs: number,
   tonConnectUI: any
 ): Promise<void> {
-  const apiBase = API_BASE_URL;
-
   try {
     // Sign the result
     const signature = await signResultData(taskID, result, tonConnectUI);

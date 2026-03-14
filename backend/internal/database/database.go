@@ -3,6 +3,7 @@ package database
 import (
 	"database/sql"
 	"fmt"
+	"time"
 
 	"distributed-computing-platform/internal/config"
 
@@ -24,11 +25,11 @@ func NewConnection(cfg config.DatabaseConfig) (*sql.DB, error) {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	// Set connection pool settings for scalability
-	// Increased for 1000+ concurrent MoltBots
-	db.SetMaxOpenConns(250)
-	db.SetMaxIdleConns(50)
-	db.SetConnMaxLifetime(0)
+	// Connection pool: 4 replicas × 20 = 80 max (within PG default 100)
+	db.SetMaxOpenConns(20)
+	db.SetMaxIdleConns(5)
+	db.SetConnMaxLifetime(30 * time.Minute) // recycle connections to avoid stale after PG restart
+	db.SetConnMaxIdleTime(5 * time.Minute)  // reclaim idle connections
 
 	return db, nil
 }

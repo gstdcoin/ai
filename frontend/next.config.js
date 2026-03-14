@@ -28,9 +28,9 @@ const nextConfig = {
   generateEtags: false,
   // Output standalone for Docker; Vercel ignores this
   ...(process.env.VERCEL ? {} : { output: 'standalone' }),
-  // Ignore TypeScript errors during build (eslint config removed as it is deprecated in next.config.js)
+  // TypeScript: build will fail on TS errors (tsc --skipLibCheck verified clean)
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   // PWA configuration
   async headers() {

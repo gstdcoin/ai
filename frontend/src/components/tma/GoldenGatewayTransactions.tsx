@@ -43,7 +43,7 @@ export default function GoldenGatewayTransactions({ wallet }: GoldenGatewayTrans
         if (!res.ok || cancelled) return;
         const data = await res.json();
         setTxs(data.transactions || []);
-      } catch {
+      } catch (_e) {
         if (!cancelled) setTxs([]);
       } finally {
         if (!cancelled) setLoading(false);

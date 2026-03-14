@@ -26,7 +26,7 @@ export const createTaskSchema = z.object({
         try {
           JSON.parse(val);
           return true;
-        } catch {
+        } catch (_e) {
           return false;
         }
       },

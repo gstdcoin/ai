@@ -1,12 +1,12 @@
 import { GetStaticProps } from 'next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useTranslation } from 'next-i18next';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import {
-  ArrowRightLeft, ChevronDown, Shield, Zap, Clock, CheckCircle2,
+  ArrowRightLeft, ChevronDown, Clock, CheckCircle2,
   AlertCircle, Loader2, ArrowRight, RefreshCw, BookOpen, Users,
-  ExternalLink, Copy, Check
+  Copy, Check
 } from 'lucide-react';
 
 import { API_BASE_URL } from '../lib/config';
@@ -147,7 +147,7 @@ export default function BridgePage() {
       try {
         const res = await fetch(`${API_BASE_URL}/api/v1/bridge/p2p/stats`);
         if (res.ok) setStats(await res.json());
-      } catch { /* */ }
+      } catch (_e) { /* */ }
     };
     fetchStats();
     const iv = setInterval(fetchStats, 15000);
@@ -161,7 +161,7 @@ export default function BridgePage() {
       try {
         const res = await fetch(`${API_BASE_URL}/api/v1/bridge/p2p/orders?status=open`);
         if (res.ok) { const d = await res.json(); setOrders(d.orders || []); }
-      } catch { /* */ }
+      } catch (_e) { /* */ }
     })();
   }, [tab]);
 
@@ -172,7 +172,7 @@ export default function BridgePage() {
       try {
         const res = await fetch(`${API_BASE_URL}/api/v1/bridge/p2p/my-orders?wallet=${walletAddress}`);
         if (res.ok) { const d = await res.json(); setMyOrders(d.orders || []); }
-      } catch { /* */ }
+      } catch (_e) { /* */ }
     })();
   }, [tab, walletAddress]);
 
@@ -186,10 +186,10 @@ export default function BridgePage() {
   };
 
   const handleSubmitOrder = async () => {
-    if (!amount || parseFloat(amount) <= 0) { setError('Enter amount'); return; }
-    if (!sourceAddress) { setError('Enter your source chain address'); return; }
-    if (!destAddress) { setError('Enter your destination address'); return; }
-    if (!walletAddress) { setError('Enter your main wallet address'); return; }
+    if (!amount || parseFloat(amount) <= 0) { setError(t('bridge_error_enter_amount', { defaultValue: 'Enter amount' })); return; }
+    if (!sourceAddress) { setError(t('bridge_error_enter_source', { defaultValue: 'Enter your source chain address' })); return; }
+    if (!destAddress) { setError(t('bridge_error_enter_destination', { defaultValue: 'Enter your destination address' })); return; }
+    if (!walletAddress) { setError(t('bridge_error_enter_wallet', { defaultValue: 'Enter your main wallet address' })); return; }
 
     setError('');
     setLoading(true);
@@ -208,7 +208,7 @@ export default function BridgePage() {
       });
       const data = await res.json();
       if (res.ok) { setResult(data); } else { setError(data.error || 'Failed'); }
-    } catch { setError('Network error'); }
+    } catch (_e) { setError('Network error'); }
     finally { setLoading(false); }
   };
 
@@ -222,7 +222,7 @@ export default function BridgePage() {
         body: JSON.stringify({ tx_hash: txHash }),
       });
       if (res.ok) { alert('Deposit confirmed!'); setTab('my'); }
-    } catch { /* */ }
+    } catch (_e) { /* */ }
   };
 
   const handleConfirmReceipt = async (orderId: string) => {
@@ -233,11 +233,8 @@ export default function BridgePage() {
         body: JSON.stringify({ received_tx_hash: 'confirmed-by-user' }),
       });
       if (res.ok) { alert('Bridge complete! 🎉'); setTab('my'); }
-    } catch { /* */ }
+    } catch (_e) { /* */ }
   };
-
-  const srcChain = CHAINS.find(c => c.id === sourceChain);
-  const dstChain = CHAINS.find(c => c.id === destChain);
 
   return (
     <>
@@ -248,7 +245,7 @@ export default function BridgePage() {
 
 
       <div style={{ minHeight: '100vh', background: '#030014', paddingTop: 80, fontFamily: "'Inter', system-ui, sans-serif" }}>
-        <div style={{ maxWidth: 640, margin: '0 auto', padding: '0 20px' }}>
+        <div style={{ maxWidth: 640, margin: '0 auto', padding: '0 16px' }}>
 
           {/* Header */}
           <div style={{ textAlign: 'center', marginBottom: 32 }}>
@@ -257,24 +254,24 @@ export default function BridgePage() {
               borderRadius: 20, background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.15)', marginBottom: 12,
             }}>
               <ArrowRightLeft size={14} style={{ color: '#8b5cf6' }} />
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#a78bfa', letterSpacing: '0.05em' }}>P2P CROSS-CHAIN BRIDGE</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#a78bfa', letterSpacing: '0.05em' }}>{t('bridge_badge')}</span>
             </div>
             <h1 style={{ fontSize: 'clamp(24px, 5vw, 36px)', fontWeight: 900, color: 'white', marginBottom: 8 }}>
-              Bridge GSTD <span style={{ background: 'linear-gradient(135deg, #8b5cf6, #06b6d4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Peer-to-Peer</span>
+              {t('bridge_title_prefix')} <span style={{ background: 'linear-gradient(135deg, #8b5cf6, #06b6d4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{t('bridge_title_highlight')}</span>
             </h1>
             <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', maxWidth: 440, margin: '0 auto' }}>
-              Swap GSTD directly with other users. No middleman, no liquidity pool — your wallet to theirs.
+              {t('bridge_subtitle')}
             </p>
           </div>
 
           {/* Stats Bar */}
           {stats && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 24 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8, marginBottom: 24 }}>
               {[
-                { v: stats.open_orders, l: 'Open', c: '#60a5fa' },
-                { v: stats.matched_orders, l: 'Matched', c: '#fb923c' },
-                { v: stats.completed_swaps, l: 'Done', c: '#34d399' },
-                { v: `${stats.total_volume_gstd.toFixed(0)}`, l: 'Volume', c: '#a78bfa' },
+                { v: stats.open_orders, l: t('bridge_open'), c: '#60a5fa' },
+                { v: stats.matched_orders, l: t('bridge_matched_label'), c: '#fb923c' },
+                { v: stats.completed_swaps, l: t('bridge_done'), c: '#34d399' },
+                { v: `${stats.total_volume_gstd.toFixed(0)}`, l: t('bridge_volume'), c: '#a78bfa' },
               ].map((s, i) => (
                 <div key={i} style={{ textAlign: 'center', padding: '10px 4px', borderRadius: 10, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
                   <div style={{ fontSize: 18, fontWeight: 800, color: s.c }}>{s.v}</div>
@@ -285,14 +282,14 @@ export default function BridgePage() {
           )}
 
           {/* Tab Nav */}
-          <div style={{ display: 'flex', gap: 4, marginBottom: 20, padding: 4, borderRadius: 12, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 20, padding: 4, borderRadius: 12, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
             {([
-              { id: 'swap' as const, label: 'New Swap', icon: <ArrowRightLeft size={14} /> },
-              { id: 'orders' as const, label: 'Order Book', icon: <BookOpen size={14} /> },
-              { id: 'my' as const, label: 'My Orders', icon: <Users size={14} /> },
+              { id: 'swap' as const, label: t('bridge_new_swap'), icon: <ArrowRightLeft size={14} /> },
+              { id: 'orders' as const, label: t('bridge_order_book'), icon: <BookOpen size={14} /> },
+              { id: 'my' as const, label: t('bridge_my_orders'), icon: <Users size={14} /> },
             ]).map(t => (
               <button key={t.id} onClick={() => setTab(t.id)} style={{
-                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                flex: '1 1 30%', minWidth: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                 padding: '10px 12px', borderRadius: 8, border: 'none', cursor: 'pointer',
                 background: tab === t.id ? 'rgba(139,92,246,0.15)' : 'transparent',
                 color: tab === t.id ? 'white' : 'rgba(255,255,255,0.4)',
@@ -312,17 +309,17 @@ export default function BridgePage() {
             }}>
               {/* Wallet */}
               <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 6 }}>Your Wallet ID</div>
-                <input type="text" value={walletAddress} onChange={e => setWalletAddress(e.target.value)} placeholder="Your TON wallet (for identification)"
+                <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 6 }}>{t('bridge_your_wallet')}</div>
+                <input type="text" value={walletAddress} onChange={e => setWalletAddress(e.target.value)} placeholder={t('bridge_wallet_placeholder')}
                   style={{ width: '100%', padding: '10px 14px', borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: 'white', fontSize: 13, outline: 'none' }} />
               </div>
 
-              <ChainSelect value={sourceChain} onChange={setSourceChain} label="I have GSTD on" exclude={destChain} />
+              <ChainSelect value={sourceChain} onChange={setSourceChain} label={t('bridge_i_have')} exclude={destChain} />
 
               {/* Source Address */}
               <div style={{ marginTop: 10 }}>
                 <input type="text" value={sourceAddress} onChange={e => setSourceAddress(e.target.value)}
-                  placeholder={`Your ${sourceChain} address (where you hold GSTD)`}
+                  placeholder={t('bridge_source_address_placeholder', { chain: sourceChain, defaultValue: `Your ${sourceChain} address (where you hold GSTD)` })}
                   style={{ width: '100%', padding: '10px 14px', borderRadius: 10, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', color: 'white', fontSize: 12, outline: 'none' }} />
               </div>
 
@@ -340,18 +337,18 @@ export default function BridgePage() {
                 </button>
               </div>
 
-              <ChainSelect value={destChain} onChange={setDestChain} label="I want GSTD on" exclude={sourceChain} />
+              <ChainSelect value={destChain} onChange={setDestChain} label={t('bridge_i_want')} exclude={sourceChain} />
 
               {/* Dest Address */}
               <div style={{ marginTop: 10 }}>
                 <input type="text" value={destAddress} onChange={e => setDestAddress(e.target.value)}
-                  placeholder={`Your ${destChain} address (where to receive GSTD)`}
+                  placeholder={t('bridge_dest_address_placeholder', { chain: destChain, defaultValue: `Your ${destChain} address (where to receive GSTD)` })}
                   style={{ width: '100%', padding: '10px 14px', borderRadius: 10, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', color: 'white', fontSize: 12, outline: 'none' }} />
               </div>
 
               {/* Amount */}
               <div style={{ marginTop: 16 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 6 }}>Amount GSTD</div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 6 }}>{t('bridge_amount_gstd')}</div>
                 <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00"
                   style={{ width: '100%', padding: '12px 14px', borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: 'white', fontSize: 18, fontWeight: 700, outline: 'none' }} />
               </div>
@@ -359,13 +356,13 @@ export default function BridgePage() {
               {/* Info */}
               <div style={{ marginTop: 14, padding: '10px 12px', borderRadius: 10, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>
-                  <span>Bridge Fee</span><span style={{ color: '#34d399', fontWeight: 700 }}>0% (P2P)</span>
+                  <span>{t('bridge_fee')}</span><span style={{ color: '#34d399', fontWeight: 700 }}>0% (P2P)</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>
-                  <span>Model</span><span>Peer-to-Peer Matching</span>
+                  <span>{t('bridge_model')}</span><span>{t('bridge_model_value')}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>
-                  <span>Expiry</span><span>24 hours</span>
+                  <span>{t('bridge_expiry')}</span><span>{t('bridge_expiry_value')}</span>
                 </div>
               </div>
 
@@ -382,7 +379,7 @@ export default function BridgePage() {
                   fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: loading ? 0.6 : 1,
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                 }}>
-                {loading ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Placing Order...</> : <><ArrowRightLeft size={16} /> Place Bridge Order</>}
+                {loading ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> {t('bridge_placing')}</> : <><ArrowRightLeft size={16} /> {t('bridge_place_order')}</>}
               </button>
             </div>
           )}
@@ -395,14 +392,14 @@ export default function BridgePage() {
                   <div style={{ width: 56, height: 56, borderRadius: '50%', margin: '0 auto 16px', background: 'rgba(16,185,129,0.1)', border: '2px solid rgba(16,185,129,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <CheckCircle2 size={24} style={{ color: '#34d399' }} />
                   </div>
-                  <h3 style={{ fontSize: 18, fontWeight: 700, color: 'white', marginBottom: 6 }}>Matched! 🎉</h3>
+                  <h3 style={{ fontSize: 18, fontWeight: 700, color: 'white', marginBottom: 6 }}>{t('bridge_matched')}</h3>
                   <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginBottom: 16 }}>{result.message}</p>
                   <div style={{ textAlign: 'left', padding: '12px 14px', borderRadius: 10, background: 'rgba(255,255,255,0.03)', marginBottom: 12 }}>
-                    <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>Send your GSTD to:</div>
+                    <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>{t('bridge_send_to')}</div>
                     <div style={{ fontSize: 13, fontFamily: 'monospace', color: '#a78bfa', wordBreak: 'break-all', display: 'flex', alignItems: 'center', gap: 6 }}>
                       {result.match?.send_to_address} <CopyButton text={result.match?.send_to_address || ''} />
                     </div>
-                    <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 8, marginBottom: 4 }}>You will receive from:</div>
+                    <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 8, marginBottom: 4 }}>{t('bridge_receive_from')}</div>
                     <div style={{ fontSize: 13, fontFamily: 'monospace', color: '#34d399', wordBreak: 'break-all' }}>
                       {result.match?.receive_from}
                     </div>
@@ -413,14 +410,14 @@ export default function BridgePage() {
                   <div style={{ width: 56, height: 56, borderRadius: '50%', margin: '0 auto 16px', background: 'rgba(59,130,246,0.1)', border: '2px solid rgba(59,130,246,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <Clock size={24} style={{ color: '#60a5fa' }} />
                   </div>
-                  <h3 style={{ fontSize: 18, fontWeight: 700, color: 'white', marginBottom: 6 }}>Order Placed</h3>
+                  <h3 style={{ fontSize: 18, fontWeight: 700, color: 'white', marginBottom: 6 }}>{t('bridge_order_placed')}</h3>
                   <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginBottom: 16 }}>{result.message}</p>
                 </>
               )}
               <div style={{ fontSize: 11, fontFamily: 'monospace', color: 'rgba(255,255,255,0.3)', marginBottom: 16 }}>Order ID: {result.order_id}</div>
               <button onClick={() => { setResult(null); setAmount(''); setSourceAddress(''); setDestAddress(''); }}
                 style={{ padding: '10px 20px', borderRadius: 10, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                <RefreshCw size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} /> New Order
+                <RefreshCw size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} /> {t('bridge_new_order')}
               </button>
             </div>
           )}
@@ -429,16 +426,16 @@ export default function BridgePage() {
           {tab === 'orders' && (
             <div>
               <div style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.3)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                Open Orders ({orders.length})
+                {t('bridge_open_orders')} ({orders.length})
               </div>
               {orders.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px 20px', borderRadius: 16, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
                   <BookOpen size={32} style={{ color: 'rgba(255,255,255,0.15)', marginBottom: 12 }} />
-                  <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>No open orders yet. Be the first!</p>
+                  <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>{t('bridge_no_orders')}</p>
                   <button onClick={() => setTab('swap')} style={{
                     marginTop: 12, padding: '8px 16px', borderRadius: 8, background: 'rgba(139,92,246,0.1)',
                     border: '1px solid rgba(139,92,246,0.2)', color: '#a78bfa', fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                  }}>Create Order</button>
+                  }}>{t('bridge_create_order')}</button>
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -446,7 +443,7 @@ export default function BridgePage() {
                     <div key={o.id} style={{
                       padding: '14px 16px', borderRadius: 14,
                       background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap',
                     }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <div style={{ textAlign: 'center' }}>
@@ -475,13 +472,13 @@ export default function BridgePage() {
             <div>
               {!walletAddress ? (
                 <div style={{ textAlign: 'center', padding: '40px 20px', borderRadius: 16, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                  <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 12 }}>Enter your wallet to see orders</p>
-                  <input type="text" value={walletAddress} onChange={e => setWalletAddress(e.target.value)} placeholder="Your wallet address"
-                    style={{ width: '80%', padding: '10px 14px', borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: 'white', fontSize: 13, outline: 'none', textAlign: 'center' }} />
+                  <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 12 }}>{t('bridge_enter_wallet')}</p>
+                  <input type="text" value={walletAddress} onChange={e => setWalletAddress(e.target.value)} placeholder={t('bridge_your_wallet_ph')}
+                    style={{ width: '100%', maxWidth: 360, padding: '10px 14px', borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: 'white', fontSize: 13, outline: 'none', textAlign: 'center' }} />
                 </div>
               ) : myOrders.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px 20px', borderRadius: 16, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                  <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>No orders yet</p>
+                  <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>{t('bridge_no_my_orders')}</p>
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -503,7 +500,7 @@ export default function BridgePage() {
                       {/* Show match details */}
                       {o.send_gstd_to && (
                         <div style={{ padding: '10px 12px', borderRadius: 8, background: 'rgba(139,92,246,0.05)', border: '1px solid rgba(139,92,246,0.1)', marginBottom: 8, fontSize: 12 }}>
-                          <div style={{ color: 'rgba(255,255,255,0.5)', marginBottom: 4 }}>Send your {o.source_chain} GSTD to:</div>
+                          <div style={{ color: 'rgba(255,255,255,0.5)', marginBottom: 4 }}>{t('bridge_send_chain', { chain: o.source_chain })}</div>
                           <div style={{ fontFamily: 'monospace', color: '#a78bfa', wordBreak: 'break-all', display: 'flex', alignItems: 'center', gap: 4 }}>
                             {o.send_gstd_to} <CopyButton text={o.send_gstd_to} />
                           </div>
@@ -515,13 +512,13 @@ export default function BridgePage() {
                         {o.status === 'matched' && (
                           <button onClick={() => handleConfirmDeposit(o.id)}
                             style={{ flex: 1, padding: '8px', borderRadius: 8, background: 'rgba(249,115,22,0.1)', border: '1px solid rgba(249,115,22,0.2)', color: '#fb923c', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
-                            I Sent GSTD ✓
+                            {t('bridge_i_sent')}
                           </button>
                         )}
                         {(o.status === 'deposited' || o.status === 'confirming') && (
                           <button onClick={() => handleConfirmReceipt(o.id)}
                             style={{ flex: 1, padding: '8px', borderRadius: 8, background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)', color: '#34d399', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
-                            I Received GSTD ✓
+                            {t('bridge_i_received')}
                           </button>
                         )}
                       </div>
@@ -534,13 +531,13 @@ export default function BridgePage() {
 
           {/* How it works */}
           <div style={{ marginTop: 48, marginBottom: 48 }}>
-            <h2 style={{ fontSize: 18, fontWeight: 800, color: 'white', textAlign: 'center', marginBottom: 20 }}>How P2P Bridge Works</h2>
+            <h2 style={{ fontSize: 18, fontWeight: 800, color: 'white', textAlign: 'center', marginBottom: 20 }}>{t('bridge_how_works')}</h2>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
               {[
-                { n: '1', t: 'Place Order', d: 'Choose chains, enter amount and addresses', icon: <BookOpen size={16} /> },
-                { n: '2', t: 'Get Matched', d: 'System finds a counterparty with opposite needs', icon: <Users size={16} /> },
-                { n: '3', t: 'Send GSTD', d: 'Both sides send tokens to each other\'s addresses', icon: <ArrowRightLeft size={16} /> },
-                { n: '4', t: 'Confirm', d: 'Both confirm receipt — swap complete!', icon: <CheckCircle2 size={16} /> },
+                { n: '1', t: t('bridge_step1_title'), d: t('bridge_step1_desc'), icon: <BookOpen size={16} /> },
+                { n: '2', t: t('bridge_step2_title'), d: t('bridge_step2_desc'), icon: <Users size={16} /> },
+                { n: '3', t: t('bridge_step3_title'), d: t('bridge_step3_desc'), icon: <ArrowRightLeft size={16} /> },
+                { n: '4', t: t('bridge_step4_title'), d: t('bridge_step4_desc'), icon: <CheckCircle2 size={16} /> },
               ].map(s => (
                 <div key={s.n} style={{ padding: '16px 14px', borderRadius: 14, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', textAlign: 'center' }}>
                   <div style={{ color: '#8b5cf6', marginBottom: 8 }}>{s.icon}</div>

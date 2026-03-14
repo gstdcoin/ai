@@ -123,7 +123,7 @@ export default function WalletListener() {
                                 if (currentBalance < 0.5 && bonusStatus?.daily_faucet_available) {
                                     await apiPost('/telegram/faucet', { wallet_address: walletAddress }).catch(() => { });
                                 }
-                            } catch { /* bonus claim failed — non-critical */ }
+                            } catch (_e) { /* bonus claim failed — non-critical */ }
                         } catch (e) { /* silent */ }
                         // Redirect is handled by index.tsx useEffect (isConnected → /dashboard)
                     }

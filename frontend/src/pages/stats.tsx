@@ -1,23 +1,42 @@
 import { GetStaticProps } from 'next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useTranslation } from 'next-i18next';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
 import { Shield, Globe, Activity, Zap, Brain, Server, Flame, Lock, Bot, RefreshCw } from 'lucide-react';
 import { API_BASE_URL } from '../lib/config';
 
-interface Stats {
-  network: any;
-  pool: any;
-  pipeline: any;
-  security: any;
-  federated: any;
-  mobile: any;
-  recycling: any;
-  airlock: any;
-  openclaw: any;
+interface NetworkSection { active_workers?: number; total_hashrate?: number; }
+interface PoolSection { xaut_balance?: number; gstd_balance?: number; }
+interface PipelineSection { online_nodes?: number; total_vram_gb?: number; }
+interface SecuritySection { defense_layers?: number; blocked_requests?: number; }
+interface FederatedSection { total_brain_updates?: number; unique_contributors?: number; }
+interface MobileSection { active_sessions?: number; npu_devices?: number; }
+interface RecyclingSection {
+  total_burned?: number;
+  effective_supply?: number;
+  total_recycled?: number;
+  total_to_miners?: number;
+  total_to_reserve?: number;
 }
+interface AirlockSection { total_sessions?: number; completed?: number; }
+interface OpenclawSection { online_agents?: number; total_earned?: number; }
+
+interface Stats {
+  network: NetworkSection | null;
+  pool: PoolSection | null;
+  pipeline: PipelineSection | null;
+  security: SecuritySection | null;
+  federated: FederatedSection | null;
+  mobile: MobileSection | null;
+  recycling: RecyclingSection | null;
+  airlock: AirlockSection | null;
+  openclaw: OpenclawSection | null;
+}
+
+const getSettledValue = <T,>(result: PromiseSettledResult<T>): T | null =>
+  result.status === 'fulfilled' ? result.value : null;
 
 export default function PublicStats() {
   const { t } = useTranslation('common');
@@ -25,26 +44,30 @@ export default function PublicStats() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchAll = async () => {
+  const fetchAll = useCallback(async () => {
     setLoading(true);
     const endpoints = [
       'network/stats', 'pool/status', 'pipeline/status', 'security/stats',
       'federated/stats', 'mobile/stats', 'recycling/stats', 'airlock/stats', 'openclaw/stats',
     ];
     const results = await Promise.allSettled(
-      endpoints.map(ep => fetch(`${API_BASE_URL}/api/v1/${ep}`).then(r => r.ok ? r.json() : null))
+      endpoints.map((ep) => fetch(`${API_BASE_URL}/api/v1/${ep}`).then((r) => (r.ok ? r.json() : null)))
     );
     setStats({
-      network: (results[0] as any).value, pool: (results[1] as any).value,
-      pipeline: (results[2] as any).value, security: (results[3] as any).value,
-      federated: (results[4] as any).value, mobile: (results[5] as any).value,
-      recycling: (results[6] as any).value, airlock: (results[7] as any).value,
-      openclaw: (results[8] as any).value,
+      network: getSettledValue<NetworkSection | null>(results[0]),
+      pool: getSettledValue<PoolSection | null>(results[1]),
+      pipeline: getSettledValue<PipelineSection | null>(results[2]),
+      security: getSettledValue<SecuritySection | null>(results[3]),
+      federated: getSettledValue<FederatedSection | null>(results[4]),
+      mobile: getSettledValue<MobileSection | null>(results[5]),
+      recycling: getSettledValue<RecyclingSection | null>(results[6]),
+      airlock: getSettledValue<AirlockSection | null>(results[7]),
+      openclaw: getSettledValue<OpenclawSection | null>(results[8]),
     });
     setLoading(false);
-  };
+  }, []);
 
-  useEffect(() => { fetchAll(); const i = setInterval(fetchAll, 30000); return () => clearInterval(i); }, []);
+  useEffect(() => { fetchAll(); const i = setInterval(fetchAll, 30000); return () => clearInterval(i); }, [fetchAll]);
 
   const changeLanguage = () => {
     router.push(router.pathname, router.asPath, { locale: router.locale === 'ru' ? 'en' : 'ru' });

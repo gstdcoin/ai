@@ -5,7 +5,6 @@ import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useTranslation } from 'next-i18next';
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
-import { useTonConnectUI } from '@tonconnect/ui-react';
 import WalletConnect from '../components/WalletConnect';
 
 import { NetworkMap } from '../components/dashboard/NetworkMap';
@@ -28,7 +27,6 @@ export default function About() {
   const { t } = useTranslation('common');
   const router = useRouter();
   const { isConnected } = useWalletStore();
-  const [tonConnectUI] = useTonConnectUI();
   const [networkStats, setNetworkStats] = useState<NetworkStats | null>(null);
   const [isClient, setIsClient] = useState(false);
 
@@ -56,24 +54,12 @@ export default function About() {
       try {
         const res = await fetch(`${API_BASE_URL}/api/v1/network/stats`);
         if (res.ok) setNetworkStats(await res.json());
-      } catch { /* silent */ }
+      } catch (_e) { /* silent */ }
     };
     if (!isConnected) fetchStats();
     const interval = setInterval(fetchStats, 60000);
     return () => clearInterval(interval);
   }, [isConnected]);
-
-  // Landing Page Interactive State
-  const [selectedPlan, setSelectedPlan] = useState<'standard' | 'pro' | 'gpu'>('standard');
-  const [selectedRegion, setSelectedRegion] = useState<'global' | 'eu' | 'asia'>('global');
-  const [copiedCommand, setCopiedCommand] = useState(false);
-  const [workerHours, setWorkerHours] = useState(24);
-
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText('curl -sL get.gstdtoken.com | bash');
-    setCopiedCommand(true);
-    setTimeout(() => setCopiedCommand(false), 2000);
-  };
 
   const [publicNodes, setPublicNodes] = useState<any[]>([]);
   useEffect(() => {
@@ -84,7 +70,7 @@ export default function About() {
           const data = await res.json();
           setPublicNodes(data.nodes || []);
         }
-      } catch { }
+      } catch (_e) { }
     };
     if (!isConnected) fetchNodes();
   }, [isConnected]);

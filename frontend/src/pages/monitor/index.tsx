@@ -415,7 +415,7 @@ export default function HumanityMonitor() {
             try {
                 const data = await apiGet<any>('/monitor/signals').catch(() => null);
                 if (data?.signals) setSignalStats(data.signals);
-            } catch { /* signals fetch is non-critical */ }
+            } catch (_e) { /* signals fetch is non-critical */ }
         };
         fetchSignals();
         const interval = setInterval(fetchSignals, 8000);
@@ -441,7 +441,7 @@ export default function HumanityMonitor() {
                         totalBurned: mkt.total_burned || 0
                     });
                 }
-            } catch { /* unified fetch is non-critical */ }
+            } catch (_e) { /* unified fetch is non-critical */ }
         };
         fetchData();
         const interval = setInterval(fetchData, 4000);
@@ -454,7 +454,7 @@ export default function HumanityMonitor() {
             try {
                 const data = await apiGet<any>('/chat/sovereignty-index').catch(() => null);
                 if (data?.sovereignty_index !== undefined) setSovereigntyIndex(data.sovereignty_index);
-            } catch { /* sovereignty fetch is non-critical */ }
+            } catch (_e) { /* sovereignty fetch is non-critical */ }
         };
         fetchSov();
         const interval = setInterval(fetchSov, 5000);

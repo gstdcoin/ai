@@ -58,7 +58,7 @@ export default function Home() {
       try {
         const res = await fetch(`${API_BASE_URL}/api/v1/network/stats`);
         if (res.ok) setNetworkStats(await res.json());
-      } catch { /* silent */ }
+      } catch (_e) { /* silent */ }
     };
     fetchStats();
     const interval = setInterval(fetchStats, 15000);

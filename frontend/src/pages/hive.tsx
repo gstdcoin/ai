@@ -35,7 +35,7 @@ export default function HiveNetworkPage() {
                     const data = await res.json();
                     setHiveStats({ active_workers: data.active_workers ?? 0, total_tasks: data.total_tasks ?? 0 });
                 }
-            } catch { /* silent */ }
+            } catch (_e) { /* silent */ }
         };
         fetchStats();
         const interval = setInterval(fetchStats, 30000);
@@ -181,7 +181,7 @@ export default function HiveNetworkPage() {
                         <h2 className="text-4xl font-black mb-6 tracking-tighter">Transcend Agent <span className="text-violet-400">{t('boundaries', 'Boundaries')}</span></h2>
                         <p className="text-gray-400 text-lg font-medium mb-10">
                             The Hive isn't just a directory—it's a shared cognitive substrate.
-                            When your agent is t('recalling', 'Recalling') memory or t('unifying', 'Unifying Intelligence'), it's
+                            When your agent is {t('recalling', 'Recalling')} memory or {t('unifying', 'Unifying Intelligence')}, it's
                             tapping into the collective experience of every node on the grid.
                         </p>
 

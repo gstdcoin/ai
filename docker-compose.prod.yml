@@ -34,7 +34,7 @@ services:
     restart: always
     command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD:-GstdRedis2026}
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD:-GstdRedis2026} ping 2>/dev/null | grep PONG"]
       interval: 10s
       timeout: 3s
       retries: 3
@@ -46,7 +46,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    image: gstd-backend-blue:v143
+    image: gstd-backend-blue:v148
     restart: unless-stopped
     env_file: ./backend/.env
     depends_on:
@@ -66,12 +66,30 @@ services:
 
   # ─── Telegram Bot ─────────────────────────────
   telegram-bot:
-    image: gstd-bot:v34
+    image: gstd-bot:v37
     container_name: gstd-telegram-bot
     restart: unless-stopped
     env_file: ./gstdbot/.env
     depends_on:
       - backend-blue
+    networks:
+      - gstd_network
+
+  # ─── Frontend (Next.js) ───────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.web
+    image: gstd-frontend:v2
+    restart: unless-stopped
+    env_file: ./frontend/.env
+    depends_on:
+      - backend-blue
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:3000/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     networks:
       - gstd_network
 
@@ -92,6 +110,7 @@ services:
       - ./chat-ui:/var/www/chat:ro
     depends_on:
       - backend-blue
+      - frontend
     networks:
       - gstd_network
 

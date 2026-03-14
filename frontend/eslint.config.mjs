@@ -55,7 +55,8 @@ export default [
             '@typescript-eslint/no-unused-vars': 'warn',
             'prefer-const': 'warn',
             'react-hooks/exhaustive-deps': 'warn',
-            'no-undef': 'warn',
+            // TypeScript already handles symbol resolution
+            'no-undef': 'off',
             'no-empty': 'warn',
             '@typescript-eslint/no-empty-function': 'warn',
             '@typescript-eslint/no-unsafe-function-type': 'warn',
@@ -64,7 +65,8 @@ export default [
             'react-hooks/static-components': 'warn',
             'react-hooks/set-state-in-effect': 'warn',
             'react/display-name': 'off',
-            'no-unused-vars': 'warn',
+            // Avoid duplicate reports with @typescript-eslint/no-unused-vars
+            'no-unused-vars': 'off',
             'react-hooks/purity': 'warn',
             'react-hooks/rules-of-hooks': 'error',
             'react-hooks/immutability': 'warn',

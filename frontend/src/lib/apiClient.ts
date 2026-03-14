@@ -170,7 +170,7 @@ export async function apiRequest<T = any>(
               // Reload to attempt re-authentication
               window.location.reload();
             }
-          } catch {
+          } catch (_e) {
             // ignore storage errors
           }
         }
@@ -313,8 +313,8 @@ export interface ITelemetry {
 }
 
 // Geolocation throttling to prevent device overheating
-let lastGeoCall = 0;
-let cachedGeoPosition: GeolocationPosition | null = null;
+const lastGeoCall = 0;
+const cachedGeoPosition: GeolocationPosition | null = null;
 const GEOLOCATION_COOLDOWN_MS = 60_000; // 1 minute cooldown
 
 /**

@@ -1,4 +1,4 @@
-import { useState, useEffect, memo, useMemo, useRef } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { useTranslation } from 'next-i18next';
 import { useWalletStore } from '../../store/walletStore';
 import { useTonConnectUI } from '@tonconnect/ui-react';
@@ -234,19 +234,6 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
       setFilter('all');
     }
   }, [filter, address]);
-
-  const getStatusColor = (status: string) => {
-    const colors: Record<string, string> = {
-      pending: 'bg-yellow-100 text-yellow-800',
-      assigned: 'bg-blue-100 text-blue-800',
-      executing: 'bg-purple-100 text-purple-800',
-      validating: 'bg-indigo-100 text-indigo-800',
-      validated: 'bg-green-100 text-green-800',
-      completed: 'bg-green-100 text-green-800',
-      failed: 'bg-red-100 text-red-800',
-    };
-    return colors[status] || 'bg-gray-100 text-gray-800';
-  };
 
   const handleClaimCompensation = async (task: Task) => {
     if (!address || !task.assigned_device) {

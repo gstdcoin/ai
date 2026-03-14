@@ -185,6 +185,17 @@ func SetupRoutes(
 	go stakingRewards.Start(context.Background())
 	log.Println("💰 Staking Reward Distributor: ACTIVE (24h cycle, funded by chat fees → Golden Reserve)")
 
+	// ═══ AUTO-REVENUE ENGINE ═══
+	// Fully autonomous monetization — collects revenue from all 5 streams:
+	// 1. AI Inference fees (45% platform keep)
+	// 2. Telegram Stars purchases (real $$$)
+	// 3. Bridge P2P commissions (1%)
+	// 4. Staking spread (2% annual)
+	// 5. API key metering
+	autoRevenueService := services.NewAutoRevenueService(db.(*sql.DB), telegramService)
+	go autoRevenueService.Start(context.Background())
+	log.Println("💰 Auto-Revenue Engine: ACTIVE (5 revenue streams, daily P&L reports)")
+
 	// Initialize Genesis System (Self-Generating APIs)
 	var genesisRedis *redis.Client
 	if rc, ok := redisClient.(*redis.Client); ok {
@@ -320,6 +331,15 @@ func SetupRoutes(
 		v1.GET("/monitor/neural", getNeuralFinancialAnalysis(financialMonitor))
 		v1.GET("/monitor/organism-state", getOrganismState(organism))
 		v1.GET("/monitor/revenue", getMonetizationMetrics(monetizationService))
+		v1.GET("/monitor/revenue/auto", func(c *gin.Context) {
+			period := c.DefaultQuery("period", "today")
+			report, err := autoRevenueService.GetRevenueReport(c.Request.Context(), period)
+			if err != nil {
+				c.JSON(500, gin.H{"error": err.Error()})
+				return
+			}
+			c.JSON(200, report)
+		})
 
 		// Monitor Signals — real progress data
 		monitorSignalService := services.NewMonitorSignalService(db.(*sql.DB))
@@ -846,7 +866,7 @@ func SetupRoutes(
 
 			if hoursSinceLast < 0.9 {
 				// Too soon — less than ~54 minutes since last heartbeat
-				c.JSON(200, gin.H{"reward": 0, "reason": "heartbeat_too_soon", "next_in_minutes": int((1.0 - hoursSinceLast) * 60)})
+				c.JSON(200, gin.H{"reward": 0, "reason": "heartbeat_too_soon", "next_in_minutes": int((1.0 - hoursSinceLast) * 60), "hours_since_last": hoursSinceLast})
 				return
 			}
 
@@ -863,12 +883,21 @@ func SetupRoutes(
 				reward = maxRewardPerHeartbeat
 			}
 
-			// Check daily cap
-			var lastReward float64
+			// Check daily cap - sum today's heartbeat rewards for this node
+			var dailyEarned float64
 			dbConn.QueryRowContext(c.Request.Context(), `
-				SELECT COALESCE(SUM(pending_balance_gstd), 0) FROM users WHERE wallet_address = $1
-			`, req.WalletAddress).Scan(&lastReward)
-			// Simple daily cap check — in production would track per-day
+				SELECT COALESCE(SUM(amount), 0) FROM node_rewards_ledger 
+				WHERE node_address = $1 AND reward_type = 'uptime' 
+				AND created_at >= CURRENT_DATE
+			`, req.WalletAddress).Scan(&dailyEarned)
+			if dailyEarned >= maxDailyPerNode {
+				c.JSON(200, gin.H{"reward": 0, "reason": "daily_cap_reached", "daily_earned": dailyEarned, "daily_cap": maxDailyPerNode})
+				return
+			}
+			// Clamp reward to not exceed daily cap
+			if dailyEarned+reward > maxDailyPerNode {
+				reward = maxDailyPerNode - dailyEarned
+			}
 			if reward <= 0 {
 				c.JSON(200, gin.H{"reward": 0, "reason": "no_reward"})
 				return
@@ -883,11 +912,13 @@ func SetupRoutes(
 				c.JSON(500, gin.H{"error": "failed to credit reward"})
 				return
 			}
-			// Update node stats
-			_, _ = dbConn.ExecContext(c.Request.Context(), `
+			// Update node stats (total_earnings column added by C3 migration)
+			if _, errStats := dbConn.ExecContext(c.Request.Context(), `
 				UPDATE nodes SET total_earnings = COALESCE(total_earnings, 0) + $1, last_seen = NOW(), updated_at = NOW()
 				WHERE wallet_address = $2
-			`, reward, req.WalletAddress)
+			`, reward, req.WalletAddress); errStats != nil {
+				log.Printf("[heartbeat] total_earnings update err: %v", errStats)
+			}
 
 			// ═══ Node Wallet Binding: record reward for owner ═══
 			// If this node has an active wallet binding, accumulate reward for the owner
@@ -916,15 +947,23 @@ func SetupRoutes(
 				genesisRedis.Set(c.Request.Context(), onlineKey, "online", 90*time.Second)
 			}
 
-			// Update node_tiers for tier progression & streak tracking
+			// Update node_tiers for tier progression & streak tracking (M9: with error recovery)
 			go func(nodeAddr string, rwd float64) {
-				dbConn.Exec(
-					`INSERT INTO node_tiers (node_address) VALUES ($1) ON CONFLICT DO NOTHING`, nodeAddr)
+				defer func() {
+					if r := recover(); r != nil {
+						log.Printf("[heartbeat-async] panic recovered: %v", r)
+					}
+				}()
+
+				if _, err := dbConn.Exec(
+					`INSERT INTO node_tiers (node_address) VALUES ($1) ON CONFLICT DO NOTHING`, nodeAddr); err != nil {
+					log.Printf("[heartbeat-async] node_tiers insert err: %v", err)
+				}
 				
-				// Update uptime, earnings, and streak
-				dbConn.Exec(
+				// Update uptime (M5: 1.0h per hourly heartbeat, not 0.00833h)
+				if _, err := dbConn.Exec(
 					`UPDATE node_tiers SET 
-						total_uptime_hours = total_uptime_hours + 0.00833,
+						total_uptime_hours = total_uptime_hours + 1.0,
 						total_earned_gstd = total_earned_gstd + $1,
 						streak_days = CASE 
 							WHEN last_heartbeat_day = CURRENT_DATE THEN streak_days
@@ -934,18 +973,34 @@ func SetupRoutes(
 							CASE WHEN last_heartbeat_day = CURRENT_DATE - 1 THEN streak_days + 1 ELSE streak_days END),
 						last_heartbeat_day = CURRENT_DATE,
 						tier = CASE
-							WHEN total_uptime_hours + 0.00833 >= 5000 THEN 'diamond'
-							WHEN total_uptime_hours + 0.00833 >= 2000 THEN 'platinum'
-							WHEN total_uptime_hours + 0.00833 >= 500 THEN 'gold'
-							WHEN total_uptime_hours + 0.00833 >= 100 THEN 'silver'
+							WHEN total_uptime_hours + 1.0 >= 5000 THEN 'diamond'
+							WHEN total_uptime_hours + 1.0 >= 2000 THEN 'platinum'
+							WHEN total_uptime_hours + 1.0 >= 500 THEN 'gold'
+							WHEN total_uptime_hours + 1.0 >= 100 THEN 'silver'
 							ELSE 'bronze' END,
 						updated_at = NOW()
-					 WHERE node_address = $2`, rwd, nodeAddr)
+					 WHERE node_address = $2`, rwd, nodeAddr); err != nil {
+					log.Printf("[heartbeat-async] node_tiers update err: %v", err)
+				}
 				
 				// Record in rewards ledger
-				dbConn.Exec(
+				if _, err := dbConn.Exec(
 					`INSERT INTO node_rewards_ledger (node_address, reward_type, amount, description)
-					 VALUES ($1, 'uptime', $2, 'heartbeat')`, nodeAddr, rwd)
+					 VALUES ($1, 'uptime', $2, 'heartbeat')`, nodeAddr, rwd); err != nil {
+					log.Printf("[heartbeat-async] rewards_ledger insert err: %v", err)
+				}
+
+				// ═══ SOVEREIGN INTEGRATION: Track supply + revenue ═══
+				dbConn.Exec(
+					`UPDATE tokenomics_halving SET current_circulating = current_circulating + $1, 
+					 total_minted_in_epoch = total_minted_in_epoch + $1 WHERE epoch_number = (SELECT MAX(epoch_number) FROM tokenomics_halving)`, rwd)
+				dbConn.Exec(
+					`INSERT INTO revenue_sharing (epoch_date, total_platform_revenue, node_operator_share, total_eligible_nodes)
+					 VALUES (CURRENT_DATE, $1, $1 * 0.85, 1)
+					 ON CONFLICT (epoch_date) DO UPDATE SET 
+					 total_platform_revenue = revenue_sharing.total_platform_revenue + $1,
+					 node_operator_share = revenue_sharing.node_operator_share + ($1 * 0.85),
+					 total_eligible_nodes = (SELECT COUNT(*) FROM nodes WHERE status='online' OR last_seen > NOW() - INTERVAL '24 hours')`, rwd)
 			}(req.WalletAddress, reward)
 
 			c.JSON(200, gin.H{
@@ -955,6 +1010,12 @@ func SetupRoutes(
 				"queries_counted": req.QueriesServed,
 				"reason":          "verified_heartbeat",
 				"message":         "Reward credited to pending balance.",
+				"sovereign": gin.H{
+					"revenue_share_pct":  85,
+					"burn_rate_pct":      2,
+					"auto_compound_hint": true,
+					"staking_apy_range":  "8-72%",
+				},
 			})
 		})
 
@@ -1352,9 +1413,11 @@ func SetupRoutes(
 		// Nodes — public endpoints (GSTD Node OS sends X-Wallet-Address, no session)
 		// These MUST be public so autonomous nodes can register and heartbeat
 		v1.POST("/nodes/register", registerNode(nodeService, geoService, telegramService, multiLevelReferralService))
-		// NOTE: /nodes/heartbeat is already registered above (line ~744) with reward calculation
+		// NOTE: /nodes/heartbeat is already registered above (line ~776) with reward calculation
 		v1.GET("/nodes/public", getPublicNodes(nodeService))
 		v1.POST("/nodes/activate-wallet", activateWalletAsNode(nodeService))
+		// C4 fix: maintenance-alerts was missing from public routes
+		v1.GET("/nodes/maintenance-alerts", maintenanceAlerts(nodeService))
 
 		// ─── Node OS Polling Endpoints (public, called every 5-30s by nodes) ───
 		// These MUST be public — autonomous nodes use X-Wallet-Address header

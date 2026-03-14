@@ -1,2 +1,0 @@
-FROM gstd-backend-blue:v113
-COPY --chown=appuser:appuser server-v114 /app/server

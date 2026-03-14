@@ -323,5 +323,5 @@ func SetupNodeRoutes(group *gin.RouterGroup, service *services.NodeService, geoS
 func SetupNodeProtectedRoutes(group *gin.RouterGroup, service *services.NodeService, geoService *services.GeoService, telegramService *services.TelegramService, referral *services.MultiLevelReferralService, fleetCommandService *services.FleetCommandService) {
 	group.GET("/nodes/my", getMyNodes(service))
 	group.POST("/nodes/fleet/command", fleetCommand(fleetCommandService))
-	group.GET("/nodes/maintenance-alerts", maintenanceAlerts(service))
+	// NOTE: /nodes/maintenance-alerts is now registered as public route in routes.go
 }

@@ -221,7 +221,7 @@ export class ParallelPoWSolver {
 
         return new Promise((resolve, reject) => {
             let totalIterations = 0;
-            let startTime = performance.now();
+            const startTime = performance.now();
             let currentNonce = 0;
             let solutionFound = false;
 

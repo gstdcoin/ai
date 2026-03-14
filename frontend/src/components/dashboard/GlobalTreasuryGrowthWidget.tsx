@@ -21,7 +21,7 @@ export default function GlobalTreasuryGrowthWidget() {
         const data: PublicStats = await res.json();
         const val = data?.global_treasury_growth_today_oz;
         setOz(typeof val === 'number' ? val : 0);
-      } catch {
+      } catch (_e) {
         setOz(0);
       }
     };

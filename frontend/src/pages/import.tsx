@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Head from 'next/head';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
-import { Search, Import, Github, Check, Copy, AlertCircle, ArrowRight, Home, Layout, Zap, Brain, Terminal } from 'lucide-react';
+import { Search, Github, Check, Copy, AlertCircle, ArrowRight, Home, Layout, Zap, Brain, Terminal } from 'lucide-react';
 import { useTranslation } from 'next-i18next';
 import { GetStaticProps } from 'next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
@@ -12,7 +12,7 @@ export default function ClawHubImport() {
     const router = useRouter();
     const [url, setUrl] = useState('');
     const [isVerifying, setIsVerifying] = useState(false);
-    const [skillData, setSkillData] = useState<any>(null);
+    const [skillData, setSkillData] = useState<SkillData | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [copied, setCopied] = useState(false);
 
@@ -233,6 +233,13 @@ export default function ClawHubImport() {
             </footer>
         </div>
     );
+}
+
+interface SkillData {
+    name: string;
+    description: string;
+    version: string;
+    type: string;
 }
 
 export const getStaticProps: GetStaticProps = async ({ locale }) => {

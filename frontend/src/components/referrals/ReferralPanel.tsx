@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'next-i18next';
 import { useWalletStore } from '../../store/walletStore';
 import { apiGet, apiPost } from '../../lib/apiClient';
 import {
-    Users, Link as LinkIcon, Gift, TrendingUp,
-    ChevronRight, Copy, Share2, Award, Zap
+    Users, Gift, TrendingUp, Copy, Award, Zap
 } from 'lucide-react';
 import { toast } from '../../lib/toast';
 
@@ -20,21 +19,17 @@ interface ReferralStats {
 
 export default function ReferralPanel() {
     const { t } = useTranslation('common');
-    const { address, isConnected } = useWalletStore();
+    const { isConnected } = useWalletStore();
     const [stats, setStats] = useState<ReferralStats | null>(null);
-    const [loading, setLoading] = useState(true);
     const [claiming, setClaiming] = useState(false);
 
     const fetchStats = useCallback(async () => {
         if (!isConnected) return;
-        setLoading(true);
         try {
             const response = await apiGet<ReferralStats>('/referrals/ml/stats');
             setStats(response);
         } catch (error) {
             console.error('Failed to fetch referral stats:', error);
-        } finally {
-            setLoading(false);
         }
     }, [isConnected]);
 

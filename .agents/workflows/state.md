@@ -15,7 +15,7 @@ description: Current ecosystem state — always read FIRST before any changes
 │                    GSTD ECOSYSTEM                           │
 │                 Server: 82.115.48.228                       │
 │                 OS: Ubuntu 24.04                            │
-│                 Last Update: 2026-03-13                     │
+│                 Last Update: 2026-03-14                     │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  ┌─── NGINX (gstd_nginx_lb) ─── Port 80/443 ─────────┐    │
@@ -28,24 +28,31 @@ description: Current ecosystem state — always read FIRST before any changes
 │  │                                                     │    │
 │  └─────────────────────────────────────────────────────┘    │
 │                                                             │
-│  ┌─── BACKEND (Go) ──────────────────────────────────┐     │
-│  │  Container: ubuntu-backend-blue-1                  │     │
-│  │  Image:     gstd-backend-blue:v143                 │     │
-│  │  Port:      8080                                   │     │
-│  │  DB:        distributed_computing                  │     │
-│  │  Rollback:  gstd-backend-blue:v142                 │     │
+│  ┌─── BACKEND (Go) ─── 4 replicas ───────────────────┐     │
+│  │  Containers: ubuntu-backend-blue-{1..4}            │     │
+│  │  Image:      gstd-backend-blue:v148                │     │
+│  │  Port:       8080 (internal, via nginx)            │     │
+│  │  DB:         distributed_computing                 │     │
+│  │  Rollback:   gstd-backend-blue:v147                │     │
 │  └────────────────────────────────────────────────────┘     │
 │                                                             │
 │  ┌─── FRONTEND (Next.js 16.1.6) ─────────────────────┐     │
-│  │  Process:   nohup next start -p 3000               │     │
+│  │  Container: ubuntu-frontend-1 (Docker)             │     │
+│  │  Image:     gstd-frontend:v2                       │     │
 │  │  Path:      /home/ubuntu/frontend                  │     │
-│  │  Pages:     30 (SSG/SSR)                           │     │
-│  │  Note:      NOT in Docker, runs as nohup process   │     │
+│  │  Pages:     14 (SSG/SSR)                           │     │
+│  │  Note:      Docker-only (systemd disabled)         │     │
+│  └────────────────────────────────────────────────────┘     │
+│                                                             │
+│  ┌─── GSTD BRIDGE (Rust) ────────────────────────────┐     │
+│  │  Container: gstd-bridge-test                       │     │
+│  │  Image:     gstd-bridge:latest                     │     │
+│  │  Chains:    TON ↔ Solana ↔ XRPL                    │     │
 │  └────────────────────────────────────────────────────┘     │
 │                                                             │
 │  ┌─── TELEGRAM BOT (TypeScript) ─────────────────────┐     │
 │  │  Container: gstd-telegram-bot                      │     │
-│  │  Image:     gstd-bot:v34                           │     │
+│  │  Image:     gstd-bot:v37                           │     │
 │  │  Path:      /home/ubuntu/gstdbot                   │     │
 │  └────────────────────────────────────────────────────┘     │
 │                                                             │
@@ -69,9 +76,10 @@ description: Current ecosystem state — always read FIRST before any changes
 
 | Component | Version/Image | Path | Container |
 |-----------|---------------|------|-----------|
-| **Backend** | `gstd-backend-blue:v143` | `/home/ubuntu/backend` | `ubuntu-backend-blue-1` |
-| **Frontend** | Next.js 16.1.6 | `/home/ubuntu/frontend` | *systemd gstd-frontend* |
-| **Telegram Bot** | `gstd-bot:v34` | `/home/ubuntu/gstdbot` | `gstd-telegram-bot` |
+| **Backend** | `gstd-backend-blue:v148` ×4 | `/home/ubuntu/backend` | `ubuntu-backend-blue-{1..4}` |
+| **Frontend** | `gstd-frontend:v2` (Docker) | `/home/ubuntu/frontend` | `ubuntu-frontend-1` |
+| **Telegram Bot** | `gstd-bot:v37` | `/home/ubuntu/gstdbot` | `gstd-telegram-bot` |
+| **GSTD Bridge** | `gstd-bridge:latest` | `/home/ubuntu/gstd-bridge` | `gstd-bridge-test` |
 | **Chat UI** | Static HTML | `/home/ubuntu/chat-ui` | *served by nginx* |
 | **PostgreSQL** | `postgres:15-alpine` | — | `gstd_postgres_prod` |
 | **Redis** | `redis:7-alpine` | — | `gstd_redis_prod` |
@@ -165,7 +173,8 @@ docker compose up -d telegram-bot
 
 ```bash
 # Run this to verify everything is working:
-echo "Backend:  $(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/api/v1/health)"
+# NOTE: Backend is inside Docker network, not exposed on localhost
+echo "Backend:  $(docker exec ubuntu-backend-blue-1 wget -qO- http://localhost:8080/api/v1/health | head -c 50)"
 echo "Frontend: $(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000)"
 echo "App:      $(curl -s -o /dev/null -w '%{http_code}' https://app.gstdtoken.com)"
 echo "API:      $(curl -s -o /dev/null -w '%{http_code}' https://api.gstdtoken.com/api/v1/health)"
@@ -173,6 +182,7 @@ echo "Chat:     $(curl -s -o /dev/null -w '%{http_code}' https://chat.gstdtoken.
 echo "Bot:      $(curl -s -o /dev/null -w '%{http_code}' https://gstdbot.gstdtoken.com)"
 echo "Monitor:  $(curl -s -o /dev/null -w '%{http_code}' https://monitor.gstdtoken.com)"
 docker ps --format "{{.Names}}: {{.Status}}" | sort
+systemctl is-active gstd-frontend
 ```
 
 ## 🤖 AI Models (Groq — verified 2026-03-11)
@@ -202,12 +212,15 @@ docker ps --format "{{.Names}}: {{.Status}}" | sort
 
 ## 📊 Database: `distributed_computing`
 
-Top tables by row count (as of 2026-03-11):
+Top tables by row count (as of 2026-03-13):
 - `token_burns`: 43,698 rows
-- `agent_knowledge`: 8,840 rows
+- `agent_knowledge`: 10,658 rows
+- `pow_pattern_snapshots`: 2,418 rows
+- `golden_reserve_log`: 593 rows
 - `agent_registry`: 285 rows
-- `users`: 6 rows
-- `tasks`: 22 rows
+- `users`: 177 rows
+- `tasks`: 81 rows
+- **Total tables:** 153 (**102 empty** — reserved for future features)
 
 ## 🔐 SSL Certificate
 
@@ -218,5 +231,6 @@ Top tables by row count (as of 2026-03-11):
 ## 🧹 Cleanup Policy
 
 - Keep only **current** + **previous** backend image (for rollback)
-- Keep only **current** bot image
+- Keep only **current** + **previous** bot image (for rollback)
 - Prune Docker build cache periodically: `docker buildx prune -f`
+- Prune unused images: `docker image prune -f`

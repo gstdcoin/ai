@@ -124,6 +124,42 @@ func (s *MaintenanceService) pruneOldData(ctx context.Context) {
 			log.Printf("   ✅ Pruned %d old pow_audit_log records", rows)
 		}
 	}
+
+	// Cleanup expired/failed system tasks older than 7 days
+	// These are auto-generated tasks (PLATFORM_ORGANISM, bridge-system) that were never completed
+	if res, err := s.db.ExecContext(ctx, `
+		DELETE FROM tasks 
+		WHERE status IN ('expired', 'failed') 
+		AND created_at < (NOW() AT TIME ZONE 'UTC') - INTERVAL '7 days'
+		AND creator_wallet IN ('PLATFORM_ORGANISM', 'bridge-system', 'test-requester')
+	`); err == nil {
+		if rows, _ := res.RowsAffected(); rows > 0 {
+			log.Printf("   ✅ Pruned %d expired/failed system tasks (>7 days old)", rows)
+		}
+	}
+
+	// Expire stale queued tasks that have been waiting >24 hours
+	if res, err := s.db.ExecContext(ctx, `
+		UPDATE tasks 
+		SET status = 'expired', updated_at = NOW()
+		WHERE status = 'queued' 
+		AND created_at < (NOW() AT TIME ZONE 'UTC') - INTERVAL '24 hours'
+	`); err == nil {
+		if rows, _ := res.RowsAffected(); rows > 0 {
+			log.Printf("   ⏰ Expired %d stale queued tasks (>24h in queue)", rows)
+		}
+	}
+
+	// Mark offline nodes that haven't sent heartbeat in 10 minutes
+	if res, err := s.db.ExecContext(ctx, `
+		UPDATE nodes SET status = 'offline', updated_at = NOW()
+		WHERE status = 'online' 
+		AND last_seen < (NOW() AT TIME ZONE 'UTC') - INTERVAL '10 minutes'
+	`); err == nil {
+		if rows, _ := res.RowsAffected(); rows > 0 {
+			log.Printf("   📡 Marked %d stale nodes as offline (no heartbeat >10m)", rows)
+		}
+	}
 }
 
 func (s *MaintenanceService) repairStuckTasks(ctx context.Context) {
