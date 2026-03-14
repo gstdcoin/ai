@@ -75,8 +75,8 @@ export default function SovereignTerminalModal({ isOpen, onClose }: SovereignTer
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-      <div className="bg-[#0a0a0c] border border-emerald-500/30 rounded-2xl w-full max-w-2xl overflow-hidden shadow-[0_0_50px_rgba(16,185,129,0.15)] relative">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+      <div className="bg-[#0a0a0c] border border-emerald-500/30 rounded-2xl w-full max-w-2xl overflow-hidden shadow-[0_0_50px_rgba(16,185,129,0.15)] relative my-auto">
         
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-emerald-500/20 bg-emerald-500/5">
@@ -93,8 +93,8 @@ export default function SovereignTerminalModal({ isOpen, onClose }: SovereignTer
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             
             {/* Info Panel */}
-            <div className="space-y-4">
-              <h3 className="text-xl font-bold text-white tracking-wide">
+            <div className="space-y-3 sm:space-y-4">
+              <h3 className="text-lg sm:text-xl font-bold text-white tracking-wide">
                 Welcome to the Swarm L1
               </h3>
               <p className="text-sm text-gray-400 leading-relaxed">
@@ -145,7 +145,7 @@ export default function SovereignTerminalModal({ isOpen, onClose }: SovereignTer
                 <button
                   onClick={handleClaim}
                   disabled={isClaiming || !address}
-                  className="w-full py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded shadow-[0_0_10px_rgba(16,185,129,0.2)] hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all flex items-center justify-center gap-2 font-bold uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full py-3 sm:py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded shadow-[0_0_10px_rgba(16,185,129,0.2)] hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all flex items-center justify-center gap-2 font-bold uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
                 >
                   {isClaiming ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
                   {isClaiming ? 'EXECUTING...' : 'Claim Genesis Grid (5 GSTD)'}
