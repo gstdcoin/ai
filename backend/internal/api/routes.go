@@ -480,6 +480,40 @@ func SetupRoutes(
 					"nonce":   nonce,
 				})
 			})
+
+			// Bridge Oracle Endpoint: Triggered internally when TON L1 deposit is confirmed.
+			// In production, this must be authenticated by the bridge operator key.
+			v1.POST("/bridge/swarm-mint", func(c *gin.Context) {
+				apiKey := c.GetHeader("X-Bridge-Key")
+				// Simple prototype auth
+				if apiKey != "genesis-oracle-key-42" {
+					c.JSON(401, gin.H{"error": "unauthorized bridge oracle"})
+					return
+				}
+
+				var req struct {
+					ReceiverAddress string  `json:"receiver_address" binding:"required"`
+					Amount          float64 `json:"amount" binding:"required"`
+					TONTxHash       string  `json:"ton_tx_hash" binding:"required"`
+				}
+
+				if err := c.ShouldBindJSON(&req); err != nil {
+					c.JSON(400, gin.H{"error": "invalid mint payload"})
+					return
+				}
+
+				// Create the Mint Transaction directly in the Ledger
+				swarmLedger.DirectMint(req.ReceiverAddress, req.Amount)
+
+				log.Printf("🌉 [Bridge -> Swarm] Successfully minted %.2f W-GSTD to %s (Origin: %s)", req.Amount, req.ReceiverAddress, req.TONTxHash)
+
+				c.JSON(200, gin.H{
+					"status":  "mint_successful",
+					"address": req.ReceiverAddress,
+					"amount":  req.Amount,
+					"origin":  req.TONTxHash,
+				})
+			})
 		}
 
 		v1.GET("/network/autonomy", getAutonomyStats(maintenanceService))

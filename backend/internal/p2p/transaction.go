@@ -20,6 +20,8 @@ const (
 	TxComputeTask   TransactionType = "compute_task"   // Request for AI compute
 	TxSmartDeploy   TransactionType = "smart_deploy"   // Deploy a Swarm Contract
 	TxNodeHeartbeat TransactionType = "node_heartbeat" // Mobile node reporting active status
+	TxMint          TransactionType = "mint"           // Genesis Bridge issuing wrapped-GSTD
+	TxBurn          TransactionType = "burn"           // Burning Swarm-GSTD to unlock on TON L1
 )
 
 // Transaction represents a primitive unit of work or value transfer in the Swarm.
