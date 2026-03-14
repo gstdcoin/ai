@@ -290,6 +290,13 @@ func (l *Ledger) SyncStateFromPeers(ctx context.Context) {
 	log.Printf("⚠️ [Swarm Ledger] State sync failed across %d peers.", len(peers))
 }
 
+// GetAccountState safely fetches the specified address' balance and nonce.
+func (l *Ledger) GetAccountState(address string) (balance float64, nonce int64) {
+	l.State.mu.RLock()
+	defer l.State.mu.RUnlock()
+	return l.State.Balances[address], l.State.Nonce[address]
+}
+
 // SubmitTransaction allows the local REST API to submit a transaction to the Ledger,
 // verify it with Sentinel, apply it, and broadcast it to the global Swarm.
 func (l *Ledger) SubmitTransaction(ctx context.Context, tx *Transaction) error {
