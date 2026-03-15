@@ -78,9 +78,9 @@ func (s *StatsService) GetGlobalStats(ctx context.Context) (*GlobalStats, error)
 	// We estimate TFLOPS based on CPU cores (simplified: 1 core ~ 0.1 TFLOPS for standard consumer hardware in distributed network)
 	// Also get active countries count
 
-	// Active devices (last 5 minutes)
+	// Active devices (within heartbeat window — 70 min)
 	err = s.db.QueryRowContext(ctx, `
-		SELECT COALESCE(COUNT(*), 0) FROM devices WHERE last_seen_at > NOW() - INTERVAL '5 minutes' AND is_active = true
+		SELECT COALESCE(COUNT(*), 0) FROM devices WHERE last_seen_at > NOW() - INTERVAL '70 minutes' AND is_active = true
 	`).Scan(&stats.ActiveDevicesCount)
 	if err != nil {
 		stats.ActiveDevicesCount = 0
@@ -90,10 +90,10 @@ func (s *StatsService) GetGlobalStats(ctx context.Context) (*GlobalStats, error)
 	// We count nodes that are eco_certified to display in the UI / Marketing
 	// This is implicitly handled by ActiveDevicesCount for now but could be split if requested.
 
-	// TFLOPS Estimation (using nodes table if available; nodes use status='online')
+	// TFLOPS Estimation (using nodes table if available; using heartbeat window)
 	var activeNodesCount int
 	err = s.db.QueryRowContext(ctx, `
-		SELECT COUNT(*) FROM nodes WHERE status = 'online' AND last_seen > NOW() - INTERVAL '5 minutes'
+		SELECT COUNT(*) FROM nodes WHERE last_seen > NOW() - INTERVAL '70 minutes'
 	`).Scan(&activeNodesCount)
 
 	if err == nil && activeNodesCount > 0 {
@@ -153,10 +153,10 @@ func (s *StatsService) scanFloat(ctx context.Context, dst *float64, query string
 func (s *StatsService) GetNetworkStats(ctx context.Context) (*NetworkStats, error) {
 	stats := &NetworkStats{}
 
-	// 1. Network size — count only ONLINE nodes and active devices
+	// 1. Network size — count nodes seen within heartbeat window (70 min) and active devices
 	var onlineNodes, activeDevices int
-	s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM nodes WHERE status='online' AND last_seen > NOW()-INTERVAL '5 min'`).Scan(&onlineNodes)
-	s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM devices WHERE is_active=true AND last_seen_at > NOW()-INTERVAL '5 min'`).Scan(&activeDevices)
+	s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM nodes WHERE last_seen > NOW()-INTERVAL '70 minutes'`).Scan(&onlineNodes)
+	s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM devices WHERE is_active=true AND last_seen_at > NOW()-INTERVAL '70 minutes'`).Scan(&activeDevices)
 	stats.ActiveWorkers = max(onlineNodes, activeDevices)
 
 	// 2–3. Aggregate task and payout stats
