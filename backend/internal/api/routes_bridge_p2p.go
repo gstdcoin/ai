@@ -13,7 +13,10 @@ import (
 
 // ═══════════════════════════════════════════════════════════════
 // P2P Cross-Chain Bridge — Order Book Model
-//
+// 
+// Error Constants
+const ErrOrderNotFound = "Order not found"
+
 // How it works:
 //  1. User A creates order: "I have 100 GSTD on TON, want on Solana"
 //  2. User B creates order: "I have 100 GSTD on Solana, want on TON"
@@ -136,7 +139,14 @@ func createBridgeOrder(db *sql.DB) gin.HandlerFunc {
 
 		// Try to auto-match with an existing open counter-order (P2P fallback)
 		// Or immediately auto-match with SYSTEM_LIQUIDITY_POOL
-		match := autoMatchWithSystemPool(db, orderID, req.UserWallet, req.SourceChain, req.DestChain, req.Amount, req.SourceAddress, req.DestAddress)
+		match := autoMatchWithSystemPool(db, SystemPoolMatchParams{
+			UserOrderID:    orderID,
+			SourceChain:    req.SourceChain,
+			DestChain:      req.DestChain,
+			Amount:         req.Amount,
+			UserSourceAddr: req.SourceAddress,
+			UserDestAddr:   req.DestAddress,
+		})
 
 		response := gin.H{
 			"order_id":     orderID,
@@ -166,21 +176,30 @@ var SystemPoolAddresses = map[string]string{
 	"XRPL":   "rGstdBridgeRouterXRPLEscrowProviderXYZabc",     // XRPL Oracle Node
 }
 
+type SystemPoolMatchParams struct {
+	UserOrderID    string
+	SourceChain    string
+	DestChain      string
+	Amount         float64
+	UserSourceAddr string
+	UserDestAddr   string
+}
+
 // autoMatchWithSystemPool creates a counterparty order representing the automated liquidity gateway
-func autoMatchWithSystemPool(db *sql.DB, userOrderID, userWallet, sourceChain, destChain string, amount float64, userSourceAddr, userDestAddr string) map[string]interface{} {
+func autoMatchWithSystemPool(db *sql.DB, p SystemPoolMatchParams) map[string]interface{} {
 	ctx := context.Background()
 
 	// The system receives GSTD on the user's source chain, and sends GSTD on the user's dest chain.
 	// Therefore, the SYSTEM order's SourceChain = destChain, DestChain = sourceChain.
-	sysSourceAddr := SystemPoolAddresses[destChain]
-	sysDestAddr := SystemPoolAddresses[sourceChain]
+	sysSourceAddr := SystemPoolAddresses[p.DestChain]
+	sysDestAddr := SystemPoolAddresses[p.SourceChain]
 
 	var systemOrderID string
 	err := db.QueryRowContext(ctx,
 		`INSERT INTO bridge_orders (user_wallet, source_chain, dest_chain, amount, source_address, dest_address, status, matched_order_id, matched_at, expires_at)
 		 VALUES ($1, $2, $3, $4, $5, $6, 'completed', $7, NOW(), NOW() + INTERVAL '24 hours')
 		 RETURNING id`,
-		"SYSTEM_LIQUIDITY_POOL", destChain, sourceChain, amount, sysSourceAddr, sysDestAddr, userOrderID,
+		"SYSTEM_LIQUIDITY_POOL", p.DestChain, p.SourceChain, p.Amount, sysSourceAddr, sysDestAddr, p.UserOrderID,
 	).Scan(&systemOrderID)
 	if err != nil {
 		log.Printf("[P2P Bridge] SYS AutoMatch failed to insert system counter-order: %v", err)
@@ -190,13 +209,13 @@ func autoMatchWithSystemPool(db *sql.DB, userOrderID, userWallet, sourceChain, d
 	// Update user's order to matched and point to system order
 	_, err = db.ExecContext(ctx,
 		`UPDATE bridge_orders SET status = 'matched', matched_order_id = $1, matched_at = NOW(), updated_at = NOW() WHERE id = $2`,
-		systemOrderID, userOrderID)
+		systemOrderID, p.UserOrderID)
 	if err != nil {
 		log.Printf("[P2P Bridge] SYS AutoMatch failed to update user order status: %v", err)
 		return nil
 	}
 
-	log.Printf("[P2P Bridge] 🤖 ORDER %s AUTO-MATCHED with SYSTEM_LIQUIDITY_POOL %s", userOrderID[:8], systemOrderID[:8])
+	log.Printf("[P2P Bridge] 🤖 ORDER %s AUTO-MATCHED with SYSTEM_LIQUIDITY_POOL %s", p.UserOrderID[:8], systemOrderID[:8])
 
 	return map[string]interface{}{
 		"counterparty_id": systemOrderID,
