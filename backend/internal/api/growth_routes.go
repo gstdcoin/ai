@@ -91,6 +91,8 @@ func SetupGrowthRoutes(v1 *gin.RouterGroup, protected *gin.RouterGroup, h *Growt
 	v1.GET("/referrals/code", h.GetReferralCode)
 	// Public referral tracking (apply ref code on wallet connect)
 	v1.POST("/referrals/track", h.TrackReferral)
+	// Public user leaderboard (top holders)
+	v1.GET("/leaderboard", h.GetUserLeaderboard)
 
 	// ========================================================================
 	// PROTECTED ROUTES (require session)
@@ -617,6 +619,48 @@ func (h *GrowthSystemHandler) TrackReferral(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Referral applied!", "referrer": referrerWallet[:6] + "..."})
+}
+
+// GetUserLeaderboard returns top GSTD holders (public)
+func (h *GrowthSystemHandler) GetUserLeaderboard(c *gin.Context) {
+	if h.db == nil {
+		c.JSON(http.StatusOK, gin.H{"leaderboard": []interface{}{}})
+		return
+	}
+	rows, err := h.db.QueryContext(c.Request.Context(), `
+		SELECT wallet_address, gstd_balance
+		FROM users
+		WHERE gstd_balance > 0
+		AND wallet_address NOT LIKE 'EQTest%'
+		ORDER BY gstd_balance DESC
+		LIMIT 50
+	`)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"leaderboard": []interface{}{}})
+		return
+	}
+	defer rows.Close()
+	var leaderboard []map[string]interface{}
+	rank := 0
+	for rows.Next() {
+		rank++
+		var wallet string
+		var balance float64
+		if err := rows.Scan(&wallet, &balance); err != nil {
+			continue
+		}
+		// Truncate wallet for privacy
+		display := wallet
+		if len(wallet) > 10 {
+			display = wallet[:6] + "..." + wallet[len(wallet)-4:]
+		}
+		leaderboard = append(leaderboard, map[string]interface{}{
+			"rank":    rank,
+			"wallet":  display,
+			"balance": balance,
+		})
+	}
+	c.JSON(http.StatusOK, gin.H{"leaderboard": leaderboard, "total": rank})
 }
 // AGENT MARKETPLACE HANDLERS
 // ============================================================================
