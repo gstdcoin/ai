@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log"
@@ -166,7 +167,7 @@ var SystemPoolAddresses = map[string]string{
 
 // autoMatchWithSystemPool creates a counterparty order representing the automated liquidity gateway
 func autoMatchWithSystemPool(db *sql.DB, userOrderID, userWallet, sourceChain, destChain string, amount float64, userSourceAddr, userDestAddr string) map[string]interface{} {
-	ctx := db
+	ctx := context.Background()
 
 	// The system receives GSTD on the user's source chain, and sends GSTD on the user's dest chain.
 	// Therefore, the SYSTEM order's SourceChain = destChain, DestChain = sourceChain.
