@@ -1661,12 +1661,47 @@ func (s *TelegramService) handleSuccessfulPayment(ctx context.Context, upd *tele
 
 			// Launch the task automatically upon payment
 			if s.db != nil {
-				_, _ = s.db.ExecContext(ctx, `
+				taskIDForDB := fmt.Sprintf("signal_%s_%x", taskIDLaunched, time.Now().UnixNano()%0xFFFFFFFF)
+
+				// 1. Insert into Tasks
+				_, err := s.db.ExecContext(ctx, `
 					INSERT INTO tasks (
-						task_id, requester_address, budget_gstd, reward_per_worker, 
-						status, type, payload, created_at, updated_at
-					) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
-				`, taskIDLaunched, walletAddr, rewardVal, rewardVal, "queued", "signal_analysis", `{"signal_id": "`+taskIDLaunched+`"}`)
+						task_id, requester_address, task_type, operation,
+						labor_compensation_gstd, reward_per_worker, status, payload,
+						priority, priority_score, created_at, updated_at
+					) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 4, 4, NOW(), NOW())
+				`, taskIDForDB, walletAddr, "signal_analysis", "analysis", rewardVal, rewardVal, "queued", `{"signal_id": "`+taskIDLaunched+`"}`)
+
+				if err != nil {
+					log.Printf("[TelegramService] Failed to insert task %s: %v", taskIDForDB, err)
+				}
+
+				// 2. Insert into Monitor Sponsorships
+				_, err = s.db.ExecContext(ctx, `
+					INSERT INTO monitor_sponsorships (signal_id, user_id, stars_paid, gstd_reward, task_id, status)
+					VALUES ($1, $2, $3, $4, $5, 'processing')
+				`, taskIDLaunched, walletAddr, sp.TotalAmount, rewardVal, taskIDForDB)
+
+				if err != nil {
+					log.Printf("[TelegramService] Failed to insert monitor_sponsorship %s: %v", taskIDLaunched, err)
+				}
+
+				// 3. Upsert into Monitor Signals stats
+				_, err = s.db.ExecContext(ctx, `
+					INSERT INTO monitor_signals (
+						signal_id, category, total_sponsored, total_gstd_allocated, 
+						sponsor_count, tasks_created, progress, data_processed_tb, tasks_completed,
+						last_sponsored_at, updated_at
+					) VALUES (
+						$1, 'Dynamic Signal', $2, $3, 1, 1, 5, 0, 0, NOW(), NOW()
+					) ON CONFLICT (signal_id) DO UPDATE SET
+						total_sponsored = monitor_signals.total_sponsored + EXCLUDED.total_sponsored,
+						total_gstd_allocated = monitor_signals.total_gstd_allocated + EXCLUDED.total_gstd_allocated,
+						sponsor_count = monitor_signals.sponsor_count + 1,
+						tasks_created = monitor_signals.tasks_created + 1,
+						last_sponsored_at = NOW(),
+						updated_at = NOW()
+				`, taskIDLaunched, sp.TotalAmount, rewardVal)
 
 				// Notify the Global Channel
 				msgAlert := fmt.Sprintf("🌍 <b>Global Signal Analysis Sponsored!</b>\n\n"+

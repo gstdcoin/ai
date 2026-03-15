@@ -122,6 +122,7 @@ export function useMultiChainWallet() {
   const disconnectTon = useCallback(async () => {
     try { await tonConnectUI.disconnect(); }
     catch (err) { console.warn('[Bridge] TON disconnect error:', err); }
+    useWalletStore.getState().disconnect();
   }, [tonConnectUI]);
 
   // ─── Solana ───────────────────────────────────────
@@ -133,6 +134,7 @@ export function useMultiChainWallet() {
 
     if (!provider) {
       console.warn('[Bridge] No Solana wallet extension found');
+      alert('Solana wallet not found! Please install Phantom or Solflare browser extension.');
       return; // Don't redirect — manual input is shown instead
     }
 

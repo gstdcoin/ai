@@ -241,21 +241,19 @@ function ChainWalletWidget({ chain, label, address, onAddressChange }: {
             background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
             color: 'white', fontSize: 12, outline: 'none',
           }} />
-        {wallet.extensionAvailable && (
-          <button onClick={() => connectChain(chain)} title={`Connect ${availableWallets.join('/')}`}
-            style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
-              padding: '0 12px', borderRadius: 10,
-              background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.15)',
-              color: '#a78bfa', fontSize: 10, fontWeight: 600, cursor: 'pointer',
-              transition: 'all 0.2s', whiteSpace: 'nowrap',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.15)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.08)'; }}
-          >
-            <Link2 size={11} /> {availableWallets[0]}
-          </button>
-        )}
+        <button onClick={() => connectChain(chain)} title={t('bridge_connect_chain', { defaultValue: `Connect ${availableWallets.join('/')}` })}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+            padding: '0 12px', borderRadius: 10,
+            background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.15)',
+            color: '#a78bfa', fontSize: 10, fontWeight: 600, cursor: 'pointer',
+            transition: 'all 0.2s', whiteSpace: 'nowrap',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.15)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.08)'; }}
+        >
+          <Link2 size={11} /> {availableWallets[0]}
+        </button>
       </div>
     </div>
   );

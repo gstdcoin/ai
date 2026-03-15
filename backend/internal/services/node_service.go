@@ -471,7 +471,7 @@ func (s *NodeService) UpdateHealthStats(ctx context.Context, identifier string, 
 	// Auto-register: if UPDATE affected 0 rows, the node doesn't exist yet — create it
 	if rowsAffected, err := res.RowsAffected(); err == nil && rowsAffected == 0 {
 		isUUID := len(identifier) == 36 && strings.Contains(identifier, "-")
-		
+
 		// Ensure user exists (auto-create minimal user so FK doesn't fail)
 		if !isUUID {
 			_, err = s.db.ExecContext(ctx, `
@@ -496,7 +496,7 @@ func (s *NodeService) UpdateHealthStats(ctx context.Context, identifier string, 
 				ON CONFLICT (wallet_address) DO UPDATE SET status = 'online', last_seen = NOW(), updated_at = NOW()
 			`, identifier)
 		}
-		
+
 		if err != nil {
 			log.Printf("[NodeService] Auto-registered node err: %v", err)
 		} else {

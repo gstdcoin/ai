@@ -116,7 +116,7 @@ func Load() *Config {
 			PlatformWalletSeed:       getVaultOrEnv("platform/seed", "PLATFORM_WALLET_SEED"),
 			LiteserverConfigURL:      getEnv("LITESERVER_CONFIG_URL", "https://ton-blockchain.github.io/global.config.json"),
 			HighloadWalletSeed:       getVaultOrEnv("highload/seed", "HIGHLOAD_WALLET_SEED"), // 24-word seed for batch payouts from HashiCorp Vault
-			TONAPIKeys:               getEnv("TON_API_KEYS", ""),         // Comma-separated for rotation (if primary < 100/s)
+			TONAPIKeys:               getEnv("TON_API_KEYS", ""),                             // Comma-separated for rotation (if primary < 100/s)
 		},
 		Server: ServerConfig{
 			Port:         getEnv("PORT", "8080"),

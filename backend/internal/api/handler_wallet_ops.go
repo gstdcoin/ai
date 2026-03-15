@@ -82,12 +82,17 @@ func walletTransfer(db *sql.DB) gin.HandlerFunc {
 			 VALUES ($1, NOW(), NOW()) ON CONFLICT (wallet_address) DO NOTHING`, req.To)
 
 		// Debit sender
-		_, err = tx.ExecContext(c.Request.Context(),
+		res, err := tx.ExecContext(c.Request.Context(),
 			`UPDATE users SET gstd_balance = gstd_balance - $1, updated_at = NOW() 
 			 WHERE wallet_address = $2 AND gstd_balance >= $1`,
 			req.Amount, sender)
 		if err != nil {
 			c.JSON(500, gin.H{"error": "debit failed"})
+			return
+		}
+		rowsAff, _ := res.RowsAffected()
+		if rowsAff == 0 {
+			c.JSON(400, gin.H{"error": "insufficient balance or race condition detected"})
 			return
 		}
 
@@ -184,7 +189,7 @@ func stakingStake(db *sql.DB) gin.HandlerFunc {
 		}
 
 		// Move from gstd_balance to gstd_frozen (staking)
-		_, err = tx.ExecContext(c.Request.Context(),
+		res, err := tx.ExecContext(c.Request.Context(),
 			`UPDATE users SET 
 				gstd_balance = gstd_balance - $1,
 				gstd_frozen = COALESCE(gstd_frozen, 0) + $1,
@@ -193,6 +198,11 @@ func stakingStake(db *sql.DB) gin.HandlerFunc {
 			req.Amount, wallet)
 		if err != nil {
 			c.JSON(500, gin.H{"error": "stake operation failed"})
+			return
+		}
+		rowsAff, _ := res.RowsAffected()
+		if rowsAff == 0 {
+			c.JSON(400, gin.H{"error": "insufficient balance or race condition detected during staking"})
 			return
 		}
 
@@ -283,7 +293,7 @@ func stakingUnstake(db *sql.DB) gin.HandlerFunc {
 		}
 
 		// Move from gstd_frozen back to gstd_balance
-		_, err = tx.ExecContext(c.Request.Context(),
+		res, err := tx.ExecContext(c.Request.Context(),
 			`UPDATE users SET 
 				gstd_frozen = gstd_frozen - $1,
 				gstd_balance = gstd_balance + $1,
@@ -292,6 +302,11 @@ func stakingUnstake(db *sql.DB) gin.HandlerFunc {
 			req.Amount, wallet)
 		if err != nil {
 			c.JSON(500, gin.H{"error": "unstake operation failed"})
+			return
+		}
+		rowsAff, _ := res.RowsAffected()
+		if rowsAff == 0 {
+			c.JSON(400, gin.H{"error": "insufficient staked balance during unstaking"})
 			return
 		}
 

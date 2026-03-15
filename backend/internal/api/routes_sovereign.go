@@ -114,19 +114,19 @@ func getTokenomics(db *sql.DB) gin.HandlerFunc {
 		btcSupplyPct := (totalMinted / maxSupply) * 100
 
 		c.JSON(200, gin.H{
-			"epoch":              epoch,
+			"epoch":                epoch,
 			"base_reward_per_hour": baseReward,
-			"max_supply":         maxSupply,
-			"circulating_supply": totalMinted - totalBurned - totalStaked,
-			"total_minted":       totalMinted,
-			"total_burned":       totalBurned,
-			"total_staked":       totalStaked,
-			"burn_rate_pct":      burnRate,
-			"deflation_rate_pct": deflationRate,
-			"supply_mined_pct":   btcSupplyPct,
-			"remaining_supply":   maxSupply - totalMinted,
+			"max_supply":           maxSupply,
+			"circulating_supply":   totalMinted - totalBurned - totalStaked,
+			"total_minted":         totalMinted,
+			"total_burned":         totalBurned,
+			"total_staked":         totalStaked,
+			"burn_rate_pct":        burnRate,
+			"deflation_rate_pct":   deflationRate,
+			"supply_mined_pct":     btcSupplyPct,
+			"remaining_supply":     maxSupply - totalMinted,
 			"next_halving_in_days": daysUntilHalving,
-			"next_reward_rate":   baseReward / 2,
+			"next_reward_rate":     baseReward / 2,
 			"advantages_over_bitcoin": gin.H{
 				"transaction_speed": "instant (vs 10min Bitcoin)",
 				"transaction_fee":   "0% P2P (vs $5+ Bitcoin)",
@@ -163,16 +163,16 @@ func getSupplyInfo(db *sql.DB) gin.HandlerFunc {
 		circulating := totalMinted - totalBurned - totalStaked - bridgeLocked
 
 		c.JSON(200, gin.H{
-			"total_minted":      totalMinted,
-			"total_burned":      totalBurned,
-			"circulating":       circulating,
-			"staked":            totalStaked,
-			"locked_in_bridge":  bridgeLocked,
-			"pending_rewards":   totalPending,
-			"max_supply":        21000000.0,
-			"remaining":         21000000.0 - totalMinted,
-			"holders":           totalUsers,
-			"scarcity_index":    math.Max(0, (1-(circulating/21000000.0))*100),
+			"total_minted":     totalMinted,
+			"total_burned":     totalBurned,
+			"circulating":      circulating,
+			"staked":           totalStaked,
+			"locked_in_bridge": bridgeLocked,
+			"pending_rewards":  totalPending,
+			"max_supply":       21000000.0,
+			"remaining":        21000000.0 - totalMinted,
+			"holders":          totalUsers,
+			"scarcity_index":   math.Max(0, (1-(circulating/21000000.0))*100),
 		})
 	}
 }
@@ -192,18 +192,18 @@ func getComputeBacking(db *sql.DB) gin.HandlerFunc {
 			Scan(&onlineNodes, &totalRAM)
 
 		// Estimate compute capacity
-		estimatedGPUHours := float64(onlineNodes) * 24   // each node ~1 GPU-equivalent/day
-		estimatedTB := float64(totalRAM) * 0.1            // ~10% of RAM as storage
+		estimatedGPUHours := float64(onlineNodes) * 24 // each node ~1 GPU-equivalent/day
+		estimatedTB := float64(totalRAM) * 0.1         // ~10% of RAM as storage
 
 		c.JSON(200, gin.H{
 			"gstd_per_gpu_hour":   gpuRate,
 			"gstd_per_ai_query":   queryRate,
 			"gstd_per_tb_storage": storageRate,
 			"network_capacity": gin.H{
-				"online_nodes":      onlineNodes,
-				"gpu_hours_daily":   estimatedGPUHours,
-				"storage_tb":        estimatedTB,
-				"total_ram_gb":      totalRAM,
+				"online_nodes":    onlineNodes,
+				"gpu_hours_daily": estimatedGPUHours,
+				"storage_tb":      estimatedTB,
+				"total_ram_gb":    totalRAM,
 			},
 			"intrinsic_value": gin.H{
 				"compute_value_usd": estimatedGPUHours * 0.50, // $0.50/GPU-hour market rate
@@ -307,14 +307,14 @@ func p2pPayment(db *sql.DB) gin.HandlerFunc {
 		}
 
 		c.JSON(200, gin.H{
-			"payment_id":  paymentID,
-			"status":      "completed",
-			"amount":      req.Amount,
+			"payment_id":   paymentID,
+			"status":       "completed",
+			"amount":       req.Amount,
 			"net_received": netAmount,
-			"burned":      burnAmount,
-			"fee":         0,
-			"speed":       "instant",
-			"message":     fmt.Sprintf("%.4f GSTD sent. %.4f burned (deflationary). Zero fees.", netAmount, burnAmount),
+			"burned":       burnAmount,
+			"fee":          0,
+			"speed":        "instant",
+			"message":      fmt.Sprintf("%.4f GSTD sent. %.4f burned (deflationary). Zero fees.", netAmount, burnAmount),
 		})
 	}
 }
@@ -348,7 +348,9 @@ func getPaymentHistory(db *sql.DB) gin.HandlerFunc {
 				}
 				payments = append(payments, gin.H{
 					"id": id, "direction": direction, "counterparty": func() string {
-						if sender == wallet { return receiver }
+						if sender == wallet {
+							return receiver
+						}
 						return sender
 					}(),
 					"amount": amount, "burned": burned, "memo": memo, "status": status,
@@ -370,9 +372,9 @@ func getPaymentHistory(db *sql.DB) gin.HandlerFunc {
 func createStake(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			Wallet     string  `json:"wallet" binding:"required"`
-			Amount     float64 `json:"amount" binding:"required"`
-			LockDays   int     `json:"lock_days"` // 30, 90, 180, 365
+			Wallet   string  `json:"wallet" binding:"required"`
+			Amount   float64 `json:"amount" binding:"required"`
+			LockDays int     `json:"lock_days"` // 30, 90, 180, 365
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(400, gin.H{"error": err.Error()})
@@ -431,20 +433,20 @@ func createStake(db *sql.DB) gin.HandlerFunc {
 
 		dailyReward := req.Amount * (apy / 100) * bonus / 365
 		c.JSON(200, gin.H{
-			"stake_id":         stakeID,
-			"amount":           req.Amount,
-			"lock_days":        req.LockDays,
-			"apy":              apy,
-			"effective_apy":    apy * bonus,
-			"node_bonus":       fmt.Sprintf("%.0fx", bonus),
-			"daily_reward":     dailyReward,
-			"monthly_reward":   dailyReward * 30,
-			"yearly_reward":    req.Amount * (apy / 100) * bonus,
-			"unlock_at":        unlockAt.Format(time.RFC3339),
+			"stake_id":       stakeID,
+			"amount":         req.Amount,
+			"lock_days":      req.LockDays,
+			"apy":            apy,
+			"effective_apy":  apy * bonus,
+			"node_bonus":     fmt.Sprintf("%.0fx", bonus),
+			"daily_reward":   dailyReward,
+			"monthly_reward": dailyReward * 30,
+			"yearly_reward":  req.Amount * (apy / 100) * bonus,
+			"unlock_at":      unlockAt.Format(time.RFC3339),
 			"vs_bank": gin.H{
-				"bank_apy":      "0.5% (savings account)",
-				"gstd_apy":      fmt.Sprintf("%.0f%% (with node bonus: %.0f%%)", apy, apy*bonus),
-				"advantage":     fmt.Sprintf("%.0fx better than banks", (apy*bonus)/0.5),
+				"bank_apy":  "0.5% (savings account)",
+				"gstd_apy":  fmt.Sprintf("%.0f%% (with node bonus: %.0f%%)", apy, apy*bonus),
+				"advantage": fmt.Sprintf("%.0fx better than banks", (apy*bonus)/0.5),
 			},
 		})
 	}
@@ -502,11 +504,11 @@ func unstakePool(db *sql.DB) gin.HandlerFunc {
 
 		tx.Commit()
 		c.JSON(200, gin.H{
-			"returned":    netReturn,
-			"principal":   amount,
-			"earned":      earned,
-			"penalty":     penalty,
-			"early":       time.Now().Before(unlockAt),
+			"returned":  netReturn,
+			"principal": amount,
+			"earned":    earned,
+			"penalty":   penalty,
+			"early":     time.Now().Before(unlockAt),
 		})
 	}
 }
@@ -531,16 +533,16 @@ func getStakingInfo(db *sql.DB) gin.HandlerFunc {
 			 FROM staking_pools WHERE is_active = true`).Scan(&globalStakers, &globalStaked)
 
 		c.JSON(200, gin.H{
-			"your_stakes":     activeStakes,
-			"your_staked":     totalStaked,
-			"your_earned":     totalEarned,
-			"global_staked":   globalStaked,
-			"global_stakers":  globalStakers,
+			"your_stakes":    activeStakes,
+			"your_staked":    totalStaked,
+			"your_earned":    totalEarned,
+			"global_staked":  globalStaked,
+			"global_stakers": globalStakers,
 			"apy_tiers": gin.H{
-				"30_days":  "8% APY",
-				"90_days":  "15% APY",
-				"180_days": "24% APY",
-				"365_days": "36% APY",
+				"30_days":    "8% APY",
+				"90_days":    "15% APY",
+				"180_days":   "24% APY",
+				"365_days":   "36% APY",
 				"node_bonus": "2x multiplier for node operators",
 			},
 		})
@@ -568,9 +570,9 @@ func getYieldEstimate(db *sql.DB) gin.HandlerFunc {
 func requestLoan(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			Wallet    string  `json:"wallet" binding:"required"`
-			Amount    float64 `json:"amount" binding:"required"`
-			DueDays   int     `json:"due_days"`
+			Wallet  string  `json:"wallet" binding:"required"`
+			Amount  float64 `json:"amount" binding:"required"`
+			DueDays int     `json:"due_days"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(400, gin.H{"error": err.Error()})
@@ -628,7 +630,7 @@ func requestLoan(db *sql.DB) gin.HandlerFunc {
 			"total_repayment": req.Amount + req.Amount*(interestRate/100)*(float64(req.DueDays)/365),
 			"collateral":      collateralValue,
 			"due_date":        dueDate.Format(time.RFC3339),
-			"vs_bank": "Traditional bank: 15-25% interest, weeks of paperwork, credit checks. GSTD: 5% interest, instant approval, collateralized by your compute contribution.",
+			"vs_bank":         "Traditional bank: 15-25% interest, weeks of paperwork, credit checks. GSTD: 5% interest, instant approval, collateralized by your compute contribution.",
 		})
 	}
 }
@@ -750,7 +752,7 @@ func getRevenueSharing(db *sql.DB) gin.HandlerFunc {
 
 		c.JSON(200, gin.H{
 			"today": gin.H{
-				"total_revenue":    totalRevenue,
+				"total_revenue":   totalRevenue,
 				"ai_revenue":      aiRevenue,
 				"bridge_revenue":  bridgeRevenue,
 				"storage_revenue": storageRevenue,
@@ -818,11 +820,11 @@ func createProposal(db *sql.DB) gin.HandlerFunc {
 			req.Title, req.Description, req.Type, req.Wallet).Scan(&proposalID)
 
 		c.JSON(200, gin.H{
-			"proposal_id":  proposalID,
-			"title":        req.Title,
-			"voting_ends":  time.Now().Add(7 * 24 * time.Hour).Format(time.RFC3339),
-			"status":       "active",
-			"message":      "Proposal created. Node operators and stakers can vote for 7 days.",
+			"proposal_id": proposalID,
+			"title":       req.Title,
+			"voting_ends": time.Now().Add(7 * 24 * time.Hour).Format(time.RFC3339),
+			"status":      "active",
+			"message":     "Proposal created. Node operators and stakers can vote for 7 days.",
 		})
 	}
 }
@@ -900,7 +902,9 @@ func getProposals(db *sql.DB) gin.HandlerFunc {
 					"total_voters": totalVoters,
 					"support_pct": func() float64 {
 						total := votesFor + votesAgainst
-						if total == 0 { return 0 }
+						if total == 0 {
+							return 0
+						}
 						return (votesFor / total) * 100
 					}(),
 				})
@@ -920,8 +924,8 @@ func getProposals(db *sql.DB) gin.HandlerFunc {
 func meshAnnounce(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			NodeID   string `json:"node_id" binding:"required"`
-			Endpoint string `json:"endpoint"` // IP:port
+			NodeID   string   `json:"node_id" binding:"required"`
+			Endpoint string   `json:"endpoint"` // IP:port
 			PeerIDs  []string `json:"peer_ids"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -994,7 +998,9 @@ func getMeshPeers(db *sql.DB) gin.HandlerFunc {
 			"active_connections":     activePeers,
 			"online_nodes":           onlineNodes,
 			"decentralization_score": func() float64 {
-				if onlineNodes <= 1 { return 0 }
+				if onlineNodes <= 1 {
+					return 0
+				}
 				return math.Min(100, float64(activePeers)/float64(onlineNodes)*100)
 			}(),
 		}
@@ -1071,13 +1077,13 @@ func submitConsensus(db *sql.DB) gin.HandlerFunc {
 		}
 
 		c.JSON(200, gin.H{
-			"task_id":         req.TaskID,
-			"your_vote":       req.ResultHash,
-			"consensus_hash":  topHash,
-			"consensus_pct":   consensusPct,
-			"reached":         consensusPct >= 67, // 2/3 majority
-			"total_weight":    totalWeight,
-			"message":         "Vote recorded in decentralized consensus.",
+			"task_id":        req.TaskID,
+			"your_vote":      req.ResultHash,
+			"consensus_hash": topHash,
+			"consensus_pct":  consensusPct,
+			"reached":        consensusPct >= 67, // 2/3 majority
+			"total_weight":   totalWeight,
+			"message":        "Vote recorded in decentralized consensus.",
 		})
 	}
 }
@@ -1085,18 +1091,18 @@ func submitConsensus(db *sql.DB) gin.HandlerFunc {
 func registerCapabilities(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			NodeID          string `json:"node_id" binding:"required"`
-			CanAI           bool   `json:"can_ai_inference"`
-			CanBridge       bool   `json:"can_bridge_verify"`
-			CanStorage      bool   `json:"can_storage"`
-			CanFederatedML  bool   `json:"can_federated_ml"`
-			CanP2PRelay     bool   `json:"can_p2p_relay"`
-			CanConsensus    bool   `json:"can_consensus_validate"`
-			GPUModel        string `json:"gpu_model"`
-			GPUVram         int    `json:"gpu_vram_gb"`
-			DiskFree        int    `json:"disk_free_gb"`
-			Bandwidth       int    `json:"bandwidth_mbps"`
-			AutonomousMode  bool   `json:"autonomous_mode"`
+			NodeID          string  `json:"node_id" binding:"required"`
+			CanAI           bool    `json:"can_ai_inference"`
+			CanBridge       bool    `json:"can_bridge_verify"`
+			CanStorage      bool    `json:"can_storage"`
+			CanFederatedML  bool    `json:"can_federated_ml"`
+			CanP2PRelay     bool    `json:"can_p2p_relay"`
+			CanConsensus    bool    `json:"can_consensus_validate"`
+			GPUModel        string  `json:"gpu_model"`
+			GPUVram         int     `json:"gpu_vram_gb"`
+			DiskFree        int     `json:"disk_free_gb"`
+			Bandwidth       int     `json:"bandwidth_mbps"`
+			AutonomousMode  bool    `json:"autonomous_mode"`
 			UptimeGuarantee float64 `json:"uptime_guarantee_pct"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -1117,13 +1123,43 @@ func registerCapabilities(db *sql.DB) gin.HandlerFunc {
 		c.JSON(200, gin.H{
 			"node_id":         req.NodeID,
 			"autonomous_mode": req.AutonomousMode,
-			"capabilities":    []string{
-				func() string { if req.CanAI { return "ai_inference" }; return "" }(),
-				func() string { if req.CanBridge { return "bridge_verify" }; return "" }(),
-				func() string { if req.CanStorage { return "storage" }; return "" }(),
-				func() string { if req.CanFederatedML { return "federated_ml" }; return "" }(),
-				func() string { if req.CanP2PRelay { return "p2p_relay" }; return "" }(),
-				func() string { if req.CanConsensus { return "consensus" }; return "" }(),
+			"capabilities": []string{
+				func() string {
+					if req.CanAI {
+						return "ai_inference"
+					}
+					return ""
+				}(),
+				func() string {
+					if req.CanBridge {
+						return "bridge_verify"
+					}
+					return ""
+				}(),
+				func() string {
+					if req.CanStorage {
+						return "storage"
+					}
+					return ""
+				}(),
+				func() string {
+					if req.CanFederatedML {
+						return "federated_ml"
+					}
+					return ""
+				}(),
+				func() string {
+					if req.CanP2PRelay {
+						return "p2p_relay"
+					}
+					return ""
+				}(),
+				func() string {
+					if req.CanConsensus {
+						return "consensus"
+					}
+					return ""
+				}(),
 			},
 			"message": "Node capabilities registered. You can now receive tasks matching your hardware.",
 		})
@@ -1185,34 +1221,34 @@ func getProtocolSummary(db *sql.DB) gin.HandlerFunc {
 			Scan(&proposals, &activeProposals)
 
 		c.JSON(200, gin.H{
-			"protocol":       "GSTD Sovereign Protocol v1.0",
-			"max_supply":     21000000,
-			"total_burned":   totalBurned,
-			"total_staked":   totalStaked,
-			"total_nodes":    totalNodes,
-			"online_nodes":   onlineNodes,
-			"mesh_connections": meshPeers,
+			"protocol":             "GSTD Sovereign Protocol v1.0",
+			"max_supply":           21000000,
+			"total_burned":         totalBurned,
+			"total_staked":         totalStaked,
+			"total_nodes":          totalNodes,
+			"online_nodes":         onlineNodes,
+			"mesh_connections":     meshPeers,
 			"governance_proposals": proposals,
 			"active_proposals":     activeProposals,
 			"features": gin.H{
-				"deflationary":    "2% burn on every transaction, 21M cap with halving",
+				"deflationary":     "2% burn on every transaction, 21M cap with halving",
 				"instant_payments": "Zero-fee P2P payments, instant settlement",
-				"real_yield":      "8-36% APY from real compute revenue, 2x for node operators",
-				"micro_lending":   "5% interest, collateralized by compute power",
-				"governance":      "Democratic voting, weighted by stake + uptime",
-				"node_autonomy":   "P2P mesh, local consensus, autonomous operation",
-				"compute_backed":  "Every GSTD backed by real AI compute & storage",
-				"revenue_sharing": "85% of all fees go to node operators",
+				"real_yield":       "8-36% APY from real compute revenue, 2x for node operators",
+				"micro_lending":    "5% interest, collateralized by compute power",
+				"governance":       "Democratic voting, weighted by stake + uptime",
+				"node_autonomy":    "P2P mesh, local consensus, autonomous operation",
+				"compute_backed":   "Every GSTD backed by real AI compute & storage",
+				"revenue_sharing":  "85% of all fees go to node operators",
 			},
 			"vs_traditional_banks": gin.H{
-				"speed":           "Instant vs 1-3 business days",
-				"fees":            "0% vs 1-3% per transaction",
-				"savings_yield":   "8-36% vs 0.5% (bank savings)",
-				"lending_rate":    "5% vs 15-25% (bank loans)",
-				"availability":    "24/7/365 vs banking hours",
-				"access":          "Anyone with internet vs KYC/credit checks",
-				"transparency":    "100% auditable vs opaque",
-				"ownership":       "You own your money vs bank owns it",
+				"speed":         "Instant vs 1-3 business days",
+				"fees":          "0% vs 1-3% per transaction",
+				"savings_yield": "8-36% vs 0.5% (bank savings)",
+				"lending_rate":  "5% vs 15-25% (bank loans)",
+				"availability":  "24/7/365 vs banking hours",
+				"access":        "Anyone with internet vs KYC/credit checks",
+				"transparency":  "100% auditable vs opaque",
+				"ownership":     "You own your money vs bank owns it",
 			},
 			"vs_bitcoin": gin.H{
 				"speed":          "Instant vs 10 minutes",

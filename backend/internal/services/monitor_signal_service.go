@@ -127,17 +127,22 @@ func (s *MonitorSignalService) RecordSponsorship(ctx context.Context, signalID, 
 		return fmt.Errorf("insert sponsorship: %w", err)
 	}
 
-	// Update signal stats atomically
+	// Update signal stats atomically (Upsert to support new un-seeded signals)
 	_, err = tx.ExecContext(ctx, `
-		UPDATE monitor_signals SET
-			total_sponsored = total_sponsored + $1,
-			total_gstd_allocated = total_gstd_allocated + $2,
-			total_gstd_gold = total_gstd_gold + $3,
-			sponsor_count = sponsor_count + 1,
-			tasks_created = tasks_created + 1,
+		INSERT INTO monitor_signals (
+			signal_id, category, total_sponsored, total_gstd_allocated, total_gstd_gold, 
+			sponsor_count, tasks_created, progress, data_processed_tb, tasks_completed, contributor_count,
+			last_sponsored_at, updated_at
+		) VALUES (
+			$4, 'Dynamic Signal', $1, $2, $3, 1, 1, 5, 0, 0, 0, NOW(), NOW()
+		) ON CONFLICT (signal_id) DO UPDATE SET
+			total_sponsored = monitor_signals.total_sponsored + EXCLUDED.total_sponsored,
+			total_gstd_allocated = monitor_signals.total_gstd_allocated + EXCLUDED.total_gstd_allocated,
+			total_gstd_gold = monitor_signals.total_gstd_gold + EXCLUDED.total_gstd_gold,
+			sponsor_count = monitor_signals.sponsor_count + 1,
+			tasks_created = monitor_signals.tasks_created + 1,
 			last_sponsored_at = NOW(),
 			updated_at = NOW()
-		WHERE signal_id = $4
 	`, starsPaid, gstdReward, gstdGoldFee, signalID)
 	if err != nil {
 		return fmt.Errorf("update signal: %w", err)

@@ -459,7 +459,7 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 		go func() {
 			bgCtx := context.Background()
 			reserveFee := fee * 0.50 // 50% → Golden Reserve (funds staking APY)
-			burnFee := fee * 0.05   // 5% → Permanent token burn
+			burnFee := fee * 0.05    // 5% → Permanent token burn
 			// remaining 45% stays as platform revenue (already deducted from user)
 
 			// 1. Golden Reserve deposit (source for staking rewards)
@@ -493,7 +493,7 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 						UPDATE users SET gstd_balance = COALESCE(gstd_balance, 0) + $1
 						WHERE wallet_address = $2
 					`, netAgentEarn, agentOwner)
-					
+
 					_, _ = tx.ExecContext(bgCtx, `
 						UPDATE agent_registry 
 						SET total_earnings = COALESCE(total_earnings, 0) + $1,
@@ -501,13 +501,13 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 						WHERE id = $2
 					`, netAgentEarn, req.AgentID)
 					tx.Commit()
-					
+
 					// Also log to agent_rentals
 					h.db.ExecContext(bgCtx, `
 						INSERT INTO agent_rentals (agent_id, renter_wallet, status, pricing_model, price_per_unit, estimated_cost)
 						VALUES ($1, $2, 'completed', 'per_task', $3, $3)
 					`, req.AgentID, wallet, agentPrice)
-					
+
 					log.Printf("💸 [Agent Marketplace] %.4f GSTD paid to creator %s for running agent: %s", netAgentEarn, agentOwner[:min(8, len(agentOwner))], req.AgentID)
 				}
 			}
@@ -534,13 +534,13 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 		searchCtx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 		if webCtx, err := h.smartRouter.WebSearch.Search(searchCtx, lastUserMsg); err == nil && webCtx.HasResults {
 			log.Printf("🌐 [Gateway] Real-time Internet Data confirmed and injected (Paid GSTD Feature)")
-			
+
 			systemMsg := map[string]string{
-				"role": "system", 
+				"role":    "system",
 				"content": "You are GSTD Sovereign AI — an intelligence engine. Here is the verified internet data for the user's query. Use it to provide an extremely accurate answer. " + webCtx.ContextText,
 			}
 			promptMsgs = append([]map[string]string{systemMsg}, promptMsgs...)
-			
+
 			prompt = "[VERIFIED INTERNET DATA]:\n" + webCtx.ContextText + "\n" + prompt
 		}
 		cancel()

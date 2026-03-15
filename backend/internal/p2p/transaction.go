@@ -110,8 +110,8 @@ func (tx *Transaction) Verify() error {
 	// We cannot use TON "UQ..." addresses directly in P2P consensus
 	// because TON addresses are hashes of (Code+Data), not just PubKeys.
 	// P2P networks must be able to verify ownership instantly offline.
-	// 
-	// Therefore, a user's identity on Swarm is mathematically bound to 
+	//
+	// Therefore, a user's identity on Swarm is mathematically bound to
 	// their TON Ed25519 public key in a base58 format: gstd<Base58_PubKey>
 	// -------------------------------------------------------------
 	expectedSwarmAddress := GenerateSwarmAddress(pubKeyBytes)
@@ -131,7 +131,7 @@ func GenerateSwarmAddress(pubKey []byte) string {
 // BuildTransaction creates and signs a new transaction (used by the Swarm Node itself for rewards)
 func BuildTransaction(txType TransactionType, sender, receiver string, amount float64, payload string, nonce int64, privKey ed25519.PrivateKey) (*Transaction, error) {
 	pubKey := privKey.Public().(ed25519.PublicKey)
-	
+
 	// If sender is empty, auto-derive the Swarm address
 	if sender == "" {
 		sender = GenerateSwarmAddress(pubKey)
@@ -150,9 +150,9 @@ func BuildTransaction(txType TransactionType, sender, receiver string, amount fl
 
 	hash := tx.Hash()
 	sig := ed25519.Sign(privKey, hash)
-	
+
 	tx.Signature = base64.StdEncoding.EncodeToString(sig)
 	tx.ID = hex.EncodeToString(hash[:16]) // First 16 bytes snippet for ID
-	
+
 	return tx, nil
 }

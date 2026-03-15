@@ -566,11 +566,11 @@ func (h *TelegramBotHandler) Topup(c *gin.Context) {
 		return
 	}
 	var req struct {
-		TelegramID               int64  `json:"telegram_id" binding:"required"`
-		StarsAmount              int    `json:"stars_amount" binding:"required"`
-		TelegramPaymentChargeID  string `json:"telegram_payment_charge_id" binding:"required"`
-		ProviderPaymentChargeID  string `json:"provider_payment_charge_id"`
-		Payload                  string `json:"payload"`
+		TelegramID              int64  `json:"telegram_id" binding:"required"`
+		StarsAmount             int    `json:"stars_amount" binding:"required"`
+		TelegramPaymentChargeID string `json:"telegram_payment_charge_id" binding:"required"`
+		ProviderPaymentChargeID string `json:"provider_payment_charge_id"`
+		Payload                 string `json:"payload"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
