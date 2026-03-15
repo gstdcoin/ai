@@ -131,6 +131,7 @@ export default function NodesPage() {
                 { v: network.online_nodes, l: t('nodes_online_now'), c: '#34d399', i: <Zap size={16} /> },
                 { v: network.total_tasks, l: t('nodes_tasks_done'), c: '#a78bfa', i: <Shield size={16} /> },
                 { v: `${Math.round(network.total_rewards_gstd)}`, l: t('nodes_gstd_earned'), c: '#facc15', i: <TrendingUp size={16} /> },
+                { v: `${network.today_rewards_gstd?.toFixed(2) || '0'}`, l: t('nodes_today_rewards', 'Today'), c: '#34d399', i: <Flame size={16} /> },
                 { v: `${Math.round(network.total_uptime_h)}h`, l: t('nodes_total_uptime'), c: '#fb923c', i: <Clock size={16} /> },
               ].map((s) => (
                 <div key={s.l} style={{ textAlign: 'center', padding: '14px 8px', borderRadius: 12, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
