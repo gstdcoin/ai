@@ -21,6 +21,8 @@ interface NetworkStats {
   network_iq?: number;
   global_brain_latency_ms?: number;
   total_burned?: number;
+  total_users?: number;
+  total_nodes?: number;
 }
 
 interface Tokenomics {
