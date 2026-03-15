@@ -192,6 +192,7 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 		Stream          bool          `json:"stream"`
 		ImageGeneration bool          `json:"image_generation"`
 		PaymentMethod   string        `json:"payment_method"` // "gstd" = 20% discount, "stars" = full price
+		AgentID         string        `json:"agent_id"`       // Router: Forward prompt to specific Agent and pay its creator
 	}
 	if err := json.Unmarshal(body, &req); err != nil {
 		c.JSON(400, gin.H{"error": "invalid_json"})
@@ -388,6 +389,27 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 		}
 	}
 
+	// ═══ AGENT MARKETPLACE / RENTALS ═══
+	var agentOwner string
+	var agentPrice float64
+	if req.AgentID != "" && h.db != nil {
+		err := h.db.QueryRowContext(c.Request.Context(), `
+			SELECT owner_wallet, price_gstd 
+			FROM agent_registry 
+			WHERE id = $1 AND is_active = true
+		`, req.AgentID).Scan(&agentOwner, &agentPrice)
+		if err == nil {
+			fee += agentPrice // Add Agent's own fee on top of compute node inference fee
+			log.Printf("🤖 [Agent Marketplace] Routing to %s. Rent Fee: %.4f GSTD", req.AgentID, agentPrice)
+			// If hiring a paid agent, we cancel free tiers since human must be paid
+			useFreeTier = false
+			anonymousFree = false
+		} else {
+			c.JSON(404, gin.H{"error": "agent_not_found", "message": "Agent not found or inactive"})
+			return
+		}
+	}
+
 	if anonymousFree {
 		fee = 0
 	}
@@ -460,6 +482,34 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 					BurnAmount:      burnFee,
 					SourceWallet:    wallet,
 				})
+			}
+
+			// 3. Agent Marketplace Payout (if an agent was hired by passing agent_id)
+			if agentOwner != "" && agentPrice > 0 {
+				netAgentEarn := agentPrice * 0.80 // 80% to agent creator, 20% to Swarm Platform
+				tx, _ := h.db.BeginTx(bgCtx, nil)
+				if tx != nil {
+					_, _ = tx.ExecContext(bgCtx, `
+						UPDATE users SET gstd_balance = COALESCE(gstd_balance, 0) + $1
+						WHERE wallet_address = $2
+					`, netAgentEarn, agentOwner)
+					
+					_, _ = tx.ExecContext(bgCtx, `
+						UPDATE agent_registry 
+						SET total_earnings = COALESCE(total_earnings, 0) + $1,
+							total_rentals = COALESCE(total_rentals, 0) + 1
+						WHERE id = $2
+					`, netAgentEarn, req.AgentID)
+					tx.Commit()
+					
+					// Also log to agent_rentals
+					h.db.ExecContext(bgCtx, `
+						INSERT INTO agent_rentals (agent_id, renter_wallet, status, pricing_model, price_per_unit, estimated_cost)
+						VALUES ($1, $2, 'completed', 'per_task', $3, $3)
+					`, req.AgentID, wallet, agentPrice)
+					
+					log.Printf("💸 [Agent Marketplace] %.4f GSTD paid to creator %s for running agent: %s", netAgentEarn, agentOwner[:min(8, len(agentOwner))], req.AgentID)
+				}
 			}
 		}()
 
