@@ -139,7 +139,8 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
     const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://app.gstdtoken.com';
     const viralUrl = `${baseUrl}/dashboard?tab=chat&viral=1&model=${encodeURIComponent(modelId)}`;
     const devices = msg.powStats?.swarm_devices ?? 1500;
-    const shareText = `${msg.content.slice(0, 200)}${msg.content.length > 200 ? '...' : ''}\n\n— Этот ответ был рассчитан ${devices} смартфонами в сети GSTD. Присоединяйся и зарабатывай золото! ${viralUrl}`;
+    const shareTextPostfix = t('chat_share_postfix', '\n\n— This answer was calculated by {{devices}} smartphones in the GSTD network. Join and earn gold! {{url}}').replace('{{devices}}', String(devices)).replace('{{url}}', viralUrl);
+    const shareText = `${msg.content.slice(0, 200)}${msg.content.length > 200 ? '...' : ''}${shareTextPostfix}`;
     fetch(`${API_BASE_URL}/api/v1/analytics/viral/share?model=${encodeURIComponent(modelId)}`, { method: 'POST' }).catch(() => { });
     if (navigator.share && typeof window !== 'undefined') {
       navigator.share({ title: t('gstd_swarm', 'GSTD Swarm'), text: shareText, url: viralUrl }).catch(() => navigator.clipboard.writeText(shareText));
