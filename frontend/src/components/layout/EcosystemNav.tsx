@@ -5,7 +5,7 @@ import { useTranslation } from 'next-i18next';
 import { TonConnectButton } from '@tonconnect/ui-react';
 import {
     LayoutDashboard, MessageSquare, Activity, Bot,
-    ExternalLink, Menu, X, ArrowRightLeft, Server
+    ExternalLink, Menu, X, ArrowRightLeft, Server, Trophy
 } from 'lucide-react';
 
 interface NavItem {
@@ -29,7 +29,8 @@ export default function EcosystemNav() {
         { key: 'nav_chat', href: `${APP_BASE}/chat`, icon: <MessageSquare size={16} />, external: !isOnApp },
         { key: 'nav_bridge', href: `${APP_BASE}/bridge`, icon: <ArrowRightLeft size={16} />, external: !isOnApp },
         { key: 'nav_nodes', href: `${APP_BASE}/nodes`, icon: <Server size={16} />, external: !isOnApp },
-        { key: 'nav_monitor', href: 'https://monitor.gstdtoken.com', icon: <Activity size={16} />, external: true },
+        { key: 'nav_leaderboard', href: `${APP_BASE}/leaderboard`, icon: <Trophy size={16} />, external: !isOnApp },
+        { key: 'nav_stats', href: `${APP_BASE}/stats`, icon: <Activity size={16} />, external: !isOnApp },
         { key: 'nav_bot', href: 'https://gstdbot.gstdtoken.com', icon: <Bot size={16} />, external: true },
         { key: 'nav_telegram', href: 'https://t.me/GstdAppBot', icon: <ExternalLink size={14} />, external: true },
     ];
@@ -40,7 +41,8 @@ export default function EcosystemNav() {
         if (href.includes('/chat') && path === '/chat') return true;
         if (href.includes('/bridge') && path === '/bridge') return true;
         if (href.includes('/nodes') && path === '/nodes') return true;
-        if (href.includes('monitor.gstdtoken.com') && typeof window !== 'undefined' && window.location.hostname === 'monitor.gstdtoken.com') return true;
+        if (href.includes('/leaderboard') && path === '/leaderboard') return true;
+        if (href.includes('/stats') && path === '/stats') return true;
         return false;
     };
 
