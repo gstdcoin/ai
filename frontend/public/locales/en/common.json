@@ -1318,5 +1318,14 @@
   "nav_home": "Home",
   "connect_wallet_dashboard": "Connect your TON wallet to access the full dashboard with balances, nodes, and AI chat.",
   "dashboard_free_chat": "AI Chat is free — connect wallet for Pro/Ultra tiers",
-  "bridge": "Bridge"
+  "bridge": "Bridge",
+  "bridge_wallet_connected": "Wallet Connected",
+  "bridge_disconnect": "Disconnect",
+  "bridge_connect_prompt": "Connect your TON wallet to start",
+  "bridge_connect_desc": "Tonkeeper, MyTonWallet, OpenMask and other TON wallets are supported",
+  "bridge_connect_wallet": "Connect Wallet",
+  "bridge_connect_first": "Connect wallet to place order",
+  "bridge_auto_wallet": "from wallet",
+  "bridge_error_connect_wallet": "Please connect your wallet first",
+  "bridge_connect_to_see_orders": "Connect your wallet to see your orders"
 }

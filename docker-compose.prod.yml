@@ -80,7 +80,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile.web
-    image: gstd-frontend:v2
+    image: gstd-frontend:v3
     restart: unless-stopped
     env_file: ./frontend/.env
     depends_on:
