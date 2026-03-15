@@ -4,7 +4,7 @@ import { useTranslation } from 'next-i18next';
 import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
-import { Shield, Globe, Activity, Zap, Brain, Server, Flame, Lock, Bot, RefreshCw } from 'lucide-react';
+import { Shield, Globe, Activity, Zap, Brain, Server, Flame, RefreshCw } from 'lucide-react';
 import { API_BASE_URL } from '../lib/config';
 
 interface NetworkSection { active_workers?: number; total_hashrate?: number; }
@@ -33,6 +33,8 @@ interface Stats {
   recycling: RecyclingSection | null;
   airlock: AirlockSection | null;
   openclaw: OpenclawSection | null;
+  tokenomics?: any;
+  nodes?: any;
 }
 
 const getSettledValue = <T,>(result: PromiseSettledResult<T>): T | null =>
@@ -47,22 +49,34 @@ export default function PublicStats() {
   const fetchAll = useCallback(async () => {
     setLoading(true);
     const endpoints = [
-      'network/stats', 'pool/status', 'pipeline/status', 'security/stats',
-      'federated/stats', 'mobile/stats', 'recycling/stats', 'airlock/stats', 'openclaw/stats',
+      'network/stats', 'sovereign/tokenomics', 'nodes/rewards/network',
+      'burn/stats',
     ];
     const results = await Promise.allSettled(
       endpoints.map((ep) => fetch(`${API_BASE_URL}/api/v1/${ep}`).then((r) => (r.ok ? r.json() : null)))
     );
+    const networkData = getSettledValue<any>(results[0]);
+    const tokenomicsData = getSettledValue<any>(results[1]);
+    const nodesData = getSettledValue<any>(results[2]);
+    const burnData = getSettledValue<any>(results[3]);
     setStats({
-      network: getSettledValue<NetworkSection | null>(results[0]),
-      pool: getSettledValue<PoolSection | null>(results[1]),
-      pipeline: getSettledValue<PipelineSection | null>(results[2]),
-      security: getSettledValue<SecuritySection | null>(results[3]),
-      federated: getSettledValue<FederatedSection | null>(results[4]),
-      mobile: getSettledValue<MobileSection | null>(results[5]),
-      recycling: getSettledValue<RecyclingSection | null>(results[6]),
-      airlock: getSettledValue<AirlockSection | null>(results[7]),
-      openclaw: getSettledValue<OpenclawSection | null>(results[8]),
+      network: networkData,
+      pool: { xaut_balance: networkData?.gold_reserve || 0, gstd_balance: tokenomicsData?.circulating_supply || 0 },
+      pipeline: { online_nodes: nodesData?.online_nodes || 0, total_vram_gb: 0 },
+      security: null,
+      federated: null,
+      mobile: null,
+      recycling: {
+        total_burned: burnData?.total_burned || 0,
+        effective_supply: burnData?.current_supply || 1e9,
+        total_recycled: tokenomicsData?.total_minted || 0,
+        total_to_miners: tokenomicsData?.total_minted ? tokenomicsData.total_minted * 0.93 : 0,
+        total_to_reserve: networkData?.gold_reserve || 0,
+      },
+      airlock: null,
+      openclaw: null,
+      tokenomics: tokenomicsData,
+      nodes: nodesData,
     });
     setLoading(false);
   }, []);
@@ -113,78 +127,69 @@ export default function PublicStats() {
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <S label="XAUt Reserve" value={stats?.pool?.xaut_balance?.toFixed(6) || '0.000000'} color="text-amber-400" />
-            <S label="GSTD in Pool" value={stats?.pool?.gstd_balance?.toFixed(2) || '0'} color="text-violet-400" />
-            <S label={t('gold_reserve_burned', 'Total Burned') || 'Total Burned'} value={stats?.recycling?.total_burned?.toFixed(2) || '0'} color="text-red-400" />
+            <S label="Circulating" value={stats?.pool?.gstd_balance?.toFixed(0) || '0'} color="text-violet-400" />
+            <S label={t('gold_reserve_burned', 'Total Burned') || 'Total Burned'} value={stats?.recycling?.total_burned?.toFixed(4) || '0'} color="text-red-400" />
             <S label="Effective Supply" value={((stats?.recycling?.effective_supply || 1e9) / 1e6).toFixed(1) + 'M'} color="text-emerald-400" sub="of 1B" />
           </div>
         </div>
 
         {/* Infrastructure Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-          {/* Network */}
+          {/* Node Network */}
           <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/8">
             <div className="flex items-center gap-2 mb-3"><Globe className="w-4 h-4 text-cyan-400" /><span className="text-xs font-bold uppercase tracking-wider text-gray-400">{t('network', 'Network')}</span></div>
-            <S label="Active Nodes" value={stats?.network?.active_workers || 0} color="text-cyan-400" />
-            <div className="mt-3"><S label="Grid Power" value={`${stats?.network?.total_hashrate?.toFixed(1) || '0'} PF`} color="text-violet-400" /></div>
+            <S label="Total Nodes" value={stats?.nodes?.total_nodes || stats?.network?.active_workers || 0} color="text-cyan-400" />
+            <div className="mt-3"><S label="Online Now" value={stats?.nodes?.online_nodes || 0} color="text-emerald-400" /></div>
           </div>
 
-          {/* Pipeline */}
+          {/* Tokenomics */}
           <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/8">
-            <div className="flex items-center gap-2 mb-3"><Zap className="w-4 h-4 text-violet-400" /><span className="text-xs font-bold uppercase tracking-wider text-gray-400">{t('pipeline', 'Pipeline')}</span></div>
-            <S label="GPU Nodes" value={stats?.pipeline?.online_nodes || 0} color="text-violet-400" />
-            <div className="mt-3"><S label="Total VRAM" value={`${stats?.pipeline?.total_vram_gb?.toFixed(1) || '0'} GB`} color="text-cyan-400" /></div>
+            <div className="flex items-center gap-2 mb-3"><Zap className="w-4 h-4 text-violet-400" /><span className="text-xs font-bold uppercase tracking-wider text-gray-400">Tokenomics</span></div>
+            <S label="Total Minted" value={stats?.tokenomics?.total_minted?.toFixed(0) || '0'} color="text-violet-400" sub="GSTD" />
+            <div className="mt-3"><S label="Epoch" value={stats?.tokenomics?.epoch || 1} color="text-cyan-400" sub={`Halving in ${stats?.tokenomics?.next_halving_in_days || '?'}d`} /></div>
           </div>
 
-          {/* Security */}
+          {/* Node Rewards */}
           <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/8">
-            <div className="flex items-center gap-2 mb-3"><Shield className="w-4 h-4 text-emerald-400" /><span className="text-xs font-bold uppercase tracking-wider text-gray-400">{t('guardrails', 'Guardrails')}</span></div>
-            <S label="Defense Layers" value={stats?.security?.defense_layers || 3} color="text-emerald-400" />
-            <div className="mt-3"><S label="Threats Blocked" value={stats?.security?.blocked_requests || 0} color="text-red-400" /></div>
+            <div className="flex items-center gap-2 mb-3"><Shield className="w-4 h-4 text-emerald-400" /><span className="text-xs font-bold uppercase tracking-wider text-gray-400">Node Rewards</span></div>
+            <S label="Today" value={`${(stats?.nodes?.today_rewards_gstd || 0).toFixed(2)} GSTD`} color="text-emerald-400" />
+            <div className="mt-3"><S label="All-Time" value={`${(stats?.nodes?.total_rewards_gstd || 0).toFixed(2)} GSTD`} color="text-amber-400" /></div>
           </div>
 
-          {/* Federated */}
+          {/* Price */}
           <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/8">
-            <div className="flex items-center gap-2 mb-3"><Brain className="w-4 h-4 text-fuchsia-400" /><span className="text-xs font-bold uppercase tracking-wider text-gray-400">{t('federated_learning', 'Federated Learning')}</span></div>
-            <S label="Brain Updates" value={stats?.federated?.total_brain_updates || 0} color="text-fuchsia-400" />
-            <div className="mt-3"><S label="Contributors" value={stats?.federated?.unique_contributors || 0} color="text-violet-400" /></div>
+            <div className="flex items-center gap-2 mb-3"><Activity className="w-4 h-4 text-fuchsia-400" /><span className="text-xs font-bold uppercase tracking-wider text-gray-400">Market</span></div>
+            <S label="GSTD Price" value={stats?.network?.gstd_price_usd ? `$${stats.network.gstd_price_usd.toFixed(6)}` : '$0'} color="text-fuchsia-400" />
+            <div className="mt-3"><S label="Tasks" value={stats?.network?.total_tasks || 0} color="text-cyan-400" /></div>
           </div>
 
-          {/* Mobile */}
+          {/* Supply */}
           <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/8">
-            <div className="flex items-center gap-2 mb-3"><Server className="w-4 h-4 text-blue-400" /><span className="text-xs font-bold uppercase tracking-wider text-gray-400">{t('mobile_mining', 'Mobile Mining')}</span></div>
-            <S label="Active Devices" value={stats?.mobile?.active_sessions || 0} color="text-blue-400" />
-            <div className="mt-3"><S label="NPU Devices" value={stats?.mobile?.npu_devices || 0} color="text-cyan-400" /></div>
+            <div className="flex items-center gap-2 mb-3"><Brain className="w-4 h-4 text-blue-400" /><span className="text-xs font-bold uppercase tracking-wider text-gray-400">Supply</span></div>
+            <S label="Circulating" value={stats?.tokenomics?.circulating_supply?.toFixed(0) || '0'} color="text-blue-400" sub="GSTD" />
+            <div className="mt-3"><S label="Remaining" value={`${((stats?.tokenomics?.remaining_supply || 1e9) / 1e6).toFixed(1)}M`} color="text-violet-400" sub={`${(stats?.tokenomics?.supply_mined_pct || 0).toFixed(4)}% mined`} /></div>
           </div>
 
-          {/* OpenClaw */}
+          {/* Base Reward */}
           <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/8">
-            <div className="flex items-center gap-2 mb-3"><Bot className="w-4 h-4 text-amber-400" /><span className="text-xs font-bold uppercase tracking-wider text-gray-400">{t('openclaw_robots', 'OpenClaw Robots')}</span></div>
-            <S label="Online Robots" value={stats?.openclaw?.online_agents || 0} color="text-amber-400" />
-            <div className="mt-3"><S label="Total Earned" value={`${(stats?.openclaw?.total_earned || 0).toFixed(2)} GSTD`} color="text-emerald-400" /></div>
+            <div className="flex items-center gap-2 mb-3"><Server className="w-4 h-4 text-amber-400" /><span className="text-xs font-bold uppercase tracking-wider text-gray-400">Mining</span></div>
+            <S label="Base/Hour" value={`${stats?.tokenomics?.base_reward_per_hour || 0} GSTD`} color="text-amber-400" />
+            <div className="mt-3"><S label="Burn Rate" value={`${stats?.tokenomics?.burn_rate_pct || 5}%`} color="text-red-400" sub="deflationary" /></div>
           </div>
         </div>
 
-        {/* Recycling Economy */}
+        {/* Token Economy */}
         <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/8 mb-6">
           <div className="flex items-center gap-2 mb-3"><Flame className="w-4 h-4 text-orange-400" /><span className="text-xs font-bold uppercase tracking-wider text-gray-400">{t('token_economy', 'Token Economy')}</span></div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <S label="Total Recycled" value={`${(stats?.recycling?.total_recycled || 0).toFixed(2)}`} color="text-cyan-400" sub="GSTD" />
-            <S label="To Miners (93%)" value={`${(stats?.recycling?.total_to_miners || 0).toFixed(2)}`} color="text-emerald-400" sub="GSTD" />
-            <S label="To Gold (2%)" value={`${(stats?.recycling?.total_to_reserve || 0).toFixed(4)}`} color="text-amber-400" sub="→ XAUt" />
-            <S label="Burned (5%)" value={`${(stats?.recycling?.total_burned || 0).toFixed(2)}`} color="text-red-400" sub="forever" />
+            <S label="Total Minted" value={`${(stats?.tokenomics?.total_minted || 0).toFixed(0)}`} color="text-cyan-400" sub="GSTD" />
+            <S label="To Node Operators" value={`${(stats?.nodes?.total_rewards_gstd || 0).toFixed(2)}`} color="text-emerald-400" sub="GSTD" />
+            <S label="Gold Reserve" value={`${(stats?.pool?.xaut_balance || 0).toFixed(6)}`} color="text-amber-400" sub="XAUt" />
+            <S label="Burned 🔥" value={`${(stats?.recycling?.total_burned || 0).toFixed(4)}`} color="text-red-400" sub="forever" />
           </div>
         </div>
 
-        {/* Data Airlock */}
-        <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/8">
-          <div className="flex items-center gap-2 mb-3"><Lock className="w-4 h-4 text-violet-400" /><span className="text-xs font-bold uppercase tracking-wider text-gray-400">{t('data_airlock', 'Data Airlock')}</span></div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <S label="Total Sessions" value={stats?.airlock?.total_sessions || 0} color="text-violet-400" />
-            <S label="Completed" value={stats?.airlock?.completed || 0} color="text-emerald-400" />
-            <S label="Data Exfiltrations" value="0" color="text-emerald-400" sub="always zero" />
-            <S label="Compliance" value="GDPR + FZ-152" color="text-cyan-400" />
-          </div>
-        </div>
+
       </main>
     </div>
   );
