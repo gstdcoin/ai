@@ -25,7 +25,7 @@ export default function EcosystemNav() {
     const isOnApp = typeof window !== 'undefined' && window.location.hostname === 'app.gstdtoken.com';
 
     const navItems: NavItem[] = [
-        { key: 'nav_home', href: `${APP_BASE}/dashboard`, icon: <LayoutDashboard size={16} />, external: !isOnApp },
+        { key: 'nav_home', href: `${APP_BASE}/`, icon: <LayoutDashboard size={16} />, external: !isOnApp },
         { key: 'nav_chat', href: `${APP_BASE}/chat`, icon: <MessageSquare size={16} />, external: !isOnApp },
         { key: 'nav_bridge', href: `${APP_BASE}/bridge`, icon: <ArrowRightLeft size={16} />, external: !isOnApp },
         { key: 'nav_nodes', href: `${APP_BASE}/nodes`, icon: <Server size={16} />, external: !isOnApp },
