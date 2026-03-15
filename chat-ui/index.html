@@ -125,6 +125,9 @@
     .g-btn--outline-brand:hover{background:var(--g-color-info-bg);border-color:var(--g-color-brand-hover)}
     .g-btn--outline-brand.connected{border-color:var(--g-color-positive);color:var(--g-color-positive)}
     .balance-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border-radius:var(--g-border-radius-pill);background:var(--g-color-info-bg);color:var(--g-color-brand);font:var(--g-text-caption-1);font-weight:600;border:1px solid rgba(255,215,0,.15);animation:g-fadeIn var(--g-transition-slow)}
+    .faucet-btn{font:var(--g-text-caption-1);font-weight:600;padding:2px 10px;border-radius:var(--g-border-radius-pill);background:var(--g-color-positive-bg);color:var(--g-color-positive);border:1px solid rgba(52,211,153,.2);cursor:pointer;transition:all var(--g-transition-fast);font-family:'Inter',system-ui,sans-serif}
+    .faucet-btn:hover{background:var(--g-color-positive);color:#030014;border-color:var(--g-color-positive)}
+    .faucet-btn:disabled{opacity:.4;cursor:not-allowed}
     .cost-info{font:var(--g-text-caption-2);color:var(--g-color-text-hint);text-align:center;margin-top:2px}
     .cost-info .cost-amount{color:var(--g-color-brand);font-weight:600}
     .deduction-toast{background:var(--g-color-info-bg)!important;color:var(--g-color-brand)!important;border:1px solid rgba(255,215,0,.2)!important}
@@ -293,6 +296,7 @@
     </div>
     <div class="header-right">
       <span class="balance-badge" id="balanceBadge" style="display:none">🪙 <span id="balanceAmount">0</span> GSTD</span>
+      <button class="faucet-btn" id="faucetBtn" style="display:none" onclick="claimFaucet()">🎁 Daily</button>
       <button class="g-btn g-btn--flat g-btn--s" id="langEN" onclick="setLang('en')">EN</button>
       <button class="g-btn g-btn--flat g-btn--s" id="langRU" onclick="setLang('ru')">RU</button>
       <button class="g-btn g-btn--outline-brand" id="walletBtn" onclick="toggleWallet()">🔗 Connect Wallet</button>
@@ -439,7 +443,38 @@ async function fetchBalance() {
     const data = await res.json();
     gstdBalance = data.current_balance || 0;
     showBalance(gstdBalance);
+    // Show faucet button if daily faucet available
+    const faucetBtn = document.getElementById('faucetBtn');
+    if(faucetBtn) {
+      faucetBtn.style.display = data.daily_faucet_available ? 'inline-block' : 'none';
+    }
   } catch(e) { console.log('Balance fetch failed:', e); }
+}
+async function claimFaucet() {
+  if(!wallet) return;
+  const btn = document.getElementById('faucetBtn');
+  if(btn) { btn.disabled = true; btn.textContent = '⏳'; }
+  try {
+    const res = await fetch('https://api.gstdtoken.com/api/v1/bonus/faucet', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({wallet_address: wallet})
+    });
+    const data = await res.json();
+    if(data.success || data.amount) {
+      const amount = data.amount || 0.5;
+      gstdBalance += amount;
+      showBalance(gstdBalance);
+      showToast(lang==='ru'?`✅ +${amount} GSTD получено!`:`✅ +${amount} GSTD claimed!`,'success');
+      if(btn) btn.style.display = 'none';
+    } else {
+      showToast(data.error || data.message || 'Already claimed today','info');
+      if(btn) btn.style.display = 'none';
+    }
+  } catch(e) {
+    showToast('Failed to claim faucet','error');
+    if(btn) { btn.disabled = false; btn.textContent = '🎁 Daily'; }
+  }
 }
 function showBalance(amount) {
   const badge = document.getElementById('balanceBadge');
