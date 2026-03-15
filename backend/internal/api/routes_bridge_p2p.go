@@ -33,6 +33,9 @@ func SetupP2PBridgeRoutes(v1 *gin.RouterGroup, db *sql.DB) {
 	// Create a new bridge order
 	bridge.POST("/order", createBridgeOrder(db))
 
+	// Take (match with) an existing open order
+	bridge.POST("/order/:id/take", takeOrder(db))
+
 	// Get open orders (order book)
 	bridge.GET("/orders", getBridgeOrders(db))
 
@@ -57,7 +60,7 @@ func SetupP2PBridgeRoutes(v1 *gin.RouterGroup, db *sql.DB) {
 	// Get bridge stats
 	bridge.GET("/stats", getBridgeStats(db))
 
-	log.Printf("✅ P2P Bridge routes registered (with on-chain verification)")
+	log.Printf("✅ P2P Bridge routes registered (with on-chain verification + take-order)")
 }
 
 // POST /bridge/p2p/order — Create a new bridge order
@@ -209,6 +212,88 @@ func tryMatchOrder(db *sql.DB, orderID, lookForSource, lookForDest string, amoun
 		"send_to_address":   matchDestAddr, // address on YOUR source chain where counterparty wants to receive
 		"receive_from":      matchSourceAddr, // counterparty will send from this address on YOUR dest chain
 		"amount":            matchAmount,
+	}
+}
+
+// POST /bridge/p2p/order/:id/take — Take (match with) an existing open order
+// User provides their wallet + addresses for the REVERSE direction
+func takeOrder(db *sql.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		orderID := c.Param("id")
+
+		var req struct {
+			UserWallet    string `json:"user_wallet" binding:"required"`
+			SourceAddress string `json:"source_address" binding:"required"` // taker's address on THEIR source chain
+			DestAddress   string `json:"dest_address" binding:"required"`   // taker's address on THEIR dest chain
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(400, gin.H{"error": "Missing fields: user_wallet, source_address, dest_address"})
+			return
+		}
+
+		ctx := c.Request.Context()
+
+		// Get the target order
+		var srcChain, dstChain, srcAddr, dstAddr, status, ownerWallet string
+		var amount float64
+		err := db.QueryRowContext(ctx,
+			`SELECT source_chain, dest_chain, amount, source_address, dest_address, status, user_wallet
+			 FROM bridge_orders WHERE id = $1`, orderID,
+		).Scan(&srcChain, &dstChain, &amount, &srcAddr, &dstAddr, &status, &ownerWallet)
+		if err != nil {
+			c.JSON(404, gin.H{"error": "Order not found"})
+			return
+		}
+		if status != "open" {
+			c.JSON(400, gin.H{"error": "Order is already " + status + ", cannot take"})
+			return
+		}
+		if req.UserWallet == ownerWallet {
+			c.JSON(400, gin.H{"error": "Cannot take your own order"})
+			return
+		}
+
+		// Create the counter-order (reverse direction)
+		var takerOrderID string
+		err = db.QueryRowContext(ctx,
+			`INSERT INTO bridge_orders (user_wallet, source_chain, dest_chain, amount, source_address, dest_address, status, matched_order_id, matched_at, expires_at)
+			 VALUES ($1, $2, $3, $4, $5, $6, 'matched', $7, NOW(), NOW() + INTERVAL '24 hours')
+			 RETURNING id`,
+			req.UserWallet, dstChain, srcChain, amount, req.SourceAddress, req.DestAddress, orderID,
+		).Scan(&takerOrderID)
+		if err != nil {
+			log.Printf("[P2P Bridge] Failed to create counter-order: %v", err)
+			c.JSON(500, gin.H{"error": "Failed to create counter-order"})
+			return
+		}
+
+		// Update original order to matched
+		_, err = db.ExecContext(ctx,
+			`UPDATE bridge_orders SET status = 'matched', matched_order_id = $1, matched_at = NOW(), updated_at = NOW() WHERE id = $2`,
+			takerOrderID, orderID)
+		if err != nil {
+			log.Printf("[P2P Bridge] Failed to update original order: %v", err)
+			c.JSON(500, gin.H{"error": "Failed to match orders"})
+			return
+		}
+
+		log.Printf("[P2P Bridge] ✅ Order %s taken by %s → counter-order %s", orderID[:8], req.UserWallet[:8], takerOrderID[:8])
+
+		c.JSON(200, gin.H{
+			"status":        "matched",
+			"taker_order_id": takerOrderID,
+			"original_order_id": orderID,
+			"message":       "Order taken! Both sides are now matched.",
+			"your_send_to":  dstAddr,  // original order's dest address = where taker sends on their source chain
+			"your_receive":  srcAddr,  // original order's source address = where taker receives on their dest chain
+			"amount":        amount,
+			"instructions": []string{
+				fmt.Sprintf("1. Send %.4f GSTD from your %s address to: %s", amount, dstChain, dstAddr),
+				fmt.Sprintf("2. Enter your TX hash to confirm deposit"),
+				fmt.Sprintf("3. Counterparty will send %.4f GSTD to your %s address: %s", amount, srcChain, req.DestAddress),
+				"4. Confirm receipt when you receive the tokens",
+			},
+		})
 	}
 }
 
