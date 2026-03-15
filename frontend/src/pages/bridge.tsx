@@ -6,7 +6,7 @@ import Head from 'next/head';
 import {
   ArrowRightLeft, ChevronDown, Clock, CheckCircle2,
   AlertCircle, Loader2, ArrowRight, RefreshCw, BookOpen, Users,
-  Copy, Check, Wallet, LogOut, Link2, Unlink
+  Copy, Check, Wallet, LogOut, Link2, Unlink, X
 } from 'lucide-react';
 import { useMultiChainWallet, ChainId } from '../hooks/useMultiChainWallet';
 import { API_BASE_URL } from '../lib/config';
@@ -400,11 +400,14 @@ export default function BridgePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tx_hash: txHash }),
       });
-      if (res.ok) { alert('Deposit confirmed!'); setTab('my'); }
-    } catch (_e) { /* */ }
+      const data = await res.json();
+      if (res.ok) { alert(data.message || 'Deposit confirmed!'); setTab('my'); }
+      else { alert(data.error || 'Verification failed'); }
+    } catch (_e) { alert('Network error'); }
   };
 
   const handleConfirmReceipt = async (orderId: string) => {
+    if (!confirm(t('bridge_confirm_receipt_question', { defaultValue: 'Confirm that you received GSTD tokens?' }))) return;
     try {
       const res = await fetch(`${API_BASE_URL}/api/v1/bridge/p2p/order/${orderId}/confirm`, {
         method: 'POST',
@@ -413,6 +416,56 @@ export default function BridgePage() {
       });
       if (res.ok) { alert('Bridge complete! 🎉'); setTab('my'); }
     } catch (_e) { /* */ }
+  };
+
+  const handleCancelOrder = async (orderId: string) => {
+    if (!confirm(t('bridge_cancel_confirm', { defaultValue: 'Cancel this order?' }))) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/bridge/p2p/order/${orderId}/cancel?wallet=${walletAddress}`, {
+        method: 'POST',
+      });
+      if (res.ok) { alert('Order cancelled'); setTab('my'); }
+      else { const d = await res.json(); alert(d.error || 'Cannot cancel'); }
+    } catch (_e) { /* */ }
+  };
+
+  const handleTakeOrder = async (order: BridgeOrder) => {
+    if (!walletAddress) { alert(t('bridge_error_connect_wallet', { defaultValue: 'Connect your TON wallet first' })); return; }
+    // For take-order: user needs to provide THEIR addresses on both chains
+    // Source for taker = order's dest chain, Dest for taker = order's source chain
+    const takerSourceChain = order.dest_chain;
+    const takerDestChain = order.source_chain;
+    const takerSourceWallet = multiWallet.getChainWallet(takerSourceChain as ChainId);
+    const takerDestWallet = multiWallet.getChainWallet(takerDestChain as ChainId);
+
+    let takerSourceAddr = takerSourceWallet.connected ? takerSourceWallet.address : '';
+    let takerDestAddr = takerDestWallet.connected ? takerDestWallet.address : '';
+
+    if (!takerSourceAddr) {
+      takerSourceAddr = prompt(`Enter your ${takerSourceChain} address (where you hold GSTD):`) || '';
+      if (!takerSourceAddr) return;
+    }
+    if (!takerDestAddr) {
+      takerDestAddr = prompt(`Enter your ${takerDestChain} address (where you want to receive GSTD):`) || '';
+      if (!takerDestAddr) return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/bridge/p2p/order/${order.id}/take`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_wallet: walletAddress,
+          source_address: takerSourceAddr,
+          dest_address: takerDestAddr,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(`${data.message}\n\n${(data.instructions || []).join('\n')}`);
+        setTab('my');
+      } else { alert(data.error || 'Failed to take order'); }
+    } catch (_e) { alert('Network error'); }
   };
 
 
@@ -635,23 +688,42 @@ export default function BridgePage() {
                     <div key={o.id} style={{
                       padding: '14px 16px', borderRadius: 14,
                       background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap',
                     }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <div style={{ textAlign: 'center' }}>
-                          <span style={{ fontSize: 18 }}>{CHAINS.find(c => c.id === o.source_chain)?.icon}</span>
-                          <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)' }}>{o.source_chain}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <div style={{ textAlign: 'center' }}>
+                            <span style={{ fontSize: 18 }}>{CHAINS.find(c => c.id === o.source_chain)?.icon}</span>
+                            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)' }}>{o.source_chain}</div>
+                          </div>
+                          <ArrowRight size={14} style={{ color: 'rgba(255,255,255,0.2)' }} />
+                          <div style={{ textAlign: 'center' }}>
+                            <span style={{ fontSize: 18 }}>{CHAINS.find(c => c.id === o.dest_chain)?.icon}</span>
+                            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)' }}>{o.dest_chain}</div>
+                          </div>
                         </div>
-                        <ArrowRight size={14} style={{ color: 'rgba(255,255,255,0.2)' }} />
-                        <div style={{ textAlign: 'center' }}>
-                          <span style={{ fontSize: 18 }}>{CHAINS.find(c => c.id === o.dest_chain)?.icon}</span>
-                          <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)' }}>{o.dest_chain}</div>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontSize: 15, fontWeight: 700, color: 'white' }}>{o.amount.toLocaleString()} GSTD</div>
+                          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>{o.wallet ? shortAddr(o.wallet) : ''}</div>
                         </div>
                       </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: 15, fontWeight: 700, color: 'white' }}>{o.amount.toLocaleString()} GSTD</div>
-                        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>{o.wallet ? shortAddr(o.wallet) : ''}</div>
-                      </div>
+                      {/* Take Order button */}
+                      {isWalletConnected && (
+                        <button onClick={() => handleTakeOrder(o)}
+                          style={{
+                            width: '100%', marginTop: 10, padding: '8px 14px', borderRadius: 8,
+                            background: 'linear-gradient(135deg, rgba(16,185,129,0.1), rgba(6,182,212,0.1))',
+                            border: '1px solid rgba(16,185,129,0.2)',
+                            color: '#34d399', fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                            transition: 'all 0.2s',
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(16,185,129,0.15)'; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(16,185,129,0.1), rgba(6,182,212,0.1))'; }}
+                        >
+                          <ArrowRightLeft size={12} />
+                          {t('bridge_take_order', { defaultValue: `Take Order — Send ${o.amount} GSTD on ${o.dest_chain}, Receive on ${o.source_chain}` })}
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -681,6 +753,7 @@ export default function BridgePage() {
                       padding: '16px', borderRadius: 14,
                       background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
                     }}>
+                      {/* Header: chains + amount + status */}
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <span>{CHAINS.find(c => c.id === o.source_chain)?.icon}</span>
@@ -691,30 +764,128 @@ export default function BridgePage() {
                         <StatusBadge status={o.status} />
                       </div>
 
-                      {/* Show match details */}
-                      {o.send_gstd_to && (
-                        <div style={{ padding: '10px 12px', borderRadius: 8, background: 'rgba(139,92,246,0.05)', border: '1px solid rgba(139,92,246,0.1)', marginBottom: 8, fontSize: 12 }}>
-                          <div style={{ color: 'rgba(255,255,255,0.5)', marginBottom: 4 }}>{t('bridge_send_chain', { chain: o.source_chain })}</div>
-                          <div style={{ fontFamily: 'monospace', color: '#a78bfa', wordBreak: 'break-all', display: 'flex', alignItems: 'center', gap: 4 }}>
-                            {o.send_gstd_to} <CopyButton text={o.send_gstd_to} />
+                      {/* ── OPEN: waiting for counterparty ── */}
+                      {o.status === 'open' && (
+                        <div>
+                          <div style={{
+                            padding: '12px 14px', borderRadius: 10,
+                            background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.12)',
+                            marginBottom: 8,
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                              <Clock size={13} style={{ color: '#60a5fa' }} />
+                              <span style={{ fontSize: 12, fontWeight: 600, color: '#60a5fa' }}>
+                                {t('bridge_waiting_match', { defaultValue: 'Waiting for counterparty...' })}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', lineHeight: 1.5 }}>
+                              {t('bridge_waiting_match_desc', { defaultValue: 'Your order is in the order book. When someone wants to swap in the opposite direction, the system will match you automatically. You can also share the order book link.' })}
+                            </div>
                           </div>
+                          <button onClick={() => handleCancelOrder(o.id)}
+                            style={{
+                              width: '100%', padding: '8px', borderRadius: 8,
+                              background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.12)',
+                              color: '#f87171', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+                            }}>
+                            <X size={12} /> {t('bridge_cancel_order', { defaultValue: 'Cancel Order' })}
+                          </button>
                         </div>
                       )}
 
-                      {/* Actions */}
-                      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                        {o.status === 'matched' && (
+                      {/* ── MATCHED: show instructions ── */}
+                      {o.status === 'matched' && (
+                        <div>
+                          {o.send_gstd_to && (
+                            <div style={{
+                              padding: '12px 14px', borderRadius: 10,
+                              background: 'rgba(249,115,22,0.06)', border: '1px solid rgba(249,115,22,0.15)',
+                              marginBottom: 8,
+                            }}>
+                              <div style={{ fontSize: 10, fontWeight: 700, color: '#fb923c', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                ⚡ {t('bridge_step_send', { defaultValue: 'Step 1: Send your GSTD' })}
+                              </div>
+                              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginBottom: 4 }}>
+                                {t('bridge_send_instruction', { amount: o.amount, chain: o.source_chain, defaultValue: `Send ${o.amount} GSTD on ${o.source_chain} to:` })}
+                              </div>
+                              <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#a78bfa', wordBreak: 'break-all', display: 'flex', alignItems: 'center', gap: 4, padding: '6px 8px', borderRadius: 6, background: 'rgba(139,92,246,0.08)' }}>
+                                {o.send_gstd_to} <CopyButton text={o.send_gstd_to} />
+                              </div>
+                            </div>
+                          )}
                           <button onClick={() => handleConfirmDeposit(o.id)}
-                            style={{ flex: 1, padding: '8px', borderRadius: 8, background: 'rgba(249,115,22,0.1)', border: '1px solid rgba(249,115,22,0.2)', color: '#fb923c', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
-                            {t('bridge_i_sent')}
+                            style={{
+                              width: '100%', padding: '10px', borderRadius: 8,
+                              background: 'linear-gradient(135deg, rgba(249,115,22,0.1), rgba(234,88,12,0.1))',
+                              border: '1px solid rgba(249,115,22,0.2)',
+                              color: '#fb923c', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                            }}>
+                            <CheckCircle2 size={14} /> {t('bridge_i_sent_gstd', { defaultValue: "I've sent GSTD — Enter TX Hash" })}
                           </button>
-                        )}
-                        {(o.status === 'deposited' || o.status === 'confirming') && (
+                        </div>
+                      )}
+
+                      {/* ── DEPOSITED: waiting for counterparty or confirm receipt ── */}
+                      {(o.status === 'deposited' || o.status === 'confirming') && (
+                        <div>
+                          <div style={{
+                            padding: '12px 14px', borderRadius: 10,
+                            background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.12)',
+                            marginBottom: 8,
+                          }}>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: '#34d399', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                              ✅ {t('bridge_deposit_confirmed', { defaultValue: 'Your deposit verified on-chain' })}
+                            </div>
+                            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', lineHeight: 1.5 }}>
+                              {t('bridge_waiting_receipt', { defaultValue: 'Counterparty should send GSTD to your dest address. When you receive it, confirm below.' })}
+                            </div>
+                          </div>
                           <button onClick={() => handleConfirmReceipt(o.id)}
-                            style={{ flex: 1, padding: '8px', borderRadius: 8, background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)', color: '#34d399', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
-                            {t('bridge_i_received')}
+                            style={{
+                              width: '100%', padding: '10px', borderRadius: 8,
+                              background: 'linear-gradient(135deg, rgba(16,185,129,0.1), rgba(6,182,212,0.1))',
+                              border: '1px solid rgba(16,185,129,0.2)',
+                              color: '#34d399', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                            }}>
+                            <CheckCircle2 size={14} /> {t('bridge_i_received_gstd', { defaultValue: "I received GSTD — Confirm" })}
                           </button>
-                        )}
+                        </div>
+                      )}
+
+                      {/* ── COMPLETED ── */}
+                      {o.status === 'completed' && (
+                        <div style={{
+                          padding: '10px 14px', borderRadius: 10,
+                          background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.12)',
+                          display: 'flex', alignItems: 'center', gap: 6,
+                        }}>
+                          <CheckCircle2 size={14} style={{ color: '#34d399' }} />
+                          <span style={{ fontSize: 12, fontWeight: 600, color: '#34d399' }}>
+                            {t('bridge_swap_complete', { defaultValue: 'Bridge swap completed! 🎉' })}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* ── CANCELLED ── */}
+                      {o.status === 'cancelled' && (
+                        <div style={{
+                          padding: '10px 14px', borderRadius: 10,
+                          background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.12)',
+                          display: 'flex', alignItems: 'center', gap: 6,
+                        }}>
+                          <X size={14} style={{ color: '#f87171' }} />
+                          <span style={{ fontSize: 12, fontWeight: 600, color: '#f87171' }}>
+                            {t('bridge_order_cancelled', { defaultValue: 'Order cancelled' })}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Order ID */}
+                      <div style={{ fontSize: 9, fontFamily: 'monospace', color: 'rgba(255,255,255,0.15)', marginTop: 8 }}>
+                        ID: {o.id.slice(0, 8)}...
                       </div>
                     </div>
                   ))}
