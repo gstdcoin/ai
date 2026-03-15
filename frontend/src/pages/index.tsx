@@ -20,6 +20,20 @@ interface NetworkStats {
   gstd_price_usd: number;
   network_iq?: number;
   global_brain_latency_ms?: number;
+  total_burned?: number;
+}
+
+interface Tokenomics {
+  circulating_supply: number;
+  max_supply: number;
+  total_burned: number;
+  total_minted: number;
+  remaining_supply: number;
+  supply_mined_pct: number;
+  burn_rate_pct: number;
+  base_reward_per_hour: number;
+  epoch: number;
+  next_halving_in_days: number;
 }
 
 function StatCard({ value, label, color, icon }: { value: string; label: string; color: string; icon?: React.ReactNode }) {
@@ -49,6 +63,7 @@ function StatCard({ value, label, color, icon }: { value: string; label: string;
 export default function Home() {
   const { t } = useTranslation('common');
   const [networkStats, setNetworkStats] = useState<NetworkStats | null>(null);
+  const [tokenomics, setTokenomics] = useState<Tokenomics | null>(null);
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => { setIsClient(true); }, []);
@@ -56,8 +71,12 @@ export default function Home() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/network/stats`);
-        if (res.ok) setNetworkStats(await res.json());
+        const [netRes, tokRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/api/v1/network/stats`),
+          fetch(`${API_BASE_URL}/api/v1/sovereign/tokenomics`),
+        ]);
+        if (netRes.ok) setNetworkStats(await netRes.json());
+        if (tokRes.ok) setTokenomics(await tokRes.json());
       } catch (_e) { /* silent */ }
     };
     fetchStats();
@@ -68,7 +87,10 @@ export default function Home() {
   const goldReserve = networkStats?.gold_reserve?.toFixed(4) || '—';
   const activeNodes = networkStats?.active_workers?.toLocaleString() || '—';
   const totalTasks = networkStats?.total_tasks?.toLocaleString() || '—';
-  const gstdPrice = networkStats?.gstd_price_usd && networkStats.gstd_price_usd > 0 ? networkStats.gstd_price_usd.toFixed(6) : '—';
+  const gstdPrice = networkStats?.gstd_price_usd && networkStats.gstd_price_usd > 0 ? '$' + networkStats.gstd_price_usd.toFixed(6) : '—';
+  const circulatingSupply = tokenomics ? tokenomics.circulating_supply.toFixed(0) : '—';
+  const totalBurned = tokenomics?.total_burned?.toFixed(4) || networkStats?.total_burned?.toFixed(4) || '0';
+  const totalMinted = tokenomics ? tokenomics.total_minted.toFixed(0) : '—';
 
   return (
     <div className="min-h-screen bg-[#030014] text-white overflow-x-hidden font-sans selection:bg-violet-500/30">
@@ -233,11 +255,18 @@ export default function Home() {
           </div>
 
           {/* ═══════ NETWORK STATS ═══════ */}
-          <div className="w-full max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4 mb-20 stagger-in" id="stats">
+          <div className="w-full max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-3 gap-4 mb-8 stagger-in" id="stats">
+            <StatCard value={activeNodes} label={t('active_nodes', 'Active Nodes')} color="text-emerald-400" icon={<Server size={16} className="text-emerald-400" />} />
+            <StatCard value={totalTasks} label={t('tasks_completed', 'Tasks')} color="text-cyan-400" icon={<Activity size={16} className="text-cyan-400" />} />
+            <StatCard value={gstdPrice} label={t('gstd_price_usd', 'GSTD Price')} color="text-violet-400" icon={<Zap size={16} className="text-violet-400" />} />
+          </div>
+
+          {/* ═══════ TOKENOMICS ═══════ */}
+          <div className="w-full max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4 mb-20 stagger-in">
+            <StatCard value={circulatingSupply} label={t('circulating_supply', 'Circulating')} color="text-amber-400" icon={<Shield size={16} className="text-amber-400" />} />
+            <StatCard value={totalMinted} label={t('total_minted', 'Total Minted')} color="text-cyan-400" />
+            <StatCard value={totalBurned} label={t('total_burned', 'Burned 🔥')} color="text-red-400" />
             <StatCard value={goldReserve} label={t('xaut_reserve', 'XAUt Reserve')} color="text-amber-400" />
-            <StatCard value={activeNodes} label={t('active_nodes', 'Active Nodes')} color="text-emerald-400" />
-            <StatCard value={totalTasks} label={t('tasks_completed', 'Tasks Completed')} color="text-cyan-400" />
-            <StatCard value={gstdPrice} label={t('gstd_price_usd', 'GSTD Price ($)')} color="text-violet-400" />
           </div>
 
           {/* ═══════ LIVE NETWORK PULSE ═══════ */}
