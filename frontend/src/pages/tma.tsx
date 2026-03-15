@@ -70,6 +70,7 @@ export default function TMAPage() {
           tasks_completed_24h: publicData.completed_tasks || 0,
         });
       } catch (_e) {
+        // Fallback or offline stats when fetching fails or is unavailable
         setStats({
           node_status: 'offline',
           hashrate: 0,
@@ -141,12 +142,24 @@ export default function TMAPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-xl bg-white/5 border border-white/10 p-4">
                 <div className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-1">{t('connection_status', 'Connection')}</div>
-                <div className={`text-lg font-black ${stats?.node_status === 'online' ? 'text-emerald-400' :
-                  stats?.node_status === 'mining' ? 'text-amber-400' : 'text-gray-500'
-                  }`}>
-                  {stats?.node_status === 'online' ? `🟢 ${t('online', 'Online')}` :
-                    stats?.node_status === 'mining' ? `🧠 ${t('working', 'Working...')}` : `🔴 ${t('idle', 'Idle')}`}
-                </div>
+                {(() => {
+                  let statusColor = 'text-gray-500';
+                  let statusText = `🔴 ${t('idle', 'Idle')}`;
+                  
+                  if (stats?.node_status === 'online') {
+                    statusColor = 'text-emerald-400';
+                    statusText = `🟢 ${t('online', 'Online')}`;
+                  } else if (stats?.node_status === 'mining') {
+                    statusColor = 'text-amber-400';
+                    statusText = `🧠 ${t('working', 'Working...')}`;
+                  }
+
+                  return (
+                    <div className={`text-lg font-black ${statusColor}`}>
+                      {statusText}
+                    </div>
+                  );
+                })()}
               </div>
               <div className="rounded-xl bg-white/5 border border-white/10 p-4">
                 <div className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-1">{t('stat_tasks', 'Tasks (24h)')}</div>
@@ -169,9 +182,42 @@ export default function TMAPage() {
             />
 
             {!address && (
-              <div className="rounded-xl bg-white/5 border border-white/10 p-4">
-                <p className="text-center text-gray-500 text-xs mb-3">{t('connect_wallet', 'Connect Wallet')} → {t('gold_reserve_title', 'Gold Reserve Fund')}</p>
-                <WalletConnect />
+              <div className="rounded-xl bg-gradient-to-br from-violet-500/10 to-amber-500/10 border border-white/10 p-5 mt-4">
+                <h3 className="text-lg font-black text-white mb-2">{t('welcome_guide', 'Welcome to GSTD Sovereign Network')}</h3>
+                <p className="text-xs text-gray-400 mb-5 leading-relaxed">
+                  {t('welcome_desc', 'The decentralized AI ecosystem that pays you. Start your journey in 3 simple steps:')}
+                </p>
+                
+                <div className="space-y-4 mb-6">
+                  <div className="flex gap-3 items-start">
+                    <div className="w-6 h-6 rounded-full bg-violet-500/20 text-violet-400 flex items-center justify-center shrink-0 mt-0.5 text-xs font-bold">1</div>
+                    <div>
+                      <h4 className="text-sm font-bold text-gray-200">Connect Wallet</h4>
+                      <p className="text-xs text-gray-500 mt-1">Link your TON wallet securely to receive your <span className="text-amber-400 font-bold">1.0 GSTD Welcome Bonus</span> automatically and create your Sovereign Identity.</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-3 items-start">
+                    <div className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5 text-xs font-bold">2</div>
+                    <div>
+                      <h4 className="text-sm font-bold text-gray-200">Ignite Your Node</h4>
+                      <p className="text-xs text-gray-500 mt-1">Go to the <span className="text-emerald-400">Ignite Node</span> tab. Keep the app open to process decentralized AI tasks and earn GSTD passively.</p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 items-start">
+                    <div className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 mt-0.5 text-xs font-bold">3</div>
+                    <div>
+                      <h4 className="text-sm font-bold text-gray-200">Hire AI & Trade</h4>
+                      <p className="text-xs text-gray-500 mt-1">Use your earned tokens to hire AI Agents, or secure your yield in the Gold Reserve Fund. Swap tokens seamlessly in the <span className="text-blue-400">Trade</span> tab.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-white/5">
+                   <p className="text-center text-xs font-bold text-amber-500/80 uppercase tracking-widest mb-3">{t('step1_connect', 'Step 1: Connect to Start')}</p>
+                   <WalletConnect />
+                </div>
               </div>
             )}
           </div>
@@ -261,7 +307,9 @@ function TMAInferenceWorker() {
   useEffect(() => {
     try {
       workerRef.current = new Worker('/workers/inference-worker.js');
-    } catch (_) { }
+    } catch (_err) { 
+      // Ignored for environments where Web Workers are not supported
+    }
     return () => workerRef.current?.terminate();
   }, []);
 
