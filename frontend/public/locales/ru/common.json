@@ -1318,5 +1318,14 @@
   "nav_home": "Главная",
   "connect_wallet_dashboard": "Подключите TON кошелек для доступа к панели управления с балансами, нодами и ИИ чатом.",
   "dashboard_free_chat": "ИИ Чат бесплатный — подключите кошелек для Pro/Ultra доступа",
-  "bridge": "Мост"
+  "bridge": "Мост",
+  "bridge_wallet_connected": "Кошелёк подключён",
+  "bridge_disconnect": "Отключить",
+  "bridge_connect_prompt": "Подключите TON кошелёк для начала",
+  "bridge_connect_desc": "Поддерживаются Tonkeeper, MyTonWallet, OpenMask и другие TON кошельки",
+  "bridge_connect_wallet": "Подключить кошелёк",
+  "bridge_connect_first": "Подключите кошелёк для создания ордера",
+  "bridge_auto_wallet": "из кошелька",
+  "bridge_error_connect_wallet": "Сначала подключите кошелёк",
+  "bridge_connect_to_see_orders": "Подключите кошелёк для просмотра ордеров"
 }
