@@ -1,9 +1,10 @@
-# 🔱 GSTD — Global Super Computer
+# 🔱 GSTD — Sovereign AI Network (v1.3.0 Mainnet Ready)
 
-> A decentralized AI swarm of millions of devices, united by A2A protocol and Hive Memory, creating a computational organism that thinks, learns, and serves humanity — without owner, without censorship, without limits.
+> A decentralized AI swarm of millions of devices, united by A2A protocol and Hive Memory, creating a computational organism that thinks, learns, and serves humanity. Now with an integrated Agent Marketplace and Telegram DEX swapping.
 
 [![CI](https://github.com/gstdcoin/ai/actions/workflows/ci.yml/badge.svg)](https://github.com/gstdcoin/ai/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-gold.svg)](LICENSE)
+[![Release: v1.3.0](https://img.shields.io/badge/Release-v1.3.0-blueviolet.svg)](https://github.com/gstdcoin/ai/releases/tag/v1.3.0)
 
 ## Run a Node (Earn GSTD) 🚀
 
@@ -42,25 +43,26 @@ Open [@GSTDBot](https://t.me/GSTDBot) → Launch App → Node auto-starts as Mic
 
 ```
 ┌──────────────────────────────────────────────────────┐
-│                    L6: Access Layer                   │
+│                    L6: Access Layer                  │
 │          React (Vercel) + TWA (Telegram)             │
+│   + STON.fi DEX Widget + AI Agent Marketplace        │
 ├──────────────────────────────────────────────────────┤
 │                  L5: Sentinel Layer                  │
 │            ML Classifier + Ethics Rules              │
 ├──────────────────────────────────────────────────────┤
-│                L4: Inference Engine                   │
-│      Go Router + Ollama + 5-Tier Selection           │
+│                L4: Inference Engine                  │
+│      Go Router + Swarm/Ollama + Phantom Nodes        │
 ├──────────────────────────────────────────────────────┤
-│                L3: Hive Memory                        │
+│                L3: Hive Memory                       │
 │       Content-Addressed + Kademlia DHT + AES         │
 ├──────────────────────────────────────────────────────┤
-│                 L2: A2A Protocol                      │
+│                 L2: A2A Protocol                     │
 │         Go gRPC + Redis PubSub + Ed25519             │
 ├──────────────────────────────────────────────────────┤
-│               L1: TON Blockchain                      │
-│           Tact Smart Contracts (5)                    │
+│               L1: Blockchain & Swarm                 │
+│         GSTD L1 Swarm + Smart Contracts              │
 ├──────────────────────────────────────────────────────┤
-│                  L0: Hardware                         │
+│                  L0: Hardware                        │
 │       GPU Server / PC / Mobile / IoT / Edge          │
 └──────────────────────────────────────────────────────┘
 ```
@@ -125,13 +127,14 @@ gstdcoin/ai/
 | Minimal | 📡 Relay Node | ~0.1 GSTD/day |
 | Mobile (TWA) | 📲 Mobile | ~0.1 GSTD/day |
 
-## The Flywheel
+## The Flywheel (Utility Phase)
 
-```
-Device (no GSTD) → Auto-start as Node → Contribute CPU/GPU →
-Settlement rewards GSTD → Accumulated GSTD = AI access →
-Swarm grows → Power grows → GSTD value grows → More nodes
-```
+1. **Supply:** Device (no GSTD) → Auto-start as Node via Telegram → Contribute CPU/GPU.
+2. **Reward:** Network settles compute tasks → User earns GSTD.
+3. **Utility:** Accumulated GSTD = Free AI access, or hire Custom AI Agents from the Marketplace.
+4. **Monetization:** Build and list AI Agents → Earn 80% GSTD royalties from other users.
+5. **Liquidity:** Swap GSTD ↔ TON instantly via STON.fi DEX widget right in Telegram.
+6. **Growth:** Swarm grows → Power grows → Utility scales.
 
 ## Token Economics
 
