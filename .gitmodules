@@ -1,0 +1,7 @@
+[submodule "gstdbot"]
+	path = gstdbot
+	url = https://github.com/gstdcoin/gstdbot.git
+
+[submodule "gstd-bridge"]
+	path = gstd-bridge
+	url = https://github.com/gstdcoin/gstd-bridge.git
