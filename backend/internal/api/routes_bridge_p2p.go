@@ -309,7 +309,7 @@ func takeOrder(db *sql.DB) gin.HandlerFunc {
 			 FROM bridge_orders WHERE id = $1`, orderID,
 		).Scan(&srcChain, &dstChain, &amount, &srcAddr, &dstAddr, &status, &ownerWallet)
 		if err != nil {
-			c.JSON(404, gin.H{"error": "Order not found"})
+			c.JSON(404, gin.H{"error": ErrOrderNotFound})
 			return
 		}
 		if status != "open" {
@@ -524,7 +524,7 @@ func getBridgeOrderDetail(db *sql.DB) gin.HandlerFunc {
 			&matchWallet, &matchSource, &matchDest)
 
 		if err != nil {
-			c.JSON(404, gin.H{"error": "Order not found"})
+			c.JSON(404, gin.H{"error": ErrOrderNotFound})
 			return
 		}
 
@@ -587,7 +587,7 @@ func confirmDepositWithVerification(db *sql.DB) gin.HandlerFunc {
 			`SELECT source_chain, amount, status FROM bridge_orders WHERE id = $1`, id,
 		).Scan(&sourceChain, &amount, &orderStatus)
 		if err != nil {
-			c.JSON(404, gin.H{"error": "Order not found"})
+			c.JSON(404, gin.H{"error": ErrOrderNotFound})
 			return
 		}
 		if orderStatus != "matched" && orderStatus != "deposited" {
