@@ -22,7 +22,7 @@ func getAdminArchitectNetwork(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var activeNodes, completedTasks int
 		var totalBurned, goldenReserve, totalGSTDPaid float64
-		db.QueryRow(`SELECT COUNT(*) FROM nodes WHERE status = 'online' AND last_seen > NOW() - INTERVAL '5 minutes'`).Scan(&activeNodes)
+		db.QueryRow(`SELECT COUNT(*) FROM nodes WHERE status = 'online' AND last_seen > NOW() - INTERVAL '70 minutes'`).Scan(&activeNodes)
 		db.QueryRow(`SELECT COUNT(*) FROM tasks WHERE status = 'completed'`).Scan(&completedTasks)
 		db.QueryRow(`SELECT COALESCE(SUM(burn_amount), 0) FROM token_burns`).Scan(&totalBurned)
 		db.QueryRow(`SELECT COALESCE(SUM(xaut_amount), 0) FROM golden_reserve_log WHERE xaut_amount IS NOT NULL`).Scan(&goldenReserve)

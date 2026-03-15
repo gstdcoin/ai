@@ -188,7 +188,7 @@ func getComputeBacking(db *sql.DB) gin.HandlerFunc {
 		var onlineNodes int
 		var totalRAM int
 		db.QueryRowContext(c.Request.Context(),
-			`SELECT COUNT(*), COALESCE(SUM(ram_gb),0) FROM nodes WHERE status='online' AND last_seen > NOW() - INTERVAL '5 minutes'`).
+			`SELECT COUNT(*), COALESCE(SUM(ram_gb),0) FROM nodes WHERE status='online' AND last_seen > NOW() - INTERVAL '70 minutes'`).
 			Scan(&onlineNodes, &totalRAM)
 
 		// Estimate compute capacity
@@ -984,7 +984,7 @@ func getMeshPeers(db *sql.DB) gin.HandlerFunc {
 
 		var onlineNodes int
 		db.QueryRowContext(c.Request.Context(),
-			`SELECT COUNT(*) FROM nodes WHERE status='online' AND last_seen > NOW() - INTERVAL '5 minutes'`).
+			`SELECT COUNT(*) FROM nodes WHERE status='online' AND last_seen > NOW() - INTERVAL '70 minutes'`).
 			Scan(&onlineNodes)
 
 		result := gin.H{

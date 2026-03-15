@@ -172,7 +172,7 @@ func getPublicStats(db *sql.DB, tonService *services.TONService, tonConfig confi
 		var activeNodesCount int
 		var totalTFLOPS float64
 		if err := db.QueryRow(`
-			SELECT COUNT(*) FROM nodes WHERE status = 'online' AND last_seen > NOW() - INTERVAL '5 minutes'
+			SELECT COUNT(*) FROM nodes WHERE status = 'online' AND last_seen > NOW() - INTERVAL '70 minutes'
 		`).Scan(&activeNodesCount); err != nil {
 			activeNodesCount = 0
 		}
@@ -191,9 +191,9 @@ func getPublicStats(db *sql.DB, tonService *services.TONService, tonConfig confi
 
 		// Active devices (nodes or devices)
 		var activeDevicesCount int
-		db.QueryRow(`SELECT COUNT(*) FROM devices WHERE last_seen_at > NOW() - INTERVAL '5 minutes' AND is_active = true`).Scan(&activeDevicesCount)
+		db.QueryRow(`SELECT COUNT(*) FROM devices WHERE last_seen_at > NOW() - INTERVAL '70 minutes' AND is_active = true`).Scan(&activeDevicesCount)
 		if activeDevicesCount == 0 {
-			db.QueryRow(`SELECT COUNT(*) FROM nodes WHERE status = 'online' AND last_seen > NOW() - INTERVAL '5 minutes'`).Scan(&activeDevicesCount)
+			db.QueryRow(`SELECT COUNT(*) FROM nodes WHERE status = 'online' AND last_seen > NOW() - INTERVAL '70 minutes'`).Scan(&activeDevicesCount)
 		}
 
 		// Total burned (for GoldenReservePanel)
@@ -325,7 +325,7 @@ func getNetworkStats(statsService *services.StatsService) gin.HandlerFunc {
 func getSwarmStats(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var activeAgents int
-		err := db.QueryRow(`SELECT COUNT(*) FROM nodes WHERE status = 'online' AND last_seen > NOW() - INTERVAL '5 minutes'`).Scan(&activeAgents)
+		err := db.QueryRow(`SELECT COUNT(*) FROM nodes WHERE status = 'online' AND last_seen > NOW() - INTERVAL '70 minutes'`).Scan(&activeAgents)
 		if err != nil {
 			activeAgents = 0
 		}
