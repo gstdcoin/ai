@@ -46,7 +46,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    image: gstd-backend-blue:v152
+    image: gstd-backend-blue:v154
     restart: unless-stopped
     env_file: ./backend/.env
     depends_on:
@@ -80,7 +80,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile.web
-    image: gstd-frontend:v6
+    image: gstd-frontend:v7
     restart: unless-stopped
     env_file: ./frontend/.env
     depends_on:
