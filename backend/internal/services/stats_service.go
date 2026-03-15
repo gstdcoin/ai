@@ -134,10 +134,12 @@ type NetworkStats struct {
 	LastAuditDate        string  `json:"last_audit_date"`
 	AuditVerified        bool    `json:"audit_verified"`
 	BackingRatio         float64 `json:"backing_ratio"`
-	TotalBurnedGSTD      float64 `json:"total_burned"`            // Admin Treasury View
-	TotalXAUtBought      float64 `json:"total_xaut_bought"`       // Admin Treasury View
-	NetworkIQ            float64 `json:"network_iq"`              // Public Proof of Intelligence (Leviathan)
-	GlobalBrainLatencyMs int     `json:"global_brain_latency_ms"` // Avg ping from network_measurements
+	TotalBurnedGSTD      float64 `json:"total_burned"`
+	TotalXAUtBought      float64 `json:"total_xaut_bought"`
+	NetworkIQ            float64 `json:"network_iq"`
+	GlobalBrainLatencyMs int     `json:"global_brain_latency_ms"`
+	TotalUsers           int     `json:"total_users"`
+	TotalNodes           int     `json:"total_nodes"`
 }
 
 // scanInt runs a single-row query and scans into *dst; on error, *dst is left unchanged.
@@ -216,6 +218,10 @@ func (s *StatsService) GetNetworkStats(ctx context.Context) (*NetworkStats, erro
 	if err := s.db.QueryRowContext(ctx, `SELECT COALESCE(AVG(latency_ms), 0)::float FROM network_measurements WHERE recorded_at > NOW() - INTERVAL '1 hour' AND latency_ms IS NOT NULL`).Scan(&avgLatency); err == nil {
 		stats.GlobalBrainLatencyMs = int(avgLatency)
 	}
+
+	// 11. Total users and nodes
+	s.scanInt(ctx, &stats.TotalUsers, `SELECT COUNT(*) FROM users`)
+	s.scanInt(ctx, &stats.TotalNodes, `SELECT COUNT(*) FROM nodes`)
 
 	return stats, nil
 }

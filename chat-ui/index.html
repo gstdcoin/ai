@@ -587,15 +587,10 @@ async function fetchNetStats(){
     if(!res.ok) return;
     const d = await res.json();
     const el = (id,v) => { const e=document.getElementById(id); if(e) e.textContent=v; };
-    el('netNodes', d.active_workers || 0);
+    el('netUsers', d.total_users || 0);
+    el('netNodes', d.total_nodes || d.active_workers || 0);
     el('netTasks', d.total_tasks || 0);
     el('netPrice', d.gstd_price_usd > 0 ? '$'+d.gstd_price_usd.toFixed(6) : '$0');
-    // Fetch user count from tokenomics
-    const tokRes = await fetch('https://api.gstdtoken.com/api/v1/sovereign/tokenomics');
-    if(tokRes.ok) {
-      const tok = await tokRes.json();
-      el('netUsers', tok.total_minted ? Math.round(tok.total_minted / 10) : 0); // approx users from minted
-    }
   } catch(e) { /* silent */ }
 }
 function closeWallet(){document.getElementById('walletModal').classList.remove('active');}
