@@ -85,12 +85,13 @@ export default function Home() {
   }, []);
 
   const goldReserve = networkStats?.gold_reserve?.toFixed(4) || '—';
-  const activeNodes = networkStats?.active_workers?.toLocaleString() || '—';
+  const totalNodes = networkStats?.total_nodes?.toLocaleString() || '—';
   const totalTasks = networkStats?.total_tasks?.toLocaleString() || '—';
   const gstdPrice = networkStats?.gstd_price_usd && networkStats.gstd_price_usd > 0 ? '$' + networkStats.gstd_price_usd.toFixed(6) : '—';
   const circulatingSupply = tokenomics ? tokenomics.circulating_supply.toFixed(0) : '—';
   const totalBurned = tokenomics?.total_burned?.toFixed(4) || networkStats?.total_burned?.toFixed(4) || '0';
   const totalMinted = tokenomics ? tokenomics.total_minted.toFixed(0) : '—';
+  const totalUsers = networkStats?.total_users?.toLocaleString() || '—';
 
   return (
     <div className="min-h-screen bg-[#030014] text-white overflow-x-hidden font-sans selection:bg-violet-500/30">
@@ -255,10 +256,11 @@ export default function Home() {
           </div>
 
           {/* ═══════ NETWORK STATS ═══════ */}
-          <div className="w-full max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-3 gap-4 mb-8 stagger-in" id="stats">
-            <StatCard value={activeNodes} label={t('active_nodes', 'Active Nodes')} color="text-emerald-400" icon={<Server size={16} className="text-emerald-400" />} />
-            <StatCard value={totalTasks} label={t('tasks_completed', 'Tasks')} color="text-cyan-400" icon={<Activity size={16} className="text-cyan-400" />} />
-            <StatCard value={gstdPrice} label={t('gstd_price_usd', 'GSTD Price')} color="text-violet-400" icon={<Zap size={16} className="text-violet-400" />} />
+          <div className="w-full max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 stagger-in" id="stats">
+            <StatCard value={totalUsers} label={t('total_users', 'Users')} color="text-emerald-400" icon={<Activity size={16} className="text-emerald-400" />} />
+            <StatCard value={totalNodes} label={t('total_nodes', 'Nodes')} color="text-cyan-400" icon={<Server size={16} className="text-cyan-400" />} />
+            <StatCard value={totalTasks} label={t('tasks_completed', 'Tasks')} color="text-violet-400" icon={<Zap size={16} className="text-violet-400" />} />
+            <StatCard value={gstdPrice} label={t('gstd_price_usd', 'GSTD Price')} color="text-amber-400" icon={<Shield size={16} className="text-amber-400" />} />
           </div>
 
           {/* ═══════ TOKENOMICS ═══════ */}
