@@ -65,23 +65,23 @@ func verifyTONTransaction(txHash string, expectedAmount float64) *VerifyResult {
 	encodedHash := strings.ReplaceAll(txHash, "+", "%2B")
 	encodedHash = strings.ReplaceAll(encodedHash, "/", "%2F")
 	encodedHash = strings.ReplaceAll(encodedHash, "=", "%3D")
-	
+
 	url := fmt.Sprintf("https://toncenter.com/api/v3/jetton/transfers?jetton_master=0:EFE9C616F673622A337737097C0FA0018D4887D6061F59519985F3FBFBDB59B2&limit=1&transaction_hash=%s", encodedHash)
 	resp, err := client.Get(url)
 	if err == nil {
 		defer resp.Body.Close()
 		body, _ := io.ReadAll(resp.Body)
-		
+
 		var data struct {
 			JettonTransfers []struct {
-				Source         string `json:"source"`
-				Destination    string `json:"destination"`
-				Amount         string `json:"amount"`
+				Source          string `json:"source"`
+				Destination     string `json:"destination"`
+				Amount          string `json:"amount"`
 				TransactionHash string `json:"transaction_hash"`
-				TransactionNow int64  `json:"transaction_now"`
+				TransactionNow  int64  `json:"transaction_now"`
 			} `json:"jetton_transfers"`
 		}
-		
+
 		if json.Unmarshal(body, &data) == nil && len(data.JettonTransfers) > 0 {
 			tx := data.JettonTransfers[0]
 			rawAmount, _ := strconv.ParseFloat(tx.Amount, 64)
@@ -104,8 +104,12 @@ func verifyTONTransaction(txHash string, expectedAmount float64) *VerifyResult {
 
 			fromShort := tx.Source
 			toShort := tx.Destination
-			if len(fromShort) > 16 { fromShort = fromShort[:16] }
-			if len(toShort) > 16 { toShort = toShort[:16] }
+			if len(fromShort) > 16 {
+				fromShort = fromShort[:16]
+			}
+			if len(toShort) > 16 {
+				toShort = toShort[:16]
+			}
 			log.Printf("[Bridge Verify] TON TX verified via toncenter: %.4f GSTD from %s... to %s...", amount, fromShort, toShort)
 			return result
 		}
@@ -123,12 +127,18 @@ func verifyTONTransaction(txHash string, expectedAmount float64) *VerifyResult {
 				actions, _ := event["actions"].([]interface{})
 				for _, a := range actions {
 					action, _ := a.(map[string]interface{})
-					if action == nil { continue }
+					if action == nil {
+						continue
+					}
 					actionType, _ := action["type"].(string)
-					if actionType != "JettonTransfer" { continue }
+					if actionType != "JettonTransfer" {
+						continue
+					}
 					jt, _ := action["JettonTransfer"].(map[string]interface{})
-					if jt == nil { continue }
-					
+					if jt == nil {
+						continue
+					}
+
 					amountStr, _ := jt["amount"].(string)
 					amountRaw, _ := strconv.ParseFloat(amountStr, 64)
 					amount := amountRaw / 1e9
@@ -163,9 +173,9 @@ func verifyTONTransaction(txHash string, expectedAmount float64) *VerifyResult {
 		body, _ := io.ReadAll(resp.Body)
 		var txData struct {
 			Transactions []struct {
-				Hash     string `json:"hash"`
-				Now      int64  `json:"now"`
-				Account  string `json:"account"`
+				Hash    string `json:"hash"`
+				Now     int64  `json:"now"`
+				Account string `json:"account"`
 			} `json:"transactions"`
 		}
 		if json.Unmarshal(body, &txData) == nil && len(txData.Transactions) > 0 {

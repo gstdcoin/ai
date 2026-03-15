@@ -16,12 +16,12 @@ import (
 
 // SwarmNode wraps a libp2p host and pubsub router.
 type SwarmNode struct {
-	Host     host.Host
-	PubSub   *pubsub.PubSub
-	Topic    *pubsub.Topic
-	Sub      *pubsub.Subscription
-	ctx      context.Context
-	cancel   context.CancelFunc
+	Host   host.Host
+	PubSub *pubsub.PubSub
+	Topic  *pubsub.Topic
+	Sub    *pubsub.Subscription
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 // discoveryNotifee gets notified when we find a new peer via mDNS.

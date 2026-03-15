@@ -68,12 +68,16 @@ func chatDeductHandler(db *sql.DB, burnService *services.BurnService) gin.Handle
 		}
 		if rows, _ := res.RowsAffected(); rows == 0 {
 			// Try balance column
-			_, err = db.ExecContext(c.Request.Context(), `
+			res2, err := db.ExecContext(c.Request.Context(), `
 				UPDATE users SET balance = COALESCE(balance, 0) - $1, updated_at = NOW()
 				WHERE wallet_address = $2 AND COALESCE(balance, 0) >= $1
 			`, req.Amount, req.WalletAddress)
 			if err != nil {
 				c.JSON(500, gin.H{"error": "deduction_failed"})
+				return
+			}
+			if rows2, _ := res2.RowsAffected(); rows2 == 0 {
+				c.JSON(402, gin.H{"error": "insufficient_balance", "message": "Failed to deduct due to insufficient balance or race condition."})
 				return
 			}
 		}
@@ -127,7 +131,7 @@ func chatDeductHandler(db *sql.DB, burnService *services.BurnService) gin.Handle
 							targets = append(targets, nTarget{w, i})
 						}
 					}
-					
+
 					if len(targets) > 0 {
 						rewardPerNode := mobileFee / float64(len(targets))
 						for _, t := range targets {

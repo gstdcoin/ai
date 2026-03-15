@@ -16,13 +16,13 @@ import (
 // LedgerState represents the decentralized balance book of the Swarm.
 // For Genesis Phase, it's held in memory before we switch to a rocksdb/leveldb store.
 type LedgerState struct {
-	mu       sync.RWMutex
-	Balances map[string]float64 // Address -> GSTD Balance
-	Nonce    map[string]int64   // Address -> Transaction count
-	Mempool      map[string]*Transaction
-	BlockHeight  uint64
-	ActiveNodes  map[string]int64   // Address -> Last heartbeat timestamp
-	RewardPool   float64            // Accumulated fees from tx commissions
+	mu          sync.RWMutex
+	Balances    map[string]float64 // Address -> GSTD Balance
+	Nonce       map[string]int64   // Address -> Transaction count
+	Mempool     map[string]*Transaction
+	BlockHeight uint64
+	ActiveNodes map[string]int64 // Address -> Last heartbeat timestamp
+	RewardPool  float64          // Accumulated fees from tx commissions
 }
 
 // Ledger holds the state and handles incoming transactions via the Sentinel.
@@ -39,9 +39,9 @@ func NewLedger(node *SwarmNode, s *sentinel.Sentinel) *Ledger {
 		Node:     node,
 		Sentinel: s,
 		State: &LedgerState{
-			Balances: make(map[string]float64),
-			Nonce:    make(map[string]int64),
-			Mempool:  make(map[string]*Transaction),
+			Balances:    make(map[string]float64),
+			Nonce:       make(map[string]int64),
+			Mempool:     make(map[string]*Transaction),
 			BlockHeight: 0,
 			ActiveNodes: make(map[string]int64),
 			RewardPool:  0.0,
@@ -88,7 +88,7 @@ func (l *Ledger) ProcessMessage(ctx context.Context, payload []byte) error {
 		safetyCheck := l.Sentinel.Check(ctx, task)
 		if !safetyCheck.Allowed {
 			log.Printf("🛡️ [Swarm Ledger] Transaction %s REJECTED by Sentinel. Category: %s. Reason: %s", tx.ID, safetyCheck.Category, safetyCheck.Reason)
-			
+
 			// Optional: Slashing for malicious actors. (If node staked 10k GSTD, burn a fraction)
 			return fmt.Errorf("transaction flagged by sentinel: %s", safetyCheck.Reason)
 		}
@@ -150,7 +150,7 @@ func (l *Ledger) ProcessMessage(ctx context.Context, payload []byte) error {
 	if tx.Type != TxNodeHeartbeat {
 		l.State.Nonce[tx.Sender]++
 	}
-	
+
 	l.State.RewardPool += fee
 	l.State.Mempool[tx.ID] = &tx
 
@@ -164,7 +164,7 @@ func (l *Ledger) ProcessMessage(ctx context.Context, payload []byte) error {
 // StartMempoolWorker listens to P2P network and pipes it into the ledger.
 func (l *Ledger) StartMempoolWorker(ctx context.Context) {
 	log.Printf("🧱 [Swarm Ledger] Starting autonomous Mempool worker")
-	
+
 	// Read Loop
 	for {
 		select {
@@ -292,8 +292,8 @@ func (l *Ledger) SyncStateFromPeers(ctx context.Context) {
 
 		if err := json.NewDecoder(s).Decode(&snapshot); err == nil {
 			l.State.mu.Lock()
-			
-			// Basic Validation / Consensus Rule: For our prototype, we adopt the state from the first peer 
+
+			// Basic Validation / Consensus Rule: For our prototype, we adopt the state from the first peer
 			// if their state graph is richer (meaning they've processed more transactions than our local hardcoded genesis).
 			// In production, this securely uses Merkle-Patricia trees or Block Headers.
 			if len(snapshot.Balances) >= len(l.State.Balances) && len(snapshot.Nonce) >= len(l.State.Nonce) {
@@ -307,7 +307,7 @@ func (l *Ledger) SyncStateFromPeers(ctx context.Context) {
 			return // Successfully synced from one peer, no need to ask others right now
 		}
 	}
-	
+
 	log.Printf("⚠️ [Swarm Ledger] State sync failed across %d peers.", len(peers))
 }
 

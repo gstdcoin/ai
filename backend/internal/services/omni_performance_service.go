@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log"
 	"strings"
 )
@@ -98,13 +99,16 @@ func (s *OmniPerformanceService) CheckUltraAccess(ctx context.Context, wallet st
 
 // DeductUltraSession deducts 1 GSTD for one-time Ultra session (when not staked)
 func (s *OmniPerformanceService) DeductUltraSession(ctx context.Context, wallet string) error {
-	_, err := s.db.ExecContext(ctx, `
+	res, err := s.db.ExecContext(ctx, `
 		UPDATE users SET gstd_balance = gstd_balance - $1
 		WHERE wallet_address = $2 AND COALESCE(gstd_frozen, 0) < $3 AND gstd_balance >= $1
 	`, UltraSessionCostGSTD, wallet, UltraStakingThresholdGSTD)
 	if err != nil {
 		log.Printf("OmniPerformance: DeductUltraSession failed: %v", err)
 		return err
+	}
+	if rows, _ := res.RowsAffected(); rows == 0 {
+		return fmt.Errorf("insufficient balance for ultra session or already staked")
 	}
 	return nil
 }

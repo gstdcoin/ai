@@ -35,12 +35,12 @@ import (
 
 // Tier definitions
 type TierDef struct {
-	Name          string  `json:"name"`
-	MinHours      float64 `json:"min_hours"`
-	Multiplier    float64 `json:"multiplier"`
-	BasePerHour   float64 `json:"base_per_hour"`
-	Color         string  `json:"color"`
-	Icon          string  `json:"icon"`
+	Name        string  `json:"name"`
+	MinHours    float64 `json:"min_hours"`
+	Multiplier  float64 `json:"multiplier"`
+	BasePerHour float64 `json:"base_per_hour"`
+	Color       string  `json:"color"`
+	Icon        string  `json:"icon"`
 }
 
 var TierDefs = []TierDef{
@@ -104,13 +104,13 @@ func getRewardProgram() gin.HandlerFunc {
 		}
 
 		c.JSON(200, gin.H{
-			"tiers":          TierDefs,
-			"task_rewards":   taskRewardList,
-			"streak_bonuses": streakBonuses,
+			"tiers":            TierDefs,
+			"task_rewards":     taskRewardList,
+			"streak_bonuses":   streakBonuses,
 			"first_join_bonus": 10.0,
 			"referral_bonus":   5.0,
 			"epoch_duration":   "24h",
-			"description": "Earn GSTD by running a GSTD node. Higher tiers unlock bigger rewards. Complete tasks and maintain streaks for bonus multipliers.",
+			"description":      "Earn GSTD by running a GSTD node. Higher tiers unlock bigger rewards. Complete tasks and maintain streaks for bonus multipliers.",
 		})
 	}
 }
@@ -175,11 +175,11 @@ func getMyNodeRewards(db *sql.DB) gin.HandlerFunc {
 		if err != nil {
 			// Not registered yet — return introductory data
 			c.JSON(200, gin.H{
-				"registered": false,
-				"message":    "No node found. Install GSTD Node OS to start earning!",
-				"install_url": "https://gstdbot.gstdtoken.com",
+				"registered":       false,
+				"message":          "No node found. Install GSTD Node OS to start earning!",
+				"install_url":      "https://gstdbot.gstdtoken.com",
 				"first_join_bonus": 10.0,
-				"tiers": TierDefs,
+				"tiers":            TierDefs,
 			})
 			return
 		}
@@ -201,13 +201,17 @@ func getMyNodeRewards(db *sql.DB) gin.HandlerFunc {
 		streakBonus := 0.0
 		streakLabel := ""
 		if streakDays >= 365 {
-			streakBonus = 100; streakLabel = "Year Legend 🏆"
+			streakBonus = 100
+			streakLabel = "Year Legend 🏆"
 		} else if streakDays >= 90 {
-			streakBonus = 50; streakLabel = "Quarter Champion 🔥"
+			streakBonus = 50
+			streakLabel = "Quarter Champion 🔥"
 		} else if streakDays >= 30 {
-			streakBonus = 25; streakLabel = "Month Master 💪"
+			streakBonus = 25
+			streakLabel = "Month Master 💪"
 		} else if streakDays >= 7 {
-			streakBonus = 10; streakLabel = "Week Warrior ⚡"
+			streakBonus = 10
+			streakLabel = "Week Warrior ⚡"
 		}
 
 		effectiveRate := currentTier.BasePerHour * (1 + streakBonus/100)
@@ -231,9 +235,9 @@ func getMyNodeRewards(db *sql.DB) gin.HandlerFunc {
 		isOnline := lastSeen != nil && time.Since(*lastSeen) < 70*time.Minute
 
 		response := gin.H{
-			"registered":    true,
-			"node_address":  nodeAddr,
-			"online":        isOnline,
+			"registered":   true,
+			"node_address": nodeAddr,
+			"online":       isOnline,
 			"tier": gin.H{
 				"name":       currentTier.Name,
 				"icon":       currentTier.Icon,
@@ -250,10 +254,10 @@ func getMyNodeRewards(db *sql.DB) gin.HandlerFunc {
 				"effective_rate_per_h": math.Round(effectiveRate*10000) / 10000,
 			},
 			"streak": gin.H{
-				"days":         streakDays,
-				"bonus_pct":    streakBonus,
-				"label":        streakLabel,
-				"best":         bestStreak,
+				"days":      streakDays,
+				"bonus_pct": streakBonus,
+				"label":     streakLabel,
+				"best":      bestStreak,
 			},
 			"earnings": gin.H{
 				"today":   math.Round(today*10000) / 10000,
@@ -264,14 +268,16 @@ func getMyNodeRewards(db *sql.DB) gin.HandlerFunc {
 
 		if nextTier != nil {
 			hoursNeeded := nextTier.MinHours - uptimeHours
-			if hoursNeeded < 0 { hoursNeeded = 0 }
+			if hoursNeeded < 0 {
+				hoursNeeded = 0
+			}
 			response["next_tier"] = gin.H{
-				"name":          nextTier.Name,
-				"icon":          nextTier.Icon,
-				"hours_needed":  math.Round(hoursNeeded*10) / 10,
-				"progress_pct":  math.Min(100, math.Round(uptimeHours/nextTier.MinHours*10000) / 100),
-				"multiplier":    nextTier.Multiplier,
-				"base_rate":     nextTier.BasePerHour,
+				"name":         nextTier.Name,
+				"icon":         nextTier.Icon,
+				"hours_needed": math.Round(hoursNeeded*10) / 10,
+				"progress_pct": math.Min(100, math.Round(uptimeHours/nextTier.MinHours*10000)/100),
+				"multiplier":   nextTier.Multiplier,
+				"base_rate":    nextTier.BasePerHour,
 			}
 		}
 
@@ -325,15 +331,15 @@ func getLeaderboard(db *sql.DB) gin.HandlerFunc {
 		defer rows.Close()
 
 		type LeaderEntry struct {
-			Rank      int     `json:"rank"`
-			Node      string  `json:"node"`
-			Tier      string  `json:"tier"`
-			TierIcon  string  `json:"tier_icon"`
-			Streak    int     `json:"streak_days"`
-			Uptime    float64 `json:"uptime_hours"`
-			Tasks     int     `json:"tasks_completed"`
-			Earned    float64 `json:"earned_gstd"`
-			Online    bool    `json:"online"`
+			Rank     int     `json:"rank"`
+			Node     string  `json:"node"`
+			Tier     string  `json:"tier"`
+			TierIcon string  `json:"tier_icon"`
+			Streak   int     `json:"streak_days"`
+			Uptime   float64 `json:"uptime_hours"`
+			Tasks    int     `json:"tasks_completed"`
+			Earned   float64 `json:"earned_gstd"`
+			Online   bool    `json:"online"`
 		}
 
 		var leaders []LeaderEntry
@@ -421,14 +427,14 @@ func getNodeNetworkStats(db *sql.DB) gin.HandlerFunc {
 		}
 
 		c.JSON(200, gin.H{
-			"total_nodes":       totalNodes,
-			"online_nodes":      onlineNodes,
-			"online_pct":        math.Round(float64(onlineNodes)/math.Max(1, float64(totalNodes))*10000) / 100,
-			"total_tasks":       totalTasks,
-			"total_uptime_h":    math.Round(totalUptime),
-			"total_rewards_gstd": math.Round(totalRewards*100) / 100,
-			"today_rewards_gstd": math.Round(todayRewards*100) / 100,
-			"tier_distribution": tiers,
+			"total_nodes":         totalNodes,
+			"online_nodes":        onlineNodes,
+			"online_pct":          math.Round(float64(onlineNodes)/math.Max(1, float64(totalNodes))*10000) / 100,
+			"total_tasks":         totalTasks,
+			"total_uptime_h":      math.Round(totalUptime),
+			"total_rewards_gstd":  math.Round(totalRewards*100) / 100,
+			"today_rewards_gstd":  math.Round(todayRewards*100) / 100,
+			"tier_distribution":   tiers,
 			"avg_reward_per_node": math.Round(totalRewards/math.Max(1, float64(totalNodes))*100) / 100,
 			"capacity": gin.H{
 				"ai_inference":  onlineNodes > 0,
@@ -478,10 +484,14 @@ func recordHeartbeatReward(db *sql.DB) gin.HandlerFunc {
 
 		// Calculate streak bonus
 		streakMult := 1.0
-		if streakDays >= 365 { streakMult = 2.0
-		} else if streakDays >= 90 { streakMult = 1.5
-		} else if streakDays >= 30 { streakMult = 1.25
-		} else if streakDays >= 7 { streakMult = 1.1
+		if streakDays >= 365 {
+			streakMult = 2.0
+		} else if streakDays >= 90 {
+			streakMult = 1.5
+		} else if streakDays >= 30 {
+			streakMult = 1.25
+		} else if streakDays >= 7 {
+			streakMult = 1.1
 		}
 
 		// Heartbeat reward: tier base * streak * 1 hour
@@ -540,8 +550,8 @@ func recordHeartbeatReward(db *sql.DB) gin.HandlerFunc {
 		tierUpgraded := newTier != tier
 
 		c.JSON(200, gin.H{
-			"reward_gstd":   math.Round(reward*100000) / 100000,
-			"tier":          newTier,
+			"reward_gstd":    math.Round(reward*100000) / 100000,
+			"tier":           newTier,
 			"tier_upgraded":  tierUpgraded,
 			"streak_days":    newStreak,
 			"best_streak":    bestStreak,
@@ -571,10 +581,10 @@ func claimRewards(db *sql.DB) gin.HandlerFunc {
 			 WHERE nt.node_address = $1 OR nwb.wallet_address = $1`, req.Wallet).Scan(&total)
 
 		c.JSON(200, gin.H{
-			"wallet":        req.Wallet,
+			"wallet":         req.Wallet,
 			"claimable_gstd": math.Round(total*10000) / 10000,
-			"message":       "Rewards are accumulated and distributed automatically via backend.",
-			"status":        "recorded",
+			"message":        "Rewards are accumulated and distributed automatically via backend.",
+			"status":         "recorded",
 		})
 	}
 }

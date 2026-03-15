@@ -761,13 +761,13 @@ func StartApplication(container *dig.Container) error {
 				go swarmLedger.StartMempoolWorker(ctx)
 				go swarmLedger.StartRewardDistributor(ctx)
 				swarmLedger.EnableStateSync()
-				
+
 				// Bootstrapping: Try to sync state from peers after waiting 10 seconds for initial connections to form
 				go func() {
 					time.Sleep(10 * time.Second)
 					swarmLedger.SyncStateFromPeers(ctx)
 				}()
-				
+
 				log.Printf("   Swarm Ledger:    ACTIVE — Autonomous Mempool + Sentinel Consensus")
 			}
 		}

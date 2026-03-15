@@ -101,7 +101,7 @@ func SetupRoutes(
 		"https://chat.gstdtoken.com":    true,
 		"https://gstdbot.gstdtoken.com": true,
 		"https://monitor.gstdtoken.com": true,
-		"http://localhost:3000":          true,
+		"http://localhost:3000":         true,
 		"http://127.0.0.1:3000":         true,
 		"https://web.telegram.org":      true,
 		"https://t.me":                  true,
@@ -449,7 +449,7 @@ func SetupRoutes(
 					c.JSON(400, gin.H{"error": "invalid transaction payload"})
 					return
 				}
-				
+
 				if err := swarmLedger.SubmitTransaction(c.Request.Context(), &tx); err != nil {
 					// Distinguish between Sentinel AI rejections and simple bad signatures
 					if strings.Contains(err.Error(), "sentinel") {
@@ -459,7 +459,7 @@ func SetupRoutes(
 					}
 					return
 				}
-				
+
 				c.JSON(200, gin.H{"status": "accepted", "tx_id": tx.ID, "message": "Transaction submitted to swarm mempool"})
 			})
 			v1.GET("/swarm/mempool", func(c *gin.Context) {
@@ -471,7 +471,7 @@ func SetupRoutes(
 			v1.GET("/swarm/account/:address", func(c *gin.Context) {
 				addr := c.Param("address")
 				balance, nonce := swarmLedger.GetAccountState(addr)
-				
+
 				c.JSON(200, gin.H{
 					"address": addr,
 					"balance": balance,
@@ -537,7 +537,7 @@ func SetupRoutes(
 			// In production, this must be authenticated by the bridge operator key.
 			v1.POST("/bridge/swarm-mint", func(c *gin.Context) {
 				apiKey := c.GetHeader("X-Bridge-Key")
-				
+
 				expectedKey := os.Getenv("BRIDGE_ORACLE_KEY")
 				if expectedKey == "" {
 					expectedKey = "genesis-oracle-key-42"
@@ -991,10 +991,10 @@ func SetupRoutes(
 				nodeTier = "mobile_basic"
 				// Mobile trust relies on continuous uptime, start at 0.5
 			}
-			
+
 			if totalBalance >= 10000.0 && !req.IsMobile {
-				nodeTier = "masternode"   // Bank Node
-				trustScore = 1.0          // High priority Swarm routing
+				nodeTier = "masternode" // Bank Node
+				trustScore = 1.0        // High priority Swarm routing
 			}
 
 			specsJSONStr := fmt.Sprintf(`{"device_type": "%s", "tier": "%s"}`, deviceType, nodeTier)
@@ -1012,7 +1012,7 @@ func SetupRoutes(
 			} else {
 				rowsAffected, _ = res.RowsAffected()
 			}
-			
+
 			// If no existing node, INSERT
 			if rowsAffected == 0 {
 				if _, err := dbConn.ExecContext(c.Request.Context(), `
@@ -1119,7 +1119,7 @@ func SetupRoutes(
 					`INSERT INTO node_tiers (node_address) VALUES ($1) ON CONFLICT DO NOTHING`, nodeAddr); err != nil {
 					log.Printf("[heartbeat-async] node_tiers insert err: %v", err)
 				}
-				
+
 				// Update uptime (M5: 1.0h per hourly heartbeat, not 0.00833h)
 				if _, err := dbConn.Exec(
 					`UPDATE node_tiers SET 
@@ -1142,7 +1142,7 @@ func SetupRoutes(
 					 WHERE node_address = $2`, rwd, nodeAddr); err != nil {
 					log.Printf("[heartbeat-async] node_tiers update err: %v", err)
 				}
-				
+
 				// Record in rewards ledger
 				if _, err := dbConn.Exec(
 					`INSERT INTO node_rewards_ledger (node_address, reward_type, amount, description)
@@ -1450,11 +1450,11 @@ func SetupRoutes(
 			}
 
 			c.JSON(200, gin.H{
-				"ok":             true,
-				"claimed_gstd":   totalAmount,
-				"rewards_count":  rewardsCount,
-				"wallet":         req.OwnerWallet,
-				"message":        fmt.Sprintf("%.4f GSTD claimed from %d rewards. Tokens credited to your wallet.", totalAmount, rewardsCount),
+				"ok":            true,
+				"claimed_gstd":  totalAmount,
+				"rewards_count": rewardsCount,
+				"wallet":        req.OwnerWallet,
+				"message":       fmt.Sprintf("%.4f GSTD claimed from %d rewards. Tokens credited to your wallet.", totalAmount, rewardsCount),
 			})
 		})
 
@@ -1502,11 +1502,11 @@ func SetupRoutes(
 			}
 
 			c.JSON(200, gin.H{
-				"wallets":            items,
-				"total_wallets":      len(items),
-				"total_stuck_gstd":   totalStuckGSTD,
-				"auto_claim_days":    90,
-				"message":            "Rewards older than 90 days are auto-claimed to owner wallets every 6 hours.",
+				"wallets":          items,
+				"total_wallets":    len(items),
+				"total_stuck_gstd": totalStuckGSTD,
+				"auto_claim_days":  90,
+				"message":          "Rewards older than 90 days are auto-claimed to owner wallets every 6 hours.",
 			})
 		})
 
@@ -1631,16 +1631,16 @@ func SetupRoutes(
 			_, err := dbConn.ExecContext(c.Request.Context(),
 				`UPDATE tasks SET status = 'completed', completed_at = NOW(), result = $1, executor_address = $2 WHERE task_id = $3`,
 				string(resultJSON), wallet, req.TaskID)
-			
+
 			if err != nil {
 				c.JSON(500, gin.H{"error": "Failed to complete task"})
 				return
 			}
-			
-			// Simple autonomous reward logic for demonstration: 
+
+			// Simple autonomous reward logic for demonstration:
 			// In real prod, this goes through taskPaymentService.
 			// The node is doing it natively via Swarm, so we grant some GSTD.
-			
+
 			c.JSON(200, gin.H{"status": "success", "message": "Task completed"})
 		})
 
@@ -1658,10 +1658,10 @@ func SetupRoutes(
 				c.JSON(400, gin.H{"error": err.Error()})
 				return
 			}
-			
+
 			_, _ = dbConn.ExecContext(c.Request.Context(),
 				`UPDATE tasks SET status = 'failed', updated_at = NOW(), result = $1 WHERE task_id = $2`, req.Error, req.TaskID)
-			
+
 			c.JSON(200, gin.H{"status": "success", "message": "Task marked as failed"})
 		})
 
@@ -1681,21 +1681,21 @@ func SetupRoutes(
 
 			// Generate payload for the swarm node
 			payloadJSON, _ := json.Marshal(req)
-			
+
 			// Insert bridge_verify task into tasks pool
 			taskID := uuid.New().String()
 			_, err := dbConn.ExecContext(c.Request.Context(),
 				`INSERT INTO tasks (task_id, task_type, payload, status, priority_score, created_at, requester_address)
 				 VALUES ($1, 'bridge_verify', $2, 'pending', 10, NOW(), 'bridge-system')`,
 				taskID, string(payloadJSON))
-			
+
 			if err != nil {
 				c.JSON(500, gin.H{"error": "Failed to schedule bridge validation"})
 				return
 			}
 
 			c.JSON(200, gin.H{
-				"status": "pending_validation",
+				"status":  "pending_validation",
 				"message": "Bridge request queued for decentralized validation",
 				"task_id": taskID,
 			})
@@ -2080,7 +2080,6 @@ func autoClaimExpiredRewards(db *sql.DB, ctx context.Context) (float64, error) {
 
 	return totalClaimed, nil
 }
-
 
 func isMobile(ua string) bool {
 	// Simple heuristic
@@ -2592,13 +2591,22 @@ func getPendingBalance(db *sql.DB) gin.HandlerFunc {
 // The Platform pays the gas.
 func claimPendingBalance(db *sql.DB, paymentService *services.PaymentService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		walletAddress, _ := c.Get("wallet_address")
+		walletAddressRaw, _ := c.Get("wallet_address")
+		walletAddress := walletAddressRaw.(string)
+
+		tx, err := db.BeginTx(c.Request.Context(), nil)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "Failed to initiate transaction"})
+			return
+		}
+		defer tx.Rollback()
 
 		// 1. Check Balance (balance + gstd_balance + pending_balance_gstd)
 		var bal, gstdBal, pendingBal float64
-		err := db.QueryRowContext(c.Request.Context(),
+		err = tx.QueryRowContext(c.Request.Context(),
 			"SELECT COALESCE(balance, 0), COALESCE(gstd_balance, 0), COALESCE(pending_balance_gstd, 0) FROM users WHERE wallet_address = $1 FOR UPDATE",
 			walletAddress).Scan(&bal, &gstdBal, &pendingBal)
+
 		balance := bal + gstdBal + pendingBal
 		if err != nil || balance < 0.1 {
 			c.JSON(400, gin.H{"error": "Insufficient balance. Min 0.1 GSTD required."})
@@ -2617,18 +2625,19 @@ func claimPendingBalance(db *sql.DB, paymentService *services.PaymentService) gi
 			fromGstd = gstdBal
 		}
 		fromPending := remain - fromGstd
+
 		if fromBal > 0 {
-			_, err = db.ExecContext(c.Request.Context(),
+			_, err = tx.ExecContext(c.Request.Context(),
 				"UPDATE users SET balance = COALESCE(balance, 0) - $1 WHERE wallet_address = $2",
 				fromBal, walletAddress)
 		}
 		if err == nil && fromGstd > 0 {
-			_, err = db.ExecContext(c.Request.Context(),
+			_, err = tx.ExecContext(c.Request.Context(),
 				"UPDATE users SET gstd_balance = COALESCE(gstd_balance, 0) - $1 WHERE wallet_address = $2",
 				fromGstd, walletAddress)
 		}
 		if err == nil && fromPending > 0 {
-			_, err = db.ExecContext(c.Request.Context(),
+			_, err = tx.ExecContext(c.Request.Context(),
 				"UPDATE users SET pending_balance_gstd = GREATEST(0, COALESCE(pending_balance_gstd, 0) - $1) WHERE wallet_address = $2",
 				fromPending, walletAddress)
 		}
@@ -2639,14 +2648,21 @@ func claimPendingBalance(db *sql.DB, paymentService *services.PaymentService) gi
 		}
 
 		// 3. Initiate On-Chain Payout (Async via RewardEngine logic)
-		// For now, we just create a payout intent which the admin/cron will pick up
-		// In a real automated system, this would call paymentService.SendPayment immediately or queue it
-
 		// Log the withdrawal request
-		_, err = db.ExecContext(c.Request.Context(), `
+		_, err = tx.ExecContext(c.Request.Context(), `
 			INSERT INTO withdrawals (wallet_address, amount_gstd, status, created_at)
 			VALUES ($1, $2, 'pending', NOW())
 		`, walletAddress, balance)
+
+		if err != nil {
+			c.JSON(500, gin.H{"error": "Failed to log withdrawal request"})
+			return
+		}
+
+		if err = tx.Commit(); err != nil {
+			c.JSON(500, gin.H{"error": "Transaction commit failed"})
+			return
+		}
 
 		c.JSON(200, gin.H{
 			"status":         "processing",

@@ -26,10 +26,10 @@ import (
 
 const (
 	// Fee rates (automatically applied)
-	BridgeCommissionRate   = 0.01  // 1% on all P2P bridge transfers
-	InferencePlatformRate  = 0.45  // 45% of chat fees stay as platform revenue
-	StakingSpreadRate      = 0.02  // 2% annual spread on staking
-	APIKeyBasePriceGSTD    = 0.005 // Per-request cost for API key users
+	BridgeCommissionRate  = 0.01  // 1% on all P2P bridge transfers
+	InferencePlatformRate = 0.45  // 45% of chat fees stay as platform revenue
+	StakingSpreadRate     = 0.02  // 2% annual spread on staking
+	APIKeyBasePriceGSTD   = 0.005 // Per-request cost for API key users
 
 	// Groq API cost estimation (per request, in USD)
 	GroqCostPerRequest8B  = 0.0001 // $0.0001 per request (8B models)
@@ -49,19 +49,19 @@ type AutoRevenueService struct {
 }
 
 type RevenueReport struct {
-	Period             string  `json:"period"`
-	InferenceRevenue   float64 `json:"inference_revenue_gstd"`
-	StarsRevenue       float64 `json:"stars_revenue_usd"`
-	BridgeRevenue      float64 `json:"bridge_revenue_gstd"`
-	StakingRevenue     float64 `json:"staking_revenue_gstd"`
-	APIKeyRevenue      float64 `json:"api_key_revenue_gstd"`
-	TotalRevenueGSTD   float64 `json:"total_revenue_gstd"`
-	TotalRevenueUSD    float64 `json:"total_revenue_usd"`
-	GroqCostUSD        float64 `json:"groq_cost_usd"`
-	NetProfitUSD       float64 `json:"net_profit_usd"`
-	TotalBurnedGSTD    float64 `json:"total_burned_gstd"`
-	ActiveUsers        int     `json:"active_users"`
-	TotalRequests      int     `json:"total_requests"`
+	Period           string  `json:"period"`
+	InferenceRevenue float64 `json:"inference_revenue_gstd"`
+	StarsRevenue     float64 `json:"stars_revenue_usd"`
+	BridgeRevenue    float64 `json:"bridge_revenue_gstd"`
+	StakingRevenue   float64 `json:"staking_revenue_gstd"`
+	APIKeyRevenue    float64 `json:"api_key_revenue_gstd"`
+	TotalRevenueGSTD float64 `json:"total_revenue_gstd"`
+	TotalRevenueUSD  float64 `json:"total_revenue_usd"`
+	GroqCostUSD      float64 `json:"groq_cost_usd"`
+	NetProfitUSD     float64 `json:"net_profit_usd"`
+	TotalBurnedGSTD  float64 `json:"total_burned_gstd"`
+	ActiveUsers      int     `json:"active_users"`
+	TotalRequests    int     `json:"total_requests"`
 }
 
 func NewAutoRevenueService(db *sql.DB, telegramService *TelegramService) *AutoRevenueService {

@@ -37,9 +37,9 @@ import (
 
 // MoAEngine is the Mixture-of-Agents collective intelligence processor.
 type MoAEngine struct {
-	groqKey  string
-	hfToken  string
-	client   *http.Client
+	groqKey string
+	hfToken string
+	client  *http.Client
 }
 
 // MoADraft is a single proposer's answer draft.
@@ -275,11 +275,11 @@ func (m *MoAEngine) SynthesizeStream(ctx context.Context, originalMessages []map
 	}
 
 	body, _ := json.Marshal(map[string]interface{}{
-		"model":      "llama-3.3-70b-versatile",
-		"messages":   synthMessages,
-		"max_tokens": 1200,
+		"model":       "llama-3.3-70b-versatile",
+		"messages":    synthMessages,
+		"max_tokens":  1200,
 		"temperature": 0.5,
-		"stream":     true,
+		"stream":      true,
 	})
 
 	httpReq, err := http.NewRequestWithContext(ctx, "POST",

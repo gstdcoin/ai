@@ -13,7 +13,7 @@ import (
 
 // ═══════════════════════════════════════════════════════════════
 // P2P Cross-Chain Bridge — Order Book Model
-// 
+//
 // Error Constants
 const ErrOrderNotFound = "Order not found"
 
@@ -88,11 +88,17 @@ func createBridgeOrder(db *sql.DB) gin.HandlerFunc {
 		req.SourceChain = strings.ToUpper(strings.TrimSpace(req.SourceChain))
 		req.DestChain = strings.ToUpper(strings.TrimSpace(req.DestChain))
 		// Normalize Solana casing
-		if req.SourceChain == "SOLANA" { req.SourceChain = "Solana" }
-		if req.DestChain == "SOLANA" { req.DestChain = "Solana" }
-		if req.SourceChain == "TON" || req.SourceChain == "XRPL" { /* ok */ }
-		if req.DestChain == "TON" || req.DestChain == "XRPL" { /* ok */ }
-		
+		if req.SourceChain == "SOLANA" {
+			req.SourceChain = "Solana"
+		}
+		if req.DestChain == "SOLANA" {
+			req.DestChain = "Solana"
+		}
+		if req.SourceChain == "TON" || req.SourceChain == "XRPL" { /* ok */
+		}
+		if req.DestChain == "TON" || req.DestChain == "XRPL" { /* ok */
+		}
+
 		if !validChains[req.SourceChain] || !validChains[req.DestChain] {
 			c.JSON(400, gin.H{"error": "Invalid chain. Supported: TON, Solana, XRPL"})
 			return
@@ -172,8 +178,8 @@ func createBridgeOrder(db *sql.DB) gin.HandlerFunc {
 // Addresses of our Deployed Smart Contracts/Routers
 var SystemPoolAddresses = map[string]string{
 	"TON":    "EQnnEtg74TCIrps63-3UBAWpCL4VSofTjvfENpUWvVeWQ=", // Deployed TON tact router
-	"Solana": "9AdvfqpFbxfFMvikFWkuubBRuYgdLUcGwVFmC5h4pRXK", // Deployed Solana Mainnet Oracle Account
-	"XRPL":   "rnGuKDuZ6vTeXkjTgdPJRSPLKiVXnJzobP",           // Deployed XRPL Oracle Node Key
+	"Solana": "9AdvfqpFbxfFMvikFWkuubBRuYgdLUcGwVFmC5h4pRXK",   // Deployed Solana Mainnet Oracle Account
+	"XRPL":   "rnGuKDuZ6vTeXkjTgdPJRSPLKiVXnJzobP",             // Deployed XRPL Oracle Node Key
 }
 
 type SystemPoolMatchParams struct {
@@ -218,10 +224,10 @@ func autoMatchWithSystemPool(db *sql.DB, p SystemPoolMatchParams) map[string]int
 	log.Printf("[P2P Bridge] 🤖 ORDER %s AUTO-MATCHED with SYSTEM_LIQUIDITY_POOL %s", p.UserOrderID[:8], systemOrderID[:8])
 
 	return map[string]interface{}{
-		"counterparty_id": systemOrderID,
+		"counterparty_id":     systemOrderID,
 		"counterparty_wallet": "SYSTEM_LIQUIDITY_POOL",
-		"send_gstd_to": sysDestAddr,     // Where the user should SEND their GSTD to (System's address on Source Chain)
-		"receive_gstd_from": sysSourceAddr, // Where the user will RECEIVE their GSTD from (System's address on Dest Chain)
+		"send_gstd_to":        sysDestAddr,   // Where the user should SEND their GSTD to (System's address on Source Chain)
+		"receive_gstd_from":   sysSourceAddr, // Where the user will RECEIVE their GSTD from (System's address on Dest Chain)
 	}
 }
 
@@ -275,11 +281,11 @@ func tryMatchOrder(db *sql.DB, orderID, lookForSource, lookForDest string, amoun
 	log.Printf("[P2P Bridge] ✅ Matched orders: %s ↔ %s (%.4f GSTD)", orderID, matchID, amount)
 
 	return map[string]interface{}{
-		"matched_order_id":  matchID,
-		"counterparty":      matchWallet[:8] + "..." + matchWallet[len(matchWallet)-4:],
-		"send_to_address":   matchDestAddr, // address on YOUR source chain where counterparty wants to receive
-		"receive_from":      matchSourceAddr, // counterparty will send from this address on YOUR dest chain
-		"amount":            matchAmount,
+		"matched_order_id": matchID,
+		"counterparty":     matchWallet[:8] + "..." + matchWallet[len(matchWallet)-4:],
+		"send_to_address":  matchDestAddr,   // address on YOUR source chain where counterparty wants to receive
+		"receive_from":     matchSourceAddr, // counterparty will send from this address on YOUR dest chain
+		"amount":           matchAmount,
 	}
 }
 
@@ -348,13 +354,13 @@ func takeOrder(db *sql.DB) gin.HandlerFunc {
 		log.Printf("[P2P Bridge] ✅ Order %s taken by %s → counter-order %s", orderID[:8], req.UserWallet[:8], takerOrderID[:8])
 
 		c.JSON(200, gin.H{
-			"status":        "matched",
-			"taker_order_id": takerOrderID,
+			"status":            "matched",
+			"taker_order_id":    takerOrderID,
 			"original_order_id": orderID,
-			"message":       "Order taken! Both sides are now matched.",
-			"your_send_to":  dstAddr,  // original order's dest address = where taker sends on their source chain
-			"your_receive":  srcAddr,  // original order's source address = where taker receives on their dest chain
-			"amount":        amount,
+			"message":           "Order taken! Both sides are now matched.",
+			"your_send_to":      dstAddr, // original order's dest address = where taker sends on their source chain
+			"your_receive":      srcAddr, // original order's source address = where taker receives on their dest chain
+			"amount":            amount,
 			"instructions": []string{
 				fmt.Sprintf("1. Send %.4f GSTD from your %s address to: %s", amount, dstChain, dstAddr),
 				fmt.Sprintf("2. Enter your TX hash to confirm deposit"),
@@ -368,7 +374,7 @@ func takeOrder(db *sql.DB) gin.HandlerFunc {
 // GET /bridge/p2p/orders — Get the order book
 func getBridgeOrders(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		chain := c.Query("chain")  // optional filter
+		chain := c.Query("chain") // optional filter
 		status := c.DefaultQuery("status", "open")
 
 		var rows *sql.Rows
@@ -453,21 +459,21 @@ func getMyBridgeOrders(db *sql.DB) gin.HandlerFunc {
 		defer rows.Close()
 
 		type MyOrder struct {
-			ID             string   `json:"id"`
-			SourceChain    string   `json:"source_chain"`
-			DestChain      string   `json:"dest_chain"`
-			Amount         float64  `json:"amount"`
-			Status         string   `json:"status"`
-			SourceAddr     string   `json:"source_address"`
-			DestAddr       string   `json:"dest_address"`
-			MatchedOrderID *string  `json:"matched_order_id"`
-			DepositTxHash  *string  `json:"deposit_tx_hash"`
-			CreatedAt      string   `json:"created_at"`
-			ExpiresAt      string   `json:"expires_at"`
+			ID             string  `json:"id"`
+			SourceChain    string  `json:"source_chain"`
+			DestChain      string  `json:"dest_chain"`
+			Amount         float64 `json:"amount"`
+			Status         string  `json:"status"`
+			SourceAddr     string  `json:"source_address"`
+			DestAddr       string  `json:"dest_address"`
+			MatchedOrderID *string `json:"matched_order_id"`
+			DepositTxHash  *string `json:"deposit_tx_hash"`
+			CreatedAt      string  `json:"created_at"`
+			ExpiresAt      string  `json:"expires_at"`
 			// Match info
-			MatchWallet    *string  `json:"counterparty_wallet,omitempty"`
-			SendTo         *string  `json:"send_gstd_to,omitempty"`    // where to send YOUR gstd
-			ReceiveFrom    *string  `json:"receive_gstd_from,omitempty"` // counterparty sends from here
+			MatchWallet *string `json:"counterparty_wallet,omitempty"`
+			SendTo      *string `json:"send_gstd_to,omitempty"`      // where to send YOUR gstd
+			ReceiveFrom *string `json:"receive_gstd_from,omitempty"` // counterparty sends from here
 		}
 
 		var orders []MyOrder
@@ -529,15 +535,15 @@ func getBridgeOrderDetail(db *sql.DB) gin.HandlerFunc {
 		}
 
 		result := gin.H{
-			"id":            id,
-			"source_chain":  sourceChain,
-			"dest_chain":    destChain,
-			"amount":        amount,
-			"status":        status,
+			"id":             id,
+			"source_chain":   sourceChain,
+			"dest_chain":     destChain,
+			"amount":         amount,
+			"status":         status,
 			"source_address": sourceAddr,
-			"dest_address":  destAddr,
-			"created_at":    createdAt,
-			"expires_at":    expiresAt,
+			"dest_address":   destAddr,
+			"created_at":     createdAt,
+			"expires_at":     expiresAt,
 		}
 
 		if matchedID != nil {
@@ -555,13 +561,23 @@ func getBridgeOrderDetail(db *sql.DB) gin.HandlerFunc {
 			if matchSource != nil {
 				match["receive_gstd_from"] = *matchSource // counterparty sends from here on YOUR dest chain
 			}
-			if matchedAt != nil { match["matched_at"] = *matchedAt }
+			if matchedAt != nil {
+				match["matched_at"] = *matchedAt
+			}
 			result["match"] = match
 		}
-		if depositTx != nil { result["deposit_tx"] = *depositTx }
-		if depositAt != nil { result["deposit_confirmed_at"] = *depositAt }
-		if releaseTx != nil { result["release_tx"] = *releaseTx }
-		if releaseAt != nil { result["release_confirmed_at"] = *releaseAt }
+		if depositTx != nil {
+			result["deposit_tx"] = *depositTx
+		}
+		if depositAt != nil {
+			result["deposit_confirmed_at"] = *depositAt
+		}
+		if releaseTx != nil {
+			result["release_tx"] = *releaseTx
+		}
+		if releaseAt != nil {
+			result["release_confirmed_at"] = *releaseAt
+		}
 
 		c.JSON(200, result)
 	}
@@ -601,11 +617,11 @@ func confirmDepositWithVerification(db *sql.DB) gin.HandlerFunc {
 
 		if !verification.Verified {
 			c.JSON(400, gin.H{
-				"error":        "On-chain verification failed",
-				"chain":        sourceChain,
-				"tx_hash":      req.TxHash,
-				"detail":       verification.Error,
-				"verified":     false,
+				"error":    "On-chain verification failed",
+				"chain":    sourceChain,
+				"tx_hash":  req.TxHash,
+				"detail":   verification.Error,
+				"verified": false,
 			})
 			return
 		}
@@ -632,7 +648,7 @@ func confirmDepositWithVerification(db *sql.DB) gin.HandlerFunc {
 			var otherDeposit *string
 			db.QueryRowContext(c.Request.Context(),
 				`SELECT user_wallet, deposit_tx_hash FROM bridge_orders WHERE id = $1`, matchedOrderID).Scan(&otherWallet, &otherDeposit)
-			
+
 			if otherWallet == "SYSTEM_LIQUIDITY_POOL" {
 				// Automated Liquidity Pool matched order!
 				// Since user's deposit is verified, system auto-releases funds on destination chain.
@@ -650,15 +666,15 @@ func confirmDepositWithVerification(db *sql.DB) gin.HandlerFunc {
 		}
 
 		response := gin.H{
-			"status":           "deposited",
-			"verified":         true,
-			"chain":            verification.Chain,
-			"tx_hash":          req.TxHash,
-			"on_chain_amount":  verification.Amount,
-			"on_chain_from":    verification.From,
-			"on_chain_to":      verification.To,
-			"on_chain_token":   verification.Token,
-			"block_time":       verification.BlockTime,
+			"status":          "deposited",
+			"verified":        true,
+			"chain":           verification.Chain,
+			"tx_hash":         req.TxHash,
+			"on_chain_amount": verification.Amount,
+			"on_chain_from":   verification.From,
+			"on_chain_to":     verification.To,
+			"on_chain_token":  verification.Token,
+			"block_time":      verification.BlockTime,
 		}
 
 		if systemAutoCompleted {
@@ -679,9 +695,9 @@ func confirmDepositWithVerification(db *sql.DB) gin.HandlerFunc {
 func verifyTransactionEndpoint() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			Chain   string  `json:"chain" binding:"required"`
-			TxHash  string  `json:"tx_hash" binding:"required"`
-			Amount  float64 `json:"amount"`
+			Chain  string  `json:"chain" binding:"required"`
+			TxHash string  `json:"tx_hash" binding:"required"`
+			Amount float64 `json:"amount"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(400, gin.H{"error": "chain and tx_hash required"})
@@ -785,8 +801,8 @@ func getBridgeStats(db *sql.DB) gin.HandlerFunc {
 		ctx := c.Request.Context()
 
 		type ChainPair struct {
-			Route string `json:"route"`
-			Count int    `json:"open_orders"`
+			Route  string  `json:"route"`
+			Count  int     `json:"open_orders"`
 			Volume float64 `json:"volume_gstd"`
 		}
 
@@ -803,7 +819,7 @@ func getBridgeStats(db *sql.DB) gin.HandlerFunc {
 			`SELECT source_chain || ' → ' || dest_chain AS route, COUNT(*), COALESCE(SUM(amount), 0)
 			 FROM bridge_orders WHERE status = 'open'
 			 GROUP BY source_chain, dest_chain ORDER BY COUNT(*) DESC`)
-		
+
 		var routes []ChainPair
 		if rows != nil {
 			defer rows.Close()
@@ -819,15 +835,15 @@ func getBridgeStats(db *sql.DB) gin.HandlerFunc {
 		}
 
 		c.JSON(200, gin.H{
-			"open_orders":      openOrders,
-			"matched_orders":   matchedOrders,
-			"completed_swaps":  completedOrders,
+			"open_orders":       openOrders,
+			"matched_orders":    matchedOrders,
+			"completed_swaps":   completedOrders,
 			"total_volume_gstd": totalVolume,
-			"routes":           routes,
-			"supported_chains": []string{"TON", "Solana", "XRPL"},
-			"fee_percent":      0,
-			"model":            "peer-to-peer",
-			"message":          fmt.Sprintf("%d open orders, %d completed swaps", openOrders, completedOrders),
+			"routes":            routes,
+			"supported_chains":  []string{"TON", "Solana", "XRPL"},
+			"fee_percent":       0,
+			"model":             "peer-to-peer",
+			"message":           fmt.Sprintf("%d open orders, %d completed swaps", openOrders, completedOrders),
 		})
 	}
 }
