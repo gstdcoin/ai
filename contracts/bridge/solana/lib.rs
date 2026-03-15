@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
+use anchor_spl::associated_token::AssociatedToken;
 // use raydium_contract_instructions::swap_base_in;  <-- We use Anchor CPI to Raydium Program ID
 
 declare_id!("GstdBridgeRouter11111111111111111111111111111");
@@ -152,11 +153,21 @@ pub struct CrossChainSwapIn<'info> {
     )]
     pub vault_gstd_account: Account<'info, TokenAccount>,
 
-    #[account(mut)]
+    #[account(
+        init_if_needed,
+        payer = oracle,
+        associated_token::mint = gstd_mint,
+        associated_token::authority = recipient_wallet
+    )]
     pub recipient_token_account: Account<'info, TokenAccount>,
 
+    /// CHECK: The user receiving the funds
+    pub recipient_wallet: AccountInfo<'info>,
+    
+    pub gstd_mint: Account<'info, Mint>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
 #[account]

@@ -54,29 +54,29 @@ contract GstdBridgeRouter with Deployable, Ownable {
     // ─── TON TO OTHER CHAIN (User sends TON -> Bridge swaps to GSTD -> Burns GSTD -> Emits Event)
     receive(msg: CrossChainSwapOut) {
         let ctx: Context = context();
-        require(ctx.value > 100000000, "Insignificant TON amount to cover swap and fees");
+        // A standard ston.fi swap requires ~0.15 TON minimum attached gas to process the swap safely.
+        // Whatever is not used will be returned to the sender by Ston.fi.
+        require(ctx.value >= 150000000, "Must send at least 0.15 TON for swap gas. Unused gas will be refunded.");
 
         // Create Payload for Ston.fi 
         // We instruct Ston.fi to swap TON to GSTD and send the GSTD back to this Bridge Contract
+        // Any remaining TON (gas refund) is sent back to the user (`ctx.sender`) to save them money!
         let swap_body = StonfiSwapPayload {
             query_id: 0,
-            amount: ctx.value - 50000000, // Reserve 0.05 TON for gas
+            amount: ctx.value - 150000000,   // Amount to swap (total attached minus gas provision)
             min_out: msg.min_out,
-            destination: myAddress(),
-            ref_address: self.owner
+            destination: myAddress(),        // Bridge receives the GSTD
+            ref_address: ctx.sender          // Excess GAS REFUND sent back to user!
         };
 
         // Send interaction to Ston.Fi router
+        // Mode 64: Carry all remaining value of the inbound message
         send(SendParameters {
             to: self.stonfi_router,
-            value: ctx.value - 50000000, 
-            mode: SendPayGasSeparately,
+            value: 0, 
+            mode: SendRemainingValue,
             body: swap_body.toCell()
         });
-        
-        // At this point, Ston.fi async processes the swap and sends GSTD to self.gstd_jetton_wallet.
-        // We emit the event containing the min_out as an approximation, but the real backend 
-        // Oracle will trace the exact Ston.fi emission amount.
         
         self.total_bridged_out = self.total_bridged_out + msg.min_out;
 
