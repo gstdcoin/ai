@@ -51,15 +51,15 @@ class XRPLGstdBridge {
             TransactionType: "Payment",
             Account: this.oracleWallet.address,
             Destination: userAddress,
-            // We want to deliver native XRP to the user
-            // We use Pathfinding to figure out the output equivalent of amountGstd,
-            // but for simplicity we assume we send GSTD directly, or use the DeliverMin feature.
+            // To ensure minimal fees and execution despite small AMM slippage,
+            // we use the tfPartialPayment flag (131072). This allows the payment to succeed 
+            // even if a slightly lower amount resolves due to AMM curve dynamics.
+            Flags: 131072, 
             Amount: {
                 currency: "GSTD", // Currency Code (Hex or 3-char)
                 value: amountGstd.toString(),
                 issuer: this.gstdIssuer
             },
-            // The SendMax defines what asset the Bridge provides (GSTD) to the AMM
             SendMax: {
                 currency: "GSTD",
                 value: amountGstd.toString(),
@@ -77,6 +77,7 @@ class XRPLGstdBridge {
         };
 
         // 2. Submit payment to the XRPL Ledger
+        // autofill() automatically calculates the lowest possible network Fee (~12-15 drops = 0.000015 XRP)
         const prepared = await this.client.autofill(paymentTx);
         const signed = this.oracleWallet.sign(prepared);
         const result = await this.client.submitAndWait(signed.tx_blob);
