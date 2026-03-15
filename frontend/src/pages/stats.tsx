@@ -7,7 +7,7 @@ import { useRouter } from 'next/router';
 import { Shield, Globe, Activity, Zap, Brain, Server, Flame, RefreshCw } from 'lucide-react';
 import { API_BASE_URL } from '../lib/config';
 
-interface NetworkSection { active_workers?: number; total_hashrate?: number; }
+interface NetworkSection { active_workers?: number; total_hashrate?: number; gstd_price_usd?: number; total_tasks?: number; total_users?: number; total_nodes?: number; }
 interface PoolSection { xaut_balance?: number; gstd_balance?: number; }
 interface PipelineSection { online_nodes?: number; total_vram_gb?: number; }
 interface SecuritySection { defense_layers?: number; blocked_requests?: number; }
