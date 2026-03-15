@@ -159,10 +159,11 @@ func createBridgeOrder(db *sql.DB) gin.HandlerFunc {
 	}
 }
 
+// Addresses of our Deployed Smart Contracts/Routers
 var SystemPoolAddresses = map[string]string{
-	"TON":    "UQCAw7r3aZ1Z-B8hUaX1f83c1o9J9gSjH1ZqzNn_rQhT-GSt", // System liquidity TON address
-	"Solana": "GstdSysLiquidityPool234567890abcdef123456789",    // System liquidity Solana address
-	"XRPL":   "rGstdSysLiquidityPool123XYZ4567abc",              // System liquidity XRPL address
+	"TON":    "EQC_GSTD_Bridge_SmartContract_Address_Here",    // TON tact router
+	"Solana": "GstdBridgeRouter11111111111111111111111111111", // Solana Anchor program
+	"XRPL":   "rGstdBridgeRouterXRPLEscrowProviderXYZabc",     // XRPL Oracle Node
 }
 
 // autoMatchWithSystemPool creates a counterparty order representing the automated liquidity gateway
