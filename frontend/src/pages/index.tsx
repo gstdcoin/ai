@@ -4,7 +4,7 @@ import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useTranslation } from 'next-i18next';
 import { useState, useEffect, useRef } from 'react';
 import { API_BASE_URL } from '../lib/config';
-import { Activity, Zap, MessageSquare, ArrowRight, Bot, Server, Shield, Globe, Lock, Wifi, Wrench, HardDrive, Brain, Building2, ArrowRightLeft } from 'lucide-react';
+import { Activity, Zap, MessageSquare, ArrowRight, Bot, Server, Shield, Globe, Lock, Wifi, Wrench, HardDrive, Brain, Building2, ArrowRightLeft, Trophy } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
 const AmbientMesh = dynamic(() => import('../components/home/AmbientMesh'), { ssr: false });
@@ -248,11 +248,11 @@ export default function Home() {
               <div className="text-xs font-bold text-white">Bridge</div>
               <div className="text-[10px] text-gray-500">Cross-chain</div>
             </a>
-            <div className="p-4 rounded-2xl glass-pro text-center">
-              <Bot className="mx-auto text-indigo-400 mb-2" size={20} />
-              <div className="text-xs font-bold text-white">Telegram</div>
-              <div className="text-[10px] text-gray-500">Remote control</div>
-            </div>
+            <a href="/leaderboard" style={{ textDecoration: 'none' }} className="p-4 rounded-2xl glass-pro text-center hover:scale-[1.05] transition-transform">
+              <Trophy className="mx-auto text-yellow-400 mb-2" size={20} />
+              <div className="text-xs font-bold text-white">Leaderboard</div>
+              <div className="text-[10px] text-gray-500">Top holders</div>
+            </a>
           </div>
 
           {/* ═══════ NETWORK STATS ═══════ */}
