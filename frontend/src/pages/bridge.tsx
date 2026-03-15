@@ -127,34 +127,92 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 // ─── Chain Wallet Connection Widget ────────────────────────
-function ChainWalletWidget({ chain, label }: { chain: ChainId; label: string }) {
+function ChainWalletWidget({ chain, label, address, onAddressChange }: {
+  chain: ChainId;
+  label: string;
+  address?: string;
+  onAddressChange?: (addr: string) => void;
+}) {
   const { t } = useTranslation('common');
   const { getChainWallet, connectChain, disconnectChain, getAvailableWallets } = useMultiChainWallet();
   const wallet = getChainWallet(chain);
   const chainInfo = CHAINS.find(c => c.id === chain);
   const availableWallets = getAvailableWallets(chain);
 
+  // For TON: show connect/disconnect only (TonConnect has its own QR modal)
+  if (chain === 'TON') {
+    if (wallet.connected && wallet.address) {
+      return (
+        <div style={{
+          padding: '12px 14px', borderRadius: 12,
+          background: 'linear-gradient(135deg, rgba(16,185,129,0.06), rgba(6,182,212,0.04))',
+          border: '1px solid rgba(16,185,129,0.15)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
+              <div style={{
+                width: 30, height: 30, borderRadius: 8,
+                background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.25)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 14,
+              }}>💎</div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                  {label} · {wallet.walletName}
+                </div>
+                <div style={{ fontSize: 12, fontFamily: 'monospace', color: '#34d399', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  {shortAddr(wallet.address, 6, 4)}
+                  <CopyButton text={wallet.address} />
+                </div>
+              </div>
+            </div>
+            <button onClick={() => disconnectChain(chain)} style={{
+              display: 'flex', alignItems: 'center', gap: 3, padding: '4px 8px', borderRadius: 6,
+              background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)',
+              color: '#f87171', fontSize: 9, fontWeight: 600, cursor: 'pointer', flexShrink: 0,
+            }}>
+              <Unlink size={9} /> {t('bridge_disconnect', 'Disconnect')}
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <button onClick={() => connectChain(chain)} style={{
+        width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+        padding: '12px 16px', borderRadius: 12,
+        background: 'rgba(139,92,246,0.06)', border: '1px dashed rgba(139,92,246,0.2)',
+        color: '#a78bfa', fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s',
+      }}
+        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.12)'; }}
+        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.06)'; }}
+      >
+        <Wallet size={14} />
+        {t('bridge_connect_wallet', 'Connect Wallet')} ({availableWallets.join(', ')})
+      </button>
+    );
+  }
+
+  // For Solana / XRPL: show wallet-connected state OR manual input + optional connect
   if (wallet.connected && wallet.address) {
     return (
       <div style={{
-        padding: '12px 14px', borderRadius: 12,
+        padding: '10px 14px', borderRadius: 12,
         background: 'linear-gradient(135deg, rgba(16,185,129,0.06), rgba(6,182,212,0.04))',
         border: '1px solid rgba(16,185,129,0.15)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
             <div style={{
-              width: 30, height: 30, borderRadius: 8,
+              width: 26, height: 26, borderRadius: 7,
               background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.25)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 14,
-            }}>
-              {chainInfo?.icon}
-            </div>
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 12,
+            }}>{chainInfo?.icon}</div>
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-                {label} · {wallet.walletName || chain}
+                {wallet.walletName} · {t('bridge_wallet_connected', 'Connected')}
               </div>
-              <div style={{ fontSize: 12, fontFamily: 'monospace', color: '#34d399', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <div style={{ fontSize: 11, fontFamily: 'monospace', color: '#34d399', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
                 {shortAddr(wallet.address, 6, 4)}
                 <CopyButton text={wallet.address} />
               </div>
@@ -165,26 +223,41 @@ function ChainWalletWidget({ chain, label }: { chain: ChainId; label: string }) 
             background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)',
             color: '#f87171', fontSize: 9, fontWeight: 600, cursor: 'pointer', flexShrink: 0,
           }}>
-            <Unlink size={9} /> {t('bridge_disconnect', 'Disconnect')}
+            <Unlink size={9} />
           </button>
         </div>
       </div>
     );
   }
 
+  // Not connected — show address input + optional connect button
   return (
-    <button onClick={() => connectChain(chain)} style={{
-      width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-      padding: '12px 16px', borderRadius: 12,
-      background: 'rgba(139,92,246,0.06)', border: '1px dashed rgba(139,92,246,0.2)',
-      color: '#a78bfa', fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s',
-    }}
-      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.12)'; }}
-      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.06)'; }}
-    >
-      <Wallet size={14} />
-      {t('bridge_connect_chain_wallet', { chain: chain, wallets: availableWallets.join(', '), defaultValue: `Connect ${chain} wallet (${availableWallets.join(', ')})` })}
-    </button>
+    <div>
+      <div style={{ display: 'flex', gap: 6, alignItems: 'stretch' }}>
+        <input type="text" value={address || ''} onChange={e => onAddressChange?.(e.target.value)}
+          placeholder={t('bridge_address_placeholder', { chain, defaultValue: `Your ${chain} address` })}
+          style={{
+            flex: 1, padding: '10px 14px', borderRadius: 10,
+            background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
+            color: 'white', fontSize: 12, outline: 'none',
+          }} />
+        {wallet.extensionAvailable && (
+          <button onClick={() => connectChain(chain)} title={`Connect ${availableWallets.join('/')}`}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+              padding: '0 12px', borderRadius: 10,
+              background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.15)',
+              color: '#a78bfa', fontSize: 10, fontWeight: 600, cursor: 'pointer',
+              transition: 'all 0.2s', whiteSpace: 'nowrap',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.15)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.08)'; }}
+          >
+            <Link2 size={11} /> {availableWallets[0]}
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -431,12 +504,7 @@ export default function BridgePage() {
 
               {/* Source Chain Wallet + Address */}
               <div style={{ marginTop: 8 }}>
-                <ChainWalletWidget chain={sourceChain} label={t('bridge_source_wallet', { defaultValue: `${sourceChain} Wallet` })} />
-                {!sourceWallet.connected && (
-                  <input type="text" value={sourceAddress} onChange={e => setSourceAddress(e.target.value)}
-                    placeholder={t('bridge_source_address_placeholder', { chain: sourceChain, defaultValue: `Your ${sourceChain} address (where you hold GSTD)` })}
-                    style={{ width: '100%', marginTop: 6, padding: '10px 14px', borderRadius: 10, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', color: 'white', fontSize: 12, outline: 'none' }} />
-                )}
+                <ChainWalletWidget chain={sourceChain} label={t('bridge_source_wallet', { defaultValue: `${sourceChain} Wallet` })} address={sourceAddress} onAddressChange={setSourceAddress} />
               </div>
 
               {/* Swap */}
@@ -457,12 +525,7 @@ export default function BridgePage() {
 
               {/* Dest Chain Wallet + Address */}
               <div style={{ marginTop: 8 }}>
-                <ChainWalletWidget chain={destChain} label={t('bridge_dest_wallet', { defaultValue: `${destChain} Wallet` })} />
-                {!destWallet.connected && (
-                  <input type="text" value={destAddress} onChange={e => setDestAddress(e.target.value)}
-                    placeholder={t('bridge_dest_address_placeholder', { chain: destChain, defaultValue: `Your ${destChain} address (where to receive GSTD)` })}
-                    style={{ width: '100%', marginTop: 6, padding: '10px 14px', borderRadius: 10, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', color: 'white', fontSize: 12, outline: 'none' }} />
-                )}
+                <ChainWalletWidget chain={destChain} label={t('bridge_dest_wallet', { defaultValue: `${destChain} Wallet` })} address={destAddress} onAddressChange={setDestAddress} />
               </div>
 
               {/* Amount */}
