@@ -78,286 +78,122 @@ const SIGNAL_I18N: Record<string, { title: string; desc?: string; impact?: strin
 };
 
 const ACTIVE_SIGNALS: GlobalSignal[] = [
-    // ─── CLIMATE & ENVIRONMENT ───────────────────────────────────────
+    // ─── MEV & ARBITRAGE ───────────────────────────────────────────
     {
-        id: 'nasa_eosdis', title: 'NASA Climate Anomaly Extraction',
-        description: 'Process raw satellite imagery & atmospheric data to detect deforestation and extreme surface temperature anomalies before they become irreversible.',
-        source: 'NASA EOSDIS', severity: 'critical', location: 'Equatorial Band',
-        dataVolume: '45.8 TB/week', icon: Sun, color: 'text-amber-400', bgColor: 'bg-amber-500/10',
-        starsCost: 3500, gstdReward: 280, platformFee: 70, category: 'Climate',
-        progress: 61, contributors: 89, impact: 'Early warning for 2.3B people in equatorial zones'
+        id: 'mev_mempool', title: 'Mempool MEV Alpha Sniping',
+        description: 'Scan Ethereum and Solana mempools for unbribed DEX transactions to front-run or sandwich attack for instant risk-free yield.',
+        source: 'Jito / Flashbots', severity: 'critical', location: 'Solana/ETH Mempool',
+        dataVolume: '45.8 TB/s', icon: Zap, color: 'text-amber-400', bgColor: 'bg-amber-500/10',
+        starsCost: 3500, gstdReward: 280, platformFee: 70, category: 'MEV & Arbitrage',
+        progress: 92, contributors: 412, impact: 'Extract $1.2M daily from inefficient router paths'
     },
     {
-        id: 'wildfire_sentinel', title: 'Wildfire Spread Prediction Grid',
-        description: 'Cross-reference Sentinel-2 thermal bands and MODIS hotspot data with wind models to predict wildfire spread within 6-hour windows.',
-        source: 'ESA Sentinel-2 & FIRMS', severity: 'critical', location: 'California / Australia / Siberia',
-        dataVolume: '22.7 TB/week', icon: Flame, color: 'text-orange-300', bgColor: 'bg-orange-400/10',
-        starsCost: 3000, gstdReward: 240, platformFee: 60, category: 'Climate',
-        progress: 45, contributors: 112, impact: 'Prevent $50B+ annual wildfire damage'
+        id: 'cross_chain_arb', title: 'Cross-Chain Liquidity Arbitrage',
+        description: 'Detect 10+ millisecond discrepancies in token pricing between Binance, OKX, and on-chain DEXes to execute highly profitable flash loans.',
+        source: 'Binance / OKX / Raydium', severity: 'high', location: 'Global CEX/DEX',
+        dataVolume: '18.1 PB/day', icon: Network, color: 'text-indigo-400', bgColor: 'bg-indigo-500/10',
+        starsCost: 5000, gstdReward: 400, platformFee: 100, category: 'MEV & Arbitrage',
+        progress: 88, contributors: 320, impact: 'Capitalize on CEX/DEX spread lagging'
+    },
+    
+    // ─── ALPHA & TOKENOMICS ────────────────────────────────────────
+    {
+        id: 'memecoin_prophet', title: 'Memecoin Sentiment Prophet',
+        description: 'NLP analysis over 1M+ Telegram and Twitter crypto groups to detect organic virality of newly deployed memecoins before pump.',
+        source: 'Twitter / Telegram Firehose', severity: 'critical', location: 'Crypto Twitter',
+        dataVolume: '5.2 TB/hr', icon: Flame, color: 'text-orange-400', bgColor: 'bg-orange-500/10',
+        starsCost: 2000, gstdReward: 160, platformFee: 40, category: 'Alpha & Tokens',
+        progress: 95, contributors: 890, impact: 'Predict 100x memecoin runs 2 hours in advance'
     },
     {
-        id: 'copernicus_marine', title: 'Ocean Heatwave & Coral Bleaching Model',
-        description: 'Process deep oceanic temperature, drift, and salinity arrays to predict marine heatwaves and coral reef die-off events months in advance.',
-        source: 'Copernicus Marine Service', severity: 'high', location: 'Pacific & Indian Oceans',
-        dataVolume: '8.1 TB/mo', icon: Droplets, color: 'text-teal-400', bgColor: 'bg-teal-500/10',
-        starsCost: 1500, gstdReward: 120, platformFee: 30, category: 'Climate',
-        progress: 88, contributors: 64, impact: 'Protect 500M people dependent on coral reef ecosystems'
+        id: 'whale_tracker', title: 'On-Chain Whale Copy-Trading',
+        description: 'AI clustering of historical profitable whale wallets. Automatically front-runs trades of 14,000+ top performing smart money addresses.',
+        source: 'Nansen / Arkham', severity: 'high', location: 'Smart Money Wallets',
+        dataVolume: '850 GB/day', icon: TrendingUp, color: 'text-emerald-400', bgColor: 'bg-emerald-500/10',
+        starsCost: 4000, gstdReward: 320, platformFee: 80, category: 'Alpha & Tokens',
+        progress: 76, contributors: 610, impact: 'Mirror trades of top 1% most profitable accounts'
     },
     {
-        id: 'air_quality_mesh', title: 'Urban Air Quality Mesh Intelligence',
-        description: 'Aggregate and normalize 200,000+ low-cost PM2.5/PM10 sensors across 12,000 cities to build real-time AQI maps with health risk heatmaps.',
-        source: 'OpenAQ & PurpleAir APIs', severity: 'high', location: '12,000+ Cities',
-        dataVolume: '3.8 TB/day', icon: Wind, color: 'text-sky-300', bgColor: 'bg-sky-400/10',
-        starsCost: 1200, gstdReward: 96, platformFee: 24, category: 'Climate',
-        progress: 76, contributors: 310, impact: 'Air pollution kills 7M people/year (WHO)'
-    },
-    {
-        id: 'carbon_sink', title: 'Global Carbon Sink Mapping',
-        description: 'Combine LIDAR forest canopy data with soil carbon sensors and satellite imagery to map the planet\'s carbon capture capacity in real time.',
-        source: 'Global Forest Watch & FLUXNET', severity: 'medium', location: 'Amazon / Congo / Boreal',
-        dataVolume: '15 TB/mo', icon: Leaf, color: 'text-green-400', bgColor: 'bg-green-500/10',
-        starsCost: 2500, gstdReward: 200, platformFee: 50, category: 'Climate',
-        progress: 33, contributors: 78, impact: 'Critical for Paris Agreement carbon tracking'
-    },
-
-    // ─── HEALTH & MEDICINE ───────────────────────────────────────────
-    {
-        id: 'who_pubmed', title: 'Pandemic Early Warning System',
-        description: 'Semantic analysis of 40M+ medical papers, hospital discharge records, and wastewater surveillance to predict disease outbreak vectors 30+ days ahead.',
-        source: 'WHO GHO & PubMed Central', severity: 'critical', location: 'Global',
-        dataVolume: '2.4 TB/text', icon: HeartPulse, color: 'text-purple-400', bgColor: 'bg-purple-500/10',
-        starsCost: 5000, gstdReward: 400, platformFee: 100, category: 'Health',
-        progress: 18, contributors: 214, impact: 'Next pandemic prevention — COVID cost $16T globally'
-    },
-    {
-        id: 'alphafold_protein', title: 'Orphan Disease Drug Discovery',
-        description: 'Predict 3D protein structures for 7,000+ rare uncurable genetic diseases using distributed folding. Each solution could unlock a new therapy.',
-        source: 'UniProt & NCBI GenBank', severity: 'critical', location: 'Global / Decentralized',
-        dataVolume: '120 TB/mo', icon: Dna, color: 'text-emerald-300', bgColor: 'bg-emerald-400/10',
-        starsCost: 8000, gstdReward: 640, platformFee: 160, category: 'Health',
-        progress: 7, contributors: 341, impact: '350M people suffer from rare diseases worldwide'
-    },
-    {
-        id: 'antibiotic_resistance', title: 'Superbug Mutation Tracker',
-        description: 'Sequence-align bacterial genomes from hospital wastewater worldwide to map antibiotic-resistant superbug mutations before they spread.',
-        source: 'NCBI SRA & CARD Database', severity: 'critical', location: 'Global Hospital Networks',
-        dataVolume: '35 TB/batch', icon: Microscope, color: 'text-lime-400', bgColor: 'bg-lime-500/10',
-        starsCost: 6500, gstdReward: 520, platformFee: 130, category: 'Health',
-        progress: 22, contributors: 189, impact: 'AMR could kill 10M people/year by 2050 (WHO)'
-    },
-    {
-        id: 'mental_health_nlp', title: 'Global Mental Health Signal Detection',
-        description: 'Analyze anonymized social media language patterns, crisis hotline metadata, and public health surveys to map depression/anxiety hotspots and predict suicide risk zones.',
-        source: 'Crisis Text Line Data & WHO MH Atlas', severity: 'high', location: 'Global',
-        dataVolume: '4.2 TB/mo', icon: Brain, color: 'text-pink-400', bgColor: 'bg-pink-500/10',
-        starsCost: 2000, gstdReward: 160, platformFee: 40, category: 'Health',
-        progress: 15, contributors: 156, impact: '1 in 4 people affected by mental disorders globally'
+        id: 'insider_wallet_detect', title: 'Insider Wallet Clustering',
+        description: 'Graph analysis connecting fund deployments ahead of major CEX listings (Binance/Upbit) to identify dev & insider wallets.',
+        source: 'Etherscan / Solscan API', severity: 'high', location: 'Layer 1 Chains',
+        dataVolume: '1.2 TB/day', icon: PersonStanding, color: 'text-fuchsia-400', bgColor: 'bg-fuchsia-500/10',
+        starsCost: 3000, gstdReward: 240, platformFee: 60, category: 'Alpha & Tokens',
+        progress: 60, contributors: 215, impact: 'Detect dev-controlled token dumps'
     },
 
-    // ─── HUMANITARIAN & SAFETY ────────────────────────────────────────
+    // ─── SECURITY & EXPLOITS ────────────────────────────────────────
     {
-        id: 'gdelt_crisis', title: 'Humanitarian Crisis Early Warning',
-        description: 'Analyze massive global event logs (300M+ news articles/year) to identify emerging humanitarian aid gaps, famine signals, and displacement vectors 2-4 weeks early.',
-        source: 'GDELT Project (Global DB)', severity: 'critical', location: 'Global / MENA / Sub-Saharan Africa',
-        dataVolume: '14.2 TB/day', icon: Globe2, color: 'text-rose-400', bgColor: 'bg-rose-500/10',
-        starsCost: 2000, gstdReward: 160, platformFee: 40, category: 'Humanitarian',
-        progress: 34, contributors: 127, impact: '100M people in need of humanitarian assistance (OCHA)'
+        id: 'zero_day_scanner', title: '0-Day Contract Exploit Scanner',
+        description: 'Simulate symbolic execution across all newly deployed EVM and Solana smart contracts to find logic vulnerabilities for white-hat or black-hat mitigation.',
+        source: 'On-Chain Bytecode', severity: 'critical', location: 'All Blockchains',
+        dataVolume: '2.4 TB/sync', icon: ShieldCheck, color: 'text-rose-400', bgColor: 'bg-rose-500/10',
+        starsCost: 8000, gstdReward: 640, platformFee: 160, category: 'Security',
+        progress: 81, contributors: 145, impact: 'Discover $500M+ in smart contract vulnerabilities'
     },
     {
-        id: 'darknet_tracker', title: 'Human Trafficking Vector Analysis',
-        description: 'NLP and image hash analysis across Dark Web scrapes to identify illicit supply chains and assist global law enforcement operations anonymously.',
-        source: 'OSINT Protocol Drops', severity: 'critical', location: 'Shadow Web / Global',
-        dataVolume: '3.1 TB/batch', icon: ShieldCheck, color: 'text-fuchsia-400', bgColor: 'bg-fuchsia-500/10',
-        starsCost: 6000, gstdReward: 480, platformFee: 120, category: 'Humanitarian',
-        progress: 42, contributors: 78, impact: '50M people in modern slavery (ILO)'
-    },
-    {
-        id: 'osm_disaster', title: 'Disaster Zone Rapid Mapping',
-        description: 'Identify damaged infrastructure, blocked roads, and safe zones from satellite imagery in post-disaster areas to optimize rescue routing within hours.',
-        source: 'Humanitarian OpenStreetMap', severity: 'high', location: 'Active Disaster Zones',
-        dataVolume: '1.2 TB/area', icon: MapPin, color: 'text-red-400', bgColor: 'bg-red-500/10',
-        starsCost: 1000, gstdReward: 80, platformFee: 20, category: 'Humanitarian',
-        progress: 95, contributors: 48, impact: '339 natural disasters affected 185M people in 2023'
-    },
-    {
-        id: 'refugee_flow', title: 'Refugee Flow Prediction Model',
-        description: 'Combine conflict zone satellite data, border crossing reports, and news NLP to predict refugee flows 2-6 weeks ahead, enabling pre-positioned aid.',
-        source: 'UNHCR Data & ACAPS', severity: 'high', location: 'Conflict Zones / Borders',
-        dataVolume: '2.5 TB/mo', icon: PersonStanding, color: 'text-violet-400', bgColor: 'bg-violet-500/10',
-        starsCost: 2500, gstdReward: 200, platformFee: 50, category: 'Humanitarian',
-        progress: 28, contributors: 95, impact: '110M forcibly displaced people worldwide (UNHCR)'
+        id: 'rug_pull_detect', title: 'Honeypot & Rug Pull Preventer',
+        description: 'Decompile contract states to identify hidden mint functions, blocked transfers, and liquidity lock evasion in fresh tokens.',
+        source: 'GoPlus Security V3', severity: 'medium', location: 'DEX Listings',
+        dataVolume: '14 GB/min', icon: AlertTriangle, color: 'text-red-400', bgColor: 'bg-red-500/10',
+        starsCost: 1500, gstdReward: 120, platformFee: 30, category: 'Security',
+        progress: 98, contributors: 1200, impact: 'Save users from buying un-sellable tokens'
     },
 
-    // ─── FOOD & WATER SECURITY ────────────────────────────────────────
+    // ─── DEFI & YIELD ──────────────────────────────────────────────
     {
-        id: 'famine_prediction', title: 'Global Famine Prediction Engine',
-        description: 'Correlate crop yield satellite data, commodity prices, rainfall anomalies, and conflict indicators to predict food crises 60-90 days before they peak.',
-        source: 'FEWS NET & FAO GIEWS', severity: 'critical', location: 'Horn of Africa / South Asia',
-        dataVolume: '6.8 TB/mo', icon: Wheat, color: 'text-yellow-400', bgColor: 'bg-yellow-500/10',
-        starsCost: 4000, gstdReward: 320, platformFee: 80, category: 'Food & Water',
-        progress: 41, contributors: 132, impact: '783M people face chronic hunger (FAO)'
+        id: 'yield_farming_opt', title: 'Autonomous Yield Farming',
+        description: 'Autocompound and bridge assets dynamically across 40+ chains to chase highest risk-adjusted APY in lending pools and liquidity farms.',
+        source: 'DefiLlama / Protocols', severity: 'high', location: 'Layer 1 / Layer 2',
+        dataVolume: '1.2 TB/day', icon: Database, color: 'text-sky-400', bgColor: 'bg-sky-500/10',
+        starsCost: 3000, gstdReward: 240, platformFee: 60, category: 'DeFi & Yield',
+        progress: 64, contributors: 430, impact: 'Boost portfolio APY by automatically hunting yields'
     },
     {
-        id: 'water_stress', title: 'Freshwater Stress Monitoring',
-        description: 'Process GRACE satellite gravity data, groundwater well sensors, and snowpack measurements to map aquifer depletion and predict water shortages.',
-        source: 'NASA GRACE-FO & WRI Aqueduct', severity: 'high', location: 'Middle East / India / Central Asia',
-        dataVolume: '4.5 TB/mo', icon: Droplets, color: 'text-blue-300', bgColor: 'bg-blue-400/10',
-        starsCost: 3000, gstdReward: 240, platformFee: 60, category: 'Food & Water',
-        progress: 37, contributors: 88, impact: '2.3B people live in water-stressed countries'
-    },
-
-    // ─── GEOPHYSICS & NATURAL DISASTERS ──────────────────────────────
-    {
-        id: 'seismic_array', title: 'Earthquake Precursor Pattern Mining',
-        description: 'Analyze real-time low-frequency tectonic data from 30,000+ seismographs to find micro-patterns (foreshocks, radon anomalies) preceding major earthquakes.',
-        source: 'IRIS & Global Seismographic Network', severity: 'high', location: 'Pacific Ring of Fire',
-        dataVolume: '18.5 TB/day', icon: Activity, color: 'text-orange-400', bgColor: 'bg-orange-500/10',
-        starsCost: 4000, gstdReward: 320, platformFee: 80, category: 'Geophysics',
-        progress: 52, contributors: 156, impact: 'Earthquakes killed 60,000+ people in 2023 alone'
-    },
-    {
-        id: 'tsunami_model', title: 'Tsunami Propagation Modeling',
-        description: 'Run high-resolution ocean floor bathymetry simulations to predict tsunami wave heights and arrival times for every coastal city within 15 minutes of a seismic event.',
-        source: 'NOAA DART Buoy Network', severity: 'critical', location: 'All Coastal Zones',
-        dataVolume: '7.3 TB/sim', icon: Waves, color: 'text-cyan-400', bgColor: 'bg-cyan-500/10',
-        starsCost: 5000, gstdReward: 400, platformFee: 100, category: 'Geophysics',
-        progress: 19, contributors: 67, impact: '680M people live in low-lying coastal zones'
+        id: 'liq_drain_predict', title: 'Liquidity Drain Predictor',
+        description: 'Monitor LP token withdraws and unbonding queues to predict when a pool is about to collapse, exiting our positions before a crash.',
+        source: 'Curve / Uniswap V3', severity: 'high', location: 'DEX Pools',
+        dataVolume: '400 GB/hr', icon: Droplets, color: 'text-cyan-400', bgColor: 'bg-cyan-500/10',
+        starsCost: 2500, gstdReward: 200, platformFee: 50, category: 'DeFi & Yield',
+        progress: 55, contributors: 310, impact: 'Avoid impermanent loss and sudden LP drains'
     },
 
-    // ─── CYBERSECURITY & INFORMATION ──────────────────────────────────
+    // ─── AI & AUTONOMY ─────────────────────────────────────────────
     {
-        id: 'deepfake_firewall', title: 'Deepfake & Disinformation Shield',
-        description: 'Run adversarial models to detect synthetic media (video/audio/text) designed to manipulate elections, markets, and public health decisions in real time.',
-        source: 'Global Social Firehose', severity: 'high', location: 'North America / EU / APAC',
-        dataVolume: '50.1 TB/week', icon: BrainCircuit, color: 'text-cyan-300', bgColor: 'bg-cyan-400/10',
-        starsCost: 2500, gstdReward: 200, platformFee: 50, category: 'Cyber Security',
-        progress: 71, contributors: 203, impact: 'Protect democratic processes for 4B+ voters'
+        id: 'ai_agent_war', title: 'Autonomous AI Agent Wars',
+        description: 'Deploy aggressive market-making AI agents that corner orderbooks and squeeze opponent bots out of liquidity matrixes.',
+        source: 'GSTD Neural Net', severity: 'critical', location: 'Deep Web',
+        dataVolume: '1.1 PB/sec', icon: BrainCircuit, color: 'text-violet-400', bgColor: 'bg-violet-500/10',
+        starsCost: 10000, gstdReward: 800, platformFee: 200, category: 'AI Autonomy',
+        progress: 42, contributors: 95, impact: 'Win the algorithmic trading warfare'
     },
     {
-        id: 'critical_infra', title: 'Critical Infrastructure Threat Intelligence',
-        description: 'Monitor and correlate global SCADA/ICS vulnerability disclosures, dark web chatter, and network anomalies to protect power grids, water systems, and hospitals.',
-        source: 'CISA ICS-CERT & NVD', severity: 'critical', location: 'Global Infrastructure',
-        dataVolume: '2.1 TB/day', icon: Shield, color: 'text-red-300', bgColor: 'bg-red-400/10',
-        starsCost: 4000, gstdReward: 320, platformFee: 80, category: 'Cyber Security',
-        progress: 38, contributors: 91, impact: 'A single grid attack can black out 100M+ people'
-    },
-
-    // ─── SCIENCE & ENERGY ────────────────────────────────────────────
-    {
-        id: 'cern_physics', title: 'CERN Particle Physics Discovery',
-        description: 'Process high-energy collision layer data to assist in foundational physics discoveries and material science breakthroughs for fusion and clean energy.',
-        source: 'CERN Open Data Portal', severity: 'medium', location: 'Geneva / Virtual',
-        dataVolume: '120 TB/batch', icon: Network, color: 'text-blue-400', bgColor: 'bg-blue-500/10',
-        starsCost: 8000, gstdReward: 640, platformFee: 160, category: 'Science & Energy',
-        progress: 13, contributors: 92, impact: 'Understanding the universe to unlock clean energy'
-    },
-    {
-        id: 'fusion_sim', title: 'Fusion Plasma Stability Simulation',
-        description: 'Simulate tokamak plasma confinement scenarios using magnetohydrodynamic models to accelerate the path to commercial fusion power.',
-        source: 'ITER & PPPL Open Data', severity: 'medium', location: 'Global Research Labs',
-        dataVolume: '28 TB/sim', icon: Zap, color: 'text-yellow-300', bgColor: 'bg-yellow-400/10',
-        starsCost: 7000, gstdReward: 560, platformFee: 140, category: 'Science & Energy',
-        progress: 8, contributors: 45, impact: 'Unlimited clean energy for all of humanity'
-    },
-    {
-        id: 'space_debris', title: 'Space Debris Collision Avoidance',
-        description: 'Track 40,000+ orbital debris objects and predict collision probabilities for active satellites and the ISS using distributed orbit propagation.',
-        source: 'US Space Command TLE Data', severity: 'high', location: 'Low Earth Orbit',
-        dataVolume: '5.3 TB/day', icon: Satellite, color: 'text-indigo-400', bgColor: 'bg-indigo-500/10',
-        starsCost: 4500, gstdReward: 360, platformFee: 90, category: 'Science & Energy',
-        progress: 29, contributors: 67, impact: 'Protect $1T+ space infrastructure'
-    },
-
-    // ─── EDUCATION & POVERTY ─────────────────────────────────────────
-    {
-        id: 'education_gap', title: 'Global Education Gap Analysis',
-        description: 'Process UNESCO enrollment data, satellite imagery of school infrastructure, and mobility data to identify where 250M children are denied education.',
-        source: 'UNESCO UIS & World Bank EdStats', severity: 'high', location: 'Sub-Saharan Africa / South Asia',
-        dataVolume: '1.8 TB/quarter', icon: GraduationCap, color: 'text-indigo-300', bgColor: 'bg-indigo-400/10',
-        starsCost: 1500, gstdReward: 120, platformFee: 30, category: 'Society',
-        progress: 44, contributors: 167, impact: '250M children out of school worldwide'
-    },
-    {
-        id: 'poverty_mapping', title: 'Poverty Mapping from Space',
-        description: 'Use nighttime light satellite imagery, building footprints, and cell tower density to map poverty at 1km² resolution — enabling targeted aid delivery.',
-        source: 'VIIRS Nightlight & WorldPop', severity: 'high', location: 'Global South',
-        dataVolume: '9.2 TB/mo', icon: Building2, color: 'text-amber-300', bgColor: 'bg-amber-400/10',
-        starsCost: 2000, gstdReward: 160, platformFee: 40, category: 'Society',
-        progress: 56, contributors: 134, impact: '700M people live in extreme poverty'
-    },
-    {
-        id: 'child_mortality', title: 'Child Mortality Risk Prediction',
-        description: 'Combine vaccination records, nutrition surveys, and weather data to predict where under-5 mortality will spike, enabling preventive intervention.',
-        source: 'UNICEF MICS & DHS Program', severity: 'critical', location: 'Low-Income Countries',
-        dataVolume: '2.1 TB/batch', icon: Baby, color: 'text-pink-300', bgColor: 'bg-pink-400/10',
-        starsCost: 3000, gstdReward: 240, platformFee: 60, category: 'Society',
-        progress: 31, contributors: 198, impact: '5M children die before age 5 every year'
-    },
-
-    // ─── ECONOMY & GOVERNANCE ────────────────────────────────────────
-    {
-        id: 'financial_contagion', title: 'Systemic Financial Contagion Model',
-        description: 'Simulate cascading bank failures across 200+ interconnected institutions using real-time CDS spreads and interbank exposure data.',
-        source: 'BIS & ECB Open Data', severity: 'high', location: 'Global Financial System',
-        dataVolume: '1.5 TB/cycle', icon: TrendingUp, color: 'text-yellow-400', bgColor: 'bg-yellow-500/10',
-        starsCost: 5000, gstdReward: 400, platformFee: 100, category: 'Economy',
-        progress: 55, contributors: 73, impact: 'Prevent next financial crisis (2008 cost $22T)'
-    },
-    {
-        id: 'corruption_trace', title: 'Public Spending Anomaly Detection',
-        description: 'Analyze government procurement data, corporate registries, and financial flows to detect corruption patterns and illicit wealth transfers.',
-        source: 'OCDS & OpenCorporates & ICIJ', severity: 'medium', location: 'Global',
-        dataVolume: '5.6 TB/mo', icon: Scale, color: 'text-emerald-400', bgColor: 'bg-emerald-500/10',
-        starsCost: 3500, gstdReward: 280, platformFee: 70, category: 'Economy',
-        progress: 20, contributors: 56, impact: 'Corruption costs $2.6T/year globally (World Bank)'
-    },
-
-    // ─── BIODIVERSITY & OCEANS ───────────────────────────────────────
-    {
-        id: 'biodiversity_loss', title: 'Species Extinction Risk Modeling',
-        description: 'Process audio (bioacoustics), camera trap images, and eDNA sequencing from 15,000+ monitoring stations to track biodiversity loss in real time.',
-        source: 'GBIF & IUCN Red List Data', severity: 'critical', location: 'Hotspot Ecosystems',
-        dataVolume: '11.4 TB/mo', icon: Sprout, color: 'text-green-300', bgColor: 'bg-green-400/10',
-        starsCost: 3000, gstdReward: 240, platformFee: 60, category: 'Biodiversity',
-        progress: 26, contributors: 145, impact: '1M species face extinction (IPBES)'
-    },
-    {
-        id: 'ocean_plastic', title: 'Ocean Plastic Drift Prediction',
-        description: 'Model microplastic dispersion using ocean current data from Argo floats and satellite altimetry to predict accumulation zones and plan cleanup routes.',
-        source: 'Argo Float Network & NOAA', severity: 'medium', location: 'Pacific Gyre / Indian Ocean',
-        dataVolume: '6.2 TB/mo', icon: Waves, color: 'text-cyan-400', bgColor: 'bg-cyan-500/10',
-        starsCost: 2000, gstdReward: 160, platformFee: 40, category: 'Biodiversity',
-        progress: 63, contributors: 95, impact: '11M tons of plastic enter oceans yearly'
-    },
+        id: 'sybil_airdrop', title: 'Industrial Sybil Airdrop Farming',
+        description: 'Manage 50,000+ AI-driven wallet behaviors mimicking real human interactions to farm maximum token allocations on upcoming Layer 2 airdrops.',
+        source: 'ZkSync / LayerZero / Base', severity: 'medium', location: 'Testnets / Mainnets',
+        dataVolume: '3.4 TB/day', icon: Target, color: 'text-pink-400', bgColor: 'bg-pink-500/10',
+        starsCost: 4500, gstdReward: 360, platformFee: 90, category: 'AI Autonomy',
+        progress: 89, contributors: 1400, impact: 'Automate massive scale airdrop extraction'
+    }
 ];
 
 const CATEGORIES = ['All', ...Array.from(new Set(ACTIVE_SIGNALS.map(s => s.category)))];
 
 const CATEGORY_COLORS: Record<string, string> = {
-    'Climate': 'text-amber-400 bg-amber-500/10 border-amber-500/20',
-    'Health': 'text-purple-400 bg-purple-500/10 border-purple-500/20',
-    'Humanitarian': 'text-rose-400 bg-rose-500/10 border-rose-500/20',
-    'Food & Water': 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20',
-    'Geophysics': 'text-orange-400 bg-orange-500/10 border-orange-500/20',
-    'Cyber Security': 'text-red-400 bg-red-500/10 border-red-500/20',
-    'Science & Energy': 'text-blue-400 bg-blue-500/10 border-blue-500/20',
-    'Society': 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20',
-    'Economy': 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
-    'Biodiversity': 'text-green-400 bg-green-500/10 border-green-500/20',
+    'MEV & Arbitrage': 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20',
+    'Alpha & Tokens': 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+    'Security': 'text-rose-400 bg-rose-500/10 border-rose-500/20',
+    'DeFi & Yield': 'text-sky-400 bg-sky-500/10 border-sky-500/20',
+    'AI Autonomy': 'text-fuchsia-400 bg-fuchsia-500/10 border-fuchsia-500/20',
 };
 
 const CATEGORY_I18N: Record<string, string> = {
     'All': 'all_signals',
-    'Climate': 'cat_climate',
-    'Health': 'cat_health',
-    'Humanitarian': 'cat_humanitarian',
-    'Food & Water': 'cat_food_water',
-    'Geophysics': 'cat_geophysics',
-    'Cyber Security': 'cat_cyber_security',
-    'Science & Energy': 'cat_science_energy',
-    'Society': 'cat_society',
-    'Economy': 'cat_economy',
-    'Biodiversity': 'cat_biodiversity',
+    'MEV & Arbitrage': 'cat_mev',
+    'Alpha & Tokens': 'cat_alpha',
+    'Security': 'cat_security',
+    'DeFi & Yield': 'cat_defi',
+    'AI Autonomy': 'cat_ai',
 };
 
 const SEVERITY_I18N: Record<string, string> = {
