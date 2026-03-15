@@ -63,6 +63,7 @@ func SetupGrowthRoutes(v1 *gin.RouterGroup, protected *gin.RouterGroup, h *Growt
 	{
 		bonus.GET("/status", h.GetBonusStatus)
 		bonus.POST("/welcome", h.ClaimWelcomeBonus)
+		bonus.POST("/faucet", h.ClaimFaucet) // Daily faucet from chat UI
 	}
 
 	// Agent Bootstrap endpoint moved to onboarding_handler.go to avoid conflicts
