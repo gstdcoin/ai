@@ -89,10 +89,10 @@ func getTokenomics(db *sql.DB) gin.HandlerFunc {
 		db.QueryRowContext(c.Request.Context(),
 			`SELECT COALESCE(SUM(staked_amount), 0) FROM staking_pools WHERE is_active = true`).Scan(&totalStaked)
 
-		// Real burn from token_burns
+		// Real burn from token_burns (exclude fake EMERGENCY_STABILIZATION test data)
 		var realBurned float64
 		db.QueryRowContext(c.Request.Context(),
-			`SELECT COALESCE(SUM(amount), 0) FROM token_burns`).Scan(&realBurned)
+			`SELECT COALESCE(SUM(burn_amount), 0) FROM token_burns WHERE transaction_type != 'EMERGENCY_STABILIZATION'`).Scan(&realBurned)
 		if realBurned > totalBurned {
 			totalBurned = realBurned
 		}
@@ -149,7 +149,7 @@ func getSupplyInfo(db *sql.DB) gin.HandlerFunc {
 
 		var totalBurned float64
 		db.QueryRowContext(c.Request.Context(),
-			`SELECT COALESCE(SUM(amount),0) FROM token_burns`).Scan(&totalBurned)
+			`SELECT COALESCE(SUM(burn_amount),0) FROM token_burns WHERE transaction_type != 'EMERGENCY_STABILIZATION'`).Scan(&totalBurned)
 
 		var totalStaked float64
 		db.QueryRowContext(c.Request.Context(),
@@ -289,8 +289,9 @@ func p2pPayment(db *sql.DB) gin.HandlerFunc {
 		// Record burn
 		if burnAmount > 0 {
 			tx.ExecContext(ctx,
-				`INSERT INTO token_burns (amount, reason, wallet, created_at) VALUES ($1, 'p2p_transfer_burn', $2, NOW())`,
-				burnAmount, req.SenderWallet)
+				`INSERT INTO token_burns (transaction_id, transaction_type, original_amount, burn_amount, burn_address, source_wallet, created_at)
+				 VALUES (gen_random_uuid()::text, 'p2p_transfer_burn', $1, $2, 'BURN', $3, NOW())`,
+				req.Amount, burnAmount, req.SenderWallet)
 		}
 
 		// Record payment
@@ -494,8 +495,9 @@ func unstakePool(db *sql.DB) gin.HandlerFunc {
 		// Burn penalty
 		if penalty > 0 {
 			tx.ExecContext(ctx,
-				`INSERT INTO token_burns (amount, reason, wallet, created_at) VALUES ($1, 'early_unstake_penalty', $2, NOW())`,
-				penalty, req.Wallet)
+				`INSERT INTO token_burns (transaction_id, transaction_type, original_amount, burn_amount, burn_address, source_wallet, created_at)
+				 VALUES (gen_random_uuid()::text, 'early_unstake_penalty', $1, $2, 'BURN', $3, NOW())`,
+				amount, penalty, req.Wallet)
 		}
 
 		tx.Commit()
@@ -1171,7 +1173,7 @@ func getProtocolSummary(db *sql.DB) gin.HandlerFunc {
 		db.QueryRowContext(c.Request.Context(),
 			`SELECT COALESCE(SUM(staked_amount),0) FROM staking_pools WHERE is_active=true`).Scan(&totalStaked)
 		db.QueryRowContext(c.Request.Context(),
-			`SELECT COALESCE(SUM(amount),0) FROM token_burns`).Scan(&totalBurned)
+			`SELECT COALESCE(SUM(burn_amount),0) FROM token_burns WHERE transaction_type != 'EMERGENCY_STABILIZATION'`).Scan(&totalBurned)
 
 		var meshPeers int
 		db.QueryRowContext(c.Request.Context(),
