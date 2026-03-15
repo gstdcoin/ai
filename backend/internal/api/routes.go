@@ -1024,17 +1024,27 @@ func SetupRoutes(
 			}
 			log.Printf("[heartbeat] wallet=%s rows_updated=%d tier=%s score=%.2f", req.WalletAddress, rowsAffected, nodeTier, trustScore)
 
+			// Keepalive accepted — node stays online.
+			// Reward only if >= 55 min since last reward (hourly cap).
 			if hoursSinceLast < 0.9 {
-				// Too soon — less than ~54 minutes since last heartbeat
-				c.JSON(200, gin.H{"reward": 0, "reason": "heartbeat_too_soon", "next_in_minutes": int((1.0 - hoursSinceLast) * 60), "hours_since_last": hoursSinceLast})
+				// Status already updated to 'online' above — keepalive successful.
+				// Just no reward yet.
+				c.JSON(200, gin.H{
+					"reward":           0,
+					"status":           "online",
+					"reason":           "keepalive_ok",
+					"next_reward_in":   int((1.0 - hoursSinceLast) * 60),
+					"hours_since_last": hoursSinceLast,
+					"message":          "Node online. Reward in " + fmt.Sprintf("%d", int((1.0-hoursSinceLast)*60)) + " min.",
+				})
 				return
 			}
 
 			// Calculate reward (server-controlled rates)
-			const uptimeRewardPerHour = 0.01  // 0.01 GSTD per hour uptime
-			const queryRewardPer = 0.0001     // 0.0001 GSTD per query served
-			const maxRewardPerHeartbeat = 0.5 // max 0.5 GSTD per heartbeat
-			const maxDailyPerNode = 10.0      // max 10 GSTD per day
+			const uptimeRewardPerHour = 0.10  // 0.10 GSTD per hour uptime
+			const queryRewardPer = 0.001      // 0.001 GSTD per query served
+			const maxRewardPerHeartbeat = 1.0 // max 1.0 GSTD per heartbeat
+			const maxDailyPerNode = 24.0      // max 24 GSTD per day (1 per hour)
 
 			uptimeReward := uptimeRewardPerHour
 			queryReward := float64(req.QueriesServed) * queryRewardPer
