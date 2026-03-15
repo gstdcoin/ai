@@ -519,6 +519,24 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 		}
 	}
 
+	// ═══ TRACK AI USAGE ═══
+	// Increment ai_requests_count for analytics (always, even for free tier)
+	if h.db != nil && wallet != "" && !strings.HasPrefix(wallet, "anon-") {
+		go func() {
+			today := time.Now().Format("2006-01-02")
+			h.db.ExecContext(context.Background(), `
+				UPDATE users SET 
+					ai_requests_count = COALESCE(ai_requests_count, 0) + 1,
+					ai_daily_count = CASE 
+						WHEN last_ai_request_date = $2::date THEN COALESCE(ai_daily_count, 0) + 1
+						ELSE 1 END,
+					last_ai_request_date = $2::date,
+					updated_at = NOW()
+				WHERE wallet_address = $1
+			`, wallet, today)
+		}()
+	}
+
 	prompt := ""
 	lastUserMsg := ""
 	for _, m := range promptMsgs {

@@ -30,8 +30,8 @@ func NewWelcomeBonusService(db *sql.DB, config *WelcomeBonusConfig) *WelcomeBonu
 	if config == nil {
 		config = &WelcomeBonusConfig{
 			TreasuryWallet: "EQC_TREASURY_WALLET_ADDRESS",
-			WelcomeAmount:  1.0,
-			DailyFaucet:    0.1,
+			WelcomeAmount:  10.0,
+			DailyFaucet:    0.5,
 			AgentBootstrap: 10.0, // Vampire Attack Grant
 		}
 	}
