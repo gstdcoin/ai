@@ -559,8 +559,30 @@ function connectWallet(){
     return;
   }
   wallet=a;localStorage.setItem('gstd_wallet',wallet);closeWallet();updateWalletUI();
-  fetchBalance();
   showToast(t('walletConnected'),'success');
+  // Fetch balance, then auto-claim welcome bonus if available
+  fetchBalance().then(() => tryClaimWelcomeBonus());
+}
+async function tryClaimWelcomeBonus(){
+  if(!wallet) return;
+  try {
+    // Check if welcome bonus available
+    const statusRes = await fetch(BALANCE_API+'?wallet='+encodeURIComponent(wallet));
+    if(!statusRes.ok) return;
+    const status = await statusRes.json();
+    if(!status.welcome_bonus_available || status.welcome_bonus_claimed) return;
+    // Claim it
+    const res = await fetch('https://api.gstdtoken.com/api/v1/bonus/welcome', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({wallet_address: wallet, source: 'chat'})
+    });
+    const data = await res.json();
+    if(data.success && data.amount) {
+      gstdBalance += data.amount;
+      showBalance(gstdBalance);
+      showToast(lang==='ru'?`🎉 Бонус: +${data.amount} GSTD!`:`🎉 Welcome bonus: +${data.amount} GSTD!`,'success');
+    }
+  } catch(e) { /* silent */ }
 }
 
 // ═══ Chat ═════════════════════════════════════════════════════
