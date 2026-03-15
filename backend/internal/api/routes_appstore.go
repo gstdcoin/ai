@@ -147,6 +147,12 @@ func SetupAppStoreRoutes(v1 *gin.RouterGroup, db *sql.DB) {
 		appstore.POST("/apps/:id/stop", stopApp())
 	}
 
+	// Alias: Node OS getRegistry() fetches /api/v1/apps/registry
+	apps := v1.Group("/apps")
+	{
+		apps.GET("/registry", getAppsRegistryForNodes())
+	}
+
 	// Node Dashboard API (like Umbrel's dashboard)
 	node := v1.Group("/node")
 	{
@@ -721,4 +727,38 @@ func formatUptime(d time.Duration) string {
 		return fmt.Sprintf("%dh %dm", hours, minutes)
 	}
 	return fmt.Sprintf("%dm", minutes)
+}
+
+// getAppsRegistryForNodes returns the canonical app list in the format
+// expected by gstdbot's AppManager.getRegistry() — { apps: [...] }
+func getAppsRegistryForNodes() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		catalog := getGSTDAppCatalog()
+		type nodeApp struct {
+			ID          string  `json:"id"`
+			Name        string  `json:"name"`
+			Version     string  `json:"version"`
+			Description string  `json:"description"`
+			Icon        string  `json:"icon"`
+			Category    string  `json:"category"`
+			Port        int     `json:"port"`
+			GSTDCost    float64 `json:"gstd_cost"`
+			Premium     bool    `json:"premium,omitempty"`
+		}
+		apps := make([]nodeApp, 0, len(catalog))
+		for _, a := range catalog {
+			apps = append(apps, nodeApp{
+				ID:          a.ID,
+				Name:        a.Name,
+				Version:     a.Version,
+				Description: a.Tagline,
+				Icon:        a.Icon,
+				Category:    a.Category,
+				Port:        a.Port,
+				GSTDCost:    a.GSTDReward,
+				Premium:     a.RequiresGPU,
+			})
+		}
+		c.JSON(200, gin.H{"apps": apps, "total": len(apps)})
+	}
 }

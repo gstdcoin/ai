@@ -582,7 +582,7 @@ func SetupRoutes(
 			sqlDB := db.(*sql.DB)
 			// Node counts
 			var totalNodes, activeNodes int
-			_ = sqlDB.QueryRowContext(c.Request.Context(), `SELECT COUNT(*), COUNT(*) FILTER (WHERE status = 'online' AND last_seen > NOW() - INTERVAL '5 minutes') FROM nodes`).Scan(&totalNodes, &activeNodes)
+			_ = sqlDB.QueryRowContext(c.Request.Context(), `SELECT COUNT(*), COUNT(*) FILTER (WHERE status = 'online' AND last_seen > NOW() - INTERVAL '70 minutes') FROM nodes`).Scan(&totalNodes, &activeNodes)
 			// Task counts
 			var totalTasks, completed, active, queued int
 			_ = sqlDB.QueryRowContext(c.Request.Context(), `SELECT COUNT(*), COUNT(*) FILTER (WHERE status = 'completed'), COUNT(*) FILTER (WHERE status = 'processing'), COUNT(*) FILTER (WHERE status = 'pending') FROM tasks`).Scan(&totalTasks, &completed, &active, &queued)

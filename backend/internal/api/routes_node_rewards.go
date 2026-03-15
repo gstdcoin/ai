@@ -228,7 +228,7 @@ func getMyNodeRewards(db *sql.DB) gin.HandlerFunc {
 		var lastSeen *time.Time
 		db.QueryRowContext(ctx,
 			`SELECT last_seen FROM nodes WHERE id = $1`, nodeAddr).Scan(&lastSeen)
-		isOnline := lastSeen != nil && time.Since(*lastSeen) < 10*time.Minute
+		isOnline := lastSeen != nil && time.Since(*lastSeen) < 70*time.Minute
 
 		response := gin.H{
 			"registered":    true,
@@ -362,7 +362,7 @@ func getLeaderboard(db *sql.DB) gin.HandlerFunc {
 				}
 			}
 
-			online := lastSeen != nil && time.Since(*lastSeen) < 10*time.Minute
+			online := lastSeen != nil && time.Since(*lastSeen) < 70*time.Minute
 
 			leaders = append(leaders, LeaderEntry{
 				Rank: rank, Node: short, Tier: tierName, TierIcon: icon,
@@ -393,7 +393,7 @@ func getNodeNetworkStats(db *sql.DB) gin.HandlerFunc {
 		var totalUptime, totalRewards, todayRewards float64
 
 		db.QueryRowContext(ctx, `SELECT COUNT(*) FROM nodes`).Scan(&totalNodes)
-		db.QueryRowContext(ctx, `SELECT COUNT(*) FROM nodes WHERE last_seen > NOW() - INTERVAL '10 min'`).Scan(&onlineNodes)
+		db.QueryRowContext(ctx, `SELECT COUNT(*) FROM nodes WHERE last_seen > NOW() - INTERVAL '70 minutes'`).Scan(&onlineNodes)
 		db.QueryRowContext(ctx, `SELECT COALESCE(SUM(total_tasks_completed), 0) FROM node_tiers`).Scan(&totalTasks)
 		db.QueryRowContext(ctx, `SELECT COALESCE(SUM(total_uptime_hours), 0) FROM node_tiers`).Scan(&totalUptime)
 		db.QueryRowContext(ctx, `SELECT COALESCE(SUM(amount), 0) FROM node_rewards_ledger`).Scan(&totalRewards)
