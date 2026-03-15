@@ -124,6 +124,10 @@
     .g-btn--outline-brand{background:transparent;border:1px solid var(--g-color-brand);color:var(--g-color-brand)}
     .g-btn--outline-brand:hover{background:var(--g-color-info-bg);border-color:var(--g-color-brand-hover)}
     .g-btn--outline-brand.connected{border-color:var(--g-color-positive);color:var(--g-color-positive)}
+    .balance-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border-radius:var(--g-border-radius-pill);background:var(--g-color-info-bg);color:var(--g-color-brand);font:var(--g-text-caption-1);font-weight:600;border:1px solid rgba(255,215,0,.15);animation:g-fadeIn var(--g-transition-slow)}
+    .cost-info{font:var(--g-text-caption-2);color:var(--g-color-text-hint);text-align:center;margin-top:2px}
+    .cost-info .cost-amount{color:var(--g-color-brand);font-weight:600}
+    .deduction-toast{background:var(--g-color-info-bg)!important;color:var(--g-color-brand)!important;border:1px solid rgba(255,215,0,.2)!important}
     .g-btn--flat{background:transparent;border:1px solid transparent;color:var(--g-color-text-secondary)}
     .g-btn--flat:hover{background:var(--g-color-base-float-elevated);color:var(--g-color-text-primary)}
     .g-btn--flat.active{background:var(--g-color-base-float-heavy);color:var(--g-color-text-primary);border-color:var(--g-color-accent)}
@@ -288,6 +292,7 @@
       <button class="g-btn g-btn--outline g-btn--s" onclick="newChat()" id="newChatBtn">+ <span data-i18n="newChat">New Chat</span></button>
     </div>
     <div class="header-right">
+      <span class="balance-badge" id="balanceBadge" style="display:none">🪙 <span id="balanceAmount">0</span> GSTD</span>
       <button class="g-btn g-btn--flat g-btn--s" id="langEN" onclick="setLang('en')">EN</button>
       <button class="g-btn g-btn--flat g-btn--s" id="langRU" onclick="setLang('ru')">RU</button>
       <button class="g-btn g-btn--outline-brand" id="walletBtn" onclick="toggleWallet()">🔗 Connect Wallet</button>
@@ -330,6 +335,7 @@
       <button class="g-btn g-btn--action g-btn--icon" id="sendBtn" onclick="sendMessage()" disabled>➤</button>
     </div>
     <div class="footer-info">GSTD Sovereign AI · Powered by Groq · <span id="modelLabel">Llama 3.3 70B</span></div>
+    <div class="cost-info" id="costInfo" style="display:none">💰 Cost: <span class="cost-amount" id="costAmount">Free</span></div>
   </div>
 </div>
 
@@ -337,8 +343,8 @@
 <div class="g-modal-overlay" id="walletModal">
   <div class="g-modal">
     <h2>🔗 <span data-i18n="connectWallet">Connect GSTD Wallet</span></h2>
-    <p data-i18n="walletDesc">Enter your GSTD wallet address to unlock Pro models (GPT-OSS 120B, Llama 4, Kimi K2).</p>
-    <input type="text" id="walletInput" data-i18n-placeholder="walletPlaceholder" placeholder="0x... or gstd1..." autocomplete="off"/>
+    <p data-i18n="walletDesc">Enter your TON wallet address to unlock Pro models and pay with GSTD tokens.</p>
+    <input type="text" id="walletInput" data-i18n-placeholder="walletPlaceholder" placeholder="EQ... or UQ... (TON wallet)" autocomplete="off"/>
     <div class="g-modal-actions">
       <button class="g-btn g-btn--outline g-btn--l" onclick="closeWallet()" data-i18n="cancel">Cancel</button>
       <button class="g-btn g-btn--action g-btn--l" onclick="connectWallet()" data-i18n="connect">Connect</button>
@@ -353,8 +359,8 @@ const i18n = {
     newChat:'New Chat', welcomeText:'Decentralized AI chat powered by Groq. Free models available instantly. Connect your GSTD wallet for advanced Pro models.',
     freeModels:'Free Models', proModels:'Pro Models', walletRequired:'wallet',
     inputPlaceholder:'Type a message...', connectWallet:'Connect GSTD Wallet',
-    walletDesc:'Enter your GSTD wallet address to unlock Pro models (GPT-OSS 120B, Llama 4, Kimi K2).',
-    walletPlaceholder:'0x... or gstd1...', cancel:'Cancel', connect:'Connect',
+    walletDesc:'Enter your TON wallet address to unlock Pro models and pay with GSTD tokens.',
+    walletPlaceholder:'EQ... or UQ... (TON wallet)', cancel:'Cancel', connect:'Connect',
     walletConnected:'Wallet connected! Pro models unlocked.', walletDisconnected:'Wallet disconnected',
     walletInvalid:'Enter a valid wallet address', proRequiresWallet:'Connect wallet to use Pro models',
     connectWalletBtn:'🔗 Connect Wallet',
@@ -370,8 +376,8 @@ const i18n = {
     newChat:'Новый чат', welcomeText:'Децентрализованный ИИ-чат на базе Groq. Бесплатные модели доступны сразу. Подключите кошелёк GSTD для продвинутых моделей.',
     freeModels:'Бесплатные модели', proModels:'Pro модели', walletRequired:'кошелёк',
     inputPlaceholder:'Напишите сообщение...', connectWallet:'Подключить кошелёк GSTD',
-    walletDesc:'Введите адрес вашего GSTD кошелька для доступа к Pro моделям (GPT-OSS 120B, Llama 4, Kimi K2).',
-    walletPlaceholder:'0x... или gstd1...', cancel:'Отмена', connect:'Подключить',
+    walletDesc:'Введите адрес TON кошелька для доступа к Pro моделям и оплаты токенами GSTD.',
+    walletPlaceholder:'EQ... или UQ... (TON кошелёк)', cancel:'Отмена', connect:'Подключить',
     walletConnected:'Кошелёк подключён! Pro модели доступны.', walletDisconnected:'Кошелёк отключён',
     walletInvalid:'Введите корректный адрес кошелька', proRequiresWallet:'Подключите кошелёк для Pro моделей',
     connectWalletBtn:'🔗 Кошелёк',
@@ -403,6 +409,7 @@ function applyLang() {
 // ═══ Config ═══════════════════════════════════════════════════
 // Server-side API: KB lookup + factuality + <think> stripping + SmartMix
 const CHAT_API='https://app.gstdtoken.com/api/chat';
+const BALANCE_API='https://api.gstdtoken.com/api/v1/bonus/status';
 const MODELS=[
   {id:'compound',name:'GSTD Compound AI',tier:'free'},
   {id:'llama-3.3-70b',name:'Llama 3.3 70B',tier:'free'},
@@ -421,10 +428,52 @@ const TIERS=[
 ];
 let selectedTier='free';
 let messages=[], wallet=localStorage.getItem('gstd_wallet')||'', isStreaming=false;
+let gstdBalance=0;
+
+// ═══ Balance ══════════════════════════════════════════════════
+async function fetchBalance() {
+  if(!wallet) { hideBalance(); return; }
+  try {
+    const res = await fetch(BALANCE_API+'?wallet='+encodeURIComponent(wallet));
+    if(!res.ok) return;
+    const data = await res.json();
+    gstdBalance = data.current_balance || 0;
+    showBalance(gstdBalance);
+  } catch(e) { console.log('Balance fetch failed:', e); }
+}
+function showBalance(amount) {
+  const badge = document.getElementById('balanceBadge');
+  const amountEl = document.getElementById('balanceAmount');
+  if(badge && amountEl) {
+    amountEl.textContent = amount.toFixed(2);
+    badge.style.display = 'inline-flex';
+  }
+  updateCostInfo();
+}
+function hideBalance() {
+  const badge = document.getElementById('balanceBadge');
+  if(badge) badge.style.display = 'none';
+  const costInfo = document.getElementById('costInfo');
+  if(costInfo) costInfo.style.display = 'none';
+}
+function updateCostInfo() {
+  const tier = TIERS.find(ti => ti.id === selectedTier) || TIERS[0];
+  const costEl = document.getElementById('costInfo');
+  const amountEl = document.getElementById('costAmount');
+  if(!costEl || !amountEl) return;
+  if(tier.cost <= 0) {
+    costEl.style.display = 'block';
+    amountEl.textContent = 'Free';
+  } else {
+    costEl.style.display = 'block';
+    amountEl.textContent = tier.cost.toFixed(2) + ' GSTD/msg';
+  }
+}
 
 // ═══ Init ═════════════════════════════════════════════════════
 function init() { setLang(lang); updateWalletUI();
   document.getElementById('input').addEventListener('input',()=>{document.getElementById('sendBtn').disabled=!document.getElementById('input').value.trim();});
+  if(wallet) fetchBalance();
 }
 function buildModelSelect() {
   const sel=document.getElementById('modelSelect'); sel.innerHTML='';
@@ -462,11 +511,22 @@ function updateWalletUI() {
   buildModelSelect();
 }
 function toggleWallet() {
-  if(wallet){wallet='';localStorage.removeItem('gstd_wallet');updateWalletUI();showToast(t('walletDisconnected'),'success');document.getElementById('modelSelect').value=MODELS[0].id;document.getElementById('modelLabel').textContent=MODELS[0].name;}
+  if(wallet){wallet='';localStorage.removeItem('gstd_wallet');updateWalletUI();hideBalance();showToast(t('walletDisconnected'),'success');document.getElementById('modelSelect').value=MODELS[0].id;document.getElementById('modelLabel').textContent=MODELS[0].name;}
   else{document.getElementById('walletModal').classList.add('active');setTimeout(()=>document.getElementById('walletInput').focus(),100);}
 }
 function closeWallet(){document.getElementById('walletModal').classList.remove('active');}
-function connectWallet(){const a=document.getElementById('walletInput').value.trim();if(!a||a.length<10){showToast(t('walletInvalid'),'error');return;}wallet=a;localStorage.setItem('gstd_wallet',wallet);closeWallet();updateWalletUI();showToast(t('walletConnected'),'success');}
+function connectWallet(){
+  const a=document.getElementById('walletInput').value.trim();
+  // Validate TON wallet format
+  const isValidTON = (a.startsWith('EQ') || a.startsWith('UQ') || a.startsWith('kQ') || a.startsWith('0Q') || a.startsWith('0:')) && a.length >= 46;
+  if(!a || !isValidTON){
+    showToast(lang==='ru'?'Введите валидный TON адрес (EQ.../UQ...)':'Enter a valid TON wallet (EQ.../UQ...)','error');
+    return;
+  }
+  wallet=a;localStorage.setItem('gstd_wallet',wallet);closeWallet();updateWalletUI();
+  fetchBalance();
+  showToast(t('walletConnected'),'success');
+}
 
 // ═══ Chat ═════════════════════════════════════════════════════
 function newChat(){messages=[];const area=document.getElementById('chatArea');area.innerHTML='';location.reload();}
@@ -478,11 +538,14 @@ function sendQuick(text){document.getElementById('input').value=text;document.ge
 function parseSSEBuffer(buffer, onData) {
   const lines=buffer.split('\n');
   const remainder=lines.pop();
+  let currentEvent = 'delta';
   for(const line of lines){
+    if(line.startsWith('event: ')) { currentEvent = line.slice(7).trim(); continue; }
     if(!line.startsWith('data: ')) continue;
     const payload=line.slice(6).trim();
     if(!payload||payload==='[DONE]') continue;
-    try{ onData(JSON.parse(payload)); }catch{ /* skip malformed SSE */ }
+    try{ const parsed = JSON.parse(payload); parsed._event = currentEvent; onData(parsed); }catch{ /* skip malformed SSE */ }
+    currentEvent = 'delta'; // reset after processing
   }
   return remainder;
 }
@@ -495,8 +558,13 @@ async function streamResponse(res, contentEl) {
     if(done) break;
     buffer+=decoder.decode(value,{stream:true});
     buffer=parseSSEBuffer(buffer, data=>{
+      if(data._event === 'done' || data._event === 'meta') {
+        // Capture metadata (tier, cost, badge, etc.)
+        meta = {...(meta||{}), ...data};
+      }
       if(data.content){fullText+=data.content;contentEl.textContent=fullText;scrollToBottom();}
-      if(data.tier) meta=data;
+      if(data.tier && !meta) meta=data;
+      if(data.cost_gstd !== undefined && meta) meta.cost = data.cost_gstd;
     });
   }
   return {fullText, meta};
@@ -528,7 +596,14 @@ async function sendMessage() {
     const elapsed=((Date.now()-startTime)/1000).toFixed(1);
     const tokens=fullText.split(/\s+/).length;
     const tierBadge=meta?.badge||tier.badge;
-    metaEl.textContent=`${tierBadge} ${meta?.tierName||tier.name} · ${elapsed}s · ~${tokens} tokens`;
+    let metaStr=`${tierBadge} ${meta?.tierName||tier.name} · ${elapsed}s · ~${tokens} tokens`;
+    // Show deduction info if any
+    if(meta?.cost && meta.cost > 0) {
+      metaStr += ` · -${meta.cost.toFixed(4)} GSTD`;
+      gstdBalance = Math.max(0, gstdBalance - meta.cost);
+      showBalance(gstdBalance);
+    }
+    metaEl.textContent=metaStr;
     messages.push({role:'assistant',content:fullText});
   } catch(err){contentEl.textContent=t('errorPrefix')+err.message;contentEl.style.color='var(--g-color-danger)';}
   isStreaming=false;document.getElementById('sendBtn').disabled=!input.value.trim();
