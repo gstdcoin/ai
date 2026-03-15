@@ -87,6 +87,10 @@ func SetupGrowthRoutes(v1 *gin.RouterGroup, protected *gin.RouterGroup, h *Growt
 
 	// Referral Leaderboard (public)
 	v1.GET("/referrals/leaderboard", h.GetReferralLeaderboard)
+	// Public referral code lookup (for chat UI share button)
+	v1.GET("/referrals/code", h.GetReferralCode)
+	// Public referral tracking (apply ref code on wallet connect)
+	v1.POST("/referrals/track", h.TrackReferral)
 
 	// ========================================================================
 	// PROTECTED ROUTES (require session)
@@ -550,7 +554,70 @@ func (h *GrowthSystemHandler) GetReferralLeaderboard(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"leaderboard": leaderboard})
 }
 
-// ============================================================================
+// GetReferralCode returns the referral code for a wallet (public, for chat UI share button)
+func (h *GrowthSystemHandler) GetReferralCode(c *gin.Context) {
+	wallet := c.Query("wallet")
+	if wallet == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "wallet parameter required"})
+		return
+	}
+	if h.db == nil {
+		c.JSON(http.StatusOK, gin.H{"referral_code": "", "share_link": ""})
+		return
+	}
+	var code string
+	err := h.db.QueryRowContext(c.Request.Context(),
+		"SELECT COALESCE(referral_code, '') FROM users WHERE wallet_address = $1", wallet).Scan(&code)
+	if err != nil || code == "" {
+		c.JSON(http.StatusOK, gin.H{"referral_code": "", "share_link": ""})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"referral_code": code,
+		"share_link":    "https://chat.gstdtoken.com/?ref=" + code,
+	})
+}
+
+// TrackReferral applies a referral code to a user on wallet connect (public)
+func (h *GrowthSystemHandler) TrackReferral(c *gin.Context) {
+	var req struct {
+		WalletAddress string `json:"wallet_address"`
+		ReferralCode  string `json:"referral_code"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || req.WalletAddress == "" || req.ReferralCode == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "wallet_address and referral_code required"})
+		return
+	}
+	if h.referral == nil || h.db == nil {
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": "Referral service not available"})
+		return
+	}
+	// Check if user already has a referrer
+	var existing string
+	h.db.QueryRowContext(c.Request.Context(),
+		"SELECT COALESCE(referred_by, '') FROM users WHERE wallet_address = $1", req.WalletAddress).Scan(&existing)
+	if existing != "" {
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": "Already has referrer"})
+		return
+	}
+	// Find referrer wallet
+	var referrerWallet string
+	err := h.db.QueryRowContext(c.Request.Context(),
+		"SELECT wallet_address FROM users WHERE referral_code = $1", req.ReferralCode).Scan(&referrerWallet)
+	if err != nil || referrerWallet == "" || referrerWallet == req.WalletAddress {
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": "Invalid referral code"})
+		return
+	}
+	// Apply referral
+	_, err = h.db.ExecContext(c.Request.Context(),
+		"UPDATE users SET referred_by = $1 WHERE wallet_address = $2 AND (referred_by IS NULL OR referred_by = '')",
+		referrerWallet, req.WalletAddress)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": "Failed to apply"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Referral applied!", "referrer": referrerWallet[:6] + "..."})
+}
 // AGENT MARKETPLACE HANDLERS
 // ============================================================================
 

@@ -571,15 +571,41 @@ function toggleWallet() {
   if(wallet){wallet='';localStorage.removeItem('gstd_wallet');updateWalletUI();hideBalance();showToast(t('walletDisconnected'),'success');document.getElementById('modelSelect').value=MODELS[0].id;document.getElementById('modelLabel').textContent=MODELS[0].name;}
   else{document.getElementById('walletModal').classList.add('active');setTimeout(()=>document.getElementById('walletInput').focus(),100);}
 }
-function shareReferral(){
-  const code = wallet ? wallet.slice(-8) : '';
-  const link = `https://chat.gstdtoken.com/?ref=${code}`;
+async function shareReferral(){
+  // Get real referral code from API
+  let link = `https://chat.gstdtoken.com/`;
+  try {
+    const res = await fetch(`https://api.gstdtoken.com/api/v1/referrals/code?wallet=${encodeURIComponent(wallet)}`);
+    if(res.ok) {
+      const data = await res.json();
+      if(data.share_link) link = data.share_link;
+      else if(data.referral_code) link += `?ref=${data.referral_code}`;
+    }
+  } catch(e) { /* fallback to no-ref link */ }
   if(navigator.share){
     navigator.share({title:'GSTD Sovereign AI',text:lang==='ru'?'Попробуй децентрализованный AI!':'Try decentralized AI!',url:link}).catch(()=>{});
   } else {
     navigator.clipboard.writeText(link);
     showToast(lang==='ru'?'Ссылка скопирована!':'Link copied!','success');
   }
+}
+function getRefFromURL(){
+  const params = new URLSearchParams(window.location.search);
+  return params.get('ref') || '';
+}
+async function applyReferralFromURL(){
+  const ref = getRefFromURL();
+  if(!ref || !wallet) return;
+  try {
+    const res = await fetch('https://api.gstdtoken.com/api/v1/referrals/track', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({wallet_address: wallet, referral_code: ref})
+    });
+    const data = await res.json();
+    if(data.success) {
+      showToast(lang==='ru'?'🤝 Реферал активирован!':'🤝 Referral applied!','success');
+    }
+  } catch(e) { /* silent */ }
 }
 async function fetchNetStats(){
   try {
@@ -604,8 +630,8 @@ function connectWallet(){
   }
   wallet=a;localStorage.setItem('gstd_wallet',wallet);closeWallet();updateWalletUI();
   showToast(t('walletConnected'),'success');
-  // Fetch balance, then auto-claim welcome bonus if available
-  fetchBalance().then(() => tryClaimWelcomeBonus());
+  // Fetch balance, then auto-claim welcome bonus + apply referral
+  fetchBalance().then(() => { tryClaimWelcomeBonus(); applyReferralFromURL(); });
 }
 async function tryClaimWelcomeBonus(){
   if(!wallet) return;
