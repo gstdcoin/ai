@@ -336,34 +336,20 @@ func getSwarmStats(db *sql.DB) gin.HandlerFunc {
 			tasksProcessed24h = 0
 		}
 
-		// Autonomous Ecosystem Modeling: use deterministic seeds if platform is fresh
-		// This provides a consistent "Day 0" experience without blatant fake numbers
-		if activeAgents < 100 {
-			// Calculate a base based on timestamp to simulate organic growth
-			now := time.Now().Unix()
-			seed := (now / 3600) % 500 // hourly seed
-			activeAgents = 14250 + int(seed)
-		}
-		if tasksProcessed24h < 10000 {
-			now := time.Now().Unix()
-			seed := (now / 600) % 1000 // 10-min seed
-			tasksProcessed24h = 3450000 + int(seed)*100
-		}
+		// Autonomous Ecosystem Modeling: show real numbers
+		// No faking - transparency is key for trust
 
 		var totalGstdLocked float64
 		err = db.QueryRow(`SELECT COALESCE(SUM(locked_in_escrow), 0) FROM users`).Scan(&totalGstdLocked)
 		if err != nil {
 			totalGstdLocked = 0
 		}
-		if totalGstdLocked < 100000 {
-			totalGstdLocked = 52000000.0 + (float64(activeAgents) * 1.5)
-		}
 
-		// Mocked Omni-Chain routes financials
+		// Omni-Chain routes — real data (bridge not yet live)
 		omniChainRoutes := []map[string]interface{}{
-			{"chain": "TON", "volume": 1540000 + (activeAgents * 10), "tvl": 45000000 + totalGstdLocked},
-			{"chain": "Solana", "volume": 820000 + (activeAgents * 2), "tvl": 4500000},
-			{"chain": "XRPL", "volume": 450000 + activeAgents, "tvl": 2500000},
+			{"chain": "TON", "volume": 0, "tvl": totalGstdLocked},
+			{"chain": "Solana", "volume": 0, "tvl": 0},
+			{"chain": "XRPL", "volume": 0, "tvl": 0},
 		}
 
 		c.JSON(200, gin.H{
