@@ -518,7 +518,6 @@ export default function BridgePage() {
           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 20, padding: 4, borderRadius: 12, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
             {([
               { id: 'swap' as const, label: t('bridge_new_swap'), icon: <ArrowRightLeft size={14} /> },
-              { id: 'orders' as const, label: t('bridge_order_book'), icon: <BookOpen size={14} /> },
               { id: 'my' as const, label: t('bridge_my_orders'), icon: <Users size={14} /> },
             ]).map(t => (
               <button key={t.id} onClick={() => setTab(t.id)} style={{
@@ -591,7 +590,7 @@ export default function BridgePage() {
               {/* Info */}
               <div style={{ marginTop: 14, padding: '10px 12px', borderRadius: 10, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>
-                  <span>{t('bridge_fee')}</span><span style={{ color: '#34d399', fontWeight: 700 }}>0% (P2P)</span>
+                  <span>{t('bridge_fee')}</span><span style={{ color: '#34d399', fontWeight: 700 }}>0% (Automated)</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>
                   <span>{t('bridge_model')}</span><span>{t('bridge_model_value')}</span>
@@ -667,69 +666,7 @@ export default function BridgePage() {
             </div>
           )}
 
-          {/* ── TAB: Order Book ── */}
-          {tab === 'orders' && (
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.3)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                {t('bridge_open_orders')} ({orders.length})
-              </div>
-              {orders.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '40px 20px', borderRadius: 16, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                  <BookOpen size={32} style={{ color: 'rgba(255,255,255,0.15)', marginBottom: 12 }} />
-                  <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>{t('bridge_no_orders')}</p>
-                  <button onClick={() => setTab('swap')} style={{
-                    marginTop: 12, padding: '8px 16px', borderRadius: 8, background: 'rgba(139,92,246,0.1)',
-                    border: '1px solid rgba(139,92,246,0.2)', color: '#a78bfa', fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                  }}>{t('bridge_create_order')}</button>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {orders.map(o => (
-                    <div key={o.id} style={{
-                      padding: '14px 16px', borderRadius: 14,
-                      background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                          <div style={{ textAlign: 'center' }}>
-                            <span style={{ fontSize: 18 }}>{CHAINS.find(c => c.id === o.source_chain)?.icon}</span>
-                            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)' }}>{o.source_chain}</div>
-                          </div>
-                          <ArrowRight size={14} style={{ color: 'rgba(255,255,255,0.2)' }} />
-                          <div style={{ textAlign: 'center' }}>
-                            <span style={{ fontSize: 18 }}>{CHAINS.find(c => c.id === o.dest_chain)?.icon}</span>
-                            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)' }}>{o.dest_chain}</div>
-                          </div>
-                        </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: 15, fontWeight: 700, color: 'white' }}>{o.amount.toLocaleString()} GSTD</div>
-                          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>{o.wallet ? shortAddr(o.wallet) : ''}</div>
-                        </div>
-                      </div>
-                      {/* Take Order button */}
-                      {isWalletConnected && (
-                        <button onClick={() => handleTakeOrder(o)}
-                          style={{
-                            width: '100%', marginTop: 10, padding: '8px 14px', borderRadius: 8,
-                            background: 'linear-gradient(135deg, rgba(16,185,129,0.1), rgba(6,182,212,0.1))',
-                            border: '1px solid rgba(16,185,129,0.2)',
-                            color: '#34d399', fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                            transition: 'all 0.2s',
-                          }}
-                          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(16,185,129,0.15)'; }}
-                          onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(16,185,129,0.1), rgba(6,182,212,0.1))'; }}
-                        >
-                          <ArrowRightLeft size={12} />
-                          {t('bridge_take_order', { defaultValue: `Take Order — Send ${o.amount} GSTD on ${o.dest_chain}, Receive on ${o.source_chain}` })}
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+
 
           {/* ── TAB: My Orders ── */}
           {tab === 'my' && (
