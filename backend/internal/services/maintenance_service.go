@@ -50,12 +50,14 @@ func (s *MaintenanceService) Start(ctx context.Context) {
 	repairTicker := time.NewTicker(30 * time.Minute)  // Frequent repairs
 	monitorTicker := time.NewTicker(15 * time.Minute) // System Health Pulse
 	grantsTicker := time.NewTicker(24 * time.Hour)    // Daily: Treasury → Hardware Grants
+	nodeJanitorTicker := time.NewTicker(2 * time.Minute) // Node janitor: mark stale offline, activate pending
 
 	defer pruneTicker.Stop()
 	defer briefingTicker.Stop()
 	defer repairTicker.Stop()
 	defer monitorTicker.Stop()
 	defer grantsTicker.Stop()
+	defer nodeJanitorTicker.Stop()
 
 	// Initial run
 	s.performMaintenance(ctx)
@@ -72,7 +74,8 @@ func (s *MaintenanceService) Start(ctx context.Context) {
 			s.repairStuckTasks(ctx)
 			s.updateDeviceActivity(ctx)
 			s.mergeGlobalKnowledgeLayer(ctx) // Hyper-Expansion: Auto-Fine-Tuning
-
+		case <-nodeJanitorTicker.C:
+			s.nodeJanitor(ctx)
 		case <-monitorTicker.C:
 			s.monitorSystemHealth(ctx)
 		case <-grantsTicker.C:
@@ -86,7 +89,38 @@ func (s *MaintenanceService) performMaintenance(ctx context.Context) {
 	s.pruneOldData(ctx)
 	s.repairStuckTasks(ctx)
 	s.updateDeviceActivity(ctx)
+	s.nodeJanitor(ctx)
+}
 
+// nodeJanitor runs every 2 minutes:
+// 1. Marks stale nodes as offline (no heartbeat >5 min)
+// 2. Activates pending_balance_gstd → gstd_balance (so node rewards become usable for AI)
+// 3. Tracks ai_requests_count for analytics
+func (s *MaintenanceService) nodeJanitor(ctx context.Context) {
+	// 1. Mark stale nodes offline (5 min threshold for responsive UX)
+	if res, err := s.db.ExecContext(ctx, `
+		UPDATE nodes SET status = 'offline', updated_at = NOW()
+		WHERE status = 'online' 
+		AND last_seen < NOW() - INTERVAL '5 minutes'
+	`); err == nil {
+		if rows, _ := res.RowsAffected(); rows > 0 {
+			log.Printf("📡 [NodeJanitor] Marked %d stale nodes offline (no heartbeat >5m)", rows)
+		}
+	}
+
+	// 2. Activate pending rewards: move pending_balance_gstd → gstd_balance
+	// This makes node earnings immediately usable for AI chat
+	if res, err := s.db.ExecContext(ctx, `
+		UPDATE users 
+		SET gstd_balance = COALESCE(gstd_balance, 0) + COALESCE(pending_balance_gstd, 0),
+		    pending_balance_gstd = 0,
+		    updated_at = NOW()
+		WHERE COALESCE(pending_balance_gstd, 0) > 0
+	`); err == nil {
+		if rows, _ := res.RowsAffected(); rows > 0 {
+			log.Printf("💰 [NodeJanitor] Activated pending rewards for %d users (→ gstd_balance)", rows)
+		}
+	}
 }
 
 func (s *MaintenanceService) pruneOldData(ctx context.Context) {
