@@ -128,6 +128,12 @@
     .faucet-btn{font:var(--g-text-caption-1);font-weight:600;padding:2px 10px;border-radius:var(--g-border-radius-pill);background:var(--g-color-positive-bg);color:var(--g-color-positive);border:1px solid rgba(52,211,153,.2);cursor:pointer;transition:all var(--g-transition-fast);font-family:'Inter',system-ui,sans-serif}
     .faucet-btn:hover{background:var(--g-color-positive);color:#030014;border-color:var(--g-color-positive)}
     .faucet-btn:disabled{opacity:.4;cursor:not-allowed}
+    .share-btn{font:var(--g-text-caption-1);font-weight:600;padding:2px 10px;border-radius:var(--g-border-radius-pill);background:linear-gradient(135deg,rgba(139,92,246,.08),rgba(139,92,246,.04));color:#a78bfa;border:1px solid rgba(139,92,246,.2);cursor:pointer;transition:all var(--g-transition-fast);font-family:'Inter',system-ui,sans-serif}
+    .share-btn:hover{background:rgba(139,92,246,.15);transform:scale(1.05)}
+    .net-stats{display:flex;gap:20px;justify-content:center;margin:16px 0 8px;flex-wrap:wrap}
+    .net-stat{display:flex;flex-direction:column;align-items:center;gap:2px}
+    .net-stat-val{font-size:18px;font-weight:800;background:linear-gradient(135deg,var(--g-color-brand),#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .net-stat-label{font-size:9px;color:var(--g-color-text-hint);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
     .cost-info{font:var(--g-text-caption-2);color:var(--g-color-text-hint);text-align:center;margin-top:2px}
     .cost-info .cost-amount{color:var(--g-color-brand);font-weight:600}
     .deduction-toast{background:var(--g-color-info-bg)!important;color:var(--g-color-brand)!important;border:1px solid rgba(255,215,0,.2)!important}
@@ -297,6 +303,7 @@
     <div class="header-right">
       <span class="balance-badge" id="balanceBadge" style="display:none">🪙 <span id="balanceAmount">0</span> GSTD</span>
       <button class="faucet-btn" id="faucetBtn" style="display:none" onclick="claimFaucet()">🎁 Daily</button>
+      <button class="share-btn" id="shareBtn" style="display:none" onclick="shareReferral()">📤 Share</button>
       <button class="g-btn g-btn--flat g-btn--s" id="langEN" onclick="setLang('en')">EN</button>
       <button class="g-btn g-btn--flat g-btn--s" id="langRU" onclick="setLang('ru')">RU</button>
       <button class="g-btn g-btn--outline-brand" id="walletBtn" onclick="toggleWallet()">🔗 Connect Wallet</button>
@@ -327,6 +334,12 @@
             <li>Kimi K2</li>
           </ul>
         </div>
+      </div>
+      <div class="net-stats" id="netStats">
+        <div class="net-stat"><span class="net-stat-val" id="netUsers">—</span><span class="net-stat-label">Users</span></div>
+        <div class="net-stat"><span class="net-stat-val" id="netNodes">—</span><span class="net-stat-label">Nodes</span></div>
+        <div class="net-stat"><span class="net-stat-val" id="netTasks">—</span><span class="net-stat-label">Tasks</span></div>
+        <div class="net-stat"><span class="net-stat-val" id="netPrice">—</span><span class="net-stat-label">GSTD Price</span></div>
       </div>
       <div class="quick-prompts" id="quickPrompts"></div>
     </div>
@@ -509,6 +522,7 @@ function updateCostInfo() {
 function init() { setLang(lang); updateWalletUI();
   document.getElementById('input').addEventListener('input',()=>{document.getElementById('sendBtn').disabled=!document.getElementById('input').value.trim();});
   if(wallet) fetchBalance();
+  fetchNetStats();
 }
 function buildModelSelect() {
   const sel=document.getElementById('modelSelect'); sel.innerHTML='';
@@ -541,13 +555,48 @@ function buildQuickPrompts() {
 // ═══ Wallet ═══════════════════════════════════════════════════
 function updateWalletUI() {
   const btn=document.getElementById('walletBtn');
-  if(wallet){btn.textContent='✓ '+wallet.slice(0,6)+'...'+wallet.slice(-4);btn.classList.add('connected');}
-  else{btn.textContent=t('connectWalletBtn');btn.classList.remove('connected');}
+  const shareBtn=document.getElementById('shareBtn');
+  if(wallet){
+    btn.textContent='✓ '+wallet.slice(0,6)+'...'+wallet.slice(-4);
+    btn.classList.add('connected');
+    if(shareBtn) shareBtn.style.display='inline-block';
+  } else {
+    btn.textContent=t('connectWalletBtn');
+    btn.classList.remove('connected');
+    if(shareBtn) shareBtn.style.display='none';
+  }
   buildModelSelect();
 }
 function toggleWallet() {
   if(wallet){wallet='';localStorage.removeItem('gstd_wallet');updateWalletUI();hideBalance();showToast(t('walletDisconnected'),'success');document.getElementById('modelSelect').value=MODELS[0].id;document.getElementById('modelLabel').textContent=MODELS[0].name;}
   else{document.getElementById('walletModal').classList.add('active');setTimeout(()=>document.getElementById('walletInput').focus(),100);}
+}
+function shareReferral(){
+  const code = wallet ? wallet.slice(-8) : '';
+  const link = `https://chat.gstdtoken.com/?ref=${code}`;
+  if(navigator.share){
+    navigator.share({title:'GSTD Sovereign AI',text:lang==='ru'?'Попробуй децентрализованный AI!':'Try decentralized AI!',url:link}).catch(()=>{});
+  } else {
+    navigator.clipboard.writeText(link);
+    showToast(lang==='ru'?'Ссылка скопирована!':'Link copied!','success');
+  }
+}
+async function fetchNetStats(){
+  try {
+    const res = await fetch('https://api.gstdtoken.com/api/v1/network/stats');
+    if(!res.ok) return;
+    const d = await res.json();
+    const el = (id,v) => { const e=document.getElementById(id); if(e) e.textContent=v; };
+    el('netNodes', d.active_workers || 0);
+    el('netTasks', d.total_tasks || 0);
+    el('netPrice', d.gstd_price_usd > 0 ? '$'+d.gstd_price_usd.toFixed(6) : '$0');
+    // Fetch user count from tokenomics
+    const tokRes = await fetch('https://api.gstdtoken.com/api/v1/sovereign/tokenomics');
+    if(tokRes.ok) {
+      const tok = await tokRes.json();
+      el('netUsers', tok.total_minted ? Math.round(tok.total_minted / 10) : 0); // approx users from minted
+    }
+  } catch(e) { /* silent */ }
 }
 function closeWallet(){document.getElementById('walletModal').classList.remove('active');}
 function connectWallet(){
