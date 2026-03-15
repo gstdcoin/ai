@@ -18,7 +18,7 @@ import GoldenGatewayTransactions from '../components/tma/GoldenGatewayTransactio
 import { useWalletStore } from '../store/walletStore';
 import WalletConnect from '../components/WalletConnect';
 import AgentMarketplace from '../components/agents/AgentMarketplace';
-import { Zap, Wallet, Coins, Activity, Bot } from 'lucide-react';
+import { Zap, Wallet, Coins, Activity, Bot, ArrowRightLeft } from 'lucide-react';
 
 interface TMAStats {
   node_status: 'online' | 'offline' | 'mining';
@@ -30,7 +30,7 @@ interface TMAStats {
   tasks_completed_24h: number;
 }
 
-type TabId = 'overview' | 'worker' | 'golden' | 'agents';
+type TabId = 'overview' | 'worker' | 'golden' | 'agents' | 'trade';
 
 export default function TMAPage() {
   const { t } = useTranslation('common');
@@ -97,10 +97,11 @@ export default function TMAPage() {
   }
 
   const tabs: { id: TabId; label: string; icon: React.ReactNode }[] = [
-    { id: 'overview', label: t('dashboard', 'Dashboard'), icon: <Activity className="w-4 h-4" /> },
-    { id: 'worker', label: t('cta_worker', 'Ignite Node'), icon: <Zap className="w-4 h-4" /> },
-    { id: 'golden', label: t('gold_reserve_title', 'Gold Reserve Fund'), icon: <Coins className="w-4 h-4" /> },
-    { id: 'agents', label: t('hire_agents', 'AI Workers'), icon: <Bot className="w-4 h-4" /> },
+    { id: 'overview', label: t('dashboard', 'Dashboard'), icon: <Activity className="w-4 h-4 shrink-0" /> },
+    { id: 'trade', label: t('trade', 'Trade/Swap'), icon: <ArrowRightLeft className="w-4 h-4 shrink-0" /> },
+    { id: 'worker', label: t('cta_worker', 'Ignite Node'), icon: <Zap className="w-4 h-4 shrink-0" /> },
+    { id: 'golden', label: t('gold_reserve_title', 'Gold Reserve'), icon: <Coins className="w-4 h-4 shrink-0" /> },
+    { id: 'agents', label: t('hire_agents', 'AI Workers'), icon: <Bot className="w-4 h-4 shrink-0" /> },
   ];
 
   return (
@@ -118,12 +119,12 @@ export default function TMAPage() {
         </header>
 
         {/* Tab Nav */}
-        <div className="flex gap-2 mb-4">
+        <div className="flex gap-2 mb-4 overflow-x-auto scrollbar-hide pb-2 snap-x">
           {tabs.map(({ id, label, icon }) => (
             <button
               key={id}
               onClick={() => setTab(id)}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-sm font-bold transition-colors ${tab === id
+              className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-bold transition-colors whitespace-nowrap snap-start ${tab === id
                 ? 'bg-violet-500/30 border border-violet-500/50 text-violet-300'
                 : 'bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10'
                 }`}
@@ -173,6 +174,26 @@ export default function TMAPage() {
                 <WalletConnect />
               </div>
             )}
+          </div>
+        )}
+
+        {tab === 'trade' && (
+          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="rounded-xl bg-gradient-to-br from-violet-600/10 to-blue-600/10 border border-violet-500/20 p-4 sm:p-6 text-center">
+              <h3 className="text-xl font-black text-white mb-2">GSTD Native Swap</h3>
+              <p className="text-xs text-violet-300/70 mb-4 max-w-sm mx-auto">
+                Exchange TON for GSTD securely via STON.fi decentralised liqudity pools. Powered directly inside Telegram.
+              </p>
+              
+              <div className="rounded-xl overflow-hidden bg-[#1a1a24] shadow-[0_0_30px_rgba(139,92,246,0.15)] border border-white/5 h-[500px]">
+                <iframe 
+                  src="https://app.ston.fi/swap?ft=TON&tt=GSTD"
+                  className="w-full h-full border-0"
+                  title="STON.fi DEX Swap"
+                  allow="clipboard-read; clipboard-write; microphone; camera"
+                />
+              </div>
+            </div>
           </div>
         )}
 
