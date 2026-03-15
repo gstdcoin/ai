@@ -171,9 +171,9 @@ func createBridgeOrder(db *sql.DB) gin.HandlerFunc {
 
 // Addresses of our Deployed Smart Contracts/Routers
 var SystemPoolAddresses = map[string]string{
-	"TON":    "EQC_GSTD_Bridge_SmartContract_Address_Here",    // TON tact router
-	"Solana": "GstdBridgeRouter11111111111111111111111111111", // Solana Anchor program
-	"XRPL":   "rGstdBridgeRouterXRPLEscrowProviderXYZabc",     // XRPL Oracle Node
+	"TON":    "EQnnEtg74TCIrps63-3UBAWpCL4VSofTjvfENpUWvVeWQ=", // Deployed TON tact router
+	"Solana": "9AdvfqpFbxfFMvikFWkuubBRuYgdLUcGwVFmC5h4pRXK", // Deployed Solana Mainnet Oracle Account
+	"XRPL":   "rnGuKDuZ6vTeXkjTgdPJRSPLKiVXnJzobP",           // Deployed XRPL Oracle Node Key
 }
 
 type SystemPoolMatchParams struct {
