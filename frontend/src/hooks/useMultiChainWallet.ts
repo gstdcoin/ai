@@ -1,32 +1,13 @@
 /**
  * Multi-chain wallet connection hook for Bridge.
- * Supports: TON (via TonConnect), Solana (Phantom/Solflare), XRPL (GemWallet/Crossmark)
+ * TON    → TonConnect (existing infrastructure)
+ * Solana → @phantom/browser-sdk + injected provider fallback
+ * XRPL   → Xaman (Xumm) SDK loaded from CDN
  */
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useTonConnectUI, useTonWallet } from '@tonconnect/ui-react';
 import { useWalletStore } from '../store/walletStore';
 import { Address } from '@ton/core';
-
-// ─── Type Declarations for browser wallet extensions ───────
-declare global {
-  interface Window {
-    phantom?: { solana?: SolanaProvider };
-    solana?: SolanaProvider;
-    solflare?: SolanaProvider;
-    GemWalletApi?: { isInstalled: () => Promise<{ result: { isInstalled: boolean } }>; getAddress: () => Promise<{ result: { address: string } }> };
-    crossmark?: { signIn: () => Promise<{ response: { data: { address: string } } }> };
-    xrpl?: { isConnected: () => boolean; getAddress: () => Promise<string> };
-  }
-}
-
-interface SolanaProvider {
-  isPhantom?: boolean;
-  isSolflare?: boolean;
-  isConnected?: boolean;
-  connect: () => Promise<{ publicKey: { toBase58: () => string } }>;
-  disconnect: () => Promise<void>;
-  publicKey?: { toBase58: () => string };
-}
 
 export type ChainId = 'TON' | 'Solana' | 'XRPL';
 
@@ -40,14 +21,52 @@ interface ChainWalletState {
 function tonRawToFriendly(raw: string): string {
   if (!raw) return '';
   try {
-    // Already friendly format
     if (raw.startsWith('EQ') || raw.startsWith('UQ')) return raw;
     const addr = Address.parseRaw(raw);
-    // Non-bounceable (UQ) for user wallets
     return addr.toString({ bounceable: false });
   } catch {
     return raw;
   }
+}
+
+// ─── Phantom SDK (lazy load) ───────────────────────
+let phantomSdk: any = null;
+
+async function getPhantomSDK() {
+  if (typeof window === 'undefined') return null;
+  if (phantomSdk) return phantomSdk;
+  try {
+    const mod = await import('@phantom/browser-sdk');
+    phantomSdk = new mod.BrowserSDK({
+      providers: ['injected'],
+      addressTypes: [mod.AddressType.solana],
+    });
+    return phantomSdk;
+  } catch (err) {
+    console.warn('[Bridge] Phantom SDK not available, using injected fallback:', err);
+    return null;
+  }
+}
+
+// ─── Xumm/Xaman SDK (CDN-loaded) ──────────────────
+const XAMAN_API_KEY = process.env.NEXT_PUBLIC_XAMAN_API_KEY || 'e68e4276-7e06-404d-afe6-e2fbb5a26a6b';
+
+function loadXummFromCDN(): Promise<any> {
+  return new Promise((resolve, reject) => {
+    if (typeof window === 'undefined') { reject(new Error('SSR')); return; }
+    if ((window as any).Xumm) { resolve((window as any).Xumm); return; }
+
+    const script = document.createElement('script');
+    script.src = 'https://xumm.app/assets/cdn/xumm.min.js';
+    script.async = true;
+    script.onload = () => {
+      const XummClass = (window as any).Xumm;
+      if (XummClass) resolve(XummClass);
+      else reject(new Error('Xumm not found after script load'));
+    };
+    script.onerror = () => reject(new Error('Failed to load Xumm CDN'));
+    document.head.appendChild(script);
+  });
 }
 
 export function useMultiChainWallet() {
@@ -57,6 +76,7 @@ export function useMultiChainWallet() {
 
   const [solana, setSolana] = useState<ChainWalletState>({ address: '', connected: false, walletName: '' });
   const [xrpl, setXrpl] = useState<ChainWalletState>({ address: '', connected: false, walletName: '' });
+  const xummRef = useRef<any>(null);
 
   // ─── TON ──────────────────────────────────────────
   const tonRaw = tonWallet?.account?.address || tonStoreAddress || '';
@@ -64,82 +84,119 @@ export function useMultiChainWallet() {
   const tonConnected = !!(tonWallet?.account?.address || (tonStoreConnected && tonStoreAddress));
 
   const connectTon = useCallback(async () => {
-    try { await tonConnectUI.openModal(); } catch (_) { /* */ }
+    try { await tonConnectUI.openModal(); }
+    catch (err) { console.warn('[Bridge] TON Connect error:', err); }
   }, [tonConnectUI]);
 
   const disconnectTon = useCallback(async () => {
-    try { await tonConnectUI.disconnect(); } catch (_) { /* */ }
+    try { await tonConnectUI.disconnect(); }
+    catch (err) { console.warn('[Bridge] TON disconnect error:', err); }
   }, [tonConnectUI]);
 
-  // ─── Solana ───────────────────────────────────────
-  const getSolanaProvider = useCallback((): SolanaProvider | null => {
-    if (typeof window === 'undefined') return null;
-    return window.phantom?.solana || window.solflare || window.solana || null;
-  }, []);
-
+  // ─── Solana (Phantom SDK + injected fallback) ─────
   const connectSolana = useCallback(async () => {
-    const provider = getSolanaProvider();
-    if (!provider) {
-      window.open('https://phantom.app/', '_blank');
-      return;
-    }
-    try {
-      const resp = await provider.connect();
-      const addr = resp.publicKey.toBase58();
-      const name = provider.isSolflare ? 'Solflare' : 'Phantom';
-      setSolana({ address: addr, connected: true, walletName: name });
-    } catch (_) { /* user rejected */ }
-  }, [getSolanaProvider]);
-
-  const disconnectSolana = useCallback(async () => {
-    const provider = getSolanaProvider();
-    try { await provider?.disconnect(); } catch (_) { /* */ }
-    setSolana({ address: '', connected: false, walletName: '' });
-  }, [getSolanaProvider]);
-
-  // Check if Solana was already connected
-  useEffect(() => {
-    const provider = getSolanaProvider();
-    if (provider?.isConnected && provider.publicKey) {
-      const name = provider.isSolflare ? 'Solflare' : 'Phantom';
-      setSolana({ address: provider.publicKey.toBase58(), connected: true, walletName: name });
-    }
-  }, [getSolanaProvider]);
-
-  // ─── XRPL ────────────────────────────────────────
-  const connectXrpl = useCallback(async () => {
-    if (typeof window === 'undefined') return;
-
-    // Try GemWallet first
-    if (window.GemWalletApi) {
+    // Try Phantom Browser SDK first
+    const sdk = await getPhantomSDK();
+    if (sdk) {
       try {
-        const installed = await window.GemWalletApi.isInstalled();
-        if (installed?.result?.isInstalled) {
-          const resp = await window.GemWalletApi.getAddress();
-          if (resp?.result?.address) {
-            setXrpl({ address: resp.result.address, connected: true, walletName: 'GemWallet' });
-            return;
-          }
-        }
-      } catch (_) { /* */ }
-    }
-
-    // Try Crossmark
-    if (window.crossmark) {
-      try {
-        const resp = await window.crossmark.signIn();
-        if (resp?.response?.data?.address) {
-          setXrpl({ address: resp.response.data.address, connected: true, walletName: 'Crossmark' });
+        const { addresses } = await sdk.connect({ provider: 'injected' });
+        if (addresses?.length > 0) {
+          const solAddr = addresses.find((a: any) => a.type === 'solana') || addresses[0];
+          setSolana({ address: solAddr.address, connected: true, walletName: 'Phantom' });
           return;
         }
-      } catch (_) { /* */ }
+      } catch (err) {
+        console.warn('[Bridge] Phantom SDK connect failed, trying injected:', err);
+      }
     }
 
-    // No wallet found — open Xaman
-    window.open('https://xaman.app/', '_blank');
+    // Fallback: direct injected provider (window.phantom.solana / window.solflare)
+    if (typeof window !== 'undefined') {
+      const phantom = (window as any).phantom?.solana || (window as any).solana;
+      const solflare = (window as any).solflare;
+      const provider = phantom || solflare;
+
+      if (provider) {
+        try {
+          const resp = await provider.connect();
+          const name = solflare && !phantom ? 'Solflare' : 'Phantom';
+          setSolana({ address: resp.publicKey.toBase58(), connected: true, walletName: name });
+          return;
+        } catch (err) {
+          console.warn('[Bridge] Injected Solana connect error:', err);
+        }
+      }
+    }
+
+    // No wallet available — redirect to Phantom download
+    window.open('https://phantom.app/', '_blank');
+  }, []);
+
+  const disconnectSolana = useCallback(async () => {
+    try {
+      const provider = (window as any).phantom?.solana || (window as any).solana;
+      if (provider?.disconnect) await provider.disconnect();
+    } catch (err) { console.warn('[Bridge] Solana disconnect:', err); }
+    setSolana({ address: '', connected: false, walletName: '' });
+  }, []);
+
+  // Auto-detect existing Solana connection
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const provider = (window as any).phantom?.solana || (window as any).solana;
+    if (provider?.isConnected && provider.publicKey) {
+      setSolana({
+        address: provider.publicKey.toBase58(),
+        connected: true,
+        walletName: provider.isPhantom ? 'Phantom' : 'Solana Wallet',
+      });
+    }
+  }, []);
+
+  // ─── XRPL (Xaman/Xumm SDK via CDN) ───────────────
+  const connectXrpl = useCallback(async () => {
+    try {
+      const XummClass = await loadXummFromCDN();
+      const xumm = new XummClass(XAMAN_API_KEY);
+      xummRef.current = xumm;
+
+      // Set up event listeners before authorize
+      xumm.on('success', async () => {
+        try {
+          const account = await xumm.user.account;
+          if (account) {
+            setXrpl({ address: account, connected: true, walletName: 'Xaman' });
+          }
+        } catch (err) { console.warn('[Bridge] Xumm success callback error:', err); }
+      });
+
+      xumm.on('logout', () => {
+        setXrpl({ address: '', connected: false, walletName: '' });
+      });
+
+      // This opens QR code modal / deeplink on mobile
+      await xumm.authorize();
+
+      // Check if we got an account after authorize returns
+      try {
+        const account = await xumm.user.account;
+        if (account) {
+          setXrpl({ address: account, connected: true, walletName: 'Xaman' });
+        }
+      } catch (err) { console.warn('[Bridge] Xumm post-authorize check:', err); }
+
+    } catch (err) {
+      console.warn('[Bridge] Xumm connect error:', err);
+      // Fallback — open Xaman website
+      window.open('https://xaman.app/', '_blank');
+    }
   }, []);
 
   const disconnectXrpl = useCallback(async () => {
+    if (xummRef.current) {
+      try { await xummRef.current.logout(); }
+      catch (err) { console.warn('[Bridge] Xumm logout:', err); }
+    }
     setXrpl({ address: '', connected: false, walletName: '' });
   }, []);
 
@@ -169,21 +226,10 @@ export function useMultiChainWallet() {
   }, [disconnectTon, disconnectSolana, disconnectXrpl]);
 
   const getAvailableWallets = useCallback((chain: ChainId): string[] => {
-    if (typeof window === 'undefined') return [];
     switch (chain) {
       case 'TON': return ['Tonkeeper', 'MyTonWallet', 'OpenMask'];
-      case 'Solana': {
-        const wallets: string[] = [];
-        if (window.phantom?.solana) wallets.push('Phantom');
-        if (window.solflare) wallets.push('Solflare');
-        return wallets.length ? wallets : ['Phantom'];
-      }
-      case 'XRPL': {
-        const wallets: string[] = [];
-        if (window.GemWalletApi) wallets.push('GemWallet');
-        if (window.crossmark) wallets.push('Crossmark');
-        return wallets.length ? wallets : ['Xaman'];
-      }
+      case 'Solana': return ['Phantom', 'Solflare'];
+      case 'XRPL': return ['Xaman (Xumm)'];
     }
   }, []);
 
