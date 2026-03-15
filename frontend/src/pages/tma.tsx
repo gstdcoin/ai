@@ -70,6 +70,7 @@ export default function TMAPage() {
           tasks_completed_24h: publicData.completed_tasks || 0,
         });
       } catch (_e) {
+        console.warn('Silent fetch stats failure:', _e);
         // Fallback or offline stats when fetching fails or is unavailable
         setStats({
           node_status: 'offline',
@@ -192,24 +193,30 @@ export default function TMAPage() {
                   <div className="flex gap-3 items-start">
                     <div className="w-6 h-6 rounded-full bg-violet-500/20 text-violet-400 flex items-center justify-center shrink-0 mt-0.5 text-xs font-bold">1</div>
                     <div>
-                      <h4 className="text-sm font-bold text-gray-200">Connect Wallet</h4>
-                      <p className="text-xs text-gray-500 mt-1">Link your TON wallet securely to receive your <span className="text-amber-400 font-bold">1.0 GSTD Welcome Bonus</span> automatically and create your Sovereign Identity.</p>
+                      <h4 className="text-sm font-bold text-gray-200">{t('step1_title', 'Connect Wallet')}</h4>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {t('step1_desc_prefix', 'Link your TON wallet securely to receive your')} <span className="text-amber-400 font-bold">1.0 GSTD Welcome Bonus</span> {t('step1_desc_suffix', 'automatically and create your Sovereign Identity.')}
+                      </p>
                     </div>
                   </div>
                   
                   <div className="flex gap-3 items-start">
                     <div className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5 text-xs font-bold">2</div>
                     <div>
-                      <h4 className="text-sm font-bold text-gray-200">Ignite Your Node</h4>
-                      <p className="text-xs text-gray-500 mt-1">Go to the <span className="text-emerald-400">Ignite Node</span> tab. Keep the app open to process decentralized AI tasks and earn GSTD passively.</p>
+                      <h4 className="text-sm font-bold text-gray-200">{t('step2_title', 'Ignite Your Node')}</h4>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {t('step2_desc_prefix', 'Go to the')} <span className="text-emerald-400">{t('cta_worker', 'Ignite Node')}</span> {t('step2_desc_suffix', 'tab. Keep the app open to process decentralized AI tasks and earn GSTD passively.')}
+                      </p>
                     </div>
                   </div>
 
                   <div className="flex gap-3 items-start">
                     <div className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 mt-0.5 text-xs font-bold">3</div>
                     <div>
-                      <h4 className="text-sm font-bold text-gray-200">Hire AI & Trade</h4>
-                      <p className="text-xs text-gray-500 mt-1">Use your earned tokens to hire AI Agents, or secure your yield in the Gold Reserve Fund. Swap tokens seamlessly in the <span className="text-blue-400">Trade</span> tab.</p>
+                      <h4 className="text-sm font-bold text-gray-200">{t('step3_title', 'Hire AI & Trade')}</h4>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {t('step3_desc_prefix', 'Use your earned tokens to hire AI Agents, or secure your yield in the Gold Reserve Fund. Swap tokens seamlessly in the')} <span className="text-blue-400">{t('trade', 'Trade')}</span> {t('step3_desc_suffix', 'tab.')}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -226,9 +233,9 @@ export default function TMAPage() {
         {tab === 'trade' && (
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="rounded-xl bg-gradient-to-br from-violet-600/10 to-blue-600/10 border border-violet-500/20 p-4 sm:p-6 text-center">
-              <h3 className="text-xl font-black text-white mb-2">GSTD Native Swap</h3>
+              <h3 className="text-xl font-black text-white mb-2">{t('swap_title', 'GSTD Native Swap')}</h3>
               <p className="text-xs text-violet-300/70 mb-4 max-w-sm mx-auto">
-                Exchange TON for GSTD securely via STON.fi decentralised liqudity pools. Powered directly inside Telegram.
+                {t('swap_desc', 'Exchange TON for GSTD securely via STON.fi decentralised liqudity pools. Powered directly inside Telegram.')}
               </p>
               
               <div className="rounded-xl overflow-hidden bg-[#1a1a24] shadow-[0_0_30px_rgba(139,92,246,0.15)] border border-white/5 h-[500px]">
@@ -308,6 +315,7 @@ function TMAInferenceWorker() {
     try {
       workerRef.current = new Worker('/workers/inference-worker.js');
     } catch (_err) { 
+      console.warn('Worker initialization failure:', _err);
       // Ignored for environments where Web Workers are not supported
     }
     return () => workerRef.current?.terminate();

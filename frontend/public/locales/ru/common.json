@@ -1234,7 +1234,6 @@
   "bridge_matched_label": "Сопоставлены",
   "bridge_done": "Завершены",
   "bridge_volume": "Объём",
-
   "sovereign_title": "Суверенный Протокол",
   "sovereign_subtitle": "Децентрализованная Финансовая Операционная Система",
   "sovereign_replaces_banks": "Почему GSTD заменяет банки",
@@ -1251,7 +1250,6 @@
   "sovereign_remaining": "Осталось",
   "sovereign_scarcity": "Индекс дефицита",
   "sovereign_holders": "Держатели",
-
   "sovereign_staking": "Стейкинг",
   "sovereign_staking_desc": "Реальная доходность от вычислений — не напечатанные деньги",
   "sovereign_apy": "Годовая доходность",
@@ -1265,7 +1263,6 @@
   "sovereign_your_staked": "Ваш стейк",
   "sovereign_your_earned": "Ваш доход",
   "sovereign_global_staked": "Общий стейк",
-
   "sovereign_p2p": "P2P Платежи",
   "sovereign_p2p_desc": "Мгновенные переводы без комиссий. Банки не нужны.",
   "sovereign_send": "Отправить GSTD",
@@ -1274,13 +1271,11 @@
   "sovereign_memo": "Комментарий (необязательно)",
   "sovereign_send_btn": "Отправить мгновенно",
   "sovereign_history": "История переводов",
-
   "sovereign_lending": "Микро-Кредитование",
   "sovereign_lending_desc": "5% годовых, обеспечены вашей вычислительной мощностью",
   "sovereign_loan_request": "Запросить кредит",
   "sovereign_loan_repay": "Погасить кредит",
   "sovereign_collateral": "Обеспечение",
-
   "sovereign_governance": "Управление",
   "sovereign_governance_desc": "Демократическое развитие протокола — ваш голос важен",
   "sovereign_propose": "Создать предложение",
@@ -1288,26 +1283,37 @@
   "sovereign_vote_for": "За",
   "sovereign_vote_against": "Против",
   "sovereign_proposals": "Активные предложения",
-
   "sovereign_mesh": "Mesh-Сеть Нод",
   "sovereign_mesh_desc": "Ноды находят друг друга напрямую — без посредников",
   "sovereign_peers": "Подключённые пиры",
   "sovereign_decentralization": "Степень децентрализации",
-
   "sovereign_revenue": "Распределение дохода",
   "sovereign_revenue_desc": "85% всех комиссий идут операторам нод",
   "sovereign_node_share": "Операторам нод",
   "sovereign_treasury_share": "Казначейство",
   "sovereign_burn_share": "Сожжено",
-
   "sovereign_compute": "Обеспечение вычислениями",
   "sovereign_compute_desc": "Каждый GSTD обеспечен реальной вычислительной мощностью AI",
   "sovereign_gpu_rate": "Стоимость GPU-часа",
   "sovereign_query_rate": "Стоимость AI-запроса",
   "sovereign_storage_rate": "Стоимость хранения",
-
   "sovereign_speed": "Мгновенно",
   "sovereign_fees": "Без комиссий",
   "sovereign_utility": "Реальная польза",
-  "sovereign_backing": "Золото + Вычисления"
+  "sovereign_backing": "Золото + Вычисления",
+  "welcome_guide": "Добро пожаловать в Суверенную Сеть GSTD",
+  "welcome_desc": "Децентрализованная AI экосистема, которая платит вам. Начните в 3 простых шага:",
+  "step1_connect": "Шаг 1: Подключитесь для старта",
+  "step1_title": "Подключите Кошелек",
+  "step1_desc_prefix": "Безопасно привяжите TON кошелек и получите ваш",
+  "step1_desc_suffix": "автоматически для создания Суверенной Личности.",
+  "step2_title": "Запустите свою Ноду",
+  "step2_desc_prefix": "Перейдите во вкладку",
+  "step2_desc_suffix": ". Просто оставьте приложение открытым для фоновой проверки ИИ-задач и пассивного заработка GSTD.",
+  "step3_title": "Нанимайте ИИ и Торгуйте",
+  "step3_desc_prefix": "Используйте заработанные токены для найма ИИ-агентов или сохраните прибыль в Золотом Резерве. Моментально обменивайте токены во вкладке",
+  "step3_desc_suffix": ".",
+  "swap_title": "Встроенный Обменник GSTD",
+  "swap_desc": "Безопасно обменивайте TON на GSTD через децентрализованные пулы STON.fi прямо в Telegram.",
+  "chat_share_postfix": "\n\n— Этот ответ был рассчитан {{devices}} смартфонами в сети GSTD. Присоединяйся и зарабатывай золото! {{url}}"
 }

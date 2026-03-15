@@ -1234,7 +1234,6 @@
   "bridge_matched_label": "Matched",
   "bridge_done": "Done",
   "bridge_volume": "Volume",
-
   "sovereign_title": "Sovereign Protocol",
   "sovereign_subtitle": "Decentralized Financial Operating System",
   "sovereign_replaces_banks": "Why GSTD Replaces Banks",
@@ -1251,7 +1250,6 @@
   "sovereign_remaining": "Remaining Supply",
   "sovereign_scarcity": "Scarcity Index",
   "sovereign_holders": "Holders",
-
   "sovereign_staking": "Staking",
   "sovereign_staking_desc": "Real yield from compute fees — not printed money",
   "sovereign_apy": "APY",
@@ -1265,7 +1263,6 @@
   "sovereign_your_staked": "Your Staked",
   "sovereign_your_earned": "Your Earned",
   "sovereign_global_staked": "Global Staked",
-
   "sovereign_p2p": "P2P Payments",
   "sovereign_p2p_desc": "Zero-fee instant transfers. No banks needed.",
   "sovereign_send": "Send GSTD",
@@ -1274,13 +1271,11 @@
   "sovereign_memo": "Memo (optional)",
   "sovereign_send_btn": "Send Instantly",
   "sovereign_history": "Transaction History",
-
   "sovereign_lending": "Micro-Lending",
   "sovereign_lending_desc": "5% interest, collateralized by your compute power",
   "sovereign_loan_request": "Request Loan",
   "sovereign_loan_repay": "Repay Loan",
   "sovereign_collateral": "Collateral",
-
   "sovereign_governance": "Governance",
   "sovereign_governance_desc": "Democratic protocol evolution — your voice matters",
   "sovereign_propose": "Create Proposal",
@@ -1288,26 +1283,37 @@
   "sovereign_vote_for": "For",
   "sovereign_vote_against": "Against",
   "sovereign_proposals": "Active Proposals",
-
   "sovereign_mesh": "Node Mesh Network",
   "sovereign_mesh_desc": "Nodes discover and connect directly — no middleman",
   "sovereign_peers": "Connected Peers",
   "sovereign_decentralization": "Decentralization Score",
-
   "sovereign_revenue": "Revenue Sharing",
   "sovereign_revenue_desc": "85% of all fees go to node operators",
   "sovereign_node_share": "Node Operators",
   "sovereign_treasury_share": "Treasury",
   "sovereign_burn_share": "Burned",
-
   "sovereign_compute": "Compute Backing",
   "sovereign_compute_desc": "Every GSTD is backed by real AI compute power",
   "sovereign_gpu_rate": "GPU-hour Rate",
   "sovereign_query_rate": "AI Query Rate",
   "sovereign_storage_rate": "Storage Rate",
-
   "sovereign_speed": "Instant",
   "sovereign_fees": "Zero Fees",
   "sovereign_utility": "Real Utility",
-  "sovereign_backing": "Gold + Compute"
+  "sovereign_backing": "Gold + Compute",
+  "welcome_guide": "Welcome to GSTD Sovereign Network",
+  "welcome_desc": "The decentralized AI ecosystem that pays you. Start your journey in 3 simple steps:",
+  "step1_connect": "Step 1: Connect to Start",
+  "step1_title": "Connect Wallet",
+  "step1_desc_prefix": "Link your TON wallet securely to receive your",
+  "step1_desc_suffix": "automatically and create your Sovereign Identity.",
+  "step2_title": "Ignite Your Node",
+  "step2_desc_prefix": "Go to the",
+  "step2_desc_suffix": "tab. Keep the app open to process decentralized AI tasks and earn GSTD passively.",
+  "step3_title": "Hire AI & Trade",
+  "step3_desc_prefix": "Use your earned tokens to hire AI Agents, or secure your yield in the Gold Reserve Fund. Swap tokens seamlessly in the",
+  "step3_desc_suffix": "tab.",
+  "swap_title": "GSTD Native Swap",
+  "swap_desc": "Exchange TON for GSTD securely via STON.fi decentralised liqudity pools. Powered directly inside Telegram.",
+  "chat_share_postfix": "\n\n— This answer was calculated by {{devices}} smartphones in the GSTD network. Join and earn gold! {{url}}"
 }
