@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { TonConnectButton } from '@tonconnect/ui-react';
 import {
-    LayoutDashboard, MessageSquare, Activity, Bot, Globe, ChevronDown,
+    LayoutDashboard, MessageSquare, Activity, Bot,
     ExternalLink, Menu, X, ArrowRightLeft, Server
 } from 'lucide-react';
 
@@ -25,7 +25,7 @@ export default function EcosystemNav() {
     const isOnApp = typeof window !== 'undefined' && window.location.hostname === 'app.gstdtoken.com';
 
     const navItems: NavItem[] = [
-        { key: 'nav_dashboard', href: `${APP_BASE}/dashboard`, icon: <LayoutDashboard size={16} />, external: !isOnApp },
+        { key: 'nav_home', href: `${APP_BASE}/dashboard`, icon: <LayoutDashboard size={16} />, external: !isOnApp },
         { key: 'nav_chat', href: `${APP_BASE}/chat`, icon: <MessageSquare size={16} />, external: !isOnApp },
         { key: 'nav_bridge', href: `${APP_BASE}/bridge`, icon: <ArrowRightLeft size={16} />, external: !isOnApp },
         { key: 'nav_nodes', href: `${APP_BASE}/nodes`, icon: <Server size={16} />, external: !isOnApp },
@@ -36,8 +36,10 @@ export default function EcosystemNav() {
 
     const isActive = (href: string) => {
         const path = router.pathname;
-        if (href.includes('/dashboard') && path === '/dashboard') return true;
+        if (href.includes('/dashboard') && (path === '/dashboard' || path === '/')) return true;
         if (href.includes('/chat') && path === '/chat') return true;
+        if (href.includes('/bridge') && path === '/bridge') return true;
+        if (href.includes('/nodes') && path === '/nodes') return true;
         if (href.includes('monitor.gstdtoken.com') && typeof window !== 'undefined' && window.location.hostname === 'monitor.gstdtoken.com') return true;
         return false;
     };

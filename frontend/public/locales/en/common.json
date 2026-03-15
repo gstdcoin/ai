@@ -569,7 +569,6 @@
   "neural_node": "Neural Node",
   "become_neuron": "Become a Neuron",
   "become_neuron_desc": "Your device becomes a brain cell of the planetary supercomputer",
-  "nav_dashboard": "Dashboard",
   "nav_chat": "Chat",
   "nav_monitor": "Monitor",
   "nav_bot": "GSTD Bot",
@@ -1315,5 +1314,9 @@
   "step3_desc_suffix": "tab.",
   "swap_title": "GSTD Native Swap",
   "swap_desc": "Exchange TON for GSTD securely via STON.fi decentralised liqudity pools. Powered directly inside Telegram.",
-  "chat_share_postfix": "\n\n— This answer was calculated by {{devices}} smartphones in the GSTD network. Join and earn gold! {{url}}"
+  "chat_share_postfix": "\n\n— This answer was calculated by {{devices}} smartphones in the GSTD network. Join and earn gold! {{url}}",
+  "nav_home": "Home",
+  "connect_wallet_dashboard": "Connect your TON wallet to access the full dashboard with balances, nodes, and AI chat.",
+  "dashboard_free_chat": "AI Chat is free — connect wallet for Pro/Ultra tiers",
+  "bridge": "Bridge"
 }
