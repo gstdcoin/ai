@@ -94,11 +94,13 @@ function App({ Component, pageProps }: AppProps) {
           }}
           language={tonConnectLanguage}
         >
+          {/* Ambient glow — matches gstdbot.gstdtoken.com aesthetic */}
+          <div className="page-glow" aria-hidden="true" />
           {isMounted && <WalletListener />}
           {isMounted && <VercelSwarmHeartbeat />}
           {isMounted && <AutoClaimWorker />}
           {router.pathname !== '/tma' && <EcosystemNav />}
-          <main style={{ paddingTop: router.pathname !== '/tma' ? 56 : 0, paddingBottom: router.pathname === '/dashboard' ? 80 : 0, minHeight: '100vh' }}>
+          <main style={{ paddingTop: router.pathname !== '/tma' ? 56 : 0, paddingBottom: router.pathname === '/dashboard' ? 80 : 0, minHeight: '100vh', position: 'relative', zIndex: 1 }}>
             <Component {...pageProps} />
           </main>
           {router.pathname !== '/tma' && router.pathname !== '/dashboard' && router.pathname !== '/chat' && <EcosystemFooter />}
