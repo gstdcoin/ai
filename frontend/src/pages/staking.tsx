@@ -69,7 +69,6 @@ export default function StakingPage() {
         <title>Staking — GSTD Yield</title>
         <meta name="description" content="Stake GSTD tokens and earn real yield from compute fees. Up to 36% APY with node operator bonus." />
       </Head>
-      <EcosystemNav />
 
       <main className="max-w-3xl mx-auto px-4 pt-20 pb-16">
         {/* Header */}

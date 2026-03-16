@@ -32,6 +32,32 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
+  // Webpack polyfills for @ston-fi/sdk and @ton/ton
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        buffer: require.resolve('buffer/'),
+        crypto: false,
+        stream: false,
+        path: false,
+        fs: false,
+      };
+      const webpack = require('webpack');
+      config.plugins.push(
+        new webpack.ProvidePlugin({
+          Buffer: ['buffer', 'Buffer'],
+        })
+      );
+    }
+    return config;
+  },
+  // Turbopack config (Next.js 16+)
+  turbopack: {
+    resolveAlias: {
+      buffer: 'buffer/',
+    },
+  },
   // PWA configuration
   async headers() {
     return [
