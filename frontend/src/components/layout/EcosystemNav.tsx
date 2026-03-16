@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { TonConnectButton } from '@tonconnect/ui-react';
 import {
-    LayoutDashboard, MessageSquare, Activity, Bot,
+    MessageSquare, Activity, Bot,
     ExternalLink, Menu, X, ArrowRightLeft, Server, Trophy, Repeat, Landmark
 } from 'lucide-react';
 
@@ -64,12 +64,12 @@ export default function EcosystemNav() {
                     <img src="/logo.png" alt="GSTD" style={{ width: 32, height: 32, borderRadius: '50%' }} />
                     <span style={{
                         fontWeight: 800, fontSize: 18, color: 'white',
-                        background: 'linear-gradient(135deg, #8b5cf6, #06b6d4)',
+                        background: 'linear-gradient(135deg, #ffd700, #ffa500)',
                         WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
                     }}>GSTD</span>
                     <span style={{
                         fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
-                        background: '#8b5cf6', color: 'white', letterSpacing: 0.5,
+                        background: 'rgba(255,215,0,0.12)', color: '#ffd700', letterSpacing: 0.5,
                     }}>{t('ecosystem', 'ECOSYSTEM')}</span>
                 </Link>
 
