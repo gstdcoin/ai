@@ -1,12 +1,12 @@
 import { GetStaticProps } from 'next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useTranslation } from 'next-i18next';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import {
   ArrowRightLeft, ChevronDown, Clock, CheckCircle2,
   AlertCircle, Loader2, ArrowRight, RefreshCw, BookOpen, Users,
-  Copy, Check, Wallet, LogOut, Link2, Unlink, X
+  Copy, Check, Wallet, Link2, Unlink, X
 } from 'lucide-react';
 import { useMultiChainWallet, ChainId } from '../hooks/useMultiChainWallet';
 import { API_BASE_URL } from '../lib/config';
@@ -54,9 +54,9 @@ function shortAddr(addr: string, start = 6, end = 4): string {
 }
 
 // ─── Components ────────────────────────────────────────────
-function ChainSelect({ value, onChange, label, exclude }: {
+function ChainSelect({ value, onChange, label, exclude }: Readonly<{
   value: string; onChange: (v: string) => void; label: string; exclude?: string;
-}) {
+}>) {
   const [open, setOpen] = useState(false);
   const cur = CHAINS.find(c => c.id === value);
   return (
@@ -98,7 +98,7 @@ function ChainSelect({ value, onChange, label, exclude }: {
   );
 }
 
-function CopyButton({ text }: { text: string }) {
+function CopyButton({ text }: Readonly<{ text: string }>) {
   const [copied, setCopied] = useState(false);
   return (
     <button onClick={() => { navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
@@ -108,7 +108,7 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({ status }: Readonly<{ status: string }>) {
   const colors: Record<string, { bg: string; text: string }> = {
     open: { bg: 'rgba(59,130,246,0.1)', text: '#60a5fa' },
     matched: { bg: 'rgba(249,115,22,0.1)', text: '#fb923c' },
@@ -127,12 +127,12 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 // ─── Chain Wallet Connection Widget ────────────────────────
-function ChainWalletWidget({ chain, label, address, onAddressChange }: {
+function ChainWalletWidget({ chain, label, address, onAddressChange }: Readonly<{
   chain: ChainId;
   label: string;
   address?: string;
   onAddressChange?: (addr: string) => void;
-}) {
+}>) {
   const { t } = useTranslation('common');
   const { getChainWallet, connectChain, disconnectChain, getAvailableWallets } = useMultiChainWallet();
   const wallet = getChainWallet(chain);
@@ -324,7 +324,7 @@ export default function BridgePage() {
       try {
         const res = await fetch(`${API_BASE_URL}/api/v1/bridge/p2p/stats`);
         if (res.ok) setStats(await res.json());
-      } catch (_e) { /* */ }
+      } catch (_e) { console.error(_e); }
     };
     fetchStats();
     const iv = setInterval(fetchStats, 15000);
@@ -338,7 +338,7 @@ export default function BridgePage() {
       try {
         const res = await fetch(`${API_BASE_URL}/api/v1/bridge/p2p/orders?status=open`);
         if (res.ok) { const d = await res.json(); setOrders(d.orders || []); }
-      } catch (_e) { /* */ }
+      } catch (_e) { console.error(_e); }
     })();
   }, [tab]);
 
@@ -349,7 +349,7 @@ export default function BridgePage() {
       try {
         const res = await fetch(`${API_BASE_URL}/api/v1/bridge/p2p/my-orders?wallet=${walletAddress}`);
         if (res.ok) { const d = await res.json(); setMyOrders(d.orders || []); }
-      } catch (_e) { /* */ }
+      } catch (_e) { console.error(_e); }
     })();
   }, [tab, walletAddress]);
 
@@ -413,7 +413,7 @@ export default function BridgePage() {
         body: JSON.stringify({ received_tx_hash: 'confirmed-by-user' }),
       });
       if (res.ok) { alert('Bridge complete! 🎉'); setTab('my'); }
-    } catch (_e) { /* */ }
+    } catch (_e) { console.error(_e); }
   };
 
   const handleCancelOrder = async (orderId: string) => {
@@ -424,7 +424,7 @@ export default function BridgePage() {
       });
       if (res.ok) { alert('Order cancelled'); setTab('my'); }
       else { const d = await res.json(); alert(d.error || 'Cannot cancel'); }
-    } catch (_e) { /* */ }
+    } catch (_e) { console.error(_e); }
   };
 
   const handleTakeOrder = async (order: BridgeOrder) => {
@@ -503,8 +503,8 @@ export default function BridgePage() {
                 { v: stats.matched_orders, l: t('bridge_matched_label'), c: '#fb923c' },
                 { v: stats.completed_swaps, l: t('bridge_done'), c: '#34d399' },
                 { v: `${stats.total_volume_gstd.toFixed(0)}`, l: t('bridge_volume'), c: '#a78bfa' },
-              ].map((s, i) => (
-                <div key={i} style={{ textAlign: 'center', padding: '10px 4px', borderRadius: 10, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
+              ].map((s) => (
+                <div key={s.l + s.v} style={{ textAlign: 'center', padding: '10px 4px', borderRadius: 10, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
                   <div style={{ fontSize: 18, fontWeight: 800, color: s.c }}>{s.v}</div>
                   <div style={{ fontSize: 9, fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase' }}>{s.l}</div>
                 </div>
@@ -617,12 +617,11 @@ export default function BridgePage() {
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                   transition: 'all 0.3s',
                 }}>
-                {loading
-                  ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> {t('bridge_placing')}</>
-                  : !isWalletConnected
-                    ? <><Wallet size={16} /> {t('bridge_connect_first', 'Connect wallet to place order')}</>
-                    : <><ArrowRightLeft size={16} /> {t('bridge_place_order')}</>
-                }
+                {(() => {
+                  if (loading) return <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> {t('bridge_placing')}</>;
+                  if (!isWalletConnected) return <><Wallet size={16} /> {t('bridge_connect_first', 'Connect wallet to place order')}</>;
+                  return <><ArrowRightLeft size={16} /> {t('bridge_place_order')}</>;
+                })()}
               </button>
             </div>
           )}
@@ -670,20 +669,27 @@ export default function BridgePage() {
           {/* ── TAB: My Orders ── */}
           {tab === 'my' && (
             <div>
-              {!walletAddress ? (
-                <div style={{ textAlign: 'center', padding: '40px 20px', borderRadius: 16, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                  <Wallet size={32} style={{ color: 'rgba(255,255,255,0.15)', marginBottom: 12 }} />
-                  <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 16 }}>
-                    {t('bridge_connect_to_see_orders', 'Connect your wallet to see your orders')}
-                  </p>
-                  <ChainWalletWidget chain="TON" label={t('bridge_your_wallet')} />
-                </div>
-              ) : myOrders.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '40px 20px', borderRadius: 16, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                  <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>{t('bridge_no_my_orders')}</p>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {(() => {
+                if (!walletAddress) {
+                  return (
+                    <div style={{ textAlign: 'center', padding: '40px 20px', borderRadius: 16, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <Wallet size={32} style={{ color: 'rgba(255,255,255,0.15)', marginBottom: 12 }} />
+                      <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 16 }}>
+                        {t('bridge_connect_to_see_orders', 'Connect your wallet to see your orders')}
+                      </p>
+                      <ChainWalletWidget chain="TON" label={t('bridge_your_wallet')} />
+                    </div>
+                  );
+                }
+                if (myOrders.length === 0) {
+                  return (
+                    <div style={{ textAlign: 'center', padding: '40px 20px', borderRadius: 16, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>{t('bridge_no_my_orders')}</p>
+                    </div>
+                  );
+                }
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {myOrders.map(o => (
                     <div key={o.id} style={{
                       padding: '16px', borderRadius: 14,
@@ -826,7 +832,8 @@ export default function BridgePage() {
                     </div>
                   ))}
                 </div>
-              )}
+                );
+              })()}
             </div>
           )}
 
@@ -896,12 +903,12 @@ export default function BridgePage() {
             </div>
           </div>
         </div>
-        <style jsx global>{`
+        <style dangerouslySetInnerHTML={{ __html: `
           @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
           input[type="number"]::-webkit-inner-spin-button,
           input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
           input[type="number"] { -moz-appearance: textfield; }
-        `}</style>
+        `}} />
       </div>
     </>
   );
