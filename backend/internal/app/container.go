@@ -1164,6 +1164,9 @@ func StartApplication(container *dig.Container) error {
 		// 4c. Cosmic Genesis: A2A economy, Gold-Hash link, Hardware grants
 		api.SetupCosmicGenesisRoutes(v1Group, protectedGroup, db, agentSubcontractService, goldHashRateService)
 
+		// 4d. MCP Protocol: Agent discovery, tool listing, metered execution
+		api.SetupMCPRoutes(router, v1Group)
+
 		// 5. Ollama connectivity check (inference gateway)
 		ollamaURL := os.Getenv("OLLAMA_URL")
 		if ollamaURL == "" {
