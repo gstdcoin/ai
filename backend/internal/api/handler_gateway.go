@@ -38,6 +38,7 @@ type GatewayHandler struct {
 	smartRouter       *services.SmartRouter              // Omega Sovereign-First routing
 	onchainSettlement *services.OnchainSettlementService // Real on-chain GSTD Jetton settlement
 	burnService       *services.BurnService              // Token burn on every paid inference
+	huggingFace       *services.HuggingFaceService       // HuggingFace ML classification
 	ollamaURL         string
 	client            *http.Client
 }
@@ -136,6 +137,11 @@ func (h *GatewayHandler) SetSmartRouter(sr *services.SmartRouter) {
 // SetOnchainSettlement wires the on-chain GSTD settlement service.
 func (h *GatewayHandler) SetOnchainSettlement(os *services.OnchainSettlementService) {
 	h.onchainSettlement = os
+}
+
+// SetHuggingFace wires the HuggingFace ML service for intent classification and enrichment.
+func (h *GatewayHandler) SetHuggingFace(hf *services.HuggingFaceService) {
+	h.huggingFace = hf
 }
 
 // analyzeIntelligenceNeedOllama picks best Ollama model based on task complexity (omega-auto).

@@ -95,6 +95,7 @@ type APIDependencies struct {
     ZkProofService *services.ZKComputeProofService
     SmartRouter *services.SmartRouter
     SwarmLedger *p2p.Ledger
+    HuggingFaceService *services.HuggingFaceService
 }
 
 //nolint:gocognit // NOSONAR
@@ -200,6 +201,14 @@ func SetupRoutes(deps APIDependencies) {
 	gatewayHandler := NewGatewayHandler(apiKeyService, taskService, db.(*sql.DB), llmRouter)
 	if guardrailsService != nil {
 		gatewayHandler.SetGuardrails(guardrailsService)
+		// Wire HuggingFace ML toxicity detection to guardrails
+		if deps.HuggingFaceService != nil {
+			guardrailsService.SetHuggingFace(deps.HuggingFaceService)
+		}
+	}
+	// Wire HuggingFace to gateway for intent classification
+	if deps.HuggingFaceService != nil {
+		gatewayHandler.SetHuggingFace(deps.HuggingFaceService)
 	}
 	if omniPerformance != nil {
 		gatewayHandler.SetOmniPerformance(omniPerformance)
@@ -2006,6 +2015,70 @@ func SetupRoutes(deps APIDependencies) {
 		// Agent store: allows registered agents to store knowledge (X-Wallet-Address + node validation)
 		v1.POST("/knowledge/agent/store", storeKnowledgeAgent(knowledgeService, db.(*sql.DB)))
 		SetupBrainRoutes(v1, brainHandler)
+
+		// ═══ HUGGINGFACE ML ENDPOINTS ═══
+		// Expose HF-powered AI capabilities via API
+		if deps.HuggingFaceService != nil && deps.HuggingFaceService.IsEnabled() {
+			hfService := deps.HuggingFaceService
+			// Zero-shot intent classification
+			v1.POST("/ai/classify", func(c *gin.Context) {
+				var req struct {
+					Text   string   `json:"text" binding:"required"`
+					Labels []string `json:"labels"`
+				}
+				if err := c.ShouldBindJSON(&req); err != nil {
+					c.JSON(400, gin.H{"error": "text required"})
+					return
+				}
+				if len(req.Labels) == 0 {
+					req.Labels = []string{"coding", "math", "crypto", "translation", "writing", "research", "general"}
+				}
+				result, err := hfService.ClassifyZeroShot(c.Request.Context(), req.Text, req.Labels)
+				if err != nil {
+					c.JSON(500, gin.H{"error": err.Error()})
+					return
+				}
+				c.JSON(200, result)
+			})
+			// Sentiment analysis (multilingual)
+			v1.POST("/ai/sentiment", func(c *gin.Context) {
+				var req struct {
+					Text string `json:"text" binding:"required"`
+				}
+				if err := c.ShouldBindJSON(&req); err != nil {
+					c.JSON(400, gin.H{"error": "text required"})
+					return
+				}
+				result, err := hfService.AnalyzeSentiment(c.Request.Context(), req.Text)
+				if err != nil {
+					c.JSON(500, gin.H{"error": err.Error()})
+					return
+				}
+				c.JSON(200, result)
+			})
+			// Text summarization
+			v1.POST("/ai/summarize", func(c *gin.Context) {
+				var req struct {
+					Text      string `json:"text" binding:"required"`
+					MaxLength int    `json:"max_length"`
+				}
+				if err := c.ShouldBindJSON(&req); err != nil {
+					c.JSON(400, gin.H{"error": "text required"})
+					return
+				}
+				summary, err := hfService.Summarize(c.Request.Context(), req.Text, req.MaxLength)
+				if err != nil {
+					c.JSON(500, gin.H{"error": err.Error()})
+					return
+				}
+				c.JSON(200, gin.H{"summary": summary})
+			})
+			// HuggingFace service stats
+			v1.GET("/ai/hf/stats", func(c *gin.Context) {
+				c.JSON(200, hfService.GetStats())
+			})
+			log.Println("🤗 HuggingFace ML endpoints registered: /ai/classify, /ai/sentiment, /ai/summarize, /ai/hf/stats")
+		}
 
 		// Pricing (Dynamic Budget)
 		v1.GET("/pricing/suggested", func(c *gin.Context) {

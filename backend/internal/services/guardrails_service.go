@@ -35,6 +35,7 @@ type GuardrailsService struct {
 	redis     *redis.Client
 	ollamaURL string
 	slmModel  string // Small Language Model for safety classification
+	hf        *HuggingFaceService // HuggingFace ML-based classification
 }
 
 // GuardrailResult represents the output of a security check
@@ -94,6 +95,14 @@ func NewGuardrailsService(db *sql.DB, redis *redis.Client) *GuardrailsService {
 	}
 	svc.ensureSchema()
 	return svc
+}
+
+// SetHuggingFace wires the HuggingFace service for ML-based classification
+func (s *GuardrailsService) SetHuggingFace(hf *HuggingFaceService) {
+	s.hf = hf
+	if hf != nil && hf.IsEnabled() {
+		log.Println("🛡️🤗 Guardrails: HuggingFace ML toxicity detection ENABLED")
+	}
 }
 
 func (s *GuardrailsService) ensureSchema() {
@@ -160,6 +169,23 @@ func (s *GuardrailsService) AnalyzePrompt(ctx context.Context, walletAddress str
 	if result.RiskScore > 0.2 && result.RiskScore < 0.8 {
 		slmScore := s.classifyWithSLM(ctx, prompt)
 		result.RiskScore = (result.RiskScore + slmScore) / 2.0 // Average of pattern + SLM
+	}
+
+	// === LAYER 2.5: HuggingFace ML toxicity detection ===
+	if s.hf != nil && s.hf.IsEnabled() {
+		go func() {
+			hfCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			toxScore, toxLabels, err := s.hf.DetectToxicity(hfCtx, prompt)
+			if err == nil && toxScore > 0.7 {
+				log.Printf("🛡️🤗 HF Toxicity detected: %.2f %v (wallet: %s)", toxScore, toxLabels, walletAddress)
+				// Log but don't block in async — enriches reputation data
+				if s.redis != nil {
+					s.redis.Incr(context.Background(), "guardrails:hf_toxic:"+walletAddress)
+					s.redis.Expire(context.Background(), "guardrails:hf_toxic:"+walletAddress, 24*time.Hour)
+				}
+			}
+		}()
 	}
 
 	// === LAYER 3: Reputation-based filtering ===
@@ -353,7 +379,12 @@ func (s *GuardrailsService) GetGuardrailStats(ctx context.Context) (map[string]i
 	stats["blocked_requests"] = blocked
 	stats["suspicious_requests"] = suspicious
 	stats["violations_today"] = today
-	stats["defense_layers"] = 3 // Pattern + SLM + Reputation
+	if s.hf != nil && s.hf.IsEnabled() {
+		stats["defense_layers"] = 4 // Pattern + SLM + HuggingFace + Reputation
+		stats["hf_toxicity_model"] = HFModelToxicity
+	} else {
+		stats["defense_layers"] = 3 // Pattern + SLM + Reputation
+	}
 
 	return stats, nil
 }

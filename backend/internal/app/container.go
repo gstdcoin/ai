@@ -120,6 +120,7 @@ func BuildContainer() *dig.Container {
 	c.Provide(services.NewAPIKeyService)
 	c.Provide(services.NewPipelineParallelismService)
 	c.Provide(services.NewGuardrailsService)
+	c.Provide(services.NewHuggingFaceService)
 	c.Provide(services.NewFederatedEngineService)
 	c.Provide(services.NewMobileComputeService)
 	c.Provide(services.NewZeroBalanceGateService)
@@ -449,6 +450,7 @@ type ApplicationDependencies struct {
     ApiKeyService *services.APIKeyService
     PipelineService *services.PipelineParallelismService
     GuardrailsService *services.GuardrailsService
+    HuggingFaceService *services.HuggingFaceService
     FederatedEngine *services.FederatedEngineService
     MobileCompute *services.MobileComputeService
     ZbGateService *services.ZeroBalanceGateService
@@ -1124,6 +1126,7 @@ func StartApplication(container *dig.Container) error {
         ZkProofService: zkComputeProof,
         SmartRouter: smartRouter,
         SwarmLedger: swarmLedger,
+        HuggingFaceService: deps.HuggingFaceService,
 		})
 
 		// 4a. Leviathan Live Stream (SSE) — Protocol: Live Stream, No-DB, 30s memory
