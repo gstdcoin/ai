@@ -51,7 +51,7 @@ export default function StakingPage() {
   // Fetch balance
   useEffect(() => {
     if (!walletAddress) { setBalance(0); return; }
-    fetch(`${API_BASE_URL}/api/v1/wallet/balance?wallet=${encodeURIComponent(walletAddress)}`)
+    fetch(`${API_BASE_URL}/api/v1/balance/public?wallet=${encodeURIComponent(walletAddress)}`)
       .then(r => r.json())
       .then(d => setBalance((d.gstd_balance || 0) + (d.pending_earnings || 0)))
       .catch(() => {});

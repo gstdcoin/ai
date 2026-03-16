@@ -13,7 +13,7 @@ import (
 // ═══════════════════════════════════════════════════════════════
 // SOVEREIGN PROTOCOL: Decentralized Financial Operating System
 // Replaces banking: P2P payments, staking, lending, governance
-// Surpasses Bitcoin: compute-backed value, zero-fee mesh, AI utility
+// Sovereign Protocol: compute-backed value, zero-fee mesh, AI utility
 // Full autonomy: nodes operate independently of platform
 // ═══════════════════════════════════════════════════════════════
 
@@ -210,7 +210,7 @@ func getComputeBacking(db *sql.DB) gin.HandlerFunc {
 				"storage_value_usd": estimatedTB * 5.0,        // $5/TB/month market rate
 				"per_gstd_backing":  (estimatedGPUHours*0.50 + estimatedTB*5.0) / math.Max(1, gpuRate),
 			},
-			"why_valuable": "Each GSTD is backed by real compute power. Unlike Bitcoin (backed by nothing) or fiat (backed by debt), GSTD gives you guaranteed AI inference, GPU compute, and storage.",
+			"why_valuable": "Each GSTD is backed by real compute power. Unlike legacy tokens (backed by nothing) or fiat (backed by debt), GSTD gives you guaranteed AI inference, GPU compute, and storage.",
 		})
 	}
 }
@@ -1195,7 +1195,7 @@ func getNodeCapabilities(db *sql.DB) gin.HandlerFunc {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// PROTOCOL SUMMARY: Why GSTD > Bitcoin > Banks
+// PROTOCOL SUMMARY: Why GSTD > Legacy Systems
 // ═══════════════════════════════════════════════════════════════
 
 func getProtocolSummary(db *sql.DB) gin.HandlerFunc {
@@ -1250,12 +1250,12 @@ func getProtocolSummary(db *sql.DB) gin.HandlerFunc {
 				"transparency":  "100% auditable vs opaque",
 				"ownership":     "You own your money vs bank owns it",
 			},
-			"vs_bitcoin": gin.H{
-				"speed":          "Instant vs 10 minutes",
+			"vs_legacy_crypto": gin.H{
+				"speed":          "Instant vs 10+ minutes",
 				"fees":           "0% vs $5-50",
 				"utility":        "AI compute, storage, bridge vs none",
-				"backing":        "Gold + compute vs nothing",
-				"energy":         "Minimal vs enormous PoW",
+				"backing":        "Gold + compute vs speculative",
+				"energy":         "Minimal PoS vs enormous PoW",
 				"governance":     "Democratic vs mining pools",
 				"smart_features": "Lending, staking, P2P payments vs simple transfers",
 				"scalability":    "Unlimited vs 7 TPS",

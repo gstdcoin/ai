@@ -13,6 +13,7 @@ interface NavItem {
     href: string;
     icon: React.ReactNode;
     external?: boolean;
+    short?: string;
 }
 
 export default function EcosystemNav() {
@@ -33,18 +34,15 @@ export default function EcosystemNav() {
         { key: 'nav_nodes', href: `${APP_BASE}/nodes`, icon: <Server size={16} />, external: !isOnApp },
         { key: 'nav_leaderboard', href: `${APP_BASE}/leaderboard`, icon: <Trophy size={16} />, external: !isOnApp },
         { key: 'nav_stats', href: `${APP_BASE}/stats`, icon: <Activity size={16} />, external: !isOnApp },
-        { key: 'nav_bot', href: 'https://gstdbot.gstdtoken.com', icon: <Bot size={16} />, external: true },
+        { key: 'nav_bot', href: 'https://gstdbot.gstdtoken.com', icon: <Bot size={16} />, external: true, short: 'Bot' },
         { key: 'nav_telegram', href: 'https://t.me/GstdAppBot', icon: <ExternalLink size={14} />, external: true },
     ];
 
     const isActive = (href: string) => {
         const path = router.pathname;
-        if (href.includes('/dashboard') && (path === '/dashboard' || path === '/')) return true;
-        if (href.includes('/chat') && path === '/chat') return true;
-        if (href.includes('/bridge') && path === '/bridge') return true;
-        if (href.includes('/nodes') && path === '/nodes') return true;
-        if (href.includes('/leaderboard') && path === '/leaderboard') return true;
-        if (href.includes('/stats') && path === '/stats') return true;
+        if (href.endsWith('/') && (path === '/dashboard' || path === '/')) return true;
+        const segments = ['/chat', '/bridge', '/swap', '/staking', '/nodes', '/leaderboard', '/stats'];
+        for (const seg of segments) { if (href.includes(seg) && path === seg) return true; }
         return false;
     };
 
@@ -81,7 +79,7 @@ export default function EcosystemNav() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }} className="ecosystem-nav-desktop">
                     {navItems.map((item) => {
                         const active = isActive(item.href);
-                        const label = t(item.key, item.key.replace('nav_', ''));
+                        const label = item.short || t(item.key, item.key.replace('nav_', ''));
                         return item.external ? (
                             <a key={item.key} href={item.href} target="_blank" rel="noopener noreferrer"
                                 style={{

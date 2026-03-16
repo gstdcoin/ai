@@ -63,7 +63,7 @@ export default function SwapPage() {
 
   useEffect(() => {
     if (!userAddress) { setBalance(0); return; }
-    fetch(`${API_BASE_URL}/api/v1/wallet/balance?wallet=${encodeURIComponent(userAddress)}`)
+    fetch(`${API_BASE_URL}/api/v1/balance/public?wallet=${encodeURIComponent(userAddress)}`)
       .then(r => r.json())
       .then(d => setBalance((d.gstd_balance || 0) + (d.pending_earnings || 0)))
       .catch(() => {});

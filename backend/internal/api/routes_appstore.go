@@ -358,7 +358,7 @@ func getAppCategories() gin.HandlerFunc {
 			"categories": []gin.H{
 				{"id": "earning", "name": "Earning", "icon": "💰", "description": "Earn GSTD tokens"},
 				{"id": "ai", "name": "AI & ML", "icon": "🧠", "description": "Artificial Intelligence"},
-				{"id": "finance", "name": "Finance", "icon": "₿", "description": "Bitcoin, Crypto, DeFi"},
+				{"id": "finance", "name": "Finance", "icon": "💰", "description": "DeFi, Crypto, Payments"},
 				{"id": "files", "name": "Files", "icon": "📁", "description": "Storage & Sync"},
 				{"id": "security", "name": "Security", "icon": "🔐", "description": "Passwords & Encryption"},
 				{"id": "network", "name": "Network", "icon": "🌐", "description": "VPN, IPFS, Networking"},
@@ -653,7 +653,7 @@ func getWhatsNew() gin.HandlerFunc {
 			"features": []gin.H{
 				{
 					"title":       "🏪 App Store",
-					"description": "Install 15+ apps on your node — AI models, Bitcoin, IPFS, Nextcloud and more. Inspired by Umbrel.",
+					"description": "Install 15+ apps on your node — AI models, DeFi, IPFS, Nextcloud and more. Inspired by Umbrel.",
 				},
 				{
 					"title":       "📊 Live System Usage",

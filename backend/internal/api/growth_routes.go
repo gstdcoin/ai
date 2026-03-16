@@ -94,7 +94,7 @@ func SetupGrowthRoutes(v1 *gin.RouterGroup, protected *gin.RouterGroup, h *Growt
 	// Public user leaderboard (top holders)
 	v1.GET("/leaderboard", h.GetUserLeaderboard)
 	// Public balance check (for swap/staking UI)
-	v1.GET("/wallet/balance", h.GetPublicBalance)
+	v1.GET("/balance/public", h.GetPublicBalance)
 
 	// ========================================================================
 	// PROTECTED ROUTES (require session)
