@@ -104,9 +104,9 @@ export default function Home() {
   const totalNodes = networkStats?.total_nodes?.toLocaleString() || '—';
   const totalTasks = networkStats?.total_tasks?.toLocaleString() || '—';
   const gstdPrice = networkStats?.gstd_price_usd && networkStats.gstd_price_usd > 0 ? '$' + networkStats.gstd_price_usd.toFixed(6) : '—';
-  const circulatingSupply = tokenomics ? tokenomics.circulating_supply.toFixed(0) : '—';
+  const circulatingSupply = tokenomics ? tokenomics.circulating_supply.toLocaleString(undefined, { maximumFractionDigits: 0 }) : '—';
   const totalBurned = tokenomics?.total_burned?.toFixed(4) || networkStats?.total_burned?.toFixed(4) || '0';
-  const totalMinted = tokenomics ? tokenomics.total_minted.toFixed(0) : '—';
+  const totalMinted = tokenomics ? tokenomics.total_minted.toLocaleString(undefined, { maximumFractionDigits: 0 }) : '—';
   const totalUsers = networkStats?.total_users?.toLocaleString() || '—';
 
   return (
@@ -281,7 +281,7 @@ export default function Home() {
 
           {/* ═══════ TOKENOMICS ═══════ */}
           <div className="w-full max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4 mb-20 stagger-in">
-            <StatCard value={circulatingSupply} label={t('circulating_supply', 'Circulating')} color="text-cyan-400" emoji="🌐" />
+            <StatCard value={circulatingSupply} label={t('circulating_supply', 'Circulating')} color="text-cyan-400" />
             <StatCard value={totalMinted} label={t('total_minted', 'Total Minted')} color="text-violet-400" emoji="🪙" />
             <StatCard value={totalBurned} label={t('total_burned', 'Burned')} color="text-red-400" emoji="🔥" />
             <StatCard value={gstdPrice} label={t('gstd_price_usd', 'GSTD Price ($)')} color="text-amber-400" emoji="💎" />

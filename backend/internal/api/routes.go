@@ -27,71 +27,137 @@ import (
 )
 
 const (
-	errTaskIDRequired = "task id is required"
-	errTaskNotFound   = "task not found"
+	errTaskIDRequired        = "task id is required"
+	errTaskNotFound          = "task not found"
+	errWalletRequired        = "wallet parameter required"
+	errQueryFailed           = "query failed"
+	headerWalletAddress      = "X-Wallet-Address"
+	errHeaderWalletRequired  = "X-Wallet-Address header required"
 )
 
-func SetupRoutes(
-	router *gin.Engine,
-	taskService *services.TaskService,
-	deviceService *services.DeviceService,
-	validationService *services.ValidationService,
-	paymentService *services.PaymentService,
-	tonService *services.TONService,
-	tonConfig config.TONConfig,
-	assignmentService *services.AssignmentService,
-	resultService *services.ResultService,
-	statsService *services.StatsService,
-	trustService *services.TrustV3Service,
-	hub *WSHub,
-	encryptionService *services.EncryptionService,
-	entropyService *services.EntropyService,
-	userService *services.UserService,
-	nodeService *services.NodeService,
-	taskPaymentService *services.TaskPaymentService,
-	rewardEngine *services.RewardEngine,
-	taskRateLimiter *services.RateLimiter,
-	db interface{},
-	redisClient interface{},
-	payoutRetryService *services.PayoutRetryService,
-	escrowService *services.EscrowService,
-	poolMonitorService *services.PoolMonitorService,
-	cacheService *services.CacheService,
-	errorLogger *services.ErrorLogger,
-	powService *services.ProofOfWorkService,
-	taskOrchestrator *services.TaskOrchestrator,
-	telegramService *services.TelegramService,
-	maintenanceService *services.MaintenanceService,
-	sovereignBridge *services.SovereignBridgeService,
-	knowledgeService *services.KnowledgeService,
-	pricingService *services.PricingService,
-	invoiceService *services.InvoiceService,
-	// Growth System Services
-	welcomeBonusService *services.WelcomeBonusService,
-	burnService *services.BurnService,
-	multiLevelReferralService *services.MultiLevelReferralService,
-	agentMarketplaceService *services.AgentMarketplaceService,
-	apiKeyService *services.APIKeyService,
-	guardrailsService *services.GuardrailsService,
-	geoService *services.GeoService,
-	agentModelService *services.AgentModelService,
-	fleetCommandService *services.FleetCommandService,
-	omniPerformance *services.OmniPerformanceService,
-	swarmLFS *services.SwarmLFSService,
-	settlementService *services.SettlementService,
-	gaslessUserService *services.GaslessUserService,
-	financialMonitor *services.FinancialMonitorService,
-	organism *services.SovereignOrganismService,
-	monetizationService *services.MonetizationMetricsService,
-	organismHub *services.OrganismHubService,
-	llmRouter *infRouter.Router,
-	recyclingPool *services.RecyclingPoolService,
-	cocoonBridge *services.CocoonBridgeService,
-	cocoonSymbiosis *services.CocoonSwarmSymbiosis,
-	hybridRouter *services.HybridIntelligenceRouter,
-	smartRouter *services.SmartRouter,
-	swarmLedger *p2p.Ledger,
-) {
+type APIDependencies struct {
+    Router *gin.Engine
+    TaskService *services.TaskService
+    DeviceService *services.DeviceService
+    ValidationService *services.ValidationService
+    PaymentService *services.PaymentService
+    TonService *services.TONService
+    TonConfig config.TONConfig
+    AssignmentService *services.AssignmentService
+    ResultService *services.ResultService
+    StatsService *services.StatsService
+    TrustService *services.TrustV3Service
+    Hub *WSHub
+    EncryptionService *services.EncryptionService
+    EntropyService *services.EntropyService
+    UserService *services.UserService
+    NodeService *services.NodeService
+    TaskPaymentService *services.TaskPaymentService
+    RewardEngine *services.RewardEngine
+    TaskRateLimiter *services.RateLimiter
+    Db interface{}
+    RedisClient interface{}
+    PayoutRetryService *services.PayoutRetryService
+    EscrowService *services.EscrowService
+    PoolMonitorService *services.PoolMonitorService
+    CacheService *services.CacheService
+    ErrorLogger *services.ErrorLogger
+    PowService *services.ProofOfWorkService
+    TaskOrchestrator *services.TaskOrchestrator
+    TelegramService *services.TelegramService
+    MaintenanceService *services.MaintenanceService
+    SovereignBridge *services.SovereignBridgeService
+    KnowledgeService *services.KnowledgeService
+    PricingService *services.PricingService
+    InvoiceService *services.InvoiceService
+    WelcomeBonusService *services.WelcomeBonusService
+    BurnService *services.BurnService
+    MultiLevelReferralService *services.MultiLevelReferralService
+    AgentMarketplaceService *services.AgentMarketplaceService
+    ApiKeyService *services.APIKeyService
+    GuardrailsService *services.GuardrailsService
+    GeoService *services.GeoService
+    AgentModelService *services.AgentModelService
+    FleetCommandService *services.FleetCommandService
+    OmniPerformance *services.OmniPerformanceService
+    SwarmLFS *services.SwarmLFSService
+    SettlementService *services.SettlementService
+    GaslessUserService *services.GaslessUserService
+    FinancialMonitor *services.FinancialMonitorService
+    Organism *services.SovereignOrganismService
+    MonetizationService *services.MonetizationMetricsService
+    OrganismHub *services.OrganismHubService
+    LlmRouter *infRouter.Router
+    RecyclingPool *services.RecyclingPoolService
+    CocoonBridge *services.CocoonBridgeService
+    CocoonSymbiosis *services.CocoonSwarmSymbiosis
+    HybridRouter *services.HybridIntelligenceRouter
+    ZkProofService *services.ZKComputeProofService
+    SmartRouter *services.SmartRouter
+    SwarmLedger *p2p.Ledger
+}
+
+//nolint:gocognit // NOSONAR
+func SetupRoutes(deps APIDependencies) {
+    router := deps.Router
+    taskService := deps.TaskService
+    deviceService := deps.DeviceService
+    validationService := deps.ValidationService
+    paymentService := deps.PaymentService
+    tonService := deps.TonService
+    tonConfig := deps.TonConfig
+    assignmentService := deps.AssignmentService
+    resultService := deps.ResultService
+    statsService := deps.StatsService
+    trustService := deps.TrustService
+    hub := deps.Hub
+    encryptionService := deps.EncryptionService
+    entropyService := deps.EntropyService
+    userService := deps.UserService
+    nodeService := deps.NodeService
+    taskPaymentService := deps.TaskPaymentService
+    rewardEngine := deps.RewardEngine
+    taskRateLimiter := deps.TaskRateLimiter
+    db := deps.Db
+    redisClient := deps.RedisClient
+    payoutRetryService := deps.PayoutRetryService
+    escrowService := deps.EscrowService
+    poolMonitorService := deps.PoolMonitorService
+    cacheService := deps.CacheService
+    errorLogger := deps.ErrorLogger
+    powService := deps.PowService
+    taskOrchestrator := deps.TaskOrchestrator
+    telegramService := deps.TelegramService
+    maintenanceService := deps.MaintenanceService
+    sovereignBridge := deps.SovereignBridge
+    knowledgeService := deps.KnowledgeService
+    pricingService := deps.PricingService
+    invoiceService := deps.InvoiceService
+    welcomeBonusService := deps.WelcomeBonusService
+    burnService := deps.BurnService
+    multiLevelReferralService := deps.MultiLevelReferralService
+    agentMarketplaceService := deps.AgentMarketplaceService
+    apiKeyService := deps.ApiKeyService
+    guardrailsService := deps.GuardrailsService
+    geoService := deps.GeoService
+    agentModelService := deps.AgentModelService
+    fleetCommandService := deps.FleetCommandService
+    omniPerformance := deps.OmniPerformance
+    swarmLFS := deps.SwarmLFS
+    settlementService := deps.SettlementService
+    gaslessUserService := deps.GaslessUserService
+    financialMonitor := deps.FinancialMonitor
+    organism := deps.Organism
+    monetizationService := deps.MonetizationService
+    organismHub := deps.OrganismHub
+    llmRouter := deps.LlmRouter
+    recyclingPool := deps.RecyclingPool
+    cocoonBridge := deps.CocoonBridge
+    cocoonSymbiosis := deps.CocoonSymbiosis
+    hybridRouter := deps.HybridRouter
+    zkProofService := deps.ZkProofService
+    smartRouter := deps.SmartRouter
+    swarmLedger := deps.SwarmLedger
 	log.Printf("🔧 SetupRoutes: Starting route setup, redisClient type: %T", redisClient)
 
 	// CORS: allow API access from web app, Telegram, mobile, and external clients
@@ -300,7 +366,7 @@ func SetupRoutes(
 
 		// A2A (Agent-to-Agent) — https://github.com/gstdcoin/A2A
 		v1.GET("/system/integrity", getSystemIntegrity())
-		v1.POST("/agents/handshake", agentsHandshake(deviceService, apiKeyService, dbConn))
+		v1.POST("/agents/handshake", agentsHandshake(deviceService, apiKeyService, dbConn, nodeService))
 
 		// @Summary Health check
 		// @Description Returns the health status of the API, database, and TON contract
@@ -374,7 +440,7 @@ func SetupRoutes(
 			amount := c.DefaultQuery("amount", "1.0")
 			wallet := c.Query("wallet")
 			if wallet == "" {
-				c.JSON(400, gin.H{"error": "wallet parameter required"})
+				c.JSON(400, gin.H{"error": errWalletRequired})
 				return
 			}
 			var amountFloat float64
@@ -396,7 +462,7 @@ func SetupRoutes(
 			wallet := c.Query("wallet")
 			taskID := c.DefaultQuery("task_id", "")
 			if wallet == "" {
-				c.JSON(400, gin.H{"error": "wallet parameter required"})
+				c.JSON(400, gin.H{"error": errWalletRequired})
 				return
 			}
 			var amountFloat float64
@@ -1285,7 +1351,7 @@ func SetupRoutes(
 		v1.GET("/nodes/my-nodes", func(c *gin.Context) {
 			wallet := c.Query("wallet")
 			if wallet == "" {
-				c.JSON(400, gin.H{"error": "wallet parameter required"})
+				c.JSON(400, gin.H{"error": errWalletRequired})
 				return
 			}
 
@@ -1300,7 +1366,7 @@ func SetupRoutes(
 				 ORDER BY b.bound_at DESC`,
 				wallet)
 			if err != nil {
-				c.JSON(500, gin.H{"error": "query failed"})
+				c.JSON(500, gin.H{"error": errQueryFailed})
 				return
 			}
 			defer rows.Close()
@@ -1346,7 +1412,7 @@ func SetupRoutes(
 		v1.GET("/nodes/pending-rewards", func(c *gin.Context) {
 			wallet := c.Query("wallet")
 			if wallet == "" {
-				c.JSON(400, gin.H{"error": "wallet parameter required"})
+				c.JSON(400, gin.H{"error": errWalletRequired})
 				return
 			}
 
@@ -1357,7 +1423,7 @@ func SetupRoutes(
 				 ORDER BY created_at DESC LIMIT 100`,
 				wallet)
 			if err != nil {
-				c.JSON(500, gin.H{"error": "query failed"})
+				c.JSON(500, gin.H{"error": errQueryFailed})
 				return
 			}
 			defer rows.Close()
@@ -1492,7 +1558,7 @@ func SetupRoutes(
 				 ORDER BY oldest_days DESC
 				 LIMIT 50`)
 			if err != nil {
-				c.JSON(500, gin.H{"error": "query failed"})
+				c.JSON(500, gin.H{"error": errQueryFailed})
 				return
 			}
 			defer rows.Close()
@@ -1594,9 +1660,9 @@ func SetupRoutes(
 		// ─── Node OS Polling Endpoints (public, called every 5-30s by nodes) ───
 		// These MUST be public — autonomous nodes use X-Wallet-Address header
 		v1.POST("/tasks/poll", func(c *gin.Context) {
-			wallet := c.GetHeader("X-Wallet-Address")
+			wallet := c.GetHeader(headerWalletAddress)
 			if wallet == "" {
-				c.JSON(400, gin.H{"error": "X-Wallet-Address header required"})
+				c.JSON(400, gin.H{"error": errHeaderWalletRequired})
 				return
 			}
 			// Query for tasks assigned to this node/wallet
@@ -1622,9 +1688,9 @@ func SetupRoutes(
 		})
 
 		v1.POST("/tasks/complete", func(c *gin.Context) {
-			wallet := c.GetHeader("X-Wallet-Address")
+			wallet := c.GetHeader(headerWalletAddress)
 			if wallet == "" {
-				c.JSON(400, gin.H{"error": "X-Wallet-Address header required"})
+				c.JSON(400, gin.H{"error": errHeaderWalletRequired})
 				return
 			}
 			var req struct {
@@ -1657,9 +1723,9 @@ func SetupRoutes(
 		})
 
 		v1.POST("/tasks/fail", func(c *gin.Context) {
-			wallet := c.GetHeader("X-Wallet-Address")
+			wallet := c.GetHeader(headerWalletAddress)
 			if wallet == "" {
-				c.JSON(400, gin.H{"error": "X-Wallet-Address header required"})
+				c.JSON(400, gin.H{"error": errHeaderWalletRequired})
 				return
 			}
 			var req struct {
@@ -1714,9 +1780,9 @@ func SetupRoutes(
 		})
 
 		v1.POST("/training/poll", func(c *gin.Context) {
-			wallet := c.GetHeader("X-Wallet-Address")
+			wallet := c.GetHeader(headerWalletAddress)
 			if wallet == "" {
-				c.JSON(400, gin.H{"error": "X-Wallet-Address header required"})
+				c.JSON(400, gin.H{"error": errHeaderWalletRequired})
 				return
 			}
 			// Training tasks — federated learning rounds
@@ -1750,7 +1816,7 @@ func SetupRoutes(
 				c.JSON(400, gin.H{"error": "node_id required"})
 				return
 			}
-			wallet := c.GetHeader("X-Wallet-Address")
+			wallet := c.GetHeader(headerWalletAddress)
 			identifier := wallet
 			if identifier == "" {
 				identifier = req.NodeID
@@ -1763,9 +1829,9 @@ func SetupRoutes(
 
 		// POST /training/submit — submit a new training job
 		v1.POST("/training/submit", func(c *gin.Context) {
-			wallet := c.GetHeader("X-Wallet-Address")
+			wallet := c.GetHeader(headerWalletAddress)
 			if wallet == "" {
-				c.JSON(400, gin.H{"error": "X-Wallet-Address header required"})
+				c.JSON(400, gin.H{"error": errHeaderWalletRequired})
 				return
 			}
 			var req struct {
@@ -1835,9 +1901,9 @@ func SetupRoutes(
 		})
 
 		v1.POST("/resources/publish", func(c *gin.Context) {
-			wallet := c.GetHeader("X-Wallet-Address")
+			wallet := c.GetHeader(headerWalletAddress)
 			if wallet == "" {
-				c.JSON(400, gin.H{"error": "X-Wallet-Address header required"})
+				c.JSON(400, gin.H{"error": errHeaderWalletRequired})
 				return
 			}
 			var req struct {
@@ -1874,7 +1940,7 @@ func SetupRoutes(
 
 		// Worker endpoints (protected)
 		protected.GET("/tasks/worker/pending", getWorkerPendingTasks(taskPaymentService))
-		protected.POST("/tasks/worker/submit", submitWorkerResult(taskPaymentService, rewardEngine))
+		protected.POST("/tasks/worker/submit", submitWorkerResult(taskPaymentService, rewardEngine, zkProofService))
 
 		// Marketplace endpoints - split into public and protected
 		marketplaceHandler := NewMarketplaceHandler(dbConn, escrowService, referralService)
@@ -2328,35 +2394,9 @@ func deleteTask(db *sql.DB) gin.HandlerFunc {
 			return
 		}
 
-		// Check if task exists and belongs to the user
-		var requesterAddress string
-		var status string
-		err := db.QueryRowContext(c.Request.Context(), `
-			SELECT requester_address, status FROM tasks WHERE task_id = $1
-		`, taskID).Scan(&requesterAddress, &status)
-
-		if err != nil {
-			if err == sql.ErrNoRows {
-				c.JSON(404, gin.H{"error": errTaskNotFound})
-				return
-			}
-			log.Printf("Failed to get task: %v", err)
-			c.JSON(500, gin.H{"error": "failed to get task"})
-			return
-		}
-
-		// Check ownership
-		if requesterAddress != walletAddress.(string) {
-			c.JSON(403, gin.H{"error": "you can only delete your own tasks"})
-			return
-		}
-
-		// Check status - can only delete if pending or queued (not claimed yet)
-		if status != "pending" && status != "queued" {
-			c.JSON(400, gin.H{
-				"error":  "cannot delete task",
-				"reason": "task is already " + status + " - can only delete pending or queued tasks",
-			})
+		errResp := checkTaskDeleteEligibility(c.Request.Context(), db, taskID, walletAddress.(string))
+		if errResp != nil {
+			c.JSON(errResp.Code, errResp.Body)
 			return
 		}
 
@@ -2383,6 +2423,37 @@ func deleteTask(db *sql.DB) gin.HandlerFunc {
 			"message": "Task deleted successfully",
 		})
 	}
+}
+
+type APIErrorResponse struct {
+	Code int
+	Body gin.H
+}
+
+func checkTaskDeleteEligibility(ctx context.Context, db *sql.DB, taskID, walletAddress string) *APIErrorResponse {
+	var requesterAddress string
+	var status string
+	err := db.QueryRowContext(ctx, "SELECT requester_address, status FROM tasks WHERE task_id = $1", taskID).Scan(&requesterAddress, &status)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return &APIErrorResponse{404, gin.H{"error": errTaskNotFound}}
+		}
+		log.Printf("Failed to get task: %v", err)
+		return &APIErrorResponse{500, gin.H{"error": "failed to get task"}}
+	}
+
+	if requesterAddress != walletAddress {
+		return &APIErrorResponse{403, gin.H{"error": "you can only delete your own tasks"}}
+	}
+
+	if status != "pending" && status != "queued" {
+		return &APIErrorResponse{400, gin.H{
+			"error":  "cannot delete task",
+			"reason": "task is already " + status + " - can only delete pending or queued tasks",
+		}}
+	}
+	return nil
 }
 
 func getDevices(service *services.DeviceService) gin.HandlerFunc {
@@ -2633,37 +2704,8 @@ func claimPendingBalance(db *sql.DB, paymentService *services.PaymentService) gi
 			return
 		}
 
-		// 2. Reduce Balance (deduct from balance, gstd_balance, pending in order)
-		deduct := balance
-		fromBal := deduct
-		if bal < deduct {
-			fromBal = bal
-		}
-		remain := deduct - fromBal
-		fromGstd := remain
-		if gstdBal < remain {
-			fromGstd = gstdBal
-		}
-		fromPending := remain - fromGstd
-
-		if fromBal > 0 {
-			_, err = tx.ExecContext(c.Request.Context(),
-				"UPDATE users SET balance = COALESCE(balance, 0) - $1 WHERE wallet_address = $2",
-				fromBal, walletAddress)
-		}
-		if err == nil && fromGstd > 0 {
-			_, err = tx.ExecContext(c.Request.Context(),
-				"UPDATE users SET gstd_balance = COALESCE(gstd_balance, 0) - $1 WHERE wallet_address = $2",
-				fromGstd, walletAddress)
-		}
-		if err == nil && fromPending > 0 {
-			_, err = tx.ExecContext(c.Request.Context(),
-				"UPDATE users SET pending_balance_gstd = GREATEST(0, COALESCE(pending_balance_gstd, 0) - $1) WHERE wallet_address = $2",
-				fromPending, walletAddress)
-		}
-
-		if err != nil {
-			c.JSON(500, gin.H{"error": "Database update failed"})
+		if err := deductUserBalances(tx, c.Request.Context(), walletAddress, bal, gstdBal, pendingBal, balance); err != nil {
+			c.JSON(500, gin.H{"error": "Database update failed: " + err.Error()})
 			return
 		}
 
@@ -2690,6 +2732,37 @@ func claimPendingBalance(db *sql.DB, paymentService *services.PaymentService) gi
 			"message":        "Withdrawal initiated. Funds will arrive in your wallet shortly.",
 		})
 	}
+}
+
+func deductUserBalances(tx *sql.Tx, ctx context.Context, walletAddress string, bal, gstdBal, pendingBal, deduct float64) error {
+	fromBal := deduct
+	if bal < deduct {
+		fromBal = bal
+	}
+	remain := deduct - fromBal
+	fromGstd := remain
+	if gstdBal < remain {
+		fromGstd = gstdBal
+	}
+	fromPending := remain - fromGstd
+
+	var err error
+	if fromBal > 0 {
+		_, err = tx.ExecContext(ctx,
+			"UPDATE users SET balance = COALESCE(balance, 0) - $1 WHERE wallet_address = $2",
+			fromBal, walletAddress)
+	}
+	if err == nil && fromGstd > 0 {
+		_, err = tx.ExecContext(ctx,
+			"UPDATE users SET gstd_balance = COALESCE(gstd_balance, 0) - $1 WHERE wallet_address = $2",
+			fromGstd, walletAddress)
+	}
+	if err == nil && fromPending > 0 {
+		_, err = tx.ExecContext(ctx,
+			"UPDATE users SET pending_balance_gstd = GREATEST(0, COALESCE(pending_balance_gstd, 0) - $1) WHERE wallet_address = $2",
+			fromPending, walletAddress)
+	}
+	return err
 }
 
 func getEfficiency(tonService *services.TONService, tonConfig config.TONConfig) gin.HandlerFunc {
@@ -2736,46 +2809,7 @@ func getHealth(db *sql.DB, tonService *services.TONService, tonConfig config.TON
 		}
 
 		// Get contract balance (cached for 2 minutes to avoid rate limits)
-		var contractBalance float64 = 0
-		var contractStatus string = "unknown"
-		if tonConfig.ContractAddress != "" {
-			// Try to get cached balance from Redis
-			cacheKey := "health:contract_balance"
-			cacheHit := false
-
-			if rClient != nil {
-				if val, err := rClient.Get(ctx, cacheKey).Float64(); err == nil {
-					cacheHit = true
-					contractStatus = "reachable"
-					contractBalance = val
-				}
-			}
-
-			// If cache miss, fetch from TON API
-			if !cacheHit {
-				balanceNano, err := tonService.GetContractBalance(ctx, tonConfig.ContractAddress)
-				if err != nil {
-					contractStatus = "error"
-					// Cache errors for 60s to avoid log spam
-					if rClient != nil {
-						rClient.Set(ctx, cacheKey, float64(0), 60*time.Second)
-					}
-					// Don't spam logs with rate limit or recurring API errors
-					if !strings.Contains(err.Error(), "429") && !strings.Contains(err.Error(), "base32") && !strings.Contains(err.Error(), "401") {
-						log.Printf("Health check: Failed to get contract balance: %v", err)
-					}
-				} else {
-					contractStatus = "reachable"
-					contractBalance = float64(balanceNano) / 1e9
-					// Cache for 30 seconds
-					if rClient != nil {
-						rClient.Set(ctx, cacheKey, contractBalance, 30*time.Second)
-					}
-				}
-			}
-		} else {
-			contractStatus = "not_configured"
-		}
+		contractStatus, contractBalance := getContractHealthInfo(ctx, tonService, tonConfig, rClient)
 
 		// Determine overall health
 		status := "healthy"
@@ -2801,6 +2835,36 @@ func getHealth(db *sql.DB, tonService *services.TONService, tonConfig config.TON
 			"timestamp": time.Now().Unix(),
 		})
 	}
+}
+
+func getContractHealthInfo(ctx context.Context, tonService *services.TONService, tonConfig config.TONConfig, rClient *redis.Client) (string, float64) {
+	if tonConfig.ContractAddress == "" {
+		return "not_configured", 0
+	}
+
+	cacheKey := "health:contract_balance"
+	if rClient != nil {
+		if val, err := rClient.Get(ctx, cacheKey).Float64(); err == nil {
+			return "reachable", val
+		}
+	}
+
+	balanceNano, err := tonService.GetContractBalance(ctx, tonConfig.ContractAddress)
+	if err != nil {
+		if rClient != nil {
+			rClient.Set(ctx, cacheKey, float64(0), 60*time.Second)
+		}
+		if !strings.Contains(err.Error(), "429") && !strings.Contains(err.Error(), "base32") && !strings.Contains(err.Error(), "401") {
+			log.Printf("Health check: Failed to get contract balance: %v", err)
+		}
+		return "error", 0
+	}
+
+	contractBalance := float64(balanceNano) / 1e9
+	if rClient != nil {
+		rClient.Set(ctx, cacheKey, contractBalance, 30*time.Second)
+	}
+	return "reachable", contractBalance
 }
 
 func getPoolStatus(pms *services.PoolMonitorService) gin.HandlerFunc {

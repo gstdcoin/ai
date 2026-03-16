@@ -68,6 +68,7 @@ func SetupP2PBridgeRoutes(v1 *gin.RouterGroup, db *sql.DB) {
 }
 
 // POST /bridge/p2p/order — Create a new bridge order
+//nolint:gocognit
 func createBridgeOrder(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
@@ -363,7 +364,7 @@ func takeOrder(db *sql.DB) gin.HandlerFunc {
 			"amount":            amount,
 			"instructions": []string{
 				fmt.Sprintf("1. Send %.4f GSTD from your %s address to: %s", amount, dstChain, dstAddr),
-				fmt.Sprintf("2. Enter your TX hash to confirm deposit"),
+				"2. Enter your TX hash to confirm deposit",
 				fmt.Sprintf("3. Counterparty will send %.4f GSTD to your %s address: %s", amount, srcChain, req.DestAddress),
 				"4. Confirm receipt when you receive the tokens",
 			},
@@ -431,6 +432,7 @@ func getBridgeOrders(db *sql.DB) gin.HandlerFunc {
 }
 
 // GET /bridge/p2p/my-orders — Get my orders
+//nolint:gocognit
 func getMyBridgeOrders(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		wallet := c.Query("wallet")
@@ -503,6 +505,7 @@ func getMyBridgeOrders(db *sql.DB) gin.HandlerFunc {
 }
 
 // GET /bridge/p2p/order/:id — Get order detail
+//nolint:gocognit
 func getBridgeOrderDetail(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id")
@@ -584,6 +587,7 @@ func getBridgeOrderDetail(db *sql.DB) gin.HandlerFunc {
 }
 
 // POST /bridge/p2p/order/:id/deposit — Confirm deposit with ON-CHAIN verification
+//nolint:gocognit
 func confirmDepositWithVerification(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id")

@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import EcosystemNav from '../components/layout/EcosystemNav';
-import { Trophy, Crown, Medal, Award, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { API_BASE_URL } from '../lib/config';
 
 interface LeaderboardEntry {
@@ -36,19 +36,19 @@ export default function LeaderboardPage() {
   useEffect(() => { fetchLeaderboard(); }, [fetchLeaderboard]);
 
   const getRankIcon = (rank: number) => {
-    if (rank === 1) return <Crown className="text-yellow-400" size={20} />;
-    if (rank === 2) return <Medal className="text-gray-300" size={18} />;
-    if (rank === 3) return <Medal className="text-amber-600" size={18} />;
-    if (rank <= 10) return <Award className="text-violet-400" size={16} />;
-    return <span className="text-gray-500 text-sm font-mono">#{rank}</span>;
+    if (rank === 1) return <div style={{ fontSize: 24, lineHeight: 1 }}>🥇</div>;
+    if (rank === 2) return <div style={{ fontSize: 24, lineHeight: 1 }}>🥈</div>;
+    if (rank === 3) return <div style={{ fontSize: 24, lineHeight: 1 }}>🥉</div>;
+    if (rank <= 10) return <div style={{ fontSize: 20, lineHeight: 1 }}>🏅</div>;
+    return <span className="text-gray-500 text-sm font-mono font-bold">#{rank}</span>;
   };
 
   const getRankColor = (rank: number) => {
-    if (rank === 1) return 'border-yellow-400/30 bg-yellow-400/[0.03]';
-    if (rank === 2) return 'border-gray-300/20 bg-gray-300/[0.02]';
-    if (rank === 3) return 'border-amber-600/20 bg-amber-600/[0.02]';
-    if (rank <= 10) return 'border-violet-400/10 bg-violet-400/[0.01]';
-    return 'border-white/5 bg-white/[0.01]';
+    if (rank === 1) return 'gold-top bg-yellow-400/[0.04] border-yellow-400/20';
+    if (rank === 2) return 'bg-gray-300/[0.03] border-gray-300/20';
+    if (rank === 3) return 'bg-amber-600/[0.03] border-amber-600/20';
+    if (rank <= 10) return 'violet-top bg-violet-400/[0.02] border-violet-400/10';
+    return '';
   };
 
   return (
@@ -59,52 +59,54 @@ export default function LeaderboardPage() {
       </Head>
       <EcosystemNav />
 
-      <main className="max-w-3xl mx-auto px-4 pt-20 pb-16">
+      <main className="max-w-3xl mx-auto px-4 pt-20 pb-16 sovereign-section">
         {/* Header */}
-        <div className="text-center mb-10">
-          <div className="flex items-center justify-center gap-3 mb-3">
-            <Trophy className="text-yellow-400" size={28} />
-            <h1 className="text-3xl font-extrabold bg-gradient-to-r from-yellow-400 via-amber-300 to-yellow-500 bg-clip-text text-transparent">
+        <div className="text-center mb-12">
+          <div className="sec-tag gold fu d1 text-center">{t('updated_live', 'Updated live')}</div>
+          <div className="flex items-center justify-center gap-4 mb-4 fu d2">
+            <div style={{ fontSize: 36, lineHeight: 1 }}>🏆</div>
+            <h1 className="sec-title mb-0">
               {t('leaderboard', 'Leaderboard')}
             </h1>
           </div>
-          <p className="text-gray-400 text-sm">
-            Top {total} GSTD holders · {t('updated_live', 'Updated live')}
+          <p className="sec-sub mx-auto fu d3">
+            Top {total} GSTD node operators and holders on the network.
           </p>
           <button
             onClick={fetchLeaderboard}
-            className="mt-3 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 hover:text-white border border-white/10 hover:border-white/20 transition-all"
+            className="mt-2 text-sm text-cyan-400 hover:text-cyan-300 font-bold transition-all fu d4 flex items-center justify-center gap-2 mx-auto"
           >
-            <RefreshCw size={12} className={`inline mr-1 ${loading ? 'animate-spin' : ''}`} /> Refresh
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> {t('refresh', 'Refresh')}
           </button>
         </div>
 
         {/* Leaderboard */}
         {loading ? (
-          <div className="text-center text-gray-500 py-20">
-            <RefreshCw className="animate-spin mx-auto mb-3" size={24} />
-            Loading...
+          <div className="text-center text-cyan-400 py-20 fu d5">
+            <RefreshCw className="animate-spin mx-auto mb-4" size={28} />
+            <span className="font-bold tracking-widest uppercase text-xs">Syncing Swarm...</span>
           </div>
         ) : data.length === 0 ? (
-          <div className="text-center text-gray-500 py-20">No data yet</div>
+          <div className="text-center text-gray-500 py-20 fu d5 font-bold">No active nodes found</div>
         ) : (
-          <div className="space-y-2">
-            {data.map((entry) => (
+          <div className="space-y-3 fu d5">
+            {data.map((entry, i) => (
               <div
                 key={entry.rank}
-                className={`flex items-center gap-4 p-3 rounded-xl border transition-all hover:scale-[1.01] ${getRankColor(entry.rank)}`}
+                className={`sov-card flex items-center gap-4 !p-4 transition-all !duration-200 hover:scale-[1.02] ${getRankColor(entry.rank)}`}
+                style={{ animationDelay: `${(i * 0.05).toFixed(2)}s` }}
               >
-                <div className="w-10 flex justify-center">{getRankIcon(entry.rank)}</div>
+                <div className="w-12 flex justify-center items-center">{getRankIcon(entry.rank)}</div>
                 <div className="flex-1 min-w-0">
-                  <span className="font-mono text-sm text-gray-300 truncate block">
+                  <span className="font-mono text-sm sm:text-base text-gray-200 truncate block font-medium">
                     {entry.wallet}
                   </span>
                 </div>
-                <div className="text-right">
-                  <span className={`font-bold text-sm ${entry.rank <= 3 ? 'text-yellow-400' : 'text-white'}`}>
+                <div className="text-right flex flex-col items-end">
+                  <span className={`font-black text-lg sm:text-xl leading-none ${entry.rank <= 3 ? 'text-amber-400' : 'text-white'}`}>
                     {entry.balance.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                   </span>
-                  <span className="text-gray-500 text-xs ml-1">GSTD</span>
+                  <span className="text-cyan-400/60 text-[10px] font-bold uppercase tracking-wider mt-1">GSTD</span>
                 </div>
               </div>
             ))}

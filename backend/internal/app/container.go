@@ -35,6 +35,7 @@ import (
 )
 
 // BuildContainer constructs the dependency injection container
+//nolint:gocognit,revive // NOSONAR
 func BuildContainer() *dig.Container {
 	c := dig.New()
 
@@ -195,6 +196,7 @@ func BuildContainer() *dig.Container {
 		return services.NewOmnipotenceService(db, wallet)
 	})
 	c.Provide(services.NewSupremeCoordinatorService)
+	//nolint:revive // By design
 	c.Provide(func(db *sql.DB, inference *services.InferenceService, mobile *services.MobileComputeService, pipeline *services.PipelineParallelismService, contrib *services.ContributionMonetizationService, cleanCore *services.CleanCoreService, settlement *services.SettlementService, supremeCoord *services.SupremeCoordinatorService) *services.UniversalMeshService {
 		return services.NewUniversalMeshService(db, inference, mobile, pipeline, contrib, cleanCore, settlement, supremeCoord)
 	})
@@ -218,6 +220,7 @@ func BuildContainer() *dig.Container {
 	c.Provide(func(db *sql.DB, escrow *services.EscrowService) *services.MonetizationMetricsService {
 		return services.NewMonetizationMetricsService(db, escrow)
 	})
+	//nolint:revive // By design
 	c.Provide(func(
 		db *sql.DB,
 		monitor *services.FinancialMonitorService,
@@ -398,118 +401,338 @@ func parseTONAPIKeys(primary, keysStr string) []string {
 }
 
 // StartApplication performs final wiring and starts all background services
+//nolint:gocognit,revive,maintidx // NOSONAR
+type ApplicationDependencies struct {
+    dig.In
+    Cfg *config.Config
+    Router *gin.Engine
+    Hub *api.WSHub
+    TonService *services.TONService
+    CacheService *services.CacheService
+    PoolMonitor *services.PoolMonitorService
+    ErrorLogger *services.ErrorLogger
+    StatsService *services.StatsService
+    ValidationService *services.ValidationService
+    TrustV3Service *services.TrustV3Service
+    EntropyService *services.EntropyService
+    AssignmentService *services.AssignmentService
+    EncryptionService *services.EncryptionService
+    NodeService *services.NodeService
+    TaskService *services.TaskService
+    RewardEngine *services.RewardEngine
+    EscrowService *services.EscrowService
+    PayoutRetry *services.PayoutRetryService
+    PaymentWatcher *services.PaymentWatcher
+    PaymentTracker *services.PaymentTracker
+    DeviceService *services.DeviceService
+    PaymentService *services.PaymentService
+    ResultService *services.ResultService
+    TaskRateLimiter *services.RateLimiter
+    Db *sql.DB
+    RedisClient *redis.Client
+    PowService *services.ProofOfWorkService
+    TaskOrchestrator *services.TaskOrchestrator
+    TelegramService *services.TelegramService
+    MaintenanceService *services.MaintenanceService
+    SovereignBridge *services.SovereignBridgeService
+    KnowledgeService *services.KnowledgeService
+    PricingService *services.PricingService
+    InvoiceService *services.InvoiceService
+    WelcomeBonusService *services.WelcomeBonusService
+    BurnService *services.BurnService
+    MultiLevelReferralService *services.MultiLevelReferralService
+    AgentMarketplaceService *services.AgentMarketplaceService
+    TaskPaymentService *services.TaskPaymentService
+    TimeoutService *services.TimeoutService
+    UserService *services.UserService
+    StonFiService *services.StonFiService
+    ApiKeyService *services.APIKeyService
+    PipelineService *services.PipelineParallelismService
+    GuardrailsService *services.GuardrailsService
+    FederatedEngine *services.FederatedEngineService
+    MobileCompute *services.MobileComputeService
+    ZbGateService *services.ZeroBalanceGateService
+    RecyclingPool *services.RecyclingPoolService
+    KvCacheService *services.KVCacheService
+    DataAirlock *services.DataAirlockService
+    OpenClawBridge *services.OpenClawBridgeService
+    InferenceService *services.InferenceService
+    ContributionMonetization *services.ContributionMonetizationService
+    UniversalMeshService *services.UniversalMeshService
+    GeoService *services.GeoService
+    AgentModelService *services.AgentModelService
+    AgentSubcontractService *services.AgentSubcontractService
+    GoldHashRateService *services.GoldHashRateService
+    GoldBroadcastRunner *services.GoldBroadcastRunner
+    AnomalyDetection *services.AnomalyDetectionService
+    ZkComputeProof *services.ZKComputeProofService
+    FleetCommandService *services.FleetCommandService
+    EvolutionEngine *services.EvolutionEngine
+    OmniPerformance *services.OmniPerformanceService
+    TreasuryService *services.TreasuryService
+    SwarmLFS *services.SwarmLFSService
+    CleanCoreService *services.CleanCoreService
+    GlobalAbsorption *services.GlobalAbsorptionService
+    KnowledgeIntegrator *services.KnowledgeIntegrator
+    PredictiveMirroring *services.PredictiveMirroringService
+    SupremeCoord *services.SupremeCoordinatorService
+    LeviathanProfit *services.LeviathanProfitService
+    AgentRatingService *services.AgentRatingService
+    TalentHunting *services.TalentHuntingService
+    MeshConstitution *services.MeshConstitutionService
+    ConstitutionAnchor *services.ConstitutionAnchorService
+    SingularityReady *services.SingularityReadyService
+    BillingService *services.BillingService
+    SettlementService *services.SettlementService
+    GoldenAgeService *services.GoldenAgeService
+    DynamicEquilibrium *services.DynamicEquilibriumService
+    EternalFlameService *services.EternalFlameService
+    GaslessUserService *services.GaslessUserService
+    PayoutBatchService *services.PayoutBatchService
+    HighloadWallet *services.HighloadWalletService
+    GlobalNeuralMerge *services.GlobalNeuralMergeService
+    SingularityGateway *services.SingularityGatewayService
+    Omnipotence *services.OmnipotenceService
+    SubAgentSelfOpt *services.SubAgentSelfOptimizationService
+    BitchatBridge *services.BitchatBridgeService
+    CocoonBridge *services.CocoonBridgeService
+    CocoonSymbiosis *services.CocoonSwarmSymbiosis
+    HybridRouter *services.HybridIntelligenceRouter
+    SmartRouter *services.SmartRouter
+    A2aServer *a2a.Server
+    HiveStore hive.HiveStore
+    SentinelEngine *sentinel.Sentinel
+    GenesisLock *genesis.GenesisLock
+    NodeManager *nodeMgr.NodeManager
+    LlmRouter *infRouter.Router
+    SettlementCli *settlementClient.Client
+    FinancialMonitor *services.FinancialMonitorService
+    Organism *services.SovereignOrganismService
+    MonetizationService *services.MonetizationMetricsService
+    OrganismHub *services.OrganismHubService
+    SwarmNode *p2p.SwarmNode
+    SwarmLedger *p2p.Ledger
+}
+
+//nolint:gocognit,revive // NOSONAR
 func StartApplication(container *dig.Container) error {
-	return container.Invoke(func(
-		cfg *config.Config,
-		router *gin.Engine,
-		hub *api.WSHub,
-		tonService *services.TONService,
-		cacheService *services.CacheService,
-		poolMonitor *services.PoolMonitorService,
-		errorLogger *services.ErrorLogger,
-		statsService *services.StatsService,
-		validationService *services.ValidationService,
-		trustV3Service *services.TrustV3Service,
-		entropyService *services.EntropyService,
-		assignmentService *services.AssignmentService,
-		encryptionService *services.EncryptionService,
-		nodeService *services.NodeService,
-		taskService *services.TaskService,
-		rewardEngine *services.RewardEngine,
-		escrowService *services.EscrowService,
-		payoutRetry *services.PayoutRetryService,
-		paymentWatcher *services.PaymentWatcher,
-		paymentTracker *services.PaymentTracker,
-		deviceService *services.DeviceService,
-		paymentService *services.PaymentService,
-		resultService *services.ResultService,
-		taskRateLimiter *services.RateLimiter,
-		db *sql.DB,
-		redisClient *redis.Client,
-		powService *services.ProofOfWorkService,
-		taskOrchestrator *services.TaskOrchestrator,
-		telegramService *services.TelegramService,
-		maintenanceService *services.MaintenanceService,
-		sovereignBridge *services.SovereignBridgeService,
-		knowledgeService *services.KnowledgeService,
-		pricingService *services.PricingService,
-		invoiceService *services.InvoiceService,
-		welcomeBonusService *services.WelcomeBonusService,
-		burnService *services.BurnService,
-		multiLevelReferralService *services.MultiLevelReferralService,
-		agentMarketplaceService *services.AgentMarketplaceService,
-		taskPaymentService *services.TaskPaymentService,
-		timeoutService *services.TimeoutService,
-		userService *services.UserService,
-		stonFiService *services.StonFiService,
-		apiKeyService *services.APIKeyService,
-		pipelineService *services.PipelineParallelismService,
-		guardrailsService *services.GuardrailsService,
-		federatedEngine *services.FederatedEngineService,
-		mobileCompute *services.MobileComputeService,
-		zbGateService *services.ZeroBalanceGateService,
-		recyclingPool *services.RecyclingPoolService,
-		kvCacheService *services.KVCacheService,
-		dataAirlock *services.DataAirlockService,
-		openClawBridge *services.OpenClawBridgeService,
-		inferenceService *services.InferenceService,
-		contributionMonetization *services.ContributionMonetizationService,
-		universalMeshService *services.UniversalMeshService,
-		geoService *services.GeoService,
-		agentModelService *services.AgentModelService,
-		agentSubcontractService *services.AgentSubcontractService,
-		goldHashRateService *services.GoldHashRateService,
-		goldBroadcastRunner *services.GoldBroadcastRunner,
-		anomalyDetection *services.AnomalyDetectionService,
-		zkComputeProof *services.ZKComputeProofService,
-		fleetCommandService *services.FleetCommandService,
-		evolutionEngine *services.EvolutionEngine,
-		omniPerformance *services.OmniPerformanceService,
-		treasuryService *services.TreasuryService,
-		swarmLFS *services.SwarmLFSService,
-		cleanCoreService *services.CleanCoreService,
-		globalAbsorption *services.GlobalAbsorptionService,
-		knowledgeIntegrator *services.KnowledgeIntegrator,
-		predictiveMirroring *services.PredictiveMirroringService,
-		supremeCoord *services.SupremeCoordinatorService,
-		leviathanProfit *services.LeviathanProfitService,
-		agentRatingService *services.AgentRatingService,
-		talentHunting *services.TalentHuntingService,
-		meshConstitution *services.MeshConstitutionService,
-		constitutionAnchor *services.ConstitutionAnchorService,
-		singularityReady *services.SingularityReadyService,
-		billingService *services.BillingService,
-		settlementService *services.SettlementService,
-		goldenAgeService *services.GoldenAgeService,
-		dynamicEquilibrium *services.DynamicEquilibriumService,
-		eternalFlameService *services.EternalFlameService,
-		gaslessUserService *services.GaslessUserService,
-		payoutBatchService *services.PayoutBatchService,
-		highloadWallet *services.HighloadWalletService,
-		globalNeuralMerge *services.GlobalNeuralMergeService,
-		singularityGateway *services.SingularityGatewayService,
-		omnipotence *services.OmnipotenceService,
-		subAgentSelfOpt *services.SubAgentSelfOptimizationService,
-		bitchatBridge *services.BitchatBridgeService,
-		cocoonBridge *services.CocoonBridgeService, // Cocoon Confidential Compute
-		cocoonSymbiosis *services.CocoonSwarmSymbiosis, // Cocoon→Hive Memory symbiosis
-		hybridRouter *services.HybridIntelligenceRouter, // Swarm↔Cocoon↔Ollama
-		smartRouter *services.SmartRouter, // Omega Sovereign-First routing
-		// ── Phase 0 Genesis Services ──
-		a2aServer *a2a.Server,
-		hiveStore hive.HiveStore,
-		sentinelEngine *sentinel.Sentinel,
-		genesisLock *genesis.GenesisLock,
-		nodeManager *nodeMgr.NodeManager,
-		llmRouter *infRouter.Router,
-		settlementCli *settlementClient.Client,
-		financialMonitor *services.FinancialMonitorService,
-		organism *services.SovereignOrganismService,
-		monetizationService *services.MonetizationMetricsService,
-		organismHub *services.OrganismHubService,
-		swarmNode *p2p.SwarmNode,
-		swarmLedger *p2p.Ledger,
-	) {
+	return container.Invoke(func(deps ApplicationDependencies) {
+    cfg := deps.Cfg
+    _ = cfg
+    router := deps.Router
+    _ = router
+    hub := deps.Hub
+    _ = hub
+    tonService := deps.TonService
+    _ = tonService
+    cacheService := deps.CacheService
+    _ = cacheService
+    poolMonitor := deps.PoolMonitor
+    _ = poolMonitor
+    errorLogger := deps.ErrorLogger
+    _ = errorLogger
+    statsService := deps.StatsService
+    _ = statsService
+    validationService := deps.ValidationService
+    _ = validationService
+    trustV3Service := deps.TrustV3Service
+    _ = trustV3Service
+    entropyService := deps.EntropyService
+    _ = entropyService
+    assignmentService := deps.AssignmentService
+    _ = assignmentService
+    encryptionService := deps.EncryptionService
+    _ = encryptionService
+    nodeService := deps.NodeService
+    _ = nodeService
+    taskService := deps.TaskService
+    _ = taskService
+    rewardEngine := deps.RewardEngine
+    _ = rewardEngine
+    escrowService := deps.EscrowService
+    _ = escrowService
+    payoutRetry := deps.PayoutRetry
+    _ = payoutRetry
+    paymentWatcher := deps.PaymentWatcher
+    _ = paymentWatcher
+    paymentTracker := deps.PaymentTracker
+    _ = paymentTracker
+    deviceService := deps.DeviceService
+    _ = deviceService
+    paymentService := deps.PaymentService
+    _ = paymentService
+    resultService := deps.ResultService
+    _ = resultService
+    taskRateLimiter := deps.TaskRateLimiter
+    _ = taskRateLimiter
+    db := deps.Db
+    _ = db
+    redisClient := deps.RedisClient
+    _ = redisClient
+    powService := deps.PowService
+    _ = powService
+    taskOrchestrator := deps.TaskOrchestrator
+    _ = taskOrchestrator
+    telegramService := deps.TelegramService
+    _ = telegramService
+    maintenanceService := deps.MaintenanceService
+    _ = maintenanceService
+    sovereignBridge := deps.SovereignBridge
+    _ = sovereignBridge
+    knowledgeService := deps.KnowledgeService
+    _ = knowledgeService
+    pricingService := deps.PricingService
+    _ = pricingService
+    invoiceService := deps.InvoiceService
+    _ = invoiceService
+    welcomeBonusService := deps.WelcomeBonusService
+    _ = welcomeBonusService
+    burnService := deps.BurnService
+    _ = burnService
+    multiLevelReferralService := deps.MultiLevelReferralService
+    _ = multiLevelReferralService
+    agentMarketplaceService := deps.AgentMarketplaceService
+    _ = agentMarketplaceService
+    taskPaymentService := deps.TaskPaymentService
+    _ = taskPaymentService
+    timeoutService := deps.TimeoutService
+    _ = timeoutService
+    userService := deps.UserService
+    _ = userService
+    stonFiService := deps.StonFiService
+    _ = stonFiService
+    apiKeyService := deps.ApiKeyService
+    _ = apiKeyService
+    pipelineService := deps.PipelineService
+    _ = pipelineService
+    guardrailsService := deps.GuardrailsService
+    _ = guardrailsService
+    federatedEngine := deps.FederatedEngine
+    _ = federatedEngine
+    mobileCompute := deps.MobileCompute
+    _ = mobileCompute
+    zbGateService := deps.ZbGateService
+    _ = zbGateService
+    recyclingPool := deps.RecyclingPool
+    _ = recyclingPool
+    kvCacheService := deps.KvCacheService
+    _ = kvCacheService
+    dataAirlock := deps.DataAirlock
+    _ = dataAirlock
+    openClawBridge := deps.OpenClawBridge
+    _ = openClawBridge
+    inferenceService := deps.InferenceService
+    _ = inferenceService
+    contributionMonetization := deps.ContributionMonetization
+    _ = contributionMonetization
+    universalMeshService := deps.UniversalMeshService
+    _ = universalMeshService
+    geoService := deps.GeoService
+    _ = geoService
+    agentModelService := deps.AgentModelService
+    _ = agentModelService
+    agentSubcontractService := deps.AgentSubcontractService
+    _ = agentSubcontractService
+    goldHashRateService := deps.GoldHashRateService
+    _ = goldHashRateService
+    goldBroadcastRunner := deps.GoldBroadcastRunner
+    _ = goldBroadcastRunner
+    anomalyDetection := deps.AnomalyDetection
+    _ = anomalyDetection
+    zkComputeProof := deps.ZkComputeProof
+    _ = zkComputeProof
+    fleetCommandService := deps.FleetCommandService
+    _ = fleetCommandService
+    evolutionEngine := deps.EvolutionEngine
+    _ = evolutionEngine
+    omniPerformance := deps.OmniPerformance
+    _ = omniPerformance
+    treasuryService := deps.TreasuryService
+    _ = treasuryService
+    swarmLFS := deps.SwarmLFS
+    _ = swarmLFS
+    cleanCoreService := deps.CleanCoreService
+    _ = cleanCoreService
+    globalAbsorption := deps.GlobalAbsorption
+    _ = globalAbsorption
+    knowledgeIntegrator := deps.KnowledgeIntegrator
+    _ = knowledgeIntegrator
+    predictiveMirroring := deps.PredictiveMirroring
+    _ = predictiveMirroring
+    supremeCoord := deps.SupremeCoord
+    _ = supremeCoord
+    leviathanProfit := deps.LeviathanProfit
+    _ = leviathanProfit
+    agentRatingService := deps.AgentRatingService
+    _ = agentRatingService
+    talentHunting := deps.TalentHunting
+    _ = talentHunting
+    meshConstitution := deps.MeshConstitution
+    _ = meshConstitution
+    constitutionAnchor := deps.ConstitutionAnchor
+    _ = constitutionAnchor
+    singularityReady := deps.SingularityReady
+    _ = singularityReady
+    billingService := deps.BillingService
+    _ = billingService
+    settlementService := deps.SettlementService
+    _ = settlementService
+    goldenAgeService := deps.GoldenAgeService
+    _ = goldenAgeService
+    dynamicEquilibrium := deps.DynamicEquilibrium
+    _ = dynamicEquilibrium
+    eternalFlameService := deps.EternalFlameService
+    _ = eternalFlameService
+    gaslessUserService := deps.GaslessUserService
+    _ = gaslessUserService
+    payoutBatchService := deps.PayoutBatchService
+    _ = payoutBatchService
+    highloadWallet := deps.HighloadWallet
+    _ = highloadWallet
+    globalNeuralMerge := deps.GlobalNeuralMerge
+    _ = globalNeuralMerge
+    singularityGateway := deps.SingularityGateway
+    _ = singularityGateway
+    omnipotence := deps.Omnipotence
+    _ = omnipotence
+    subAgentSelfOpt := deps.SubAgentSelfOpt
+    _ = subAgentSelfOpt
+    bitchatBridge := deps.BitchatBridge
+    _ = bitchatBridge
+    cocoonBridge := deps.CocoonBridge
+    _ = cocoonBridge
+    cocoonSymbiosis := deps.CocoonSymbiosis
+    _ = cocoonSymbiosis
+    hybridRouter := deps.HybridRouter
+    _ = hybridRouter
+    smartRouter := deps.SmartRouter
+    _ = smartRouter
+    a2aServer := deps.A2aServer
+    _ = a2aServer
+    hiveStore := deps.HiveStore
+    _ = hiveStore
+    sentinelEngine := deps.SentinelEngine
+    _ = sentinelEngine
+    genesisLock := deps.GenesisLock
+    _ = genesisLock
+    nodeManager := deps.NodeManager
+    _ = nodeManager
+    llmRouter := deps.LlmRouter
+    _ = llmRouter
+    settlementCli := deps.SettlementCli
+    _ = settlementCli
+    financialMonitor := deps.FinancialMonitor
+    _ = financialMonitor
+    organism := deps.Organism
+    _ = organism
+    monetizationService := deps.MonetizationService
+    _ = monetizationService
+    organismHub := deps.OrganismHub
+    _ = organismHub
+    swarmNode := deps.SwarmNode
+    _ = swarmNode
+    swarmLedger := deps.SwarmLedger
+    _ = swarmLedger
 		// 1. Cross-dependency wiring
 		tonService.SetCacheService(cacheService)
 		poolMonitor.SetTONService(tonService)
@@ -841,67 +1064,67 @@ func StartApplication(container *dig.Container) error {
 		}
 
 		// 4. Setup Routes
-		api.SetupRoutes(
-			router,
-			taskService,
-			deviceService,
-			validationService,
-			paymentService,
-			tonService,
-			cfg.TON,
-			assignmentService,
-			resultService,
-			statsService,
-			trustV3Service,
-			hub,
-			encryptionService,
-			entropyService,
-			userService,
-			nodeService,
-			taskPaymentService,
-			rewardEngine,
-			taskRateLimiter,
-			db,
-			redisClient,
-			payoutRetry,
-			escrowService,
-			poolMonitor,
-			cacheService,
-			errorLogger,
-			powService,
-			taskOrchestrator,
-			telegramService,
-
-			maintenanceService,
-			sovereignBridge,
-			knowledgeService,
-			pricingService,
-			invoiceService,
-			welcomeBonusService,
-			burnService,
-			multiLevelReferralService,
-			agentMarketplaceService,
-			apiKeyService,
-			guardrailsService,
-			geoService,
-			agentModelService,
-			fleetCommandService,
-			omniPerformance,
-			swarmLFS,
-			settlementService,
-			gaslessUserService,
-			financialMonitor,
-			organism,
-			monetizationService,
-			organismHub,
-			llmRouter,
-			recyclingPool,
-			cocoonBridge,
-			cocoonSymbiosis,
-			hybridRouter,
-			smartRouter,
-			swarmLedger,
-		)
+		api.SetupRoutes(api.APIDependencies{
+        Router: router,
+        TaskService: taskService,
+        DeviceService: deviceService,
+        ValidationService: validationService,
+        PaymentService: paymentService,
+        TonService: tonService,
+        TonConfig: cfg.TON,
+        AssignmentService: assignmentService,
+        ResultService: resultService,
+        StatsService: statsService,
+        TrustService: trustV3Service,
+        Hub: hub,
+        EncryptionService: encryptionService,
+        EntropyService: entropyService,
+        UserService: userService,
+        NodeService: nodeService,
+        TaskPaymentService: taskPaymentService,
+        RewardEngine: rewardEngine,
+        TaskRateLimiter: taskRateLimiter,
+        Db: db,
+        RedisClient: redisClient,
+        PayoutRetryService: payoutRetry,
+        EscrowService: escrowService,
+        PoolMonitorService: poolMonitor,
+        CacheService: cacheService,
+        ErrorLogger: errorLogger,
+        PowService: powService,
+        TaskOrchestrator: taskOrchestrator,
+        TelegramService: telegramService,
+        MaintenanceService: maintenanceService,
+        SovereignBridge: sovereignBridge,
+        KnowledgeService: knowledgeService,
+        PricingService: pricingService,
+        InvoiceService: invoiceService,
+        WelcomeBonusService: welcomeBonusService,
+        BurnService: burnService,
+        MultiLevelReferralService: multiLevelReferralService,
+        AgentMarketplaceService: agentMarketplaceService,
+        ApiKeyService: apiKeyService,
+        GuardrailsService: guardrailsService,
+        GeoService: geoService,
+        AgentModelService: agentModelService,
+        FleetCommandService: fleetCommandService,
+        OmniPerformance: omniPerformance,
+        SwarmLFS: swarmLFS,
+        SettlementService: settlementService,
+        GaslessUserService: gaslessUserService,
+        FinancialMonitor: financialMonitor,
+        Organism: organism,
+        MonetizationService: monetizationService,
+        OrganismHub: organismHub,
+        LlmRouter: llmRouter,
+        RecyclingPool: recyclingPool,
+        CocoonBridge: cocoonBridge,
+        CocoonSymbiosis: cocoonSymbiosis,
+        HybridRouter: hybridRouter,
+        ZkProofService: zkComputeProof,
+        SmartRouter: smartRouter,
+        SwarmLedger: swarmLedger,
+		})
 
 		// 4a. Leviathan Live Stream (SSE) — Protocol: Live Stream, No-DB, 30s memory
 		api.SetupLeviathanLiveStream(router)

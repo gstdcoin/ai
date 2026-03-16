@@ -467,21 +467,20 @@ func (h *GrowthSystemHandler) GetReferralStats(c *gin.Context) {
 }
 
 func (h *GrowthSystemHandler) GenerateReferralCode(c *gin.Context) {
-	var req struct {
-		WalletAddress string `json:"wallet_address" binding:"required"`
-	}
-
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+	// The route is protected, get from context
+	userWalletRaw, exists := c.Get("wallet_address")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
+	wallet := userWalletRaw.(string)
 
 	if h.referral == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Referral service not available"})
 		return
 	}
 
-	code, err := h.referral.GenerateReferralCode(c.Request.Context(), req.WalletAddress)
+	code, err := h.referral.GenerateReferralCode(c.Request.Context(), wallet)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -496,8 +495,7 @@ func (h *GrowthSystemHandler) GenerateReferralCode(c *gin.Context) {
 
 func (h *GrowthSystemHandler) ApplyReferralCode(c *gin.Context) {
 	var req struct {
-		WalletAddress string `json:"wallet_address" binding:"required"`
-		Code          string `json:"code" binding:"required"`
+		Code string `json:"code" binding:"required"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -505,12 +503,19 @@ func (h *GrowthSystemHandler) ApplyReferralCode(c *gin.Context) {
 		return
 	}
 
+	userWalletRaw, exists := c.Get("wallet_address")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+	wallet := userWalletRaw.(string)
+
 	if h.referral == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Referral service not available"})
 		return
 	}
 
-	err := h.referral.ApplyReferralCode(c.Request.Context(), req.WalletAddress, req.Code)
+	err := h.referral.ApplyReferralCode(c.Request.Context(), wallet, req.Code)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -520,21 +525,19 @@ func (h *GrowthSystemHandler) ApplyReferralCode(c *gin.Context) {
 }
 
 func (h *GrowthSystemHandler) ClaimReferralRewards(c *gin.Context) {
-	var req struct {
-		WalletAddress string `json:"wallet_address" binding:"required"`
-	}
-
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+	userWalletRaw, exists := c.Get("wallet_address")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
+	wallet := userWalletRaw.(string)
 
 	if h.referral == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Referral service not available"})
 		return
 	}
 
-	result, err := h.referral.ClaimPendingRewards(c.Request.Context(), req.WalletAddress)
+	result, err := h.referral.ClaimPendingRewards(c.Request.Context(), wallet)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
