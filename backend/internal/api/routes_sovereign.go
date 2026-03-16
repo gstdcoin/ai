@@ -1233,7 +1233,7 @@ func getProtocolSummary(db *sql.DB) gin.HandlerFunc {
 			"governance_proposals": proposals,
 			"active_proposals":     activeProposals,
 			"features": gin.H{
-				"deflationary":     "2% burn on every transaction, 21M cap with halving",
+				"deflationary":     "2% burn on every transaction, 1B cap with halving",
 				"instant_payments": "Zero-fee P2P payments, instant settlement",
 				"real_yield":       "8-36% APY from real compute revenue, 2x for node operators",
 				"micro_lending":    "5% interest, collateralized by compute power",
