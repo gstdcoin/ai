@@ -138,18 +138,48 @@ func (h *GatewayHandler) SetOnchainSettlement(os *services.OnchainSettlementServ
 	h.onchainSettlement = os
 }
 
-// analyzeIntelligenceNeedOllama picks best Ollama model from message content (omega-auto).
+// analyzeIntelligenceNeedOllama picks best Ollama model based on task complexity (omega-auto).
+// Inspired by Devin's planning mode: analyze the task before choosing compute level.
 func analyzeIntelligenceNeedOllama(msgs []map[string]string) string {
 	var text string
 	for _, m := range msgs {
 		text += strings.ToLower(m["content"]) + " "
 	}
-	if strings.Contains(text, "func") || strings.Contains(text, "code") || strings.Contains(text, "script") {
+
+	// Deep reasoning indicators → use strongest model
+	deepReasoningPatterns := []string{
+		"explain why", "compare and contrast", "analyze", "evaluate",
+		"prove", "derive", "theorem", "hypothesis", "implications",
+		"trade-offs", "tradeoffs", "pros and cons", "architecture",
+		"design pattern", "system design", "scalability",
+	}
+	for _, pattern := range deepReasoningPatterns {
+		if strings.Contains(text, pattern) {
+			return "qwen2.5-coder:32b"
+		}
+	}
+
+	// Code tasks → use code-optimized model
+	if strings.Contains(text, "func") || strings.Contains(text, "code") ||
+		strings.Contains(text, "script") || strings.Contains(text, "debug") ||
+		strings.Contains(text, "implement") || strings.Contains(text, "refactor") {
 		return "qwen2.5-coder:7b"
 	}
-	if strings.Contains(text, "math") || strings.Contains(text, "think") || strings.Contains(text, "reason") {
+
+	// Math/logic → use strongest model
+	if strings.Contains(text, "math") || strings.Contains(text, "think") ||
+		strings.Contains(text, "reason") || strings.Contains(text, "calculate") ||
+		strings.Contains(text, "equation") || strings.Contains(text, "probability") {
 		return "qwen2.5-coder:32b"
 	}
+
+	// Multi-step or complex questions → use stronger model
+	if strings.Contains(text, "step by step") || strings.Contains(text, "in detail") ||
+		strings.Contains(text, "comprehensive") || strings.Contains(text, "thorough") ||
+		len(text) > 500 { // Long queries usually need more intelligence
+		return "qwen2.5-coder:32b"
+	}
+
 	return "llama3.1:8b"
 }
 
@@ -555,7 +585,7 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 
 			systemMsg := map[string]string{
 				"role":    "system",
-				"content": "You are GSTD Sovereign AI — an intelligence engine. Here is the verified internet data for the user's query. Use it to provide an extremely accurate answer. " + webCtx.ContextText,
+				"content": "You are GSTD Sovereign AI — a decentralized intelligence engine running on 80+ nodes. APPROACH: 1) THINK FIRST — analyze what the user ACTUALLY needs. 2) Use the verified internet data below as primary evidence. 3) Cross-reference with your knowledge. 4) Provide structured, precise answer with markdown. 5) VERIFY before responding — check accuracy and completeness. Here is verified internet data: " + webCtx.ContextText,
 			}
 			promptMsgs = append([]map[string]string{systemMsg}, promptMsgs...)
 
