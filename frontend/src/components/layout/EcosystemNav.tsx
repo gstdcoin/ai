@@ -79,7 +79,8 @@ export default function EcosystemNav() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }} className="ecosystem-nav-desktop">
                     {navItems.map((item) => {
                         const active = isActive(item.href);
-                        const label = item.short || t(item.key, item.key.replace('nav_', ''));
+                        const fallback = item.key.replace('nav_', '');
+                        const label = item.short || t(item.key, fallback.charAt(0).toUpperCase() + fallback.slice(1));
                         return item.external ? (
                             <a key={item.key} href={item.href} target="_blank" rel="noopener noreferrer"
                                 style={{
@@ -145,7 +146,8 @@ export default function EcosystemNav() {
                     borderBottom: '1px solid rgba(255,255,255,0.06)', padding: '8px 16px',
                 }}>
                     {navItems.map((item) => {
-                        const label = t(item.key, item.key.replace('nav_', ''));
+                        const fb = item.key.replace('nav_', '');
+                        const label = t(item.key, fb.charAt(0).toUpperCase() + fb.slice(1));
                         const Component = item.external ? 'a' : Link;
                         const props = item.external
                             ? { href: item.href, target: '_blank', rel: 'noopener noreferrer' }
