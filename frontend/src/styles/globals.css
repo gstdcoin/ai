@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -21,18 +21,22 @@
   --tg-theme-secondary-bg-color: #08081a;
   --tg-viewport-height: 100vh;
 
-  /* Unified color system */
+  /* Unified color system — aligned with gstdbot.gstdtoken.com */
   --bg-primary: #030014;
   --bg-secondary: #08081a;
   --bg-tertiary: #0d0d25;
+  --card: rgba(255, 255, 255, 0.025);
+  --card-hover: rgba(255, 255, 255, 0.045);
   --border-subtle: rgba(255, 255, 255, 0.06);
   --border-medium: rgba(255, 255, 255, 0.10);
+  --border-hover: rgba(255, 255, 255, 0.12);
   --text-primary: #ffffff;
   --text-secondary: #9ca3af;
   --text-tertiary: #6b7280;
   --accent-violet: #8b5cf6;
   --accent-cyan: #06b6d4;
   --accent-emerald: #10b981;
+  --brand-gold: #ffd700;
 
   /* Additional aliases */
   --tg-bg-color: var(--tg-theme-bg-color);
@@ -59,6 +63,7 @@ body {
   color: var(--text-primary);
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   min-height: 100vh;
+  letter-spacing: -0.01em;
   min-height: var(--tg-viewport-height, 100vh);
   min-height: -webkit-fill-available;
   overscroll-behavior-y: none;
@@ -122,13 +127,15 @@ body {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
+  .sov-card:hover,
   .glass-card:hover {
-    border-color: var(--border-medium);
+    border-color: rgba(255, 215, 0, 0.15);
+    background: var(--card-hover);
     box-shadow:
       0 12px 40px rgba(0, 0, 0, 0.4),
-      0 0 20px rgba(139, 92, 246, 0.05),
+      0 0 20px rgba(255, 215, 0, 0.04),
       0 0 0 1px rgba(255, 255, 255, 0.05) inset;
-    transform: translateY(-1px);
+    transform: translateY(-2px);
   }
 
   .stat-card {
@@ -443,10 +450,10 @@ a:focus-visible {
   animation: gradient-shift 3s ease infinite;
 }
 
-/* ─── Modern Card ─────────────────────────────────────── */
+/* ─── Modern Card — gold hover tint like gstdbot ─────── */
 .card-modern {
   @apply rounded-2xl p-6;
-  background: var(--bg-secondary);
+  background: var(--card);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--border-subtle);
@@ -457,11 +464,12 @@ a:focus-visible {
 }
 
 .card-modern:hover {
-  transform: translateY(-1px);
-  border-color: var(--border-medium);
+  transform: translateY(-2px);
+  border-color: rgba(255, 215, 0, 0.15);
+  background: var(--card-hover);
   box-shadow:
     0 12px 40px rgba(0, 0, 0, 0.3),
-    0 0 20px rgba(139, 92, 246, 0.05),
+    0 0 20px rgba(255, 215, 0, 0.04),
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
@@ -711,24 +719,25 @@ a:focus-visible {
   animation: glow-breathe 4s ease-in-out infinite;
 }
 
-/* ─── Beauty Patch: Glass Pro ─────────────────────────── */
+/* ─── Glass Pro — matches gstdbot.gstdtoken.com card style ─ */
 .glass-pro {
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--card);
   backdrop-filter: blur(24px) saturate(200%);
   -webkit-backdrop-filter: blur(24px) saturate(200%);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-subtle);
   box-shadow:
     0 8px 40px rgba(0, 0, 0, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
     inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .glass-pro:hover {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(139, 92, 246, 0.12);
+  background: var(--card-hover);
+  border-color: rgba(255, 215, 0, 0.15);
   box-shadow:
     0 12px 48px rgba(0, 0, 0, 0.5),
-    0 0 30px rgba(139, 92, 246, 0.06),
+    0 0 30px rgba(255, 215, 0, 0.04),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
   transform: translateY(-2px);
 }
@@ -927,9 +936,9 @@ body::before {
 }
 
 .sov-card:hover {
-  border-color: rgba(255, 255, 255, 0.10);
-  background: rgba(255, 255, 255, 0.045);
-  transform: translateY(-3px);
+  border-color: rgba(255, 215, 0, 0.15);
+  background: var(--card-hover);
+  transform: translateY(-2px);
   box-shadow: var(--g-shadow-m);
 }
 
@@ -1104,4 +1113,13 @@ body::before {
   height: 1px;
   background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
   margin: 60px 0;
+}
+
+/* ─── Monospace Font (JetBrains Mono like gstdbot) ─── */
+.g-mono {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+code, pre, .font-mono {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
 }
