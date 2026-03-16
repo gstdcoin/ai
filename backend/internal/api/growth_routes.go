@@ -93,6 +93,8 @@ func SetupGrowthRoutes(v1 *gin.RouterGroup, protected *gin.RouterGroup, h *Growt
 	v1.POST("/referrals/track", h.TrackReferral)
 	// Public user leaderboard (top holders)
 	v1.GET("/leaderboard", h.GetUserLeaderboard)
+	// Public balance check (for swap/staking UI)
+	v1.GET("/wallet/balance", h.GetPublicBalance)
 
 	// ========================================================================
 	// PROTECTED ROUTES (require session)
@@ -662,6 +664,29 @@ func (h *GrowthSystemHandler) GetUserLeaderboard(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"leaderboard": leaderboard, "total": rank})
 }
+
+// GetPublicBalance returns balance for a wallet address (public, for swap/staking UI)
+func (h *GrowthSystemHandler) GetPublicBalance(c *gin.Context) {
+	wallet := c.Query("wallet")
+	if wallet == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "wallet parameter required"})
+		return
+	}
+	var gstdBalance, pendingBalance float64
+	err := h.db.QueryRowContext(c.Request.Context(),
+		`SELECT COALESCE(gstd_balance, 0), COALESCE(pending_balance_gstd, 0) FROM users WHERE wallet_address = $1`,
+		wallet).Scan(&gstdBalance, &pendingBalance)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"gstd_balance": 0, "pending_balance": 0, "total": 0})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"gstd_balance":    gstdBalance,
+		"pending_balance": pendingBalance,
+		"total":           gstdBalance + pendingBalance,
+	})
+}
+
 // AGENT MARKETPLACE HANDLERS
 // ============================================================================
 

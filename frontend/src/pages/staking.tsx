@@ -2,8 +2,8 @@ import Head from 'next/head';
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import EcosystemNav from '../components/layout/EcosystemNav';
-import { Lock, Unlock, TrendingUp, Clock, Shield, Zap, RefreshCw, Info } from 'lucide-react';
+import { Lock, TrendingUp, Clock, Shield, Zap, RefreshCw, Info, Wallet } from 'lucide-react';
+import { useTonWallet, TonConnectButton } from '@tonconnect/ui-react';
 import { API_BASE_URL } from '../lib/config';
 
 interface StakingInfo {
@@ -24,23 +24,38 @@ const APY_TIERS = [
 
 export default function StakingPage() {
   const { t } = useTranslation('common');
+  const tonWallet = useTonWallet();
+  const walletAddress = tonWallet?.account?.address || '';
   const [info, setInfo] = useState<StakingInfo | null>(null);
-  const [selectedTier, setSelectedTier] = useState(1); // 90 days default
+  const [selectedTier, setSelectedTier] = useState(1);
   const [amount, setAmount] = useState('10');
   const [loading, setLoading] = useState(true);
+  const [balance, setBalance] = useState<number>(0);
 
   const fetchInfo = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/v1/sovereign/staking/info`);
+      const url = walletAddress
+        ? `${API_BASE_URL}/api/v1/sovereign/staking/info?wallet=${encodeURIComponent(walletAddress)}`
+        : `${API_BASE_URL}/api/v1/sovereign/staking/info`;
+      const res = await fetch(url);
       if (res.ok) setInfo(await res.json());
     } catch (e) {
       console.error('Staking info error:', e);
     }
     setLoading(false);
-  }, []);
+  }, [walletAddress]);
 
   useEffect(() => { fetchInfo(); }, [fetchInfo]);
+
+  // Fetch balance
+  useEffect(() => {
+    if (!walletAddress) { setBalance(0); return; }
+    fetch(`${API_BASE_URL}/api/v1/wallet/balance?wallet=${encodeURIComponent(walletAddress)}`)
+      .then(r => r.json())
+      .then(d => setBalance((d.gstd_balance || 0) + (d.pending_earnings || 0)))
+      .catch(() => {});
+  }, [walletAddress]);
 
   const tier = APY_TIERS[selectedTier];
   const amt = parseFloat(amount) || 0;
@@ -65,6 +80,22 @@ export default function StakingPage() {
           <p className="text-gray-400 text-sm max-w-md mx-auto">
             {t('staking_desc', 'Earn real yield from AI compute fees. Lock GSTD, earn rewards daily. Node operators get 2x bonus.')}
           </p>
+          {/* Wallet status */}
+          {walletAddress ? (
+            <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+              <Wallet size={12} className="text-emerald-400" />
+              <span className="text-xs text-emerald-300 font-mono">
+                {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
+              </span>
+              {balance > 0 && (
+                <span className="text-xs text-emerald-400 font-bold">{balance.toFixed(2)} GSTD</span>
+              )}
+            </div>
+          ) : (
+            <div className="mt-3">
+              <TonConnectButton />
+            </div>
+          )}
         </div>
 
         {/* Global Stats */}
