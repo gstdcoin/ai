@@ -2,8 +2,8 @@ import Head from 'next/head';
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import EcosystemNav from '../components/layout/EcosystemNav';
-import { ArrowDownUp, Zap, ExternalLink, RefreshCw, AlertCircle } from 'lucide-react';
+import { ArrowDownUp, Zap, ExternalLink, RefreshCw, AlertCircle, Wallet } from 'lucide-react';
+import { useTonWallet, TonConnectButton } from '@tonconnect/ui-react';
 import { API_BASE_URL } from '../lib/config';
 
 const GSTD_JETTON = 'EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO';
@@ -19,11 +19,14 @@ interface QuoteData {
 
 export default function SwapPage() {
   const { t } = useTranslation('common');
-  const [direction, setDirection] = useState<'buy' | 'sell'>('buy'); // buy = TON→GSTD, sell = GSTD→TON
+  const tonWallet = useTonWallet();
+  const walletAddress = tonWallet?.account?.address || '';
+  const [direction, setDirection] = useState<'buy' | 'sell'>('buy');
   const [amount, setAmount] = useState('1');
   const [quote, setQuote] = useState<QuoteData | null>(null);
   const [loading, setLoading] = useState(false);
   const [gstdPrice, setGstdPrice] = useState<number>(0);
+  const [balance, setBalance] = useState<number>(0);
 
   const fetchQuote = useCallback(async () => {
     const amt = parseFloat(amount);
@@ -50,6 +53,15 @@ export default function SwapPage() {
       .then(d => { if (d.gstd_price_usd > 0) setGstdPrice(d.gstd_price_usd); })
       .catch(() => {});
   }, []);
+
+  // Fetch GSTD balance when wallet connected
+  useEffect(() => {
+    if (!walletAddress) { setBalance(0); return; }
+    fetch(`${API_BASE_URL}/api/v1/wallet/balance?wallet=${encodeURIComponent(walletAddress)}`)
+      .then(r => r.json())
+      .then(d => setBalance((d.gstd_balance || 0) + (d.pending_earnings || 0)))
+      .catch(() => {});
+  }, [walletAddress]);
 
   // Debounce quote fetch
   useEffect(() => {
@@ -104,6 +116,22 @@ export default function SwapPage() {
             <p className="text-gray-500 text-xs mt-1">
               1 GSTD ≈ ${gstdPrice.toFixed(6)}
             </p>
+          )}
+          {/* Wallet status */}
+          {walletAddress ? (
+            <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+              <Wallet size={12} className="text-emerald-400" />
+              <span className="text-xs text-emerald-300 font-mono">
+                {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
+              </span>
+              {balance > 0 && (
+                <span className="text-xs text-emerald-400 font-bold">{balance.toFixed(2)} GSTD</span>
+              )}
+            </div>
+          ) : (
+            <div className="mt-3">
+              <TonConnectButton />
+            </div>
           )}
         </div>
 
