@@ -30,7 +30,8 @@ done
 ## 4. Check database stats
 
 ```bash
-docker exec gstd_postgres_prod psql -U postgres -d distributed_computing -c "
+PG_CONTAINER=$(docker ps --filter "ancestor=postgres:15-alpine" --format "{{.Names}}" | head -1)
+docker exec "$PG_CONTAINER" psql -U postgres -d distributed_computing -c "
 SELECT 'nodes' as metric, COUNT(*) as total, COUNT(*) FILTER(WHERE status='online' AND last_seen > NOW()-INTERVAL '5 min') as active FROM nodes
 UNION ALL
 SELECT 'users', COUNT(*), 0 FROM users
@@ -41,9 +42,10 @@ SELECT 'tasks', COUNT(*), COUNT(*) FILTER(WHERE status='completed') FROM tasks;"
 ## 5. Check Redis health
 
 ```bash
-docker exec gstd_redis_prod redis-cli -a ${REDIS_PASSWORD:-GstdRedis2026} ping 2>/dev/null
-docker exec gstd_redis_prod redis-cli -a ${REDIS_PASSWORD:-GstdRedis2026} dbsize 2>/dev/null
-docker exec gstd_redis_prod redis-cli -a ${REDIS_PASSWORD:-GstdRedis2026} info memory 2>/dev/null | head -5
+REDIS_CONTAINER=$(docker ps --filter "ancestor=redis:7-alpine" --format "{{.Names}}" | head -1)
+docker exec "$REDIS_CONTAINER" redis-cli -a ${REDIS_PASSWORD:-GstdRedis2026} ping 2>/dev/null
+docker exec "$REDIS_CONTAINER" redis-cli -a ${REDIS_PASSWORD:-GstdRedis2026} dbsize 2>/dev/null
+docker exec "$REDIS_CONTAINER" redis-cli -a ${REDIS_PASSWORD:-GstdRedis2026} info memory 2>/dev/null | head -5
 ```
 
 ## 6. Check backend logs for errors
@@ -71,11 +73,10 @@ docker system df 2>&1
 docker logs --tail 10 gstd-telegram-bot 2>&1
 ```
 
-## 10. Check frontend status (systemd)
+## 10. Check frontend status
 
 ```bash
-systemctl is-active gstd-frontend && echo "frontend OK"
-curl -s -o /dev/null -w '%{http_code}' http://localhost:3000 && echo " responds OK"
+curl -s -o /dev/null -w '%{http_code}' http://localhost:3000 && echo " frontend responds OK"
 ```
 
 ## 11. Check bridge status
@@ -88,4 +89,13 @@ docker logs --tail 5 gstd-bridge-test 2>&1
 
 ```bash
 docker images --format "{{.Repository}}:{{.Tag}} {{.Size}}" | grep -E "gstd|backend|bot|bridge" | sort
+```
+
+## 13. Check node rewards subsystem (critical endpoints)
+
+```bash
+for ep in "nodes/rewards/program" "nodes/rewards/network" "nodes/tools/health" "nodes/tools/tasks/available" "nodes/tools/governance/active" "nodes/tools/burn-stats"; do
+  code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "https://api.gstdtoken.com/api/v1/$ep")
+  echo "$code /api/v1/$ep"
+done
 ```

@@ -619,9 +619,9 @@ func getNetworkHealth(db *sql.DB) gin.HandlerFunc {
 		var totalNodes, onlineNodes, totalTasks int
 		var totalUptime float64
 		db.QueryRowContext(ctx, `SELECT COUNT(*) FROM node_tiers`).Scan(&totalNodes)
-		db.QueryRowContext(ctx, `SELECT COUNT(*) FROM node_tiers WHERE last_heartbeat > NOW() - INTERVAL '10 minutes'`).Scan(&onlineNodes)
-		db.QueryRowContext(ctx, `SELECT COALESCE(SUM(tasks_completed), 0) FROM node_tiers`).Scan(&totalTasks)
-		db.QueryRowContext(ctx, `SELECT COALESCE(SUM(uptime_hours), 0) FROM node_tiers`).Scan(&totalUptime)
+		db.QueryRowContext(ctx, `SELECT COUNT(*) FROM node_tiers WHERE last_heartbeat_day >= CURRENT_DATE`).Scan(&onlineNodes)
+		db.QueryRowContext(ctx, `SELECT COALESCE(SUM(total_tasks_completed), 0) FROM node_tiers`).Scan(&totalTasks)
+		db.QueryRowContext(ctx, `SELECT COALESCE(SUM(total_uptime_hours), 0) FROM node_tiers`).Scan(&totalUptime)
 
 		// Calculate network metrics
 		uptimePercent := 0.0
