@@ -64,7 +64,7 @@ export const WalletBalanceWidget: React.FC = () => {
         try {
             setSyncStatus('pending');
             // Fetch On-Chain Balance
-            const balanceData = await apiGet<any>(`/wallet/balance?wallet=${address}&address=${address}`); // Support both param names
+            const balanceData = await apiGet<any>(`/balance/public?wallet=${address}&address=${address}`); // Support both param names
 
             // Fetch Off-Chain Pending Balance (Viral Economy)
             const pendingData = await apiGet<{ pending_balance: number }>(`/users/pending_balance`).catch(() => ({ pending_balance: 0 }));

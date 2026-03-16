@@ -71,7 +71,7 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
     const fetchBalance = async () => {
       try {
         const [balanceRes, usersRes, swarmRes] = await Promise.allSettled([
-          fetch(`${API_BASE_URL}/api/v1/wallet/balance?wallet=${encodeURIComponent(address)}&address=${encodeURIComponent(address)}`),
+          fetch(`${API_BASE_URL}/api/v1/balance/public?wallet=${encodeURIComponent(address)}&address=${encodeURIComponent(address)}`),
           apiGet<{ gstd?: number }>('/users/balance'),
           apiGet<{ balance?: number }>(`/swarm/account/${encodeURIComponent(address)}`)
         ]);
