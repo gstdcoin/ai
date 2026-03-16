@@ -1588,6 +1588,8 @@ func SetupRoutes(
 		v1.POST("/nodes/activate-wallet", activateWalletAsNode(nodeService))
 		// C4 fix: maintenance-alerts was missing from public routes
 		v1.GET("/nodes/maintenance-alerts", maintenanceAlerts(nodeService))
+		// NOTE: Protected node routes (/nodes/my, /nodes/fleet/command) are registered
+		// via SetupNodeProtectedRoutes() below (line ~1871)
 
 		// ─── Node OS Polling Endpoints (public, called every 5-30s by nodes) ───
 		// These MUST be public — autonomous nodes use X-Wallet-Address header

@@ -46,7 +46,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    image: gstd-backend-blue:v157
+    image: gstd-backend-blue:v158
     restart: unless-stopped
     env_file: ./backend/.env
     depends_on:
@@ -90,6 +90,19 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    networks:
+      - gstd_network
+
+  # ─── GSTD Bridge (Rust) ────────────────────────
+  bridge:
+    build:
+      context: ./gstd-bridge
+      dockerfile: Dockerfile
+    image: gstd-bridge:latest
+    container_name: gstd-bridge-test
+    restart: unless-stopped
+    depends_on:
+      - backend-blue
     networks:
       - gstd_network
 
