@@ -5,7 +5,7 @@ import { useTranslation } from 'next-i18next';
 import { TonConnectButton } from '@tonconnect/ui-react';
 import {
     Home, MessageSquare, Activity, Bot,
-    ExternalLink, Menu, X, ArrowRightLeft, Server, Trophy, Repeat, Landmark
+    ExternalLink, Menu, X, ArrowRightLeft, Server, Trophy, Repeat, Landmark, Radio
 } from 'lucide-react';
 
 interface NavItem {
@@ -34,6 +34,7 @@ export default function EcosystemNav() {
         { key: 'nav_nodes', href: `${APP_BASE}/nodes`, icon: <Server size={16} />, external: !isOnApp },
         { key: 'nav_leaderboard', href: `${APP_BASE}/leaderboard`, icon: <Trophy size={16} />, external: !isOnApp },
         { key: 'nav_stats', href: `${APP_BASE}/stats`, icon: <Activity size={16} />, external: !isOnApp },
+        { key: 'nav_monitor', href: `${APP_BASE}/monitor`, icon: <Radio size={16} />, external: !isOnApp },
         { key: 'nav_bot', href: 'https://gstdbot.gstdtoken.com', icon: <Bot size={16} />, external: true, short: 'Bot' },
         { key: 'nav_telegram', href: 'https://t.me/GstdAppBot', icon: <ExternalLink size={14} />, external: true },
     ];
@@ -41,7 +42,7 @@ export default function EcosystemNav() {
     const isActive = (href: string) => {
         const path = router.pathname;
         if (href === '/' || href === APP_BASE) return path === '/';
-        const segments = ['/chat', '/bridge', '/swap', '/staking', '/nodes', '/leaderboard', '/stats'];
+        const segments = ['/chat', '/bridge', '/swap', '/staking', '/nodes', '/leaderboard', '/stats', '/monitor'];
         for (const seg of segments) { if (href.includes(seg) && path === seg) return true; }
         return false;
     };
