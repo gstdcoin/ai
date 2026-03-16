@@ -4,7 +4,7 @@ import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useTranslation } from 'next-i18next';
 import { useState, useEffect, useRef } from 'react';
 import { API_BASE_URL } from '../lib/config';
-import { Activity, Zap, MessageSquare, ArrowRight, Bot, Server, Shield, Globe, Lock, Wifi, Wrench, HardDrive, Brain, Building2, ArrowRightLeft, Trophy } from 'lucide-react';
+import { MessageSquare, ArrowRight, Bot, Brain, Building2, Activity, Zap, Server, Shield, Globe } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
 const AmbientMesh = dynamic(() => import('../components/home/AmbientMesh'), { ssr: false });
@@ -38,7 +38,14 @@ interface Tokenomics {
   next_halving_in_days: number;
 }
 
-function StatCard({ value, label, color, icon }: { value: string; label: string; color: string; icon?: React.ReactNode }) {
+function StatCard({ value, label, color, icon, emoji, sub }: {
+  value: string;
+  label: string;
+  color: string;
+  icon?: React.ReactNode;
+  emoji?: string;
+  sub?: string;
+}) {
   const [flash, setFlash] = useState(false);
   const prevValue = useRef(value);
 
@@ -53,10 +60,17 @@ function StatCard({ value, label, color, icon }: { value: string; label: string;
   }, [value]);
 
   return (
-    <div className={`p-6 rounded-2xl glass-pro shine-on-hover transition-all duration-500 text-center ${flash ? 'stat-flash' : ''}`}>
-      {icon && <div className="mb-2 flex justify-center opacity-50">{icon}</div>}
-      <div className={`text-3xl font-black ${color} mb-1 counter-value`}>{value}</div>
-      <div className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">{label}</div>
+    <div className={`p-6 rounded-2xl glass-pro shine-on-hover transition-all duration-500 text-center relative overflow-hidden ${flash ? 'stat-flash' : ''}`}>
+      {/* Emoji icon (gstdbot style) */}
+      {emoji && <div style={{ fontSize: 28, marginBottom: 8, opacity: 0.85, lineHeight: 1 }}>{emoji}</div>}
+      {/* Lucide icon fallback */}
+      {!emoji && icon && <div className="mb-2 flex justify-center opacity-50">{icon}</div>}
+      {/* Value */}
+      <div className={`text-3xl font-black ${color} mb-0.5 counter-value leading-none`}>{value}</div>
+      {/* Optional sub-unit (e.g. "XAUt", "GSTD") */}
+      {sub && <div className={`text-sm font-bold ${color} opacity-70 mb-1`}>{sub}</div>}
+      {/* Label */}
+      <div className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mt-1">{label}</div>
     </div>
   );
 }
@@ -221,56 +235,56 @@ export default function Home() {
           {/* ═══════ NODE OS FEATURES STRIP ═══════ */}
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 mb-20 stagger-in">
             <div className="p-4 rounded-2xl glass-pro text-center">
-              <Lock className="mx-auto text-violet-400 mb-2" size={20} />
+              <div style={{ fontSize: 22, marginBottom: 6 }}>🔐</div>
               <div className="text-xs font-bold text-white">Wallet Auth</div>
               <div className="text-[10px] text-gray-500">TON Connect</div>
             </div>
             <div className="p-4 rounded-2xl glass-pro text-center">
-              <Shield className="mx-auto text-emerald-400 mb-2" size={20} />
+              <div style={{ fontSize: 22, marginBottom: 6 }}>🌐</div>
               <div className="text-xs font-bold text-white">Auto SSL</div>
               <div className="text-[10px] text-gray-500">Let's Encrypt</div>
             </div>
             <div className="p-4 rounded-2xl glass-pro text-center">
-              <Wifi className="mx-auto text-cyan-400 mb-2" size={20} />
+              <div style={{ fontSize: 22, marginBottom: 6 }}>📡</div>
               <div className="text-xs font-bold text-white">DynDNS</div>
               <div className="text-[10px] text-gray-500">5 providers</div>
             </div>
             <div className="p-4 rounded-2xl glass-pro text-center">
-              <Wrench className="mx-auto text-amber-400 mb-2" size={20} />
+              <div style={{ fontSize: 22, marginBottom: 6 }}>🩺</div>
               <div className="text-xs font-bold text-white">Self-Heal</div>
               <div className="text-[10px] text-gray-500">8 auto-checks</div>
             </div>
             <div className="p-4 rounded-2xl glass-pro text-center">
-              <HardDrive className="mx-auto text-rose-400 mb-2" size={20} />
+              <div style={{ fontSize: 22, marginBottom: 6 }}>📦</div>
               <div className="text-xs font-bold text-white">77 Apps</div>
               <div className="text-[10px] text-gray-500">Docker store</div>
             </div>
             <a href="/bridge" style={{ textDecoration: 'none' }} className="p-4 rounded-2xl glass-pro text-center hover:scale-[1.05] transition-transform">
-              <ArrowRightLeft className="mx-auto text-orange-400 mb-2" size={20} />
+              <div style={{ fontSize: 22, marginBottom: 6 }}>🔗</div>
               <div className="text-xs font-bold text-white">Bridge</div>
               <div className="text-[10px] text-gray-500">Cross-chain</div>
             </a>
             <a href="/leaderboard" style={{ textDecoration: 'none' }} className="p-4 rounded-2xl glass-pro text-center hover:scale-[1.05] transition-transform">
-              <Trophy className="mx-auto text-yellow-400 mb-2" size={20} />
+              <div style={{ fontSize: 22, marginBottom: 6 }}>🏆</div>
               <div className="text-xs font-bold text-white">Leaderboard</div>
-              <div className="text-[10px] text-gray-500">Top holders</div>
+              <div className="text-[10px] text-gray-500">Top nodes</div>
             </a>
           </div>
 
           {/* ═══════ NETWORK STATS ═══════ */}
           <div className="w-full max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 stagger-in" id="stats">
-            <StatCard value={totalUsers} label={t('total_users', 'Users')} color="text-emerald-400" icon={<Activity size={16} className="text-emerald-400" />} />
-            <StatCard value={totalNodes} label={t('total_nodes', 'Nodes')} color="text-cyan-400" icon={<Server size={16} className="text-cyan-400" />} />
-            <StatCard value={totalTasks} label={t('tasks_completed', 'Tasks')} color="text-violet-400" icon={<Zap size={16} className="text-violet-400" />} />
-            <StatCard value={goldReserve + ' XAUt'} label={t('xaut_reserve', 'Gold Reserve')} color="text-amber-400" icon={<Shield size={16} className="text-amber-400" />} />
+            <StatCard value={totalUsers} label={t('total_users', 'Users')} color="text-emerald-400" emoji="👥" />
+            <StatCard value={totalNodes} label={t('total_nodes', 'Nodes')} color="text-cyan-400" emoji="📡" />
+            <StatCard value={totalTasks} label={t('tasks_completed', 'Tasks')} color="text-violet-400" emoji="⚡" />
+            <StatCard value={goldReserve} sub="XAUt" label={t('xaut_reserve', 'Gold Reserve')} color="text-amber-400" emoji="🥇" />
           </div>
 
           {/* ═══════ TOKENOMICS ═══════ */}
           <div className="w-full max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4 mb-20 stagger-in">
-            <StatCard value={circulatingSupply} label={t('circulating_supply', 'Circulating')} color="text-cyan-400" icon={<Globe size={16} className="text-cyan-400" />} />
-            <StatCard value={totalMinted} label={t('total_minted', 'Total Minted')} color="text-violet-400" />
-            <StatCard value={totalBurned} label={t('total_burned', 'Burned 🔥')} color="text-red-400" />
-            <StatCard value={gstdPrice} label={t('gstd_price_usd', 'GSTD Price')} color="text-amber-400" />
+            <StatCard value={circulatingSupply} label={t('circulating_supply', 'Circulating')} color="text-cyan-400" emoji="🌐" />
+            <StatCard value={totalMinted} label={t('total_minted', 'Total Minted')} color="text-violet-400" emoji="🪙" />
+            <StatCard value={totalBurned} label={t('total_burned', 'Burned')} color="text-red-400" emoji="🔥" />
+            <StatCard value={gstdPrice} label={t('gstd_price_usd', 'GSTD Price ($)')} color="text-amber-400" emoji="💎" />
           </div>
 
           {/* ═══════ LIVE NETWORK PULSE ═══════ */}
