@@ -325,10 +325,14 @@ export default function ChatPage() {
             if (saved) {
                 const parsed = JSON.parse(saved);
                 if (Array.isArray(parsed) && parsed.length > 0) {
-                    // Restore conversations without streaming state
+                    // Restore conversations — reset streaming state and fix stuck messages
                     const restored = parsed.map((c: any) => ({
                         ...c,
-                        messages: c.messages?.map((m: any) => ({ ...m, isStreaming: false })) || [],
+                        messages: c.messages?.map((m: any) => ({
+                            ...m,
+                            isStreaming: false,
+                            content: (m.isStreaming && !m.content) ? '⚠️ Request interrupted. Please try again.' : m.content,
+                        })) || [],
                     }));
                     setConversations(restored);
                     setActiveConvId(restored[0]?.id || null);

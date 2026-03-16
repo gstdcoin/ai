@@ -67,8 +67,8 @@ export default function PublicStats() {
       federated: null,
       mobile: null,
       recycling: {
-        total_burned: burnData?.total_burned || 0,
-        effective_supply: burnData?.current_supply || 1e9,
+        total_burned: tokenomicsData?.total_burned || burnData?.total_burned || 0,
+        effective_supply: tokenomicsData?.remaining_supply || tokenomicsData?.max_supply || 21e6,
         total_recycled: tokenomicsData?.total_minted || 0,
         total_to_miners: tokenomicsData?.total_minted ? tokenomicsData.total_minted * 0.93 : 0,
         total_to_reserve: networkData?.gold_reserve || 0,
@@ -129,7 +129,7 @@ export default function PublicStats() {
             <S label="XAUt Reserve" value={stats?.pool?.xaut_balance?.toFixed(6) || '0.000000'} color="text-amber-400" />
             <S label="Circulating" value={stats?.pool?.gstd_balance?.toFixed(0) || '0'} color="text-violet-400" />
             <S label={t('gold_reserve_burned', 'Total Burned') || 'Total Burned'} value={stats?.recycling?.total_burned?.toFixed(4) || '0'} color="text-red-400" />
-            <S label="Effective Supply" value={((stats?.recycling?.effective_supply || 1e9) / 1e6).toFixed(1) + 'M'} color="text-emerald-400" sub="of 1B" />
+            <S label="Remaining Supply" value={((stats?.recycling?.effective_supply || 21e6) / 1e6).toFixed(1) + 'M'} color="text-emerald-400" sub="of 21M" />
           </div>
         </div>
 
