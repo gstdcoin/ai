@@ -11,6 +11,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const errInsufficientBalance = "insufficient balance"
+
 // ═══════════════════════════════════════════════════════════════
 // SOVEREIGN PROTOCOL: Decentralized Financial Operating System
 // Replaces banking: P2P payments, staking, lending, governance
@@ -247,7 +249,7 @@ func p2pPayment(db *sql.DB) gin.HandlerFunc {
 		paymentID, netAmount, burnAmount, err := executeP2pTx(ctx, db, req)
 		if err != nil {
 			status := 500
-			if err.Error() == "insufficient balance" {
+			if err.Error() == errInsufficientBalance {
 				status = 400
 			}
 			c.JSON(status, gin.H{"error": err.Error(), "required": req.Amount})
@@ -279,7 +281,7 @@ func executeP2pTx(ctx context.Context, db *sql.DB, req p2pPaymentReq) (string, f
 		`SELECT COALESCE(gstd_balance, 0) + COALESCE(pending_balance_gstd, 0) FROM users WHERE wallet_address = $1`,
 		req.SenderWallet).Scan(&senderBalance)
 	if err != nil || senderBalance < req.Amount {
-		return "", 0, 0, fmt.Errorf("insufficient balance")
+		return "", 0, 0, fmt.Errorf(errInsufficientBalance)
 	}
 
 	var burnRate float64
@@ -418,11 +420,11 @@ func createStake(db *sql.DB) gin.HandlerFunc {
 
 		// Check balance
 		var balance float64
-		tx.QueryRowContext(ctx,
+		err := tx.QueryRowContext(ctx,
 			`SELECT COALESCE(gstd_balance,0)+COALESCE(pending_balance_gstd,0) FROM users WHERE wallet_address=$1`,
 			req.Wallet).Scan(&balance)
-		if balance < req.Amount {
-			c.JSON(400, gin.H{"error": "insufficient balance"})
+		if err != nil || balance < req.Amount {
+			c.JSON(400, gin.H{"error": errInsufficientBalance})
 			return
 		}
 
