@@ -2,21 +2,12 @@ import Head from 'next/head';
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import { ArrowDownUp, Zap, RefreshCw, AlertCircle, Wallet, CheckCircle2, Loader2, ChevronDown, ExternalLink } from 'lucide-react';
+import { ArrowDownUp, Zap, RefreshCw, AlertCircle, Wallet, CheckCircle2, Loader2, ExternalLink } from 'lucide-react';
 import { useTonAddress, useTonConnectUI, TonConnectButton } from '@tonconnect/ui-react';
-import { StonApiClient } from '@ston-fi/api';
-import { dexFactory } from '@ston-fi/sdk';
-import { TonClient } from '@ton/ton';
 import { API_BASE_URL } from '../lib/config';
 
 const GSTD_JETTON = 'EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO';
-const TON_ADDRESS = 'ton'; // StonFi uses 'ton' literal for native TON
-
-const tonApiClient = typeof window !== 'undefined' ? new TonClient({
-  endpoint: 'https://toncenter.com/api/v2/jsonRPC',
-}) : null;
-
-const stonClient = typeof window !== 'undefined' ? new StonApiClient() : null;
+const TON_NATIVE  = 'EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c';
 
 type SwapStatus = 'idle' | 'simulating' | 'simulated' | 'swapping' | 'success' | 'error';
 
@@ -27,9 +18,26 @@ interface SimResult {
   offerAddress: string;
   askAddress: string;
   priceImpact: string;
-  router: any;
   swapRate: string;
   feePercent: string;
+  routerAddress: string;
+  router: any;
+}
+
+// Direct StonFi API call (more reliable than SDK in browser)
+async function stonfiSimulate(offerAddr: string, askAddr: string, units: string): Promise<any> {
+  const params = new URLSearchParams({
+    offer_address: offerAddr,
+    ask_address: askAddr,
+    units,
+    slippage_tolerance: '0.01',
+  });
+  const res = await fetch(`https://api.ston.fi/v1/swap/simulate?${params}`, { method: 'POST' });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `StonFi API error: ${res.status}`);
+  }
+  return res.json();
 }
 
 export default function SwapPage() {
@@ -37,7 +45,7 @@ export default function SwapPage() {
   const userAddress = useTonAddress();
   const [tonConnectUI] = useTonConnectUI();
 
-  const [direction, setDirection] = useState<'buy' | 'sell'>('buy'); // buy = TON→GSTD
+  const [direction, setDirection] = useState<'buy' | 'sell'>('buy');
   const [amount, setAmount] = useState('1');
   const [simResult, setSimResult] = useState<SimResult | null>(null);
   const [status, setStatus] = useState<SwapStatus>('idle');
@@ -46,7 +54,6 @@ export default function SwapPage() {
   const [balance, setBalance] = useState(0);
   const [txHash, setTxHash] = useState('');
 
-  // Fetch GSTD price
   useEffect(() => {
     fetch(`${API_BASE_URL}/api/v1/network/stats`)
       .then(r => r.json())
@@ -54,7 +61,6 @@ export default function SwapPage() {
       .catch(() => {});
   }, []);
 
-  // Fetch balance
   useEffect(() => {
     if (!userAddress) { setBalance(0); return; }
     fetch(`${API_BASE_URL}/api/v1/wallet/balance?wallet=${encodeURIComponent(userAddress)}`)
@@ -64,67 +70,59 @@ export default function SwapPage() {
   }, [userAddress]);
 
   const fromToken = direction === 'buy' ? 'TON' : 'GSTD';
-  const toToken = direction === 'buy' ? 'GSTD' : 'TON';
+  const toToken   = direction === 'buy' ? 'GSTD' : 'TON';
 
-  // ─── SIMULATE ───────────────────────────────────────
+  // ─── SIMULATE via direct StonFi API ─────────────────
   const handleSimulate = useCallback(async () => {
     const amt = parseFloat(amount);
-    if (!amt || amt <= 0 || !stonClient) return;
+    if (!amt || amt <= 0) return;
 
     setStatus('simulating');
     setError('');
     setSimResult(null);
 
     try {
-      const offerAddr = direction === 'buy' ? TON_ADDRESS : GSTD_JETTON;
-      const askAddr = direction === 'buy' ? GSTD_JETTON : TON_ADDRESS;
-      const decimals = 1e9; // TON and GSTD both use 9 decimals
-      const offerUnits = Math.floor(amt * decimals).toString();
+      const offerAddr = direction === 'buy' ? TON_NATIVE : GSTD_JETTON;
+      const askAddr   = direction === 'buy' ? GSTD_JETTON : TON_NATIVE;
+      const offerUnits = Math.floor(amt * 1e9).toString();
 
-      const result = await stonClient.simulateSwap({
-        offerAddress: offerAddr,
-        askAddress: askAddr,
-        offerUnits,
-        slippageTolerance: '0.01',
-      });
-
-      const askUnitsNum = Number(result.askUnits || '0');
-      const offerUnitsNum = Number(result.offerUnits || offerUnits);
+      const data = await stonfiSimulate(offerAddr, askAddr, offerUnits);
 
       setSimResult({
-        offerUnits: result.offerUnits || offerUnits,
-        askUnits: result.askUnits || '0',
-        minAskUnits: result.minAskUnits || '0',
-        offerAddress: result.offerAddress || offerAddr,
-        askAddress: result.askAddress || askAddr,
-        priceImpact: result.priceImpact || '0',
-        router: result.router,
-        swapRate: offerUnitsNum > 0 ? (askUnitsNum / offerUnitsNum).toFixed(6) : '0',
-        feePercent: result.feePercent || '0.3',
+        offerUnits: data.offer_units,
+        askUnits: data.ask_units,
+        minAskUnits: data.min_ask_units,
+        offerAddress: data.offer_address,
+        askAddress: data.ask_address,
+        priceImpact: data.price_impact || '0',
+        swapRate: data.swap_rate || '0',
+        feePercent: data.fee_percent || '0',
+        routerAddress: data.router_address,
+        router: data.router,
       });
       setStatus('simulated');
     } catch (err: any) {
       console.error('Simulation failed:', err);
-      setError(err?.message || 'Simulation failed. Pool may not exist or has no liquidity.');
+      setError(err?.message || 'No liquidity pool found for this pair');
       setStatus('error');
     }
   }, [amount, direction]);
 
-  // Auto-simulate on amount/direction change (debounced)
+  // Auto-simulate on change (debounced 1s)
   useEffect(() => {
     if (!amount || parseFloat(amount) <= 0) {
       setSimResult(null);
       setStatus('idle');
       return;
     }
-    const timer = setTimeout(handleSimulate, 800);
+    const timer = setTimeout(handleSimulate, 1000);
     return () => clearTimeout(timer);
   }, [handleSimulate]);
 
-  // ─── SWAP (real on-chain) ────────────────────────────
+  // ─── SWAP (build TX via SDK + send via TonConnect) ───
   const handleSwap = async () => {
-    if (!userAddress || !simResult || !tonApiClient) {
-      setError('Connect wallet and simulate first');
+    if (!userAddress || !simResult) {
+      setError('Connect wallet and wait for quote');
       return;
     }
 
@@ -132,13 +130,20 @@ export default function SwapPage() {
     setError('');
 
     try {
-      // Build router from simulation result
+      // Dynamic import to avoid SSR issues
+      const { dexFactory } = await import('@ston-fi/sdk');
+      const { TonClient } = await import('@ton/ton');
+
+      const tonClient = new TonClient({
+        endpoint: 'https://toncenter.com/api/v2/jsonRPC',
+      });
+
       const routerInfo = simResult.router;
       const dexContracts = dexFactory(routerInfo);
-      const router = tonApiClient.open(
+      const router = tonClient.open(
         dexContracts.Router.create(routerInfo.address)
       );
-      const proxyTon = dexContracts.pTON.create(routerInfo.ptonMasterAddress);
+      const proxyTon = dexContracts.pTON.create(routerInfo.pton_master_address);
 
       const sharedParams = {
         userWalletAddress: userAddress,
@@ -146,17 +151,14 @@ export default function SwapPage() {
         minAskAmount: simResult.minAskUnits,
       };
 
-      // Determine swap type
       let txParams: any;
       if (direction === 'buy') {
-        // TON → GSTD (ton to jetton)
         txParams = await router.getSwapTonToJettonTxParams({
           ...sharedParams,
           proxyTon,
           askJettonAddress: simResult.askAddress,
         });
       } else {
-        // GSTD → TON (jetton to ton)
         txParams = await router.getSwapJettonToTonTxParams({
           ...sharedParams,
           proxyTon,
@@ -164,7 +166,6 @@ export default function SwapPage() {
         });
       }
 
-      // Send via TonConnect
       const result = await tonConnectUI.sendTransaction({
         validUntil: Math.floor(Date.now() / 1000) + 300,
         messages: [{
@@ -178,10 +179,11 @@ export default function SwapPage() {
       setStatus('success');
     } catch (err: any) {
       console.error('Swap failed:', err);
-      if (err?.message?.includes('User rejected')) {
-        setError('Transaction cancelled');
+      const msg = err?.message || 'Swap failed';
+      if (msg.includes('User rejected') || msg.includes('Cancelled')) {
+        setError('Transaction cancelled by user');
       } else {
-        setError(err?.message || 'Swap failed');
+        setError(msg);
       }
       setStatus('error');
     }
@@ -202,274 +204,304 @@ export default function SwapPage() {
   };
 
   const outputAmount = simResult ? Number(simResult.askUnits) / 1e9 : 0;
-  const minOutput = simResult ? Number(simResult.minAskUnits) / 1e9 : 0;
+  const minOutput    = simResult ? Number(simResult.minAskUnits) / 1e9 : 0;
 
   return (
     <div className="min-h-screen bg-[#030014] text-white">
       <Head>
         <title>Swap — GSTD Exchange</title>
-        <meta name="description" content="Swap TON for GSTD tokens directly in-app via StonFi DEX. No intermediaries." />
+        <meta name="description" content="Swap TON ↔ GSTD directly in-app via StonFi DEX." />
       </Head>
 
-      <main className="max-w-md mx-auto px-4 pt-20 pb-16">
+      <main style={{ maxWidth: 420, margin: '0 auto', padding: '80px 16px 64px' }}>
         {/* Header */}
-        <div className="text-center mb-6">
-          <h1 className="text-2xl font-extrabold bg-gradient-to-r from-cyan-400 via-violet-400 to-cyan-300 bg-clip-text text-transparent mb-1">
+        <div style={{ textAlign: 'center', marginBottom: 24 }}>
+          <h1 style={{
+            fontSize: 22, fontWeight: 800,
+            background: 'linear-gradient(90deg, #22d3ee, #a78bfa, #22d3ee)',
+            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+            marginBottom: 4,
+          }}>
             💱 {t('swap', 'Swap')}
           </h1>
-          <p className="text-gray-500 text-xs">
-            {t('swap_desc', 'Trade GSTD ↔ TON via StonFi DEX — directly in-app')}
+          <p style={{ color: '#6b7280', fontSize: 12 }}>
+            {t('swap_desc', 'Trade GSTD ↔ TON via StonFi DEX — on-chain, in-app')}
           </p>
           {gstdPrice > 0 && (
-            <p className="text-gray-600 text-[10px] mt-1">1 GSTD ≈ ${gstdPrice.toFixed(6)}</p>
+            <p style={{ color: '#4b5563', fontSize: 10, marginTop: 4 }}>1 GSTD ≈ ${gstdPrice.toFixed(6)}</p>
           )}
         </div>
 
         {/* Success state */}
         {status === 'success' && (
-          <div className="rounded-3xl border border-emerald-500/20 bg-emerald-500/5 p-6 text-center mb-6">
-            <CheckCircle2 size={48} className="text-emerald-400 mx-auto mb-3" />
-            <h2 className="text-lg font-bold text-emerald-400">Swap Submitted!</h2>
-            <p className="text-gray-400 text-sm mt-2">
-              Your transaction has been sent to the blockchain. It may take 10-30 seconds to confirm.
+          <div style={{
+            borderRadius: 24, border: '1px solid rgba(16,185,129,0.2)',
+            background: 'rgba(16,185,129,0.05)', padding: 24, textAlign: 'center', marginBottom: 24,
+          }}>
+            <CheckCircle2 size={48} style={{ color: '#34d399', margin: '0 auto 12px' }} />
+            <h2 style={{ fontSize: 18, fontWeight: 700, color: '#34d399' }}>Swap Submitted!</h2>
+            <p style={{ color: '#9ca3af', fontSize: 14, marginTop: 8 }}>
+              Transaction sent. Confirmation takes 10-30 seconds.
             </p>
             {txHash && (
-              <a
-                href={`https://tonviewer.com/transaction/${txHash}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 mt-3 text-cyan-400 text-xs hover:text-cyan-300"
-              >
+              <a href={`https://tonviewer.com/transaction/${txHash}`} target="_blank" rel="noopener noreferrer"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 12, color: '#22d3ee', fontSize: 12 }}>
                 View on Tonviewer <ExternalLink size={10} />
               </a>
             )}
-            <button
-              onClick={resetSwap}
-              className="mt-4 px-4 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-sm font-bold hover:bg-emerald-500/20 transition-all"
-            >
-              New Swap
-            </button>
+            <div style={{ marginTop: 16 }}>
+              <button onClick={resetSwap} style={{
+                padding: '8px 16px', borderRadius: 12,
+                background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)',
+                color: '#6ee7b7', fontSize: 14, fontWeight: 700, cursor: 'pointer',
+              }}>New Swap</button>
+            </div>
           </div>
         )}
 
         {status !== 'success' && (
           <>
             {/* Swap Card */}
-            <div className="rounded-3xl border border-white/10 bg-white/[0.02] backdrop-blur-xl p-5 space-y-3">
-
+            <div style={{
+              borderRadius: 24, border: '1px solid rgba(255,255,255,0.08)',
+              background: 'rgba(255,255,255,0.02)', backdropFilter: 'blur(20px)',
+              padding: 20, overflow: 'hidden',
+            }}>
               {/* Wallet bar */}
-              <div className="flex items-center justify-between">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 {userAddress ? (
-                  <div className="flex items-center gap-2">
-                    <Wallet size={12} className="text-emerald-400" />
-                    <span className="text-xs text-emerald-300 font-mono">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Wallet size={12} style={{ color: '#34d399' }} />
+                    <span style={{ fontSize: 11, color: '#6ee7b7', fontFamily: 'monospace' }}>
                       {userAddress.slice(0, 6)}...{userAddress.slice(-4)}
                     </span>
                     {balance > 0 && (
-                      <span className="text-[10px] text-emerald-400/60">{balance.toFixed(1)} GSTD</span>
+                      <span style={{ fontSize: 10, color: 'rgba(52,211,153,0.5)' }}>{balance.toFixed(1)} GSTD</span>
                     )}
                   </div>
                 ) : (
                   <TonConnectButton />
                 )}
-                <span className="text-[10px] text-gray-600">StonFi v2</span>
+                <span style={{ fontSize: 10, color: '#4b5563' }}>StonFi v2</span>
               </div>
 
-              {/* FROM */}
-              <div className="rounded-2xl bg-white/[0.04] border border-white/5 p-4">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">You pay</span>
+              {/* FROM input */}
+              <div style={{
+                borderRadius: 16, background: 'rgba(255,255,255,0.03)',
+                border: '1px solid rgba(255,255,255,0.05)', padding: 16,
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <span style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: 1, fontWeight: 700 }}>You pay</span>
                   {direction === 'sell' && balance > 0 && (
-                    <button 
-                      onClick={() => setAmount(balance.toString())}
-                      className="text-[10px] text-violet-400 hover:text-violet-300"
-                    >
+                    <button onClick={() => setAmount(balance.toString())}
+                      style={{ fontSize: 10, color: '#a78bfa', background: 'none', border: 'none', cursor: 'pointer' }}>
                       MAX: {balance.toFixed(2)}
                     </button>
                   )}
                 </div>
-                <div className="flex items-center gap-3">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <input
-                    type="number"
-                    value={amount}
+                    type="number" value={amount}
                     onChange={(e) => { setAmount(e.target.value); setStatus('idle'); }}
-                    placeholder="0.0"
-                    min="0"
-                    step="0.1"
-                    className="flex-1 bg-transparent text-2xl font-bold text-white outline-none placeholder-gray-700 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    placeholder="0.0" min="0" step="0.1"
+                    style={{
+                      flex: 1, background: 'transparent', border: 'none', outline: 'none',
+                      fontSize: 24, fontWeight: 700, color: 'white', minWidth: 0,
+                    }}
                   />
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.06] border border-white/10 shrink-0">
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                      fromToken === 'TON' ? 'bg-blue-500' : 'bg-gradient-to-br from-violet-500 to-cyan-500'
-                    }`}>
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    padding: '6px 12px', borderRadius: 12,
+                    background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+                    flexShrink: 0,
+                  }}>
+                    <div style={{
+                      width: 22, height: 22, borderRadius: '50%',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 11, fontWeight: 700,
+                      background: fromToken === 'TON' ? '#3b82f6' : 'linear-gradient(135deg, #8b5cf6, #06b6d4)',
+                    }}>
                       {fromToken === 'TON' ? '💎' : 'G'}
                     </div>
-                    <span className="font-bold text-sm">{fromToken}</span>
-                    <ChevronDown size={12} className="text-gray-500" />
+                    <span style={{ fontWeight: 700, fontSize: 13 }}>{fromToken}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Flip Button */}
-              <div className="flex justify-center -my-1 relative z-10">
-                <button
-                  onClick={flipDirection}
-                  className="w-10 h-10 rounded-xl bg-violet-500/20 border border-violet-500/30 flex items-center justify-center hover:bg-violet-500/40 transition-all hover:scale-110 active:scale-90 hover:rotate-180 duration-300"
-                >
-                  <ArrowDownUp size={16} className="text-violet-400" />
+              {/* Flip button */}
+              <div style={{ display: 'flex', justifyContent: 'center', margin: '4px 0', position: 'relative', zIndex: 1 }}>
+                <button onClick={flipDirection} style={{
+                  width: 36, height: 36, borderRadius: 10,
+                  background: 'rgba(139,92,246,0.2)', border: '1px solid rgba(139,92,246,0.3)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', transition: 'all 0.3s',
+                }}>
+                  <ArrowDownUp size={15} style={{ color: '#a78bfa' }} />
                 </button>
               </div>
 
-              {/* TO */}
-              <div className="rounded-2xl bg-white/[0.04] border border-white/5 p-4">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">You receive</span>
+              {/* TO output */}
+              <div style={{
+                borderRadius: 16, background: 'rgba(255,255,255,0.03)',
+                border: '1px solid rgba(255,255,255,0.05)', padding: 16,
+              }}>
+                <div style={{ marginBottom: 8 }}>
+                  <span style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: 1, fontWeight: 700 }}>You receive</span>
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 text-2xl font-bold">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ flex: 1, fontSize: 24, fontWeight: 700, minWidth: 0, overflow: 'hidden' }}>
                     {status === 'simulating' ? (
-                      <Loader2 size={20} className="animate-spin text-gray-500" />
+                      <Loader2 size={20} style={{ color: '#6b7280', animation: 'spin 1s linear infinite' }} />
                     ) : outputAmount > 0 ? (
-                      <span className="text-emerald-400">{outputAmount.toLocaleString(undefined, { maximumFractionDigits: 4 })}</span>
+                      <span style={{ color: '#34d399' }}>{outputAmount.toLocaleString(undefined, { maximumFractionDigits: 4 })}</span>
                     ) : (
-                      <span className="text-gray-700">0.0</span>
+                      <span style={{ color: '#374151' }}>0.0</span>
                     )}
                   </div>
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.06] border border-white/10 shrink-0">
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                      toToken === 'TON' ? 'bg-blue-500' : 'bg-gradient-to-br from-violet-500 to-cyan-500'
-                    }`}>
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    padding: '6px 12px', borderRadius: 12,
+                    background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+                    flexShrink: 0,
+                  }}>
+                    <div style={{
+                      width: 22, height: 22, borderRadius: '50%',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 11, fontWeight: 700,
+                      background: toToken === 'TON' ? '#3b82f6' : 'linear-gradient(135deg, #8b5cf6, #06b6d4)',
+                    }}>
                       {toToken === 'TON' ? '💎' : 'G'}
                     </div>
-                    <span className="font-bold text-sm">{toToken}</span>
-                    <ChevronDown size={12} className="text-gray-500" />
+                    <span style={{ fontWeight: 700, fontSize: 13 }}>{toToken}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Quote Details */}
+              {/* Quote */}
               {simResult && status === 'simulated' && (
-                <div className="rounded-xl bg-white/[0.02] border border-white/5 p-3 space-y-1.5 text-[11px]">
-                  <div className="flex justify-between text-gray-400">
-                    <span>Rate</span>
-                    <span className="text-gray-300">
-                      1 {fromToken} ≈ {(outputAmount / (parseFloat(amount) || 1)).toLocaleString(undefined, { maximumFractionDigits: 4 })} {toToken}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-gray-400">
-                    <span>Min received</span>
-                    <span className="text-gray-300">{minOutput.toFixed(4)} {toToken}</span>
-                  </div>
-                  <div className="flex justify-between text-gray-400">
-                    <span>Slippage</span>
-                    <span className="text-gray-300">1%</span>
-                  </div>
-                  <div className="flex justify-between text-gray-400">
-                    <span>Route</span>
-                    <span className="text-cyan-400 font-medium">StonFi v2 DEX</span>
-                  </div>
+                <div style={{
+                  borderRadius: 12, background: 'rgba(255,255,255,0.02)',
+                  border: '1px solid rgba(255,255,255,0.05)', padding: 12, marginTop: 12,
+                }}>
+                  {[
+                    ['Rate', `1 ${fromToken} ≈ ${(outputAmount / (parseFloat(amount) || 1)).toLocaleString(undefined, { maximumFractionDigits: 4 })} ${toToken}`],
+                    ['Min received', `${minOutput.toFixed(4)} ${toToken}`],
+                    ['Slippage', '1%'],
+                    ['Price impact', `${(parseFloat(simResult.priceImpact) * 100).toFixed(4)}%`],
+                    ['Route', 'StonFi v2 DEX'],
+                  ].map(([label, value]) => (
+                    <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#9ca3af', padding: '3px 0' }}>
+                      <span>{label}</span>
+                      <span style={{ color: label === 'Route' ? '#22d3ee' : '#d1d5db', fontWeight: label === 'Route' ? 600 : 400 }}>{value}</span>
+                    </div>
+                  ))}
                 </div>
               )}
 
               {/* Error */}
               {error && (
-                <div className="flex items-start gap-2 p-3 rounded-xl bg-red-500/5 border border-red-500/15 text-xs text-red-400">
-                  <AlertCircle size={14} className="mt-0.5 shrink-0" />
+                <div style={{
+                  display: 'flex', alignItems: 'flex-start', gap: 8, padding: 12,
+                  borderRadius: 12, background: 'rgba(239,68,68,0.05)',
+                  border: '1px solid rgba(239,68,68,0.15)', marginTop: 12,
+                  fontSize: 12, color: '#f87171',
+                }}>
+                  <AlertCircle size={14} style={{ marginTop: 1, flexShrink: 0 }} />
                   <span>{error}</span>
                 </div>
               )}
 
-              {/* Swap Button */}
-              {!userAddress ? (
-                <div className="w-full flex justify-center">
-                  <TonConnectButton />
-                </div>
-              ) : status === 'simulated' && simResult ? (
-                <button
-                  onClick={handleSwap}
-                  className="w-full py-4 rounded-2xl font-extrabold text-base transition-all flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.99]"
-                  style={{ background: 'linear-gradient(135deg, #8b5cf6, #06b6d4)' }}
-                >
-                  <Zap size={18} />
-                  Swap {amount} {fromToken} → {outputAmount.toFixed(2)} {toToken}
-                </button>
-              ) : status === 'swapping' ? (
-                <button
-                  disabled
-                  className="w-full py-4 rounded-2xl font-extrabold text-base bg-violet-500/20 text-violet-300 flex items-center justify-center gap-2"
-                >
-                  <Loader2 size={18} className="animate-spin" />
-                  Confirming in wallet...
-                </button>
-              ) : status === 'simulating' ? (
-                <button
-                  disabled
-                  className="w-full py-4 rounded-2xl font-bold text-sm bg-white/[0.03] text-gray-500 flex items-center justify-center gap-2"
-                >
-                  <Loader2 size={16} className="animate-spin" />
-                  Getting best rate...
-                </button>
-              ) : (
-                <button
-                  onClick={handleSimulate}
-                  disabled={!amount || parseFloat(amount) <= 0}
-                  className="w-full py-4 rounded-2xl font-bold text-sm bg-white/[0.05] text-gray-400 hover:bg-white/[0.08] hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  <RefreshCw size={14} />
-                  Get Quote
-                </button>
-              )}
+              {/* Action button */}
+              <div style={{ marginTop: 16 }}>
+                {!userAddress ? (
+                  <div style={{ display: 'flex', justifyContent: 'center' }}><TonConnectButton /></div>
+                ) : status === 'simulated' && simResult ? (
+                  <button onClick={handleSwap} style={{
+                    width: '100%', padding: '14px 0', borderRadius: 16,
+                    fontWeight: 800, fontSize: 15, border: 'none', cursor: 'pointer',
+                    color: 'white', background: 'linear-gradient(135deg, #8b5cf6, #06b6d4)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  }}>
+                    <Zap size={17} /> Swap {amount} {fromToken} → {outputAmount.toFixed(2)} {toToken}
+                  </button>
+                ) : status === 'swapping' ? (
+                  <button disabled style={{
+                    width: '100%', padding: '14px 0', borderRadius: 16,
+                    fontWeight: 800, fontSize: 15, border: 'none',
+                    color: '#c4b5fd', background: 'rgba(139,92,246,0.2)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  }}>
+                    <Loader2 size={17} style={{ animation: 'spin 1s linear infinite' }} /> Confirming in wallet...
+                  </button>
+                ) : status === 'simulating' ? (
+                  <button disabled style={{
+                    width: '100%', padding: '14px 0', borderRadius: 16,
+                    fontWeight: 700, fontSize: 13, border: 'none',
+                    color: '#6b7280', background: 'rgba(255,255,255,0.03)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  }}>
+                    <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> Getting best rate...
+                  </button>
+                ) : (
+                  <button onClick={handleSimulate} disabled={!amount || parseFloat(amount) <= 0}
+                    style={{
+                      width: '100%', padding: '14px 0', borderRadius: 16,
+                      fontWeight: 700, fontSize: 13, border: 'none', cursor: 'pointer',
+                      color: '#9ca3af', background: 'rgba(255,255,255,0.05)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                      opacity: (!amount || parseFloat(amount) <= 0) ? 0.3 : 1,
+                    }}>
+                    <RefreshCw size={14} /> Get Quote
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Quick amounts */}
             {direction === 'buy' && (
-              <div className="mt-4 grid grid-cols-4 gap-2">
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginTop: 16 }}>
                 {['0.5', '1', '5', '10'].map(val => (
-                  <button
-                    key={val}
-                    onClick={() => { setAmount(val); setStatus('idle'); }}
-                    className={`py-2 rounded-xl text-xs font-bold border transition-all ${
-                      amount === val
-                        ? 'border-violet-400/50 bg-violet-400/10 text-violet-300'
-                        : 'border-white/5 bg-white/[0.02] text-gray-500 hover:border-white/10'
-                    }`}
-                  >
+                  <button key={val} onClick={() => { setAmount(val); setStatus('idle'); }}
+                    style={{
+                      padding: '8px 0', borderRadius: 12, fontSize: 12, fontWeight: 700,
+                      border: amount === val ? '1px solid rgba(167,139,250,0.4)' : '1px solid rgba(255,255,255,0.05)',
+                      background: amount === val ? 'rgba(167,139,250,0.1)' : 'rgba(255,255,255,0.02)',
+                      color: amount === val ? '#c4b5fd' : '#6b7280',
+                      cursor: 'pointer',
+                    }}>
                     {val} TON
                   </button>
                 ))}
               </div>
             )}
 
-            {/* Info note */}
-            <div className="mt-4 flex items-start gap-2 text-[10px] text-gray-600 leading-relaxed px-1">
-              <AlertCircle size={12} className="mt-0.5 shrink-0" />
-              <span>
-                Swap executes on-chain via StonFi DEX smart contracts. Transaction is signed in your wallet (Tonkeeper/MyTonWallet). 1% slippage protection included.
-              </span>
+            {/* Info */}
+            <div style={{ marginTop: 16, display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 10, color: '#4b5563', lineHeight: 1.5, padding: '0 4px' }}>
+              <AlertCircle size={12} style={{ marginTop: 2, flexShrink: 0 }} />
+              <span>Swap executes on-chain via StonFi DEX. Transaction is signed in your wallet (Tonkeeper/MyTonWallet). 1% slippage protection.</span>
             </div>
           </>
         )}
 
         {/* Links */}
-        <div className="mt-6 flex justify-center gap-6 text-[10px]">
-          <a
-            href={`https://app.ston.fi/swap?ft=TON&tt=${GSTD_JETTON}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-cyan-400/40 hover:text-cyan-400 transition-colors flex items-center gap-1"
-          >
+        <div style={{ marginTop: 24, display: 'flex', justifyContent: 'center', gap: 24, fontSize: 10 }}>
+          <a href={`https://app.ston.fi/swap?ft=TON&tt=${GSTD_JETTON}`} target="_blank" rel="noopener noreferrer"
+            style={{ color: 'rgba(34,211,238,0.4)', display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}>
             StonFi <ExternalLink size={8} />
           </a>
-          <a
-            href={`https://tonviewer.com/${GSTD_JETTON}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-gray-600 hover:text-gray-400 transition-colors flex items-center gap-1"
-          >
+          <a href={`https://tonviewer.com/${GSTD_JETTON}`} target="_blank" rel="noopener noreferrer"
+            style={{ color: '#4b5563', display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}>
             Contract <ExternalLink size={8} />
           </a>
         </div>
       </main>
+
+      <style jsx global>{`
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
+      `}</style>
     </div>
   );
 }
