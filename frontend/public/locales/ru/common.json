@@ -1331,5 +1331,12 @@
   "bridge_connect_first": "Подключите кошелёк для создания ордера",
   "bridge_auto_wallet": "из кошелька",
   "bridge_error_connect_wallet": "Сначала подключите кошелёк",
-  "bridge_connect_to_see_orders": "Подключите кошелёк для просмотра ордеров"
+  "bridge_connect_to_see_orders": "Подключите кошелёк для просмотра ордеров",
+  "chat_suggest_code": "Написать код",
+  "chat_suggest_explain": "Объяснить концепцию",
+  "chat_suggest_node": "Запустить ноду GSTD",
+  "chat_suggest_translate": "Перевести текст",
+  "chat_suggest_crypto": "Крипто и DeFi",
+  "chat_suggest_math": "Математика",
+  "chat_hero_desc": "Коллективный Интеллект — 8 ИИ-моделей · Рой нод · Бесплатно"
 }

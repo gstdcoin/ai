@@ -1315,5 +1315,12 @@
   "bridge_connect_to_see_orders": "Connect your wallet to see your orders",
   "overview": "Overview",
   "progress": "Progress",
-  "budget": "Budget"
+  "budget": "Budget",
+  "chat_suggest_code": "Write code",
+  "chat_suggest_explain": "Explain a concept",
+  "chat_suggest_node": "Run a GSTD Node",
+  "chat_suggest_translate": "Translate text",
+  "chat_suggest_crypto": "Crypto & DeFi",
+  "chat_suggest_math": "Math & Analysis",
+  "chat_hero_desc": "Collective Intelligence — 8 AI models · Powered by Swarm nodes · Free"
 }
