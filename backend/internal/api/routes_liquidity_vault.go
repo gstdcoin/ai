@@ -35,33 +35,14 @@ func SetupLiquidityVaultRoutes(v1 *gin.RouterGroup, db *sql.DB) {
 
 	// Get all active liquidity vaults
 	vaults.GET("/pools", func(c *gin.Context) {
-		// Mock implementation returning a simulated list of Vaults until DB tables are deployed.
-		// In production, this would query SovereignVaultService.GetAllVaults()
-		c.JSON(http.StatusOK, []services.VaultState{
-			{
-				VaultID:        "VAULT-1704067200",
-				NodeWallet:     "EQC_NODE_ALPHA...",
-				Asset:          "USDT",
-				TotalLiquidity: 15400.50,
-				OperatorStake:  5400.50,
-				DelegatorStake: 10000.00,
-				ManagementFee:  0.15,
-				TotalVolume:    89000.00,
-				GeneratedYield: 445.00,
-				Status:         "active",
-			},
-			{
-				VaultID:        "VAULT-1704067300",
-				NodeWallet:     "EQD_NODE_BETA...",
-				Asset:          "TON",
-				TotalLiquidity: 4200.00,
-				OperatorStake:  4200.00,
-				DelegatorStake: 0.00,
-				ManagementFee:  0.10,
-				TotalVolume:    12000.00,
-				GeneratedYield: 60.00,
-				Status:         "active",
-			},
-		})
+		pools, err := vaultService.GetAllVaults()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve vaults"})
+			return
+		}
+		if pools == nil {
+			pools = []services.VaultState{}
+		}
+		c.JSON(http.StatusOK, pools)
 	})
 }

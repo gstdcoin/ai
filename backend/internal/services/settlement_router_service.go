@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"log"
 	"math"
-	"math/rand"
+	"crypto/rand"
+	"math/big"
 	"time"
 )
 
@@ -129,14 +130,16 @@ func (s *SettlementRouter) selectVRFCommittee(k int) ([]string, error) {
 		return []string{"system_fallback_node"}, nil
 	}
 
-	rand.Seed(time.Now().UnixNano())
 	type Weighted struct {
 		Wallet string
 		Key    float64
 	}
 	var pool []Weighted
 	for _, n := range nodes {
-		r := rand.Float64()
+		// Secure random VRF weight selection
+		bg, _ := rand.Int(rand.Reader, big.NewInt(1<<53))
+		r := float64(bg.Int64()) / float64(1<<53)
+		if r == 0 { r = 0.0000000000001 } // avoid zero
 		key := math.Pow(r, 1.0/n.Weight)
 		pool = append(pool, Weighted{Wallet: n.Wallet, Key: key})
 	}
