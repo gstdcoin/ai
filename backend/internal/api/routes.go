@@ -1911,6 +1911,10 @@ func SetupRoutes(
 		// P2P Cross-Chain Bridge (Token swap order book)
 		SetupP2PBridgeRoutes(v1, db.(*sql.DB))
 
+		// Settlement Router (Base Routing Asset logic)
+		SetupSettlementRoutes(v1, db.(*sql.DB))
+		log.Printf("✅ Settlement Router routes registered (/bridge/settlement/*)")
+
 		// Node Rewards Engine (motivation & incentives)
 		SetupNodeRewardsRoutes(v1, db.(*sql.DB))
 
