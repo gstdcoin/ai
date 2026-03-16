@@ -1322,5 +1322,6 @@
   "chat_suggest_translate": "Translate text",
   "chat_suggest_crypto": "Crypto & DeFi",
   "chat_suggest_math": "Math & Analysis",
-  "chat_hero_desc": "Collective Intelligence — 8 AI models · Powered by Swarm nodes · Free"
+  "chat_hero_desc": "Collective Intelligence — 8 AI models · Powered by Swarm nodes · Free",
+  "cat_science": "Science"
 }
