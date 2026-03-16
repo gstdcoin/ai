@@ -77,7 +77,7 @@ description: Current ecosystem state — always read FIRST before any changes
 | Component | Version/Image | Path | Container |
 |-----------|---------------|------|-----------|
 | **Backend** | `gstd-backend-blue:v158` ×4 | `/home/ubuntu/backend` | `ubuntu-backend-blue-{1..4}` |
-| **Frontend** | `gstd-frontend:v7` (Docker) | `/home/ubuntu/frontend` | `ubuntu-frontend-1` |
+| **Frontend** | `gstd-frontend:v8` (Docker) | `/home/ubuntu/frontend` | `ubuntu-frontend-1` |
 | **Telegram Bot** | `gstd-bot:v39` | `/home/ubuntu/gstdbot` | `gstd-telegram-bot` |
 | **GSTD Bridge** | `gstd-bridge:latest` | `/home/ubuntu/gstd-bridge` | `gstd-bridge-test` |
 | **Chat UI** | Static HTML | `/home/ubuntu/chat-ui` | *served by nginx* |
