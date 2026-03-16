@@ -168,12 +168,12 @@ export default function EcosystemNav() {
                 </div>
             )}
 
-            <style jsx global>{`
+            <style dangerouslySetInnerHTML={{ __html: `
         @media (max-width: 768px) {
           .ecosystem-nav-desktop { display: none !important; }
           .ecosystem-nav-mobile-btn { display: block !important; }
         }
-      `}</style>
+      `}} />
         </nav>
     );
 }

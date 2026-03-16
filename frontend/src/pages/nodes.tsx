@@ -6,7 +6,7 @@ import Head from 'next/head';
 import {
   Server, Trophy, Flame, Zap, TrendingUp, Clock, Shield,
   ChevronRight, ExternalLink, Star, Cpu, ArrowRight, Users, Smartphone, MessageCircle,
-  Activity, Vote, Coins, Globe, CheckCircle2, AlertTriangle
+  Activity, Vote, Globe
 } from 'lucide-react';
 import { API_BASE_URL } from '../lib/config';
 
@@ -247,7 +247,9 @@ export default function NodesPage() {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {tasks.map(task => {
-                  const priorityColor = task.priority === 'critical' ? '#ef4444' : task.priority === 'high' ? '#fb923c' : '#60a5fa';
+                  let priorityColor = '#60a5fa';
+                  if (task.priority === 'critical') priorityColor = '#ef4444';
+                  else if (task.priority === 'high') priorityColor = '#fb923c';
                   return (
                     <div key={task.id} style={{ padding: '14px 16px', borderRadius: 14, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
@@ -283,7 +285,9 @@ export default function NodesPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {governance.map(p => {
                   const pct = p.votes_total > 0 ? (p.votes_for / p.votes_total * 100) : 0;
-                  const statusColor = p.status === 'passed' ? '#34d399' : p.status === 'voting' ? '#60a5fa' : '#facc15';
+                  let statusColor = '#facc15';
+                  if (p.status === 'passed') statusColor = '#34d399';
+                  else if (p.status === 'voting') statusColor = '#60a5fa';
                   return (
                     <div key={p.id} style={{ padding: '16px', borderRadius: 14, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>

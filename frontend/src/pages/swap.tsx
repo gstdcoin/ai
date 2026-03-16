@@ -40,6 +40,7 @@ async function stonfiSimulate(offerAddr: string, askAddr: string, units: string)
   return res.json();
 }
 
+// eslint-disable-next-line complexity
 export default function SwapPage() {
   const { t } = useTranslation('common');
   const userAddress = useTonAddress();
@@ -350,13 +351,11 @@ export default function SwapPage() {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <div style={{ flex: 1, fontSize: 24, fontWeight: 700, minWidth: 0, overflow: 'hidden' }}>
-                    {status === 'simulating' ? (
-                      <Loader2 size={20} style={{ color: '#6b7280', animation: 'spin 1s linear infinite' }} />
-                    ) : outputAmount > 0 ? (
-                      <span style={{ color: '#34d399' }}>{outputAmount.toLocaleString(undefined, { maximumFractionDigits: 4 })}</span>
-                    ) : (
-                      <span style={{ color: '#374151' }}>0.0</span>
-                    )}
+                    {(() => {
+                      if (status === 'simulating') return <Loader2 size={20} style={{ color: '#6b7280', animation: 'spin 1s linear infinite' }} />;
+                      if (outputAmount > 0) return <span style={{ color: '#34d399' }}>{outputAmount.toLocaleString(undefined, { maximumFractionDigits: 4 })}</span>;
+                      return <span style={{ color: '#374151' }}>0.0</span>;
+                    })()}
                   </div>
                   <div style={{
                     display: 'flex', alignItems: 'center', gap: 6,
@@ -413,47 +412,59 @@ export default function SwapPage() {
 
               {/* Action button */}
               <div style={{ marginTop: 16 }}>
-                {!userAddress ? (
-                  <div style={{ display: 'flex', justifyContent: 'center' }}><TonConnectButton /></div>
-                ) : status === 'simulated' && simResult ? (
-                  <button onClick={handleSwap} style={{
-                    width: '100%', padding: '14px 0', borderRadius: 16,
-                    fontWeight: 800, fontSize: 15, border: 'none', cursor: 'pointer',
-                    color: 'white', background: 'linear-gradient(135deg, #8b5cf6, #06b6d4)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                  }}>
-                    <Zap size={17} /> Swap {amount} {fromToken} → {outputAmount.toFixed(2)} {toToken}
-                  </button>
-                ) : status === 'swapping' ? (
-                  <button disabled style={{
-                    width: '100%', padding: '14px 0', borderRadius: 16,
-                    fontWeight: 800, fontSize: 15, border: 'none',
-                    color: '#c4b5fd', background: 'rgba(139,92,246,0.2)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                  }}>
-                    <Loader2 size={17} style={{ animation: 'spin 1s linear infinite' }} /> Confirming in wallet...
-                  </button>
-                ) : status === 'simulating' ? (
-                  <button disabled style={{
-                    width: '100%', padding: '14px 0', borderRadius: 16,
-                    fontWeight: 700, fontSize: 13, border: 'none',
-                    color: '#6b7280', background: 'rgba(255,255,255,0.03)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                  }}>
-                    <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> Getting best rate...
-                  </button>
-                ) : (
-                  <button onClick={handleSimulate} disabled={!amount || parseFloat(amount) <= 0}
-                    style={{
-                      width: '100%', padding: '14px 0', borderRadius: 16,
-                      fontWeight: 700, fontSize: 13, border: 'none', cursor: 'pointer',
-                      color: '#9ca3af', background: 'rgba(255,255,255,0.05)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                      opacity: (!amount || parseFloat(amount) <= 0) ? 0.3 : 1,
-                    }}>
-                    <RefreshCw size={14} /> Get Quote
-                  </button>
-                )}
+                {(() => {
+                  if (!userAddress) {
+                    return <div style={{ display: 'flex', justifyContent: 'center' }}><TonConnectButton /></div>;
+                  }
+                  if (status === 'simulated' && simResult) {
+                    return (
+                      <button onClick={handleSwap} style={{
+                        width: '100%', padding: '14px 0', borderRadius: 16,
+                        fontWeight: 800, fontSize: 15, border: 'none', cursor: 'pointer',
+                        color: 'white', background: 'linear-gradient(135deg, #8b5cf6, #06b6d4)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                      }}>
+                        <Zap size={17} /> Swap {amount} {fromToken} → {outputAmount.toFixed(2)} {toToken}
+                      </button>
+                    );
+                  }
+                  if (status === 'swapping') {
+                    return (
+                      <button disabled style={{
+                        width: '100%', padding: '14px 0', borderRadius: 16,
+                        fontWeight: 800, fontSize: 15, border: 'none',
+                        color: '#c4b5fd', background: 'rgba(139,92,246,0.2)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                      }}>
+                        <Loader2 size={17} style={{ animation: 'spin 1s linear infinite' }} /> Confirming in wallet...
+                      </button>
+                    );
+                  }
+                  if (status === 'simulating') {
+                    return (
+                      <button disabled style={{
+                        width: '100%', padding: '14px 0', borderRadius: 16,
+                        fontWeight: 700, fontSize: 13, border: 'none',
+                        color: '#6b7280', background: 'rgba(255,255,255,0.03)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                      }}>
+                        <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> Getting best rate...
+                      </button>
+                    );
+                  }
+                  return (
+                    <button onClick={handleSimulate} disabled={!amount || parseFloat(amount) <= 0}
+                      style={{
+                        width: '100%', padding: '14px 0', borderRadius: 16,
+                        fontWeight: 700, fontSize: 13, border: 'none', cursor: 'pointer',
+                        color: '#9ca3af', background: 'rgba(255,255,255,0.05)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                        opacity: (!amount || parseFloat(amount) <= 0) ? 0.3 : 1,
+                      }}>
+                      <RefreshCw size={14} /> Get Quote
+                    </button>
+                  );
+                })()}
               </div>
             </div>
 
@@ -496,12 +507,12 @@ export default function SwapPage() {
         </div>
       </main>
 
-      <style jsx global>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        input[type=number]::-webkit-inner-spin-button,
-        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-        input[type=number] { -moz-appearance: textfield; }
-      `}</style>
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type="number"] { -moz-appearance: textfield; }
+      `}} />
     </div>
   );
 }
