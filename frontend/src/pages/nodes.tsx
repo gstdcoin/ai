@@ -6,7 +6,7 @@ import Head from 'next/head';
 import {
   Server, Trophy, Flame, Zap, TrendingUp, Clock, Shield,
   ChevronRight, ExternalLink, Star, Cpu, ArrowRight, Users, Smartphone, MessageCircle,
-  Activity, Vote, Globe
+  Activity, Vote, Globe, Droplet
 } from 'lucide-react';
 import { API_BASE_URL } from '../lib/config';
 
@@ -34,6 +34,7 @@ interface HealthData { status: string; total_nodes: number; online_nodes: number
 interface TaskItem { id: string; type: string; title: string; description: string; reward_gstd: number; estimated_time: string; priority: string; active_nodes: number; requirements: Record<string, any>; }
 interface Proposal { id: string; title: string; description: string; status: string; category: string; votes_for: number; votes_against: number; votes_total: number; quorum_needed: number; quorum_percent: number; ends_at: string; }
 interface BurnData { total_burned_gstd: number; max_supply: number; current_circulating: number; burn_rate_daily: number; burn_sources: Array<{ source: string; percent: string; burned: number; description: string }>; next_burn_event: { type: string; date: string; estimated: string }; }
+interface VaultState { vault_id: string; node_wallet: string; asset: string; total_liquidity: number; operator_stake: number; delegator_stake: number; management_fee_pct: number; total_volume: number; generated_yield: number; status: string; }
 
 export default function NodesPage() {
   const { t } = useTranslation('common');
@@ -45,7 +46,8 @@ export default function NodesPage() {
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [governance, setGovernance] = useState<Proposal[]>([]);
   const [burn, setBurn] = useState<BurnData | null>(null);
-  const [tab, setTab] = useState<'overview' | 'tasks' | 'governance' | 'burn'>('overview');
+  const [vaults, setVaults] = useState<VaultState[]>([]);
+  const [tab, setTab] = useState<'overview' | 'tasks' | 'governance' | 'burn' | 'vaults'>('overview');
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/api/v1/nodes/rewards/network`).then(r => r.json()).then(setNetwork).catch(() => undefined);
@@ -55,6 +57,7 @@ export default function NodesPage() {
     fetch(`${API_BASE_URL}/api/v1/nodes/tools/tasks/available`).then(r => r.json()).then(d => setTasks(d.tasks || [])).catch(() => undefined);
     fetch(`${API_BASE_URL}/api/v1/nodes/tools/governance/active`).then(r => r.json()).then(d => setGovernance(d.proposals || [])).catch(() => undefined);
     fetch(`${API_BASE_URL}/api/v1/nodes/tools/burn-stats`).then(r => r.json()).then(setBurn).catch(() => undefined);
+    fetch(`${API_BASE_URL}/api/v1/nodes/liquidity/pools`).then(r => r.json()).then(d => setVaults(d || [])).catch(() => undefined);
   }, [period]);
 
   const tiers: TierDef[] = program?.tiers || [];
@@ -162,6 +165,7 @@ export default function NodesPage() {
             {([
               { id: 'overview' as const, label: 'Overview', icon: <Server size={13} /> },
               { id: 'tasks' as const, label: 'Tasks', icon: <Zap size={13} /> },
+              { id: 'vaults' as const, label: 'Vaults', icon: <Droplet size={13} /> },
               { id: 'governance' as const, label: 'Governance', icon: <Vote size={13} /> },
               { id: 'burn' as const, label: 'Burns', icon: <Flame size={13} /> },
             ]).map(tb => (
@@ -231,6 +235,73 @@ export default function NodesPage() {
                       <Globe size={12} style={{ color: '#60a5fa' }} /> {r.region}
                     </span>
                     <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)' }}>{r.nodes} nodes · {r.avg_latency_ms}ms</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ═══ TAB: Liquidity Vaults ═══ */}
+          {tab === 'vaults' && (
+            <div style={{ marginBottom: 32 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Droplet size={18} style={{ color: '#0ea5e9' }} />
+                  <h2 style={{ fontSize: 18, fontWeight: 800, color: 'white', margin: 0 }}>Sovereign Liquidity Vaults</h2>
+                </div>
+                <button style={{ padding: '8px 16px', borderRadius: 10, background: 'linear-gradient(135deg, #0ea5e9, #3b82f6)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer' }}>
+                  + Create LP Vault
+                </button>
+              </div>
+
+              <div style={{ padding: '16px', borderRadius: 14, background: 'linear-gradient(135deg, rgba(14,165,233,0.06), rgba(59,130,246,0.04))', border: '1px solid rgba(14,165,233,0.1)', marginBottom: 20 }}>
+                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', lineHeight: 1.5, marginBottom: 12 }}>
+                  <strong>How it works:</strong> Diamond/Platinum nodes can offer non-custodial cross-chain liquidity. Your node executes atomic swaps (HTLC) securing fees. Delegators can stake into your vault, and you earn an automated management fee on their generated yield. Funds remain completely under Layer 1 Smart Contract protection.
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {vaults.map(v => (
+                  <div key={v.vault_id} style={{ padding: '16px', borderRadius: 14, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg, #0ea5e9, #3b82f6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800 }}>
+                          {v.asset}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: 'white' }}>{v.node_wallet.slice(0, 4)}...{v.node_wallet.slice(-4)} LP Vault</div>
+                          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', fontFamily: 'monospace' }}>{v.vault_id}</div>
+                        </div>
+                      </div>
+                      <div style={{ padding: '4px 10px', borderRadius: 8, background: 'rgba(16,185,129,0.1)', color: '#34d399', fontSize: 10, fontWeight: 700, textTransform: 'uppercase' }}>
+                        {v.status}
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, background: 'rgba(0,0,0,0.2)', padding: '12px', borderRadius: 10 }}>
+                      <div>
+                        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: 4 }}>TVL (Liquidity)</div>
+                        <div style={{ fontSize: 14, fontWeight: 800, color: 'white' }}>{v.total_liquidity.toLocaleString()} {v.asset}</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: 4 }}>Delegated</div>
+                        <div style={{ fontSize: 14, fontWeight: 800, color: '#a78bfa' }}>{v.delegator_stake.toLocaleString()} {v.asset}</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: 4 }}>Generated Yield</div>
+                        <div style={{ fontSize: 14, fontWeight: 800, color: '#34d399' }}>+{v.generated_yield.toLocaleString()} {v.asset}</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: 4 }}>Mngmt Fee</div>
+                        <div style={{ fontSize: 14, fontWeight: 800, color: '#facc15' }}>{(v.management_fee_pct * 100).toFixed(0)}%</div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
+                      <button style={{ padding: '6px 14px', borderRadius: 8, background: 'rgba(255,255,255,0.05)', color: 'white', fontSize: 12, fontWeight: 600, border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}>
+                        Stake to Pool
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

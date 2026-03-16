@@ -1915,6 +1915,10 @@ func SetupRoutes(
 		SetupSettlementRoutes(v1, db.(*sql.DB))
 		log.Printf("✅ Settlement Router routes registered (/bridge/settlement/*)")
 
+		// Sovereign Node Liquidity Vaults
+		SetupLiquidityVaultRoutes(v1, db.(*sql.DB))
+		log.Printf("✅ Sovereign Liquidity Vault routes registered (/nodes/liquidity/*)")
+
 		// Node Rewards Engine (motivation & incentives)
 		SetupNodeRewardsRoutes(v1, db.(*sql.DB))
 
