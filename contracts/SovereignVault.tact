@@ -46,20 +46,20 @@ contract SovereignVault with Deployable, Ownable {
 
     receive(msg: Deposit) {
         let ctx: Context = context();
-        self.totalLiquidity = self.totalLiquidity + ctx.value;
+        self.totalLiquidity += ctx.value;
     }
 
     receive(msg: ProvideLiquidity) {
         let ctx: Context = context();
         require(ctx.value >= msg.amount, "Insufficient deposit value");
-        self.totalLiquidity = self.totalLiquidity + msg.amount;
+        self.totalLiquidity += msg.amount;
     }
 
     receive(msg: WithdrawLiquidity) {
         require(sender() == self.owner, "Only owner can withdraw liquidity");
         require(self.totalLiquidity >= msg.amount, "Insufficient liquidity pool");
 
-        self.totalLiquidity = self.totalLiquidity - msg.amount;
+        self.totalLiquidity -= msg.amount;
         send(SendParameters{
             to: self.owner,
             value: msg.amount,
@@ -76,8 +76,8 @@ contract SovereignVault with Deployable, Ownable {
         require(sender() == self.nodeKeeper, "Only Node Keeper can execute swaps");
         require(self.totalLiquidity >= msg.amountOut, "Not enough liquidity to fulfill swap");
 
-        self.totalLiquidity = self.totalLiquidity - msg.amountOut;
-        self.accumulatedFees = self.accumulatedFees + msg.feeReserved;
+        self.totalLiquidity -= msg.amountOut;
+        self.accumulatedFees += msg.feeReserved;
 
         // Send the requested tokens to the user destination
         send(SendParameters{

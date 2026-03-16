@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log"
@@ -219,14 +220,16 @@ func getComputeBacking(db *sql.DB) gin.HandlerFunc {
 // P2P PAYMENTS: Zero-fee instant transfers (replaces banking)
 // ═══════════════════════════════════════════════════════════════
 
+type p2pPaymentReq struct {
+	SenderWallet   string  `json:"sender_wallet" binding:"required"`
+	ReceiverWallet string  `json:"receiver_wallet" binding:"required"`
+	Amount         float64 `json:"amount" binding:"required"`
+	Memo           string  `json:"memo"`
+}
+
 func p2pPayment(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req struct {
-			SenderWallet   string  `json:"sender_wallet" binding:"required"`
-			ReceiverWallet string  `json:"receiver_wallet" binding:"required"`
-			Amount         float64 `json:"amount" binding:"required"`
-			Memo           string  `json:"memo"`
-		}
+		var req p2pPaymentReq
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(400, gin.H{"error": err.Error()})
 			return
@@ -241,68 +244,13 @@ func p2pPayment(db *sql.DB) gin.HandlerFunc {
 		}
 
 		ctx := c.Request.Context()
-		tx, err := db.BeginTx(ctx, nil)
+		paymentID, netAmount, burnAmount, err := executeP2pTx(ctx, db, req)
 		if err != nil {
-			c.JSON(500, gin.H{"error": "transaction failed"})
-			return
-		}
-		defer tx.Rollback()
-
-		// Check sender balance
-		var senderBalance float64
-		err = tx.QueryRowContext(ctx,
-			`SELECT COALESCE(gstd_balance, 0) + COALESCE(pending_balance_gstd, 0) FROM users WHERE wallet_address = $1`,
-			req.SenderWallet).Scan(&senderBalance)
-		if err != nil || senderBalance < req.Amount {
-			c.JSON(400, gin.H{"error": "insufficient balance", "balance": senderBalance, "required": req.Amount})
-			return
-		}
-
-		// Calculate burn (2% of transaction)
-		var burnRate float64
-		db.QueryRowContext(ctx, `SELECT burn_rate_pct FROM tokenomics_halving ORDER BY epoch_number DESC LIMIT 1`).Scan(&burnRate)
-		if burnRate <= 0 {
-			burnRate = 2.0
-		}
-		burnAmount := req.Amount * (burnRate / 100)
-		netAmount := req.Amount - burnAmount
-
-		// Debit sender
-		_, err = tx.ExecContext(ctx,
-			`UPDATE users SET gstd_balance = COALESCE(gstd_balance, 0) - $1, updated_at = NOW() WHERE wallet_address = $2`,
-			req.Amount, req.SenderWallet)
-		if err != nil {
-			c.JSON(500, gin.H{"error": "debit failed"})
-			return
-		}
-
-		// Credit receiver (net of burn)
-		_, err = tx.ExecContext(ctx,
-			`INSERT INTO users (wallet_address, gstd_balance, created_at, updated_at) VALUES ($1, $2, NOW(), NOW())
-			 ON CONFLICT (wallet_address) DO UPDATE SET gstd_balance = COALESCE(users.gstd_balance, 0) + $2, updated_at = NOW()`,
-			req.ReceiverWallet, netAmount)
-		if err != nil {
-			c.JSON(500, gin.H{"error": "credit failed"})
-			return
-		}
-
-		// Record burn
-		if burnAmount > 0 {
-			tx.ExecContext(ctx,
-				`INSERT INTO token_burns (transaction_id, transaction_type, original_amount, burn_amount, burn_address, source_wallet, created_at)
-				 VALUES (gen_random_uuid()::text, 'p2p_transfer_burn', $1, $2, 'BURN', $3, NOW())`,
-				req.Amount, burnAmount, req.SenderWallet)
-		}
-
-		// Record payment
-		var paymentID string
-		tx.QueryRowContext(ctx,
-			`INSERT INTO p2p_payments (sender_wallet, receiver_wallet, amount, fee, burn_amount, memo, status)
-			 VALUES ($1, $2, $3, 0, $4, $5, 'completed') RETURNING id`,
-			req.SenderWallet, req.ReceiverWallet, req.Amount, burnAmount, req.Memo).Scan(&paymentID)
-
-		if err := tx.Commit(); err != nil {
-			c.JSON(500, gin.H{"error": "commit failed"})
+			status := 500
+			if err.Error() == "insufficient balance" {
+				status = 400
+			}
+			c.JSON(status, gin.H{"error": err.Error(), "required": req.Amount})
 			return
 		}
 
@@ -319,6 +267,64 @@ func p2pPayment(db *sql.DB) gin.HandlerFunc {
 	}
 }
 
+func executeP2pTx(ctx context.Context, db *sql.DB, req p2pPaymentReq) (string, float64, float64, error) {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return "", 0, 0, fmt.Errorf("transaction failed: %v", err)
+	}
+	defer tx.Rollback()
+
+	var senderBalance float64
+	err = tx.QueryRowContext(ctx,
+		`SELECT COALESCE(gstd_balance, 0) + COALESCE(pending_balance_gstd, 0) FROM users WHERE wallet_address = $1`,
+		req.SenderWallet).Scan(&senderBalance)
+	if err != nil || senderBalance < req.Amount {
+		return "", 0, 0, fmt.Errorf("insufficient balance")
+	}
+
+	var burnRate float64
+	db.QueryRowContext(ctx, `SELECT burn_rate_pct FROM tokenomics_halving ORDER BY epoch_number DESC LIMIT 1`).Scan(&burnRate)
+	if burnRate <= 0 {
+		burnRate = 2.0
+	}
+	burnAmount := req.Amount * (burnRate / 100)
+	netAmount := req.Amount - burnAmount
+
+	_, err = tx.ExecContext(ctx,
+		`UPDATE users SET gstd_balance = COALESCE(gstd_balance, 0) - $1, updated_at = NOW() WHERE wallet_address = $2`,
+		req.Amount, req.SenderWallet)
+	if err != nil {
+		return "", 0, 0, fmt.Errorf("debit failed")
+	}
+
+	_, err = tx.ExecContext(ctx,
+		`INSERT INTO users (wallet_address, gstd_balance, created_at, updated_at) VALUES ($1, $2, NOW(), NOW())
+		 ON CONFLICT (wallet_address) DO UPDATE SET gstd_balance = COALESCE(users.gstd_balance, 0) + $2, updated_at = NOW()`,
+		req.ReceiverWallet, netAmount)
+	if err != nil {
+		return "", 0, 0, fmt.Errorf("credit failed")
+	}
+
+	if burnAmount > 0 {
+		tx.ExecContext(ctx,
+			`INSERT INTO token_burns (transaction_id, transaction_type, original_amount, burn_amount, burn_address, source_wallet, created_at)
+			 VALUES (gen_random_uuid()::text, 'p2p_transfer_burn', $1, $2, 'BURN', $3, NOW())`,
+			req.Amount, burnAmount, req.SenderWallet)
+	}
+
+	var paymentID string
+	tx.QueryRowContext(ctx,
+		`INSERT INTO p2p_payments (sender_wallet, receiver_wallet, amount, fee, burn_amount, memo, status)
+		 VALUES ($1, $2, $3, 0, $4, $5, 'completed') RETURNING id`,
+		req.SenderWallet, req.ReceiverWallet, req.Amount, burnAmount, req.Memo).Scan(&paymentID)
+
+	if err := tx.Commit(); err != nil {
+		return "", 0, 0, fmt.Errorf("commit failed")
+	}
+
+	return paymentID, netAmount, burnAmount, nil
+}
+
 func getPaymentHistory(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		wallet := c.Query("wallet")
@@ -331,38 +337,42 @@ func getPaymentHistory(db *sql.DB) gin.HandlerFunc {
 			 FROM p2p_payments WHERE sender_wallet = $1 OR receiver_wallet = $1
 			 ORDER BY created_at DESC LIMIT 50`, wallet)
 		if err != nil {
-			c.JSON(200, gin.H{"payments": []interface{}{}, "count": 0})
+			c.JSON(200, gin.H{"payments": []gin.H{}, "count": 0})
 			return
 		}
 		defer rows.Close()
 
-		var payments []gin.H
-		for rows.Next() {
-			var id, sender, receiver, memo, status string
-			var amount, burned float64
-			var createdAt time.Time
-			if rows.Scan(&id, &sender, &receiver, &amount, &burned, &memo, &status, &createdAt) == nil {
-				direction := "received"
-				if sender == wallet {
-					direction = "sent"
-				}
-				payments = append(payments, gin.H{
-					"id": id, "direction": direction, "counterparty": func() string {
-						if sender == wallet {
-							return receiver
-						}
-						return sender
-					}(),
-					"amount": amount, "burned": burned, "memo": memo, "status": status,
-					"timestamp": createdAt.Format(time.RFC3339),
-				})
-			}
-		}
-		if payments == nil {
-			payments = []gin.H{}
-		}
+		payments := parsePaymentRows(rows, wallet)
 		c.JSON(200, gin.H{"payments": payments, "count": len(payments)})
 	}
+}
+
+func parsePaymentRows(rows *sql.Rows, wallet string) []gin.H {
+	payments := []gin.H{}
+	for rows.Next() {
+		var id, sender, receiver, memo, status string
+		var amount, burned float64
+		var createdAt time.Time
+		if err := rows.Scan(&id, &sender, &receiver, &amount, &burned, &memo, &status, &createdAt); err == nil {
+			direction := "received"
+			counterparty := sender
+			if sender == wallet {
+				direction = "sent"
+				counterparty = receiver
+			}
+			payments = append(payments, gin.H{
+				"id":           id,
+				"direction":    direction,
+				"counterparty": counterparty,
+				"amount":       amount,
+				"burned":       burned,
+				"memo":         memo,
+				"status":       status,
+				"timestamp":    createdAt.Format(time.RFC3339),
+			})
+		}
+	}
+	return payments
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -993,43 +1003,49 @@ func getMeshPeers(db *sql.DB) gin.HandlerFunc {
 			`SELECT COUNT(*) FROM nodes WHERE status='online' AND last_seen > NOW() - INTERVAL '70 minutes'`).
 			Scan(&onlineNodes)
 
+		score := float64(0)
+		if onlineNodes > 1 {
+			score = math.Min(100, float64(activePeers)/float64(onlineNodes)*100)
+		}
+
 		result := gin.H{
 			"total_mesh_connections": totalPeers,
 			"active_connections":     activePeers,
 			"online_nodes":           onlineNodes,
-			"decentralization_score": func() float64 {
-				if onlineNodes <= 1 {
-					return 0
-				}
-				return math.Min(100, float64(activePeers)/float64(onlineNodes)*100)
-			}(),
+			"decentralization_score": score,
 		}
 
 		if nodeID != "" {
-			rows, _ := db.QueryContext(c.Request.Context(),
-				`SELECT peer_node_id, COALESCE(peer_endpoint,''), latency_ms, trust_score, last_handshake
-				 FROM node_mesh_peers WHERE node_id = $1 AND is_active = true`, nodeID)
-			if rows != nil {
-				defer rows.Close()
-				var myPeers []gin.H
-				for rows.Next() {
-					var peerID, endpoint string
-					var latency int
-					var trust float64
-					var lastHandshake time.Time
-					if rows.Scan(&peerID, &endpoint, &latency, &trust, &lastHandshake) == nil {
-						myPeers = append(myPeers, gin.H{
-							"peer": peerID, "endpoint": endpoint, "latency": latency,
-							"trust": trust, "last_seen": lastHandshake.Format(time.RFC3339),
-						})
-					}
-				}
-				result["your_peers"] = myPeers
-			}
+			addMyMeshPeers(c.Request.Context(), db, nodeID, result)
 		}
 
 		c.JSON(200, result)
 	}
+}
+
+func addMyMeshPeers(ctx context.Context, db *sql.DB, nodeID string, result gin.H) {
+	rows, err := db.QueryContext(ctx,
+		`SELECT peer_node_id, COALESCE(peer_endpoint,''), latency_ms, trust_score, last_handshake
+		 FROM node_mesh_peers WHERE node_id = $1 AND is_active = true`, nodeID)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+
+	var myPeers []gin.H
+	for rows.Next() {
+		var peerID, endpoint string
+		var latency int
+		var trust float64
+		var lastHandshake time.Time
+		if rows.Scan(&peerID, &endpoint, &latency, &trust, &lastHandshake) == nil {
+			myPeers = append(myPeers, gin.H{
+				"peer": peerID, "endpoint": endpoint, "latency": latency,
+				"trust": trust, "last_seen": lastHandshake.Format(time.RFC3339),
+			})
+		}
+	}
+	result["your_peers"] = myPeers
 }
 
 func submitConsensus(db *sql.DB) gin.HandlerFunc {
@@ -1088,23 +1104,48 @@ func submitConsensus(db *sql.DB) gin.HandlerFunc {
 	}
 }
 
+type capabilityReq struct {
+	NodeID          string  `json:"node_id" binding:"required"`
+	CanAI           bool    `json:"can_ai_inference"`
+	CanBridge       bool    `json:"can_bridge_verify"`
+	CanStorage      bool    `json:"can_storage"`
+	CanFederatedML  bool    `json:"can_federated_ml"`
+	CanP2PRelay     bool    `json:"can_p2p_relay"`
+	CanConsensus    bool    `json:"can_consensus_validate"`
+	GPUModel        string  `json:"gpu_model"`
+	GPUVram         int     `json:"gpu_vram_gb"`
+	DiskFree        int     `json:"disk_free_gb"`
+	Bandwidth       int     `json:"bandwidth_mbps"`
+	AutonomousMode  bool    `json:"autonomous_mode"`
+	UptimeGuarantee float64 `json:"uptime_guarantee_pct"`
+}
+
+func getCapsList(req capabilityReq) []string {
+	var caps []string
+	if req.CanAI {
+		caps = append(caps, "ai_inference")
+	}
+	if req.CanBridge {
+		caps = append(caps, "bridge_verify")
+	}
+	if req.CanStorage {
+		caps = append(caps, "storage")
+	}
+	if req.CanFederatedML {
+		caps = append(caps, "federated_ml")
+	}
+	if req.CanP2PRelay {
+		caps = append(caps, "p2p_relay")
+	}
+	if req.CanConsensus {
+		caps = append(caps, "consensus")
+	}
+	return caps
+}
+
 func registerCapabilities(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req struct {
-			NodeID          string  `json:"node_id" binding:"required"`
-			CanAI           bool    `json:"can_ai_inference"`
-			CanBridge       bool    `json:"can_bridge_verify"`
-			CanStorage      bool    `json:"can_storage"`
-			CanFederatedML  bool    `json:"can_federated_ml"`
-			CanP2PRelay     bool    `json:"can_p2p_relay"`
-			CanConsensus    bool    `json:"can_consensus_validate"`
-			GPUModel        string  `json:"gpu_model"`
-			GPUVram         int     `json:"gpu_vram_gb"`
-			DiskFree        int     `json:"disk_free_gb"`
-			Bandwidth       int     `json:"bandwidth_mbps"`
-			AutonomousMode  bool    `json:"autonomous_mode"`
-			UptimeGuarantee float64 `json:"uptime_guarantee_pct"`
-		}
+		var req capabilityReq
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(400, gin.H{"error": err.Error()})
 			return
@@ -1123,44 +1164,7 @@ func registerCapabilities(db *sql.DB) gin.HandlerFunc {
 		c.JSON(200, gin.H{
 			"node_id":         req.NodeID,
 			"autonomous_mode": req.AutonomousMode,
-			"capabilities": []string{
-				func() string {
-					if req.CanAI {
-						return "ai_inference"
-					}
-					return ""
-				}(),
-				func() string {
-					if req.CanBridge {
-						return "bridge_verify"
-					}
-					return ""
-				}(),
-				func() string {
-					if req.CanStorage {
-						return "storage"
-					}
-					return ""
-				}(),
-				func() string {
-					if req.CanFederatedML {
-						return "federated_ml"
-					}
-					return ""
-				}(),
-				func() string {
-					if req.CanP2PRelay {
-						return "p2p_relay"
-					}
-					return ""
-				}(),
-				func() string {
-					if req.CanConsensus {
-						return "consensus"
-					}
-					return ""
-				}(),
-			},
+			"capabilities":    getCapsList(req),
 			"message": "Node capabilities registered. You can now receive tasks matching your hardware.",
 		})
 	}

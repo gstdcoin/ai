@@ -56,8 +56,8 @@ contract SettlementRouter with Deployable, Ownable {
         // intent to the integrated liquidity providers and await the SwapResult callback.
 
         // Placeholder for emitting standard swap payload to DEX or DLN
-        self.totalVolumeRouted = self.totalVolumeRouted + value;
-        self.totalSwaps = self.totalSwaps + 1;
+        self.totalVolumeRouted += value;
+        self.totalSwaps += 1;
 
         // In production, the DEX/Vault sends the tokens back here with the forward payload.
         // Simulate immediate continuation for architectural completeness if value matches:
