@@ -26,7 +26,6 @@ export default function EcosystemNav() {
     const isOnApp = typeof window !== 'undefined' && window.location.hostname === 'app.gstdtoken.com';
 
     const navItems: NavItem[] = [
-        { key: 'nav_home', href: `${APP_BASE}/`, icon: <LayoutDashboard size={16} />, external: !isOnApp },
         { key: 'nav_chat', href: `${APP_BASE}/chat`, icon: <MessageSquare size={16} />, external: !isOnApp },
         { key: 'nav_bridge', href: `${APP_BASE}/bridge`, icon: <ArrowRightLeft size={16} />, external: !isOnApp },
         { key: 'nav_swap', href: `${APP_BASE}/swap`, icon: <Repeat size={16} />, external: !isOnApp },
@@ -40,7 +39,6 @@ export default function EcosystemNav() {
 
     const isActive = (href: string) => {
         const path = router.pathname;
-        if (href.endsWith('/') && (path === '/dashboard' || path === '/')) return true;
         const segments = ['/chat', '/bridge', '/swap', '/staking', '/nodes', '/leaderboard', '/stats'];
         for (const seg of segments) { if (href.includes(seg) && path === seg) return true; }
         return false;

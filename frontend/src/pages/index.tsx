@@ -262,15 +262,15 @@ export default function Home() {
             <StatCard value={totalUsers} label={t('total_users', 'Users')} color="text-emerald-400" icon={<Activity size={16} className="text-emerald-400" />} />
             <StatCard value={totalNodes} label={t('total_nodes', 'Nodes')} color="text-cyan-400" icon={<Server size={16} className="text-cyan-400" />} />
             <StatCard value={totalTasks} label={t('tasks_completed', 'Tasks')} color="text-violet-400" icon={<Zap size={16} className="text-violet-400" />} />
-            <StatCard value={gstdPrice} label={t('gstd_price_usd', 'GSTD Price')} color="text-amber-400" icon={<Shield size={16} className="text-amber-400" />} />
+            <StatCard value={goldReserve + ' XAUt'} label={t('xaut_reserve', 'Gold Reserve')} color="text-amber-400" icon={<Shield size={16} className="text-amber-400" />} />
           </div>
 
           {/* ═══════ TOKENOMICS ═══════ */}
           <div className="w-full max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4 mb-20 stagger-in">
-            <StatCard value={circulatingSupply} label={t('circulating_supply', 'Circulating')} color="text-amber-400" icon={<Shield size={16} className="text-amber-400" />} />
-            <StatCard value={totalMinted} label={t('total_minted', 'Total Minted')} color="text-cyan-400" />
+            <StatCard value={circulatingSupply} label={t('circulating_supply', 'Circulating')} color="text-cyan-400" icon={<Globe size={16} className="text-cyan-400" />} />
+            <StatCard value={totalMinted} label={t('total_minted', 'Total Minted')} color="text-violet-400" />
             <StatCard value={totalBurned} label={t('total_burned', 'Burned 🔥')} color="text-red-400" />
-            <StatCard value={goldReserve} label={t('xaut_reserve', 'XAUt Reserve')} color="text-amber-400" />
+            <StatCard value={gstdPrice} label={t('gstd_price_usd', 'GSTD Price')} color="text-amber-400" />
           </div>
 
           {/* ═══════ LIVE NETWORK PULSE ═══════ */}
