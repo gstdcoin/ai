@@ -12,7 +12,7 @@
 # ═══════════════════════════════════════════════════════════════
 set -euo pipefail
 
-GSTD_VERSION="3.2.0"
+GSTD_VERSION="4.0.0-DeFi"
 GSTD_DIR="${GSTD_DIR:-$HOME/.gstd}"
 GSTD_API="${GSTD_API:-https://app.gstdtoken.com}"
 NODE_TYPE="auto"
@@ -192,6 +192,13 @@ GSTD_WALLET_ADDRESS=
 GSTD_MAX_CONCURRENT_TASKS=4
 GSTD_HEARTBEAT_INTERVAL=30
 GSTD_LOG_LEVEL=info
+
+# Sovereign Liquidity Vaults (DeFi Base Routing Asset)
+# To act as a Liquidity Node, set ENABLED=true and define the asset and initial stake
+GSTD_DLN_ENABLED=false
+GSTD_DLN_ASSET=GSTD
+GSTD_DLN_INITIAL_STAKE=0
+GSTD_DLN_MANAGEMENT_FEE=0.15
 
 # Ollama AI (auto-configured for GPU nodes)
 OLLAMA_URL=http://gstd-ollama:11434

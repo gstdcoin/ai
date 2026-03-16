@@ -190,7 +190,7 @@ func getGSTDAppCatalog() []AppManifest {
 			GSTDReward: 50, MinRAMGB: 2, MinDiskGB: 5,
 		},
 		{
-			ID: "gstd-chat", Name: "GSTD Sovereign AI", Version: "3.2.0",
+			ID: "gstd-chat", Name: "GSTD Sovereign AI", Version: "4.0.0-DeFi",
 			Category: "ai", Tagline: "Private, censorship-free AI assistant",
 			Description: "Access the Hive Mind through a beautiful chat interface. Multiple AI models, sovereign compute, zero corporate control. Supports multi-model consensus (SmartMix).",
 			Developer:   devGSTDTeam, Website: "https://chat.gstdtoken.com",
@@ -648,7 +648,7 @@ func updateNodeSettings() gin.HandlerFunc {
 func getWhatsNew() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.JSON(200, gin.H{
-			"version": "3.2.0",
+			"version": "4.0.0-DeFi",
 			"date":    "2026-03-07",
 			"features": []gin.H{
 				{
@@ -706,8 +706,8 @@ func listBackups() gin.HandlerFunc {
 func checkForUpdates() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.JSON(200, gin.H{
-			"current_version":  "3.2.0",
-			"latest_version":   "3.2.0",
+			"current_version":  "4.0.0-DeFi",
+			"latest_version":   "4.0.0-DeFi",
 			"update_available": false,
 			"last_checked":     time.Now(),
 		})
