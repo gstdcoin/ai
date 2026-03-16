@@ -16,7 +16,7 @@ RUN go mod download
 COPY --from=backend . .
 
 RUN CGO_ENABLED=1 GOOS=linux go build -a \
-    -ldflags '-w -s -X main.version=3.2.0' \
+    -ldflags '-w -s -X main.version=4.0.0-DeFi' \
     -o gstd-node ./main.go
 
 # ── Runtime ──────────────────────────────────────────────────
@@ -47,6 +47,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
 LABEL org.opencontainers.image.source="https://github.com/gstdcoin/ai"
 LABEL org.opencontainers.image.description="GSTD Global Super Computer Node"
 LABEL org.opencontainers.image.licenses="MIT"
-LABEL org.opencontainers.image.version="3.2.0"
+LABEL org.opencontainers.image.version="4.0.0-DeFi"
 
 CMD ["./gstd-node"]

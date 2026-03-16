@@ -10,7 +10,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$GSTDVersion = "3.2.0"
+$GSTDVersion = "4.0.0-DeFi"
 $GSTDDir = Join-Path $env:USERPROFILE ".gstd"
 $GSTDAPI = if ($env:GSTD_API) { $env:GSTD_API } else { "https://app.gstdtoken.com" }
 
@@ -118,6 +118,13 @@ GSTD_API_URL=$GSTDAPI
 GSTD_WALLET_ADDRESS=
 # Set your TON wallet to receive GSTD rewards:
 # GSTD_WALLET_ADDRESS=EQYour_TON_Wallet_Address_Here
+
+# Sovereign Liquidity Vaults (DeFi Base Routing Asset)
+GSTD_DLN_ENABLED=false
+GSTD_DLN_ASSET=GSTD
+GSTD_DLN_INITIAL_STAKE=0
+GSTD_DLN_MANAGEMENT_FEE=0.15
+
 OLLAMA_URL=http://localhost:11434
 "@ | Out-File -FilePath $envFile -Encoding utf8
         Write-Log "Created $envFile — edit to set your wallet address"
