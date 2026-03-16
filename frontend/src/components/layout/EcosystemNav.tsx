@@ -89,8 +89,8 @@ export default function EcosystemNav() {
                                     borderRadius: 8, fontSize: 13, fontWeight: 500, textDecoration: 'none',
                                     color: 'rgba(255,255,255,0.5)', transition: 'all 0.2s',
                                 }}
-                                onMouseEnter={(e) => e.currentTarget.style.color = 'white'}
-                                onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.5)'}
+                                onMouseEnter={(e) => { e.currentTarget.style.color = '#ffd700'; e.currentTarget.style.background = 'rgba(255,215,0,0.06)'; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; e.currentTarget.style.background = 'transparent'; }}
                             >
                                 {item.icon} {label}
                             </a>
@@ -100,8 +100,8 @@ export default function EcosystemNav() {
                                     display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px',
                                     borderRadius: 8, fontSize: 13, fontWeight: active ? 600 : 500,
                                     textDecoration: 'none',
-                                    color: active ? 'white' : 'rgba(255,255,255,0.5)',
-                                    background: active ? 'rgba(139,92,246,0.15)' : 'transparent',
+                                    color: active ? '#ffd700' : 'rgba(255,255,255,0.5)',
+                                    background: active ? 'rgba(255,215,0,0.08)' : 'transparent',
                                     transition: 'all 0.2s',
                                 }}
                             >
