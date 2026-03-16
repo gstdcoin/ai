@@ -516,16 +516,17 @@ export default function BridgePage() {
           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 20, padding: 4, borderRadius: 12, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
             {([
               { id: 'swap' as const, label: t('bridge_new_swap'), icon: <ArrowRightLeft size={14} /> },
+              { id: 'orders' as const, label: t('bridge_order_book', 'Order Book'), icon: <BookOpen size={14} /> },
               { id: 'my' as const, label: t('bridge_my_orders'), icon: <Users size={14} /> },
-            ]).map(t => (
-              <button key={t.id} onClick={() => setTab(t.id)} style={{
+            ]).map(tb => (
+              <button key={tb.id} onClick={() => setTab(tb.id)} style={{
                 flex: '1 1 30%', minWidth: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                 padding: '10px 12px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                background: tab === t.id ? 'rgba(139,92,246,0.15)' : 'transparent',
-                color: tab === t.id ? 'white' : 'rgba(255,255,255,0.4)',
-                fontSize: 12, fontWeight: tab === t.id ? 700 : 500, transition: 'all 0.2s',
+                background: tab === tb.id ? 'rgba(139,92,246,0.15)' : 'transparent',
+                color: tab === tb.id ? 'white' : 'rgba(255,255,255,0.4)',
+                fontSize: 12, fontWeight: tab === tb.id ? 700 : 500, transition: 'all 0.2s',
               }}>
-                {t.icon} {t.label}
+                {tb.icon} {tb.label}
               </button>
             ))}
           </div>
@@ -821,6 +822,53 @@ export default function BridgePage() {
                       {/* Order ID */}
                       <div style={{ fontSize: 9, fontFamily: 'monospace', color: 'rgba(255,255,255,0.15)', marginTop: 8 }}>
                         ID: {o.id.slice(0, 8)}...
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── TAB: Order Book ── */}
+          {tab === 'orders' && (
+            <div>
+              {orders.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px 20px', borderRadius: 16, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                  <BookOpen size={32} style={{ color: 'rgba(255,255,255,0.15)', marginBottom: 12 }} />
+                  <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>{t('bridge_no_open_orders', 'No open orders yet. Be the first to create one!')}</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {orders.map(o => (
+                    <div key={o.id} style={{
+                      padding: '14px 16px', borderRadius: 14,
+                      background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
+                      transition: 'all 0.2s',
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontSize: 18 }}>{CHAINS.find(c => c.id === o.source_chain)?.icon}</span>
+                          <ArrowRight size={14} style={{ color: 'rgba(255,255,255,0.2)' }} />
+                          <span style={{ fontSize: 18 }}>{CHAINS.find(c => c.id === o.dest_chain)?.icon}</span>
+                          <div>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: 'white' }}>{o.amount} GSTD</div>
+                            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>{o.source_chain} → {o.dest_chain}</div>
+                          </div>
+                        </div>
+                        <StatusBadge status={o.status} />
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', fontFamily: 'monospace' }}>
+                          {o.wallet} · {new Date(o.created_at).toLocaleDateString()}
+                        </div>
+                        <button onClick={() => handleTakeOrder(o)} style={{
+                          padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                          background: 'linear-gradient(135deg, rgba(139,92,246,0.15), rgba(139,92,246,0.08))',
+                          color: '#a78bfa', fontSize: 11, fontWeight: 700, transition: 'all 0.2s',
+                        }}>
+                          {t('bridge_take_order', 'Take Order')} →
+                        </button>
                       </div>
                     </div>
                   ))}

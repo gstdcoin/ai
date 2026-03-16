@@ -5,7 +5,8 @@ import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import {
   Server, Trophy, Flame, Zap, TrendingUp, Clock, Shield,
-  ChevronRight, ExternalLink, Star, Cpu, ArrowRight, Users, Smartphone, MessageCircle
+  ChevronRight, ExternalLink, Star, Cpu, ArrowRight, Users, Smartphone, MessageCircle,
+  Activity, Vote, Coins, Globe, CheckCircle2, AlertTriangle
 } from 'lucide-react';
 import { API_BASE_URL } from '../lib/config';
 
@@ -29,6 +30,10 @@ interface ProgramData {
   streak_bonuses: StreakBonus[];
   task_rewards: TaskReward[];
 }
+interface HealthData { status: string; total_nodes: number; online_nodes: number; uptime_percent: number; avg_latency_ms: number; aggregate_bandwidth: string; tasks_per_hour: number; protocol_version: string; consensus_health: string; regions: Array<{ region: string; nodes: number; avg_latency_ms: number }>; network_capacity: { ai_inference_tflops: number; storage_available_tb: number; bandwidth_gbps: number }; vs_bitcoin: { gstd_tps: number; bitcoin_tps: number; gstd_finality_sec: number; bitcoin_finality_min: number; gstd_energy_per_tx: string; bitcoin_energy_per_tx: string }; }
+interface TaskItem { id: string; type: string; title: string; description: string; reward_gstd: number; estimated_time: string; priority: string; active_nodes: number; requirements: Record<string, any>; }
+interface Proposal { id: string; title: string; description: string; status: string; category: string; votes_for: number; votes_against: number; votes_total: number; quorum_needed: number; quorum_percent: number; ends_at: string; }
+interface BurnData { total_burned_gstd: number; max_supply: number; current_circulating: number; burn_rate_daily: number; burn_sources: Array<{ source: string; percent: string; burned: number; description: string }>; next_burn_event: { type: string; date: string; estimated: string }; }
 
 export default function NodesPage() {
   const { t } = useTranslation('common');
@@ -36,11 +41,20 @@ export default function NodesPage() {
   const [leaders, setLeaders] = useState<LeaderEntry[]>([]);
   const [program, setProgram] = useState<ProgramData | null>(null);
   const [period, setPeriod] = useState('all');
+  const [health, setHealth] = useState<HealthData | null>(null);
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
+  const [governance, setGovernance] = useState<Proposal[]>([]);
+  const [burn, setBurn] = useState<BurnData | null>(null);
+  const [tab, setTab] = useState<'overview' | 'tasks' | 'governance' | 'burn'>('overview');
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/api/v1/nodes/rewards/network`).then(r => r.json()).then(setNetwork).catch(() => undefined);
     fetch(`${API_BASE_URL}/api/v1/nodes/rewards/program`).then(r => r.json()).then(setProgram).catch(() => undefined);
     fetch(`${API_BASE_URL}/api/v1/nodes/rewards/leaderboard?period=${period}`).then(r => r.json()).then(d => setLeaders(d.leaderboard || [])).catch(() => undefined);
+    fetch(`${API_BASE_URL}/api/v1/nodes/tools/health`).then(r => r.json()).then(setHealth).catch(() => undefined);
+    fetch(`${API_BASE_URL}/api/v1/nodes/tools/tasks/available`).then(r => r.json()).then(d => setTasks(d.tasks || [])).catch(() => undefined);
+    fetch(`${API_BASE_URL}/api/v1/nodes/tools/governance/active`).then(r => r.json()).then(d => setGovernance(d.proposals || [])).catch(() => undefined);
+    fetch(`${API_BASE_URL}/api/v1/nodes/tools/burn-stats`).then(r => r.json()).then(setBurn).catch(() => undefined);
   }, [period]);
 
   const tiers: TierDef[] = program?.tiers || [];
@@ -140,6 +154,209 @@ export default function NodesPage() {
                   <div style={{ fontSize: 9, fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase' }}>{s.l}</div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* ═══ Network Tools Tabs ═══ */}
+          <div style={{ display: 'flex', gap: 4, marginBottom: 24, padding: 4, borderRadius: 12, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
+            {([
+              { id: 'overview' as const, label: 'Overview', icon: <Server size={13} /> },
+              { id: 'tasks' as const, label: 'Tasks', icon: <Zap size={13} /> },
+              { id: 'governance' as const, label: 'Governance', icon: <Vote size={13} /> },
+              { id: 'burn' as const, label: 'Burns', icon: <Flame size={13} /> },
+            ]).map(tb => (
+              <button key={tb.id} onClick={() => setTab(tb.id)} style={{
+                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                padding: '8px 8px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                background: tab === tb.id ? 'rgba(139,92,246,0.12)' : 'transparent',
+                color: tab === tb.id ? 'white' : 'rgba(255,255,255,0.35)',
+                fontSize: 11, fontWeight: tab === tb.id ? 700 : 500, transition: 'all 0.2s',
+              }}>
+                {tb.icon} {tb.label}
+              </button>
+            ))}
+          </div>
+
+          {/* ═══ TAB: Network Health ═══ */}
+          {tab === 'overview' && health && (
+            <div style={{ marginBottom: 32 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                <Activity size={18} style={{ color: '#34d399' }} />
+                <h2 style={{ fontSize: 18, fontWeight: 800, color: 'white', margin: 0 }}>Network Health</h2>
+                <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(16,185,129,0.1)', color: '#34d399' }}>{health.protocol_version}</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8, marginBottom: 16 }}>
+                {[
+                  { v: `${health.avg_latency_ms}ms`, l: 'Avg Latency', c: '#60a5fa' },
+                  { v: health.aggregate_bandwidth, l: 'Bandwidth', c: '#a78bfa' },
+                  { v: `${health.uptime_percent}%`, l: 'Uptime', c: '#34d399' },
+                  { v: health.tasks_per_hour.toFixed(0), l: 'Tasks/hour', c: '#facc15' },
+                ].map(s => (
+                  <div key={s.l} style={{ textAlign: 'center', padding: '12px 8px', borderRadius: 10, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ fontSize: 18, fontWeight: 800, color: s.c }}>{s.v}</div>
+                    <div style={{ fontSize: 9, fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase' }}>{s.l}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* GSTD vs Bitcoin comparison */}
+              <div style={{ padding: '16px', borderRadius: 14, background: 'linear-gradient(135deg, rgba(139,92,246,0.06), rgba(16,185,129,0.04))', border: '1px solid rgba(139,92,246,0.1)', marginBottom: 16 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'white', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <TrendingUp size={14} style={{ color: '#a78bfa' }} /> GSTD vs Bitcoin — Network Advantages
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 2, fontSize: 10 }}>
+                  <div style={{ padding: '8px 6px', fontWeight: 700, color: 'rgba(255,255,255,0.4)' }}>Metric</div>
+                  <div style={{ padding: '8px 6px', fontWeight: 700, color: '#a78bfa', textAlign: 'center' }}>GSTD</div>
+                  <div style={{ padding: '8px 6px', fontWeight: 700, color: 'rgba(255,255,255,0.25)', textAlign: 'center' }}>Bitcoin</div>
+
+                  <div style={{ padding: '6px', color: 'rgba(255,255,255,0.4)' }}>TPS</div>
+                  <div style={{ padding: '6px', color: '#34d399', fontWeight: 700, textAlign: 'center' }}>{health.vs_bitcoin.gstd_tps.toLocaleString()}</div>
+                  <div style={{ padding: '6px', color: 'rgba(255,255,255,0.2)', textAlign: 'center' }}>{health.vs_bitcoin.bitcoin_tps}</div>
+
+                  <div style={{ padding: '6px', color: 'rgba(255,255,255,0.4)' }}>Finality</div>
+                  <div style={{ padding: '6px', color: '#34d399', fontWeight: 700, textAlign: 'center' }}>{health.vs_bitcoin.gstd_finality_sec}s</div>
+                  <div style={{ padding: '6px', color: 'rgba(255,255,255,0.2)', textAlign: 'center' }}>{health.vs_bitcoin.bitcoin_finality_min} min</div>
+
+                  <div style={{ padding: '6px', color: 'rgba(255,255,255,0.4)' }}>Energy/TX</div>
+                  <div style={{ padding: '6px', color: '#34d399', fontWeight: 700, textAlign: 'center' }}>{health.vs_bitcoin.gstd_energy_per_tx}</div>
+                  <div style={{ padding: '6px', color: 'rgba(255,255,255,0.2)', textAlign: 'center' }}>{health.vs_bitcoin.bitcoin_energy_per_tx}</div>
+                </div>
+              </div>
+
+              {/* Regions */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {health.regions.map(r => (
+                  <div key={r.region} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 8, background: 'rgba(255,255,255,0.02)' }}>
+                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <Globe size={12} style={{ color: '#60a5fa' }} /> {r.region}
+                    </span>
+                    <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)' }}>{r.nodes} nodes · {r.avg_latency_ms}ms</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ═══ TAB: Task Marketplace ═══ */}
+          {tab === 'tasks' && (
+            <div style={{ marginBottom: 32 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                <Zap size={18} style={{ color: '#a78bfa' }} />
+                <h2 style={{ fontSize: 18, fontWeight: 800, color: 'white', margin: 0 }}>Task Marketplace</h2>
+                <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(167,139,250,0.1)', color: '#a78bfa' }}>{tasks.length} available</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {tasks.map(task => {
+                  const priorityColor = task.priority === 'critical' ? '#ef4444' : task.priority === 'high' ? '#fb923c' : '#60a5fa';
+                  return (
+                    <div key={task.id} style={{ padding: '14px 16px', borderRadius: 14, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: 'white', marginBottom: 2 }}>{task.title}</div>
+                          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', lineHeight: 1.4 }}>{task.description}</div>
+                        </div>
+                        <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 12 }}>
+                          <div style={{ fontSize: 14, fontWeight: 800, color: '#a78bfa' }}>{task.reward_gstd} <span style={{ fontSize: 9 }}>GSTD</span></div>
+                          <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)' }}>{task.estimated_time}</div>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 4, textTransform: 'uppercase', background: `${priorityColor}15`, color: priorityColor }}>{task.priority}</span>
+                          <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)' }}>{task.active_nodes} nodes active</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ═══ TAB: Governance ═══ */}
+          {tab === 'governance' && (
+            <div style={{ marginBottom: 32 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                <Vote size={18} style={{ color: '#60a5fa' }} />
+                <h2 style={{ fontSize: 18, fontWeight: 800, color: 'white', margin: 0 }}>Governance</h2>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {governance.map(p => {
+                  const pct = p.votes_total > 0 ? (p.votes_for / p.votes_total * 100) : 0;
+                  const statusColor = p.status === 'passed' ? '#34d399' : p.status === 'voting' ? '#60a5fa' : '#facc15';
+                  return (
+                    <div key={p.id} style={{ padding: '16px', borderRadius: 14, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: '#a78bfa', fontFamily: 'monospace' }}>{p.id}</span>
+                        <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 4, textTransform: 'uppercase', background: `${statusColor}15`, color: statusColor }}>{p.status}</span>
+                      </div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: 'white', marginBottom: 4 }}>{p.title}</div>
+                      <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginBottom: 10, lineHeight: 1.5 }}>{p.description}</div>
+
+                      {p.votes_total > 0 && (
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>
+                            <span>For: {p.votes_for} ({pct.toFixed(0)}%)</span>
+                            <span>Against: {p.votes_against}</span>
+                          </div>
+                          <div style={{ height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.05)', overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${Math.min(pct, 100)}%`, borderRadius: 3, background: `linear-gradient(90deg, #34d399, #60a5fa)`, transition: 'width 0.5s' }} />
+                          </div>
+                          <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)', marginTop: 4 }}>
+                            Quorum: {p.quorum_percent.toFixed(0)}% of {p.quorum_needed} needed
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ═══ TAB: Token Burns ═══ */}
+          {tab === 'burn' && burn && (
+            <div style={{ marginBottom: 32 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                <Flame size={18} style={{ color: '#f97316' }} />
+                <h2 style={{ fontSize: 18, fontWeight: 800, color: 'white', margin: 0 }}>Token Burn Tracker</h2>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8, marginBottom: 16 }}>
+                {[
+                  { v: burn.total_burned_gstd.toFixed(2), l: 'Total Burned', c: '#f97316' },
+                  { v: burn.burn_rate_daily.toFixed(2), l: 'Daily Burn Rate', c: '#fb923c' },
+                  { v: `${(burn.current_circulating / 1000000).toFixed(1)}M`, l: 'Circulating', c: '#60a5fa' },
+                  { v: '21M', l: 'Max Supply', c: '#a78bfa' },
+                ].map(s => (
+                  <div key={s.l} style={{ textAlign: 'center', padding: '12px 8px', borderRadius: 10, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ fontSize: 18, fontWeight: 800, color: s.c }}>{s.v}</div>
+                    <div style={{ fontSize: 9, fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase' }}>{s.l}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Burn Sources */}
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.5)', marginBottom: 8 }}>Burn Sources</div>
+                {burn.burn_sources.map(bs => (
+                  <div key={bs.source} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderRadius: 8, background: 'rgba(255,255,255,0.02)', marginBottom: 4 }}>
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: 'white' }}>{bs.source} <span style={{ color: '#f97316', fontWeight: 700 }}>{bs.percent}</span></div>
+                      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>{bs.description}</div>
+                    </div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#fb923c' }}>{bs.burned} <span style={{ fontSize: 9 }}>GSTD</span></div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Next burn event */}
+              <div style={{ padding: '14px 16px', borderRadius: 12, background: 'linear-gradient(135deg, rgba(249,115,22,0.06), rgba(234,88,12,0.03))', border: '1px solid rgba(249,115,22,0.12)' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#fb923c', marginBottom: 4 }}>🔥 Next: {burn.next_burn_event.type}</div>
+                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>
+                  {new Date(burn.next_burn_event.date).toLocaleDateString()} · Est. {burn.next_burn_event.estimated}
+                </div>
+              </div>
             </div>
           )}
 
