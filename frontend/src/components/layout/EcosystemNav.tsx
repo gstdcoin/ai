@@ -5,7 +5,7 @@ import { useTranslation } from 'next-i18next';
 import { TonConnectButton } from '@tonconnect/ui-react';
 import {
     LayoutDashboard, MessageSquare, Activity, Bot,
-    ExternalLink, Menu, X, ArrowRightLeft, Server, Trophy, Repeat
+    ExternalLink, Menu, X, ArrowRightLeft, Server, Trophy, Repeat, Landmark
 } from 'lucide-react';
 
 interface NavItem {
@@ -29,6 +29,7 @@ export default function EcosystemNav() {
         { key: 'nav_chat', href: `${APP_BASE}/chat`, icon: <MessageSquare size={16} />, external: !isOnApp },
         { key: 'nav_bridge', href: `${APP_BASE}/bridge`, icon: <ArrowRightLeft size={16} />, external: !isOnApp },
         { key: 'nav_swap', href: `${APP_BASE}/swap`, icon: <Repeat size={16} />, external: !isOnApp },
+        { key: 'nav_staking', href: `${APP_BASE}/staking`, icon: <Landmark size={16} />, external: !isOnApp },
         { key: 'nav_nodes', href: `${APP_BASE}/nodes`, icon: <Server size={16} />, external: !isOnApp },
         { key: 'nav_leaderboard', href: `${APP_BASE}/leaderboard`, icon: <Trophy size={16} />, external: !isOnApp },
         { key: 'nav_stats', href: `${APP_BASE}/stats`, icon: <Activity size={16} />, external: !isOnApp },

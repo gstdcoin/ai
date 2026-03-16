@@ -64,7 +64,7 @@ func SetupSovereignRoutes(v1 *gin.RouterGroup, db *sql.DB) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// TOKENOMICS: Deflationary model with 21M cap + halving
+// TOKENOMICS: Deflationary model with capped supply + halving
 // ═══════════════════════════════════════════════════════════════
 
 func getTokenomics(db *sql.DB) gin.HandlerFunc {
@@ -110,8 +110,8 @@ func getTokenomics(db *sql.DB) gin.HandlerFunc {
 			deflationRate = (totalBurned / totalMinted) * 100
 		}
 
-		// Bitcoin comparison
-		btcSupplyPct := (totalMinted / maxSupply) * 100
+		// Supply mined percentage
+		supplyMinedPct := (totalMinted / maxSupply) * 100
 
 		c.JSON(200, gin.H{
 			"epoch":                epoch,
@@ -123,18 +123,10 @@ func getTokenomics(db *sql.DB) gin.HandlerFunc {
 			"total_staked":         totalStaked,
 			"burn_rate_pct":        burnRate,
 			"deflation_rate_pct":   deflationRate,
-			"supply_mined_pct":     btcSupplyPct,
+			"supply_mined_pct":     supplyMinedPct,
 			"remaining_supply":     maxSupply - totalMinted,
 			"next_halving_in_days": daysUntilHalving,
 			"next_reward_rate":     baseReward / 2,
-			"advantages_over_bitcoin": gin.H{
-				"transaction_speed": "instant (vs 10min Bitcoin)",
-				"transaction_fee":   "0% P2P (vs $5+ Bitcoin)",
-				"utility":           "AI compute, storage, bridge (vs none)",
-				"backing":           "gold + compute power (vs nothing)",
-				"governance":        "democratic (vs mining pools)",
-				"energy":            "minimal (vs enormous PoW)",
-			},
 		})
 	}
 }
@@ -162,6 +154,14 @@ func getSupplyInfo(db *sql.DB) gin.HandlerFunc {
 		totalMinted := totalBalance + totalPending
 		circulating := totalMinted - totalBurned - totalStaked - bridgeLocked
 
+		// Get max supply from DB (not hardcoded)
+		var maxSupply float64
+		db.QueryRowContext(c.Request.Context(),
+			`SELECT max_supply_cap FROM tokenomics_halving ORDER BY epoch_number DESC LIMIT 1`).Scan(&maxSupply)
+		if maxSupply <= 0 {
+			maxSupply = 21000000.0
+		}
+
 		c.JSON(200, gin.H{
 			"total_minted":     totalMinted,
 			"total_burned":     totalBurned,
@@ -169,10 +169,10 @@ func getSupplyInfo(db *sql.DB) gin.HandlerFunc {
 			"staked":           totalStaked,
 			"locked_in_bridge": bridgeLocked,
 			"pending_rewards":  totalPending,
-			"max_supply":       21000000.0,
-			"remaining":        21000000.0 - totalMinted,
+			"max_supply":       maxSupply,
+			"remaining":        maxSupply - totalMinted,
 			"holders":          totalUsers,
-			"scarcity_index":   math.Max(0, (1-(circulating/21000000.0))*100),
+			"scarcity_index":   math.Max(0, (1-(circulating/maxSupply))*100),
 		})
 	}
 }
