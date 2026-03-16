@@ -659,10 +659,12 @@ export default function ChatPage() {
 
     // ─── Quick Suggestions ────────────────────────────────────────
     const suggestions = [
-        { icon: '💻', text: 'Write a Python script', prompt: 'Write a Python script to analyze a CSV file and create a summary report with statistics' },
-        { icon: '📝', text: 'Explain a concept', prompt: 'Explain how neural networks work in simple terms with examples' },
-        { icon: '🐝', text: 'Run a Node', prompt: 'How do I install and configure a GSTD Node with wallet auth, SSL, and DynDNS?' },
-        { icon: '🌍', text: 'Translate text', prompt: 'Translate the following text and explain any cultural nuances' },
+        { icon: '💻', text: t('chat_suggest_code', 'Write code'), prompt: 'Write a Python script to analyze a CSV file and create a summary report with statistics' },
+        { icon: '📝', text: t('chat_suggest_explain', 'Explain a concept'), prompt: 'Explain how neural networks work in simple terms with examples' },
+        { icon: '🐝', text: t('chat_suggest_node', 'Run a GSTD Node'), prompt: 'How do I install and configure a GSTD Node with wallet auth, SSL, and DynDNS?' },
+        { icon: '🌍', text: t('chat_suggest_translate', 'Translate text'), prompt: 'Translate the following text and explain any cultural nuances' },
+        { icon: '📊', text: t('chat_suggest_crypto', 'Crypto & DeFi'), prompt: 'Explain the difference between AMM liquidity pools and order book exchanges with examples' },
+        { icon: '🧮', text: t('chat_suggest_math', 'Math & Analysis'), prompt: 'Solve and explain step by step: Find the derivative of f(x) = x^3 * ln(x) and find critical points' },
     ];
 
     // ─── Render ──────────────────────────────────────────────────
@@ -872,11 +874,11 @@ export default function ChatPage() {
                                 </div>
                                 <h1 className="text-3xl sm:text-4xl font-bold mb-3 text-white">{t('how_can_help', 'How can I help?')}</h1>
                                 <p className="text-sm text-gray-500 leading-relaxed max-w-md mx-auto mb-8">
-                                    Collective Intelligence — 8 Groq models · Powered by {'>'}50 swarm nodes · Wallet auth · 77 apps
+                                    {t('chat_hero_desc', 'Collective Intelligence — 8 AI models · Powered by Swarm nodes · Free')}
                                 </p>
 
                                 {/* Suggestions grid */}
-                                <div className="grid grid-cols-2 gap-3 max-w-md mx-auto">
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-w-lg mx-auto">
                                     {suggestions.map((s, i) => (
                                         <button
                                             key={i}
