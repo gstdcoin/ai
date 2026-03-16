@@ -498,7 +498,8 @@ export default function ChatPage() {
             let fullContent = '';
             let collectiveInfo: CollectiveInfo | undefined;
 
-            while (true) {
+            let streamComplete = false;
+            while (!streamComplete) {
                 const { done, value } = await reader.read();
                 if (done) break;
                 buffer += decoder.decode(value, { stream: true });
@@ -513,6 +514,12 @@ export default function ChatPage() {
                     }
                     if (!line.startsWith('data: ')) continue;
                     const data = line.slice(6).trim();
+                    
+                    if (data === '[DONE]') {
+                        streamComplete = true;
+                        break;
+                    }
+
                     try {
                         const parsed = JSON.parse(data);
                         if (parsed.content) {

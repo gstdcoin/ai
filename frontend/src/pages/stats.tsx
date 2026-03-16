@@ -4,7 +4,7 @@ import { useTranslation } from 'next-i18next';
 import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
-import { Shield, Globe, Activity, Zap, Brain, Server, Flame, RefreshCw } from 'lucide-react';
+import { Activity, Brain, Server, Flame, RefreshCw } from 'lucide-react';
 import { API_BASE_URL } from '../lib/config';
 
 interface NetworkSection { active_workers?: number; total_hashrate?: number; gstd_price_usd?: number; total_tasks?: number; total_users?: number; total_nodes?: number; }
@@ -116,16 +116,17 @@ export default function PublicStats() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-6 py-8">
-        <h1 className="text-2xl font-black mb-6 tracking-tight">{t('public_dash_title', 'GSTD Network — Live Dashboard') || 'GSTD Network — Live Dashboard'}</h1>
-
+      <main className="max-w-6xl mx-auto px-6 py-8 sovereign-section">
+        <div className="sec-tag cyan fu d1">{t('public_dash_title', 'GSTD Network — Live Dashboard') || 'GSTD Network — Live Dashboard'}</div>
+        <h1 className="sec-title fu d2">Real-Time Telemetry</h1>
+        
         {/* Golden Reserve Hero */}
-        <div className="p-6 rounded-3xl bg-gradient-to-br from-amber-900/10 via-yellow-900/5 to-transparent border border-amber-500/20 mb-6">
-          <div className="flex items-center gap-3 mb-4">
-            <Shield className="w-6 h-6 text-amber-400" />
-            <h2 className="text-lg font-black">{t('gold_reserve_title', 'Gold Reserve Fund') || 'Golden Reserve'}</h2>
+        <div className="p-8 rounded-3xl bg-gradient-to-br from-amber-400/10 via-amber-900/10 to-transparent border border-amber-500/20 mb-10 fu d3 shadow-[0_8px_32px_rgba(255,215,0,0.1)] backdrop-blur-md">
+          <div className="flex items-center gap-3 mb-6">
+            <div style={{ fontSize: 32, lineHeight: 1 }}>🥇</div>
+            <h2 className="text-2xl font-black text-white">{t('gold_reserve_title', 'Gold Reserve Fund') || 'Golden Reserve'}</h2>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
             <S label="XAUt Reserve" value={stats?.pool?.xaut_balance?.toFixed(6) || '0.000000'} color="text-amber-400" />
             <S label="Circulating" value={stats?.pool?.gstd_balance?.toFixed(0) || '0'} color="text-violet-400" />
             <S label={t('gold_reserve_burned', 'Total Burned') || 'Total Burned'} value={stats?.recycling?.total_burned?.toFixed(4) || '0'} color="text-red-400" />
@@ -134,54 +135,54 @@ export default function PublicStats() {
         </div>
 
         {/* Infrastructure Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10 fu d4">
           {/* Node Network */}
-          <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/8">
-            <div className="flex items-center gap-2 mb-3"><Globe className="w-4 h-4 text-cyan-400" /><span className="text-xs font-bold uppercase tracking-wider text-gray-400">{t('network', 'Network')}</span></div>
+          <div className="sov-card cyan-top p-6">
+            <div className="flex items-center gap-2 mb-4"><div style={{ fontSize: 18, lineHeight: 1 }}>📡</div><span className="text-xs font-bold uppercase tracking-wider text-gray-400">{t('network', 'Network')}</span></div>
             <S label="Total Nodes" value={stats?.nodes?.total_nodes || stats?.network?.active_workers || 0} color="text-cyan-400" />
-            <div className="mt-3"><S label="Online Now" value={stats?.nodes?.online_nodes || 0} color="text-emerald-400" /></div>
+            <div className="mt-4 pt-4 border-t border-white/[0.06]"><S label="Online Now" value={stats?.nodes?.online_nodes || 0} color="text-emerald-400" /></div>
           </div>
 
           {/* Tokenomics */}
-          <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/8">
-            <div className="flex items-center gap-2 mb-3"><Zap className="w-4 h-4 text-violet-400" /><span className="text-xs font-bold uppercase tracking-wider text-gray-400">Tokenomics</span></div>
+          <div className="sov-card violet-top p-6">
+            <div className="flex items-center gap-2 mb-4"><div style={{ fontSize: 18, lineHeight: 1 }}>⚡</div><span className="text-xs font-bold uppercase tracking-wider text-gray-400">Tokenomics</span></div>
             <S label="Total Minted" value={stats?.tokenomics?.total_minted?.toFixed(0) || '0'} color="text-violet-400" sub="GSTD" />
-            <div className="mt-3"><S label="Epoch" value={stats?.tokenomics?.epoch || 1} color="text-cyan-400" sub={`Halving in ${stats?.tokenomics?.next_halving_in_days || '?'}d`} /></div>
+            <div className="mt-4 pt-4 border-t border-white/[0.06]"><S label="Epoch" value={stats?.tokenomics?.epoch || 1} color="text-cyan-400" sub={`Halving in ${stats?.tokenomics?.next_halving_in_days || '?'}d`} /></div>
           </div>
 
           {/* Node Rewards */}
-          <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/8">
-            <div className="flex items-center gap-2 mb-3"><Shield className="w-4 h-4 text-emerald-400" /><span className="text-xs font-bold uppercase tracking-wider text-gray-400">Node Rewards</span></div>
+          <div className="sov-card emerald-top p-6">
+            <div className="flex items-center gap-2 mb-4"><div style={{ fontSize: 18, lineHeight: 1 }}>💎</div><span className="text-xs font-bold uppercase tracking-wider text-gray-400">Node Rewards</span></div>
             <S label="Today" value={`${(stats?.nodes?.today_rewards_gstd || 0).toFixed(2)} GSTD`} color="text-emerald-400" />
-            <div className="mt-3"><S label="All-Time" value={`${(stats?.nodes?.total_rewards_gstd || 0).toFixed(2)} GSTD`} color="text-amber-400" /></div>
+            <div className="mt-4 pt-4 border-t border-white/[0.06]"><S label="All-Time" value={`${(stats?.nodes?.total_rewards_gstd || 0).toFixed(2)} GSTD`} color="text-amber-400" /></div>
           </div>
 
           {/* Price */}
-          <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/8">
-            <div className="flex items-center gap-2 mb-3"><Activity className="w-4 h-4 text-fuchsia-400" /><span className="text-xs font-bold uppercase tracking-wider text-gray-400">Market</span></div>
-            <S label="GSTD Price" value={stats?.network?.gstd_price_usd ? `$${stats.network.gstd_price_usd.toFixed(6)}` : '$0'} color="text-fuchsia-400" />
-            <div className="mt-3"><S label="Tasks" value={stats?.network?.total_tasks || 0} color="text-cyan-400" /></div>
+          <div className="sov-card gold-top p-6">
+            <div className="flex items-center gap-2 mb-4"><div style={{ fontSize: 18, lineHeight: 1 }}>📈</div><span className="text-xs font-bold uppercase tracking-wider text-gray-400">Market</span></div>
+            <S label="GSTD Price" value={stats?.network?.gstd_price_usd ? `$${stats.network.gstd_price_usd.toFixed(6)}` : '$0'} color="text-amber-400" />
+            <div className="mt-4 pt-4 border-t border-white/[0.06]"><S label="Tasks" value={stats?.network?.total_tasks || 0} color="text-cyan-400" /></div>
           </div>
 
           {/* Supply */}
-          <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/8">
-            <div className="flex items-center gap-2 mb-3"><Brain className="w-4 h-4 text-blue-400" /><span className="text-xs font-bold uppercase tracking-wider text-gray-400">Supply</span></div>
-            <S label="Circulating" value={stats?.tokenomics?.circulating_supply?.toFixed(0) || '0'} color="text-blue-400" sub="GSTD" />
-            <div className="mt-3"><S label="Remaining" value={`${((stats?.tokenomics?.remaining_supply || 1e9) / 1e6).toFixed(1)}M`} color="text-violet-400" sub={`${(stats?.tokenomics?.supply_mined_pct || 0).toFixed(4)}% mined`} /></div>
+          <div className="sov-card cyan-top p-6">
+            <div className="flex items-center gap-2 mb-4"><div style={{ fontSize: 18, lineHeight: 1 }}>🌐</div><span className="text-xs font-bold uppercase tracking-wider text-gray-400">Supply</span></div>
+            <S label="Circulating" value={stats?.tokenomics?.circulating_supply?.toFixed(0) || '0'} color="text-cyan-400" sub="GSTD" />
+            <div className="mt-4 pt-4 border-t border-white/[0.06]"><S label="Remaining" value={`${((stats?.tokenomics?.remaining_supply || 1e9) / 1e6).toFixed(1)}M`} color="text-violet-400" sub={`${(stats?.tokenomics?.supply_mined_pct || 0).toFixed(4)}% mined`} /></div>
           </div>
 
           {/* Base Reward */}
-          <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/8">
-            <div className="flex items-center gap-2 mb-3"><Server className="w-4 h-4 text-amber-400" /><span className="text-xs font-bold uppercase tracking-wider text-gray-400">Mining</span></div>
+          <div className="sov-card amber-top p-6">
+            <div className="flex items-center gap-2 mb-4"><div style={{ fontSize: 18, lineHeight: 1 }}>⛏️</div><span className="text-xs font-bold uppercase tracking-wider text-gray-400">Mining</span></div>
             <S label="Base/Hour" value={`${stats?.tokenomics?.base_reward_per_hour || 0} GSTD`} color="text-amber-400" />
-            <div className="mt-3"><S label="Burn Rate" value={`${stats?.tokenomics?.burn_rate_pct || 5}%`} color="text-red-400" sub="deflationary" /></div>
+            <div className="mt-4 pt-4 border-t border-white/[0.06]"><S label="Burn Rate" value={`${stats?.tokenomics?.burn_rate_pct || 5}%`} color="text-red-400" sub="deflationary" /></div>
           </div>
         </div>
 
         {/* Token Economy */}
-        <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/8 mb-6">
-          <div className="flex items-center gap-2 mb-3"><Flame className="w-4 h-4 text-orange-400" /><span className="text-xs font-bold uppercase tracking-wider text-gray-400">{t('token_economy', 'Token Economy')}</span></div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="sov-card p-8 mb-10 fu d5 bg-gradient-to-br from-violet-500/5 to-transparent">
+          <div className="flex items-center gap-3 mb-6"><div style={{ fontSize: 24, lineHeight: 1 }}>🏛️</div><h3 className="text-xl font-bold uppercase tracking-wider text-white border-b border-white/10 pb-4 w-full">{t('token_economy', 'Token Economy')}</h3></div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
             <S label="Total Minted" value={`${(stats?.tokenomics?.total_minted || 0).toFixed(0)}`} color="text-cyan-400" sub="GSTD" />
             <S label="To Node Operators" value={`${(stats?.nodes?.total_rewards_gstd || 0).toFixed(2)}`} color="text-emerald-400" sub="GSTD" />
             <S label="Gold Reserve" value={`${(stats?.pool?.xaut_balance || 0).toFixed(6)}`} color="text-amber-400" sub="XAUt" />

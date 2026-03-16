@@ -69,136 +69,104 @@ export default function NodesPage() {
         <meta name="description" content={t('nodes_page_desc')} />
       </Head>
 
-      <div style={{ minHeight: '100vh', background: '#030014', paddingTop: 80, fontFamily: "'Inter', system-ui, sans-serif" }}>
-        <div style={{ maxWidth: 800, margin: '0 auto', padding: '0 16px' }}>
+      <div className="sovereign-section min-h-screen">
+        <div className="max-w-6xl mx-auto px-6">
 
           {/* Hero */}
-          <div style={{ textAlign: 'center', marginBottom: 40 }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '5px 14px', borderRadius: 20, background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.15)', marginBottom: 14 }}>
-              <Server size={14} style={{ color: '#34d399' }} />
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#34d399', letterSpacing: '0.05em' }}>{t('nodes_badge')}</span>
-            </div>
-            <h1 style={{ fontSize: 'clamp(28px, 5vw, 44px)', fontWeight: 900, color: 'white', marginBottom: 10, lineHeight: 1.1 }}>
-              {t('nodes_hero_1')} <span style={{ background: 'linear-gradient(135deg, #34d399, #8b5cf6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{t('nodes_hero_2')}</span>
+          <div className="text-center max-w-2xl mx-auto mb-16 fu d1">
+            <div className="sec-tag cyan justify-center inline-flex mb-4">{t('nodes_badge', 'DECENTRALIZED NEURAL NETWORK')}</div>
+            <h1 className="sec-title">
+              {t('nodes_hero_1')} <span className="text-gradient-emerald">{t('nodes_hero_2')}</span>
             </h1>
-            <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.4)', maxWidth: 500, margin: '0 auto 20px' }}>
+            <p className="sec-sub mx-auto">
               {t('nodes_hero_desc')}
             </p>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <a href="https://t.me/GstdAppBot" target="_blank" rel="noopener noreferrer"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 24px', borderRadius: 12, background: 'linear-gradient(135deg, #0088cc, #0066aa)', color: 'white', fontSize: 14, fontWeight: 700, textDecoration: 'none', transition: 'all 0.3s' }}>
-                <Smartphone size={16} /> {t('nodes_mobile_btn')} <ExternalLink size={12} />
+            <div className="flex justify-center gap-4 flex-wrap mt-6">
+              <a href="https://t.me/GstdAppBot" target="_blank" rel="noopener noreferrer" className="btn-sovereign violet shadow-lg hover:shadow-violet-500/25">
+                <span style={{ fontSize: 18 }}>📱</span> {t('nodes_mobile_btn', 'Mobile Node')}
               </a>
-              <a href="https://gstdbot.gstdtoken.com" target="_blank" rel="noopener noreferrer"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 24px', borderRadius: 12, background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)', color: 'white', fontSize: 14, fontWeight: 700, textDecoration: 'none', transition: 'all 0.3s' }}>
-                <Cpu size={16} /> {t('nodes_desktop_btn')} <ExternalLink size={12} />
+              <a href="https://gstdbot.gstdtoken.com" target="_blank" rel="noopener noreferrer" className="btn-sovereign emerald shadow-lg hover:shadow-emerald-500/25 text-black">
+                <span style={{ fontSize: 18 }}>💻</span> {t('nodes_desktop_btn', 'Desktop Node')}
               </a>
             </div>
           </div>
 
           {/* ═══════════ Mobile Node CTA ═══════════ */}
-          <div style={{
-            padding: '28px 24px', borderRadius: 20, marginBottom: 32,
-            background: 'linear-gradient(135deg, rgba(0,136,204,0.08), rgba(0,136,204,0.02))',
-            border: '1px solid rgba(0,136,204,0.15)',
-            position: 'relative', overflow: 'hidden',
-          }}>
-            <div style={{ position: 'absolute', top: -30, right: -30, width: 120, height: 120, borderRadius: '50%', background: 'radial-gradient(circle, rgba(0,136,204,0.1), transparent)', pointerEvents: 'none' }} />
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
-              <div style={{ width: 48, height: 48, borderRadius: 12, background: 'linear-gradient(135deg, #0088cc, #0066aa)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <Smartphone size={24} style={{ color: 'white' }} />
+          <div className="sov-card cyan-top p-8 mb-12 fu d2 relative overflow-hidden">
+            <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full bg-cyan-500/10 blur-2xl pointer-events-none" />
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shrink-0 shadow-lg shadow-cyan-500/20">
+                <div style={{ fontSize: 32, lineHeight: 1 }}>📱</div>
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <h3 style={{ fontSize: 18, fontWeight: 800, color: 'white', marginBottom: 6 }}>
-                  {t('nodes_mobile_title')}
-                </h3>
-                <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginBottom: 14, lineHeight: 1.5 }}>
-                  {t('nodes_mobile_desc')}
-                </p>
-                <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 14 }}>
-                  {[
-                    { icon: '⚡', text: t('nodes_mobile_feat_1') },
-                    { icon: '💰', text: t('nodes_mobile_feat_2') },
-                    { icon: '🔗', text: t('nodes_mobile_feat_3') },
-                    { icon: '📊', text: t('nodes_mobile_feat_4') },
-                  ].map(f => (
-                    <div key={f.text} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>
-                      <span>{f.icon}</span> {f.text}
-                    </div>
-                  ))}
+              <div className="flex-1 min-w-0">
+                <h3 className="text-xl font-bold text-white mb-2">{t('nodes_mobile_title')}</h3>
+                <p className="text-gray-400 text-sm leading-relaxed mb-4">{t('nodes_mobile_desc')}</p>
+                <div className="flex flex-wrap gap-4 mb-4 text-xs font-medium text-gray-500">
+                  <span className="flex items-center gap-1.5"><span className="text-base leading-none">⚡</span> {t('nodes_mobile_feat_1')}</span>
+                  <span className="flex items-center gap-1.5"><span className="text-base leading-none">💰</span> {t('nodes_mobile_feat_2')}</span>
+                  <span className="flex items-center gap-1.5"><span className="text-base leading-none">🔗</span> {t('nodes_mobile_feat_3')}</span>
+                  <span className="flex items-center gap-1.5"><span className="text-base leading-none">📊</span> {t('nodes_mobile_feat_4')}</span>
                 </div>
-                <a href="https://t.me/GstdAppBot" target="_blank" rel="noopener noreferrer"
-                  style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 8,
-                    padding: '10px 20px', borderRadius: 10,
-                    background: 'linear-gradient(135deg, #0088cc, #006daa)',
-                    color: 'white', fontSize: 13, fontWeight: 700, textDecoration: 'none',
-                  }}>
-                  <MessageCircle size={16} /> {t('nodes_mobile_cta')} <ArrowRight size={14} />
+                <a href="https://t.me/GstdAppBot" target="_blank" rel="noopener noreferrer" className="btn-sovereign ghost mt-2 text-cyan-400 hover:text-cyan-300">
+                  <MessageCircle size={14} className="mr-1" /> {t('nodes_mobile_cta')} <ArrowRight size={14} />
                 </a>
               </div>
             </div>
           </div>
 
-          {/* Network Stats */}
-          {network && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 10, marginBottom: 32 }}>
-              {[
-                { v: network.total_nodes, l: t('nodes_total_nodes'), c: '#60a5fa', i: <Server size={16} /> },
-                { v: network.online_nodes, l: t('nodes_online_now'), c: '#34d399', i: <Zap size={16} /> },
-                { v: network.total_tasks, l: t('nodes_tasks_done'), c: '#a78bfa', i: <Shield size={16} /> },
-                { v: `${Math.round(network.total_rewards_gstd)}`, l: t('nodes_gstd_earned'), c: '#facc15', i: <TrendingUp size={16} /> },
-                { v: `${network.today_rewards_gstd?.toFixed(2) || '0'}`, l: t('nodes_today_rewards', 'Today'), c: '#34d399', i: <Flame size={16} /> },
-                { v: `${Math.round(network.total_uptime_h)}h`, l: t('nodes_total_uptime'), c: '#fb923c', i: <Clock size={16} /> },
-              ].map((s) => (
-                <div key={s.l} style={{ textAlign: 'center', padding: '14px 8px', borderRadius: 12, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                  <div style={{ color: s.c, marginBottom: 6 }}>{s.i}</div>
-                  <div style={{ fontSize: 20, fontWeight: 800, color: 'white' }}>{s.v}</div>
-                  <div style={{ fontSize: 9, fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase' }}>{s.l}</div>
-                </div>
-              ))}
-            </div>
-          )}
+        {/* Network Stats */}
+        {network && (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-10 fu d3">
+            {[
+              { v: network.total_nodes, l: t('nodes_total_nodes', 'Nodes'), c: 'text-cyan-400', i: '📡' },
+              { v: network.online_nodes, l: t('nodes_online_now', 'Online'), c: 'text-emerald-400', i: '🟢' },
+              { v: network.total_tasks, l: t('nodes_tasks_done', 'Tasks'), c: 'text-violet-400', i: '⚡' },
+              { v: `${Math.round(network.total_rewards_gstd)}`, l: t('nodes_gstd_earned', 'All-Time Earned'), c: 'text-amber-400', i: '💎' },
+              { v: `${network.today_rewards_gstd?.toFixed(2) || '0'}`, l: t('nodes_today_rewards', 'Today'), c: 'text-emerald-400', i: '💸' },
+              { v: `${Math.round(network.total_uptime_h)}h`, l: t('nodes_total_uptime', 'Uptime'), c: 'text-orange-400', i: '⏱️' },
+            ].map((s) => (
+              <div key={s.l} className="sov-card !p-4 flex flex-col items-center justify-center min-h-[110px]">
+                <div style={{ fontSize: 20, lineHeight: 1, marginBottom: 8 }}>{s.i}</div>
+                <div className="text-xl font-black text-white leading-none mb-1">{s.v}</div>
+                <div className="text-[10px] uppercase tracking-widest text-gray-500 font-bold whitespace-nowrap">{s.l}</div>
+              </div>
+            ))}
+          </div>
+        )}
 
           {/* ═══ Network Tools Tabs ═══ */}
-          <div style={{ display: 'flex', gap: 4, marginBottom: 24, padding: 4, borderRadius: 12, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
+          <div className="flex gap-2 mb-8 p-1.5 rounded-2xl bg-white/[0.02] border border-white/5 font-medium fu d4 overflow-x-auto hide-scrollbar">
             {([
-              { id: 'overview' as const, label: 'Overview', icon: <Server size={13} /> },
-              { id: 'tasks' as const, label: 'Tasks', icon: <Zap size={13} /> },
-              { id: 'vaults' as const, label: 'Vaults', icon: <Droplet size={13} /> },
-              { id: 'governance' as const, label: 'Governance', icon: <Vote size={13} /> },
-              { id: 'burn' as const, label: 'Burns', icon: <Flame size={13} /> },
+              { id: 'overview' as const, label: 'Overview', icon: '🌍' },
+              { id: 'tasks' as const, label: 'Tasks', icon: '⚡' },
+              { id: 'vaults' as const, label: 'Vaults', icon: '🏦' },
+              { id: 'governance' as const, label: 'Governance', icon: '⚖️' },
+              { id: 'burn' as const, label: 'Burns', icon: '🔥' },
             ]).map(tb => (
-              <button key={tb.id} onClick={() => setTab(tb.id)} style={{
-                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-                padding: '8px 8px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                background: tab === tb.id ? 'rgba(139,92,246,0.12)' : 'transparent',
-                color: tab === tb.id ? 'white' : 'rgba(255,255,255,0.35)',
-                fontSize: 11, fontWeight: tab === tb.id ? 700 : 500, transition: 'all 0.2s',
-              }}>
-                {tb.icon} {tb.label}
+              <button key={tb.id} onClick={() => setTab(tb.id)} className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border-none cursor-pointer text-xs transition-all whitespace-nowrap min-w-[100px] ${tab === tb.id ? 'bg-violet-500/10 text-white font-bold' : 'bg-transparent text-gray-500 font-medium hover:bg-white/[0.02]'}`}>
+                <span className="text-base leading-none">{tb.icon}</span> {tb.label}
               </button>
             ))}
           </div>
 
           {/* ═══ TAB: Network Health ═══ */}
           {tab === 'overview' && health && (
-            <div style={{ marginBottom: 32 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-                <Activity size={18} style={{ color: '#34d399' }} />
-                <h2 style={{ fontSize: 18, fontWeight: 800, color: 'white', margin: 0 }}>Network Health</h2>
-                <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(16,185,129,0.1)', color: '#34d399' }}>{health.protocol_version}</span>
+            <div className="mb-10 fu d5">
+              <div className="flex items-center gap-3 mb-6">
+                <div style={{ fontSize: 24, lineHeight: 1 }}>❤‍🔥</div>
+                <h2 className="text-xl font-bold text-white m-0">Network Health</h2>
+                <span className="text-[10px] font-bold px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-400">{health.protocol_version}</span>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8, marginBottom: 16 }}>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 {[
-                  { v: `${health.avg_latency_ms}ms`, l: 'Avg Latency', c: '#60a5fa' },
-                  { v: health.aggregate_bandwidth, l: 'Bandwidth', c: '#a78bfa' },
-                  { v: `${health.uptime_percent}%`, l: 'Uptime', c: '#34d399' },
-                  { v: health.tasks_per_hour.toFixed(0), l: 'Tasks/hour', c: '#facc15' },
-                ].map(s => (
-                  <div key={s.l} style={{ textAlign: 'center', padding: '12px 8px', borderRadius: 10, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                    <div style={{ fontSize: 18, fontWeight: 800, color: s.c }}>{s.v}</div>
-                    <div style={{ fontSize: 9, fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase' }}>{s.l}</div>
+                  { v: `${health.avg_latency_ms}ms`, l: 'Avg Latency', c: 'text-cyan-400' },
+                  { v: health.aggregate_bandwidth, l: 'Bandwidth', c: 'text-violet-400' },
+                  { v: `${health.uptime_percent}%`, l: 'Uptime', c: 'text-emerald-400' },
+                  { v: health.tasks_per_hour.toFixed(0), l: 'Tasks/hour', c: 'text-amber-400' },
+                ].map((s, i) => (
+                  <div key={s.l} className="sov-card !p-4 flex flex-col items-center justify-center">
+                    <div className={`text-2xl font-black mb-1 leading-none ${s.c}`}>{s.v}</div>
+                    <div className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">{s.l}</div>
                   </div>
                 ))}
               </div>
@@ -243,67 +211,71 @@ export default function NodesPage() {
 
           {/* ═══ TAB: Liquidity Vaults ═══ */}
           {tab === 'vaults' && (
-            <div style={{ marginBottom: 32 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Droplet size={18} style={{ color: '#0ea5e9' }} />
-                  <h2 style={{ fontSize: 18, fontWeight: 800, color: 'white', margin: 0 }}>Sovereign Liquidity Vaults</h2>
+            <div className="mb-8 fu d5">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div style={{ fontSize: 24, lineHeight: 1 }}>🏦</div>
+                  <h2 className="text-xl font-bold text-white m-0">Sovereign Liquidity Vaults</h2>
                 </div>
-                <button style={{ padding: '8px 16px', borderRadius: 10, background: 'linear-gradient(135deg, #0ea5e9, #3b82f6)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer' }}>
+                <button className="btn-sovereign cyan text-xs py-1.5 px-3">
                   + Create LP Vault
                 </button>
               </div>
 
-              <div style={{ padding: '16px', borderRadius: 14, background: 'linear-gradient(135deg, rgba(14,165,233,0.06), rgba(59,130,246,0.04))', border: '1px solid rgba(14,165,233,0.1)', marginBottom: 20 }}>
-                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', lineHeight: 1.5, marginBottom: 12 }}>
-                  <strong>How it works:</strong> Diamond/Platinum nodes can offer non-custodial cross-chain liquidity. Your node executes atomic swaps (HTLC) securing fees. Delegators can stake into your vault, and you earn an automated management fee on their generated yield. Funds remain completely under Layer 1 Smart Contract protection.
-                </div>
+              <div className="sov-card cyan-top !p-5 mb-6 text-sm text-gray-400 leading-relaxed shadow-lg">
+                <strong className="text-cyan-400">How it works:</strong> Diamond/Platinum nodes can offer non-custodial cross-chain liquidity. Your node executes atomic swaps (HTLC) securing fees. Delegators can stake into your vault, and you earn an automated management fee on their generated yield. Funds remain completely under Layer 1 Smart Contract protection.
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {vaults.map(v => (
-                  <div key={v.vault_id} style={{ padding: '16px', borderRadius: 14, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg, #0ea5e9, #3b82f6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800 }}>
+                  <div key={v.vault_id} className="sov-card !p-5 flex flex-col justify-between">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center text-sm font-black text-white shadow-lg shadow-cyan-500/20">
                           {v.asset}
                         </div>
                         <div>
-                          <div style={{ fontSize: 14, fontWeight: 700, color: 'white' }}>{v.node_wallet.slice(0, 4)}...{v.node_wallet.slice(-4)} LP Vault</div>
-                          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', fontFamily: 'monospace' }}>{v.vault_id}</div>
+                          <div className="text-sm font-bold text-white">{v.node_wallet?.slice(0, 4) || '????'}...{v.node_wallet?.slice(-4) || '????'} LP Vault</div>
+                          <div className="text-[10px] text-gray-500 font-mono tracking-widest">{v.vault_id}</div>
                         </div>
                       </div>
-                      <div style={{ padding: '4px 10px', borderRadius: 8, background: 'rgba(16,185,129,0.1)', color: '#34d399', fontSize: 10, fontWeight: 700, textTransform: 'uppercase' }}>
-                        {v.status}
+                      <div className="px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 text-[9px] font-bold uppercase tracking-widest border border-emerald-500/20">
+                        {v.status || 'Active'}
                       </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, background: 'rgba(0,0,0,0.2)', padding: '12px', borderRadius: 10 }}>
+                    <div className="grid grid-cols-2 gap-2 bg-black/20 p-3 rounded-xl border border-white/5 mb-4">
                       <div>
-                        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: 4 }}>TVL (Liquidity)</div>
-                        <div style={{ fontSize: 14, fontWeight: 800, color: 'white' }}>{v.total_liquidity.toLocaleString()} {v.asset}</div>
+                        <div className="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-1">TVL (Liquidity)</div>
+                        <div className="text-sm font-black text-white">{v.total_liquidity?.toLocaleString() || 0} <span className="text-gray-500 text-xs">{v.asset}</span></div>
                       </div>
                       <div>
-                        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: 4 }}>Delegated</div>
-                        <div style={{ fontSize: 14, fontWeight: 800, color: '#a78bfa' }}>{v.delegator_stake.toLocaleString()} {v.asset}</div>
+                        <div className="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-1">Delegated</div>
+                        <div className="text-sm font-black text-violet-400">{v.delegator_stake?.toLocaleString() || 0} <span className="text-violet-400/50 text-xs">{v.asset}</span></div>
                       </div>
                       <div>
-                        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: 4 }}>Generated Yield</div>
-                        <div style={{ fontSize: 14, fontWeight: 800, color: '#34d399' }}>+{v.generated_yield.toLocaleString()} {v.asset}</div>
+                        <div className="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-1">Yield</div>
+                        <div className="text-sm font-black text-emerald-400">+{v.generated_yield?.toLocaleString() || 0} <span className="text-emerald-400/50 text-xs">{v.asset}</span></div>
                       </div>
                       <div>
-                        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginBottom: 4 }}>Mngmt Fee</div>
-                        <div style={{ fontSize: 14, fontWeight: 800, color: '#facc15' }}>{(v.management_fee_pct * 100).toFixed(0)}%</div>
+                        <div className="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-1">Mngmt Fee</div>
+                        <div className="text-sm font-black text-amber-400">{(v.management_fee_pct * 100).toFixed(0)}%</div>
                       </div>
                     </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
-                      <button style={{ padding: '6px 14px', borderRadius: 8, background: 'rgba(255,255,255,0.05)', color: 'white', fontSize: 12, fontWeight: 600, border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}>
+                    <div className="flex justify-end mt-auto">
+                      <button className="btn-sovereign ghost text-xs py-1.5 px-4 w-full justify-center">
                         Stake to Pool
                       </button>
                     </div>
                   </div>
                 ))}
+                
+                {vaults.length === 0 && (
+                   <div className="col-span-1 md:col-span-2 text-center p-8 text-gray-500 text-sm">
+                      No active liquidity vaults right now.
+                   </div>
+                )}
               </div>
             </div>
           )}

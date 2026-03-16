@@ -40,7 +40,7 @@ func (h *AuthHandler) GetChallenge(c *gin.Context) {
 
 	c.JSON(200, gin.H{
 		"challenge":   currentChallenge,
-		"instruction": "Calculate SHA256(prefix + nonce). Result must start with '0000' (hex). Return nonce.",
+		"instruction": "Calculate SHA256(prefix + wallet_address + nonce). Result must start with '0000' (hex). Return nonce.",
 	})
 }
 
@@ -57,7 +57,7 @@ func (h *AuthHandler) ClaimKey(c *gin.Context) {
 	}
 
 	// 1. Verify PoW
-	data := currentChallenge.Prefix + req.Nonce
+	data := currentChallenge.Prefix + req.WalletAddress + req.Nonce
 	hashBytes := sha256.Sum256([]byte(data))
 	hashStr := hex.EncodeToString(hashBytes[:])
 

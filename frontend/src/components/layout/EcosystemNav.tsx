@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { TonConnectButton } from '@tonconnect/ui-react';
 import {
-    MessageSquare, Activity, Bot,
+    Home, MessageSquare, Activity, Bot,
     ExternalLink, Menu, X, ArrowRightLeft, Server, Trophy, Repeat, Landmark
 } from 'lucide-react';
 
@@ -26,6 +26,7 @@ export default function EcosystemNav() {
     const isOnApp = typeof window !== 'undefined' && window.location.hostname === 'app.gstdtoken.com';
 
     const navItems: NavItem[] = [
+        { key: 'home', href: isOnApp ? '/' : APP_BASE, icon: <Home size={16} />, external: !isOnApp },
         { key: 'nav_chat', href: `${APP_BASE}/chat`, icon: <MessageSquare size={16} />, external: !isOnApp },
         { key: 'nav_bridge', href: `${APP_BASE}/bridge`, icon: <ArrowRightLeft size={16} />, external: !isOnApp },
         { key: 'nav_swap', href: `${APP_BASE}/swap`, icon: <Repeat size={16} />, external: !isOnApp },
@@ -39,6 +40,7 @@ export default function EcosystemNav() {
 
     const isActive = (href: string) => {
         const path = router.pathname;
+        if (href === '/' || href === APP_BASE) return path === '/';
         const segments = ['/chat', '/bridge', '/swap', '/staking', '/nodes', '/leaderboard', '/stats'];
         for (const seg of segments) { if (href.includes(seg) && path === seg) return true; }
         return false;
@@ -57,10 +59,10 @@ export default function EcosystemNav() {
         }}>
             <div style={{
                 maxWidth: 1200, margin: '0 auto', display: 'flex',
-                alignItems: 'center', justifyContent: 'space-between', height: '100%',
+                alignItems: 'center', justifyContent: 'space-between', height: '100%', gap: '16px'
             }}>
                 {/* Logo */}
-                <Link href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Link href="/" style={{ flexShrink: 0, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 10 }}>
                     <img src="/logo.png" alt="GSTD" style={{ width: 32, height: 32, borderRadius: '50%' }} />
                     <span style={{
                         fontWeight: 800, fontSize: 18, color: 'white',
@@ -167,7 +169,16 @@ export default function EcosystemNav() {
             )}
 
             <style dangerouslySetInnerHTML={{ __html: `
-        @media (max-width: 768px) {
+        .ecosystem-nav-desktop {
+            overflow-x: auto;
+            white-space: nowrap;
+            -ms-overflow-style: none; /* IE and Edge */
+            scrollbar-width: none; /* Firefox */
+        }
+        .ecosystem-nav-desktop::-webkit-scrollbar {
+            display: none;
+        }
+        @media (max-width: 900px) {
           .ecosystem-nav-desktop { display: none !important; }
           .ecosystem-nav-mobile-btn { display: block !important; }
         }

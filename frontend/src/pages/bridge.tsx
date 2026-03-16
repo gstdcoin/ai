@@ -475,78 +475,69 @@ export default function BridgePage() {
       </Head>
 
 
-      <div style={{ minHeight: '100vh', background: '#030014', paddingTop: 80, fontFamily: "'Inter', system-ui, sans-serif" }}>
-        <div style={{ maxWidth: 640, margin: '0 auto', padding: '0 16px' }}>
+      <div className="min-h-screen bg-[#030014] pt-24 pb-16 font-sans text-white sovereign-section">
+        <div className="max-w-xl mx-auto px-4">
 
           {/* Header */}
-          <div style={{ textAlign: 'center', marginBottom: 32 }}>
-            <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: 8, padding: '5px 14px',
-              borderRadius: 20, background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.15)', marginBottom: 12,
-            }}>
-              <ArrowRightLeft size={14} style={{ color: '#8b5cf6' }} />
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#a78bfa', letterSpacing: '0.05em' }}>{t('bridge_badge')}</span>
-            </div>
-            <h1 style={{ fontSize: 'clamp(24px, 5vw, 36px)', fontWeight: 900, color: 'white', marginBottom: 8 }}>
-              {t('bridge_title_prefix')} <span style={{ background: 'linear-gradient(135deg, #8b5cf6, #06b6d4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{t('bridge_title_highlight')}</span>
+          <div className="text-center mb-10 fu d1">
+            <div className="sec-tag violet justify-center inline-flex mb-3">P2P BRIDGE</div>
+            <h1 className="sec-title flex items-center justify-center gap-3">
+              <span className="text-[32px] leading-none">🌉</span> GSTD {t('bridge_title_highlight')}
             </h1>
-            <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', maxWidth: 440, margin: '0 auto' }}>
+            <p className="sec-sub mx-auto">
               {t('bridge_subtitle')}
             </p>
           </div>
 
           {/* Stats Bar */}
           {stats && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8, marginBottom: 24 }}>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8 fu d2">
               {[
-                { v: stats.open_orders, l: t('bridge_open'), c: '#60a5fa' },
-                { v: stats.matched_orders, l: t('bridge_matched_label'), c: '#fb923c' },
-                { v: stats.completed_swaps, l: t('bridge_done'), c: '#34d399' },
-                { v: `${stats.total_volume_gstd.toFixed(0)}`, l: t('bridge_volume'), c: '#a78bfa' },
+                { v: stats.open_orders, l: t('bridge_open'), c: 'text-cyan-400' },
+                { v: stats.matched_orders, l: t('bridge_matched_label'), c: 'text-amber-400' },
+                { v: stats.completed_swaps, l: t('bridge_done'), c: 'text-emerald-400' },
+                { v: `${stats.total_volume_gstd.toFixed(0)}`, l: t('bridge_volume'), c: 'text-violet-400' },
               ].map((s) => (
-                <div key={s.l + s.v} style={{ textAlign: 'center', padding: '10px 4px', borderRadius: 10, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
-                  <div style={{ fontSize: 18, fontWeight: 800, color: s.c }}>{s.v}</div>
-                  <div style={{ fontSize: 9, fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase' }}>{s.l}</div>
+                <div key={s.l + s.v} className="sov-card !p-4 shrink flex flex-col items-center justify-center text-center">
+                  <div className={`text-xl font-black mb-1 leading-none ${s.c}`}>{s.v}</div>
+                  <div className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">{s.l}</div>
                 </div>
               ))}
             </div>
           )}
 
           {/* Tab Nav */}
-          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 20, padding: 4, borderRadius: 12, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <div className="flex flex-wrap gap-2 mb-6 p-1.5 rounded-2xl bg-white/[0.02] border border-white/5 fu d3">
             {([
-              { id: 'swap' as const, label: t('bridge_new_swap'), icon: <ArrowRightLeft size={14} /> },
-              { id: 'orders' as const, label: t('bridge_order_book', 'Order Book'), icon: <BookOpen size={14} /> },
-              { id: 'my' as const, label: t('bridge_my_orders'), icon: <Users size={14} /> },
+              { id: 'swap' as const, label: t('bridge_new_swap'), icon: '🔄' },
+              { id: 'orders' as const, label: t('bridge_order_book', 'Order Book'), icon: '📖' },
+              { id: 'my' as const, label: t('bridge_my_orders'), icon: '👤' },
             ]).map(tb => (
-              <button key={tb.id} onClick={() => setTab(tb.id)} style={{
-                flex: '1 1 30%', minWidth: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                padding: '10px 12px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                background: tab === tb.id ? 'rgba(139,92,246,0.15)' : 'transparent',
-                color: tab === tb.id ? 'white' : 'rgba(255,255,255,0.4)',
-                fontSize: 12, fontWeight: tab === tb.id ? 700 : 500, transition: 'all 0.2s',
-              }}>
-                {tb.icon} {tb.label}
+              <button key={tb.id} onClick={() => setTab(tb.id)} 
+                className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs font-bold transition-all ${
+                  tab === tb.id 
+                    ? 'bg-violet-500/15 text-violet-300 border border-violet-500/20 shadow-[0_0_15px_rgba(139,92,246,0.1)]' 
+                    : 'text-gray-500 hover:bg-white/[0.02] border border-transparent'
+                }`}>
+                <span className="text-sm">{tb.icon}</span> {tb.label}
               </button>
             ))}
           </div>
 
           {/* ── TAB: New Swap ── */}
           {tab === 'swap' && !result && (
-            <div style={{
-              borderRadius: 20, padding: 24,
-              background: 'linear-gradient(180deg, rgba(139,92,246,0.04) 0%, rgba(3,0,20,0.8) 100%)',
-              border: '1px solid rgba(139,92,246,0.1)',
-            }}>
+            <div className="sov-card !p-6 fu d4 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-violet-500/10 rounded-full blur-3xl pointer-events-none -z-10" />
+              
               {/* TON Wallet (primary identifier) */}
               {!isWalletConnected && (
-                <div style={{ marginBottom: 16 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 6 }}>{t('bridge_your_wallet')}</div>
+                <div className="mb-6 border-b border-white/5 pb-6">
+                  <div className="text-[10px] uppercase font-bold tracking-widest text-gray-500 mb-3">{t('bridge_your_wallet')}</div>
                   <ChainWalletWidget chain="TON" label={t('bridge_wallet_connected', 'Wallet Connected')} />
                 </div>
               )}
               {isWalletConnected && (
-                <div style={{ marginBottom: 16 }}>
+                <div className="mb-6 border-b border-white/5 pb-6">
                   <ChainWalletWidget chain="TON" label={t('bridge_your_wallet')} />
                 </div>
               )}
@@ -554,73 +545,56 @@ export default function BridgePage() {
               <ChainSelect value={sourceChain} onChange={(v) => setSourceChain(v as ChainId)} label={t('bridge_i_have')} exclude={destChain} />
 
               {/* Source Chain Wallet + Address */}
-              <div style={{ marginTop: 8 }}>
+              <div className="mt-3">
                 <ChainWalletWidget chain={sourceChain} label={t('bridge_source_wallet', { defaultValue: `${sourceChain} Wallet` })} address={sourceAddress} onAddressChange={setSourceAddress} />
               </div>
 
               {/* Swap */}
-              <div style={{ display: 'flex', justifyContent: 'center', margin: '12px 0' }}>
-                <button onClick={handleSwapChains} style={{
-                  width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.2)', color: '#a78bfa', cursor: 'pointer',
-                  transition: 'all 0.3s',
-                }}
-                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.2)'; e.currentTarget.style.transform = 'rotate(180deg)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.1)'; e.currentTarget.style.transform = 'rotate(0)'; }}
-                >
-                  <ArrowRightLeft size={14} />
+              <div className="flex justify-center -my-2 relative z-10">
+                <button onClick={handleSwapChains} className="w-10 h-10 rounded-xl bg-[#030014] border border-white/10 flex items-center justify-center hover:bg-white/5 hover:border-violet-500/30 hover:text-violet-400 transition-all text-gray-400 shadow-[0_0_15px_rgba(0,0,0,0.5)]">
+                  <ArrowRightLeft size={16} />
                 </button>
               </div>
 
               <ChainSelect value={destChain} onChange={(v) => setDestChain(v as ChainId)} label={t('bridge_i_want')} exclude={sourceChain} />
 
               {/* Dest Chain Wallet + Address */}
-              <div style={{ marginTop: 8 }}>
+              <div className="mt-3">
                 <ChainWalletWidget chain={destChain} label={t('bridge_dest_wallet', { defaultValue: `${destChain} Wallet` })} address={destAddress} onAddressChange={setDestAddress} />
               </div>
 
               {/* Amount */}
-              <div style={{ marginTop: 16 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 6 }}>{t('bridge_amount_gstd')}</div>
+              <div className="mt-6 rounded-2xl bg-white/[0.02] border border-white/5 p-4 hover:bg-white/[0.04] transition-colors">
+                <div className="text-[10px] uppercase font-bold tracking-widest text-gray-500 mb-2">{t('bridge_amount_gstd')}</div>
                 <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00"
-                  style={{ width: '100%', padding: '12px 14px', borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: 'white', fontSize: 18, fontWeight: 700, outline: 'none' }} />
+                  className="w-full bg-transparent border-none outline-none text-2xl font-black text-white" />
               </div>
 
               {/* Info */}
-              <div style={{ marginTop: 14, padding: '10px 12px', borderRadius: 10, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>
-                  <span>{t('bridge_fee')}</span><span style={{ color: '#34d399', fontWeight: 700 }}>0% (Automated)</span>
+              <div className="mt-4 p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-2">
+                <div className="flex justify-between items-center text-xs font-medium text-gray-400">
+                  <span>{t('bridge_fee')}</span><span className="text-emerald-400 font-bold tracking-wide">0% (Automated)</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>
-                  <span>{t('bridge_model')}</span><span>{t('bridge_model_value')}</span>
+                <div className="flex justify-between items-center text-xs font-medium text-gray-400">
+                  <span>{t('bridge_model')}</span><span className="text-gray-300">{t('bridge_model_value')}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>
-                  <span>{t('bridge_expiry')}</span><span>{t('bridge_expiry_value')}</span>
+                <div className="flex justify-between items-center text-xs font-medium text-gray-400">
+                  <span>{t('bridge_expiry')}</span><span className="text-gray-300">{t('bridge_expiry_value')}</span>
                 </div>
               </div>
 
               {error && (
-                <div style={{ marginTop: 12, padding: '8px 12px', borderRadius: 8, background: 'rgba(239,68,68,0.08)', color: '#f87171', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <AlertCircle size={12} /> {error}
+                <div className="mt-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-center gap-2">
+                  <AlertCircle size={14} className="shrink-0" /> {error}
                 </div>
               )}
 
               <button onClick={handleSubmitOrder} disabled={loading || !isWalletConnected}
-                style={{
-                  width: '100%', marginTop: 16, padding: '14px', borderRadius: 14, border: 'none',
-                  background: isWalletConnected
-                    ? 'linear-gradient(135deg, #8b5cf6, #7c3aed)'
-                    : 'rgba(255,255,255,0.06)',
-                  color: isWalletConnected ? 'white' : 'rgba(255,255,255,0.3)',
-                  fontSize: 14, fontWeight: 700, cursor: isWalletConnected ? 'pointer' : 'not-allowed',
-                  opacity: loading ? 0.6 : 1,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                  transition: 'all 0.3s',
-                }}>
+                className={`mt-6 w-full ${isWalletConnected ? 'btn-sovereign' : 'btn-sovereign ghost w-full bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed'}`}>
                 {(() => {
-                  if (loading) return <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> {t('bridge_placing')}</>;
-                  if (!isWalletConnected) return <><Wallet size={16} /> {t('bridge_connect_first', 'Connect wallet to place order')}</>;
-                  return <><ArrowRightLeft size={16} /> {t('bridge_place_order')}</>;
+                  if (loading) return <><Loader2 size={16} className="animate-spin mr-2" /> {t('bridge_placing')}</>;
+                  if (!isWalletConnected) return <><Wallet size={16} className="mr-2" /> {t('bridge_connect_first', 'Connect wallet to place order')}</>;
+                  return <><ArrowRightLeft size={16} className="mr-2" /> {t('bridge_place_order')}</>;
                 })()}
               </button>
             </div>
