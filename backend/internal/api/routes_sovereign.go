@@ -159,7 +159,7 @@ func getSupplyInfo(db *sql.DB) gin.HandlerFunc {
 		db.QueryRowContext(c.Request.Context(),
 			`SELECT max_supply_cap FROM tokenomics_halving ORDER BY epoch_number DESC LIMIT 1`).Scan(&maxSupply)
 		if maxSupply <= 0 {
-			maxSupply = 21000000.0
+			maxSupply = 1000000000.0
 		}
 
 		c.JSON(200, gin.H{
@@ -1222,7 +1222,9 @@ func getProtocolSummary(db *sql.DB) gin.HandlerFunc {
 
 		c.JSON(200, gin.H{
 			"protocol":             "GSTD Sovereign Protocol v1.0",
-			"max_supply":           21000000,
+			"asset_name":           "GSTD Sovereign Token",
+			"max_supply":           1000000000,
+			"current_circulating":  1000000000 - totalBurned,
 			"total_burned":         totalBurned,
 			"total_staked":         totalStaked,
 			"total_nodes":          totalNodes,
