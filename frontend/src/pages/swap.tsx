@@ -4,9 +4,9 @@ import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { ArrowDownUp, Zap, RefreshCw, AlertCircle, Wallet, CheckCircle2, Loader2, ExternalLink } from 'lucide-react';
 import { useTonAddress, useTonConnectUI, TonConnectButton } from '@tonconnect/ui-react';
-import { API_BASE_URL } from '../lib/config';
+import { API_BASE_URL, GSTD_CONTRACT_ADDRESS } from '../lib/config';
 
-const GSTD_JETTON = 'EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO';
+const GSTD_JETTON = GSTD_CONTRACT_ADDRESS;
 const TON_NATIVE  = 'EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c';
 
 type SwapStatus = 'idle' | 'simulating' | 'simulated' | 'swapping' | 'success' | 'error';

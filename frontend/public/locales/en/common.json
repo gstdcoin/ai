@@ -1312,5 +1312,8 @@
   "bridge_connect_first": "Connect wallet to place order",
   "bridge_auto_wallet": "from wallet",
   "bridge_error_connect_wallet": "Please connect your wallet first",
-  "bridge_connect_to_see_orders": "Connect your wallet to see your orders"
+  "bridge_connect_to_see_orders": "Connect your wallet to see your orders",
+  "overview": "Overview",
+  "progress": "Progress",
+  "budget": "Budget"
 }
