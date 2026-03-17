@@ -160,7 +160,7 @@ func (s *BurnService) GetBurnStats(ctx context.Context) (*BurnStats, error) {
 	}
 
 	// Current supply (initial - burned)
-	stats.InitialSupply = 1_000_000_000 // 1 billion
+	stats.InitialSupply = 21_000_000 // 21M max supply
 	stats.CurrentSupply = stats.InitialSupply - stats.TotalBurned
 	stats.BurnRate = s.burnRate * 100 // 5%
 
@@ -261,7 +261,7 @@ func (s *BurnService) ProjectFutureBurn(avgTransactionSize float64, dailyTransac
 		ProjectedDailyBurn:      dailyBurn,
 		ProjectedMonthlyBurn:    monthlyBurn,
 		ProjectedYearlyBurn:     yearlyBurn,
-		YearlyBurnPercentSupply: (yearlyBurn / 1_000_000_000) * 100,
+		YearlyBurnPercentSupply: (yearlyBurn / 21_000_000) * 100,
 	}
 }
 

@@ -13,7 +13,7 @@ interface GoldenAccumulationChartProps {
   goldMultiplier: number;
 }
 
-const GOLD_PRICE_USD = 2750;
+const GOLD_PRICE_USD = 4970;
 
 export default function GoldenAccumulationChart({ goldBalance, goldReserveGstd, goldMultiplier }: GoldenAccumulationChartProps) {
   const { t } = useTranslation('common');

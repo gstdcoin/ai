@@ -128,11 +128,11 @@ export const SwarmActivityWidget: React.FC = () => {
                             <div className="flex items-center gap-4">
                                 <div className="text-right">
                                     <div className="text-[10px] text-gray-500 uppercase font-bold">{t('volume', 'Volume')}</div>
-                                    <div className="text-xs text-white font-mono">${(route.volume / 1000000).toFixed(1)}M</div>
+                                    <div className="text-xs text-white font-mono">{route.volume > 0 ? route.volume.toLocaleString() : '—'}</div>
                                 </div>
                                 <div className="text-right w-16">
                                     <div className="text-[10px] text-gray-500 uppercase font-bold">{t('tvl', 'TVL')}</div>
-                                    <div className="text-xs text-green-400 font-mono">${(route.tvl / 1000000).toFixed(1)}M</div>
+                                    <div className="text-xs text-green-400 font-mono">{route.tvl > 0 ? `${route.tvl.toFixed(2)} GSTD` : '—'}</div>
                                 </div>
                             </div>
                         </div>

@@ -806,8 +806,8 @@ func getBurnStats(db *sql.DB) gin.HandlerFunc {
 
 		c.JSON(200, gin.H{
 			"total_burned_gstd":     math.Round(totalBurned*100) / 100,
-			"max_supply":            1000000000,
-			"current_circulating":   1000000000 - totalBurned,
+			"max_supply":            21000000,
+			"current_circulating":   21000000 - totalBurned,
 			"burn_rate_daily":       math.Round((totalBurned/365)*100) / 100,
 			"deflationary":          true,
 			"burn_sources": []gin.H{
