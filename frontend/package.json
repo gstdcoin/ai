@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@phantom/browser-sdk": "^1.0.7",
+    "@solana/connector": "^0.2.4",
     "@ston-fi/api": "^0.31.0",
     "@ston-fi/sdk": "^2.7.0",
     "@tailwindcss/typography": "^0.5.19",

@@ -1,13 +1,28 @@
 /**
  * Multi-chain wallet connection hook for Bridge.
  * TON    → TonConnect (has its own QR/deeplink — always works)
- * Solana → @phantom/browser-sdk + injected provider (only when extension present)
+ * Solana → @solana/connector (Wallet Standard — Phantom, Solflare, Backpack, etc.)
  * XRPL   → Xaman (Xumm) SDK via CDN (QR code / deeplink)
  */
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useTonConnectUI, useTonWallet } from '@tonconnect/ui-react';
 import { useWalletStore } from '../store/walletStore';
 import { Address } from '@ton/core';
+
+// @solana/connector — Solana Foundation official wallet connector
+let connectorClientInstance: any | null = null;
+
+function getConnectorClient() {
+  if (connectorClientInstance) return Promise.resolve(connectorClientInstance);
+  return import('@solana/connector/headless').then(mod => {
+    const config = mod.getDefaultConfig({ appName: 'GSTD Bridge' });
+    connectorClientInstance = new mod.ConnectorClient(config);
+    return connectorClientInstance;
+  }).catch(err => {
+    console.warn('[Bridge] ConnectorKit load failed, falling back:', err);
+    return null;
+  });
+}
 
 export type ChainId = 'TON' | 'Solana' | 'XRPL';
 
@@ -31,14 +46,18 @@ function tonRawToFriendly(raw: string): string {
   }
 }
 
-/** Check if Solana wallet extension is available */
+/** Check if Solana wallet extension is available (Wallet Standard or legacy) */
 function hasSolanaExtension(): boolean {
   if (typeof window === 'undefined') return false;
-  return !!(
+  // Wallet Standard wallets register via navigator.wallets
+  const hasWalletStandard = !!(window as any).navigator?.wallets?.get?.()?.length;
+  const hasLegacy = !!(
     (window as any).phantom?.solana ||
     (window as any).solana ||
-    (window as any).solflare
+    (window as any).solflare ||
+    (window as any).backpack
   );
+  return hasWalletStandard || hasLegacy;
 }
 
 /** Check if XRPL wallet extension is available (GemWallet/Crossmark) */
@@ -73,34 +92,77 @@ export function useMultiChainWallet() {
 
   const [solana, setSolana] = useState<ChainWalletState>({ address: '', connected: false, walletName: '', extensionAvailable: false });
   const [xrpl, setXrpl] = useState<ChainWalletState>({ address: '', connected: false, walletName: '', extensionAvailable: false });
+  const [solConnectors, setSolConnectors] = useState<any[]>([]);
+  const connectorClientRef = useRef<any>(null);
   const [xummReady, setXummReady] = useState(false);
   const xummRef = useRef<any>(null);
 
-  // Detect extensions on mount
+  // Detect extensions on mount + initialize ConnectorKit
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    // Solana extension detection
-    const checkSolana = () => {
-      const available = hasSolanaExtension();
-      setSolana(prev => ({ ...prev, extensionAvailable: available }));
-      // Auto-connect if already connected
-      const provider = (window as any).phantom?.solana || (window as any).solana;
-      if (provider?.isConnected && provider.publicKey) {
-        setSolana({
-          address: provider.publicKey.toBase58(),
-          connected: true,
-          walletName: provider.isPhantom ? 'Phantom' : 'Solana Wallet',
-          extensionAvailable: true,
-        });
+    // Initialize Solana ConnectorKit (Wallet Standard)
+    const initConnectorKit = async () => {
+      try {
+        const client = await getConnectorClient();
+        if (client) {
+          connectorClientRef.current = client;
+          // Get available connectors from snapshot
+          const snap = client.getSnapshot();
+          const available = snap.connectors || [];
+          setSolConnectors(available);
+          setSolana(prev => ({ ...prev, extensionAvailable: available.length > 0 || hasSolanaExtension() }));
+
+          // Subscribe to state changes (returns unsubscribe fn)
+          client.subscribe((newState: any) => {
+            const connectors = newState.connectors || [];
+            setSolConnectors(connectors);
+            if (newState.connected && newState.selectedAccount) {
+              const walletName = newState.wallet?.name || newState.selectedWallet || 'Solana Wallet';
+              setSolana({
+                address: newState.selectedAccount,
+                connected: true,
+                walletName,
+                extensionAvailable: true,
+              });
+            } else if (!newState.connected) {
+              setSolana(prev => ({ ...prev, address: '', connected: false, walletName: '' }));
+            }
+          });
+
+          // Check if already connected from snapshot
+          if (snap.connected && snap.selectedAccount) {
+            setSolana({
+              address: snap.selectedAccount,
+              connected: true,
+              walletName: snap.wallet?.name || 'Solana Wallet',
+              extensionAvailable: true,
+            });
+          }
+        } else {
+          // Fallback: legacy detection
+          const available = hasSolanaExtension();
+          setSolana(prev => ({ ...prev, extensionAvailable: available }));
+          const provider = (window as any).phantom?.solana || (window as any).solana;
+          if (provider?.isConnected && provider.publicKey) {
+            setSolana({
+              address: provider.publicKey.toBase58(),
+              connected: true,
+              walletName: provider.isPhantom ? 'Phantom' : 'Solana Wallet',
+              extensionAvailable: true,
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('[Bridge] ConnectorKit init failed:', err);
+        setSolana(prev => ({ ...prev, extensionAvailable: hasSolanaExtension() }));
       }
     };
 
-    // Wait a bit for extensions to inject
-    setTimeout(checkSolana, 500);
+    // Wait a bit for wallet extensions to register
+    setTimeout(initConnectorKit, 500);
 
     // XRPL extension detection
-    setSolana(prev => ({ ...prev, extensionAvailable: hasSolanaExtension() }));
     setXrpl(prev => ({ ...prev, extensionAvailable: hasXrplExtension() }));
 
     // Pre-load Xumm SDK (it always works via QR code)
@@ -125,22 +187,49 @@ export function useMultiChainWallet() {
     useWalletStore.getState().disconnect();
   }, [tonConnectUI]);
 
-  // ─── Solana ───────────────────────────────────────
+  // ─── Solana (via ConnectorKit — Wallet Standard) ──
   const connectSolana = useCallback(async () => {
-    // Only try if extension is present — NEVER redirect to phantom.app
+    const client = connectorClientRef.current;
+
+    // Method 1: ConnectorKit (preferred — Wallet Standard)
+    if (client && solConnectors.length > 0) {
+      try {
+        // Use the first ready connector or first available
+        const readyConnector = solConnectors.find((c: any) => c.ready) || solConnectors[0];
+        if (readyConnector) {
+          const connectorId = readyConnector.id || readyConnector.name;
+          await client.connectWallet(connectorId);
+          // Read state from snapshot after connection
+          const snap = client.getSnapshot();
+          if (snap.connected && snap.selectedAccount) {
+            setSolana({
+              address: snap.selectedAccount,
+              connected: true,
+              walletName: snap.wallet?.name || readyConnector.name || 'Solana Wallet',
+              extensionAvailable: true,
+            });
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn('[Bridge] ConnectorKit connect failed, trying legacy:', err);
+      }
+    }
+
+    // Method 2: Legacy fallback (direct window.phantom/solana)
     const phantom = (window as any).phantom?.solana || (window as any).solana;
     const solflare = (window as any).solflare;
     const provider = phantom || solflare;
 
     if (!provider) {
-      console.warn('[Bridge] No Solana wallet extension found');
-      alert('Solana wallet not found! Please install Phantom or Solflare browser extension.');
-      return; // Don't redirect — manual input is shown instead
+      console.warn('[Bridge] No Solana wallet found');
+      alert('Solana wallet not found! Please install Phantom, Solflare, or Backpack browser extension.');
+      return;
     }
 
     try {
       const resp = await provider.connect();
-      const name = solflare && !phantom ? 'Solflare' : 'Phantom';
+      const name = solflare && !phantom ? 'Solflare' : (provider.isPhantom ? 'Phantom' : 'Solana Wallet');
       setSolana({
         address: resp.publicKey.toBase58(),
         connected: true,
@@ -150,9 +239,18 @@ export function useMultiChainWallet() {
     } catch (err) {
       console.warn('[Bridge] Solana connect rejected:', err);
     }
-  }, []);
+  }, [solConnectors]);
 
   const disconnectSolana = useCallback(async () => {
+    // Try ConnectorKit first
+    const client = connectorClientRef.current;
+    if (client) {
+      const snap = client.getSnapshot();
+      if (snap.connected) {
+        try { await client.disconnectWallet(); } catch {}
+      }
+    }
+    // Legacy fallback
     try {
       const provider = (window as any).phantom?.solana || (window as any).solana;
       if (provider?.disconnect) await provider.disconnect();
@@ -263,10 +361,16 @@ export function useMultiChainWallet() {
   const getAvailableWallets = useCallback((chain: ChainId): string[] => {
     switch (chain) {
       case 'TON': return ['Tonkeeper', 'MyTonWallet', 'OpenMask'];
-      case 'Solana': return ['Phantom', 'Solflare'];
+      case 'Solana': {
+        // Dynamic list from ConnectorKit (Wallet Standard)
+        if (solConnectors.length > 0) {
+          return solConnectors.map((c: any) => c.name);
+        }
+        return ['Phantom', 'Solflare', 'Backpack'];
+      }
       case 'XRPL': return ['Xaman (Xumm)'];
     }
-  }, []);
+  }, [solConnectors]);
 
   return { getChainWallet, connectChain, disconnectChain, getAvailableWallets, tonFriendly };
 }
