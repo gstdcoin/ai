@@ -69,7 +69,7 @@ func (p *PoolMonitorService) Start(ctx context.Context) {}
 // GetXAUtPriceUSD returns the current XAUt (gold) price in USD.
 // Fetches from CoinGecko API (tether-gold), fallback to default on error.
 func (p *PoolMonitorService) GetXAUtPriceUSD() float64 {
-	const defaultGoldPrice = 2350.0
+	const defaultGoldPrice = 3200.0
 
 	// Use cache if fresh (< 5 min)
 	p.xautCache.mu.RLock()

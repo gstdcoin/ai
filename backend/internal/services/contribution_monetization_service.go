@@ -150,5 +150,5 @@ func (s *ContributionMonetizationService) GetXAUtPriceUSD() float64 {
 	if s.poolMonitor != nil {
 		return s.poolMonitor.GetXAUtPriceUSD()
 	}
-	return 2350.0
+	return 3200.0
 }

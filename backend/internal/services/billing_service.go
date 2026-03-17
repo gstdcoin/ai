@@ -55,7 +55,7 @@ func (s *BillingService) GetWalletBalance(ctx context.Context, wallet string) (*
 		earned += txEarned
 	}
 
-	xautPrice := 2350.0
+	xautPrice := 3200.0
 	if s.poolMon != nil {
 		xautPrice = s.poolMon.GetXAUtPriceUSD()
 	}
