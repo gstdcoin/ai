@@ -183,9 +183,18 @@ func (s *StatsService) GetNetworkStats(ctx context.Context) (*NetworkStats, erro
 	// 6. Total Hashrate (PFLOPS) - estimate from ACTIVE workers only
 	stats.TotalHashrate = float64(stats.ActiveWorkers) * 0.5
 
-	// 7. Gold Reserve (Get from latest log)
-	s.scanFloat(ctx, &stats.GoldReserve, `SELECT COALESCE(xaut_amount, 0) FROM golden_reserve_log ORDER BY timestamp DESC LIMIT 1`)
-	// Populate GoldenReserveXAUt from GoldReserve for consistency
+	// 7. Gold Reserve — prefer live pool XAUt balance from Ston.fi
+	if s.poolMonitor != nil {
+		if poolData, err := s.poolMonitor.GetPoolStatusCached(ctx); err == nil {
+			if xaut, ok := poolData["xaut_balance"].(float64); ok && xaut > 0 {
+				stats.GoldReserve = xaut
+			}
+		}
+	}
+	// Fallback to golden_reserve_log if pool data unavailable
+	if stats.GoldReserve == 0 {
+		s.scanFloat(ctx, &stats.GoldReserve, `SELECT COALESCE(xaut_amount, 0) FROM golden_reserve_log ORDER BY timestamp DESC LIMIT 1`)
+	}
 	stats.GoldenReserveXAUt = stats.GoldReserve
 
 	if s.poolMonitor != nil {

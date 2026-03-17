@@ -352,11 +352,17 @@ func getSwarmStats(db *sql.DB) gin.HandlerFunc {
 			{"chain": "XRPL", "volume": 0, "tvl": 0},
 		}
 
+	var totalYield float64
+		err = db.QueryRow(`SELECT COALESCE(SUM(labor_compensation_gstd), 0) FROM tasks WHERE status = 'completed'`).Scan(&totalYield)
+		if err != nil {
+			totalYield = 0
+		}
+
 		c.JSON(200, gin.H{
 			"activeAgents":      activeAgents,
 			"tasksProcessed24h": tasksProcessed24h,
 			"totalGstdLocked":   totalGstdLocked,
-			"totalYield":        15.4,
+			"totalYield":        totalYield,
 			"omniChainRoutes":   omniChainRoutes,
 		})
 	}
