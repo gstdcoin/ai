@@ -983,7 +983,12 @@ func StartApplication(container *dig.Container) error {
 		if swarmNode != nil {
 			log.Printf("   Swarm P2P:       true (ID=%s)", swarmNode.Host.ID().String())
 			if swarmLedger != nil {
+				// Wire PostgreSQL for persistent balance storage
+				if db != nil {
+					swarmLedger.SetDB(db)
+				}
 				go swarmLedger.StartMempoolWorker(ctx)
+				go swarmLedger.StartMempoolCleaner(ctx)
 				go swarmLedger.StartRewardDistributor(ctx)
 				swarmLedger.EnableStateSync()
 
@@ -993,7 +998,7 @@ func StartApplication(container *dig.Container) error {
 					swarmLedger.SyncStateFromPeers(ctx)
 				}()
 
-				log.Printf("   Swarm Ledger:    ACTIVE — Autonomous Mempool + Sentinel Consensus")
+				log.Printf("   Swarm Ledger:    ACTIVE — PostgreSQL persistence + Sentinel Consensus")
 			}
 		}
 		log.Printf("══════════════════════════════════════════")
