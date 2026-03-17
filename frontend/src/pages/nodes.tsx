@@ -374,7 +374,7 @@ export default function NodesPage() {
                   { v: burn.total_burned_gstd.toFixed(2), l: 'Total Burned', c: '#f97316' },
                   { v: burn.burn_rate_daily.toFixed(2), l: 'Daily Burn Rate', c: '#fb923c' },
                   { v: `${(burn.current_circulating / 1000000).toFixed(1)}M`, l: 'Circulating', c: '#60a5fa' },
-                  { v: '1B', l: 'Max Supply', c: '#a78bfa' },
+                  { v: `${(burn.max_supply / 1000000).toFixed(0)}M`, l: 'Max Supply', c: '#a78bfa' },
                 ].map(s => (
                   <div key={s.l} style={{ textAlign: 'center', padding: '12px 8px', borderRadius: 10, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
                     <div style={{ fontSize: 18, fontWeight: 800, color: s.c }}>{s.v}</div>

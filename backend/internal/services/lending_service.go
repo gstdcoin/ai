@@ -42,7 +42,7 @@ func (s *LendingService) CalculateLoanTerms(gstdAmount float64) (*LoanOffer, err
 	// Real implementation: Fetch from golden_reserve_log
 	// If empty, fallback to safe defaults for calculation
 	// Real implementation: Fetch from golden_reserve_log or PoolMonitor
-	goldPriceUSD := 2350.00
+	goldPriceUSD := 3200.00
 	gstdPriceUSD := 1.0
 
 	if s.poolMonitor != nil {

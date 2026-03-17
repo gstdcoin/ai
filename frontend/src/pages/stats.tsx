@@ -168,14 +168,14 @@ export default function PublicStats() {
           <div className="sov-card cyan-top p-6">
             <div className="flex items-center gap-2 mb-4"><div style={{ fontSize: 18, lineHeight: 1 }}>🌐</div><span className="text-xs font-bold uppercase tracking-wider text-gray-400">Supply</span></div>
             <S label="Circulating" value={stats?.tokenomics?.circulating_supply?.toFixed(0) || '0'} color="text-cyan-400" sub="GSTD" />
-            <div className="mt-4 pt-4 border-t border-white/[0.06]"><S label="Remaining" value={`${((stats?.tokenomics?.remaining_supply || 1e9) / 1e6).toFixed(1)}M`} color="text-violet-400" sub={`${(stats?.tokenomics?.supply_mined_pct || 0).toFixed(4)}% mined`} /></div>
+            <div className="mt-4 pt-4 border-t border-white/[0.06]"><S label="Remaining" value={`${((stats?.tokenomics?.remaining_supply || 21e6) / 1e6).toFixed(1)}M`} color="text-violet-400" sub={`${(stats?.tokenomics?.supply_mined_pct || 0).toFixed(4)}% mined`} /></div>
           </div>
 
           {/* Base Reward */}
           <div className="sov-card amber-top p-6">
             <div className="flex items-center gap-2 mb-4"><div style={{ fontSize: 18, lineHeight: 1 }}>⛏️</div><span className="text-xs font-bold uppercase tracking-wider text-gray-400">Mining</span></div>
             <S label="Base/Hour" value={`${stats?.tokenomics?.base_reward_per_hour || 0} GSTD`} color="text-amber-400" />
-            <div className="mt-4 pt-4 border-t border-white/[0.06]"><S label="Burn Rate" value={`${stats?.tokenomics?.burn_rate_pct || 5}%`} color="text-red-400" sub="deflationary" /></div>
+            <div className="mt-4 pt-4 border-t border-white/[0.06]"><S label="Burn Rate" value={`${stats?.tokenomics?.burn_rate_pct || 2}%`} color="text-red-400" sub="deflationary" /></div>
           </div>
         </div>
 

@@ -21,7 +21,7 @@ export const SwarmActivityWidget: React.FC = () => {
         activeAgents: 0,
         tasksProcessed24h: 0,
         totalGstdLocked: 0,
-        totalYield: 12.0,
+        totalYield: 0,
         omniChainRoutes: [
             { chain: 'TON', volume: 0, tvl: 0 },
         ]
@@ -40,7 +40,7 @@ export const SwarmActivityWidget: React.FC = () => {
                         activeAgents: response.activeAgents || response.active_workers || response.active_devices_count || 0,
                         tasksProcessed24h: response.tasksProcessed24h || response.tasks_24h || response.tasks_last_24h || 0,
                         totalGstdLocked: response.totalGstdLocked || response.total_gstd_distributed || 0,
-                        totalYield: response.totalYield || 12.0,
+                        totalYield: response.totalYield || 0,
                         omniChainRoutes: response.omniChainRoutes || [
                             { chain: 'TON', volume: response.total_tasks || 0, tvl: response.total_gstd_paid || 0 },
                         ]
