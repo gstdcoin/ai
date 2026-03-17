@@ -116,9 +116,9 @@ contract SettlementMaster with Deployable, Ownable {
         let protocolAmt: Int = total - workerAmt - treasuryAmt; // remainder
 
         // ── Update statistics BEFORE sends (prevent race conditions) ────
-        self.totalSettled = total + self.totalSettled;
-        self.totalGSTDMinted = msg.gstdBonusAmount + self.totalGSTDMinted;
-        self.taskCount = 1 + self.taskCount;
+        self.totalSettled += total;
+        self.totalGSTDMinted += msg.gstdBonusAmount;
+        self.taskCount += 1;
 
         // ── 1. Pay worker (85% TON) — bounce:true to recover on failure ─
         send(SendParameters {
