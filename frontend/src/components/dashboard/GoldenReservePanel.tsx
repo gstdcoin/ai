@@ -33,8 +33,8 @@ interface PublicStats {
   audit_verified?: boolean;
 }
 
-const TOTAL_SUPPLY = 1_000_000_000; // 1B GSTD
-const GOLD_PRICE_USD = 2750; // Approximate XAUt price
+const TOTAL_SUPPLY = 21_000_000; // 21M GSTD max supply
+const GOLD_PRICE_USD = 4970; // XAUt price (updates via API)
 
 const STONFI_POOL_URL = 'https://app.ston.fi/pools/EQA--JXG8VSyBJmLMqb2J2t4Pya0TS9SXHh7vHh8Iez25sLp';
 
@@ -314,7 +314,7 @@ export default function GoldenReservePanel() {
                 // Placeholder bars if no history
                 Array.from({ length: 12 }, (_, i) => (
                   <div key={i} className="flex-1 flex items-end">
-                    <div className="w-full bg-amber-500/10 rounded-t-sm" style={{ height: `${20 + Math.random() * 60}%` }} />
+                    <div className="w-full bg-amber-500/10 rounded-t-sm" style={{ height: '5%' }} />
                   </div>
                 ))
               )}

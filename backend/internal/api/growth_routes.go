@@ -380,8 +380,8 @@ func (h *GrowthSystemHandler) GetBurnStats(c *gin.Context) {
 			"total_burned":   0,
 			"burned_today":   0,
 			"burn_rate":      5.0,
-			"initial_supply": 1000000000,
-			"current_supply": 1000000000,
+			"initial_supply": 21000000,
+			"current_supply": 21000000,
 		})
 		return
 	}
