@@ -246,9 +246,36 @@ func (op *PlatformOperator) economicsCycle() {
 	op.db.QueryRowContext(ctx,
 		"SELECT COALESCE(SUM(amount), 0) FROM staking_positions WHERE status = 'active'").Scan(&stats.totalStaked)
 
-	// Check for abnormal economics
-	if stats.pendingRewards > 100000 {
-		op.sendTelegram(fmt.Sprintf("💰 *Economics Alert*\nPending rewards unusually high: %.0f GSTD", stats.pendingRewards))
+	// Deep Autonomous Economics Evaluation
+	ctxTimeout, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	// 1) Pull the absolute latest DeFi practices to ensure GSTD stays cutting-edge
+	marketContext, _ := op.SearchWeb("site:cointelegraph.com OR site:coindesk.com latest tokenomics staking burn design")
+	
+	prompt := fmt.Sprintf(`You are a DeFi Quantitative Economist for GSTD Token. Your goal is constant growth and long-term sustainability.
+Latest market insights: %s
+
+Current Network Economics:
+- Pending Rewards: %.0f GSTD
+- Total Staked: %.0f GSTD
+- Active Stakers: %d
+
+If pending rewards are extremely high or staking is dropping, output ONE specific intervention strategy. Format clearly suitable for Telegram.`,
+		marketContext, stats.pendingRewards, stats.totalStaked, stats.activeStakers)
+
+	response, err := op.ai.Ask(ctxTimeout, "Economics strategy advisor.", prompt)
+	if err == nil {
+		if stats.pendingRewards > 100000 || len(response) > 50 {
+			msg := fmt.Sprintf("💰 *Autonomous Economics Engine*\n\nNetwork State:\n• Pending: %.0f GSTD\n• Staked: %.0f GSTD\n\n*AI Strategy Suggestion (Web context inserted):*\n%s",
+				stats.pendingRewards, stats.totalStaked, response)
+			
+			// Cap length for telegram
+			if len(msg) > 3000 {
+				msg = msg[:3000] + "..."
+			}
+			op.sendTelegram(msg)
+		}
 	}
 
 	op.logAction("economics", fmt.Sprintf(

@@ -186,10 +186,16 @@ func (op *PlatformOperator) improveBackend() {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
-	prompt := fmt.Sprintf(`You are a Golang Optimization AI. Propose ONE structural or efficiency improvement for the file '%s'.
+	// Pull state-of-the-art Go patterns from the internet as context
+	goBestPractices, _ := op.SearchWeb("site:golang.org OR site:github.com latest golang performance optimization best practices")
+	
+	prompt := fmt.Sprintf(`You are a Golang Optimization AI tracking modern practices.
+Latest Go performance trends (Web Data): %s
+
+Propose ONE structural or efficiency improvement for the file '%s'.
 Output ONLY a 'sed' bash script. Absolutely no markdown or explanations.
 Code:
-%s`, targetFile, code)
+%s`, goBestPractices, targetFile, code)
 
 	patch, err := op.ai.Ask(ctx, "Bash script only.", prompt)
 	if err != nil { return }
