@@ -7,7 +7,7 @@ import { useTonWallet } from '@tonconnect/ui-react';
 import {
   Server, Trophy, Flame, Zap, TrendingUp, Clock, Shield,
   ChevronRight, ExternalLink, Star, Cpu, ArrowRight, Users, Smartphone, MessageCircle,
-  Activity, Vote, Globe, Droplet
+  Activity, Vote, Globe, Droplet, Terminal, Copy, Check, Monitor
 } from 'lucide-react';
 import { API_BASE_URL } from '../lib/config';
 
@@ -53,6 +53,7 @@ export default function NodesPage() {
   const walletAddress = tonWallet?.account?.address || '';
   const [pendingRewards, setPendingRewards] = useState<number>(0);
   const [claiming, setClaiming] = useState(false);
+  const [installCopied, setInstallCopied] = useState(false);
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/api/v1/nodes/rewards/network`).then(r => r.json()).then(setNetwork).catch(() => undefined);
@@ -144,7 +145,35 @@ export default function NodesPage() {
             </div>
           </div>
 
-        {/* Network Stats */}
+          {/* ═══════════ Install & Run Node ═══════════ */}
+          <div className="sov-card emerald-top p-8 mb-12 fu d3 relative overflow-hidden">
+            <div className="absolute -top-10 -left-10 w-32 h-32 rounded-full bg-emerald-500/10 blur-2xl pointer-events-none" />
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-400 to-green-600 flex items-center justify-center shrink-0 shadow-lg shadow-emerald-500/20">
+                <Terminal size={32} className="text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-xl font-bold text-white mb-2">{t('nodes_install_title', 'Install & Run Node')}</h3>
+                <p className="text-gray-400 text-sm leading-relaxed mb-3">{t('nodes_install_desc', 'One command to install on Linux, macOS, WSL, or Raspberry Pi. Auto-updates included.')}</p>
+                <div className="bg-black/40 rounded-xl border border-emerald-500/20 p-3 mb-4 flex items-center gap-2 group cursor-pointer hover:border-emerald-500/40 transition-colors"
+                  onClick={() => { navigator.clipboard.writeText('curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash'); setInstallCopied(true); setTimeout(() => setInstallCopied(false), 2000); }}>
+                  <code className="text-emerald-400 text-sm font-mono flex-1 break-all">curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash</code>
+                  {installCopied ? <Check size={16} className="text-emerald-400 shrink-0" /> : <Copy size={16} className="text-gray-500 group-hover:text-emerald-400 shrink-0 transition-colors" />}
+                </div>
+                <div className="flex flex-wrap gap-3 mb-4 text-xs font-medium text-gray-500">
+                  <span className="flex items-center gap-1.5"><span className="text-base leading-none">🔄</span> Auto-Updates</span>
+                  <span className="flex items-center gap-1.5"><span className="text-base leading-none">⛏️</span> Gold Mining</span>
+                  <span className="flex items-center gap-1.5"><span className="text-base leading-none">🌐</span> DLN Ready</span>
+                  <span className="flex items-center gap-1.5"><span className="text-base leading-none">🔗</span> P2P Swarm</span>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <a href="https://gstdbot.gstdtoken.com" target="_blank" rel="noopener noreferrer" className="btn-sovereign ghost text-emerald-400 hover:text-emerald-300">
+                    <Monitor size={14} className="mr-1" /> {t('nodes_dashboard_btn', 'Node Dashboard')} <ArrowRight size={14} />
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
         {network && (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-10 fu d3">
             {[
