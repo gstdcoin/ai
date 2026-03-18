@@ -530,693 +530,244 @@ type ApplicationDependencies struct {
 //nolint:all // Complex DI setup and event stream bindings shouldn't be split artificially just for sonar
 func StartApplication(container *dig.Container) error {
 	return container.Invoke(func(deps ApplicationDependencies) {
-    cfg := deps.Cfg
-    _ = cfg
-    router := deps.Router
-    _ = router
-    hub := deps.Hub
-    _ = hub
-    tonService := deps.TonService
-    _ = tonService
-    cacheService := deps.CacheService
-    _ = cacheService
-    poolMonitor := deps.PoolMonitor
-    _ = poolMonitor
-    errorLogger := deps.ErrorLogger
-    _ = errorLogger
-    statsService := deps.StatsService
-    _ = statsService
-    validationService := deps.ValidationService
-    _ = validationService
-    trustV3Service := deps.TrustV3Service
-    _ = trustV3Service
-    entropyService := deps.EntropyService
-    _ = entropyService
-    assignmentService := deps.AssignmentService
-    _ = assignmentService
-    encryptionService := deps.EncryptionService
-    _ = encryptionService
-    nodeService := deps.NodeService
-    _ = nodeService
-    taskService := deps.TaskService
-    _ = taskService
-    rewardEngine := deps.RewardEngine
-    _ = rewardEngine
-    escrowService := deps.EscrowService
-    _ = escrowService
-    payoutRetry := deps.PayoutRetry
-    _ = payoutRetry
-    paymentWatcher := deps.PaymentWatcher
-    _ = paymentWatcher
-    paymentTracker := deps.PaymentTracker
-    _ = paymentTracker
-    deviceService := deps.DeviceService
-    _ = deviceService
-    paymentService := deps.PaymentService
-    _ = paymentService
-    resultService := deps.ResultService
-    _ = resultService
-    taskRateLimiter := deps.TaskRateLimiter
-    _ = taskRateLimiter
-    db := deps.Db
-    _ = db
-    redisClient := deps.RedisClient
-    _ = redisClient
-    powService := deps.PowService
-    _ = powService
-    taskOrchestrator := deps.TaskOrchestrator
-    _ = taskOrchestrator
-    telegramService := deps.TelegramService
-    _ = telegramService
-    maintenanceService := deps.MaintenanceService
-    _ = maintenanceService
-    sovereignBridge := deps.SovereignBridge
-    _ = sovereignBridge
-    knowledgeService := deps.KnowledgeService
-    _ = knowledgeService
-    pricingService := deps.PricingService
-    _ = pricingService
-    invoiceService := deps.InvoiceService
-    _ = invoiceService
-    welcomeBonusService := deps.WelcomeBonusService
-    _ = welcomeBonusService
-    burnService := deps.BurnService
-    _ = burnService
-    multiLevelReferralService := deps.MultiLevelReferralService
-    _ = multiLevelReferralService
-    agentMarketplaceService := deps.AgentMarketplaceService
-    _ = agentMarketplaceService
-    taskPaymentService := deps.TaskPaymentService
-    _ = taskPaymentService
-    timeoutService := deps.TimeoutService
-    _ = timeoutService
-    userService := deps.UserService
-    _ = userService
-    stonFiService := deps.StonFiService
-    _ = stonFiService
-    apiKeyService := deps.ApiKeyService
-    _ = apiKeyService
-    pipelineService := deps.PipelineService
-    _ = pipelineService
-    guardrailsService := deps.GuardrailsService
-    _ = guardrailsService
-    federatedEngine := deps.FederatedEngine
-    _ = federatedEngine
-    mobileCompute := deps.MobileCompute
-    _ = mobileCompute
-    zbGateService := deps.ZbGateService
-    _ = zbGateService
-    recyclingPool := deps.RecyclingPool
-    _ = recyclingPool
-    kvCacheService := deps.KvCacheService
-    _ = kvCacheService
-    dataAirlock := deps.DataAirlock
-    _ = dataAirlock
-    openClawBridge := deps.OpenClawBridge
-    _ = openClawBridge
-    inferenceService := deps.InferenceService
-    _ = inferenceService
-    contributionMonetization := deps.ContributionMonetization
-    _ = contributionMonetization
-    universalMeshService := deps.UniversalMeshService
-    _ = universalMeshService
-    geoService := deps.GeoService
-    _ = geoService
-    agentModelService := deps.AgentModelService
-    _ = agentModelService
-    agentSubcontractService := deps.AgentSubcontractService
-    _ = agentSubcontractService
-    goldHashRateService := deps.GoldHashRateService
-    _ = goldHashRateService
-    goldBroadcastRunner := deps.GoldBroadcastRunner
-    _ = goldBroadcastRunner
-    anomalyDetection := deps.AnomalyDetection
-    _ = anomalyDetection
-    zkComputeProof := deps.ZkComputeProof
-    _ = zkComputeProof
-    fleetCommandService := deps.FleetCommandService
-    _ = fleetCommandService
-    evolutionEngine := deps.EvolutionEngine
-    _ = evolutionEngine
-    omniPerformance := deps.OmniPerformance
-    _ = omniPerformance
-    treasuryService := deps.TreasuryService
-    _ = treasuryService
-    swarmLFS := deps.SwarmLFS
-    _ = swarmLFS
-    cleanCoreService := deps.CleanCoreService
-    _ = cleanCoreService
-    globalAbsorption := deps.GlobalAbsorption
-    _ = globalAbsorption
-    knowledgeIntegrator := deps.KnowledgeIntegrator
-    _ = knowledgeIntegrator
-    predictiveMirroring := deps.PredictiveMirroring
-    _ = predictiveMirroring
-    supremeCoord := deps.SupremeCoord
-    _ = supremeCoord
-    leviathanProfit := deps.LeviathanProfit
-    _ = leviathanProfit
-    agentRatingService := deps.AgentRatingService
-    _ = agentRatingService
-    talentHunting := deps.TalentHunting
-    _ = talentHunting
-    meshConstitution := deps.MeshConstitution
-    _ = meshConstitution
-    constitutionAnchor := deps.ConstitutionAnchor
-    _ = constitutionAnchor
-    singularityReady := deps.SingularityReady
-    _ = singularityReady
-    billingService := deps.BillingService
-    _ = billingService
-    settlementService := deps.SettlementService
-    _ = settlementService
-    goldenAgeService := deps.GoldenAgeService
-    _ = goldenAgeService
-    dynamicEquilibrium := deps.DynamicEquilibrium
-    _ = dynamicEquilibrium
-    eternalFlameService := deps.EternalFlameService
-    _ = eternalFlameService
-    gaslessUserService := deps.GaslessUserService
-    _ = gaslessUserService
-    payoutBatchService := deps.PayoutBatchService
-    _ = payoutBatchService
-    highloadWallet := deps.HighloadWallet
-    _ = highloadWallet
-    globalNeuralMerge := deps.GlobalNeuralMerge
-    _ = globalNeuralMerge
-    singularityGateway := deps.SingularityGateway
-    _ = singularityGateway
-    omnipotence := deps.Omnipotence
-    _ = omnipotence
-    subAgentSelfOpt := deps.SubAgentSelfOpt
-    _ = subAgentSelfOpt
-    bitchatBridge := deps.BitchatBridge
-    _ = bitchatBridge
-    cocoonBridge := deps.CocoonBridge
-    _ = cocoonBridge
-    cocoonSymbiosis := deps.CocoonSymbiosis
-    _ = cocoonSymbiosis
-    hybridRouter := deps.HybridRouter
-    _ = hybridRouter
-    smartRouter := deps.SmartRouter
-    _ = smartRouter
-    a2aServer := deps.A2aServer
-    _ = a2aServer
-    hiveStore := deps.HiveStore
-    _ = hiveStore
-    sentinelEngine := deps.SentinelEngine
-    _ = sentinelEngine
-    genesisLock := deps.GenesisLock
-    _ = genesisLock
-    nodeManager := deps.NodeManager
-    _ = nodeManager
-    llmRouter := deps.LlmRouter
-    _ = llmRouter
-    settlementCli := deps.SettlementCli
-    _ = settlementCli
-    financialMonitor := deps.FinancialMonitor
-    _ = financialMonitor
-    organism := deps.Organism
-    _ = organism
-    monetizationService := deps.MonetizationService
-    _ = monetizationService
-    organismHub := deps.OrganismHub
-    _ = organismHub
-    swarmNode := deps.SwarmNode
-    _ = swarmNode
-    swarmLedger := deps.SwarmLedger
-    _ = swarmLedger
-		// 1. Cross-dependency wiring
-		tonService.SetCacheService(cacheService)
-		poolMonitor.SetTONService(tonService)
-		poolMonitor.SetErrorLogger(errorLogger)
-		escrowService.SetLiquidityDeps(cfg.TON, stonFiService)
-		statsService.SetPoolMonitor(poolMonitor)
-		validationService.SetDependencies(trustV3Service, entropyService, assignmentService, encryptionService, tonService, cacheService, nodeService)
-		taskService.SetEncryptionService(encryptionService)
-		taskService.SetHub(hub)
-		nodeService.SetGeoService(geoService)
-		rewardEngine.SetPayoutRetry(payoutRetry)
-		paymentService.SetTONService(tonService)
-		paymentService.SetNodeService(nodeService)
-		resultService.SetTelegramService(telegramService)
-		resultService.SetZKProofService(zkComputeProof)
-		taskPaymentService.SetTaskService(taskService)
-		taskPaymentService.SetTelegramService(telegramService)
-		telegramService.SetGSTDPriceProvider(poolMonitor)
-		telegramService.SetSmartRouter(smartRouter)
-		stonFiService.SetPoolMonitor(poolMonitor)
-		poolMonitor.SetStonFi(stonFiService)
-		taskOrchestrator.SetPoWService(powService)
+		// 1. Cross-dependency wiring (using deps fields directly)
+		deps.TonService.SetCacheService(deps.CacheService)
+		deps.PoolMonitor.SetTONService(deps.TonService)
+		deps.PoolMonitor.SetErrorLogger(deps.ErrorLogger)
+		deps.EscrowService.SetLiquidityDeps(deps.Cfg.TON, deps.StonFiService)
+		deps.StatsService.SetPoolMonitor(deps.PoolMonitor)
+		deps.ValidationService.SetDependencies(deps.TrustV3Service, deps.EntropyService, deps.AssignmentService, deps.EncryptionService, deps.TonService, deps.CacheService, deps.NodeService)
+		deps.TaskService.SetEncryptionService(deps.EncryptionService)
+		deps.TaskService.SetHub(deps.Hub)
+		deps.NodeService.SetGeoService(deps.GeoService)
+		deps.RewardEngine.SetPayoutRetry(deps.PayoutRetry)
+		deps.PaymentService.SetTONService(deps.TonService)
+		deps.PaymentService.SetNodeService(deps.NodeService)
+		deps.ResultService.SetTelegramService(deps.TelegramService)
+		deps.ResultService.SetZKProofService(deps.ZkComputeProof)
+		deps.TaskPaymentService.SetTaskService(deps.TaskService)
+		deps.TaskPaymentService.SetTelegramService(deps.TelegramService)
+		deps.TelegramService.SetGSTDPriceProvider(deps.PoolMonitor)
+		deps.TelegramService.SetSmartRouter(deps.SmartRouter)
+		deps.StonFiService.SetPoolMonitor(deps.PoolMonitor)
+		deps.PoolMonitor.SetStonFi(deps.StonFiService)
+		deps.TaskOrchestrator.SetPoWService(deps.PowService)
 
 		// 2. Start WebSocket Hub
-		go hub.Run()
+		go deps.Hub.Run()
 		log.Printf("🚀 WebSocket Hub started")
 
 		// 3. Start Background Workers
 		ctx := context.Background()
-		// 2b. Absolute Point: Gold Reserve → Hash-Rate Multiplier via WebSocket (real-time)
-		go goldBroadcastRunner.Start(ctx)
+		go deps.GoldBroadcastRunner.Start(ctx)
 		log.Printf("📡 Gold Broadcast Runner started (Unified State Machine)")
-		go timeoutService.StartTimeoutChecker(ctx, 30*time.Second)
-		go paymentWatcher.Start(ctx, 60*time.Second)
-		go payoutRetry.Start(ctx)
-		go paymentTracker.Start(ctx)
-		go taskOrchestrator.Start(ctx)
-		go maintenanceService.Start(ctx)
-		go poolMonitor.Start(ctx)
-		go bitchatBridge.Start(ctx)
-		go cocoonBridge.StartHealthLoop(ctx) // Cocoon TEE: health check loop
-		go cocoonSymbiosis.Start(ctx)        // Cocoon→Swarm symbiosis
-		go hybridRouter.Start(ctx)           // Hybrid routing monitor
-		go anomalyDetection.Start(ctx)
-		go evolutionEngine.Start(ctx)
-		go financialMonitor.Start(ctx)
-		go organism.Start(ctx)
+		go deps.TimeoutService.StartTimeoutChecker(ctx, 30*time.Second)
+		go deps.PaymentWatcher.Start(ctx, 60*time.Second)
+		go deps.PayoutRetry.Start(ctx)
+		go deps.PaymentTracker.Start(ctx)
+		go deps.TaskOrchestrator.Start(ctx)
+		go deps.MaintenanceService.Start(ctx)
+		go deps.PoolMonitor.Start(ctx)
+		go deps.BitchatBridge.Start(ctx)
+		go deps.CocoonBridge.StartHealthLoop(ctx)
+		go deps.CocoonSymbiosis.Start(ctx)
+		go deps.HybridRouter.Start(ctx)
+		go deps.AnomalyDetection.Start(ctx)
+		go deps.EvolutionEngine.Start(ctx)
+		go deps.FinancialMonitor.Start(ctx)
+		go deps.Organism.Start(ctx)
 
-		// Golden Age Protocol: Payout Waves, Dynamic Fee, Proof-of-Gold, Swarm Expansion
-		if goldenAgeService != nil {
-			go goldenAgeService.Start(ctx)
+		if deps.GoldenAgeService != nil {
+			go deps.GoldenAgeService.Start(ctx)
 		}
-		if dynamicEquilibrium != nil {
-			go dynamicEquilibrium.Start(ctx)
+		if deps.DynamicEquilibrium != nil {
+			go deps.DynamicEquilibrium.Start(ctx)
 		}
-		if eternalFlameService != nil {
-			eternalFlameService.SetPipeline(pipelineService)
-			go eternalFlameService.Start(ctx)
+		if deps.EternalFlameService != nil {
+			deps.EternalFlameService.SetPipeline(deps.PipelineService)
+			go deps.EternalFlameService.Start(ctx)
 		}
-		// Gasless User: wire TON wallet for subsidies and internal swap
-		if gaslessUserService != nil && cfg.TON.PlatformWalletAddress != "" && cfg.TON.PlatformWalletPrivateKey != "" {
-			apiKeys := parseTONAPIKeys(cfg.TON.APIKey, cfg.TON.TONAPIKeys)
-			var w *services.TONWalletService
-			var err error
-			if len(apiKeys) > 1 {
-				w, err = services.NewTONWalletServiceWithKeyRotation(cfg.TON.APIURL, apiKeys, cfg.TON.PlatformWalletAddress, cfg.TON.PlatformWalletPrivateKey)
-				if err == nil {
-					log.Printf("⛽ Gasless User: TON wallet with %d API keys (rotation on 429)", len(apiKeys))
-				}
-			} else {
-				key := ""
-				if len(apiKeys) > 0 {
-					key = apiKeys[0]
-				}
-				w, err = services.NewTONWalletService(cfg.TON.APIURL, key, cfg.TON.PlatformWalletAddress, cfg.TON.PlatformWalletPrivateKey)
-			}
-			if err == nil && w != nil {
-				gaslessUserService.SetTONWallet(w)
-				log.Printf("⛽ Gasless User: TON wallet wired for subsidies and internal swap")
-			}
+		startGaslessWiring(ctx, deps)
+		startPayoutBatch(ctx, deps)
+		if deps.GlobalNeuralMerge != nil {
+			go deps.GlobalNeuralMerge.Start(ctx)
 		}
-		if payoutBatchService != nil && highloadWallet != nil && highloadWallet.IsInitialized() {
-			payoutBatchService.SetHighloadWallet(highloadWallet)
-			if cfg.TON.GSTDJettonAddress != "" {
-				payoutBatchService.SetGSTDJettonMaster(cfg.TON.GSTDJettonAddress)
-			}
-			go payoutBatchService.Start(ctx)
-			log.Printf("⛽ Payout Batch: Highload Ascension ACTIVE (15m)")
-			// Gas Reserve Monitor: alert admin if < 1 TON
-			if telegramService != nil {
-				highloadWallet.SetTelegramAlert(telegramService.SendMessage)
-				go func() {
-					ticker := time.NewTicker(30 * time.Minute)
-					defer ticker.Stop()
-					highloadWallet.CheckGasReserveAndAlert(ctx)
-					for {
-						select {
-						case <-ctx.Done():
-							return
-						case <-ticker.C:
-							highloadWallet.CheckGasReserveAndAlert(ctx)
-						}
-					}
-				}()
-				log.Printf("⛽ Gas Reserve Monitor ACTIVE (30m)")
-			}
+		if deps.SingularityGateway != nil {
+			go deps.SingularityGateway.Start(ctx)
 		}
-		if globalNeuralMerge != nil {
-			go globalNeuralMerge.Start(ctx)
-			log.Printf("🧠 Global Neural Merge: Intelligence Consolidation ACTIVE (15m)")
+		if deps.Omnipotence != nil {
+			go deps.Omnipotence.Start(ctx)
 		}
-		if singularityGateway != nil {
-			go singularityGateway.Start(ctx)
-			log.Printf("🚀 Singularity Gateway: Latency Optimization + IQ Milestone ACTIVE (5m)")
-		}
-		if omnipotence != nil {
-			go omnipotence.Start(ctx)
-			log.Printf("👁 Omnipotence: Predictive Allocation + Autonomous Expansion + Golden Verification ACTIVE (10m)")
-		}
-		if subAgentSelfOpt != nil {
-			go subAgentSelfOpt.Start(ctx)
-			log.Printf("🤖 SubAgent Self-Optimization: lessons + critical insights exchange ACTIVE (20m)")
+		if deps.SubAgentSelfOpt != nil {
+			go deps.SubAgentSelfOpt.Start(ctx)
 		}
 
-		// Start Treasury Auto-Converter (Genesis Launch: Golden Liquidity — instant GSTD→XAUt)
-		go func() {
-			ticker := time.NewTicker(5 * time.Minute) // Every 5 min for instant conversion
-			defer ticker.Stop()
-			log.Printf("💰 Treasury Service Started (Gold Bridge Active)")
-
-			// Run on startup
-			if err := treasuryService.ProcessGoldReserves(ctx); err != nil {
-				log.Printf("⚠️ Treasury Error: %v", err)
-			}
-
-			for {
-				select {
-				case <-ticker.C:
-					if err := treasuryService.ProcessGoldReserves(ctx); err != nil {
-						log.Printf("⚠️ Treasury Error: %v", err)
-					}
-				case <-ctx.Done():
-					return
-				}
-			}
-		}()
-
-		// 🚀 1M User Optimization: Periodically flush batched heartbeats + mark stale offline
-		go func() {
-			ticker := time.NewTicker(45 * time.Second)
-			defer ticker.Stop()
-			for {
-				select {
-				case <-ticker.C:
-					affected, err := nodeService.FlushHeartbeats(ctx)
-					if err != nil {
-						log.Printf("⚠️  Heartbeat Flush Error: %v", err)
-					} else if affected > 0 {
-						log.Printf("💓 Batched %d heartbeats to database", affected)
-					}
-					// Auto-deactivate stale nodes (no heartbeat for 10 min)
-					stale, _ := nodeService.MarkStaleNodesOffline(ctx, 10*time.Minute)
-					if stale > 0 {
-						log.Printf("⚠️ Marked %d stale nodes offline (10min threshold)", stale)
-					}
-				case <-ctx.Done():
-					return
-				}
-			}
-		}()
+		// Treasury Auto-Converter
+		startTreasuryLoop(ctx, deps.TreasuryService)
+		// Heartbeat flush + stale detection
+		startHeartbeatFlush(ctx, deps.NodeService)
 
 		log.Printf("🚀 All background workers started")
 
 		// ══════════════════════════════════════════════════════════════
 		// Phase 0 Genesis: Start Swarm Core Services
 		// ══════════════════════════════════════════════════════════════
-
-		// Genesis Lock: verify binary integrity
-		if genesisLock != nil {
-			if err := genesisLock.LoadManifest(); err != nil {
-				log.Printf("⚠️ Genesis Lock: manifest load: %v (will generate)", err)
-			}
-			result, err := genesisLock.Verify()
-			if err != nil {
-				log.Printf("⚠️ Genesis Lock: verification error: %v", err)
-			} else if result.Verified {
-				log.Printf("✅ Genesis Lock: VERIFIED (v%s, %dms)", result.Version, result.LatencyMs)
-			} else {
-				log.Printf("⚠️ Genesis Lock: %d mismatches (non-fatal in dev)", len(result.Mismatches))
-			}
-			// Periodic re-verification every 30 minutes
-			genesisLock.StartPeriodicVerification(30 * time.Minute)
+		if deps.GenesisLock != nil {
+			verifyGenesisLock(deps.GenesisLock)
 		}
-
-		// A2A Protocol: start listening for swarm messages
-		if a2aServer != nil {
+		if deps.A2aServer != nil {
 			go func() {
-				if err := a2aServer.Listen(ctx); err != nil {
+				if err := deps.A2aServer.Listen(ctx); err != nil {
 					log.Printf("⚠️ A2A listener stopped: %v", err)
 				}
 			}()
 			log.Printf("🔱 A2A Protocol: LISTENING on Redis PubSub channels")
 		}
-
-		// Settlement Client: start background processor
-		if settlementCli != nil {
-			settlementCli.StartProcessor(ctx)
+		if deps.SettlementCli != nil {
+			deps.SettlementCli.StartProcessor(ctx)
 			log.Printf("💰 Settlement Processor: ACTIVE (85/10/5 split)")
 		}
-
-		// Node Manager: auto-start check
-		if nodeManager != nil {
+		if deps.NodeManager != nil {
 			go func() {
-				if err := nodeManager.CheckAndAutoStart(ctx); err != nil {
+				if err := deps.NodeManager.CheckAndAutoStart(ctx); err != nil {
 					log.Printf("⚠️ Node auto-start: %v (will retry)", err)
 				}
-				estimate := nodeManager.EstimateEarnings()
+				estimate := deps.NodeManager.EstimateEarnings()
 				log.Printf("📊 Node earnings estimate: %s → %.1f GSTD/day", estimate.NodeType, estimate.DailyGSTD)
 			}()
 		}
+		logSwarmStatus(ctx, deps)
 
-		// Log Phase 0 Genesis status
-		log.Printf("══════════════════════════════════════════")
-		log.Printf("🔱 PHASE 0 GENESIS: ALL SYSTEMS ONLINE")
-		log.Printf("   A2A Protocol:    %v", a2aServer != nil)
-		log.Printf("   Hive Memory:     %v", hiveStore != nil)
-		log.Printf("   Sentinel:        %v", sentinelEngine != nil)
-		log.Printf("   Genesis Lock:    %v", genesisLock != nil)
-		log.Printf("   Node Manager:    %v", nodeManager != nil)
-		log.Printf("   LLM Router:      %v (nodes=%d)", llmRouter != nil, func() int {
-			if llmRouter != nil {
-				return llmRouter.GetNodeCount()
-			}
-			return 0
-		}())
-		log.Printf("   Settlement:      %v", settlementCli != nil)
-		log.Printf("   Cocoon TEE:      %v (proxy=%v)", cocoonBridge != nil && cocoonBridge.IsEnabled(), func() bool {
-			if cocoonBridge != nil {
-				h := cocoonBridge.HealthCheck(ctx)
-				return h.ProxyReachable
-			}
-			return false
-		}())
-		log.Printf("   Hybrid Router:   %v", hybridRouter != nil)
-		log.Printf("   Cocoon Symbiosis: %v", cocoonSymbiosis != nil)
-		if swarmNode != nil {
-			log.Printf("   Swarm P2P:       true (ID=%s)", swarmNode.Host.ID().String())
-			if swarmLedger != nil {
-				// Wire PostgreSQL for persistent balance storage
-				if db != nil {
-					swarmLedger.SetDB(db)
-				}
-				go swarmLedger.StartMempoolWorker(ctx)
-				go swarmLedger.StartMempoolCleaner(ctx)
-				go swarmLedger.StartRewardDistributor(ctx)
-				swarmLedger.EnableStateSync()
-
-				// Bootstrapping: Try to sync state from peers after waiting 10 seconds for initial connections to form
-				go func() {
-					time.Sleep(10 * time.Second)
-					swarmLedger.SyncStateFromPeers(ctx)
-				}()
-
-				log.Printf("   Swarm Ledger:    ACTIVE — PostgreSQL persistence + Sentinel Consensus")
-			}
-		}
-		log.Printf("══════════════════════════════════════════")
-
-		// Suppress unused variable warnings for services that are used passively
-		_ = hiveStore
-		_ = sentinelEngine
-		_ = llmRouter
-		_ = swarmNode
-		_ = swarmLedger
-
-		// 3b. Leviathan: optional prediction-market analytics (LEVIATHAN_ENABLED=true)
+		// 3b. Leviathan + Singularity subsystems
 		leviathan.StartIfEnabled(ctx)
-
-		// 3b2. Predictive Mirroring: Leviathan analyzes HF Trending, shards top-3 models/day
-		if os.Getenv("LEVIATHAN_ENABLED") == "true" && predictiveMirroring != nil {
-			globalAbsorption.SetKnowledgeIntegrator(knowledgeIntegrator)
-			go predictiveMirroring.Start(ctx)
-			log.Printf("🔮 Predictive Mirroring: ACTIVE — HF Trending top-3 sharding (6h cycle)")
-		} else if knowledgeIntegrator != nil {
-			globalAbsorption.SetKnowledgeIntegrator(knowledgeIntegrator)
+		if os.Getenv("LEVIATHAN_ENABLED") == "true" && deps.PredictiveMirroring != nil {
+			deps.GlobalAbsorption.SetKnowledgeIntegrator(deps.KnowledgeIntegrator)
+			go deps.PredictiveMirroring.Start(ctx)
+		} else if deps.KnowledgeIntegrator != nil {
+			deps.GlobalAbsorption.SetKnowledgeIntegrator(deps.KnowledgeIntegrator)
 		}
-
-		// 3b3. Supreme Coordinator: Performance-Based Pruning, Golden Incentive, Integrity Cross-Check
-		if supremeCoord != nil {
-			go supremeCoord.RunPruningLoop(ctx)
-			if federatedEngine != nil {
-				federatedEngine.SetSupremeCoordinator(supremeCoord)
+		if deps.SupremeCoord != nil {
+			go deps.SupremeCoord.RunPruningLoop(ctx)
+			if deps.FederatedEngine != nil {
+				deps.FederatedEngine.SetSupremeCoordinator(deps.SupremeCoord)
 			}
-			log.Printf("⚡ Supreme Coordinator: ACTIVE — Pruning (48h), Golden +10%%, LoRA Cross-Check")
 		}
-
-		// 3b4. Profit Maximization: Leviathan matches fee vs region costs, suggests high-margin nodes
-		if leviathanProfit != nil && cleanCoreService != nil {
-			cleanCoreService.SetLeviathanProfit(leviathanProfit)
-			log.Printf("💰 Profit Maximization: ACTIVE — node routing by Golden Treasury margin")
+		if deps.LeviathanProfit != nil && deps.CleanCoreService != nil {
+			deps.CleanCoreService.SetLeviathanProfit(deps.LeviathanProfit)
 		}
-
-		// 3b4b. A2A Symbio: Agent rating for UniversalMesh queue priority
-		if agentRatingService != nil && cleanCoreService != nil {
-			cleanCoreService.SetAgentRating(agentRatingService)
-			log.Printf("🦾 A2A Symbio: ACTIVE — agent rating priority in UniversalMesh")
+		if deps.AgentRatingService != nil && deps.CleanCoreService != nil {
+			deps.CleanCoreService.SetAgentRating(deps.AgentRatingService)
 		}
-
-		// 3b4c. Eternal Synergy: Reputation Shield (2x fee for low-rated agents)
-		if agentRatingService != nil && universalMeshService != nil {
-			universalMeshService.SetAgentRating(agentRatingService)
-			log.Printf("🛡️ Eternal Synergy: Reputation Shield ACTIVE — 2x fee for low-rated agents")
+		if deps.AgentRatingService != nil && deps.UniversalMeshService != nil {
+			deps.UniversalMeshService.SetAgentRating(deps.AgentRatingService)
 		}
-
-		// 3b5. Automated Talent Hunting: category without score>7 → HF search
-		if talentHunting != nil {
-			go talentHunting.Start(ctx)
-			log.Printf("🎯 Talent Hunting: ACTIVE — category gap search (12h)")
+		if deps.TalentHunting != nil {
+			go deps.TalentHunting.Start(ctx)
 		}
-
-		// 3b6. Decentralized Governance: monthly Mesh Constitution + Immortal Identity
-		if meshConstitution != nil {
-			if constitutionAnchor != nil {
-				meshConstitution.SetAnchor(constitutionAnchor)
+		if deps.MeshConstitution != nil {
+			if deps.ConstitutionAnchor != nil {
+				deps.MeshConstitution.SetAnchor(deps.ConstitutionAnchor)
 			}
-			go meshConstitution.Start(ctx)
-			log.Printf("📜 Mesh Constitution: ACTIVE — monthly report, hash-signature for blockchain")
+			go deps.MeshConstitution.Start(ctx)
 		}
-
-		// 3b7. Singularity Ready: Global Equilibrium, Archon Protocol
-		if singularityReady != nil {
-			go singularityReady.Start(ctx)
-			log.Printf("🔮 Singularity Ready: ACTIVE — Equilibrium (Profit↔Talent), Archon (cap<5)")
+		if deps.SingularityReady != nil {
+			go deps.SingularityReady.Start(ctx)
 		}
 
 		// 4. Setup Routes
+		cfg := deps.Cfg
 		api.SetupRoutes(api.APIDependencies{
-        Router: router,
-        TaskService: taskService,
-        DeviceService: deviceService,
-        ValidationService: validationService,
-        PaymentService: paymentService,
-        TonService: tonService,
-        TonConfig: cfg.TON,
-        AssignmentService: assignmentService,
-        ResultService: resultService,
-        StatsService: statsService,
-        TrustService: trustV3Service,
-        Hub: hub,
-        EncryptionService: encryptionService,
-        EntropyService: entropyService,
-        UserService: userService,
-        NodeService: nodeService,
-        TaskPaymentService: taskPaymentService,
-        RewardEngine: rewardEngine,
-        TaskRateLimiter: taskRateLimiter,
-        Db: db,
-        RedisClient: redisClient,
-        PayoutRetryService: payoutRetry,
-        EscrowService: escrowService,
-        PoolMonitorService: poolMonitor,
-        CacheService: cacheService,
-        ErrorLogger: errorLogger,
-        PowService: powService,
-        TaskOrchestrator: taskOrchestrator,
-        TelegramService: telegramService,
-        MaintenanceService: maintenanceService,
-        SovereignBridge: sovereignBridge,
-        KnowledgeService: knowledgeService,
-        PricingService: pricingService,
-        InvoiceService: invoiceService,
-        WelcomeBonusService: welcomeBonusService,
-        BurnService: burnService,
-        MultiLevelReferralService: multiLevelReferralService,
-        AgentMarketplaceService: agentMarketplaceService,
-        ApiKeyService: apiKeyService,
-        GuardrailsService: guardrailsService,
-        GeoService: geoService,
-        AgentModelService: agentModelService,
-        FleetCommandService: fleetCommandService,
-        OmniPerformance: omniPerformance,
-        SwarmLFS: swarmLFS,
-        SettlementService: settlementService,
-        GaslessUserService: gaslessUserService,
-        FinancialMonitor: financialMonitor,
-        Organism: organism,
-        MonetizationService: monetizationService,
-        OrganismHub: organismHub,
-        LlmRouter: llmRouter,
-        RecyclingPool: recyclingPool,
-        CocoonBridge: cocoonBridge,
-        CocoonSymbiosis: cocoonSymbiosis,
-        HybridRouter: hybridRouter,
-        ZkProofService: zkComputeProof,
-        SmartRouter: smartRouter,
-        SwarmLedger: swarmLedger,
-        HuggingFaceService: deps.HuggingFaceService,
+			Router:                    deps.Router,
+			TaskService:               deps.TaskService,
+			DeviceService:             deps.DeviceService,
+			ValidationService:         deps.ValidationService,
+			PaymentService:            deps.PaymentService,
+			TonService:                deps.TonService,
+			TonConfig:                 cfg.TON,
+			AssignmentService:         deps.AssignmentService,
+			ResultService:             deps.ResultService,
+			StatsService:              deps.StatsService,
+			TrustService:              deps.TrustV3Service,
+			Hub:                       deps.Hub,
+			EncryptionService:         deps.EncryptionService,
+			EntropyService:            deps.EntropyService,
+			UserService:               deps.UserService,
+			NodeService:               deps.NodeService,
+			TaskPaymentService:        deps.TaskPaymentService,
+			RewardEngine:              deps.RewardEngine,
+			TaskRateLimiter:           deps.TaskRateLimiter,
+			Db:                        deps.Db,
+			RedisClient:               deps.RedisClient,
+			PayoutRetryService:        deps.PayoutRetry,
+			EscrowService:             deps.EscrowService,
+			PoolMonitorService:        deps.PoolMonitor,
+			CacheService:              deps.CacheService,
+			ErrorLogger:               deps.ErrorLogger,
+			PowService:                deps.PowService,
+			TaskOrchestrator:          deps.TaskOrchestrator,
+			TelegramService:           deps.TelegramService,
+			MaintenanceService:        deps.MaintenanceService,
+			SovereignBridge:           deps.SovereignBridge,
+			KnowledgeService:          deps.KnowledgeService,
+			PricingService:            deps.PricingService,
+			InvoiceService:            deps.InvoiceService,
+			WelcomeBonusService:       deps.WelcomeBonusService,
+			BurnService:               deps.BurnService,
+			MultiLevelReferralService: deps.MultiLevelReferralService,
+			AgentMarketplaceService:   deps.AgentMarketplaceService,
+			ApiKeyService:             deps.ApiKeyService,
+			GuardrailsService:         deps.GuardrailsService,
+			GeoService:                deps.GeoService,
+			AgentModelService:         deps.AgentModelService,
+			FleetCommandService:       deps.FleetCommandService,
+			OmniPerformance:           deps.OmniPerformance,
+			SwarmLFS:                  deps.SwarmLFS,
+			SettlementService:         deps.SettlementService,
+			GaslessUserService:        deps.GaslessUserService,
+			FinancialMonitor:          deps.FinancialMonitor,
+			Organism:                  deps.Organism,
+			MonetizationService:       deps.MonetizationService,
+			OrganismHub:               deps.OrganismHub,
+			LlmRouter:                 deps.LlmRouter,
+			RecyclingPool:             deps.RecyclingPool,
+			CocoonBridge:              deps.CocoonBridge,
+			CocoonSymbiosis:           deps.CocoonSymbiosis,
+			HybridRouter:              deps.HybridRouter,
+			ZkProofService:            deps.ZkComputeProof,
+			SmartRouter:               deps.SmartRouter,
+			SwarmLedger:               deps.SwarmLedger,
+			HuggingFaceService:        deps.HuggingFaceService,
 		})
 
-		// 4a. Leviathan Live Stream (SSE) — Protocol: Live Stream, No-DB, 30s memory
-		api.SetupLeviathanLiveStream(router)
+		api.SetupLeviathanLiveStream(deps.Router)
 
-		// 4b. Modular routes (registered separately for clean architecture)
-		v1Group := router.Group("/api/v1")
-		protectedGroup := router.Group("/api/v1")
-		api.SetupPipelineRoutes(v1Group, protectedGroup, pipelineService)
-		api.SetupSovereignRoutes(v1Group, db)
+		v1Group := deps.Router.Group("/api/v1")
+		protectedGroup := deps.Router.Group("/api/v1")
+		api.SetupPipelineRoutes(v1Group, protectedGroup, deps.PipelineService)
+		api.SetupSovereignRoutes(v1Group, deps.Db)
 
-		// 4b1a. Agent API: OpenClaw/A2A agent endpoints
-		swarmModelMgr := services.NewSwarmModelManager(db, os.Getenv("OLLAMA_URL"))
-		swarmIntel := services.NewSwarmIntelligenceService(db, os.Getenv("OLLAMA_URL"), knowledgeService, swarmModelMgr)
-		agentHandler := api.NewAgentAPIHandler(db, openClawBridge, recyclingPool, knowledgeService, swarmModelMgr, swarmIntel)
+		swarmModelMgr := services.NewSwarmModelManager(deps.Db, os.Getenv("OLLAMA_URL"))
+		swarmIntel := services.NewSwarmIntelligenceService(deps.Db, os.Getenv("OLLAMA_URL"), deps.KnowledgeService, swarmModelMgr)
+		agentHandler := api.NewAgentAPIHandler(deps.Db, deps.OpenClawBridge, deps.RecyclingPool, deps.KnowledgeService, swarmModelMgr, swarmIntel)
 		api.SetupAgentRoutes(v1Group, agentHandler)
-		log.Printf("🤖 Agent API: ACTIVE — MoSE Intelligence, /api/v1/agents/*")
 
-		// 4b1b. OpenClaw Panel: Full management dashboard for OpenClaw robots
-		openClawPanelHandler := api.NewOpenClawPanelHandler(db, openClawBridge, inferenceService)
-		if smartRouter != nil {
-			openClawPanelHandler.SetSmartRouter(smartRouter)
+		openClawPanelHandler := api.NewOpenClawPanelHandler(deps.Db, deps.OpenClawBridge, deps.InferenceService)
+		if deps.SmartRouter != nil {
+			openClawPanelHandler.SetSmartRouter(deps.SmartRouter)
 		}
 		adminGroupClaw := v1Group.Group("/", api.RequireAdminWallet(cfg.TON))
 		api.SetupOpenClawPanelRoutes(adminGroupClaw, openClawPanelHandler)
 
-		// 4b2. Universal Mesh Protocol: public infer, XAUt monetization
-		api.SetupUniversalMeshRoutes(v1Group, universalMeshService, contributionMonetization)
-		log.Printf("🌐 Universal Mesh Protocol: ACTIVE — GET /api/v1/infer, GET /api/v1/mesh/shares")
+		api.SetupUniversalMeshRoutes(v1Group, deps.UniversalMeshService, deps.ContributionMonetization)
+		api.SetupMeshConstitutionRoutes(v1Group, deps.MeshConstitution)
+		api.SetupBillingRoutes(v1Group, deps.BillingService)
+		api.SetupCleanCoreRoutes(protectedGroup, deps.CleanCoreService, cfg.TON)
+		api.SetupGlobalAbsorptionRoutes(v1Group, deps.GlobalAbsorption)
+		api.SetupCosmicGenesisRoutes(v1Group, protectedGroup, deps.Db, deps.AgentSubcontractService, deps.GoldHashRateService)
+		api.SetupMCPRoutes(deps.Router, v1Group)
 
-		// 4b2b. Mesh Constitution: Decentralized Governance report
-		api.SetupMeshConstitutionRoutes(v1Group, meshConstitution)
-
-		// 4b2b. Financial API: billing balance
-		api.SetupBillingRoutes(v1Group, billingService)
-		log.Printf("💰 Financial API: GET /api/v1/billing/balance/:wallet")
-
-		// 4b3. Clean Core Protocol: Shard-First, Availability Staking, Proxy-Balancer
-		api.SetupCleanCoreRoutes(protectedGroup, cleanCoreService, cfg.TON)
-		log.Printf("🧹 Clean Core Protocol: ACTIVE — POST /admin/models/propagate, POST /pipeline/proof-storage")
-
-		// 4b3b. Global Absorption Protocol: Proxy-Hugging-Bridge, License Guard, Redundancy Scaling
-		api.SetupGlobalAbsorptionRoutes(v1Group, globalAbsorption)
-		log.Printf("🌐 Global Absorption: ACTIVE — GET /api/v1/absorption/search, POST /absorption/search-absorb, POST /absorption/absorb")
-
-		// 4c. Cosmic Genesis: A2A economy, Gold-Hash link, Hardware grants
-		api.SetupCosmicGenesisRoutes(v1Group, protectedGroup, db, agentSubcontractService, goldHashRateService)
-
-		// 4d. MCP Protocol: Agent discovery, tool listing, metered execution
-		api.SetupMCPRoutes(router, v1Group)
-
-		// 5. Ollama connectivity check (inference gateway)
-		ollamaURL := os.Getenv("OLLAMA_URL")
-		if ollamaURL == "" {
-			log.Printf("ℹ️ OLLAMA_URL not set — local Ollama disabled, using Groq Cloud")
-		} else {
-			go func() {
-				c := &http.Client{Timeout: 5 * time.Second}
-				resp, err := c.Get(ollamaURL + "/api/tags")
-				if err != nil {
-					log.Printf("⚠️ Ollama unreachable at %s — using Groq Cloud fallback", ollamaURL)
-					return
-				}
-				defer resp.Body.Close()
-				var data struct {
-					Models []struct{ Name string } `json:"models"`
-				}
-				if json.NewDecoder(resp.Body).Decode(&data) == nil {
-					log.Printf("✅ Ollama: %d model(s) available at %s", len(data.Models), ollamaURL)
-				} else {
-					log.Printf("✅ Ollama reachable at %s", ollamaURL)
-				}
-			}()
-		}
+		// Ollama connectivity check
+		checkOllamaConnectivity()
 
 		log.Printf("NEURAL PULSE: ACTIVE - INTELLIGENCE IS FLOWING")
 		log.Printf("DATA AIRLOCK: ENGAGED - PRIVACY IS ABSOLUTE")
@@ -1226,8 +777,199 @@ func StartApplication(container *dig.Container) error {
 		// 6. Start Server
 		port := cfg.Server.Port
 		log.Printf("🔥 Server starting on port %s", port)
-		if err := router.Run(":" + port); err != nil {
+		if err := deps.Router.Run(":" + port); err != nil {
 			log.Fatalf("❌ Server failed: %v", err)
 		}
 	})
 }
+
+// startGaslessWiring wires TON wallet for gasless subsidies.
+func startGaslessWiring(_ context.Context, deps ApplicationDependencies) {
+	cfg := deps.Cfg
+	if deps.GaslessUserService == nil || cfg.TON.PlatformWalletAddress == "" || cfg.TON.PlatformWalletPrivateKey == "" {
+		return
+	}
+	apiKeys := parseTONAPIKeys(cfg.TON.APIKey, cfg.TON.TONAPIKeys)
+	var w *services.TONWalletService
+	var err error
+	if len(apiKeys) > 1 {
+		w, err = services.NewTONWalletServiceWithKeyRotation(cfg.TON.APIURL, apiKeys, cfg.TON.PlatformWalletAddress, cfg.TON.PlatformWalletPrivateKey)
+		if err == nil {
+			log.Printf("⛽ Gasless User: TON wallet with %d API keys (rotation on 429)", len(apiKeys))
+		}
+	} else {
+		key := ""
+		if len(apiKeys) > 0 {
+			key = apiKeys[0]
+		}
+		w, err = services.NewTONWalletService(cfg.TON.APIURL, key, cfg.TON.PlatformWalletAddress, cfg.TON.PlatformWalletPrivateKey)
+	}
+	if err == nil && w != nil {
+		deps.GaslessUserService.SetTONWallet(w)
+		log.Printf("⛽ Gasless User: TON wallet wired for subsidies and internal swap")
+	}
+}
+
+// startPayoutBatch starts highload wallet payout batching.
+func startPayoutBatch(ctx context.Context, deps ApplicationDependencies) {
+	if deps.PayoutBatchService == nil || deps.HighloadWallet == nil || !deps.HighloadWallet.IsInitialized() {
+		return
+	}
+	deps.PayoutBatchService.SetHighloadWallet(deps.HighloadWallet)
+	if deps.Cfg.TON.GSTDJettonAddress != "" {
+		deps.PayoutBatchService.SetGSTDJettonMaster(deps.Cfg.TON.GSTDJettonAddress)
+	}
+	go deps.PayoutBatchService.Start(ctx)
+	log.Printf("⛽ Payout Batch: Highload Ascension ACTIVE (15m)")
+	if deps.TelegramService != nil {
+		deps.HighloadWallet.SetTelegramAlert(deps.TelegramService.SendMessage)
+		go func() {
+			ticker := time.NewTicker(30 * time.Minute)
+			defer ticker.Stop()
+			deps.HighloadWallet.CheckGasReserveAndAlert(ctx)
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					deps.HighloadWallet.CheckGasReserveAndAlert(ctx)
+				}
+			}
+		}()
+	}
+}
+
+// startTreasuryLoop runs periodic Gold Reserve processing.
+func startTreasuryLoop(ctx context.Context, treasury *services.TreasuryService) {
+	go func() {
+		ticker := time.NewTicker(5 * time.Minute)
+		defer ticker.Stop()
+		log.Printf("💰 Treasury Service Started (Gold Bridge Active)")
+		if err := treasury.ProcessGoldReserves(ctx); err != nil {
+			log.Printf("⚠️ Treasury Error: %v", err)
+		}
+		for {
+			select {
+			case <-ticker.C:
+				if err := treasury.ProcessGoldReserves(ctx); err != nil {
+					log.Printf("⚠️ Treasury Error: %v", err)
+				}
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+}
+
+// startHeartbeatFlush periodically flushes batched heartbeats and marks stale nodes offline.
+func startHeartbeatFlush(ctx context.Context, nodeService *services.NodeService) {
+	go func() {
+		ticker := time.NewTicker(45 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				affected, err := nodeService.FlushHeartbeats(ctx)
+				if err != nil {
+					log.Printf("⚠️  Heartbeat Flush Error: %v", err)
+				} else if affected > 0 {
+					log.Printf("💓 Batched %d heartbeats to database", affected)
+				}
+				stale, _ := nodeService.MarkStaleNodesOffline(ctx, 10*time.Minute)
+				if stale > 0 {
+					log.Printf("⚠️ Marked %d stale nodes offline (10min threshold)", stale)
+				}
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+}
+
+// verifyGenesisLock verifies binary integrity via Genesis Lock.
+func verifyGenesisLock(gl *genesis.GenesisLock) {
+	if err := gl.LoadManifest(); err != nil {
+		log.Printf("⚠️ Genesis Lock: manifest load: %v (will generate)", err)
+	}
+	result, err := gl.Verify()
+	if err != nil {
+		log.Printf("⚠️ Genesis Lock: verification error: %v", err)
+	} else if result.Verified {
+		log.Printf("✅ Genesis Lock: VERIFIED (v%s, %dms)", result.Version, result.LatencyMs)
+	} else {
+		log.Printf("⚠️ Genesis Lock: %d mismatches (non-fatal in dev)", len(result.Mismatches))
+	}
+	gl.StartPeriodicVerification(30 * time.Minute)
+}
+
+// logSwarmStatus logs the Phase 0 Genesis status including swarm ledger init.
+func logSwarmStatus(ctx context.Context, deps ApplicationDependencies) {
+	log.Printf("══════════════════════════════════════════")
+	log.Printf("🔱 PHASE 0 GENESIS: ALL SYSTEMS ONLINE")
+	log.Printf("   A2A Protocol:    %v", deps.A2aServer != nil)
+	log.Printf("   Hive Memory:     %v", deps.HiveStore != nil)
+	log.Printf("   Sentinel:        %v", deps.SentinelEngine != nil)
+	log.Printf("   Genesis Lock:    %v", deps.GenesisLock != nil)
+	log.Printf("   Node Manager:    %v", deps.NodeManager != nil)
+	log.Printf("   LLM Router:      %v (nodes=%d)", deps.LlmRouter != nil, func() int {
+		if deps.LlmRouter != nil {
+			return deps.LlmRouter.GetNodeCount()
+		}
+		return 0
+	}())
+	log.Printf("   Settlement:      %v", deps.SettlementCli != nil)
+	log.Printf("   Cocoon TEE:      %v (proxy=%v)", deps.CocoonBridge != nil && deps.CocoonBridge.IsEnabled(), func() bool {
+		if deps.CocoonBridge != nil {
+			h := deps.CocoonBridge.HealthCheck(ctx)
+			return h.ProxyReachable
+		}
+		return false
+	}())
+	log.Printf("   Hybrid Router:   %v", deps.HybridRouter != nil)
+	log.Printf("   Cocoon Symbiosis: %v", deps.CocoonSymbiosis != nil)
+	if deps.SwarmNode != nil {
+		log.Printf("   Swarm P2P:       true (ID=%s)", deps.SwarmNode.Host.ID().String())
+		if deps.SwarmLedger != nil {
+			if deps.Db != nil {
+				deps.SwarmLedger.SetDB(deps.Db)
+			}
+			go deps.SwarmLedger.StartMempoolWorker(ctx)
+			go deps.SwarmLedger.StartMempoolCleaner(ctx)
+			go deps.SwarmLedger.StartRewardDistributor(ctx)
+			deps.SwarmLedger.EnableStateSync()
+			go func() {
+				time.Sleep(10 * time.Second)
+				deps.SwarmLedger.SyncStateFromPeers(ctx)
+			}()
+			log.Printf("   Swarm Ledger:    ACTIVE — PostgreSQL persistence + Sentinel Consensus")
+		}
+	}
+	log.Printf("══════════════════════════════════════════")
+}
+
+// checkOllamaConnectivity tests Ollama availability asynchronously.
+func checkOllamaConnectivity() {
+	ollamaURL := os.Getenv("OLLAMA_URL")
+	if ollamaURL == "" {
+		log.Printf("ℹ️ OLLAMA_URL not set — local Ollama disabled, using Groq Cloud")
+		return
+	}
+	go func() {
+		c := &http.Client{Timeout: 5 * time.Second}
+		resp, err := c.Get(ollamaURL + "/api/tags")
+		if err != nil {
+			log.Printf("⚠️ Ollama unreachable at %s — using Groq Cloud fallback", ollamaURL)
+			return
+		}
+		defer resp.Body.Close()
+		var data struct {
+			Models []struct{ Name string } `json:"models"`
+		}
+		if json.NewDecoder(resp.Body).Decode(&data) == nil {
+			log.Printf("✅ Ollama: %d model(s) available at %s", len(data.Models), ollamaURL)
+		} else {
+			log.Printf("✅ Ollama reachable at %s", ollamaURL)
+		}
+	}()
+}
+
