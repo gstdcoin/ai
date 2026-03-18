@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -28,6 +29,9 @@ func (op *PlatformOperator) StartAutonomousDeveloper() {
 }
 
 func (op *PlatformOperator) rndDevelopmentCycle() {
+	// Independently progress autonomy profiles
+	exec.Command("sh", "-c", "cd /home/ubuntu/agency-agents && git pull origin main").Run()
+
 	domains := []string{"localization", "frontend", "gstdbot", "backend"}
 	
 	// Randomly pick an area to improve or optimize
@@ -116,19 +120,21 @@ func (op *PlatformOperator) improveFrontend() {
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
 
+	agentProfileBytes, _ := exec.Command("cat", "/home/ubuntu/agency-agents/engineering/engineering-frontend-developer.md").Output()
+	agentProfile := string(agentProfileBytes)
+	if len(agentProfile) > 4000 { agentProfile = agentProfile[:4000] } // cap to prevent token explosion
+
 	// Web Researcher: Find the ABSOLUTE latest UI/UX and React/NextJS optimization trends
 	uiBestPractices, _ := op.SearchWeb("site:awwwards.com OR site:react.dev latest modern UI UX frontend optimization design patterns 2026")
 
-	prompt := fmt.Sprintf(`You are an Autonomous AI Lead Frontend Architect.
-Latest Web Design & React UX Practices:
-%s
+	prompt := fmt.Sprintf(`%s
+Latest Web Design & React UX Practices: %s
 
 Target UI File: '%s'
-
 Propose ONE highly impactful, modern UI/UX, accessibility, or performance improvement to the following React code. Apply stunning dynamic animations if applicable.
 Output ONLY a unified bash script using 'sed' or 'awk' to patch the file. Do NOT output markdown or explanations.
 Code:
-%s`, uiBestPractices, targetFile, code)
+%s`, agentProfile, uiBestPractices, targetFile, code)
 
 	patch, err := op.ai.Ask(ctx, "You are a bash execution service.", prompt)
 	if err != nil { return }
@@ -202,16 +208,20 @@ func (op *PlatformOperator) improveBackend() {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
+	agentProfileBytes, _ := os.ReadFile("/home/ubuntu/agency-agents/engineering/engineering-backend-architect.md")
+	agentProfile := string(agentProfileBytes)
+	if len(agentProfile) > 4000 { agentProfile = agentProfile[:4000] } 
+
 	// Pull state-of-the-art Go patterns from the internet as context
 	goBestPractices, _ := op.SearchWeb("site:golang.org OR site:github.com latest golang performance optimization best practices")
 	
-	prompt := fmt.Sprintf(`You are a Golang Optimization AI tracking modern practices.
+	prompt := fmt.Sprintf(`%s
 Latest Go performance trends (Web Data): %s
 
 Propose ONE structural or efficiency improvement for the file '%s'.
 Output ONLY a 'sed' bash script. Absolutely no markdown or explanations.
 Code:
-%s`, goBestPractices, targetFile, code)
+%s`, agentProfile, goBestPractices, targetFile, code)
 
 	patch, err := op.ai.Ask(ctx, "Bash script only.", prompt)
 	if err != nil { return }
