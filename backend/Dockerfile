@@ -28,8 +28,8 @@ FROM alpine:latest
 USER root
 
 
-# Install CA certificates for HTTPS requests
-RUN apk --no-cache add ca-certificates tzdata
+# Install CA certificates for HTTPS requests, plus Docker CLI and Git for Autonomous Operator
+RUN apk --no-cache add ca-certificates tzdata docker-cli git
 
 # Create non-root user
 RUN addgroup -g 1000 appuser && \
@@ -45,8 +45,8 @@ COPY .env .env
 # Change ownership
 RUN chown -R appuser:appuser /app
 
-# Switch to non-root user
-USER appuser
+# Run as root to allow PlatformOperator access to /var/run/docker.sock
+USER root
 
 # Expose port
 EXPOSE 8080

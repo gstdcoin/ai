@@ -59,6 +59,9 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /home/ubuntu:/home/ubuntu
     deploy:
       replicas: 4
     networks:
