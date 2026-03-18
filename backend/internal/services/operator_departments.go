@@ -55,6 +55,7 @@ func (op *PlatformOperator) StartFullControl() {
 	// DEPT 8: Auto-Coder — Self-healing codebase
 	if op.ai != nil {
 		op.StartAutoCoder()
+		op.StartAutonomousDeveloper() // DEPT 9: Platform R&D
 	}
 
 	// Daily comprehensive AI report — every 24h
@@ -70,6 +71,7 @@ func (op *PlatformOperator) StartFullControl() {
 		"6️⃣ Frontend — UI, CDN, speed (10m)\n" +
 		"7️⃣ Blockchain — on-chain, wallets (10m)\n" +
 		"8️⃣ AutoCoder — Self-healing code (15m)\n" +
+		"9️⃣ R&D — Autonomous Developer (3h)\n" +
 		"📊 Daily AI Report (24h)\n\n" +
 		"_Platform is self-governing._")
 }
@@ -547,6 +549,7 @@ func (op *PlatformOperator) GetFullStatus() map[string]interface{} {
 		{"name": "Frontend", "interval": "10m", "scope": "UI pages, CDN, speed"},
 		{"name": "Blockchain", "interval": "10m", "scope": "wallets, DLN, bridge, pools"},
 		{"name": "AutoCoder", "interval": "15m", "scope": "self-healing code, auto-commits"},
+		{"name": "R&D", "interval": "3h", "scope": "autonomous developer, UI, localization, backend optimization"},
 	}
 	base["mode"] = "TOTAL_CONTROL_24_7_365"
 	base["ai_cost"] = "$0 (Compound Beta via Groq)"
