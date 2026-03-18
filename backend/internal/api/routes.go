@@ -2146,14 +2146,20 @@ func SetupRoutes(deps APIDependencies) {
 			// ═══ PLATFORM OPERATOR (full autonomous AI agent) ═══
 			operator := services.NewPlatformOperator(dbConn, compoundAI, swarmBrain)
 			operator.Start()
+			operator.StartFullControl() // 7 departments, 24/7/365
 
-			// Operator status endpoint
+			// Operator status endpoint — full dept stats
 			v1.GET("/autonomy/operator", func(c *gin.Context) {
-				c.JSON(200, operator.GetStatus())
+				c.JSON(200, operator.GetFullStatus())
+			})
+
+			// Department stats
+			v1.GET("/autonomy/departments", func(c *gin.Context) {
+				c.JSON(200, operator.GetDepartmentStats(dbConn))
 			})
 
 			log.Printf("🧠 SwarmBrain: autonomous platform ONLINE (Compound AI powered)")
-			log.Printf("🤖 PlatformOperator: managing platform, nodes, server — reporting to Telegram")
+			log.Printf("🤖 PlatformOperator: TOTAL CONTROL 24/7/365 — 7 departments active")
 		} else {
 			log.Printf("⚠ SwarmBrain: GROQ_API_KEY not set — autonomous features disabled")
 		}
