@@ -5,7 +5,8 @@ import { useTranslation } from 'next-i18next';
 import { TonConnectButton } from '@tonconnect/ui-react';
 import {
     Home, MessageSquare, Activity, Bot, Cpu,
-    ExternalLink, Menu, X, ArrowRightLeft, Server, Trophy, Repeat, Landmark, Radio
+    ExternalLink, Menu, X, ArrowRightLeft, Server, Trophy, Repeat, Landmark, Radio,
+    Users, Download
 } from 'lucide-react';
 
 interface NavItem {
@@ -33,6 +34,8 @@ export default function EcosystemNav() {
         { key: 'nav_swap', href: `${APP_BASE}/swap`, icon: <Repeat size={16} />, external: !isOnApp },
         { key: 'nav_staking', href: `${APP_BASE}/staking`, icon: <Landmark size={16} />, external: !isOnApp },
         { key: 'nav_nodes', href: `${APP_BASE}/nodes`, icon: <Server size={16} />, external: !isOnApp },
+        { key: 'nav_referrals', href: `${APP_BASE}/referrals`, icon: <Users size={16} />, external: !isOnApp },
+        { key: 'nav_download', href: `${APP_BASE}/downloads`, icon: <Download size={16} />, external: !isOnApp, short: 'Download' },
         { key: 'nav_leaderboard', href: `${APP_BASE}/leaderboard`, icon: <Trophy size={16} />, external: !isOnApp },
         { key: 'nav_stats', href: `${APP_BASE}/stats`, icon: <Activity size={16} />, external: !isOnApp },
         { key: 'nav_monitor', href: `${APP_BASE}/monitor`, icon: <Radio size={16} />, external: !isOnApp },
