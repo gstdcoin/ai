@@ -83,7 +83,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile.web
-    image: gstd-frontend:v14
+    image: gstd-frontend:v15
     restart: unless-stopped
     env_file: ./frontend/.env
     depends_on:
