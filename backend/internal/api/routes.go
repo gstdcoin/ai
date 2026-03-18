@@ -969,7 +969,7 @@ func SetupRoutes(deps APIDependencies) {
 				c.JSON(500, gin.H{"error": "failed to link external wallet"})
 				return
 			}
-			log.Printf("[Wallet] External wallet linked: %s → %s", req.NodeAddress[:16], req.ExternalAddress[:16])
+			log.Printf("[Wallet] External wallet linked: %s → %s", req.NodeAddress[:min(16, len(req.NodeAddress))], req.ExternalAddress[:min(16, len(req.ExternalAddress))])
 			c.JSON(200, gin.H{
 				"status":           "linked",
 				"node_address":     req.NodeAddress,
