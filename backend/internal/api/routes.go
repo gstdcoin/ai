@@ -2132,6 +2132,21 @@ func SetupRoutes(deps APIDependencies) {
 		RegisterMemoryRoutes(v1, dbConn)
 
 		log.Printf("✅ Node OS compatibility routes registered (/models/registry, /memory/*)")
+
+		// ═══ AUTONOMOUS PLATFORM (SwarmBrain + Compound AI) ═══
+		groqKey := os.Getenv("GROQ_API_KEY")
+		if groqKey != "" {
+			compoundAI := services.NewCompoundAI(groqKey)
+			swarmBrain := services.NewSwarmBrain(dbConn, compoundAI)
+			swarmBrain.Start()
+
+			autonomyHandler := NewAutonomyHandler(swarmBrain, compoundAI)
+			autonomyHandler.RegisterRoutes(v1)
+
+			log.Printf("🧠 SwarmBrain: autonomous platform ONLINE (Compound AI powered)")
+		} else {
+			log.Printf("⚠ SwarmBrain: GROQ_API_KEY not set — autonomous features disabled")
+		}
 	}
 
 	// ═══ GSTD APP STORE & NODE DASHBOARD (Umbrel-style) ═══
