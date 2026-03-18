@@ -1111,6 +1111,11 @@ func SetupRoutes(deps APIDependencies) {
 					"next_reward_in":   int((1.0 - hoursSinceLast) * 60),
 					"hours_since_last": hoursSinceLast,
 					"message":          "Node online. Reward in " + fmt.Sprintf("%d", int((1.0-hoursSinceLast)*60)) + " min.",
+					"update": gin.H{
+						"latest_version":   "3.4.0",
+						"update_available": req.NodeVersion != "" && req.NodeVersion != "3.4.0",
+						"update_url":       "https://gstdbot.gstdtoken.com/install.sh",
+					},
 				})
 				return
 			}
@@ -1255,6 +1260,12 @@ func SetupRoutes(deps APIDependencies) {
 				"queries_counted": req.QueriesServed,
 				"reason":          "verified_heartbeat",
 				"message":         "Reward credited to pending balance.",
+				"update": gin.H{
+					"latest_version":   "3.4.0",
+					"update_available": req.NodeVersion != "" && req.NodeVersion != "3.4.0",
+					"update_url":       "https://gstdbot.gstdtoken.com/install.sh",
+					"changelog_url":    "https://github.com/gstdcoin/gstdbot/releases",
+				},
 				"sovereign": gin.H{
 					"revenue_share_pct":  85,
 					"burn_rate_pct":      2,
@@ -1269,6 +1280,29 @@ func SetupRoutes(deps APIDependencies) {
 			c.JSON(410, gin.H{
 				"error":   "deprecated",
 				"message": "Use POST /api/v1/nodes/heartbeat instead. Nodes no longer self-report earnings.",
+			})
+		})
+
+		// ─── Node OTA Update Check ─────────────────────────────────────
+		// GET /nodes/update/check?version=3.3.0 — remote nodes call this to see if an update is available
+		v1.GET("/nodes/update/check", func(c *gin.Context) {
+			currentVersion := c.Query("version")
+			latestVersion := "3.4.0" // Update this when releasing new node versions
+
+			updateAvailable := currentVersion != "" && currentVersion != latestVersion
+
+			c.JSON(200, gin.H{
+				"latest_version":   latestVersion,
+				"current_version":  currentVersion,
+				"update_available": updateAvailable,
+				"update_url":       "https://gstdbot.gstdtoken.com/install.sh",
+				"release_url":      "https://github.com/gstdcoin/gstdbot/releases",
+				"changelog": []string{
+					"v3.4.0: TON Connect fix, Platform Link, Model Failover, Core Modules",
+					"v3.3.0: App Store, DLN, Sovereign Protocol, 27 built-in apps",
+				},
+				"install_command": "curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash",
+				"min_node_version": "20.0.0",
 			})
 		})
 
