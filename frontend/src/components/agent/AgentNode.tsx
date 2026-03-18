@@ -26,8 +26,9 @@ import { ComponentErrorBoundary } from '../common/ComponentErrorBoundary';
 import { toast } from '../../lib/toast';
 import FleetCommandPanel from '../dashboard/FleetCommandPanel';
 import { apiPost } from '../../lib/apiClient';
+import OpenClawPanel from '../openclaw/OpenClawPanel';
 
-type AgentTab = 'ai' | 'skills' | 'miner';
+type AgentTab = 'ai' | 'skills' | 'miner' | 'openclaw';
 
 interface Skill {
   name: string;
@@ -102,6 +103,7 @@ export default function AgentNode() {
     { id: 'ai', label: 'AI', icon: <MessageSquare size={20} />, desc: t('ai_requests', 'AI requests') },
     { id: 'skills', label: t('skills', 'Skills'), icon: <Package size={20} />, desc: t('import_skills', 'Import skills') },
     { id: 'miner', label: t('miner', 'Miner'), icon: <Server size={20} />, desc: t('earn_gstd', 'Earn GSTD') },
+    { id: 'openclaw', label: 'OpenClaw', icon: <span style={{ fontSize: 20, lineHeight: 1 }}>🦞</span>, desc: 'Robot control panel' },
   ];
 
   return (
@@ -337,6 +339,10 @@ export default function AgentNode() {
               </div>
             </div>
           </div>
+        )}
+
+        {activeTab === 'openclaw' && (
+          <OpenClawPanel />
         )}
       </main>
     </div>

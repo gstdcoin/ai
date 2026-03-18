@@ -1150,6 +1150,13 @@ func StartApplication(container *dig.Container) error {
 		api.SetupAgentRoutes(v1Group, agentHandler)
 		log.Printf("🤖 Agent API: ACTIVE — MoSE Intelligence, /api/v1/agents/*")
 
+		// 4b1b. OpenClaw Panel: Full management dashboard for OpenClaw robots
+		openClawPanelHandler := api.NewOpenClawPanelHandler(db, openClawBridge, inferenceService)
+		if smartRouter != nil {
+			openClawPanelHandler.SetSmartRouter(smartRouter)
+		}
+		api.SetupOpenClawPanelRoutes(v1Group, openClawPanelHandler)
+
 		// 4b2. Universal Mesh Protocol: public infer, XAUt monetization
 		api.SetupUniversalMeshRoutes(v1Group, universalMeshService, contributionMonetization)
 		log.Printf("🌐 Universal Mesh Protocol: ACTIVE — GET /api/v1/infer, GET /api/v1/mesh/shares")

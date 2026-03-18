@@ -1,1 +1,114 @@
-{"name":"GSTD A2A Node","version":"1.0.0","description":"Join the GSTD decentralized AI swarm. Your agent becomes a node \u2014 earning GSTD for inference, sharing knowledge via Hive Memory, and participating in swarm consensus.","author":"gstdcoin","repository":"https://github.com/gstdcoin/ai","license":"MIT","icon":"\ud83d\udd31","tags":["ai","swarm","decentralized","inference","ton","a2a"],"categories":["compute","ai-agent","blockchain"],"capabilities":["llm-inference","embedding","knowledge-search","task-execution","consensus-voting"],"requirements":{"min_memory_mb":512,"min_cpu_cores":2,"docker":true,"internet":true},"endpoints":{"api":"https://app.gstdtoken.com","ws":"wss://app.gstdtoken.com/ws","a2a":"redis://gstd-redis:6379"},"config":{"GSTD_NODE_ID":{"type":"string","description":"Unique node identifier (auto-generated if empty)","required":false},"GSTD_WALLET_ADDRESS":{"type":"string","description":"TON wallet address to receive GSTD rewards","required":true},"OLLAMA_URL":{"type":"string","description":"URL to local Ollama instance for LLM inference","default":"http://localhost:11434","required":false}},"actions":{"infer":{"description":"Run LLM inference on the swarm","input":{"model":"string","prompt":"string","max_tokens":"number"},"output":{"content":"string","tokens_used":"number","node_id":"string"}},"search_knowledge":{"description":"Search Hive Memory for relevant knowledge","input":{"query":"string","top_k":"number"},"output":{"results":"array"}},"store_knowledge":{"description":"Store knowledge block in Hive Memory","input":{"content":"string","type":"string","tags":"array"},"output":{"id":"string","merkle_root":"string"}},"get_status":{"description":"Get node status and earnings","output":{"node_id":"string","mode":"string","gstd_balance":"number","tasks_today":"number"}}},"install":{"linux":"curl -fsSL https://raw.githubusercontent.com/gstdcoin/ai/main/scripts/node-runner.sh | bash","windows":"iwr -useb https://raw.githubusercontent.com/gstdcoin/ai/main/scripts/node-runner.ps1 | iex","docker":"docker run -d --name gstd-node ghcr.io/gstdcoin/gstd-node:latest"},"skill":"https://github.com/gstdcoin/ai/blob/main/docs/skills/SKILL.md"}
+{
+  "name": "GSTD A2A Node",
+  "version": "2.1.0",
+  "description": "Join the GSTD decentralized AI swarm. Your agent becomes a node — earning GSTD for inference, sharing knowledge via Hive Memory, and participating in swarm consensus. Includes full OpenClaw robot control panel with groq/compound AI.",
+  "author": "gstdcoin",
+  "repository": "https://github.com/gstdcoin/ai",
+  "license": "MIT",
+  "icon": "🔱",
+  "tags": ["ai", "swarm", "decentralized", "inference", "ton", "a2a", "openclaw", "robotics"],
+  "categories": ["compute", "ai-agent", "blockchain", "robotics"],
+  "capabilities": ["llm-inference", "embedding", "knowledge-search", "task-execution", "consensus-voting", "openclaw-control", "compound-reasoning"],
+  "requirements": {
+    "min_memory_mb": 512,
+    "min_cpu_cores": 2,
+    "docker": true,
+    "internet": true
+  },
+  "endpoints": {
+    "api": "https://app.gstdtoken.com",
+    "ws": "wss://app.gstdtoken.com/ws",
+    "a2a": "redis://gstd-redis:6379",
+    "openclaw_panel": "https://app.gstdtoken.com/dashboard",
+    "openclaw_api": "https://api.gstdtoken.com/api/v1/openclaw"
+  },
+  "default_model": "groq/compound",
+  "config": {
+    "GSTD_NODE_ID": {
+      "type": "string",
+      "description": "Unique node identifier (auto-generated if empty)",
+      "required": false
+    },
+    "GSTD_WALLET_ADDRESS": {
+      "type": "string",
+      "description": "TON wallet address to receive GSTD rewards",
+      "required": true
+    },
+    "OLLAMA_URL": {
+      "type": "string",
+      "description": "URL to local Ollama instance for LLM inference",
+      "default": "http://localhost:11434",
+      "required": false
+    },
+    "OPENCLAW_ENABLED": {
+      "type": "boolean",
+      "description": "Enable OpenClaw robot control inside the node",
+      "default": "true",
+      "required": false
+    },
+    "GSTD_DEFAULT_MODEL": {
+      "type": "string",
+      "description": "Default model for inference (groq/compound is recommended)",
+      "default": "groq/compound",
+      "required": false
+    }
+  },
+  "actions": {
+    "infer": {
+      "description": "Run LLM inference on the swarm",
+      "input": {"model": "string", "prompt": "string", "max_tokens": "number"},
+      "output": {"content": "string", "tokens_used": "number", "node_id": "string"}
+    },
+    "search_knowledge": {
+      "description": "Search Hive Memory for relevant knowledge",
+      "input": {"query": "string", "top_k": "number"},
+      "output": {"results": "array"}
+    },
+    "store_knowledge": {
+      "description": "Store knowledge block in Hive Memory",
+      "input": {"content": "string", "type": "string", "tags": "array"},
+      "output": {"id": "string", "merkle_root": "string"}
+    },
+    "get_status": {
+      "description": "Get node status and earnings",
+      "output": {"node_id": "string", "mode": "string", "gstd_balance": "number", "tasks_today": "number"}
+    },
+    "openclaw_think": {
+      "description": "Use groq/compound for robot planning and reasoning",
+      "input": {"prompt": "string", "model": "string"},
+      "output": {"response": "string", "model": "string"}
+    },
+    "openclaw_vision": {
+      "description": "Analyze images for robot vision tasks",
+      "input": {"prompt": "string", "image": "string"},
+      "output": {"response": "string"}
+    },
+    "openclaw_create_task": {
+      "description": "Create a task for OpenClaw robots",
+      "input": {"task_type": "string", "description": "string", "reward_gstd": "number"},
+      "output": {"task_id": "string", "status": "string"}
+    }
+  },
+  "openclaw": {
+    "protocol": "openclaw-gstd/1.0",
+    "rpc_methods": [
+      "claw.register", "claw.heartbeat", "claw.status",
+      "claw.getAvailableTasks", "claw.claimTask", "claw.submitResult",
+      "claw.think", "claw.vision", "claw.getNetworkStats"
+    ],
+    "panel_features": [
+      "Dashboard with live stats",
+      "Agent management (register, monitor, status)",
+      "Task marketplace (create, claim, complete)",
+      "Compound AI inference (groq/compound)",
+      "Vision analysis for robot sensors",
+      "Model selection (5+ models available)"
+    ]
+  },
+  "install": {
+    "linux": "curl -fsSL https://raw.githubusercontent.com/gstdcoin/ai/main/scripts/node-runner.sh | bash",
+    "windows": "iwr -useb https://raw.githubusercontent.com/gstdcoin/ai/main/scripts/node-runner.ps1 | iex",
+    "docker": "docker run -d --name gstd-node -e OPENCLAW_ENABLED=true -e GSTD_DEFAULT_MODEL=groq/compound ghcr.io/gstdcoin/gstd-node:latest"
+  },
+  "skill": "https://github.com/gstdcoin/ai/blob/main/docs/skills/SKILL.md"
+}
