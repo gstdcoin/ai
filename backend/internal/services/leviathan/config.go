@@ -44,9 +44,13 @@ func LoadConfig() *Config {
 	}
 	if t := os.Getenv("LEVIATHAN_TELEGRAM_BOT_TOKEN"); t != "" {
 		cfg.TelegramBotToken = t
+	} else if t := os.Getenv("TELEGRAM_BOT_TOKEN"); t != "" {
+		cfg.TelegramBotToken = t // Fallback to platform token
 	}
 	if c := os.Getenv("LEVIATHAN_TELEGRAM_CHAT_ID"); c != "" {
 		cfg.TelegramChatID = c
+	} else if c := os.Getenv("TELEGRAM_CHAT_ID"); c != "" {
+		cfg.TelegramChatID = c // Fallback to platform chat
 	}
 	if d := os.Getenv("LEVIATHAN_DELTA_TRIGGER_PCT"); d != "" {
 		if v, err := strconv.ParseFloat(d, 64); err == nil && v > 0 {
