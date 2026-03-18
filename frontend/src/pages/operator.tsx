@@ -4,7 +4,7 @@ import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { GetStaticProps } from 'next';
 import { API_BASE_URL } from '../lib/config';
 import { Activity, Cpu, Shield, Zap, Terminal, RefreshCw, Layers } from 'lucide-react';
-import EcosystemNav from '../components/global/EcosystemNav';
+import EcosystemNav from '../components/layout/EcosystemNav';
 import Footer from '../components/layout/Footer';
 
 interface OperatorStatus {
@@ -115,7 +115,7 @@ export default function OperatorDashboard() {
                       <span className={status.server_health.memory_usage_pct > 80 ? 'text-red-400' : 'text-emerald-400'}>{status.server_health.memory_usage_pct}%</span>
                     </div>
                     <div className="w-full bg-white/10 rounded-full h-1.5">
-                      <div className="bg-emerald-500/80 h-1.5 rounded-full" style={{ width: \`\${status.server_health.memory_usage_pct}%\` }}></div>
+                      <div className="bg-emerald-500/80 h-1.5 rounded-full" style={{ width: `${status.server_health.memory_usage_pct}%` }}></div>
                     </div>
                   </div>
                   <div>
@@ -124,7 +124,7 @@ export default function OperatorDashboard() {
                       <span>{status.server_health.load_avg_1m.toFixed(2)}</span>
                     </div>
                     <div className="w-full bg-white/10 rounded-full h-1.5">
-                      <div className="bg-cyan-500/80 h-1.5 rounded-full" style={{ width: \`\${Math.min(100, status.server_health.load_avg_1m*20)}%\` }}></div>
+                      <div className="bg-cyan-500/80 h-1.5 rounded-full" style={{ width: `${Math.min(100, status.server_health.load_avg_1m*20)}%` }}></div>
                     </div>
                   </div>
 

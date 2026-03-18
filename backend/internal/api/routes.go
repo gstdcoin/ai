@@ -2141,7 +2141,8 @@ func SetupRoutes(deps APIDependencies) {
 			swarmBrain.Start()
 
 			autonomyHandler := NewAutonomyHandler(swarmBrain, compoundAI)
-			autonomyHandler.RegisterRoutes(v1)
+			adminGroupAuto := v1.Group("/", RequireAdminWallet(tonConfig))
+			autonomyHandler.RegisterRoutes(adminGroupAuto)
 
 			// ═══ PLATFORM OPERATOR (full autonomous AI agent) ═══
 			operator := services.NewPlatformOperator(dbConn, compoundAI, swarmBrain)

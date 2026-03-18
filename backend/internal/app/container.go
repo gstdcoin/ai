@@ -1166,7 +1166,8 @@ func StartApplication(container *dig.Container) error {
 		if smartRouter != nil {
 			openClawPanelHandler.SetSmartRouter(smartRouter)
 		}
-		api.SetupOpenClawPanelRoutes(v1Group, openClawPanelHandler)
+		adminGroupClaw := v1Group.Group("/", api.RequireAdminWallet(cfg.TON))
+		api.SetupOpenClawPanelRoutes(adminGroupClaw, openClawPanelHandler)
 
 		// 4b2. Universal Mesh Protocol: public infer, XAUt monetization
 		api.SetupUniversalMeshRoutes(v1Group, universalMeshService, contributionMonetization)

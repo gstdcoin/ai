@@ -153,7 +153,7 @@ func (op *PlatformOperator) engineeringCycle() {
 		url  string
 	}{
 		{"health", "http://localhost:8080/api/v1/health"},
-		{"nodes", "http://localhost:8080/api/v1/nodes"},
+		{"nodes", "http://localhost:8080/api/v1/nodes/public"},
 		{"autonomy", "http://localhost:8080/api/v1/autonomy/status"},
 		{"wallet-balance", "http://localhost:8080/api/v1/stats/public"},
 	}
