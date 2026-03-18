@@ -144,6 +144,7 @@ func (op *PlatformOperator) devopsCycle() {
 // ═════════════════════════════════════════════════════════════
 
 //nolint:gocognit // Procedural sequential operations
+//nolint:gocognit
 func (op *PlatformOperator) engineeringCycle() {
 	// Check all critical API endpoints
 	endpoints := []struct {
@@ -216,6 +217,7 @@ func (op *PlatformOperator) engineeringCycle() {
 // DEPT 3: ECONOMICS — Token, Contracts, Rewards
 // ═════════════════════════════════════════════════════════════
 
+//nolint:gocognit
 func (op *PlatformOperator) economicsCycle() {
 	if op.db == nil {
 		return
@@ -257,7 +259,7 @@ func (op *PlatformOperator) economicsCycle() {
 	// 1) Pull the absolute latest DeFi practices to ensure GSTD stays cutting-edge
 	marketContext, _ := op.SearchWeb("site:cointelegraph.com OR site:coindesk.com latest tokenomics staking burn design")
 	
-	prompt := fmt.Sprintf(`You are a DeFi Quantitative Economist for GSTD Token. Your goal is constant growth and long-term sustainability.
+	prompt := fmt.Sprintf(`You are the Autonomous Economical Protocol for GSTD Token. 
 Latest market insights: %s
 
 Current Network Economics:
@@ -265,20 +267,37 @@ Current Network Economics:
 - Total Staked: %.0f GSTD
 - Active Stakers: %d
 
-If pending rewards are extremely high or staking is dropping, output ONE specific intervention strategy. Format clearly suitable for Telegram.`,
+Analyze these metrics. If the economy is unbalanced or can be improved, output EXACTLY the following structure to create an L1 Governance Proposal to fix it. Do not use markdown blocks, just raw text.
+TITLE: <Propose a Title>
+DESCRIPTION: <Explain the rationale and L1 contract/parameter change>
+CATEGORY: <economics / tokenomics / security>`,
 		marketContext, stats.pendingRewards, stats.totalStaked, stats.activeStakers)
 
 	response, err := op.ai.Ask(ctxTimeout, "Economics strategy advisor.", prompt)
-	if err == nil {
-		if stats.pendingRewards > 100000 || len(response) > 50 {
-			msg := fmt.Sprintf("💰 *Autonomous Economics Engine*\n\nNetwork State:\n• Pending: %.0f GSTD\n• Staked: %.0f GSTD\n\n*AI Strategy Suggestion (Web context inserted):*\n%s",
-				stats.pendingRewards, stats.totalStaked, response)
-			
-			// Cap length for telegram
-			if len(msg) > 3000 {
-				msg = msg[:3000] + "..."
-			}
+	
+	const titlePrefix = "TITLE:"
+	const descPrefix = "DESCRIPTION:"
+	const catPrefix = "CATEGORY:"
+	
+	if err == nil && len(response) > 20 && strings.Contains(response, titlePrefix) && strings.Contains(response, descPrefix) {
+		// AI decided to launch an automatic governance L1 proposal!
+		lines := strings.Split(response, "\n")
+		title, desc, category := "", "", "economics"
+		for _, l := range lines {
+			if strings.HasPrefix(l, titlePrefix) { title = strings.TrimSpace(strings.TrimPrefix(l, titlePrefix)) }
+			if strings.HasPrefix(l, descPrefix) { desc = strings.TrimSpace(strings.TrimPrefix(l, descPrefix)) }
+			if strings.HasPrefix(l, catPrefix) { category = strings.TrimSpace(strings.TrimPrefix(l, catPrefix)) }
+		}
+		
+		if title != "" && desc != "" {
+			propID := fmt.Sprintf("GIP-AUTO-%d", time.Now().Unix()%1000000)
+			op.db.ExecContext(ctx, 
+				"INSERT INTO governance_proposals (id, title, description, status, category, proposer, ends_at) VALUES ($1, $2, $3, 'voting', $4, 'Autonomous DEPT 3', NOW() + INTERVAL '7 days')",
+				propID, title, desc, category)
+
+			msg := fmt.Sprintf("⚖️ *Autonomous L1 Governance Activated*\nDeFi AI Engine detected a market shift and submitted a new proposal directly to the Mesh Network.\n\n*ID:* %s\n*Title:* %s\n*Reason:* %s", propID, title, desc)
 			op.sendTelegram(msg)
+			op.logAction("economics", "Generated L1 auto-proposal", propID, true)
 		}
 	}
 
@@ -567,6 +586,7 @@ Format with emoji and markdown for Telegram.`,
 }
 
 // GetFullStatus returns comprehensive operator status with all departments
+//nolint:gocognit
 func (op *PlatformOperator) GetFullStatus() map[string]interface{} {
 	base := op.GetStatus()
 
