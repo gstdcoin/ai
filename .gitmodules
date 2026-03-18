@@ -5,3 +5,11 @@
 [submodule "gstd-bridge"]
 	path = gstd-bridge
 	url = https://github.com/gstdcoin/gstd-bridge.git
+
+[submodule "ai-prompts"]
+	path = ai-prompts
+	url = https://github.com/x1xhlol/system-prompts-and-models-of-ai-tools.git
+
+[submodule "mcp-server"]
+	path = mcp-server
+	url = ./mcp-server
