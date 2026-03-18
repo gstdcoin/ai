@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -350,19 +351,33 @@ func (op *PlatformOperator) growthCycle() {
 		defer cancel()
 
 		response, err := op.ai.Ask(ctx2,
-			"You are the growth strategist for GSTD network. Suggest 3 specific, actionable strategies to increase node count.",
-			fmt.Sprintf("Current state: %d total nodes, +%d this week (%.1f%% growth), %d users, %d agents, %d referrals this week",
-				growth.totalNodes, growth.newNodes7d, growthRate, growth.totalUsers, growth.totalAgents, growth.referrals7d))
-		if err == nil {
-			// Summarize to telegram (first 500 chars)
-			summary := response
-			if len(summary) > 500 {
-				summary = summary[:500] + "..."
+			"You are the Growth Strategist 'marketing-growth-hacker' for GSTD. We need to acquire more nodes immediately.",
+			fmt.Sprintf("Current state: %d total nodes, +%d this week (%.1f%% growth). Output exactly 1 viral social-media or node-referral task that users can perform to earn GSTD. Format exactly:\nTITLE: <title>\nDESCRIPTION: <description>\nREWARD: <number of GSTD from 10 to 100>",
+				growth.totalNodes, growth.newNodes7d, growthRate))
+				
+		if err == nil && len(response) > 20 && strings.Contains(response, "TITLE:") && strings.Contains(response, "REWARD:") {
+			lines := strings.Split(response, "\n")
+			title, desc := "", ""
+			rewardStr := "50" // default
+			
+			for _, l := range lines {
+				if strings.HasPrefix(l, "TITLE:") { title = strings.TrimSpace(strings.TrimPrefix(l, "TITLE:")) }
+				if strings.HasPrefix(l, "DESCRIPTION:") { desc = strings.TrimSpace(strings.TrimPrefix(l, "DESCRIPTION:")) }
+				if strings.HasPrefix(l, "REWARD:") { rewardStr = strings.TrimSpace(strings.TrimPrefix(l, "REWARD:")) }
 			}
-			op.sendTelegram(fmt.Sprintf("📈 *Growth AI Analysis*\n\n"+
-				"Network: %d nodes (+%d/7d), %d users\n\n"+
-				"*AI Recommendations:*\n%s",
-				growth.totalNodes, growth.newNodes7d, growth.totalUsers, summary))
+			
+			if title != "" {
+				taskID := fmt.Sprintf("GROWTH-TASK-%d", time.Now().Unix()%1000000)
+				rewardF, _ := strconv.ParseFloat(rewardStr, 64)
+				if rewardF < 1 || rewardF > 1000 { rewardF = 50.0 }
+				
+				op.db.ExecContext(ctx, 
+					"INSERT INTO bridge_tasks (id, description, status, required_capability, reward_gstd) VALUES ($1, $2, 'pending', 'marketing', $3)",
+					taskID, fmt.Sprintf("%s: %s", title, desc), rewardF)
+					
+				op.sendTelegram(fmt.Sprintf("🚀 *Autonomous Growth AI Activated*\nGrowth rate was %.1f%%. AI deployed a new high-yield Network Expansion Task to the node task pool to acquire users.\n\n*Task:* %s\n*Reward:* %.0f GSTD", growthRate, title, rewardF))
+				op.logAction("growth", "Created autonomous marketing task", taskID, true)
+			}
 		}
 	}
 
