@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { TonConnectButton } from '@tonconnect/ui-react';
 import {
-    Home, MessageSquare, Activity, Bot,
+    Home, MessageSquare, Activity, Bot, Cpu,
     ExternalLink, Menu, X, ArrowRightLeft, Server, Trophy, Repeat, Landmark, Radio
 } from 'lucide-react';
 
@@ -28,6 +28,7 @@ export default function EcosystemNav() {
     const navItems: NavItem[] = [
         { key: 'home', href: isOnApp ? '/' : APP_BASE, icon: <Home size={16} />, external: !isOnApp },
         { key: 'nav_chat', href: `${APP_BASE}/chat`, icon: <MessageSquare size={16} />, external: !isOnApp },
+        { key: 'nav_operator', href: `${APP_BASE}/operator`, icon: <Cpu size={16} />, external: !isOnApp, short: 'Operator' },
         { key: 'nav_bridge', href: `${APP_BASE}/bridge`, icon: <ArrowRightLeft size={16} />, external: !isOnApp },
         { key: 'nav_swap', href: `${APP_BASE}/swap`, icon: <Repeat size={16} />, external: !isOnApp },
         { key: 'nav_staking', href: `${APP_BASE}/staking`, icon: <Landmark size={16} />, external: !isOnApp },
