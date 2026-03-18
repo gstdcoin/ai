@@ -22,17 +22,15 @@ RUN CGO_ENABLED=1 GOOS=linux GOGC=50 go build -a -p 2 \
     -o server ./main.go
 
 # Stage 2: Runtime
-FROM alpine:latest
+FROM alpine:3.19
 # FROM gstd-backend:latest
 
 USER root
 
 
 # Install CA certificates for HTTPS requests, plus Docker CLI and Git for Autonomous Operator
-RUN apk --no-cache add ca-certificates tzdata docker-cli git
-
-# Create non-root user
-RUN addgroup -g 1000 appuser && \
+RUN apk --no-cache add ca-certificates docker-cli git tzdata && \
+    addgroup -g 1000 appuser && \
     adduser -D -u 1000 -G appuser appuser
 
 WORKDIR /app
