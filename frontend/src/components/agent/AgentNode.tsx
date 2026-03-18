@@ -211,7 +211,7 @@ export default function AgentNode() {
                             <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-400 font-bold">
                               v{skill.version}
                             </span>
-                            {skill.price_gstd && (
+                            {skill.price_gstd > 0 && (
                               <span className="text-[10px] text-amber-400">{skill.price_gstd} GSTD</span>
                             )}
                           </div>
@@ -285,15 +285,13 @@ export default function AgentNode() {
                   >
                     {isIgniting ? (
                       <div className="w-7 h-7 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
-                    ) : isMining ? (
-                      <Activity size={28} />
                     ) : (
-                      <Server size={28} />
+                      isMining ? <Activity size={28} /> : <Server size={28} />
                     )}
                   </div>
                   <div className="text-left">
                     <span className="block text-2xl uppercase tracking-tighter font-black">
-                      {isIgniting ? 'Igniting...' : isMining ? 'Online' : 'Ignite'}
+                      {isIgniting ? 'Igniting...' : (isMining ? 'Online' : 'Ignite')}
                     </span>
                     <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest block mt-1">{t('platform_node', 'Platform Node')}</span>
                   </div>
@@ -302,7 +300,7 @@ export default function AgentNode() {
                   className={`flex items-center gap-2 px-4 py-1.5 rounded-full border text-[10px] font-black tracking-widest uppercase ${isMining ? 'bg-red-500/20 border-red-500/30' : 'bg-cyan-500/20 border-cyan-500/30'
                     }`}
                 >
-                  {isIgniting ? '...' : isMining ? 'Stop' : 'Start'}
+                  {isIgniting ? '...' : (isMining ? 'Stop' : 'Start')}
                 </div>
               </button>
 

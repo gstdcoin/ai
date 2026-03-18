@@ -14,18 +14,13 @@ import { useTranslation } from 'next-i18next';
 import {
   BarChart3,
   Bot,
-  Cpu,
   Zap,
   Send,
   RefreshCw,
   Plus,
-  ChevronRight,
-  Activity,
   Sparkles,
-  Globe,
   Shield,
   Brain,
-  Eye,
   Layout,
   ListTodo,
   Settings2,
@@ -74,7 +69,7 @@ interface ModelEntry {
 }
 
 export default function OpenClawPanel() {
-  const { t } = useTranslation('common');
+  useTranslation('common');
   const [tab, setTab] = useState<PanelTab>('dashboard');
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [agents, setAgents] = useState<AgentEntry[]>([]);
@@ -233,7 +228,7 @@ export default function OpenClawPanel() {
           </div>
         </div>
         <button
-          onClick={() => { fetchDashboard(); if (tab === 'agents') fetchAgents(); if (tab === 'tasks') fetchTasks(); }}
+          onClick={() => { fetchDashboard(); if (tab === 'agents') { fetchAgents(); } if (tab === 'tasks') { fetchTasks(); } }}
           className="p-2 rounded-lg bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 transition-all"
         >
           <RefreshCw size={14} />

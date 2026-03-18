@@ -15,6 +15,8 @@ import (
 // OpenClawPanelHandler provides a full management dashboard for OpenClaw robots.
 // It exposes public REST endpoints so that the node frontend can render a
 // complete control panel — agents, tasks, stats, compound-model inference.
+
+const defaultClawModel = "groq/compound"
 type OpenClawPanelHandler struct {
 	db       *sql.DB
 	clawSvc  *services.OpenClawBridgeService
@@ -57,7 +59,7 @@ func (h *OpenClawPanelHandler) Dashboard(c *gin.Context) {
 			"completed": completedTasks,
 		},
 		"total_earned_gstd": totalEarned,
-		"default_model":     "groq/compound",
+		"default_model":     defaultClawModel,
 		"protocol":          "openclaw-gstd/1.0",
 		"capabilities": []string{
 			"claw.register", "claw.heartbeat", "claw.status",
@@ -262,7 +264,7 @@ func (h *OpenClawPanelHandler) Think(c *gin.Context) {
 	}
 	model := req.Model
 	if model == "" {
-		model = "groq/compound"
+		model = defaultClawModel
 	}
 
 	// Use the OpenClaw bridge's RPC think if inference is available
@@ -320,7 +322,7 @@ func (h *OpenClawPanelHandler) Vision(c *gin.Context) {
 	}
 	c.JSON(200, gin.H{
 		"result": resp.Result,
-		"model":  "groq/compound",
+		"model":  defaultClawModel,
 		"source": "openclaw-gstd-vision",
 	})
 }
@@ -332,7 +334,7 @@ func (h *OpenClawPanelHandler) Vision(c *gin.Context) {
 func (h *OpenClawPanelHandler) ListModels(c *gin.Context) {
 	models := []gin.H{
 		{
-			"id": "groq/compound", "name": "Groq Compound",
+			"id": defaultClawModel, "name": "Groq Compound",
 			"description": "Multi-model compound agent with web search and reasoning",
 			"default":     true, "capabilities": []string{"text", "reasoning", "web-search", "planning"},
 		},
@@ -357,7 +359,7 @@ func (h *OpenClawPanelHandler) ListModels(c *gin.Context) {
 			"default":     false, "capabilities": []string{"text", "multilingual", "code"},
 		},
 	}
-	c.JSON(200, gin.H{"models": models, "default": "groq/compound"})
+	c.JSON(200, gin.H{"models": models, "default": defaultClawModel})
 }
 
 // ════════════════════════════════════════════════════════════════
