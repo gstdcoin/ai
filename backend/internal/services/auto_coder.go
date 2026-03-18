@@ -18,11 +18,14 @@ import (
 // modifies the code on disk, and commits the change to Git.
 // ═══════════════════════════════════════════════════════════════
 
+const deptAutoCoder = "auto-coder"
+
 func (op *PlatformOperator) StartAutoCoder() {
-	go op.loop("auto-coder", 15*time.Minute, op.autoCoderCycle)
+	go op.loop(deptAutoCoder, 15*time.Minute, op.autoCoderCycle)
 	log.Println("🤖 DEPT 8: AUTO-CODER ACTIVE (Self-Healing Codebase)")
 }
 
+//nolint:gocognit // Sequential script-like execution for self-healing
 func (op *PlatformOperator) autoCoderCycle() {
 	// 1. Scan recent logs for panics or severe errors
 	out, err := exec.Command("sh", "-c",
@@ -40,7 +43,7 @@ func (op *PlatformOperator) autoCoderCycle() {
 	op.mu.RUnlock()
 	if recentFixes > 0 {
 		for i := 1; i <= 5 && i <= recentFixes; i++ {
-			if op.operatorLog[recentFixes-i].Category == "auto-coder" {
+			if op.operatorLog[recentFixes-i].Category == deptAutoCoder {
 				// We already did a fix recently, wait to see if it worked
 				return
 			}
@@ -106,7 +109,7 @@ Make sure the command applies correctly.`, errorLog, hostFile, codeContent, host
 	fixOut, fixErr := fixCmd.CombinedOutput()
 	
 	if fixErr != nil {
-		op.logAction("auto-coder", "Failed to apply AI patch", string(fixOut), false)
+		op.logAction(deptAutoCoder, "Failed to apply AI patch", string(fixOut), false)
 		return
 	}
 
@@ -126,6 +129,6 @@ Make sure the command applies correctly.`, errorLog, hostFile, codeContent, host
 	// 7. Restart the service to apply the fix
 	exec.Command("sh", "-c", "docker restart ubuntu-backend-blue-1 ubuntu-backend-blue-2 ubuntu-backend-blue-3 ubuntu-backend-blue-4").Run()
 
-	op.logAction("auto-coder", fmt.Sprintf("Applied self-healing to %s", containerFile), "success", true)
+	op.logAction(deptAutoCoder, fmt.Sprintf("Applied self-healing to %s", containerFile), "success", true)
 	op.sendTelegram(fmt.Sprintf("✅ *Auto-Coder Self-Healing Success*\n\nFile patched: `%s`\nCode compiled and committed. Services restarted.", containerFile))
 }

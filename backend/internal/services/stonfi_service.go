@@ -288,8 +288,8 @@ func (s *StonFiService) GetSwapQuote(ctx context.Context, amountIn int64, tokenI
 
 	// If using aliases for XAUt in request but pool has real address
 	if isXautIn {
-		actualTokenIn = poolData.Pool.Token0
-	} // Slight hack: if we know it's the XAUt pool pair, we can deduce.
+		actualTokenIn = poolData.Pool.Token0 // Heuristic: resolve alias systematically to established exact pair token.
+	}
 
 	// Better logic:
 	if actualTokenIn == poolData.Pool.Token0 {

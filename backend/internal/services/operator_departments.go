@@ -11,6 +11,8 @@ import (
 	"time"
 )
 
+const queryCountNodes = "SELECT COUNT(*) FROM nodes"
+
 // ═══════════════════════════════════════════════════════════════
 // operator_departments.go — Total Control Departments
 //
@@ -80,6 +82,7 @@ func (op *PlatformOperator) StartFullControl() {
 // DEPT 1: DEVOPS — Repository & Deployment Management
 // ═════════════════════════════════════════════════════════════
 
+//nolint:gocognit // Procedural sequential operations
 func (op *PlatformOperator) devopsCycle() {
 	var findings []string
 
@@ -140,6 +143,7 @@ func (op *PlatformOperator) devopsCycle() {
 // DEPT 2: ENGINEERING — API Health, Error Detection
 // ═════════════════════════════════════════════════════════════
 
+//nolint:gocognit // Procedural sequential operations
 func (op *PlatformOperator) engineeringCycle() {
 	// Check all critical API endpoints
 	endpoints := []struct {
@@ -199,7 +203,7 @@ func (op *PlatformOperator) engineeringCycle() {
 	if op.db != nil {
 		start := time.Now()
 		var count int
-		op.db.QueryRow("SELECT COUNT(*) FROM nodes").Scan(&count)
+		op.db.QueryRow(queryCountNodes).Scan(&count)
 		latency := time.Since(start).Milliseconds()
 		if latency > 1000 {
 			op.sendTelegram(fmt.Sprintf("⚠️ *Slow DB Query*\nSELECT COUNT nodes: %dms", latency))
@@ -307,7 +311,7 @@ func (op *PlatformOperator) growthCycle() {
 	op.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM users").Scan(&growth.totalUsers)
 	op.db.QueryRowContext(ctx,
 		"SELECT COUNT(*) FROM users WHERE created_at > NOW() - INTERVAL '24 hours'").Scan(&growth.newUsers24h)
-	op.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM nodes").Scan(&growth.totalNodes)
+	op.db.QueryRowContext(ctx, queryCountNodes).Scan(&growth.totalNodes)
 	op.db.QueryRowContext(ctx,
 		"SELECT COUNT(*) FROM nodes WHERE created_at > NOW() - INTERVAL '24 hours'").Scan(&growth.newNodes24h)
 	op.db.QueryRowContext(ctx,
@@ -611,7 +615,7 @@ func (op *PlatformOperator) GetDepartmentStats(db *sql.DB) map[string]interface{
 	result := make(map[string]interface{})
 
 	var nodes, onlineNodes, users, agents, tasks, referrals int
-	db.QueryRowContext(ctx, "SELECT COUNT(*) FROM nodes").Scan(&nodes)
+	db.QueryRowContext(ctx, queryCountNodes).Scan(&nodes)
 	db.QueryRowContext(ctx, "SELECT COUNT(*) FROM nodes WHERE status = 'online'").Scan(&onlineNodes)
 	db.QueryRowContext(ctx, "SELECT COUNT(*) FROM users").Scan(&users)
 	db.QueryRowContext(ctx, "SELECT COUNT(*) FROM agents").Scan(&agents)
