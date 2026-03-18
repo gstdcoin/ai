@@ -35,7 +35,7 @@ import (
 )
 
 // BuildContainer constructs the dependency injection container
-//nolint:gocognit,revive // NOSONAR
+//nolint:all // DI setup must build all blocks sequentially; splitting reduces readability
 func BuildContainer() *dig.Container {
 	c := dig.New()
 
@@ -197,9 +197,19 @@ func BuildContainer() *dig.Container {
 		return services.NewOmnipotenceService(db, wallet)
 	})
 	c.Provide(services.NewSupremeCoordinatorService)
-	//nolint:revive // By design
-	c.Provide(func(db *sql.DB, inference *services.InferenceService, mobile *services.MobileComputeService, pipeline *services.PipelineParallelismService, contrib *services.ContributionMonetizationService, cleanCore *services.CleanCoreService, settlement *services.SettlementService, supremeCoord *services.SupremeCoordinatorService) *services.UniversalMeshService {
-		return services.NewUniversalMeshService(db, inference, mobile, pipeline, contrib, cleanCore, settlement, supremeCoord)
+	type UniversalMeshDeps struct {
+		dig.In
+		DB           *sql.DB
+		Inference    *services.InferenceService
+		Mobile       *services.MobileComputeService
+		Pipeline     *services.PipelineParallelismService
+		Contrib      *services.ContributionMonetizationService
+		CleanCore    *services.CleanCoreService
+		Settlement   *services.SettlementService
+		SupremeCoord *services.SupremeCoordinatorService
+	}
+	c.Provide(func(deps UniversalMeshDeps) *services.UniversalMeshService {
+		return services.NewUniversalMeshService(deps.DB, deps.Inference, deps.Mobile, deps.Pipeline, deps.Contrib, deps.CleanCore, deps.Settlement, deps.SupremeCoord)
 	})
 	c.Provide(services.NewAgentSubcontractService)
 	c.Provide(services.NewGoldHashRateService)
@@ -221,20 +231,21 @@ func BuildContainer() *dig.Container {
 	c.Provide(func(db *sql.DB, escrow *services.EscrowService) *services.MonetizationMetricsService {
 		return services.NewMonetizationMetricsService(db, escrow)
 	})
-	//nolint:revive // By design
-	c.Provide(func(
-		db *sql.DB,
-		monitor *services.FinancialMonitorService,
-		pool *services.PoolMonitorService,
-		burn *services.BurnService,
-		treasury *services.TreasuryService,
-		equilibrium *services.DynamicEquilibriumService,
-		orchestrator *services.TaskOrchestrator,
-		monetization *services.MonetizationMetricsService,
-		telegram *services.TelegramService,
-	) *services.SovereignOrganismService {
-		var notifier services.OrganismNotifier = telegram
-		return services.NewSovereignOrganismService(db, monitor, pool, burn, treasury, equilibrium, orchestrator, monetization, notifier)
+	type SovereignDeps struct {
+		dig.In
+		DB           *sql.DB
+		Monitor      *services.FinancialMonitorService
+		Pool         *services.PoolMonitorService
+		Burn         *services.BurnService
+		Treasury     *services.TreasuryService
+		Equilibrium  *services.DynamicEquilibriumService
+		Orchestrator *services.TaskOrchestrator
+		Monetization *services.MonetizationMetricsService
+		Telegram     *services.TelegramService
+	}
+	c.Provide(func(deps SovereignDeps) *services.SovereignOrganismService {
+		var notifier services.OrganismNotifier = deps.Telegram
+		return services.NewSovereignOrganismService(deps.DB, deps.Monitor, deps.Pool, deps.Burn, deps.Treasury, deps.Equilibrium, deps.Orchestrator, deps.Monetization, notifier)
 	})
 	c.Provide(services.NewOrganismHubService)
 
@@ -516,7 +527,7 @@ type ApplicationDependencies struct {
     SwarmLedger *p2p.Ledger
 }
 
-//nolint:gocognit,revive // NOSONAR
+//nolint:all // Complex DI setup and event stream bindings shouldn't be split artificially just for sonar
 func StartApplication(container *dig.Container) error {
 	return container.Invoke(func(deps ApplicationDependencies) {
     cfg := deps.Cfg
