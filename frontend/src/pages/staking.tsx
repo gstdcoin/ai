@@ -2,9 +2,10 @@ import Head from 'next/head';
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import { Lock, TrendingUp, Clock, Shield, Zap, RefreshCw, Info, Wallet } from 'lucide-react';
+import { Lock, TrendingUp, Clock, Shield, Zap, RefreshCw, Info, Wallet, Loader2, Unlock } from 'lucide-react';
 import { useTonWallet, TonConnectButton } from '@tonconnect/ui-react';
 import { API_BASE_URL } from '../lib/config';
+import { toast } from 'sonner';
 
 interface StakingInfo {
   your_stakes: number;
@@ -31,6 +32,10 @@ export default function StakingPage() {
   const [amount, setAmount] = useState('10');
   const [loading, setLoading] = useState(true);
   const [balance, setBalance] = useState<number>(0);
+  const [staking, setStaking] = useState(false);
+  const [unstaking, setUnstaking] = useState(false);
+  const [userStaked, setUserStaked] = useState(0);
+  const [userDailyReward, setUserDailyReward] = useState(0);
 
   const fetchInfo = useCallback(async () => {
     setLoading(true);
@@ -40,6 +45,16 @@ export default function StakingPage() {
         : `${API_BASE_URL}/api/v1/sovereign/staking/info`;
       const res = await fetch(url);
       if (res.ok) setInfo(await res.json());
+
+      // Also fetch per-user staking info
+      if (walletAddress) {
+        const stakingRes = await fetch(`${API_BASE_URL}/api/v1/staking/info?wallet=${encodeURIComponent(walletAddress)}`);
+        if (stakingRes.ok) {
+          const d = await stakingRes.json();
+          setUserStaked(d.wallet?.staked || 0);
+          setUserDailyReward(d.wallet?.daily_reward || 0);
+        }
+      }
     } catch (e) {
       console.error('Staking info error:', e);
     }
@@ -221,6 +236,93 @@ export default function StakingPage() {
               </div>
             </div>
           </div>
+
+          {/* User Position (if staked) */}
+          {userStaked > 0 && walletAddress && (
+            <div className="mt-6 p-5 rounded-2xl bg-emerald-500/5 border border-emerald-500/20 shadow-[0_0_20px_rgba(16,185,129,0.08)] relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-24 h-24 bg-emerald-400/15 rounded-full blur-2xl pointer-events-none -ml-8 -mt-8 animate-pulse" />
+              <div className="text-[10px] uppercase font-bold tracking-widest text-emerald-400/60 mb-3 flex items-center gap-2">
+                <Lock size={11} /> Your Staking Position
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <div className="text-2xl font-black text-emerald-400">{userStaked.toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
+                  <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">GSTD Staked</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-black text-cyan-400">+{userDailyReward.toFixed(4)}</div>
+                  <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Daily Reward</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Stake / Unstake Action Buttons */}
+          <div className="mt-6 grid grid-cols-2 gap-3">
+            <button
+              disabled={!walletAddress || staking || amt < 1}
+              onClick={async () => {
+                if (!walletAddress || amt < 1) return;
+                setStaking(true);
+                try {
+                  const sessionToken = localStorage.getItem('session_token') || '';
+                  const res = await fetch(`${API_BASE_URL}/api/v1/staking/stake`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionToken}`, 'X-Wallet-Address': walletAddress },
+                    body: JSON.stringify({ amount: amt }),
+                  });
+                  const data = await res.json();
+                  if (res.ok) {
+                    toast.success(`Staked ${amt} GSTD at ${data.apy}% APY`);
+                    setUserStaked(data.total_staked || 0);
+                    fetchInfo();
+                  } else {
+                    toast.error(data.error || 'Stake failed');
+                  }
+                } catch { toast.error('Network error'); }
+                finally { setStaking(false); }
+              }}
+              className="btn-sovereign emerald w-full disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              {staking ? <><Loader2 size={14} className="animate-spin mr-2" /> Staking...</> : <><Lock size={14} className="mr-2" /> Stake {amt > 0 ? `${amt} GSTD` : ''}</>}
+            </button>
+            <button
+              disabled={!walletAddress || unstaking || userStaked <= 0}
+              onClick={async () => {
+                if (!walletAddress || userStaked <= 0) return;
+                const unstakeAmount = parseFloat(prompt(`Unstake amount (max: ${userStaked}):`) || '0');
+                if (unstakeAmount <= 0) return;
+                setUnstaking(true);
+                try {
+                  const sessionToken = localStorage.getItem('session_token') || '';
+                  const res = await fetch(`${API_BASE_URL}/api/v1/staking/unstake`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionToken}`, 'X-Wallet-Address': walletAddress },
+                    body: JSON.stringify({ amount: unstakeAmount }),
+                  });
+                  const data = await res.json();
+                  if (res.ok) {
+                    toast.success(`Unstaked ${unstakeAmount} GSTD`);
+                    setUserStaked(data.remaining_staked || 0);
+                    fetchInfo();
+                  } else {
+                    toast.error(data.error || 'Unstake failed');
+                  }
+                } catch { toast.error('Network error'); }
+                finally { setUnstaking(false); }
+              }}
+              className="btn-sovereign ghost w-full disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              {unstaking ? <><Loader2 size={14} className="animate-spin mr-2" /> Unstaking...</> : <><Unlock size={14} className="mr-2" /> Unstake</>}
+            </button>
+          </div>
+
+          {!walletAddress && (
+            <div className="mt-4 p-3 rounded-xl bg-violet-500/5 border border-violet-500/15 text-center">
+              <p className="text-xs text-gray-400 mb-2">Connect wallet to stake GSTD and earn rewards</p>
+              <TonConnectButton />
+            </div>
+          )}
 
           {/* Node Bonus */}
           <div className="mt-4 p-4 rounded-2xl bg-violet-500/5 border border-violet-500/20 flex items-start gap-3 relative overflow-hidden">
