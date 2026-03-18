@@ -26,8 +26,9 @@ import {
   Settings2,
 } from 'lucide-react';
 import { API_BASE_URL } from '../../lib/config';
+import { useWalletStore } from '../../store/walletStore';
 
-type PanelTab = 'dashboard' | 'agents' | 'tasks' | 'think' | 'models';
+type PanelTab = 'dashboard' | 'agents' | 'tasks' | 'think' | 'models' | 'autonomy';
 
 interface DashboardData {
   agents: { total: number; online: number };
@@ -83,6 +84,12 @@ export default function OpenClawPanel() {
   const [thinkModel, setThinkModel] = useState('groq/compound');
   const [thinkLoading, setThinkLoading] = useState(false);
 
+  // Autonomy state
+  const [autonomyStatus, setAutonomyStatus] = useState<any>(null);
+  const [aiHistory, setAiHistory] = useState<any[]>([]);
+
+  const { address } = useWalletStore();
+
   // Create task state
   const [showCreateTask, setShowCreateTask] = useState(false);
   const [newTaskType, setNewTaskType] = useState('pick_and_place');
@@ -93,35 +100,57 @@ export default function OpenClawPanel() {
 
   const fetchDashboard = useCallback(async () => {
     try {
-      const r = await fetch(`${API_BASE_URL}/api/v1/openclaw/dashboard`);
+      const r = await fetch(`${API_BASE_URL}/api/v1/openclaw/dashboard`, {
+        headers: { 'X-Wallet-Address': address || '' }
+      });
       const d = await r.json();
       setDashboard(d);
     } catch {}
-  }, []);
+  }, [address]);
 
   const fetchAgents = useCallback(async () => {
     try {
-      const r = await fetch(`${API_BASE_URL}/api/v1/openclaw/agents`);
+      const r = await fetch(`${API_BASE_URL}/api/v1/openclaw/agents`, {
+        headers: { 'X-Wallet-Address': address || '' }
+      });
       const d = await r.json();
       setAgents(d.agents || []);
     } catch {}
-  }, []);
+  }, [address]);
 
   const fetchTasks = useCallback(async () => {
     try {
-      const r = await fetch(`${API_BASE_URL}/api/v1/openclaw/tasks`);
+      const r = await fetch(`${API_BASE_URL}/api/v1/openclaw/tasks`, {
+        headers: { 'X-Wallet-Address': address || '' }
+      });
       const d = await r.json();
       setTasks(d.tasks || []);
     } catch {}
-  }, []);
+  }, [address]);
 
   const fetchModels = useCallback(async () => {
     try {
-      const r = await fetch(`${API_BASE_URL}/api/v1/openclaw/models`);
+      const r = await fetch(`${API_BASE_URL}/api/v1/openclaw/models`, {
+        headers: { 'X-Wallet-Address': address || '' }
+      });
       const d = await r.json();
       setModels(d.models || []);
     } catch {}
-  }, []);
+  }, [address]);
+
+  const fetchAutonomy = useCallback(async () => {
+    try {
+      const hdrs = { 'X-Wallet-Address': address || '' };
+      const [rStat, rHist] = await Promise.all([
+        fetch(`${API_BASE_URL}/api/v1/autonomy/status`, { headers: hdrs }),
+        fetch(`${API_BASE_URL}/api/v1/autonomy/ai/history`, { headers: hdrs })
+      ]);
+      const dStat = await rStat.json();
+      const dHist = await rHist.json();
+      setAutonomyStatus(dStat);
+      setAiHistory(dHist.decisions || []);
+    } catch {}
+  }, [address]);
 
   useEffect(() => {
     fetchDashboard();
@@ -131,7 +160,8 @@ export default function OpenClawPanel() {
     if (tab === 'agents') fetchAgents();
     if (tab === 'tasks') fetchTasks();
     if (tab === 'models') fetchModels();
-  }, [tab, fetchAgents, fetchTasks, fetchModels]);
+    if (tab === 'autonomy') fetchAutonomy();
+  }, [tab, fetchAgents, fetchTasks, fetchModels, fetchAutonomy]);
 
   // Auto-refresh dashboard every 15s
   useEffect(() => {
@@ -146,7 +176,7 @@ export default function OpenClawPanel() {
     try {
       const r = await fetch(`${API_BASE_URL}/api/v1/openclaw/think`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-Wallet-Address': address || '' },
         body: JSON.stringify({ prompt: thinkPrompt, model: thinkModel }),
       });
       const d = await r.json();
@@ -175,7 +205,7 @@ export default function OpenClawPanel() {
     try {
       const r = await fetch(`${API_BASE_URL}/api/v1/openclaw/tasks`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-Wallet-Address': address || '' },
         body: JSON.stringify({
           task_type: newTaskType,
           description: newTaskDesc,
@@ -204,6 +234,7 @@ export default function OpenClawPanel() {
     { id: 'agents', label: 'Agents', icon: <Bot size={16} /> },
     { id: 'tasks', label: 'Tasks', icon: <ListTodo size={16} /> },
     { id: 'think', label: 'Compound AI', icon: <Brain size={16} /> },
+    { id: 'autonomy', label: 'Autonomy', icon: <Settings2 size={16} /> },
     { id: 'models', label: 'Models', icon: <Settings2 size={16} /> },
   ];
 
@@ -603,6 +634,78 @@ export default function OpenClawPanel() {
                   </button>
                 ))}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ═══ AUTONOMY ═══ */}
+        {tab === 'autonomy' && autonomyStatus && (
+          <div className="max-w-3xl mx-auto space-y-4">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <Settings2 size={16} className="text-teal-400" /> Platform Autonomy Control
+              </h3>
+              <button onClick={fetchAutonomy} className="p-1 rounded bg-white/5 hover:bg-white/10 transition-colors">
+                <RefreshCw size={12} className="text-gray-400 hover:text-white" />
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-3 gap-3">
+              <div className="p-3 rounded-xl border border-white/5 bg-white/5">
+                <div className="text-[10px] text-gray-500 uppercase tracking-wide">Brain Status</div>
+                <div className="text-lg font-bold text-teal-400">
+                  {autonomyStatus.brain_active ? 'ACTIVE' : 'IDLE'}
+                </div>
+              </div>
+              <div className="p-3 rounded-xl border border-white/5 bg-white/5">
+                <div className="text-[10px] text-gray-500 uppercase tracking-wide">AI Cycles</div>
+                <div className="text-lg font-bold text-white">{autonomyStatus.cycles}</div>
+              </div>
+              <div className="p-3 rounded-xl border border-white/5 bg-white/5">
+                <div className="text-[10px] text-gray-500 uppercase tracking-wide">Network Health</div>
+                <div className="text-lg font-bold text-emerald-400">
+                  {autonomyStatus.network?.network_health ? autonomyStatus.network.network_health.toFixed(1) + '%' : 'N/A'}
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-xl border border-teal-500/20 bg-teal-500/5 flex items-center justify-between">
+              <div>
+                <h4 className="text-xs font-bold text-teal-400">Force Autonomous Analysis</h4>
+                <p className="text-[10px] text-gray-400">Trigger standard evaluation of platform state (Network Healing & Optimization)</p>
+              </div>
+              <button 
+                onClick={async () => {
+                  await fetch(`${API_BASE_URL}/api/v1/autonomy/ai/analyze`, { 
+                    method: 'POST', 
+                    body: JSON.stringify({category: 'analysis'}), 
+                    headers: {'Content-Type': 'application/json', 'X-Wallet-Address': address || ''} 
+                  });
+                  fetchAutonomy();
+                }}
+                className="px-3 py-1.5 bg-teal-500/20 hover:bg-teal-500/30 text-teal-400 text-xs rounded-lg font-bold transition-all border border-teal-500/30 cursor-pointer">
+                Run Analysis
+              </button>
+            </div>
+
+            <div className="p-4 rounded-xl border border-white/5 bg-white/5 space-y-3">
+               <h4 className="text-xs font-bold text-gray-300">Recent AI Decisions</h4>
+               {aiHistory.length === 0 ? (
+                 <div className="text-center text-xs text-gray-500 py-4">No recent AI decisions.</div>
+               ) : (
+                 <div className="space-y-2">
+                   {aiHistory.map((d, i) => (
+                     <div key={i} className="p-2 border border-white/5 rounded-lg text-left" style={{ background: 'rgba(0,0,0,0.3)' }}>
+                       <div className="flex justify-between text-[10px] text-gray-500 mb-1">
+                         <span>{new Date(d.time).toLocaleString()}</span>
+                         {d.score > 0 && <span className="text-orange-400 border border-orange-500/20 px-1 rounded">Score: {d.score.toFixed(1)}</span>}
+                       </div>
+                       <div className="text-[10px] text-gray-400 mb-1 font-mono">{d.context}</div>
+                       <div className="text-xs text-white whitespace-pre-wrap">{d.decision}</div>
+                     </div>
+                   ))}
+                 </div>
+               )}
             </div>
           </div>
         )}
