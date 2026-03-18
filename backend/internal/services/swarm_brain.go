@@ -177,7 +177,18 @@ func (b *SwarmBrain) runAnalysisCycle() {
 	decision, err := b.ai.Analyze(ctx, "analysis", stateMap)
 	if err != nil {
 		log.Printf("🧠 SwarmBrain: analysis failed: %v", err)
+		// Backoff on rate limiting (429) — double the analysis interval, cap at 30min
+		if b.config.AnalysisCycle < 30*time.Minute {
+			b.config.AnalysisCycle = b.config.AnalysisCycle * 2
+			log.Printf("🧠 SwarmBrain: rate-limited, backing off analysis to %v", b.config.AnalysisCycle)
+		}
 		return
+	}
+
+	// Reset backoff on success
+	if b.config.AnalysisCycle > 5*time.Minute {
+		b.config.AnalysisCycle = 5 * time.Minute
+		log.Printf("🧠 SwarmBrain: rate-limit cleared, analysis interval restored to 5m")
 	}
 
 	b.mu.Lock()
