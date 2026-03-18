@@ -69,7 +69,7 @@ services:
 
   # ─── Telegram Bot ─────────────────────────────
   telegram-bot:
-    image: gstd-bot:v27
+    image: gstd-bot:v28
     container_name: gstd-telegram-bot
     restart: unless-stopped
     env_file: ./gstdbot/.env
