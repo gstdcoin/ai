@@ -4,9 +4,9 @@ import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { TonConnectButton } from '@tonconnect/ui-react';
 import {
-    Home, MessageSquare, Activity, Bot, Cpu,
+    Home, MessageSquare, Activity, Cpu,
     ExternalLink, Menu, X, ArrowRightLeft, Server, Trophy, Repeat, Landmark, Radio,
-    Users, Download
+    Users
 } from 'lucide-react';
 
 interface NavItem {
@@ -35,11 +35,9 @@ export default function EcosystemNav() {
         { key: 'nav_staking', href: `${APP_BASE}/staking`, icon: <Landmark size={16} />, external: !isOnApp },
         { key: 'nav_nodes', href: `${APP_BASE}/nodes`, icon: <Server size={16} />, external: !isOnApp },
         { key: 'nav_referrals', href: `${APP_BASE}/referrals`, icon: <Users size={16} />, external: !isOnApp },
-        { key: 'nav_download', href: `${APP_BASE}/downloads`, icon: <Download size={16} />, external: !isOnApp, short: 'Download' },
         { key: 'nav_leaderboard', href: `${APP_BASE}/leaderboard`, icon: <Trophy size={16} />, external: !isOnApp },
         { key: 'nav_stats', href: `${APP_BASE}/stats`, icon: <Activity size={16} />, external: !isOnApp },
         { key: 'nav_monitor', href: `${APP_BASE}/monitor`, icon: <Radio size={16} />, external: !isOnApp },
-        { key: 'nav_bot', href: 'https://gstdbot.gstdtoken.com', icon: <Bot size={16} />, external: true, short: 'Bot' },
         { key: 'nav_telegram', href: 'https://t.me/GstdAppBot', icon: <ExternalLink size={14} />, external: true },
     ];
 
