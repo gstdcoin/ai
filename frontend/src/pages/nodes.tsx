@@ -1,8 +1,9 @@
 import { GetStaticProps } from 'next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useTranslation } from 'next-i18next';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
+import { useTonWallet } from '@tonconnect/ui-react';
 import {
   Server, Trophy, Flame, Zap, TrendingUp, Clock, Shield,
   ChevronRight, ExternalLink, Star, Cpu, ArrowRight, Users, Smartphone, MessageCircle,
@@ -48,6 +49,10 @@ export default function NodesPage() {
   const [burn, setBurn] = useState<BurnData | null>(null);
   const [vaults, setVaults] = useState<VaultState[]>([]);
   const [tab, setTab] = useState<'overview' | 'tasks' | 'governance' | 'burn' | 'vaults'>('overview');
+  const tonWallet = useTonWallet();
+  const walletAddress = tonWallet?.account?.address || '';
+  const [pendingRewards, setPendingRewards] = useState<number>(0);
+  const [claiming, setClaiming] = useState(false);
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/api/v1/nodes/rewards/network`).then(r => r.json()).then(setNetwork).catch(() => undefined);
@@ -59,6 +64,31 @@ export default function NodesPage() {
     fetch(`${API_BASE_URL}/api/v1/nodes/tools/burn-stats`).then(r => r.json()).then(setBurn).catch(() => undefined);
     fetch(`${API_BASE_URL}/api/v1/nodes/liquidity/pools`).then(r => r.json()).then(d => setVaults(d || [])).catch(() => undefined);
   }, [period]);
+
+  // Fetch user's pending rewards when wallet is connected
+  useEffect(() => {
+    if (!walletAddress) return;
+    fetch(`${API_BASE_URL}/api/v1/nodes/pending-rewards?wallet=${encodeURIComponent(walletAddress)}`)
+        .then(r => r.json())
+        .then(d => setPendingRewards(d.total_pending || 0))
+        .catch(() => undefined);
+  }, [walletAddress]);
+
+  const handleClaim = useCallback(async () => {
+    if (!walletAddress || claiming) return;
+    setClaiming(true);
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/v1/nodes/claim-rewards`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Wallet-Address': walletAddress },
+            body: JSON.stringify({ wallet_address: walletAddress }),
+        });
+        if (res.ok) {
+            setPendingRewards(0);
+        }
+    } catch (_e) { /* silent */ }
+    setClaiming(false);
+  }, [walletAddress, claiming]);
 
   const tiers: TierDef[] = program?.tiers || [];
 
@@ -133,6 +163,32 @@ export default function NodesPage() {
             ))}
           </div>
         )}
+
+          {/* ═══════════ My Node Rewards (when wallet connected) ═══════════ */}
+          {walletAddress && (
+            <div className="sov-card p-6 mb-10 border-amber-500/20 bg-gradient-to-r from-amber-500/5 to-transparent fu d3b">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center shrink-0 shadow-lg shadow-amber-500/20">
+                    <span style={{ fontSize: 24, lineHeight: 1 }}>💰</span>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">My Node Rewards</h3>
+                    <p className="text-gray-400 text-sm">
+                      Pending: <span className="text-amber-400 font-bold">{pendingRewards.toFixed(4)} GSTD</span>
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleClaim}
+                  disabled={claiming || pendingRewards <= 0}
+                  className="px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-black rounded-xl font-bold text-sm hover:from-amber-400 hover:to-orange-400 transition-all transform active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                >
+                  {claiming ? '⏳ Claiming...' : pendingRewards > 0 ? '💎 Claim Rewards' : '✓ No Pending'}
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* ═══ Network Tools Tabs ═══ */}
           <div className="flex gap-2 mb-8 p-1.5 rounded-2xl bg-white/[0.02] border border-white/5 font-medium fu d4 overflow-x-auto hide-scrollbar">
