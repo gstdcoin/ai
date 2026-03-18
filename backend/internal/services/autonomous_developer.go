@@ -32,7 +32,7 @@ func (op *PlatformOperator) rndDevelopmentCycle() {
 	// Independently progress autonomy profiles
 	exec.Command("sh", "-c", "cd /home/ubuntu/agency-agents && git pull origin main").Run()
 
-	domains := []string{"localization", "frontend", "gstdbot", "backend", "devops", "security", "database", "smart_contracts"}
+	domains := []string{"localization", "frontend", "gstdbot", "backend", "devops", "security", "database", "smart_contracts", "layer1"}
 	
 	// Randomly pick an area to improve or optimize
 	rand.Seed(time.Now().UnixNano())
@@ -57,6 +57,8 @@ func (op *PlatformOperator) rndDevelopmentCycle() {
 		op.improveDatabase()
 	case "smart_contracts":
 		op.improveSmartContracts()
+	case "layer1":
+		op.improveLayer1()
 	}
 }
 
@@ -249,6 +251,12 @@ Code:
 
 	op.sendTelegram("⚙️ *Backend Optimized*\nAI proposed efficiency upgrades, verified compilation, pushed code, and cycled instances.")
 	op.logAction("rnd-backend", "Optimized Go logic", "success", true)
+}
+
+// ─── NEW DOMAIN: Layer 1 (Core Blockchain / Mesh Network) ───────────────
+func (op *PlatformOperator) improveLayer1() {
+	// The Swarm Brain Core, Distributed Ledger and P2P layers
+	op.runGenericImprovement("Layer 1 Blockchain", "/home/ubuntu/agency-agents/specialized/blockchain-security-auditor.md", "P2P network DHT gossiping consensus mechanism scaling security zero knowledge sync", "/home/ubuntu/backend/internal/services/sovereign_mesh_service.go", "cd /home/ubuntu/backend && go build ./...", "feat(layer1): 🌐 AI autonomous P2P mesh & consensus protocol optimization")
 }
 
 // ─── NEW DOMAINS: DevOps, Security, Database, Smart Contracts ───────────
