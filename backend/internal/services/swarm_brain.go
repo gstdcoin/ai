@@ -133,12 +133,18 @@ func (b *SwarmBrain) Start() {
 }
 
 func (b *SwarmBrain) loop(name string, interval time.Duration, fn func()) {
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
-
+	// Use time.After with dynamic interval so backoff actually works
 	for {
+		// Get current interval (may be modified by backoff)
+		currentInterval := interval
+		if name == "analysis" {
+			b.mu.RLock()
+			currentInterval = b.config.AnalysisCycle
+			b.mu.RUnlock()
+		}
+
 		select {
-		case <-ticker.C:
+		case <-time.After(currentInterval):
 			func() {
 				defer func() {
 					if r := recover(); r != nil {
@@ -156,6 +162,16 @@ func (b *SwarmBrain) loop(name string, interval time.Duration, fn func()) {
 // ─── Analysis Cycle ─────────────────────────────────────────
 func (b *SwarmBrain) runAnalysisCycle() {
 	b.refreshNetworkState()
+
+	// Mark stale nodes offline (autonomous health maintenance)
+	if b.db != nil {
+		result, err := b.db.Exec("UPDATE nodes SET status = 'offline' WHERE status = 'online' AND last_seen < NOW() - INTERVAL '10 minutes'")
+		if err == nil {
+			if rows, _ := result.RowsAffected(); rows > 0 {
+				log.Printf("🧠 SwarmBrain: marked %d stale nodes offline", rows)
+			}
+		}
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
@@ -178,18 +194,24 @@ func (b *SwarmBrain) runAnalysisCycle() {
 	if err != nil {
 		log.Printf("🧠 SwarmBrain: analysis failed: %v", err)
 		// Backoff on rate limiting (429) — double the analysis interval, cap at 30min
+		b.mu.Lock()
 		if b.config.AnalysisCycle < 30*time.Minute {
 			b.config.AnalysisCycle = b.config.AnalysisCycle * 2
 			log.Printf("🧠 SwarmBrain: rate-limited, backing off analysis to %v", b.config.AnalysisCycle)
 		}
+		b.mu.Unlock()
+		// Try fallback model on next cycle
+		b.ai.TryFallbackModel()
 		return
 	}
 
 	// Reset backoff on success
+	b.mu.Lock()
 	if b.config.AnalysisCycle > 5*time.Minute {
 		b.config.AnalysisCycle = 5 * time.Minute
 		log.Printf("🧠 SwarmBrain: rate-limit cleared, analysis interval restored to 5m")
 	}
+	b.mu.Unlock()
 
 	b.mu.Lock()
 	b.state.AIDecisions = append(b.state.AIDecisions, *decision)

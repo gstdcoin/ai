@@ -301,6 +301,35 @@ CATEGORY: <economics / tokenomics / security>`,
 		}
 	}
 
+	// ═══ AUTONOMOUS TOKEN BURN (2% deflationary mechanism) ═══
+	// Burn 2% of all rewards minted since last burn
+	var totalMintedSinceLastBurn float64
+	var lastBurnTime time.Time
+	err = op.db.QueryRowContext(ctx,
+		"SELECT COALESCE(MAX(created_at), '2026-01-01') FROM token_burns").Scan(&lastBurnTime)
+	if err == nil {
+		op.db.QueryRowContext(ctx,
+			"SELECT COALESCE(SUM(amount), 0) FROM node_rewards_ledger WHERE created_at > $1",
+			lastBurnTime).Scan(&totalMintedSinceLastBurn)
+	}
+
+	burnAmount := totalMintedSinceLastBurn * 0.02 // 2% burn rate
+	if burnAmount >= 0.001 { // Only burn if meaningful amount
+		_, errBurn := op.db.ExecContext(ctx,
+			`INSERT INTO token_burns (burn_amount, burn_source, tx_hash, created_at) 
+			 VALUES ($1, 'auto_deflationary_2pct', 'auto-burn-' || extract(epoch from now())::text, NOW())`,
+			burnAmount)
+		if errBurn == nil {
+			// Update tokenomics tracker
+			op.db.ExecContext(ctx,
+				`UPDATE tokenomics_halving SET total_burned = total_burned + $1, 
+				 current_circulating = current_circulating - $1 
+				 WHERE epoch_number = (SELECT MAX(epoch_number) FROM tokenomics_halving)`,
+				burnAmount)
+			log.Printf("🔥 AutoBurn: burned %.6f GSTD (2%% of %.4f minted)", burnAmount, totalMintedSinceLastBurn)
+		}
+	}
+
 	op.logAction("economics", fmt.Sprintf(
 		"rewards=%.0f pending=%.0f burned=%.0f staked=%.0f stakers=%d",
 		stats.totalRewards, stats.pendingRewards, stats.totalBurned,
@@ -443,8 +472,9 @@ func (op *PlatformOperator) frontendCycle() {
 		url  string
 	}{
 		{"Homepage", "https://app.gstdtoken.com"},
-		{"Bridge", "https://bridge.gstdtoken.com"},
+		{"Chat UI", "https://chat.gstdtoken.com"},
 		{"Bot Panel", "https://gstdbot.gstdtoken.com"},
+		{"Monitor", "https://monitor.gstdtoken.com"},
 	}
 
 	var failures []string
