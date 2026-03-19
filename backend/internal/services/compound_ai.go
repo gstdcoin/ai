@@ -88,6 +88,31 @@ func NewCompoundAI(apiKey string) *CompoundAI {
 	}
 }
 
+// TryFallbackModel switches to an alternative model when rate-limited
+func (c *CompoundAI) TryFallbackModel() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	fallbacks := []string{"llama-3.3-70b-versatile", "llama-3.1-8b-instant"}
+	if c.model == "compound-beta" {
+		c.model = fallbacks[0]
+		log.Printf("🧠 CompoundAI: switched to fallback model %s", c.model)
+	} else {
+		// Cycle back to primary
+		c.model = "compound-beta"
+		log.Printf("🧠 CompoundAI: restored primary model compound-beta")
+	}
+}
+
+// ResetModel restores the primary model after successful call
+func (c *CompoundAI) ResetModel() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.model != "compound-beta" {
+		log.Printf("🧠 CompoundAI: reset to primary model compound-beta (was %s)", c.model)
+		c.model = "compound-beta"
+	}
+}
+
 // Ask — send a query to Compound AI and get a response
 func (c *CompoundAI) Ask(ctx context.Context, systemPrompt, userPrompt string) (string, error) {
 	messages := []Message{
@@ -134,8 +159,12 @@ func (c *CompoundAI) Analyze(ctx context.Context, category string, networkState 
 }
 
 func (c *CompoundAI) chat(ctx context.Context, messages []Message) (string, error) {
+	c.mu.RLock()
+	currentModel := c.model
+	c.mu.RUnlock()
+
 	reqBody := CompoundRequest{
-		Model:       c.model,
+		Model:       currentModel,
 		Messages:    messages,
 		Temperature: 0.3,
 		MaxTokens:   1024,
@@ -183,6 +212,9 @@ func (c *CompoundAI) chat(ctx context.Context, messages []Message) (string, erro
 	// Cost saved: compound is free, equivalent GPT-4 cost = ~$0.03/1K tokens
 	c.stats.CostSaved += float64(result.Usage.TotalTokens) / 1000.0 * 0.03
 	c.mu.Unlock()
+
+	// Successful call — reset to primary model if we were on fallback
+	c.ResetModel()
 
 	return content, nil
 }
