@@ -62,7 +62,7 @@ func getReservesAudit(db *sql.DB, tonService *services.TONService, tonConfig con
 		`).Scan(&circulatingGSTD)
 
 		// 4. Total supply reference (1B from ТЗ)
-		const totalSupplyGSTD = 21_000_000.0
+		const totalSupplyGSTD = 1_000_000_000.0
 		reserveRatio := 0.0
 		if circulatingGSTD > 0 && goldReserveXAUt > 0 && poolMonitor != nil {
 			goldValueUSD := goldReserveXAUt * 3200

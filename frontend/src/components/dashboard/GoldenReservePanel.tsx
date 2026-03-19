@@ -33,7 +33,7 @@ interface PublicStats {
   audit_verified?: boolean;
 }
 
-const TOTAL_SUPPLY = 21_000_000; // 21M GSTD max supply
+const TOTAL_SUPPLY = 1_000_000_000; // 1B GSTD max supply (TON emission)
 const GOLD_PRICE_USD = 4970; // XAUt price (updates via API)
 
 const STONFI_POOL_URL = 'https://app.ston.fi/pools/EQA--JXG8VSyBJmLMqb2J2t4Pya0TS9SXHh7vHh8Iez25sLp';

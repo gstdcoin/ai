@@ -76,7 +76,7 @@ export default function PublicStats() {
       mobile: null,
       recycling: {
         total_burned: hTokenomics?.total_burned || tokenomicsData?.total_burned || burnData?.total_burned || 0,
-        effective_supply: hTokenomics?.max_supply || tokenomicsData?.remaining_supply || 21e6,
+        effective_supply: hTokenomics?.max_supply || tokenomicsData?.remaining_supply || 1e9,
         total_recycled: hTokenomics?.total_minted || tokenomicsData?.total_minted || 0,
         total_to_miners: hRewards?.all_time_gstd || (tokenomicsData?.total_minted ? tokenomicsData.total_minted * 0.93 : 0),
         total_to_reserve: networkData?.gold_reserve || 0,
@@ -139,7 +139,7 @@ export default function PublicStats() {
             <S label="XAUt Reserve" value={stats?.pool?.xaut_balance?.toFixed(6) || '0.000000'} color="text-amber-400" />
             <S label="Circulating" value={stats?.pool?.gstd_balance?.toFixed(0) || '0'} color="text-violet-400" />
             <S label={t('gold_reserve_burned', 'Total Burned') || 'Total Burned'} value={stats?.recycling?.total_burned?.toFixed(4) || '0'} color="text-red-400" />
-            <S label="Remaining Supply" value={((stats?.recycling?.effective_supply || 21e6) / 1e6).toFixed(1) + 'M'} color="text-emerald-400" sub="of 21M" />
+            <S label="Remaining Supply" value={((stats?.recycling?.effective_supply || 1e9) / 1e9).toFixed(3) + 'B'} color="text-emerald-400" sub="of 1B" />
           </div>
         </div>
 
@@ -177,7 +177,7 @@ export default function PublicStats() {
           <div className="sov-card cyan-top p-6">
             <div className="flex items-center gap-2 mb-4"><div style={{ fontSize: 18, lineHeight: 1 }}>🌐</div><span className="text-xs font-bold uppercase tracking-wider text-gray-400">Supply</span></div>
             <S label="Circulating" value={stats?.tokenomics?.circulating_supply?.toFixed(0) || '0'} color="text-cyan-400" sub="GSTD" />
-            <div className="mt-4 pt-4 border-t border-white/[0.06]"><S label="Remaining" value={`${((stats?.tokenomics?.remaining_supply || 21e6) / 1e6).toFixed(1)}M`} color="text-violet-400" sub={`${(stats?.tokenomics?.supply_mined_pct || 0).toFixed(4)}% mined`} /></div>
+            <div className="mt-4 pt-4 border-t border-white/[0.06]"><S label="Remaining" value={`${((stats?.tokenomics?.remaining_supply || 1e9) / 1e9).toFixed(3)}B`} color="text-violet-400" sub={`${(stats?.tokenomics?.supply_mined_pct || 0).toFixed(4)}% mined`} /></div>
           </div>
 
           {/* Base Reward */}
