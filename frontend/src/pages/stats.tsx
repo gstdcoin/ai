@@ -35,6 +35,7 @@ interface Stats {
   openclaw: OpenclawSection | null;
   tokenomics?: any;
   nodes?: any;
+  health?: any;
 }
 
 const getSettledValue = <T,>(result: PromiseSettledResult<T>): T | null =>
@@ -50,7 +51,7 @@ export default function PublicStats() {
     setLoading(true);
     const endpoints = [
       'network/stats', 'sovereign/tokenomics', 'nodes/rewards/network',
-      'burn/stats',
+      'burn/stats', 'health',
     ];
     const results = await Promise.allSettled(
       endpoints.map((ep) => fetch(`${API_BASE_URL}/api/v1/${ep}`).then((r) => (r.ok ? r.json() : null)))
@@ -59,24 +60,32 @@ export default function PublicStats() {
     const tokenomicsData = getSettledValue<any>(results[1]);
     const nodesData = getSettledValue<any>(results[2]);
     const burnData = getSettledValue<any>(results[3]);
+    const healthData = getSettledValue<any>(results[4]);
+
+    // Merge health data for more accurate/current values
+    const hTokenomics = healthData?.tokenomics;
+    const hNetwork = healthData?.network;
+    const hRewards = healthData?.rewards;
+
     setStats({
       network: networkData,
-      pool: { xaut_balance: networkData?.gold_reserve || 0, gstd_balance: tokenomicsData?.circulating_supply || 0 },
-      pipeline: { online_nodes: nodesData?.online_nodes || 0, total_vram_gb: 0 },
+      pool: { xaut_balance: networkData?.gold_reserve || 0, gstd_balance: hTokenomics?.circulating || tokenomicsData?.circulating_supply || 0 },
+      pipeline: { online_nodes: hNetwork?.online_nodes || nodesData?.online_nodes || 0, total_vram_gb: 0 },
       security: null,
       federated: null,
       mobile: null,
       recycling: {
-        total_burned: tokenomicsData?.total_burned || burnData?.total_burned || 0,
-        effective_supply: tokenomicsData?.remaining_supply || tokenomicsData?.max_supply || 21e6,
-        total_recycled: tokenomicsData?.total_minted || 0,
-        total_to_miners: tokenomicsData?.total_minted ? tokenomicsData.total_minted * 0.93 : 0,
+        total_burned: hTokenomics?.total_burned || tokenomicsData?.total_burned || burnData?.total_burned || 0,
+        effective_supply: hTokenomics?.max_supply || tokenomicsData?.remaining_supply || 21e6,
+        total_recycled: hTokenomics?.total_minted || tokenomicsData?.total_minted || 0,
+        total_to_miners: hRewards?.all_time_gstd || (tokenomicsData?.total_minted ? tokenomicsData.total_minted * 0.93 : 0),
         total_to_reserve: networkData?.gold_reserve || 0,
       },
       airlock: null,
       openclaw: null,
-      tokenomics: tokenomicsData,
-      nodes: nodesData,
+      tokenomics: { ...tokenomicsData, ...hTokenomics, epoch: hTokenomics?.epoch || tokenomicsData?.epoch, burn_rate_pct: hTokenomics?.burn_rate_pct || tokenomicsData?.burn_rate_pct },
+      nodes: { ...nodesData, total_nodes: hNetwork?.total_nodes || nodesData?.total_nodes || networkData?.total_nodes, online_nodes: hNetwork?.online_nodes || nodesData?.online_nodes || 0 },
+      health: healthData,
     });
     setLoading(false);
   }, []);
@@ -184,9 +193,34 @@ export default function PublicStats() {
           <div className="flex items-center gap-3 mb-6"><div style={{ fontSize: 24, lineHeight: 1 }}>🏛️</div><h3 className="text-xl font-bold uppercase tracking-wider text-white border-b border-white/10 pb-4 w-full">{t('token_economy', 'Token Economy')}</h3></div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
             <S label="Total Minted" value={`${(stats?.tokenomics?.total_minted || 0).toFixed(0)}`} color="text-cyan-400" sub="GSTD" />
-            <S label="To Node Operators" value={`${(stats?.nodes?.total_rewards_gstd || 0).toFixed(2)}`} color="text-emerald-400" sub="GSTD" />
+            <S label="To Node Operators" value={`${(stats?.health?.rewards?.all_time_gstd || stats?.nodes?.total_rewards_gstd || 0).toFixed(2)}`} color="text-emerald-400" sub="GSTD" />
             <S label="Gold Reserve" value={`${(stats?.pool?.xaut_balance || 0).toFixed(6)}`} color="text-amber-400" sub="XAUt" />
             <S label="Burned 🔥" value={`${(stats?.recycling?.total_burned || 0).toFixed(4)}`} color="text-red-400" sub="forever" />
+          </div>
+        </div>
+
+        {/* Live Status Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10 fu d6">
+          {/* Active Workers */}
+          <div className="sov-card emerald-top p-6">
+            <div className="flex items-center gap-2 mb-4"><div style={{ fontSize: 18, lineHeight: 1 }}>⚡</div><span className="text-xs font-bold uppercase tracking-wider text-gray-400">Workers</span></div>
+            <S label="Active Workers" value={stats?.health?.network?.active_workers || 0} color="text-emerald-400" />
+            <div className="mt-4 pt-4 border-t border-white/[0.06]"><S label="Users" value={stats?.health?.network?.total_users || stats?.network?.total_users || 0} color="text-cyan-400" /></div>
+          </div>
+
+          {/* Staking */}
+          <div className="sov-card violet-top p-6">
+            <div className="flex items-center gap-2 mb-4"><div style={{ fontSize: 18, lineHeight: 1 }}>🔒</div><span className="text-xs font-bold uppercase tracking-wider text-gray-400">Staking</span></div>
+            <S label="Total Staked" value={`${(stats?.health?.tokenomics?.total_staked || stats?.tokenomics?.total_staked || 0).toFixed(2)} GSTD`} color="text-violet-400" />
+            <div className="mt-4 pt-4 border-t border-white/[0.06]"><S label="Active Stakers" value={stats?.health?.tokenomics?.active_stakers || 0} color="text-cyan-400" /></div>
+          </div>
+
+          {/* Revenue & Platform */}
+          <div className="sov-card gold-top p-6">
+            <div className="flex items-center gap-2 mb-4"><div style={{ fontSize: 18, lineHeight: 1 }}>🤖</div><span className="text-xs font-bold uppercase tracking-wider text-gray-400">Autonomy</span></div>
+            <S label="AI Departments" value={stats?.health?.autonomy?.departments || 9} color="text-amber-400" sub="active 24/7" />
+            <div className="mt-4 pt-4 border-t border-white/[0.06]"><S label="Today Rewards" value={`${(stats?.health?.rewards?.today_gstd || 0).toFixed(2)} GSTD`} color="text-emerald-400" />
+            </div>
           </div>
         </div>
 
