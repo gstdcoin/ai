@@ -2283,7 +2283,7 @@ func getHealth(db *sql.DB, tonService *services.TONService, tonConfig config.TON
 		var burnRatePct float64
 		var epochNumber int
 		db.QueryRowContext(ctx, `
-			SELECT COALESCE(epoch_number,1), COALESCE(max_supply_cap,21000000), 
+			SELECT COALESCE(epoch_number,1), COALESCE(max_supply_cap,1000000000), 
 			       COALESCE(current_circulating,0), COALESCE(total_burned,0), 
 			       COALESCE(total_minted_in_epoch,0), COALESCE(base_reward_per_hour,0.01),
 			       COALESCE(burn_rate_pct,2)

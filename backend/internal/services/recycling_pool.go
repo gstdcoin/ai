@@ -221,7 +221,7 @@ func (s *RecyclingPoolService) PayMiner(ctx context.Context, minerWallet string,
 // GetPoolStats returns current recycling pool statistics
 func (s *RecyclingPoolService) GetPoolStats(ctx context.Context) (*PoolStats, error) {
 	stats := &PoolStats{
-		FixedSupply: 21_000_000, // 21M max supply
+		FixedSupply: 1_000_000_000, // 1B max supply (TON emission)
 	}
 
 	err := s.db.QueryRowContext(ctx, `
