@@ -210,12 +210,12 @@ func (b *SwarmBrain) runHealingCycle() {
 
 	ctx := context.Background()
 
-	// Find nodes that missed heartbeat (>5 min)
+	// Find nodes that missed heartbeat (>70 min, aligning with 60-min heartbeat interval)
 	rows, err := b.db.QueryContext(ctx, `
 		SELECT node_id, wallet_address, status, last_heartbeat 
 		FROM nodes 
 		WHERE status = 'online' 
-		AND last_heartbeat < NOW() - INTERVAL '5 minutes'
+		AND last_heartbeat < NOW() - INTERVAL '70 minutes'
 		LIMIT 50
 	`)
 	if err != nil {
@@ -250,11 +250,11 @@ func (b *SwarmBrain) runHealingCycle() {
 		log.Printf("🧠 SwarmBrain [healing]: %d stale nodes marked offline, tasks reassigned", len(staleNodes))
 	}
 
-	// Recover nodes that came back online
+	// Recover nodes that came back online (heartbeat within last 65 min)
 	b.db.ExecContext(ctx, `
 		UPDATE nodes SET status = 'online' 
 		WHERE status = 'offline' 
-		AND last_heartbeat > NOW() - INTERVAL '2 minutes'
+		AND last_heartbeat > NOW() - INTERVAL '65 minutes'
 	`)
 }
 
