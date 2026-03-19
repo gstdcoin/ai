@@ -2270,16 +2270,81 @@ func getHealth(db *sql.DB, tonService *services.TONService, tonConfig config.TON
 		// Get contract balance (cached for 2 minutes to avoid rate limits)
 		contractStatus, contractBalance := getContractHealthInfo(ctx, tonService, tonConfig, rClient)
 
+		// ═══ LIVE NETWORK STATS ═══
+		var totalNodes, onlineNodes, totalUsers, totalTasks, completedTasks int
+		db.QueryRowContext(ctx, "SELECT COUNT(*) FROM nodes").Scan(&totalNodes)
+		db.QueryRowContext(ctx, "SELECT COUNT(*) FROM nodes WHERE status = 'online'").Scan(&onlineNodes)
+		db.QueryRowContext(ctx, "SELECT COUNT(*) FROM users").Scan(&totalUsers)
+		db.QueryRowContext(ctx, "SELECT COUNT(*) FROM tasks").Scan(&totalTasks)
+		db.QueryRowContext(ctx, "SELECT COUNT(*) FROM tasks WHERE status = 'completed'").Scan(&completedTasks)
+
+		// ═══ TOKENOMICS ═══
+		var maxSupply, circulating, totalBurned, totalMinted, rewardPerHour float64
+		var burnRatePct float64
+		var epochNumber int
+		db.QueryRowContext(ctx, `
+			SELECT COALESCE(epoch_number,1), COALESCE(max_supply_cap,21000000), 
+			       COALESCE(current_circulating,0), COALESCE(total_burned,0), 
+			       COALESCE(total_minted_in_epoch,0), COALESCE(base_reward_per_hour,0.01),
+			       COALESCE(burn_rate_pct,2)
+			FROM tokenomics_halving ORDER BY epoch_number DESC LIMIT 1
+		`).Scan(&epochNumber, &maxSupply, &circulating, &totalBurned, &totalMinted, &rewardPerHour, &burnRatePct)
+
+		// ═══ REWARDS ═══
+		var todayRewards, totalRewardsAllTime float64
+		var pendingRewards float64
+		db.QueryRowContext(ctx, `
+			SELECT COALESCE(SUM(amount), 0) FROM node_rewards_ledger 
+			WHERE created_at >= CURRENT_DATE
+		`).Scan(&todayRewards)
+		db.QueryRowContext(ctx, `
+			SELECT COALESCE(SUM(amount), 0) FROM node_rewards_ledger
+		`).Scan(&totalRewardsAllTime)
+		db.QueryRowContext(ctx, `
+			SELECT COALESCE(SUM(amount_gstd), 0) FROM node_pending_rewards WHERE claimed_at IS NULL
+		`).Scan(&pendingRewards)
+
+		// ═══ REVENUE SHARING ═══
+		var todayRevenue float64
+		db.QueryRowContext(ctx, `
+			SELECT COALESCE(total_platform_revenue, 0) FROM revenue_sharing 
+			WHERE epoch_date = CURRENT_DATE
+		`).Scan(&todayRevenue)
+
+		// ═══ STAKING ═══
+		var activeStakers int
+		var totalStaked float64
+		db.QueryRowContext(ctx, "SELECT COUNT(*), COALESCE(SUM(amount),0) FROM staking_positions WHERE status = 'active'").Scan(&activeStakers, &totalStaked)
+
+		// ═══ ACTIVE WORKERS (Redis) ═══
+		activeWorkers := 0
+		if rClient != nil {
+			keys, err := rClient.Keys(ctx, "worker:online:*").Result()
+			if err == nil {
+				activeWorkers = len(keys)
+			}
+		}
+
+		// ═══ SYSTEM ═══
+		var dbConnections int
+		db.QueryRowContext(ctx, "SELECT numbackends FROM pg_stat_database WHERE datname = current_database()").Scan(&dbConnections)
+
 		// Determine overall health
 		status := "healthy"
 		if dbStatus != "connected" {
 			status = "unhealthy"
 		}
 
+		supplyMinedPct := float64(0)
+		if maxSupply > 0 {
+			supplyMinedPct = circulating / maxSupply * 100
+		}
+
 		c.JSON(200, gin.H{
 			"status": status,
 			"database": gin.H{
-				"status": dbStatus,
+				"status":      dbStatus,
+				"connections": dbConnections,
 			},
 			"contract": gin.H{
 				"address":     tonConfig.ContractAddress,
@@ -2288,8 +2353,39 @@ func getHealth(db *sql.DB, tonService *services.TONService, tonConfig config.TON
 			},
 			"sovereign_ai": gin.H{
 				"status":         "groq",
-				"ollama_enabled": false, // Ollama container not deployed; inference via Groq Cloud
+				"ollama_enabled": false,
 				"inference":      "Groq Cloud (8 models)",
+			},
+			"network": gin.H{
+				"total_nodes":     totalNodes,
+				"online_nodes":    onlineNodes,
+				"active_workers":  activeWorkers,
+				"total_users":     totalUsers,
+				"total_tasks":     totalTasks,
+				"completed_tasks": completedTasks,
+			},
+			"tokenomics": gin.H{
+				"epoch":            epochNumber,
+				"max_supply":       maxSupply,
+				"circulating":      circulating,
+				"total_minted":     totalMinted,
+				"total_burned":     totalBurned,
+				"burn_rate_pct":    burnRatePct,
+				"supply_mined_pct": supplyMinedPct,
+				"reward_per_hour":  rewardPerHour,
+				"total_staked":     totalStaked,
+				"active_stakers":   activeStakers,
+			},
+			"rewards": gin.H{
+				"today_gstd":     todayRewards,
+				"all_time_gstd":  totalRewardsAllTime,
+				"pending_gstd":   pendingRewards,
+				"today_revenue":  todayRevenue,
+			},
+			"autonomy": gin.H{
+				"departments":  9,
+				"mode":         "TOTAL_CONTROL_24_7_365",
+				"ai_cost":      "$0 (Groq Compound Beta)",
 			},
 			"timestamp": time.Now().Unix(),
 		})
