@@ -15,7 +15,7 @@ description: Current ecosystem state — always read FIRST before any changes
 │                    GSTD ECOSYSTEM                           │
 │                 Server: 82.115.48.228                       │
 │                 OS: Ubuntu 24.04                            │
-│                 Last Update: 2026-03-16 (v158 SQL fix+node tools)  │
+│                 Last Update: 2026-03-19 (autonomy improvements)   │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  ┌─── NGINX (gstd_nginx_lb) ─── Port 80/443 ─────────┐    │
@@ -77,8 +77,8 @@ description: Current ecosystem state — always read FIRST before any changes
 | Component | Version/Image | Path | Container |
 |-----------|---------------|------|-----------|
 | **Backend** | `gstd-backend-blue:v168` ×4 | `/home/ubuntu/backend` | `ubuntu-backend-blue-{1..4}` |
-| **Frontend** | `gstd-frontend:v17` (Docker) | `/home/ubuntu/frontend` | `ubuntu-frontend-1` |
-| **Telegram Bot** | `gstd-bot:v29` | `/home/ubuntu/gstdbot` | `gstd-telegram-bot` |
+| **Frontend** | `gstd-frontend:v18` (Docker) | `/home/ubuntu/frontend` | `ubuntu-frontend-1` |
+| **Telegram Bot** | `gstd-bot:v30` | `/home/ubuntu/gstdbot` | `gstd-telegram-bot` |
 | **GSTD Bridge** | `gstd-bridge:latest` | `/home/ubuntu/gstd-bridge` | `gstd-bridge-test` |
 | **Chat UI** | Static HTML | `/home/ubuntu/chat-ui` | *served by nginx* |
 | **PostgreSQL** | `postgres:15-alpine` | — | `gstd_postgres_prod` |
