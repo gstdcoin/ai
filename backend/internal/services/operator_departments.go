@@ -466,7 +466,7 @@ func (op *PlatformOperator) intelligenceCycle() {
 // ═════════════════════════════════════════════════════════════
 
 func (op *PlatformOperator) frontendCycle() {
-	// Check critical frontend pages
+	// Check critical frontend pages by HTTP status + basic content validation
 	pages := []struct {
 		name string
 		url  string
@@ -478,34 +478,27 @@ func (op *PlatformOperator) frontendCycle() {
 	}
 
 	var failures []string
-	ctx2, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer cancel()
 
 	for _, p := range pages {
-		bodyOut, err := exec.Command("sh", "-c",
-			fmt.Sprintf("curl -s -L --max-time 10 %s 2>/dev/null", p.url)).Output()
-			
-		htmlBody := string(bodyOut)
-		if err != nil || len(htmlBody) < 10 {
-			failures = append(failures, fmt.Sprintf("❌ %s: Failed to reach network", p.name))
+		// Check HTTP status code first
+		codeOut, err := exec.Command("sh", "-c",
+			fmt.Sprintf("curl -s -o /dev/null -w '%%{http_code}' --max-time 10 %s 2>/dev/null", p.url)).Output()
+		
+		code := strings.TrimSpace(string(codeOut))
+		if err != nil || code == "" || code[0] != '2' { // Not 2xx
+			failures = append(failures, fmt.Sprintf("❌ %s: HTTP %s", p.name, code))
 			continue
 		}
 
-		// Deep User-Experience Verification via AI
-		maxLen := len(htmlBody)
-		if maxLen > 2500 { maxLen = 2500 }
-		prompt := fmt.Sprintf("You are an E2E User Experience bot. Does this HTML DOM contain any visual bugs, React errors (e.g., 'Application Error', 'Minified React error'), missing CSS, or missing wallet connection logic? If it does, output exactly 'UI_BUG_DETECTED: <description>'. If normal, output 'OK'. \\n\\nHTML Snapshot (first 2500 chars):\\n%s", 
-			htmlBody[:maxLen])
+		// Basic content check — verify HTML is not empty/broken
+		bodyOut, _ := exec.Command("sh", "-c",
+			fmt.Sprintf("curl -s -L --max-time 10 %s 2>/dev/null | head -c 500", p.url)).Output()
+		htmlBody := string(bodyOut)
 		
-		response, _ := op.ai.Ask(ctx2, "UX Verifier", prompt)
-		
-		if strings.Contains(response, "UI_BUG_DETECTED:") {
-			failures = append(failures, fmt.Sprintf("🐛 %s: %s", p.name, response))
-			// AUTONOMOUS HEALING: Immediately invoke the Frontend R&D agent to fix the UI!
-			op.sendTelegram(fmt.Sprintf("⚠️ *Autonomous UX Alert*\nUser interface bug detected on %s. Triggering immediate `improveFrontend()` Auto-Patch sequence to rewrite broken React files.", p.name))
-			go op.improveFrontend()
-		} else if !strings.Contains(htmlBody, "GSTD") && !strings.Contains(htmlBody, "div") {
-			failures = append(failures, fmt.Sprintf("❌ %s: HTML malformed or empty", p.name))
+		if len(htmlBody) < 50 {
+			failures = append(failures, fmt.Sprintf("❌ %s: Response too short (%d bytes)", p.name, len(htmlBody)))
+		} else if !strings.Contains(htmlBody, "<") {
+			failures = append(failures, fmt.Sprintf("❌ %s: Not valid HTML", p.name))
 		}
 	}
 
@@ -515,7 +508,7 @@ func (op *PlatformOperator) frontendCycle() {
 			msg += f + "\n"
 		}
 		op.sendTelegram(msg)
-		op.logAction("frontend", fmt.Sprintf("%d frontend problems found & Auto-Patched", len(failures)), "alert", false)
+		op.logAction("frontend", fmt.Sprintf("%d frontend pages DOWN", len(failures)), "alert", false)
 	}
 
 	// Check frontend container status
