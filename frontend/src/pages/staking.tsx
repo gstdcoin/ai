@@ -268,12 +268,12 @@ export default function StakingPage() {
                   const sessionToken = localStorage.getItem('session_token') || '';
                   const res = await fetch(`${API_BASE_URL}/api/v1/staking/stake`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionToken}`, 'X-Wallet-Address': walletAddress },
-                    body: JSON.stringify({ amount: amt }),
+                    headers: { 'Content-Type': 'application/json', 'X-Session-Token': sessionToken, 'Authorization': `Bearer ${sessionToken}` },
+                    body: JSON.stringify({ amount: amt, lock_days: tier.days }),
                   });
                   const data = await res.json();
                   if (res.ok) {
-                    toast.success(`Staked ${amt} GSTD at ${data.apy}% APY`);
+                    toast.success(`Staked ${amt} GSTD at ${data.apy}% APY for ${tier.days} days`);
                     setUserStaked(data.total_staked || 0);
                     fetchInfo();
                   } else {
@@ -297,7 +297,7 @@ export default function StakingPage() {
                   const sessionToken = localStorage.getItem('session_token') || '';
                   const res = await fetch(`${API_BASE_URL}/api/v1/staking/unstake`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionToken}`, 'X-Wallet-Address': walletAddress },
+                    headers: { 'Content-Type': 'application/json', 'X-Session-Token': sessionToken, 'Authorization': `Bearer ${sessionToken}` },
                     body: JSON.stringify({ amount: unstakeAmount }),
                   });
                   const data = await res.json();
