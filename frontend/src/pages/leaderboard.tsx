@@ -2,7 +2,7 @@ import Head from 'next/head';
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import EcosystemNav from '../components/layout/EcosystemNav';
+
 import { RefreshCw } from 'lucide-react';
 import { API_BASE_URL } from '../lib/config';
 
@@ -57,7 +57,7 @@ export default function LeaderboardPage() {
         <title>Leaderboard — GSTD Ecosystem</title>
         <meta name="description" content="Top GSTD token holders leaderboard. See who leads the decentralized AI network." />
       </Head>
-      <EcosystemNav />
+
 
       <main className="max-w-3xl mx-auto px-4 pt-20 pb-16 sovereign-section">
         {/* Header */}

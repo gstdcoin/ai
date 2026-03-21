@@ -4,7 +4,7 @@ import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { GetStaticProps } from 'next';
 import { API_BASE_URL } from '../lib/config';
 import { Activity, Cpu, Shield, Zap, Terminal, RefreshCw, Layers } from 'lucide-react';
-import EcosystemNav from '../components/layout/EcosystemNav';
+
 import Footer from '../components/layout/Footer';
 
 interface OperatorStatus {
@@ -45,7 +45,7 @@ export default function OperatorDashboard() {
 
   return (
     <div className="min-h-screen bg-[#030014] text-white flex flex-col font-sans">
-      <EcosystemNav />
+
       <div className="flex-1 pt-24 px-4 max-w-6xl mx-auto w-full">
         
         <div className="mb-10 text-center">
