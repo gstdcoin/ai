@@ -82,12 +82,16 @@ export default function NodesPage() {
         const res = await fetch(`${API_BASE_URL}/api/v1/nodes/claim-rewards`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-Wallet-Address': walletAddress },
-            body: JSON.stringify({ wallet_address: walletAddress }),
+            body: JSON.stringify({ owner_wallet: walletAddress }),
         });
-        if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.ok) {
             setPendingRewards(0);
+            alert(`✅ ${data.claimed_gstd?.toFixed(4) || '0'} GSTD claimed!`);
+        } else {
+            alert(data.message || data.error || 'Claim failed');
         }
-    } catch (_e) { /* silent */ }
+    } catch (_e) { alert('Network error — try again'); }
     setClaiming(false);
   }, [walletAddress, claiming]);
 
