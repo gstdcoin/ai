@@ -177,6 +177,7 @@ func SetupAppStoreRoutes(v1 *gin.RouterGroup, db *sql.DB) {
 // ─── App Store Catalog ───────────────────────────────────────
 
 const devGSTDTeam = "GSTD Team"
+const gstdChatVersion = "4.0.0-DeFi"
 
 func getGSTDAppCatalog() []AppManifest {
 	return []AppManifest{
@@ -190,7 +191,15 @@ func getGSTDAppCatalog() []AppManifest {
 			GSTDReward: 50, MinRAMGB: 2, MinDiskGB: 5,
 		},
 		{
-			ID: "gstd-chat", Name: "GSTD Sovereign AI", Version: "4.0.0-DeFi",
+			ID: "gstd-signals", Name: "AI Signals Marketplace", Version: "2.1.0-V2",
+			Category: "finance", Tagline: "Monetized AI Market Predictions",
+			Description: "Access premium AI-generated trading signals and market forecasts. Powered by MiroFish AI, analyzing real-time crypto, forex, and commodities data. Nodes earn compute rewards for generating predictions.",
+			Developer:   devGSTDTeam, Website: "https://app.gstdtoken.com/predictions",
+			Icon: "📡", Port: 8080, DockerImage: "ghcr.io/gstdcoin/gstd-backend-blue:latest",
+			Status: "available", Featured: true, New: true, MinRAMGB: 1, MinDiskGB: 2,
+		},
+		{
+			ID: "gstd-chat", Name: "GSTD Sovereign AI", Version: gstdChatVersion,
 			Category: "ai", Tagline: "Private, censorship-free AI assistant",
 			Description: "Access the Hive Mind through a beautiful chat interface. Multiple AI models, sovereign compute, zero corporate control. Supports multi-model consensus (SmartMix).",
 			Developer:   devGSTDTeam, Website: "https://chat.gstdtoken.com",
@@ -648,7 +657,7 @@ func updateNodeSettings() gin.HandlerFunc {
 func getWhatsNew() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.JSON(200, gin.H{
-			"version": "4.0.0-DeFi",
+			"version": gstdChatVersion,
 			"date":    "2026-03-07",
 			"features": []gin.H{
 				{
@@ -706,8 +715,8 @@ func listBackups() gin.HandlerFunc {
 func checkForUpdates() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.JSON(200, gin.H{
-			"current_version":  "4.0.0-DeFi",
-			"latest_version":   "4.0.0-DeFi",
+			"current_version":  gstdChatVersion,
+			"latest_version":   gstdChatVersion,
 			"update_available": false,
 			"last_checked":     time.Now(),
 		})

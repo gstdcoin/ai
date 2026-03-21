@@ -79,7 +79,7 @@ type CompoundResponse struct {
 }
 
 func NewCompoundAI(apiKey string) *CompoundAI {
-	model := "compound-beta"
+	model := "llama-3.3-70b-versatile"
 	return &CompoundAI{
 		apiKey:     apiKey,
 		model:      model,
@@ -92,14 +92,14 @@ func NewCompoundAI(apiKey string) *CompoundAI {
 func (c *CompoundAI) TryFallbackModel() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	fallbacks := []string{"llama-3.3-70b-versatile", "llama-3.1-8b-instant"}
-	if c.model == "compound-beta" {
+	fallbacks := []string{"llama-3.1-8b-instant"}
+	if c.model == "llama-3.3-70b-versatile" {
 		c.model = fallbacks[0]
 		log.Printf("🧠 CompoundAI: switched to fallback model %s", c.model)
 	} else {
 		// Cycle back to primary
-		c.model = "compound-beta"
-		log.Printf("🧠 CompoundAI: restored primary model compound-beta")
+		c.model = "llama-3.3-70b-versatile"
+		log.Printf("🧠 CompoundAI: restored primary model")
 	}
 }
 
@@ -107,9 +107,9 @@ func (c *CompoundAI) TryFallbackModel() {
 func (c *CompoundAI) ResetModel() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if c.model != "compound-beta" {
-		log.Printf("🧠 CompoundAI: reset to primary model compound-beta (was %s)", c.model)
-		c.model = "compound-beta"
+	if c.model != "llama-3.3-70b-versatile" {
+		log.Printf("🧠 CompoundAI: reset to primary model (was %s)", c.model)
+		c.model = "llama-3.3-70b-versatile"
 	}
 }
 

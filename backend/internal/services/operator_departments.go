@@ -61,6 +61,24 @@ func (op *PlatformOperator) StartFullControl() {
 		op.StartAutonomousDeveloper() // DEPT 9: Platform R&D
 	}
 
+	// DEPT 10: Obsidian Vault — Knowledge persistence & learning
+	if op.vault != nil {
+		go op.loop("obsidian-daily", 6*time.Hour, op.obsidianDailySync)
+		go op.loop("obsidian-marketplace", 2*time.Hour, op.obsidianMarketplaceSync)
+		go op.loop("obsidian-learn", 12*time.Hour, op.obsidianKnowledgeExtraction)
+	}
+
+	// DEPT 11: MiroFish — Swarm intelligence predictions + signal generation
+	if op.mirofish != nil {
+		go op.loop("mirofish-predict", 3*time.Hour, op.mirofishPredictionCycle)
+		go op.loop("mirofish-signals", 2*time.Hour, op.mirofishSignalGenerator)
+		// Seed initial signals after 3min startup delay (let other AI agents settle)
+		go func() {
+			time.Sleep(3 * time.Minute)
+			op.mirofishSeedSignals()
+		}()
+	}
+
 	// Daily comprehensive AI report — every 24h
 	go op.loop("daily-report", 24*time.Hour, op.sendDailyAIReport)
 
@@ -75,6 +93,8 @@ func (op *PlatformOperator) StartFullControl() {
 		"7️⃣ Blockchain — on-chain, wallets (10m)\n" +
 		"8️⃣ AutoCoder — Self-healing code (15m)\n" +
 		"9️⃣ R&D — Autonomous Developer (3h)\n" +
+		"🔟 Obsidian — Knowledge vault (6h)\n" +
+		"🐟 MiroFish — Swarm predictions (4h)\n" +
 		"📊 Daily AI Report (24h)\n\n" +
 		"_Platform is self-governing._")
 }
@@ -659,6 +679,7 @@ func (op *PlatformOperator) GetFullStatus() map[string]interface{} {
 		{"name": "Blockchain", "interval": "10m", "scope": "wallets, DLN, bridge, pools"},
 		{"name": "AutoCoder", "interval": "15m", "scope": "self-healing code, auto-commits"},
 		{"name": "R&D", "interval": "3h", "scope": "autonomous developer, UI, localization, backend optimization"},
+		{"name": "Obsidian Vault", "interval": "6h", "scope": "knowledge persistence, decision graphs, pattern learning"},
 	}
 	base["mode"] = "TOTAL_CONTROL_24_7_365"
 	base["ai_cost"] = "$0 (Compound Beta via Groq)"
@@ -707,4 +728,127 @@ func (op *PlatformOperator) GetDepartmentStats(db *sql.DB) map[string]interface{
 	result["referrals"] = referrals
 
 	return result
+}
+
+// ═════════════════════════════════════════════════════════════
+// DEPT 10: OBSIDIAN VAULT — Knowledge Persistence & Learning
+// ═════════════════════════════════════════════════════════════
+
+func (op *PlatformOperator) obsidianDailySync() {
+	if op.vault == nil {
+		return
+	}
+
+	op.mu.RLock()
+	health := op.serverHealth
+	actions := op.getRecentActions(50)
+	op.mu.RUnlock()
+
+	state := op.brain.GetState()
+	aiStats := op.ai.GetStats()
+
+	op.vault.WriteDailyLog(health, state, aiStats, actions)
+
+	// Log all recent decisions to vault
+	op.mu.RLock()
+	for _, d := range op.decisionLog {
+		if time.Since(d.Time) < 6*time.Hour {
+			op.vault.LogDecision(d.Context, d.Context, d.Decision, d.Outcome, d.Score)
+		}
+	}
+	op.mu.RUnlock()
+
+	op.logAction("obsidian", "Daily vault sync completed", "success", true)
+}
+
+func (op *PlatformOperator) obsidianMarketplaceSync() {
+	if op.vault == nil {
+		return
+	}
+	op.vault.LogMarketplaceSnapshot()
+	op.logAction("obsidian", "Marketplace snapshot written", "success", true)
+}
+
+func (op *PlatformOperator) obsidianKnowledgeExtraction() {
+	if op.vault == nil || op.ai == nil {
+		return
+	}
+
+	// Extract knowledge from key topics
+	topics := []string{
+		"server performance", "marketplace tasks", "node growth",
+		"security incidents", "AI decisions", "economics",
+	}
+
+	for _, topic := range topics {
+		op.vault.ExtractKnowledge(topic)
+	}
+
+	op.logAction("obsidian", "Knowledge extraction cycle completed", "success", true)
+	op.sendTelegram("🧠 *Obsidian AI*\nKnowledge extraction completed. Vault updated with new patterns and learnings.")
+}
+
+// ═════════════════════════════════════════════════════════════
+// DEPT 11: MIROFISH — Swarm Intelligence Predictions
+// ═════════════════════════════════════════════════════════════
+
+func (op *PlatformOperator) mirofishPredictionCycle() {
+	if op.mirofish == nil || op.db == nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
+	// Gather current platform state for simulation seed
+	var totalTasks, activeTasks, activeWorkers, totalNodes, totalUsers int
+	var totalVolume, circulating, totalStaked float64
+	var growthRate float64
+
+	op.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM tasks").Scan(&totalTasks)
+	op.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM tasks WHERE status IN ('pending','queued','assigned')").Scan(&activeTasks)
+	op.db.QueryRowContext(ctx, "SELECT COUNT(DISTINCT worker_wallet) FROM worker_ratings WHERE last_task_at > NOW() - INTERVAL '7 days'").Scan(&activeWorkers)
+	op.db.QueryRowContext(ctx, "SELECT COALESCE(SUM(total_locked_gstd),0) FROM task_escrow").Scan(&totalVolume)
+	op.db.QueryRowContext(ctx, queryCountNodes).Scan(&totalNodes)
+	op.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM users").Scan(&totalUsers)
+	op.db.QueryRowContext(ctx, "SELECT COALESCE(current_circulating, 0) FROM tokenomics_halving ORDER BY epoch_number DESC LIMIT 1").Scan(&circulating)
+	op.db.QueryRowContext(ctx, "SELECT COALESCE(SUM(amount), 0) FROM staking_positions WHERE status = 'active'").Scan(&totalStaked)
+
+	// Calculate growth rate
+	var newNodes7d int
+	op.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM nodes WHERE created_at > NOW() - INTERVAL '7 days'").Scan(&newNodes7d)
+	if totalNodes > 0 {
+		growthRate = float64(newNodes7d) / float64(totalNodes) * 100
+	}
+
+	// Run marketplace demand prediction
+	result, err := op.mirofish.PredictMarketplaceDemand(ctx, totalTasks, activeTasks, activeWorkers, totalVolume)
+	if err != nil {
+		op.logAction("mirofish", "Prediction failed: "+err.Error(), "error", false)
+		return
+	}
+
+	// Build Telegram notification
+	msg := fmt.Sprintf("🐟 *MiroFish Prediction*\n*%s*\nConfidence: %.0f%%\n\n", result.Title, result.Confidence*100)
+	for i, p := range result.Predictions {
+		if i >= 3 {
+			break // show top 3
+		}
+		msg += fmt.Sprintf("• *%s* (%.0f%%) — %s\n", p.Category, p.Probability*100, p.Description)
+	}
+	if len(result.EmergentPatterns) > 0 {
+		msg += "\n🔮 *Emerging:* " + result.EmergentPatterns[0]
+	}
+	op.sendTelegram(msg)
+	op.logAction("mirofish", fmt.Sprintf("Prediction: %s (%.0f%% confidence)", result.Title, result.Confidence*100), "success", true)
+
+	// Every other cycle, also run growth prediction
+	op.mu.RLock()
+	cycleNum := op.cycleCount
+	op.mu.RUnlock()
+	if cycleNum%2 == 0 {
+		growthResult, gErr := op.mirofish.PredictGrowthStrategy(ctx, totalNodes, totalUsers, growthRate, "organic referral + node incentives")
+		if gErr == nil && growthResult != nil {
+			op.logAction("mirofish", fmt.Sprintf("Growth forecast: %.0f%% confidence", growthResult.Confidence*100), "success", true)
+		}
+	}
 }

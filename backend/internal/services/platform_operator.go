@@ -38,6 +38,9 @@ type PlatformOperator struct {
 	db           *sql.DB
 	ai           *CompoundAI
 	brain        *SwarmBrain
+	vault        *ObsidianVault
+	mirofish     *MiroFishService
+	externalData *ExternalDataFetcher
 	mu           sync.RWMutex
 	stopCh       chan struct{}
 
@@ -88,7 +91,7 @@ type ServerHealth struct {
 }
 
 func NewPlatformOperator(db *sql.DB, ai *CompoundAI, brain *SwarmBrain) *PlatformOperator {
-	return &PlatformOperator{
+	op := &PlatformOperator{
 		db:          db,
 		ai:          ai,
 		brain:       brain,
@@ -97,6 +100,36 @@ func NewPlatformOperator(db *sql.DB, ai *CompoundAI, brain *SwarmBrain) *Platfor
 		stopCh:      make(chan struct{}),
 		startedAt:   time.Now(),
 	}
+	// Initialize Obsidian knowledge vault
+	op.vault = NewObsidianVault(db, ai)
+	// Initialize MiroFish predictive intelligence
+	op.mirofish = NewMiroFishService(MiroFishConfig{
+		BaseURL:    os.Getenv("MIROFISH_URL"),
+		APIKey:     os.Getenv("MIROFISH_API_KEY"),
+		Enabled:    os.Getenv("MIROFISH_URL") != "",
+		MaxAgents:  500,
+		SimTimeout: 5 * time.Minute,
+	}, op.vault, ai)
+	return op
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ACCESSORS
+// ═══════════════════════════════════════════════════════════════
+
+// GetMiroFish returns the MiroFish prediction service
+func (op *PlatformOperator) GetMiroFish() *MiroFishService {
+	return op.mirofish
+}
+
+// GetExternalData returns the external data fetcher service
+func (op *PlatformOperator) GetExternalData() *ExternalDataFetcher {
+	return op.externalData
+}
+
+// SetExternalData sets the external data fetcher (called from routes.go after Redis is available)
+func (op *PlatformOperator) SetExternalData(fetcher *ExternalDataFetcher) {
+	op.externalData = fetcher
 }
 
 // ═══════════════════════════════════════════════════════════════

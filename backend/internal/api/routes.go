@@ -1484,8 +1484,9 @@ func SetupRoutes(deps APIDependencies) {
 		// ═══ NODE OS COMPATIBILITY — endpoints expected by GSTD Node OS ═══
 		RegisterRegistryRoutes(v1)
 		RegisterMemoryRoutes(v1, dbConn)
+		RegisterSuperNodeRoutes(v1, dbConn)
 
-		log.Printf("✅ Node OS compatibility routes registered (/models/registry, /memory/*)")
+		log.Printf("✅ SuperNode OS routes registered (/models/registry, /memory/*, /settlement/*, /storage/*, /compute/*, /coverage/*, /rewards/*)")
 
 		// ═══ AUTONOMOUS PLATFORM (SwarmBrain + Compound AI) ═══
 		groqKey := os.Getenv("GROQ_API_KEY")
@@ -1515,6 +1516,35 @@ func SetupRoutes(deps APIDependencies) {
 
 			log.Printf("🧠 SwarmBrain: autonomous platform ONLINE (Compound AI powered)")
 			log.Printf("🤖 PlatformOperator: TOTAL CONTROL 24/7/365 — 7 departments active")
+
+			// ═══ PREDICTION SIGNALS (Swarm AI) + EXTERNAL DATA ═══
+			// Initialize External Data Fetcher for real market data
+			var fetcherRedis *redis.Client
+			if rc, ok := redisClient.(*redis.Client); ok && rc != nil {
+				fetcherRedis = rc
+			}
+			externalDataFetcher := services.NewExternalDataFetcher(dbConn, fetcherRedis, compoundAI)
+			go externalDataFetcher.Start(context.Background())
+			log.Println("📡 ExternalDataFetcher: ONLINE — enriching signals with real market data")
+
+			// Wire external data into the operator for signal generation
+			operator.SetExternalData(externalDataFetcher)
+
+			predictionHandler := NewPredictionSignalsHandler(dbConn, operator.GetMiroFish(), escrowService)
+			predictionHandler.SetExternalData(externalDataFetcher)
+			SetupPredictionSignalRoutes(v1, predictionHandler)
+			SetupPredictionSignalProtectedRoutes(protected, predictionHandler)
+
+			predictionMarketsHandler := NewPredictionMarketsHandler(dbConn, operator.GetMiroFish(), externalDataFetcher)
+			SetupPredictionMarketsRoutes(v1, predictionMarketsHandler)
+			SetupPredictionMarketsProtectedRoutes(protected, predictionMarketsHandler)
+
+			// ═══ PAID SWARM AI SIMULATIONS ═══
+			simulationsHandler := NewSimulationsHandler(dbConn, operator.GetMiroFish(), escrowService)
+			SetupSimulationRoutes(v1, simulationsHandler)
+			SetupSimulationProtectedRoutes(protected, simulationsHandler)
+
+			log.Printf("⚡ Swarm AI: Signal Marketplace + Simulations + Native Prediction Markets active")
 		} else {
 			log.Printf("⚠ SwarmBrain: GROQ_API_KEY not set — autonomous features disabled")
 		}
@@ -2536,3 +2566,4 @@ func prepareLiquidityProvision(escrow *services.EscrowService) gin.HandlerFunc {
 		c.JSON(200, result)
 	}
 }
+// SuperNode integration v1
