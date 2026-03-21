@@ -108,6 +108,10 @@ frontend/tsconfig.tsbuildinfo
 
 # Nested repos (managed separately)
 A2A/
+agency-agents/
+ai-prompts/
+chat-ui/
+mcp-server/
 
 # IDE workspace (local dev only)
 .cursor/
