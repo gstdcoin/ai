@@ -15,7 +15,7 @@ description: Current ecosystem state — always read FIRST before any changes
 │                    GSTD ECOSYSTEM                           │
 │                 Server: 82.115.48.228                       │
 │                 OS: Ubuntu 24.04                            │
-│                 Last Update: 2026-03-19 (autonomy improvements)   │
+│                 Last Update: 2026-03-21 (MiroFish simulations)      │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  ┌─── NGINX (gstd_nginx_lb) ─── Port 80/443 ─────────┐    │
@@ -30,10 +30,10 @@ description: Current ecosystem state — always read FIRST before any changes
 │                                                             │
 │  ┌─── BACKEND (Go) ─── 4 replicas ───────────────────┐     │
 │  │  Containers: ubuntu-backend-blue-{1..4}            │     │
-│  │  Image:      gstd-backend-blue:v158                │     │
+│  │  Image:      gstd-backend-blue:v184                │     │
 │  │  Port:       8080 (internal, via nginx)            │     │
 │  │  DB:         distributed_computing                 │     │
-│  │  Rollback:   gstd-backend-blue:v157                │     │
+│  │  Rollback:   gstd-backend-blue:v183                │     │
 │  └────────────────────────────────────────────────────┘     │
 │                                                             │
 │  ┌─── FRONTEND (Next.js 16.1.6) ─────────────────────┐     │
@@ -77,7 +77,7 @@ description: Current ecosystem state — always read FIRST before any changes
 | Component | Version/Image | Path | Container |
 |-----------|---------------|------|-----------|
 | **Backend** | `gstd-backend-blue:v168` ×4 | `/home/ubuntu/backend` | `ubuntu-backend-blue-{1..4}` |
-| **Frontend** | `gstd-frontend:v18` (Docker) | `/home/ubuntu/frontend` | `ubuntu-frontend-1` |
+| **Frontend** | `gstd-frontend:v24` (Docker) | `/home/ubuntu/frontend` | `ubuntu-frontend-1` |
 | **Telegram Bot** | `gstd-bot:v30` | `/home/ubuntu/gstdbot` | `gstd-telegram-bot` |
 | **GSTD Bridge** | `gstd-bridge:latest` | `/home/ubuntu/gstd-bridge` | `gstd-bridge-test` |
 | **Chat UI** | Static HTML | `/home/ubuntu/chat-ui` | *served by nginx* |
