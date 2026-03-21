@@ -1,681 +1,909 @@
 import { useTranslation } from 'next-i18next';
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import Head from 'next/head';
 import {
-    Globe2, Sprout, HeartPulse, Droplets, Sun,
-    Activity, ShieldCheck, Zap, Database, CheckCircle,
-    Target, Dna, TrendingUp, Star, BrainCircuit, Radio, AlertTriangle, MapPin, Network,
-    Satellite, Microscope, Wind, Waves, Shield, Search, BarChart3, Users, ExternalLink,
-    GraduationCap, Leaf, Wheat, Baby, Scale, Flame, Building2, PersonStanding, Brain
+    Briefcase, Zap, CheckCircle, Clock,
+    ShieldCheck, RefreshCw,
+    Eye, Brain, Sparkles, Target, Lock,
+    BarChart3, Users, Coins, Activity, Play
 } from 'lucide-react';
 import { toast } from '../../lib/toast';
 import { apiGet, apiPost } from '../../lib/apiClient';
+import { useWalletStore } from '../../store/walletStore';
+import { useTonConnectUI } from '@tonconnect/ui-react';
 
-interface GlobalSignal {
+// ═══════════════════════════════════════════════════════════════
+//  GSTD SWARM AI SIMULATION HUB
+//  Powered by GSTD Swarm Intelligence Engine
+//  Paid real-time simulations across crypto, forex, polymarket, tech
+// ═══════════════════════════════════════════════════════════════
+
+interface CatalogEntry {
     id: string;
+    category: string;
     title: string;
     description: string;
-    source: string;
-    severity: 'critical' | 'high' | 'medium';
-    location: string;
-    dataVolume: string;
-    icon: any;
-    color: string;
-    bgColor: string;
-    starsCost: number;
-    gstdReward: number;
-    platformFee: number;
-    category: string;
-    progress?: number;
-    contributors?: number;
-    impact?: string;
+    icon: string;
+    price_gstd: number;
+    agent_count: number;
+    duration_rounds: number;
+    features: string[];
 }
 
-interface LogEntry {
+interface Simulation {
     id: string;
-    type: string;
-    chain: string;
-    message: string;
-    timestamp: string;
+    category: string;
+    scenario: string;
+    agent_count: number;
+    price_gstd: number;
+    status: string;
+    result_summary: string;
+    confidence: number;
+    compute_ms: number;
+    predictions_count: number;
+    created_at: string;
+    completed_at: string;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// 30 CRITICAL PLANETARY SIGNALS — covering ALL major problems of humanity
-// Each signal is connected to real open-data sources and produces actionable
-// results that feed back into the Collective Memory and train the Swarm.
-// ═══════════════════════════════════════════════════════════════════════════
-// Signal i18n key mapping for title/description
-const SIGNAL_I18N: Record<string, { title: string; desc?: string; impact?: string }> = {
-    'nasa_eosdis': { title: 'sig_nasa_title', desc: 'sig_nasa_desc', impact: 'sig_nasa_impact' },
-    'wildfire_sentinel': { title: 'sig_wildfire_title', desc: 'sig_wildfire_desc', impact: 'sig_wildfire_impact' },
-    'copernicus_marine': { title: 'sig_ocean_title', desc: 'sig_ocean_desc' },
-    'air_quality_mesh': { title: 'sig_air_title' },
-    'carbon_sink': { title: 'sig_carbon_title' },
-    'who_pubmed': { title: 'sig_pandemic_title', desc: 'sig_pandemic_desc' },
-    'alphafold_protein': { title: 'sig_orphan_title' },
-    'antibiotic_resistance': { title: 'sig_superbug_title' },
-    'mental_health_nlp': { title: 'sig_mental_title' },
-    'gdelt_crisis': { title: 'sig_crisis_title', desc: 'sig_crisis_desc' },
-    'darknet_tracker': { title: 'sig_trafficking_title' },
-    'osm_disaster': { title: 'sig_disaster_title' },
-    'refugee_flow': { title: 'sig_refugee_title' },
-    'famine_prediction': { title: 'sig_famine_title' },
-    'water_stress': { title: 'sig_water_title' },
-    'seismic_array': { title: 'sig_seismic_title' },
-    'tsunami_model': { title: 'sig_tsunami_title' },
-    'deepfake_firewall': { title: 'sig_deepfake_title' },
-    'critical_infra': { title: 'sig_infra_title' },
-    'cern_physics': { title: 'sig_cern_title' },
-    'fusion_sim': { title: 'sig_fusion_title' },
-    'space_debris': { title: 'sig_debris_title' },
-    'education_gap': { title: 'sig_education_title' },
-    'poverty_mapping': { title: 'sig_poverty_title' },
-    'child_mortality': { title: 'sig_child_title' },
-    'financial_contagion': { title: 'sig_financial_title' },
-    'corruption_trace': { title: 'sig_corruption_title' },
-    'biodiversity_loss': { title: 'sig_biodiversity_title' },
-    'ocean_plastic': { title: 'sig_plastic_title' },
-};
+interface SimResult {
+    id: string;
+    category: string;
+    status: string;
+    result_report: string;
+    result_summary: string;
+    confidence: number;
+    compute_ms: number;
+    predictions_count: number;
+    agent_count: number;
+    price_gstd: number;
+    created_at: string;
+    completed_at?: string;
+}
 
-const ACTIVE_SIGNALS: GlobalSignal[] = [
-    // ─── CLIMATE & ENVIRONMENT ──────────────────────────────────────
-    {
-        id: 'nasa_eosdis', title: 'NASA Earth Observation',
-        description: 'Process real-time satellite imagery from Terra, Aqua, and JPSS fleet. Detect deforestation, glacial melting, and atmospheric anomalies across the planet.',
-        source: 'NASA EOSDIS / MODIS', severity: 'critical', location: 'Global',
-        dataVolume: '45.8 TB/day', icon: Satellite, color: 'text-sky-400', bgColor: 'bg-sky-500/10',
-        starsCost: 3500, gstdReward: 280, platformFee: 70, category: 'Climate',
-        progress: 0, contributors: 0, impact: 'Early detection of deforestation and ice shelf collapse'
-    },
-    {
-        id: 'wildfire_sentinel', title: 'Wildfire Early Warning',
-        description: 'Fuse Sentinel-2, VIIRS hotspots and weather station data to predict fire ignition zones 48 hours ahead. Protect communities, forests, and wildlife.',
-        source: 'Copernicus / VIIRS', severity: 'critical', location: 'Global Forests',
-        dataVolume: '12 TB/day', icon: Flame, color: 'text-orange-400', bgColor: 'bg-orange-500/10',
-        starsCost: 2500, gstdReward: 200, platformFee: 50, category: 'Climate',
-        progress: 0, contributors: 0, impact: 'Predict wildfire ignition 48h before ground crews detect it'
-    },
-    {
-        id: 'copernicus_marine', title: 'Ocean Health Monitor',
-        description: 'Analyze sea surface temperature, acidification, and coral bleaching using combined Copernicus Marine and NOAA Argo float data.',
-        source: 'Copernicus Marine', severity: 'high', location: 'Global Oceans',
-        dataVolume: '8.2 TB/day', icon: Waves, color: 'text-cyan-400', bgColor: 'bg-cyan-500/10',
-        starsCost: 2000, gstdReward: 160, platformFee: 40, category: 'Climate',
-        progress: 0, contributors: 0, impact: 'Track ocean acidification threatening 500M coastal livelihoods'
-    },
-    {
-        id: 'air_quality_mesh', title: 'Air Quality Intelligence',
-        description: 'Cross-correlate 30,000+ ground air quality sensors with satellite aerosol data to generate hyper-local PM2.5 forecasts for 1,000+ cities.',
-        source: 'OpenAQ / PurpleAir', severity: 'high', location: '1,000+ Cities',
-        dataVolume: '5.6 TB/day', icon: Wind, color: 'text-emerald-400', bgColor: 'bg-emerald-500/10',
-        starsCost: 1500, gstdReward: 120, platformFee: 30, category: 'Climate',
-        progress: 0, contributors: 0, impact: 'Air pollution kills 7M people yearly — early alerts save lives'
-    },
+interface SimStats {
+    total_simulations: number;
+    completed_simulations: number;
+    active_simulations: number;
+    total_revenue_gstd: number;
+    unique_users: number;
+    recent_simulations: Array<{
+        id: string;
+        category: string;
+        status: string;
+        confidence: number;
+        predictions_count: number;
+        created_at: string;
+    }>;
+}
 
-    // ─── HEALTH ─────────────────────────────────────────────────────
-    {
-        id: 'who_pubmed', title: 'Pandemic Early Warning',
-        description: 'NLP analysis of WHO reports, PubMed preprints, and hospital overflow data across 190 countries to detect novel pathogen emergence.',
-        source: 'WHO / PubMed / ProMED', severity: 'critical', location: 'Global Health',
-        dataVolume: '2.4 TB/day', icon: HeartPulse, color: 'text-rose-400', bgColor: 'bg-rose-500/10',
-        starsCost: 5000, gstdReward: 400, platformFee: 100, category: 'Health',
-        progress: 0, contributors: 0, impact: 'Detect pandemic signals 14 days before official WHO alerts'
-    },
-    {
-        id: 'alphafold_protein', title: 'Orphan Drug Discovery',
-        description: 'Use AlphaFold-derived protein structures and GSTD compute to discover drug candidates for 7,000+ rare diseases that pharma ignores.',
-        source: 'AlphaFold DB / ChEMBL', severity: 'high', location: 'Research Labs',
-        dataVolume: '18 TB/sync', icon: Dna, color: 'text-violet-400', bgColor: 'bg-violet-500/10',
-        starsCost: 8000, gstdReward: 640, platformFee: 160, category: 'Health',
-        progress: 0, contributors: 0, impact: 'Find treatments for 300M people with neglected diseases'
-    },
-
-    // ─── SECURITY & SAFETY ──────────────────────────────────────────
-    {
-        id: 'gdelt_crisis', title: 'Global Crisis Intelligence',
-        description: 'Monitor GDELT event stream (65 languages, 300K+ news sources) to detect political instability, conflict escalation, and humanitarian crises in real-time.',
-        source: 'GDELT Project', severity: 'critical', location: 'Global',
-        dataVolume: '1.3 TB/day', icon: Globe2, color: 'text-amber-400', bgColor: 'bg-amber-500/10',
-        starsCost: 3000, gstdReward: 240, platformFee: 60, category: 'Security',
-        progress: 0, contributors: 0, impact: 'Early detection of crises affecting 100M+ people'
-    },
-    {
-        id: 'seismic_array', title: 'Seismic Prediction Network',
-        description: 'Feed global seismometer networks (IRIS, USGS) into ML models to detect pre-earthquake stress patterns hours before major events.',
-        source: 'IRIS / USGS', severity: 'critical', location: 'Tectonic Zones',
-        dataVolume: '800 GB/hr', icon: Activity, color: 'text-red-400', bgColor: 'bg-red-500/10',
-        starsCost: 4000, gstdReward: 320, platformFee: 80, category: 'Security',
-        progress: 0, contributors: 0, impact: 'Earthquake early warning for 1B+ people in seismic zones'
-    },
-    {
-        id: 'deepfake_firewall', title: 'Deepfake Detection Grid',
-        description: 'Run adversarial neural nets on social media video streams to detect synthetic media, political deepfakes, and AI-generated disinformation.',
-        source: 'Social Media APIs', severity: 'high', location: 'Global Internet',
-        dataVolume: '6.5 TB/day', icon: ShieldCheck, color: 'text-fuchsia-400', bgColor: 'bg-fuchsia-500/10',
-        starsCost: 3000, gstdReward: 240, platformFee: 60, category: 'Security',
-        progress: 0, contributors: 0, impact: 'Protect elections and public discourse from AI manipulation'
-    },
-
-    // ─── SCIENCE & SOCIETY ──────────────────────────────────────────
-    {
-        id: 'cern_physics', title: 'Particle Physics Compute',
-        description: 'Contribute GSTD compute to CERN Open Data analysis — process collision data to search for physics beyond the Standard Model.',
-        source: 'CERN Open Data', severity: 'medium', location: 'LHC / Geneva',
-        dataVolume: '58 PB total', icon: Microscope, color: 'text-indigo-400', bgColor: 'bg-indigo-500/10',
-        starsCost: 6000, gstdReward: 480, platformFee: 120, category: 'Science',
-        progress: 0, contributors: 0, impact: 'Help discover new fundamental particles of the universe'
-    },
-    {
-        id: 'space_debris', title: 'Space Debris Tracking',
-        description: 'Track 130,000+ orbital objects using radar and optical observations. Predict potential collisions and generate avoidance trajectories for active satellites.',
-        source: 'Space-Track.org / ESA', severity: 'high', location: 'Low Earth Orbit',
-        dataVolume: '400 GB/day', icon: Satellite, color: 'text-sky-400', bgColor: 'bg-sky-500/10',
-        starsCost: 2500, gstdReward: 200, platformFee: 50, category: 'Science',
-        progress: 0, contributors: 0, impact: 'Protect $2T in space infrastructure from Kessler Syndrome'
-    },
-    {
-        id: 'famine_prediction', title: 'Famine Early Warning',
-        description: 'Fuse satellite vegetation indices, market prices, and conflict data to predict food crises 3 months before they strike vulnerable regions.',
-        source: 'FEWS NET / WFP', severity: 'critical', location: 'Sub-Saharan Africa',
-        dataVolume: '1.8 TB/day', icon: Wheat, color: 'text-yellow-400', bgColor: 'bg-yellow-500/10',
-        starsCost: 4500, gstdReward: 360, platformFee: 90, category: 'Society',
-        progress: 0, contributors: 0, impact: 'Save 800M people from food insecurity with early intervention'
-    },
-];
-
-const CATEGORIES = ['All', ...Array.from(new Set(ACTIVE_SIGNALS.map(s => s.category)))];
-
-const CATEGORY_COLORS: Record<string, string> = {
-    'Climate': 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
-    'Health': 'text-rose-400 bg-rose-500/10 border-rose-500/20',
-    'Security': 'text-amber-400 bg-amber-500/10 border-amber-500/20',
-    'Science': 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20',
-    'Society': 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20',
-};
-
-const CATEGORY_I18N: Record<string, string> = {
-    'All': 'all_signals',
-    'Climate': 'cat_climate',
-    'Health': 'cat_health',
-    'Security': 'cat_security',
-    'Science': 'cat_science',
-    'Society': 'cat_society',
-};
-
-const SEVERITY_I18N: Record<string, string> = {
-    'critical': 'critical',
-    'high': 'high',
-    'medium': 'medium',
-};
-
-export default function HumanityMonitor() {
+export default function SwarmSimulations() {
     const { t } = useTranslation('common');
+    const { address, gstdBalance } = useWalletStore();
+    const [tonConnectUI] = useTonConnectUI();
 
-    const [selectedSignal, setSelectedSignal] = useState<GlobalSignal | null>(null);
-    const [isPurchasing, setIsPurchasing] = useState(false);
-    const [purchaseStep, setPurchaseStep] = useState<number>(0);
-    const [liveLogs, setLiveLogs] = useState<LogEntry[]>([]);
-    const [activeCategory, setActiveCategory] = useState('All');
-    const [searchQuery, setSearchQuery] = useState('');
-    const [signalStats, setSignalStats] = useState<Record<string, any>>({});
-    const [stats, setStats] = useState({
-        activeNodes: 0, gstdPrice: 0, dataProcessed: 0, health: 0.95,
-        totalUsers: 0, tasksCompleted: 0, totalBurned: 0
-    });
-    const [sovereigntyIndex, setSovereigntyIndex] = useState(100.0);
+    const [catalog, setCatalog] = useState<CatalogEntry[]>([]);
+    const [mySimulations, setMySimulations] = useState<Simulation[]>([]);
+    const [stats, setStats] = useState<SimStats | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [launching, setLaunching] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState<'catalog' | 'my' | 'live' | 'stats'>('catalog');
+    const [selectedSim, setSelectedSim] = useState<SimResult | null>(null);
+    const [customScenario, setCustomScenario] = useState('');
+    const [customSeed, setCustomSeed] = useState('');
+    const [showCustomModal, setShowCustomModal] = useState(false);
+    const [pulsePhase, setPulsePhase] = useState(0);
 
-    // Merge static signal definitions with real backend progress data
-    const signalsWithRealData = useMemo(() => {
-        return ACTIVE_SIGNALS.map(s => {
-            const real = signalStats[s.id];
-            if (real) {
-                return {
-                    ...s,
-                    progress: real.progress || 0,
-                    contributors: real.contributor_count || 0,
-                };
+    // Pulse animation
+    useEffect(() => {
+        const timer = setInterval(() => setPulsePhase(p => (p + 1) % 360), 50);
+        return () => clearInterval(timer);
+    }, []);
+
+    // Data loading
+    const fetchData = useCallback(async () => {
+        setLoading(true);
+        try {
+            const [catRes, statsRes] = await Promise.allSettled([
+                apiGet('/api/v1/simulations/catalog'),
+                apiGet('/api/v1/simulations/stats'),
+            ]);
+            if (catRes.status === 'fulfilled') setCatalog(catRes.value?.catalog || []);
+            if (statsRes.status === 'fulfilled') setStats(statsRes.value || null);
+
+            if (address) {
+                const myRes = await apiGet('/api/v1/simulations/my');
+                setMySimulations(myRes?.simulations || []);
             }
-            return { ...s, progress: 0, contributors: 0 };
-        });
-    }, [signalStats]);
+        } finally {
+            setLoading(false);
+        }
+    }, [address]);
 
-    const filteredSignals = useMemo(() => {
-        return signalsWithRealData.filter(s => {
-            if (activeCategory !== 'All' && s.category !== activeCategory) return false;
-            if (searchQuery) {
-                const q = searchQuery.toLowerCase();
-                return s.title.toLowerCase().includes(q) || s.description.toLowerCase().includes(q)
-                    || s.category.toLowerCase().includes(q) || s.source.toLowerCase().includes(q);
+    useEffect(() => { fetchData(); }, [fetchData]);
+
+    // Auto-refresh active simulations
+    useEffect(() => {
+        const hasActive = mySimulations.some(s => s.status === 'processing');
+        if (!hasActive) return;
+        const interval = setInterval(async () => {
+            if (address) {
+                const myRes = await apiGet('/api/v1/simulations/my');
+                setMySimulations(myRes?.simulations || []);
             }
-            return true;
-        });
-    }, [activeCategory, searchQuery, signalsWithRealData]);
-
-    // Fetch real signal stats from backend
-    useEffect(() => {
-        const fetchSignals = async () => {
-            try {
-                const data = await apiGet<any>('/monitor/signals').catch(() => null);
-                if (data?.signals) setSignalStats(data.signals);
-            } catch (_e) { /* signals fetch is non-critical */ }
-        };
-        fetchSignals();
-        const interval = setInterval(fetchSignals, 8000);
+        }, 10000);
         return () => clearInterval(interval);
-    }, []);
+    }, [mySimulations, address]);
 
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const data = await apiGet<any>('/monitor/unified').catch(() => null);
-                if (data) {
-                    if (data.flows?.recent_events) setLiveLogs(data.flows.recent_events.slice(0, 20));
-                    const eco = data.ecosystem || {};
-                    const mkt = data.market || {};
-                    const org = data.organism || {};
-                    setStats({
-                        activeNodes: eco.active_nodes || eco.active_devices || 0,
-                        gstdPrice: mkt.gstd_price_usd || 0,
-                        dataProcessed: (data.flows?.global_tps || 0) * 1.5,
-                        health: org.health_score || 0.66,
-                        totalUsers: eco.total_users || 0,
-                        tasksCompleted: eco.tasks_completed || 0,
-                        totalBurned: mkt.total_burned || 0
-                    });
-                }
-            } catch (_e) { /* unified fetch is non-critical */ }
-        };
-        fetchData();
-        const interval = setInterval(fetchData, 4000);
-        return () => clearInterval(interval);
-    }, []);
-
-    // Fetch Sovereignty Index
-    useEffect(() => {
-        const fetchSov = async () => {
-            try {
-                const data = await apiGet<any>('/chat/sovereignty-index').catch(() => null);
-                if (data?.sovereignty_index !== undefined) setSovereigntyIndex(data.sovereignty_index);
-            } catch (_e) { /* sovereignty fetch is non-critical */ }
-        };
-        fetchSov();
-        const interval = setInterval(fetchSov, 5000);
-        return () => clearInterval(interval);
-    }, []);
-
-
-
-    const handleAnalyzeSignal = async () => {
-        if (!selectedSignal) return;
-
-        const isTelegram = typeof window !== 'undefined' && (window as any).Telegram?.WebApp?.openInvoice;
-
-        // If we're NOT inside the Telegram Mini App, redirect to the bot directly
-        // The bot will send the Stars invoice in the chat — simplest purchase flow
-        if (!isTelegram) {
-            const deepLink = `https://t.me/GstdAppBot?start=sponsor-${selectedSignal.id}-${selectedSignal.starsCost}`;
-            window.open(deepLink, '_blank');
-            toast.success("Opening GstdAppBot in Telegram to pay with Stars...");
-            setSelectedSignal(null);
+    // Launch simulation
+    const launchSimulation = async (category: string, scenario?: string, seedData?: string) => {
+        if (!address) {
+            toast.error('Connect wallet to launch simulations');
+            tonConnectUI.openModal();
             return;
         }
 
-        // Inside Telegram WebApp — full invoice flow
-        setIsPurchasing(true); setPurchaseStep(1);
+        const price = catalog.find(c => c.id === category)?.price_gstd || 0;
+
+        setLaunching(category);
         try {
-            // Record real sponsorship in backend DB
-            await apiPost(`/monitor/signals/${selectedSignal.id}/sponsor`, {
-                user_id: 'web_' + Date.now(),
-                stars_paid: selectedSignal.starsCost,
-                gstd_reward: selectedSignal.gstdReward,
-                gstd_gold_fee: selectedSignal.platformFee
-            }).catch(() => null);
-
-            const resp = await apiPost('/tasks/telegram-launch', {
-                task_id: selectedSignal.id, stars_paid: selectedSignal.starsCost,
-                reward_gstd: selectedSignal.gstdReward, admin_fee_gstd: selectedSignal.platformFee
+            const res = await apiPost('/api/v1/simulations/launch', {
+                category,
+                scenario: scenario || '',
+                seed_data: seedData || '',
             });
-            if (resp.invoice_url) {
-                setPurchaseStep(2);
-                (window as any).Telegram.WebApp.openInvoice(resp.invoice_url, (status: string) => {
-                    if (status === 'paid') {
-                        setPurchaseStep(3);
-                        setTimeout(() => {
-                            toast.success("Signal Dispatched! " + selectedSignal.gstdReward + " GSTD locked for Swarm resolution.");
-                            setIsPurchasing(false); setPurchaseStep(0); setSelectedSignal(null);
-                            setLiveLogs(prev => [{
-                                id: Math.random().toString(), type: 'SIGNAL_SPONSOR', chain: t('swarm', 'SWARM'),
-                                message: `[Sponsored] ${selectedSignal.title} → Swarm processing initiated`, timestamp: new Date().toISOString()
-                            }, ...prev].slice(0, 20));
-                        }, 2000);
-                    } else { toast.error('Payment ' + status); setIsPurchasing(false); setPurchaseStep(0); }
-                });
-            } else { toast.error("Failed to generate invoice"); setIsPurchasing(false); setPurchaseStep(0); }
-        } catch (e: any) { toast.error('Error: ' + (e?.message || 'Unknown')); setIsPurchasing(false); setPurchaseStep(0); }
+            if (res?.simulation_id) {
+                toast.success(`⚡ Simulation launched! Processing with ${res.agent_count || 200} AI agents...`);
+                setActiveTab('my');
+                setShowCustomModal(false);
+                fetchData();
+            }
+        } catch (e: any) {
+            const msg = e?.data?.error || e?.message || 'Launch failed';
+            if (msg.toLowerCase().includes('insufficient') || msg.toLowerCase().includes('balance') || e?.status === 402) {
+                const serverBalance = e?.data?.balance ?? (gstdBalance || 0);
+                const deepLink = `https://t.me/GstdAppBot?start=buy-gstd-${Math.ceil(price * 100)}`;
+                window.open(deepLink, '_blank');
+                toast.error(`Need ${price} GSTD. Balance: ${Number(serverBalance).toFixed(2)}. Opening Telegram to buy...`);
+            } else {
+                toast.error(msg);
+            }
+        } finally {
+            setLaunching(null);
+        }
     };
 
-    const getSeverityStyles = (s: string) => {
-        if (s === 'critical') return 'text-rose-400 bg-rose-500/10 border-rose-500/30';
-        if (s === 'high') return 'text-amber-400 bg-amber-500/10 border-amber-500/30';
-        return 'text-sky-400 bg-sky-500/10 border-sky-500/30';
+    // View full simulation result
+    const viewResult = async (simId: string) => {
+        try {
+            const res = await apiGet(`/api/v1/simulations/results/${simId}`);
+            if (res) setSelectedSim(res);
+        } catch {
+            toast.error('Failed to load result');
+        }
     };
 
-    const totalRewardPool = ACTIVE_SIGNALS.reduce((a, s) => a + s.gstdReward, 0);
-    const totalContributors = ACTIVE_SIGNALS.reduce((a, s) => a + (s.contributors || 0), 0);
-    const avgProgress = Math.round(ACTIVE_SIGNALS.reduce((a, s) => a + (s.progress || 0), 0) / ACTIVE_SIGNALS.length);
-    const criticalCount = ACTIVE_SIGNALS.filter(s => s.severity === 'critical').length;
+    // Category colors
+    const catColor = (cat: string) => {
+        const colors: Record<string, string> = {
+            crypto: '#f7931a', forex: '#00cc88', polymarket: '#8b5cf6',
+            'tech-trends': '#00aaff', custom: '#ff66aa',
+        };
+        return colors[cat] || '#888';
+    };
+
+    const catGlow = (cat: string) => `0 0 40px ${catColor(cat)}33`;
+
+    const statusBadge = (status: string) => {
+        if (status === 'processing') return { bg: 'rgba(59,130,246,0.15)', color: '#60a5fa', label: '⏳ Processing...' };
+        if (status === 'completed') return { bg: 'rgba(16,185,129,0.15)', color: '#34d399', label: '✅ Completed' };
+        if (status === 'failed') return { bg: 'rgba(239,68,68,0.15)', color: '#ef4444', label: '❌ Failed' };
+        return { bg: 'rgba(148,163,184,0.15)', color: '#94a3b8', label: status };
+    };
 
     return (
-        <div className="bg-[#030014] text-white min-h-screen relative overflow-hidden font-sans antialiased selection:bg-sky-500/30">
+        <div style={{
+            minHeight: '100vh',
+            background: 'linear-gradient(135deg, #0a0a1a 0%, #0d1525 30%, #0a1a2e 60%, #0d0d20 100%)',
+            color: '#e0e0e0',
+            fontFamily: "'Inter', -apple-system, sans-serif",
+            paddingTop: 24,
+        }}>
             <Head>
-                <title>GSTD Monitor — Global Signal Intelligence</title>
-                <meta name="description" content={`${ACTIVE_SIGNALS.length} planetary-scale signals covering climate, health, security, food, science, and society. Sponsor Swarm analysis to solve humanity's hardest problems.`} />
+                <title>GSTD AI Simulations — Swarm Intelligence Engine | GSTD</title>
+                <meta name="description" content="Launch paid AI simulations powered by GSTD swarm intelligence. Crypto, Forex, Polymarket, Tech Trends analysis with 200+ AI agents." />
             </Head>
 
-            {/* Static ambient background */}
-            <div className="fixed inset-0 pointer-events-none z-0">
-                <div className="absolute top-0 left-1/4 w-[600px] h-[600px] rounded-full bg-violet-600/[0.04] blur-[120px]" />
-                <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] rounded-full bg-sky-600/[0.04] blur-[120px]" />
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full bg-emerald-600/[0.02] blur-[150px]" />
-            </div>
+            {/* Neural Background */}
+            <div style={{
+                position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                background: `radial-gradient(circle at ${30 + Math.sin(pulsePhase * 0.02) * 20}% ${40 + Math.cos(pulsePhase * 0.015) * 15}%, rgba(247,147,26,0.05) 0%, transparent 50%),
+                             radial-gradient(circle at ${70 + Math.cos(pulsePhase * 0.018) * 15}% ${60 + Math.sin(pulsePhase * 0.025) * 10}%, rgba(139,92,246,0.04) 0%, transparent 50%)`,
+                pointerEvents: 'none', zIndex: 0,
+            }} />
 
-            <div className="relative z-10 flex flex-col min-h-screen p-4 sm:p-6 overflow-y-auto custom-scrollbar">
-                {/* ─── HEADER ─────────────────────────────────────────────── */}
-                <header className="flex flex-col gap-5 mb-6">
-                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-5">
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 sm:w-14 sm:h-14 bg-slate-900/80 rounded-2xl flex items-center justify-center border border-slate-700/80 shadow-[0_0_30px_rgba(14,165,233,0.15)] backdrop-blur-md relative overflow-hidden flex-shrink-0">
-                                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(14,165,233,0.3)_0%,transparent_70%)] animate-pulse" />
-                                <Radio className="w-6 h-6 sm:w-7 sm:h-7 text-sky-400 relative z-10" />
-                            </div>
-                            <div>
-                                <h1 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight text-white flex items-center gap-3 flex-wrap">
-                                    {t('humanitys_supercomputer', "HUMANITY'S SUPERCOMPUTER")}
-                                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-[10px] font-bold text-emerald-400 tracking-widest uppercase flex items-center gap-1.5 relative">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping absolute left-2" />
-                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 relative" />
-                                        <span className="ml-1">{ACTIVE_SIGNALS.length} {t('signals', 'Signals')}</span>
-                                    </span>
-                                </h1>
-                                <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-xl leading-relaxed">
-                                    {t('monitor_subtitle', 'Every signal is a real problem facing humanity. Sponsor analysis with Telegram Stars → Swarm solves it → Results train the Global Brain forever.')}
-                                </p>
-                            </div>
-                        </div>
+            <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 20px 80px', position: 'relative', zIndex: 1 }}>
 
-                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 w-full md:w-auto">
-                            {[
-                                { label: t('sovereignty', 'Sovereignty'), value: sovereigntyIndex.toFixed(1) + '%', color: sovereigntyIndex > 90 ? 'text-emerald-400' : sovereigntyIndex > 70 ? 'text-amber-400' : 'text-rose-400', icon: Shield },
-                                { label: t('active_nodes', 'Active Nodes'), value: stats.activeNodes > 0 ? stats.activeNodes.toLocaleString() : '—', color: 'text-cyan-400', icon: Globe2 },
-                                { label: t('health', 'Health'), value: (stats.health * 100).toFixed(0) + '%', color: stats.health > 0.8 ? 'text-emerald-400' : 'text-amber-400', icon: Activity },
-                                { label: t('signals', 'Signals'), value: `${criticalCount} critical`, color: 'text-rose-400', icon: AlertTriangle },
-                                { label: t('reward_pool', 'Reward Pool'), value: totalRewardPool.toLocaleString() + ' GSTD', color: 'text-emerald-400', icon: Database },
-                            ].map((s) => (
-                                <div key={s.label} className="px-3 py-2.5 bg-slate-900/60 border border-slate-700/50 rounded-xl backdrop-blur-xl flex items-center gap-2.5">
-                                    <s.icon className={`w-4 h-4 ${s.color} opacity-60 flex-shrink-0`} />
-                                    <div className="flex flex-col min-w-0">
-                                        <span className="text-[8px] font-black uppercase tracking-widest text-slate-500 truncate">{s.label}</span>
-                                        <span className={`text-xs font-bold ${s.color} tabular-nums truncate`}>{s.value}</span>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+                {/* ─── HEADER ─────────────────────────────────────────── */}
+                <div style={{ textAlign: 'center', marginBottom: 40 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 12 }}>
+                        <Brain size={36} color="#f7931a" style={{ filter: 'drop-shadow(0 0 12px rgba(247,147,26,0.5))' }} />
+                        <h1 style={{
+                            fontSize: 'clamp(1.8rem, 4vw, 2.8rem)',
+                            fontWeight: 800,
+                            background: 'linear-gradient(135deg, #f7931a, #ff6600, #aa66ff)',
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                            margin: 0,
+                        }}>GSTD Swarm Simulations</h1>
                     </div>
+                    <p style={{ color: '#88aacc', fontSize: 16, maxWidth: 640, margin: '0 auto' }}>
+                        Launch real-time simulations powered by 200+ AI agents. Predict crypto markets, forex movements, 
+                        polymarket events, and tech trends. Pay with GSTD, receive full reports.
+                    </p>
+                </div>
 
-                    {/* Search + Filters */}
-                    <div className="flex flex-col sm:flex-row gap-3">
-                        <div className="relative flex-1 max-w-sm">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                            <input type="text" placeholder={t('search_signals', 'Search signals, sources, topics...')} value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2 bg-slate-900/60 border border-slate-700/50 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-sky-500/50 backdrop-blur-xl" />
-                        </div>
-                        <div className="flex gap-1.5 flex-wrap">
-                            {CATEGORIES.map(cat => (
-                                <button key={cat} onClick={() => setActiveCategory(cat)}
-                                    className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all ${activeCategory === cat
-                                        ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30'
-                                        : 'bg-slate-800/50 text-slate-400 border border-slate-700/30 hover:bg-slate-700/50'}`}>
-                                    {cat === 'All' ? `${t('all_signals', 'All')} (${ACTIVE_SIGNALS.length})` : t(CATEGORY_I18N[cat] || cat, cat)}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                </header>
-
-                <div className="flex flex-col lg:flex-row gap-5 flex-1 content-start pb-12">
-                    {/* ─── SIGNALS GRID ────────────────────────────────────── */}
-                    <div className="w-full lg:w-3/4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                        {filteredSignals.map((signal) => (
-                            <div key={signal.id}
-                                className="group relative bg-slate-900/60 backdrop-blur-xl border border-slate-700/60 hover:border-slate-500/50 rounded-2xl p-5 transition-all duration-300 hover:shadow-[0_0_40px_rgba(0,0,0,0.5)] flex flex-col justify-between">
-                                <div className={"absolute top-0 right-0 w-24 h-24 rounded-full blur-[50px] opacity-10 group-hover:opacity-20 transition-opacity " + signal.bgColor} />
-
-                                <div>
-                                    <div className="flex items-start justify-between mb-2.5 relative z-10">
-                                        <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                                            <div className="flex flex-wrap items-center gap-1.5">
-                                                <span className={"text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border " + getSeverityStyles(signal.severity)}>{t(SEVERITY_I18N[signal.severity] || signal.severity, signal.severity)}</span>
-                                                <span className={"text-[8px] font-bold px-1.5 py-0.5 rounded border " + (CATEGORY_COLORS[signal.category] || 'text-slate-400 bg-slate-800 border-slate-700')}>{t(CATEGORY_I18N[signal.category] || signal.category, signal.category)}</span>
-                                            </div>
-                                            <h2 className="text-sm font-bold text-slate-100 leading-tight group-hover:text-white transition-colors">{SIGNAL_I18N[signal.id] ? t(SIGNAL_I18N[signal.id].title, signal.title) : signal.title}</h2>
-                                        </div>
-                                        <div className={`p-1.5 rounded-lg ${signal.bgColor} flex-shrink-0 ml-2`}>
-                                            <signal.icon className={`w-4 h-4 ${signal.color}`} />
-                                        </div>
-                                    </div>
-
-                                    <div className="flex flex-wrap items-center gap-2 text-[9px] text-slate-500 mb-2 relative z-10">
-                                        <span className="flex items-center gap-0.5"><MapPin className="w-2.5 h-2.5" />{signal.location}</span>
-                                        <span className="flex items-center gap-0.5"><Database className="w-2.5 h-2.5" />{signal.dataVolume}</span>
-                                    </div>
-
-                                    <p className="text-[11px] text-slate-400 leading-relaxed mb-2 relative z-10 line-clamp-2">{SIGNAL_I18N[signal.id]?.desc ? t(SIGNAL_I18N[signal.id].desc!, signal.description) : signal.description}</p>
-
-                                    {signal.impact && (
-                                        <div className="text-[10px] text-amber-400/80 bg-amber-500/5 border border-amber-500/10 rounded-lg px-2 py-1 mb-3 relative z-10 flex items-start gap-1">
-                                            <AlertTriangle className="w-3 h-3 flex-shrink-0 mt-0.5" />
-                                            <span>{SIGNAL_I18N[signal.id]?.impact ? t(SIGNAL_I18N[signal.id].impact!, signal.impact!) : signal.impact}</span>
-                                        </div>
-                                    )}
-
-                                    {/* Progress */}
-                                    <div className="mb-3 relative z-10">
-                                        <div className="flex justify-between items-center mb-1">
-                                            <span className="text-[9px] font-bold text-slate-500 uppercase">{t('progress', 'Progress')}</span>
-                                            <span className="text-[9px] font-bold text-slate-400 tabular-nums">{signal.progress || 0}%</span>
-                                        </div>
-                                        <div className="w-full h-1 bg-slate-800 rounded-full overflow-hidden">
-                                            <div className={`h-full rounded-full transition-all duration-1000 ${(signal.progress || 0) > 80 ? 'bg-emerald-500' : (signal.progress || 0) > 40 ? 'bg-sky-500' : 'bg-violet-500'}`}
-                                                style={{ width: `${signal.progress || 0}%` }} />
-                                        </div>
-                                        <div className="flex justify-between items-center mt-1">
-                                            <span className="text-[9px] text-slate-600 flex items-center gap-0.5"><Users className="w-2.5 h-2.5" />{signal.contributors || 0}</span>
-                                            <span className="text-[9px] text-slate-600 font-mono">{signal.source.split('&')[0].trim()}</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between relative z-10">
-                                    <span className="text-[10px] font-bold text-emerald-400 flex items-center gap-1"><Database className="w-3 h-3" />{signal.gstdReward} GSTD</span>
-                                    <button onClick={() => setSelectedSignal(signal)}
-                                        className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 hover:border-sky-500/50 text-[11px] font-bold text-white transition-all flex items-center gap-1.5">
-                                        <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />{signal.starsCost}
-                                    </button>
-                                </div>
+                {/* ─── STATS BAR ─────────────────────────────────────── */}
+                <div style={{
+                    display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+                    gap: 12, marginBottom: 32,
+                }}>
+                    {[
+                        { icon: <Activity size={18} />, label: 'Total Sims', value: stats?.total_simulations || 0, color: '#f7931a' },
+                        { icon: <Zap size={18} />, label: 'Active', value: stats?.active_simulations || 0, color: '#60a5fa' },
+                        { icon: <CheckCircle size={18} />, label: 'Completed', value: stats?.completed_simulations || 0, color: '#34d399' },
+                        { icon: <Coins size={18} />, label: 'Revenue', value: `${(stats?.total_revenue_gstd || 0).toFixed(1)}`, color: '#ffaa00' },
+                        { icon: <Users size={18} />, label: 'Users', value: stats?.unique_users || 0, color: '#aa66ff' },
+                    ].map(s => (
+                        <div key={s.label} style={{
+                            background: 'rgba(255,255,255,0.04)',
+                            border: '1px solid rgba(255,255,255,0.08)',
+                            borderRadius: 14, padding: '14px 16px',
+                            textAlign: 'center', backdropFilter: 'blur(10px)',
+                        }}>
+                            <div style={{ color: s.color, marginBottom: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                                {s.icon} <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 1 }}>{s.label}</span>
                             </div>
-                        ))}
+                            <div style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>{s.value}</div>
+                        </div>
+                    ))}
+                </div>
 
-                        {filteredSignals.length === 0 && (
-                            <div className="col-span-full text-center py-16 text-slate-500">
-                                <Search className="w-8 h-8 mx-auto mb-3 opacity-30" />
-                                <p className="text-sm font-bold">{t('no_signals', 'No signals found')}</p>
-                                <p className="text-xs mt-1">{t('try_different', 'Try a different category or search term')}</p>
-                            </div>
+                {/* ─── WALLET BAR ─────────────────────────────────────── */}
+                <div style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    background: 'rgba(247,147,26,0.06)', border: '1px solid rgba(247,147,26,0.15)',
+                    borderRadius: 14, padding: '12px 20px', marginBottom: 24,
+                    flexWrap: 'wrap', gap: 12,
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <ShieldCheck size={18} color="#f7931a" />
+                        {address ? (
+                            <span style={{ color: '#aaccbb', fontSize: 14 }}>
+                                <span style={{ color: '#f7931a' }}>{address.slice(0, 6)}...{address.slice(-4)}</span>
+                                {' '} · Balance: <strong style={{ color: '#fff' }}>{(gstdBalance || 0).toFixed(2)} GSTD</strong>
+                            </span>
+                        ) : (
+                            <span style={{ color: '#88aacc', fontSize: 14 }}>Connect wallet to launch paid simulations</span>
                         )}
                     </div>
+                    {!address && (
+                        <button onClick={() => tonConnectUI.openModal()} style={{
+                            background: 'linear-gradient(135deg, #f7931a, #ff6600)',
+                            color: '#fff', border: 'none', borderRadius: 10,
+                            padding: '8px 18px', fontWeight: 600, cursor: 'pointer', fontSize: 13,
+                        }}>Connect Wallet</button>
+                    )}
+                </div>
 
-                    {/* ─── RIGHT PANEL ─────────────────────────────────────── */}
-                    <div className="w-full lg:w-1/4 flex flex-col gap-4">
-                        {/* Network Overview */}
-                        <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-4">
-                            <h3 className="text-[10px] font-black uppercase tracking-widest text-violet-400 mb-3 flex items-center gap-2">
-                                <BarChart3 className="w-3.5 h-3.5" />{t('planetary_overview', 'Planetary Overview')}</h3>
-                            <div className="space-y-2.5">
-                                {[
-                                    { l: t('total_signals', 'Total Signals'), v: String(ACTIVE_SIGNALS.length), c: 'text-white' },
-                                    { l: t('active_nodes', 'Active Nodes'), v: stats.activeNodes > 0 ? stats.activeNodes.toLocaleString() : '—', c: 'text-cyan-400' },
-                                    { l: t('critical_priority', 'Critical Priority'), v: String(criticalCount), c: 'text-rose-400' },
-                                    { l: t('categories', 'Categories'), v: String(CATEGORIES.length - 1), c: 'text-sky-400' },
-                                    { l: t('total_contributors', 'Total Contributors'), v: totalContributors.toLocaleString(), c: 'text-violet-400' },
-                                    { l: t('reward_pool', 'Reward Pool'), v: totalRewardPool.toLocaleString() + ' GSTD', c: 'text-emerald-400' },
-                                ].map((r) => (
-                                    <div key={r.l} className="flex justify-between items-center">
-                                        <span className="text-[10px] text-slate-400">{r.l}</span>
-                                        <span className={`text-xs font-bold ${r.c}`}>{r.v}</span>
+                {/* ─── TABS ─────────────────────────────────────────── */}
+                <div style={{
+                    display: 'flex', gap: 4,
+                    background: 'rgba(255,255,255,0.03)', borderRadius: 14, padding: 4,
+                    marginBottom: 24, overflowX: 'auto',
+                }}>
+                    {([
+                        { id: 'catalog' as const, label: '⚡ Simulation Catalog', count: catalog.length },
+                        { id: 'my' as const, label: '📦 My Simulations', count: mySimulations.length },
+                        { id: 'live' as const, label: '⚡ Live Feed', count: stats?.recent_simulations?.length || 0 },
+                        { id: 'stats' as const, label: '📊 Platform Stats', count: 0 },
+                    ]).map(tab => (
+                        <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
+                            flex: 1, minWidth: 100, padding: '10px 10px',
+                            background: activeTab === tab.id ? 'rgba(247,147,26,0.15)' : 'transparent',
+                            border: activeTab === tab.id ? '1px solid rgba(247,147,26,0.3)' : '1px solid transparent',
+                            borderRadius: 10, color: activeTab === tab.id ? '#f7931a' : '#88aacc',
+                            fontWeight: activeTab === tab.id ? 700 : 500,
+                            cursor: 'pointer', fontSize: 12, whiteSpace: 'nowrap', transition: 'all 0.2s',
+                        }}>
+                            {tab.label} {tab.count > 0 && <span style={{ opacity: 0.6 }}>({tab.count})</span>}
+                        </button>
+                    ))}
+                </div>
+
+                {/* Loading */}
+                {loading && (
+                    <div style={{ textAlign: 'center', padding: 60 }}>
+                        <RefreshCw size={32} color="#f7931a" style={{ animation: 'spin 1s linear infinite' }} />
+                        <p style={{ color: '#88aacc', marginTop: 12 }}>Loading simulation data...</p>
+                    </div>
+                )}
+
+                {/* ═══ CATALOG TAB ═══════════════════════════════════════ */}
+                {!loading && activeTab === 'catalog' && (
+                    <div>
+                        <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+                            gap: 20,
+                        }}>
+                            {catalog.map(entry => (
+                                <div key={entry.id} style={{
+                                    background: 'rgba(255,255,255,0.04)',
+                                    border: `1px solid ${catColor(entry.category)}33`,
+                                    borderRadius: 20, padding: 24,
+                                    transition: 'all 0.3s',
+                                    position: 'relative', overflow: 'hidden',
+                                    cursor: 'pointer',
+                                }}
+                                onMouseEnter={e => {
+                                    (e.currentTarget as HTMLDivElement).style.borderColor = catColor(entry.category) + '66';
+                                    (e.currentTarget as HTMLDivElement).style.boxShadow = catGlow(entry.category);
+                                    (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-2px)';
+                                }}
+                                onMouseLeave={e => {
+                                    (e.currentTarget as HTMLDivElement).style.borderColor = catColor(entry.category) + '33';
+                                    (e.currentTarget as HTMLDivElement).style.boxShadow = 'none';
+                                    (e.currentTarget as HTMLDivElement).style.transform = 'translateY(0)';
+                                }}
+                                >
+                                    {/* Price badge */}
+                                    <div style={{
+                                        position: 'absolute', top: 16, right: 16,
+                                        background: `linear-gradient(135deg, ${catColor(entry.category)}, ${catColor(entry.category)}cc)`,
+                                        borderRadius: 10, padding: '6px 12px',
+                                        fontSize: 13, fontWeight: 700, color: '#fff',
+                                        display: 'flex', alignItems: 'center', gap: 4,
+                                    }}>
+                                        <Coins size={14} /> {entry.price_gstd} GSTD
                                     </div>
-                                ))}
-                                <div className="pt-2 border-t border-slate-800">
-                                    <div className="flex justify-between items-center mb-1.5">
-                                        <span className="text-[10px] text-slate-400">{t('avg_progress', 'Avg. Progress')}</span>
-                                        <span className="text-xs font-bold text-sky-400">{avgProgress}%</span>
+
+                                    {/* Icon + Title */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+                                        <span style={{ fontSize: 40, lineHeight: 1 }}>{entry.icon}</span>
+                                        <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#fff', paddingRight: 90 }}>
+                                            {entry.title}
+                                        </h3>
                                     </div>
-                                    <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                                        <div className="h-full bg-sky-500 rounded-full transition-all" style={{ width: `${avgProgress}%` }} />
+
+                                    <p style={{ color: '#99aabb', fontSize: 13, lineHeight: 1.6, marginBottom: 16 }}>
+                                        {entry.description}
+                                    </p>
+
+                                    {/* Features */}
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
+                                        {entry.features.map(f => (
+                                            <span key={f} style={{
+                                                background: 'rgba(255,255,255,0.06)',
+                                                border: '1px solid rgba(255,255,255,0.08)',
+                                                borderRadius: 6, padding: '3px 8px',
+                                                fontSize: 11, color: '#aabbcc',
+                                            }}>✓ {f}</span>
+                                        ))}
                                     </div>
+
+                                    {/* Meta */}
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                                        <span style={{ fontSize: 12, color: '#667788' }}>
+                                            <Users size={12} style={{ verticalAlign: 'middle', marginRight: 4 }} />
+                                            {entry.agent_count} AI agents
+                                        </span>
+                                        <span style={{ fontSize: 12, color: '#667788' }}>
+                                            <Clock size={12} style={{ verticalAlign: 'middle', marginRight: 4 }} />
+                                            {entry.duration_rounds} rounds
+                                        </span>
+                                    </div>
+
+                                    {/* Launch Button */}
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (entry.id === 'custom') {
+                                                setShowCustomModal(true);
+                                            } else {
+                                                launchSimulation(entry.id);
+                                            }
+                                        }}
+                                        disabled={launching === entry.id}
+                                        style={{
+                                            width: '100%', padding: '12px 0',
+                                            background: launching === entry.id ? 'rgba(255,255,255,0.1)' : `linear-gradient(135deg, ${catColor(entry.category)}, ${catColor(entry.category)}cc)`,
+                                            border: 'none', borderRadius: 12,
+                                            color: '#fff', fontWeight: 700, fontSize: 14,
+                                            cursor: launching === entry.id ? 'wait' : 'pointer',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                                            transition: 'all 0.2s',
+                                        }}
+                                    >
+                                        {launching === entry.id ? (
+                                            <><RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} /> Launching...</>
+                                        ) : (
+                                            <><Play size={16} /> Launch Simulation — {entry.price_gstd} GSTD</>
+                                        )}
+                                    </button>
                                 </div>
-                            </div>
+                            ))}
                         </div>
 
-                        {/* Category Breakdown */}
-                        <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-4">
-                            <h3 className="text-[10px] font-black uppercase tracking-widest text-sky-400 mb-3 flex items-center gap-2">
-                                <Target className="w-3.5 h-3.5" />{t('problems_by_domain', 'Problems by Domain')}</h3>
-                            <div className="space-y-2">
-                                {CATEGORIES.filter(c => c !== 'All').map(cat => {
-                                    const count = ACTIVE_SIGNALS.filter(s => s.category === cat).length;
-                                    const pct = Math.round((count / ACTIVE_SIGNALS.length) * 100);
+                        {/* How it Works */}
+                        <div style={{
+                            marginTop: 48, padding: 32,
+                            background: 'rgba(255,255,255,0.03)',
+                            border: '1px solid rgba(255,255,255,0.06)',
+                            borderRadius: 18,
+                        }}>
+                            <h2 style={{
+                                textAlign: 'center', margin: '0 0 24px',
+                                fontSize: 20, fontWeight: 700, color: '#fff',
+                            }}>How Swarm Simulations Work</h2>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20 }}>
+                                {[
+                                    { icon: '💰', title: 'Pay with GSTD', desc: 'Choose a simulation category and pay with your GSTD tokens. Funds are split: 50% Gold Reserve, 20% Node Rewards, 30% Platform.' },
+                                    { icon: '🧠', title: 'Swarm Processing', desc: '200+ AI agents with independent personalities simulate market behavior using GSTD swarm intelligence engine and real-time data feeds.' },
+                                    { icon: '📊', title: 'Live Results', desc: 'Track your simulation progress in real-time. Results include predictions, confidence levels, and emergent patterns.' },
+                                    { icon: '📑', title: 'Full Report', desc: 'Receive a comprehensive report with actionable trading signals, risk assessment, and AI-generated insights.' },
+                                ].map(step => (
+                                    <div key={step.title} style={{ textAlign: 'center' }}>
+                                        <div style={{ fontSize: 36, marginBottom: 8 }}>{step.icon}</div>
+                                        <h4 style={{ color: '#f7931a', marginBottom: 6, fontWeight: 700, fontSize: 14 }}>{step.title}</h4>
+                                        <p style={{ color: '#88aacc', fontSize: 13, lineHeight: 1.5 }}>{step.desc}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* ═══ MY SIMULATIONS TAB ═══════════════════════════════ */}
+                {!loading && activeTab === 'my' && (
+                    <div>
+                        {!address && (
+                            <div style={{
+                                textAlign: 'center', padding: '60px 20px',
+                                background: 'rgba(255,200,0,0.03)', borderRadius: 18,
+                                border: '1px solid rgba(255,200,0,0.1)',
+                            }}>
+                                <Lock size={48} color="#ffaa00" style={{ marginBottom: 16 }} />
+                                <h3 style={{ color: '#ccaa66', marginBottom: 8 }}>Wallet Required</h3>
+                                <p style={{ color: '#998866' }}>Connect your TON wallet to view your simulations.</p>
+                                <button onClick={() => tonConnectUI.openModal()} style={{
+                                    marginTop: 16, background: 'linear-gradient(135deg, #f7931a, #ff6600)',
+                                    color: '#fff', border: 'none', borderRadius: 12,
+                                    padding: '12px 24px', fontWeight: 700, cursor: 'pointer',
+                                }}>Connect Wallet</button>
+                            </div>
+                        )}
+
+                        {address && mySimulations.length === 0 && (
+                            <div style={{
+                                textAlign: 'center', padding: '60px 20px',
+                                background: 'rgba(255,255,255,0.03)', borderRadius: 18,
+                                border: '1px solid rgba(255,255,255,0.06)',
+                            }}>
+                                <Sparkles size={48} color="#556677" />
+                                <h3 style={{ color: '#667788', marginTop: 16 }}>No simulations yet</h3>
+                                <p style={{ color: '#556677' }}>Launch your first AI simulation from the catalog.</p>
+                                <button onClick={() => setActiveTab('catalog')} style={{
+                                    marginTop: 16, background: 'linear-gradient(135deg, #f7931a, #ff6600)',
+                                    color: '#fff', border: 'none', borderRadius: 12,
+                                    padding: '12px 24px', fontWeight: 700, cursor: 'pointer',
+                                }}>Browse Catalog</button>
+                            </div>
+                        )}
+
+                        {address && mySimulations.length > 0 && (
+                            <div style={{ display: 'grid', gap: 16 }}>
+                                {mySimulations.map(sim => {
+                                    const badge = statusBadge(sim.status);
                                     return (
-                                        <button key={cat} onClick={() => setActiveCategory(cat)}
-                                            className="w-full flex items-center justify-between text-left hover:bg-slate-800/50 rounded-lg px-2 py-1 transition-colors">
-                                            <span className="text-[10px] font-bold text-slate-300">{t(CATEGORY_I18N[cat] || cat, cat)}</span>
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-16 h-1 bg-slate-800 rounded-full overflow-hidden">
-                                                    <div className="h-full bg-sky-500/60 rounded-full" style={{ width: `${pct}%` }} />
+                                        <div key={sim.id}
+                                            onClick={() => sim.status === 'completed' ? viewResult(sim.id) : undefined}
+                                            style={{
+                                                background: 'rgba(255,255,255,0.04)',
+                                                border: `1px solid ${catColor(sim.category)}22`,
+                                                borderRadius: 16, padding: 20,
+                                                cursor: sim.status === 'completed' ? 'pointer' : 'default',
+                                                transition: 'all 0.3s',
+                                                position: 'relative',
+                                            }}
+                                        >
+                                            {/* Status badge */}
+                                            <div style={{
+                                                position: 'absolute', top: 14, right: 14,
+                                                background: badge.bg,
+                                                borderRadius: 8, padding: '4px 10px',
+                                                fontSize: 12, fontWeight: 600, color: badge.color,
+                                            }}>{badge.label}</div>
+
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+                                                <span style={{ fontSize: 28 }}>
+                                                    {sim.category === 'crypto' ? '₿' : sim.category === 'forex' ? '💱' : sim.category === 'polymarket' ? '🗳️' : sim.category === 'tech-trends' ? '📡' : '🧪'}
+                                                </span>
+                                                <div>
+                                                    <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#fff' }}>
+                                                        {sim.category.charAt(0).toUpperCase() + sim.category.slice(1)} Simulation
+                                                    </h3>
+                                                    <span style={{ fontSize: 12, color: '#667788' }}>
+                                                        {sim.id} · {new Date(sim.created_at).toLocaleString()}
+                                                    </span>
                                                 </div>
-                                                <span className="text-[10px] text-slate-500 tabular-nums w-4 text-right">{count}</span>
                                             </div>
-                                        </button>
+
+                                            {sim.result_summary && (
+                                                <p style={{
+                                                    color: '#aabbcc', fontSize: 13, lineHeight: 1.5,
+                                                    margin: '10px 0', paddingRight: 100,
+                                                }}>
+                                                    {sim.result_summary.slice(0, 200)}
+                                                    {sim.result_summary.length > 200 ? '...' : ''}
+                                                </p>
+                                            )}
+
+                                            <div style={{ display: 'flex', gap: 16, marginTop: 12, flexWrap: 'wrap' }}>
+                                                {sim.confidence > 0 && (
+                                                    <span style={{ fontSize: 12, color: '#34d399' }}>
+                                                        <Target size={12} style={{ verticalAlign: 'middle', marginRight: 4 }} />
+                                                        {(sim.confidence * 100).toFixed(0)}% confidence
+                                                    </span>
+                                                )}
+                                                {sim.predictions_count > 0 && (
+                                                    <span style={{ fontSize: 12, color: '#60a5fa' }}>
+                                                        <Sparkles size={12} style={{ verticalAlign: 'middle', marginRight: 4 }} />
+                                                        {sim.predictions_count} predictions
+                                                    </span>
+                                                )}
+                                                <span style={{ fontSize: 12, color: '#f7931a' }}>
+                                                    <Coins size={12} style={{ verticalAlign: 'middle', marginRight: 4 }} />
+                                                    {sim.price_gstd} GSTD
+                                                </span>
+                                                {sim.compute_ms > 0 && (
+                                                    <span style={{ fontSize: 12, color: '#667788' }}>
+                                                        <Clock size={12} style={{ verticalAlign: 'middle', marginRight: 4 }} />
+                                                        {(sim.compute_ms / 1000).toFixed(1)}s
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            {sim.status === 'processing' && (
+                                                <div style={{
+                                                    marginTop: 12, padding: '8px 12px',
+                                                    background: 'rgba(59,130,246,0.08)',
+                                                    borderRadius: 10, display: 'flex', alignItems: 'center', gap: 8,
+                                                }}>
+                                                    <RefreshCw size={14} color="#60a5fa" style={{ animation: 'spin 2s linear infinite' }} />
+                                                    <span style={{ fontSize: 12, color: '#60a5fa' }}>
+                                                        Swarm is processing... {sim.agent_count} AI agents active
+                                                    </span>
+                                                </div>
+                                            )}
+
+                                            {sim.status === 'completed' && (
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); viewResult(sim.id); }}
+                                                    style={{
+                                                        marginTop: 12, padding: '8px 16px',
+                                                        background: 'rgba(16,185,129,0.15)',
+                                                        border: '1px solid rgba(16,185,129,0.3)',
+                                                        borderRadius: 10, color: '#34d399',
+                                                        fontWeight: 600, fontSize: 13,
+                                                        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                                                    }}
+                                                >
+                                                    <Eye size={14} /> View Full Report
+                                                </button>
+                                            )}
+                                        </div>
                                     );
                                 })}
                             </div>
+                        )}
+                    </div>
+                )}
+
+                {/* ═══ LIVE FEED TAB ═══════════════════════════════════ */}
+                {!loading && activeTab === 'live' && (
+                    <div>
+                        <div style={{
+                            background: 'rgba(247,147,26,0.06)', border: '1px solid rgba(247,147,26,0.15)',
+                            borderRadius: 14, padding: '16px 20px', marginBottom: 20, textAlign: 'center',
+                        }}>
+                            <span style={{ fontSize: 14, color: '#88aacc' }}>
+                                Recent simulations across the platform (anonymized)
+                            </span>
                         </div>
 
-                        {/* Live Feed */}
-                        <div className="flex-1 bg-slate-900/80 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-4 flex flex-col min-h-[300px]">
-                            <h3 className="text-[10px] font-black uppercase tracking-[0.15em] text-sky-400 mb-3 flex items-center gap-2">
-                                <Activity className="w-3.5 h-3.5" />{t('live_network_feed', 'Live Network Feed')}</h3>
-                            <div className="flex-1 overflow-y-auto pr-1 space-y-2.5 custom-scrollbar">
-                                {liveLogs.length === 0 ? (
-                                    <div className="text-slate-500 text-xs text-center py-8 flex flex-col items-center gap-2">
-                                        <Radio className="w-5 h-5 animate-pulse opacity-50" />{t('awaiting_transmissions', 'Awaiting transmissions...')}</div>
-                                ) : (
-                                    liveLogs.map((log) => (
-                                        <div key={log.id} className="pb-2 border-b border-slate-800/80 last:border-0">
-                                            <div className="flex justify-between items-center mb-0.5">
-                                                <span className="text-[8px] font-black uppercase text-sky-400 bg-sky-500/10 px-1.5 py-0.5 rounded">{log.chain || 'NODE'}</span>
-                                                <span className="text-[9px] text-slate-600 font-mono">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                        <div style={{ display: 'grid', gap: 12 }}>
+                            {(stats?.recent_simulations || []).map(sim => {
+                                const badge = statusBadge(sim.status);
+                                return (
+                                    <div key={sim.id} style={{
+                                        background: 'rgba(255,255,255,0.04)',
+                                        border: '1px solid rgba(255,255,255,0.08)',
+                                        borderRadius: 14, padding: '16px 20px',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                        flexWrap: 'wrap', gap: 12,
+                                    }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                            <span style={{ fontSize: 24 }}>
+                                                {sim.category === 'crypto' ? '₿' : sim.category === 'forex' ? '💱' : sim.category === 'polymarket' ? '🗳️' : sim.category === 'tech-trends' ? '📡' : '🧪'}
+                                            </span>
+                                            <div>
+                                                <div style={{ fontWeight: 600, color: '#fff', fontSize: 14 }}>
+                                                    {sim.category.charAt(0).toUpperCase() + sim.category.slice(1)} Simulation
+                                                </div>
+                                                <div style={{ fontSize: 11, color: '#667788' }}>
+                                                    {new Date(sim.created_at).toLocaleString()}
+                                                </div>
                                             </div>
-                                            <p className="text-[10px] leading-relaxed text-slate-400 pl-2 border-l border-slate-800">{log.message}</p>
                                         </div>
-                                    ))
-                                )}
+                                        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                                            {sim.confidence > 0 && (
+                                                <span style={{ fontSize: 12, color: '#34d399', fontWeight: 600 }}>
+                                                    {(sim.confidence * 100).toFixed(0)}%
+                                                </span>
+                                            )}
+                                            {sim.predictions_count > 0 && (
+                                                <span style={{ fontSize: 12, color: '#60a5fa' }}>
+                                                    {sim.predictions_count} pred.
+                                                </span>
+                                            )}
+                                            <span style={{
+                                                background: badge.bg, color: badge.color,
+                                                padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600,
+                                            }}>{badge.label}</span>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                            {(!stats?.recent_simulations || stats.recent_simulations.length === 0) && (
+                                <div style={{ textAlign: 'center', padding: 40, color: '#667788' }}>
+                                    <Brain size={36} style={{ marginBottom: 12, opacity: 0.4 }} />
+                                    <p>No simulations on the platform yet. Be the first to launch one!</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* ═══ STATS TAB ═══════════════════════════════════════ */}
+                {!loading && activeTab === 'stats' && (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 20 }}>
+                        <div style={{
+                            background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+                            borderRadius: 18, padding: 24,
+                        }}>
+                            <h3 style={{ color: '#f7931a', margin: '0 0 16px', fontSize: 16, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <BarChart3 size={18} /> Simulation Overview
+                            </h3>
+                            <div style={{ display: 'grid', gap: 10 }}>
+                                {[
+                                    { l: 'Total Simulations', v: stats?.total_simulations || 0 },
+                                    { l: 'Completed', v: stats?.completed_simulations || 0 },
+                                    { l: 'Active Now', v: stats?.active_simulations || 0 },
+                                    { l: 'Unique Users', v: stats?.unique_users || 0 },
+                                    { l: 'Total Revenue', v: `${(stats?.total_revenue_gstd || 0).toFixed(2)} GSTD` },
+                                ].map(r => (
+                                    <div key={r.l} style={{
+                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                        padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.04)',
+                                    }}>
+                                        <span style={{ fontSize: 13, color: '#88aacc' }}>{r.l}</span>
+                                        <span style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>{r.v}</span>
+                                    </div>
+                                ))}
                             </div>
                         </div>
 
-                        {/* Join CTA */}
-                        <a href="https://gstdbot.gstdtoken.com" target="_blank" rel="noopener noreferrer"
-                            className="block bg-gradient-to-br from-sky-600/20 to-violet-600/20 border border-sky-500/30 rounded-2xl p-4 hover:border-sky-400/50 transition-all group">
-                            <h3 className="text-sm font-black text-white mb-1 flex items-center gap-2">
-                                {t('run_your_node', 'Run Your Own Node')} <ExternalLink className="w-3 h-3 text-sky-400 group-hover:translate-x-0.5 transition-transform" />
+                        <div style={{
+                            background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+                            borderRadius: 18, padding: 24,
+                        }}>
+                            <h3 style={{ color: '#ffaa00', margin: '0 0 16px', fontSize: 16, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <ShieldCheck size={18} /> Revenue Distribution
                             </h3>
-                            <p className="text-[10px] text-slate-400 leading-relaxed">
-                                {t('node_cta_desc', '77 apps, wallet auth, Let\'s Encrypt SSL, DynDNS, self-diagnostics. Earn GSTD while your device powers the swarm network.')}
-                            </p>
-                        </a>
+                            {/* Revenue bar */}
+                            <div style={{ display: 'flex', borderRadius: 10, overflow: 'hidden', height: 32, marginBottom: 20 }}>
+                                <div style={{ width: '50%', background: 'linear-gradient(90deg, #00cc88, #00aa77)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff' }}>50% Gold Reserve</div>
+                                <div style={{ width: '20%', background: 'linear-gradient(90deg, #6666ff, #8866ff)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: '#fff' }}>20% Nodes</div>
+                                <div style={{ width: '30%', background: 'linear-gradient(90deg, #ffaa00, #ff8800)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: '#fff' }}>30% Platform</div>
+                            </div>
+
+                            <div style={{ display: 'grid', gap: 10, fontSize: 13, color: '#aabbcc' }}>
+                                {[
+                                    { icon: '🏦', text: 'Gold Reserve — 50% of all simulation revenue strengthens XAUt-backed token value' },
+                                    { icon: '🖥️', text: 'Compute Nodes — 20% rewards nodes that contribute computing power for simulations' },
+                                    { icon: '⚙️', text: 'Platform Operations — 30% funds ongoing development and AI improvements' },
+                                ].map((item, i) => (
+                                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                        <span style={{ fontSize: 18 }}>{item.icon}</span>
+                                        <span>{item.text}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
                     </div>
-                </div>
+                )}
             </div>
 
-            {/* ─── SPONSOR MODAL ───────────────────────────────────────── */}
-            {selectedSignal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-md" role="button" tabIndex={0} aria-label="Close modal" onClick={() => !isPurchasing && setSelectedSignal(null)} onKeyDown={(e) => e.key === 'Escape' && !isPurchasing && setSelectedSignal(null)} />
-                    <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-md w-full relative z-10 shadow-[0_0_60px_rgba(0,0,0,0.8)] animate-in fade-in zoom-in duration-300 max-h-[90vh] overflow-y-auto custom-scrollbar">
-
-                        <div className={"w-12 h-12 rounded-xl border flex items-center justify-center mb-4 mx-auto " + selectedSignal.bgColor + " " + getSeverityStyles(selectedSignal.severity).split(' ')[2]}>
-                            {isPurchasing && purchaseStep < 3 ? <Zap className={"w-6 h-6 animate-pulse " + selectedSignal.color} />
-                                : isPurchasing && purchaseStep === 3 ? <CheckCircle className={"w-6 h-6 " + selectedSignal.color} />
-                                    : <selectedSignal.icon className={"w-6 h-6 " + selectedSignal.color} />}
+            {/* ═══ CUSTOM SIMULATION MODAL ═══════════════════════════ */}
+            {showCustomModal && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.7)', zIndex: 1000,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+                }} onClick={() => setShowCustomModal(false)}>
+                    <div onClick={e => e.stopPropagation()} style={{
+                        background: '#141828', border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: 20, padding: 28, maxWidth: 500, width: '100%',
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                            <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: 8 }}>
+                                🧪 Custom Simulation
+                            </h3>
+                            <button onClick={() => setShowCustomModal(false)} style={{
+                                background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 8,
+                                width: 32, height: 32, cursor: 'pointer', color: '#aaa', fontSize: 16,
+                            }}>✕</button>
                         </div>
 
-                        <h3 className="text-lg font-black text-white text-center mb-1">{t('sponsor_signal', 'Sponsor This Signal')}</h3>
-                        <p className="text-slate-400 text-center text-xs mb-5 leading-relaxed">{selectedSignal.description}</p>
-
-                        {selectedSignal.impact && (
-                            <div className="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-xl px-3 py-2 mb-4 flex items-start gap-2">
-                                <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                                <span><strong>{t('why_it_matters', 'Why it matters:')}</strong> {selectedSignal.impact}</span>
-                            </div>
-                        )}
-
-                        <div className="bg-slate-950/80 rounded-xl p-4 mb-5 border border-slate-800 space-y-2.5">
-                            <div className="flex justify-between items-center"><span className="text-xs text-slate-400">{t('signal', 'Signal')}</span><span className="text-xs font-bold text-white text-right">{selectedSignal.title}</span></div>
-                            <div className="flex justify-between items-center"><span className="text-xs text-slate-400">{t('data_source', 'Data Source')}</span><span className="text-[10px] font-mono text-sky-400">{selectedSignal.source}</span></div>
-                            <div className="flex justify-between items-center"><span className="text-xs text-slate-400">{t('data_volume', 'Data Volume')}</span><span className="text-xs text-slate-300">{selectedSignal.dataVolume}</span></div>
-                            <div className="border-t border-slate-800 pt-2.5 space-y-2">
-                                <div className="flex justify-between"><span className="text-xs text-slate-400">{t('swarm_workers_85', '→ Swarm Workers (85%)')}</span><span className="text-xs font-bold text-emerald-400">+{selectedSignal.gstdReward} GSTD</span></div>
-                                <div className="flex justify-between"><span className="text-xs text-slate-400">{t('gold_reserve_10', '→ Gold Reserve (10%)')}</span><span className="text-xs font-bold text-amber-400">+{selectedSignal.platformFee} GSTD</span></div>
-                                <div className="flex justify-between"><span className="text-xs text-slate-400">{t('results_stored_in', '→ Results stored in')}</span><span className="text-[10px] font-bold text-violet-400">{t('collective_memory', 'Collective Memory')}</span></div>
-                            </div>
-                            <div className="flex justify-between items-center pt-2.5 border-t border-slate-800">
-                                <span className="text-sm font-bold text-white">{t('sponsorship', 'Sponsorship')}</span>
-                                <span className="text-base font-black text-white flex items-center gap-1.5 bg-slate-800 px-3 py-1 rounded-lg border border-slate-600">
-                                    {selectedSignal.starsCost} <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                                </span>
-                            </div>
+                        <div style={{ marginBottom: 16 }}>
+                            <label style={{ display: 'block', fontSize: 12, color: '#88aacc', marginBottom: 6, fontWeight: 600 }}>
+                                Scenario Description
+                            </label>
+                            <textarea
+                                value={customScenario}
+                                onChange={e => setCustomScenario(e.target.value)}
+                                placeholder="Describe what you want the AI swarm to simulate and predict..."
+                                rows={4}
+                                style={{
+                                    width: '100%', padding: '12px 14px',
+                                    background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+                                    borderRadius: 12, color: '#fff', fontSize: 14,
+                                    resize: 'vertical', outline: 'none',
+                                }}
+                            />
                         </div>
 
-                        {isPurchasing ? (
-                            <div className="flex flex-col gap-2.5">
-                                <div className="h-10 flex items-center justify-center bg-slate-800/50 rounded-xl border border-slate-700">
-                                    <span className="text-sm font-bold text-sky-400 animate-pulse">
-                                        {purchaseStep === 1 && t('confirming_stars', 'Confirming Stars...')}
-                                        {purchaseStep === 2 && t('minting_deploying', 'Minting GSTD & Deploying Swarm...')}
-                                        {purchaseStep === 3 && t('signal_dispatched', 'Signal Dispatched to Swarm!')}
-                                    </span>
-                                </div>
-                                <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                                    <div className="h-full bg-sky-500 transition-all duration-500 ease-out" style={{ width: ((purchaseStep / 3) * 100) + '%' }} />
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="flex gap-3">
-                                <button onClick={() => setSelectedSignal(null)} className="flex-1 px-3 py-2.5 rounded-xl border border-slate-700 hover:bg-slate-800 text-sm font-bold text-slate-300 transition-colors">{t('cancel', 'Cancel')}</button>
-                                <button onClick={handleAnalyzeSignal} className="flex-[2] px-3 py-2.5 rounded-xl text-sm font-bold text-slate-900 bg-sky-400 hover:bg-sky-300 flex items-center justify-center gap-2 transition-all">
-                                    <Star className="w-4 h-4" />{t('sponsor_with_stars', 'Sponsor with Stars')}</button>
-                            </div>
-                        )}
+                        <div style={{ marginBottom: 20 }}>
+                            <label style={{ display: 'block', fontSize: 12, color: '#88aacc', marginBottom: 6, fontWeight: 600 }}>
+                                Seed Data (optional)
+                            </label>
+                            <textarea
+                                value={customSeed}
+                                onChange={e => setCustomSeed(e.target.value)}
+                                placeholder="Paste any relevant data (news articles, reports, stats) to use as seed material..."
+                                rows={3}
+                                style={{
+                                    width: '100%', padding: '12px 14px',
+                                    background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+                                    borderRadius: 12, color: '#fff', fontSize: 14,
+                                    resize: 'vertical', outline: 'none',
+                                }}
+                            />
+                        </div>
+
+                        <div style={{
+                            padding: '12px 16px', background: 'rgba(247,147,26,0.08)',
+                            border: '1px solid rgba(247,147,26,0.15)',
+                            borderRadius: 12, marginBottom: 16,
+                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        }}>
+                            <span style={{ color: '#88aacc', fontSize: 13 }}>Simulation Price</span>
+                            <span style={{ color: '#f7931a', fontWeight: 700, fontSize: 16 }}>30 GSTD</span>
+                        </div>
+
+                        <button
+                            onClick={() => launchSimulation('custom', customScenario, customSeed)}
+                            disabled={launching === 'custom' || !customScenario.trim()}
+                            style={{
+                                width: '100%', padding: '14px 0',
+                                background: launching === 'custom' ? 'rgba(255,255,255,0.1)' : 'linear-gradient(135deg, #ff66aa, #aa66ff)',
+                                border: 'none', borderRadius: 12,
+                                color: '#fff', fontWeight: 700, fontSize: 15,
+                                cursor: (launching === 'custom' || !customScenario.trim()) ? 'not-allowed' : 'pointer',
+                                opacity: !customScenario.trim() ? 0.5 : 1,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                            }}
+                        >
+                            {launching === 'custom' ? (
+                                <><RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} /> Launching...</>
+                            ) : (
+                                <><Play size={16} /> Launch Custom Simulation</>
+                            )}
+                        </button>
                     </div>
                 </div>
             )}
 
-            <style dangerouslySetInnerHTML={{
-                __html: `
-        .custom-scrollbar::-webkit-scrollbar { width: 3px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(51, 65, 85, 0.5); border-radius: 4px; }
-        .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-        `}} />
+            {/* ═══ RESULT DETAIL MODAL ═══════════════════════════════ */}
+            {selectedSim && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.75)', zIndex: 1000,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+                }} onClick={() => setSelectedSim(null)} role="button" tabIndex={0} onKeyDown={e => e.key === 'Enter' && setSelectedSim(null)}>
+                    <div onClick={e => e.stopPropagation()} role="presentation" style={{
+                        background: '#141828', border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: 20, padding: 28, maxWidth: 700, width: '100%',
+                        maxHeight: '85vh', overflowY: 'auto',
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                            <div>
+                                <h2 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, color: '#fff' }}>
+                                    📊 {selectedSim.category.charAt(0).toUpperCase() + selectedSim.category.slice(1)} Simulation Report
+                                </h2>
+                                <span style={{ fontSize: 12, color: '#667788' }}>{selectedSim.id}</span>
+                            </div>
+                            <button onClick={() => setSelectedSim(null)} style={{
+                                background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 8,
+                                width: 32, height: 32, cursor: 'pointer', color: '#aaa', fontSize: 16,
+                            }}>✕</button>
+                        </div>
+
+                        {/* Meta badges */}
+                        <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+                            {selectedSim.confidence > 0 && (
+                                <span style={{
+                                    background: 'rgba(16,185,129,0.15)', color: '#34d399',
+                                    padding: '4px 10px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                                }}>{(selectedSim.confidence * 100).toFixed(0)}% confident</span>
+                            )}
+                            {selectedSim.predictions_count > 0 && (
+                                <span style={{
+                                    background: 'rgba(59,130,246,0.15)', color: '#60a5fa',
+                                    padding: '4px 10px', borderRadius: 8, fontSize: 12,
+                                }}>{selectedSim.predictions_count} predictions</span>
+                            )}
+                            <span style={{
+                                background: 'rgba(247,147,26,0.15)', color: '#f7931a',
+                                padding: '4px 10px', borderRadius: 8, fontSize: 12,
+                            }}>{selectedSim.price_gstd} GSTD</span>
+                            {selectedSim.compute_ms > 0 && (
+                                <span style={{
+                                    background: 'rgba(148,163,184,0.15)', color: '#94a3b8',
+                                    padding: '4px 10px', borderRadius: 8, fontSize: 12,
+                                }}>{(selectedSim.compute_ms / 1000).toFixed(1)}s compute</span>
+                            )}
+                        </div>
+
+                        {/* Full Report */}
+                        <div style={{
+                            background: 'rgba(0,200,136,0.06)', borderRadius: 14, padding: 20,
+                            border: '1px solid rgba(0,200,136,0.15)',
+                        }}>
+                            <h4 style={{ color: '#34d399', fontSize: 12, textTransform: 'uppercase', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <Eye size={14} /> Full Simulation Report
+                            </h4>
+                            <div style={{
+                                color: '#ccc', lineHeight: 1.7, fontSize: 14,
+                                whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                            }}>
+                                {selectedSim.result_report || 'Report generating...'}
+                            </div>
+                        </div>
+
+                        <div style={{ marginTop: 16, display: 'flex', justifyContent: 'space-between', color: '#667788', fontSize: 12 }}>
+                            <span>Created: {new Date(selectedSim.created_at).toLocaleString()}</span>
+                            {selectedSim.completed_at && (
+                                <span>Completed: {new Date(selectedSim.completed_at).toLocaleString()}</span>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <style jsx global>{`
+                @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+            `}</style>
         </div>
     );
 }
