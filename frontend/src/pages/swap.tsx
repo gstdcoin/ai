@@ -2,7 +2,7 @@ import Head from 'next/head';
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import { ArrowDownUp, Zap, RefreshCw, AlertCircle, Wallet, CheckCircle2, Loader2, ExternalLink } from 'lucide-react';
+import { ArrowDownUp, Zap, RefreshCw, AlertCircle, Wallet, Loader2, ExternalLink } from 'lucide-react';
 import { useTonAddress, useTonConnectUI, TonConnectButton } from '@tonconnect/ui-react';
 import { API_BASE_URL, GSTD_CONTRACT_ADDRESS } from '../lib/config';
 

@@ -413,11 +413,12 @@ export default function ChatPage() {
         ));
 
         // Check balance for paid tiers
-        if (tierInfo.cost > 0 && gstdBalance < tierInfo.cost) {
+        const currentBalance = gstdBalance ?? 0;
+        if (tierInfo.cost > 0 && currentBalance < tierInfo.cost) {
             const errMsg: Message = {
                 id: 'msg_' + Date.now() + '_err',
                 role: 'assistant',
-                content: `⚠️ **Insufficient GSTD balance**\n\nYou need **${tierInfo.cost} GSTD** for ${tierInfo.name} but have **${gstdBalance.toFixed(2)} GSTD**.\n\nSwitch to **🆓 Single Expert** (free) or top up your balance.`,
+                content: `⚠️ **Insufficient GSTD balance**\n\nYou need **${tierInfo.cost} GSTD** for ${tierInfo.name} but have **${currentBalance.toFixed(2)} GSTD**.\n\nSwitch to **🆓 Single Expert** (free) or top up your balance.`,
                 timestamp: Date.now(),
             };
             setConversations(prev => prev.map(c =>
