@@ -96,6 +96,15 @@ backups/
 *.rdb
 *.backup*
 *.bak
+*.orig
+*.tmp
+
+# Obsidian vault (auto-generated operator decisions, not source code)
+vault/
+
+# TypeScript build cache
+tsconfig.tsbuildinfo
+frontend/tsconfig.tsbuildinfo
 
 # Nested repos (managed separately)
 A2A/
@@ -129,9 +138,6 @@ test-project/
 *_recent_logs.txt
 *_recent_filtered.txt
 mcp_config.json
-
-# Symlinks
-docker-compose.yml
 
 # Vercel
 frontend/.vercel/
