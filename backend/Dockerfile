@@ -28,8 +28,8 @@ FROM alpine:3.19
 USER root
 
 
-# Install CA certificates for HTTPS requests, plus Docker CLI and Git for Autonomous Operator
-RUN apk --no-cache add ca-certificates docker-cli git tzdata && \
+# Install CA certificates for HTTPS requests, plus Docker CLI, Git, and Curl for Autonomous Operator
+RUN apk --no-cache add ca-certificates docker-cli git tzdata curl && \
     addgroup -g 1000 appuser && \
     adduser -D -u 1000 -G appuser appuser
 
