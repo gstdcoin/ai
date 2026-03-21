@@ -786,7 +786,7 @@ func (h *MarketplaceHandler) ContributeToTask(c *gin.Context) {
 
 	// 1. Check user balance
 	var balance float64
-	err = tx.QueryRowContext(c.Request.Context(), "SELECT balance FROM users WHERE wallet_address = $1", walletAddress).Scan(&balance)
+	err = tx.QueryRowContext(c.Request.Context(), "SELECT COALESCE(gstd_balance, 0) + COALESCE(balance, 0) FROM users WHERE wallet_address = $1", walletAddress).Scan(&balance)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check balance"})
 		return
@@ -799,7 +799,7 @@ func (h *MarketplaceHandler) ContributeToTask(c *gin.Context) {
 
 	// 2. Deduct from user
 	_, err = tx.ExecContext(c.Request.Context(), `
-		UPDATE users SET balance = balance - $1 WHERE wallet_address = $2
+		UPDATE users SET gstd_balance = GREATEST(COALESCE(gstd_balance, 0) - $1, 0), updated_at = NOW() WHERE wallet_address = $2
 	`, req.AmountGSTD, walletAddress)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to deduct balance"})
