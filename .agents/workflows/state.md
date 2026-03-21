@@ -30,10 +30,10 @@ description: Current ecosystem state — always read FIRST before any changes
 │                                                             │
 │  ┌─── BACKEND (Go) ─── 4 replicas ───────────────────┐     │
 │  │  Containers: ubuntu-backend-blue-{1..4}            │     │
-│  │  Image:      gstd-backend-blue:v184                │     │
+│  │  Image:      gstd-backend-blue:v185                │     │
 │  │  Port:       8080 (internal, via nginx)            │     │
 │  │  DB:         distributed_computing                 │     │
-│  │  Rollback:   gstd-backend-blue:v183                │     │
+│  │  Rollback:   gstd-backend-blue:v184                │     │
 │  └────────────────────────────────────────────────────┘     │
 │                                                             │
 │  ┌─── FRONTEND (Next.js 16.1.6) ─────────────────────┐     │
