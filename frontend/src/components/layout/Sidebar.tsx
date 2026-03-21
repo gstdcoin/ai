@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'next-i18next';
-import { Home, Server, ListTodo, MessageSquare, BarChart3, HelpCircle, X, Menu, Cpu, ArrowRightLeft } from 'lucide-react';
+import { Home, Server, ListTodo, MessageSquare, BarChart3, HelpCircle, X, Menu, Cpu, ArrowRightLeft, Briefcase, Brain } from 'lucide-react';
 import { Tab } from '../../types/tabs';
 
 interface SidebarProps {
@@ -19,6 +19,8 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
   ];
 
   const externalLinks: Array<{ label: string; icon: React.ReactNode; href: string }> = [
+    { label: t('simulations', 'Simulations'), icon: <Briefcase size={18} />, href: '/monitor' },
+    { label: t('ai_signals', 'AI Signals'), icon: <Brain size={18} />, href: '/predictions' },
     { label: t('chat', 'Chat'), icon: <MessageSquare size={18} />, href: '/chat' },
     { label: t('bridge', 'Bridge'), icon: <ArrowRightLeft size={18} />, href: '/bridge' },
     { label: t('stats', 'Stats'), icon: <BarChart3 size={18} />, href: '/stats' },

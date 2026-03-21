@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'next-i18next';
-import { Home, ListTodo, Server, MessageSquare, MoreHorizontal } from 'lucide-react';
+import { Home, ListTodo, Server, MessageSquare, Briefcase, Brain } from 'lucide-react';
 import { Tab } from '../../types/tabs';
 
 interface BottomNavProps {
@@ -11,9 +11,11 @@ interface BottomNavProps {
 export default function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
   const { t } = useTranslation('common');
 
-  const items: Array<{ id: Tab | 'chat'; label: string; icon: React.ReactNode; href?: string }> = [
+  const items: Array<{ id: Tab | 'chat' | 'marketplace' | 'signals'; label: string; icon: React.ReactNode; href?: string }> = [
     { id: 'home', label: t('tab_home', 'Home'), icon: <Home size={20} /> },
     { id: 'tasks', label: t('tab_tasks', 'Tasks'), icon: <ListTodo size={20} /> },
+    { id: 'marketplace', label: t('simulations', 'Sims'), icon: <Briefcase size={20} />, href: '/monitor' },
+    { id: 'signals', label: t('ai_signals', 'Signals'), icon: <Brain size={20} />, href: '/predictions' },
     { id: 'nodes', label: t('tab_nodes', 'Nodes'), icon: <Server size={20} /> },
     { id: 'chat', label: t('chat', 'Chat'), icon: <MessageSquare size={20} />, href: '/chat' },
   ];
@@ -26,7 +28,7 @@ export default function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
         borderTop: '1px solid rgba(255,255,255,0.06)',
         paddingBottom: 'env(safe-area-inset-bottom, 0)',
       }}>
-        <div className="grid grid-cols-4 gap-0.5 px-2 py-2">
+        <div className="grid grid-cols-6 gap-0.5 px-2 py-2">
           {items.map((item) => (
             item.href ? (
               <a

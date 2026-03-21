@@ -11,7 +11,7 @@ import DevicesPanel from './DevicesPanel';
 import { Tab } from '../../types/tabs';
 import { useTonConnectUI } from '@tonconnect/ui-react';
 import { toast } from '../../lib/toast';
-import { Activity, Server, MessageSquare, Globe, Copy, Users, TrendingUp, ArrowRight, ArrowRightLeft } from 'lucide-react';
+import { Activity, Server, MessageSquare, Globe, Copy, Users, TrendingUp, ArrowRight, ArrowRightLeft, Briefcase } from 'lucide-react';
 import { apiGet, apiPost } from '../../lib/apiClient';
 import Sidebar from '../layout/Sidebar';
 import { ComponentErrorBoundary } from '../common/ComponentErrorBoundary';
@@ -265,29 +265,27 @@ function Dashboard({ initialTab, sourceTelegram, modeMining }: DashboardProps = 
                       <ArrowRight size={14} className="text-gray-600 group-hover:text-orange-400 transition-colors" />
                     </Link>
 
-                    <a
-                      href="https://monitor.gstdtoken.com"
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <Link
+                      href="/monitor"
                       style={{
-                        background: 'rgba(6,182,212,0.04)',
-                        border: '1px solid rgba(6,182,212,0.10)',
+                        background: 'rgba(16,185,129,0.04)',
+                        border: '1px solid rgba(16,185,129,0.10)',
                         borderRadius: 14,
                         padding: '16px 20px',
                       }}
-                      className="flex items-center justify-between group hover:border-sky-500/20 transition-all"
+                      className="flex items-center justify-between group hover:border-emerald-500/20 transition-all"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-sky-500/10">
-                          <Globe size={16} className="text-sky-400" />
+                        <div className="p-2 rounded-lg bg-emerald-500/10">
+                          <Briefcase size={16} className="text-emerald-400" />
                         </div>
                         <div>
-                          <div className="text-sm font-semibold text-white">{t('live_monitor', 'Monitor')}</div>
-                          <div className="text-[11px] text-gray-600">{t('monitor_desc', 'Network stats')}</div>
+                          <div className="text-sm font-semibold text-white">{t('live_monitor', 'Tasks')}</div>
+                          <div className="text-[11px] text-gray-600">{t('monitor_desc', 'Physical marketplace')}</div>
                         </div>
                       </div>
                       <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    </a>
+                    </Link>
                   </div>
 
                   {/* Referral Card */}
