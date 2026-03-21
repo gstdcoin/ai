@@ -712,7 +712,7 @@ func reconcileMarketplaceTask(db *sql.DB, referral *services.ReferralService) gi
 
 		// Ensure worker exists with balance for stake
 		var balance float64
-		_ = db.QueryRowContext(c.Request.Context(), "SELECT COALESCE(balance, 0) FROM users WHERE wallet_address = $1", req.WorkerWallet).Scan(&balance)
+		_ = db.QueryRowContext(c.Request.Context(), "SELECT COALESCE(gstd_balance, 0) + COALESCE(balance, 0) FROM users WHERE wallet_address = $1", req.WorkerWallet).Scan(&balance)
 		if balance < 1 {
 			_, _ = db.ExecContext(c.Request.Context(), `
 				INSERT INTO users (wallet_address, balance, referral_code, created_at)
