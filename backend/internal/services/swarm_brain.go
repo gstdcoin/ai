@@ -112,9 +112,13 @@ func (b *SwarmBrain) Start() {
 	go b.refreshNetworkState()
 
 	// Analysis loop — AI-driven network analysis
-	go b.loop("analysis", b.config.AnalysisCycle, func() {
-		b.runAnalysisCycle()
-	})
+	go func() {
+		// adding initial random jitter up to 120s to prevent 4x instances causing 429s on boot
+		time.Sleep(time.Duration(time.Now().UnixNano()%120) * time.Second)
+		b.loop("analysis", b.config.AnalysisCycle, func() {
+			b.runAnalysisCycle()
+		})
+	}()
 
 	// Healing loop — detect and fix failures
 	go b.loop("healing", b.config.HealingCycle, func() {
@@ -330,12 +334,21 @@ func (b *SwarmBrain) runEconomicsCycle() {
 
 	ctx := context.Background()
 
-	// Get total rewards distributed today
+	// Get total rewards distributed today (legacy)
 	var todayRewards float64
 	b.db.QueryRowContext(ctx, `
 		SELECT COALESCE(SUM(amount), 0) FROM reward_history 
 		WHERE created_at > DATE_TRUNC('day', NOW())
 	`).Scan(&todayRewards)
+
+	// Get SuperNode multi-stream settlements
+	var todaySettlements float64
+	b.db.QueryRowContext(ctx, `
+		SELECT COALESCE(SUM(total_amount), 0) FROM node_settlements 
+		WHERE settled_at > DATE_TRUNC('day', NOW())
+	`).Scan(&todaySettlements)
+
+	totalGSTD := todayRewards + todaySettlements
 
 	// Get network utilization (tasks completed vs capacity)
 	var completedToday int
@@ -345,10 +358,10 @@ func (b *SwarmBrain) runEconomicsCycle() {
 	`).Scan(&completedToday)
 
 	b.mu.Lock()
-	b.state.TotalEarned = todayRewards
+	b.state.TotalEarned = totalGSTD
 	b.mu.Unlock()
 
-	log.Printf("🧠 SwarmBrain [economics]: %.2f GSTD distributed today, %d tasks completed", todayRewards, completedToday)
+	log.Printf("🧠 SwarmBrain [economics]: %.2f GSTD distributed today (includes %.2f from 6-stream SuperNodes), %d tasks completed", totalGSTD, todaySettlements, completedToday)
 }
 
 // ─── Network State ─────────────────────────────────────────

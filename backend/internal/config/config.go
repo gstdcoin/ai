@@ -156,7 +156,7 @@ func getVaultOrEnv(vaultSecretPath string, envFallback string) string {
 	vaultToken := os.Getenv("VAULT_TOKEN")
 
 	if vaultURL == "" || vaultToken == "" {
-		log.Printf("⚠️ SEC-WARN: HashiCorp Vault not configured. Falling back to .env for %s", envFallback)
+		// log.Printf("⚠️ SEC-WARN: HashiCorp Vault not configured. Falling back to .env for %s", envFallback)
 		return getEnv(envFallback, "")
 	}
 
