@@ -136,6 +136,20 @@ func walletTransfer(db *sql.DB) gin.HandlerFunc {
 	}
 }
 
+// stakingAPY returns APY for a given lock period
+func stakingAPY(lockDays int) float64 {
+	switch {
+	case lockDays >= 365:
+		return 36.0
+	case lockDays >= 180:
+		return 24.0
+	case lockDays >= 90:
+		return 15.0
+	default:
+		return 8.0
+	}
+}
+
 // POST /staking/stake — lock GSTD for staking (earn APY)
 func stakingStake(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -147,7 +161,8 @@ func stakingStake(db *sql.DB) gin.HandlerFunc {
 		wallet := walletAddr.(string)
 
 		var req struct {
-			Amount float64 `json:"amount" binding:"required"`
+			Amount   float64 `json:"amount" binding:"required"`
+			LockDays int     `json:"lock_days"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(400, gin.H{"error": "amount is required"})
@@ -162,6 +177,13 @@ func stakingStake(db *sql.DB) gin.HandlerFunc {
 			c.JSON(400, gin.H{"error": "amount too large"})
 			return
 		}
+
+		// Default lock period 30 days
+		if req.LockDays <= 0 {
+			req.LockDays = 30
+		}
+		apy := stakingAPY(req.LockDays)
+		unlockAt := time.Now().Add(time.Duration(req.LockDays) * 24 * time.Hour)
 
 		tx, err := db.BeginTx(c.Request.Context(), nil)
 		if err != nil {
@@ -180,8 +202,8 @@ func stakingStake(db *sql.DB) gin.HandlerFunc {
 			return
 		}
 		if available < req.Amount {
-			c.JSON(400, gin.H{
-				"error":     "insufficient balance",
+			c.JSON(402, gin.H{
+				"error":     "insufficient GSTD balance",
 				"available": available,
 				"requested": req.Amount,
 			})
@@ -206,12 +228,20 @@ func stakingStake(db *sql.DB) gin.HandlerFunc {
 			return
 		}
 
+		// Record staking position
+		positionID := uuid.New().String()[:16]
+		_, _ = tx.ExecContext(c.Request.Context(),
+			`INSERT INTO staking_positions (id, wallet_address, amount, apy, lock_days, unlock_at, status, created_at)
+			 VALUES ($1, $2, $3, $4, $5, $6, 'active', NOW())
+			 ON CONFLICT DO NOTHING`,
+			positionID, wallet, req.Amount, apy, req.LockDays, unlockAt)
+
 		// Record in ledger
 		txID := uuid.New().String()[:16]
 		_, _ = tx.ExecContext(c.Request.Context(),
 			`INSERT INTO transaction_history (tx_id, from_wallet, to_wallet, amount_gstd, tx_type, description, confirmed_at)
-			 VALUES ($1, $2, $2, $3, 'stake', 'Staked GSTD for APY rewards', NOW())`,
-			txID, wallet, req.Amount)
+			 VALUES ($1, $2, $2, $3, 'stake', $4, NOW())`,
+			txID, wallet, req.Amount, fmt.Sprintf("Staked %.2f GSTD for %d days at %.0f%% APY", req.Amount, req.LockDays, apy))
 
 		if err := tx.Commit(); err != nil {
 			c.JSON(500, gin.H{"error": "commit failed"})
@@ -224,20 +254,21 @@ func stakingStake(db *sql.DB) gin.HandlerFunc {
 			`SELECT COALESCE(gstd_frozen, 0) FROM users WHERE wallet_address = $1`,
 			wallet).Scan(&frozen)
 
-		log.Printf("🔒 Stake: %s staked %.4f GSTD (total frozen: %.4f)", wallet[:12], req.Amount, frozen)
+		log.Printf("🔒 Stake: %s staked %.4f GSTD for %dd at %.0f%% APY (total frozen: %.4f)", wallet[:12], req.Amount, req.LockDays, apy, frozen)
 
-		// APY: 12% per year, calculated daily
-		dailyRate := 12.0 / 365.0 / 100.0
+		dailyRate := apy / 365.0 / 100.0
 		dailyReward := frozen * dailyRate
 
 		c.JSON(200, gin.H{
 			"status":         "staked",
 			"tx_id":          txID,
+			"position_id":    positionID,
 			"amount_staked":  req.Amount,
 			"total_staked":   frozen,
-			"apy":            12.0,
+			"apy":            apy,
+			"lock_days":      req.LockDays,
 			"daily_reward":   math.Round(dailyReward*10000) / 10000,
-			"lock_period":    "30 days",
+			"unlock_at":      unlockAt.UTC().Format(time.RFC3339),
 			"next_reward_at": time.Now().Add(24 * time.Hour).UTC().Format(time.RFC3339),
 			"timestamp":      time.Now().UTC().Format(time.RFC3339),
 		})
