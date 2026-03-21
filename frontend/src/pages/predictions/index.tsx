@@ -1,16 +1,16 @@
 import { useTranslation } from 'next-i18next';
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import Head from 'next/head';
 import {
     Brain, Lock, Unlock, Eye,
-    Users, Coins, RefreshCw, ShieldCheck,
-    Activity, Sparkles, Target, Clock, Crown
+    Users, RefreshCw, ShieldCheck,
+    Activity, Sparkles, Target, Clock, Crown,
+    TrendingUp, Zap, Filter, ChevronRight, ArrowUpRight, Shield
 } from 'lucide-react';
 import { toast } from '../../lib/toast';
 import { apiGet, apiPost } from '../../lib/apiClient';
 import { useWalletStore } from '../../store/walletStore';
-import { useTonConnectUI } from '@tonconnect/ui-react';
-
+import { useTonConnectUI, TonConnectButton } from '@tonconnect/ui-react';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 
 interface Signal {
@@ -33,14 +33,6 @@ interface Signal {
     status: string;
 }
 
-interface Agent {
-    name: string;
-    specialty: string;
-    accuracy: number;
-    signals: number;
-    icon: string;
-}
-
 interface NetworkStats {
     total_signals: number;
     premium_signals: number;
@@ -49,57 +41,112 @@ interface NetworkStats {
     network_accuracy: number;
     agents_active: number;
     learning_epochs: number;
+    verified_correct: number;
+    verified_wrong: number;
 }
 
-export default function PredictionsPage() {
+// Clean up JSON-contaminated summaries
+function cleanSummary(text: string): string {
+    if (!text) return '';
+    // If summary starts with { try to extract meaningful text
+    if (text.trim().startsWith('{') || text.trim().startsWith('[')) {
+        try {
+            const parsed = JSON.parse(text);
+            if (parsed.predictions && Array.isArray(parsed.predictions)) {
+                return parsed.predictions
+                    .map((p: any) => `${p.description} (${Math.round((p.probability || 0.5) * 100)}% probability)`)
+                    .join('. ');
+            }
+            if (parsed.report) return parsed.report;
+            if (parsed.summary) return parsed.summary;
+        } catch {
+            // Try to extract description fields from malformed JSON
+            const descriptions = text.match(/"description"\s*:\s*"([^"]+)"/g);
+            if (descriptions && descriptions.length > 0) {
+                return descriptions
+                    .map(d => d.replace(/"description"\s*:\s*"/, '').replace(/"$/, ''))
+                    .slice(0, 3)
+                    .join('. ') + '.';
+            }
+        }
+    }
+    // Truncate if too long
+    return text.length > 280 ? text.slice(0, 280) + '…' : text;
+}
 
+function timeAgo(dateStr: string): string {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const hours = Math.floor(diff / 3600000);
+    if (hours < 1) return 'Just now';
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+}
+
+function timeLeft(dateStr: string): string {
+    const diff = new Date(dateStr).getTime() - Date.now();
+    if (diff <= 0) return 'Expired';
+    const hours = Math.floor(diff / 3600000);
+    if (hours < 24) return `${hours}h left`;
+    const days = Math.floor(hours / 24);
+    return `${days}d left`;
+}
+
+const CATEGORIES = [
+    { id: 'all', label: 'All Signals', icon: '🔮' },
+    { id: 'crypto', label: 'Crypto', icon: '₿' },
+    { id: 'polymarket', label: 'Polymarket', icon: '🗳️' },
+    { id: 'forex', label: 'Forex', icon: '💱' },
+    { id: 'commodities', label: 'Commodities', icon: '🥇' },
+    { id: 'tech-trends', label: 'Tech', icon: '📡' },
+    { id: 'energy', label: 'Energy', icon: '⚡' },
+    { id: 'real-estate', label: 'Real Estate', icon: '🏠' },
+];
+
+const IMPACT_CONFIG: Record<string, { color: string; bg: string; label: string }> = {
+    critical: { color: '#ff4466', bg: 'rgba(255,68,102,0.12)', label: '🔴 CRITICAL' },
+    high: { color: '#ff8844', bg: 'rgba(255,136,68,0.12)', label: '🟠 HIGH' },
+    medium: { color: '#00cc88', bg: 'rgba(0,204,136,0.12)', label: '🟢 MEDIUM' },
+    low: { color: '#6688aa', bg: 'rgba(102,136,170,0.12)', label: '🔵 LOW' },
+};
+
+export default function PredictionsPage() {
+    const { t } = useTranslation('common');
     const [tonConnectUI] = useTonConnectUI();
     const { address, gstdBalance } = useWalletStore();
 
-    const [activeTab, setActiveTab] = useState<'signals' | 'premium' | 'agents' | 'my' | 'sources' | 'compute' | 'revenue'>('signals');
     const [signals, setSignals] = useState<Signal[]>([]);
-    const [premiumSignals, setPremiumSignals] = useState<Signal[]>([]);
     const [mySignals, setMySignals] = useState<Signal[]>([]);
-    const [agents, setAgents] = useState<Agent[]>([]);
     const [stats, setStats] = useState<NetworkStats | null>(null);
-    const [dataSources, setDataSources] = useState<any[]>([]);
-    const [computeRewards, setComputeRewards] = useState<any>(null);
-    const [revenueStats, setRevenueStats] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [buying, setBuying] = useState<string | null>(null);
     const [selectedSignal, setSelectedSignal] = useState<Signal | null>(null);
-    const [pulsePhase, setPulsePhase] = useState(0);
-
-    // Neural pulse animation
-    useEffect(() => {
-        const timer = setInterval(() => setPulsePhase(p => (p + 1) % 360), 50);
-        return () => clearInterval(timer);
-    }, []);
+    const [activeCategory, setActiveCategory] = useState('all');
+    const [showMyOnly, setShowMyOnly] = useState(false);
 
     const loadData = useCallback(async () => {
         setLoading(true);
         try {
-            const [sigRes, statsRes, agentRes, srcRes, compRes, revRes] = await Promise.allSettled([
+            const [sigRes, statsRes] = await Promise.allSettled([
                 apiGet('/api/v1/signals/public'),
                 apiGet('/api/v1/signals/stats'),
-                apiGet('/api/v1/signals/leaderboard'),
-                apiGet('/api/v1/signals/data-sources'),
-                apiGet('/api/v1/signals/compute-rewards'),
-                apiGet('/api/v1/signals/revenue'),
             ]);
             if (sigRes.status === 'fulfilled') setSignals(sigRes.value?.signals || []);
             if (statsRes.status === 'fulfilled') setStats(statsRes.value || null);
-            if (agentRes.status === 'fulfilled') setAgents(agentRes.value?.agents || []);
-            if (srcRes.status === 'fulfilled') setDataSources(srcRes.value?.sources || []);
-            if (compRes.status === 'fulfilled') setComputeRewards(compRes.value || null);
-            if (revRes.status === 'fulfilled') setRevenueStats(revRes.value || null);
 
             if (address) {
                 const [premRes, myRes] = await Promise.allSettled([
                     apiGet('/api/v1/signals/premium'),
                     apiGet('/api/v1/signals/my'),
                 ]);
-                if (premRes.status === 'fulfilled') setPremiumSignals(premRes.value?.signals || []);
+                // Merge premium into signals (deduplicate by id)
+                if (premRes.status === 'fulfilled') {
+                    const prem = premRes.value?.signals || [];
+                    setSignals(prev => {
+                        const ids = new Set(prev.map(s => s.id));
+                        return [...prev, ...prem.filter((s: Signal) => !ids.has(s.id))];
+                    });
+                }
                 if (myRes.status === 'fulfilled') setMySignals(myRes.value?.signals || []);
             }
         } finally {
@@ -108,6 +155,12 @@ export default function PredictionsPage() {
     }, [address]);
 
     useEffect(() => { loadData(); }, [loadData]);
+
+    // Auto-refresh every 2 min
+    useEffect(() => {
+        const iv = setInterval(loadData, 120000);
+        return () => clearInterval(iv);
+    }, [loadData]);
 
     const buySignal = async (signal: Signal) => {
         if (!address) {
@@ -122,20 +175,15 @@ export default function PredictionsPage() {
                 setSelectedSignal({ ...signal, full_report: res.full_report });
                 toast.success(`Signal unlocked for ${signal.price_gstd} GSTD`);
                 loadData();
-            } else if (res?.message) {
-                toast.success(res.message);
-                loadData();
             } else {
-                toast.success('Purchase successful');
+                toast.success(res?.message || 'Purchase successful');
                 loadData();
             }
         } catch (e: any) {
             const msg = e?.data?.error || e?.message || 'Purchase failed';
             if (msg.toLowerCase().includes('insufficient') || msg.toLowerCase().includes('balance') || e?.status === 402) {
                 const serverBalance = e?.data?.balance ?? (gstdBalance || 0);
-                const deepLink = `https://t.me/GstdAppBot?start=buy-gstd-${Math.ceil(signal.price_gstd * 100)}`;
-                window.open(deepLink, '_blank');
-                toast.error(`Need ${signal.price_gstd} GSTD. Balance: ${Number(serverBalance).toFixed(2)}. Opening Telegram to buy...`);
+                toast.error(`Need ${signal.price_gstd} GSTD. Balance: ${Number(serverBalance).toFixed(2)}`);
             } else {
                 toast.error(msg);
             }
@@ -144,687 +192,460 @@ export default function PredictionsPage() {
         }
     };
 
-    const impactColor = (impact: string) => {
-        switch (impact) {
-            case 'critical': return '#ff4444';
-            case 'high': return '#ff8800';
-            case 'medium': return '#00cc88';
-            case 'low': return '#6688aa';
-            default: return '#8888aa';
+    const filteredSignals = useMemo(() => {
+        let list = showMyOnly ? mySignals : signals;
+        if (activeCategory !== 'all') {
+            list = list.filter(s => s.category === activeCategory);
         }
-    };
+        // Sort: premium first, then by confidence desc
+        return list.sort((a, b) => {
+            if (a.is_premium !== b.is_premium) return a.is_premium ? -1 : 1;
+            return b.confidence - a.confidence;
+        });
+    }, [signals, mySignals, activeCategory, showMyOnly]);
 
-    const categoryIcon = (cat: string) => {
-        switch (cat) {
-            case 'marketplace': return '📊';
-            case 'tokenomics': return '💰';
-            case 'growth': return '🚀';
-            case 'security': return '🛡';
-            case 'community': return '💬';
-            case 'governance': return '⚖️';
-            case 'defi': return '🧭';
-            case 'crypto': return '₿';
-            case 'forex': return '💱';
-            case 'commodities': return '🥇';
-            case 'tech-trends': return '📡';
-            case 'real-estate': return '🏠';
-            case 'energy': return '⚡';
-            default: return '🔮';
-        }
-    };
+    const featuredSignal = useMemo(() => {
+        const premium = signals.filter(s => s.is_premium && s.price_gstd > 0);
+        return premium.sort((a, b) => b.confidence - a.confidence)[0] || null;
+    }, [signals]);
 
-    const getAgentColor = (acc: number) => acc > 80 ? '#00cc88' : acc > 70 ? '#ffaa00' : '#ff6644';
-    const getAgentGradient = (acc: number) => acc > 80 ? 'linear-gradient(90deg, #00cc88, #00ffaa)' : acc > 70 ? 'linear-gradient(90deg, #ffaa00, #ff8800)' : 'linear-gradient(90deg, #ff6644, #ff4422)';
-    const getSrcStatus = (status: string) => status === 'live' ? '● LIVE' : status === 'initializing' ? '⏳ Starting...' : '○ Stale';
+    const ownedIds = useMemo(() => new Set(mySignals.map(s => s.id)), [mySignals]);
 
     return (
         <>
             <Head>
-                <title>GSTD AI Signals — Swarm Intelligence Predictions</title>
-                <meta name="description" content="AI-powered prediction signals from GSTD swarm intelligence network. Buy premium signals with GSTD tokens." />
+                <title>AI Signals — GSTD Prediction Marketplace</title>
+                <meta name="description" content="Premium AI prediction signals powered by swarm intelligence. Buy actionable market forecasts with GSTD tokens." />
             </Head>
 
+            <div className="min-h-screen bg-[#030014] text-white">
+                {/* Ambient glow */}
+                <div className="fixed inset-0 pointer-events-none z-0">
+                    <div className="absolute top-0 left-1/4 w-96 h-96 bg-emerald-500/[0.03] rounded-full blur-[120px]" />
+                    <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-violet-500/[0.03] rounded-full blur-[120px]" />
+                </div>
 
-            <div style={{
-                minHeight: '100vh',
-                background: 'linear-gradient(135deg, #0a0a1a 0%, #0d1525 30%, #0a1a2e 60%, #0d0d20 100%)',
-                color: '#e0e0e0',
-                fontFamily: "'Inter', -apple-system, sans-serif",
-                paddingTop: 24,
-            }}>
-                {/* Neural Network Background */}
-                <div style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    background: `radial-gradient(circle at ${30 + Math.sin(pulsePhase * 0.02) * 20}% ${40 + Math.cos(pulsePhase * 0.015) * 15}%, rgba(0,200,150,0.06) 0%, transparent 50%),
-                                 radial-gradient(circle at ${70 + Math.cos(pulsePhase * 0.018) * 15}% ${60 + Math.sin(pulsePhase * 0.025) * 10}%, rgba(100,100,255,0.04) 0%, transparent 50%)`,
-                    pointerEvents: 'none', zIndex: 0,
-                }} />
+                <div className="relative z-10 max-w-7xl mx-auto px-4 pt-20 pb-24">
 
-                <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 20px 80px', position: 'relative', zIndex: 1 }}>
-                    {/* Header */}
-                    <div style={{ textAlign: 'center', marginBottom: 40 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 12 }}>
-                            <Brain size={36} color="#00cc88" style={{ filter: 'drop-shadow(0 0 12px rgba(0,204,136,0.5))' }} />
-                            <h1 style={{
-                                fontSize: 'clamp(1.8rem, 4vw, 2.8rem)',
-                                fontWeight: 800,
-                                background: 'linear-gradient(135deg, #00cc88, #00aaff, #aa66ff)',
-                                WebkitBackgroundClip: 'text',
-                                WebkitTextFillColor: 'transparent',
-                                margin: 0,
-                            }}>AI Prediction Signals</h1>
+                    {/* ─── HERO HEADER ─── */}
+                    <div className="text-center mb-10 fu d1">
+                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-4">
+                            <span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"/><span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"/></span>
+                            LIVE — {stats?.agents_active || 7} AI Agents Active
                         </div>
-                        <p style={{ color: '#88aacc', fontSize: 16, maxWidth: 600, margin: '0 auto' }}>
-                            Swarm AI analyzes network data in real-time.
-                            The network learns, improves, and generates tradeable prediction signals for GSTD.
+                        <h1 className="text-4xl md:text-5xl font-black mb-3 tracking-tight">
+                            <span className="bg-gradient-to-r from-emerald-400 via-cyan-400 to-violet-400 bg-clip-text text-transparent">AI Prediction Signals</span>
+                        </h1>
+                        <p className="text-gray-400 max-w-xl mx-auto text-base leading-relaxed">
+                            Real-time market intelligence from our swarm AI network.
+                            Premium signals unlock full reports with actionable trade recommendations.
                         </p>
                     </div>
 
-                    {/* Stats Bar */}
-                    <div style={{
-                        display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-                        gap: 12, marginBottom: 32,
-                    }}>
+                    {/* ─── STATS GRID ─── */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8 fu d2">
                         {[
-                            { icon: <Activity size={18} />, label: 'Signals', value: stats?.total_signals || 0, color: '#00cc88' },
-                            { icon: <Users size={18} />, label: 'Agents', value: stats?.agents_active || 7, color: '#00aaff' },
-                            { icon: <Target size={18} />, label: 'Accuracy', value: `${(stats?.network_accuracy || 0).toFixed(0)}%`, color: '#aa66ff' },
-                            { icon: <Coins size={18} />, label: 'Revenue', value: `${(stats?.total_revenue_gstd || 0).toFixed(1)}`, color: '#ffaa00' },
-                            { icon: <Sparkles size={18} />, label: 'Epochs', value: stats?.learning_epochs || 0, color: '#ff66aa' },
-                        ].map((s) => (
-                            <div key={s.label} style={{
-                                background: 'rgba(255,255,255,0.04)',
-                                border: '1px solid rgba(255,255,255,0.08)',
-                                borderRadius: 14, padding: '14px 16px',
-                                textAlign: 'center',
-                                backdropFilter: 'blur(10px)',
-                            }}>
-                                <div style={{ color: s.color, marginBottom: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                                    {s.icon} <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 1 }}>{s.label}</span>
+                            { icon: <Activity size={16} />, label: 'Total Signals', value: stats?.total_signals || signals.length, color: 'text-emerald-400' },
+                            { icon: <Crown size={16} />, label: 'Premium', value: stats?.premium_signals || signals.filter(s => s.is_premium).length, color: 'text-amber-400' },
+                            { icon: <Users size={16} />, label: 'AI Agents', value: stats?.agents_active || 7, color: 'text-cyan-400' },
+                            { icon: <Sparkles size={16} />, label: 'Learning Epochs', value: stats?.learning_epochs || 0, color: 'text-violet-400' },
+                        ].map(s => (
+                            <div key={s.label} className="sov-card !p-4 text-center">
+                                <div className={`flex items-center justify-center gap-1.5 ${s.color} mb-2`}>
+                                    {s.icon}
+                                    <span className="text-[10px] font-bold uppercase tracking-widest">{s.label}</span>
                                 </div>
-                                <div style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>{s.value}</div>
+                                <div className="text-2xl font-black text-white">{s.value}</div>
                             </div>
                         ))}
                     </div>
 
-                    {/* Wallet Bar */}
-                    <div style={{
-                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                        background: 'rgba(0,200,136,0.06)', border: '1px solid rgba(0,200,136,0.15)',
-                        borderRadius: 14, padding: '12px 20px', marginBottom: 24,
-                        flexWrap: 'wrap', gap: 12,
-                    }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <ShieldCheck size={18} color="#00cc88" />
+                    {/* ─── WALLET + FILTER BAR ─── */}
+                    <div className="flex flex-col sm:flex-row gap-3 mb-6 fu d3">
+                        {/* Wallet */}
+                        <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex-1">
+                            <ShieldCheck size={16} className="text-emerald-400 shrink-0" />
                             {address ? (
-                                <span style={{ color: '#aaccbb', fontSize: 14 }}>
-                                    <span style={{ color: '#00cc88' }}>{address.slice(0, 6)}...{address.slice(-4)}</span>
-                                    {' '} · Balance: <strong style={{ color: '#fff' }}>{(gstdBalance || 0).toFixed(2)} GSTD</strong>
-                                </span>
+                                <div className="flex items-center gap-2 text-sm">
+                                    <span className="font-mono text-emerald-400 font-bold">{address.slice(0, 6)}...{address.slice(-4)}</span>
+                                    <span className="px-2 py-0.5 rounded-lg bg-emerald-400/10 text-[11px] font-bold text-emerald-400">
+                                        {(gstdBalance ?? 0).toFixed(2)} GSTD
+                                    </span>
+                                </div>
                             ) : (
-                                <span style={{ color: '#88aacc', fontSize: 14 }}>Connect wallet to buy premium signals</span>
+                                <div className="flex items-center gap-3">
+                                    <span className="text-sm text-gray-500">Connect wallet to buy signals</span>
+                                    <TonConnectButton />
+                                </div>
                             )}
                         </div>
-                        {!address && (
-                            <button onClick={() => tonConnectUI.openModal()} style={{
-                                background: 'linear-gradient(135deg, #00cc88, #00aa77)',
-                                color: '#fff', border: 'none', borderRadius: 10,
-                                padding: '8px 18px', fontWeight: 600, cursor: 'pointer',
-                                fontSize: 13,
-                            }}>Connect Wallet</button>
-                        )}
-                    </div>
-
-                    {/* Tabs */}
-                    <div style={{
-                        display: 'flex', gap: 4,
-                        background: 'rgba(255,255,255,0.03)', borderRadius: 14, padding: 4,
-                        marginBottom: 24, overflowX: 'auto',
-                    }}>
-                        {([
-                            { id: 'signals' as const, label: '🔮 Free', count: signals.length },
-                            { id: 'premium' as const, label: '💎 Premium', count: premiumSignals.length },
-                            { id: 'agents' as const, label: '🐟 Agents', count: agents.length },
-                            { id: 'sources' as const, label: '📡 Data Feeds', count: dataSources.filter((s: any) => s.fresh).length },
-                            { id: 'compute' as const, label: '🖥️ Compute', count: computeRewards?.contributing_nodes || 0 },
-                            { id: 'revenue' as const, label: '💰 Revenue', count: 0 },
-                            { id: 'my' as const, label: '📦 My', count: mySignals.length },
-                        ]).map(tab => (
-                            <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
-                                flex: 1, minWidth: 80, padding: '10px 10px',
-                                background: activeTab === tab.id ? 'rgba(0,204,136,0.15)' : 'transparent',
-                                border: activeTab === tab.id ? '1px solid rgba(0,204,136,0.3)' : '1px solid transparent',
-                                borderRadius: 10, color: activeTab === tab.id ? '#00cc88' : '#88aacc',
-                                fontWeight: activeTab === tab.id ? 700 : 500,
-                                cursor: 'pointer', fontSize: 12, whiteSpace: 'nowrap',
-                                transition: 'all 0.2s',
-                            }}>
-                                {tab.label} {tab.count > 0 && <span style={{ opacity: 0.6 }}>({tab.count})</span>}
+                        {/* My Signals toggle */}
+                        {address && mySignals.length > 0 && (
+                            <button
+                                onClick={() => setShowMyOnly(!showMyOnly)}
+                                className={`px-4 py-3 rounded-2xl border text-sm font-bold transition-all shrink-0 ${
+                                    showMyOnly
+                                        ? 'bg-violet-500/15 border-violet-500/30 text-violet-400'
+                                        : 'bg-white/[0.03] border-white/[0.06] text-gray-400 hover:text-white'
+                                }`}
+                            >
+                                <Eye size={14} className="inline mr-1.5" />
+                                My Signals ({mySignals.length})
                             </button>
-                        ))}
+                        )}
+                        <button onClick={loadData} className="px-4 py-3 rounded-2xl bg-white/[0.03] border border-white/[0.06] text-gray-400 hover:text-white transition-all shrink-0" title="Refresh">
+                            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+                        </button>
                     </div>
 
-                    {/* Loading */}
-                    {loading && (
-                        <div style={{ textAlign: 'center', padding: 60 }}>
-                            <RefreshCw size={32} color="#00cc88" style={{ animation: 'spin 1s linear infinite' }} />
-                            <p style={{ color: '#88aacc', marginTop: 12 }}>Neural network processing...</p>
-                        </div>
-                    )}
+                    {/* ─── CATEGORY FILTERS ─── */}
+                    <div className="flex gap-2 mb-8 overflow-x-auto pb-2 -mx-4 px-4 fu d4" style={{ scrollbarWidth: 'none' }}>
+                        {CATEGORIES.map(cat => {
+                            const count = cat.id === 'all' ? signals.length : signals.filter(s => s.category === cat.id).length;
+                            if (cat.id !== 'all' && count === 0) return null;
+                            return (
+                                <button
+                                    key={cat.id}
+                                    onClick={() => { setActiveCategory(cat.id); setShowMyOnly(false); }}
+                                    className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all border ${
+                                        activeCategory === cat.id
+                                            ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.1)]'
+                                            : 'bg-white/[0.02] border-white/[0.06] text-gray-500 hover:text-gray-300 hover:bg-white/[0.04]'
+                                    }`}
+                                >
+                                    <span>{cat.icon}</span>
+                                    {cat.label}
+                                    {count > 0 && <span className="ml-1 opacity-60">{count}</span>}
+                                </button>
+                            );
+                        })}
+                    </div>
 
-                    {/* FREE SIGNALS TAB */}
-                    {!loading && activeTab === 'signals' && (
-                        <div>
-                            {signals.length === 0 ? (
-                                <div style={{
-                                    textAlign: 'center', padding: '60px 20px',
-                                    background: 'rgba(255,255,255,0.03)', borderRadius: 18,
-                                    border: '1px solid rgba(255,255,255,0.06)',
-                                }}>
-                                    <Brain size={48} color="#334466" style={{ marginBottom: 16 }} />
-                                    <h3 style={{ color: '#667788', marginBottom: 8 }}>Network Learning...</h3>
-                                    <p style={{ color: '#556677', maxWidth: 400, margin: '0 auto' }}>
-                                        AI agents are collecting data and training. First signals will appear shortly.
-                                    </p>
-                                </div>
-                            ) : (
-                                <div style={{ display: 'grid', gap: 16 }}>
-                                    {signals.map(sig => (
-                                        <SignalCard
-                                            key={sig.id} signal={sig}
-                                            onBuy={() => buySignal(sig)}
-                                            onView={() => setSelectedSignal(sig)}
-                                            buying={buying === sig.id}
-                                            impactColor={impactColor}
-                                            categoryIcon={categoryIcon}
-                                        />
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    )}
+                    {/* ─── FEATURED SIGNAL (Hero Card) ─── */}
+                    {!loading && !showMyOnly && activeCategory === 'all' && featuredSignal && (
+                        <div
+                            className="mb-8 relative rounded-3xl overflow-hidden cursor-pointer group fu d5"
+                            onClick={() => setSelectedSignal(featuredSignal)}
+                        >
+                            <div className="absolute inset-0 bg-gradient-to-r from-amber-500/10 via-violet-500/5 to-emerald-500/10 group-hover:from-amber-500/15 group-hover:to-emerald-500/15 transition-all" />
+                            <div className="absolute inset-0 border border-amber-500/20 rounded-3xl" />
+                            <div className="absolute top-0 right-0 w-64 h-64 bg-amber-400/5 rounded-full blur-3xl" />
 
-                    {/* PREMIUM SIGNALS TAB */}
-                    {!loading && activeTab === 'premium' && (
-                        <div>
-                            {!address && (
-                                <div style={{
-                                    textAlign: 'center', padding: '60px 20px',
-                                    background: 'rgba(255,200,0,0.03)', borderRadius: 18,
-                                    border: '1px solid rgba(255,200,0,0.1)',
-                                }}>
-                                    <Lock size={48} color="#ffaa00" style={{ marginBottom: 16 }} />
-                                    <h3 style={{ color: '#ccaa66', marginBottom: 8 }}>Wallet Required</h3>
-                                    <p style={{ color: '#998866' }}>Connect your TON wallet to access premium prediction signals.</p>
-                                    <button onClick={() => tonConnectUI.openModal()} style={{
-                                        marginTop: 16, background: 'linear-gradient(135deg, #ffaa00, #ff8800)',
-                                        color: '#fff', border: 'none', borderRadius: 12,
-                                        padding: '12px 24px', fontWeight: 700, cursor: 'pointer',
-                                    }}>Connect Wallet</button>
+                            <div className="relative p-6 md:p-8">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <span className="px-2.5 py-1 rounded-lg bg-amber-500/20 text-[10px] font-black text-amber-400 uppercase tracking-widest flex items-center gap-1">
+                                        <Crown size={11} /> Featured Signal
+                                    </span>
+                                    <span className="px-2.5 py-1 rounded-lg bg-emerald-500/15 text-[10px] font-bold text-emerald-400">
+                                        {Math.round(featuredSignal.confidence * 100)}% confidence
+                                    </span>
+                                    <span className="ml-auto text-xs text-gray-500">{timeAgo(featuredSignal.created_at)}</span>
                                 </div>
-                            )}
-                            {address && premiumSignals.length === 0 && (
-                                <div style={{
-                                    textAlign: 'center', padding: '60px 20px',
-                                    background: 'rgba(255,255,255,0.03)', borderRadius: 18,
-                                    border: '1px solid rgba(255,255,255,0.06)',
-                                }}>
-                                    <Sparkles size={48} color="#aa66ff" />
-                                    <h3 style={{ color: '#aa88cc', marginTop: 16 }}>Premium signals generating...</h3>
-                                    <p style={{ color: '#887799' }}>Our AI agents are working on deep analysis. Check back soon.</p>
-                                </div>
-                            )}
-                            {address && premiumSignals.length > 0 && (
-                                <div style={{ display: 'grid', gap: 16 }}>
-                                    {premiumSignals.map(sig => (
-                                        <SignalCard
-                                            key={sig.id} signal={sig}
-                                            onBuy={() => buySignal(sig)}
-                                            onView={() => setSelectedSignal(sig)}
-                                            buying={buying === sig.id}
-                                            impactColor={impactColor}
-                                            categoryIcon={categoryIcon}
-                                        />
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    )}
 
-                    {/* AGENTS TAB */}
-                    {!loading && activeTab === 'agents' && (
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
-                            {agents.map((agent, i) => (
-                                <div key={agent.name} style={{
-                                    background: 'rgba(255,255,255,0.04)',
-                                    border: '1px solid rgba(255,255,255,0.08)',
-                                    borderRadius: 16, padding: 20,
-                                    transition: 'all 0.3s',
-                                    position: 'relative', overflow: 'hidden',
-                                }}>
-                                    {i === 0 && (
-                                        <div style={{
-                                            position: 'absolute', top: 10, right: 10,
-                                            background: 'linear-gradient(135deg, #ffaa00, #ff6600)',
-                                            borderRadius: 8, padding: '3px 8px', fontSize: 10,
-                                            fontWeight: 700, color: '#fff',
-                                        }}>TOP AGENT</div>
-                                    )}
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-                                        <span style={{ fontSize: 32 }}>{agent.icon}</span>
-                                        <div>
-                                            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#fff' }}>{agent.name}</h3>
-                                            <span style={{ fontSize: 12, color: '#88aacc' }}>{agent.specialty}</span>
-                                        </div>
-                                    </div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                                        <div style={{ background: 'rgba(0,200,136,0.08)', borderRadius: 10, padding: '10px 12px', textAlign: 'center' }}>
-                                            <div style={{ fontSize: 11, color: '#88aacc', marginBottom: 4 }}>Accuracy</div>
-                                            <div style={{ fontSize: 20, fontWeight: 700, color: getAgentColor(agent.accuracy) }}>
-                                                {agent.accuracy}%
-                                            </div>
-                                        </div>
-                                        <div style={{ background: 'rgba(100,100,255,0.08)', borderRadius: 10, padding: '10px 12px', textAlign: 'center' }}>
-                                            <div style={{ fontSize: 11, color: '#88aacc', marginBottom: 4 }}>Signals</div>
-                                            <div style={{ fontSize: 20, fontWeight: 700, color: '#aabbff' }}>{agent.signals}</div>
-                                        </div>
-                                    </div>
-                                    {/* Accuracy bar */}
-                                    <div style={{ marginTop: 14, height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2 }}>
-                                        <div style={{
-                                            width: `${agent.accuracy}%`, height: '100%', borderRadius: 2,
-                                            background: getAgentGradient(agent.accuracy),
-                                            transition: 'width 1s ease',
-                                        }} />
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-
-                    {/* MY SIGNALS TAB */}
-                    {!loading && activeTab === 'my' && (
-                        <div>
-                            {!address && (
-                                <div style={{ textAlign: 'center', padding: 60 }}>
-                                    <Lock size={48} color="#667788" />
-                                    <p style={{ color: '#667788', marginTop: 12 }}>Connect wallet to see purchased signals</p>
-                                </div>
-                            )}
-                            {address && mySignals.length === 0 && (
-                                <div style={{
-                                    textAlign: 'center', padding: '60px 20px',
-                                    background: 'rgba(255,255,255,0.03)', borderRadius: 18,
-                                    border: '1px solid rgba(255,255,255,0.06)',
-                                }}>
-                                    <Eye size={48} color="#556677" />
-                                    <h3 style={{ color: '#667788', marginTop: 16 }}>No purchased signals yet</h3>
-                                    <p style={{ color: '#556677' }}>Buy premium signals to unlock full AI reports and predictions.</p>
-                                </div>
-                            )}
-                            {address && mySignals.length > 0 && (
-                                <div style={{ display: 'grid', gap: 16 }}>
-                                    {mySignals.map(sig => (
-                                        <SignalCard
-                                            key={sig.id} signal={sig}
-                                            onView={() => setSelectedSignal(sig)}
-                                            purchased
-                                            impactColor={impactColor}
-                                            categoryIcon={categoryIcon}
-                                        />
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {/* How It Works — always visible */}
-                    {!loading && (activeTab === 'signals' || activeTab === 'premium') && (
-                        <div style={{
-                            marginTop: 48, padding: 32,
-                            background: 'rgba(255,255,255,0.03)',
-                            border: '1px solid rgba(255,255,255,0.06)',
-                            borderRadius: 18,
-                        }}>
-                            <h2 style={{
-                                textAlign: 'center', margin: '0 0 24px',
-                                fontSize: 20, fontWeight: 700, color: '#fff',
-                            }}>How Swarm Intelligence Works</h2>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20 }}>
-                                {[
-                                    { icon: '📡', title: 'Real Data Feeds', desc: 'CoinGecko, ECB Forex, Polymarket, HackerNews — real-time data, refreshed every 30 min' },
-                                    { icon: '🧠', title: 'Swarm AI Analysis', desc: 'Multi-agent simulation processes data with 200+ AI personas predicting outcomes' },
-                                    { icon: '🖥️', title: 'Node Compute', desc: 'GSTD nodes contribute computing power. Nodes earn 0.5-1.0 GSTD per signal processed' },
-                                    { icon: '💎', title: 'Signal Trading', desc: 'Premium signals sold for GSTD. Revenue split: 50% Gold Reserve, 20% Node Rewards, 30% Platform' },
-                                ].map((step) => (
-                                    <div key={step.title} style={{ textAlign: 'center' }}>
-                                        <div style={{ fontSize: 36, marginBottom: 8 }}>{step.icon}</div>
-                                        <h4 style={{ color: '#00cc88', marginBottom: 6, fontWeight: 700, fontSize: 14 }}>{step.title}</h4>
-                                        <p style={{ color: '#88aacc', fontSize: 13, lineHeight: 1.5 }}>{step.desc}</p>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* DATA SOURCES TAB */}
-                    {!loading && activeTab === 'sources' && (
-                        <div>
-                            <div style={{
-                                background: 'rgba(0,200,136,0.06)', border: '1px solid rgba(0,200,136,0.15)',
-                                borderRadius: 14, padding: '16px 20px', marginBottom: 20,
-                                textAlign: 'center',
-                            }}>
-                                <span style={{ fontSize: 14, color: '#88aacc' }}>Real-time market data feeds enriching AI signal generation</span>
-                            </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
-                                {dataSources.map((src: any) => (
-                                    <div key={src.source} style={{
-                                        background: src.fresh ? 'rgba(0,200,136,0.06)' : 'rgba(255,100,50,0.06)',
-                                        border: `1px solid ${src.fresh ? 'rgba(0,200,136,0.2)' : 'rgba(255,100,50,0.15)'}`,
-                                        borderRadius: 16, padding: 20,
-                                        position: 'relative',
-                                    }}>
-                                        <div style={{ position: 'absolute', top: 12, right: 12 }}>
-                                            <span style={{
-                                                display: 'inline-block', width: 10, height: 10, borderRadius: '50%',
-                                                background: src.fresh ? '#00cc88' : '#ff6644',
-                                                boxShadow: src.fresh ? '0 0 8px rgba(0,204,136,0.6)' : 'none',
-                                                animation: src.fresh ? 'pulse 2s infinite' : 'none',
-                                            }} />
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-                                            <span style={{ fontSize: 32 }}>{src.icon}</span>
-                                            <div>
-                                                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#fff' }}>{src.source}</h3>
-                                                <span style={{ fontSize: 12, color: '#88aacc' }}>{src.api_url}</span>
-                                            </div>
-                                        </div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#88aacc' }}>
-                                            <span>Category: <strong style={{ color: '#aabbff' }}>{src.category}</strong></span>
-                                            <span>Status: <strong style={{ color: src.fresh ? '#00cc88' : '#ff6644' }}>
-                                                {getSrcStatus(src.status)}
-                                            </strong></span>
-                                        </div>
-                                        {src.last_fetch && (
-                                            <div style={{ marginTop: 8, fontSize: 11, color: '#667788' }}>
-                                                Last fetch: {new Date(src.last_fetch).toLocaleString()} · {src.data_points} data points
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* COMPUTE REWARDS TAB */}
-                    {!loading && activeTab === 'compute' && (
-                        <div>
-                            <div style={{
-                                background: 'linear-gradient(135deg, rgba(100,100,255,0.08), rgba(0,200,136,0.06))',
-                                border: '1px solid rgba(100,100,255,0.15)',
-                                borderRadius: 18, padding: 24, marginBottom: 20,
-                            }}>
-                                <h3 style={{ margin: '0 0 16px', color: '#fff', fontSize: 18 }}>🖥️ Swarm Compute Rewards</h3>
-                                <p style={{ color: '#88aacc', fontSize: 13, marginBottom: 16 }}>
-                                    Nodes that contribute computing power for AI signal generation earn GSTD rewards.
-                                    When a user purchases a premium signal, 20% of revenue goes to the node that processed it.
+                                <h2 className="text-xl md:text-2xl font-black text-white mb-3 group-hover:text-amber-100 transition-colors">
+                                    {featuredSignal.title}
+                                </h2>
+                                <p className="text-gray-400 text-sm leading-relaxed mb-6 max-w-2xl">
+                                    {cleanSummary(featuredSignal.summary)}
                                 </p>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
-                                    {[
-                                        { label: 'Total Rewards', value: `${(computeRewards?.total_rewards_gstd || 0).toFixed(2)} GSTD`, color: '#00cc88' },
-                                        { label: 'Active Nodes', value: computeRewards?.contributing_nodes || 0, color: '#aabbff' },
-                                        { label: 'Avg Compute', value: `${(computeRewards?.avg_compute_ms || 0).toFixed(0)}ms`, color: '#ffaa00' },
-                                        { label: 'Revenue Share', value: `${computeRewards?.revenue_share_pct || 20}%`, color: '#aa66ff' },
-                                    ].map((s) => (
-                                        <div key={s.label} style={{
-                                            background: 'rgba(255,255,255,0.05)', borderRadius: 12, padding: '12px 14px',
-                                            textAlign: 'center',
-                                        }}>
-                                            <div style={{ fontSize: 11, color: '#88aacc', marginBottom: 4, textTransform: 'uppercase' }}>{s.label}</div>
-                                            <div style={{ fontSize: 20, fontWeight: 700, color: s.color }}>{s.value}</div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
 
-                            {/* Reward model explanation */}
-                            <div style={{
-                                background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
-                                borderRadius: 16, padding: 20,
-                            }}>
-                                <h4 style={{ color: '#fff', margin: '0 0 12px' }}>How Node Rewards Work</h4>
-                                <div style={{ display: 'grid', gap: 10 }}>
-                                    {[
-                                        { icon: '🔄', text: 'Every 2 hours, AI generates new signals using real market data from 5+ sources' },
-                                        { icon: '🖥️', text: 'A random online node is selected as compute contributor for each signal' },
-                                        { icon: '💰', text: 'Base reward: 0.5 GSTD per signal. Fast compute bonus: 1.0 GSTD if < 5 seconds' },
-                                        { icon: '💎', text: 'When users buy premium signals, 20% of the price goes to the compute node' },
-                                        { icon: '🏦', text: 'Remaining 50% strengthens the Gold Reserve, 30% funds platform development' },
-                                    ].map((item, i) => (
-                                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                            <span style={{ fontSize: 20 }}>{item.icon}</span>
-                                            <span style={{ color: '#aabbcc', fontSize: 13 }}>{item.text}</span>
-                                        </div>
-                                    ))}
+                                <div className="flex flex-wrap items-center gap-3">
+                                    <span className="text-sm font-bold text-amber-400">
+                                        {featuredSignal.agent_name}
+                                    </span>
+                                    <span className="text-xs text-gray-500">•</span>
+                                    <span className="text-xs text-gray-500 flex items-center gap-1">
+                                        <Clock size={11} /> {featuredSignal.time_horizon} horizon
+                                    </span>
+                                    <span className="text-xs text-gray-500">•</span>
+                                    <span className="text-xs text-gray-500 flex items-center gap-1">
+                                        <Target size={11} /> {featuredSignal.accuracy?.toFixed(0)}% accuracy
+                                    </span>
+                                    <div className="ml-auto flex items-center gap-2">
+                                        {ownedIds.has(featuredSignal.id) ? (
+                                            <span className="px-3 py-1.5 rounded-xl bg-emerald-500/15 text-emerald-400 text-xs font-bold">
+                                                ✅ Unlocked
+                                            </span>
+                                        ) : featuredSignal.price_gstd > 0 ? (
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); buySignal(featuredSignal); }}
+                                                disabled={buying === featuredSignal.id}
+                                                className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-bold hover:from-amber-400 hover:to-orange-400 transition-all shadow-lg shadow-amber-500/20 disabled:opacity-50"
+                                            >
+                                                {buying === featuredSignal.id ? '...' : `Unlock — ${featuredSignal.price_gstd} GSTD`}
+                                            </button>
+                                        ) : (
+                                            <span className="px-3 py-1.5 rounded-xl bg-emerald-500/15 text-emerald-400 text-xs font-bold">FREE</span>
+                                        )}
+                                        <ChevronRight size={16} className="text-gray-500 group-hover:text-white transition-colors" />
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    {/* REVENUE TAB */}
-                    {!loading && activeTab === 'revenue' && revenueStats && (
-                        <div>
-                            <div style={{
-                                background: 'linear-gradient(135deg, rgba(255,170,0,0.08), rgba(0,200,136,0.06))',
-                                border: '1px solid rgba(255,170,0,0.15)',
-                                borderRadius: 18, padding: 24, marginBottom: 20,
-                            }}>
-                                <h3 style={{ margin: '0 0 16px', color: '#fff', fontSize: 18 }}>💰 Signal Marketplace Revenue</h3>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
-                                    {[
-                                        { label: 'Total Revenue', value: `${(revenueStats.total_revenue_gstd || 0).toFixed(2)}`, color: '#ffaa00', unit: 'GSTD' },
-                                        { label: 'Purchases', value: revenueStats.total_purchases || 0, color: '#00cc88', unit: '' },
-                                        { label: 'Unique Buyers', value: revenueStats.unique_buyers || 0, color: '#aabbff', unit: '' },
-                                    ].map((s) => (
-                                        <div key={s.label} style={{
-                                            background: 'rgba(255,255,255,0.05)', borderRadius: 12, padding: '14px 16px',
-                                            textAlign: 'center',
-                                        }}>
-                                            <div style={{ fontSize: 11, color: '#88aacc', marginBottom: 4, textTransform: 'uppercase' }}>{s.label}</div>
-                                            <div style={{ fontSize: 24, fontWeight: 700, color: s.color }}>{s.value} <span style={{ fontSize: 12, opacity: 0.6 }}>{s.unit}</span></div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
+                    {/* ─── LOADING ─── */}
+                    {loading && (
+                        <div className="flex flex-col items-center justify-center py-20">
+                            <Brain size={40} className="text-emerald-500/50 mb-4 animate-pulse" />
+                            <p className="text-gray-500 text-sm font-bold uppercase tracking-widest">Neural network processing…</p>
+                        </div>
+                    )}
 
-                            {/* Revenue split visualization */}
-                            <div style={{
-                                background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
-                                borderRadius: 16, padding: 20, marginBottom: 16,
-                            }}>
-                                <h4 style={{ color: '#fff', margin: '0 0 16px' }}>Revenue Distribution Model</h4>
-                                <div style={{ display: 'flex', borderRadius: 10, overflow: 'hidden', height: 32, marginBottom: 16 }}>
-                                    <div style={{ width: '50%', background: 'linear-gradient(90deg, #00cc88, #00aa77)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff' }}>50% Gold Reserve</div>
-                                    <div style={{ width: '20%', background: 'linear-gradient(90deg, #6666ff, #8866ff)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff' }}>20% Nodes</div>
-                                    <div style={{ width: '30%', background: 'linear-gradient(90deg, #ffaa00, #ff8800)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff' }}>30% Platform</div>
-                                </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-                                    <div style={{ textAlign: 'center' }}>
-                                        <div style={{ fontSize: 11, color: '#88aacc', marginBottom: 4 }}>🏦 Gold Reserve</div>
-                                        <div style={{ fontSize: 18, fontWeight: 700, color: '#00cc88' }}>{(revenueStats.revenue_split?.gold_reserve_gstd || 0).toFixed(2)}</div>
+                    {/* ─── SIGNAL GRID ─── */}
+                    {!loading && (
+                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                            {filteredSignals.map(signal => {
+                                const impact = IMPACT_CONFIG[signal.impact] || IMPACT_CONFIG.medium;
+                                const owned = ownedIds.has(signal.id);
+                                const conf = Math.round(signal.confidence * 100);
+                                const isFeatured = featuredSignal?.id === signal.id && activeCategory === 'all' && !showMyOnly;
+
+                                if (isFeatured) return null; // Skip featured in grid
+
+                                return (
+                                    <div
+                                        key={signal.id}
+                                        onClick={() => setSelectedSignal(signal)}
+                                        className={`group relative rounded-2xl border cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg ${
+                                            signal.is_premium && !owned
+                                                ? 'bg-gradient-to-br from-amber-500/[0.04] to-violet-500/[0.02] border-amber-500/15 hover:border-amber-500/30 hover:shadow-amber-500/5'
+                                                : owned
+                                                ? 'bg-gradient-to-br from-emerald-500/[0.04] to-cyan-500/[0.02] border-emerald-500/15 hover:border-emerald-500/30'
+                                                : 'bg-white/[0.02] border-white/[0.06] hover:border-white/15 hover:bg-white/[0.04]'
+                                        }`}
+                                    >
+                                        {/* Top bar */}
+                                        <div className="flex items-center justify-between px-5 pt-4 pb-2">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-sm">{CATEGORIES.find(c => c.id === signal.category)?.icon || '🔮'}</span>
+                                                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{signal.category}</span>
+                                            </div>
+                                            <div className="flex items-center gap-1.5">
+                                                {owned && <span className="px-2 py-0.5 rounded-md bg-emerald-500/15 text-[10px] font-bold text-emerald-400">OWNED</span>}
+                                                {signal.is_premium && !owned && (
+                                                    <span className="px-2 py-0.5 rounded-md bg-amber-500/15 text-[10px] font-bold text-amber-400 flex items-center gap-1">
+                                                        <Crown size={9} /> {signal.price_gstd} GSTD
+                                                    </span>
+                                                )}
+                                                {!signal.is_premium && <span className="px-2 py-0.5 rounded-md bg-white/5 text-[10px] font-bold text-gray-500">FREE</span>}
+                                            </div>
+                                        </div>
+
+                                        {/* Content */}
+                                        <div className="px-5 pb-4">
+                                            <h3 className="text-base font-bold text-white mb-2 leading-snug group-hover:text-emerald-100 transition-colors">
+                                                {signal.title}
+                                            </h3>
+                                            <p className="text-xs text-gray-400 leading-relaxed line-clamp-3 mb-4">
+                                                {cleanSummary(signal.summary)}
+                                            </p>
+
+                                            {/* Metrics */}
+                                            <div className="flex items-center gap-3 mb-3">
+                                                {/* Confidence ring */}
+                                                <div className="relative w-10 h-10 shrink-0">
+                                                    <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
+                                                        <circle cx="18" cy="18" r="14" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="3" />
+                                                        <circle
+                                                            cx="18" cy="18" r="14" fill="none"
+                                                            stroke={conf >= 70 ? '#00cc88' : conf >= 50 ? '#ffaa00' : '#ff6644'}
+                                                            strokeWidth="3"
+                                                            strokeDasharray={`${conf * 0.88} ${88 - conf * 0.88}`}
+                                                            strokeLinecap="round"
+                                                        />
+                                                    </svg>
+                                                    <span className="absolute inset-0 flex items-center justify-center text-[10px] font-black text-white">{conf}%</span>
+                                                </div>
+                                                <div className="flex flex-wrap gap-1.5 flex-1">
+                                                    <span className="px-2 py-0.5 rounded-md text-[10px] font-bold" style={{ background: impact.bg, color: impact.color }}>
+                                                        {signal.impact.toUpperCase()}
+                                                    </span>
+                                                    <span className="px-2 py-0.5 rounded-md bg-cyan-500/10 text-[10px] font-bold text-cyan-400 flex items-center gap-0.5">
+                                                        <Clock size={9} /> {signal.time_horizon}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            {/* Footer */}
+                                            <div className="flex items-center justify-between pt-3 border-t border-white/[0.04]">
+                                                <div className="flex items-center gap-2 text-[11px] text-gray-500">
+                                                    <span className="font-bold text-gray-400">{signal.agent_name}</span>
+                                                    <span>•</span>
+                                                    <span>{signal.accuracy?.toFixed(0)}% acc</span>
+                                                </div>
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="text-[10px] text-gray-600">{timeAgo(signal.created_at)}</span>
+                                                    {signal.is_premium && !owned && (
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); buySignal(signal); }}
+                                                            disabled={buying === signal.id}
+                                                            className="ml-2 px-3 py-1 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 text-[11px] font-bold text-white hover:from-amber-400 hover:to-orange-400 transition-all disabled:opacity-50"
+                                                        >
+                                                            {buying === signal.id ? '...' : 'Unlock'}
+                                                        </button>
+                                                    )}
+                                                    {(owned || !signal.is_premium) && (
+                                                        <ArrowUpRight size={14} className="text-gray-600 group-hover:text-emerald-400 transition-colors" />
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div style={{ textAlign: 'center' }}>
-                                        <div style={{ fontSize: 11, color: '#88aacc', marginBottom: 4 }}>🖥️ Compute Nodes</div>
-                                        <div style={{ fontSize: 18, fontWeight: 700, color: '#aabbff' }}>{(revenueStats.revenue_split?.compute_rewards_gstd || 0).toFixed(2)}</div>
+                                );
+                            })}
+                        </div>
+                    )}
+
+                    {/* Empty state */}
+                    {!loading && filteredSignals.length === 0 && (
+                        <div className="text-center py-20">
+                            <Brain size={48} className="text-gray-700 mx-auto mb-4" />
+                            <h3 className="text-gray-500 font-bold mb-2">
+                                {showMyOnly ? 'No purchased signals yet' : 'No signals in this category'}
+                            </h3>
+                            <p className="text-gray-600 text-sm max-w-md mx-auto">
+                                {showMyOnly
+                                    ? 'Purchase premium signals to unlock full AI reports and actionable trade recommendations.'
+                                    : 'AI agents are analyzing data. New signals appear every 2 hours.'
+                                }
+                            </p>
+                        </div>
+                    )}
+
+                    {/* ─── HOW IT WORKS ─── */}
+                    {!loading && !showMyOnly && (
+                        <div className="mt-16 fu d6">
+                            <h2 className="text-center text-xs font-bold text-gray-500 uppercase tracking-widest mb-8 flex items-center justify-center gap-2">
+                                <Zap size={14} className="text-amber-400" /> How Signal Marketplace Works
+                            </h2>
+                            <div className="grid md:grid-cols-4 gap-4">
+                                {[
+                                    { icon: '📡', title: 'Real-Time Data', desc: 'CoinGecko, ECB Forex, Polymarket, HackerNews — refreshed every 30 min', color: 'from-cyan-500/10 to-cyan-500/5' },
+                                    { icon: '🧠', title: 'Swarm AI Analysis', desc: '7 specialized AI agents analyze data and generate predictions with confidence scores', color: 'from-violet-500/10 to-violet-500/5' },
+                                    { icon: '💎', title: 'GSTD Purchase', desc: 'Free summaries for all. Premium reports with trade signals cost GSTD tokens', color: 'from-amber-500/10 to-amber-500/5' },
+                                    { icon: '🏦', title: 'Revenue Split', desc: '50% Gold Reserve backing, 20% Node rewards, 30% platform development', color: 'from-emerald-500/10 to-emerald-500/5' },
+                                ].map(step => (
+                                    <div key={step.title} className={`rounded-2xl bg-gradient-to-b ${step.color} border border-white/[0.06] p-5 text-center`}>
+                                        <div className="text-3xl mb-3">{step.icon}</div>
+                                        <h4 className="text-sm font-bold text-white mb-2">{step.title}</h4>
+                                        <p className="text-xs text-gray-400 leading-relaxed">{step.desc}</p>
                                     </div>
-                                    <div style={{ textAlign: 'center' }}>
-                                        <div style={{ fontSize: 11, color: '#88aacc', marginBottom: 4 }}>⚙️ Platform</div>
-                                        <div style={{ fontSize: 18, fontWeight: 700, color: '#ffaa00' }}>{(revenueStats.revenue_split?.platform_fee_gstd || 0).toFixed(2)}</div>
-                                    </div>
-                                </div>
+                                ))}
                             </div>
                         </div>
                     )}
                 </div>
 
-                {/* Signal Detail Modal */}
+                {/* ─── SIGNAL DETAIL MODAL ─── */}
                 {selectedSignal && (
-                    <div style={{
-                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                        background: 'rgba(0,0,0,0.7)', zIndex: 1000,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        padding: 20,
-                    }} onClick={() => setSelectedSignal(null)} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && setSelectedSignal(null)}>
-                        <div onClick={e => e.stopPropagation()} role="presentation" style={{
-                            background: '#141828', border: '1px solid rgba(255,255,255,0.1)',
-                            borderRadius: 20, padding: 28, maxWidth: 600, width: '100%',
-                            maxHeight: '80vh', overflowY: 'auto',
-                        }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-                                <div>
-                                    <span style={{ fontSize: 24, marginRight: 8 }}>{categoryIcon(selectedSignal.category)}</span>
-                                    <h2 style={{ display: 'inline', fontSize: 20, fontWeight: 700, color: '#fff' }}>{selectedSignal.title}</h2>
+                    <div
+                        className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                        onClick={() => setSelectedSignal(null)}
+                    >
+                        <div
+                            onClick={e => e.stopPropagation()}
+                            className="bg-[#0d1525] border border-white/10 rounded-3xl max-w-2xl w-full max-h-[85vh] overflow-y-auto shadow-2xl"
+                        >
+                            {/* Modal header */}
+                            <div className="sticky top-0 bg-[#0d1525]/95 backdrop-blur-sm px-6 pt-6 pb-4 border-b border-white/[0.06] z-10">
+                                <div className="flex items-start justify-between">
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <span className="text-xl">{CATEGORIES.find(c => c.id === selectedSignal.category)?.icon || '🔮'}</span>
+                                            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{selectedSignal.category}</span>
+                                            {selectedSignal.is_premium && (
+                                                <span className="px-2 py-0.5 rounded-md bg-amber-500/15 text-[10px] font-bold text-amber-400 flex items-center gap-1">
+                                                    <Crown size={9} /> PREMIUM
+                                                </span>
+                                            )}
+                                        </div>
+                                        <h2 className="text-xl font-black text-white leading-tight">{selectedSignal.title}</h2>
+                                    </div>
+                                    <button
+                                        onClick={() => setSelectedSignal(null)}
+                                        className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-all shrink-0 ml-3"
+                                    >✕</button>
                                 </div>
-                                <button onClick={() => setSelectedSignal(null)} style={{
-                                    background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 8,
-                                    width: 32, height: 32, cursor: 'pointer', color: '#aaa', fontSize: 16,
-                                }}>✕</button>
                             </div>
 
-                            <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-                                <span style={{ background: impactColor(selectedSignal.impact) + '22', color: impactColor(selectedSignal.impact), padding: '4px 10px', borderRadius: 8, fontSize: 12, fontWeight: 600 }}>
-                                    {selectedSignal.impact.toUpperCase()}
-                                </span>
-                                <span style={{ background: 'rgba(0,170,255,0.15)', color: '#00aaff', padding: '4px 10px', borderRadius: 8, fontSize: 12 }}>
-                                    <Clock size={12} style={{ verticalAlign: 'middle', marginRight: 4 }} />{selectedSignal.time_horizon}
-                                </span>
-                                <span style={{ background: 'rgba(0,200,136,0.15)', color: '#00cc88', padding: '4px 10px', borderRadius: 8, fontSize: 12, fontWeight: 600 }}>
-                                    {(selectedSignal.confidence * 100).toFixed(0)}% confident
-                                </span>
-                            </div>
+                            <div className="px-6 py-5 space-y-5">
+                                {/* Metrics */}
+                                <div className="grid grid-cols-4 gap-3">
+                                    {[
+                                        { label: 'Confidence', value: `${Math.round(selectedSignal.confidence * 100)}%`, color: 'text-emerald-400' },
+                                        { label: 'Impact', value: selectedSignal.impact.toUpperCase(), color: IMPACT_CONFIG[selectedSignal.impact]?.color ? '' : 'text-gray-400', style: { color: IMPACT_CONFIG[selectedSignal.impact]?.color } },
+                                        { label: 'Horizon', value: selectedSignal.time_horizon, color: 'text-cyan-400' },
+                                        { label: 'Accuracy', value: `${selectedSignal.accuracy?.toFixed(0)}%`, color: 'text-violet-400' },
+                                    ].map(m => (
+                                        <div key={m.label} className="rounded-xl bg-white/[0.03] border border-white/[0.05] p-3 text-center">
+                                            <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">{m.label}</div>
+                                            <div className={`text-lg font-black ${m.color}`} style={m.style}>{m.value}</div>
+                                        </div>
+                                    ))}
+                                </div>
 
-                            <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: 16, marginBottom: 16 }}>
-                                <h4 style={{ color: '#88aacc', fontSize: 12, textTransform: 'uppercase', marginBottom: 8 }}>Summary</h4>
-                                <p style={{ color: '#ccc', lineHeight: 1.6, margin: 0 }}>{selectedSignal.summary}</p>
-                            </div>
-
-                            {selectedSignal.full_report ? (
-                                <div style={{ background: 'rgba(0,200,136,0.06)', borderRadius: 12, padding: 16, border: '1px solid rgba(0,200,136,0.15)' }}>
-                                    <h4 style={{ color: '#00cc88', fontSize: 12, textTransform: 'uppercase', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                        <Unlock size={14} /> Full Report
+                                {/* Summary */}
+                                <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-5">
+                                    <h4 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                                        <Activity size={12} /> Analysis Summary
                                     </h4>
-                                    <p style={{ color: '#ccc', lineHeight: 1.7, margin: 0, whiteSpace: 'pre-wrap' }}>{selectedSignal.full_report}</p>
+                                    <p className="text-sm text-gray-300 leading-relaxed">{cleanSummary(selectedSignal.summary)}</p>
                                 </div>
-                            ) : (
-                                <div style={{ background: 'rgba(255,170,0,0.06)', borderRadius: 12, padding: 16, textAlign: 'center', border: '1px solid rgba(255,170,0,0.15)' }}>
-                                    <Lock size={24} color="#ffaa00" style={{ marginBottom: 8 }} />
-                                    <p style={{ color: '#ccaa66', margin: '0 0 12px' }}>Full report locked. Unlock for {selectedSignal.price_gstd} GSTD</p>
-                                    <button onClick={() => buySignal(selectedSignal)} disabled={buying === selectedSignal.id} style={{
-                                        background: 'linear-gradient(135deg, #ffaa00, #ff8800)',
-                                        color: '#fff', border: 'none', borderRadius: 10,
-                                        padding: '10px 24px', fontWeight: 700, cursor: 'pointer',
-                                    }}>{buying === selectedSignal.id ? 'Purchasing...' : `Buy for ${selectedSignal.price_gstd} GSTD`}</button>
-                                </div>
-                            )}
 
-                            <div style={{ marginTop: 16, display: 'flex', justifyContent: 'space-between', color: '#667788', fontSize: 12 }}>
-                                <span>Agent: {selectedSignal.agent_name}</span>
-                                <span>{selectedSignal.buyers} buyers</span>
+                                {/* Full Report or Paywall */}
+                                {selectedSignal.full_report ? (
+                                    <div className="rounded-2xl bg-emerald-500/[0.04] border border-emerald-500/15 p-5">
+                                        <h4 className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                                            <Unlock size={12} /> Full Report — Unlocked
+                                        </h4>
+                                        <div className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">{selectedSignal.full_report}</div>
+                                    </div>
+                                ) : selectedSignal.is_premium && selectedSignal.price_gstd > 0 ? (
+                                    <div className="rounded-2xl bg-gradient-to-br from-amber-500/[0.06] to-violet-500/[0.04] border border-amber-500/20 p-6 text-center">
+                                        <Lock size={32} className="text-amber-400 mx-auto mb-3" />
+                                        <h3 className="text-lg font-bold text-white mb-2">Full Report Locked</h3>
+                                        <p className="text-sm text-gray-400 mb-5 max-w-sm mx-auto">
+                                            Unlock the complete AI analysis with actionable trade recommendations, entry/exit points, and risk assessment.
+                                        </p>
+                                        <button
+                                            onClick={() => buySignal(selectedSignal)}
+                                            disabled={buying === selectedSignal.id}
+                                            className="px-8 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-base hover:from-amber-400 hover:to-orange-400 transition-all shadow-lg shadow-amber-500/25 disabled:opacity-50"
+                                        >
+                                            {buying === selectedSignal.id
+                                                ? 'Processing…'
+                                                : `Unlock for ${selectedSignal.price_gstd} GSTD`
+                                            }
+                                        </button>
+                                        {!address && (
+                                            <p className="text-xs text-gray-500 mt-3">Connect wallet first to purchase</p>
+                                        )}
+                                    </div>
+                                ) : null}
+
+                                {/* Agent info */}
+                                <div className="flex items-center justify-between py-3 border-t border-white/[0.05]">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500/20 to-cyan-500/20 flex items-center justify-center text-sm">
+                                            🤖
+                                        </div>
+                                        <div>
+                                            <div className="text-sm font-bold text-white">{selectedSignal.agent_name}</div>
+                                            <div className="text-[11px] text-gray-500">Score: {(selectedSignal.agent_score * 100).toFixed(0)}% • {selectedSignal.buyers} buyers</div>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <div className="text-[11px] text-gray-500">Created {timeAgo(selectedSignal.created_at)}</div>
+                                        <div className="text-[11px] text-gray-500">{timeLeft(selectedSignal.expires_at)}</div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 )}
-
-                <style jsx global>{`
-                    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-                    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
-                `}</style>
             </div>
         </>
-    );
-}
-
-// ─── Signal Card Component ──────────────────────────────────
-
-function SignalCard(props: Readonly<{
-    signal: Signal;
-    onBuy?: () => void;
-    onView: () => void;
-    buying?: boolean;
-    purchased?: boolean;
-    impactColor: (s: string) => string;
-    categoryIcon: (s: string) => string;
-}>) {
-    const { signal, onBuy, onView, buying, purchased, impactColor, categoryIcon } = props;
-    return (
-        <div onClick={onView} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && onView()} style={{
-            background: signal.is_premium ? 'linear-gradient(135deg, rgba(255,170,0,0.06), rgba(170,100,255,0.04))' : 'rgba(255,255,255,0.04)',
-            border: `1px solid ${signal.is_premium ? 'rgba(255,170,0,0.15)' : 'rgba(255,255,255,0.08)'}`,
-            borderRadius: 16, padding: 20, cursor: 'pointer',
-            transition: 'all 0.3s',
-            position: 'relative',
-        }}>
-            {signal.is_premium && !purchased && (
-                <div style={{
-                    position: 'absolute', top: 12, right: 12,
-                    background: 'linear-gradient(135deg, #ffaa00, #ff8800)',
-                    borderRadius: 8, padding: '4px 10px', fontSize: 11,
-                    fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: 4,
-                }}>
-                    <Crown size={12} /> {signal.price_gstd} GSTD
-                </div>
-            )}
-            {purchased && (
-                <div style={{
-                    position: 'absolute', top: 12, right: 12,
-                    background: 'rgba(0,200,136,0.2)',
-                    borderRadius: 8, padding: '4px 10px', fontSize: 11,
-                    fontWeight: 700, color: '#00cc88',
-                }}>
-                    ✅ OWNED
-                </div>
-            )}
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                <span style={{ fontSize: 28, lineHeight: 1 }}>{categoryIcon(signal.category)}</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                    <h3 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 700, color: '#fff', paddingRight: signal.is_premium ? 80 : 0 }}>
-                        {signal.title}
-                    </h3>
-                    <p style={{ margin: '0 0 12px', color: '#99aabb', fontSize: 13, lineHeight: 1.5 }}>
-                        {signal.summary}
-                    </p>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-                        <span style={{
-                            background: impactColor(signal.impact) + '22',
-                            color: impactColor(signal.impact),
-                            padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600,
-                        }}>{signal.impact}</span>
-                        <span style={{ background: 'rgba(0,200,136,0.1)', color: '#00cc88', padding: '3px 8px', borderRadius: 6, fontSize: 11 }}>
-                            {(signal.confidence * 100).toFixed(0)}%
-                        </span>
-                        <span style={{ background: 'rgba(100,100,255,0.1)', color: '#aabbff', padding: '3px 8px', borderRadius: 6, fontSize: 11 }}>
-                            {signal.time_horizon}
-                        </span>
-                        <span style={{ color: '#667788', fontSize: 11, marginLeft: 'auto' }}>
-                            {signal.agent_name} · {signal.buyers} buyers
-                        </span>
-                    </div>
-                </div>
-            </div>
-            {signal.is_premium && !purchased && !signal.full_report && onBuy && (
-                <div style={{ marginTop: 14, textAlign: 'right' }}>
-                    <button onClick={e => { e.stopPropagation(); onBuy(); }} disabled={buying} style={{
-                        background: 'linear-gradient(135deg, #ffaa00, #ff8800)',
-                        color: '#fff', border: 'none', borderRadius: 10,
-                        padding: '8px 18px', fontWeight: 600, cursor: 'pointer', fontSize: 13,
-                        opacity: buying ? 0.6 : 1,
-                    }}>
-                        {buying ? 'Buying...' : `Unlock ${signal.price_gstd} GSTD`}
-                    </button>
-                </div>
-            )}
-        </div>
     );
 }
 
