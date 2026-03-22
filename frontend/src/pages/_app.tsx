@@ -12,6 +12,7 @@ import VercelSwarmHeartbeat from '../components/common/VercelSwarmHeartbeat';
 import EcosystemNav from '../components/layout/EcosystemNav';
 import EcosystemFooter from '../components/layout/EcosystemFooter';
 import AutoClaimWorker from '../components/common/AutoClaimWorker';
+import { useEcosystemStore } from '../store/ecosystemStore';
 import { logger } from '../lib/logger';
 import '../styles/globals.css';
 
@@ -66,6 +67,14 @@ function App({ Component, pageProps }: AppProps) {
       }
 
       return () => window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+    }
+  }, []);
+
+  // Start ecosystem data auto-refresh (tokenomics, nodes, staking, queue stats)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const cleanup = useEcosystemStore.getState().startAutoRefresh();
+      return cleanup;
     }
   }, []);
 

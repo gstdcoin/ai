@@ -389,6 +389,18 @@ func BuildContainer() *dig.Container {
 	c.Provide(p2p.NewSwarmNode)
 	c.Provide(p2p.NewLedger) // Autonomous Mempool + Consensus Sentinel
 
+	// Asynq Task Queue Manager (production-grade distributed task queue)
+	c.Provide(func(cfg *config.Config, db *sql.DB) *queue.TaskQueueManager {
+		log.Printf("🔄 Initializing Asynq task queue (Redis: %s:%s)...", cfg.Redis.Host, cfg.Redis.Port)
+		tqm, err := queue.NewTaskQueueManager(cfg.Redis, db)
+		if err != nil {
+			log.Printf("⚠️ Asynq task queue init failed: %v (falling back to simple queue)", err)
+			return nil
+		}
+		log.Printf("✅ Asynq task queue initialized")
+		return tqm
+	})
+
 	// 4. Gin Router
 	c.Provide(func() *gin.Engine {
 		return gin.New()
@@ -525,6 +537,7 @@ type ApplicationDependencies struct {
     OrganismHub *services.OrganismHubService
     SwarmNode *p2p.SwarmNode
     SwarmLedger *p2p.Ledger
+    TaskQueue *queue.TaskQueueManager `optional:"true"`
 }
 
 //nolint:all // Complex DI setup and event stream bindings shouldn't be split artificially just for sonar
@@ -606,6 +619,15 @@ func StartApplication(container *dig.Container) error {
 		startTreasuryLoop(ctx, deps.TreasuryService)
 		// Heartbeat flush + stale detection
 		startHeartbeatFlush(ctx, deps.NodeService)
+
+		// Start Asynq task queue
+		if deps.TaskQueue != nil {
+			if err := deps.TaskQueue.Start(); err != nil {
+				log.Printf("⚠️ Asynq start error: %v", err)
+			} else {
+				deps.TaskQueue.ScheduleRecurringTasks()
+			}
+		}
 
 		log.Printf("🚀 All background workers started")
 
@@ -765,6 +787,7 @@ func StartApplication(container *dig.Container) error {
 		api.SetupGlobalAbsorptionRoutes(v1Group, deps.GlobalAbsorption)
 		api.SetupCosmicGenesisRoutes(v1Group, protectedGroup, deps.Db, deps.AgentSubcontractService, deps.GoldHashRateService)
 		api.SetupMCPRoutes(deps.Router, v1Group)
+		queue.RegisterQueueRoutes(v1Group, deps.TaskQueue)
 
 		// Ollama connectivity check
 		checkOllamaConnectivity()
