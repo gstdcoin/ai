@@ -150,33 +150,145 @@ export default function NodesPage() {
             </div>
           </div>
 
-          {/* ═══════════ Install & Run Node ═══════════ */}
-          <div className="sov-card emerald-top p-8 mb-12 fu d3 relative overflow-hidden">
+          {/* ═══════════ Node License System ═══════════ */}
+          <div className="sov-card emerald-top p-8 mb-8 fu d3 relative overflow-hidden">
             <div className="absolute -top-10 -left-10 w-32 h-32 rounded-full bg-emerald-500/10 blur-2xl pointer-events-none" />
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
               <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-400 to-green-600 flex items-center justify-center shrink-0 shadow-lg shadow-emerald-500/20">
                 <Terminal size={32} className="text-white" />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="text-xl font-bold text-white mb-2">{t('nodes_install_title', 'Install & Run Node')}</h3>
-                <p className="text-gray-400 text-sm leading-relaxed mb-3">{t('nodes_install_desc', 'One command to install on Linux, macOS, WSL, or Raspberry Pi. Auto-updates included.')}</p>
+                <h3 className="text-xl font-bold text-white mb-2">Install & Activate Node</h3>
+                <p className="text-gray-400 text-sm leading-relaxed mb-3">One command installs on any device. Your node auto-detects hardware and activates revenue modules proportional to your compute power. Pay in GSTD, earn in GSTD.</p>
                 <div className="bg-black/40 rounded-xl border border-emerald-500/20 p-3 mb-4 flex items-center gap-2 group cursor-pointer hover:border-emerald-500/40 transition-colors"
                   onClick={() => { navigator.clipboard.writeText('curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash'); setInstallCopied(true); setTimeout(() => setInstallCopied(false), 2000); }}>
                   <code className="text-emerald-400 text-sm font-mono flex-1 break-all">curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash</code>
                   {installCopied ? <Check size={16} className="text-emerald-400 shrink-0" /> : <Copy size={16} className="text-gray-500 group-hover:text-emerald-400 shrink-0 transition-colors" />}
                 </div>
                 <div className="flex flex-wrap gap-3 mb-4 text-xs font-medium text-gray-500">
-                  <span className="flex items-center gap-1.5"><span className="text-base leading-none">🔄</span> Auto-Updates</span>
-                  <span className="flex items-center gap-1.5"><span className="text-base leading-none">⛏️</span> Gold Mining</span>
-                  <span className="flex items-center gap-1.5"><span className="text-base leading-none">🌐</span> DLN Ready</span>
-                  <span className="flex items-center gap-1.5"><span className="text-base leading-none">🔗</span> P2P Swarm</span>
+                  <span className="flex items-center gap-1.5"><span className="text-base leading-none">🧠</span> AI Inference</span>
+                  <span className="flex items-center gap-1.5"><span className="text-base leading-none">🌐</span> Multi-Chain RPC</span>
+                  <span className="flex items-center gap-1.5"><span className="text-base leading-none">💾</span> Storage Vault</span>
+                  <span className="flex items-center gap-1.5"><span className="text-base leading-none">📡</span> Traffic Relay</span>
+                  <span className="flex items-center gap-1.5"><span className="text-base leading-none">💻</span> Compute Pool</span>
+                  <span className="flex items-center gap-1.5"><span className="text-base leading-none">🔗</span> Bridge Relay</span>
                 </div>
                 <div className="flex flex-wrap gap-3">
                   <a href="https://gstdbot.gstdtoken.com" target="_blank" rel="noopener noreferrer" className="btn-sovereign ghost text-emerald-400 hover:text-emerald-300">
-                    <Monitor size={14} className="mr-1" /> {t('nodes_dashboard_btn', 'Node Dashboard')} <ArrowRight size={14} />
+                    <Monitor size={14} className="mr-1" /> Node Dashboard <ArrowRight size={14} />
                   </a>
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* ═══════════ License Tiers ═══════════ */}
+          <div className="mb-10 fu d3b">
+            <h2 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
+              <Shield size={20} className="text-violet-400" /> Node License Tiers
+            </h2>
+            <p className="text-gray-500 text-sm mb-6">Your node auto-detects hardware and assigns a tier. Higher tier = more modules = higher earnings.</p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+              {[
+                { icon: '⚡', name: 'Spark', hw: '2 CPU · 4GB · 50GB', modules: 2, bonus: 0, color: '#888', bg: 'rgba(136,136,136,0.06)', border: 'rgba(136,136,136,0.15)', earn: '~40' },
+                { icon: '🔥', name: 'Flame', hw: '4 CPU · 8GB · 200GB', modules: 4, bonus: 5, color: '#ff6b35', bg: 'rgba(255,107,53,0.06)', border: 'rgba(255,107,53,0.15)', earn: '~250' },
+                { icon: '⛈️', name: 'Storm', hw: '8 CPU · 32GB · 500GB', modules: 6, bonus: 15, color: '#4ecdc4', bg: 'rgba(78,205,196,0.06)', border: 'rgba(78,205,196,0.15)', earn: '~800' },
+                { icon: '🏔️', name: 'Titan', hw: '16 CPU · 64GB · 2TB', modules: 8, bonus: 30, color: '#ffd700', bg: 'rgba(255,215,0,0.06)', border: 'rgba(255,215,0,0.15)', earn: '~2,500' },
+                { icon: '👑', name: 'Sovereign', hw: '64 CPU · 128GB+ · GPU', modules: 99, bonus: 50, color: '#e040fb', bg: 'rgba(224,64,251,0.06)', border: 'rgba(224,64,251,0.15)', earn: '~10,000+' },
+              ].map(tier => (
+                <div key={tier.name} style={{ background: tier.bg, border: `1px solid ${tier.border}`, borderRadius: 16, padding: '20px 16px', textAlign: 'center', transition: 'all 0.3s' }}>
+                  <div style={{ fontSize: 32, lineHeight: 1, marginBottom: 8 }}>{tier.icon}</div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: tier.color, marginBottom: 4 }}>{tier.name}</div>
+                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', marginBottom: 12, fontFamily: 'monospace' }}>{tier.hw}</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>
+                    <span>Modules</span>
+                    <span style={{ fontWeight: 700, color: 'white' }}>{tier.modules === 99 ? 'All' : tier.modules}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>
+                    <span>Bonus</span>
+                    <span style={{ fontWeight: 700, color: '#34d399' }}>+{tier.bonus}%</span>
+                  </div>
+                  <div style={{ marginTop: 12, padding: '8px', borderRadius: 8, background: 'rgba(0,0,0,0.3)' }}>
+                    <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', fontWeight: 700, marginBottom: 2 }}>Est. Monthly</div>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: tier.color }}>{tier.earn} <span style={{ fontSize: 9 }}>GSTD</span></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ═══════════ Revenue Modules ═══════════ */}
+          <div className="mb-12 fu d4">
+            <h2 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
+              <Cpu size={20} className="text-cyan-400" /> Revenue Modules
+            </h2>
+            <p className="text-gray-500 text-sm mb-6">Each module is an independent revenue stream. Activated automatically based on your hardware. Cost and earnings in GSTD.</p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[
+                { icon: '🧠', name: 'AI Inference', desc: 'Answer AI queries via Groq/Ollama models', cost: 50, earn: 150, roi: '3.0x', req: '2 CPU · 4GB', share: 85, color: '#a78bfa' },
+                { icon: '📡', name: 'Traffic Relay', desc: 'Proxy VPN/CDN/API traffic for fees', cost: 20, earn: 30, roi: '1.5x', req: '1 CPU · 1GB', share: 90, color: '#22d3ee' },
+                { icon: '💾', name: 'Storage Vault', desc: 'Store & serve sharded blockchain data', cost: 30, earn: 60, roi: '2.0x', req: '1 CPU · 50GB disk', share: 88, color: '#34d399' },
+                { icon: '💻', name: 'Compute Pool', desc: 'Execute rendering & data processing tasks', cost: 80, earn: 320, roi: '4.0x', req: '4 CPU · 8GB', share: 82, color: '#f472b6' },
+                { icon: '🌐', name: 'RPC Gateway', desc: 'Serve multi-chain RPC requests (ETH/SOL/TON)', cost: 100, earn: 500, roi: '5.0x', req: '2 CPU · 4GB', share: 80, color: '#60a5fa' },
+                { icon: '🎓', name: 'Model Training', desc: 'Participate in federated ML training jobs', cost: 200, earn: 1600, roi: '8.0x', req: '8 CPU · 16GB', share: 75, color: '#fbbf24' },
+                { icon: '🔗', name: 'Bridge Relay', desc: 'Validate cross-chain bridge transactions', cost: 150, earn: 900, roi: '6.0x', req: '2 CPU · 4GB', share: 78, color: '#fb923c' },
+                { icon: '🎨', name: 'GPU Rendering', desc: 'GPU-accelerated rendering & AI inference', cost: 500, earn: 7500, roi: '15x', req: 'GPU required', share: 70, color: '#e040fb' },
+              ].map(mod => (
+                <div key={mod.name} className="sov-card !p-5 flex flex-col justify-between" style={{ borderColor: `${mod.color}22` }}>
+                  <div>
+                    <div className="flex items-center gap-3 mb-3">
+                      <div style={{ width: 40, height: 40, borderRadius: 12, background: `${mod.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, lineHeight: 1 }}>{mod.icon}</div>
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: 'white' }}>{mod.name}</div>
+                        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>{mod.req}</div>
+                      </div>
+                    </div>
+                    <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', lineHeight: 1.5, marginBottom: 12 }}>{mod.desc}</p>
+                  </div>
+                  <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: 10, padding: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 11 }}>
+                      <span style={{ color: 'rgba(255,255,255,0.4)' }}>Cost</span>
+                      <span style={{ fontWeight: 700, color: 'rgba(255,255,255,0.7)' }}>{mod.cost} <span style={{ fontSize: 9 }}>GSTD/mo</span></span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 11 }}>
+                      <span style={{ color: 'rgba(255,255,255,0.4)' }}>Earnings</span>
+                      <span style={{ fontWeight: 700, color: '#34d399' }}>~{mod.earn} <span style={{ fontSize: 9 }}>GSTD/mo</span></span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
+                      <span style={{ color: 'rgba(255,255,255,0.4)' }}>ROI</span>
+                      <span style={{ fontWeight: 800, color: mod.color }}>{mod.roi}</span>
+                    </div>
+                    <div style={{ marginTop: 8, height: 3, borderRadius: 2, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${mod.share}%`, borderRadius: 2, background: mod.color, transition: 'width 0.5s' }} />
+                    </div>
+                    <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)', marginTop: 4, textAlign: 'right' }}>{mod.share}% revenue share</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ═══════════ Flywheel Economics ═══════════ */}
+          <div className="sov-card p-6 mb-12 fu d4b border-violet-500/15 bg-gradient-to-r from-violet-500/5 to-transparent">
+            <div className="flex items-center gap-3 mb-4">
+              <TrendingUp size={20} className="text-violet-400" />
+              <h3 className="text-lg font-bold text-white m-0">Revenue Flywheel</h3>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {[
+                { pct: '60%', label: 'To Provider', desc: 'Direct GSTD earnings', color: '#34d399' },
+                { pct: '30%', label: 'Gold Treasury', desc: 'XAUt gold reserve', color: '#ffd700' },
+                { pct: '7%', label: 'Buyback', desc: 'Buy GSTD from market', color: '#60a5fa' },
+                { pct: '3%', label: 'Burn 🔥', desc: 'Permanent deflation', color: '#f97316' },
+              ].map(s => (
+                <div key={s.label} style={{ textAlign: 'center', padding: 16, borderRadius: 12, background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.04)' }}>
+                  <div style={{ fontSize: 28, fontWeight: 900, color: s.color, lineHeight: 1 }}>{s.pct}</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: 'white', marginTop: 4 }}>{s.label}</div>
+                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>{s.desc}</div>
+                </div>
+              ))}
             </div>
           </div>
 
