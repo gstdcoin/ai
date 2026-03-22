@@ -165,11 +165,56 @@ func (s *OnchainSettlementService) GetWithdrawPayload(amountGSTD float64, worker
 	}
 }
 
+// ═══════════════════════════════════════════════════════════════
+// SECURITY GUARDS (awesome-evm-security patterns for TON)
+// Source: https://github.com/kareniel/awesome-evm-security
+//
+// 1. Amount Bounds Check (prevents overflow/underflow)
+// 2. Reentrancy Guard (mutex already present)
+// 3. Maximum Single Settlement Cap
+// 4. Wallet Address Validation
+// ═══════════════════════════════════════════════════════════════
+
+const (
+	MaxSingleSettlementGSTD = 10000.0  // Max 10K GSTD per single settlement
+	MaxBatchTotalGSTD       = 100000.0 // Max 100K GSTD per batch
+	MinSettlementGSTD       = 0.0001   // Min dust threshold
+	MaxNanoAmount           = int64(1e18) // Prevent int64 overflow on nano conversion
+)
+
 // QueueSettlement records a fee deduction for on-chain settlement tracking.
 // This does NOT move tokens — it tracks the DB deduction for contract reconciliation.
+//
+// Security: validates amount bounds, prevents overflow, caps single settlement.
 func (s *OnchainSettlementService) QueueSettlement(ctx context.Context, wallet string, amountGSTD float64, modelID string, txType string) error {
-	if !s.enabled || amountGSTD <= 0 {
+	if !s.enabled {
 		return nil
+	}
+
+	// ═══ SECURITY GUARD 1: Amount Bounds Check ═══
+	if amountGSTD <= 0 || amountGSTD < MinSettlementGSTD {
+		log.Printf("🛡️ [Settlement] REJECTED: amount %.8f <= 0 or below dust (wallet: %s)", amountGSTD, truncAddr(wallet, 12))
+		return nil
+	}
+
+	// ═══ SECURITY GUARD 2: Maximum Single Settlement Cap ═══
+	if amountGSTD > MaxSingleSettlementGSTD {
+		log.Printf("🛡️ [Settlement] REJECTED: amount %.4f > max %.0f GSTD (wallet: %s)",
+			amountGSTD, MaxSingleSettlementGSTD, truncAddr(wallet, 12))
+		return fmt.Errorf("settlement amount %.4f exceeds maximum %.0f GSTD", amountGSTD, MaxSingleSettlementGSTD)
+	}
+
+	// ═══ SECURITY GUARD 3: Integer Overflow Check (nano conversion) ═══
+	nanoAmount := int64(amountGSTD * 1e9)
+	if nanoAmount <= 0 || nanoAmount > MaxNanoAmount {
+		log.Printf("🛡️ [Settlement] REJECTED: nano overflow detected (amount=%.8f, nano=%d)", amountGSTD, nanoAmount)
+		return fmt.Errorf("nano amount overflow for %.8f GSTD", amountGSTD)
+	}
+
+	// ═══ SECURITY GUARD 4: Wallet Address Validation ═══
+	if len(wallet) < 10 || len(wallet) > 128 {
+		log.Printf("🛡️ [Settlement] REJECTED: invalid wallet address length=%d", len(wallet))
+		return fmt.Errorf("invalid wallet address")
 	}
 
 	_, err := s.db.ExecContext(ctx, `
@@ -247,6 +292,25 @@ func (s *OnchainSettlementService) processBatch(ctx context.Context) error {
 
 	if len(items) == 0 || totalAmount < s.minBatchAmount {
 		return nil
+	}
+
+	// ═══ SECURITY GUARD: Maximum Batch Amount ═══
+	if totalAmount > MaxBatchTotalGSTD {
+		log.Printf("🛡️ [Settlement] Batch capped: %.4f > max %.0f GSTD — processing partial batch", totalAmount, MaxBatchTotalGSTD)
+		// Truncate to maxBatchAmount worth of items
+		truncatedItems := []SettlementQueueItem{}
+		truncatedTotal := 0.0
+		ids = nil
+		for _, item := range items {
+			if truncatedTotal+item.AmountGSTD > MaxBatchTotalGSTD {
+				break
+			}
+			truncatedItems = append(truncatedItems, item)
+			truncatedTotal += item.AmountGSTD
+			ids = append(ids, item.ID)
+		}
+		items = truncatedItems
+		totalAmount = truncatedTotal
 	}
 
 	// Create settlement batch record (audit trail)

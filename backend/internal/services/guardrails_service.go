@@ -58,20 +58,66 @@ type SignedRequest struct {
 	PublicKey     string `json:"public_key"`   // Ed25519 public key (hex)
 }
 
-// Known prompt injection patterns (compiled once at startup)
+// ═══════════════════════════════════════════════════════════════
+// PROMPT INJECTION PATTERNS (awesome-prompt-injection)
+// Source: https://github.com/FonduAI/awesome-prompt-injection
+//
+// Categories:
+//   A. Instruction Override attacks
+//   B. Jailbreak patterns (DAN, AIM, Developer Mode, etc.)
+//   C. System Prompt Extraction
+//   D. Role-Play Injection
+//   E. Code Injection (XSS, SQL, Python)
+//   F. Encoding Tricks (Base64, ROT13 requests)
+// ═══════════════════════════════════════════════════════════════
 var injectionPatterns = []*regexp.Regexp{
+	// A. Instruction Override
 	regexp.MustCompile(`(?i)ignore\s+(all\s+)?previous\s+instructions`),
 	regexp.MustCompile(`(?i)forget\s+(everything|all|your)\s+(instructions|rules|guidelines)`),
-	regexp.MustCompile(`(?i)you\s+are\s+now\s+(a|an)\s+`),
+	regexp.MustCompile(`(?i)disregard\s+(all\s+)?(previous|prior|above)\s+(instructions|context)`),
+	regexp.MustCompile(`(?i)override\s+(your|all|the)\s+(instructions|rules|restrictions|guidelines)`),
+	regexp.MustCompile(`(?i)new\s+(instruction|rule|directive|system\s*prompt)\s*:`),
+	regexp.MustCompile(`(?i)from\s+now\s+on\s+(you\s+)?(are|will|must|should)`),
+	regexp.MustCompile(`(?i)stop\s+being\s+(an?\s+)?(ai|assistant|chatbot|language\s+model)`),
 	regexp.MustCompile(`(?i)system\s*:\s*(override|reset|new\s+instruction)`),
+
+	// B. Jailbreak Patterns (DAN, AIM, Developer Mode, STAN, etc.)
+	regexp.MustCompile(`(?i)\bDAN\b.*\b(mode|jailbreak|anything|now)\b`),
+	regexp.MustCompile(`(?i)\bDo\s+Anything\s+Now\b`),
+	regexp.MustCompile(`(?i)\bAIM\b.*\b(always\s+intelligent|machiavellian)\b`),
+	regexp.MustCompile(`(?i)\bSTAN\b.*\b(strive|try|anything\s+now)\b`),
+	regexp.MustCompile(`(?i)\bDEVELOPER\s+MODE\b`),
+	regexp.MustCompile(`(?i)\bjailbreak(ed)?\s+(mode|prompt|version)\b`),
+	regexp.MustCompile(`(?i)\bunlocked\s+(mode|version|ai)\b`),
+	regexp.MustCompile(`(?i)\buncensored\s+(mode|version|ai|model)\b`),
+	regexp.MustCompile(`(?i)\b(act|behave)\s+as\s+(if\s+)?(you\s+)?(have\s+)?no\s+(restrictions|filters|rules|limitations)\b`),
+	regexp.MustCompile(`(?i)\banti[- ]?ai\s+(shield|jailbreak|mode)\b`),
+	regexp.MustCompile(`(?i)you\s+are\s+now\s+(a|an)\s+`),
 	regexp.MustCompile(`(?i)pretend\s+(you|that|to\s+be)\s+`),
-	regexp.MustCompile(`(?i)\bDAN\b.*\bjailbreak\b`),
-	regexp.MustCompile(`(?i)reveal\s+(your|the)\s+(system|initial|original)\s+(prompt|instructions|message)`),
-	regexp.MustCompile(`(?i)what\s+(is|are)\s+your\s+(system|initial)\s+(prompt|instructions)`),
-	regexp.MustCompile(`(?i)output\s+(your|the)\s+above\s+(text|instructions|prompt)`),
+	regexp.MustCompile(`(?i)roleplay\s+as\s+(an?\s+)?(evil|unethical|unrestricted)`),
+
+	// C. System Prompt Extraction
+	regexp.MustCompile(`(?i)reveal\s+(your|the)\s+(system|initial|original|hidden)\s+(prompt|instructions|message)`),
+	regexp.MustCompile(`(?i)what\s+(is|are|was)\s+your\s+(system|initial|original|hidden)\s+(prompt|instructions|message)`),
+	regexp.MustCompile(`(?i)output\s+(your|the)\s+(above|system|initial)\s+(text|instructions|prompt)`),
+	regexp.MustCompile(`(?i)print\s+(your|the)\s+(system|initial)\s+(prompt|instructions)`),
+	regexp.MustCompile(`(?i)repeat\s+(the|your)\s+(text|instructions|prompt)\s+above`),
+	regexp.MustCompile(`(?i)show\s+(me\s+)?(your|the)\s+(system|original|initial)\s+prompt`),
+	regexp.MustCompile(`(?i)tell\s+me\s+(your|the)\s+(system|hidden)\s+(prompt|instructions|rules)`),
+	regexp.MustCompile(`(?i)(what|which)\s+(api|model|ollama|groq|key|token|url|endpoint)\s+(are|do)\s+you\s+use`),
+	regexp.MustCompile(`(?i)(OLLAMA_URL|GROQ_API_KEY|API_KEY|SECRET|PRIVATE_KEY|DATABASE_URL)`),
+
+	// D. Encoding-based Attacks
+	regexp.MustCompile(`(?i)respond\s+in\s+(base64|hex|binary|rot13|morse)\b`),
+	regexp.MustCompile(`(?i)encode\s+(your|the)\s+(response|answer|output)\s+in`),
+	regexp.MustCompile(`(?i)translate\s+(this|everything)\s+to\s+(base64|hex)`),
+
+	// E. Code Injection
 	regexp.MustCompile(`(?i)<\s*script\b`),               // XSS in prompt
 	regexp.MustCompile(`(?i);\s*(DROP|DELETE|ALTER)\s+`), // SQL injection
 	regexp.MustCompile(`(?i)__(import|eval|exec)__`),     // Python code injection
+	regexp.MustCompile(`(?i)\beval\s*\(`),                // JS eval
+	regexp.MustCompile(`(?i)\bexec\s*\(`),                // exec()
 }
 
 // Dangerous content patterns
@@ -142,7 +188,8 @@ func (s *GuardrailsService) AnalyzePrompt(ctx context.Context, walletAddress str
 		fullText.WriteString(msg["content"])
 		fullText.WriteString(" ")
 	}
-	prompt := fullText.String()
+	// Normalize Unicode: strip invisible characters used to bypass filters
+	prompt := normalizeUnicode(fullText.String())
 
 	// === LAYER 1: Pattern-based filtering (instant, <1ms) ===
 	for _, pattern := range injectionPatterns {
@@ -387,4 +434,43 @@ func (s *GuardrailsService) GetGuardrailStats(ctx context.Context) (map[string]i
 	}
 
 	return stats, nil
+}
+// ============================================================================
+// UNICODE NORMALIZATION (awesome-prompt-injection defense)
+// Strips invisible characters, zero-width joiners, homoglyphs used to bypass
+// pattern-based detection.
+// ============================================================================
+
+var invisibleChars = regexp.MustCompile(`[\x{200B}\x{200C}\x{200D}\x{200E}\x{200F}\x{FEFF}\x{00AD}\x{2060}\x{2028}\x{2029}\x{202A}-\x{202E}\x{2066}-\x{2069}]`)
+
+func normalizeUnicode(s string) string {
+	// 1. Strip zero-width and invisible Unicode characters
+	s = invisibleChars.ReplaceAllString(s, "")
+	// 2. Normalize common homoglyphs (Cyrillic → Latin lookalikes)
+	replacer := strings.NewReplacer(
+		"а", "a", "е", "e", "о", "o", "р", "p", "с", "c", "у", "y",
+		"А", "A", "Е", "E", "О", "O", "Р", "P", "С", "C",
+	)
+	s = replacer.Replace(s)
+	return s
+}
+
+// ScanOutputForLeaks checks if the AI response accidentally leaked system prompts or secrets
+func (s *GuardrailsService) ScanOutputForLeaks(output string) (bool, string) {
+	leakPatterns := []struct {
+		pattern *regexp.Regexp
+		label   string
+	}{
+		{regexp.MustCompile(`(?i)system\s*prompt\s*:\s*.{20,}`), "system_prompt_leak"},
+		{regexp.MustCompile(`(?i)(gsk_|sk-|api[_-]?key|GROQ|OLLAMA_URL|DATABASE_URL)\s*[=:]\s*\S{10,}`), "api_key_leak"},
+		{regexp.MustCompile(`(?i)instructions?\s+(were|are|say)\s*:\s*".{30,}"`), "instruction_leak"},
+		{regexp.MustCompile(`(?i)my\s+(system|original|hidden)\s+(prompt|instructions)\s+(is|are)\s*:`), "prompt_extraction"},
+	}
+	for _, lp := range leakPatterns {
+		if lp.pattern.MatchString(output) {
+			log.Printf("🛡️ OUTPUT LEAK DETECTED: %s", lp.label)
+			return true, lp.label
+		}
+	}
+	return false, ""
 }
