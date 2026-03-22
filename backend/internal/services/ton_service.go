@@ -10,6 +10,8 @@ import (
 	"time"
 )
 
+const headerAPIKey = "X-API-Key"
+
 type TONService struct {
 	apiURL       string
 	apiKey       string
@@ -76,64 +78,23 @@ func normalizeTONAddress(address string) string {
 	return NormalizeAddressForAPI(address)
 }
 
-// GetJettonBalance получает баланс Jetton токена (GSTD) на адресе
-func (s *TONService) GetJettonBalance(ctx context.Context, address string, jettonAddress string) (float64, error) {
-	// Normalize both addresses for TON API (fixes "can't decode address" errors)
-	normalizedAddress := normalizeTONAddress(address)
-	normalizedJetton := NormalizeAddressForAPI(jettonAddress)
-
-	// Skip API call if address normalization failed (corrupted/uppercase address)
-	if normalizedAddress == "" || normalizedJetton == "" {
-		return 0, nil
-	}
-
-	// Cache key
-	cacheKey := fmt.Sprintf("ton:balance:%s:%s", normalizedAddress, normalizedJetton)
-
-	// Try cache first (1 minute TTL)
-	if s.cacheService != nil {
-		var cachedBalance float64
-		if err := s.cacheService.Get(ctx, cacheKey, &cachedBalance); err == nil {
-			return cachedBalance, nil
-		}
-	}
-
-	// Используем TON API v2 для получения баланса конкретного Jetton
-	// Direct endpoint for a single jetton balance
-	url := fmt.Sprintf("%s/v2/accounts/%s/jettons/%s", s.apiURL, normalizedAddress, normalizedJetton)
-
-	log.Printf("GetJettonBalance: Fetching specific balance for address=%s, jetton=%s", normalizedAddress, normalizedJetton)
-
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
-	if err != nil {
-		return 0, err
-	}
-
-	// Add API key to header if provided
-	if s.apiKey != "" {
-		req.Header.Set("Authorization", "Bearer "+s.apiKey)
-		req.Header.Set("X-API-Key", s.apiKey)
-	}
-
+// doRequestWithRetry performs an HTTP request with exponential backoff retries.
+// It retries on server errors (5xx) and rate limits (429), up to maxRetries times.
+func (s *TONService) doRequestWithRetry(ctx context.Context, req *http.Request, maxRetries int) (*http.Response, error) {
 	var resp *http.Response
-	maxRetries := 3
+	var err error
 	backoff := 500 * time.Millisecond
 
 	for i := 0; i <= maxRetries; i++ {
 		select {
 		case <-s.rateLimiter:
 		case <-ctx.Done():
-			return 0, ctx.Err()
+			return nil, ctx.Err()
 		}
 
 		resp, err = s.client.Do(req)
-		if err == nil {
-			if resp.StatusCode == http.StatusOK {
-				break
-			}
-			if resp.StatusCode < 500 && resp.StatusCode != 429 {
-				break
-			}
+		if err == nil && resp.StatusCode < 500 && resp.StatusCode != 429 {
+			return resp, nil
 		}
 
 		if i < maxRetries {
@@ -146,45 +107,91 @@ func (s *TONService) GetJettonBalance(ctx context.Context, address string, jetto
 	}
 
 	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+// setAPIKeyHeader adds the API key header to the request if configured.
+func (s *TONService) setAPIKeyHeader(req *http.Request) {
+	if s.apiKey != "" {
+		req.Header.Set(headerAPIKey, s.apiKey)
+	}
+}
+
+// GetJettonBalance получает баланс Jetton токена (GSTD) на адресе
+func (s *TONService) GetJettonBalance(ctx context.Context, address string, jettonAddress string) (float64, error) {
+	normalizedAddress := normalizeTONAddress(address)
+	normalizedJetton := NormalizeAddressForAPI(jettonAddress)
+
+	if normalizedAddress == "" || normalizedJetton == "" {
+		return 0, nil
+	}
+
+	cacheKey := fmt.Sprintf("ton:balance:%s:%s", normalizedAddress, normalizedJetton)
+
+	if s.cacheService != nil {
+		var cachedBalance float64
+		if err := s.cacheService.Get(ctx, cacheKey, &cachedBalance); err == nil {
+			return cachedBalance, nil
+		}
+	}
+
+	url := fmt.Sprintf("%s/v2/accounts/%s/jettons/%s", s.apiURL, normalizedAddress, normalizedJetton)
+	log.Printf("GetJettonBalance: Fetching specific balance for address=%s, jetton=%s", normalizedAddress, normalizedJetton)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return 0, err
+	}
+	s.setAPIKeyHeader(req)
+
+	resp, err := s.doRequestWithRetry(ctx, req, 3)
+	if err != nil {
 		return 0, err
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode == http.StatusNotFound {
+		return 0, nil
+	}
 	if resp.StatusCode != http.StatusOK {
-		if resp.StatusCode == http.StatusNotFound {
-			// Account has no such jetton wallet, balance is 0
-			return 0, nil
-		}
 		body, _ := io.ReadAll(resp.Body)
 		log.Printf("GetJettonBalance: API error (%d): %s", resp.StatusCode, string(body))
 		return 0, nil
 	}
 
+	balance, err := s.parseJettonBalance(resp)
+	if err != nil {
+		return 0, err
+	}
+
+	if s.cacheService != nil {
+		s.cacheService.Set(ctx, cacheKey, balance, 60*time.Second)
+	}
+
+	return balance, nil
+}
+
+// parseJettonBalance reads and parses the jetton balance from an HTTP response.
+func (s *TONService) parseJettonBalance(resp *http.Response) (float64, error) {
 	var result struct {
 		Balance json.Number `json:"balance"`
 	}
-
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return 0, err
 	}
 
 	balanceNano, err := result.Balance.Int64()
 	if err != nil {
-		if balanceFloat, floatErr := result.Balance.Float64(); floatErr == nil {
-			balanceNano = int64(balanceFloat)
-		} else {
+		balanceFloat, floatErr := result.Balance.Float64()
+		if floatErr != nil {
 			return 0, nil
 		}
+		balanceNano = int64(balanceFloat)
 	}
 
-	balance := float64(balanceNano) / 1e9
-
-	// Cache the result
-	if s.cacheService != nil {
-		s.cacheService.Set(ctx, cacheKey, balance, 60*time.Second)
-	}
-
-	return balance, nil
+	return float64(balanceNano) / 1e9, nil
 }
 
 // GetJettonMinterInfo fetches total supply and metadata for a jetton master
@@ -212,10 +219,7 @@ func (s *TONService) GetJettonMinterInfo(ctx context.Context, jettonMasterAddr s
 	if err != nil {
 		return nil, err
 	}
-	if s.apiKey != "" {
-		req.Header.Set("Authorization", "Bearer "+s.apiKey)
-		req.Header.Set("X-API-Key", s.apiKey)
-	}
+	s.setAPIKeyHeader(req)
 
 	// Respect rate limiter
 	select {
@@ -297,42 +301,28 @@ func (s *TONService) CheckGSTDBalance(ctx context.Context, address string, jetto
 // GetPublicKey resolves wallet address to public key via TON API
 // Uses Redis cache (24h TTL) to reduce API calls
 func (s *TONService) GetPublicKey(ctx context.Context, address string) ([]byte, error) {
-	// Normalize address for TON API (convert raw to user-friendly if needed)
 	normalizedAddress := NormalizeAddressForAPI(address)
-
-	// Cache key for public key
 	cacheKey := fmt.Sprintf("ton:pubkey:%s", normalizedAddress)
 
-	// Try to get from cache first (24 hour TTL)
 	if s.cacheService != nil {
 		var cachedPubKey []byte
-		if err := s.cacheService.Get(ctx, cacheKey, &cachedPubKey); err == nil {
-			if len(cachedPubKey) == 32 {
-				return cachedPubKey, nil
-			}
+		if err := s.cacheService.Get(ctx, cacheKey, &cachedPubKey); err == nil && len(cachedPubKey) == 32 {
+			return cachedPubKey, nil
 		}
 	}
 
-	// Wait for rate limiter
 	select {
 	case <-s.rateLimiter:
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
 
-	// Use TON API to get account info and extract public key
 	url := fmt.Sprintf("%s/v2/accounts/%s", s.apiURL, normalizedAddress)
-
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
-
-	// Add API key to header if provided
-	if s.apiKey != "" {
-		req.Header.Set("Authorization", "Bearer "+s.apiKey)
-		req.Header.Set("X-API-Key", s.apiKey)
-	}
+	s.setAPIKeyHeader(req)
 
 	resp, err := s.client.Do(req)
 	if err != nil {
@@ -346,35 +336,28 @@ func (s *TONService) GetPublicKey(ctx context.Context, address string) ([]byte, 
 	}
 
 	var result struct {
-		Interfaces []string `json:"interfaces"`
-		PublicKey  string   `json:"public_key"`
+		PublicKey string `json:"public_key"`
 	}
-
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, err
 	}
 
-	// If public_key is directly available
-	if result.PublicKey != "" {
-		// Decode hex public key (32 bytes for Ed25519)
-		pubKey := make([]byte, 32)
-		_, err := fmt.Sscanf(result.PublicKey, "%x", &pubKey)
-		if err == nil && len(pubKey) == 32 {
-			// Cache the public key for 24 hours
-			if s.cacheService != nil {
-				if err := s.cacheService.Set(ctx, cacheKey, pubKey, 24*time.Hour); err != nil {
-					// Log but don't fail if caching fails
-					log.Printf("Warning: Failed to cache public key for %s: %v", normalizedAddress, err)
-				}
-			}
-			return pubKey, nil
+	if result.PublicKey == "" {
+		return nil, fmt.Errorf("public key not found for address %s", address)
+	}
+
+	pubKey := make([]byte, 32)
+	if _, err := fmt.Sscanf(result.PublicKey, "%x", &pubKey); err != nil || len(pubKey) != 32 {
+		return nil, fmt.Errorf("public key not found for address %s", address)
+	}
+
+	if s.cacheService != nil {
+		if cacheErr := s.cacheService.Set(ctx, cacheKey, pubKey, 24*time.Hour); cacheErr != nil {
+			log.Printf("Warning: Failed to cache public key for %s: %v", normalizedAddress, cacheErr)
 		}
 	}
 
-	// Fallback: Try to get from wallet state
-	// For TON wallets, we may need to query the wallet contract state
-	// This is a simplified version - full implementation may require parsing contract state
-	return nil, fmt.Errorf("public key not found for address %s", address)
+	return pubKey, nil
 }
 
 // GetJettonWalletAddress gets the jetton wallet address for a given owner and jetton master
@@ -397,11 +380,7 @@ func (s *TONService) GetJettonWalletAddress(ctx context.Context, ownerAddr, jett
 	if err != nil {
 		return "", err
 	}
-
-	if s.apiKey != "" {
-		req.Header.Set("Authorization", "Bearer "+s.apiKey)
-		req.Header.Set("X-API-Key", s.apiKey)
-	}
+	s.setAPIKeyHeader(req)
 
 	resp, err := s.client.Do(req)
 	if err != nil {
@@ -458,8 +437,7 @@ func (s *TONService) GetContractBalance(ctx context.Context, contractAddress str
 
 	// Add API key to header if provided
 	if s.apiKey != "" {
-		req.Header.Set("Authorization", "Bearer "+s.apiKey)
-		req.Header.Set("X-API-Key", s.apiKey)
+		req.Header.Set(headerAPIKey, s.apiKey)
 	}
 
 	resp, err := s.client.Do(req)
@@ -518,8 +496,7 @@ func (s *TONService) GetContractTransactions(ctx context.Context, contractAddres
 
 	// Add API key to header if provided
 	if s.apiKey != "" {
-		req.Header.Set("Authorization", "Bearer "+s.apiKey)
-		req.Header.Set("X-API-Key", s.apiKey)
+		req.Header.Set(headerAPIKey, s.apiKey)
 	}
 
 	resp, err := s.client.Do(req)

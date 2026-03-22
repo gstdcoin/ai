@@ -79,7 +79,7 @@ func (op *PlatformOperator) ScrapeURL(target string) (string, error) {
 	text = regexp.MustCompile("(?is)<script.*?>.*?</script>").ReplaceAllString(text, "")
 	text = regexp.MustCompile("(?is)<style.*?>.*?</style>").ReplaceAllString(text, "")
 	text = regexp.MustCompile("<[^>]*>").ReplaceAllString(text, " ")
-	text = regexp.MustCompile("\\s+").ReplaceAllString(text, " ")
+	text = regexp.MustCompile(`\s+`).ReplaceAllString(text, " ")
 
 	if len(text) > 8000 {
 		text = text[:8000] // Cap to 8000 chars to save AI tokens

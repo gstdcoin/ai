@@ -14,6 +14,12 @@ import (
 	"time"
 )
 
+const (
+	walletHeaderContentType = "Content-Type"
+	walletMIMEJSON          = "application/json"
+	walletHeaderAPIKey      = "X-API-Key"
+)
+
 // TONWalletService handles wallet operations including signing and sending transactions
 type TONWalletService struct {
 	apiURL      string
@@ -131,10 +137,9 @@ func (w *TONWalletService) SendTON(ctx context.Context, recipientAddr string, am
 	if err != nil {
 		return "", err
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set(walletHeaderContentType, walletMIMEJSON)
 	if k := w.getAPIKey(); k != "" {
-		req.Header.Set("Authorization", "Bearer "+k)
-		req.Header.Set("X-API-Key", k)
+		req.Header.Set(walletHeaderAPIKey, k)
 	}
 
 	resp, err := w.client.Do(req)
@@ -207,10 +212,9 @@ func (w *TONWalletService) SendJettonTransfer(
 		return "", err
 	}
 
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set(walletHeaderContentType, walletMIMEJSON)
 	if k := w.getAPIKey(); k != "" {
-		req.Header.Set("Authorization", "Bearer "+k)
-		req.Header.Set("X-API-Key", k)
+		req.Header.Set(walletHeaderAPIKey, k)
 	}
 
 	resp, err := w.client.Do(req)
@@ -259,8 +263,7 @@ func (w *TONWalletService) getJettonWalletAddress(ctx context.Context, ownerAddr
 	}
 
 	if k := w.getAPIKey(); k != "" {
-		req.Header.Set("Authorization", "Bearer "+k)
-		req.Header.Set("X-API-Key", k)
+		req.Header.Set(walletHeaderAPIKey, k)
 	}
 
 	resp, err := w.client.Do(req)
@@ -320,10 +323,9 @@ func (w *TONWalletService) estimateAndLogTransfer(
 		return "", err
 	}
 
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set(walletHeaderContentType, walletMIMEJSON)
 	if k := w.getAPIKey(); k != "" {
-		req.Header.Set("Authorization", "Bearer "+k)
-		req.Header.Set("X-API-Key", k)
+		req.Header.Set(walletHeaderAPIKey, k)
 	}
 
 	resp, err := w.client.Do(req)

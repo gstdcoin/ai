@@ -3,6 +3,7 @@ import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useTranslation } from 'next-i18next';
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
+import { useTonConnectUI } from '@tonconnect/ui-react';
 import {
   ArrowRightLeft, ChevronDown, Clock, CheckCircle2,
   AlertCircle, Loader2, ArrowRight, RefreshCw, BookOpen, Users,
@@ -43,8 +44,15 @@ interface BridgeStats {
 
 const CHAINS: { id: ChainId; name: string; icon: string; network: string; walletHint: string }[] = [
   { id: 'TON', name: 'TON', icon: '💎', network: 'The Open Network', walletHint: 'Tonkeeper, MyTonWallet' },
+  { id: 'Ethereum', name: 'Ethereum', icon: 'Ξ', network: 'Ethereum Mainnet', walletHint: 'MetaMask, Coinbase' },
   { id: 'Solana', name: 'Solana', icon: '◎', network: 'Solana Mainnet', walletHint: 'Phantom, Solflare' },
   { id: 'XRPL', name: 'XRPL', icon: '✕', network: 'XRP Ledger', walletHint: 'Xaman, GemWallet' },
+];
+
+type BridgeAsset = 'GSTD' | 'PAXG';
+const ASSETS: { id: BridgeAsset; name: string; icon: string; chain?: ChainId }[] = [
+  { id: 'GSTD', name: 'GSTD', icon: '🪙' },
+  { id: 'PAXG', name: 'PAX Gold', icon: '🧑‍🏭', chain: 'Ethereum' },
 ];
 
 // ─── Helper: shorten address ───────────────────────────────
@@ -264,6 +272,7 @@ function ChainWalletWidget({ chain, label, address, onAddressChange }: Readonly<
 // ═══════════════════════════════════════════════════════════
 export default function BridgePage() {
   const { t } = useTranslation('common');
+  const [tonConnectUI] = useTonConnectUI();
   const [tab, setTab] = useState<'swap' | 'orders' | 'my'>('swap');
   const [stats, setStats] = useState<BridgeStats | null>(null);
   const [orders, setOrders] = useState<BridgeOrder[]>([]);
@@ -282,6 +291,9 @@ export default function BridgePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState<any>(null);
+  const [sourceAsset, setSourceAsset] = useState<BridgeAsset>('GSTD');
+  const [destAsset, setDestAsset] = useState<BridgeAsset>('GSTD');
+  const [paxgRate, setPaxgRate] = useState<any>(null);
 
   // Get wallet state for each chain
   const sourceWallet = multiWallet.getChainWallet(sourceChain);
@@ -331,6 +343,21 @@ export default function BridgePage() {
     return () => clearInterval(iv);
   }, []);
 
+  // Fetch PAXG conversion rate
+  useEffect(() => {
+    const isPaxgMode = sourceAsset === 'PAXG' || destAsset === 'PAXG';
+    if (!isPaxgMode) { setPaxgRate(null); return; }
+    const fetchRate = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/v1/bridge/p2p/paxg-rate`);
+        if (res.ok) setPaxgRate(await res.json());
+      } catch (e) { console.error('PAXG rate fetch:', e); }
+    };
+    fetchRate();
+    const iv = setInterval(fetchRate, 30000);
+    return () => clearInterval(iv);
+  }, [sourceAsset, destAsset]);
+
   // Fetch open orders
   useEffect(() => {
     if (tab !== 'orders') return;
@@ -360,6 +387,10 @@ export default function BridgePage() {
     const tmpAddr = sourceAddress;
     setSourceAddress(destAddress);
     setDestAddress(tmpAddr);
+    // Swap assets too
+    const tmpAsset = sourceAsset;
+    setSourceAsset(destAsset);
+    setDestAsset(tmpAsset);
   };
 
   const handleSubmitOrder = async () => {
@@ -381,11 +412,13 @@ export default function BridgePage() {
           amount: parseFloat(amount),
           source_address: sourceAddress,
           dest_address: destAddress,
+          source_asset: sourceAsset,
+          dest_asset: destAsset,
         }),
       });
       const data = await res.json();
       if (res.ok) { setResult(data); } else { setError(data.error || 'Failed'); }
-    } catch (_e) { setError('Network error'); }
+    } catch (e) { console.error('Bridge error:', e); setError('Network error'); }
     finally { setLoading(false); }
   };
 
@@ -404,7 +437,7 @@ export default function BridgePage() {
         const tx = await buildBridgeDepositTx(walletAddress, orderId, order.amount, order.send_gstd_to);
 
         // Send via TonConnect
-        const result = await (window as any).__tonConnectUI?.sendTransaction(tx);
+        const result = await tonConnectUI.sendTransaction(tx);
         const txHash = result?.boc || '';
 
         if (!txHash) { alert('Transaction cancelled'); return; }
@@ -440,7 +473,7 @@ export default function BridgePage() {
       const data = await res.json();
       if (res.ok) { alert(data.message || 'Deposit confirmed!'); setTab('my'); }
       else { alert(data.error || 'Verification failed'); }
-    } catch (_e) { alert('Network error'); }
+    } catch (e) { console.error('Deposit confirm error:', e); alert('Network error'); }
   };
 
   const handleConfirmReceipt = async (orderId: string) => {
@@ -452,7 +485,7 @@ export default function BridgePage() {
         body: JSON.stringify({ received_tx_hash: 'confirmed-by-user' }),
       });
       if (res.ok) { alert('Bridge complete! 🎉'); setTab('my'); }
-    } catch (_e) { console.error(_e); }
+    } catch (e) { console.error('Receipt confirm error:', e); }
   };
 
   const handleCancelOrder = async (orderId: string) => {
@@ -463,7 +496,7 @@ export default function BridgePage() {
       });
       if (res.ok) { alert('Order cancelled'); setTab('my'); }
       else { const d = await res.json(); alert(d.error || 'Cannot cancel'); }
-    } catch (_e) { console.error(_e); }
+    } catch (e) { console.error('Cancel order error:', e); }
   };
 
   const handleTakeOrder = async (order: BridgeOrder) => {
@@ -502,15 +535,15 @@ export default function BridgePage() {
         alert(`${data.message}\n\n${(data.instructions || []).join('\n')}`);
         setTab('my');
       } else { alert(data.error || 'Failed to take order'); }
-    } catch (_e) { alert('Network error'); }
+    } catch (e) { console.error('Take order error:', e); alert('Network error'); }
   };
 
 
   return (
     <>
       <Head>
-        <title>P2P Bridge — GSTD</title>
-        <meta name="description" content="Peer-to-peer cross-chain GSTD bridge. Swap tokens between TON, Solana, and XRPL directly with other users." />
+        <title>P2P Bridge — GSTD & PAX Gold</title>
+        <meta name="description" content="Cross-chain bridge for GSTD and PAX Gold (PAXG). Transfer between TON, Ethereum, Solana, and XRPL." />
       </Head>
 
 
@@ -581,7 +614,35 @@ export default function BridgePage() {
                 </div>
               )}
 
-              <ChainSelect value={sourceChain} onChange={(v) => setSourceChain(v as ChainId)} label={t('bridge_i_have')} exclude={destChain} />
+              <ChainSelect value={sourceChain} onChange={(v) => { setSourceChain(v as ChainId); if (v !== 'Ethereum' && sourceAsset === 'PAXG') setSourceAsset('GSTD'); }} label={t('bridge_i_have')} exclude={destChain} />
+
+              {/* Asset Selector for Source */}
+              <div style={{ marginTop: 8, display: 'flex', gap: 6 }}>
+                {ASSETS.filter(a => !a.chain || a.chain === sourceChain).map(a => (
+                  <button key={a.id} onClick={() => {
+                    setSourceAsset(a.id);
+                    if (a.id === 'PAXG') { setSourceChain('Ethereum'); setDestAsset('GSTD'); if (destChain === 'Ethereum') setDestChain('TON'); }
+                    if (a.id === 'GSTD' && destAsset === 'PAXG') setDestAsset('GSTD');
+                  }}
+                    style={{
+                      flex: 1, padding: '8px 12px', borderRadius: 10, fontSize: 12, fontWeight: 700,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer',
+                      background: sourceAsset === a.id
+                        ? (a.id === 'PAXG' ? 'rgba(234,179,8,0.12)' : 'rgba(139,92,246,0.12)')
+                        : 'rgba(255,255,255,0.02)',
+                      border: `1px solid ${sourceAsset === a.id
+                        ? (a.id === 'PAXG' ? 'rgba(234,179,8,0.3)' : 'rgba(139,92,246,0.2)')
+                        : 'rgba(255,255,255,0.06)'}`,
+                      color: sourceAsset === a.id
+                        ? (a.id === 'PAXG' ? '#fbbf24' : '#a78bfa')
+                        : 'rgba(255,255,255,0.4)',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    <span>{a.icon}</span> {a.name}
+                  </button>
+                ))}
+              </div>
 
               {/* Source Chain Wallet + Address */}
               <div className="mt-3">
@@ -595,7 +656,35 @@ export default function BridgePage() {
                 </button>
               </div>
 
-              <ChainSelect value={destChain} onChange={(v) => setDestChain(v as ChainId)} label={t('bridge_i_want')} exclude={sourceChain} />
+              <ChainSelect value={destChain} onChange={(v) => { setDestChain(v as ChainId); if (v !== 'Ethereum' && destAsset === 'PAXG') setDestAsset('GSTD'); }} label={t('bridge_i_want')} exclude={sourceChain} />
+
+              {/* Asset Selector for Dest */}
+              <div style={{ marginTop: 8, display: 'flex', gap: 6 }}>
+                {ASSETS.filter(a => !a.chain || a.chain === destChain).map(a => (
+                  <button key={a.id} onClick={() => {
+                    setDestAsset(a.id);
+                    if (a.id === 'PAXG') { setDestChain('Ethereum'); setSourceAsset('GSTD'); if (sourceChain === 'Ethereum') setSourceChain('TON'); }
+                    if (a.id === 'GSTD' && sourceAsset === 'PAXG') setSourceAsset('GSTD');
+                  }}
+                    style={{
+                      flex: 1, padding: '8px 12px', borderRadius: 10, fontSize: 12, fontWeight: 700,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer',
+                      background: destAsset === a.id
+                        ? (a.id === 'PAXG' ? 'rgba(234,179,8,0.12)' : 'rgba(139,92,246,0.12)')
+                        : 'rgba(255,255,255,0.02)',
+                      border: `1px solid ${destAsset === a.id
+                        ? (a.id === 'PAXG' ? 'rgba(234,179,8,0.3)' : 'rgba(139,92,246,0.2)')
+                        : 'rgba(255,255,255,0.06)'}`,
+                      color: destAsset === a.id
+                        ? (a.id === 'PAXG' ? '#fbbf24' : '#a78bfa')
+                        : 'rgba(255,255,255,0.4)',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    <span>{a.icon}</span> {a.name}
+                  </button>
+                ))}
+              </div>
 
               {/* Dest Chain Wallet + Address */}
               <div className="mt-3">
@@ -604,10 +693,48 @@ export default function BridgePage() {
 
               {/* Amount */}
               <div className="mt-6 rounded-2xl bg-white/[0.02] border border-white/5 p-4 hover:bg-white/[0.04] transition-colors">
-                <div className="text-[10px] uppercase font-bold tracking-widest text-gray-500 mb-2">{t('bridge_amount_gstd')}</div>
+                <div className="text-[10px] uppercase font-bold tracking-widest text-gray-500 mb-2">
+                  {sourceAsset === 'PAXG' ? 'AMOUNT (PAXG)' : t('bridge_amount_gstd')}
+                </div>
                 <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00"
                   className="w-full bg-transparent border-none outline-none text-2xl font-black text-white" />
               </div>
+
+              {/* PAXG Conversion Preview */}
+              {paxgRate && amount && parseFloat(amount) > 0 && (
+                <div style={{
+                  marginTop: 12, padding: '14px 16px', borderRadius: 14,
+                  background: 'linear-gradient(135deg, rgba(234,179,8,0.06), rgba(251,191,36,0.03))',
+                  border: '1px solid rgba(234,179,8,0.15)',
+                }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#fbbf24', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 8 }}>
+                    🏆 PAXG ↔ GSTD Conversion
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>You send</span>
+                    <span style={{ fontSize: 14, fontWeight: 800, color: 'white' }}>
+                      {parseFloat(amount).toFixed(sourceAsset === 'PAXG' ? 6 : 2)} {sourceAsset}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>You receive ≈</span>
+                    <span style={{ fontSize: 14, fontWeight: 800, color: '#34d399' }}>
+                      {sourceAsset === 'PAXG'
+                        ? (parseFloat(amount) * paxgRate.gstd_per_paxg).toLocaleString(undefined, { maximumFractionDigits: 2 }) + ' GSTD'
+                        : (parseFloat(amount) * paxgRate.paxg_per_gstd).toFixed(6) + ' PAXG'
+                      }
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>
+                    <span>Rate</span>
+                    <span>1 PAXG = {paxgRate.gstd_per_paxg?.toLocaleString(undefined, { maximumFractionDigits: 0 })} GSTD</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 10, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>
+                    <span>Gold price</span>
+                    <span>${paxgRate.paxg_price_usd?.toLocaleString(undefined, { maximumFractionDigits: 2 })}/oz</span>
+                  </div>
+                </div>
+              )}
 
               {/* Info */}
               <div className="mt-4 p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-2">

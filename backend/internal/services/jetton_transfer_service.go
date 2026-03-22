@@ -130,7 +130,6 @@ func (j *JettonTransferService) estimateAndLogTransfer(
 
 	req.Header.Set("Content-Type", "application/json")
 	if j.apiKey != "" {
-		req.Header.Set("Authorization", "Bearer "+j.apiKey)
 		req.Header.Set("X-API-Key", j.apiKey)
 	}
 

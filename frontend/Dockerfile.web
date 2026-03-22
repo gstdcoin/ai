@@ -1,5 +1,7 @@
 FROM node:22-alpine AS deps
 WORKDIR /app
+# Install build tools for native modules (usb, required by @metamask/sdk)
+RUN apk add --no-cache python3 make g++ linux-headers eudev-dev
 COPY package*.json ./
 RUN npm install --production=false --legacy-peer-deps
 

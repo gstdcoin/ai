@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'next-i18next';
 import { useWalletStore } from '../../store/walletStore';
-import { apiGet, apiPost } from '../../lib/apiClient';
+import { apiGet } from '../../lib/apiClient';
 import {
     Wallet,
     TrendingUp,
@@ -16,7 +16,6 @@ import {
     Copy,
     Check
 } from 'lucide-react';
-import { API_BASE_URL } from '../../lib/config';
 import SovereignTerminalModal from './SovereignTerminalModal';
 
 interface WalletBalance {
@@ -83,7 +82,12 @@ export const WalletBalanceWidget: React.FC = () => {
             };
 
             setBalance(newBalance);
-            updateBalance("0", newBalance.gstd_balance, newBalance.swarm_balance, newBalance.pending_earnings);
+            updateBalance(
+                (newBalance.ton_balance || 0).toString(),
+                newBalance.gstd_balance,
+                newBalance.swarm_balance,
+                newBalance.pending_earnings
+            );
             setSyncStatus('ok');
 
         } catch (error) {
@@ -130,19 +134,17 @@ export const WalletBalanceWidget: React.FC = () => {
                             {t('wallet.realTime')}
                             <span className="inline-flex items-center gap-1 text-[11px] font-medium">
                                 <span
-                                    className={`w-2 h-2 rounded-full ${
-                                        syncStatus === 'ok'
-                                            ? 'bg-emerald-400 shadow-[0_0_6px_#34d399]'
-                                            : syncStatus === 'error'
-                                                ? 'bg-red-500 animate-pulse'
-                                                : 'bg-yellow-400 animate-pulse'
-                                    }`}
+                                    className={`w-2 h-2 rounded-full ${(() => {
+                                        if (syncStatus === 'ok') return 'bg-emerald-400 shadow-[0_0_6px_#34d399]';
+                                        if (syncStatus === 'error') return 'bg-red-500 animate-pulse';
+                                        return 'bg-yellow-400 animate-pulse';
+                                    })()}`}
                                 />
-                                {syncStatus === 'ok'
-                                    ? (t('wallet.onChainConfirmed') || 'On-chain confirmed')
-                                    : syncStatus === 'error'
-                                        ? (t('wallet.outOfSync') || 'Out of sync, retry')
-                                        : (t('wallet.syncing') || 'Syncing…')}
+                                {(() => {
+                                    if (syncStatus === 'ok') return t('wallet.onChainConfirmed') || 'On-chain confirmed';
+                                    if (syncStatus === 'error') return t('wallet.outOfSync') || 'Out of sync, retry';
+                                    return t('wallet.syncing') || 'Syncing…';
+                                })()}
                             </span>
                         </p>
                     </div>

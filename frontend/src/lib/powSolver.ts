@@ -51,7 +51,7 @@ function countLeadingZeroBits(hexHash: string): number {
 async function sha256(data: string): Promise<string> {
     const encoder = new TextEncoder();
     const dataBuffer = encoder.encode(data);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', new Uint8Array(dataBuffer).buffer as ArrayBuffer);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }

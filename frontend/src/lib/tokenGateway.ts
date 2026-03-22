@@ -13,11 +13,12 @@
  */
 
 import { apiGet, apiPost } from './apiClient';
+import { GSTD_CONTRACT_ADDRESS } from './config';
 
-// GSTD Jetton contract on TON
-export const GSTD_CONTRACT = 'EQAIYlrr3UiMJ9fqI-B4j2nJdiiD7WzyaNL1MX_wiONc4OUi';
-export const STON_FI_SWAP = 'https://app.ston.fi/swap?ft=TON&tt=GSTD';
-export const DEDUST_SWAP = 'https://dedust.io/swap/TON/GSTD';
+// GSTD Jetton contract on TON (from centralized config — real jetton master)
+export const GSTD_CONTRACT = GSTD_CONTRACT_ADDRESS;
+export const STON_FI_SWAP = `https://app.ston.fi/swap?ft=TON&tt=${GSTD_CONTRACT}`;
+export const DEDUST_SWAP = `https://dedust.io/swap/TON/${GSTD_CONTRACT}`;
 
 // Minimum TON required for gas on different operations
 export const GAS_ESTIMATES = {
@@ -57,7 +58,7 @@ export interface TransactionResult {
 }
 
 class TokenGatewayService {
-    private baseUrl: string;
+    private readonly baseUrl: string;
 
     constructor() {
         this.baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
@@ -67,10 +68,9 @@ class TokenGatewayService {
 
     async getBalance(walletAddress: string): Promise<TokenBalance> {
         try {
-            const [platformRes, chainRes, gaslessRes] = await Promise.all([
+            const [platformRes, chainRes] = await Promise.all([
                 apiGet('/api/v1/wallet/gstd-balance'),
                 this.getOnChainBalance(walletAddress),
-                apiGet('/api/v1/gasless/status'),
             ]);
 
             return {
@@ -81,7 +81,8 @@ class TokenGatewayService {
                 pending: platformRes?.pending || 0,
                 escrow: platformRes?.escrow || 0,
             };
-        } catch (_e) {
+        } catch (e) {
+            console.warn('TokenGateway: balance fetch failed:', e);
             return { gstd: 0, gstdOnChain: 0, gstdPlatform: 0, ton: 0, pending: 0, escrow: 0 };
         }
     }
@@ -105,7 +106,8 @@ class TokenGatewayService {
             const ton = (tonData?.balance || 0) / 1e9;
 
             return { gstd, ton };
-        } catch (_e) {
+        } catch (e) {
+            console.warn('TokenGateway: on-chain balance failed:', e);
             return { gstd: 0, ton: 0 };
         }
     }
@@ -184,7 +186,8 @@ class TokenGatewayService {
                 usd: res?.gstd_price_usd || 0.00028,
                 tonPerGstd: res?.ton_per_gstd || 0.00005,
             };
-        } catch (_e) {
+        } catch (e) {
+            console.warn('TokenGateway: price fetch failed:', e);
             return { usd: 0.00028, tonPerGstd: 0.00005 };
         }
     }
@@ -217,7 +220,7 @@ class TokenGatewayService {
         senderJettonWallet: string; // Sender's jetton wallet address
         forwardPayload?: string;    // Optional comment
     }) {
-        const { recipientAddress, jettonAmount, senderJettonWallet, forwardPayload } = params;
+        const { senderJettonWallet } = params;
 
         // NOTE: For proper TEP-74 transfers, use buildJettonTransferTx from
         // lib/jettonTransfer.ts which builds a real Cell payload.
