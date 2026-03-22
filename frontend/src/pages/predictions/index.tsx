@@ -12,6 +12,7 @@ import { apiGet, apiPost } from '../../lib/apiClient';
 import { useWalletStore } from '../../store/walletStore';
 import { useTonConnectUI, TonConnectButton } from '@tonconnect/ui-react';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
+import { buildSignalPurchaseTx } from '../../lib/jettonTransfer';
 
 interface Signal {
     id: string;
@@ -170,22 +171,36 @@ export default function PredictionsPage() {
         }
         setBuying(signal.id);
         try {
-            const res = await apiPost(`/api/v1/signals/buy/${signal.id}`, {});
+            // Step 1: Build real GSTD jetton transfer to treasury
+            toast.loading('Building on-chain payment...', { id: 'buy-signal' });
+            const tx = await buildSignalPurchaseTx(address, signal.id, signal.price_gstd);
+
+            // Step 2: Sign & send via TonConnect (Tonkeeper/MyTonWallet)
+            toast.loading('Please confirm in your wallet...', { id: 'buy-signal' });
+            const result = await tonConnectUI.sendTransaction(tx);
+            const txHash = result.boc || '';
+
+            // Step 3: Notify backend with tx hash to unlock the signal
+            toast.loading('Verifying payment on-chain...', { id: 'buy-signal' });
+            const res = await apiPost(`/api/v1/signals/buy/${signal.id}`, { tx_hash: txHash });
+
             if (res?.full_report) {
                 setSelectedSignal({ ...signal, full_report: res.full_report });
-                toast.success(`Signal unlocked for ${signal.price_gstd} GSTD`);
+                toast.success(`✅ Signal unlocked on-chain for ${signal.price_gstd} GSTD!`, { id: 'buy-signal' });
                 loadData();
             } else {
-                toast.success(res?.message || 'Purchase successful');
+                toast.success(res?.message || '✅ Purchase confirmed on-chain!', { id: 'buy-signal' });
                 loadData();
             }
         } catch (e: any) {
             const msg = e?.data?.error || e?.message || 'Purchase failed';
-            if (msg.toLowerCase().includes('insufficient') || msg.toLowerCase().includes('balance') || e?.status === 402) {
+            if (msg.includes('User rejected') || msg.includes('Cancelled')) {
+                toast.error('Transaction cancelled', { id: 'buy-signal' });
+            } else if (msg.toLowerCase().includes('insufficient') || msg.toLowerCase().includes('balance') || e?.status === 402) {
                 const serverBalance = e?.data?.balance ?? (gstdBalance || 0);
-                toast.error(`Need ${signal.price_gstd} GSTD. Balance: ${Number(serverBalance).toFixed(2)}`);
+                toast.error(`Need ${signal.price_gstd} GSTD. Balance: ${Number(serverBalance).toFixed(2)}`, { id: 'buy-signal' });
             } else {
-                toast.error(msg);
+                toast.error(msg, { id: 'buy-signal' });
             }
         } finally {
             setBuying(null);
