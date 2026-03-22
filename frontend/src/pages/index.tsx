@@ -6,6 +6,8 @@ import { useState, useEffect, useRef } from 'react';
 import { API_BASE_URL } from '../lib/config';
 import { MessageSquare, ArrowRight, Bot, Brain, Building2, Activity, Zap, Server, Shield, Globe } from 'lucide-react';
 import dynamic from 'next/dynamic';
+import { motion } from 'framer-motion';
+import { StaggerContainer, StaggerItem, SlideUp } from '../components/common/Animations';
 
 const AmbientMesh = dynamic(() => import('../components/home/AmbientMesh'), { ssr: false });
 const LivePulse = dynamic(() => import('../components/home/LivePulse'), { ssr: false });
@@ -60,7 +62,12 @@ function StatCard({ value, label, color, icon, emoji, sub }: {
   }, [value]);
 
   return (
-    <div className={`p-6 rounded-2xl glass-pro shine-on-hover transition-all duration-500 text-center relative overflow-hidden ${flash ? 'stat-flash' : ''}`}>
+    <motion.div
+      className={`p-6 rounded-2xl glass-pro shine-on-hover transition-all duration-500 text-center relative overflow-hidden ${flash ? 'stat-flash' : ''}`}
+      whileHover={{ scale: 1.04, y: -3 }}
+      whileTap={{ scale: 0.97 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+    >
       {/* Emoji icon (gstdbot style) */}
       {emoji && <div style={{ fontSize: 28, marginBottom: 8, opacity: 0.85, lineHeight: 1 }}>{emoji}</div>}
       {/* Lucide icon fallback */}
@@ -71,7 +78,7 @@ function StatCard({ value, label, color, icon, emoji, sub }: {
       {sub && <div className={`text-sm font-bold ${color} opacity-70 mb-1`}>{sub}</div>}
       {/* Label */}
       <div className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mt-1">{label}</div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -144,7 +151,7 @@ export default function Home() {
 
         {/* ═══════ HERO ═══════ */}
         <section className="px-4 sm:px-6 py-16 lg:py-24 w-full max-w-7xl mx-auto">
-          <div className="text-center max-w-4xl mx-auto mb-16 stagger-in">
+          <SlideUp className="text-center max-w-4xl mx-auto mb-16">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full glass-pro text-[11px] font-bold tracking-wide text-cyan-400 mb-6">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
@@ -183,13 +190,13 @@ export default function Home() {
                 <span>{t('run_a_node', 'Run a Node')}</span>
               </a>
             </div>
-          </div>
+          </SlideUp>
         </section>
 
         {/* ═══════ WHAT YOU GET (3 columns) ═══════ */}
         <section className="px-4 sm:px-6 pb-20 w-full max-w-6xl mx-auto" id="features">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-20 stagger-in">
-            {/* Use Sovereign AI */}
+          <StaggerContainer className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-20">
+            <StaggerItem>
             <div className="group p-8 rounded-3xl glass-pro gradient-border shine-on-hover transition-all duration-500">
               <div className="w-12 h-12 rounded-2xl bg-violet-500/15 flex items-center justify-center mb-6 glow-breathe">
                 <MessageSquare className="text-violet-400" size={24} />
@@ -202,8 +209,9 @@ export default function Home() {
                 {t('access_intelligence', 'Access Intelligence')} <ArrowRight size={14} />
               </Link>
             </div>
+            </StaggerItem>
 
-            {/* Run a Node */}
+            <StaggerItem>
             <div className="group p-8 rounded-3xl glass-pro gradient-border shine-on-hover transition-all duration-500">
               <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 flex items-center justify-center mb-6 glow-breathe" style={{ animationDelay: '2s' }}>
                 <Server className="text-emerald-400" size={24} />
@@ -216,8 +224,9 @@ export default function Home() {
                 {t('ignite_your_node', 'Ignite Your Node')} <ArrowRight size={14} />
               </a>
             </div>
+            </StaggerItem>
 
-            {/* Gold-Backed */}
+            <StaggerItem>
             <div className="group p-8 rounded-3xl glass-pro gradient-border shine-on-hover transition-all duration-500">
               <div className="w-12 h-12 rounded-2xl bg-amber-500/15 flex items-center justify-center mb-6 glow-breathe" style={{ animationDelay: '4s' }}>
                 <Shield className="text-amber-400" size={24} />
@@ -230,7 +239,8 @@ export default function Home() {
                 {t('telegram', 'Telegram')} <ArrowRight size={14} />
               </a>
             </div>
-          </div>
+            </StaggerItem>
+          </StaggerContainer>
 
           {/* ═══════ NODE OS FEATURES STRIP ═══════ */}
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 mb-20 stagger-in">
@@ -272,20 +282,20 @@ export default function Home() {
           </div>
 
           {/* ═══════ NETWORK STATS ═══════ */}
-          <div className="w-full max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 stagger-in" id="stats">
-            <StatCard value={totalUsers} label={t('total_users', 'Users')} color="text-emerald-400" emoji="👥" />
-            <StatCard value={totalNodes} label={t('total_nodes', 'Nodes')} color="text-cyan-400" emoji="📡" />
-            <StatCard value={totalTasks} label={t('tasks_completed', 'Tasks')} color="text-violet-400" emoji="⚡" />
-            <StatCard value={goldReserve} sub="XAUt" label={t('xaut_reserve', 'Gold Reserve')} color="text-amber-400" emoji="🥇" />
-          </div>
+          <StaggerContainer className="w-full max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4 mb-8" id="stats">
+            <StaggerItem><StatCard value={totalUsers} label={t('total_users', 'Users')} color="text-emerald-400" emoji="👥" /></StaggerItem>
+            <StaggerItem><StatCard value={totalNodes} label={t('total_nodes', 'Nodes')} color="text-cyan-400" emoji="📡" /></StaggerItem>
+            <StaggerItem><StatCard value={totalTasks} label={t('tasks_completed', 'Tasks')} color="text-violet-400" emoji="⚡" /></StaggerItem>
+            <StaggerItem><StatCard value={goldReserve} sub="XAUt" label={t('xaut_reserve', 'Gold Reserve')} color="text-amber-400" emoji="🥇" /></StaggerItem>
+          </StaggerContainer>
 
           {/* ═══════ TOKENOMICS ═══════ */}
-          <div className="w-full max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4 mb-20 stagger-in">
-            <StatCard value={circulatingSupply} sub="GSTD" label={t('circulating_supply', 'Circulating')} color="text-cyan-400" emoji="🔄" />
-            <StatCard value={totalMinted} sub="GSTD" label={t('total_minted', 'Total Minted')} color="text-violet-400" emoji="🪙" />
-            <StatCard value={totalBurned} sub="GSTD" label={t('total_burned', 'Burned')} color="text-red-400" emoji="🔥" />
-            <StatCard value={gstdPrice} label={t('gstd_price', 'GSTD Price')} color="text-amber-400" emoji="💎" />
-          </div>
+          <StaggerContainer className="w-full max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4 mb-20">
+            <StaggerItem><StatCard value={circulatingSupply} sub="GSTD" label={t('circulating_supply', 'Circulating')} color="text-cyan-400" emoji="🔄" /></StaggerItem>
+            <StaggerItem><StatCard value={totalMinted} sub="GSTD" label={t('total_minted', 'Total Minted')} color="text-violet-400" emoji="🪙" /></StaggerItem>
+            <StaggerItem><StatCard value={totalBurned} sub="GSTD" label={t('total_burned', 'Burned')} color="text-red-400" emoji="🔥" /></StaggerItem>
+            <StaggerItem><StatCard value={gstdPrice} label={t('gstd_price', 'GSTD Price')} color="text-amber-400" emoji="💎" /></StaggerItem>
+          </StaggerContainer>
 
           {/* ═══════ LIVE NETWORK PULSE ═══════ */}
           <div className="w-full max-w-5xl mx-auto mb-20" id="pulse">
