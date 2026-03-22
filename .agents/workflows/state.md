@@ -15,7 +15,7 @@ description: Current ecosystem state — always read FIRST before any changes
 │                    GSTD ECOSYSTEM                           │
 │                 Server: 82.115.48.228                       │
 │                 OS: Ubuntu 24.04                            │
-│                 Last Update: 2026-03-22 (Production v186/v25)       │
+│                 Last Update: 2026-03-22 (Production v186/v26)       │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  ┌─── NGINX (gstd_nginx_lb) ─── Port 80/443 ─────────┐    │
@@ -44,10 +44,12 @@ description: Current ecosystem state — always read FIRST before any changes
 │  │  Note:      Docker-only (systemd disabled)         │     │
 │  └────────────────────────────────────────────────────┘     │
 │                                                             │
-│  ┌─── GSTD BRIDGE (Rust) ────────────────────────────┐     │
-│  │  Container: gstd-bridge-test                       │     │
+│  ┌─── GSTD BRIDGE (Rust + Go P2P) ────────────────────┐     │
+│  │  Rust Container: gstd-bridge-test                  │     │
 │  │  Image:     gstd-bridge:latest                     │     │
-│  │  Chains:    TON ↔ Solana ↔ XRPL                    │     │
+│  │  Chains:    TON ↔ Solana ↔ XRPL ↔ Ethereum         │     │
+│  │  Assets:    GSTD, PAXG (PAX Gold)                  │     │
+│  │  P2P API:   /api/v1/bridge/p2p/* (Go backend)      │     │
 │  └────────────────────────────────────────────────────┘     │
 │                                                             │
 │  ┌─── TELEGRAM BOT (TypeScript) ─────────────────────┐     │
@@ -77,7 +79,7 @@ description: Current ecosystem state — always read FIRST before any changes
 | Component | Version/Image | Path | Container |
 |-----------|---------------|------|-----------|
 | **Backend** | `gstd-backend-blue:v186` ×4 | `/home/ubuntu/backend` | `ubuntu-backend-blue-{1,2,5,6}` |
-| **Frontend** | `gstd-frontend:v25` (Docker) | `/home/ubuntu/frontend` | `ubuntu-frontend-1` |
+| **Frontend** | `gstd-frontend:v26` (Docker) | `/home/ubuntu/frontend` | `ubuntu-frontend-1` |
 | **Telegram Bot** | `gstd-bot:v31` | `/home/ubuntu/gstdbot` | `gstd-telegram-bot` |
 | **GSTD Bridge** | `gstd-bridge:latest` | `/home/ubuntu/gstd-bridge` | `gstd-bridge-test` |
 | **Chat UI** | Static HTML | `/home/ubuntu/chat-ui` | *served by nginx* |
@@ -212,21 +214,42 @@ systemctl is-active gstd-frontend
 
 ## 📊 Database: `distributed_computing`
 
-Top tables by row count (as of 2026-03-13):
-- `token_burns`: 43,698 rows
-- `agent_knowledge`: 10,658 rows
-- `pow_pattern_snapshots`: 2,418 rows
-- `golden_reserve_log`: 593 rows
-- `agent_registry`: 285 rows
-- `users`: 177 rows
-- `tasks`: 81 rows
+Top tables by row count (as of 2026-03-22):
+- `token_burns`: 3 rows (reset after refactor)
+- `bridge_orders`: 6 rows (3 matched, 3 completed)
+- `nodes`: 87 registered (1 online)
+- `users`: 202 registered
+- `tasks`: 71 total
+- `staking_positions`: 0 active stakers
 - **Total tables:** 153 (**102 empty** — reserved for future features)
+
+## 🌉 Bridge (P2P) — Status
+
+| Chain | Asset | Status |
+|-------|-------|--------|
+| TON | GSTD | ✅ Active |
+| Solana | GSTD | ✅ Active |
+| XRPL | GSTD | ✅ Active |
+| Ethereum | PAXG | ✅ Active (NEW) |
+
+**Rate (live):** 1 PAXG = ~59,370,274 GSTD (gold $4,486/oz)
+**PAXG contract:** `0x45804880De22913dAFE09f4980848ECE6EcbAf78`
+
+## 🔗 Wallet SDKs (frontend)
+
+| SDK | Version | Wallets |
+|-----|---------|--------|
+| `@metamask/sdk-react` | 0.33.1 | MetaMask, Trust Wallet (EIP-6963), Coinbase |
+| `@solana/wallet-adapter-react` | 0.15.39 | Phantom, Solflare |
+| `@tonconnect/ui-react` | 2.3.1 | Tonkeeper, MyTonWallet |
+| `xumm` | 1.0.0 | Xaman (Xumm) |
+| `ethers` | 6.16.0 | PAXG ERC-20 TX building |
 
 ## 🔐 SSL Certificate
 
 - **Domains:** *.gstdtoken.com (wildcard)
 - **Expires:** May 29, 2026
-- **Days remaining:** ~79
+- **Days remaining:** ~67
 
 ## 🧹 Cleanup Policy
 
