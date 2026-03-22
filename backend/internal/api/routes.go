@@ -161,6 +161,9 @@ func SetupRoutes(deps APIDependencies) {
     swarmLedger := deps.SwarmLedger
 	log.Printf("🔧 SetupRoutes: Starting route setup, redisClient type: %T", redisClient)
 
+	// ═══ DevSecOps SECURITY HEADERS (awesome-devsecops) ═══
+	router.Use(SecurityHeadersMiddleware())
+
 	// CORS: allow API access from web app, Telegram, mobile, and external clients
 	allowedOrigins := map[string]bool{
 		"https://app.gstdtoken.com":     true,

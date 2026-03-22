@@ -830,6 +830,15 @@ func (h *GatewayHandler) HandleChatCompletions(c *gin.Context) {
 
 // respondWithUsage sends a standardized OpenAI-compatible response with GSTD PoW stats.
 func (h *GatewayHandler) respondWithUsage(c *gin.Context, model, content string, cached bool, activeDevices int, fee float64) {
+	// ═══ OUTPUT LEAK SCANNING (awesome-prompt-injection defense) ═══
+	// Check if AI response accidentally leaked system prompts or API keys
+	if h.guardrails != nil {
+		if leaked, label := h.guardrails.ScanOutputForLeaks(content); leaked {
+			log.Printf("🛡️ OUTPUT BLOCKED: %s — replacing with safe response", label)
+			content = "I can help you with that! However, I'm unable to share internal system details. How else can I assist you?"
+		}
+	}
+
 	workerAmount := fee * 0.85
 	out := gin.H{
 		"id":      "chatcmpl-gstd",
