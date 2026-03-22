@@ -219,16 +219,18 @@ class TokenGatewayService {
     }) {
         const { recipientAddress, jettonAmount, senderJettonWallet, forwardPayload } = params;
 
-        // Build jetton transfer BOC (simplified — standard TEP-74)
-        // In production, use @ton/ton library for proper BOC building
+        // NOTE: For proper TEP-74 transfers, use buildJettonTransferTx from
+        // lib/jettonTransfer.ts which builds a real Cell payload.
+        // This method provides a basic fallback structure.
         return {
             validUntil: Math.floor(Date.now() / 1000) + 600,
             messages: [
                 {
                     address: senderJettonWallet,
-                    amount: '50000000', // 0.05 TON for gas
-                    // Standard jetton transfer payload would be built here
-                    // using Cell builder from @ton/ton
+                    amount: '65000000', // 0.065 TON for gas
+                    // The real payload should be built using @ton/core Cell builder.
+                    // Use buildJettonTransferTx() from lib/jettonTransfer.ts for
+                    // proper TEP-74 jetton transfer with on-chain verification.
                 },
             ],
         };

@@ -390,7 +390,46 @@ export default function BridgePage() {
   };
 
   const handleConfirmDeposit = async (orderId: string) => {
-    const txHash = prompt('Enter your deposit TX hash:');
+    // Find the order to determine the chain and counterparty address
+    const order = myOrders.find(o => o.id === orderId);
+    if (!order) { alert('Order not found'); return; }
+
+    // If source chain is TON, send real GSTD via TonConnect
+    if (order.source_chain === 'TON' && walletAddress && order.send_gstd_to) {
+      try {
+        setLoading(true);
+        const { buildBridgeDepositTx } = await import('../lib/jettonTransfer');
+
+        // Build real jetton transfer to counterparty
+        const tx = await buildBridgeDepositTx(walletAddress, orderId, order.amount, order.send_gstd_to);
+
+        // Send via TonConnect
+        const result = await (window as any).__tonConnectUI?.sendTransaction(tx);
+        const txHash = result?.boc || '';
+
+        if (!txHash) { alert('Transaction cancelled'); return; }
+
+        // Submit tx hash to backend for verification
+        const res = await fetch(`${API_BASE_URL}/api/v1/bridge/p2p/order/${orderId}/deposit`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tx_hash: txHash }),
+        });
+        const data = await res.json();
+        if (res.ok) { alert(data.message || '✅ GSTD sent on-chain! Deposit confirmed.'); setTab('my'); }
+        else { alert(data.error || 'Verification failed'); }
+      } catch (err: any) {
+        if (err?.message?.includes('User rejected') || err?.message?.includes('Cancelled')) {
+          alert('Transaction cancelled');
+        } else {
+          alert(err?.message || 'Transaction failed');
+        }
+      } finally { setLoading(false); }
+      return;
+    }
+
+    // Non-TON chains: manual TX hash entry
+    const txHash = prompt('Enter your deposit TX hash (from Solana/XRPL wallet):');
     if (!txHash) return;
     try {
       const res = await fetch(`${API_BASE_URL}/api/v1/bridge/p2p/order/${orderId}/deposit`, {

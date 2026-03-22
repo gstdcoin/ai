@@ -3,7 +3,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { Lock, TrendingUp, Clock, Shield, Zap, RefreshCw, Info, Wallet, Loader2, Unlock } from 'lucide-react';
-import { useTonWallet, TonConnectButton } from '@tonconnect/ui-react';
+import { useTonWallet, useTonConnectUI, TonConnectButton } from '@tonconnect/ui-react';
+import { buildStakingDepositTx } from '../lib/jettonTransfer';
 import { API_BASE_URL } from '../lib/config';
 import { toast } from 'sonner';
 
@@ -26,6 +27,7 @@ const APY_TIERS = [
 export default function StakingPage() {
   const { t } = useTranslation('common');
   const tonWallet = useTonWallet();
+  const [tonConnectUI] = useTonConnectUI();
   const walletAddress = tonWallet?.account?.address || '';
   const [info, setInfo] = useState<StakingInfo | null>(null);
   const [selectedTier, setSelectedTier] = useState(1);
@@ -265,35 +267,44 @@ export default function StakingPage() {
                 if (!walletAddress || amt < 1) return;
                 setStaking(true);
                 try {
-                  // REAL BLOCKCHAIN TRANSACTION
-                  toast.loading('Please confirm transaction in your TON wallet...', { id: 'staking' });
-                  
-                  // In real app, we would use `const [tonConnectUI] = useTonConnectUI();`
-                  // and invoke `tonConnectUI.sendTransaction` sending GSTD to Treasury Wallet.
-                  // Since we are mocking the UI library invocation here to be safe without the hook,
-                  // we notify the user.
-                  toast.success(`Broadcasting tx... STON.fi payload constructed for TON. Expect stGSTD momentarily!`, { id: 'staking' });
+                  // Step 1: Build real GSTD jetton transfer to Treasury
+                  toast.loading('Building on-chain transaction...', { id: 'staking' });
+                  const tx = await buildStakingDepositTx(walletAddress, amt, tier.days);
 
+                  // Step 2: Sign & send via TonConnect (Tonkeeper/MyTonWallet)
+                  toast.loading('Please confirm in your wallet...', { id: 'staking' });
+                  const result = await tonConnectUI.sendTransaction(tx);
+                  const txHash = result.boc || '';
+
+                  // Step 3: Notify backend with tx hash to record stake
+                  toast.loading('Verifying on-chain...', { id: 'staking' });
                   const sessionToken = localStorage.getItem('session_token') || '';
                   const res = await fetch(`${API_BASE_URL}/api/v1/sovereign/stake`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-Session-Token': sessionToken, 'Authorization': `Bearer ${sessionToken}` },
-                    body: JSON.stringify({ amount: amt, lock_days: tier.days, web3_signature: "REAL_HINT" }),
+                    body: JSON.stringify({ amount: amt, lock_days: tier.days, tx_hash: txHash }),
                   });
                   const data = await res.json();
                   if (res.ok) {
-                    toast.success(`Transaction Confirmed on TON! You received ${amt} stGSTD (Liquid Staked) at ${data.apy}% APY`);
+                    toast.success(`✅ Staked ${amt} GSTD on-chain! You received stGSTD at ${data.apy || tier.apy}% APY`, { id: 'staking' });
                     setUserStaked(data.total_staked || 0);
                     fetchInfo();
                   } else {
-                    toast.error(data.error || 'Stake failed');
+                    toast.error(data.error || 'Backend recording failed, but tx was sent', { id: 'staking' });
                   }
-                } catch { toast.error('Network error'); }
+                } catch (err: any) {
+                  const msg = err?.message || 'Transaction failed';
+                  if (msg.includes('User rejected') || msg.includes('Cancelled')) {
+                    toast.error('Transaction cancelled', { id: 'staking' });
+                  } else {
+                    toast.error(msg, { id: 'staking' });
+                  }
+                }
                 finally { setStaking(false); }
               }}
               className="btn-sovereign emerald w-full disabled:opacity-30 disabled:cursor-not-allowed text-xs sm:text-sm whitespace-nowrap overflow-hidden text-ellipsis"
             >
-              {staking ? <><Loader2 size={14} className="animate-spin mr-2 shrink-0" /> Minting On-Chain...</> : <><Lock size={14} className="mr-2 shrink-0" /> Stake & Mint stGSTD (Web3)</>}
+              {staking ? <><Loader2 size={14} className="animate-spin mr-2 shrink-0" /> Signing On-Chain...</> : <><Lock size={14} className="mr-2 shrink-0" /> Stake GSTD (TON Wallet)</>}
             </button>
             <button
               disabled={!walletAddress || unstaking || userStaked <= 0}
