@@ -5,6 +5,7 @@ go 1.24.6
 toolchain go1.24.12
 
 require (
+	github.com/dgraph-io/ristretto/v2 v2.4.0
 	github.com/gin-contrib/cors v1.7.2
 	github.com/gin-contrib/gzip v1.2.5
 	github.com/gin-gonic/gin v1.11.0
