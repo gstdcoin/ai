@@ -14,8 +14,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
-
 	infRouter "distributed-computing-platform/internal/inference"
 	"distributed-computing-platform/internal/p2p"
 
@@ -27,138 +25,144 @@ import (
 )
 
 const (
-	errTaskIDRequired        = "task id is required"
-	errTaskNotFound          = "task not found"
-	errWalletRequired        = "wallet parameter required"
-	errQueryFailed           = "query failed"
-	headerWalletAddress      = "X-Wallet-Address"
-	errHeaderWalletRequired  = "X-Wallet-Address header required"
+	errTaskIDRequired       = "task id is required"
+	errTaskNotFound         = "task not found"
+	errWalletRequired       = "wallet parameter required"
+	errQueryFailed          = "query failed"
+	headerWalletAddress     = "X-Wallet-Address"
+	errHeaderWalletRequired = "X-Wallet-Address header required"
 )
 
 type APIDependencies struct {
-    Router *gin.Engine
-    TaskService *services.TaskService
-    DeviceService *services.DeviceService
-    ValidationService *services.ValidationService
-    PaymentService *services.PaymentService
-    TonService *services.TONService
-    TonConfig config.TONConfig
-    AssignmentService *services.AssignmentService
-    ResultService *services.ResultService
-    StatsService *services.StatsService
-    TrustService *services.TrustV3Service
-    Hub *WSHub
-    EncryptionService *services.EncryptionService
-    EntropyService *services.EntropyService
-    UserService *services.UserService
-    NodeService *services.NodeService
-    TaskPaymentService *services.TaskPaymentService
-    RewardEngine *services.RewardEngine
-    TaskRateLimiter *services.RateLimiter
-    Db interface{}
-    RedisClient interface{}
-    PayoutRetryService *services.PayoutRetryService
-    EscrowService *services.EscrowService
-    PoolMonitorService *services.PoolMonitorService
-    CacheService *services.CacheService
-    ErrorLogger *services.ErrorLogger
-    PowService *services.ProofOfWorkService
-    TaskOrchestrator *services.TaskOrchestrator
-    TelegramService *services.TelegramService
-    MaintenanceService *services.MaintenanceService
-    SovereignBridge *services.SovereignBridgeService
-    KnowledgeService *services.KnowledgeService
-    PricingService *services.PricingService
-    InvoiceService *services.InvoiceService
-    WelcomeBonusService *services.WelcomeBonusService
-    BurnService *services.BurnService
-    MultiLevelReferralService *services.MultiLevelReferralService
-    AgentMarketplaceService *services.AgentMarketplaceService
-    ApiKeyService *services.APIKeyService
-    GuardrailsService *services.GuardrailsService
-    GeoService *services.GeoService
-    AgentModelService *services.AgentModelService
-    FleetCommandService *services.FleetCommandService
-    OmniPerformance *services.OmniPerformanceService
-    SwarmLFS *services.SwarmLFSService
-    SettlementService *services.SettlementService
-    GaslessUserService *services.GaslessUserService
-    FinancialMonitor *services.FinancialMonitorService
-    Organism *services.SovereignOrganismService
-    MonetizationService *services.MonetizationMetricsService
-    OrganismHub *services.OrganismHubService
-    LlmRouter *infRouter.Router
-    RecyclingPool *services.RecyclingPoolService
-    CocoonBridge *services.CocoonBridgeService
-    CocoonSymbiosis *services.CocoonSwarmSymbiosis
-    HybridRouter *services.HybridIntelligenceRouter
-    ZkProofService *services.ZKComputeProofService
-    SmartRouter *services.SmartRouter
-    SwarmLedger *p2p.Ledger
-    HuggingFaceService *services.HuggingFaceService
+	Router                    *gin.Engine
+	TaskService               *services.TaskService
+	DeviceService             *services.DeviceService
+	ValidationService         *services.ValidationService
+	PaymentService            *services.PaymentService
+	TonService                *services.TONService
+	TonConfig                 config.TONConfig
+	AssignmentService         *services.AssignmentService
+	ResultService             *services.ResultService
+	StatsService              *services.StatsService
+	TrustService              *services.TrustV3Service
+	Hub                       *WSHub
+	EncryptionService         *services.EncryptionService
+	EntropyService            *services.EntropyService
+	UserService               *services.UserService
+	NodeService               *services.NodeService
+	TaskPaymentService        *services.TaskPaymentService
+	RewardEngine              *services.RewardEngine
+	TaskRateLimiter           *services.RateLimiter
+	Db                        interface{}
+	RedisClient               interface{}
+	PayoutRetryService        *services.PayoutRetryService
+	EscrowService             *services.EscrowService
+	PoolMonitorService        *services.PoolMonitorService
+	CacheService              *services.CacheService
+	ErrorLogger               *services.ErrorLogger
+	PowService                *services.ProofOfWorkService
+	TaskOrchestrator          *services.TaskOrchestrator
+	TelegramService           *services.TelegramService
+	MaintenanceService        *services.MaintenanceService
+	SovereignBridge           *services.SovereignBridgeService
+	KnowledgeService          *services.KnowledgeService
+	PricingService            *services.PricingService
+	InvoiceService            *services.InvoiceService
+	WelcomeBonusService       *services.WelcomeBonusService
+	BurnService               *services.BurnService
+	MultiLevelReferralService *services.MultiLevelReferralService
+	AgentMarketplaceService   *services.AgentMarketplaceService
+	ApiKeyService             *services.APIKeyService
+	GuardrailsService         *services.GuardrailsService
+	GeoService                *services.GeoService
+	AgentModelService         *services.AgentModelService
+	FleetCommandService       *services.FleetCommandService
+	OmniPerformance           *services.OmniPerformanceService
+	SwarmLFS                  *services.SwarmLFSService
+	SettlementService         *services.SettlementService
+	GaslessUserService        *services.GaslessUserService
+	FinancialMonitor          *services.FinancialMonitorService
+	Organism                  *services.SovereignOrganismService
+	MonetizationService       *services.MonetizationMetricsService
+	OrganismHub               *services.OrganismHubService
+	LlmRouter                 *infRouter.Router
+	RecyclingPool             *services.RecyclingPoolService
+	CocoonBridge              *services.CocoonBridgeService
+	CocoonSymbiosis           *services.CocoonSwarmSymbiosis
+	HybridRouter              *services.HybridIntelligenceRouter
+	ZkProofService            *services.ZKComputeProofService
+	SmartRouter               *services.SmartRouter
+	SwarmLedger               *p2p.Ledger
+	HuggingFaceService        *services.HuggingFaceService
+	FinanceML                 *services.FinanceMLService
+	IAMService                *services.IAMService
+	ZKBridge                  *services.ZKBridgeService
+	MarketMaker               *services.MarketMakerService
+	RenderEngine              *services.RenderService
+	BillingService            *services.BillingService
 }
 
 //nolint:gocognit // NOSONAR
 func SetupRoutes(deps APIDependencies) {
-    router := deps.Router
-    taskService := deps.TaskService
-    deviceService := deps.DeviceService
-    validationService := deps.ValidationService
-    paymentService := deps.PaymentService
-    tonService := deps.TonService
-    tonConfig := deps.TonConfig
-    assignmentService := deps.AssignmentService
-    resultService := deps.ResultService
-    statsService := deps.StatsService
-    trustService := deps.TrustService
-    hub := deps.Hub
-    encryptionService := deps.EncryptionService
-    entropyService := deps.EntropyService
-    userService := deps.UserService
-    nodeService := deps.NodeService
-    taskPaymentService := deps.TaskPaymentService
-    rewardEngine := deps.RewardEngine
-    taskRateLimiter := deps.TaskRateLimiter
-    db := deps.Db
-    redisClient := deps.RedisClient
-    payoutRetryService := deps.PayoutRetryService
-    escrowService := deps.EscrowService
-    poolMonitorService := deps.PoolMonitorService
-    cacheService := deps.CacheService
-    errorLogger := deps.ErrorLogger
-    powService := deps.PowService
-    taskOrchestrator := deps.TaskOrchestrator
-    telegramService := deps.TelegramService
-    maintenanceService := deps.MaintenanceService
-    sovereignBridge := deps.SovereignBridge
-    knowledgeService := deps.KnowledgeService
-    pricingService := deps.PricingService
-    invoiceService := deps.InvoiceService
-    welcomeBonusService := deps.WelcomeBonusService
-    burnService := deps.BurnService
-    multiLevelReferralService := deps.MultiLevelReferralService
-    agentMarketplaceService := deps.AgentMarketplaceService
-    apiKeyService := deps.ApiKeyService
-    guardrailsService := deps.GuardrailsService
-    geoService := deps.GeoService
-    agentModelService := deps.AgentModelService
-    fleetCommandService := deps.FleetCommandService
-    omniPerformance := deps.OmniPerformance
-    swarmLFS := deps.SwarmLFS
-    settlementService := deps.SettlementService
-    gaslessUserService := deps.GaslessUserService
-    financialMonitor := deps.FinancialMonitor
-    organism := deps.Organism
-    monetizationService := deps.MonetizationService
-    organismHub := deps.OrganismHub
-    llmRouter := deps.LlmRouter
-    recyclingPool := deps.RecyclingPool
-    cocoonBridge := deps.CocoonBridge
-    cocoonSymbiosis := deps.CocoonSymbiosis
-    hybridRouter := deps.HybridRouter
-    zkProofService := deps.ZkProofService
-    smartRouter := deps.SmartRouter
-    swarmLedger := deps.SwarmLedger
+	router := deps.Router
+	taskService := deps.TaskService
+	deviceService := deps.DeviceService
+	validationService := deps.ValidationService
+	paymentService := deps.PaymentService
+	tonService := deps.TonService
+	tonConfig := deps.TonConfig
+	assignmentService := deps.AssignmentService
+	resultService := deps.ResultService
+	statsService := deps.StatsService
+	trustService := deps.TrustService
+	hub := deps.Hub
+	encryptionService := deps.EncryptionService
+	entropyService := deps.EntropyService
+	userService := deps.UserService
+	nodeService := deps.NodeService
+	taskPaymentService := deps.TaskPaymentService
+	rewardEngine := deps.RewardEngine
+	taskRateLimiter := deps.TaskRateLimiter
+	db := deps.Db
+	redisClient := deps.RedisClient
+	payoutRetryService := deps.PayoutRetryService
+	escrowService := deps.EscrowService
+	poolMonitorService := deps.PoolMonitorService
+	cacheService := deps.CacheService
+	errorLogger := deps.ErrorLogger
+	powService := deps.PowService
+	taskOrchestrator := deps.TaskOrchestrator
+	telegramService := deps.TelegramService
+	maintenanceService := deps.MaintenanceService
+	sovereignBridge := deps.SovereignBridge
+	knowledgeService := deps.KnowledgeService
+	pricingService := deps.PricingService
+	invoiceService := deps.InvoiceService
+	welcomeBonusService := deps.WelcomeBonusService
+	burnService := deps.BurnService
+	multiLevelReferralService := deps.MultiLevelReferralService
+	agentMarketplaceService := deps.AgentMarketplaceService
+	apiKeyService := deps.ApiKeyService
+	guardrailsService := deps.GuardrailsService
+	geoService := deps.GeoService
+	agentModelService := deps.AgentModelService
+	fleetCommandService := deps.FleetCommandService
+	omniPerformance := deps.OmniPerformance
+	swarmLFS := deps.SwarmLFS
+	settlementService := deps.SettlementService
+	gaslessUserService := deps.GaslessUserService
+	financialMonitor := deps.FinancialMonitor
+	organism := deps.Organism
+	monetizationService := deps.MonetizationService
+	organismHub := deps.OrganismHub
+	llmRouter := deps.LlmRouter
+	recyclingPool := deps.RecyclingPool
+	cocoonBridge := deps.CocoonBridge
+	cocoonSymbiosis := deps.CocoonSymbiosis
+	hybridRouter := deps.HybridRouter
+	zkProofService := deps.ZkProofService
+	smartRouter := deps.SmartRouter
+	swarmLedger := deps.SwarmLedger
 	log.Printf("🔧 SetupRoutes: Starting route setup, redisClient type: %T", redisClient)
 
 	// ═══ DevSecOps SECURITY HEADERS (awesome-devsecops) ═══
@@ -265,6 +269,32 @@ func SetupRoutes(deps APIDependencies) {
 	go stakingRewards.Start(context.Background())
 	log.Println("💰 Staking Reward Distributor: ACTIVE (24h cycle, funded by chat fees → Golden Reserve)")
 
+	// ═══ REAL BLOCKCHAIN SYNC ENGINE ═══
+	// Listens for real TON jetton deposits for Staking
+	dbConn := db.(*sql.DB)
+	dbConn.Exec(`CREATE TABLE IF NOT EXISTS processed_txs (
+		tx_hash VARCHAR(100) PRIMARY KEY,
+		type VARCHAR(50),
+		wallet VARCHAR(100),
+		amount DECIMAL(20,9),
+		created_at TIMESTAMP
+	)`)
+	treasury := tonConfig.AdminWallet
+	if treasury == "" {
+		treasury = tonConfig.TreasuryWallet
+	}
+	if treasury != "" {
+		syncService := services.NewBlockchainSyncService(dbConn, tonConfig.APIURL, treasury, tonConfig.APIKey)
+		go syncService.Start(context.Background())
+	} else {
+		log.Println("⚠️ BlockchainSync Engine skipped: no Admin/Treasury wallet configured")
+	}
+
+	// ═══ DECENTRALIZED MARKET MAKER ═══
+	if deps.MarketMaker != nil {
+		go deps.MarketMaker.Start(context.Background())
+	}
+
 	// ═══ AUTO-REVENUE ENGINE ═══
 	// Fully autonomous monetization — collects revenue from all 5 streams:
 	// 1. AI Inference fees (45% platform keep)
@@ -317,7 +347,7 @@ func SetupRoutes(deps APIDependencies) {
 	// OMEGA CORE MIDDLEWARE (Applied Globally)
 	// ═══════════════════════════════════════════════════════════════
 	// Intercepts Omega API keys (gstd_sk_*) and sets wallet context.
-	dbConn, _ := db.(*sql.DB)
+	dbConn, _ = db.(*sql.DB)
 	if dbConn != nil && apiKeyService != nil {
 		router.Use(OmegaAuthMiddleware(apiKeyService, dbConn))
 		router.Use(OmegaBillingMiddleware(dbConn, apiKeyService))
@@ -968,8 +998,8 @@ func SetupRoutes(deps APIDependencies) {
 				VALUES ($1, 0, NOW(), NOW())
 				ON CONFLICT (wallet_address) DO NOTHING
 			`, req.ExternalAddress)
-		// Update node to point to external wallet
-		_, err := dbConn.ExecContext(c.Request.Context(), `
+			// Update node to point to external wallet
+			_, err := dbConn.ExecContext(c.Request.Context(), `
 				UPDATE nodes SET wallet_address = $1, updated_at = NOW() WHERE wallet_address = $2 OR id = $2
 			`, req.ExternalAddress, req.NodeAddress)
 			if err != nil {
@@ -1109,40 +1139,84 @@ func SetupRoutes(deps APIDependencies) {
 			c.JSON(200, gin.H{"status": "success", "message": "Task marked as failed"})
 		})
 
+		v1.GET("/bridge/cross-chain/analytics", func(c *gin.Context) {
+			if deps.ZKBridge != nil {
+				c.JSON(http.StatusOK, deps.ZKBridge.GetBridgeAnalytics(c.Request.Context()))
+			} else {
+				c.JSON(http.StatusNotImplemented, gin.H{"error": "ZK Bridge engine disabled"})
+			}
+		})
+
 		v1.POST("/bridge/request", func(c *gin.Context) {
-			// This endpoint allows users to request a token bridge across chains
+			// ZK-Bridge Teleport Endpoint
 			var req struct {
-				SourceChain string  `json:"source_chain"`
-				DestChain   string  `json:"dest_chain"`
-				Amount      float64 `json:"amount"`
-				TxHash      string  `json:"tx_hash"`
-				UserAddress string  `json:"user_address"`
+				SourceWallet string  `json:"source_wallet"`
+				DestWallet   string  `json:"dest_wallet"`
+				SourceChain  string  `json:"source_chain"`
+				DestChain    string  `json:"dest_chain"`
+				Amount       float64 `json:"amount"`
 			}
 			if err := c.ShouldBindJSON(&req); err != nil {
-				c.JSON(400, gin.H{"error": err.Error()})
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 				return
 			}
+			if deps.ZKBridge != nil {
+				srcChain := services.ZKNetwork(req.SourceChain)
+				dstChain := services.ZKNetwork(req.DestChain)
 
-			// Generate payload for the swarm node
-			payloadJSON, _ := json.Marshal(req)
+				order, err := deps.ZKBridge.InitiateTeleport(c.Request.Context(), req.SourceWallet, req.DestWallet, srcChain, dstChain, req.Amount)
+				if err != nil {
+					c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+					return
+				}
+				c.JSON(http.StatusOK, order)
+			} else {
+				c.JSON(http.StatusNotImplemented, gin.H{"error": "ZK Bridge service disabled"})
+			}
+		})
 
-			// Insert bridge_verify task into tasks pool
-			taskID := uuid.New().String()
-			_, err := dbConn.ExecContext(c.Request.Context(),
-				`INSERT INTO tasks (task_id, task_type, payload, status, priority_score, created_at, requester_address)
-				 VALUES ($1, 'bridge_verify', $2, 'pending', 10, NOW(), 'bridge-system')`,
-				taskID, string(payloadJSON))
+		v1.GET("/sovereign/market-maker", func(c *gin.Context) {
+			if deps.MarketMaker != nil {
+				c.JSON(http.StatusOK, deps.MarketMaker.GetStats(c.Request.Context()))
+			} else {
+				c.JSON(http.StatusNotImplemented, gin.H{"error": "market maker engine disabled"})
+			}
+		})
 
-			if err != nil {
-				c.JSON(500, gin.H{"error": "Failed to schedule bridge validation"})
+		v1.POST("/sovereign/render/request", func(c *gin.Context) {
+			var req struct {
+				Wallet   string  `json:"wallet"`
+				TaskType string  `json:"task_type"` // e.g. blender_cycles
+				MaxGSTD  float64 `json:"max_gstd"`
+			}
+			if err := c.ShouldBindJSON(&req); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 				return
 			}
+			if deps.RenderEngine != nil {
+				task, err := deps.RenderEngine.SubmitRenderJob(c.Request.Context(), req.Wallet, req.TaskType, req.MaxGSTD)
+				if err != nil {
+					c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+					return
+				}
+				c.JSON(http.StatusOK, task)
+			} else {
+				c.JSON(http.StatusNotImplemented, gin.H{"error": "Render engine disabled"})
+			}
+		})
 
-			c.JSON(200, gin.H{
-				"status":  "pending_validation",
-				"message": "Bridge request queued for decentralized validation",
-				"task_id": taskID,
-			})
+		v1.GET("/sovereign/render/status/:id", func(c *gin.Context) {
+			id := c.Param("id")
+			if deps.RenderEngine != nil {
+				task, err := deps.RenderEngine.GetJobStatus(c.Request.Context(), id)
+				if err != nil {
+					c.JSON(http.StatusNotFound, gin.H{"error": "Job not found"})
+					return
+				}
+				c.JSON(http.StatusOK, task)
+			} else {
+				c.JSON(http.StatusNotImplemented, gin.H{"error": "Render engine disabled"})
+			}
 		})
 
 		v1.POST("/training/poll", func(c *gin.Context) {
@@ -1504,6 +1578,7 @@ func SetupRoutes(deps APIDependencies) {
 
 			// ═══ PLATFORM OPERATOR (full autonomous AI agent) ═══
 			operator := services.NewPlatformOperator(dbConn, compoundAI, swarmBrain)
+			operator.GetMiroFish().SetFinanceMLService(deps.FinanceML)
 			operator.Start()
 			operator.StartFullControl() // 7 departments, 24/7/365
 
@@ -2410,15 +2485,15 @@ func getHealth(db *sql.DB, tonService *services.TONService, tonConfig config.TON
 				"active_stakers":   activeStakers,
 			},
 			"rewards": gin.H{
-				"today_gstd":     todayRewards,
-				"all_time_gstd":  totalRewardsAllTime,
-				"pending_gstd":   pendingRewards,
-				"today_revenue":  todayRevenue,
+				"today_gstd":    todayRewards,
+				"all_time_gstd": totalRewardsAllTime,
+				"pending_gstd":  pendingRewards,
+				"today_revenue": todayRevenue,
 			},
 			"autonomy": gin.H{
-				"departments":  9,
-				"mode":         "TOTAL_CONTROL_24_7_365",
-				"ai_cost":      "$0 (Groq Compound Beta)",
+				"departments": 9,
+				"mode":        "TOTAL_CONTROL_24_7_365",
+				"ai_cost":     "$0 (Groq Compound Beta)",
 			},
 			"timestamp": time.Now().Unix(),
 		})
@@ -2569,4 +2644,5 @@ func prepareLiquidityProvision(escrow *services.EscrowService) gin.HandlerFunc {
 		c.JSON(200, result)
 	}
 }
+
 // SuperNode integration v1

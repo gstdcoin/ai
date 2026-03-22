@@ -45,8 +45,8 @@ type PlatformOperator struct {
 	stopCh       chan struct{}
 
 	// Telegram
-	botToken     string
-	adminChatID  string
+	botToken    string
+	adminChatID string
 
 	// State
 	operatorLog  []OperatorAction
@@ -56,7 +56,7 @@ type PlatformOperator struct {
 	startedAt    time.Time
 
 	// Learning
-	decisionLog  []OperatorDecision
+	decisionLog []OperatorDecision
 }
 
 type OperatorAction struct {
@@ -186,7 +186,9 @@ func (op *PlatformOperator) Start() {
 
 // ─── RECOVERY PROTOCOL ────────────────────────────────────────────────────────
 func (op *PlatformOperator) executeAutonomousRecovery() {
-	if op.db == nil { return }
+	if op.db == nil {
+		return
+	}
 	ctx := context.Background()
 
 	op.sendTelegram("⚠️ *ATTENTION: SYSTEM REBOOT DETECTED*\nInitiating Level 5 Autonomous Recovery Protocol (Cold Boot)...")
@@ -196,15 +198,21 @@ func (op *PlatformOperator) executeAutonomousRecovery() {
 	// 1. Secure Database & User Funds
 	// Any transactions stuck processing during crash must be rolled back to avoid fund locking
 	resTx, err := op.db.ExecContext(ctx, "UPDATE transactions SET status = 'failed' WHERE status = 'processing' AND updated_at < NOW() - INTERVAL '15 minutes'")
-	if err == nil { txFixed, _ = resTx.RowsAffected() }
+	if err == nil {
+		txFixed, _ = resTx.RowsAffected()
+	}
 
 	// Release stuck node tasks
 	resTk, err := op.db.ExecContext(ctx, "UPDATE bridge_tasks SET status = 'pending' WHERE status = 'in_progress' AND updated_at < NOW() - INTERVAL '1 hour'")
-	if err == nil { tkFixed, _ = resTk.RowsAffected() }
-	
+	if err == nil {
+		tkFixed, _ = resTk.RowsAffected()
+	}
+
 	// Mark nodes offline if last seen wasn't updated due to reboot
 	resNd, err := op.db.ExecContext(ctx, "UPDATE nodes SET status = 'offline' WHERE status = 'online' AND last_seen < NOW() - INTERVAL '10 minutes'")
-	if err == nil { ndFixed, _ = resNd.RowsAffected() }
+	if err == nil {
+		ndFixed, _ = resNd.RowsAffected()
+	}
 
 	// 2. Clean up server dangling images (maintain cleanliness)
 	exec.Command("sh", "-c", "docker container prune -f && docker image prune -f").Run()
@@ -710,15 +718,15 @@ func (op *PlatformOperator) GetStatus() map[string]interface{} {
 	op.mu.RLock()
 	defer op.mu.RUnlock()
 	return map[string]interface{}{
-		"active":           true,
-		"started_at":       op.startedAt.Format(time.RFC3339),
-		"uptime_seconds":   time.Since(op.startedAt).Seconds(),
-		"cycle_count":      op.cycleCount,
-		"server_health":    op.serverHealth,
-		"recent_actions":   op.getRecentActions(10),
-		"decision_count":   len(op.decisionLog),
-		"last_report":      op.lastReport.Format(time.RFC3339),
-		"telegram_active":  op.botToken != "" && op.adminChatID != "",
+		"active":          true,
+		"started_at":      op.startedAt.Format(time.RFC3339),
+		"uptime_seconds":  time.Since(op.startedAt).Seconds(),
+		"cycle_count":     op.cycleCount,
+		"server_health":   op.serverHealth,
+		"recent_actions":  op.getRecentActions(10),
+		"decision_count":  len(op.decisionLog),
+		"last_report":     op.lastReport.Format(time.RFC3339),
+		"telegram_active": op.botToken != "" && op.adminChatID != "",
 	}
 }
 

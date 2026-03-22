@@ -38,8 +38,8 @@ type LedgerState struct {
 
 // mempoolEntry wraps a transaction with a timestamp for TTL eviction.
 type mempoolEntry struct {
-	Tx       *Transaction
-	AddedAt  time.Time
+	Tx      *Transaction
+	AddedAt time.Time
 }
 
 // Ledger holds the state and handles incoming transactions via the Sentinel.

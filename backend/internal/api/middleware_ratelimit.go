@@ -27,11 +27,11 @@ import (
 
 // RateLimitConfig defines limits for different endpoint categories
 type RateLimitConfig struct {
-	ChatPerMinute     int // /api/v1/chat/* endpoints
-	APIPerMinute      int // /api/v1/* general endpoints
-	AnonPerMinute     int // Requests without wallet
-	HeartbeatPerMin   int // /heartbeat — high-frequency from nodes
-	BurstMultiplier   int // Burst allowance (e.g., 3x for 5 sec)
+	ChatPerMinute   int // /api/v1/chat/* endpoints
+	APIPerMinute    int // /api/v1/* general endpoints
+	AnonPerMinute   int // Requests without wallet
+	HeartbeatPerMin int // /heartbeat — high-frequency from nodes
+	BurstMultiplier int // Burst allowance (e.g., 3x for 5 sec)
 }
 
 // DefaultRateLimits returns production-safe defaults
@@ -48,8 +48,8 @@ func DefaultRateLimits() RateLimitConfig {
 // ── In-Memory Fallback (per-instance) ──────────────────────────
 
 type rateBucket struct {
-	count    int
-	resetAt  time.Time
+	count   int
+	resetAt time.Time
 }
 
 type memoryLimiter struct {
@@ -178,10 +178,10 @@ func RateLimitMiddleware(rdb *redis.Client, config RateLimitConfig) gin.HandlerF
 			log.Printf("🛡️ RATE LIMITED: wallet=%s path=%s limit=%d/min", wallet, path, limit)
 			c.Header("Retry-After", "60")
 			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
-				"error":   "rate_limit_exceeded",
-				"code":    429,
-				"message": "Too many requests. Please wait and try again.",
-				"limit":   limit,
+				"error":               "rate_limit_exceeded",
+				"code":                429,
+				"message":             "Too many requests. Please wait and try again.",
+				"limit":               limit,
 				"retry_after_seconds": 60,
 			})
 			return

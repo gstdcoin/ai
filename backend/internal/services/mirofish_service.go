@@ -49,10 +49,15 @@ type MiroFishConfig struct {
 
 // MiroFishService integrates with MiroFish swarm intelligence engine
 type MiroFishService struct {
-	config MiroFishConfig
-	client *http.Client
-	vault  *ObsidianVault
-	ai     *CompoundAI
+	config  MiroFishConfig
+	client  *http.Client
+	vault   *ObsidianVault
+	ai      *CompoundAI
+	finance *FinanceMLService // Mathematical backend (awesome-quant)
+}
+
+func (m *MiroFishService) SetFinanceMLService(f *FinanceMLService) {
+	m.finance = f
 }
 
 func (m *MiroFishService) GetCompoundAI() *CompoundAI {
@@ -61,13 +66,13 @@ func (m *MiroFishService) GetCompoundAI() *CompoundAI {
 
 // SimulationRequest represents a simulation creation request
 type SimulationRequest struct {
-	Title       string            `json:"title"`
-	Scenario    string            `json:"scenario"`
+	Title       string                 `json:"title"`
+	Scenario    string                 `json:"scenario"`
 	RealitySeed map[string]interface{} `json:"reality_seed"`
-	AgentCount  int               `json:"agent_count"`
-	Platforms   []string          `json:"platforms"` // e.g. ["twitter", "reddit"]
-	Duration    int               `json:"duration"`  // simulation steps
-	Variables   []SimVariable     `json:"variables"` // dynamic injection
+	AgentCount  int                    `json:"agent_count"`
+	Platforms   []string               `json:"platforms"` // e.g. ["twitter", "reddit"]
+	Duration    int                    `json:"duration"`  // simulation steps
+	Variables   []SimVariable          `json:"variables"` // dynamic injection
 }
 
 // SimVariable represents a variable that can be injected into a running simulation
@@ -80,16 +85,16 @@ type SimVariable struct {
 
 // SimulationResult represents the result of a completed simulation
 type SimulationResult struct {
-	ID              string                 `json:"id"`
-	Status          string                 `json:"status"`
-	Title           string                 `json:"title"`
-	Predictions     []Prediction           `json:"predictions"`
-	AgentBehaviors  map[string]interface{} `json:"agent_behaviors"`
-	EmergentPatterns []string              `json:"emergent_patterns"`
-	Confidence      float64                `json:"confidence"`
-	Report          string                 `json:"report"`
-	CreatedAt       time.Time              `json:"created_at"`
-	CompletedAt     time.Time              `json:"completed_at"`
+	ID               string                 `json:"id"`
+	Status           string                 `json:"status"`
+	Title            string                 `json:"title"`
+	Predictions      []Prediction           `json:"predictions"`
+	AgentBehaviors   map[string]interface{} `json:"agent_behaviors"`
+	EmergentPatterns []string               `json:"emergent_patterns"`
+	Confidence       float64                `json:"confidence"`
+	Report           string                 `json:"report"`
+	CreatedAt        time.Time              `json:"created_at"`
+	CompletedAt      time.Time              `json:"completed_at"`
 }
 
 // Prediction represents a single prediction from the simulation
@@ -97,7 +102,7 @@ type Prediction struct {
 	Category    string  `json:"category"`
 	Description string  `json:"description"`
 	Probability float64 `json:"probability"`
-	Impact      string  `json:"impact"` // low, medium, high, critical
+	Impact      string  `json:"impact"`       // low, medium, high, critical
 	TimeHorizon string  `json:"time_horizon"` // e.g. "7d", "30d", "90d"
 }
 
@@ -345,15 +350,15 @@ func (m *MiroFishService) PredictTokenomicsImpact(ctx context.Context, currentCi
 		Title:    "Tokenomics Change Impact",
 		Scenario: fmt.Sprintf("GSTD token economy change: %s — predict trader reactions, holder behavior, liquidity impact, and market sentiment.", proposedChange),
 		RealitySeed: map[string]interface{}{
-			"token":                "GSTD",
-			"max_supply":           1_000_000_000,
-			"circulating":          currentCirculating,
-			"burn_rate_pct":        burnRate,
-			"reward_per_hour":      rewardRate,
-			"total_staked":         totalStaked,
-			"proposed_change":      proposedChange,
-			"backed_by":            "XAUt (gold)",
-			"dex":                  "Ston.fi (TON)",
+			"token":           "GSTD",
+			"max_supply":      1_000_000_000,
+			"circulating":     currentCirculating,
+			"burn_rate_pct":   burnRate,
+			"reward_per_hour": rewardRate,
+			"total_staked":    totalStaked,
+			"proposed_change": proposedChange,
+			"backed_by":       "XAUt (gold)",
+			"dex":             "Ston.fi (TON)",
 		},
 		AgentCount: 300,
 		Platforms:  []string{"twitter", "reddit"},
@@ -386,10 +391,10 @@ func (m *MiroFishService) PredictFraudScenario(ctx context.Context, scenarioDesc
 		Title:    "Anti-Fraud Simulation",
 		Scenario: fmt.Sprintf("GSTD marketplace fraud scenario: %s — simulate attacker strategies, predict success rates, test defense mechanisms effectiveness.", scenarioDesc),
 		RealitySeed: map[string]interface{}{
-			"defenses":            []string{"wallet verification", "escrow lock", "reputation scoring", "proof verification", "nonce protection"},
-			"platform_fee":        "5%",
+			"defenses":             []string{"wallet verification", "escrow lock", "reputation scoring", "proof verification", "nonce protection"},
+			"platform_fee":         "5%",
 			"min_balance_required": true,
-			"attack_scenario":     scenarioDesc,
+			"attack_scenario":      scenarioDesc,
 		},
 		AgentCount: 100,
 		Platforms:  []string{"twitter"},

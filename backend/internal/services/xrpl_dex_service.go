@@ -18,21 +18,21 @@ import (
 
 // XRPLDexService provides XRPL DEX and token operations
 type XRPLDexService struct {
-	httpClient     *http.Client
-	rpcURL         string // XRPL JSON-RPC endpoint
-	gstdIssuer     string // GSTD IOU token issuer address
-	gstdCurrency   string // Currency code ("GSD" or hex-encoded "GSTD")
-	vaultAddress   string // Bridge vault account on XRPL
+	httpClient   *http.Client
+	rpcURL       string // XRPL JSON-RPC endpoint
+	gstdIssuer   string // GSTD IOU token issuer address
+	gstdCurrency string // Currency code ("GSD" or hex-encoded "GSTD")
+	vaultAddress string // Bridge vault account on XRPL
 }
 
 // XRPLPathQuote represents a path-finding result
 type XRPLPathQuote struct {
-	SourceAmount    string `json:"source_amount"`
-	DestAmount      string `json:"destination_amount"`
-	SourceCurrency  string `json:"source_currency"`
-	DestCurrency    string `json:"dest_currency"`
-	PathsAvailable  int    `json:"paths_available"`
-	QualityAverage  string `json:"quality_average"`
+	SourceAmount   string `json:"source_amount"`
+	DestAmount     string `json:"destination_amount"`
+	SourceCurrency string `json:"source_currency"`
+	DestCurrency   string `json:"dest_currency"`
+	PathsAvailable int    `json:"paths_available"`
+	QualityAverage string `json:"quality_average"`
 }
 
 // XRPLTrustLine represents a trust line (token balance)
@@ -47,11 +47,11 @@ type XRPLTrustLine struct {
 
 // XRPLOrderBookEntry represents an offer on the DEX
 type XRPLOrderBookEntry struct {
-	Account  string `json:"Account"`
+	Account   string      `json:"Account"`
 	TakerGets interface{} `json:"TakerGets"`
 	TakerPays interface{} `json:"TakerPays"`
-	Quality  string `json:"quality"`
-	Sequence int    `json:"Sequence"`
+	Quality   string      `json:"quality"`
+	Sequence  int         `json:"Sequence"`
 }
 
 // NewXRPLDexService creates a new XRPL DEX service
@@ -163,7 +163,7 @@ func (x *XRPLDexService) FindPath(ctx context.Context, sourceAccount string, des
 	body := map[string]interface{}{
 		"method": "ripple_path_find",
 		"params": []map[string]interface{}{{
-			"source_account": sourceAccount,
+			"source_account":      sourceAccount,
 			"destination_account": destAccount,
 			"destination_amount": map[string]string{
 				"currency": x.gstdCurrency,

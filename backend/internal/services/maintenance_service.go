@@ -45,11 +45,11 @@ func (s *MaintenanceService) Start(ctx context.Context) {
 	}
 
 	// Different intervals for different tasks
-	pruneTicker := time.NewTicker(24 * time.Hour)     // Daily cleanup
-	briefingTicker := time.NewTicker(24 * time.Hour)  // Daily Report
-	repairTicker := time.NewTicker(30 * time.Minute)  // Frequent repairs
-	monitorTicker := time.NewTicker(15 * time.Minute) // System Health Pulse
-	grantsTicker := time.NewTicker(24 * time.Hour)    // Daily: Treasury → Hardware Grants
+	pruneTicker := time.NewTicker(24 * time.Hour)        // Daily cleanup
+	briefingTicker := time.NewTicker(24 * time.Hour)     // Daily Report
+	repairTicker := time.NewTicker(30 * time.Minute)     // Frequent repairs
+	monitorTicker := time.NewTicker(15 * time.Minute)    // System Health Pulse
+	grantsTicker := time.NewTicker(24 * time.Hour)       // Daily: Treasury → Hardware Grants
 	nodeJanitorTicker := time.NewTicker(2 * time.Minute) // Node janitor: mark stale offline, activate pending
 
 	defer pruneTicker.Stop()

@@ -19,7 +19,7 @@ func RegisterMemoryRoutes(v1 *gin.RouterGroup, dbConn *sql.DB) {
 			"status":        "ok",
 			"layer":         "L3",
 			"platform":      "gstd",
-			"total_entries":  count,
+			"total_entries": count,
 		})
 	})
 
@@ -149,7 +149,7 @@ func RegisterMemoryRoutes(v1 *gin.RouterGroup, dbConn *sql.DB) {
 			`SELECT COUNT(*) FROM global_knowledge_layer`).Scan(&globalLayers)
 
 		c.JSON(200, gin.H{
-			"total_entries":        total,
+			"total_entries":       total,
 			"unique_topics":       topics,
 			"contributing_agents": agents,
 			"global_layers":       globalLayers,
@@ -161,4 +161,3 @@ func RegisterMemoryRoutes(v1 *gin.RouterGroup, dbConn *sql.DB) {
 		})
 	})
 }
-

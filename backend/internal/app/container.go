@@ -35,6 +35,7 @@ import (
 )
 
 // BuildContainer constructs the dependency injection container
+//
 //nolint:all // DI setup must build all blocks sequentially; splitting reduces readability
 func BuildContainer() *dig.Container {
 	c := dig.New()
@@ -177,6 +178,16 @@ func BuildContainer() *dig.Container {
 	c.Provide(func(db *sql.DB, settlement *services.SettlementService, poolMonitor *services.PoolMonitorService, escrow *services.EscrowService) *services.BillingService {
 		return services.NewBillingService(db, settlement, poolMonitor, escrow)
 	})
+	c.Provide(func(db *sql.DB, cfg *config.Config) *services.IPFSService {
+		apiURL := ""
+		gatewayURL := "https://ipfs.io"
+		return services.NewIPFSService(db, apiURL, gatewayURL)
+	})
+	c.Provide(services.NewZKService)
+	c.Provide(func(db *sql.DB) *services.IAMService {
+		return services.NewIAMService(db)
+	})
+	c.Provide(services.NewFinanceMLService)
 	c.Provide(func(db *sql.DB, settlement *services.SettlementService, stats *services.StatsService) *services.GoldenAgeService {
 		return services.NewGoldenAgeService(db, settlement, stats)
 	})
@@ -251,6 +262,17 @@ func BuildContainer() *dig.Container {
 
 	c.Provide(func(cfg *config.Config) *services.TONService {
 		return services.NewTONService(cfg.TON.APIURL, cfg.TON.APIKey)
+	})
+	c.Provide(func(cfg *config.Config, db *sql.DB) *services.ZKBridgeService {
+		return services.NewZKBridgeService(db)
+	})
+
+	c.Provide(func(cfg *config.Config, db *sql.DB, tonSvc *services.TONService, stonfi *services.StonFiService) *services.MarketMakerService {
+		return services.NewMarketMakerService(db, tonSvc, stonfi)
+	})
+
+	c.Provide(func(cfg *config.Config, db *sql.DB) *services.RenderService {
+		return services.NewRenderService(db)
 	})
 
 	c.Provide(func(cfg *config.Config, db *sql.DB) *services.PoolMonitorService {
@@ -425,119 +447,127 @@ func parseTONAPIKeys(primary, keysStr string) []string {
 }
 
 // StartApplication performs final wiring and starts all background services
+//
 //nolint:gocognit,revive,maintidx // NOSONAR
 type ApplicationDependencies struct {
-    dig.In
-    Cfg *config.Config
-    Router *gin.Engine
-    Hub *api.WSHub
-    TonService *services.TONService
-    CacheService *services.CacheService
-    PoolMonitor *services.PoolMonitorService
-    ErrorLogger *services.ErrorLogger
-    StatsService *services.StatsService
-    ValidationService *services.ValidationService
-    TrustV3Service *services.TrustV3Service
-    EntropyService *services.EntropyService
-    AssignmentService *services.AssignmentService
-    EncryptionService *services.EncryptionService
-    NodeService *services.NodeService
-    TaskService *services.TaskService
-    RewardEngine *services.RewardEngine
-    EscrowService *services.EscrowService
-    PayoutRetry *services.PayoutRetryService
-    PaymentWatcher *services.PaymentWatcher
-    PaymentTracker *services.PaymentTracker
-    DeviceService *services.DeviceService
-    PaymentService *services.PaymentService
-    ResultService *services.ResultService
-    TaskRateLimiter *services.RateLimiter
-    Db *sql.DB
-    RedisClient *redis.Client
-    PowService *services.ProofOfWorkService
-    TaskOrchestrator *services.TaskOrchestrator
-    TelegramService *services.TelegramService
-    MaintenanceService *services.MaintenanceService
-    SovereignBridge *services.SovereignBridgeService
-    KnowledgeService *services.KnowledgeService
-    PricingService *services.PricingService
-    InvoiceService *services.InvoiceService
-    WelcomeBonusService *services.WelcomeBonusService
-    BurnService *services.BurnService
-    MultiLevelReferralService *services.MultiLevelReferralService
-    AgentMarketplaceService *services.AgentMarketplaceService
-    TaskPaymentService *services.TaskPaymentService
-    TimeoutService *services.TimeoutService
-    UserService *services.UserService
-    StonFiService *services.StonFiService
-    ApiKeyService *services.APIKeyService
-    PipelineService *services.PipelineParallelismService
-    GuardrailsService *services.GuardrailsService
-    HuggingFaceService *services.HuggingFaceService
-    FederatedEngine *services.FederatedEngineService
-    MobileCompute *services.MobileComputeService
-    ZbGateService *services.ZeroBalanceGateService
-    RecyclingPool *services.RecyclingPoolService
-    KvCacheService *services.KVCacheService
-    DataAirlock *services.DataAirlockService
-    OpenClawBridge *services.OpenClawBridgeService
-    InferenceService *services.InferenceService
-    ContributionMonetization *services.ContributionMonetizationService
-    UniversalMeshService *services.UniversalMeshService
-    GeoService *services.GeoService
-    AgentModelService *services.AgentModelService
-    AgentSubcontractService *services.AgentSubcontractService
-    GoldHashRateService *services.GoldHashRateService
-    GoldBroadcastRunner *services.GoldBroadcastRunner
-    AnomalyDetection *services.AnomalyDetectionService
-    ZkComputeProof *services.ZKComputeProofService
-    FleetCommandService *services.FleetCommandService
-    EvolutionEngine *services.EvolutionEngine
-    OmniPerformance *services.OmniPerformanceService
-    TreasuryService *services.TreasuryService
-    SwarmLFS *services.SwarmLFSService
-    CleanCoreService *services.CleanCoreService
-    GlobalAbsorption *services.GlobalAbsorptionService
-    KnowledgeIntegrator *services.KnowledgeIntegrator
-    PredictiveMirroring *services.PredictiveMirroringService
-    SupremeCoord *services.SupremeCoordinatorService
-    LeviathanProfit *services.LeviathanProfitService
-    AgentRatingService *services.AgentRatingService
-    TalentHunting *services.TalentHuntingService
-    MeshConstitution *services.MeshConstitutionService
-    ConstitutionAnchor *services.ConstitutionAnchorService
-    SingularityReady *services.SingularityReadyService
-    BillingService *services.BillingService
-    SettlementService *services.SettlementService
-    GoldenAgeService *services.GoldenAgeService
-    DynamicEquilibrium *services.DynamicEquilibriumService
-    EternalFlameService *services.EternalFlameService
-    GaslessUserService *services.GaslessUserService
-    PayoutBatchService *services.PayoutBatchService
-    HighloadWallet *services.HighloadWalletService
-    GlobalNeuralMerge *services.GlobalNeuralMergeService
-    SingularityGateway *services.SingularityGatewayService
-    Omnipotence *services.OmnipotenceService
-    SubAgentSelfOpt *services.SubAgentSelfOptimizationService
-    BitchatBridge *services.BitchatBridgeService
-    CocoonBridge *services.CocoonBridgeService
-    CocoonSymbiosis *services.CocoonSwarmSymbiosis
-    HybridRouter *services.HybridIntelligenceRouter
-    SmartRouter *services.SmartRouter
-    A2aServer *a2a.Server
-    HiveStore hive.HiveStore
-    SentinelEngine *sentinel.Sentinel
-    GenesisLock *genesis.GenesisLock
-    NodeManager *nodeMgr.NodeManager
-    LlmRouter *infRouter.Router
-    SettlementCli *settlementClient.Client
-    FinancialMonitor *services.FinancialMonitorService
-    Organism *services.SovereignOrganismService
-    MonetizationService *services.MonetizationMetricsService
-    OrganismHub *services.OrganismHubService
-    SwarmNode *p2p.SwarmNode
-    SwarmLedger *p2p.Ledger
-    TaskQueue *queue.TaskQueueManager `optional:"true"`
+	dig.In
+	Cfg                       *config.Config
+	Router                    *gin.Engine
+	Hub                       *api.WSHub
+	TonService                *services.TONService
+	CacheService              *services.CacheService
+	PoolMonitor               *services.PoolMonitorService
+	ErrorLogger               *services.ErrorLogger
+	StatsService              *services.StatsService
+	ValidationService         *services.ValidationService
+	TrustV3Service            *services.TrustV3Service
+	EntropyService            *services.EntropyService
+	AssignmentService         *services.AssignmentService
+	EncryptionService         *services.EncryptionService
+	NodeService               *services.NodeService
+	TaskService               *services.TaskService
+	RewardEngine              *services.RewardEngine
+	EscrowService             *services.EscrowService
+	PayoutRetry               *services.PayoutRetryService
+	PaymentWatcher            *services.PaymentWatcher
+	PaymentTracker            *services.PaymentTracker
+	DeviceService             *services.DeviceService
+	PaymentService            *services.PaymentService
+	ResultService             *services.ResultService
+	TaskRateLimiter           *services.RateLimiter
+	Db                        *sql.DB
+	RedisClient               *redis.Client
+	PowService                *services.ProofOfWorkService
+	TaskOrchestrator          *services.TaskOrchestrator
+	TelegramService           *services.TelegramService
+	MaintenanceService        *services.MaintenanceService
+	SovereignBridge           *services.SovereignBridgeService
+	KnowledgeService          *services.KnowledgeService
+	PricingService            *services.PricingService
+	InvoiceService            *services.InvoiceService
+	WelcomeBonusService       *services.WelcomeBonusService
+	BurnService               *services.BurnService
+	MultiLevelReferralService *services.MultiLevelReferralService
+	AgentMarketplaceService   *services.AgentMarketplaceService
+	TaskPaymentService        *services.TaskPaymentService
+	TimeoutService            *services.TimeoutService
+	UserService               *services.UserService
+	StonFiService             *services.StonFiService
+	ApiKeyService             *services.APIKeyService
+	PipelineService           *services.PipelineParallelismService
+	GuardrailsService         *services.GuardrailsService
+	HuggingFaceService        *services.HuggingFaceService
+	FederatedEngine           *services.FederatedEngineService
+	MobileCompute             *services.MobileComputeService
+	ZbGateService             *services.ZeroBalanceGateService
+	RecyclingPool             *services.RecyclingPoolService
+	KvCacheService            *services.KVCacheService
+	DataAirlock               *services.DataAirlockService
+	OpenClawBridge            *services.OpenClawBridgeService
+	InferenceService          *services.InferenceService
+	ContributionMonetization  *services.ContributionMonetizationService
+	UniversalMeshService      *services.UniversalMeshService
+	GeoService                *services.GeoService
+	AgentModelService         *services.AgentModelService
+	AgentSubcontractService   *services.AgentSubcontractService
+	GoldHashRateService       *services.GoldHashRateService
+	GoldBroadcastRunner       *services.GoldBroadcastRunner
+	AnomalyDetection          *services.AnomalyDetectionService
+	ZkComputeProof            *services.ZKComputeProofService
+	FleetCommandService       *services.FleetCommandService
+	EvolutionEngine           *services.EvolutionEngine
+	OmniPerformance           *services.OmniPerformanceService
+	TreasuryService           *services.TreasuryService
+	SwarmLFS                  *services.SwarmLFSService
+	CleanCoreService          *services.CleanCoreService
+	GlobalAbsorption          *services.GlobalAbsorptionService
+	KnowledgeIntegrator       *services.KnowledgeIntegrator
+	PredictiveMirroring       *services.PredictiveMirroringService
+	SupremeCoord              *services.SupremeCoordinatorService
+	LeviathanProfit           *services.LeviathanProfitService
+	AgentRatingService        *services.AgentRatingService
+	TalentHunting             *services.TalentHuntingService
+	MeshConstitution          *services.MeshConstitutionService
+	ConstitutionAnchor        *services.ConstitutionAnchorService
+	SingularityReady          *services.SingularityReadyService
+	IAMService                *services.IAMService
+	FinanceML                 *services.FinanceMLService
+	ZKBridge                  *services.ZKBridgeService
+	MarketMaker               *services.MarketMakerService
+	RenderEngine              *services.RenderService
+	BillingService            *services.BillingService
+	IPFSService               *services.IPFSService
+	ZKCryptography            *services.ZKService
+	SettlementService         *services.SettlementService
+	GoldenAgeService          *services.GoldenAgeService
+	DynamicEquilibrium        *services.DynamicEquilibriumService
+	EternalFlameService       *services.EternalFlameService
+	GaslessUserService        *services.GaslessUserService
+	PayoutBatchService        *services.PayoutBatchService
+	HighloadWallet            *services.HighloadWalletService
+	GlobalNeuralMerge         *services.GlobalNeuralMergeService
+	SingularityGateway        *services.SingularityGatewayService
+	Omnipotence               *services.OmnipotenceService
+	SubAgentSelfOpt           *services.SubAgentSelfOptimizationService
+	BitchatBridge             *services.BitchatBridgeService
+	CocoonBridge              *services.CocoonBridgeService
+	CocoonSymbiosis           *services.CocoonSwarmSymbiosis
+	HybridRouter              *services.HybridIntelligenceRouter
+	SmartRouter               *services.SmartRouter
+	A2aServer                 *a2a.Server
+	HiveStore                 hive.HiveStore
+	SentinelEngine            *sentinel.Sentinel
+	GenesisLock               *genesis.GenesisLock
+	NodeManager               *nodeMgr.NodeManager
+	LlmRouter                 *infRouter.Router
+	SettlementCli             *settlementClient.Client
+	FinancialMonitor          *services.FinancialMonitorService
+	Organism                  *services.SovereignOrganismService
+	MonetizationService       *services.MonetizationMetricsService
+	OrganismHub               *services.OrganismHubService
+	SwarmNode                 *p2p.SwarmNode
+	SwarmLedger               *p2p.Ledger
+	TaskQueue                 *queue.TaskQueueManager `optional:"true"`
 }
 
 //nolint:all // Complex DI setup and event stream bindings shouldn't be split artificially just for sonar
@@ -558,6 +588,8 @@ func StartApplication(container *dig.Container) error {
 		deps.PaymentService.SetNodeService(deps.NodeService)
 		deps.ResultService.SetTelegramService(deps.TelegramService)
 		deps.ResultService.SetZKProofService(deps.ZkComputeProof)
+		deps.ResultService.SetNewZKService(deps.ZKCryptography)
+		deps.ResultService.SetIPFSService(deps.IPFSService)
 		deps.TaskPaymentService.SetTaskService(deps.TaskService)
 		deps.TaskPaymentService.SetTelegramService(deps.TelegramService)
 		deps.TelegramService.SetGSTDPriceProvider(deps.PoolMonitor)
@@ -759,6 +791,12 @@ func StartApplication(container *dig.Container) error {
 			SmartRouter:               deps.SmartRouter,
 			SwarmLedger:               deps.SwarmLedger,
 			HuggingFaceService:        deps.HuggingFaceService,
+			FinanceML:                 deps.FinanceML,
+			IAMService:                deps.IAMService,
+			ZKBridge:                  deps.ZKBridge,
+			MarketMaker:               deps.MarketMaker,
+			RenderEngine:              deps.RenderEngine,
+			BillingService:            deps.BillingService,
 		})
 
 		api.SetupLeviathanLiveStream(deps.Router)
@@ -995,4 +1033,3 @@ func checkOllamaConnectivity() {
 		}
 	}()
 }
-

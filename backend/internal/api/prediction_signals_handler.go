@@ -69,11 +69,11 @@ type Signal struct {
 	IsPremium   bool      `json:"is_premium"`
 	AgentName   string    `json:"agent_name"`
 	AgentScore  float64   `json:"agent_score"`
-	Accuracy    float64   `json:"accuracy"`     // historical accuracy %
+	Accuracy    float64   `json:"accuracy"` // historical accuracy %
 	Buyers      int       `json:"buyers"`
 	CreatedAt   time.Time `json:"created_at"`
 	ExpiresAt   time.Time `json:"expires_at"`
-	Status      string    `json:"status"`       // active, expired, verified_correct, verified_wrong
+	Status      string    `json:"status"` // active, expired, verified_correct, verified_wrong
 	Verified    bool      `json:"verified"`
 }
 
@@ -563,7 +563,12 @@ func (h *PredictionSignalsHandler) GetDataSources(c *gin.Context) {
 		"sources":     sources,
 		"fresh_count": freshCount,
 		"total_count": len(sources),
-		"status":      func() string { if freshCount == len(sources) { return "all_live" }; return "partial" }(),
+		"status": func() string {
+			if freshCount == len(sources) {
+				return "all_live"
+			}
+			return "partial"
+		}(),
 	})
 }
 
@@ -660,10 +665,9 @@ func (h *PredictionSignalsHandler) GetRevenueStats(c *gin.Context) {
 		},
 		"top_signals": topSignals,
 		"model": gin.H{
-			"description": "Signal purchase revenue is automatically split: 50% Gold Reserve, 20% Compute Node Rewards, 30% Platform",
-			"node_base_reward": "0.5 GSTD per signal processed",
+			"description":        "Signal purchase revenue is automatically split: 50% Gold Reserve, 20% Compute Node Rewards, 30% Platform",
+			"node_base_reward":   "0.5 GSTD per signal processed",
 			"fast_compute_bonus": "1.0 GSTD if compute < 5000ms",
 		},
 	})
 }
-

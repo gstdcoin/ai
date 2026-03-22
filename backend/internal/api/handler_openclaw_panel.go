@@ -17,6 +17,7 @@ import (
 // complete control panel — agents, tasks, stats, compound-model inference.
 
 const defaultClawModel = "groq/compound"
+
 type OpenClawPanelHandler struct {
 	db       *sql.DB
 	clawSvc  *services.OpenClawBridgeService

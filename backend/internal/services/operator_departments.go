@@ -278,7 +278,7 @@ func (op *PlatformOperator) economicsCycle() {
 
 	// 1) Pull the absolute latest DeFi practices to ensure GSTD stays cutting-edge
 	marketContext, _ := op.SearchWeb("site:cointelegraph.com OR site:coindesk.com latest tokenomics staking burn design")
-	
+
 	prompt := fmt.Sprintf(`You are the Autonomous Economical Protocol for GSTD Token. 
 Latest market insights: %s
 
@@ -294,24 +294,30 @@ CATEGORY: <economics / tokenomics / security>`,
 		marketContext, stats.pendingRewards, stats.totalStaked, stats.activeStakers)
 
 	response, err := op.ai.Ask(ctxTimeout, "Economics strategy advisor.", prompt)
-	
+
 	const titlePrefix = "TITLE:"
 	const descPrefix = "DESCRIPTION:"
 	const catPrefix = "CATEGORY:"
-	
+
 	if err == nil && len(response) > 20 && strings.Contains(response, titlePrefix) && strings.Contains(response, descPrefix) {
 		// AI decided to launch an automatic governance L1 proposal!
 		lines := strings.Split(response, "\n")
 		title, desc, category := "", "", "economics"
 		for _, l := range lines {
-			if strings.HasPrefix(l, titlePrefix) { title = strings.TrimSpace(strings.TrimPrefix(l, titlePrefix)) }
-			if strings.HasPrefix(l, descPrefix) { desc = strings.TrimSpace(strings.TrimPrefix(l, descPrefix)) }
-			if strings.HasPrefix(l, catPrefix) { category = strings.TrimSpace(strings.TrimPrefix(l, catPrefix)) }
+			if strings.HasPrefix(l, titlePrefix) {
+				title = strings.TrimSpace(strings.TrimPrefix(l, titlePrefix))
+			}
+			if strings.HasPrefix(l, descPrefix) {
+				desc = strings.TrimSpace(strings.TrimPrefix(l, descPrefix))
+			}
+			if strings.HasPrefix(l, catPrefix) {
+				category = strings.TrimSpace(strings.TrimPrefix(l, catPrefix))
+			}
 		}
-		
+
 		if title != "" && desc != "" {
 			propID := fmt.Sprintf("GIP-AUTO-%d", time.Now().Unix()%1000000)
-			op.db.ExecContext(ctx, 
+			op.db.ExecContext(ctx,
 				"INSERT INTO governance_proposals (id, title, description, status, category, proposer, ends_at) VALUES ($1, $2, $3, 'voting', $4, 'Autonomous DEPT 3', NOW() + INTERVAL '7 days')",
 				propID, title, desc, category)
 
@@ -334,7 +340,7 @@ CATEGORY: <economics / tokenomics / security>`,
 	}
 
 	burnAmount := totalMintedSinceLastBurn * 0.02 // 2% burn rate
-	if burnAmount >= 0.001 { // Only burn if meaningful amount
+	if burnAmount >= 0.001 {                      // Only burn if meaningful amount
 		_, errBurn := op.db.ExecContext(ctx,
 			`INSERT INTO token_burns (burn_amount, burn_source, tx_hash, created_at) 
 			 VALUES ($1, 'auto_deflationary_2pct', 'auto-burn-' || extract(epoch from now())::text, NOW())`,
@@ -367,13 +373,13 @@ func (op *PlatformOperator) growthCycle() {
 	ctx := context.Background()
 
 	var growth struct {
-		totalUsers   int
-		newUsers24h  int
-		totalNodes   int
-		newNodes24h  int
-		newNodes7d   int
-		totalAgents  int
-		referrals7d  int
+		totalUsers  int
+		newUsers24h int
+		totalNodes  int
+		newNodes24h int
+		newNodes7d  int
+		totalAgents int
+		referrals7d int
 	}
 
 	op.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM users").Scan(&growth.totalUsers)
@@ -402,27 +408,35 @@ func (op *PlatformOperator) growthCycle() {
 			"You are the Growth Strategist 'marketing-growth-hacker' for GSTD. We need to acquire more nodes immediately.",
 			fmt.Sprintf("Current state: %d total nodes, +%d this week (%.1f%% growth). Output exactly 1 viral social-media or node-referral task that users can perform to earn GSTD. Format exactly:\nTITLE: <title>\nDESCRIPTION: <description>\nREWARD: <number of GSTD from 10 to 100>",
 				growth.totalNodes, growth.newNodes7d, growthRate))
-				
+
 		if err == nil && len(response) > 20 && strings.Contains(response, "TITLE:") && strings.Contains(response, "REWARD:") {
 			lines := strings.Split(response, "\n")
 			title, desc := "", ""
 			rewardStr := "50" // default
-			
+
 			for _, l := range lines {
-				if strings.HasPrefix(l, "TITLE:") { title = strings.TrimSpace(strings.TrimPrefix(l, "TITLE:")) }
-				if strings.HasPrefix(l, "DESCRIPTION:") { desc = strings.TrimSpace(strings.TrimPrefix(l, "DESCRIPTION:")) }
-				if strings.HasPrefix(l, "REWARD:") { rewardStr = strings.TrimSpace(strings.TrimPrefix(l, "REWARD:")) }
+				if strings.HasPrefix(l, "TITLE:") {
+					title = strings.TrimSpace(strings.TrimPrefix(l, "TITLE:"))
+				}
+				if strings.HasPrefix(l, "DESCRIPTION:") {
+					desc = strings.TrimSpace(strings.TrimPrefix(l, "DESCRIPTION:"))
+				}
+				if strings.HasPrefix(l, "REWARD:") {
+					rewardStr = strings.TrimSpace(strings.TrimPrefix(l, "REWARD:"))
+				}
 			}
-			
+
 			if title != "" {
 				taskID := fmt.Sprintf("GROWTH-TASK-%d", time.Now().Unix()%1000000)
 				rewardF, _ := strconv.ParseFloat(rewardStr, 64)
-				if rewardF < 1 || rewardF > 1000 { rewardF = 50.0 }
-				
-				op.db.ExecContext(ctx, 
+				if rewardF < 1 || rewardF > 1000 {
+					rewardF = 50.0
+				}
+
+				op.db.ExecContext(ctx,
 					"INSERT INTO bridge_tasks (id, description, status, required_capability, reward_gstd) VALUES ($1, $2, 'pending', 'marketing', $3)",
 					taskID, fmt.Sprintf("%s: %s", title, desc), rewardF)
-					
+
 				op.sendTelegram(fmt.Sprintf("🚀 *Autonomous Growth AI Activated*\nGrowth rate was %.1f%%. AI deployed a new high-yield Network Expansion Task to the node task pool to acquire users.\n\n*Task:* %s\n*Reward:* %.0f GSTD", growthRate, title, rewardF))
 				op.logAction("growth", "Created autonomous marketing task", taskID, true)
 			}
@@ -503,7 +517,7 @@ func (op *PlatformOperator) frontendCycle() {
 		// Check HTTP status code first
 		codeOut, err := exec.Command("sh", "-c",
 			fmt.Sprintf("curl -s -o /dev/null -w '%%{http_code}' --max-time 10 %s 2>/dev/null", p.url)).Output()
-		
+
 		code := strings.TrimSpace(string(codeOut))
 		if err != nil || code == "" || code[0] != '2' { // Not 2xx
 			failures = append(failures, fmt.Sprintf("❌ %s: HTTP %s", p.name, code))
@@ -514,7 +528,7 @@ func (op *PlatformOperator) frontendCycle() {
 		bodyOut, _ := exec.Command("sh", "-c",
 			fmt.Sprintf("curl -s -L --max-time 10 %s 2>/dev/null | head -c 500", p.url)).Output()
 		htmlBody := string(bodyOut)
-		
+
 		if len(htmlBody) < 50 {
 			failures = append(failures, fmt.Sprintf("❌ %s: Response too short (%d bytes)", p.name, len(htmlBody)))
 		} else if !strings.Contains(htmlBody, "<") {
@@ -664,6 +678,7 @@ Format with emoji and markdown for Telegram.`,
 }
 
 // GetFullStatus returns comprehensive operator status with all departments
+//
 //nolint:gocognit
 func (op *PlatformOperator) GetFullStatus() map[string]interface{} {
 	base := op.GetStatus()
@@ -700,8 +715,8 @@ func (op *PlatformOperator) GetFullStatus() map[string]interface{} {
 	op.mu.RUnlock()
 
 	base["learning"] = map[string]interface{}{
-		"total_decisions":   len(op.decisionLog),
-		"scored_decisions":  scoredDecisions,
+		"total_decisions":    len(op.decisionLog),
+		"scored_decisions":   scoredDecisions,
 		"avg_decision_score": avgScore,
 	}
 

@@ -1,11 +1,11 @@
 package services
 
 import (
+	"crypto/rand"
 	"database/sql"
 	"fmt"
 	"log"
 	"math"
-	"crypto/rand"
 	"math/big"
 	"time"
 )
@@ -20,21 +20,21 @@ func NewSettlementRouter(db *sql.DB) *SettlementRouter {
 
 // RouteTransaction represents a user request to bridge/pay via USDT/TON but routed via GSTD
 type RouteRequest struct {
-	UserID         int     `json:"user_id"`
-	SourceAsset    string  `json:"source_asset"` // e.g. "USDT", "TON"
-	SourceAmount   float64 `json:"source_amount"`
-	TargetAction   string  `json:"target_action"`   // e.g. "bridge_solana", "ai_payment"
-	TargetAddress  string  `json:"target_address"`
-	SlippageMax    float64 `json:"slippage_max"`
+	UserID        int     `json:"user_id"`
+	SourceAsset   string  `json:"source_asset"` // e.g. "USDT", "TON"
+	SourceAmount  float64 `json:"source_amount"`
+	TargetAction  string  `json:"target_action"` // e.g. "bridge_solana", "ai_payment"
+	TargetAddress string  `json:"target_address"`
+	SlippageMax   float64 `json:"slippage_max"`
 }
 
 type RouteResponse struct {
-	TxID          string   `json:"tx_id"`
-	GSTDSwapped   float64  `json:"gstd_swapped"`
-	ValidatorFee  float64  `json:"validator_fee"`
-	Delivered     float64  `json:"delivered"`
-	Committee     []string `json:"committee_nodes"`
-	Status        string   `json:"status"`
+	TxID         string   `json:"tx_id"`
+	GSTDSwapped  float64  `json:"gstd_swapped"`
+	ValidatorFee float64  `json:"validator_fee"`
+	Delivered    float64  `json:"delivered"`
+	Committee    []string `json:"committee_nodes"`
+	Status       string   `json:"status"`
 }
 
 // ExecuteRouting simulates Layer 1 Swap on STON.fi, selects VRF committee, and distributes fees
@@ -80,7 +80,7 @@ func (s *SettlementRouter) ExecuteRouting(req RouteRequest) (*RouteResponse, err
 func (s *SettlementRouter) simulateStonFiSwap(asset string, amount float64) (float64, error) {
 	var rate float64
 	if asset == "USDT" {
-		rate = 2.0 
+		rate = 2.0
 	} else if asset == "TON" {
 		rate = 12.0
 	} else if asset == "GSTD" {
@@ -88,7 +88,7 @@ func (s *SettlementRouter) simulateStonFiSwap(asset string, amount float64) (flo
 	} else {
 		return 0, fmt.Errorf("unsupported asset: %s", asset)
 	}
-	
+
 	output := amount * rate
 	output = output * 0.999 // Representing nominal swap fee
 	return output, nil
@@ -139,7 +139,9 @@ func (s *SettlementRouter) selectVRFCommittee(k int) ([]string, error) {
 		// Secure random VRF weight selection
 		bg, _ := rand.Int(rand.Reader, big.NewInt(1<<53))
 		r := float64(bg.Int64()) / float64(1<<53)
-		if r == 0 { r = 0.0000000000001 } // avoid zero
+		if r == 0 {
+			r = 0.0000000000001
+		} // avoid zero
 		key := math.Pow(r, 1.0/n.Weight)
 		pool = append(pool, Weighted{Wallet: n.Wallet, Key: key})
 	}

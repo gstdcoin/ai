@@ -4,8 +4,8 @@ import (
 	"database/sql"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"distributed-computing-platform/internal/services"
+	"github.com/gin-gonic/gin"
 )
 
 func SetupSettlementRoutes(v1 *gin.RouterGroup, db *sql.DB) {

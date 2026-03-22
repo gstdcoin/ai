@@ -42,30 +42,30 @@ func SetupPredictionMarketsProtectedRoutes(router *gin.RouterGroup, handler *Pre
 
 // Structs
 type Market struct {
-	ID             string    `json:"id"`
-	Question       string    `json:"question"`
-	Description    string    `json:"description"`
-	ImageURL       string    `json:"image_url"`
-	Outcomes       []string  `json:"outcomes"`
-	OutcomePrices  []float64 `json:"outcome_prices"`
-	VolumeUSD      float64   `json:"volume_usd"`
-	PoolGSTD       float64   `json:"pool_gstd"`
-	LiquidityGSTD  float64   `json:"liquidity_gstd"`
-	EndDate        *time.Time `json:"end_date,omitempty"`
-	Status         string    `json:"status"`
-	ResolvedOutcome int      `json:"resolved_outcome"`
+	ID              string     `json:"id"`
+	Question        string     `json:"question"`
+	Description     string     `json:"description"`
+	ImageURL        string     `json:"image_url"`
+	Outcomes        []string   `json:"outcomes"`
+	OutcomePrices   []float64  `json:"outcome_prices"`
+	VolumeUSD       float64    `json:"volume_usd"`
+	PoolGSTD        float64    `json:"pool_gstd"`
+	LiquidityGSTD   float64    `json:"liquidity_gstd"`
+	EndDate         *time.Time `json:"end_date,omitempty"`
+	Status          string     `json:"status"`
+	ResolvedOutcome int        `json:"resolved_outcome"`
 }
 
 type Bet struct {
-	ID             int       `json:"id"`
-	MarketID       string    `json:"market_id"`
-	Question       string    `json:"question"`
-	Wallet         string    `json:"wallet_address"`
-	OutcomeIndex   int       `json:"outcome_index"`
-	AmountGSTD     float64   `json:"amount_gstd"`
+	ID              int       `json:"id"`
+	MarketID        string    `json:"market_id"`
+	Question        string    `json:"question"`
+	Wallet          string    `json:"wallet_address"`
+	OutcomeIndex    int       `json:"outcome_index"`
+	AmountGSTD      float64   `json:"amount_gstd"`
 	PotentialPayout float64   `json:"potential_payout"`
-	Status         string    `json:"status"`
-	CreatedAt      time.Time `json:"created_at"`
+	Status          string    `json:"status"`
+	CreatedAt       time.Time `json:"created_at"`
 }
 
 func (h *PredictionMarketsHandler) syncMarkets(ctx context.Context) {
@@ -110,7 +110,7 @@ func (h *PredictionMarketsHandler) syncMarkets(ctx context.Context) {
 		pricesJSON, _ := json.Marshal(prices)
 
 		marketID := fmt.Sprintf("GPM-%d", i+1)
-		
+
 		_, err := h.db.ExecContext(ctx, `
 			INSERT INTO gstd_prediction_markets (id, question, description, outcomes, outcome_prices, volume_usd)
 			VALUES ($1, $2, $3, $4, $5, $6)
@@ -127,7 +127,7 @@ func (h *PredictionMarketsHandler) syncMarkets(ctx context.Context) {
 
 func (h *PredictionMarketsHandler) GetActiveMarkets(c *gin.Context) {
 	ctx := c.Request.Context()
-	
+
 	// Try to sync fresh markets on request (or could be background)
 	go h.syncMarkets(context.Background())
 
@@ -159,21 +159,21 @@ func (h *PredictionMarketsHandler) GetActiveMarkets(c *gin.Context) {
 func (h *PredictionMarketsHandler) GetMarketDetails(c *gin.Context) {
 	id := c.Param("id")
 	ctx := c.Request.Context()
-	
+
 	var m Market
 	var oJSON, pJSON string
 	err := h.db.QueryRowContext(ctx, `
 		SELECT id, question, description, image_url, outcomes, outcome_prices, volume_usd, pool_gstd, liquidity_gstd, end_date, status, resolved_outcome
 		FROM gstd_prediction_markets WHERE id = $1`, id).
 		Scan(&m.ID, &m.Question, &m.Description, &m.ImageURL, &oJSON, &pJSON, &m.VolumeUSD, &m.PoolGSTD, &m.LiquidityGSTD, &m.EndDate, &m.Status, &m.ResolvedOutcome)
-	
+
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "market not found"})
 		return
 	}
 	json.Unmarshal([]byte(oJSON), &m.Outcomes)
 	json.Unmarshal([]byte(pJSON), &m.OutcomePrices)
-	
+
 	c.JSON(http.StatusOK, m)
 }
 
@@ -186,12 +186,12 @@ func (h *PredictionMarketsHandler) scanTransactionRisk(ctx context.Context, wall
 	if txCount == 0 {
 		riskScore += 0.1 // minor risk for fresh wallet
 	}
-	
+
 	// 2. Check bet size vs average
 	if amount > 100000 {
 		riskScore += 0.3 // Large amount flag
 	}
-	
+
 	action := "allowed"
 	if riskScore > 0.8 {
 		action = "blocked"
@@ -200,7 +200,7 @@ func (h *PredictionMarketsHandler) scanTransactionRisk(ctx context.Context, wall
 		INSERT INTO tx_risk_scans (wallet_address, tx_type, amount_gstd, risk_score, action_taken)
 		VALUES ($1, $2, $3, $4, $5)`,
 		wallet, txType, amount, riskScore, action)
-		
+
 	return riskScore
 }
 
@@ -212,7 +212,7 @@ func (h *PredictionMarketsHandler) PlaceBet(c *gin.Context) {
 	}
 	wallet := walletAddr.(string)
 	marketID := c.Param("id")
-	
+
 	var req struct {
 		OutcomeIndex int     `json:"outcome_index"`
 		Amount       float64 `json:"amount_gstd"`
@@ -234,7 +234,7 @@ func (h *PredictionMarketsHandler) PlaceBet(c *gin.Context) {
 	var pJSON string
 	err := h.db.QueryRowContext(ctx, "SELECT outcome_prices, status FROM gstd_prediction_markets WHERE id = $1", marketID).
 		Scan(&pJSON, &m.Status)
-	
+
 	if err != nil || m.Status != "active" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "market inactive or not found"})
 		return
@@ -248,7 +248,9 @@ func (h *PredictionMarketsHandler) PlaceBet(c *gin.Context) {
 	}
 
 	winProb := prices[req.OutcomeIndex]
-	if winProb <= 0 { winProb = 0.01 }
+	if winProb <= 0 {
+		winProb = 0.01
+	}
 	potentialPayout := req.Amount / winProb
 
 	// Process Payment
@@ -267,7 +269,7 @@ func (h *PredictionMarketsHandler) PlaceBet(c *gin.Context) {
 	}
 
 	tx.ExecContext(ctx, "UPDATE users SET gstd_balance = GREATEST(COALESCE(gstd_balance, 0) - $1, 0), updated_at = NOW() WHERE wallet_address = $2", req.Amount, wallet)
-	
+
 	tx.ExecContext(ctx, "UPDATE gstd_prediction_markets SET pool_gstd = pool_gstd + $1 WHERE id = $2", req.Amount, marketID)
 
 	var betID int
@@ -323,7 +325,7 @@ func (h *PredictionMarketsHandler) BuyMarketSignal(c *gin.Context) {
 	priceGSTD := 15.0
 
 	ctx := c.Request.Context()
-	
+
 	// Risk scan
 	h.scanTransactionRisk(ctx, wallet, "signal_purchase", priceGSTD)
 
@@ -353,7 +355,7 @@ func (h *PredictionMarketsHandler) BuyMarketSignal(c *gin.Context) {
 	if h.mirofish != nil && h.mirofish.GetCompoundAI() != nil {
 		ai := h.mirofish.GetCompoundAI()
 		prompt := fmt.Sprintf("Analyze this prediction market: '%s'. Outcomes: %s. Current odds: %s. Provide a highly accurate recommendation on which outcome to choose for a trader. Include reasoning based on real world events.", q, oJSON, pJSON)
-		
+
 		response, err := ai.Ask(ctx, "You are a SwarmBrain Prediction Engine Oracle.", prompt)
 		if err == nil {
 			c.JSON(http.StatusOK, gin.H{"market_id": marketID, "forecast": response})

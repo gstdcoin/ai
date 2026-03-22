@@ -19,22 +19,22 @@ import (
 // RaydiumService provides Solana DEX operations via Raydium AMM
 type RaydiumService struct {
 	httpClient *http.Client
-	apiBase    string        // Raydium public API
-	rpcURL     string        // Solana RPC endpoint
-	gstdMint   string        // GSTD SPL Token mint address
-	solMint    string        // Wrapped SOL mint
+	apiBase    string // Raydium public API
+	rpcURL     string // Solana RPC endpoint
+	gstdMint   string // GSTD SPL Token mint address
+	solMint    string // Wrapped SOL mint
 }
 
 // RaydiumPool represents a Raydium pool
 type RaydiumPool struct {
-	ID         string  `json:"id"`
-	MintA      string  `json:"mintA"`
-	MintB      string  `json:"mintB"`
-	TVL        float64 `json:"tvl"`
-	Volume24h  float64 `json:"volume24h"`
-	FeeRate    float64 `json:"feeRate"`
-	APR        float64 `json:"apr"`
-	PoolType   string  `json:"type"` // "Standard", "Concentrated"
+	ID        string  `json:"id"`
+	MintA     string  `json:"mintA"`
+	MintB     string  `json:"mintB"`
+	TVL       float64 `json:"tvl"`
+	Volume24h float64 `json:"volume24h"`
+	FeeRate   float64 `json:"feeRate"`
+	APR       float64 `json:"apr"`
+	PoolType  string  `json:"type"` // "Standard", "Concentrated"
 }
 
 // RaydiumSwapQuote represents a swap quote
@@ -253,7 +253,7 @@ func (r *RaydiumService) GetSPLBalance(ctx context.Context, ownerAddress string)
 	}
 
 	bodyJSON, _ := json.Marshal(body)
-	req, err := http.NewRequestWithContext(ctx, "POST", r.rpcURL, 
+	req, err := http.NewRequestWithContext(ctx, "POST", r.rpcURL,
 		io.NopCloser(jsonReader(bodyJSON)))
 	if err != nil {
 		return 0, err

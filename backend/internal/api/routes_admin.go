@@ -389,7 +389,7 @@ func approveWithdrawal(db *sql.DB, rewardEngine *services.RewardEngine) gin.Hand
 			bgCtx := context.Background()
 			if err := rewardEngine.DistributeRewards(bgCtx, &task, workerWallet.String); err != nil {
 				// Log error but don't fail the approval
-				fmt.Printf("Error processing approved withdrawal %s: %v\n", withdrawalID, err)
+				log.Printf("Error processing approved withdrawal %s: %v\n", withdrawalID, err)
 			}
 		}()
 

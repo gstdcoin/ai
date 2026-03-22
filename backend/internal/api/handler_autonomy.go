@@ -3,8 +3,8 @@ package api
 import (
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"distributed-computing-platform/internal/services"
+	"github.com/gin-gonic/gin"
 )
 
 // ═══════════════════════════════════════════════════════════════
@@ -40,11 +40,11 @@ func (h *AutonomyHandler) GetStatus(c *gin.Context) {
 	aiStats := h.brain.GetAIStats()
 
 	c.JSON(http.StatusOK, gin.H{
-		"autonomous":    true,
-		"brain_active":  true,
-		"cycles":        h.brain.GetCycles(),
-		"network":       state,
-		"ai_stats":      aiStats,
+		"autonomous":   true,
+		"brain_active": true,
+		"cycles":       h.brain.GetCycles(),
+		"network":      state,
+		"ai_stats":     aiStats,
 		"capabilities": []string{
 			"self_healing",
 			"auto_node_management",
@@ -143,9 +143,9 @@ func (h *AutonomyHandler) OptimizeNodes(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"decision":      decision,
-		"cost":          0,
-		"auto_applied":  false,
+		"decision":       decision,
+		"cost":           0,
+		"auto_applied":   false,
 		"needs_approval": true,
 	})
 }

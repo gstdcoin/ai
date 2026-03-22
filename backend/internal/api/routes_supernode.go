@@ -102,11 +102,11 @@ func RegisterSuperNodeRoutes(v1 *gin.RouterGroup, dbConn *sql.DB) {
 				"staking_apy":          12,
 			},
 			"multipliers": gin.H{
-				"gpu_h100":   3.0,
-				"gpu_a100":   2.5,
-				"gpu_a6000":  2.0,
-				"gpu_4090":   1.5,
-				"gpu_4080":   1.2,
+				"gpu_h100":    3.0,
+				"gpu_a100":    2.5,
+				"gpu_a6000":   2.0,
+				"gpu_4090":    1.5,
+				"gpu_4080":    1.2,
 				"gpu_default": 1.0,
 			},
 			"updated_at": time.Now().Format(time.RFC3339),
@@ -299,10 +299,10 @@ func RegisterSuperNodeRoutes(v1 *gin.RouterGroup, dbConn *sql.DB) {
 		var req struct {
 			NodeID string `json:"node_id"`
 			Proofs []struct {
-				ChallengeID  string `json:"challenge_id"`
+				ChallengeID   string `json:"challenge_id"`
 				ResponderNode string `json:"responder_node"`
-				ResponseHash string  `json:"response_hash"`
-				LatencyMs    int     `json:"latency_ms"`
+				ResponseHash  string `json:"response_hash"`
+				LatencyMs     int    `json:"latency_ms"`
 			} `json:"proofs"`
 		}
 		c.ShouldBindJSON(&req)
@@ -355,7 +355,7 @@ func RegisterSuperNodeRoutes(v1 *gin.RouterGroup, dbConn *sql.DB) {
 			},
 			"economics": gin.H{
 				"total_settled_gstd": totalSettled,
-				"revenue_streams":   6,
+				"revenue_streams":    6,
 			},
 			"updated_at": time.Now().Format(time.RFC3339),
 		})

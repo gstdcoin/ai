@@ -13,8 +13,8 @@ import (
 // ═══════════════════════════════════════════════════════════════
 // DEPT 8: AUTO-CODER — Autonomous Self-Healing Codebase
 //
-// The PlatformOperator detects errors in the logs, finds the 
-// source code file, sends it to Compound AI to get a fix, 
+// The PlatformOperator detects errors in the logs, finds the
+// source code file, sends it to Compound AI to get a fix,
 // modifies the code on disk, and commits the change to Git.
 // ═══════════════════════════════════════════════════════════════
 
@@ -56,7 +56,7 @@ func (op *PlatformOperator) autoCoderCycle() {
 	// e.g. /app/internal/api/routes.go:123
 	re := regexp.MustCompile(`(/app/[a-zA-Z0-9_./-]+):([0-9]+)`)
 	matches := re.FindStringSubmatch(errorLog)
-	
+
 	if len(matches) < 3 {
 		return // Could not parse file location
 	}
@@ -107,7 +107,7 @@ Make sure the command applies correctly.`, errorLog, hostFile, codeContent, host
 	// 4. Apply the fix
 	fixCmd := exec.Command("sh", "-c", aiFixScript)
 	fixOut, fixErr := fixCmd.CombinedOutput()
-	
+
 	if fixErr != nil {
 		op.logAction(deptAutoCoder, "Failed to apply AI patch", string(fixOut), false)
 		return

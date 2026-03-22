@@ -428,9 +428,11 @@ func createStake(db *sql.DB) gin.HandlerFunc {
 			return
 		}
 
-		// Deduct from balance
+		// Deduct GSTD and mint stGSTD
 		tx.ExecContext(ctx,
-			`UPDATE users SET gstd_balance = COALESCE(gstd_balance,0) - $1, updated_at = NOW() WHERE wallet_address = $2`,
+			`UPDATE users SET gstd_balance = COALESCE(gstd_balance,0) - $1,
+			                  stgstd_balance = COALESCE(stgstd_balance,0) + $1,
+			                  updated_at = NOW() WHERE wallet_address = $2`,
 			req.Amount, req.Wallet)
 
 		// Create stake
@@ -467,60 +469,118 @@ func createStake(db *sql.DB) gin.HandlerFunc {
 func unstakePool(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			Wallet  string `json:"wallet" binding:"required"`
-			StakeID int    `json:"stake_id" binding:"required"`
+			Wallet string  `json:"wallet" binding:"required"`
+			Amount float64 `json:"amount" binding:"required"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(400, gin.H{"error": err.Error()})
 			return
 		}
-
-		ctx := c.Request.Context()
-		var amount, earned float64
-		var unlockAt time.Time
-		err := db.QueryRowContext(ctx,
-			`SELECT staked_amount, total_earned, unlock_at FROM staking_pools 
-			 WHERE id = $1 AND wallet_address = $2 AND is_active = true`,
-			req.StakeID, req.Wallet).Scan(&amount, &earned, &unlockAt)
-		if err != nil {
-			c.JSON(404, gin.H{"error": "stake not found"})
+		if req.Amount <= 0 {
+			c.JSON(400, gin.H{"error": "amount must be greater than zero"})
 			return
 		}
 
-		// Early withdrawal penalty: 10%
-		penalty := 0.0
-		if time.Now().Before(unlockAt) {
-			penalty = amount * 0.10
-		}
-
-		netReturn := amount - penalty + earned
+		ctx := c.Request.Context()
 		tx, _ := db.BeginTx(ctx, nil)
 		defer tx.Rollback()
 
-		// Return to balance
-		tx.ExecContext(ctx,
-			`UPDATE users SET gstd_balance = COALESCE(gstd_balance,0) + $1, updated_at = NOW() WHERE wallet_address = $2`,
-			netReturn, req.Wallet)
+		var stbalance float64
+		err := tx.QueryRowContext(ctx, `SELECT COALESCE(stgstd_balance, 0) FROM users WHERE wallet_address = $1`, req.Wallet).Scan(&stbalance)
+		if err != nil || stbalance < req.Amount {
+			c.JSON(400, gin.H{"error": "insufficient stGSTD balance"})
+			return
+		}
 
-		// Deactivate stake
+		// Retrieve all active stakes ordered by oldest first
+		rows, err := tx.QueryContext(ctx, `
+			SELECT id, staked_amount, total_earned, unlock_at FROM staking_pools 
+			WHERE wallet_address = $1 AND is_active = true ORDER BY created_at ASC
+		`, req.Wallet)
+
+		if err != nil {
+			c.JSON(500, gin.H{"error": "failed to retrieve stakes"})
+			return
+		}
+
+		type Stake struct {
+			ID       int
+			Amount   float64
+			Earned   float64
+			UnlockAt time.Time
+		}
+		var stakes []Stake
+		for rows.Next() {
+			var s Stake
+			if rows.Scan(&s.ID, &s.Amount, &s.Earned, &s.UnlockAt) == nil {
+				stakes = append(stakes, s)
+			}
+		}
+		rows.Close()
+
+		remainingToUnstake := req.Amount
+		totalPenalty := 0.0
+		totalEarned := 0.0
+
+		for _, s := range stakes {
+			if remainingToUnstake <= 0 {
+				break
+			}
+
+			unstakeFromThis := s.Amount
+			if remainingToUnstake < s.Amount {
+				unstakeFromThis = remainingToUnstake
+			}
+
+			// Calculate penalty for this portion
+			penalty := 0.0
+			if time.Now().Before(s.UnlockAt) {
+				penalty = unstakeFromThis * 0.10
+			}
+			totalPenalty += penalty
+
+			// Proportion of earnings for this portion
+			portion := unstakeFromThis / s.Amount
+			earnedPortion := s.Earned * portion
+			totalEarned += earnedPortion
+
+			if unstakeFromThis == s.Amount {
+				tx.ExecContext(ctx, `UPDATE staking_pools SET is_active = false, updated_at = NOW() WHERE id = $1`, s.ID)
+			} else {
+				tx.ExecContext(ctx, `UPDATE staking_pools SET staked_amount = staked_amount - $1, total_earned = total_earned - $2, updated_at = NOW() WHERE id = $3`, unstakeFromThis, earnedPortion, s.ID)
+			}
+
+			remainingToUnstake -= unstakeFromThis
+		}
+
+		if remainingToUnstake > 0 && len(stakes) == 0 {
+			// They hold stGSTD but no stakes are in the DB (maybe bought on DEX).
+			// We just honor it without penalty.
+		}
+
+		netReturn := req.Amount - totalPenalty + totalEarned
+
+		// Return GSTD to balance and burn equivalent stGSTD
 		tx.ExecContext(ctx,
-			`UPDATE staking_pools SET is_active = false WHERE id = $1`, req.StakeID)
+			`UPDATE users SET gstd_balance = COALESCE(gstd_balance,0) + $1,
+			                  stgstd_balance = GREATEST(COALESCE(stgstd_balance,0) - $2, 0),
+			                  updated_at = NOW() WHERE wallet_address = $3`,
+			netReturn, req.Amount, req.Wallet)
 
 		// Burn penalty
-		if penalty > 0 {
+		if totalPenalty > 0 {
 			tx.ExecContext(ctx,
 				`INSERT INTO token_burns (transaction_id, transaction_type, original_amount, burn_amount, burn_address, source_wallet, created_at)
 				 VALUES (gen_random_uuid()::text, 'early_unstake_penalty', $1, $2, 'BURN', $3, NOW())`,
-				amount, penalty, req.Wallet)
+				req.Amount, totalPenalty, req.Wallet)
 		}
 
 		tx.Commit()
 		c.JSON(200, gin.H{
 			"returned":  netReturn,
-			"principal": amount,
-			"earned":    earned,
-			"penalty":   penalty,
-			"early":     time.Now().Before(unlockAt),
+			"principal": req.Amount,
+			"earned":    totalEarned,
+			"penalty":   totalPenalty,
 		})
 	}
 }
@@ -1167,7 +1227,7 @@ func registerCapabilities(db *sql.DB) gin.HandlerFunc {
 			"node_id":         req.NodeID,
 			"autonomous_mode": req.AutonomousMode,
 			"capabilities":    getCapsList(req),
-			"message": "Node capabilities registered. You can now receive tasks matching your hardware.",
+			"message":         "Node capabilities registered. You can now receive tasks matching your hardware.",
 		})
 	}
 }

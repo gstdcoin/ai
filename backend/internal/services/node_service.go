@@ -601,3 +601,42 @@ func (s *NodeService) MarkStaleNodesOffline(ctx context.Context, staleThreshold 
 	affected, _ := result.RowsAffected()
 	return affected, nil
 }
+
+// GetNodePayoutMultiplier calculates dynamic yield multiplier based on hardware contribution, trust score, and staking
+func (s *NodeService) GetNodePayoutMultiplier(ctx context.Context, walletAddress string) float64 {
+	baseMultiplier := 1.0
+
+	// 1. Trust Score Multiplier (Up to +20%)
+	var trustScore float64
+	err := s.db.QueryRowContext(ctx, `SELECT COALESCE(MAX(trust_score), 0.5) FROM nodes WHERE wallet_address = $1`, walletAddress).Scan(&trustScore)
+	if err == nil {
+		if trustScore > 0.8 {
+			baseMultiplier += (trustScore - 0.8) // up to +0.20
+		} else if trustScore < 0.4 {
+			baseMultiplier -= (0.4 - trustScore) // penalty down to -0.40
+		}
+	}
+
+	// 2. Liquid Staking Bonus (+10% to +30% depending on stake)
+	var stakedAmount float64
+	err = s.db.QueryRowContext(ctx, `SELECT COALESCE(stgstd_balance, 0) FROM users WHERE wallet_address = $1`, walletAddress).Scan(&stakedAmount)
+	if err == nil && stakedAmount > 0 {
+		if stakedAmount >= 1000 {
+			baseMultiplier += 0.30 // Whales get +30% yield boost
+		} else if stakedAmount >= 100 {
+			baseMultiplier += 0.20 // +20%
+		} else {
+			baseMultiplier += 0.10 // +10%
+		}
+	}
+
+	// Cap the multiplier between 0.5x and 2.0x
+	if baseMultiplier < 0.5 {
+		return 0.5
+	}
+	if baseMultiplier > 2.0 {
+		return 2.0
+	}
+
+	return baseMultiplier
+}

@@ -65,7 +65,7 @@ func (v *ObsidianVault) initVaultStructure() {
 	// Create vault config (.obsidian folder)
 	obsDir := filepath.Join(v.rootDir, ".obsidian")
 	os.MkdirAll(obsDir, 0755)
-	
+
 	appJSON := `{"baseFontSize":16,"theme":"obsidian","translucency":true,"showFrontmatter":true}`
 	os.WriteFile(filepath.Join(obsDir, "app.json"), []byte(appJSON), 0644)
 
@@ -76,7 +76,7 @@ func (v *ObsidianVault) initVaultStructure() {
 func (v *ObsidianVault) WriteNote(category, title, content string) error {
 	dir := filepath.Join(v.rootDir, category)
 	os.MkdirAll(dir, 0755)
-	
+
 	safeName := strings.ReplaceAll(title, "/", "-")
 	safeName = strings.ReplaceAll(safeName, "\\", "-")
 	safeName = strings.ReplaceAll(safeName, ":", "-")
@@ -89,7 +89,7 @@ func (v *ObsidianVault) WriteNote(category, title, content string) error {
 func (v *ObsidianVault) AppendNote(category, title, content string) error {
 	dir := filepath.Join(v.rootDir, category)
 	os.MkdirAll(dir, 0755)
-	
+
 	safeName := strings.ReplaceAll(title, "/", "-")
 	safeName = strings.ReplaceAll(safeName, "\\", "-")
 	safeName = strings.ReplaceAll(safeName, ":", "-")
@@ -148,14 +148,14 @@ func (v *ObsidianVault) SearchVault(query string) []string {
 
 func (v *ObsidianVault) WriteDailyLog(health ServerHealth, networkState interface{}, aiStats interface{}, actions []OperatorAction) {
 	today := time.Now().Format(vaultDateFmt)
-	
+
 	var actionsLog strings.Builder
 	for _, a := range actions {
 		icon := "✅"
 		if !a.Success {
 			icon = "❌"
 		}
-		actionsLog.WriteString(fmt.Sprintf("- %s %s `%s` → %s (%s)\n", 
+		actionsLog.WriteString(fmt.Sprintf("- %s %s `%s` → %s (%s)\n",
 			icon, a.Time.Format("15:04"), a.Category, a.Action, a.Result))
 	}
 
@@ -394,7 +394,12 @@ tags: [incident, %s, %s]
 Related: [[Daily/%s]]
 `,
 		id, today, severity,
-		func() string { if resolution != "" { return "true" }; return "false" }(),
+		func() string {
+			if resolution != "" {
+				return "true"
+			}
+			return "false"
+		}(),
 		severity, strings.ToLower(title),
 		title, id, severity,
 		time.Now().Format("15:04:05"),

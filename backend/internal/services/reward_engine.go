@@ -19,6 +19,7 @@ type RewardEngine struct {
 	treasuryWallet string
 	xautJettonAddr string
 	payoutRetry    *PayoutRetryService
+	nodeService    *NodeService
 }
 
 // SetPayoutRetry sets the payout retry service
@@ -31,6 +32,7 @@ func NewRewardEngine(
 	tonService *TONService,
 	stonFiService *StonFiService,
 	tonConfig config.TONConfig,
+	nodeService *NodeService,
 ) *RewardEngine {
 	// Use AdminWallet for receiving 5% commission (not TreasuryWallet)
 	// Admin will manually manage the GSTD/XAUt pool
@@ -77,6 +79,7 @@ func NewRewardEngine(
 		tonConfig:      tonConfig,
 		treasuryWallet: tonConfig.AdminWallet, // Use AdminWallet for treasury
 		xautJettonAddr: xautJettonAddr,
+		nodeService:    nodeService,
 	}
 }
 
@@ -89,7 +92,14 @@ func (re *RewardEngine) DistributeRewards(ctx context.Context, task *models.Task
 	budget := *task.BudgetGSTD
 
 	// Calculate 95/5 split; Eternal Flame: +5% worker boost when volume > 10k GSTD/hr
-	boost := GetWorkerRewardBoost()
+	// Also incorporate the new hardware/trust/staking node multiplier:
+	globalBoost := GetWorkerRewardBoost()
+	nodeBoost := 1.0
+	if re.nodeService != nil {
+		nodeBoost = re.nodeService.GetNodePayoutMultiplier(ctx, workerWallet)
+	}
+	boost := globalBoost * nodeBoost
+
 	workerReward := budget * 0.95 * boost
 	platformFee := budget - workerReward
 	if platformFee < 0 {

@@ -10,6 +10,7 @@ import {
   Activity, Vote, Globe, Droplet, Terminal, Copy, Check, Monitor
 } from 'lucide-react';
 import { API_BASE_URL } from '../lib/config';
+import BrowserNodePanel from '../components/nodes/BrowserNodePanel';
 
 const TIER_STYLES: Record<string, { bg: string; border: string; text: string; glow: string }> = {
   bronze:   { bg: 'rgba(205,127,50,0.08)', border: 'rgba(205,127,50,0.2)', text: '#CD7F32', glow: '0 0 20px rgba(205,127,50,0.15)' },
@@ -177,6 +178,11 @@ export default function NodesPage() {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* ═══════════ WebGPU Browser Node ═══════════ */}
+          <div className="mb-12 fu d3">
+            <BrowserNodePanel />
           </div>
         {network && (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-10 fu d3">

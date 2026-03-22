@@ -176,9 +176,9 @@ func (s *OnchainSettlementService) GetWithdrawPayload(amountGSTD float64, worker
 // ═══════════════════════════════════════════════════════════════
 
 const (
-	MaxSingleSettlementGSTD = 10000.0  // Max 10K GSTD per single settlement
-	MaxBatchTotalGSTD       = 100000.0 // Max 100K GSTD per batch
-	MinSettlementGSTD       = 0.0001   // Min dust threshold
+	MaxSingleSettlementGSTD = 10000.0     // Max 10K GSTD per single settlement
+	MaxBatchTotalGSTD       = 100000.0    // Max 100K GSTD per batch
+	MinSettlementGSTD       = 0.0001      // Min dust threshold
 	MaxNanoAmount           = int64(1e18) // Prevent int64 overflow on nano conversion
 )
 

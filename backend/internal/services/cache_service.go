@@ -41,9 +41,9 @@ func NewCacheService(redisClient *redis.Client) *CacheService {
 	// Initialize Ristretto L1 cache
 	// MaxCost 64MB, NumCounters 10x expected items
 	cache, err := ristretto.NewCache(&ristretto.Config[string, []byte]{
-		NumCounters: 100_000,     // 100K counters for admission policy
-		MaxCost:     64_000_000,  // 64MB max memory
-		BufferItems: 64,          // 64 keys per Get buffer
+		NumCounters: 100_000,    // 100K counters for admission policy
+		MaxCost:     64_000_000, // 64MB max memory
+		BufferItems: 64,         // 64 keys per Get buffer
 	})
 	if err != nil {
 		log.Printf("⚠️ Ristretto L1 cache init failed: %v (using Redis-only)", err)
