@@ -10,6 +10,7 @@ require (
 	github.com/gin-gonic/gin v1.11.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
+	github.com/hibiken/asynq v0.26.0
 	github.com/joho/godotenv v1.5.1
 	github.com/lib/pq v1.11.1
 	github.com/libp2p/go-libp2p v0.47.0
@@ -133,8 +134,10 @@ require (
 	github.com/quic-go/quic-go v0.59.0 // indirect
 	github.com/quic-go/webtransport-go v0.10.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
+	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
+	github.com/spf13/cast v1.10.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
@@ -155,7 +158,7 @@ require (
 	golang.org/x/sys v0.40.0 // indirect
 	golang.org/x/telemetry v0.0.0-20260109210033-bd525da824e2 // indirect
 	golang.org/x/text v0.33.0 // indirect
-	golang.org/x/time v0.12.0 // indirect
+	golang.org/x/time v0.14.0 // indirect
 	golang.org/x/tools v0.41.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
