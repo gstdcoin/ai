@@ -28,42 +28,42 @@ import (
 // ═══════════════════════════════════════════════════════════════
 
 type SwarmBrain struct {
-	db       *sql.DB
-	ai       *CompoundAI
-	mu       sync.RWMutex
-	state    NetworkState
-	config   BrainConfig
-	running  bool
-	stopCh   chan struct{}
-	cycles   int64
+	db      *sql.DB
+	ai      *CompoundAI
+	mu      sync.RWMutex
+	state   NetworkState
+	config  BrainConfig
+	running bool
+	stopCh  chan struct{}
+	cycles  int64
 }
 
 type BrainConfig struct {
-	AnalysisCycle     time.Duration // How often to analyze network
-	HealingCycle      time.Duration // How often to check for failures
-	GrowthCycle       time.Duration // How often to analyze growth
-	EconomicsCycle    time.Duration // How often to adjust economics
-	MaxNodesPerCycle  int           // Max nodes to process per cycle
+	AnalysisCycle    time.Duration // How often to analyze network
+	HealingCycle     time.Duration // How often to check for failures
+	GrowthCycle      time.Duration // How often to analyze growth
+	EconomicsCycle   time.Duration // How often to adjust economics
+	MaxNodesPerCycle int           // Max nodes to process per cycle
 }
 
 type NetworkState struct {
-	LastUpdated      time.Time          `json:"last_updated"`
-	TotalNodes       int                `json:"total_nodes"`
-	OnlineNodes      int                `json:"online_nodes"`
-	OfflineNodes     int                `json:"offline_nodes"`
-	TotalTasks       int                `json:"total_tasks"`
-	ActiveTasks      int                `json:"active_tasks"`
-	CompletedTasks   int                `json:"completed_tasks"`
-	FailedTasks      int                `json:"failed_tasks"`
-	TotalQueriesDay  int                `json:"total_queries_24h"`
-	NetworkHealth    float64            `json:"network_health"` // 0-100
-	GrowthRate7d     float64            `json:"growth_rate_7d"` // % new nodes
-	AvgNodeUptime    float64            `json:"avg_node_uptime_hours"`
-	TotalEarned      float64            `json:"total_earned_gstd"`
-	NodesByStatus    map[string]int     `json:"nodes_by_status"`
-	TopModels        []string           `json:"top_models"`
-	Alerts           []NetworkAlert     `json:"alerts"`
-	AIDecisions      []AIDecision       `json:"recent_ai_decisions"`
+	LastUpdated     time.Time      `json:"last_updated"`
+	TotalNodes      int            `json:"total_nodes"`
+	OnlineNodes     int            `json:"online_nodes"`
+	OfflineNodes    int            `json:"offline_nodes"`
+	TotalTasks      int            `json:"total_tasks"`
+	ActiveTasks     int            `json:"active_tasks"`
+	CompletedTasks  int            `json:"completed_tasks"`
+	FailedTasks     int            `json:"failed_tasks"`
+	TotalQueriesDay int            `json:"total_queries_24h"`
+	NetworkHealth   float64        `json:"network_health"` // 0-100
+	GrowthRate7d    float64        `json:"growth_rate_7d"` // % new nodes
+	AvgNodeUptime   float64        `json:"avg_node_uptime_hours"`
+	TotalEarned     float64        `json:"total_earned_gstd"`
+	NodesByStatus   map[string]int `json:"nodes_by_status"`
+	TopModels       []string       `json:"top_models"`
+	Alerts          []NetworkAlert `json:"alerts"`
+	AIDecisions     []AIDecision   `json:"recent_ai_decisions"`
 }
 
 type NetworkAlert struct {

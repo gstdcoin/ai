@@ -47,20 +47,20 @@ type ExternalDataFetcher struct {
 // MarketDataSnapshot holds fetched external data for one source
 type MarketDataSnapshot struct {
 	Source    string                 `json:"source"`
-	Category string                 `json:"category"`
-	Data     map[string]interface{} `json:"data"`
-	FetchedAt time.Time             `json:"fetched_at"`
-	Fresh    bool                   `json:"fresh"`
+	Category  string                 `json:"category"`
+	Data      map[string]interface{} `json:"data"`
+	FetchedAt time.Time              `json:"fetched_at"`
+	Fresh     bool                   `json:"fresh"`
 }
 
 // NewExternalDataFetcher creates the fetcher
 func NewExternalDataFetcher(db *sql.DB, redisClient *redis.Client, ai *CompoundAI) *ExternalDataFetcher {
 	return &ExternalDataFetcher{
-		db:    db,
-		redis: redisClient,
-		ai:    ai,
+		db:     db,
+		redis:  redisClient,
+		ai:     ai,
 		client: &http.Client{Timeout: 15 * time.Second},
-		cache: make(map[string]*MarketDataSnapshot),
+		cache:  make(map[string]*MarketDataSnapshot),
 	}
 }
 
@@ -114,10 +114,10 @@ func (f *ExternalDataFetcher) GetDataSourcesStatus() []map[string]interface{} {
 
 	var sources []map[string]interface{}
 	sourceOrder := []struct {
-		key      string
-		name     string
-		icon     string
-		apiURL   string
+		key    string
+		name   string
+		icon   string
+		apiURL string
 	}{
 		{"crypto", "CoinGecko", "₿", "api.coingecko.com"},
 		{"forex", "ECB Exchange Rates", "💱", "data.ecb.europa.eu"},
@@ -145,7 +145,12 @@ func (f *ExternalDataFetcher) GetDataSourcesStatus() []map[string]interface{} {
 			"fresh":       fresh,
 			"last_fetch":  lastFetch,
 			"data_points": dataPoints,
-			"status":      func() string { if fresh { return "live" }; return "stale" }(),
+			"status": func() string {
+				if fresh {
+					return "live"
+				}
+				return "stale"
+			}(),
 		})
 	}
 	return sources
@@ -273,10 +278,10 @@ func (f *ExternalDataFetcher) fetchCryptoData(ctx context.Context) (*MarketDataS
 
 	return &MarketDataSnapshot{
 		Source:    "CoinGecko",
-		Category: "crypto",
-		Data:     data,
+		Category:  "crypto",
+		Data:      data,
 		FetchedAt: time.Now(),
-		Fresh:    true,
+		Fresh:     true,
 	}, nil
 }
 
@@ -322,10 +327,10 @@ func (f *ExternalDataFetcher) fetchForexData(ctx context.Context) (*MarketDataSn
 
 	return &MarketDataSnapshot{
 		Source:    "ExchangeRate API",
-		Category: "forex",
-		Data:     data,
+		Category:  "forex",
+		Data:      data,
 		FetchedAt: time.Now(),
-		Fresh:    true,
+		Fresh:     true,
 	}, nil
 }
 
@@ -406,10 +411,10 @@ func (f *ExternalDataFetcher) fetchTechTrends(ctx context.Context) (*MarketDataS
 
 	return &MarketDataSnapshot{
 		Source:    "HackerNews",
-		Category: "tech",
-		Data:     data,
+		Category:  "tech",
+		Data:      data,
 		FetchedAt: time.Now(),
-		Fresh:    true,
+		Fresh:     true,
 	}, nil
 }
 
@@ -445,7 +450,7 @@ func (f *ExternalDataFetcher) fetchPolymarketData(ctx context.Context) (*MarketD
 				// Polymarket returns outcomes and outcomePrices as stringified JSON arrays
 				outcomesStr, _ := firstMarket["outcomes"].(string)
 				pricesStr, _ := firstMarket["outcomePrices"].(string)
-				
+
 				var outcomes []string
 				var prices []string
 				json.Unmarshal([]byte(outcomesStr), &outcomes)
@@ -470,10 +475,10 @@ func (f *ExternalDataFetcher) fetchPolymarketData(ctx context.Context) (*MarketD
 
 	return &MarketDataSnapshot{
 		Source:    "Polymarket",
-		Category: "polymarket",
-		Data:     data,
+		Category:  "polymarket",
+		Data:      data,
 		FetchedAt: time.Now(),
-		Fresh:    true,
+		Fresh:     true,
 	}, nil
 }
 

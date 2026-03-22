@@ -10,6 +10,12 @@ import { toast } from '../../lib/toast';
 import { apiGet, apiPost } from '../../lib/apiClient';
 import { useWalletStore } from '../../store/walletStore';
 import { useTonConnectUI, TonConnectButton } from '@tonconnect/ui-react';
+import dynamic from 'next/dynamic';
+
+const PriceChart = dynamic(() => import('../../components/charts/PriceChart'), {
+    ssr: false,
+    loading: () => <div className="h-[300px] w-full rounded-2xl bg-white/[0.02] border border-white/[0.06] animate-pulse flex items-center justify-center text-gray-500">Loading Chart Engine...</div>
+});
 
 interface CatalogEntry {
     id: string;
@@ -218,6 +224,11 @@ export default function SwarmSimulations() {
                             Launch powerful market simulations with real-time data feeds.
                             200+ AI agents analyze, debate, and generate actionable predictions.
                         </p>
+                    </div>
+
+                    {/* ─── GSTD PRICE CHART ─── */}
+                    <div className="mb-8">
+                        <PriceChart height={300} title="GSTD Global Value" />
                     </div>
 
                     {/* ─── STATS ─── */}

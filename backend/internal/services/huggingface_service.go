@@ -19,11 +19,11 @@ import (
 // Used for: embeddings, zero-shot classification, toxicity detection, sentiment analysis.
 // This replaces regex-based approaches with ML-powered classification.
 type HuggingFaceService struct {
-	apiKey     string
-	baseURL    string
-	client     *http.Client
-	cache      sync.Map // Simple in-memory cache for embeddings
-	enabled    bool
+	apiKey  string
+	baseURL string
+	client  *http.Client
+	cache   sync.Map // Simple in-memory cache for embeddings
+	enabled bool
 }
 
 // EmbeddingResult from the sentence-transformers model
@@ -45,20 +45,20 @@ type ClassificationResult struct {
 
 // SentimentResult from sentiment analysis
 type SentimentResult struct {
-	Label     string  `json:"label"`     // positive, negative, neutral
+	Label     string  `json:"label"` // positive, negative, neutral
 	Score     float64 `json:"score"`
-	Stars     int     `json:"stars"`     // 1-5 star rating
+	Stars     int     `json:"stars"` // 1-5 star rating
 	LatencyMs int64   `json:"latency_ms"`
 }
 
 // HuggingFace model IDs
 const (
-	HFModelEmbedding    = "sentence-transformers/all-MiniLM-L6-v2"
-	HFModelZeroShot     = "facebook/bart-large-mnli"
-	HFModelToxicity     = "unitary/toxic-bert"
-	HFModelSentiment    = "nlptown/bert-base-multilingual-uncased-sentiment"
-	HFModelSummarize    = "facebook/bart-large-cnn"
-	HFModelTranslate    = "Helsinki-NLP/opus-mt-ru-en" // Example: Russian→English
+	HFModelEmbedding = "sentence-transformers/all-MiniLM-L6-v2"
+	HFModelZeroShot  = "facebook/bart-large-mnli"
+	HFModelToxicity  = "unitary/toxic-bert"
+	HFModelSentiment = "nlptown/bert-base-multilingual-uncased-sentiment"
+	HFModelSummarize = "facebook/bart-large-cnn"
+	HFModelTranslate = "Helsinki-NLP/opus-mt-ru-en" // Example: Russian→English
 )
 
 func NewHuggingFaceService() *HuggingFaceService {
@@ -510,11 +510,11 @@ func (h *HuggingFaceService) GetStats() map[string]interface{} {
 		"enabled":    h.enabled,
 		"cache_size": cacheSize,
 		"models": map[string]string{
-			"embedding":  HFModelEmbedding,
-			"zero_shot":  HFModelZeroShot,
-			"toxicity":   HFModelToxicity,
-			"sentiment":  HFModelSentiment,
-			"summarize":  HFModelSummarize,
+			"embedding": HFModelEmbedding,
+			"zero_shot": HFModelZeroShot,
+			"toxicity":  HFModelToxicity,
+			"sentiment": HFModelSentiment,
+			"summarize": HFModelSummarize,
 		},
 	}
 }

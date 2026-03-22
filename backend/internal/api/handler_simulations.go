@@ -27,14 +27,14 @@ func NewSimulationsHandler(db *sql.DB, mirofish *services.MiroFishService, escro
 
 // simulationCatalogEntry represents an available simulation type
 type simulationCatalogEntry struct {
-	ID          string  `json:"id"`
-	Category    string  `json:"category"`
-	Title       string  `json:"title"`
-	Description string  `json:"description"`
-	Icon        string  `json:"icon"`
-	PriceGSTD   float64 `json:"price_gstd"`
-	AgentCount  int     `json:"agent_count"`
-	Duration    int     `json:"duration_rounds"`
+	ID          string   `json:"id"`
+	Category    string   `json:"category"`
+	Title       string   `json:"title"`
+	Description string   `json:"description"`
+	Icon        string   `json:"icon"`
+	PriceGSTD   float64  `json:"price_gstd"`
+	AgentCount  int      `json:"agent_count"`
+	Duration    int      `json:"duration_rounds"`
 	Features    []string `json:"features"`
 }
 
@@ -111,10 +111,10 @@ func (h *SimulationsHandler) LaunchSimulation(c *gin.Context) {
 	wallet := walletAddress.(string)
 
 	var req struct {
-		Category    string `json:"category" binding:"required"`
-		Scenario    string `json:"scenario"`    // Custom scenario text (optional for preset categories)
-		SeedData    string `json:"seed_data"`   // Additional seed material
-		AgentCount  int    `json:"agent_count"` // Override agent count (default 200)
+		Category   string `json:"category" binding:"required"`
+		Scenario   string `json:"scenario"`    // Custom scenario text (optional for preset categories)
+		SeedData   string `json:"seed_data"`   // Additional seed material
+		AgentCount int    `json:"agent_count"` // Override agent count (default 200)
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "category is required"})
@@ -226,9 +226,9 @@ func (h *SimulationsHandler) runSimulation(simID, category, scenario, seedData s
 
 	// Build seed
 	seed := map[string]interface{}{
-		"category":  category,
+		"category":    category,
 		"custom_seed": seedData,
-		"timestamp": time.Now().UTC().Format(time.RFC3339),
+		"timestamp":   time.Now().UTC().Format(time.RFC3339),
 	}
 
 	result, err := h.mirofish.CreateAndRunSimulation(ctx, services.SimulationRequest{
@@ -452,12 +452,12 @@ func (h *SimulationsHandler) GetSimulationStats(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"total_simulations":    totalSims,
+		"total_simulations":     totalSims,
 		"completed_simulations": completedSims,
-		"active_simulations":   activeSims,
-		"total_revenue_gstd":   totalRevenue,
-		"unique_users":         uniqueUsers,
-		"recent_simulations":   recent,
+		"active_simulations":    activeSims,
+		"total_revenue_gstd":    totalRevenue,
+		"unique_users":          uniqueUsers,
+		"recent_simulations":    recent,
 	})
 }
 
@@ -492,11 +492,11 @@ func getCategoryPrice(category string) float64 {
 
 func getCategoryScenario(category string) string {
 	scenarios := map[string]string{
-		"crypto": "You are an expert crypto hedge fund manager. Analyze the real-time cryptocurrency market data I provide (CoinGecko). Output a concrete, actionable TRADING SIGNAL: BUY, SELL, or HOLD. Include specific entry prices, target prices, and a tight stop-loss. Provide a concise rationale using the trending volumes and dominance. Make it sound professional and strictly financial.",
-		"forex":  "You are an institutional Forex trader. Analyze the real-time forex exchange rates I provide (ECB/open APIs). Output a concrete TRADING SIGNAL for the most volatile pair (e.g., EUR/USD, GBP/USD). Specify Long or Short, entry zone, take profit, and stop loss. Focus heavily on macro trends and fiat currency momentum.",
-		"polymarket": "You are an expert prediction market analyst. Analyze the real-time Polymarket events data I provide. For the most interesting or high-volume active event, output a concrete TRADING SIGNAL: Buy YES or Buy NO. Include the current outcome prices, the confidence level of your prediction, and why the market is currently mispriced.",
+		"crypto":      "You are an expert crypto hedge fund manager. Analyze the real-time cryptocurrency market data I provide (CoinGecko). Output a concrete, actionable TRADING SIGNAL: BUY, SELL, or HOLD. Include specific entry prices, target prices, and a tight stop-loss. Provide a concise rationale using the trending volumes and dominance. Make it sound professional and strictly financial.",
+		"forex":       "You are an institutional Forex trader. Analyze the real-time forex exchange rates I provide (ECB/open APIs). Output a concrete TRADING SIGNAL for the most volatile pair (e.g., EUR/USD, GBP/USD). Specify Long or Short, entry zone, take profit, and stop loss. Focus heavily on macro trends and fiat currency momentum.",
+		"polymarket":  "You are an expert prediction market analyst. Analyze the real-time Polymarket events data I provide. For the most interesting or high-volume active event, output a concrete TRADING SIGNAL: Buy YES or Buy NO. Include the current outcome prices, the confidence level of your prediction, and why the market is currently mispriced.",
 		"tech-trends": "You are a Silicon Valley venture capitalist. Analyze the real-time HackerNews data I provide. Identify the dominant tech trend (AI, Crypto, SaaS, etc.) right now. Output a concrete INVESTMENT SIGNAL for specific public equities or crypto protocols that benefit from this exact trend. Include ticker symbols and investment timeframe.",
-		"custom": "You are an expert analyst. Analyze the provided data and scenario carefully. Simulate the behavior of multiple agents and stakeholders. Output a detailed prediction report with confidence levels, key outcomes, and actionable recommendations.",
+		"custom":      "You are an expert analyst. Analyze the provided data and scenario carefully. Simulate the behavior of multiple agents and stakeholders. Output a detailed prediction report with confidence levels, key outcomes, and actionable recommendations.",
 	}
 	if s, ok := scenarios[category]; ok {
 		return s

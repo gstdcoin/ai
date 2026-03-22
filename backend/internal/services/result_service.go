@@ -17,7 +17,9 @@ type ResultService struct {
 	payment    *PaymentService
 	tonConfig  config.TONConfig
 	telegram   *TelegramService
-	zkProof    *ZKComputeProofService // Absolute Point: ZK evidence for task completion
+	zkProof    *ZKComputeProofService // Legacy ZK service (keep for compatibility)
+	newZk      *ZKService             // New awseome-cryptography ZK service
+	ipfs       *IPFSService           // awesome-ipfs storage
 }
 
 func NewResultService(db *sql.DB, encryption *EncryptionService, payment *PaymentService, tonConfig config.TONConfig) *ResultService {
@@ -29,9 +31,17 @@ func NewResultService(db *sql.DB, encryption *EncryptionService, payment *Paymen
 	}
 }
 
-// SetZKProofService injects ZK proof verifier (optional, for Absolute Point)
+// SetZKProofService injects ZK proof verifier
 func (s *ResultService) SetZKProofService(z *ZKComputeProofService) {
 	s.zkProof = z
+}
+
+func (s *ResultService) SetNewZKService(z *ZKService) {
+	s.newZk = z
+}
+
+func (s *ResultService) SetIPFSService(ipfs *IPFSService) {
+	s.ipfs = ipfs
 }
 
 func (s *ResultService) SetTelegramService(telegram *TelegramService) {

@@ -33,13 +33,13 @@ import (
 
 // signalCategory defines a prediction category with its agent and scenario
 type signalCategory struct {
-	Category    string
-	AgentName   string
-	AgentIcon   string
-	Scenario    string
-	IsPremium   bool
-	PriceGSTD   float64
-	AgentScore  float64
+	Category   string
+	AgentName  string
+	AgentIcon  string
+	Scenario   string
+	IsPremium  bool
+	PriceGSTD  float64
+	AgentScore float64
 }
 
 // allCategories returns all signal generation categories (internal GSTD + external markets)
@@ -164,7 +164,7 @@ func (op *PlatformOperator) mirofishSignalGenerator() {
 
 	// 2. Count active signals per category
 	categories := allCategories()
-	
+
 	// Pick 2-3 categories that need fresh signals (rotate)
 	op.mu.RLock()
 	cycle := op.cycleCount
@@ -173,7 +173,7 @@ func (op *PlatformOperator) mirofishSignalGenerator() {
 	// Rotate which categories get new signals
 	startIdx := int(cycle) % len(categories)
 	generateCount := 2 // generate 2 signals per cycle to balance load
-	
+
 	generated := 0
 	for i := 0; i < generateCount && i < len(categories); i++ {
 		idx := (startIdx + i) % len(categories)
@@ -216,7 +216,7 @@ func (op *PlatformOperator) generateSignalForCategory(cat signalCategory) error 
 
 	// Track which data sources were used
 	var dataSources []string
-	
+
 	result, err := op.mirofish.CreateAndRunSimulation(ctx, SimulationRequest{
 		Title:       fmt.Sprintf("%s %s Analysis", cat.AgentIcon, cat.Category),
 		Scenario:    cat.Scenario,
@@ -606,13 +606,13 @@ func GetComputeRewardStats(ctx context.Context, db *sql.DB) map[string]interface
 	db.QueryRowContext(ctx, "SELECT COALESCE(AVG(compute_ms), 0) FROM signal_compute_rewards").Scan(&avgComputeMs)
 
 	return map[string]interface{}{
-		"total_rewards_gstd":    totalRewards,
-		"contributing_nodes":    totalNodes,
-		"pending_distributions":  pendingRewards,
+		"total_rewards_gstd":      totalRewards,
+		"contributing_nodes":      totalNodes,
+		"pending_distributions":   pendingRewards,
 		"completed_distributions": distributedRewards,
-		"avg_compute_ms":         avgComputeMs,
-		"reward_per_signal":      0.5,
-		"revenue_share_pct":      20,
+		"avg_compute_ms":          avgComputeMs,
+		"reward_per_signal":       0.5,
+		"revenue_share_pct":       20,
 	}
 }
 
@@ -636,11 +636,11 @@ func GetNodeComputeRewards(ctx context.Context, db *sql.DB, nodeID string) ([]ma
 		var createdAt time.Time
 		if rows.Scan(&signalID, &rewardGSTD, &computeMs, &status, &createdAt) == nil {
 			rewards = append(rewards, map[string]interface{}{
-				"signal_id":  signalID,
+				"signal_id":   signalID,
 				"reward_gstd": rewardGSTD,
-				"compute_ms": computeMs,
-				"status":     status,
-				"created_at": createdAt.Format(time.RFC3339),
+				"compute_ms":  computeMs,
+				"status":      status,
+				"created_at":  createdAt.Format(time.RFC3339),
 			})
 		}
 	}

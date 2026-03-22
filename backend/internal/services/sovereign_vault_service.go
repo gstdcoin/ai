@@ -17,16 +17,16 @@ func NewSovereignVaultService(db *sql.DB) *SovereignVaultService {
 
 // VaultState represents a node operator's liquidity pool
 type VaultState struct {
-	VaultID         string  `json:"vault_id"`
-	NodeWallet      string  `json:"node_wallet"`
-	Asset           string  `json:"asset"` // e.g. "GSTD", "TON", "USDT"
-	TotalLiquidity  float64 `json:"total_liquidity"`
-	OperatorStake   float64 `json:"operator_stake"`
-	DelegatorStake  float64 `json:"delegator_stake"`
-	ManagementFee   float64 `json:"management_fee_pct"` // e.g. 0.15 (15%)
-	TotalVolume     float64 `json:"total_volume"`
-	GeneratedYield  float64 `json:"generated_yield"`
-	Status          string  `json:"status"`
+	VaultID        string  `json:"vault_id"`
+	NodeWallet     string  `json:"node_wallet"`
+	Asset          string  `json:"asset"` // e.g. "GSTD", "TON", "USDT"
+	TotalLiquidity float64 `json:"total_liquidity"`
+	OperatorStake  float64 `json:"operator_stake"`
+	DelegatorStake float64 `json:"delegator_stake"`
+	ManagementFee  float64 `json:"management_fee_pct"` // e.g. 0.15 (15%)
+	TotalVolume    float64 `json:"total_volume"`
+	GeneratedYield float64 `json:"generated_yield"`
+	Status         string  `json:"status"`
 }
 
 // CreateVault allows a node operator to open a Liquidity Pool and persists it
@@ -41,9 +41,9 @@ func (s *SovereignVaultService) CreateVault(nodeWallet string, asset string, ini
 	`
 	var returnedID string
 	err := s.DB.QueryRow(query, vaultID, nodeWallet, asset, initialStake, initialStake, feePct).Scan(&returnedID)
-	
+
 	if err != nil {
-		// Mock a fallback if constraint fails, just return a struct representation 
+		// Mock a fallback if constraint fails, just return a struct representation
 		// (this is sometimes needed if nodes table doesn't have the node yet during setup/tests)
 		return &VaultState{
 			VaultID:        vaultID,
@@ -101,17 +101,17 @@ func (s *SovereignVaultService) GetAllVaults() ([]VaultState, error) {
 // RouteThroughVault attempts to use the node's local liquidity for a swap, generating yield
 func (s *SovereignVaultService) RouteThroughVault(vaultID string, amount float64, routeFeePct float64) (float64, error) {
 	yield := amount * routeFeePct
-	
+
 	_, err := s.DB.Exec(`
 		UPDATE liquidity_vaults 
 		SET total_volume = total_volume + $1,
 		    generated_yield = generated_yield + $2
 		WHERE vault_id = $3
 	`, amount, yield, vaultID)
-	
+
 	if err != nil {
 		return 0, err
 	}
-	
+
 	return yield, nil
 }

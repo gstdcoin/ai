@@ -33,11 +33,11 @@ func (op *PlatformOperator) rndDevelopmentCycle() {
 	exec.Command("sh", "-c", "cd /home/ubuntu/agency-agents && git pull origin main").Run()
 
 	domains := []string{"localization", "frontend", "gstdbot", "backend", "devops", "security", "database", "smart_contracts", "layer1"}
-	
+
 	// Randomly pick an area to improve or optimize
 	rand.Seed(time.Now().UnixNano())
 	targetDomain := domains[rand.Intn(len(domains))]
-	
+
 	op.sendTelegram(fmt.Sprintf("💻 *Autonomous R&D Initiated*\nTarget domain: `%s`\nAnalyzing codebase to generate improvements...", targetDomain))
 
 	switch targetDomain {
@@ -65,7 +65,7 @@ func (op *PlatformOperator) rndDevelopmentCycle() {
 // ─── 1. LOCALIZATION CONTROL ──────────────────────────────────────────────────
 func (op *PlatformOperator) improveLocalization() {
 	baseDir := "/home/ubuntu/frontend/public/locales"
-	
+
 	// Get EN and RU JSON contents
 	enOut, _ := exec.Command("cat", baseDir+"/en/common.json").Output()
 	ruOut, _ := exec.Command("cat", baseDir+"/ru/common.json").Output()
@@ -78,8 +78,12 @@ func (op *PlatformOperator) improveLocalization() {
 	ruJson := string(ruOut)
 
 	// Don't send huge files; limit to ~200 lines if massive
-	if len(enJson) > 5000 { enJson = enJson[:5000] + "\n..." }
-	if len(ruJson) > 5000 { ruJson = ruJson[:5000] + "\n..." }
+	if len(enJson) > 5000 {
+		enJson = enJson[:5000] + "\n..."
+	}
+	if len(ruJson) > 5000 {
+		ruJson = ruJson[:5000] + "\n..."
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
@@ -95,9 +99,9 @@ Output ONLY a sed or jq bash script that modifies '%s/ru/common.json' to fix the
 	if err != nil || len(patch) < 10 {
 		return
 	}
-	
+
 	patch = op.cleanBashOutput(patch)
-	
+
 	if err := exec.Command("sh", "-c", patch).Run(); err != nil {
 		op.logAction("rnd-localization", "Failed applying translation patch", err.Error(), false)
 		return
@@ -119,20 +123,24 @@ func (op *PlatformOperator) improveFrontend() {
 		"/home/ubuntu/frontend/src/components/NetworkStats.tsx",
 	}
 	targetFile := files[rand.Intn(len(files))]
-	
+
 	codeOut, err := exec.Command("cat", targetFile).Output()
 	if err != nil || len(codeOut) == 0 {
 		return
 	}
 	code := string(codeOut)
-	if len(code) > 8000 { code = code[:8000] + "\n..." }
+	if len(code) > 8000 {
+		code = code[:8000] + "\n..."
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
 
 	agentProfileBytes, _ := exec.Command("cat", "/home/ubuntu/agency-agents/engineering/engineering-frontend-developer.md").Output()
 	agentProfile := string(agentProfileBytes)
-	if len(agentProfile) > 4000 { agentProfile = agentProfile[:4000] } // cap to prevent token explosion
+	if len(agentProfile) > 4000 {
+		agentProfile = agentProfile[:4000]
+	} // cap to prevent token explosion
 
 	// Web Researcher: Find the ABSOLUTE latest UI/UX and React/NextJS optimization trends
 	uiBestPractices, _ := op.SearchWeb("site:awwwards.com OR site:react.dev latest modern UI UX frontend optimization design patterns 2026")
@@ -147,10 +155,14 @@ Code:
 %s`, agentProfile, uiBestPractices, targetFile, code)
 
 	patch, err := op.ai.Ask(ctx, "You are a bash execution service.", prompt)
-	if err != nil { return }
-	
+	if err != nil {
+		return
+	}
+
 	patch = op.cleanBashOutput(patch)
-	if err := exec.Command("sh", "-c", patch).Run(); err != nil { return }
+	if err := exec.Command("sh", "-c", patch).Run(); err != nil {
+		return
+	}
 
 	// Test compilation via Docker
 	buildCmd := exec.Command("sh", "-c", "cd /home/ubuntu/frontend && npm validate || npx tsc --noEmit || echo 'Bypass build check for MVP'")
@@ -161,7 +173,7 @@ Code:
 
 	commitMsg := fmt.Sprintf("refactor(ui): 🎨 AI UI/UX auto-improvement applied to %s", strings.Split(targetFile, "frontend/")[1])
 	exec.Command("sh", "-c", fmt.Sprintf("cd /home/ubuntu/frontend && git add %s && git commit -m '%s' && git push origin main", targetFile, commitMsg)).Run()
-	
+
 	op.sendTelegram(fmt.Sprintf("✨ *Frontend Improved & Deployed*\nPatched `%s` with modern UI/UX trends.\nPassed validation, pushed to Vercel for worldwide deploy.", targetFile))
 	op.logAction("rnd-frontend", "Applied React UI optimization", "success", true)
 }
@@ -169,14 +181,16 @@ Code:
 // ─── 3. NODE & TELEGRAM BOT (GSTDBOT) ─────────────────────────────────────────
 func (op *PlatformOperator) improveGSTDBot() {
 	// Improve node agent logic
-	targetFile := "/home/ubuntu/gstdbot/src/bot/telegramBot.ts" 
-	
+	targetFile := "/home/ubuntu/gstdbot/src/bot/telegramBot.ts"
+
 	codeOut, err := exec.Command("cat", targetFile).Output()
 	if err != nil || len(codeOut) == 0 {
 		return
 	}
 	code := string(codeOut)
-	if len(code) > 8000 { code = code[:8000] + "\n..." }
+	if len(code) > 8000 {
+		code = code[:8000] + "\n..."
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
@@ -187,10 +201,14 @@ Code:
 %s`, targetFile, code)
 
 	patch, err := op.ai.Ask(ctx, "Bash script only.", prompt)
-	if err != nil { return }
-	
+	if err != nil {
+		return
+	}
+
 	patch = op.cleanBashOutput(patch)
-	if err := exec.Command("sh", "-c", patch).Run(); err != nil { return }
+	if err := exec.Command("sh", "-c", patch).Run(); err != nil {
+		return
+	}
 
 	// Test via docker
 	buildCmd := exec.Command("sh", "-c", "docker run --rm -v /home/ubuntu/gstdbot:/app -w /app node:18-alpine npm run build")
@@ -209,22 +227,28 @@ Code:
 // ─── 4. BACKEND REFACTORING ───────────────────────────────────────────────────
 func (op *PlatformOperator) improveBackend() {
 	targetFile := "/home/ubuntu/backend/internal/services/compound_ai.go"
-	
+
 	codeOut, err := exec.Command("cat", targetFile).Output()
-	if err != nil || len(codeOut) == 0 { return }
+	if err != nil || len(codeOut) == 0 {
+		return
+	}
 	code := string(codeOut)
-	if len(code) > 8000 { code = code[:8000] + "\n..." }
+	if len(code) > 8000 {
+		code = code[:8000] + "\n..."
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
 	agentProfileBytes, _ := os.ReadFile("/home/ubuntu/agency-agents/engineering/engineering-backend-architect.md")
 	agentProfile := string(agentProfileBytes)
-	if len(agentProfile) > 4000 { agentProfile = agentProfile[:4000] } 
+	if len(agentProfile) > 4000 {
+		agentProfile = agentProfile[:4000]
+	}
 
 	// Pull state-of-the-art Go patterns from the internet as context
 	goBestPractices, _ := op.SearchWeb("site:golang.org OR site:github.com latest golang performance optimization best practices")
-	
+
 	prompt := fmt.Sprintf(`%s
 Latest Go performance trends (Web Data): %s
 
@@ -234,10 +258,14 @@ Code:
 %s`, agentProfile, goBestPractices, targetFile, code)
 
 	patch, err := op.ai.Ask(ctx, "Bash script only.", prompt)
-	if err != nil { return }
-	
+	if err != nil {
+		return
+	}
+
 	patch = op.cleanBashOutput(patch)
-	if err := exec.Command("sh", "-c", patch).Run(); err != nil { return }
+	if err := exec.Command("sh", "-c", patch).Run(); err != nil {
+		return
+	}
 
 	// Compile locally to verify
 	if buildErr := exec.Command("sh", "-c", "cd /home/ubuntu/backend && go build ./...").Run(); buildErr != nil {
@@ -262,23 +290,33 @@ func (op *PlatformOperator) improveLayer1() {
 // ─── NEW DOMAINS: DevOps, Security, Database, Smart Contracts ───────────
 func (op *PlatformOperator) runGenericImprovement(domainName, agentPath, webQuery, targetFile, buildCmd, commitMsg string) {
 	codeOut, err := exec.Command("cat", targetFile).Output()
-	if err != nil || len(codeOut) == 0 { return }
+	if err != nil || len(codeOut) == 0 {
+		return
+	}
 	code := string(codeOut)
-	if len(code) > 8000 { code = code[:8000] + "\n..." }
+	if len(code) > 8000 {
+		code = code[:8000] + "\n..."
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
 	agentProfileBytes, _ := os.ReadFile(agentPath)
 	agentProfile := string(agentProfileBytes)
-	if len(agentProfile) > 4000 { agentProfile = agentProfile[:4000] } 
+	if len(agentProfile) > 4000 {
+		agentProfile = agentProfile[:4000]
+	}
 
 	bestPractices, _ := op.SearchWeb(webQuery)
 	patch, err := op.ai.Ask(ctx, "Bash script only.", fmt.Sprintf(`%s\nLatest Web Data: %s\n\nTarget File: '%s'\nPropose ONE structural improvement.\nOutput ONLY a 'sed' bash script.\nCode:\n%s`, agentProfile, bestPractices, targetFile, code))
-	if err != nil { return }
-	
+	if err != nil {
+		return
+	}
+
 	patch = op.cleanBashOutput(patch)
-	if err := exec.Command("sh", "-c", patch).Run(); err != nil { return }
+	if err := exec.Command("sh", "-c", patch).Run(); err != nil {
+		return
+	}
 
 	if buildErr := exec.Command("sh", "-c", buildCmd).Run(); buildErr != nil {
 		exec.Command("sh", "-c", "cd /home/ubuntu && git checkout -- .").Run()

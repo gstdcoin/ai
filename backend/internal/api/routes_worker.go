@@ -5,6 +5,7 @@ import (
 	"distributed-computing-platform/internal/services"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -118,7 +119,7 @@ func verifyZKProofIfNeeded(zkProofService *services.ZKComputeProofService, proof
 	if !isValid {
 		return fmt.Errorf("ZK Proof verification failed: %s", reason)
 	}
-	fmt.Printf("✅ ZK Proof verified for task %s, confidence: %f\n", taskID, confidence)
+	log.Printf("✅ ZK Proof verified for task %s, confidence: %f\n", taskID, confidence)
 	return nil
 }
 
@@ -145,7 +146,7 @@ func notifyWorkerCompletion(ctx context.Context, taskPaymentService *services.Ta
 			walletAddress,
 			rewardGSTD,
 		); err != nil {
-			fmt.Printf("Failed to send Telegram notification for completed task: %v\n", err)
+			log.Printf("Failed to send Telegram notification for completed task: %v\n", err)
 		}
 	}()
 }

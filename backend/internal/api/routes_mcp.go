@@ -43,10 +43,10 @@ type AgentProvider struct {
 }
 
 type AgentMonetization struct {
-	Currency       string  `json:"currency"`
-	PricePerCall   float64 `json:"price_per_call_gstd"`
-	FreeCallsPerDay int    `json:"free_calls_per_day"`
-	PaymentChains  []string `json:"payment_chains"`
+	Currency        string   `json:"currency"`
+	PricePerCall    float64  `json:"price_per_call_gstd"`
+	FreeCallsPerDay int      `json:"free_calls_per_day"`
+	PaymentChains   []string `json:"payment_chains"`
 }
 
 // SetupMCPRoutes registers MCP-related endpoints:
@@ -104,10 +104,10 @@ func handleAgentCard(c *gin.Context) {
 			Contact:      "https://t.me/goldstandardcoin",
 		},
 		Monetization: AgentMonetization{
-			Currency:       "GSTD",
-			PricePerCall:   0.01,
+			Currency:        "GSTD",
+			PricePerCall:    0.01,
 			FreeCallsPerDay: 100,
-			PaymentChains:  []string{"TON", "Solana", "XRPL"},
+			PaymentChains:   []string{"TON", "Solana", "XRPL"},
 		},
 	}
 
@@ -126,9 +126,9 @@ func handleMCPInfo(c *gin.Context) {
 			"resources": gin.H{"listChanged": true},
 		},
 		"install": gin.H{
-			"npx":     "npx @gstd/mcp-server",
-			"claude":  map[string]interface{}{"command": "npx", "args": []string{"-y", "@gstd/mcp-server"}},
-			"node":    "curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash",
+			"npx":    "npx @gstd/mcp-server",
+			"claude": map[string]interface{}{"command": "npx", "args": []string{"-y", "@gstd/mcp-server"}},
+			"node":   "curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash",
 		},
 		"monetization": gin.H{
 			"free_calls_per_day": 100,
@@ -275,9 +275,9 @@ func handleMCPCall(c *gin.Context) {
 				},
 			},
 			"meta": gin.H{
-				"node":     "platform",
-				"metered":  true,
-				"cost":     "0.01 GSTD",
+				"node":           "platform",
+				"metered":        true,
+				"cost":           "0.01 GSTD",
 				"free_remaining": 100,
 			},
 		},

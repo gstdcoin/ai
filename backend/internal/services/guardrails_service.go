@@ -34,7 +34,7 @@ type GuardrailsService struct {
 	db        *sql.DB
 	redis     *redis.Client
 	ollamaURL string
-	slmModel  string // Small Language Model for safety classification
+	slmModel  string              // Small Language Model for safety classification
 	hf        *HuggingFaceService // HuggingFace ML-based classification
 }
 
@@ -63,12 +63,14 @@ type SignedRequest struct {
 // Source: https://github.com/FonduAI/awesome-prompt-injection
 //
 // Categories:
-//   A. Instruction Override attacks
-//   B. Jailbreak patterns (DAN, AIM, Developer Mode, etc.)
-//   C. System Prompt Extraction
-//   D. Role-Play Injection
-//   E. Code Injection (XSS, SQL, Python)
-//   F. Encoding Tricks (Base64, ROT13 requests)
+//
+//	A. Instruction Override attacks
+//	B. Jailbreak patterns (DAN, AIM, Developer Mode, etc.)
+//	C. System Prompt Extraction
+//	D. Role-Play Injection
+//	E. Code Injection (XSS, SQL, Python)
+//	F. Encoding Tricks (Base64, ROT13 requests)
+//
 // ═══════════════════════════════════════════════════════════════
 var injectionPatterns = []*regexp.Regexp{
 	// A. Instruction Override
@@ -435,6 +437,7 @@ func (s *GuardrailsService) GetGuardrailStats(ctx context.Context) (map[string]i
 
 	return stats, nil
 }
+
 // ============================================================================
 // UNICODE NORMALIZATION (awesome-prompt-injection defense)
 // Strips invisible characters, zero-width joiners, homoglyphs used to bypass

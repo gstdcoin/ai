@@ -68,6 +68,7 @@ func SetupP2PBridgeRoutes(v1 *gin.RouterGroup, db *sql.DB) {
 }
 
 // POST /bridge/p2p/order — Create a new bridge order
+//
 //nolint:gocognit
 func createBridgeOrder(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -432,6 +433,7 @@ func getBridgeOrders(db *sql.DB) gin.HandlerFunc {
 }
 
 // GET /bridge/p2p/my-orders — Get my orders
+//
 //nolint:gocognit
 func getMyBridgeOrders(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -505,6 +507,7 @@ func getMyBridgeOrders(db *sql.DB) gin.HandlerFunc {
 }
 
 // GET /bridge/p2p/order/:id — Get order detail
+//
 //nolint:gocognit
 func getBridgeOrderDetail(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -587,6 +590,7 @@ func getBridgeOrderDetail(db *sql.DB) gin.HandlerFunc {
 }
 
 // POST /bridge/p2p/order/:id/deposit — Confirm deposit with ON-CHAIN verification
+//
 //nolint:gocognit
 func confirmDepositWithVerification(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
