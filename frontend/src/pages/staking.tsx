@@ -48,7 +48,7 @@ export default function StakingPage() {
 
       // Also fetch per-user staking info
       if (walletAddress) {
-        const stakingRes = await fetch(`${API_BASE_URL}/api/v1/staking/info?wallet=${encodeURIComponent(walletAddress)}`);
+        const stakingRes = await fetch(`${API_BASE_URL}/api/v1/sovereign/staking/info?wallet=${encodeURIComponent(walletAddress)}`);
         if (stakingRes.ok) {
           const d = await stakingRes.json();
           setUserStaked(d.wallet?.staked || 0);
@@ -266,7 +266,7 @@ export default function StakingPage() {
                 setStaking(true);
                 try {
                   const sessionToken = localStorage.getItem('session_token') || '';
-                  const res = await fetch(`${API_BASE_URL}/api/v1/staking/stake`, {
+                  const res = await fetch(`${API_BASE_URL}/api/v1/sovereign/stake`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-Session-Token': sessionToken, 'Authorization': `Bearer ${sessionToken}` },
                     body: JSON.stringify({ amount: amt, lock_days: tier.days }),
@@ -295,7 +295,7 @@ export default function StakingPage() {
                 setUnstaking(true);
                 try {
                   const sessionToken = localStorage.getItem('session_token') || '';
-                  const res = await fetch(`${API_BASE_URL}/api/v1/staking/unstake`, {
+                  const res = await fetch(`${API_BASE_URL}/api/v1/sovereign/unstake`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-Session-Token': sessionToken, 'Authorization': `Bearer ${sessionToken}` },
                     body: JSON.stringify({ amount: unstakeAmount }),
