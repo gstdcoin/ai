@@ -3,8 +3,11 @@ package api
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"strings"
 	"time"
 
@@ -28,7 +31,11 @@ const ErrOrderNotFound = "Order not found"
 //  8. If timeout (24h) → status = expired, dispute available
 // ═══════════════════════════════════════════════════════════════
 
-var validChains = map[string]bool{"TON": true, "Solana": true, "XRPL": true}
+var validChains = map[string]bool{"TON": true, "Solana": true, "XRPL": true, "Ethereum": true}
+var validAssets = map[string]bool{"GSTD": true, "PAXG": true}
+
+// PAXG ERC-20 contract address on Ethereum mainnet
+const PAXGContract = "0x45804880De22913dAFE09f4980848ECE6EcbAf78"
 
 // SetupP2PBridgeRoutes registers all P2P bridge endpoints
 func SetupP2PBridgeRoutes(v1 *gin.RouterGroup, db *sql.DB) {
@@ -64,7 +71,10 @@ func SetupP2PBridgeRoutes(v1 *gin.RouterGroup, db *sql.DB) {
 	// Get bridge stats
 	bridge.GET("/stats", getBridgeStats(db))
 
-	log.Printf("✅ P2P Bridge routes registered (with on-chain verification + take-order)")
+	// PAXG conversion rate
+	bridge.GET("/paxg-rate", getPAXGConversionRate(db))
+
+	log.Printf("✅ P2P Bridge routes registered (with on-chain verification + take-order + PAXG)")
 }
 
 // POST /bridge/p2p/order — Create a new bridge order
@@ -77,8 +87,10 @@ func createBridgeOrder(db *sql.DB) gin.HandlerFunc {
 			SourceChain   string  `json:"source_chain" binding:"required"`
 			DestChain     string  `json:"dest_chain" binding:"required"`
 			Amount        float64 `json:"amount" binding:"required"`
-			SourceAddress string  `json:"source_address" binding:"required"` // where user holds GSTD now
+			SourceAddress string  `json:"source_address" binding:"required"` // where user holds asset now
 			DestAddress   string  `json:"dest_address" binding:"required"`   // where user wants to receive
+			SourceAsset   string  `json:"source_asset"`                      // GSTD or PAXG (default: GSTD)
+			DestAsset     string  `json:"dest_asset"`                        // GSTD or PAXG (default: GSTD)
 		}
 
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -89,24 +101,49 @@ func createBridgeOrder(db *sql.DB) gin.HandlerFunc {
 		// Validate chains
 		req.SourceChain = strings.ToUpper(strings.TrimSpace(req.SourceChain))
 		req.DestChain = strings.ToUpper(strings.TrimSpace(req.DestChain))
-		// Normalize Solana casing
+		// Normalize Solana/Ethereum casing
 		if req.SourceChain == "SOLANA" {
 			req.SourceChain = "Solana"
 		}
 		if req.DestChain == "SOLANA" {
 			req.DestChain = "Solana"
 		}
-		if req.SourceChain == "TON" || req.SourceChain == "XRPL" { /* ok */
+		if req.SourceChain == "ETHEREUM" {
+			req.SourceChain = "Ethereum"
 		}
-		if req.DestChain == "TON" || req.DestChain == "XRPL" { /* ok */
+		if req.DestChain == "ETHEREUM" {
+			req.DestChain = "Ethereum"
 		}
 
 		if !validChains[req.SourceChain] || !validChains[req.DestChain] {
-			c.JSON(400, gin.H{"error": "Invalid chain. Supported: TON, Solana, XRPL"})
+			c.JSON(400, gin.H{"error": "Invalid chain. Supported: TON, Solana, XRPL, Ethereum"})
 			return
 		}
 		if req.SourceChain == req.DestChain {
 			c.JSON(400, gin.H{"error": "Source and destination chains must differ"})
+			return
+		}
+
+		// Validate assets
+		if req.SourceAsset == "" {
+			req.SourceAsset = "GSTD"
+		}
+		if req.DestAsset == "" {
+			req.DestAsset = "GSTD"
+		}
+		req.SourceAsset = strings.ToUpper(req.SourceAsset)
+		req.DestAsset = strings.ToUpper(req.DestAsset)
+		if !validAssets[req.SourceAsset] || !validAssets[req.DestAsset] {
+			c.JSON(400, gin.H{"error": "Invalid asset. Supported: GSTD, PAXG"})
+			return
+		}
+		// PAXG is only on Ethereum
+		if req.SourceAsset == "PAXG" && req.SourceChain != "Ethereum" {
+			c.JSON(400, gin.H{"error": "PAXG is only available on Ethereum"})
+			return
+		}
+		if req.DestAsset == "PAXG" && req.DestChain != "Ethereum" {
+			c.JSON(400, gin.H{"error": "PAXG is only available on Ethereum"})
 			return
 		}
 		if req.Amount < 0.001 {
@@ -130,14 +167,37 @@ func createBridgeOrder(db *sql.DB) gin.HandlerFunc {
 			return
 		}
 
+		// Calculate conversion for cross-asset orders (PAXG ↔ GSTD)
+		var conversionRate float64
+		var destAmount float64
+		if req.SourceAsset != req.DestAsset {
+			conversionRate = calculatePAXGToGSTDRate(db)
+			if conversionRate <= 0 {
+				c.JSON(500, gin.H{"error": "Cannot fetch conversion rate. Try again later."})
+				return
+			}
+			if req.SourceAsset == "PAXG" {
+				// PAXG → GSTD: multiply by rate
+				destAmount = req.Amount * conversionRate
+			} else {
+				// GSTD → PAXG: divide by rate
+				destAmount = req.Amount / conversionRate
+			}
+		} else {
+			destAmount = req.Amount
+			conversionRate = 1.0
+		}
+
 		// Insert order
 		var orderID string
 		err := db.QueryRowContext(ctx,
-			`INSERT INTO bridge_orders (user_wallet, source_chain, dest_chain, amount, source_address, dest_address, status, expires_at)
-			 VALUES ($1, $2, $3, $4, $5, $6, 'open', NOW() + INTERVAL '24 hours')
+			`INSERT INTO bridge_orders (user_wallet, source_chain, dest_chain, amount, source_address, dest_address, 
+			        status, expires_at, source_asset, dest_asset, conversion_rate, dest_amount)
+			 VALUES ($1, $2, $3, $4, $5, $6, 'open', NOW() + INTERVAL '24 hours', $7, $8, $9, $10)
 			 RETURNING id`,
 			req.UserWallet, req.SourceChain, req.DestChain, req.Amount,
 			req.SourceAddress, req.DestAddress,
+			req.SourceAsset, req.DestAsset, conversionRate, destAmount,
 		).Scan(&orderID)
 		if err != nil {
 			log.Printf("[P2P Bridge] Failed to create order: %v", err)
@@ -161,16 +221,26 @@ func createBridgeOrder(db *sql.DB) gin.HandlerFunc {
 			"status":       "open",
 			"source_chain": req.SourceChain,
 			"dest_chain":   req.DestChain,
+			"source_asset": req.SourceAsset,
+			"dest_asset":   req.DestAsset,
 			"amount":       req.Amount,
+			"dest_amount":  destAmount,
+			"rate":         conversionRate,
 			"expires_at":   time.Now().Add(24 * time.Hour).Format(time.RFC3339),
 		}
 
 		if match != nil {
 			response["status"] = "matched"
 			response["match"] = match
-			response["message"] = "Order auto-matched with the Liquidity Pool. Please send your GSTD to the system address provided."
+			if req.SourceAsset == "PAXG" {
+				response["message"] = fmt.Sprintf("Order matched! Send %.6f PAXG to the system address. You will receive ~%.2f GSTD on TON.", req.Amount, destAmount)
+			} else if req.DestAsset == "PAXG" {
+				response["message"] = fmt.Sprintf("Order matched! Send %.2f GSTD. You will receive ~%.6f PAXG on Ethereum.", req.Amount, destAmount)
+			} else {
+				response["message"] = "Order auto-matched with the Liquidity Pool. Please send your GSTD to the system address provided."
+			}
 		} else {
-			response["message"] = "Liquidity Pool unreachable. Order placed in the book. You will be notified when a counterparty is found."
+			response["message"] = "Order placed in the book. You will be notified when a counterparty is found."
 		}
 
 		c.JSON(200, response)
@@ -179,9 +249,10 @@ func createBridgeOrder(db *sql.DB) gin.HandlerFunc {
 
 // Addresses of our Deployed Smart Contracts/Routers
 var SystemPoolAddresses = map[string]string{
-	"TON":    "EQnnEtg74TCIrps63-3UBAWpCL4VSofTjvfENpUWvVeWQ=", // Deployed TON tact router
-	"Solana": "9AdvfqpFbxfFMvikFWkuubBRuYgdLUcGwVFmC5h4pRXK",   // Deployed Solana Mainnet Oracle Account
-	"XRPL":   "rnGuKDuZ6vTeXkjTgdPJRSPLKiVXnJzobP",             // Deployed XRPL Oracle Node Key
+	"TON":      "EQnnEtg74TCIrps63-3UBAWpCL4VSofTjvfENpUWvVeWQ=", // Deployed TON tact router
+	"Solana":   "9AdvfqpFbxfFMvikFWkuubBRuYgdLUcGwVFmC5h4pRXK",   // Deployed Solana Mainnet Oracle Account
+	"XRPL":     "rnGuKDuZ6vTeXkjTgdPJRSPLKiVXnJzobP",             // Deployed XRPL Oracle Node Key
+	"Ethereum": "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD18",      // GSTD Ethereum Bridge Vault
 }
 
 type SystemPoolMatchParams struct {
@@ -848,10 +919,93 @@ func getBridgeStats(db *sql.DB) gin.HandlerFunc {
 			"completed_swaps":   completedOrders,
 			"total_volume_gstd": totalVolume,
 			"routes":            routes,
-			"supported_chains":  []string{"TON", "Solana", "XRPL"},
+			"supported_chains":  []string{"TON", "Solana", "XRPL", "Ethereum"},
+			"supported_assets":  []string{"GSTD", "PAXG"},
 			"fee_percent":       0,
 			"model":             "peer-to-peer",
 			"message":           fmt.Sprintf("%d open orders, %d completed swaps", openOrders, completedOrders),
+		})
+	}
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PAXG ↔ GSTD Conversion
+// ═══════════════════════════════════════════════════════════════
+
+// calculatePAXGToGSTDRate returns how many GSTD equal 1 PAXG.
+// PAXG tracks gold price. Rate = gold_price_usd / gstd_price_usd.
+func calculatePAXGToGSTDRate(db *sql.DB) float64 {
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Get("http://localhost:8080/api/v1/market/price")
+	if err != nil {
+		log.Printf("[PAXG] Failed to fetch market price: %v", err)
+		return 0
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0
+	}
+
+	var prices struct {
+		GSTDPriceUSD float64 `json:"gstd_price_usd"`
+		XAUTPriceUSD float64 `json:"xaut_price_usd"` // Gold price (PAXG tracks the same)
+	}
+	if err := json.Unmarshal(body, &prices); err != nil {
+		log.Printf("[PAXG] Failed to parse prices: %v", err)
+		return 0
+	}
+
+	if prices.GSTDPriceUSD <= 0 || prices.XAUTPriceUSD <= 0 {
+		log.Printf("[PAXG] Invalid prices: GSTD=$%.8f, Gold=$%.2f", prices.GSTDPriceUSD, prices.XAUTPriceUSD)
+		return 0
+	}
+
+	// 1 PAXG = 1 oz gold = XAUTPriceUSD in USD
+	// 1 GSTD = GSTDPriceUSD in USD
+	// Rate = how many GSTD per 1 PAXG
+	rate := prices.XAUTPriceUSD / prices.GSTDPriceUSD
+	log.Printf("[PAXG] Conversion rate: 1 PAXG ($%.2f gold) = %.2f GSTD ($%.8f each)", prices.XAUTPriceUSD, rate, prices.GSTDPriceUSD)
+	return rate
+}
+
+// GET /bridge/p2p/paxg-rate — Get current PAXG ↔ GSTD conversion rate
+func getPAXGConversionRate(db *sql.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		client := &http.Client{Timeout: 5 * time.Second}
+		resp, err := client.Get("http://localhost:8080/api/v1/market/price")
+		if err != nil {
+			c.JSON(500, gin.H{"error": "Cannot fetch market prices"})
+			return
+		}
+		defer resp.Body.Close()
+
+		body, _ := io.ReadAll(resp.Body)
+		var prices struct {
+			GSTDPriceUSD float64 `json:"gstd_price_usd"`
+			XAUTPriceUSD float64 `json:"xaut_price_usd"`
+		}
+		json.Unmarshal(body, &prices)
+
+		if prices.GSTDPriceUSD <= 0 || prices.XAUTPriceUSD <= 0 {
+			c.JSON(500, gin.H{"error": "Market data unavailable"})
+			return
+		}
+
+		paxgPerGstd := prices.GSTDPriceUSD / prices.XAUTPriceUSD
+		gstdPerPaxg := prices.XAUTPriceUSD / prices.GSTDPriceUSD
+
+		c.JSON(200, gin.H{
+			"paxg_price_usd":   prices.XAUTPriceUSD,
+			"gstd_price_usd":   prices.GSTDPriceUSD,
+			"gstd_per_paxg":    gstdPerPaxg,
+			"paxg_per_gstd":    paxgPerGstd,
+			"paxg_contract":    PAXGContract,
+			"bridge_fee_pct":   0.5,
+			"min_paxg":         0.001,
+			"min_gstd":         100,
+			"supported_routes": []string{"Ethereum→TON", "TON→Ethereum"},
 		})
 	}
 }

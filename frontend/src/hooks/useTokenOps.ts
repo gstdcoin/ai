@@ -15,7 +15,7 @@ import { tokenGateway, GAS_ESTIMATES, type TokenBalance, type TransactionResult 
 
 export function useTokenOps() {
     const [tonConnectUI] = useTonConnectUI();
-    const { address, isConnected, gstdBalance } = useWalletStore();
+    const { address, isConnected } = useWalletStore();
     const [balance, setBalance] = useState<TokenBalance | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -115,21 +115,19 @@ export function useTokenOps() {
         }
     }, [address, refreshBalance]);
 
-    // Send GSTD to address (via TonConnect)
+    // Send GSTD to address (via TonConnect — real TEP-74 jetton transfer)
     const sendGSTD = useCallback(async (
         recipientAddress: string,
         amount: number
     ): Promise<TransactionResult> => {
         return executeWithGasCheck('jettonTransfer', async () => {
             try {
-                // For real jetton transfers, need to get sender's jetton wallet first
-                const jettonRes = await fetch(`/api/v1/wallet/jetton-address`);
-                const jettonData = await jettonRes.json();
-
-                const tx = tokenGateway.buildJettonTransfer({
+                // Use real TEP-74 jetton transfer builder
+                const { buildJettonTransferTx } = await import('../lib/jettonTransfer');
+                const tx = await buildJettonTransferTx({
                     recipientAddress,
-                    jettonAmount: amount,
-                    senderJettonWallet: jettonData.jetton_wallet || '',
+                    amount,
+                    senderAddress: address || '',
                 });
 
                 const result = await tonConnectUI.sendTransaction(tx);
@@ -138,7 +136,7 @@ export function useTokenOps() {
                 return { success: false, error: err.message };
             }
         });
-    }, [tonConnectUI, executeWithGasCheck]);
+    }, [tonConnectUI, address, executeWithGasCheck]);
 
     // Claim welcome bonus
     const claimBonus = useCallback(async (): Promise<TransactionResult> => {

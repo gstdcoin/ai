@@ -14,7 +14,11 @@ import EcosystemFooter from '../components/layout/EcosystemFooter';
 import AutoClaimWorker from '../components/common/AutoClaimWorker';
 import { useEcosystemStore } from '../store/ecosystemStore';
 import { logger } from '../lib/logger';
+import dynamic from 'next/dynamic';
 import '../styles/globals.css';
+
+// Lazy-load wallet providers to avoid SSR issues
+const WalletProviders = dynamic(() => import('../components/common/WalletProviders'), { ssr: false });
 
 // Get manifestUrl from environment variable or use fallback
 const getManifestUrl = (): string => {
@@ -103,17 +107,19 @@ function App({ Component, pageProps }: AppProps) {
           }}
           language={tonConnectLanguage}
         >
-          {/* Ambient glow — matches gstdbot.gstdtoken.com aesthetic */}
-          <div className="page-glow" aria-hidden="true" />
-          {isMounted && <WalletListener />}
-          {isMounted && <VercelSwarmHeartbeat />}
-          {isMounted && <AutoClaimWorker />}
-          {router.pathname !== '/tma' && <EcosystemNav />}
-          <main style={{ paddingTop: router.pathname !== '/tma' ? 56 : 0, paddingBottom: router.pathname === '/dashboard' ? 80 : 0, minHeight: '100vh', position: 'relative', zIndex: 1 }}>
-            <Component {...pageProps} />
-          </main>
-          {router.pathname !== '/tma' && router.pathname !== '/dashboard' && router.pathname !== '/chat' && !router.pathname.startsWith('/monitor') && <EcosystemFooter />}
-          <Toaster position="top-right" richColors closeButton />
+          <WalletProviders>
+            {/* Ambient glow — matches gstdbot.gstdtoken.com aesthetic */}
+            <div className="page-glow" aria-hidden="true" />
+            {isMounted && <WalletListener />}
+            {isMounted && <VercelSwarmHeartbeat />}
+            {isMounted && <AutoClaimWorker />}
+            {router.pathname !== '/tma' && <EcosystemNav />}
+            <main style={{ paddingTop: router.pathname !== '/tma' ? 56 : 0, paddingBottom: router.pathname === '/dashboard' ? 80 : 0, minHeight: '100vh', position: 'relative', zIndex: 1 }}>
+              <Component {...pageProps} />
+            </main>
+            {router.pathname !== '/tma' && router.pathname !== '/dashboard' && router.pathname !== '/chat' && !router.pathname.startsWith('/monitor') && <EcosystemFooter />}
+            <Toaster position="top-right" richColors closeButton />
+          </WalletProviders>
         </TonConnectUIProvider>
       </TelegramThemeProvider>
     </ErrorBoundary>
