@@ -38,7 +38,7 @@ description: Current ecosystem state — always read FIRST before any changes
 │                                                             │
 │  ┌─── FRONTEND (Next.js 16.1.6) ─────────────────────┐     │
 │  │  Container: ubuntu-frontend-1 (Docker)             │     │
-│  │  Image:     gstd-frontend:v26                     │     │
+│  │  Image:     gstd-frontend:v27                     │     │
 │  │  Path:      /home/ubuntu/frontend                  │     │
 │  │  Pages:     14 (SSG/SSR)                           │     │
 │  │  Note:      Docker-only (systemd disabled)         │     │
