@@ -1623,6 +1623,11 @@ func SetupRoutes(deps APIDependencies) {
 			SetupSimulationProtectedRoutes(protected, simulationsHandler)
 
 			log.Printf("⚡ Swarm AI: Signal Marketplace + Simulations + Native Prediction Markets active")
+
+			// ═══ NaaS (Node-as-a-Service) — Multi-Chain RPC Provider ═══
+			MigrateNaaSTables(dbConn)
+			SetupNaaSRoutes(v1, dbConn)
+			log.Printf("🌐 NaaS API: Provider registry + RPC charge + heartbeat active")
 		} else {
 			log.Printf("⚠ SwarmBrain: GROQ_API_KEY not set — autonomous features disabled")
 		}

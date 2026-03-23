@@ -15,7 +15,7 @@ description: Current ecosystem state — always read FIRST before any changes
 │                    GSTD ECOSYSTEM                           │
 │                 Server: 82.115.48.228                       │
 │                 OS: Ubuntu 24.04                            │
-│                 Last Update: 2026-03-22 (Production v186/v26)       │
+│                 Last Update: 2026-03-23 (Production v188/v26)       │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  ┌─── NGINX (gstd_nginx_lb) ─── Port 80/443 ─────────┐    │
@@ -30,7 +30,7 @@ description: Current ecosystem state — always read FIRST before any changes
 │                                                             │
 │  ┌─── BACKEND (Go) ─── 4 replicas ───────────────────┐     │
 │  │  Containers: ubuntu-backend-blue-{1,2,5,6}        │     │
-│  │  Image:      gstd-backend-blue:v186                │     │
+│  │  Image:      gstd-backend-blue:v188                │     │
 │  │  Port:       8080 (internal, via nginx)            │     │
 │  │  DB:         distributed_computing                 │     │
 │  │  Rollback:   gstd-backend-blue:v185                │     │
