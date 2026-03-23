@@ -79,9 +79,12 @@ func (h *PredictionMarketsHandler) syncMarkets(ctx context.Context) {
 	}
 
 	activeEvents, ok := poly.Data["active_markets"].([]interface{})
-	if !ok {
+	if !ok || len(activeEvents) == 0 {
 		return
 	}
+
+	// Clear stale markets and do a full refresh
+	h.db.ExecContext(ctx, `DELETE FROM gstd_prediction_markets WHERE updated_at < NOW() - INTERVAL '2 hours'`)
 
 	for i, evRaw := range activeEvents {
 		ev, ok := evRaw.(map[string]interface{})
@@ -93,14 +96,37 @@ func (h *PredictionMarketsHandler) syncMarkets(ctx context.Context) {
 		eventURL, _ := ev["event"].(string)
 		volume, _ := ev["volume"].(float64)
 
-		outcomes, _ := ev["outcomes"].([]string)
-		pricesRaw, _ := ev["prices"].([]string)
+		// Handle outcomes: could be []string or []interface{}
+		var outcomes []string
+		if rawOutcomes, ok := ev["outcomes"].([]interface{}); ok {
+			for _, o := range rawOutcomes {
+				if s, ok := o.(string); ok {
+					outcomes = append(outcomes, s)
+				}
+			}
+		} else if strOutcomes, ok := ev["outcomes"].([]string); ok {
+			outcomes = strOutcomes
+		}
 
+		// Handle prices: could be []string or []interface{}
 		prices := make([]float64, 0)
-		for _, pStr := range pricesRaw {
-			var val float64
-			fmt.Sscanf(pStr, "%f", &val)
-			prices = append(prices, val)
+		if rawPrices, ok := ev["prices"].([]interface{}); ok {
+			for _, p := range rawPrices {
+				switch v := p.(type) {
+				case string:
+					var val float64
+					fmt.Sscanf(v, "%f", &val)
+					prices = append(prices, val)
+				case float64:
+					prices = append(prices, v)
+				}
+			}
+		} else if strPrices, ok := ev["prices"].([]string); ok {
+			for _, pStr := range strPrices {
+				var val float64
+				fmt.Sscanf(pStr, "%f", &val)
+				prices = append(prices, val)
+			}
 		}
 
 		if len(outcomes) == 0 {
@@ -115,6 +141,9 @@ func (h *PredictionMarketsHandler) syncMarkets(ctx context.Context) {
 			INSERT INTO gstd_prediction_markets (id, question, description, outcomes, outcome_prices, volume_usd)
 			VALUES ($1, $2, $3, $4, $5, $6)
 			ON CONFLICT (id) DO UPDATE SET
+				question = EXCLUDED.question,
+				description = EXCLUDED.description,
+				outcomes = EXCLUDED.outcomes,
 				outcome_prices = EXCLUDED.outcome_prices,
 				volume_usd = EXCLUDED.volume_usd,
 				updated_at = NOW()
