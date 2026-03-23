@@ -423,7 +423,9 @@ func (f *ExternalDataFetcher) fetchTechTrends(ctx context.Context) (*MarketDataS
 // ═══════════════════════════════════════════════════════════════
 
 func (f *ExternalDataFetcher) fetchPolymarketData(ctx context.Context) (*MarketDataSnapshot, error) {
-	url := "https://gamma-api.polymarket.com/events?closed=false&active=true&limit=15"
+	// Filter: only events ending in current year or later, ordered by volume
+	currentYear := time.Now().Format("2006")
+	url := fmt.Sprintf("https://gamma-api.polymarket.com/events?closed=false&active=true&limit=15&order=volume&ascending=false&end_date_min=%s-01-01", currentYear)
 	body, err := f.httpGet(ctx, url)
 	if err != nil {
 		return nil, fmt.Errorf("polymarket: %w", err)
@@ -504,7 +506,7 @@ func (f *ExternalDataFetcher) httpGet(ctx context.Context, url string) ([]byte, 
 		return nil, fmt.Errorf("HTTP %d from %s", resp.StatusCode, url)
 	}
 
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 512*1024)) // Max 512KB
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 4*1024*1024)) // Max 4MB (Polymarket events can be ~3MB)
 	if err != nil {
 		return nil, err
 	}
