@@ -50,6 +50,7 @@ export default function NodesPage() {
   const [burn, setBurn] = useState<BurnData | null>(null);
   const [vaults, setVaults] = useState<VaultState[]>([]);
   const [tab, setTab] = useState<'overview' | 'tasks' | 'governance' | 'burn' | 'vaults'>('overview');
+  const [naasStats, setNaasStats] = useState<any>(null);
   const tonWallet = useTonWallet();
   const walletAddress = tonWallet?.account?.address || '';
   const [pendingRewards, setPendingRewards] = useState<number>(0);
@@ -65,6 +66,7 @@ export default function NodesPage() {
     fetch(`${API_BASE_URL}/api/v1/nodes/tools/governance/active`).then(r => r.json()).then(d => setGovernance(d.proposals || [])).catch(() => undefined);
     fetch(`${API_BASE_URL}/api/v1/nodes/tools/burn-stats`).then(r => r.json()).then(setBurn).catch(() => undefined);
     fetch(`${API_BASE_URL}/api/v1/nodes/liquidity/pools`).then(r => r.json()).then(d => setVaults(d || [])).catch(() => undefined);
+    fetch(`${API_BASE_URL}/api/v1/naas/stats`).then(r => r.json()).then(setNaasStats).catch(() => undefined);
   }, [period]);
 
   // Fetch user's pending rewards when wallet is connected
@@ -291,6 +293,61 @@ export default function NodesPage() {
               ))}
             </div>
           </div>
+
+          {/* ═══════════ NaaS Provider Network (Live) ═══════════ */}
+          {naasStats && (
+            <div className="sov-card p-6 mb-12 fu d4c border-blue-500/15 bg-gradient-to-r from-blue-500/5 to-transparent">
+              <div className="flex items-center gap-3 mb-4">
+                <Globe size={20} className="text-blue-400" />
+                <h3 className="text-lg font-bold text-white m-0">NaaS Provider Network</h3>
+                <span className="text-[10px] font-bold px-2 py-1 rounded-md bg-blue-500/10 text-blue-400">LIVE</span>
+              </div>
+              <p className="text-gray-500 text-xs mb-4">
+                Node-as-a-Service — earn GSTD by serving multi-chain RPC endpoints. Your node auto-detects hardware and assigns blockchain roles.
+              </p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                {[
+                  { v: naasStats.active_providers || 0, l: 'Active Providers', c: '#34d399', i: '🟢' },
+                  { v: (naasStats.total_rpc_requests || 0).toLocaleString(), l: 'RPC Requests', c: '#60a5fa', i: '📡' },
+                  { v: `${(naasStats.total_gstd_earned || 0).toFixed(2)}`, l: 'GSTD Earned', c: '#ffd700', i: '💎' },
+                  { v: naasStats.supported_chains || 16, l: 'Blockchains', c: '#a78bfa', i: '🔗' },
+                ].map(s => (
+                  <div key={s.l} style={{ textAlign: 'center', padding: 14, borderRadius: 12, background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.04)' }}>
+                    <div style={{ fontSize: 18, lineHeight: 1, marginBottom: 4 }}>{s.i}</div>
+                    <div style={{ fontSize: 22, fontWeight: 900, color: s.c, lineHeight: 1 }}>{s.v}</div>
+                    <div style={{ fontSize: 9, fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginTop: 4 }}>{s.l}</div>
+                  </div>
+                ))}
+              </div>
+              {/* NaaS Staking Tiers */}
+              {naasStats.tiers && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  {naasStats.tiers.map((tier: any) => (
+                    <div key={tier.name} style={{ padding: '10px 12px', borderRadius: 10, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', textAlign: 'center' }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: 'white' }}>{tier.name}</div>
+                      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>Stake: {tier.min_stake.toLocaleString()} GSTD</div>
+                      <div style={{ fontSize: 10, color: '#34d399', fontWeight: 600 }}>Up to {tier.max_chains} chains · {tier.bonus}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {/* Revenue Split */}
+              {naasStats.protocol && (
+                <div style={{ marginTop: 12, display: 'flex', gap: 4, justifyContent: 'center', flexWrap: 'wrap' }}>
+                  {[
+                    { pct: `${naasStats.protocol.provider_rate * 100}%`, label: 'Provider', color: '#34d399' },
+                    { pct: `${naasStats.protocol.treasury_rate * 100}%`, label: 'Treasury', color: '#ffd700' },
+                    { pct: `${naasStats.protocol.buyback_rate * 100}%`, label: 'Buyback', color: '#60a5fa' },
+                    { pct: `${naasStats.protocol.burn_rate * 100}%`, label: 'Burn 🔥', color: '#f97316' },
+                  ].map(s => (
+                    <span key={s.label} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 6, background: `${s.color}10`, color: s.color, fontWeight: 700 }}>
+                      {s.pct} {s.label}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* ═══════════ WebGPU Browser Node ═══════════ */}
           <div className="mb-12 fu d3">
