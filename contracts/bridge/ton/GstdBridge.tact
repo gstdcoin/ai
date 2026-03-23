@@ -49,10 +49,11 @@ contract GstdBridgeRouter with Deployable, Ownable {
     
     totalBridgedOut: Int = 0;
     
-    init(owner: Address, stonfiRouter: Address, gstdJettonWallet: Address) {
+    init(owner: Address, stonfiRouter: Address, gstdJettonWallet: Address, stonfiPool: Address) {
         self.owner = owner;
         self.stonfiRouter = stonfiRouter;
         self.gstdJettonWallet = gstdJettonWallet;
+        self.stonfiPtongstdPool = stonfiPool;
     }
 
     // ─── TON TO OTHER CHAIN (User sends TON -> Bridge swaps to GSTD -> Burns GSTD -> Emits Event)

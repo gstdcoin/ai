@@ -140,8 +140,12 @@ contract NaaSProviderRegistry with Deployable, Ownable {
         p.stakedGSTD -= slashAmount;
         self.totalStaked -= slashAmount;
         
-        // Reputation loss
-        p.reputation -= msg.percentage;
+        // Reputation loss (prevent underflow — uint16 would wrap)
+        if (p.reputation > msg.percentage) {
+            p.reputation -= msg.percentage;
+        } else {
+            p.reputation = 0;
+        }
         
         // 100% slash (Fraud/Jailed) -> Jailed status
         if (msg.percentage == 10000 || p.stakedGSTD < self.minStakeExplorer || p.reputation < 5000) {

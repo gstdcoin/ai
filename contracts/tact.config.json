@@ -49,6 +49,16 @@
             "name": "GstdBridge",
             "path": "./bridge/ton/GstdBridge.tact",
             "output": "./build/GstdBridge"
+        },
+        {
+            "name": "NaaSProviderRegistry",
+            "path": "./naas/ProviderRegistry.tact",
+            "output": "./build/NaaSProviderRegistry"
+        },
+        {
+            "name": "NaaSSlashMechanics",
+            "path": "./naas/SlashMechanics.tact",
+            "output": "./build/NaaSSlashMechanics"
         }
     ]
 }
