@@ -98,7 +98,7 @@ func Load() *Config {
 		},
 		TON: TONConfig{
 			Network:                  getEnv("TON_NETWORK", "mainnet"),
-			ContractAddress:          getEnv("TON_CONTRACT_ADDRESS", "EQAIYlrr3UiMJ9fqI-B4j2nJdiiD7WzyaNL1MX_wiONc4OUi"),
+			ContractAddress:          getEnv("TON_CONTRACT_ADDRESS", "EQDO0ab4mJsRn_aM7gVxaMnxtVsMKFJmuO9X55SbUqAj31g5"),
 			GSTDJettonAddress:        getEnv("GSTD_JETTON_ADDRESS", "EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO"),
 			XAUtJettonAddress:        getEnv("XAUT_JETTON_MASTER", "EQA1R_LuQCLHlMgOo1S4G7Y7W1cd0FrAkbA10Zq7rddKxi9k"),
 			StonFiRouter:             getEnv("STONFI_ROUTER", "EQA98Z99S-9u1As_7p8n7H_H_H_H_H_H_H_H_H_H_H_H_H_H_"),
