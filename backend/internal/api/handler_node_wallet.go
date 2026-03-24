@@ -47,27 +47,10 @@ func (h *NodeWalletHandler) HandleHeartbeat(c *gin.Context) {
 		return
 	}
 
-	// Validate TON wallet address format — only real wallets accepted
+	// Lenient validation for non-wallet nodes (desktop client default behavior)
 	wallet := strings.TrimSpace(req.WalletAddress)
-	isValidTON := false
-	if strings.HasPrefix(wallet, "0:") && len(wallet) >= 50 {
-		isValidTON = true // Raw format
-	} else {
-		validPrefixes := []string{"EQ", "UQ", "kQ", "0Q"}
-		for _, prefix := range validPrefixes {
-			if strings.HasPrefix(wallet, prefix) && len(wallet) >= 46 && len(wallet) <= 50 {
-				isValidTON = true
-				break
-			}
-		}
-	}
-	if !isValidTON {
-		c.JSON(400, gin.H{
-			"error":   "invalid_wallet",
-			"message": "A valid TON wallet address is required (EQ.../UQ... format). Connect your wallet via TonConnect to get started.",
-		})
-		return
-	}
+	// We no longer strictly reject non-TON wallets to keep legacy unregistered desktop nodes online.
+	// But they won't be able to withdraw until they bind.
 	req.WalletAddress = wallet
 
 	// Ensure node & user exist
