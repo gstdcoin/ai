@@ -528,7 +528,7 @@ func (s *SovereignBridgeService) getLiquidityStatus(ctx context.Context, walletA
 	return status, nil
 }
 
-// executeAutoSwap performs automatic TON→GSTD swap
+// executeAutoSwap performs automatic TON→GSTD swap via STON.fi DEX
 func (s *SovereignBridgeService) executeAutoSwap(ctx context.Context, walletAddress string, tonAmount, expectedGSTD float64) (*SwapResult, error) {
 	log.Printf("💱 [Bridge] Auto-swap: %.4f TON → ~%.4f GSTD for %s",
 		tonAmount, expectedGSTD, walletAddress[:8])
@@ -543,21 +543,30 @@ func (s *SovereignBridgeService) executeAutoSwap(ctx context.Context, walletAddr
 		log.Printf("⚠️ [Bridge] Failed to record swap intent: %v", err)
 	}
 
-	// Neural Router: Real-time swap quote from STON.fi
-	actualOut := expectedGSTD * 0.98 // Fallback simulation
-	txHash := fmt.Sprintf("swap_%s", swapID[:8])
-
-	if s.stonfi != nil {
-		// GSTD Mainnet Jetton Address
-		gstdAddr := "EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO"
-		quote, err := s.stonfi.GetSwapQuote(ctx, int64(tonAmount*1e9), "TON", gstdAddr)
-		if err == nil && quote != nil {
-			if out, err := strconv.ParseFloat(quote.AmountOut, 64); err == nil {
-				actualOut = out / 1e9
-				log.Printf("📊 [Bridge] STON.fi real quote: %.4f GSTD", actualOut)
-			}
-		}
+	// Require STON.fi service for real swap execution
+	if s.stonfi == nil {
+		s.db.ExecContext(ctx, `UPDATE bridge_swaps SET status = 'failed', completed_at = NOW() WHERE id = $1`, swapID)
+		return nil, fmt.Errorf("STON.fi service not configured — cannot execute swap")
 	}
+
+	// Get real-time swap quote from STON.fi DEX
+	gstdAddr := "EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO"
+	quote, err := s.stonfi.GetSwapQuote(ctx, int64(tonAmount*1e9), "TON", gstdAddr)
+	if err != nil || quote == nil {
+		s.db.ExecContext(ctx, `UPDATE bridge_swaps SET status = 'failed', completed_at = NOW() WHERE id = $1`, swapID)
+		return nil, fmt.Errorf("STON.fi swap quote unavailable: %v — swap not executed, no funds credited", err)
+	}
+
+	actualOut, err := strconv.ParseFloat(quote.AmountOut, 64)
+	if err != nil || actualOut <= 0 {
+		s.db.ExecContext(ctx, `UPDATE bridge_swaps SET status = 'failed', completed_at = NOW() WHERE id = $1`, swapID)
+		return nil, fmt.Errorf("invalid STON.fi quote response — swap not executed")
+	}
+	actualOut = actualOut / 1e9
+	log.Printf("📊 [Bridge] STON.fi real quote: %.4f GSTD (slippage: %.2f%%)",
+		actualOut, (1.0-actualOut/expectedGSTD)*100)
+
+	txHash := fmt.Sprintf("swap_%s", swapID[:8])
 
 	result := &SwapResult{
 		TxHash:     txHash,

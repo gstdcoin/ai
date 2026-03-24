@@ -178,7 +178,7 @@ func (s *BurnService) GetBurnStats(ctx context.Context) (*BurnStats, error) {
 	// Current supply (initial - burned)
 	stats.InitialSupply = 1_000_000_000 // 1B max supply (TON emission)
 	stats.CurrentSupply = stats.InitialSupply - stats.TotalBurned
-	stats.BurnRate = s.burnRate * 100 // 5%
+	stats.BurnRate = s.burnRate * 100 // Dynamic: from tokenomics_halving table
 
 	// Calculate deflation rate
 	if stats.InitialSupply > 0 {
