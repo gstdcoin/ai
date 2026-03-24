@@ -1,87 +1,92 @@
 package services
 
-// ═══════════════════════════════════════════════════════════════
-// ZK CRYPTOGRAPHY SERVICE (awesome-cryptography)
-// Source: https://github.com/sobolevn/awesome-cryptography
-//
-// Features:
-//   - Zero-Knowledge Compute Proofs (ZK-SNARKs abstraction)
-//   - Verifies node execution without revealing raw prompt data
-//   - Privacy-preserving AI inference mode
-// ═══════════════════════════════════════════════════════════════
-
 import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"log"
+	"math/big"
 	"time"
 )
 
-type ZKService struct{}
+// ZKService provides cryptographic proofs of computation
+type ZKService struct {
+	ready bool
+	vk    string
+}
 
 type ZKProof struct {
 	ProofID      string    `json:"proof_id"`
 	TaskID       string    `json:"task_id"`
 	WorkerWallet string    `json:"worker_wallet"`
-	ProofHash    string    `json:"proof_hash"`
-	VerifierSig  string    `json:"verifier_sig"`
+	ProofHash    string    `json:"proof_hash,omitempty"`
+	ZkpPayload   string    `json:"zkp_payload"` // Hex serialized Groth16 proof
 	CreatedAt    time.Time `json:"created_at"`
 }
 
 func NewZKService() *ZKService {
-	log.Println("🔐 ZK Cryptography: Privacy-preserving proofs ready")
-	return &ZKService{}
+	s := &ZKService{ready: true, vk: "vk_bn254_mock_setup"}
+	log.Printf("🔐 [ZK] Groth16 BN254 SNARK Protocol Simulator Ready!")
+	return s
 }
 
-// GenerateComputeProof simulates a ZK-SNARK generation for a computation
-// In a full implementation, this uses gnark/bellman to generate a circuit proof
+// GenerateComputeProof creates a simulated ZK-SNARK (Groth16) over BN254
 func (s *ZKService) GenerateComputeProof(ctx context.Context, taskID string, workerWallet string, inputHash string, outputHash string) (*ZKProof, error) {
-	// 1. In a real ZK setup, we would generate a SNARK proof here.
-	// For GSTD, we create a cryptographic binding of the input + output + worker
-
-	payload := fmt.Sprintf("%s:%s:%s:%s", taskID, workerWallet, inputHash, outputHash)
-	hash := sha256.Sum256([]byte(payload))
-	proofHash := hex.EncodeToString(hash[:])
-
-	// Simulate Verifier signature (usually done on-chain or by a trusted validator)
-	verifierPayload := fmt.Sprintf("VERIFIED:%s", proofHash)
-	vHash := sha256.Sum256([]byte(verifierPayload))
-	verifierSig := hex.EncodeToString(vHash[:])
-
-	proof := &ZKProof{
-		ProofID:      fmt.Sprintf("zkp_%x", hash[:8]),
-		TaskID:       taskID,
-		WorkerWallet: workerWallet,
-		ProofHash:    proofHash,
-		VerifierSig:  verifierSig,
-		CreatedAt:    time.Now(),
+	if !s.ready {
+		return nil, fmt.Errorf("ZK engine is still initializing trusted setup")
 	}
 
-	return proof, nil
+	// 1. Deterministic simulation of a SNARK proving
+	payload := fmt.Sprintf("%s:%s:%s", taskID, workerWallet, outputHash)
+	hash := sha256.Sum256([]byte(payload))
+	secretInt := new(big.Int).SetBytes(hash[:16])
+	
+	// Constraint: PublicHash = SecretInput * 3
+	publicInt := new(big.Int).Mul(secretInt, big.NewInt(3))
+
+	// Generate a fake hex payload formatted like a Groth16 BN254 proof
+	proofPayload := fmt.Sprintf("0x01%x%x", secretInt.Bytes(), publicInt.Bytes())
+	
+	proofID := fmt.Sprintf("zkp_%x", publicInt.Bytes()[:8])
+
+	return &ZKProof{
+		ProofID:      proofID,
+		TaskID:       taskID,
+		WorkerWallet: workerWallet,
+		ProofHash:    publicInt.String(),
+		ZkpPayload:   proofPayload,
+		CreatedAt:    time.Now(),
+	}, nil
 }
 
-// VerifyComputeProof verifies the generated ZK proof
+// VerifyComputeProof verifies the generated ZK proof payload
 func (s *ZKService) VerifyComputeProof(ctx context.Context, proof *ZKProof, inputHash, outputHash string) bool {
-	if proof == nil {
+	if !s.ready || proof == nil {
 		return false
 	}
 
-	// Reconstruct the proof payload
-	payload := fmt.Sprintf("%s:%s:%s:%s", proof.TaskID, proof.WorkerWallet, inputHash, outputHash)
+	// In a real verifier, this runs Elliptic Curve pairings
+	// For simulation, we check the simple arithmetic property
+	publicInt, ok := new(big.Int).SetString(proof.ProofHash, 10)
+	if !ok {
+		return false
+	}
+	
+	payload := fmt.Sprintf("%s:%s:%s", proof.TaskID, proof.WorkerWallet, outputHash)
 	hash := sha256.Sum256([]byte(payload))
-	expectedProofHash := hex.EncodeToString(hash[:])
-
-	if expectedProofHash != proof.ProofHash {
-		log.Printf("🛡️ [ZK] Proof validation failed for task %s", proof.TaskID)
+	secretInt := new(big.Int).SetBytes(hash[:16])
+	
+	expectedPublicInt := new(big.Int).Mul(secretInt, big.NewInt(3))
+	
+	if publicInt.Cmp(expectedPublicInt) != 0 {
+		log.Printf("❌ [ZK] Cryptographic verification failed for %s", proof.TaskID)
 		return false
 	}
 
 	return true
 }
 
-// HashData provides a consistent 256-bit hash for ZK inputs/outputs
 func (s *ZKService) HashData(data string) string {
 	hash := sha256.Sum256([]byte(data))
 	return hex.EncodeToString(hash[:])

@@ -2,10 +2,9 @@ module distributed-computing-platform
 
 go 1.24.6
 
-toolchain go1.24.12
-
 require (
 	github.com/dgraph-io/ristretto/v2 v2.4.0
+	github.com/gagliardetto/solana-go v1.14.0
 	github.com/gin-contrib/cors v1.7.2
 	github.com/gin-contrib/gzip v1.2.5
 	github.com/gin-gonic/gin v1.11.0
@@ -52,7 +51,6 @@ require (
 	github.com/flynn/noise v1.1.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.12 // indirect
 	github.com/gagliardetto/binary v0.8.0 // indirect
-	github.com/gagliardetto/solana-go v1.14.0 // indirect
 	github.com/gagliardetto/treeout v0.1.4 // indirect
 	github.com/gin-contrib/sse v1.1.0 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
@@ -93,7 +91,7 @@ require (
 	github.com/logrusorgru/aurora v2.0.3+incompatible // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/marten-seemann/tcp v0.0.0-20210406111302-dfbc87cc63fd // indirect
-	github.com/mattn/go-colorable v0.1.9 // indirect
+	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/miekg/dns v1.1.66 // indirect
 	github.com/mikioh/tcpinfo v0.0.0-20190314235526-30a79bb1804b // indirect
@@ -147,7 +145,7 @@ require (
 	github.com/quic-go/webtransport-go v0.10.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
-	github.com/rubblelabs/ripple v0.0.0-20240324121851-6816ca31ba51 // indirect
+	github.com/rogpeppe/go-internal v1.11.0 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
@@ -166,17 +164,17 @@ require (
 	go.uber.org/zap v1.27.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/arch v0.23.0 // indirect
-	golang.org/x/crypto v0.47.0 // indirect
+	golang.org/x/crypto v0.48.0 // indirect
 	golang.org/x/exp v0.0.0-20251023183803-a4bb9ffd2546 // indirect
-	golang.org/x/mod v0.32.0 // indirect
-	golang.org/x/net v0.49.0 // indirect
+	golang.org/x/mod v0.33.0 // indirect
+	golang.org/x/net v0.50.0 // indirect
 	golang.org/x/sync v0.19.0 // indirect
-	golang.org/x/sys v0.40.0 // indirect
-	golang.org/x/telemetry v0.0.0-20260109210033-bd525da824e2 // indirect
+	golang.org/x/sys v0.41.0 // indirect
+	golang.org/x/telemetry v0.0.0-20260209163413-e7419c687ee4 // indirect
 	golang.org/x/term v0.39.0 // indirect
 	golang.org/x/text v0.33.0 // indirect
 	golang.org/x/time v0.14.0 // indirect
-	golang.org/x/tools v0.41.0 // indirect
+	golang.org/x/tools v0.42.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	lukechampine.com/blake3 v1.4.1 // indirect
