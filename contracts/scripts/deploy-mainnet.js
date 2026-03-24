@@ -110,6 +110,7 @@ async function deployContract(client, walletContract, secretKey, code, data, seq
         }
     } catch (e) {
         // Not deployed yet — continue
+        console.log(`   🔸 Not deployed yet: ${e.message}`);
     }
     
     if (DRY_RUN) {
