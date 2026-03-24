@@ -163,10 +163,19 @@ export default function EcosystemNav() {
             {mobileOpen && (
                 <>
                 <div 
+                    role="button"
+                    tabIndex={0}
+                    aria-label="Close menu"
                     onClick={() => setMobileOpen(false)}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            setMobileOpen(false);
+                            e.preventDefault();
+                        }
+                    }}
                     style={{
                         position: 'fixed', inset: 0, top: 56, zIndex: 999,
-                        background: 'rgba(0,0,0,0.5)', cursor: 'pointer'
+                        background: 'rgba(0,0,0,0.5)', cursor: 'pointer', border: 'none'
                     }}
                 />
                 <div style={{
