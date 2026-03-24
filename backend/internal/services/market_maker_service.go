@@ -7,8 +7,6 @@ import (
 	"log"
 	"math"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 // ═══════════════════════════════════════════════════════════════
@@ -110,38 +108,23 @@ func (s *MarketMakerService) runArbitrageCycle(ctx context.Context) {
 
 // executeTreasuryBuyback uses Golden Reserve yield to buy GSTD from the market (burn or redistribute)
 func (s *MarketMakerService) executeTreasuryBuyback(ctx context.Context) {
-	// Find available non-GSTD funds in Treasury (in a real system, we'd check TON balance of the Treasury contract)
-	// For simulation, we allocate 1% of the daily revenue to buybacks
+	// In production, check real TON balance of the Treasury contract
+	// We do not simulate fake token_burns rows anymore, as that pollutes the financial metrics.
 
-	// Assume we have 50 TON in yield waiting to buyback
-	buybackAmountTON := 50.0
-	gstdBought := buybackAmountTON / math.Max(0.0001, s.stats.CurrentPriceTON)
-
-	s.stats.TotalBuybacks24h += gstdBought
-
-	// Add to token burns to deflate supply
-	txID := uuid.New().String()
-	_, err := s.db.ExecContext(ctx, `
-		INSERT INTO token_burns (transaction_id, transaction_type, original_amount, burn_amount, source_wallet, created_at)
-		VALUES ($1, 'market_maker_buyback', $2, $2, 'TREASURY', NOW())
-	`, txID, gstdBought)
-
-	if err != nil {
-		log.Printf("⚠️ [MarketMaker] Failed to record buyback burn: %v", err)
-		return
+	treasuryTONBalance := 0.0 // Fetch real treasury balance here in the future
+	if treasuryTONBalance <= 0 {
+		return // Not enough yield to execute buyback
 	}
 
-	log.Printf("🔥 [MarketMaker] Buyback Executed! Bought & Burned %.2f GSTD using %.2f TON.", gstdBought, buybackAmountTON)
+	// Execution logic for real swap goes here when private key signing is available
+	// buybackAmountTON := treasuryTONBalance * 0.01 
+	// ... 
 }
 
 func (s *MarketMakerService) recordArbitrageProfit(ctx context.Context, profitGSTD float64) {
-	_, err := s.db.ExecContext(ctx, `
-		INSERT INTO golden_reserve_log (task_id, gstd_amount, treasury_wallet, timestamp)
-		VALUES ($1, $2, 'ARBITRAGE_ENGINE', NOW())
-	`, uuid.New().String()[:12], profitGSTD)
-	if err != nil {
-		log.Printf("⚠️ [MarketMaker] Failed to log arbitrage profit: %v", err)
-	}
+	// In production, real executed arbitrage will generate on-chain events we listen to.
+	// Removed fake DB insert that was polluting golden_reserve_log with simulated money.
+	log.Printf("⚠️ [MarketMaker] Arbitrage logic requires loaded hot-wallet to execute on-chain payload. Potential Profit: %.2f GSTD", profitGSTD)
 }
 
 // GetStats returns current market maker telemetry

@@ -3,6 +3,8 @@ package services
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -14,6 +16,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 )
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -32,8 +35,19 @@ import (
 
 // ExperienceVault caches prior responses for L1 routing.
 type ExperienceVault struct {
-	mu sync.RWMutex
-	// Stub: no-op implementation; override with real cache when needed
+	redisClient *redis.Client
+}
+
+func NewExperienceVault(redisClient *redis.Client) *ExperienceVault {
+	return &ExperienceVault{redisClient: redisClient}
+}
+
+// computeHash generates a SHA-256 hash representing the conversation
+func (v *ExperienceVault) computeHash(msgs []map[string]string, model string) string {
+	data, _ := json.Marshal(msgs)
+	hashInput := fmt.Sprintf("%s:%s", model, string(data))
+	hash := sha256.Sum256([]byte(hashInput))
+	return "omega_vault:" + hex.EncodeToString(hash[:])
 }
 
 // Lookup returns cached response if hit.
@@ -41,15 +55,30 @@ func (v *ExperienceVault) Lookup(ctx context.Context, msgs []map[string]string, 
 	Hit      bool
 	Response string
 }, error) {
+	if v.redisClient == nil {
+		return struct{ Hit bool; Response string }{Hit: false}, nil
+	}
+
+	key := v.computeHash(msgs, model)
+	val, err := v.redisClient.Get(ctx, key).Result()
+	if err == redis.Nil || err != nil {
+		return struct{ Hit bool; Response string }{Hit: false}, err
+	}
+
 	return struct {
 		Hit      bool
 		Response string
-	}{Hit: false}, nil
+	}{Hit: true, Response: val}, nil
 }
 
 // Store saves response for future lookup.
 func (v *ExperienceVault) Store(ctx context.Context, msgs []map[string]string, model, response string, confidence float64) {
-	// Stub: no-op
+	if v.redisClient == nil || confidence < 0.8 {
+		return
+	}
+	key := v.computeHash(msgs, model)
+	// Cache for 24 hours
+	v.redisClient.Set(ctx, key, response, 24*time.Hour)
 }
 
 // GSTDOracleService provides GSTD price for cost calculation.

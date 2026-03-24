@@ -77,12 +77,27 @@ func main() {
 		xautBalance = 0.0 // Assume empty if fail
 	}
 
-	// 3. Fetch Gold Price (XAUt roughly 1 oz)
-	goldPriceUSD := 2350.0 // Mock or fetch
+	// 3. Fetch Gold Price (XAUt roughly 1 oz) using CoinGecko
+	goldPriceUSD := 2350.0 // Fallback
+	gstdPriceUSD := 0.03   // Fallback
+	resp, err := http.Get("https://api.coingecko.com/api/v3/simple/price?ids=tether-gold,the-open-network&vs_currencies=usd")
+	if err == nil {
+		var cg map[string]map[string]float64
+		if err := json.NewDecoder(resp.Body).Decode(&cg); err == nil {
+			if tg, ok := cg["tether-gold"]; ok {
+				goldPriceUSD = tg["usd"]
+			}
+			// Estimate GSTD based on TON if needed, or if GSTD starts trading, pull its specific Oracle price
+			if ton, ok := cg["the-open-network"]; ok {
+				gstdPriceUSD = ton["usd"] * 0.005 // Assuming 1 GSTD = 0.005 TON peg for backup calc
+			}
+		}
+		resp.Body.Close()
+	}
 
 	// 4. Calculate Backing
 	reserveValueUSD := xautBalance * goldPriceUSD
-	tokenValueUSD := totalGSTDSupply * 0.03 // Assuming target price or market price
+	tokenValueUSD := totalGSTDSupply * gstdPriceUSD
 
 	backingRatio := 0.0
 	if tokenValueUSD > 0 {
