@@ -1680,8 +1680,16 @@ func SetupRoutes(deps APIDependencies) {
 	}
 
 	// ═══ GSTD APP STORE & NODE DASHBOARD (Umbrel-style) ═══
-	// Provides: App catalog, live system usage, widgets, notifications, settings, backups
 	SetupAppStoreRoutes(v1, dbConn)
+
+	// ═══ MAINNET B2B — Sovereign Fund & RPC Router ═══
+	SetupB2BClientRoutes(v1, dbConn)
+	SetupSovereignFundRoutes(v1, dbConn)
+	rpcGroup := router.Group("/rpc")
+	SetupRPCProxyRoutes(rpcGroup, dbConn)
+	StartAgeMultiplierCron(dbConn)
+	StartEpochCron(dbConn)
+	log.Printf("🏛️  Mainnet B2B: Sovereign Fund + RPC Router + Age Multiplier active")
 
 	// WebSocket endpoint
 	router.GET("/ws", HandleWebSocket(hub, deviceService, assignmentService, fleetCommandService))
