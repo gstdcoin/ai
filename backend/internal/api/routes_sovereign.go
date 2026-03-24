@@ -384,14 +384,27 @@ func parsePaymentRows(rows *sql.Rows, wallet string) []gin.H {
 func createStake(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			Wallet   string  `json:"wallet" binding:"required"`
+			Wallet   string  `json:"wallet"`
 			Amount   float64 `json:"amount" binding:"required"`
 			LockDays int     `json:"lock_days"` // 30, 90, 180, 365
+			TxHash   string  `json:"tx_hash"`   // Proof from TonConnect
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(400, gin.H{"error": err.Error()})
 			return
 		}
+		
+		// Fallback wallet to session context if not explicitly passed
+		if req.Wallet == "" {
+			if w, exists := c.Get("wallet_address"); exists {
+				req.Wallet = w.(string)
+			}
+		}
+		if req.Wallet == "" {
+			c.JSON(400, gin.H{"error": "wallet required"})
+			return
+		}
+        
 		if req.Amount < 1 {
 			c.JSON(400, gin.H{"error": "minimum stake is 1 GSTD"})
 			return
@@ -418,22 +431,31 @@ func createStake(db *sql.DB) gin.HandlerFunc {
 		tx, _ := db.BeginTx(ctx, nil)
 		defer tx.Rollback()
 
-		// Check balance
-		var balance float64
-		err := tx.QueryRowContext(ctx,
-			`SELECT COALESCE(gstd_balance,0)+COALESCE(pending_balance_gstd,0) FROM users WHERE wallet_address=$1`,
-			req.Wallet).Scan(&balance)
-		if err != nil || balance < req.Amount {
-			c.JSON(400, gin.H{"error": errInsufficientBalance})
-			return
-		}
+		if req.TxHash == "" {
+			// [OFF-CHAIN STAKING] Deduct internal local balance
+			var balance float64
+			err := tx.QueryRowContext(ctx,
+				`SELECT COALESCE(gstd_balance,0)+COALESCE(pending_balance_gstd,0) FROM users WHERE wallet_address=$1`,
+				req.Wallet).Scan(&balance)
+			if err != nil || balance < req.Amount {
+				c.JSON(400, gin.H{"error": errInsufficientBalance})
+				return
+			}
 
-		// Deduct GSTD and mint stGSTD
-		tx.ExecContext(ctx,
-			`UPDATE users SET gstd_balance = COALESCE(gstd_balance,0) - $1,
-			                  stgstd_balance = COALESCE(stgstd_balance,0) + $1,
-			                  updated_at = NOW() WHERE wallet_address = $2`,
-			req.Amount, req.Wallet)
+			// Deduct GSTD internally
+			tx.ExecContext(ctx,
+				`UPDATE users SET gstd_balance = GREATEST(COALESCE(gstd_balance,0) - $1, 0),
+				                  stgstd_balance = COALESCE(stgstd_balance,0) + $1,
+				                  updated_at = NOW() WHERE wallet_address = $2`,
+				req.Amount, req.Wallet)
+		} else {
+			// [ON-CHAIN STAKING] User supplied a TonConnect TxHash for real Jetton Transfer.
+			// We only mint the stGSTD internal representation.
+			tx.ExecContext(ctx,
+				`UPDATE users SET stgstd_balance = COALESCE(stgstd_balance,0) + $1,
+				                  updated_at = NOW() WHERE wallet_address = $2`,
+				req.Amount, req.Wallet)
+		}
 
 		// Create stake
 		var stakeID int
