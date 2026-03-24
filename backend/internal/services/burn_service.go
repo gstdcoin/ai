@@ -8,11 +8,14 @@ import (
 )
 
 // BurnService handles the deflationary token burn mechanism
-// 5% of every transaction is permanently burned
+// When HighloadWalletService is configured, burns execute on-chain via TEP-74 transfers
+// to the TON black hole address. Otherwise, burns are recorded in the database only.
 type BurnService struct {
-	db          *sql.DB
-	burnRate    float64
-	burnAddress string
+	db               *sql.DB
+	burnRate         float64
+	burnAddress      string
+	highload         *HighloadWalletService
+	gstdJettonAddr   string
 }
 
 // BurnConfig configuration for burn mechanism
@@ -54,8 +57,18 @@ func (s *BurnService) CalculateBurnAmount(transactionAmount float64) float64 {
 	return transactionAmount * s.burnRate
 }
 
-// RecordBurn records a burn event in the database
+// SetHighloadWallet wires the HighloadWalletService for on-chain burns
+func (s *BurnService) SetHighloadWallet(h *HighloadWalletService, gstdJettonAddr string) {
+	s.highload = h
+	s.gstdJettonAddr = gstdJettonAddr
+	if h != nil && h.IsInitialized() {
+		log.Printf("🔥 BurnService: on-chain burns ENABLED via highload wallet → %s", s.burnAddress)
+	}
+}
+
+// RecordBurn records a burn event in the database and optionally executes on-chain
 func (s *BurnService) RecordBurn(ctx context.Context, burnRecord *BurnRecord) error {
+	// 1. Always record in database
 	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO token_burns (
 			transaction_id, 
@@ -81,7 +94,42 @@ func (s *BurnService) RecordBurn(ctx context.Context, burnRecord *BurnRecord) er
 	log.Printf("🔥 BURN: %.6f GSTD from %s (tx: %s)",
 		burnRecord.BurnAmount, burnRecord.TransactionType, burnRecord.TransactionID)
 
+	// 2. Execute on-chain burn via TEP-74 transfer to black hole (if wallet available)
+	if s.highload != nil && s.highload.IsInitialized() && s.gstdJettonAddr != "" && burnRecord.BurnAmount > 0.001 {
+		go s.executeOnChainBurn(burnRecord)
+	}
+
 	return nil
+}
+
+// executeOnChainBurn sends GSTD to the TON black hole via HighloadWalletService
+func (s *BurnService) executeOnChainBurn(burnRecord *BurnRecord) {
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	// Convert GSTD to nano (9 decimals)
+	amountNano := int64(burnRecord.BurnAmount * 1e9)
+
+	txHash, err := s.highload.SignAndBroadcastGSTDBatch(ctx, s.gstdJettonAddr, []GSTDBatchTransfer{
+		{RecipientAddr: s.burnAddress, AmountNano: amountNano},
+	})
+
+	if err != nil {
+		log.Printf("⚠️ [Burn] On-chain burn FAILED for %.6f GSTD: %v (DB record preserved)", burnRecord.BurnAmount, err)
+		// Record failure in DB for audit
+		s.db.ExecContext(ctx, `
+			UPDATE token_burns SET on_chain_status = 'failed', on_chain_error = $1 WHERE transaction_id = $2
+		`, err.Error(), burnRecord.TransactionID)
+		return
+	}
+
+	log.Printf("🔥 [Burn] ON-CHAIN burn: %.6f GSTD → %s (tx: %s)",
+		burnRecord.BurnAmount, s.burnAddress, txHash)
+
+	// Update DB with tx hash
+	s.db.ExecContext(ctx, `
+		UPDATE token_burns SET on_chain_status = 'confirmed', on_chain_tx_hash = $1 WHERE transaction_id = $2
+	`, txHash, burnRecord.TransactionID)
 }
 
 // ProcessTransactionWithBurn handles a transaction with automatic burn
