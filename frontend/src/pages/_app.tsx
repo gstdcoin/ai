@@ -114,7 +114,7 @@ function App({ Component, pageProps }: AppProps) {
             {isMounted && <VercelSwarmHeartbeat />}
             {isMounted && <AutoClaimWorker />}
             {router.pathname !== '/tma' && <EcosystemNav />}
-            <main style={{ paddingTop: router.pathname !== '/tma' ? 56 : 0, paddingBottom: router.pathname === '/dashboard' ? 80 : 0, minHeight: '100vh', position: 'relative', zIndex: 1 }}>
+            <main style={{ paddingTop: router.pathname !== '/tma' ? 56 : 0, minHeight: '100vh', position: 'relative', zIndex: 1 }} className={router.pathname !== '/tma' ? 'pb-20 lg:pb-0' : ''}>
               <Component {...pageProps} />
             </main>
             {router.pathname !== '/tma' && router.pathname !== '/dashboard' && router.pathname !== '/chat' && !router.pathname.startsWith('/monitor') && <EcosystemFooter />}
