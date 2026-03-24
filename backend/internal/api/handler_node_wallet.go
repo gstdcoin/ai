@@ -301,6 +301,25 @@ func (h *NodeWalletHandler) HandleHeartbeat(c *gin.Context) {
 			 total_eligible_nodes = (SELECT COUNT(*) FROM nodes WHERE status='online' OR last_seen > NOW() - INTERVAL '24 hours')`, rwd)
 	}(req.WalletAddress, reward)
 
+	// Fetch pending commands for this node
+	var pendingCommands []gin.H
+	cmdRows, cmdErr := h.db.QueryContext(c.Request.Context(),
+		`SELECT id, command, params FROM node_commands
+		 WHERE node_id IN (SELECT id FROM nodes WHERE wallet_address = $1)
+		   AND status = 'pending' ORDER BY created_at ASC LIMIT 5`, req.WalletAddress)
+	if cmdErr == nil {
+		defer cmdRows.Close()
+		for cmdRows.Next() {
+			var cmdID int
+			var cmd, params string
+			cmdRows.Scan(&cmdID, &cmd, &params)
+			pendingCommands = append(pendingCommands, gin.H{"id": cmdID, "command": cmd, "params": params})
+			// Mark as dispatched
+			h.db.ExecContext(c.Request.Context(),
+				`UPDATE node_commands SET status = 'dispatched', executed_at = NOW() WHERE id = $1`, cmdID)
+		}
+	}
+
 	c.JSON(200, gin.H{
 		"reward":          reward,
 		"uptime_reward":   uptimeReward,
@@ -308,6 +327,7 @@ func (h *NodeWalletHandler) HandleHeartbeat(c *gin.Context) {
 		"queries_counted": req.QueriesServed,
 		"reason":          "verified_heartbeat",
 		"message":         "Reward credited to pending balance.",
+		"commands":        pendingCommands,
 		"update": gin.H{
 			"latest_version":   "3.4.0",
 			"update_available": req.NodeVersion != "" && req.NodeVersion != "3.4.0",

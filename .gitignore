@@ -170,3 +170,4 @@ frontend/.vercel/
 gstdbot/
 .sonarlint/
 gstd-universal
+backend/main_backend
