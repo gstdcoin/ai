@@ -26,11 +26,12 @@ var (
 )
 
 type HeartbeatPayload struct {
-	WalletAddress string  `json:"wallet_address"`
-	BatteryLevel  int     `json:"battery_level"`
-	SignalQuality int     `json:"signal_quality"`
-	Latitude      float64 `json:"latitude"`
-	Longitude     float64 `json:"longitude"`
+	WalletAddress string `json:"wallet_address"`
+	NodeName      string `json:"node_name"`
+	NodeVersion   string `json:"node_version"`
+	UptimeHours   int    `json:"uptime_hours"`
+	QueriesServed int    `json:"queries_served"`
+	IsMobile      bool   `json:"is_mobile"`
 }
 
 type RegisterPayload struct {
@@ -110,10 +111,11 @@ func registerNode(cpu string) {
 func sendHeartbeat() {
 	req := HeartbeatPayload{
 		WalletAddress: *walletAddr,
-		BatteryLevel:  100, // Desktop is plugged in
-		SignalQuality:  99,
-		Latitude:      0.0,
-		Longitude:     0.0,
+		NodeName:      *nodeName,
+		NodeVersion:   "1.0.0-cli",
+		UptimeHours:   1,
+		QueriesServed: 5,
+		IsMobile:      false,
 	}
 	data, _ := json.Marshal(req)
 
