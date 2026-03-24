@@ -1,25 +1,19 @@
 /**
  * GSTD Smart Contract Deployment Script — TON Mainnet
  * 
- * Deploys all 5 GSTD contracts in correct dependency order:
- * 1. GSTDJetton (token — no dependencies)
- * 2. TreasuryGold (needs admin wallet)
- * 3. DAOVoting (needs GSTD jetton address)
- * 4. SettlementMaster (needs GSTD, Treasury, DAO addresses)
- * 5. AgentRegistry (needs Settlement address)
- * 
- * After deployment, wires cross-contract permissions:
- * - SettlementMaster is set as GSTDJetton.mintAuthority
- * - DAO is set as owner of SettlementMaster and TreasuryGold
+ * Deploys contracts in correct dependency order:
+ * 1. EscrowComplete — Task compensation escrow with full security
+ * 2. SettlementMaster — Revenue split (85/10/5 Worker/Treasury/Protocol)
  * 
  * Usage:
- *   TON_NETWORK=mainnet DEPLOYER_MNEMONIC="..." node deploy-mainnet.js
+ *   DEPLOYER_MNEMONIC="..." ADMIN_WALLET="EQ..." node scripts/deploy-mainnet.js
+ *   DEPLOYER_MNEMONIC="..." ADMIN_WALLET="EQ..." DRY_RUN=1 node scripts/deploy-mainnet.js
  */
 
-require('dotenv').config({ path: '../.env' });
-const { TonClient, WalletContractV4, internal, toNano } = require('@ton/ton');
+require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
+const { TonClient, WalletContractV4, internal, toNano, Address } = require('@ton/ton');
 const { mnemonicToPrivateKey } = require('@ton/crypto');
-const { Cell } = require('@ton/core');
+const { Cell, beginCell, contractAddress, storeStateInit } = require('@ton/core');
 const fs = require('fs');
 const path = require('path');
 
@@ -30,8 +24,12 @@ const path = require('path');
 const NETWORK = process.env.TON_NETWORK || 'mainnet';
 const DEPLOYER_MNEMONIC = process.env.DEPLOYER_MNEMONIC || '';
 const ADMIN_WALLET = process.env.ADMIN_WALLET || '';
-const XAUT_JETTON = process.env.XAUT_JETTON_MASTER || 'EQA1R_LuQCLHlMgOo1S4G7Y7W1cd0FrAkbA10Zq7rddKxi9k';
-const DEX_ROUTER = process.env.STONFI_ROUTER || '';
+const DRY_RUN = process.env.DRY_RUN === '1';
+
+// Known GSTD ecosystem addresses
+const GSTD_JETTON = 'EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO';
+const TREASURY_WALLET = process.env.TREASURY_WALLET || ADMIN_WALLET;
+const PROTOCOL_FEE_WALLET = process.env.PROTOCOL_FEE_WALLET || ADMIN_WALLET;
 
 const ENDPOINTS = {
     mainnet: 'https://toncenter.com/api/v2/jsonRPC',
@@ -39,23 +37,139 @@ const ENDPOINTS = {
 };
 
 // ═══════════════════════════════════════════════════════════════
+// Contract Loading
+// ═══════════════════════════════════════════════════════════════
+
+function loadContract(name, subName) {
+    const buildDir = path.join(__dirname, '..', 'build', name);
+    const prefix = `${name}_${subName || name}`;
+    
+    const codeBocPath = path.join(buildDir, `${prefix}.code.boc`);
+    if (!fs.existsSync(codeBocPath)) {
+        throw new Error(`Contract bytecode not found: ${codeBocPath}\nRun: npm run build`);
+    }
+    
+    const codeBoc = fs.readFileSync(codeBocPath);
+    const code = Cell.fromBoc(codeBoc)[0];
+    
+    console.log(`   📦 Loaded ${prefix} (${codeBoc.length} bytes)`);
+    return code;
+}
+
+// Build init data cell for Escrow contract
+function buildEscrowInitData(ownerAddr, treasuryAddr) {
+    const owner = Address.parse(ownerAddr);
+    const treasury = Address.parse(treasuryAddr);
+    
+    return beginCell()
+        .storeAddress(owner)         // owner
+        .storeAddress(treasury)      // treasury
+        .storeCoins(toNano('0.01'))  // minMessageValue
+        .storeUint(0, 64)           // lastNonce
+        .storeUint(0, 64)           // totalDeposits
+        .storeUint(0, 64)           // totalWithdrawals
+        .storeCoins(0)              // totalValueLocked
+        .endCell();
+}
+
+// Build init data cell for SettlementMaster contract
+function buildSettlementInitData(ownerAddr, gstdJettonAddr, treasuryAddr, protocolFeeAddr) {
+    const owner = Address.parse(ownerAddr);
+    const gstdJetton = Address.parse(gstdJettonAddr);
+    const treasury = Address.parse(treasuryAddr);
+    const protocolFee = Address.parse(protocolFeeAddr);
+    
+    return beginCell()
+        .storeAddress(owner)        // owner
+        .storeAddress(owner)        // gateway (initially = owner)
+        .storeAddress(gstdJetton)   // gstdJetton
+        .storeAddress(treasury)     // treasury
+        .storeAddress(protocolFee)  // protocolFee
+        .storeUint(85, 8)          // workerShare
+        .storeUint(10, 8)          // treasuryShare
+        .storeUint(5, 8)           // protocolShare
+        .storeCoins(1000000)       // baseRate (0.001 GSTD)
+        .storeCoins(0)             // totalSettled
+        .storeCoins(0)             // totalGSTDMinted
+        .storeUint(0, 64)          // taskCount
+        .storeBit(false)           // paused
+        .storeCoins(toNano('0.1')) // minPayment
+        .endCell();
+}
+
+// ═══════════════════════════════════════════════════════════════
 // Deployment
 // ═══════════════════════════════════════════════════════════════
+
+async function deployContract(client, walletContract, secretKey, code, data, seqno, value = '0.5') {
+    const stateInit = { code, data };
+    const addr = contractAddress(0, stateInit);
+    
+    console.log(`   📍 Contract address: ${addr.toString()}`);
+    
+    // Check if already deployed
+    try {
+        const state = await client.getContractState(addr);
+        if (state.state === 'active') {
+            console.log(`   ⚡ Already deployed and active!`);
+            return addr.toString();
+        }
+    } catch (e) {
+        // Not deployed yet — continue
+    }
+    
+    if (DRY_RUN) {
+        console.log(`   🔍 DRY RUN: Would deploy to ${addr.toString()}`);
+        return addr.toString();
+    }
+    
+    // Deploy
+    await walletContract.sendTransfer({
+        seqno,
+        secretKey,
+        messages: [
+            internal({
+                to: addr,
+                value: toNano(value),
+                init: stateInit,
+                body: beginCell().endCell(),
+            }),
+        ],
+    });
+    
+    console.log(`   ⏳ Deployment TX sent (seqno: ${seqno}). Waiting for confirmation...`);
+    
+    // Wait for seqno to increment
+    for (let i = 0; i < 30; i++) {
+        await new Promise(r => setTimeout(r, 2000));
+        const currentSeqno = await walletContract.getSeqno();
+        if (currentSeqno > seqno) {
+            console.log(`   ✅ Deployed successfully!`);
+            return addr.toString();
+        }
+    }
+    
+    console.log(`   ⚠️  TX may still be pending. Check address: ${addr.toString()}`);
+    return addr.toString();
+}
 
 async function main() {
     console.log('═══════════════════════════════════════════════════');
     console.log('🔱 GSTD Smart Contract Deployment');
     console.log(`   Network:   ${NETWORK}`);
-    console.log(`   Admin:     ${ADMIN_WALLET.slice(0, 8)}...`);
+    console.log(`   Admin:     ${ADMIN_WALLET.slice(0, 12)}...`);
+    console.log(`   DRY RUN:   ${DRY_RUN ? 'YES' : 'NO'}`);
     console.log('═══════════════════════════════════════════════════\n');
 
     // Validate
     if (!DEPLOYER_MNEMONIC) {
         console.error('❌ DEPLOYER_MNEMONIC not set');
+        console.log('   Set: export DEPLOYER_MNEMONIC="word1 word2 ... word24"');
         process.exit(1);
     }
     if (!ADMIN_WALLET) {
         console.error('❌ ADMIN_WALLET not set');
+        console.log('   Set: export ADMIN_WALLET="EQ..."');
         process.exit(1);
     }
 
@@ -72,71 +186,45 @@ async function main() {
         workchain: 0,
     });
     const walletContract = client.open(wallet);
-    const seqno = await walletContract.getSeqno();
+    let seqno = await walletContract.getSeqno();
 
     console.log(`💰 Deployer wallet: ${wallet.address.toString()}`);
     const balance = await client.getBalance(wallet.address);
     console.log(`   Balance: ${Number(balance) / 1e9} TON\n`);
 
-    if (Number(balance) < 5e9) {
-        console.error('❌ Insufficient balance. Need at least 5 TON for deployment.');
+    if (!DRY_RUN && Number(balance) < 2e9) {
+        console.error('❌ Insufficient balance. Need at least 2 TON for deployment.');
         process.exit(1);
     }
-
-    // ═══════════════════════════════════════════════════════
-    // Build contracts
-    // ═══════════════════════════════════════════════════════
-    console.log('📦 Building contracts...');
-    const buildDir = path.join(__dirname, '..', 'build');
-    if (!fs.existsSync(buildDir)) {
-        console.error('❌ Build directory not found. Run: npm run build');
-        process.exit(1);
-    }
-
-    // ═══════════════════════════════════════════════════════
-    // Deploy in dependency order
-    // ═══════════════════════════════════════════════════════
 
     const deployed = {};
-    let currentSeqno = seqno;
-
-    // 1. GSTDJetton
-    console.log('\n1️⃣  Deploying GSTDJetton...');
-    // In production: load compiled cell from build/GSTDJetton/
-    // const jettonCode = Cell.fromBoc(fs.readFileSync(path.join(buildDir, 'GSTDJetton', 'contract.cell')))[0];
-    // const jettonData = buildJettonInitData(ADMIN_WALLET);
-    // deployed.jetton = await deployContract(walletContract, keyPair.secretKey, jettonCode, jettonData, currentSeqno++);
-    deployed.jetton = `[Deploy via Tact SDK — see build/GSTDJetton/]`;
-    console.log(`   ✅ GSTDJetton: placeholder (compile with "npm run build" first)`);
-
-    // 2. TreasuryGold  
-    console.log('\n2️⃣  Deploying TreasuryGold...');
-    deployed.treasury = `[Deploy via Tact SDK — needs: owner=${ADMIN_WALLET}, xaut=${XAUT_JETTON}]`;
-    console.log(`   ✅ TreasuryGold: placeholder`);
-
-    // 3. DAOVoting
-    console.log('\n3️⃣  Deploying DAOVoting...');
-    deployed.dao = `[Deploy via Tact SDK — needs: gstdJetton=${deployed.jetton}]`;
-    console.log(`   ✅ DAOVoting: placeholder`);
-
-    // 4. SettlementMaster
-    console.log('\n4️⃣  Deploying SettlementMaster...');
-    deployed.settlement = `[Deploy via Tact SDK — needs: gstd, treasury, dao]`;
-    console.log(`   ✅ SettlementMaster: placeholder`);
-
-    // 5. AgentRegistry
-    console.log('\n5️⃣  Deploying AgentRegistry...');
-    deployed.registry = `[Deploy via Tact SDK — needs: settlement]`;
-    console.log(`   ✅ AgentRegistry: placeholder`);
 
     // ═══════════════════════════════════════════════════════
-    // Cross-contract wiring
+    // 1. Deploy EscrowComplete
     // ═══════════════════════════════════════════════════════
-    console.log('\n🔗 Cross-contract wiring...');
-    console.log('   → Set SettlementMaster as GSTDJetton.mintAuthority');
-    console.log('   → Set DAOVoting as SettlementMaster.owner');
-    console.log('   → Set DAOVoting as TreasuryGold.owner');
-    console.log('   → Set SettlementMaster address in AgentRegistry');
+    console.log('\n1️⃣  Deploying EscrowComplete...');
+    const escrowCode = loadContract('EscrowComplete', 'Escrow');
+    const escrowData = buildEscrowInitData(ADMIN_WALLET, TREASURY_WALLET);
+    deployed.escrow = await deployContract(
+        client, walletContract, keyPair.secretKey,
+        escrowCode, escrowData, seqno++, '0.5'
+    );
+
+    // Wait between deploys
+    if (!DRY_RUN) await new Promise(r => setTimeout(r, 10000));
+
+    // ═══════════════════════════════════════════════════════
+    // 2. Deploy SettlementMaster
+    // ═══════════════════════════════════════════════════════
+    console.log('\n2️⃣  Deploying SettlementMaster...');
+    const settlementCode = loadContract('SettlementMaster', 'SettlementMaster');
+    const settlementData = buildSettlementInitData(
+        ADMIN_WALLET, GSTD_JETTON, TREASURY_WALLET, PROTOCOL_FEE_WALLET
+    );
+    deployed.settlement = await deployContract(
+        client, walletContract, keyPair.secretKey,
+        settlementCode, settlementData, seqno++, '0.5'
+    );
 
     // ═══════════════════════════════════════════════════════
     // Save deployment addresses
@@ -146,7 +234,13 @@ async function main() {
         network: NETWORK,
         deployedAt: new Date().toISOString(),
         deployer: wallet.address.toString(),
+        dryRun: DRY_RUN,
         contracts: deployed,
+        config: {
+            gstdJetton: GSTD_JETTON,
+            treasury: TREASURY_WALLET,
+            protocolFee: PROTOCOL_FEE_WALLET,
+        },
     };
     fs.writeFileSync(deploymentFile, JSON.stringify(deploymentInfo, null, 2));
     console.log(`\n📄 Deployment info saved to ${deploymentFile}`);
@@ -160,11 +254,13 @@ async function main() {
     for (const [name, addr] of Object.entries(deployed)) {
         console.log(`  ${name}: ${addr}`);
     }
-    console.log('\n⚠️  NOTE: This is a skeleton script. To deploy:');
-    console.log('  1. Run "npm run build" to compile Tact contracts');
-    console.log('  2. Load compiled cells from build/ directory');
-    console.log('  3. Use Tact SDK deploy helpers for each contract');
-    console.log('  4. Execute cross-contract wiring transactions');
+    if (DRY_RUN) {
+        console.log('\n⚠️  DRY RUN completed. Run without DRY_RUN=1 to deploy.');
+    } else {
+        console.log('\n✅ All contracts deployed! Update backend .env:');
+        console.log(`   ESCROW_CONTRACT_ADDRESS=${deployed.escrow}`);
+        console.log(`   SETTLEMENT_CONTRACT_ADDRESS=${deployed.settlement}`);
+    }
     console.log('═══════════════════════════════════════════════════');
 }
 

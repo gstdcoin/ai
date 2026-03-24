@@ -169,11 +169,33 @@ func (h *NodeWalletHandler) HandleHeartbeat(c *gin.Context) {
 		return
 	}
 
-	// Calculate reward (server-controlled rates)
-	const uptimeRewardPerHour = 0.10  // 0.10 GSTD per hour uptime
-	const queryRewardPer = 0.001      // 0.001 GSTD per query served
-	const maxRewardPerHeartbeat = 1.0 // max 1.0 GSTD per heartbeat
-	const maxDailyPerNode = 24.0      // max 24 GSTD per day (1 per hour)
+	// Load reward rates from database (dynamically adjustable without redeploy)
+	uptimeRewardPerHour := 0.10   // default
+	queryRewardPer := 0.001       // default
+	maxRewardPerHeartbeat := 1.0  // default
+	maxDailyPerNode := 24.0       // default
+
+	rows, err := h.db.QueryContext(c.Request.Context(),
+		`SELECT config_key, config_value FROM node_reward_config`)
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var key string
+			var val float64
+			if rows.Scan(&key, &val) == nil {
+				switch key {
+				case "uptime_reward_per_hour":
+					uptimeRewardPerHour = val
+				case "query_reward_per":
+					queryRewardPer = val
+				case "max_reward_per_heartbeat":
+					maxRewardPerHeartbeat = val
+				case "max_daily_per_node":
+					maxDailyPerNode = val
+				}
+			}
+		}
+	}
 
 	uptimeReward := uptimeRewardPerHour
 	queryReward := float64(req.QueriesServed) * queryRewardPer
