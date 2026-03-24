@@ -67,7 +67,9 @@ services:
     networks:
       - gstd_network
 
-  # ─── Telegram Bot ─────────────────────────────
+  # ─── Telegram Bot (Remote Nodes Only) ────────
+  # This service is for USER nodes, NOT the platform server.
+  # To test locally: docker compose --profile node up telegram-bot
   telegram-bot:
     image: gstd-bot:v34
     container_name: gstd-telegram-bot
@@ -75,6 +77,8 @@ services:
     env_file: ./gstdbot/.env
     depends_on:
       - backend-blue
+    profiles:
+      - node
     networks:
       - gstd_network
 
