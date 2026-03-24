@@ -44,6 +44,8 @@ export default function EcosystemNav() {
         { key: 'nav_stats', href: `${APP_BASE}/stats`, icon: <Activity size={15} />, external: !isOnApp, short: 'Stats' },
         { key: 'nav_monitor', short: 'Simulations', href: `${APP_BASE}/monitor`, icon: <Briefcase size={15} />, external: !isOnApp },
         { key: 'nav_predictions', short: 'Signals', href: `${APP_BASE}/predictions`, icon: <Brain size={15} />, external: !isOnApp },
+        { key: 'nav_fund', short: 'Fund', href: `${APP_BASE}/fund`, icon: <Landmark size={15} />, external: !isOnApp },
+        { key: 'nav_developers', short: 'Developers', href: `${APP_BASE}/developers`, icon: <Server size={15} />, external: !isOnApp },
         { key: 'nav_telegram', href: 'https://t.me/GstdAppBot', icon: <ExternalLink size={13} />, external: true, short: 'TG' },
     ];
 
