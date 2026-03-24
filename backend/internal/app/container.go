@@ -877,11 +877,18 @@ func startPayoutBatch(ctx context.Context, deps ApplicationDependencies) {
 		return
 	}
 	deps.PayoutBatchService.SetHighloadWallet(deps.HighloadWallet)
-	if deps.Cfg.TON.GSTDJettonAddress != "" {
-		deps.PayoutBatchService.SetGSTDJettonMaster(deps.Cfg.TON.GSTDJettonAddress)
+	gstdJettonAddr := deps.Cfg.TON.GSTDJettonAddress
+	if gstdJettonAddr != "" {
+		deps.PayoutBatchService.SetGSTDJettonMaster(gstdJettonAddr)
 	}
 	go deps.PayoutBatchService.Start(ctx)
 	log.Printf("⛽ Payout Batch: Highload Ascension ACTIVE (15m)")
+
+	// Wire on-chain burns when GSTD jetton address is known
+	if deps.BurnService != nil && gstdJettonAddr != "" {
+		deps.BurnService.SetHighloadWallet(deps.HighloadWallet, gstdJettonAddr)
+	}
+
 	if deps.TelegramService != nil {
 		deps.HighloadWallet.SetTelegramAlert(deps.TelegramService.SendMessage)
 		go func() {
