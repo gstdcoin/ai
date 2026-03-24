@@ -146,7 +146,7 @@ func (h *NodeWalletHandler) HandleHeartbeat(c *gin.Context) {
 			"update": gin.H{
 				"latest_version":   "3.4.0",
 				"update_available": req.NodeVersion != "" && req.NodeVersion != "3.4.0",
-				"update_url":       "https://gstdbot.gstdtoken.com/install.sh",
+				"update_url":       "https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh",
 			},
 		})
 		return
@@ -311,7 +311,7 @@ func (h *NodeWalletHandler) HandleHeartbeat(c *gin.Context) {
 		"update": gin.H{
 			"latest_version":   "3.4.0",
 			"update_available": req.NodeVersion != "" && req.NodeVersion != "3.4.0",
-			"update_url":       "https://gstdbot.gstdtoken.com/install.sh",
+			"update_url":       "https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh",
 			"changelog_url":    "https://github.com/gstdcoin/gstdbot/releases",
 		},
 		"sovereign": gin.H{
@@ -342,7 +342,7 @@ func (h *NodeWalletHandler) HandleUpdateCheck(c *gin.Context) {
 		"latest_version":   latestVersion,
 		"current_version":  currentVersion,
 		"update_available": updateAvailable,
-		"update_url":       "https://gstdbot.gstdtoken.com/install.sh",
+		"update_url":       "https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh",
 		"release_url":      "https://github.com/gstdcoin/gstdbot/releases",
 		"changelog": []string{
 			"v3.4.0: TON Connect fix, Platform Link, Model Failover, Core Modules",

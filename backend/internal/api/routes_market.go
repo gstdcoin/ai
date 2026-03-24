@@ -106,28 +106,16 @@ func (h *MarketHandler) PrepareSwapTransaction(c *gin.Context) {
 	amountOut, _ := strconv.ParseFloat(quote.AmountOut, 64)
 	gstdReceived := amountOut / 1e9 // Convert from nano
 
-	// For the demo: We ALSO simulate the effect locally so the bot can continue working
-	_, err = h.db.ExecContext(c.Request.Context(), `
-		INSERT INTO users (wallet_address, gstd_balance) 
-		VALUES ($1, $2)
-		ON CONFLICT (wallet_address) 
-		DO UPDATE SET gstd_balance = users.gstd_balance + $2
-	`, req.WalletAddress, gstdReceived)
-
-	if err != nil {
-		log.Printf("DB Update Error: %v", err)
-	} else {
-		log.Printf("📈 MARKET HELP: Prepared swap for %s (Simulated credit of %.2f GSTD)", req.WalletAddress, gstdReceived)
-	}
+	// 3. Inform client that they MUST sign and broadcast the payload.
+	// We DO NOT credit GSTD locally. Payment must be tracked on-chain.
+	log.Printf("📈 MARKET: Prepared swap payload for %s. Awaiting on-chain confirmation.", req.WalletAddress)
 
 	c.JSON(200, gin.H{
-		"quote":       quote,
-		"transaction": payload,
-		"instruction": "Sign 'transaction.body_boc' with your private key and broadcast to TON network",
-		"status":      "ready_to_sign",
-		// Legacy support for our bot immediate update
-		"simulated_credit": gstdReceived,
-		"received_gstd":    gstdReceived,
+		"quote":          quote,
+		"transaction":    payload,
+		"instruction":    "Sign 'transaction.body_boc' with your private key and broadcast to TON network",
+		"status":         "ready_to_sign",
+		"expected_gstd":  gstdReceived,
 	})
 }
 
