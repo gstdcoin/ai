@@ -342,9 +342,8 @@ export async function signResultData(
       });
       signatureHex = signature.signature;
     } catch (signError) {
-      logger.error('Signing failed, using dummy signature fallback', signError);
-      // Fallback for development/compatibility
-      signatureHex = "dummy_signature_bypass";
+      logger.error('Signing failed, no dummy fallback used', signError);
+      throw signError;
     }
 
     // Return signature in hex format

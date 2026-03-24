@@ -2,8 +2,12 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
+	"fmt"
 	"log"
+	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	_ "github.com/lib/pq"
@@ -112,12 +116,41 @@ func main() {
 
 // simulate API calls
 func fetchTotalSupply(addr string) (float64, error) {
-	// In prod: call TON API
+	if addr == "" {
+		return 1000000000.0, nil
+	}
+	resp, err := http.Get(fmt.Sprintf("https://tonapi.io/v2/jettons/%s", addr))
+	if err != nil {
+		return 1000000000.0, err
+	}
+	defer resp.Body.Close()
+	var data struct {
+		TotalSupply string `json:"total_supply"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err == nil {
+		if val, err := strconv.ParseFloat(data.TotalSupply, 64); err == nil {
+			return val / 1e9, nil
+		}
+	}
 	return 1000000000.0, nil
 }
 
 func fetchTokenBalance(wallet, token string) (float64, error) {
-	// In prod: call TON API
-	// Attempt to call local StonFi Service if possible, but simpler here
-	return 10.5, nil // Mock: Treasury has 10.5 oz of Gold
+	if wallet == "" || token == "" {
+		return 0, nil
+	}
+	resp, err := http.Get(fmt.Sprintf("https://tonapi.io/v2/accounts/%s/jettons/%s", wallet, token))
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+	var data struct {
+		Balance string `json:"balance"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err == nil {
+		if val, err := strconv.ParseFloat(data.Balance, 64); err == nil {
+			return val / 1e9, nil
+		}
+	}
+	return 0, nil
 }
