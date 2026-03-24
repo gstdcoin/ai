@@ -73,13 +73,76 @@ export default function SmartTaskWidget({ onTaskCreated }: SmartTaskWidgetProps)
     };
 
     const handleCreateAndPay = async () => {
-        if (!address || !estimation || !tonConnectUI) return;
+        if (!address || !estimation) return;
 
         setLoading(true);
         setStep('processing');
 
         try {
-            // 1. Create Task API Call
+            let txHash = '';
+            // Generate a memo up front to link payment and task
+            const generatedMemo = `smart-task-${Date.now()}`;
+
+            // Optional On-chain Payment Flow (if wallet connected)
+            if (tonConnectUI && tonConnectUI.connected) {
+                // Calculate split amounts (95% reward, 5% fee)
+                const rewardAmount = estimation.budget * 0.95;
+                const feeAmount = estimation.budget * 0.05;
+
+                // Dynamic import of TON libraries
+                const { beginCell, Address } = await import('@ton/core');
+
+                // Send both parts to Admin Wallet since Escrow contract accepts NATIVE TON, not Jettons.
+                // Admin wallet acts as treasury and backend maps to internal balance perfectly.
+                const [adminJettonWalletRes] = await Promise.all([
+                    apiGet<{ address: string }>(`/wallet/jetton-address`, { owner: ADMIN_WALLET_ADDRESS })
+                ]);
+                const adminDest = adminJettonWalletRes.address;
+
+                if (!adminDest) {
+                    throw new Error('Could not resolve payment destination address');
+                }
+
+                const createTransferPayload = (destOwner: string, amount: number, memo: string) => {
+                    const amountNano = BigInt(Math.round(amount * 1e9));
+                    return beginCell()
+                        .storeUint(0xf8a7ea5, 32)
+                        .storeUint(0, 64)
+                        .storeCoins(amountNano)
+                        .storeAddress(Address.parse(destOwner)) // Destination owner 
+                        .storeAddress(Address.parse(address))   // Response destination
+                        .storeBit(0)
+                        .storeCoins(BigInt(1))
+                        .storeBit(1)
+                        .storeRef(beginCell().storeUint(0, 32).storeStringTail(memo).endCell())
+                        .endCell()
+                        .toBoc()
+                        .toString('base64');
+                };
+
+                const rewardBoc = createTransferPayload(ADMIN_WALLET_ADDRESS, rewardAmount, generatedMemo);
+                const feeBoc = createTransferPayload(ADMIN_WALLET_ADDRESS, feeAmount, `${generatedMemo}-FEE`);
+
+                const result = await tonConnectUI.sendTransaction({
+                    validUntil: Math.floor(Date.now() / 1000) + 600,
+                    messages: [
+                        {
+                            address: adminDest,
+                            amount: "50000000", // 0.05 TON gas
+                            payload: rewardBoc
+                        },
+                        {
+                            address: adminDest,
+                            amount: "50000000", // 0.05 TON gas
+                            payload: feeBoc
+                        }
+                    ]
+                });
+                
+                txHash = result.boc;
+            }
+
+            // 1. Create Task API Call (passes tx_hash to bypass internal deduction if paid on-chain)
             const taskData = await apiPost<{
                 task_id: string;
                 amount: number;
@@ -90,73 +153,12 @@ export default function SmartTaskWidget({ onTaskCreated }: SmartTaskWidgetProps)
                 type: estimation.type,
                 budget: estimation.budget,
                 payload: estimation.payload,
+                tx_hash: txHash,
+                payment_memo: generatedMemo
             });
 
             logger.info('Task created via Smart Widget', taskData);
-
-            // 2. Prepare Payment
-            // Calculate split amounts (95% reward, 5% fee)
-            const rewardAmount = taskData.amount * 0.95;
-            const feeAmount = taskData.amount * 0.05;
-
-            // Dynamic import of TON libraries
-            const { beginCell, Address } = await import('@ton/core');
-
-            // 3. Resolve destination Jetton Wallets
-            // We need the address of the ESCROW_CONTRACT's wallet and ADMIN's wallet
-            // The API `/wallet/jetton-address` expects 'owner' query param
-
-            const [rewardJettonWalletRes, feeJettonWalletRes] = await Promise.all([
-                apiGet<{ address: string }>(`/wallet/jetton-address`, { owner: ESCROW_CONTRACT_ADDRESS }),
-                apiGet<{ address: string }>(`/wallet/jetton-address`, { owner: ADMIN_WALLET_ADDRESS })
-            ]);
-
-            const rewardDest = rewardJettonWalletRes.address;
-            const feeDest = feeJettonWalletRes.address;
-
-            if (!rewardDest || !feeDest) {
-                throw new Error('Could not resolve payment destination addresses');
-            }
-
-            // 4. Build Payloads
-            const createTransferPayload = (destOwner: string, amount: number, memo: string) => {
-                const amountNano = BigInt(Math.round(amount * 1e9));
-                return beginCell()
-                    .storeUint(0xf8a7ea5, 32)
-                    .storeUint(0, 64)
-                    .storeCoins(amountNano)
-                    .storeAddress(Address.parse(destOwner)) // Destination owner (Escrow/Admin)
-                    .storeAddress(Address.parse(address))   // Response destination (User)
-                    .storeBit(0)
-                    .storeCoins(BigInt(1))
-                    .storeBit(1)
-                    .storeRef(beginCell().storeUint(0, 32).storeStringTail(memo).endCell())
-                    .endCell()
-                    .toBoc()
-                    .toString('base64');
-            };
-
-            const rewardBoc = createTransferPayload(ESCROW_CONTRACT_ADDRESS, rewardAmount, taskData.payment_memo);
-            const feeBoc = createTransferPayload(ADMIN_WALLET_ADDRESS, feeAmount, `${taskData.payment_memo}-FEE`);
-
-            // 5. Send Transaction
-            await tonConnectUI.sendTransaction({
-                validUntil: Math.floor(Date.now() / 1000) + 600,
-                messages: [
-                    {
-                        address: rewardDest,
-                        amount: "50000000", // 0.05 TON gas
-                        payload: rewardBoc
-                    },
-                    {
-                        address: feeDest,
-                        amount: "50000000", // 0.05 TON gas
-                        payload: feeBoc
-                    }
-                ]
-            });
-
-            toast.success(t('success', 'Success') || 'Success', t('task_created_paid', 'Task created and paid') || 'Task created and payment sent!');
+            toast.success(t('success', 'Success') || 'Success', t('task_created_paid', 'Task created and paid') || 'Task created successfully!');
 
             // Reset
             setStep('input');

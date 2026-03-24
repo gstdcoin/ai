@@ -262,62 +262,18 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
         }
       }
 
-      // Get payout intent
-      interface PayoutIntent {
-        intent: string;
-        executor_address: string;
-        platform_fee_gstd: number;
-        executor_reward_gstd: number;
-        task_id: string;
-        to_address: string;
-        amount_nano: string;
+      // Call backend to trigger internal ledger payout (80/15/5 Marketplace logic)
+      interface PayoutResponse {
+        status: string;
+        amount_gstd: number;
+        tx_id: string;
       }
 
-      const intent = await apiPost<PayoutIntent>('/payments/payout-intent', {
-        task_id: task.task_id,
+      await apiPost<PayoutResponse>(`/marketplace/tasks/${task.task_id}/payout`, {
         executor_address: executorWalletAddress,
       });
 
-      // Build Tact-compatible Cell payload using @ton/core
-      const { beginCell, Address } = await import('@ton/core');
-
-      // Parse executor address
-      const executorAddress = Address.parse(intent.executor_address);
-
-      // Convert GSTD amounts to nano (1 token = 1e9 nano)
-      const platformFeeNano = BigInt(Math.floor(intent.platform_fee_gstd * 1e9));
-      const executorRewardNano = BigInt(Math.floor(intent.executor_reward_gstd * 1e9));
-
-      // Build cell matching escrow.tact Withdraw message structure:
-      // [op_code (32u), executor_address (MsgAddress), platform_fee (Coins), executor_reward (Coins), task_id (Ref->String)]
-      const payloadCell = beginCell()
-        .storeUint(0, 32) // op_code for Withdraw message
-        .storeAddress(executorAddress)
-        .storeCoins(platformFeeNano)
-        .storeCoins(executorRewardNano)
-        .storeRef(
-          beginCell()
-            .storeStringTail(intent.task_id)
-            .endCell()
-        )
-        .endCell();
-
-      // Convert to Base64 BoC for TonConnect
-      const payloadBase64 = payloadCell.toBoc().toString('base64');
-
-      // Send transaction via TonConnect
-      const result = await tonConnectUI.sendTransaction({
-        messages: [
-          {
-            address: intent.to_address,
-            amount: intent.amount_nano.toString(),
-            payload: payloadBase64,
-          },
-        ],
-        validUntil: Math.floor(Date.now() / 1000) + 300, // 5 minutes from now
-      });
-
-      logger.info('Transaction sent', { taskId: task.task_id, result });
+      logger.info('Task compensation claimed via internal ledger', { taskId: task.task_id });
 
       // Trigger haptic feedback
       if (onCompensationClaimed) {
