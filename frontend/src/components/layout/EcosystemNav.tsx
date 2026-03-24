@@ -162,20 +162,14 @@ export default function EcosystemNav() {
             {/* Mobile dropdown */}
             {mobileOpen && (
                 <>
-                <div 
-                    role="button"
-                    tabIndex={0}
+                <button 
+                    type="button"
                     aria-label="Close menu"
                     onClick={() => setMobileOpen(false)}
-                    onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                            setMobileOpen(false);
-                            e.preventDefault();
-                        }
-                    }}
                     style={{
                         position: 'fixed', inset: 0, top: 56, zIndex: 999,
-                        background: 'rgba(0,0,0,0.5)', cursor: 'pointer', border: 'none'
+                        background: 'rgba(0,0,0,0.5)', cursor: 'pointer', border: 'none',
+                        width: '100%', height: 'calc(100vh - 56px)'
                     }}
                 />
                 <div style={{
