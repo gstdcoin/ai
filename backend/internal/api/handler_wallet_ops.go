@@ -384,10 +384,23 @@ func stakingInfo(db *sql.DB) gin.HandlerFunc {
 		}
 
 		var staked, balance float64
+		var userAPY float64 = 8.0 // Default (Flex tier)
 		if wallet != "" {
 			_ = db.QueryRowContext(c.Request.Context(),
 				`SELECT COALESCE(gstd_frozen, 0), COALESCE(gstd_balance, 0) FROM users WHERE wallet_address = $1`,
 				wallet).Scan(&staked, &balance)
+
+			// Get the best APY from active staking positions
+			var maxAPY sql.NullFloat64
+			_ = db.QueryRowContext(c.Request.Context(),
+				`SELECT MAX(apy) FROM staking_positions WHERE wallet_address = $1 AND status = 'active'`,
+				wallet).Scan(&maxAPY)
+			if maxAPY.Valid && maxAPY.Float64 > 0 {
+				userAPY = maxAPY.Float64
+			} else if staked > 0 {
+				// Fallback: estimate from amount (flex tier)
+				userAPY = 8.0
+			}
 		}
 
 		// Platform-wide staking stats
@@ -396,30 +409,30 @@ func stakingInfo(db *sql.DB) gin.HandlerFunc {
 		_ = db.QueryRowContext(c.Request.Context(),
 			`SELECT COALESCE(SUM(gstd_frozen), 0), COUNT(*) FROM users WHERE gstd_frozen > 0`).Scan(&totalStaked, &stakerCount)
 
-		dailyRate := 12.0 / 365.0 / 100.0
+		dailyRate := userAPY / 365.0 / 100.0
 		dailyReward := staked * dailyRate
+		monthlyReward := staked * userAPY / 12.0 / 100.0
 
 		c.JSON(200, gin.H{
 			"wallet": gin.H{
 				"address":        wallet,
 				"staked":         staked,
 				"available":      balance,
+				"apy":            userAPY,
 				"daily_reward":   math.Round(dailyReward*10000) / 10000,
-				"monthly_reward": math.Round(staked*12.0/12.0/100.0*10000) / 10000,
+				"monthly_reward": math.Round(monthlyReward*10000) / 10000,
 			},
 			"platform": gin.H{
 				"total_staked": totalStaked,
 				"staker_count": stakerCount,
-				"apy":          12.0,
-				"lock_period":  "30 days",
 				"min_stake":    1.0,
 				"reward_token": "GSTD",
 			},
 			"tiers": []gin.H{
-				{"name": "Bronze", "min_stake": 1, "apy": 12, "benefits": "Basic staking rewards"},
-				{"name": "Silver", "min_stake": 100, "apy": 15, "benefits": "Staking + fee discount 10%"},
-				{"name": "Gold", "min_stake": 1000, "apy": 18, "benefits": "Staking + fee discount 25% + priority tasks"},
-				{"name": "Diamond", "min_stake": 10000, "apy": 24, "benefits": "Staking + fee discount 50% + Ultra AI access"},
+				{"name": "Flex", "lock_days": 30, "apy": 8, "benefits": "Basic staking rewards, flexible unlock"},
+				{"name": "Silver", "lock_days": 90, "apy": 15, "benefits": "Staking + fee discount 10%"},
+				{"name": "Gold", "lock_days": 180, "apy": 24, "benefits": "Staking + fee discount 25% + priority tasks"},
+				{"name": "Diamond", "lock_days": 365, "apy": 36, "benefits": "Staking + fee discount 50% + Ultra AI access"},
 			},
 		})
 	}

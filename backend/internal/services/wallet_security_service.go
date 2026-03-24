@@ -104,7 +104,7 @@ func (s *WalletSecurityService) CheckWalletRateLimit(ctx context.Context, wallet
 		SELECT COUNT(*) 
 		FROM wallet_access_log
 		WHERE wallet_address = $1 
-		  AND accessed_at > NOW() - INTERVAL '$2 minutes'
+		  AND accessed_at > NOW() - ($2 * INTERVAL '1 minute')
 		  AND success = true
 	`, walletAddress, windowMinutes).Scan(&count)
 	if err != nil {
