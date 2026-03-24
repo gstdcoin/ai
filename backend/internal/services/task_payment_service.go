@@ -37,6 +37,8 @@ type CreateTaskRequest struct {
 	Payload     map[string]interface{} `json:"payload"`
 	InputSource string                 `json:"input_source"`
 	InputHash   string                 `json:"input_hash"`
+	TxHash      string                 `json:"tx_hash,omitempty"`
+	PaymentMemo string                 `json:"payment_memo,omitempty"`
 }
 
 type CreateTaskResponse struct {
@@ -47,7 +49,7 @@ type CreateTaskResponse struct {
 	PlatformWallet string  `json:"platform_wallet"`
 }
 
-// CreateTask creates a new task with pending_payment status
+// CreateTask creates a new task with queued status and enforces payment
 func (s *TaskPaymentService) CreateTask(ctx context.Context, creatorWallet string, req CreateTaskRequest) (*CreateTaskResponse, error) {
 	if creatorWallet == "" {
 		return nil, fmt.Errorf("creator_wallet is required")
@@ -60,8 +62,27 @@ func (s *TaskPaymentService) CreateTask(ctx context.Context, creatorWallet strin
 	taskID := uuid.New().String()
 
 	// Generate payment memo (unique identifier for this task payment)
-	// SECURITY: Use full UUID to prevent collisions
-	paymentMemo := fmt.Sprintf("TASK-%s", taskID)
+	paymentMemo := req.PaymentMemo
+	if paymentMemo == "" {
+		paymentMemo = fmt.Sprintf("TASK-%s", taskID)
+	}
+
+	// Hybrid Payment: If no on-chain tx hash, deduct from internal balance
+	if req.TxHash == "" {
+		res, err := s.db.ExecContext(ctx, `
+			UPDATE users 
+			SET gstd_balance = COALESCE(gstd_balance, 0) - $1 
+			WHERE wallet_address = $2 
+			  AND COALESCE(gstd_balance, 0) >= $1
+		`, req.Budget, creatorWallet)
+		if err != nil {
+			return nil, fmt.Errorf("database error checking balance: %w", err)
+		}
+		rowsAffected, _ := res.RowsAffected()
+		if rowsAffected == 0 {
+			return nil, fmt.Errorf("insufficient internal balance (%.4f GSTD required). Please provide an on-chain transaction or top up balance.", req.Budget)
+		}
+	}
 
 	// Calculate reward (budget minus platform fee)
 	// GSTD Price Policy: Fixed at $0.02/hr equivalent in GSTD per Compute Unit

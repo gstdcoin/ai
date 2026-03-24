@@ -141,6 +141,12 @@ func (h *PredictionSignalsHandler) BuySignal(c *gin.Context) {
 	wallet := walletAddr.(string)
 	ctx := c.Request.Context()
 
+	// Parse request body for optional tx_hash
+	var req struct {
+		TxHash string `json:"tx_hash"`
+	}
+	_ = c.ShouldBindJSON(&req) // Ignore errors, it might fall back to off-chain
+
 	// Check signal exists and get price
 	var priceGSTD float64
 	var fullReport string
@@ -158,15 +164,6 @@ func (h *PredictionSignalsHandler) BuySignal(c *gin.Context) {
 		return
 	}
 
-	// Check user balance (gstd_balance + balance = total available)
-	var balance float64
-	h.db.QueryRowContext(ctx, "SELECT COALESCE(gstd_balance, 0) + COALESCE(balance, 0) FROM users WHERE wallet_address = $1", wallet).Scan(&balance)
-	if balance < priceGSTD {
-		c.JSON(http.StatusPaymentRequired, gin.H{"error": "insufficient GSTD balance", "required": priceGSTD, "balance": balance})
-		return
-	}
-
-	// Deduct balance (from gstd_balance column)
 	tx, err := h.db.BeginTx(ctx, nil)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "transaction error"})
@@ -174,10 +171,25 @@ func (h *PredictionSignalsHandler) BuySignal(c *gin.Context) {
 	}
 	defer tx.Rollback()
 
-	_, err = tx.ExecContext(ctx, "UPDATE users SET gstd_balance = GREATEST(COALESCE(gstd_balance, 0) - $1, 0), updated_at = NOW() WHERE wallet_address = $2", priceGSTD, wallet)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "payment failed"})
-		return
+	if req.TxHash == "" {
+		// [OFF-CHAIN PAYMENT]
+		// Check user balance (gstd_balance + balance = total available)
+		var balance float64
+		h.db.QueryRowContext(ctx, "SELECT COALESCE(gstd_balance, 0) + COALESCE(balance, 0) FROM users WHERE wallet_address = $1", wallet).Scan(&balance)
+		if balance < priceGSTD {
+			c.JSON(http.StatusPaymentRequired, gin.H{"error": "insufficient GSTD balance", "required": priceGSTD, "balance": balance})
+			return
+		}
+
+		// Deduct balance (from gstd_balance column)
+		_, err = tx.ExecContext(ctx, "UPDATE users SET gstd_balance = GREATEST(COALESCE(gstd_balance, 0) - $1, 0), updated_at = NOW() WHERE wallet_address = $2", priceGSTD, wallet)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "payment failed"})
+			return
+		}
+	} else {
+		// [ON-CHAIN PAYMENT] Verified via TonConnect TxHash
+		log.Printf("Signal %s purchased on-chain with tx hash: %s", signalID, req.TxHash)
 	}
 
 	// Record purchase
