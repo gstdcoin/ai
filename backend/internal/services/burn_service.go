@@ -25,16 +25,28 @@ type BurnConfig struct {
 func NewBurnService(db *sql.DB, config *BurnConfig) *BurnService {
 	if config == nil {
 		config = &BurnConfig{
-			BurnRate:    0.05,                                               // 5%
+			BurnRate:    0.02,                                               // 2% — matches tokenomics_halving.burn_rate_pct
 			BurnAddress: "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c", // TON Black Hole
 		}
 	}
 
-	return &BurnService{
+	svc := &BurnService{
 		db:          db,
 		burnRate:    config.BurnRate,
 		burnAddress: config.BurnAddress,
 	}
+
+	// Try to read actual burn rate from tokenomics_halving table
+	if db != nil {
+		var dbBurnRate float64
+		err := db.QueryRow(`SELECT COALESCE(burn_rate_pct, 2) FROM tokenomics_halving ORDER BY epoch_number DESC LIMIT 1`).Scan(&dbBurnRate)
+		if err == nil && dbBurnRate > 0 {
+			svc.burnRate = dbBurnRate / 100.0 // Convert from percentage to fraction
+			log.Printf("🔥 BurnService: using DB burn rate %.1f%%", dbBurnRate)
+		}
+	}
+
+	return svc
 }
 
 // CalculateBurnAmount calculates how much should be burned for a transaction
@@ -77,19 +89,23 @@ func (s *BurnService) RecordBurn(ctx context.Context, burnRecord *BurnRecord) er
 func (s *BurnService) ProcessTransactionWithBurn(ctx context.Context, req *TransactionRequest) (*TransactionBreakdown, error) {
 	totalAmount := req.Amount
 
-	// Calculate breakdown
+	// Calculate breakdown using configured rates
 	burnAmount := s.CalculateBurnAmount(totalAmount)
-	platformFee := totalAmount * 0.05                      // 5% platform fee
-	workerReward := totalAmount - burnAmount - platformFee // 90%
+	platformFee := totalAmount * s.burnRate                     // Same percentage as burn
+	workerReward := totalAmount - burnAmount - platformFee      // Remainder to worker
+
+	burnPct := s.burnRate * 100
+	platformPct := s.burnRate * 100
+	workerPct := 100.0 - burnPct - platformPct
 
 	breakdown := &TransactionBreakdown{
 		TotalAmount:         totalAmount,
 		WorkerReward:        workerReward,
 		PlatformFee:         platformFee,
 		BurnAmount:          burnAmount,
-		WorkerRewardPercent: 90.0,
-		PlatformFeePercent:  5.0,
-		BurnPercent:         5.0,
+		WorkerRewardPercent: workerPct,
+		PlatformFeePercent:  platformPct,
+		BurnPercent:         burnPct,
 	}
 
 	// Record the burn
@@ -357,16 +373,20 @@ func (s *BurnService) GetBurnRate() float64 {
 // SimulateBurn shows what would be burned for a given amount (for UI preview)
 func (s *BurnService) SimulateBurn(amount float64) *TransactionBreakdown {
 	burnAmount := s.CalculateBurnAmount(amount)
-	platformFee := amount * 0.05
+	platformFee := amount * s.burnRate
 	workerReward := amount - burnAmount - platformFee
+
+	burnPct := s.burnRate * 100
+	platformPct := s.burnRate * 100
+	workerPct := 100.0 - burnPct - platformPct
 
 	return &TransactionBreakdown{
 		TotalAmount:         amount,
 		WorkerReward:        workerReward,
 		PlatformFee:         platformFee,
 		BurnAmount:          burnAmount,
-		WorkerRewardPercent: 90.0,
-		PlatformFeePercent:  5.0,
-		BurnPercent:         5.0,
+		WorkerRewardPercent: workerPct,
+		PlatformFeePercent:  platformPct,
+		BurnPercent:         burnPct,
 	}
 }
