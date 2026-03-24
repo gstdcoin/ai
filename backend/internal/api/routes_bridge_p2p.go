@@ -74,7 +74,32 @@ func SetupP2PBridgeRoutes(v1 *gin.RouterGroup, db *sql.DB) {
 	// PAXG conversion rate
 	bridge.GET("/paxg-rate", getPAXGConversionRate(db))
 
-	log.Printf("✅ P2P Bridge routes registered (with on-chain verification + take-order + PAXG)")
+	// Bridge config (for Telegram bot and external integrations)
+	bridge.GET("/config", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"fee_percent":      0.5,
+			"min_amount":       10,
+			"max_amount":       1000000,
+			"supported_chains": []string{"TON", "Solana", "XRPL", "Ethereum"},
+			"supported_assets": []string{"GSTD", "PAXG"},
+			"auto_match":       true,
+			"description":      "P2P cross-chain bridge with on-chain verification and liquidity pool auto-matching",
+		})
+	})
+
+	// Also register at /bridge/config (without /p2p prefix) for bot compatibility
+	v1.GET("/bridge/config", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"fee_percent":      0.5,
+			"min_amount":       10,
+			"max_amount":       1000000,
+			"supported_chains": []string{"TON", "Solana", "XRPL", "Ethereum"},
+			"supported_assets": []string{"GSTD", "PAXG"},
+			"auto_match":       true,
+		})
+	})
+
+	log.Printf("✅ P2P Bridge routes registered (with on-chain verification + take-order + PAXG + config)")
 }
 
 // POST /bridge/p2p/order — Create a new bridge order
