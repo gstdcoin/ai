@@ -63,8 +63,30 @@ func (p *PoolMonitorService) SetStonFi(sf *StonFiService) { p.stonFi = sf }
 // SetErrorLogger wires error logger for diagnostics.
 func (p *PoolMonitorService) SetErrorLogger(el *ErrorLogger) { p.errorLogger = el }
 
-// Start runs background monitoring. No-op stub for now.
-func (p *PoolMonitorService) Start(ctx context.Context) {}
+// Start runs background monitoring. Maintains fresh asset prices in caches for immediate retrieval.
+func (p *PoolMonitorService) Start(ctx context.Context) {
+	log.Println("🔍 [PoolMonitor] Background price & liquidity monitoring started")
+	ticker := time.NewTicker(2 * time.Minute)
+	defer ticker.Stop()
+
+	// Initial fetch
+	p.GetXAUtPriceUSD()
+	p.GetTONPriceUSD()
+	p.GetGSTDPriceUSD(ctx)
+
+	for {
+		select {
+		case <-ctx.Done():
+			log.Println("🔍 [PoolMonitor] Shutting down")
+			return
+		case <-ticker.C:
+			// Refresh cache automatically in background
+			p.GetXAUtPriceUSD()
+			p.GetTONPriceUSD()
+			p.GetGSTDPriceUSD(ctx)
+		}
+	}
+}
 
 // GetXAUtPriceUSD returns the current XAUt (gold) price in USD.
 // Fetches from CoinGecko API (tether-gold), fallback to default on error.

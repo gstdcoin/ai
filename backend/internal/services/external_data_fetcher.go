@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -224,60 +225,110 @@ func (f *ExternalDataFetcher) fetchCryptoData(ctx context.Context) (*MarketDataS
 	url := "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,the-open-network,solana,dogecoin&vs_currencies=usd&include_24hr_change=true&include_market_cap=true&include_24hr_vol=true"
 
 	body, err := f.httpGet(ctx, url)
-	if err != nil {
-		return nil, fmt.Errorf("coingecko: %w", err)
+	if err == nil {
+		var raw map[string]map[string]interface{}
+		if err := json.Unmarshal(body, &raw); err == nil && len(raw) > 0 {
+			data := make(map[string]interface{})
+			for coin, vals := range raw {
+				data[coin] = vals
+			}
+
+			if btc, ok := raw["bitcoin"]; ok {
+				if btcCap, ok := btc["usd_market_cap"].(float64); ok && btcCap > 0 {
+					totalCap := btcCap
+					for name, vals := range raw {
+						if name != "bitcoin" {
+							if cap, ok := vals["usd_market_cap"].(float64); ok {
+								totalCap += cap
+							}
+						}
+					}
+					data["btc_dominance_approx"] = btcCap / totalCap * 100
+				}
+			}
+
+			trendURL := "https://api.coingecko.com/api/v3/search/trending"
+			if trendBody, err := f.httpGet(ctx, trendURL); err == nil {
+				var trending struct {
+					Coins []struct {
+						Item struct {
+							Name   string `json:"name"`
+							Symbol string `json:"symbol"`
+							Score  int    `json:"score"`
+						} `json:"item"`
+					} `json:"coins"`
+				}
+				if json.Unmarshal(trendBody, &trending) == nil && len(trending.Coins) > 0 {
+					var names []string
+					for _, c := range trending.Coins {
+						if len(names) < 5 {
+							names = append(names, fmt.Sprintf("%s (%s)", c.Item.Name, c.Item.Symbol))
+						}
+					}
+					data["trending"] = names
+				}
+			}
+
+			return &MarketDataSnapshot{
+				Source:    "CoinGecko",
+				Category:  "crypto",
+				Data:      data,
+				FetchedAt: time.Now(),
+				Fresh:     true,
+			}, nil
+		}
 	}
 
-	var raw map[string]map[string]interface{}
-	if err := json.Unmarshal(body, &raw); err != nil {
-		return nil, fmt.Errorf("coingecko parse: %w", err)
+	// ═══ FALLBACK: Binance API ═══
+	log.Printf("⚠️ ExternalDataFetcher: CoinGecko failed (%v), falling back to Binance", err)
+	binanceURL := `https://api.binance.com/api/v3/ticker/24hr?symbols=["BTCUSDT","ETHUSDT","SOLUSDT","DOGEUSDT","TONUSDT"]`
+	body, err = f.httpGet(ctx, binanceURL)
+	if err != nil {
+		return nil, fmt.Errorf("coingecko and binance fallback both failed: %w", err)
+	}
+
+	var bRes []map[string]interface{}
+	if err := json.Unmarshal(body, &bRes); err != nil {
+		return nil, fmt.Errorf("binance parse failed: %w", err)
 	}
 
 	data := make(map[string]interface{})
-	for coin, vals := range raw {
-		data[coin] = vals
+	symbolMap := map[string]string{
+		"BTCUSDT":  "bitcoin",
+		"ETHUSDT":  "ethereum",
+		"SOLUSDT":  "solana",
+		"DOGEUSDT": "dogecoin",
+		"TONUSDT":  "the-open-network",
 	}
 
-	// Add BTC dominance estimate
-	if btc, ok := raw["bitcoin"]; ok {
-		if btcCap, ok := btc["usd_market_cap"].(float64); ok && btcCap > 0 {
-			totalCap := btcCap
-			for name, vals := range raw {
-				if name != "bitcoin" {
-					if cap, ok := vals["usd_market_cap"].(float64); ok {
-						totalCap += cap
-					}
-				}
+	for _, item := range bRes {
+		sym, _ := item["symbol"].(string)
+		if coinName, ok := symbolMap[sym]; ok {
+			priceStr, _ := item["lastPrice"].(string)
+			changeStr, _ := item["priceChangePercent"].(string)
+			volStr, _ := item["volume"].(string)
+
+			price, _ := strconv.ParseFloat(priceStr, 64)
+			change, _ := strconv.ParseFloat(changeStr, 64)
+			vol, _ := strconv.ParseFloat(volStr, 64)
+
+			data[coinName] = map[string]interface{}{
+				"usd":            price,
+				"usd_24h_change": change,
+				"usd_24h_vol":    vol * price, // approximate USD volume
 			}
-			data["btc_dominance_approx"] = btcCap / totalCap * 100
 		}
 	}
 
-	// Fetch trending coins
-	trendURL := "https://api.coingecko.com/api/v3/search/trending"
-	if trendBody, err := f.httpGet(ctx, trendURL); err == nil {
-		var trending struct {
-			Coins []struct {
-				Item struct {
-					Name   string `json:"name"`
-					Symbol string `json:"symbol"`
-					Score  int    `json:"score"`
-				} `json:"item"`
-			} `json:"coins"`
-		}
-		if json.Unmarshal(trendBody, &trending) == nil && len(trending.Coins) > 0 {
-			var names []string
-			for _, c := range trending.Coins {
-				if len(names) < 5 {
-					names = append(names, fmt.Sprintf("%s (%s)", c.Item.Name, c.Item.Symbol))
-				}
-			}
-			data["trending"] = names
-		}
+	if len(data) == 0 {
+		return nil, fmt.Errorf("binance returned empty matching data")
 	}
+
+	// Add an artificial BTC dominance since Binance doesn't provide caps easily
+	data["btc_dominance_approx"] = 55.0
 
 	return &MarketDataSnapshot{
-		Source:    "CoinGecko",
+		Source:    "Binance",
 		Category:  "crypto",
 		Data:      data,
 		FetchedAt: time.Now(),

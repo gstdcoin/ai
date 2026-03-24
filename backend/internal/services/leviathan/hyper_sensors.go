@@ -208,8 +208,39 @@ func (g *GlobalSenses) FetchYahooFinance(ctx context.Context, symbol string) (pr
 
 // FetchHuggingFaceHub — AI/ML: new models, datasets. Domain: code.
 func (g *GlobalSenses) FetchHuggingFaceHub(ctx context.Context, query string) (summary, source string) {
-	// Future: Hugging Face Hub API — monitor new model releases
-	return "", ""
+	// Call Hugging Face Hub API — monitor new trending model releases
+	url := "https://huggingface.co/api/models?sort=trending&limit=5"
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return "", ""
+	}
+	req.Header.Set("User-Agent", "GSTD-Leviathan/1.0")
+
+	resp, err := g.client.Do(req)
+	if err != nil {
+		return "", ""
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", ""
+	}
+
+	var models []struct {
+		Id        string `json:"modelId"`
+		Downloads int    `json:"downloads"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&models); err != nil {
+		return "", ""
+	}
+
+	var parts []string
+	for _, m := range models {
+		parts = append(parts, fmt.Sprintf("%s (%dk DL)", m.Id, m.Downloads/1000))
+	}
+	summary = "Trending AI Models: " + strings.Join(parts, ", ")
+	log.Printf("[Leviathan] HuggingFace Hub: %s", summary)
+	return summary, "HuggingFace"
 }
 
 // FetchStackOverflow — Developer pain points. Domain: code.
@@ -238,6 +269,42 @@ func (g *GlobalSenses) FetchWhaleAlert(ctx context.Context) (alerts string, err 
 
 // FetchGoogleTrends — Organic interest. Domain: social.
 func (g *GlobalSenses) FetchGoogleTrends(ctx context.Context, query string) (interest string, err error) {
-	// Future: Google Trends API / RSS
-	return "", nil
+	url := "https://trends.google.com/trends/trendingsearches/daily/rss?geo=US"
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0")
+
+	resp, err := g.client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("Google Trends HTTP %d", resp.StatusCode)
+	}
+
+	// Simple string parsing to avoid importing encoding/xml for just one field
+	buf := make([]byte, 4096)
+	n, _ := resp.Body.Read(buf)
+	content := string(buf[:n])
+
+	// Extract the first <title> inside the first <item>
+	itemStart := strings.Index(content, "<item>")
+	if itemStart == -1 {
+		return "No trends found", nil
+	}
+	
+	titleStart := strings.Index(content[itemStart:], "<title>")
+	titleEnd := strings.Index(content[itemStart:], "</title>")
+	
+	if titleStart != -1 && titleEnd != -1 && titleEnd > titleStart {
+		trend := content[itemStart+titleStart+7 : itemStart+titleEnd]
+		log.Printf("[Leviathan] Google Trends top hit: %s", trend)
+		return "Top Trend: " + trend, nil
+	}
+	
+	return "No trends parsed", nil
 }

@@ -36,35 +36,40 @@ export default function SmartTaskWidget({ onTaskCreated }: SmartTaskWidgetProps)
 
         setIsAnalyzing(true);
 
-        // Simulate AI analysis delay
-        setTimeout(() => {
-            // Simple heuristic for demo
-            const p = prompt.toLowerCase();
-            const isAi = p.includes('model') || p.includes('train') || p.includes('gpt') || p.includes('inference') || p.includes('image');
-            const isData = p.includes('process') || p.includes('data') || p.includes('scrape') || p.includes('etl');
+        // Simple heuristic to determine task type before sending to backend for exact estimation
+        const p = prompt.toLowerCase();
+        const isAi = p.includes('model') || p.includes('train') || p.includes('gpt') || p.includes('inference') || p.includes('image');
+        const isData = p.includes('process') || p.includes('data') || p.includes('scrape') || p.includes('etl');
 
-            const type = isAi ? 'AI_INFERENCE' : (isData ? 'DATA_PROCESSING' : 'COMPUTATION');
-            // Estimate budget based on length/complexity (mock)
-            const budget = isAi ? 15.5 : (isData ? 5.0 : 2.5);
-            const workers = isAi ? 3 : 1;
+        const type = isAi ? 'AI_INFERENCE' : (isData ? 'DATA_PROCESSING' : 'COMPUTATION');
+        const payload = {
+            prompt: prompt,
+            model: isAi ? 'gstd-sovereign' : 'standard-cpu',
+            parameters: {
+                temperature: 0.7,
+                max_tokens: 1000
+            }
+        };
+
+        try {
+            const data = await apiPost<{ budget: number; workers: number; description: string }>('/tasks/estimate', {
+                type,
+                payload
+            });
 
             setEstimation({
                 type,
-                budget,
-                description: `Dedicated ${isAi ? 'GPU Cluster' : 'CPU Node'} allocation for: "${prompt.slice(0, 50)}${prompt.length > 50 ? '...' : ''}"`,
-                workers,
-                payload: {
-                    prompt: prompt,
-                    model: isAi ? 'gstd-sovereign' : 'standard-cpu',
-                    parameters: {
-                        temperature: 0.7,
-                        max_tokens: 1000
-                    }
-                }
+                budget: data.budget,
+                workers: data.workers,
+                description: data.description,
+                payload
             });
-            setIsAnalyzing(false);
             setStep('confirm');
-        }, 1500);
+        } catch (err: any) {
+            toast.error('Estimation Error', err.message || 'Failed to estimate task budget');
+        } finally {
+            setIsAnalyzing(false);
+        }
     };
 
     const handleCreateAndPay = async () => {

@@ -43,18 +43,7 @@ func (s *SovereignVaultService) CreateVault(nodeWallet string, asset string, ini
 	err := s.DB.QueryRow(query, vaultID, nodeWallet, asset, initialStake, initialStake, feePct).Scan(&returnedID)
 
 	if err != nil {
-		// Mock a fallback if constraint fails, just return a struct representation
-		// (this is sometimes needed if nodes table doesn't have the node yet during setup/tests)
-		return &VaultState{
-			VaultID:        vaultID,
-			NodeWallet:     nodeWallet,
-			Asset:          asset,
-			TotalLiquidity: initialStake,
-			OperatorStake:  initialStake,
-			DelegatorStake: 0,
-			ManagementFee:  feePct,
-			Status:         "active",
-		}, nil
+		return nil, fmt.Errorf("failed to create liquidity vault in database: %w", err)
 	}
 
 	return &VaultState{

@@ -131,8 +131,8 @@ func BuildContainer() *dig.Container {
 		return services.NewCocoonSwarmSymbiosis(db, knowledge, cocoon)
 	})
 	c.Provide(services.NewHybridIntelligenceRouter) // Swarm ↔ Cocoon ↔ Ollama 3-tier routing
-	c.Provide(func() *services.ExperienceVault {
-		return &services.ExperienceVault{} // Stub cache — override with Redis-backed impl when needed
+	c.Provide(func(redisClient *redis.Client) *services.ExperienceVault {
+		return services.NewExperienceVault(redisClient) // Real Redis-backed cache
 	})
 	c.Provide(services.NewGSTDOracleService) // GSTD price oracle for cost calculation
 	c.Provide(services.NewSmartRouter)       // Omega Sovereign-First routing + Sovereignty Index

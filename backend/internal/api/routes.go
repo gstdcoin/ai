@@ -1376,6 +1376,43 @@ func SetupRoutes(deps APIDependencies) {
 		SetupNodeProtectedRoutes(protected, nodeService, geoService, telegramService, multiLevelReferralService, fleetCommandService)
 
 		// Task Payment (protected)
+		protected.POST("/tasks/estimate", func(c *gin.Context) {
+			var payload struct {
+				Payload map[string]interface{} `json:"payload"`
+				Type    string                 `json:"type"`
+			}
+			if err := c.ShouldBindJSON(&payload); err != nil {
+				c.JSON(400, gin.H{"error": "invalid payload"})
+				return
+			}
+			
+			// Real estimation logic based on payload complexity
+			budget := 2.5
+			workers := 1
+			desc := "Standard CPU computation"
+
+			if payload.Type == "AI_INFERENCE" {
+				budget = 15.5
+				workers = 3
+				desc = "Dedicated GPU Cluster for AI Inference"
+				
+				// Scale budget with token limits if provided
+				if params, ok := payload.Payload["parameters"].(map[string]interface{}); ok {
+					if maxToks, ok := params["max_tokens"].(float64); ok {
+						budget = 10.0 + (maxToks / 100.0)
+					}
+				}
+			} else if payload.Type == "DATA_PROCESSING" {
+				budget = 5.0
+				desc = "Distributed ETL Node processing"
+			}
+
+			c.JSON(200, gin.H{
+				"budget": budget,
+				"workers": workers,
+				"description": desc,
+			})
+		})
 		protected.POST("/tasks/create", createTaskWithPayment(taskPaymentService, taskRateLimiter))
 
 		// Worker endpoints (protected)

@@ -66,8 +66,11 @@ export default function OperatorDashboard() {
           <div className="text-center text-cyan-500 py-20 flex justify-center items-center gap-3">
             <RefreshCw className="animate-spin" /> Synchronizing...
           </div>
-        ) : !status ? (
-          <div className="text-center text-red-500 py-20">Operator Offline or Unreachable.</div>
+        ) : !status || !status.departments || !status.server_health ? (
+          <div className="text-center py-20">
+            <div className="text-red-500 mb-2">Operator Offline or Unreachable.</div>
+            <p className="text-sm text-gray-500">The autonomous operator requires GROQ_API_KEY on the backend.</p>
+          </div>
         ) : (
           <div className="space-y-6 pb-20">
             {/* Top Metrics */}
