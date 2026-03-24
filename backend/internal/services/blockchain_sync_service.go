@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -111,10 +112,16 @@ func (s *BlockchainSyncService) scanIncomingTransfers(ctx context.Context) {
 		// Simplified verification: In a real Jetton transfer, the InMsg contains the opcode and amount.
 		// For GSTD, we would parse the Jetton Transfer payload. 
 		// If memo starts with "Stake", we issue stGSTD.
-		if memo == "Stake" {
+		if memo == "Stake" || memo == "Deposit" {
 			log.Printf("📥 [BlockchainSync] Real GSTD deposit detected from %s. Processing Staking.", source)
-			amount := 100.0 // Extracted from Jetton balance (mocking the extraction for structure limit here)
-			s.processStakingDeposit(ctx, source, hash, amount)
+			amount, err := strconv.ParseFloat(tx.InMsg.Value, 64)
+			if err != nil {
+				amount = 0.0
+			}
+			amount = amount / 1e9 // Convert from nano to base (assuming 9 decimals for GSTD/TON)
+			if amount > 0 {
+				s.processStakingDeposit(ctx, source, hash, amount)
+			}
 		}
 	}
 

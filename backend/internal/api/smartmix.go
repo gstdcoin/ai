@@ -139,8 +139,9 @@ CRITICAL: Never mention experts, models, or the synthesis process. Respond in th
 
 	var groqApiKey = os.Getenv("GROQ_API_KEY")
 	if groqApiKey == "" {
-		// Mock the key just for tests, in reality it should fail or inform the user
-		groqApiKey = "gsk_..."
+		log.Printf("[SmartMix Node] API Key missing")
+		c.JSON(500, gin.H{"error": "smartmix_failed", "message": "GROQ API Key not configured"})
+		return
 	}
 
 	for i, expert := range experts {

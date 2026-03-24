@@ -161,8 +161,16 @@ export default function EcosystemNav() {
 
             {/* Mobile dropdown */}
             {mobileOpen && (
+                <>
+                <div 
+                    onClick={() => setMobileOpen(false)}
+                    style={{
+                        position: 'fixed', inset: 0, top: 56, zIndex: 999,
+                        background: 'rgba(0,0,0,0.5)', cursor: 'pointer'
+                    }}
+                />
                 <div style={{
-                    position: 'absolute', top: 56, left: 0, right: 0,
+                    position: 'absolute', top: 56, left: 0, right: 0, zIndex: 1000,
                     background: 'rgba(3, 0, 20, 0.97)', backdropFilter: 'blur(24px)',
                     borderBottom: '1px solid rgba(255,255,255,0.08)',
                     padding: '8px 16px', maxHeight: 'calc(100vh - 56px)',
@@ -201,6 +209,7 @@ export default function EcosystemNav() {
                         })}
                     </div>
                 </div>
+                </>
             )}
 
             <style dangerouslySetInnerHTML={{ __html: `
@@ -233,7 +242,7 @@ export default function EcosystemNav() {
             .ecosystem-nav-mobile-btn { display: flex !important; align-items: center; justify-content: center; }
         }
         /* Small mobile: slightly smaller wallet button */
-        @media (max-width: 400px) {
+        @media (max-width: 600px) {
             .ecosystem-nav-wallet { transform: scale(0.85); transform-origin: right center; }
             .ecosystem-nav-lang-btn { display: none !important; }
         }

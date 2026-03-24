@@ -22,7 +22,10 @@ const path = require('path');
 // ═══════════════════════════════════════════════════════════════
 
 const NETWORK = process.env.TON_NETWORK || 'mainnet';
-const DEPLOYER_MNEMONIC = process.env.DEPLOYER_MNEMONIC || '';
+let DEPLOYER_MNEMONIC = process.env.DEPLOYER_MNEMONIC || '';
+if (!DEPLOYER_MNEMONIC && fs.existsSync(path.join(__dirname, '..', 'deployer.json'))) {
+    DEPLOYER_MNEMONIC = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'deployer.json'))).mnemonic;
+}
 const ADMIN_WALLET = process.env.ADMIN_WALLET || '';
 const DRY_RUN = process.env.DRY_RUN === '1';
 
@@ -62,13 +65,9 @@ function buildEscrowInitData(ownerAddr, treasuryAddr) {
     const treasury = Address.parse(treasuryAddr);
     
     return beginCell()
-        .storeAddress(owner)         // owner
-        .storeAddress(treasury)      // treasury
-        .storeCoins(toNano('0.01'))  // minMessageValue
-        .storeUint(0, 64)           // lastNonce
-        .storeUint(0, 64)           // totalDeposits
-        .storeUint(0, 64)           // totalWithdrawals
-        .storeCoins(0)              // totalValueLocked
+        .storeUint(0, 1)            // not initialized flag
+        .storeAddress(owner)        // owner
+        .storeAddress(treasury)     // treasury
         .endCell();
 }
 
@@ -80,20 +79,15 @@ function buildSettlementInitData(ownerAddr, gstdJettonAddr, treasuryAddr, protoc
     const protocolFee = Address.parse(protocolFeeAddr);
     
     return beginCell()
-        .storeAddress(owner)        // owner
-        .storeAddress(owner)        // gateway (initially = owner)
-        .storeAddress(gstdJetton)   // gstdJetton
-        .storeAddress(treasury)     // treasury
-        .storeAddress(protocolFee)  // protocolFee
-        .storeUint(85, 8)          // workerShare
-        .storeUint(10, 8)          // treasuryShare
-        .storeUint(5, 8)           // protocolShare
-        .storeCoins(1000000)       // baseRate (0.001 GSTD)
-        .storeCoins(0)             // totalSettled
-        .storeCoins(0)             // totalGSTDMinted
-        .storeUint(0, 64)          // taskCount
-        .storeBit(false)           // paused
-        .storeCoins(toNano('0.1')) // minPayment
+        .storeUint(0, 1)           // not initialized yet flag
+        .storeAddress(owner)       // owner
+        .storeAddress(gstdJetton)  // gstdJetton
+        .storeAddress(treasury)    // treasury
+        .storeRef(
+            beginCell()
+                .storeAddress(protocolFee)  // protocolFee
+            .endCell()
+        )
         .endCell();
 }
 
@@ -192,8 +186,8 @@ async function main() {
     const balance = await client.getBalance(wallet.address);
     console.log(`   Balance: ${Number(balance) / 1e9} TON\n`);
 
-    if (!DRY_RUN && Number(balance) < 2e9) {
-        console.error('❌ Insufficient balance. Need at least 2 TON for deployment.');
+    if (!DRY_RUN && Number(balance) < 1e9) {
+        console.error('❌ Insufficient balance. Need at least 1 TON for deployment.');
         process.exit(1);
     }
 
