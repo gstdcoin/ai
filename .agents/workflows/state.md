@@ -15,7 +15,7 @@ description: Current ecosystem state — always read FIRST before any changes
 │                    GSTD ECOSYSTEM                           │
 │                 Server: 82.115.48.228                       │
 │                 OS: Ubuntu 24.04                            │
-│                 Last Update: 2026-03-24 (Production v191/v27)       │
+│                 Last Update: 2026-03-24 (Production v192/v27)       │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  ┌─── NGINX (gstd_nginx_lb) ─── Port 80/443 ─────────┐    │
@@ -30,10 +30,10 @@ description: Current ecosystem state — always read FIRST before any changes
 │                                                             │
 │  ┌─── BACKEND (Go) ─── 4 replicas ───────────────────┐     │
 │  │  Containers: ubuntu-backend-blue-{1,2,6,7}        │     │
-│  │  Image:      gstd-backend-blue:v191                │     │
+│  │  Image:      gstd-backend-blue:v192                │     │
 │  │  Port:       8080 (internal, via nginx)            │     │
 │  │  DB:         distributed_computing                 │     │
-│  │  Rollback:   gstd-backend-blue:v190                │     │
+│  │  Rollback:   gstd-backend-blue:v191                │     │
 │  └────────────────────────────────────────────────────┘     │
 │                                                             │
 │  ┌─── FRONTEND (Next.js 16.1.6) ─────────────────────┐     │
@@ -78,7 +78,7 @@ description: Current ecosystem state — always read FIRST before any changes
 
 | Component | Version/Image | Path | Container |
 |-----------|---------------|------|-----------|
-| **Backend** | `gstd-backend-blue:v191` ×4 | `/home/ubuntu/backend` | `ubuntu-backend-blue-{1,2,6,7}` |
+| **Backend** | `gstd-backend-blue:v192` ×4 | `/home/ubuntu/backend` | `ubuntu-backend-blue-{1,2,6,7}` |
 | **Frontend** | `gstd-frontend:v26` (Docker) | `/home/ubuntu/frontend` | `ubuntu-frontend-1` |
 | **Telegram Bot** | `gstd-bot:v31` | `/home/ubuntu/gstdbot` | `gstd-telegram-bot` |
 | **GSTD Bridge** | `gstd-bridge:latest` | `/home/ubuntu/gstd-bridge` | `gstd-bridge-test` |
