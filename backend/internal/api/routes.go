@@ -1691,6 +1691,13 @@ func SetupRoutes(deps APIDependencies) {
 	StartEpochCron(dbConn)
 	log.Printf("🏛️  Mainnet B2B: Sovereign Fund + RPC Router + Age Multiplier active")
 
+	// ═══ NODE CONTROL AUTOMATION ═══
+	SetupNodeControlRoutes(v1, dbConn)
+	StartNodeHealthMonitor(dbConn)
+	StartStaleNodePruner(dbConn)
+	StartNodePerformanceTracker(dbConn)
+	log.Printf("🤖  Node Control Automation: Health Monitor + Pruner + Performance Tracker active")
+
 	// WebSocket endpoint
 	router.GET("/ws", HandleWebSocket(hub, deviceService, assignmentService, fleetCommandService))
 }
