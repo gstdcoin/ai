@@ -320,6 +320,20 @@ func (h *NodeWalletHandler) HandleHeartbeat(c *gin.Context) {
 		}
 	}
 
+	// Query network stats for peers
+	var peersOnline, totalNodes int
+	h.db.QueryRowContext(c.Request.Context(),
+		`SELECT COUNT(*) FROM nodes WHERE status = 'online' OR last_seen > NOW() - INTERVAL '5 minutes'`).Scan(&peersOnline)
+	h.db.QueryRowContext(c.Request.Context(),
+		`SELECT COUNT(*) FROM nodes`).Scan(&totalNodes)
+
+	// Calculate this node's rank
+	var nodeRank int
+	h.db.QueryRowContext(c.Request.Context(),
+		`SELECT COUNT(*) + 1 FROM nodes WHERE total_earnings > COALESCE(
+			(SELECT total_earnings FROM nodes WHERE wallet_address = $1), 0
+		)`, req.WalletAddress).Scan(&nodeRank)
+
 	c.JSON(200, gin.H{
 		"reward":          reward,
 		"uptime_reward":   uptimeReward,
@@ -327,6 +341,10 @@ func (h *NodeWalletHandler) HandleHeartbeat(c *gin.Context) {
 		"queries_counted": req.QueriesServed,
 		"reason":          "verified_heartbeat",
 		"message":         "Reward credited to pending balance.",
+		"peers_online":    peersOnline,
+		"active_nodes":    peersOnline,
+		"total_nodes":     totalNodes,
+		"rank":            nodeRank,
 		"commands":        pendingCommands,
 		"update": gin.H{
 			"latest_version":   "3.4.0",

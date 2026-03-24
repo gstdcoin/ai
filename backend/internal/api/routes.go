@@ -1698,6 +1698,54 @@ func SetupRoutes(deps APIDependencies) {
 	StartNodePerformanceTracker(dbConn)
 	log.Printf("🤖  Node Control Automation: Health Monitor + Pruner + Performance Tracker active")
 
+	// ═══ PEERS — Node discovery for swarm networking ═══
+	v1.GET("/nodes/peers", func(c *gin.Context) {
+		requestingNode := c.GetHeader("X-Node-Id")
+		rows, err := dbConn.Query(
+			`SELECT n.id, n.name, n.status, n.wallet_address,
+			        COALESCE(n.specs->>'tier', 'basic') as tier,
+			        COALESCE(n.trust_score, 0.5) as trust,
+			        COALESCE(n.total_earnings, 0) as earnings,
+			        n.last_seen
+			 FROM nodes n
+			 WHERE (n.status = 'online' OR n.last_seen > NOW() - INTERVAL '10 minutes')
+			   AND n.id != $1
+			 ORDER BY n.last_seen DESC LIMIT 50`, requestingNode,
+		)
+		if err != nil {
+			c.JSON(200, gin.H{"peers": []interface{}{}, "count": 0})
+			return
+		}
+		defer rows.Close()
+
+		var peers []gin.H
+		for rows.Next() {
+			var id, name, status, wallet, tier string
+			var trust, earnings float64
+			var lastSeen time.Time
+			rows.Scan(&id, &name, &status, &wallet, &tier, &trust, &earnings, &lastSeen)
+			walletShort := wallet
+			if len(wallet) > 12 {
+				walletShort = wallet[:8] + "..." + wallet[len(wallet)-4:]
+			}
+			peers = append(peers, gin.H{
+				"node_id":   id,
+				"name":      name,
+				"status":    status,
+				"wallet":    walletShort,
+				"tier":      tier,
+				"trust":     trust,
+				"earnings":  earnings,
+				"last_seen": lastSeen.Format(time.RFC3339),
+			})
+		}
+		if peers == nil {
+			peers = []gin.H{}
+		}
+		c.JSON(200, gin.H{"peers": peers, "count": len(peers)})
+	})
+	log.Printf("🌐  Swarm Peers: discovery endpoint active")
+
 	// WebSocket endpoint
 	router.GET("/ws", HandleWebSocket(hub, deviceService, assignmentService, fleetCommandService))
 }
