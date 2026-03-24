@@ -1711,3 +1711,62 @@ code, pre, .font-mono {
     box-shadow: none !important;
   }
 }
+
+/* ─── 16. Mobile Deep Optimizations ─────────────────── */
+@media (max-width: 480px) {
+  /* Prevent iOS zoom on input focus (requires min 16px) */
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+
+  /* Stack inline stat grids to 2-col on tiny screens */
+  [style*="gridTemplateColumns: repeat(auto-fit"],
+  [style*="grid-template-columns: repeat(4"],
+  [style*="grid-template-columns: 1fr 1fr 1fr 1fr"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Compact sovereign section on phones */
+  .sovereign-section {
+    padding: 32px 0 !important;
+  }
+
+  /* Smaller sec-title on very small screens */
+  .sec-title {
+    font-size: 22px !important;
+  }
+
+  /* Full-width buttons */
+  .btn-sovereign,
+  .btn-primary,
+  .btn-cosmic,
+  .btn-modern {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+
+  /* Bridge/swap card padding */
+  .sov-card {
+    padding: 16px 14px !important;
+  }
+
+  /* Table-like layouts: horizontal scroll */
+  .sov-card [style*="display: flex"][style*="justifyContent: space-between"] {
+    gap: 4px;
+  }
+}
+
+/* Landscape phone optimization */
+@media (max-height: 500px) and (orientation: landscape) {
+  .sovereign-section {
+    padding: 20px 0 !important;
+  }
+  .sec-title {
+    font-size: 20px !important;
+    margin-bottom: 8px !important;
+  }
+  .sec-sub {
+    display: none;
+  }
+}

@@ -69,7 +69,7 @@ services:
 
   # ─── Telegram Bot ─────────────────────────────
   telegram-bot:
-    image: gstd-bot:v31
+    image: gstd-bot:v32
     container_name: gstd-telegram-bot
     restart: unless-stopped
     env_file: ./gstdbot/.env
@@ -83,7 +83,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile.web
-    image: gstd-frontend:v27
+    image: gstd-frontend:v28
     restart: unless-stopped
     env_file: ./frontend/.env
     depends_on:
