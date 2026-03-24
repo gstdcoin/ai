@@ -20,6 +20,17 @@ func NewWalletSecurityService(db *sql.DB) *WalletSecurityService {
 	return &WalletSecurityService{db: db}
 }
 
+// hasValidTONPrefix checks whether address starts with a known
+// TON user-friendly prefix (EQ, UQ, kQ, 0Q).
+func hasValidTONPrefix(addr string) bool {
+	for _, p := range []string{"EQ", "UQ", "kQ", "0Q"} {
+		if strings.HasPrefix(addr, p) {
+			return true
+		}
+	}
+	return false
+}
+
 // ValidateWalletAddress validates TON wallet address format
 func (s *WalletSecurityService) ValidateWalletAddress(address string) error {
 	if address == "" {
@@ -28,37 +39,35 @@ func (s *WalletSecurityService) ValidateWalletAddress(address string) error {
 
 	address = strings.TrimSpace(address)
 
-	// Check for valid TON address formats
-	// Raw format: 0: + 48 hex chars
+	// Raw format: 0: + 48-64 hex chars
 	if strings.HasPrefix(address, "0:") {
-		if len(address) < 50 || len(address) > 66 {
-			return fmt.Errorf("invalid raw address length")
-		}
-		hexPart := address[2:]
-		if len(hexPart) < 48 {
-			return fmt.Errorf("invalid raw address format")
-		}
-		// Validate hex
-		if _, err := hex.DecodeString(hexPart); err != nil {
-			return fmt.Errorf("invalid hex in raw address")
-		}
-		return nil
+		return validateRawAddress(address)
 	}
 
 	// User-friendly format: EQ/UQ/kQ/0Q + 44-48 base64url chars
-	validPrefixes := []string{"EQ", "UQ", "kQ", "0Q"}
-	addressNoDashes := strings.ReplaceAll(address, "-", "")
-
-	for _, prefix := range validPrefixes {
-		if strings.HasPrefix(addressNoDashes, prefix) {
-			if len(addressNoDashes) < 46 || len(addressNoDashes) > 48 {
-				return fmt.Errorf("invalid user-friendly address length")
-			}
-			return nil
-		}
+	normalized := strings.ReplaceAll(address, "-", "")
+	if !hasValidTONPrefix(normalized) {
+		return fmt.Errorf("invalid TON address format")
 	}
+	if len(normalized) < 46 || len(normalized) > 48 {
+		return fmt.Errorf("invalid user-friendly address length")
+	}
+	return nil
+}
 
-	return fmt.Errorf("invalid TON address format")
+// validateRawAddress validates the 0:hex format.
+func validateRawAddress(address string) error {
+	if len(address) < 50 || len(address) > 66 {
+		return fmt.Errorf("invalid raw address length")
+	}
+	hexPart := address[2:]
+	if len(hexPart) < 48 {
+		return fmt.Errorf("invalid raw address format")
+	}
+	if _, err := hex.DecodeString(hexPart); err != nil {
+		return fmt.Errorf("invalid hex in raw address")
+	}
+	return nil
 }
 
 // ValidatePrivateKey validates Ed25519 private key format
