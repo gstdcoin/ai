@@ -1405,6 +1405,15 @@ func SetupRoutes(deps APIDependencies) {
 			} else if payload.Type == "DATA_PROCESSING" {
 				budget = 5.0
 				desc = "Distributed ETL Node processing"
+			} else if payload.Type == "render_blender_cycles" || payload.Type == "render" {
+				budget = 45.0 // Base price for GPU rendering
+				workers = 5   // Parallel chunking
+				desc = "Distributed GPU Rendering (Blender Cycles)"
+				
+				if dur, ok := payload.Payload["duration_estimated"].(float64); ok {
+					// example pricing: 0.1 GSTD per second of estimated standard render
+					budget = dur * 0.1
+				}
 			}
 
 			c.JSON(200, gin.H{
