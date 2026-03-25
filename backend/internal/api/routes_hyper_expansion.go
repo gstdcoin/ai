@@ -75,7 +75,7 @@ func SetupHyperExpansionRoutes(
 }
 
 // brainQueryPaid - Hive Intelligence API: query agent_knowledge, pay GSTD, revenue -> Gold Pool
-func brainQueryPaid(knowledge *services.KnowledgeService, db *sql.DB, tonConfig config.TONConfig) gin.HandlerFunc {
+func brainQueryPaid(knowledge *services.KnowledgeService, db *sql.DB, _ config.TONConfig) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
 			Topic      string  `json:"topic" binding:"required"`

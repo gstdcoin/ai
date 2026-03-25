@@ -51,7 +51,7 @@ var ALL_EXPERTS = []Expert{
 	{"Llama 3.1 8B", "llama-3.1-8b-instant", PAID_EXPERT("fast verification, finding errors in reasoning, and sanity-checking conclusions")},
 }
 
-func (h *GatewayHandler) handleSmartMix(c *gin.Context, tierModel string, reqMsgs []map[string]string, doStream bool, activeDevices int, fee float64) {
+func (h *GatewayHandler) handleSmartMix(c *gin.Context, tierModel string, reqMsgs []map[string]string, doStream bool, _ int, _ float64) {
 	expertCount := 3
 	synthPrompt := `You are the Synthesis Engine of a council of 3 expert AI models. You received independent responses from 3 different AI architectures to the same question.
 

@@ -11,7 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func registerDevice(deviceService *services.DeviceService, errorLogger *services.ErrorLogger, referral *services.MultiLevelReferralService, db *sql.DB, gaslessUser *services.GaslessUserService) gin.HandlerFunc {
+func registerDevice(deviceService *services.DeviceService, _ *services.ErrorLogger, referral *services.MultiLevelReferralService, db *sql.DB, gaslessUser *services.GaslessUserService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 

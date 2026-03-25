@@ -959,7 +959,7 @@ func getBridgeStats(db *sql.DB) gin.HandlerFunc {
 
 // calculatePAXGToGSTDRate returns how many GSTD equal 1 PAXG.
 // PAXG tracks gold price. Rate = gold_price_usd / gstd_price_usd.
-func calculatePAXGToGSTDRate(db *sql.DB) float64 {
+func calculatePAXGToGSTDRate(_ *sql.DB) float64 {
 	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Get("http://localhost:8080/api/v1/market/price")
 	if err != nil {
@@ -996,7 +996,7 @@ func calculatePAXGToGSTDRate(db *sql.DB) float64 {
 }
 
 // GET /bridge/p2p/paxg-rate — Get current PAXG ↔ GSTD conversion rate
-func getPAXGConversionRate(db *sql.DB) gin.HandlerFunc {
+func getPAXGConversionRate(_ *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		client := &http.Client{Timeout: 5 * time.Second}
 		resp, err := client.Get("http://localhost:8080/api/v1/market/price")

@@ -287,96 +287,100 @@ func dispatchNodeCommand(db *sql.DB) gin.HandlerFunc {
 
 func getClusterHealth(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		now := time.Now().UTC()
-
-		var total, online, stale, offline, ghost int
-		var avgMult, avgUptime float64
-		var totalRPC int64
-
-		db.QueryRow(`SELECT COUNT(*) FROM node_uptime_tracker`).Scan(&total)
-		db.QueryRow(`SELECT COUNT(*) FROM node_uptime_tracker WHERE last_heartbeat > $1`,
-			now.Add(-time.Duration(HeartbeatTimeoutMin)*time.Minute)).Scan(&online)
-		db.QueryRow(`SELECT COUNT(*) FROM node_uptime_tracker WHERE last_heartbeat < $1 AND last_heartbeat > $2`,
-			now.Add(-time.Duration(alertStaleMinutes)*time.Minute),
-			now.Add(-time.Duration(alertOfflineMinutes)*time.Minute)).Scan(&stale)
-		db.QueryRow(`SELECT COUNT(*) FROM node_uptime_tracker WHERE last_heartbeat < $1 AND last_heartbeat > $2`,
-			now.Add(-time.Duration(alertOfflineMinutes)*time.Minute),
-			now.Add(-time.Duration(alertGhostHours)*time.Hour)).Scan(&offline)
-		db.QueryRow(`SELECT COUNT(*) FROM nodes WHERE status = 'ghost'`).Scan(&ghost)
-
-		db.QueryRow(`SELECT COALESCE(AVG(current_multiplier), 1.0) FROM node_uptime_tracker WHERE last_heartbeat > $1`,
-			now.Add(-5*time.Minute)).Scan(&avgMult)
-		db.QueryRow(`SELECT COALESCE(AVG(weekly_uptime_pct), 0) FROM node_uptime_tracker WHERE last_heartbeat > $1`,
-			now.Add(-5*time.Minute)).Scan(&avgUptime)
-		db.QueryRow(`SELECT COALESCE(SUM(rpc_requests_served), 0) FROM node_uptime_tracker`).Scan(&totalRPC)
-
-		// Active alerts
-		var alertCount int
-		db.QueryRow(`SELECT COUNT(*) FROM node_alerts WHERE resolved_at IS NULL`).Scan(&alertCount)
-
-		// Pending commands
-		var pendingCmds int
-		db.QueryRow(`SELECT COUNT(*) FROM node_commands WHERE status = 'pending'`).Scan(&pendingCmds)
-
-		// Tier breakdown
-		type tierInfo struct {
-			Tier  string `json:"tier"`
-			Count int    `json:"count"`
-		}
-		var tiers []gin.H
-		tierRows, _ := db.Query(
-			`SELECT COALESCE(tier, 'unknown'), COUNT(*) FROM node_uptime_tracker
-			 WHERE last_heartbeat > $1 GROUP BY tier ORDER BY COUNT(*) DESC`,
-			now.Add(-time.Duration(alertStaleMinutes)*time.Minute),
-		)
-		if tierRows != nil {
-			defer tierRows.Close()
-			for tierRows.Next() {
-				var t string
-				var cnt int
-				tierRows.Scan(&t, &cnt)
-				tiers = append(tiers, gin.H{"tier": t, "count": cnt})
-			}
-		}
-
-		// Health score (0-100)
-		healthScore := 100
-		if total > 0 {
-			onlinePct := float64(online) / float64(total) * 100
-			if onlinePct < 90 {
-				healthScore -= int((90 - onlinePct) * 2)
-			}
-			if alertCount > 5 {
-				healthScore -= alertCount * 2
-			}
-			if healthScore < 0 {
-				healthScore = 0
-			}
-		}
+		stats, tiers := fetchClusterHealthStats(db)
+		
+		healthScore := calculateHealthScore(stats.total, stats.online, stats.activeAlerts)
 
 		c.JSON(http.StatusOK, gin.H{
-			"health_score":    healthScore,
-			"total_nodes":     total,
-			"online":          online,
-			"stale":           stale,
-			"offline":         offline,
-			"ghost":           ghost,
-			"avg_multiplier":  avgMult,
-			"avg_uptime_pct":  avgUptime,
-			"total_rpc_served": totalRPC,
-			"active_alerts":   alertCount,
-			"pending_commands": pendingCmds,
-			"tier_breakdown":  tiers,
-			"automation":      gin.H{
-				"health_monitor":     "active (2 min)",
-				"stale_pruner":       "active (1 hour)",
+			"health_score":     healthScore,
+			"total_nodes":      stats.total,
+			"online":           stats.online,
+			"stale":            stats.stale,
+			"offline":          stats.offline,
+			"ghost":            stats.ghost,
+			"avg_multiplier":   stats.avgMult,
+			"avg_uptime_pct":   stats.avgUptime,
+			"total_rpc_served": stats.totalRPC,
+			"active_alerts":    stats.activeAlerts,
+			"pending_commands": stats.pendingCmds,
+			"tier_breakdown":   tiers,
+			"automation": gin.H{
+				"health_monitor":      "active (2 min)",
+				"stale_pruner":        "active (1 hour)",
 				"performance_tracker": "active (15 min)",
-				"age_multiplier":     "active (5 min)",
-				"epoch_distributor":  "active (1 hour)",
-				"auto_claim":         "active (24 hour)",
+				"age_multiplier":      "active (5 min)",
+				"epoch_distributor":   "active (1 hour)",
+				"auto_claim":          "active (24 hour)",
 			},
 		})
 	}
+}
+
+type clusterStats struct {
+	total, online, stale, offline, ghost int
+	avgMult, avgUptime                   float64
+	totalRPC                             int64
+	activeAlerts, pendingCmds            int
+}
+
+func fetchClusterHealthStats(db *sql.DB) (clusterStats, []gin.H) {
+	now := time.Now().UTC()
+	var s clusterStats
+
+	db.QueryRow(`SELECT COUNT(*) FROM node_uptime_tracker`).Scan(&s.total)
+	db.QueryRow(`SELECT COUNT(*) FROM node_uptime_tracker WHERE last_heartbeat > $1`,
+		now.Add(-time.Duration(HeartbeatTimeoutMin)*time.Minute)).Scan(&s.online)
+	db.QueryRow(`SELECT COUNT(*) FROM node_uptime_tracker WHERE last_heartbeat < $1 AND last_heartbeat > $2`,
+		now.Add(-time.Duration(alertStaleMinutes)*time.Minute),
+		now.Add(-time.Duration(alertOfflineMinutes)*time.Minute)).Scan(&s.stale)
+	db.QueryRow(`SELECT COUNT(*) FROM node_uptime_tracker WHERE last_heartbeat < $1 AND last_heartbeat > $2`,
+		now.Add(-time.Duration(alertOfflineMinutes)*time.Minute),
+		now.Add(-time.Duration(alertGhostHours)*time.Hour)).Scan(&s.offline)
+	db.QueryRow(`SELECT COUNT(*) FROM nodes WHERE status = 'ghost'`).Scan(&s.ghost)
+
+	db.QueryRow(`SELECT COALESCE(AVG(current_multiplier), 1.0) FROM node_uptime_tracker WHERE last_heartbeat > $1`,
+		now.Add(-5*time.Minute)).Scan(&s.avgMult)
+	db.QueryRow(`SELECT COALESCE(AVG(weekly_uptime_pct), 0) FROM node_uptime_tracker WHERE last_heartbeat > $1`,
+		now.Add(-5*time.Minute)).Scan(&s.avgUptime)
+	db.QueryRow(`SELECT COALESCE(SUM(rpc_requests_served), 0) FROM node_uptime_tracker`).Scan(&s.totalRPC)
+
+	db.QueryRow(`SELECT COUNT(*) FROM node_alerts WHERE resolved_at IS NULL`).Scan(&s.activeAlerts)
+	db.QueryRow(`SELECT COUNT(*) FROM node_commands WHERE status = 'pending'`).Scan(&s.pendingCmds)
+
+	var tiers []gin.H
+	tierRows, _ := db.Query(
+		`SELECT COALESCE(tier, 'unknown'), COUNT(*) FROM node_uptime_tracker
+		 WHERE last_heartbeat > $1 GROUP BY tier ORDER BY COUNT(*) DESC`,
+		now.Add(-time.Duration(alertStaleMinutes)*time.Minute),
+	)
+	if tierRows != nil {
+		defer tierRows.Close()
+		for tierRows.Next() {
+			var t string
+			var cnt int
+			if err := tierRows.Scan(&t, &cnt); err == nil {
+				tiers = append(tiers, gin.H{"tier": t, "count": cnt})
+			}
+		}
+	}
+	return s, tiers
+}
+
+func calculateHealthScore(total, online, authCount int) int {
+	healthScore := 100
+	if total > 0 {
+		onlinePct := float64(online) / float64(total) * 100
+		if onlinePct < 90 {
+			healthScore -= int((90 - onlinePct) * 2)
+		}
+		if authCount > 5 {
+			healthScore -= authCount * 2
+		}
+		if healthScore < 0 {
+			healthScore = 0
+		}
+	}
+	return healthScore
 }
 
 // ─── Single Node Control Detail ─────────────────────────────
@@ -385,7 +389,6 @@ func getNodeControl(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		nodeID := c.Param("node_id")
 
-		// Node details
 		var wallet, tier, hwProfile string
 		var mult, uptime, earnings float64
 		var uptimeH, containers int
@@ -406,29 +409,55 @@ func getNodeControl(db *sql.DB) gin.HandlerFunc {
 			return
 		}
 
-		// Status determination
-		minutesSince := time.Since(lastHB).Minutes()
-		status := "online"
-		if minutesSince > float64(alertOfflineMinutes) {
-			status = "offline"
-		} else if minutesSince > float64(alertStaleMinutes) {
-			status = "stale"
-		}
+		status, minutesSince := getNodeStatus(lastHB)
+		alerts := fetchRecentNodeAlerts(db, nodeID)
+		commands := fetchRecentNodeCommands(db, nodeID)
 
-		// Recent alerts
-		alertRows, _ := db.Query(
-			`SELECT alert_type, message, severity, created_at, resolved_at, resolution
-			 FROM node_alerts WHERE node_id = $1 ORDER BY created_at DESC LIMIT 10`, nodeID,
-		)
-		var alerts []gin.H
-		if alertRows != nil {
-			defer alertRows.Close()
-			for alertRows.Next() {
-				var aType, msg, sev string
-				var createdAt time.Time
-				var resolvedAt sql.NullTime
-				var resolution sql.NullString
-				alertRows.Scan(&aType, &msg, &sev, &createdAt, &resolvedAt, &resolution)
+		c.JSON(http.StatusOK, gin.H{
+			"node_id":          nodeID,
+			"wallet":           wallet,
+			"tier":             tier,
+			"status":           status,
+			"multiplier":       mult,
+			"uptime_pct":       uptime,
+			"uptime_hours":     uptimeH,
+			"containers":       containers,
+			"last_heartbeat":   lastHB.Format(time.RFC3339),
+			"minutes_since_hb": int(minutesSince),
+			"rpc_served":       rpcServed,
+			"epoch_earnings":   earnings,
+			"hardware_profile": hwProfile,
+			"alerts":           alerts,
+			"pending_commands": commands,
+		})
+	}
+}
+
+func getNodeStatus(lastHB time.Time) (string, float64) {
+	minutesSince := time.Since(lastHB).Minutes()
+	status := "online"
+	if minutesSince > float64(alertOfflineMinutes) {
+		status = "offline"
+	} else if minutesSince > float64(alertStaleMinutes) {
+		status = "stale"
+	}
+	return status, minutesSince
+}
+
+func fetchRecentNodeAlerts(db *sql.DB, nodeID string) []gin.H {
+	alertRows, _ := db.Query(
+		`SELECT alert_type, message, severity, created_at, resolved_at, resolution
+		 FROM node_alerts WHERE node_id = $1 ORDER BY created_at DESC LIMIT 10`, nodeID,
+	)
+	var alerts []gin.H
+	if alertRows != nil {
+		defer alertRows.Close()
+		for alertRows.Next() {
+			var aType, msg, sev string
+			var createdAt time.Time
+			var resolvedAt sql.NullTime
+			var resolution sql.NullString
+			if err := alertRows.Scan(&aType, &msg, &sev, &createdAt, &resolvedAt, &resolution); err == nil {
 				a := gin.H{"type": aType, "message": msg, "severity": sev, "created_at": createdAt.Format(time.RFC3339)}
 				if resolvedAt.Valid {
 					a["resolved_at"] = resolvedAt.Time.Format(time.RFC3339)
@@ -437,45 +466,31 @@ func getNodeControl(db *sql.DB) gin.HandlerFunc {
 				alerts = append(alerts, a)
 			}
 		}
+	}
+	return alerts
+}
 
-		// Pending commands
-		cmdRows, _ := db.Query(
-			`SELECT id, command, params, status, created_at
-			 FROM node_commands WHERE node_id = $1 ORDER BY created_at DESC LIMIT 10`, nodeID,
-		)
-		var commands []gin.H
-		if cmdRows != nil {
-			defer cmdRows.Close()
-			for cmdRows.Next() {
-				var id int
-				var cmd, params, st string
-				var at time.Time
-				cmdRows.Scan(&id, &cmd, &params, &st, &at)
+func fetchRecentNodeCommands(db *sql.DB, nodeID string) []gin.H {
+	cmdRows, _ := db.Query(
+		`SELECT id, command, params, status, created_at
+		 FROM node_commands WHERE node_id = $1 ORDER BY created_at DESC LIMIT 10`, nodeID,
+	)
+	var commands []gin.H
+	if cmdRows != nil {
+		defer cmdRows.Close()
+		for cmdRows.Next() {
+			var id int
+			var cmd, params, st string
+			var at time.Time
+			if err := cmdRows.Scan(&id, &cmd, &params, &st, &at); err == nil {
 				commands = append(commands, gin.H{
 					"id": id, "command": cmd, "params": params,
 					"status": st, "created_at": at.Format(time.RFC3339),
 				})
 			}
 		}
-
-		c.JSON(http.StatusOK, gin.H{
-			"node_id":           nodeID,
-			"wallet":            wallet,
-			"tier":              tier,
-			"status":            status,
-			"multiplier":        mult,
-			"uptime_pct":        uptime,
-			"uptime_hours":      uptimeH,
-			"containers":        containers,
-			"last_heartbeat":    lastHB.Format(time.RFC3339),
-			"minutes_since_hb":  int(minutesSince),
-			"rpc_served":        rpcServed,
-			"epoch_earnings":    earnings,
-			"hardware_profile":  hwProfile,
-			"alerts":            alerts,
-			"pending_commands":  commands,
-		})
 	}
+	return commands
 }
 
 // ─── List Node Alerts ───────────────────────────────────────

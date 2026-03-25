@@ -1391,7 +1391,8 @@ func SetupRoutes(deps APIDependencies) {
 			workers := 1
 			desc := "Standard CPU computation"
 
-			if payload.Type == "AI_INFERENCE" {
+			switch payload.Type {
+			case "AI_INFERENCE":
 				budget = 15.5
 				workers = 3
 				desc = "Dedicated GPU Cluster for AI Inference"
@@ -1402,10 +1403,10 @@ func SetupRoutes(deps APIDependencies) {
 						budget = 10.0 + (maxToks / 100.0)
 					}
 				}
-			} else if payload.Type == "DATA_PROCESSING" {
+			case "DATA_PROCESSING":
 				budget = 5.0
 				desc = "Distributed ETL Node processing"
-			} else if payload.Type == "render_blender_cycles" || payload.Type == "render" {
+			case "render_blender_cycles", "render":
 				budget = 45.0 // Base price for GPU rendering
 				workers = 5   // Parallel chunking
 				desc = "Distributed GPU Rendering (Blender Cycles)"
@@ -1854,7 +1855,7 @@ func isMobile(ua string) bool {
 	return strings.Contains(ua, "android") || strings.Contains(ua, "iphone")
 }
 
-func getEntropyStats(s *services.TaskService) gin.HandlerFunc {
+func getEntropyStats(_ *services.TaskService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Public endpoint for network transparency
 		c.JSON(200, gin.H{"message": "Entropy monitoring active"})
@@ -2285,7 +2286,7 @@ func getBuyLinksMap(amount string) map[string]string {
 }
 
 // getBuyGSTDLink returns Ston.fi swap URL for direct TON→GSTD purchase (Ascension: TON Wallet Gateway)
-func getBuyGSTDLink(tonService *services.TONService, tonConfig config.TONConfig) gin.HandlerFunc {
+func getBuyGSTDLink(tonService *services.TONService, _ config.TONConfig) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		amountTON := c.DefaultQuery("amount_ton", "1")
 		wallet := c.Query("wallet_address")
@@ -2361,7 +2362,7 @@ func getPendingBalance(db *sql.DB) gin.HandlerFunc {
 
 // claimPendingBalance initiates a withdrawal from Off-Chain to On-Chain
 // The Platform pays the gas.
-func claimPendingBalance(db *sql.DB, paymentService *services.PaymentService) gin.HandlerFunc {
+func claimPendingBalance(db *sql.DB, _ *services.PaymentService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		walletAddressRaw, _ := c.Get("wallet_address")
 		walletAddress := walletAddressRaw.(string)
@@ -2415,7 +2416,7 @@ func claimPendingBalance(db *sql.DB, paymentService *services.PaymentService) gi
 	}
 }
 
-func deductUserBalances(tx *sql.Tx, ctx context.Context, walletAddress string, bal, gstdBal, pendingBal, deduct float64) error {
+func deductUserBalances(tx *sql.Tx, ctx context.Context, walletAddress string, bal, gstdBal, _, deduct float64) error {
 	fromBal := deduct
 	if bal < deduct {
 		fromBal = bal
@@ -2685,7 +2686,7 @@ func getCommissionBalance(service *services.PaymentService) gin.HandlerFunc {
 	}
 }
 
-func getCommissionWithdrawIntent(service *services.PaymentService, tonConfig config.TONConfig) gin.HandlerFunc {
+func getCommissionWithdrawIntent(service *services.PaymentService, _ config.TONConfig) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Get admin wallet from context (set by RequireAdminWallet middleware)
 		adminWallet, exists := c.Get("admin_wallet")

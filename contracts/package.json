@@ -3,7 +3,7 @@
     "version": "1.0.0",
     "description": "GSTD TON Smart Contract Deployment",
     "scripts": {
-        "build": "npx @tact-lang/compiler@latest --config tact.config.json",
+        "build": "npx tact --config tact.config.json",
         "deploy:mainnet": "node scripts/deploy-mainnet.js",
         "deploy:testnet": "TON_NETWORK=testnet node scripts/deploy-mainnet.js",
         "verify": "node scripts/verify-contracts.js"

@@ -643,7 +643,7 @@ func getStakingInfo(db *sql.DB) gin.HandlerFunc {
 	}
 }
 
-func getYieldEstimate(db *sql.DB) gin.HandlerFunc {
+func getYieldEstimate(_ *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"yield_sources": gin.H{

@@ -16,7 +16,7 @@ import (
 // @Success 200 {object} services.ReferralStats
 // @Failure 401 {object} map[string]string "Unauthorized"
 // @Router /referrals/stats [get]
-func getReferralStats(referralService *services.ReferralService, userService *services.UserService) gin.HandlerFunc {
+func getReferralStats(referralService *services.ReferralService, _ *services.UserService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		walletRaw, exists := c.Get("wallet_address")
 		if !exists {
@@ -47,7 +47,7 @@ func getReferralStats(referralService *services.ReferralService, userService *se
 // @Success 200 {object} map[string]string "Success"
 // @Failure 400 {object} map[string]string "Invalid code or already referred"
 // @Router /referrals/apply [post]
-func applyReferralCode(referralService *services.ReferralService, userService *services.UserService) gin.HandlerFunc {
+func applyReferralCode(referralService *services.ReferralService, _ *services.UserService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		walletRaw, exists := c.Get("wallet_address")
 		if !exists {

@@ -18,7 +18,7 @@ type TelegramLaunchRequest struct {
 	AdminFeeGSTD float64 `json:"admin_fee_gstd"`
 }
 
-func setupMonitorRoutes(router *gin.RouterGroup, taskService *services.TaskService, telegramService *services.TelegramService, db *sql.DB) {
+func setupMonitorRoutes(router *gin.RouterGroup, _ *services.TaskService, telegramService *services.TelegramService, _ *sql.DB) {
 	router.POST("/tasks/telegram-launch", func(c *gin.Context) {
 		var req TelegramLaunchRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
