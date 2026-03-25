@@ -167,8 +167,8 @@ func getAdminArchitectVision(db *sql.DB) gin.HandlerFunc {
 func getAdminHealth(
 	db *sql.DB,
 	redisClient *redis.Client,
-	rewardEngine *services.RewardEngine,
-	payoutRetry *services.PayoutRetryService,
+	_ *services.RewardEngine,
+	_ *services.PayoutRetryService,
 ) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Check database status

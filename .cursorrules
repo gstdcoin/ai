@@ -1,0 +1,21 @@
+# GSTD Platform — Agent-First Ecosystem Rules
+## Core Philosophy
+We build using the **Agent-First** paradigm. This means the system is designed to be fully autonomous, verifiable, and optimized for AI-assisted development and orchestration.
+GSTD is mathematically backed by real capital (Sovereign Fund).
+
+## Architecture & Code Hierarchy
+1. **Backend (Go):** The single source of truth (`/home/ubuntu/backend`). Must use standard Go idioms. All handlers in `internal/api`, services in `internal/services`.
+2. **Frontend (Next.js 16):** Next.js App (`/home/ubuntu/frontend`). Strictly TypeScript. Use Server-Side Generation where possible, clean API hooks.
+3. **NaaS Desktop Bot (TS):** Telegram bot and Daemon (`/home/ubuntu/gstdbot`). Contains the `uptime_daemon.ts` and `orchestrator.ts` ensuring node autonomy.
+4. **Smart Contracts (Tact):** TON blockchain logic (`/home/ubuntu/contracts`). Strict typing, explicitly checked messages. Never burn value.
+
+## Agent Workflows & Best Practices
+- **Plan First:** Always define clear implementation steps before writing code.
+- **Verify Architectures:** Use `/agents/workflows/state.md` to understand context before touching production layers.
+- **Real-Time Logs:** Use docker logs and MCP tools for debugging instead of guessing.
+- **Micro-Animations & UI Wow-Factor:** The frontend must feel "alive" (glassmorphism, interactive elements, sleek dark modes) per the Antigravity best practices.
+
+## Development Constraints
+- **Strict Verification:** Nodes are verifiable through `Age Multiplier` and `Proof-of-Uptime`. Never mock blockchain or node parameters.
+- **Economy Rules:** Every transaction MUST feed the Sovereign Fund (50/20/30 split).
+- **Environment:** Production is Ubuntu 24.04 with Docker Compose. Never run arbitrary node processes without Docker encapsulation.

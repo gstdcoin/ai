@@ -195,7 +195,7 @@ func verifyTONTransaction(txHash string, expectedAmount float64) *VerifyResult {
 }
 
 // ─── Solana Verification ─────────────────────────────────────
-func verifySolanaTransaction(txHash string, expectedAmount float64) *VerifyResult {
+func verifySolanaTransaction(txHash string, _ float64) *VerifyResult {
 	result := &VerifyResult{Chain: "Solana", TxHash: txHash}
 
 	client := &http.Client{Timeout: httpTimeout}
@@ -296,7 +296,7 @@ func verifySolanaTransaction(txHash string, expectedAmount float64) *VerifyResul
 }
 
 // ─── XRPL Verification ──────────────────────────────────────
-func verifyXRPLTransaction(txHash string, expectedAmount float64) *VerifyResult {
+func verifyXRPLTransaction(txHash string, _ float64) *VerifyResult {
 	result := &VerifyResult{Chain: "XRPL", TxHash: txHash}
 
 	client := &http.Client{Timeout: httpTimeout}

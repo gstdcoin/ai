@@ -27,7 +27,7 @@ const nextConfig = {
   poweredByHeader: false,
   generateEtags: false,
   // Output standalone for Docker; Vercel ignores this
-  ...(process.env.VERCEL ? {} : { output: 'standalone' }),
+  // ...(process.env.VERCEL ? {} : { output: 'standalone' }),
   // TypeScript: build will fail on TS errors (tsc --skipLibCheck verified clean)
   typescript: {
     ignoreBuildErrors: false,

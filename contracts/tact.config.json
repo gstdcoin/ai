@@ -59,6 +59,21 @@
             "name": "NaaSSlashMechanics",
             "path": "./naas/SlashMechanics.tact",
             "output": "./build/NaaSSlashMechanics"
+        },
+        {
+            "name": "SovereignFund",
+            "path": "./sovereign-fund/SovereignFund.tact",
+            "output": "./build/SovereignFund"
+        },
+        {
+            "name": "BackingVault",
+            "path": "./sovereign-fund/BackingVault.tact",
+            "output": "./build/BackingVault"
+        },
+        {
+            "name": "ProofOfLiquidity",
+            "path": "./pol/ProofOfLiquidity.tact",
+            "output": "./build/ProofOfLiquidity"
         }
     ]
 }
