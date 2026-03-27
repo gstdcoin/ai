@@ -1,10 +1,10 @@
-# 🔱 GSTD — Sovereign AI Network (v1.3.0 Mainnet Ready)
+# 🔱 GSTD — Sovereign AI Network (v1.4.0 Mainnet Ready)
 
-> A decentralized AI swarm of millions of devices, united by A2A protocol and Hive Memory, creating a computational organism that thinks, learns, and serves humanity. Now with an integrated Agent Marketplace and Telegram DEX swapping.
+> A decentralized AI swarm of millions of devices, united by A2A protocol and Hive Memory, creating a computational organism that thinks, learns, and serves humanity. Now with an integrated Agent Marketplace, Telegram DEX swapping, and Sovereign Reputation Protocol.
 
 [![CI](https://github.com/gstdcoin/ai/actions/workflows/ci.yml/badge.svg)](https://github.com/gstdcoin/ai/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-gold.svg)](LICENSE)
-[![Release: v1.3.0](https://img.shields.io/badge/Release-v1.3.0-blueviolet.svg)](https://github.com/gstdcoin/ai/releases/tag/v1.3.0)
+[![Release: v1.4.0](https://img.shields.io/badge/Release-v1.4.0-blueviolet.svg)](https://github.com/gstdcoin/ai/releases/tag/v1.4.0)
 
 ## Run a Node (Earn GSTD) 🚀
 
@@ -138,12 +138,21 @@ gstdcoin/ai/
 
 ## Token Economics
 
+## Token Economics
+
 - **Total Supply:** 1,000,000,000 GSTD (absolute maximum)
-- **Workers:** 40% (400M) — mined through task completion
+- **Workers:** 40% (400M) — mined through task completion & uptime (Sovereign Protocol 85/15 allocation)
 - **Ecosystem:** 20% (200M) — DAO grants & partnerships
 - **Team:** 15% (150M) — 36mo vesting, 12mo cliff
 - **Public Sale:** 10% (100M) — IDO
 - **Reserve:** 15% (150M) — 24mo locked, then DAO
+
+## 🛡️ Sovereign Reputation Protocol (New in 1.4.0)
+The GSTD Network uses an autonomous and decentralized reputation system:
+- **Node Tiers**: Automatic progression (`Bronze` -> `Silver` -> `Gold` -> `Platinum` -> `Diamond`) based on Uptime and Tasks served.
+- **Streak Multipliers**: Daily check-ins via Heartbeat mechanism compound node earnings up to 300%.
+- **Revenue Sharing**: 85% of execution fees go directly to the Node Operator, 15% is automatically split into Buyback/Burn and Treasury Gold.
+- **Trust Score Verification**: Real-time evaluation of device fidelity via ML classifiers running on L5 Sentinel Layer.
 
 ## Development
 
