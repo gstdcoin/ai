@@ -21,6 +21,14 @@ export default function WalletListener() {
         }
     }, [router.locale, tonConnectUI]);
 
+    // Capture referral code
+    useEffect(() => {
+        if (router.query.ref && typeof router.query.ref === 'string') {
+            localStorage.setItem('gstd_referral_code', router.query.ref);
+            logger.info('Captured referral code:', router.query.ref);
+        }
+    }, [router.query.ref]);
+
     // Ref to track login state and prevent duplicates
     const lastLoggedInAddress = useRef<string | null>(null);
     const isLoggingIn = useRef<boolean>(false);
@@ -130,6 +138,22 @@ export default function WalletListener() {
                                     await apiPost('/telegram/faucet', { wallet_address: walletAddress }).catch(() => { });
                                 }
                             } catch (_e) { /* bonus claim failed — non-critical */ }
+                            
+                            // Apply Referral System
+                            const savedRef = localStorage.getItem('gstd_referral_code');
+                            if (savedRef && savedRef !== walletAddress && !savedRef.includes(walletAddress)) {
+                                try {
+                                    await apiPost('/referrals/apply', {
+                                        wallet_address: walletAddress,
+                                        code: savedRef
+                                    });
+                                    toast.success('Referral code applied successfully!');
+                                    localStorage.removeItem('gstd_referral_code'); // Clean it to avoid re-applying
+                                } catch (_err) {
+                                    // Already applied or invalid code
+                                    localStorage.removeItem('gstd_referral_code');
+                                }
+                            }
                         } catch (e) { /* silent */ }
                         // Redirect is handled by index.tsx useEffect (isConnected → /dashboard)
                     }

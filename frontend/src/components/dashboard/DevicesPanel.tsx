@@ -38,6 +38,7 @@ export default function DevicesPanel() {
   const [nodes, setNodes] = useState<Node[]>([]);
   const [loading, setLoading] = useState(true);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
+  const [selectedNode, setSelectedNode] = useState<Node | null>(null);
 
   // Auto-start task workers for all registered nodes
   useAutoTaskWorker(nodes);
@@ -154,8 +155,8 @@ export default function DevicesPanel() {
             </p>
             <div className="space-y-3 mb-4">
               <p className="text-xs font-bold text-cyan-400/90 uppercase tracking-wider">{t('one_command', 'One command (use this wallet)')}</p>
-              <pre className="text-xs bg-black/40 p-3 rounded-lg text-gray-300 font-mono overflow-x-auto">
-                {`export GSTD_WALLET_ADDRESS=EQ...
+              <pre className="text-xs bg-black/40 p-3 rounded-lg text-gray-300 font-mono overflow-x-auto whitespace-pre-wrap word-break">
+                {`export GSTD_WALLET_ADDRESS=${address || 'EQ...'}
 curl -sL https://raw.githubusercontent.com/gstdcoin/ai/main/scripts/connect_autonomous.py | python3`}
               </pre>
               <p className="text-[10px] text-gray-500">
@@ -258,14 +259,21 @@ curl -sL https://raw.githubusercontent.com/gstdcoin/ai/main/scripts/connect_auto
                     <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm">
                       <div className="flex items-center gap-2">
                         <button
+                          onClick={() => setSelectedNode(node)}
+                          className="text-xs glass-button-gold text-black font-bold px-3 py-1.5 rounded"
+                          title="Run Node"
+                        >
+                          Run
+                        </button>
+                        <button
                           onClick={() => {
                             navigator.clipboard.writeText(node.id);
-                            toast.success(t('copied', 'Copied') || 'Copied', t('node_id_copied', 'Node ID copied to clipboard') || 'Node ID copied to clipboard');
+                            toast.success('Copied', 'Node ID copied to clipboard');
                           }}
-                          className="text-xs glass-button text-white px-2 py-1 rounded"
-                          title={t('copy_node_id', 'Copy Node ID') || 'Copy Node ID'}
+                          className="text-xs glass-button text-white px-2 py-1.5 rounded"
+                          title="Copy Node ID"
                         >
-                          {t('copy', 'Copy ID') || 'Copy ID'}
+                          Copy ID
                         </button>
                       </div>
                     </td>
@@ -284,12 +292,77 @@ curl -sL https://raw.githubusercontent.com/gstdcoin/ai/main/scripts/connect_auto
         />
       )}
 
-      {/* УБРАНО: Connect Script Modal - задания выполняются автоматически в браузере */}
+      {selectedNode && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="glass-card max-w-lg w-full p-6 border-white/20 shadow-2xl relative">
+            <button
+              onClick={() => setSelectedNode(null)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-white"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+            <h3 className="text-xl font-bold text-white mb-2">Connect Node</h3>
+            <p className="text-sm text-gray-400 mb-6 border-b border-white/10 pb-4">
+              Run this command on your VPS, server, or local machine to connect <strong>{selectedNode.name}</strong> to the swarm.
+            </p>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-cyan-400 uppercase tracking-widest mb-2 block">Linux / macOS (Terminal)</label>
+                <div className="relative group">
+                  <pre className="text-xs bg-black/50 border border-white/10 p-4 rounded-xl text-emerald-400 font-mono overflow-x-auto whitespace-pre-wrap break-all">
+                    {`export GSTD_WALLET_ADDRESS=${address}
+export GSTD_NODE_ID=${selectedNode.id}
+curl -sL https://raw.githubusercontent.com/gstdcoin/ai/main/scripts/connect_autonomous.py | python3`}
+                  </pre>
+                  <button 
+                    onClick={() => {
+                        navigator.clipboard.writeText(`export GSTD_WALLET_ADDRESS=${address}\nexport GSTD_NODE_ID=${selectedNode.id}\ncurl -sL https://raw.githubusercontent.com/gstdcoin/ai/main/scripts/connect_autonomous.py | python3`);
+                        toast.success('Copied to clipboard');
+                    }}
+                    className="absolute top-2 right-2 bg-white/10 hover:bg-white/20 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-violet-400 uppercase tracking-widest mb-2 block">Docker</label>
+                <div className="relative group">
+                  <pre className="text-xs bg-black/50 border border-white/10 p-4 rounded-xl text-emerald-400 font-mono overflow-x-auto whitespace-pre-wrap break-all">
+                    {`docker run -d --name gstd-node-${selectedNode.id.slice(0, 4)} \\
+  -e GSTD_WALLET_ADDRESS=${address} \\
+  -e GSTD_NODE_ID=${selectedNode.id} \\
+  gstd/node:latest`}
+                  </pre>
+                  <button 
+                    onClick={() => {
+                        navigator.clipboard.writeText(`docker run -d --name gstd-node-${selectedNode.id.slice(0, 4)} \\\n  -e GSTD_WALLET_ADDRESS=${address} \\\n  -e GSTD_NODE_ID=${selectedNode.id} \\\n  gstd/node:latest`);
+                        toast.success('Copied to clipboard');
+                    }}
+                    className="absolute top-2 right-2 bg-white/10 hover:bg-white/20 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-white/10 flex justify-end">
+              <button
+                onClick={() => setSelectedNode(null)}
+                className="px-6 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl font-bold transition-all text-sm"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
-// УБРАНО: Connect Script Modal - задания выполняются автоматически в браузере
 
 
 

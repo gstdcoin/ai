@@ -144,9 +144,9 @@ func (s *TaskPaymentService) SubmitWorkerResult(
 		return fmt.Errorf("task %s is already completed - cannot submit result again (double-spending prevention)", taskID)
 	}
 
-	// Verify task is in queued status
-	if currentStatus != "queued" {
-		return fmt.Errorf("task is not in queued status (current: %s)", currentStatus)
+	// Verify task is in queued or pending status
+	if currentStatus != "queued" && currentStatus != "pending" {
+		return fmt.Errorf("task is not in valid status (current: %s)", currentStatus)
 	}
 
 	// SECURITY: Verify node_id exists and matches wallet
@@ -181,7 +181,7 @@ func (s *TaskPaymentService) SubmitWorkerResult(
 		    assigned_device = $2,
 		    completed_at = NOW(),
 		    updated_at = NOW()
-		WHERE task_id = $3 AND status = 'queued'
+		WHERE task_id = $3 AND status IN ('queued', 'pending')
 	`, resultStr, nodeID, taskID)
 
 	if err != nil {

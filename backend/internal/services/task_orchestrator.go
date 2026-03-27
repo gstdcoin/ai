@@ -450,19 +450,44 @@ func (o *TaskOrchestrator) getTaskDetails(ctx context.Context, taskID string) (*
 		return task, nil
 	}
 
-	// Fall back to database
 	task := &TaskQueueItem{TaskID: taskID}
+	var (
+		op          sql.NullString
+		reward      sql.NullFloat64
+		trust       sql.NullFloat64
+		geo         sql.NullString
+		powDiff     sql.NullInt64
+	)
 	err = o.db.QueryRowContext(ctx, `
 		SELECT task_type, operation, priority, reward_per_worker, min_trust_score, geography, pow_difficulty
 		FROM tasks WHERE task_id = $1
 	`, taskID).Scan(
-		&task.TaskType, &task.Operation, &task.Priority, &task.RewardGSTD,
-		&task.MinTrustScore, &task.Geography, &task.PoWDifficulty,
+		&task.TaskType, &op, &task.Priority, &reward,
+		&trust, &geo, &powDiff,
 	)
 
 	if err != nil {
 		return nil, err
 	}
+
+	if op.Valid {
+		task.Operation = op.String
+	}
+	if reward.Valid {
+		task.RewardGSTD = reward.Float64
+	}
+	if trust.Valid {
+		task.MinTrustScore = trust.Float64
+	}
+	if geo.Valid {
+		task.Geography = geo.String
+	}
+	if powDiff.Valid {
+		task.PoWDifficulty = int(powDiff.Int64)
+	} else {
+		task.PoWDifficulty = 16
+	}
+
 
 	return task, nil
 }
@@ -699,16 +724,31 @@ func (o *TaskOrchestrator) refreshQueue(ctx context.Context) {
 
 			for rows.Next() {
 				task := &TaskQueueItem{}
-				var rewardGSTD sql.NullFloat64
+				var (
+					rewardGSTD sql.NullFloat64
+					op         sql.NullString
+					geo        sql.NullString
+					trust      sql.NullFloat64
+				)
 				if err := rows.Scan(
-					&task.TaskID, &task.TaskType, &task.Operation, &task.Priority,
-					&rewardGSTD, &task.CreatedAt, &task.MinTrustScore, &task.Geography,
+					&task.TaskID, &task.TaskType, &op, &task.Priority,
+					&rewardGSTD, &task.CreatedAt, &trust, &geo,
 					&task.PoWDifficulty,
 				); err != nil {
+					log.Printf("Error scanning task queue item: %v", err)
 					continue
 				}
 				if rewardGSTD.Valid {
 					task.RewardGSTD = rewardGSTD.Float64
+				}
+				if op.Valid {
+					task.Operation = op.String
+				}
+				if geo.Valid {
+					task.Geography = geo.String
+				}
+				if trust.Valid {
+					task.MinTrustScore = trust.Float64
 				}
 
 				// Check if already in queue
