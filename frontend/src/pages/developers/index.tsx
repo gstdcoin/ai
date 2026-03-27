@@ -134,10 +134,10 @@ export default function DevelopersPage() {
 
           {/* Endpoint Example */}
           <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: '20px 24px', marginBottom: 32, fontFamily: 'monospace', fontSize: 14 }}>
-            <div style={{ color: '#8b8fa3', marginBottom: 8 }}>// Single endpoint for all chains:</div>
+            <div style={{ color: '#8b8fa3', marginBottom: 8 }}>{'// Single endpoint for all chains:'}</div>
             <div style={{ color: '#64b5f6' }}>POST <span style={{ color: '#d4af37' }}>https://rpc.gstd.network/v1/</span><span style={{ color: '#00c853' }}>{'{'}<em>chain</em>{'}'}</span></div>
-            <div style={{ color: '#8b8fa3', marginTop: 8 }}>// Headers: X-API-Key: gstd_b2b_sk_...</div>
-            <div style={{ color: '#8b8fa3' }}>// Supported: ton, eth, sol, btc, bsc, arb</div>
+            <div style={{ color: '#8b8fa3', marginTop: 8 }}>{'// Headers: X-API-Key: gstd_b2b_sk_...'}</div>
+            <div style={{ color: '#8b8fa3' }}>{'// Supported: ton, eth, sol, btc, bsc, arb'}</div>
           </div>
 
           {/* Chains */}
@@ -209,10 +209,10 @@ export default function DevelopersPage() {
 
 // ─── Developer Dashboard ─────────────────────────────────────
 
-function DeveloperDashboard({ profile, usage, apiKey, newApiKey, onRefresh }: {
+function DeveloperDashboard({ profile, usage, apiKey, newApiKey, onRefresh }: Readonly<{
   profile: ClientProfile | null; usage: UsageData | null; apiKey: string; newApiKey: string;
   onRefresh: () => void;
-}) {
+}>) {
   const p = profile?.profile;
   const [showKey, setShowKey] = useState(!!newApiKey);
 
@@ -308,7 +308,7 @@ function DeveloperDashboard({ profile, usage, apiKey, newApiKey, onRefresh }: {
   );
 }
 
-function BalanceCard({ label, value, color }: { label: string; value: string; color: string }) {
+function BalanceCard({ label, value, color }: Readonly<{ label: string; value: string; color: string }>) {
   return (
     <div style={{ background: `${color}10`, border: `1px solid ${color}30`, borderRadius: 12, padding: 20 }}>
       <div style={{ fontSize: 12, color: '#8b8fa3', marginBottom: 4 }}>{label}</div>

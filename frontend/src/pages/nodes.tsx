@@ -160,8 +160,8 @@ export default function NodesPage() {
                 <Terminal size={32} className="text-white" />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="text-xl font-bold text-white mb-2">Install & Activate Node</h3>
-                <p className="text-gray-400 text-sm leading-relaxed mb-3">One command installs on any device. Your node auto-detects hardware and activates revenue modules proportional to your compute power. Pay in GSTD, earn in GSTD.</p>
+                <h3 className="text-xl font-bold text-white mb-2">{t('nodes_install_title', 'Install & Activate Node')}</h3>
+                <p className="text-gray-400 text-sm leading-relaxed mb-3">{t('nodes_install_desc', 'One command installs on any device. Your node auto-detects hardware and activates revenue modules proportional to your compute power. Pay in GSTD, earn in GSTD.')}</p>
                 <div className="bg-black/40 rounded-xl border border-emerald-500/20 p-3 mb-4 flex items-center gap-2 group cursor-pointer hover:border-emerald-500/40 transition-colors"
                   onClick={() => { navigator.clipboard.writeText('curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash'); setInstallCopied(true); setTimeout(() => setInstallCopied(false), 2000); }}>
                   <code className="text-emerald-400 text-sm font-mono flex-1 break-all">curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash</code>
@@ -187,9 +187,9 @@ export default function NodesPage() {
           {/* ═══════════ License Tiers ═══════════ */}
           <div className="mb-10 fu d3b">
             <h2 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
-              <Shield size={20} className="text-violet-400" /> Node License Tiers
+              <Shield size={20} className="text-violet-400" /> {t('nodes_tiers_title', 'Node License Tiers')}
             </h2>
-            <p className="text-gray-500 text-sm mb-6">Your node auto-detects hardware and assigns a tier. Higher tier = more modules = higher earnings.</p>
+            <p className="text-gray-500 text-sm mb-6">{t('nodes_tiers_desc', 'Your node auto-detects hardware and assigns a tier. Higher tier = more modules = higher earnings.')}</p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
               {[
@@ -223,9 +223,9 @@ export default function NodesPage() {
           {/* ═══════════ Revenue Modules ═══════════ */}
           <div className="mb-12 fu d4">
             <h2 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
-              <Cpu size={20} className="text-cyan-400" /> Revenue Modules
+              <Cpu size={20} className="text-cyan-400" /> {t('nodes_modules_title', 'Revenue Modules')}
             </h2>
-            <p className="text-gray-500 text-sm mb-6">Each module is an independent revenue stream. Activated automatically based on your hardware. Cost and earnings in GSTD.</p>
+            <p className="text-gray-500 text-sm mb-6">{t('nodes_modules_desc', 'Each module is an independent revenue stream. Activated automatically based on your hardware. Cost and earnings in GSTD.')}</p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {[

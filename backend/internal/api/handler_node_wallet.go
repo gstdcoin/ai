@@ -144,8 +144,8 @@ func (h *NodeWalletHandler) HandleHeartbeat(c *gin.Context) {
 			"hours_since_last": hoursSinceLast,
 			"message":          "Node online. Reward in " + fmt.Sprintf("%d", int((1.0-hoursSinceLast)*60)) + " min.",
 			"update": gin.H{
-				"latest_version":   "3.4.0",
-				"update_available": req.NodeVersion != "" && req.NodeVersion != "3.4.0",
+				"latest_version":   "latest", // Fixed: Clients should use HandleUpdateCheck directly
+				"update_available": false,
 				"update_url":       "https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh",
 			},
 		})
@@ -247,59 +247,7 @@ func (h *NodeWalletHandler) HandleHeartbeat(c *gin.Context) {
 		h.redis.Set(c.Request.Context(), onlineKey, "online", 90*time.Second)
 	}
 
-	// Update node_tiers for tier progression & streak tracking
-	go func(nodeAddr string, rwd float64) {
-		defer func() {
-			if r := recover(); r != nil {
-				log.Printf("[heartbeat-async] panic recovered: %v", r)
-			}
-		}()
-
-		if _, err := h.db.Exec(
-			`INSERT INTO node_tiers (node_address) VALUES ($1) ON CONFLICT DO NOTHING`, nodeAddr); err != nil {
-			log.Printf("[heartbeat-async] node_tiers insert err: %v", err)
-		}
-
-		if _, err := h.db.Exec(
-			`UPDATE node_tiers SET 
-				total_uptime_hours = total_uptime_hours + 1.0,
-				total_earned_gstd = total_earned_gstd + $1,
-				streak_days = CASE 
-					WHEN last_heartbeat_day = CURRENT_DATE THEN streak_days
-					WHEN last_heartbeat_day = CURRENT_DATE - 1 THEN streak_days + 1
-					ELSE 1 END,
-				best_streak = GREATEST(best_streak, 
-					CASE WHEN last_heartbeat_day = CURRENT_DATE - 1 THEN streak_days + 1 ELSE streak_days END),
-				last_heartbeat_day = CURRENT_DATE,
-				tier = CASE
-					WHEN total_uptime_hours + 1.0 >= 5000 THEN 'diamond'
-					WHEN total_uptime_hours + 1.0 >= 2000 THEN 'platinum'
-					WHEN total_uptime_hours + 1.0 >= 500 THEN 'gold'
-					WHEN total_uptime_hours + 1.0 >= 100 THEN 'silver'
-					ELSE 'bronze' END,
-				updated_at = NOW()
-			 WHERE node_address = $2`, rwd, nodeAddr); err != nil {
-			log.Printf("[heartbeat-async] node_tiers update err: %v", err)
-		}
-
-		if _, err := h.db.Exec(
-			`INSERT INTO node_rewards_ledger (node_address, reward_type, amount, description)
-			 VALUES ($1, 'uptime', $2, 'heartbeat')`, nodeAddr, rwd); err != nil {
-			log.Printf("[heartbeat-async] rewards_ledger insert err: %v", err)
-		}
-
-		// ═══ SOVEREIGN INTEGRATION: Track supply + revenue ═══
-		h.db.Exec(
-			`UPDATE tokenomics_halving SET current_circulating = current_circulating + $1, 
-			 total_minted_in_epoch = total_minted_in_epoch + $1 WHERE epoch_number = (SELECT MAX(epoch_number) FROM tokenomics_halving)`, rwd)
-		h.db.Exec(
-			`INSERT INTO revenue_sharing (epoch_date, total_platform_revenue, node_operator_share, total_eligible_nodes)
-			 VALUES (CURRENT_DATE, $1, $1 * 0.85, 1)
-			 ON CONFLICT (epoch_date) DO UPDATE SET 
-			 total_platform_revenue = revenue_sharing.total_platform_revenue + $1,
-			 node_operator_share = revenue_sharing.node_operator_share + ($1 * 0.85),
-			 total_eligible_nodes = (SELECT COUNT(*) FROM nodes WHERE status='online' OR last_seen > NOW() - INTERVAL '24 hours')`, rwd)
-	}(req.WalletAddress, reward)
+	h.asyncUpdateTiersAndSovereign(req.WalletAddress, reward)
 
 	// Fetch pending commands for this node
 	var pendingCommands []gin.H
@@ -347,8 +295,8 @@ func (h *NodeWalletHandler) HandleHeartbeat(c *gin.Context) {
 		"rank":            nodeRank,
 		"commands":        pendingCommands,
 		"update": gin.H{
-			"latest_version":   "3.4.0",
-			"update_available": req.NodeVersion != "" && req.NodeVersion != "3.4.0",
+			"latest_version":   "latest",
+			"update_available": false,
 			"update_url":       "https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh",
 			"changelog_url":    "https://github.com/gstdcoin/gstdbot/releases",
 		},
@@ -372,7 +320,14 @@ func (h *NodeWalletHandler) HandleSyncEarnings(c *gin.Context) {
 // HandleUpdateCheck — GET /nodes/update/check
 func (h *NodeWalletHandler) HandleUpdateCheck(c *gin.Context) {
 	currentVersion := c.Query("version")
+	
+	// Dynamically query latest version from config table
 	latestVersion := "3.4.0"
+	var dbVersion string
+	err := h.db.QueryRowContext(c.Request.Context(), `SELECT config_value FROM node_reward_config WHERE config_key = 'latest_node_version'`).Scan(&dbVersion)
+	if err == nil && dbVersion != "" {
+		latestVersion = dbVersion
+	}
 
 	updateAvailable := currentVersion != "" && currentVersion != latestVersion
 
@@ -588,6 +543,14 @@ func (h *NodeWalletHandler) HandleClaimRewards(c *gin.Context) {
 		return
 	}
 
+	// Basic authorization check: verify X-Wallet-Address matches requested OwnerWallet
+	// Ensure that third parties cannot arbitrarily clear someone else's pending pool.
+	callerWallet := c.GetHeader("X-Wallet-Address")
+	if callerWallet != "" && !strings.EqualFold(callerWallet, req.OwnerWallet) {
+		c.JSON(403, gin.H{"error": "unauthorized: wallet address mismatch"})
+		return
+	}
+
 	ctx := c.Request.Context()
 	tx, err := h.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -753,5 +716,39 @@ func (h *NodeWalletHandler) StartAutoClaim() {
 				log.Printf("[AutoClaim] ✅ Auto-claimed %.4f GSTD from expired rewards", claimed)
 			}
 		}
+	}()
+}
+
+// asyncUpdateTiersAndSovereign runs tier, streak, ledger, and sovereign metrics updates asynchronously.
+func (h *NodeWalletHandler) asyncUpdateTiersAndSovereign(nodeAddr string, rwd float64) {
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("[heartbeat-async] panic recovered: %v", r)
+			}
+		}()
+
+		if _, err := h.db.Exec(`INSERT INTO node_tiers (node_address) VALUES ($1) ON CONFLICT DO NOTHING`, nodeAddr); err != nil {
+			log.Printf("[heartbeat-async] node_tiers insert err: %v", err)
+		}
+
+		if _, err := h.db.Exec(`UPDATE node_tiers SET 
+				total_uptime_hours = total_uptime_hours + 1.0, total_earned_gstd = total_earned_gstd + $1,
+				streak_days = CASE 
+					WHEN last_heartbeat_day = CURRENT_DATE THEN streak_days
+					WHEN last_heartbeat_day = CURRENT_DATE - 1 THEN streak_days + 1 ELSE 1 END,
+				best_streak = GREATEST(best_streak, CASE WHEN last_heartbeat_day = CURRENT_DATE - 1 THEN streak_days + 1 ELSE streak_days END),
+				last_heartbeat_day = CURRENT_DATE,
+				tier = CASE WHEN total_uptime_hours + 1.0 >= 5000 THEN 'diamond' WHEN total_uptime_hours + 1.0 >= 2000 THEN 'platinum' WHEN total_uptime_hours + 1.0 >= 500 THEN 'gold' WHEN total_uptime_hours + 1.0 >= 100 THEN 'silver' ELSE 'bronze' END,
+				updated_at = NOW() WHERE node_address = $2`, rwd, nodeAddr); err != nil {
+			log.Printf("[heartbeat-async] node_tiers update err: %v", err)
+		}
+
+		if _, err := h.db.Exec(`INSERT INTO node_rewards_ledger (node_address, reward_type, amount, description) VALUES ($1, 'uptime', $2, 'heartbeat')`, nodeAddr, rwd); err != nil {
+			log.Printf("[heartbeat-async] rewards_ledger err: %v", err)
+		}
+
+		h.db.Exec(`UPDATE tokenomics_halving SET current_circulating = current_circulating + $1, total_minted_in_epoch = total_minted_in_epoch + $1 WHERE epoch_number = (SELECT MAX(epoch_number) FROM tokenomics_halving)`, rwd)
+		h.db.Exec(`INSERT INTO revenue_sharing (epoch_date, total_platform_revenue, node_operator_share, total_eligible_nodes) VALUES (CURRENT_DATE, $1, $1 * 0.85, 1) ON CONFLICT (epoch_date) DO UPDATE SET total_platform_revenue = revenue_sharing.total_platform_revenue + $1, node_operator_share = revenue_sharing.node_operator_share + ($1 * 0.85), total_eligible_nodes = (SELECT COUNT(*) FROM nodes WHERE status='online' OR last_seen > NOW() - INTERVAL '24 hours')`, rwd)
 	}()
 }

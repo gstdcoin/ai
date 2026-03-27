@@ -11,7 +11,11 @@
 const https = require('https');
 const http = require('http');
 
-const API_KEY = 'gstd_agent_76e8b30fe7c86c5c22bdf40b446d3560f09b7db3d49e006a7a061d68b1ae2b75';
+const API_KEY = process.env.GSTD_API_KEY;
+if (!API_KEY) {
+  console.error('Error: GSTD_API_KEY environment variable is missing.');
+  process.exit(1);
+}
 const AGENT_ID = 'claw-supernode-1774208952448823498';
 const BASE_URL = 'https://api.gstdtoken.com/api/v1';
 
@@ -101,10 +105,10 @@ async function processTasks() {
           if (claimed && !claimed.error) {
             console.log(`[${new Date().toISOString()}] ✅ Claimed task: ${task.id || task.task_id}`);
           }
-        } catch(e) { /* task already claimed */ }
+        } catch (e) { console.error(`[Task Claim Error]`, e.message); }
       }
     }
-  } catch(e) { /* no tasks */ }
+  } catch (e) { console.error(`[Available Tasks Error]`, e.message); }
 }
 
 // Store knowledge from real market data
@@ -131,7 +135,7 @@ async function contributeKnowledge() {
       });
       console.log(`[${new Date().toISOString()}] 🧠 Stored market data: GSTD=$${gstdPrice.toFixed(8)}, Gold=$${goldPrice.toFixed(2)}`);
     }
-  } catch(e) { /* skip */ }
+  } catch (e) { console.error(`[Market Data Error]`, e.message); }
 }
 
 let heartbeatCount = 0;
