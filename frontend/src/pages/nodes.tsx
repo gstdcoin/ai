@@ -848,7 +848,7 @@ export default function NodesPage() {
               </a>
             </div>
 
-            <div style={{ background: 'rgba(0,0,0,0.3)', padding: '10px 16px', borderRadius: 10, fontFamily: 'monospace', fontSize: 13, color: '#a78bfa', marginBottom: 8 }}>
+            <div style={{ background: 'rgba(0,0,0,0.3)', padding: '10px 16px', borderRadius: 10, fontFamily: 'monospace', fontSize: 13, color: '#a78bfa', marginBottom: 8, wordBreak: 'break-all', overflowWrap: 'anywhere' }}>
               curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash
             </div>
             <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)' }}>{t('nodes_install_hint')}</div>

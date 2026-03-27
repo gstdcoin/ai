@@ -1066,7 +1066,7 @@ func SetupRoutes(deps APIDependencies) {
 			err := dbConn.QueryRowContext(c.Request.Context(),
 				`SELECT task_id, task_type, COALESCE(payload, '{}')
 				 FROM tasks
-				 WHERE status = 'pending'
+				 WHERE status IN ('pending', 'queued')
 				   AND (executor_address = $1 OR executor_address IS NULL)
 				 ORDER BY priority_score DESC, created_at ASC
 				 LIMIT 1`, wallet).Scan(&taskID, &taskType, &payload)
@@ -1084,38 +1084,7 @@ func SetupRoutes(deps APIDependencies) {
 		})
 
 		v1.POST("/tasks/complete", func(c *gin.Context) {
-			wallet := c.GetHeader(headerWalletAddress)
-			if wallet == "" {
-				c.JSON(400, gin.H{"error": errHeaderWalletRequired})
-				return
-			}
-			var req struct {
-				TaskID        string      `json:"task_id"`
-				NodeID        string      `json:"node_id"`
-				Result        interface{} `json:"result"`
-				WalletAddress string      `json:"wallet_address"`
-			}
-			if err := c.ShouldBindJSON(&req); err != nil {
-				c.JSON(400, gin.H{"error": err.Error()})
-				return
-			}
-
-			// Convert result to JSON string to save in the database
-			resultJSON, _ := json.Marshal(req.Result)
-			_, err := dbConn.ExecContext(c.Request.Context(),
-				`UPDATE tasks SET status = 'completed', completed_at = NOW(), result = $1, executor_address = $2 WHERE task_id = $3`,
-				string(resultJSON), wallet, req.TaskID)
-
-			if err != nil {
-				c.JSON(500, gin.H{"error": "Failed to complete task"})
-				return
-			}
-
-			// Simple autonomous reward logic for demonstration:
-			// In real prod, this goes through taskPaymentService.
-			// The node is doing it natively via Swarm, so we grant some GSTD.
-
-			c.JSON(200, gin.H{"status": "success", "message": "Task completed"})
+			handleSubmitWorkerResult(c, taskPaymentService, rewardEngine, zkProofService)
 		})
 
 		v1.POST("/tasks/fail", func(c *gin.Context) {

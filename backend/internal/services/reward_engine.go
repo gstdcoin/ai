@@ -110,23 +110,6 @@ func (re *RewardEngine) DistributeRewards(ctx context.Context, task *models.Task
 	log.Printf("Distributing rewards for task %s: Budget=%.9f, Worker=%.9f, Platform=%.9f",
 		task.TaskID, budget, workerReward, platformFee)
 
-	// PULL-MODEL: Workers claim rewards themselves via escrow contract
-	// Platform only generates payout intent, workers sign and pay gas fees
-	// No automatic transfers - workers use TonConnect to claim via escrow
-	log.Printf("Reward available for claim: %.9f GSTD to worker %s (task: %s)",
-		workerReward, workerWallet, task.TaskID)
-	log.Printf("Worker can claim via: POST /api/v1/payments/payout-intent with task_id=%s", task.TaskID)
-
-	// Platform fee is collected when worker claims (handled by escrow contract)
-	// No need to process platform fee separately - escrow contract handles it
-	log.Printf("Platform fee (%.9f GSTD) will be collected when worker claims via escrow", platformFee)
-
-	// Log accumulation in Golden Reserve (2.5% gold share of 5% platform fee)
-	goldShare := platformFee * 0.5
-	if err := re.logGoldenReserveAccumulation(ctx, goldShare, task.TaskID); err != nil {
-		log.Printf("Warning: Failed to log golden reserve accumulation: %v", err)
-	}
-
 	// Update task with reward information
 	_, err := re.db.ExecContext(ctx, `
 		UPDATE tasks
@@ -137,10 +120,44 @@ func (re *RewardEngine) DistributeRewards(ctx context.Context, task *models.Task
 		WHERE task_id = $4
 	`, workerReward, platformFee, workerReward, task.TaskID)
 
-	return err
+	if err != nil {
+		return err
+	}
+
+	// PUSH-MODEL: Platform sends funds directly to the worker in background
+	if re.jettonTransfer != nil && workerReward > 0 {
+		go func() {
+			amountNano := int64(workerReward * 1e9)
+			jettonAddr := re.tonConfig.GSTDJettonAddress
+			if jettonAddr == "" {
+				log.Printf("⚠️ Cannot send GSTD reward: GSTDJettonAddress missing in config")
+				return
+			}
+			txHash, err := re.jettonTransfer.SendJettonTransfer(
+				context.Background(),
+				workerWallet,
+				jettonAddr, // Pay worker in GSTD
+				amountNano,
+				fmt.Sprintf("Reward for task %s", task.TaskID),
+			)
+			if err != nil {
+				log.Printf("❌ Failed to auto-transfer GSTD reward to %s: %v", workerWallet, err)
+			} else {
+				log.Printf("✅ Automatically PUSHED %.9f GSTD to %s for task %s (TX: %s)", workerReward, workerWallet, task.TaskID, txHash)
+			}
+		}()
+	}
+
+	// Log accumulation in Golden Reserve (2.5% gold share of 5% platform fee)
+	goldShare := platformFee * 0.5
+	if err := re.logGoldenReserveAccumulation(ctx, goldShare, task.TaskID); err != nil {
+		log.Printf("Warning: Failed to log golden reserve accumulation: %v", err)
+	}
+
+	return nil
 }
 
-// sendGSTDToWorker is DEPRECATED - use pull-model instead
+// sendGSTDToWorker was DEPRECATED but now handled directly inside DistributeRewards
 // Workers claim rewards themselves via escrow contract using TonConnect
 // This function is kept for backward compatibility but does nothing
 func (re *RewardEngine) sendGSTDToWorker(ctx context.Context, workerWallet string, amount float64, taskID string) error {
