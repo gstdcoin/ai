@@ -36,7 +36,7 @@ export default function VercelSwarmHeartbeat() {
           device_type: 'vercel-edge',
           wallet_address: wallet,
         }),
-      }).catch(() => {});
+      }).catch((err) => console.warn('[VercelSwarm] Heartbeat failed:', err));
     };
 
     handshake();

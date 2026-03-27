@@ -20,6 +20,8 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+const nodeInstallScriptURL = "https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh"
+
 // NodeWalletHandler holds dependencies for node and wallet route handlers
 type NodeWalletHandler struct {
 	db    *sql.DB
@@ -47,240 +49,51 @@ func (h *NodeWalletHandler) HandleHeartbeat(c *gin.Context) {
 		return
 	}
 
-	// Lenient validation for non-wallet nodes (desktop client default behavior)
-	wallet := strings.TrimSpace(req.WalletAddress)
-	// We no longer strictly reject non-TON wallets to keep legacy unregistered desktop nodes online.
-	// But they won't be able to withdraw until they bind.
-	req.WalletAddress = wallet
+	req.WalletAddress = strings.TrimSpace(req.WalletAddress)
+	h.ensureUserExists(c.Request.Context(), req.WalletAddress)
 
-	// Ensure node & user exist
-	_, _ = h.db.ExecContext(c.Request.Context(), `
-		INSERT INTO users (wallet_address, gstd_balance, created_at, updated_at)
-		VALUES ($1, 0, NOW(), NOW())
-		ON CONFLICT (wallet_address) DO NOTHING
-	`, req.WalletAddress)
 	nodeName := req.NodeName
 	if nodeName == "" {
+		nodeName = "GSTD Node"
 		if req.NodeVersion != "" {
-			nodeName = "GSTD Node v" + req.NodeVersion
-		} else {
-			nodeName = "GSTD Node"
+			nodeName += " v" + req.NodeVersion
 		}
 	}
 
 	log.Printf("[HEARTBEAT-V130] wallet=%s nodeName=%s", req.WalletAddress, nodeName)
 
-	// Check time since last heartbeat BEFORE updating last_seen
-	var hoursSinceLast float64 = 1.0
-	row := h.db.QueryRowContext(c.Request.Context(), `
-		SELECT COALESCE(EXTRACT(EPOCH FROM (NOW() - last_seen)) / 3600, 1)
-		FROM nodes WHERE wallet_address = $1
-	`, req.WalletAddress)
-	_ = row.Scan(&hoursSinceLast)
+	hoursSinceLast := h.getHoursSinceLastSeen(c.Request.Context(), req.WalletAddress)
+	trustScore, nodeTier, specsJSONStr := h.evaluateNodeTrust(c.Request.Context(), req.WalletAddress, req.IsMobile)
 
-	// Ensure user exists (nodes.wallet_address FK → users.wallet_address)
-	_, _ = h.db.ExecContext(c.Request.Context(), `
-		INSERT INTO users (wallet_address, created_at, updated_at)
-		VALUES ($1, NOW(), NOW())
-		ON CONFLICT (wallet_address) DO NOTHING
-	`, req.WalletAddress)
-
-	// Trust Scoring Logic: MasterNodes require >10000 GSTD, Mobiles start basic.
-	var totalBalance float64
-	_ = h.db.QueryRowContext(c.Request.Context(), `
-		SELECT COALESCE(gstd_balance, 0) + COALESCE(balance, 0) FROM users WHERE wallet_address = $1
-	`, req.WalletAddress).Scan(&totalBalance)
-
-	trustScore := 0.5
-	nodeTier := "basic"
-
-	// Track Mobile status
-	deviceType := "pc"
-	if req.IsMobile {
-		deviceType = "mobile"
-		nodeTier = "mobile_basic"
-	}
-
-	if totalBalance >= 10000.0 && !req.IsMobile {
-		nodeTier = "masternode"
-		trustScore = 1.0
-	}
-
-	specsJSONStr := fmt.Sprintf(`{"device_type": "%s", "tier": "%s"}`, deviceType, nodeTier)
-
-	// Try UPDATE existing node first
-	res, err := h.db.ExecContext(c.Request.Context(), `
-		UPDATE nodes SET status = 'online', last_seen = NOW(), updated_at = NOW(), name = $2,
-		trust_score = $3,
-		specs = COALESCE(specs, '{}'::jsonb) || $4::jsonb
-		WHERE wallet_address = $1
-	`, req.WalletAddress, nodeName, trustScore, specsJSONStr)
-	rowsAffected := int64(0)
-	if err != nil {
-		log.Printf("[heartbeat] UPDATE error: %v", err)
-	} else {
-		rowsAffected, _ = res.RowsAffected()
-	}
-
-	// If no existing node, INSERT
-	if rowsAffected == 0 {
-		if _, err := h.db.ExecContext(c.Request.Context(), `
-			INSERT INTO nodes (id, wallet_address, name, status, last_seen, created_at, updated_at, trust_score, specs)
-			VALUES (gen_random_uuid()::text, $1, $2, 'online', NOW(), NOW(), NOW(), $3, $4::jsonb)
-		`, req.WalletAddress, nodeName, trustScore, specsJSONStr); err != nil {
-			log.Printf("[heartbeat] INSERT error: %v", err)
-		}
-	}
+	rowsAffected := h.upsertNode(c.Request.Context(), req.WalletAddress, nodeName, trustScore, specsJSONStr)
 	log.Printf("[heartbeat] wallet=%s rows_updated=%d tier=%s score=%.2f", req.WalletAddress, rowsAffected, nodeTier, trustScore)
 
-	// Keepalive accepted — node stays online.
-	// Reward only if >= 55 min since last reward (hourly cap).
 	if hoursSinceLast < 0.9 {
-		c.JSON(200, gin.H{
-			"reward":           0,
-			"status":           "online",
-			"reason":           "keepalive_ok",
-			"next_reward_in":   int((1.0 - hoursSinceLast) * 60),
-			"hours_since_last": hoursSinceLast,
-			"message":          "Node online. Reward in " + fmt.Sprintf("%d", int((1.0-hoursSinceLast)*60)) + " min.",
-			"update": gin.H{
-				"latest_version":   "latest", // Fixed: Clients should use HandleUpdateCheck directly
-				"update_available": false,
-				"update_url":       "https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh",
-			},
-		})
+		h.respondKeepalive(c, hoursSinceLast)
 		return
 	}
 
-	// Load reward rates from database (dynamically adjustable without redeploy)
-	uptimeRewardPerHour := 0.10   // default
-	queryRewardPer := 0.001       // default
-	maxRewardPerHeartbeat := 1.0  // default
-	maxDailyPerNode := 24.0       // default
-
-	rows, err := h.db.QueryContext(c.Request.Context(),
-		`SELECT config_key, config_value FROM node_reward_config`)
-	if err == nil {
-		defer rows.Close()
-		for rows.Next() {
-			var key string
-			var val float64
-			if rows.Scan(&key, &val) == nil {
-				switch key {
-				case "uptime_reward_per_hour":
-					uptimeRewardPerHour = val
-				case "query_reward_per":
-					queryRewardPer = val
-				case "max_reward_per_heartbeat":
-					maxRewardPerHeartbeat = val
-				case "max_daily_per_node":
-					maxDailyPerNode = val
-				}
-			}
-		}
-	}
-
-	uptimeReward := uptimeRewardPerHour
-	queryReward := float64(req.QueriesServed) * queryRewardPer
-	reward := uptimeReward + queryReward
-	if reward > maxRewardPerHeartbeat {
-		reward = maxRewardPerHeartbeat
-	}
-
-	// Check daily cap
-	var dailyEarned float64
-	h.db.QueryRowContext(c.Request.Context(), `
-		SELECT COALESCE(SUM(amount), 0) FROM node_rewards_ledger 
-		WHERE node_address = $1 AND reward_type = 'uptime' 
-		AND created_at >= CURRENT_DATE
-	`, req.WalletAddress).Scan(&dailyEarned)
-	if dailyEarned >= maxDailyPerNode {
-		c.JSON(200, gin.H{"reward": 0, "reason": "daily_cap_reached", "daily_earned": dailyEarned, "daily_cap": maxDailyPerNode})
-		return
-	}
-	if dailyEarned+reward > maxDailyPerNode {
-		reward = maxDailyPerNode - dailyEarned
-	}
+	reward, uptimeReward, queryReward, rewardReason := h.calculateReward(c.Request.Context(), req.WalletAddress, req.QueriesServed)
 	if reward <= 0 {
-		c.JSON(200, gin.H{"reward": 0, "reason": "no_reward"})
+		c.JSON(200, gin.H{"reward": 0, "reason": rewardReason})
 		return
 	}
 
-	// Credit reward to user
-	_, err = h.db.ExecContext(c.Request.Context(), `
-		UPDATE users SET pending_balance_gstd = COALESCE(pending_balance_gstd, 0) + $1, updated_at = NOW()
-		WHERE wallet_address = $2
-	`, reward, req.WalletAddress)
-	if err != nil {
+	if err := h.creditRewardTransaction(c.Request.Context(), req.WalletAddress, reward); err != nil {
 		c.JSON(500, gin.H{"error": "failed to credit reward"})
 		return
 	}
-	// Update node stats
-	if _, errStats := h.db.ExecContext(c.Request.Context(), `
-		UPDATE nodes SET total_earnings = COALESCE(total_earnings, 0) + $1, last_seen = NOW(), updated_at = NOW()
-		WHERE wallet_address = $2
-	`, reward, req.WalletAddress); errStats != nil {
-		log.Printf("[heartbeat] total_earnings update err: %v", errStats)
-	}
 
-	// ═══ Node Wallet Binding: record reward for owner ═══
-	var ownerWallet string
-	bindErr := h.db.QueryRowContext(c.Request.Context(),
-		`SELECT owner_wallet FROM node_wallet_bindings WHERE node_address = $1 AND is_active = true LIMIT 1`,
-		req.WalletAddress).Scan(&ownerWallet)
-	if bindErr == nil && ownerWallet != "" {
-		_, _ = h.db.ExecContext(c.Request.Context(),
-			`INSERT INTO node_pending_rewards (owner_wallet, node_id, amount_gstd, reward_type, description)
-			 SELECT $1, COALESCE(b.node_id, 'unknown'), $2, 'uptime', $3
-			 FROM node_wallet_bindings b WHERE b.owner_wallet = $1 AND b.node_address = $4 AND b.is_active = true LIMIT 1`,
-			ownerWallet, reward, fmt.Sprintf("Heartbeat reward: %.4f GSTD (uptime=%dh, queries=%d)", reward, req.UptimeHours, req.QueriesServed), req.WalletAddress)
+	h.bindNodeWalletReward(c.Request.Context(), req.WalletAddress, reward, req.UptimeHours, req.QueriesServed)
 
-		_, _ = h.db.ExecContext(c.Request.Context(),
-			`UPDATE node_wallet_bindings SET last_heartbeat = NOW(), total_earned_gstd = total_earned_gstd + $1
-			 WHERE node_address = $2 AND is_active = true`,
-			reward, req.WalletAddress)
-	}
-
-	// Update Redis worker:online status
 	if h.redis != nil {
-		onlineKey := fmt.Sprintf("worker:online:%s", req.WalletAddress)
-		h.redis.Set(c.Request.Context(), onlineKey, "online", 90*time.Second)
+		h.redis.Set(c.Request.Context(), "worker:online:"+req.WalletAddress, "online", 90*time.Second)
 	}
 
 	h.asyncUpdateTiersAndSovereign(req.WalletAddress, reward)
 
-	// Fetch pending commands for this node
-	var pendingCommands []gin.H
-	cmdRows, cmdErr := h.db.QueryContext(c.Request.Context(),
-		`SELECT id, command, params FROM node_commands
-		 WHERE node_id IN (SELECT id FROM nodes WHERE wallet_address = $1)
-		   AND status = 'pending' ORDER BY created_at ASC LIMIT 5`, req.WalletAddress)
-	if cmdErr == nil {
-		defer cmdRows.Close()
-		for cmdRows.Next() {
-			var cmdID int
-			var cmd, params string
-			cmdRows.Scan(&cmdID, &cmd, &params)
-			pendingCommands = append(pendingCommands, gin.H{"id": cmdID, "command": cmd, "params": params})
-			// Mark as dispatched
-			h.db.ExecContext(c.Request.Context(),
-				`UPDATE node_commands SET status = 'dispatched', executed_at = NOW() WHERE id = $1`, cmdID)
-		}
-	}
-
-	// Query network stats for peers
-	var peersOnline, totalNodes int
-	h.db.QueryRowContext(c.Request.Context(),
-		`SELECT COUNT(*) FROM nodes WHERE status = 'online' OR last_seen > NOW() - INTERVAL '5 minutes'`).Scan(&peersOnline)
-	h.db.QueryRowContext(c.Request.Context(),
-		`SELECT COUNT(*) FROM nodes`).Scan(&totalNodes)
-
-	// Calculate this node's rank
-	var nodeRank int
-	h.db.QueryRowContext(c.Request.Context(),
-		`SELECT COUNT(*) + 1 FROM nodes WHERE total_earnings > COALESCE(
-			(SELECT total_earnings FROM nodes WHERE wallet_address = $1), 0
-		)`, req.WalletAddress).Scan(&nodeRank)
+	pendingCommands := h.fetchPendingCommands(c.Request.Context(), req.WalletAddress)
+	peersOnline, totalNodes, nodeRank := h.fetchNetworkStats(c.Request.Context(), req.WalletAddress)
 
 	c.JSON(200, gin.H{
 		"reward":          reward,
@@ -297,7 +110,7 @@ func (h *NodeWalletHandler) HandleHeartbeat(c *gin.Context) {
 		"update": gin.H{
 			"latest_version":   "latest",
 			"update_available": false,
-			"update_url":       "https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh",
+			"update_url":       nodeInstallScriptURL,
 			"changelog_url":    "https://github.com/gstdcoin/gstdbot/releases",
 		},
 		"sovereign": gin.H{
@@ -309,7 +122,218 @@ func (h *NodeWalletHandler) HandleHeartbeat(c *gin.Context) {
 	})
 }
 
-// HandleSyncEarnings — POST /nodes/sync-earnings (deprecated)
+func (h *NodeWalletHandler) respondKeepalive(c *gin.Context, hoursSinceLast float64) {
+	c.JSON(200, gin.H{
+		"reward":           0,
+		"status":           "online",
+		"reason":           "keepalive_ok",
+		"next_reward_in":   int((1.0 - hoursSinceLast) * 60),
+		"hours_since_last": hoursSinceLast,
+		"message":          fmt.Sprintf("Node online. Reward in %d min.", int((1.0-hoursSinceLast)*60)),
+		"update": gin.H{
+			"latest_version":   "latest",
+			"update_available": false,
+			"update_url":       nodeInstallScriptURL,
+		},
+	})
+}
+
+func (h *NodeWalletHandler) ensureUserExists(ctx context.Context, wallet string) {
+	_, _ = h.db.ExecContext(ctx, `
+		INSERT INTO users (wallet_address, gstd_balance, created_at, updated_at)
+		VALUES ($1, 0, NOW(), NOW())
+		ON CONFLICT (wallet_address) DO NOTHING
+	`, wallet)
+}
+
+func (h *NodeWalletHandler) getHoursSinceLastSeen(ctx context.Context, wallet string) float64 {
+	var hours float64 = 1.0
+	_ = h.db.QueryRowContext(ctx, `
+		SELECT COALESCE(EXTRACT(EPOCH FROM (NOW() - last_seen)) / 3600, 1)
+		FROM nodes WHERE wallet_address = $1
+	`, wallet).Scan(&hours)
+	return hours
+}
+
+func (h *NodeWalletHandler) evaluateNodeTrust(ctx context.Context, wallet string, isMobile bool) (float64, string, string) {
+	var totalBalance float64
+	_ = h.db.QueryRowContext(ctx, `
+		SELECT COALESCE(gstd_balance, 0) + COALESCE(balance, 0) FROM users WHERE wallet_address = $1
+	`, wallet).Scan(&totalBalance)
+
+	trustScore := 0.5
+	nodeTier := "basic"
+	deviceType := "pc"
+
+	if isMobile {
+		deviceType = "mobile"
+		nodeTier = "mobile_basic"
+	} else if totalBalance >= 10000.0 {
+		nodeTier = "masternode"
+		trustScore = 1.0
+	}
+
+	specsJSONStr := fmt.Sprintf(`{"device_type": "%s", "tier": "%s"}`, deviceType, nodeTier)
+	return trustScore, nodeTier, specsJSONStr
+}
+
+func (h *NodeWalletHandler) upsertNode(ctx context.Context, wallet, nodeName string, trustScore float64, specsJSONStr string) int64 {
+	res, err := h.db.ExecContext(ctx, `
+		UPDATE nodes SET status = 'online', last_seen = NOW(), updated_at = NOW(), name = $2,
+		trust_score = $3,
+		specs = COALESCE(specs, '{}'::jsonb) || $4::jsonb
+		WHERE wallet_address = $1
+	`, wallet, nodeName, trustScore, specsJSONStr)
+	
+	rowsAffected := int64(0)
+	if err != nil {
+		log.Printf("[heartbeat] UPDATE error: %v", err)
+	} else {
+		rowsAffected, _ = res.RowsAffected()
+	}
+
+	if rowsAffected == 0 {
+		if _, err := h.db.ExecContext(ctx, `
+			INSERT INTO nodes (id, wallet_address, name, status, last_seen, created_at, updated_at, trust_score, specs)
+			VALUES (gen_random_uuid()::text, $1, $2, 'online', NOW(), NOW(), NOW(), $3, $4::jsonb)
+		`, wallet, nodeName, trustScore, specsJSONStr); err != nil {
+			log.Printf("[heartbeat] INSERT error: %v", err)
+		}
+	}
+	return rowsAffected
+}
+
+func (h *NodeWalletHandler) calculateReward(ctx context.Context, wallet string, queriesServed int) (float64, float64, float64, string) {
+	uptimeRewardPerHour := 0.10
+	queryRewardPer := 0.001
+	maxRewardPerHeartbeat := 1.0
+	maxDailyPerNode := 24.0
+
+	rows, err := h.db.QueryContext(ctx, `SELECT config_key, config_value FROM node_reward_config`)
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var key string
+			var val float64
+			if rows.Scan(&key, &val) == nil {
+				switch key {
+				case "uptime_reward_per_hour": uptimeRewardPerHour = val
+				case "query_reward_per": queryRewardPer = val
+				case "max_reward_per_heartbeat": maxRewardPerHeartbeat = val
+				case "max_daily_per_node": maxDailyPerNode = val
+				}
+			}
+		}
+	}
+
+	uptimeReward := uptimeRewardPerHour
+	queryReward := float64(queriesServed) * queryRewardPer
+	reward := uptimeReward + queryReward
+	if reward > maxRewardPerHeartbeat {
+		reward = maxRewardPerHeartbeat
+	}
+
+	var dailyEarned float64
+	h.db.QueryRowContext(ctx, `
+		SELECT COALESCE(SUM(amount), 0) FROM node_rewards_ledger 
+		WHERE node_address = $1 AND reward_type = 'uptime' 
+		AND created_at >= CURRENT_DATE
+	`, wallet).Scan(&dailyEarned)
+
+	if dailyEarned >= maxDailyPerNode {
+		return 0, 0, 0, "daily_cap_reached"
+	}
+	if dailyEarned+reward > maxDailyPerNode {
+		reward = maxDailyPerNode - dailyEarned
+	}
+	
+	if reward <= 0 {
+		return 0, 0, 0, "no_reward"
+	}
+	return reward, uptimeReward, queryReward, "ok"
+}
+
+func (h *NodeWalletHandler) creditRewardTransaction(ctx context.Context, wallet string, reward float64) error {
+	tx, err := h.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	_, err = tx.ExecContext(ctx, `
+		UPDATE users SET pending_balance_gstd = COALESCE(pending_balance_gstd, 0) + $1, updated_at = NOW()
+		WHERE wallet_address = $2
+	`, reward, wallet)
+	if err != nil {
+		return err
+	}
+
+	if _, errStats := tx.ExecContext(ctx, `
+		UPDATE nodes SET total_earnings = COALESCE(total_earnings, 0) + $1, last_seen = NOW(), updated_at = NOW()
+		WHERE wallet_address = $2
+	`, reward, wallet); errStats != nil {
+		log.Printf("[heartbeat] total_earnings update err: %v", errStats)
+	}
+
+	if err := tx.Commit(); err != nil {
+		log.Printf("[heartbeat] tx commit err: %v", err)
+		return err
+	}
+	return nil
+}
+
+func (h *NodeWalletHandler) bindNodeWalletReward(ctx context.Context, wallet string, reward float64, uptimeHours, queriesServed int) {
+	var ownerWallet string
+	err := h.db.QueryRowContext(ctx,
+		`SELECT owner_wallet FROM node_wallet_bindings WHERE node_address = $1 AND is_active = true LIMIT 1`,
+		wallet).Scan(&ownerWallet)
+	if err == nil && ownerWallet != "" {
+		_, _ = h.db.ExecContext(ctx,
+			`INSERT INTO node_pending_rewards (owner_wallet, node_id, amount_gstd, reward_type, description)
+			 SELECT $1, COALESCE(b.node_id, 'unknown'), $2, 'uptime', $3
+			 FROM node_wallet_bindings b WHERE b.owner_wallet = $1 AND b.node_address = $4 AND b.is_active = true LIMIT 1`,
+			ownerWallet, reward, fmt.Sprintf("Heartbeat reward: %.4f GSTD (uptime=%dh, queries=%d)", reward, uptimeHours, queriesServed), wallet)
+
+		_, _ = h.db.ExecContext(ctx,
+			`UPDATE node_wallet_bindings SET last_heartbeat = NOW(), total_earned_gstd = total_earned_gstd + $1
+			 WHERE node_address = $2 AND is_active = true`,
+			reward, wallet)
+	}
+}
+
+func (h *NodeWalletHandler) fetchPendingCommands(ctx context.Context, wallet string) []gin.H {
+	var pendingCommands []gin.H
+	rows, err := h.db.QueryContext(ctx,
+		`SELECT id, command, params FROM node_commands
+		 WHERE node_id IN (SELECT id FROM nodes WHERE wallet_address = $1)
+		   AND status = 'pending' ORDER BY created_at ASC LIMIT 5`, wallet)
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var cmdID int
+			var cmd, params string
+			rows.Scan(&cmdID, &cmd, &params)
+			pendingCommands = append(pendingCommands, gin.H{"id": cmdID, "command": cmd, "params": params})
+			h.db.ExecContext(ctx, `UPDATE node_commands SET status = 'dispatched', executed_at = NOW() WHERE id = $1`, cmdID)
+		}
+	}
+	if pendingCommands == nil {
+		return []gin.H{}
+	}
+	return pendingCommands
+}
+
+func (h *NodeWalletHandler) fetchNetworkStats(ctx context.Context, wallet string) (int, int, int) {
+	var peersOnline, totalNodes, nodeRank int
+	_ = h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM nodes WHERE status = 'online' OR last_seen > NOW() - INTERVAL '5 minutes'`).Scan(&peersOnline)
+	_ = h.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM nodes`).Scan(&totalNodes)
+	_ = h.db.QueryRowContext(ctx, `
+		SELECT COUNT(*) + 1 FROM nodes WHERE total_earnings > COALESCE(
+			(SELECT total_earnings FROM nodes WHERE wallet_address = $1), 0
+		)`, wallet).Scan(&nodeRank)
+	return peersOnline, totalNodes, nodeRank
+}
+
 func (h *NodeWalletHandler) HandleSyncEarnings(c *gin.Context) {
 	c.JSON(410, gin.H{
 		"error":   "deprecated",
@@ -335,7 +359,7 @@ func (h *NodeWalletHandler) HandleUpdateCheck(c *gin.Context) {
 		"latest_version":   latestVersion,
 		"current_version":  currentVersion,
 		"update_available": updateAvailable,
-		"update_url":       "https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh",
+		"update_url":       nodeInstallScriptURL,
 		"release_url":      "https://github.com/gstdcoin/gstdbot/releases",
 		"changelog": []string{
 			"v3.4.0: TON Connect fix, Platform Link, Model Failover, Core Modules",
@@ -748,7 +772,11 @@ func (h *NodeWalletHandler) asyncUpdateTiersAndSovereign(nodeAddr string, rwd fl
 			log.Printf("[heartbeat-async] rewards_ledger err: %v", err)
 		}
 
-		h.db.Exec(`UPDATE tokenomics_halving SET current_circulating = current_circulating + $1, total_minted_in_epoch = total_minted_in_epoch + $1 WHERE epoch_number = (SELECT MAX(epoch_number) FROM tokenomics_halving)`, rwd)
-		h.db.Exec(`INSERT INTO revenue_sharing (epoch_date, total_platform_revenue, node_operator_share, total_eligible_nodes) VALUES (CURRENT_DATE, $1, $1 * 0.85, 1) ON CONFLICT (epoch_date) DO UPDATE SET total_platform_revenue = revenue_sharing.total_platform_revenue + $1, node_operator_share = revenue_sharing.node_operator_share + ($1 * 0.85), total_eligible_nodes = (SELECT COUNT(*) FROM nodes WHERE status='online' OR last_seen > NOW() - INTERVAL '24 hours')`, rwd)
+		if _, err := h.db.Exec(`UPDATE tokenomics_halving SET current_circulating = current_circulating + $1, total_minted_in_epoch = total_minted_in_epoch + $1 WHERE epoch_number = (SELECT MAX(epoch_number) FROM tokenomics_halving)`, rwd); err != nil {
+			log.Printf("[heartbeat-async] tokenomics_halving update err: %v", err)
+		}
+		if _, err := h.db.Exec(`INSERT INTO revenue_sharing (epoch_date, total_platform_revenue, node_operator_share, total_eligible_nodes) VALUES (CURRENT_DATE, $1, $1 * 0.85, 1) ON CONFLICT (epoch_date) DO UPDATE SET total_platform_revenue = revenue_sharing.total_platform_revenue + $1, node_operator_share = revenue_sharing.node_operator_share + ($1 * 0.85), total_eligible_nodes = (SELECT COUNT(*) FROM nodes WHERE status='online' OR last_seen > NOW() - INTERVAL '24 hours')`, rwd); err != nil {
+			log.Printf("[heartbeat-async] revenue_sharing update err: %v", err)
+		}
 	}()
 }

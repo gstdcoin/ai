@@ -69,7 +69,10 @@ func DBCircuitBreaker(db *sql.DB) gin.HandlerFunc {
 		dbCircuitMu.Unlock()
 
 		stats := db.Stats()
-		maxOpen := 250 // Match database.go SetMaxOpenConns
+		maxOpen := stats.MaxOpenConnections
+		if maxOpen <= 0 {
+			maxOpen = 20 // fallback if unlimited
+		}
 		threshold := int(float64(maxOpen) * float64(dbCircuitThresholdPercent) / 100)
 		tripped := stats.OpenConnections >= threshold
 

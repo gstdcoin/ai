@@ -49,8 +49,8 @@ export default function DevelopersPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    fetch(`${API}/api/v1/rpc/chains`).then(r => r.json()).then(d => setChains(d.chains || [])).catch(() => {});
-    fetch(`${API}/api/v1/rpc/pricing`).then(r => r.json()).then(d => setPricing(d)).catch(() => {});
+    fetch(`${API}/api/v1/rpc/chains`).then(r => r.json()).then(d => setChains(d.chains || [])).catch((err) => console.error('[Developers] chains failed:', err));
+    fetch(`${API}/api/v1/rpc/pricing`).then(r => r.json()).then(d => setPricing(d)).catch((err) => console.error('[Developers] pricing failed:', err));
     const saved = localStorage.getItem('gstd_b2b_wallet');
     const savedKey = localStorage.getItem('gstd_b2b_apikey');
     if (saved) { setWalletAddress(saved); if (savedKey) { setApiKey(savedKey); setView('dashboard'); } }

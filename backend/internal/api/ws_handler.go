@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -19,8 +20,10 @@ import (
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		origin := r.Header.Get("Origin")
-		// Origin whitelist for production security
-		allowedOrigins := []string{"https://app.gstdtoken.com", "http://localhost:3000", "ws://localhost:3000", "wss://app.gstdtoken.com", "https://web.telegram.org", "https://t.me"}
+		allowedOrigins := []string{"https://app.gstdtoken.com", "wss://app.gstdtoken.com", "https://gstdtoken.com", "https://www.gstdtoken.com", "https://web.telegram.org", "https://t.me"}
+		if os.Getenv("GSTD_ENV") == "development" {
+			allowedOrigins = append(allowedOrigins, "http://localhost:3000", "ws://localhost:3000")
+		}
 		if origin != "" {
 			log.Printf("WebSocket connection from origin: %s", origin)
 			allowed := false
@@ -32,8 +35,12 @@ var upgrader = websocket.Upgrader{
 			}
 			return allowed
 		}
-		// Allow connections without Origin header (some clients don't send it)
-		return true
+		// Reject connections without Origin header in production
+		if os.Getenv("GSTD_ENV") == "development" {
+			return true
+		}
+		log.Printf("WebSocket connection REJECTED: no Origin header")
+		return false
 	},
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
@@ -210,19 +217,31 @@ func (h *WSHub) Run() {
 			}
 			h.mu.Unlock()
 
+			// Broadcast under RLock, collect stale clients
+			var staleClients []*WSClient
 			h.mu.RLock()
-			// Filter clients by trust score
 			for client := range h.clients {
 				if client.trustScore >= notification.Task.MinTrustScore {
 					select {
 					case client.send <- h.marshalNotification(notification):
 					default:
-						close(client.send)
-						delete(h.clients, client)
+						staleClients = append(staleClients, client)
 					}
 				}
 			}
 			h.mu.RUnlock()
+
+			// Remove stale clients under write Lock (safe)
+			if len(staleClients) > 0 {
+				h.mu.Lock()
+				for _, client := range staleClients {
+					if _, ok := h.clients[client]; ok {
+						close(client.send)
+						delete(h.clients, client)
+					}
+				}
+				h.mu.Unlock()
+			}
 
 		case announcement := <-h.announcement:
 			msg, _ := json.Marshal(announcement)

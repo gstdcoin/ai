@@ -26,8 +26,8 @@ func NewConnection(cfg config.DatabaseConfig) (*sql.DB, error) {
 	}
 
 	// Connection pool: 4 replicas × 20 = 80 max (within PG default 100)
-	db.SetMaxOpenConns(20)
-	db.SetMaxIdleConns(5)
+	db.SetMaxOpenConns(50)
+	db.SetMaxIdleConns(10)
 	db.SetConnMaxLifetime(30 * time.Minute) // recycle connections to avoid stale after PG restart
 	db.SetConnMaxIdleTime(5 * time.Minute)  // reclaim idle connections
 

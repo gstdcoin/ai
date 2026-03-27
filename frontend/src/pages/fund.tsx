@@ -77,7 +77,9 @@ export default function SovereignFundPage() {
       if (eRes.ok) setEpoch(await eRes.json());
       if (rRes.ok) { const d = await rRes.json(); setRevenue(d.sources || []); }
       if (lRes.ok) { const d = await lRes.json(); setLeaderboard(d.leaderboard || []); }
-    } catch {}
+    } catch (err) {
+      console.error('[SovereignFund] Failed to load data:', err);
+    }
   }, []);
 
   useEffect(() => { loadData(); const i = setInterval(loadData, 30000); return () => clearInterval(i); }, [loadData]);

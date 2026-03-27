@@ -58,15 +58,16 @@ export default function NodesPage() {
   const [installCopied, setInstallCopied] = useState(false);
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/api/v1/nodes/rewards/network`).then(r => r.json()).then(setNetwork).catch(() => undefined);
-    fetch(`${API_BASE_URL}/api/v1/nodes/rewards/program`).then(r => r.json()).then(setProgram).catch(() => undefined);
-    fetch(`${API_BASE_URL}/api/v1/nodes/rewards/leaderboard?period=${period}`).then(r => r.json()).then(d => setLeaders(d.leaderboard || [])).catch(() => undefined);
-    fetch(`${API_BASE_URL}/api/v1/nodes/tools/health`).then(r => r.json()).then(setHealth).catch(() => undefined);
-    fetch(`${API_BASE_URL}/api/v1/nodes/tools/tasks/available`).then(r => r.json()).then(d => setTasks(d.tasks || [])).catch(() => undefined);
-    fetch(`${API_BASE_URL}/api/v1/nodes/tools/governance/active`).then(r => r.json()).then(d => setGovernance(d.proposals || [])).catch(() => undefined);
-    fetch(`${API_BASE_URL}/api/v1/nodes/tools/burn-stats`).then(r => r.json()).then(setBurn).catch(() => undefined);
-    fetch(`${API_BASE_URL}/api/v1/nodes/liquidity/pools`).then(r => r.json()).then(d => setVaults(d || [])).catch(() => undefined);
-    fetch(`${API_BASE_URL}/api/v1/naas/stats`).then(r => r.json()).then(setNaasStats).catch(() => undefined);
+    const logErr = (endpoint: string) => (err: unknown) => console.error(`[Nodes] ${endpoint} failed:`, err);
+    fetch(`${API_BASE_URL}/api/v1/nodes/rewards/network`).then(r => r.json()).then(setNetwork).catch(logErr('network'));
+    fetch(`${API_BASE_URL}/api/v1/nodes/rewards/program`).then(r => r.json()).then(setProgram).catch(logErr('program'));
+    fetch(`${API_BASE_URL}/api/v1/nodes/rewards/leaderboard?period=${period}`).then(r => r.json()).then(d => setLeaders(d.leaderboard || [])).catch(logErr('leaderboard'));
+    fetch(`${API_BASE_URL}/api/v1/nodes/tools/health`).then(r => r.json()).then(setHealth).catch(logErr('health'));
+    fetch(`${API_BASE_URL}/api/v1/nodes/tools/tasks/available`).then(r => r.json()).then(d => setTasks(d.tasks || [])).catch(logErr('tasks'));
+    fetch(`${API_BASE_URL}/api/v1/nodes/tools/governance/active`).then(r => r.json()).then(d => setGovernance(d.proposals || [])).catch(logErr('governance'));
+    fetch(`${API_BASE_URL}/api/v1/nodes/tools/burn-stats`).then(r => r.json()).then(setBurn).catch(logErr('burn-stats'));
+    fetch(`${API_BASE_URL}/api/v1/nodes/liquidity/pools`).then(r => r.json()).then(d => setVaults(d || [])).catch(logErr('pools'));
+    fetch(`${API_BASE_URL}/api/v1/naas/stats`).then(r => r.json()).then(setNaasStats).catch(logErr('naas'));
   }, [period]);
 
   // Fetch user's pending rewards when wallet is connected
@@ -75,7 +76,7 @@ export default function NodesPage() {
     fetch(`${API_BASE_URL}/api/v1/nodes/pending-rewards?wallet=${encodeURIComponent(walletAddress)}`)
         .then(r => r.json())
         .then(d => setPendingRewards(d.total_pending || 0))
-        .catch(() => undefined);
+        .catch((err) => console.error('[Nodes] pending-rewards failed:', err));
   }, [walletAddress]);
 
   const handleClaim = useCallback(async () => {

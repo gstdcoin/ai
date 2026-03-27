@@ -13,6 +13,11 @@ import (
 	"distributed-computing-platform/internal/services"
 )
 
+const (
+	categoryTechTrends = "tech-trends"
+	errWalletRequiredSim  = "Wallet required"
+)
+
 // SimulationsHandler manages paid AI swarm simulations
 type SimulationsHandler struct {
 	db       *sql.DB
@@ -75,8 +80,8 @@ func (h *SimulationsHandler) GetCatalog(c *gin.Context) {
 			Features:    []string{"Polymarket live data", "Outcome probability", "Mispricing detection", "Event analysis", "Confidence scoring"},
 		},
 		{
-			ID:          "tech-trends",
-			Category:    "tech-trends",
+			ID:          categoryTechTrends,
+			Category:    categoryTechTrends,
 			Title:       "📡 Tech Trends Intelligence",
 			Description: "Venture-grade tech trend analysis. AI agents process HackerNews data to identify emerging technologies, market opportunities, and investment signals.",
 			Icon:        "📡",
@@ -105,7 +110,7 @@ func (h *SimulationsHandler) GetCatalog(c *gin.Context) {
 func (h *SimulationsHandler) LaunchSimulation(c *gin.Context) {
 	walletAddress, exists := c.Get("wallet_address")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Wallet required"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": errWalletRequiredSim})
 		return
 	}
 	wallet := walletAddress.(string)
@@ -220,7 +225,9 @@ func (h *SimulationsHandler) runSimulation(simID, category, scenario, seedData s
 
 	if h.mirofish == nil {
 		log.Printf("⚠️ Swarm AI service not available for simulation %s", simID)
-		h.db.Exec("UPDATE mirofish_simulations SET status = 'failed', result_report = 'AI service unavailable', updated_at = NOW() WHERE id = $1", simID)
+		if _, err := h.db.Exec("UPDATE mirofish_simulations SET status = 'failed', result_report = 'AI service unavailable', updated_at = NOW() WHERE id = $1", simID); err != nil {
+			log.Printf("[simulation] failed to update status: %v", err)
+		}
 		return
 	}
 
@@ -244,8 +251,10 @@ func (h *SimulationsHandler) runSimulation(simID, category, scenario, seedData s
 
 	if err != nil {
 		log.Printf("⚠️ Simulation %s failed: %v", simID, err)
-		h.db.Exec("UPDATE mirofish_simulations SET status = 'failed', result_report = $2, compute_ms = $3, updated_at = NOW() WHERE id = $1",
-			simID, fmt.Sprintf("Simulation failed: %v", err), computeMs)
+		if _, dbErr := h.db.Exec("UPDATE mirofish_simulations SET status = 'failed', result_report = $2, compute_ms = $3, updated_at = NOW() WHERE id = $1",
+			simID, fmt.Sprintf("Simulation failed: %v", err), computeMs); dbErr != nil {
+			log.Printf("[simulation] failed to update failure status: %v", dbErr)
+		}
 		return
 	}
 
@@ -273,7 +282,7 @@ func (h *SimulationsHandler) runSimulation(simID, category, scenario, seedData s
 	}
 
 	// Update simulation with results
-	h.db.Exec(`UPDATE mirofish_simulations SET 
+	if _, err := h.db.Exec(`UPDATE mirofish_simulations SET 
 		status = 'completed', 
 		result_report = $2, 
 		result_summary = $3,
@@ -283,7 +292,9 @@ func (h *SimulationsHandler) runSimulation(simID, category, scenario, seedData s
 		completed_at = NOW(),
 		updated_at = NOW()
 		WHERE id = $1`,
-		simID, report, summary, result.Confidence, computeMs, len(result.Predictions))
+		simID, report, summary, result.Confidence, computeMs, len(result.Predictions)); err != nil {
+		log.Printf("[simulation] failed to save completed results: %v", err)
+	}
 
 	log.Printf("⚡ Simulation %s completed: %d predictions, %.0f%% confidence, %dms",
 		simID, len(result.Predictions), result.Confidence*100, computeMs)
@@ -293,7 +304,7 @@ func (h *SimulationsHandler) runSimulation(simID, category, scenario, seedData s
 func (h *SimulationsHandler) GetMySimulations(c *gin.Context) {
 	walletAddress, exists := c.Get("wallet_address")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Wallet required"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": errWalletRequiredSim})
 		return
 	}
 	wallet := walletAddress.(string)
@@ -354,7 +365,7 @@ func (h *SimulationsHandler) GetSimulationResult(c *gin.Context) {
 
 	walletAddress, exists := c.Get("wallet_address")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Wallet required"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": errWalletRequiredSim})
 		return
 	}
 	wallet := walletAddress.(string)
@@ -481,7 +492,7 @@ func getCategoryPrice(category string) float64 {
 		"crypto":      25.0,
 		"forex":       20.0,
 		"polymarket":  15.0,
-		"tech-trends": 10.0,
+		categoryTechTrends: 10.0,
 		"custom":      30.0,
 	}
 	if p, ok := prices[category]; ok {
@@ -495,7 +506,7 @@ func getCategoryScenario(category string) string {
 		"crypto":      "You are an expert crypto hedge fund manager. Analyze the real-time cryptocurrency market data I provide (CoinGecko). Output a concrete, actionable TRADING SIGNAL: BUY, SELL, or HOLD. Include specific entry prices, target prices, and a tight stop-loss. Provide a concise rationale using the trending volumes and dominance. Make it sound professional and strictly financial.",
 		"forex":       "You are an institutional Forex trader. Analyze the real-time forex exchange rates I provide (ECB/open APIs). Output a concrete TRADING SIGNAL for the most volatile pair (e.g., EUR/USD, GBP/USD). Specify Long or Short, entry zone, take profit, and stop loss. Focus heavily on macro trends and fiat currency momentum.",
 		"polymarket":  "You are an expert prediction market analyst. Analyze the real-time Polymarket events data I provide. For the most interesting or high-volume active event, output a concrete TRADING SIGNAL: Buy YES or Buy NO. Include the current outcome prices, the confidence level of your prediction, and why the market is currently mispriced.",
-		"tech-trends": "You are a Silicon Valley venture capitalist. Analyze the real-time HackerNews data I provide. Identify the dominant tech trend (AI, Crypto, SaaS, etc.) right now. Output a concrete INVESTMENT SIGNAL for specific public equities or crypto protocols that benefit from this exact trend. Include ticker symbols and investment timeframe.",
+		categoryTechTrends: "You are a Silicon Valley venture capitalist. Analyze the real-time HackerNews data I provide. Identify the dominant tech trend (AI, Crypto, SaaS, etc.) right now. Output a concrete INVESTMENT SIGNAL for specific public equities or crypto protocols that benefit from this exact trend. Include ticker symbols and investment timeframe.",
 		"custom":      "You are an expert analyst. Analyze the provided data and scenario carefully. Simulate the behavior of multiple agents and stakeholders. Output a detailed prediction report with confidence levels, key outcomes, and actionable recommendations.",
 	}
 	if s, ok := scenarios[category]; ok {

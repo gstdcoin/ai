@@ -71,7 +71,7 @@ export default function StakingPage() {
     fetch(`${API_BASE_URL}/api/v1/balance/public?wallet=${encodeURIComponent(walletAddress)}`)
       .then(r => r.json())
       .then(d => setBalance((d.gstd_balance || 0) + (d.pending_earnings || 0)))
-      .catch(() => {});
+      .catch((err) => { console.error('[Staking] balance fetch failed:', err); });
   }, [walletAddress]);
 
   const tier = APY_TIERS[selectedTier];
@@ -328,7 +328,7 @@ export default function StakingPage() {
                   } else {
                     toast.error(data.error || 'Conversion failed');
                   }
-                } catch { toast.error('Network error'); }
+                } catch (err) { console.error('[Staking] unstake failed:', err); toast.error('Network error'); }
                 finally { setUnstaking(false); }
               }}
               className="btn-sovereign ghost w-full disabled:opacity-30 disabled:cursor-not-allowed"

@@ -22,6 +22,8 @@ const (
 	agentReserveRate   = 0.07 // 7%  → Gold Reserve (XAUt backing)
 	agentValueFundRate = 0.05 // 5%  → Value Fund (free-tier subsidy)
 	agentBurnRate      = 0.03 // 3%  → Burn (deflationary pressure)
+
+	errKnowledgeUnavailable = "knowledge service unavailable"
 )
 
 // AgentAPIHandler handles OpenClaw/A2A agent interactions
@@ -44,7 +46,7 @@ func (h *AgentAPIHandler) ensureSchema() {
 	if h.db == nil {
 		return
 	}
-	h.db.Exec(`CREATE TABLE IF NOT EXISTS agent_api_keys (
+	if _, err := h.db.Exec(`CREATE TABLE IF NOT EXISTS agent_api_keys (
 		id SERIAL PRIMARY KEY,
 		api_key VARCHAR(128) UNIQUE NOT NULL,
 		agent_id VARCHAR(128) NOT NULL,
@@ -57,9 +59,15 @@ func (h *AgentAPIHandler) ensureSchema() {
 		total_earned_gstd NUMERIC(18,9) DEFAULT 0,
 		created_at TIMESTAMP DEFAULT NOW(),
 		last_used_at TIMESTAMP DEFAULT NOW()
-	)`)
-	h.db.Exec(`CREATE INDEX IF NOT EXISTS idx_agent_api_keys_key ON agent_api_keys(api_key)`)
-	h.db.Exec(`CREATE INDEX IF NOT EXISTS idx_agent_api_keys_wallet ON agent_api_keys(wallet_address)`)
+	)`); err != nil {
+		log.Printf("[agent] ensureSchema CREATE TABLE err: %v", err)
+	}
+	if _, err := h.db.Exec(`CREATE INDEX IF NOT EXISTS idx_agent_api_keys_key ON agent_api_keys(api_key)`); err != nil {
+		log.Printf("[agent] ensureSchema CREATE INDEX key err: %v", err)
+	}
+	if _, err := h.db.Exec(`CREATE INDEX IF NOT EXISTS idx_agent_api_keys_wallet ON agent_api_keys(wallet_address)`); err != nil {
+		log.Printf("[agent] ensureSchema CREATE INDEX wallet err: %v", err)
+	}
 }
 
 func generateAPIKey() string {
@@ -432,7 +440,7 @@ func (h *AgentAPIHandler) AgentMemoryQuery(c *gin.Context) {
 		return
 	}
 	if h.knowledgeSvc == nil {
-		c.JSON(503, gin.H{"error": "knowledge service unavailable"})
+		c.JSON(503, gin.H{"error": errKnowledgeUnavailable})
 		return
 	}
 	results, err := h.knowledgeSvc.QueryKnowledgeWithGlobalGraph(c.Request.Context(), topic, 20)
@@ -457,7 +465,7 @@ func (h *AgentAPIHandler) AgentMemoryStore(c *gin.Context) {
 		return
 	}
 	if h.knowledgeSvc == nil {
-		c.JSON(503, gin.H{"error": "knowledge service unavailable"})
+		c.JSON(503, gin.H{"error": errKnowledgeUnavailable})
 		return
 	}
 	tags := append(req.Tags, "agent_contributed", agentID)
@@ -474,7 +482,7 @@ func (h *AgentAPIHandler) AgentMemoryStore(c *gin.Context) {
 // GET /api/v1/agents/memory/insights
 func (h *AgentAPIHandler) AgentMemoryInsights(c *gin.Context) {
 	if h.knowledgeSvc == nil {
-		c.JSON(503, gin.H{"error": "knowledge service unavailable"})
+		c.JSON(503, gin.H{"error": errKnowledgeUnavailable})
 		return
 	}
 	insights, err := h.knowledgeSvc.SummarizeRecentInsights(c.Request.Context(), 20)
