@@ -28,7 +28,17 @@ func handleLeviathanSSE(c *gin.Context) {
 	c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
 	c.Header("Connection", "keep-alive")
 	c.Header("X-Accel-Buffering", "no")
-	c.Header("Access-Control-Allow-Origin", "*")
+	origin := c.GetHeader("Origin")
+	allowedOrigins := map[string]bool{
+		"https://app.gstdtoken.com":  true,
+		"https://gstdtoken.com":      true,
+		"https://www.gstdtoken.com":  true,
+	}
+	if allowedOrigins[origin] {
+		c.Header("Access-Control-Allow-Origin", origin)
+	} else {
+		c.Header("Access-Control-Allow-Origin", "https://app.gstdtoken.com")
+	}
 	c.Header("Access-Control-Expose-Headers", "Content-Type")
 	c.Status(http.StatusOK)
 	c.Writer.Flush()

@@ -59,7 +59,7 @@ export default function SwapPage() {
     fetch(`${API_BASE_URL}/api/v1/network/stats`)
       .then(r => r.json())
       .then(d => { if (d.gstd_price_usd > 0) setGstdPrice(d.gstd_price_usd); })
-      .catch(() => {});
+      .catch((err) => { console.error('[Swap] price fetch failed:', err); });
   }, []);
 
   useEffect(() => {
@@ -67,7 +67,7 @@ export default function SwapPage() {
     fetch(`${API_BASE_URL}/api/v1/balance/public?wallet=${encodeURIComponent(userAddress)}`)
       .then(r => r.json())
       .then(d => setBalance((d.gstd_balance || 0) + (d.pending_earnings || 0)))
-      .catch(() => {});
+      .catch((err) => { console.error('[Swap] balance fetch failed:', err); });
   }, [userAddress]);
 
   const fromToken = direction === 'buy' ? 'TON' : 'GSTD';
