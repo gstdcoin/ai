@@ -6,7 +6,8 @@
         "build": "npx tact --config tact.config.json",
         "deploy:mainnet": "node scripts/deploy-mainnet.js",
         "deploy:testnet": "TON_NETWORK=testnet node scripts/deploy-mainnet.js",
-        "verify": "node scripts/verify-contracts.js"
+        "verify": "node scripts/verify-contracts.js",
+        "test": "echo \"No tests defined\" && exit 0"
     },
     "dependencies": {
         "@tact-lang/compiler": "^1.5.0",
@@ -14,5 +15,9 @@
         "@ton/crypto": "^3.3.0",
         "@ton/ton": "^15.0.0",
         "dotenv": "^16.4.0"
+    },
+    "devDependencies": {
+        "ts-node": "^10.9.2",
+        "typescript": "^6.0.2"
     }
 }

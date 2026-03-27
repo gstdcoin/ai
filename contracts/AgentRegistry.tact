@@ -20,6 +20,13 @@ message RegisterNode {
     region: Int as uint8; // 0=EU, 1=US-E, 2=US-W, 3=ASIA-JP, 4=ASIA-SG, 5=AFRICA
 }
 
+message InitializeNode {
+    owner: Address;
+    nodeType: Int as uint8;
+    capabilities: Int as uint32;
+    region: Int as uint8;
+}
+
 message UpdateNodeStatus {
     nodeId: Int as uint256;
     status: Int as uint8; // 0=Offline, 1=Active, 2=Suspended, 3=Banned
@@ -102,11 +109,7 @@ contract AgentRegistry with Deployable, Ownable {
         // Deploy individual Node Identity contract
         let nodeInit: StateInit = initOf NodeIdentity(
             msg.nodeId,
-            myAddress(),
-            sender(),
-            msg.nodeType,
-            msg.capabilities,
-            msg.region,
+            myAddress()
         );
 
         send(SendParameters {
@@ -114,26 +117,31 @@ contract AgentRegistry with Deployable, Ownable {
             value: ton("0.05"),
             mode: SendIgnoreErrors,
             bounce: false,
-            body: "init".asComment(),
+            body: InitializeNode {
+                owner: sender(),
+                nodeType: msg.nodeType,
+                capabilities: msg.capabilities,
+                region: msg.region
+            }.toCell(),
             code: nodeInit.code,
             data: nodeInit.data,
         });
 
-        self.totalNodes = self.totalNodes + 1;
-        self.activeNodes = self.activeNodes + 1;
+        self.totalNodes += 1;
+        self.activeNodes += 1;
 
         // Update type counters
         if (msg.nodeType == 0) {
-            self.edgeCount = self.edgeCount + 1;
+            self.edgeCount += 1;
         }
         if (msg.nodeType == 1) {
-            self.cpuCount = self.cpuCount + 1;
+            self.cpuCount += 1;
         }
         if (msg.nodeType == 2) {
-            self.gpuCount = self.gpuCount + 1;
+            self.gpuCount += 1;
         }
         if (msg.nodeType == 3) {
-            self.headCount = self.headCount + 1;
+            self.headCount += 1;
         }
     }
 
@@ -143,10 +151,10 @@ contract AgentRegistry with Deployable, Ownable {
             sender() == self.owner || sender() == self.settlementContract,
             "Only owner or Settlement",
         );
-        self.totalTasksCompleted = self.totalTasksCompleted + msg.tasksDelta;
+        self.totalTasksCompleted += msg.tasksDelta;
 
         // Forward reputation update to individual Node Identity
-        let nodeAddr: Address = self.getNodeAddress(msg.nodeId);
+        let nodeAddr: Address = getNodeAddress(msg.nodeId, myAddress());
         send(SendParameters {
             to: nodeAddr,
             value: ton("0.03"),
@@ -160,8 +168,8 @@ contract AgentRegistry with Deployable, Ownable {
     receive(msg: ReportGenesisViolation) {
         // Any verified node can report a violation
         // Forward to node identity for status update + decrement active count
-        self.activeNodes = self.activeNodes - 1;
-        let nodeAddr: Address = self.getNodeAddress(msg.nodeId);
+        self.activeNodes -= 1;
+        let nodeAddr: Address = getNodeAddress(msg.nodeId, myAddress());
         send(SendParameters {
             to: nodeAddr,
             value: ton("0.03"),
@@ -203,21 +211,17 @@ contract AgentRegistry with Deployable, Ownable {
     }
 
     get fun get_node_address(nodeId: Int): Address {
-        return self.getNodeAddress(nodeId);
+        return getNodeAddress(nodeId, myAddress());
     }
+}
 
-    // ── Internal ────────────────────────────────────────────────────────
-    fun getNodeAddress(nodeId: Int): Address {
-        let nodeInit: StateInit = initOf NodeIdentity(
-            nodeId,
-            myAddress(),
-            newAddress(0, 0),
-            0,
-            0,
-            0,
-        );
-        return contractAddress(nodeInit);
-    }
+// ── Internal Helper ────────────────────────────────────────────────────────
+fun getNodeAddress(nodeId: Int, registry: Address): Address {
+    let nodeInit: StateInit = initOf NodeIdentity(
+        nodeId,
+        registry
+    );
+    return contractAddress(nodeInit);
 }
 
 // ── NodeIdentity — Individual node on-chain identity ────────────────────────
@@ -240,18 +244,14 @@ contract NodeIdentity {
 
     init(
         nodeId: Int,
-        registry: Address,
-        owner: Address,
-        nodeType: Int,
-        capabilities: Int,
-        region: Int,
+        registry: Address
     ) {
         self.nodeId = nodeId;
         self.registry = registry;
-        self.owner = owner;
-        self.nodeType = nodeType;
-        self.capabilities = capabilities;
-        self.region = region;
+        self.owner = newAddress(0, 0);
+        self.nodeType = 0;
+        self.capabilities = 0;
+        self.region = 0;
 
         self.qualityScore = 0;
         self.uptimeScore = 0;
@@ -261,15 +261,19 @@ contract NodeIdentity {
         self.lastActiveAt = now();
     }
 
-    receive("init") {
-        // Initialization marker
+    receive(msg: InitializeNode) {
+        require(sender() == self.registry, "Only registry");
+        self.owner = msg.owner;
+        self.nodeType = msg.nodeType;
+        self.capabilities = msg.capabilities;
+        self.region = msg.region;
     }
 
     receive(msg: UpdateReputation) {
         require(sender() == self.registry, "Only registry");
-        self.qualityScore = self.qualityScore + msg.qualityDelta;
-        self.uptimeScore = self.uptimeScore + msg.uptimeDelta;
-        self.tasksCompleted = self.tasksCompleted + msg.tasksDelta;
+        self.qualityScore += msg.qualityDelta;
+        self.uptimeScore += msg.uptimeDelta;
+        self.tasksCompleted += msg.tasksDelta;
         self.lastActiveAt = now();
     }
 

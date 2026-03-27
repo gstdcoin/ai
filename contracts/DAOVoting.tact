@@ -29,10 +29,22 @@ message ExecuteProposal {
     proposalId: Int as uint64;
 }
 
+message InitializeProposal {
+    proposer: Address;
+    targetContract: Address;
+    payload: Cell;
+    votingPeriod: Int as uint32;
+    timelockSeconds: Int as uint32;
+}
+
 message CancelProposal {
     proposalId: Int as uint64;
     reason: String;
 }
+
+message ExecuteLocalProposal {}
+
+message RenounceOwnership {}
 
 message UpdateGovernanceParams {
     quorumPercent: Int as uint8;
@@ -78,17 +90,12 @@ contract DAOVoting with Deployable, Ownable {
         require(context().value >= ton("1"), "Must attach min 1 TON as proposal stake");
 
         let proposalId: Int = self.proposalCount;
-        self.proposalCount = self.proposalCount + 1;
+        self.proposalCount += 1;
 
         // Deploy individual Proposal contract
         let proposalInit: StateInit = initOf Proposal(
             proposalId,
-            myAddress(),
-            sender(),
-            msg.targetContract,
-            msg.payload,
-            msg.votingPeriod,
-            self.timelockSeconds,
+            myAddress()
         );
 
         send(SendParameters {
@@ -96,7 +103,13 @@ contract DAOVoting with Deployable, Ownable {
             value: ton("0.1"),
             mode: SendIgnoreErrors,
             bounce: false,
-            body: "init".asComment(),
+            body: InitializeProposal {
+                proposer: sender(),
+                targetContract: msg.targetContract,
+                payload: msg.payload,
+                votingPeriod: msg.votingPeriod,
+                timelockSeconds: self.timelockSeconds
+            }.toCell(),
             code: proposalInit.code,
             data: proposalInit.data,
         });
@@ -112,9 +125,22 @@ contract DAOVoting with Deployable, Ownable {
             value: ton("0.15"),
             mode: SendIgnoreErrors,
             bounce: false,
-            body: "execute".asComment(),
+            body: ExecuteLocalProposal{}.toCell(),
         });
-        self.executedCount = self.executedCount + 1;
+        self.executedCount += 1;
+    }
+
+    // ── Cast verified vote (via oracle) ─────────────────────────────────
+    receive(msg: CastVote) {
+        require(sender() == self.owner, "Only DAO oracle can submit verified votes");
+        let proposalAddr: Address = self.get_proposal_address(msg.proposalId);
+        send(SendParameters {
+            to: proposalAddr,
+            value: 0,
+            mode: SendRemainingValue, // pass attached TON
+            bounce: false,
+            body: msg.toCell(),
+        });
     }
 
     // ── Admin: update governance parameters ─────────────────────────────
@@ -128,7 +154,7 @@ contract DAOVoting with Deployable, Ownable {
     }
 
     // ── Transfer ownership to DAO itself (decentralization) ─────────────
-    receive("renounce") {
+    receive(msg: RenounceOwnership) {
         require(sender() == self.owner, "Only owner");
         self.owner = myAddress(); // DAO now governs itself
     }
@@ -149,12 +175,7 @@ contract DAOVoting with Deployable, Ownable {
     get fun get_proposal_address(proposalId: Int): Address {
         let init: StateInit = initOf Proposal(
             proposalId,
-            myAddress(),
-            newAddress(0, 0),
-            newAddress(0, 0),
-            emptyCell(),
-            0,
-            0,
+            myAddress()
         );
         return contractAddress(init);
     }
@@ -184,48 +205,50 @@ contract Proposal {
 
     init(
         proposalId: Int,
-        dao: Address,
-        proposer: Address,
-        targetContract: Address,
-        payload: Cell,
-        votingPeriod: Int,
-        timelockSeconds: Int,
+        dao: Address
     ) {
         self.proposalId = proposalId;
         self.dao = dao;
-        self.proposer = proposer;
-        self.targetContract = targetContract;
-        self.payload = payload;
+        self.proposer = newAddress(0, 0);
+        self.targetContract = newAddress(0, 0);
+        self.payload = emptyCell();
 
         self.votesFor = 0;
         self.votesAgainst = 0;
         self.voterCount = 0;
 
         self.createdAt = now();
-        self.votingEndsAt = now() + votingPeriod;
-        self.executionUnlocksAt = now() + votingPeriod + timelockSeconds;
-        self.status = 0;
+        self.votingEndsAt = now();
+        self.executionUnlocksAt = now();
+        self.status = 1; // Temporary disabled status until init
     }
 
-    receive("init") {
-        // Marker
+    receive(msg: InitializeProposal) {
+        require(sender() == self.dao, "Only DAO");
+        self.proposer = msg.proposer;
+        self.targetContract = msg.targetContract;
+        self.payload = msg.payload;
+        self.votingEndsAt = now() + msg.votingPeriod;
+        self.executionUnlocksAt = now() + msg.votingPeriod + msg.timelockSeconds;
+        self.status = 0; // Active
     }
 
     receive(msg: CastVote) {
+        require(sender() == self.dao, "Votes must come from DAO oracle");
         require(self.status == 0, "Voting not active");
         require(now() < self.votingEndsAt, "Voting period ended");
         require(msg.weight > 0, "Vote weight must be positive");
 
         if (msg.support) {
-            self.votesFor = self.votesFor + msg.weight;
+            self.votesFor += msg.weight;
         } else {
-            self.votesAgainst = self.votesAgainst + msg.weight;
+            self.votesAgainst += msg.weight;
         }
-        self.voterCount = self.voterCount + 1;
+        self.voterCount += 1;
     }
 
     // ── Execute if passed and timelock expired ──────────────────────────
-    receive("execute") {
+    receive(msg: ExecuteLocalProposal) {
         require(self.status == 0 || self.status == 1, "Cannot execute");
         require(now() >= self.executionUnlocksAt, "Timelock not expired");
         require(self.votesFor > self.votesAgainst, "Vote did not pass");
