@@ -1,4 +1,4 @@
-import { useEffect, useState, memo, useCallback } from 'react';
+import { useEffect, useState, memo, useCallback, lazy, Suspense } from 'react';
 import { useTranslation } from 'next-i18next';
 import Link from 'next/link';
 import { ErrorBoundary } from '../common/ErrorBoundary';
@@ -20,6 +20,9 @@ import { ComputeNodePanel } from './ComputeNodePanel';
 import { InstallPwaPrompt } from '../common/InstallPwaPrompt';
 import { isTelegramWebApp, triggerHapticImpact } from '../../lib/telegram';
 
+// Lazy-load LendingPanel to keep initial bundle small
+const LendingPanel = lazy(() => import('./LendingPanel'));
+
 interface NetworkStats {
   active_workers: number;
   total_gstd_paid: number;
@@ -39,7 +42,7 @@ function Dashboard({ initialTab, sourceTelegram, modeMining }: DashboardProps = 
   const { address, disconnect, gstdBalance, pendingEarnings } = useWalletStore();
   const [tonConnectUI] = useTonConnectUI();
   const [activeTab, setActiveTab] = useState<Tab>(() => {
-    const valid: Tab[] = ['home', 'tasks', 'nodes'];
+    const valid: Tab[] = ['home', 'tasks', 'nodes', 'lending'];
     if (initialTab && valid.includes(initialTab as Tab)) return initialTab as Tab;
     return 'home';
   });
@@ -56,7 +59,7 @@ function Dashboard({ initialTab, sourceTelegram, modeMining }: DashboardProps = 
 
   // Tab persistence
   useEffect(() => {
-    const valid: Tab[] = ['home', 'tasks', 'nodes'];
+    const valid: Tab[] = ['home', 'tasks', 'nodes', 'lending'];
     if (initialTab && valid.includes(initialTab as Tab)) { setActiveTab(initialTab as Tab); return; }
     const saved = typeof window !== 'undefined' ? localStorage.getItem('activeTab') : null;
     if (saved && valid.includes(saved as Tab)) setActiveTab(saved as Tab);
@@ -336,6 +339,17 @@ function Dashboard({ initialTab, sourceTelegram, modeMining }: DashboardProps = 
                 <div className="animate-in fade-in duration-300">
                   <ComponentErrorBoundary name="DevicesPanel">
                     <DevicesPanel />
+                  </ComponentErrorBoundary>
+                </div>
+              )}
+
+              {/* ═══ LENDING TAB ═══ */}
+              {activeTab === 'lending' && (
+                <div className="animate-in fade-in duration-300">
+                  <ComponentErrorBoundary name="LendingPanel">
+                    <Suspense fallback={<div className="flex justify-center py-8"><div className="w-6 h-6 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" /></div>}>
+                      <LendingPanel />
+                    </Suspense>
                   </ComponentErrorBoundary>
                 </div>
               )}

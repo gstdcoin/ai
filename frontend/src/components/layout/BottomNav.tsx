@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'next-i18next';
-import { Home, ListTodo, Server, MessageSquare, Brain } from 'lucide-react';
+import { Home, ListTodo, Server, Landmark, Brain } from 'lucide-react';
 import { Tab } from '../../types/tabs';
 
 interface BottomNavProps {
@@ -16,7 +16,7 @@ export default function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
     { id: 'tasks', label: t('tab_tasks', 'Tasks'), icon: <ListTodo size={22} /> },
     { id: 'signals', label: t('ai_signals', 'Signals'), icon: <Brain size={22} />, href: '/predictions' },
     { id: 'nodes', label: t('tab_nodes', 'Nodes'), icon: <Server size={22} /> },
-    { id: 'chat', label: t('chat', 'Chat'), icon: <MessageSquare size={22} />, href: '/chat' },
+    { id: 'lending', label: t('tab_lending', 'Lending'), icon: <Landmark size={22} /> },
   ];
 
   return (
