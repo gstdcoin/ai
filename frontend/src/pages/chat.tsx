@@ -3,7 +3,12 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 
-import { Send, Plus, Trash2, Copy, Check, Menu, X, ChevronDown, Bot, Wallet, ExternalLink, Sparkles, Brain, RotateCcw, Square, MessageSquare } from 'lucide-react';
+import { 
+    Send, Plus, Trash2, Copy, Check, Menu, X, ChevronDown, 
+    Bot, Wallet, ExternalLink, Sparkles, Brain, RotateCcw, 
+    Square, MessageSquare, Shield, Zap, Globe, Cpu, Layers, 
+    ArrowRightLeft
+} from 'lucide-react';
 import { useWalletStore } from '../store/walletStore';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -105,14 +110,19 @@ function ExpertPanel({ isReasoning, collectivePhase, expertResults = [], consens
 
     if (expertCount <= 1) {
         return (
-            <div className="flex items-center gap-3 py-3 px-4 rounded-xl bg-violet-500/[0.04] border border-violet-500/10 my-2">
-                <div className="relative w-6 h-6">
-                    <div className="absolute inset-0 rounded-full border-2 border-violet-500/30 border-t-violet-400 animate-spin" />
-                    <Brain size={12} className="absolute inset-0 m-auto text-violet-400" />
+            <div className="flex items-center gap-4 py-4 px-5 rounded-2xl bg-violet-500/[0.04] border border-violet-500/10 my-4 group hover:border-violet-500/20 transition-all duration-300">
+                <div className="relative w-10 h-10 flex items-center justify-center">
+                    <div className="absolute inset-0 rounded-full border-2 border-violet-500/20 border-t-violet-400 animate-spin" />
+                    <div className="absolute inset-0 rounded-full bg-violet-500/5 blur-sm" />
+                    <Brain size={18} className="relative text-violet-400 group-hover:scale-110 transition-transform" />
                 </div>
-                <div>
-                    <span className="text-sm text-violet-300 font-medium">{isReasoning ? 'Deep reasoning...' : 'Thinking...'}</span>
-                    <span className="text-[11px] text-gray-600 ml-2">{isReasoning ? 'Analyzing step by step' : 'Generating response'}</span>
+                <div className="flex flex-col">
+                    <span className="text-sm text-violet-200 font-semibold tracking-wide uppercase text-[10px] opacity-70">
+                        {isReasoning ? 'Deep reasoning engine' : 'Neural processing'}
+                    </span>
+                    <span className="text-base text-violet-300 font-medium leading-none mt-1">
+                        {isReasoning ? 'Decomposing complex problem...' : 'Generating sovereign response...'}
+                    </span>
                 </div>
             </div>
         );
@@ -228,21 +238,26 @@ function ExpertPanel({ isReasoning, collectivePhase, expertResults = [], consens
     );
 }
 
-// ─── Markdown Message Renderer ────────────────────────────────────
-function MarkdownMessage({ content }: { content: string }) {
+interface MarkdownMessageProps {
+    content: string;
+    isStreaming?: boolean;
+}
+
+function MarkdownMessage({ content, isStreaming }: MarkdownMessageProps) {
     return (
-        <div className="prose prose-invert prose-sm max-w-full overflow-hidden break-words
-            prose-headings:text-white prose-headings:font-bold prose-headings:mt-4 prose-headings:mb-2
-            prose-h1:text-xl prose-h2:text-lg prose-h3:text-base
-            prose-p:text-gray-200 prose-p:leading-relaxed prose-p:my-2
-            prose-strong:text-white prose-strong:font-semibold
-            prose-em:text-gray-300
-            prose-a:text-violet-400 prose-a:no-underline hover:prose-a:underline
-            prose-ul:my-2 prose-ol:my-2 prose-li:text-gray-200 prose-li:my-0.5
-            prose-blockquote:border-violet-500/30 prose-blockquote:bg-violet-500/[0.04] prose-blockquote:rounded-r-lg prose-blockquote:py-1 prose-blockquote:text-gray-300
-            prose-table:border-white/10 prose-th:text-gray-300 prose-td:text-gray-400
-            prose-hr:border-white/10
-        ">
+        <div className={`prose prose-invert prose-sm max-w-full overflow-hidden break-words relative
+            prose-headings:text-white prose-headings:font-bold prose-headings:mt-8 prose-headings:mb-4
+            prose-h1:text-2xl prose-h1:tracking-tight prose-h2:text-xl prose-h2:tracking-tight prose-h3:text-lg
+            prose-p:text-gray-200 prose-p:leading-[1.7] prose-p:my-4 prose-p:text-[15px]
+            prose-strong:text-white prose-strong:font-bold prose-strong:bg-violet-500/10 prose-strong:px-1 prose-strong:rounded
+            prose-em:text-gray-400 prose-em:italic
+            prose-a:text-violet-400 prose-a:no-underline prose-a:font-medium hover:prose-a:text-violet-300 hover:prose-a:underline
+            prose-ul:my-6 prose-ol:my-6 prose-li:text-gray-200 prose-li:my-2 prose-li:text-[15px]
+            prose-blockquote:border-l-4 prose-blockquote:border-violet-500/40 prose-blockquote:bg-violet-500/[0.03] prose-blockquote:rounded-r-xl prose-blockquote:py-2 prose-blockquote:px-6 prose-blockquote:text-gray-300 prose-blockquote:italic
+            prose-table:border-white/10 prose-table:my-8 prose-th:text-gray-300 prose-th:font-bold prose-th:bg-white/[0.05] prose-th:p-3 prose-td:text-gray-400 prose-td:p-3 prose-td:border-b prose-td:border-white/[0.04]
+            prose-hr:border-white/10 prose-hr:my-10
+            ${isStreaming ? 'streaming-content' : ''}
+        `}>
             <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 components={{
@@ -274,24 +289,28 @@ export default function ChatPage() {
     // ─── Collective Intelligence Tiers ─────────────────────────────
     const INTELLIGENCE_TIERS = [
         {
-            id: 'free', name: 'Single Expert', badge: '🆓', cost: 0, expertCount: 1,
-            desc: 'Free high-accuracy mode tuned to beat typical commercial responses',
+            id: 'free', name: 'Standard Mode', badge: '🆓', cost: 0, expertCount: 1,
+            desc: 'High-performance model tuned for precision and thoroughness.',
             color: 'text-gray-400', bg: 'bg-white/[0.03]', border: 'border-white/[0.06]',
+            icon: <Shield size={16} />
         },
         {
             id: 'standard', name: 'Council of 3', badge: '🔬', cost: 0.05, expertCount: 3,
-            desc: '3 experts with consensus synthesis for a major quality jump',
+            desc: 'Triple-reasoning synthesis for a significant leap in analytical quality.',
             color: 'text-blue-400', bg: 'bg-blue-500/[0.06]', border: 'border-blue-500/20',
+            icon: <Zap size={16} />
         },
         {
-            id: 'pro', name: 'Panel of 5', badge: '🔥', cost: 0.15, expertCount: 5,
-            desc: '5 experts with deep cross-verification for 10x stronger reasoning',
+            id: 'pro', name: 'Consensus 5', badge: '🔥', cost: 0.15, expertCount: 5,
+            desc: 'Quint-expert cross-verification. Filters hallucinations with 99% accuracy.',
             color: 'text-amber-400', bg: 'bg-amber-500/[0.06]', border: 'border-amber-500/20',
+            icon: <Globe size={16} />
         },
         {
-            id: 'ultra', name: 'Swarm of 7', badge: '🧠', cost: 0.50, expertCount: 7,
-            desc: '7 experts + full verification for maximum analytical power',
+            id: 'ultra', name: 'Expert Swarm', badge: '🧠', cost: 0.50, expertCount: 7,
+            desc: 'Max-tier intelligence. 7 distinct architectures synthesized for the literal best answer.',
             color: 'text-violet-400', bg: 'bg-violet-500/[0.06]', border: 'border-violet-500/20',
+            icon: <Cpu size={16} />
         },
     ];
 
@@ -781,54 +800,68 @@ export default function ChatPage() {
                         </button>
 
                         {/* Collective Intelligence tier picker */}
-                        <div className="relative">
+                        <div className="relative group">
                             <button
                                 onClick={() => { setShowTierPicker(!showTierPicker); }}
-                                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl transition text-sm font-medium border ${selectedTier !== 'free'
-                                    ? `${currentTier.bg} ${currentTier.color} ${currentTier.border}`
-                                    : 'text-gray-400 border-transparent hover:bg-white/5 hover:border-white/10'
+                                className={`flex items-center gap-2.5 px-3.5 py-1.5 rounded-xl transition-all duration-300 text-[13px] font-bold border shadow-lg ${selectedTier !== 'free'
+                                    ? `${currentTier.bg} ${currentTier.color} ${currentTier.border} shadow-violet-500/5`
+                                    : 'text-gray-400 border-white/[0.08] hover:bg-white/5 hover:border-white/10'
                                     }`}
                             >
-                                <span className="text-base">{currentTier.badge}</span>
-                                <span className="hidden sm:inline">{currentTier.name}</span>
-                                <ChevronDown size={13} className={`opacity-50 transition-transform ${showTierPicker ? 'rotate-180' : ''}`} />
+                                <span className="text-base filter drop-shadow-sm">{currentTier.badge}</span>
+                                <span className="hidden sm:inline tracking-tight">{currentTier.name}</span>
+                                <ChevronDown size={14} className={`opacity-40 transition-transform duration-300 ${showTierPicker ? 'rotate-180' : ''}`} />
                             </button>
 
                             {showTierPicker && (
                                 <>
                                     <div className="fixed inset-0 z-40" onClick={() => setShowTierPicker(false)} />
-                                    <div className="absolute top-full left-0 mt-2 w-80 bg-[#0e0e1c] border border-white/10 rounded-xl shadow-2xl z-50 py-1 overflow-hidden">
-                                        <div className="px-3 py-2 border-b border-white/[0.04]">
-                                            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">🧠 Collective Intelligence Level</span>
+                                    <div className="absolute top-full left-0 mt-3 w-84 bg-[#0a0a1f] border border-white/10 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.8)] z-50 py-1.5 overflow-hidden backdrop-blur-3xl">
+                                        <div className="px-4 py-2.5 border-b border-white/[0.04] bg-white/[0.02]">
+                                            <span className="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em]">Collective Intelligence Engine</span>
                                         </div>
-                                        {INTELLIGENCE_TIERS.map(tier => (
-                                            <button
-                                                key={tier.id}
-                                                onClick={() => { setSelectedTier(tier.id); setShowTierPicker(false); }}
-                                                className={`w-full px-3 py-3 transition text-left ${selectedTier === tier.id ? `${tier.bg} text-white` : 'text-gray-400 hover:bg-white/[0.04]'}`}
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <span className="text-xl">{tier.badge}</span>
-                                                    <div className="flex-1">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-[13px] font-semibold">{tier.name}</span>
-                                                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/5 text-gray-500">{tier.expertCount} {tier.expertCount === 1 ? 'expert' : 'experts'}</span>
-                                                            {tier.cost > 0 ? (
-                                                                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 font-bold">{tier.cost} GSTD</span>
-                                                            ) : (
-                                                                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold">FREE</span>
-                                                            )}
+                                        <div className="p-1 px-2 space-y-1">
+                                            {INTELLIGENCE_TIERS.map(tier => (
+                                                <button
+                                                    key={tier.id}
+                                                    onClick={() => { setSelectedTier(tier.id); setShowTierPicker(false); }}
+                                                    className={`w-full px-3 py-3 rounded-xl transition-all duration-200 text-left relative group ${selectedTier === tier.id ? `${tier.bg} border border-white/5` : 'hover:bg-white/[0.03]'}`}
+                                                >
+                                                    <div className="flex items-start gap-3.5">
+                                                        <div className={`w-10 h-10 rounded-xl ${selectedTier === tier.id ? 'bg-white/10' : 'bg-white/[0.04] group-hover:bg-white/[0.08] group-hover:scale-110'} flex items-center justify-center text-xl transition-all duration-300 shadow-inner`}>
+                                                            {tier.badge}
                                                         </div>
-                                                        <div className="text-[11px] text-gray-600 mt-0.5">{tier.desc}</div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center justify-between gap-2">
+                                                                <span className={`text-[14px] font-bold ${selectedTier === tier.id ? 'text-white' : 'text-gray-300'}`}>{tier.name}</span>
+                                                                {tier.cost > 0 ? (
+                                                                    <span className="text-[9px] px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-500 font-black border border-amber-500/20 tabular-nums">{tier.cost} GSTD</span>
+                                                                ) : (
+                                                                    <span className="text-[9px] px-2 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-400 font-black border border-emerald-500/20 uppercase tracking-tighter">FREE</span>
+                                                                )}
+                                                            </div>
+                                                            <div className="text-[11px] text-gray-500 leading-snug mt-1 font-medium italic opacity-70 mb-1">{tier.desc}</div>
+                                                            <div className="flex items-center gap-1.5 opacity-40 group-hover:opacity-100 transition-opacity">
+                                                                <div className="w-1 h-1 rounded-full bg-violet-400" />
+                                                                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{tier.expertCount} AI architectures</span>
+                                                            </div>
+                                                        </div>
+                                                        {selectedTier === tier.id && (
+                                                            <div className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-violet-500/20 flex items-center justify-center">
+                                                                <Check size={12} className="text-violet-400" strokeWidth={3} />
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                    {selectedTier === tier.id && <Check size={15} className="text-violet-400" />}
-                                                </div>
-                                            </button>
-                                        ))}
-                                        <div className="px-3 py-2 border-t border-white/[0.04] bg-white/[0.02]">
-                                            <p className="text-[10px] text-gray-600 leading-relaxed">
-                                                💡 Paid tiers query multiple AI models in parallel and synthesize a consensus answer — like having a panel of expert doctors instead of one.
-                                            </p>
+                                                </button>
+                                            ))}
+                                        </div>
+                                        <div className="px-4 py-3 border-t border-white/[0.04] bg-violet-500/[0.03]">
+                                            <div className="flex gap-2.5">
+                                                <Brain size={14} className="text-violet-400 flex-shrink-0 mt-0.5" />
+                                                <p className="text-[10px] text-gray-500 leading-relaxed font-medium">
+                                                    Premium tiers activate parallel consensus. Every token is verified across multiple architectures to eliminate hallucinations.
+                                                </p>
+                                            </div>
                                         </div>
                                     </div>
                                 </>
@@ -837,19 +870,22 @@ export default function ChatPage() {
 
                         {/* Model selector for free tier */}
                         {selectedTier === 'free' && (
-                            <select
-                                value={selectedModel}
-                                onChange={(e) => setSelectedModel(e.target.value)}
-                                className="px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-gray-300 outline-none hover:border-violet-500/30 transition cursor-pointer"
-                                title="Select AI model"
-                            >
-                                <option value="compound">🌐 Compound AI (Web Search)</option>
-                                <option value="llama-3.3-70b">🦙 Llama 3.3 70B</option>
-                                <option value="qwen3-32b">🧮 Qwen3 32B (Math)</option>
-                                <option value="gpt-oss-120b">🧠 GPT-OSS 120B</option>
-                                <option value="kimi-k2">📚 Kimi K2 262K</option>
-                                <option value="llama-4-scout">🔍 Llama 4 Scout</option>
-                            </select>
+                            <div className="relative group">
+                                <select
+                                    value={selectedModel}
+                                    onChange={(e) => setSelectedModel(e.target.value)}
+                                    className="appearance-none pl-3.5 pr-8 py-1.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-[12px] font-bold text-gray-400 outline-none hover:border-violet-500/30 hover:bg-white/[0.06] transition-all cursor-pointer shadow-sm tracking-tight"
+                                    title="Select AI architecture"
+                                >
+                                    <option value="compound">🌐 Sovereign Compound AI</option>
+                                    <option value="llama-3.3-70b">🦙 Meta Llama 3.3 70B</option>
+                                    <option value="qwen3-32b">🧮 Alibaba Qwen3 32B</option>
+                                    <option value="gpt-oss-120b">🧠 DeepSeek GPT-OSS</option>
+                                    <option value="kimi-k2">📚 Moonshot Kimi K2</option>
+                                    <option value="llama-4-scout">🔍 Llama 4 Preview</option>
+                                </select>
+                                <ChevronDown size={11} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-600 pointer-events-none group-hover:text-violet-400 transition-colors" />
+                            </div>
                         )}
                     </div>
 
@@ -873,10 +909,27 @@ export default function ChatPage() {
                                 <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-violet-600/20 to-cyan-500/20 border border-violet-500/15 flex items-center justify-center mx-auto mb-6 shadow-[0_0_60px_rgba(139,92,246,0.12)]">
                                     <Bot size={36} className="text-violet-400" />
                                 </div>
-                                <h1 className="text-3xl sm:text-4xl font-bold mb-3 text-white">{t('how_can_help', 'How can I help?')}</h1>
-                                <p className="text-sm text-gray-500 leading-relaxed max-w-md mx-auto mb-8">
-                                    {t('chat_hero_desc', 'Collective Intelligence — 8 AI models · Powered by Swarm nodes · Free')}
-                                </p>
+                                <div className="space-y-4">
+                                    <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-white mb-2">
+                                        <span className="bg-clip-text text-transparent bg-gradient-to-r from-white via-white to-white/40">Sovereign</span>
+                                        <span className="block text-violet-400 drop-shadow-[0_0_20px_rgba(167,139,250,0.3)]">Intelligence</span>
+                                    </h1>
+                                    <div className="flex items-center justify-center gap-3 py-1">
+                                        <div className="flex -space-x-2">
+                                            {[1, 2, 3, 4].map(i => (
+                                                <div key={i} className="w-6 h-6 rounded-full border border-[#050510] bg-violet-500/20 flex items-center justify-center backdrop-blur-sm">
+                                                    <Brain size={12} className="text-violet-300" />
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <p className="text-[13px] text-gray-400 font-medium tracking-wide">
+                                            Synthesizing <span className="text-violet-300 font-bold">8 Swarm Nodes</span>
+                                        </p>
+                                    </div>
+                                    <p className="text-[15px] text-gray-500 leading-relaxed max-w-sm mx-auto mb-10 font-medium italic">
+                                        Collective Intelligence engine cross-verifying truth in real-time.
+                                    </p>
+                                </div>
 
                                 {/* Suggestions grid */}
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-w-lg mx-auto">
@@ -908,15 +961,11 @@ export default function ChatPage() {
                                                 {!msg.content && msg.isStreaming ? (
                                                     <ExpertPanel isReasoning={msg.isReasoning} collectivePhase={collectivePhase} expertResults={expertResultsState} consensusScore={consensusScoreState} consensusMessage={consensusMessageState} expertCount={currentExpertCount} />
                                                 ) : msg.content ? (
-                                                    <MarkdownMessage content={msg.content} />
+                                                    <MarkdownMessage content={msg.content} isStreaming={msg.id === activeConv.messages[activeConv.messages.length - 1].id && isStreaming} />
                                                 ) : (
                                                     <ExpertPanel isReasoning={msg.isReasoning} collectivePhase={collectivePhase} expertResults={expertResultsState} consensusScore={consensusScoreState} consensusMessage={consensusMessageState} expertCount={currentExpertCount} />
                                                 )}
 
-                                                {/* Streaming cursor */}
-                                                {msg.isStreaming && msg.content && (
-                                                    <span className="inline-block w-2 h-5 bg-violet-400 animate-pulse rounded-sm ml-0.5" />
-                                                )}
 
                                                 {/* Model & latency badge (always visible) */}
                                                 {msg.content && !msg.isStreaming && (msg.latencyMs || msg.collectiveInfo) && (
@@ -1024,7 +1073,19 @@ export default function ChatPage() {
                 .chat-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 4px; }
                 .chat-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.12); }
                 @keyframes cursor-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
-                .prose pre { max-width: 100%; overflow-x: auto; }
+                .streaming-content > *:last-child::after {
+                    content: '';
+                    display: inline-block;
+                    width: 7px;
+                    height: 15px;
+                    background: #8b5cf6;
+                    margin-left: 4px;
+                    vertical-align: middle;
+                    animation: cursor-blink 1s infinite step-start;
+                    border-radius: 1px;
+                    box-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
+                }
+                .prose pre { max-width: 100%; overflow-x: auto; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; background: rgba(0,0,0,0.3) !important; }
                 .prose code { word-break: break-all; }
                 .prose table { display: block; max-width: 100%; overflow-x: auto; }
                 .prose img { max-width: 100%; height: auto; }

@@ -268,3 +268,49 @@ func ParseSeedFromEnv(seedStr string) []string {
 	})
 	return parts
 }
+
+// SignAndSendOracleUpdate constructs and sends the UpdateOraclePrice message to LendingMaster
+func (s *HighloadWalletService) SignAndSendOracleUpdate(ctx context.Context, masterAddr string, gstdPriceUsd float64, goldPriceUsd float64) (string, error) {
+	if !s.initialized || s.hlWallet == nil {
+		return "", fmt.Errorf("highload wallet not initialized")
+	}
+
+	destAddr, err := address.ParseAddr(masterAddr)
+	if err != nil {
+		return "", fmt.Errorf("invalid jetton master: %w", err)
+	}
+
+	// OP: update_oracle_price#0dc85fa4
+	// Field: gstdPriceUsd:coins goldPriceUsd:coins timestamp:uint64
+	gstdNano := uint64(gstdPriceUsd * 1e9)
+	goldNano := uint64(goldPriceUsd * 1e9)
+
+	payload := cell.BeginCell().
+		MustStoreUInt(0x0dc85fa4, 32). // op UpdateOraclePrice
+		MustStoreCoins(gstdNano).
+		MustStoreCoins(goldNano).
+		MustStoreUInt(uint64(time.Now().Unix()), 64). // timestamp
+		EndCell()
+
+	gasAmount := tlb.MustFromTON("0.05") // Fixed fee for updating oracle
+
+	msg := &wallet.Message{
+		Mode: wallet.PayGasSeparately + wallet.IgnoreErrors,
+		InternalMessage: &tlb.InternalMessage{
+			IHRDisabled: true,
+			Bounce:      destAddr.IsBounceable(),
+			DstAddr:     destAddr,
+			Amount:      gasAmount,
+			Body:        payload,
+		},
+	}
+
+	hash, err := s.hlWallet.SendManyWaitTxHash(ctx, []*wallet.Message{msg})
+	if err != nil {
+		return "", fmt.Errorf("send oracle update: %w", err)
+	}
+
+	txHash := base64.URLEncoding.EncodeToString(hash)
+	log.Printf("[Lending Oracle] Sent price update: GSTD=$%.4f, Gold=$%.2f, tx=%s", gstdPriceUsd, goldPriceUsd, txHash)
+	return txHash, nil
+}

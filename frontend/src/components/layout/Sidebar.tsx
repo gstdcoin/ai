@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'next-i18next';
-import { Home, Server, ListTodo, MessageSquare, BarChart3, HelpCircle, X, Menu, Cpu, ArrowRightLeft, Briefcase, Brain } from 'lucide-react';
+import { Home, Server, ListTodo, MessageSquare, BarChart3, HelpCircle, X, Menu, Cpu, ArrowRightLeft, Briefcase, Brain, Landmark } from 'lucide-react';
 import { Tab } from '../../types/tabs';
 
 interface SidebarProps {
@@ -16,6 +16,7 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
     { id: 'home', label: t('tab_home', 'Home'), icon: <Home size={18} /> },
     { id: 'tasks', label: t('tab_tasks', 'Tasks'), icon: <ListTodo size={18} /> },
     { id: 'nodes', label: t('tab_nodes', 'Nodes'), icon: <Server size={18} /> },
+    { id: 'lending', label: t('tab_lending', 'Lending'), icon: <Landmark size={18} /> },
   ];
 
   const externalLinks: Array<{ label: string; icon: React.ReactNode; href: string }> = [

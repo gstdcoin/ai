@@ -1,1 +1,1 @@
-export type Tab = 'home' | 'tasks' | 'nodes';
+export type Tab = 'home' | 'tasks' | 'nodes' | 'lending';
