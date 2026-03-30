@@ -41,6 +41,28 @@ interface Skill {
   price_gstd?: number;
 }
 
+function MinerControlIcon({ isIgniting, isMining }: { isIgniting: boolean; isMining: boolean }) {
+  if (isIgniting) {
+    return <div className="w-7 h-7 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />;
+  }
+  if (isMining) {
+    return <Activity size={28} />;
+  }
+  return <Server size={28} />;
+}
+
+function minerPrimaryLabel(isIgniting: boolean, isMining: boolean): string {
+  if (isIgniting) return 'Igniting...';
+  if (isMining) return 'Online';
+  return 'Ignite';
+}
+
+function minerActionBadge(isIgniting: boolean, isMining: boolean): string {
+  if (isIgniting) return '...';
+  if (isMining) return 'Stop';
+  return 'Start';
+}
+
 export default function AgentNode() {
   const { t } = useTranslation('common');
   const { gstdBalance, pendingEarnings, address } = useWalletStore();
@@ -211,7 +233,7 @@ export default function AgentNode() {
                             <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-400 font-bold">
                               v{skill.version}
                             </span>
-                            {skill.price_gstd > 0 && (
+                            {(skill.price_gstd ?? 0) > 0 && (
                               <span className="text-[10px] text-amber-400">{skill.price_gstd} GSTD</span>
                             )}
                           </div>
@@ -283,15 +305,11 @@ export default function AgentNode() {
                     className={`p-4 rounded-2xl border ${isMining ? 'bg-red-500/20 border-red-500/30 animate-pulse' : 'bg-cyan-500/20 border-cyan-500/30'
                       }`}
                   >
-                    {isIgniting ? (
-                      <div className="w-7 h-7 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      isMining ? <Activity size={28} /> : <Server size={28} />
-                    )}
+                    <MinerControlIcon isIgniting={isIgniting} isMining={isMining} />
                   </div>
                   <div className="text-left">
                     <span className="block text-2xl uppercase tracking-tighter font-black">
-                      {isIgniting ? 'Igniting...' : (isMining ? 'Online' : 'Ignite')}
+                      {minerPrimaryLabel(isIgniting, isMining)}
                     </span>
                     <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest block mt-1">{t('platform_node', 'Platform Node')}</span>
                   </div>
@@ -300,7 +318,7 @@ export default function AgentNode() {
                   className={`flex items-center gap-2 px-4 py-1.5 rounded-full border text-[10px] font-black tracking-widest uppercase ${isMining ? 'bg-red-500/20 border-red-500/30' : 'bg-cyan-500/20 border-cyan-500/30'
                     }`}
                 >
-                  {isIgniting ? '...' : (isMining ? 'Stop' : 'Start')}
+                  {minerActionBadge(isIgniting, isMining)}
                 </div>
               </button>
 

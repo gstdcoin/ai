@@ -33,12 +33,12 @@ interface WalletState {
 
 // Custom storage that works in both browser and Telegram WebApp
 const getCustomStorage = () => {
-  if (typeof window === 'undefined') {
-    // SSR - return noop storage
+  if (globalThis.window === undefined) {
+    // SSR — persist middleware requires sync storage API; no-op on server
     return {
       getItem: () => null,
-      setItem: () => { },
-      removeItem: () => { },
+      setItem: () => undefined,
+      removeItem: () => undefined,
     };
   }
 
@@ -47,7 +47,7 @@ const getCustomStorage = () => {
     localStorage.setItem('__test__', 'test');
     localStorage.removeItem('__test__');
     return localStorage;
-  } catch (_e) {
+  } catch {
     return sessionStorage;
   }
 };
@@ -88,8 +88,8 @@ export const useWalletStore = create<WalletState>()(
       updateBalance: (ton: string, gstd: string | number, swarm?: number | null, pending?: number) => set({
         tonBalance: ton,
         gstdBalance: Number(gstd),
-        swarmBalance: swarm !== undefined ? swarm : null,
-        pendingEarnings: pending !== undefined ? pending : null
+        swarmBalance: swarm ?? null,
+        pendingEarnings: pending ?? null
       }),
       setUser: (user: User | null) => set({ user }),
       setWorkerActive: (active: boolean) => set({

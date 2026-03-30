@@ -1,59 +1,36 @@
-# Multi-stage Dockerfile for GSTD Backend
-# Stage 1: Build (h3-go requires CGO)
-FROM golang:1.24-alpine AS builder
+# Frontend Dockerfile — alias for Dockerfile.web
+# The primary multi-stage Next.js build is in Dockerfile.web.
+# This file mirrors it so that `docker build .` works from the frontend dir.
+# Compose uses `dockerfile: Dockerfile.web` explicitly.
 
-# Install build deps for CGO (h3-go uses C bindings)
-RUN apk add --no-cache gcc musl-dev
-
+FROM node:22-alpine AS deps
 WORKDIR /app
+RUN apk add --no-cache python3 make g++ linux-headers eudev-dev
+COPY package*.json ./
+RUN npm install --production=false --legacy-peer-deps
 
-# Copy go mod files first for better caching
-COPY go.mod go.sum ./
-
-# Download dependencies
-RUN go mod download
-
-# Copy source code
+FROM node:22-alpine AS builder
+WORKDIR /app
+ENV NEXT_TELEMETRY_DISABLED=1
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+RUN npm run build
 
-# Build with CGO for h3-go (geo indexing) — limit parallelism to avoid OOM
-RUN CGO_ENABLED=1 GOOS=linux GOGC=50 go build -a -p 2 \
-    -ldflags '-w -s' \
-    -o server ./main.go
-
-# Stage 2: Runtime
-FROM alpine:latest
-# FROM gstd-backend:latest
-
-USER root
-
-
-# Install CA certificates for HTTPS requests
-RUN apk --no-cache add ca-certificates tzdata
-
-# Create non-root user
-RUN addgroup -g 1000 appuser && \
-    adduser -D -u 1000 -G appuser appuser
-
+FROM node:22-alpine AS runner
 WORKDIR /app
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 
-# Copy binary from builder
-COPY --from=builder /app/server .
-COPY --from=builder /app/migrations ./migrations
-COPY .env .env
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/next.config.js ./next.config.js
+COPY --from=builder /app/next-i18next.config.js ./next-i18next.config.js
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/node_modules ./node_modules
 
-# Change ownership
-RUN chown -R appuser:appuser /app
+EXPOSE 3000
 
-# Switch to non-root user
-USER appuser
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD wget --spider -q http://127.0.0.1:3000/ || exit 1
 
-# Expose port
-EXPOSE 8080
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/api/v1/health || exit 1
-
-# Run the server
-CMD ["./server"]
+CMD ["npm", "run", "start", "--", "-p", "3000"]

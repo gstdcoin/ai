@@ -2,7 +2,7 @@ import Head from 'next/head';
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import { ArrowDownUp, Zap, RefreshCw, AlertCircle, Wallet, Loader2, ExternalLink } from 'lucide-react';
+import { ArrowDownUp, RefreshCw, AlertCircle, Wallet, Loader2, ExternalLink } from 'lucide-react';
 import { useTonAddress, useTonConnectUI, TonConnectButton } from '@tonconnect/ui-react';
 import { API_BASE_URL, GSTD_CONTRACT_ADDRESS } from '../lib/config';
 
@@ -40,7 +40,6 @@ async function stonfiSimulate(offerAddr: string, askAddr: string, units: string)
   return res.json();
 }
 
-// eslint-disable-next-line complexity
 export default function SwapPage() {
   const { t } = useTranslation('common');
   const userAddress = useTonAddress();
@@ -75,7 +74,7 @@ export default function SwapPage() {
 
   // ─── SIMULATE via direct StonFi API ─────────────────
   const handleSimulate = useCallback(async () => {
-    const amt = parseFloat(amount);
+    const amt = Number.parseFloat(amount);
     if (!amt || amt <= 0) return;
 
     setStatus('simulating');
@@ -111,14 +110,14 @@ export default function SwapPage() {
 
   // Auto-simulate on change (debounced 1s)
   useEffect(() => {
-    if (!amount || parseFloat(amount) <= 0) {
+    if (!amount || Number.parseFloat(amount) <= 0) {
       setSimResult(null);
       setStatus('idle');
       return;
     }
     const timer = setTimeout(handleSimulate, 1000);
     return () => clearTimeout(timer);
-  }, [handleSimulate]);
+  }, [handleSimulate, amount]);
 
   // ─── SWAP (build TX via SDK + send via TonConnect) ───
   const handleSwap = async () => {
@@ -326,10 +325,10 @@ export default function SwapPage() {
               {simResult && status === 'simulated' && (
                 <div className="rounded-xl bg-white/[0.02] border border-white/5 p-4 mt-4 text-xs font-medium space-y-2">
                   {[
-                    ['Rate', `1 ${fromToken} ≈ ${(outputAmount / (parseFloat(amount) || 1)).toLocaleString(undefined, { maximumFractionDigits: 4 })} ${toToken}`],
+                    ['Rate', `1 ${fromToken} ≈ ${(outputAmount / (Number.parseFloat(amount) || 1)).toLocaleString(undefined, { maximumFractionDigits: 4 })} ${toToken}`],
                     ['Min received', `${minOutput.toFixed(4)} ${toToken}`],
                     ['Slippage', '1%'],
-                    ['Price impact', `${(parseFloat(simResult.priceImpact) * 100).toFixed(4)}%`],
+                    ['Price impact', `${(Number.parseFloat(simResult.priceImpact) * 100).toFixed(4)}%`],
                     ['Route', 'StonFi v2 DEX'],
                   ].map(([label, value]) => (
                     <div key={label} className="flex justify-between items-center text-gray-400">
@@ -376,7 +375,7 @@ export default function SwapPage() {
                     );
                   }
                   return (
-                    <button onClick={handleSimulate} disabled={!amount || parseFloat(amount) <= 0} className="btn-sovereign ghost w-full bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed">
+                    <button onClick={handleSimulate} disabled={!amount || Number.parseFloat(amount) <= 0} className="btn-sovereign ghost w-full bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed">
                       <RefreshCw size={14} className="mr-2" /> Get Quote
                     </button>
                   );

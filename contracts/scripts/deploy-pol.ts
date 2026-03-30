@@ -1,5 +1,5 @@
 import { toNano } from '@ton/core';
-import { ProofOfLiquidity } from '../build/ProofOfLiquidity/tact_ProofOfLiquidity';
+import { ProofOfLiquidity } from '../build/ProofOfLiquidity/ProofOfLiquidity_ProofOfLiquidity';
 import { NetworkProvider } from '@ton/blueprint';
 
 export async function run(provider: NetworkProvider) {

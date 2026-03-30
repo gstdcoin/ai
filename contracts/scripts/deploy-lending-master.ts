@@ -49,10 +49,10 @@ async function main() {
     let seqno = await walletContract.getSeqno();
 
     const admin = Address.parse(ADMIN_WALLET);
-    // Use deployer's wallet as the Keeper (backend operator) for now
-    const keeper = wallet.address;
-
-    console.log(`💰 Deployer wallet/Keeper: ${keeper.toString()}`);
+    // Use the backend's Highload Wallet address as the Keeper
+    const keeper = Address.parse('EQCQfq_fdRNT-Esgtw0IRQfFfQ51zdwwQMPrrIeQiOyDK0ds');
+    
+    console.log(`💰 Highload Keeper: ${keeper.toString()}`);
     console.log(`👑 Owner DAO: ${admin.toString()}\n`);
 
     // 1. Deploy LendingMaster
@@ -74,8 +74,12 @@ async function main() {
             console.log(`   ⚡ Already deployed and active!`);
             process.exit(0);
         }
-    } catch (e) {
-         console.log(`   🔸 Not deployed yet`);
+    } catch (e: unknown) {
+        if (e instanceof Error) {
+            console.log(`   🔸 Not deployed yet (${e.message})`);
+        } else {
+            console.log(`   🔸 Not deployed yet`);
+        }
     }
 
     await proxyMaster.send(

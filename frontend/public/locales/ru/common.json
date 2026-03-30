@@ -18,7 +18,7 @@
   "nav_invest": "Invest",
   "nav_tech": "Technology",
   "nav_agents": "Agents",
-  "cta_hire_launch": "Hire Node "cta_hire_launch": "Hire Node Арендовать и запустить Launch" Launch",
+  "cta_hire_launch": "Арендовать и запустить",
   "booting_node": "Запуск узла ~15с",
   "why_gstd": "Why GSTD Platform",
   "why_gstd_desc": "Built for enterprises and developers who need reliable, secure, and scalable distributed computing infrastructure.",
@@ -66,7 +66,8 @@
   "create_task": "Создать задачу",
   "agents": "Агенты",
   "referrals": "Реферальная программа",
-  "lending": "Кредитование",
+  "lending": "Лендинг",
+  "tab_lending": "Лендинг",
   "lending_desc": "Займы под залог GSTD с минимальными комиссиями",
   "collateral_gstd": "GSTD Collateral",
   "loan_offer": "Loan Offer",
@@ -292,7 +293,7 @@
     "traditionalCloud": "Коммерческое облако",
     "tabs": {
       "overview": "Обзор",
-      "tasks": "My Tasks",
+      "tasks": "Мои задачи",
       "escrow": "Эскроу",
       "economics": "Экономика"
     },

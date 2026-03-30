@@ -1,5 +1,5 @@
 import { toNano } from '@ton/core';
-import { SovereignFund } from '../build/SovereignFund/tact_SovereignFund';
+import { SovereignFund } from '../build/SovereignFund/SovereignFund_SovereignFund';
 import { NetworkProvider } from '@ton/blueprint';
 
 export async function run(provider: NetworkProvider) {

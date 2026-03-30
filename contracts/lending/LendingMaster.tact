@@ -16,20 +16,20 @@ import "@stdlib/ownable";
 
 // Jetton messaging standard
 message(0x7362d09c) JettonTransferNotification {
-    query_id: Int as uint64;
+    queryId: Int as uint64;
     amount: Int as coins;
     sender: Address;
-    forward_payload: Slice as remaining;
+    forwardPayload: Slice as remaining;
 }
 
 message(0xf8a7ea5) JettonTransfer {
-    query_id: Int as uint64;
+    queryId: Int as uint64;
     amount: Int as coins;
     destination: Address;
-    response_destination: Address;
-    custom_payload: Cell?;
-    forward_ton_amount: Int as coins;
-    forward_payload: Slice as remaining;
+    responseDestination: Address;
+    customPayload: Cell?;
+    forwardTonAmount: Int as coins;
+    forwardPayload: Slice as remaining;
 }
 
 // Oracle: Keeper pushes price updates
@@ -113,6 +113,20 @@ message VaultWithdrawRequested {
     amount: Int as coins;
 }
 
+message VaultBorrowCompleted {
+    user: Address;
+    amount: Int as coins;
+}
+
+message VaultRepayCompleted {
+    user: Address;
+    amount: Int as coins;
+}
+
+message VaultFirstDeposit {
+    user: Address;
+}
+
 // ═══════════════════════════════════════════════════════════════
 // LENDING MASTER CONTRACT
 // ═══════════════════════════════════════════════════════════════
@@ -177,7 +191,7 @@ contract LendingMaster with Deployable, Ownable {
         let user: Address = msg.sender;
         let amount: Int = msg.amount;
 
-        self.totalCollateralLocked = self.totalCollateralLocked + amount;
+        self.totalCollateralLocked += amount;
 
         let init: StateInit = initOf LendingUserVault(myAddress(), user);
         let vault: Address = contractAddress(init);
@@ -279,15 +293,30 @@ contract LendingMaster with Deployable, Ownable {
 
     receive(msg: VaultLiquidated) {
         require(sender() == contractAddress(initOf LendingUserVault(myAddress(), msg.user)), "Only vault");
-        self.totalLiquidations = self.totalLiquidations + 1;
-        self.totalCollateralLocked = self.totalCollateralLocked - msg.collateralSeized;
-        self.totalBorrowed = self.totalBorrowed - msg.debtCleared;
+        self.totalLiquidations += 1;
+        self.totalCollateralLocked -= msg.collateralSeized;
+        self.totalBorrowed -= msg.debtCleared;
+    }
+
+    receive(msg: VaultBorrowCompleted) {
+        require(sender() == contractAddress(initOf LendingUserVault(myAddress(), msg.user)), "Only vault");
+        self.totalBorrowed += msg.amount;
+    }
+
+    receive(msg: VaultRepayCompleted) {
+        require(sender() == contractAddress(initOf LendingUserVault(myAddress(), msg.user)), "Only vault");
+        self.totalBorrowed -= msg.amount;
+    }
+
+    receive(msg: VaultFirstDeposit) {
+        require(sender() == contractAddress(initOf LendingUserVault(myAddress(), msg.user)), "Only vault");
+        self.totalVaultsCreated += 1;
     }
 
     receive(msg: VaultWithdrawRequested) {
         // The user's vault has approved the withdrawal
         require(sender() == contractAddress(initOf LendingUserVault(myAddress(), msg.user)), "Only vault");
-        self.totalCollateralLocked = self.totalCollateralLocked - msg.amount;
+        self.totalCollateralLocked -= msg.amount;
 
         // Send GSTD jettons back to user (empty payload for cheaper gas)
         let payload: Slice = emptySlice();
@@ -297,13 +326,13 @@ contract LendingMaster with Deployable, Ownable {
             mode: SendIgnoreErrors,
             bounce: false,
             body: JettonTransfer{
-                query_id: 0,
+                queryId: 0,
                 amount: msg.amount,
                 destination: msg.user,
-                response_destination: msg.user,
-                custom_payload: null,
-                forward_ton_amount: ton("0.01"),
-                forward_payload: payload
+                responseDestination: msg.user,
+                customPayload: null,
+                forwardTonAmount: ton("0.01"),
+                forwardPayload: payload
             }.toCell()
         });
     }
@@ -362,6 +391,7 @@ contract LendingUserVault {
     collateral: Int as coins;       // GSTD deposited
     debt: Int as coins;             // outstanding loan (USDT/stable)
     lastAccrual: Int as uint64;     // timestamp of last interest accrual
+    initialized: Bool;              // track first deposit for vault counter
 
     init(master: Address, user: Address) {
         self.master = master;
@@ -369,13 +399,26 @@ contract LendingUserVault {
         self.collateral = 0;
         self.debt = 0;
         self.lastAccrual = now();
+        self.initialized = false;
     }
 
     // ─── Internal message from Master: Update balance from deposit ──────
 
     receive(msg: InternalDepositCollateral) {
         require(sender() == self.master, "Only master");
-        self.collateral = self.collateral + msg.amount;
+
+        if (!self.initialized) {
+            self.initialized = true;
+            send(SendParameters{
+                to: self.master,
+                value: ton("0.01"),
+                mode: SendIgnoreErrors,
+                bounce: false,
+                body: VaultFirstDeposit{ user: self.user }.toCell()
+            });
+        }
+
+        self.collateral += msg.amount;
     }
 
     // ─── Internal message from Master: Borrow ───────────────────────────
@@ -384,13 +427,21 @@ contract LendingUserVault {
         require(sender() == self.master, "Only master");
         require(self.collateral > 0, "No collateral");
 
-        // Calculate collateral value in USD
         let collateralUsd: Int = self.collateral * msg.gstdPrice / ton("1");
+        require(collateralUsd > 0, "Collateral value too small");
         let maxBorrow: Int = collateralUsd * msg.maxLtv / 10000;
         let newDebt: Int = self.debt + msg.amount;
 
         require(newDebt <= maxBorrow, "Exceeds max LTV");
         self.debt = newDebt;
+
+        send(SendParameters{
+            to: self.master,
+            value: ton("0.01"),
+            mode: SendIgnoreErrors,
+            bounce: false,
+            body: VaultBorrowCompleted{ user: self.user, amount: msg.amount }.toCell()
+        });
     }
 
     // ─── Internal message from Master: Repay ────────────────────────────
@@ -398,7 +449,15 @@ contract LendingUserVault {
     receive(msg: InternalRepay) {
         require(sender() == self.master, "Only master");
         require(self.debt >= msg.amount, "Overpay");
-        self.debt = self.debt - msg.amount;
+        self.debt -= msg.amount;
+
+        send(SendParameters{
+            to: self.master,
+            value: ton("0.01"),
+            mode: SendIgnoreErrors,
+            bounce: false,
+            body: VaultRepayCompleted{ user: self.user, amount: msg.amount }.toCell()
+        });
     }
 
     // ─── Internal message from Master: Withdraw Collateral ──────────────
@@ -438,6 +497,7 @@ contract LendingUserVault {
         require(self.debt > 0, "No debt to liquidate");
 
         let collateralUsd: Int = self.collateral * msg.gstdPrice / ton("1");
+        require(collateralUsd > 0, "Zero collateral value");
         let currentLtv: Int = self.debt * 10000 / collateralUsd;
         require(currentLtv >= msg.liquidationLtv, "Position is healthy");
 
@@ -466,7 +526,8 @@ contract LendingUserVault {
             user: self.user,
             collateral: self.collateral,
             debt: self.debt,
-            lastAccrual: self.lastAccrual
+            lastAccrual: self.lastAccrual,
+            initialized: self.initialized
         };
     }
 }
@@ -493,4 +554,5 @@ struct UserVaultData {
     collateral: Int as coins;
     debt: Int as coins;
     lastAccrual: Int as uint64;
+    initialized: Bool;
 }
