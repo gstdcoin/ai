@@ -9,8 +9,8 @@ dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
 const NETWORK = process.env.TON_NETWORK || 'mainnet';
 let DEPLOYER_MNEMONIC = process.env.DEPLOYER_MNEMONIC || '';
-if (!DEPLOYER_MNEMONIC && fs.existsSync(path.join(process.env.HOME || '/home/ubuntu', '.gstd', 'wallet.json'))) {
-    DEPLOYER_MNEMONIC = JSON.parse(fs.readFileSync(path.join(process.env.HOME || '/home/ubuntu', '.gstd', 'wallet.json'), 'utf8')).mnemonic;
+if (!DEPLOYER_MNEMONIC && fs.existsSync(path.join(__dirname, '..', 'deployer.json'))) {
+    DEPLOYER_MNEMONIC = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'deployer.json'), 'utf8')).mnemonic;
 }
 
 const ADMIN_WALLET = process.env.ADMIN_WALLET || 'UQCkXFlNRsubUp7Uh7lg_ScUqLCiff1QCLsdQU0a7kphqQED';
