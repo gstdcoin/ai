@@ -50,9 +50,12 @@ func (m *MetricsService) GetMetrics() gin.HandlerFunc {
 		m.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM devices").Scan(&totalDevices)
 		m.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM devices WHERE is_active = true AND last_seen_at > NOW() - INTERVAL '5 minutes'").Scan(&activeDevices)
 
-		// Redis metrics
-		redisInfo, _ := m.redisClient.Info(ctx, "stats").Result()
-		redisMemory, _ := m.redisClient.Info(ctx, "memory").Result()
+		// Redis metrics (optional — avoid panic if Redis client is nil or wrong type)
+		var redisInfo, redisMemory string
+		if m.redisClient != nil {
+			redisInfo, _ = m.redisClient.Info(ctx, "stats").Result()
+			redisMemory, _ = m.redisClient.Info(ctx, "memory").Result()
+		}
 
 		// Uptime
 		uptime := time.Since(m.startTime).Seconds()

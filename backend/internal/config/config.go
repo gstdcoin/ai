@@ -164,7 +164,11 @@ func getVaultOrEnv(vaultSecretPath string, envFallback string) string {
 		return getEnv(envFallback, "")
 	}
 
-	req, _ := http.NewRequest("GET", fmt.Sprintf("%s/v1/secret/data/%s", vaultURL, vaultSecretPath), nil)
+	req, reqErr := http.NewRequest("GET", fmt.Sprintf("%s/v1/secret/data/%s", vaultURL, vaultSecretPath), nil)
+	if reqErr != nil {
+		log.Printf("⚠️ SEC-WARN: Failed to build Vault request for %s: %v", envFallback, reqErr)
+		return getEnv(envFallback, "")
+	}
 	req.Header.Set("X-Vault-Token", vaultToken)
 
 	resp, err := http.DefaultClient.Do(req)

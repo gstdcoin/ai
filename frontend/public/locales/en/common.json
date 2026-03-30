@@ -67,6 +67,7 @@
   "agents": "Agent Marketplace",
   "referrals": "Referral Program",
   "lending": "Lending",
+  "tab_lending": "Lending",
   "lending_desc": "Borrow USDT/USDC against GSTD collateral. 60% LTV, 1.5% APR.",
   "collateral_gstd": "GSTD Collateral",
   "loan_offer": "Loan Offer",
@@ -261,10 +262,12 @@
   "active": "Active",
   "earn_referral_bonus": "Earn 5% from referrals",
   "wallet": {
+    "balance": "Wallet Balance",
     "realTime": "Real-time balance",
     "mainToken": "Main Token",
     "gasToken": "Gas Token",
     "totalEarned": "Total Earned",
+    "pending": "Pending",
     "lockedEscrow": "Locked in Escrow",
     "transactionHistory": "Transaction History",
     "allTransactions": "All Transactions",
@@ -275,9 +278,15 @@
     "exportCSV": "Export to CSV"
   },
   "client": {
+    "dashboard": "Client Dashboard",
     "manageYourTasks": "Manage your tasks and escrows",
     "totalTasks": "Total Tasks",
+    "completed": "Completed",
     "totalSpent": "Total Spent",
+    "lockedEscrow": "Locked in Escrow",
+    "status": "Status",
+    "actions": "Actions",
+    "cancel": "Cancel",
     "spendTrend": "Spending Trend",
     "economicEfficiency": "Economic Office",
     "projectedSavings": "Projected Savings",
@@ -287,13 +296,19 @@
     "traditionalCloud": "Commercial Cloud",
     "tabs": {
       "overview": "Overview",
+      "tasks": "My Tasks",
       "escrow": "Escrow",
       "economics": "Economics"
     },
     "liveActivity": "Live Activity",
     "globalNetwork": "Global Network",
     "activeNodes": "Active Nodes",
-    "tooltips": {},
+    "tooltips": {
+      "totalTasks": "Total number of tasks created by this account",
+      "completed": "Tasks successfully completed by the network",
+      "totalSpent": "Total GSTD spent on Compute Power",
+      "lockedEscrow": "Active task budgets securely held in smart contract"
+    },
     "activeTasks": "Active Tasks",
     "noActiveTasks": "No active tasks",
     "recentCompleted": "Recently Completed",

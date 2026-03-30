@@ -17,7 +17,8 @@ services:
       - postgres_data:/var/lib/postgresql/data
     environment:
       POSTGRES_DB: distributed_computing
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-Gstd_Secure_2026}
+      # Required — no weak default (set in .env next to this file)
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
       # POSTGRES_HOST_AUTH_METHOD removed — password required
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
@@ -32,9 +33,12 @@ services:
     image: redis:7-alpine
     container_name: gstd_redis_prod
     restart: always
-    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD:-GstdRedis2026}
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}
+    # Password interpolated at `docker compose` time from .env (keep .env out of git)
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD}
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD:-GstdRedis2026} ping 2>/dev/null | grep PONG"]
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping 2>/dev/null | grep PONG"]
       interval: 10s
       timeout: 3s
       retries: 3
@@ -59,9 +63,10 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    # Docker socket: only if backend must spawn/manage containers (NaaS). Remove in hardened deployments.
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - /home/ubuntu:/home/ubuntu
+    # SECURITY: do not bind-mount the full host repo (removed). For local dev bind-mounts, use docker-compose.override.yml
     deploy:
       replicas: 4
     networks:

@@ -6,6 +6,7 @@
 .env
 .env.*
 !.env.example
+docker-compose.override.yml
 *.pem
 *.key
 *_secret*
@@ -16,7 +17,13 @@ postgres_data/
 redis_data/
 ollama_data/
 certbot/
-nginx/
+# Nginx configs stay tracked; only TLS / ACME secrets are ignored
+nginx/ssl/archive/
+nginx/ssl/accounts/
+nginx/ssl/live/
+nginx/ssl/renewal/
+nginx/ssl/*.pem
+nginx/ssl/**/*.pem
 
 # Build artifacts
 node_modules/

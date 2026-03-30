@@ -82,7 +82,6 @@ interface OracleStatusData {
 type ActionMode = 'deposit' | 'withdraw' | 'borrow' | 'repay' | null;
 
 function LendingPanel() {
-  const { t } = useTranslation('common');
   const { address, gstdBalance } = useWalletStore();
 
   const [vault, setVault] = useState<VaultData | null>(null);
@@ -135,13 +134,12 @@ function LendingPanel() {
     try {
       const endpoint = `/lending/${actionMode}`;
       await apiPost(endpoint, { amount });
-      toast.success(
-        actionMode === 'deposit' ? 'Collateral Deposited!'
-          : actionMode === 'borrow' ? 'Loan Issued!'
-          : actionMode === 'repay' ? 'Loan Repaid!'
-          : 'Collateral Withdrawn!',
-        ''
-      );
+      let successMsg = 'Collateral Withdrawn!';
+      if (actionMode === 'deposit') successMsg = 'Collateral Deposited!';
+      else if (actionMode === 'borrow') successMsg = 'Loan Issued!';
+      else if (actionMode === 'repay') successMsg = 'Loan Repaid!';
+      
+      toast.success(successMsg, '');
       setActionMode(null);
       setInputAmount('');
       await loadVault();
@@ -341,24 +339,30 @@ function LendingPanel() {
           { mode: 'borrow' as ActionMode, label: 'Borrow', icon: <Banknote size={15} />, color: 'sky' },
           { mode: 'repay' as ActionMode, label: 'Repay', icon: <RotateCcw size={15} />, color: 'amber' },
           { mode: 'withdraw' as ActionMode, label: 'Withdraw', icon: <ArrowUpFromLine size={15} />, color: 'violet' },
-        ].map(({ mode, label, icon, color }) => (
-          <button
-            key={mode}
-            onClick={() => { setActionMode(actionMode === mode ? null : mode); setInputAmount(''); }}
-            className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-all active:scale-[0.97]
-              ${actionMode === mode
-                ? `bg-${color}-500/20 text-${color}-300 border border-${color}-500/30`
-                : 'bg-white/[0.04] text-gray-400 border border-white/[0.06] hover:bg-white/[0.06] hover:text-white'}`}
-            style={actionMode === mode ? {
-              background: color === 'emerald' ? 'rgba(16,185,129,0.15)' : color === 'sky' ? 'rgba(14,165,233,0.15)' : color === 'amber' ? 'rgba(245,158,11,0.15)' : 'rgba(139,92,246,0.15)',
-              borderColor: color === 'emerald' ? 'rgba(16,185,129,0.3)' : color === 'sky' ? 'rgba(14,165,233,0.3)' : color === 'amber' ? 'rgba(245,158,11,0.3)' : 'rgba(139,92,246,0.3)',
-              color: color === 'emerald' ? '#6ee7b7' : color === 'sky' ? '#7dd3fc' : color === 'amber' ? '#fcd34d' : '#c4b5fd',
-            } : undefined}
-          >
-            {icon}
-            {label}
-          </button>
-        ))}
+        ].map(({ mode, label, icon, color }) => {
+          let btnBg = 'bg-white/[0.04] text-gray-400 border border-white/[0.06] hover:bg-white/[0.06] hover:text-white';
+          let customStyle: React.CSSProperties | undefined = undefined;
+          
+          if (actionMode === mode) {
+            btnBg = `bg-${color}-500/20 text-${color}-300 border border-${color}-500/30`;
+            if (color === 'emerald') customStyle = { background: 'rgba(16,185,129,0.15)', borderColor: 'rgba(16,185,129,0.3)', color: '#6ee7b7' };
+            else if (color === 'sky') customStyle = { background: 'rgba(14,165,233,0.15)', borderColor: 'rgba(14,165,233,0.3)', color: '#7dd3fc' };
+            else if (color === 'amber') customStyle = { background: 'rgba(245,158,11,0.15)', borderColor: 'rgba(245,158,11,0.3)', color: '#fcd34d' };
+            else customStyle = { background: 'rgba(139,92,246,0.15)', borderColor: 'rgba(139,92,246,0.3)', color: '#c4b5fd' };
+          }
+          
+          return (
+            <button
+              key={mode}
+              onClick={() => { setActionMode(actionMode === mode ? null : mode); setInputAmount(''); }}
+              className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-all active:scale-[0.97] ${btnBg}`}
+              style={customStyle}
+            >
+              {icon}
+              {label}
+            </button>
+          );
+        })}
       </div>
 
       {/* ═══ ACTION INPUT ═══ */}
@@ -423,16 +427,17 @@ function LendingPanel() {
           </button>
           {showHistory && (
             <div className="px-4 pb-3 space-y-1.5">
-              {txHistory.map((tx) => (
-                <div key={tx.id} className="flex items-center justify-between py-2 border-t border-white/[0.04]">
-                  <div className="flex items-center gap-2">
-                    <div className={`w-1.5 h-1.5 rounded-full ${
-                      tx.tx_type === 'deposit' ? 'bg-emerald-500'
-                        : tx.tx_type === 'borrow' ? 'bg-sky-500'
-                        : tx.tx_type === 'repay' ? 'bg-amber-500'
-                        : tx.tx_type === 'liquidation' ? 'bg-red-500'
-                        : 'bg-violet-500'}`}
-                    />
+              {txHistory.map((tx) => {
+                let indicatorColor = 'bg-violet-500';
+                if (tx.tx_type === 'deposit') indicatorColor = 'bg-emerald-500';
+                else if (tx.tx_type === 'borrow') indicatorColor = 'bg-sky-500';
+                else if (tx.tx_type === 'repay') indicatorColor = 'bg-amber-500';
+                else if (tx.tx_type === 'liquidation') indicatorColor = 'bg-red-500';
+                
+                return (
+                  <div key={tx.id} className="flex items-center justify-between py-2 border-t border-white/[0.04]">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-1.5 h-1.5 rounded-full ${indicatorColor}`} />
                     <div>
                       <div className="text-[12px] text-white capitalize">{tx.tx_type}</div>
                       <div className="text-[10px] text-gray-600">{new Date(tx.created_at).toLocaleDateString()}</div>
@@ -442,8 +447,9 @@ function LendingPanel() {
                     {tx.amount_gstd > 0 && <div className="text-[12px] text-white tabular-nums">{tx.amount_gstd.toFixed(2)} GSTD</div>}
                     {tx.amount_usdt > 0 && <div className="text-[11px] text-gray-400 tabular-nums">${tx.amount_usdt.toFixed(2)}</div>}
                   </div>
-                </div>
-              ))}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

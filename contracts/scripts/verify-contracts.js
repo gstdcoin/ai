@@ -7,9 +7,10 @@
  * - Validates initial state matches expected configuration
  */
 
-require('dotenv').config({ path: '../.env' });
 const fs = require('fs');
 const path = require('path');
+
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 const NETWORK = process.env.TON_NETWORK || 'mainnet';
 
@@ -45,7 +46,7 @@ async function main() {
             name: 'TreasuryGold', checks: [
                 'Contract deployed and active',
                 'goldReserveXAUt == 0',
-                'autoConvertPercent == 70',
+                'goldConvertRatio correct',
                 'owner matches expected',
             ]
         },
@@ -53,7 +54,7 @@ async function main() {
             name: 'DAOVoting', checks: [
                 'Contract deployed and active',
                 'quorumPercent == 10',
-                'timelockHours == 48',
+                'timelockSeconds == 172800',
                 'gstdJetton address matches GSTDJetton',
             ]
         },

@@ -272,13 +272,15 @@ func SetupRoutes(deps APIDependencies) {
 	// ═══ REAL BLOCKCHAIN SYNC ENGINE ═══
 	// Listens for real TON jetton deposits for Staking
 	dbConn := db.(*sql.DB)
-	dbConn.Exec(`CREATE TABLE IF NOT EXISTS processed_txs (
+	if _, err := dbConn.Exec(`CREATE TABLE IF NOT EXISTS processed_txs (
 		tx_hash VARCHAR(100) PRIMARY KEY,
 		type VARCHAR(50),
 		wallet VARCHAR(100),
 		amount DECIMAL(20,9),
 		created_at TIMESTAMP
-	)`)
+	)`); err != nil {
+		log.Printf("⚠️ Failed to create processed_txs table: %v", err)
+	}
 	treasury := tonConfig.AdminWallet
 	if treasury == "" {
 		treasury = tonConfig.TreasuryWallet
@@ -652,7 +654,8 @@ func SetupRoutes(deps APIDependencies) {
 
 				expectedKey := os.Getenv("BRIDGE_ORACLE_KEY")
 				if expectedKey == "" {
-					expectedKey = "genesis-oracle-key-42"
+					c.JSON(503, gin.H{"error": "bridge oracle key not configured"})
+					return
 				}
 
 				if apiKey != expectedKey {
@@ -772,7 +775,11 @@ func SetupRoutes(deps APIDependencies) {
 		})
 
 		// Metrics endpoint (Prometheus format) - public
-		metricsService := NewMetricsService(db.(*sql.DB), redisClient.(*redis.Client))
+		redisTyped, ok := redisClient.(*redis.Client)
+		if !ok {
+			log.Println("⚠️ Redis client type assertion failed for metrics")
+		}
+		metricsService := NewMetricsService(db.(*sql.DB), redisTyped)
 		v1.GET("/metrics", metricsService.GetMetrics())
 
 		// Internal endpoints (X-Admin-API-Key only, for cron/automation)
@@ -907,7 +914,8 @@ func SetupRoutes(deps APIDependencies) {
 		admin := protected.Group("/admin")
 		admin.Use(RequireAdminWallet(tonConfig))
 		{
-			admin.GET("/health", getAdminHealth(db.(*sql.DB), redisClient.(*redis.Client), rewardEngine, payoutRetryService))
+			adminRedis, _ := redisClient.(*redis.Client)
+			admin.GET("/health", getAdminHealth(db.(*sql.DB), adminRedis, rewardEngine, payoutRetryService))
 			admin.GET("/failed-payouts", getFailedPayouts(db.(*sql.DB)))
 			admin.POST("/retry-payout/:id", retryPayout(payoutRetryService))
 			admin.GET("/withdrawals/pending", getPendingWithdrawals(db.(*sql.DB)))

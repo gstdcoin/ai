@@ -27,7 +27,13 @@ message(0x43685372) ChangeSlashRegistry {
     registry: Address;
 }
 
-// Internal msg from SlashRegistry
+// Internal msg from SlashRegistry (sent as ExecuteSlash)
+message ExecuteSlash {
+    provider: Address;
+    percentage: Int as uint16;
+}
+
+// Legacy / extended slash event (kept for backward compat)
 message(0x536c4576) SlashEvent {
     provider: Address;
     percentage: Int as uint16; // 1-10000 (0.01% - 100%)
@@ -128,38 +134,45 @@ contract NaaSProviderRegistry with Deployable, Ownable {
     }
 
     // ── Slashing Mechanism (Called by SlashRegistry/ChallengerProtocol) ─────
+
+    // Primary handler: matches the ExecuteSlash message sent by SlashRegistry
+    receive(msg: ExecuteSlash) {
+        require(sender() == self.slashRegistry, "Only SlashRegistry can slash");
+        self._applySlash(msg.provider, msg.percentage);
+    }
+
+    // Legacy handler: accepts SlashEvent with burnedAmount field
     receive(msg: SlashEvent) {
         require(sender() == self.slashRegistry, "Only SlashRegistry can slash");
-        
-        let existing: ProviderInfo? = self.providers.get(msg.provider);
+        self._applySlash(msg.provider, msg.percentage);
+    }
+
+    fun _applySlash(provider: Address, percentage: Int) {
+        let existing: ProviderInfo? = self.providers.get(provider);
         require(existing != null, "Provider not found");
         
         let p: ProviderInfo = existing!!;
-        let slashAmount: Int = (p.stakedGSTD * msg.percentage) / 10000;
+        let slashAmount: Int = (p.stakedGSTD * percentage) / 10000;
         
         p.stakedGSTD -= slashAmount;
         self.totalStaked -= slashAmount;
         
-        // Reputation loss (prevent underflow — uint16 would wrap)
-        if (p.reputation > msg.percentage) {
-            p.reputation -= msg.percentage;
+        if (p.reputation > percentage) {
+            p.reputation -= percentage;
         } else {
             p.reputation = 0;
         }
         
-        // 100% slash (Fraud/Jailed) -> Jailed status
-        if (msg.percentage == 10000 || p.stakedGSTD < self.minStakeExplorer || p.reputation < 5000) {
+        if (percentage == 10000 || p.stakedGSTD < self.minStakeExplorer || p.reputation < 5000) {
             p.jailed = true;
         }
         
-        // Downgrade tier if needed
         if (p.stakedGSTD < self.minStakeSovereign && p.tier == 4) { p.tier = 3; }
         if (p.stakedGSTD < self.minStakeValidator && p.tier == 3) { p.tier = 2; }
         if (p.stakedGSTD < self.minStakeProvider && p.tier == 2) { p.tier = 1; }
         
-        self.providers.set(msg.provider, p);
+        self.providers.set(provider, p);
         
-        // Send slashed funds to Burn Contract / Treasury
         send(SendParameters {
             to: self.owner,
             value: slashAmount,

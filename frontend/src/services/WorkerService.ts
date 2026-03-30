@@ -6,7 +6,9 @@ import { useWalletStore } from '../store/walletStore';
 export type PowerProfile = 'eco' | 'balance' | 'max';
 
 type WorkerState = 'idle' | 'igniting' | 'running' | 'paused' | 'error';
-type WorkerCallback = (data: any) => void;
+type StateSubscriber = (state: WorkerState) => void;
+type StatsSubscriber = (data: Record<string, unknown>) => void;
+type MetricsSubscriber = (metrics: ComputeMetrics) => void;
 
 export interface ComputeMetrics {
     tflops: number;
@@ -23,16 +25,16 @@ class WorkerService {
     private worker: Worker | null = null;
     public state: WorkerState = 'idle';
     public powerProfile: PowerProfile = 'balance';
-    private subscribers: Function[] = [];
-    private statsSubscribers: Function[] = [];
-    private metricsSubscribers: Function[] = [];
+    private subscribers: StateSubscriber[] = [];
+    private statsSubscribers: StatsSubscriber[] = [];
+    private metricsSubscribers: MetricsSubscriber[] = [];
     private taskLoop: any = null;
     private ws: WebSocket | null = null;
     private heartbeatInterval: any = null;
     private lastHeartbeatAck: number = 0;
     private retryCount: number = 0;
     private pendingQueue: any[] = [];
-    private deviceId: string = 'browser-' + Math.random().toString(36).substring(7);
+    private readonly deviceId: string = 'browser-' + Math.random().toString(36).substring(7);
     public targetTaskId: string | null = null;
     private syncInterval: any = null;
 
@@ -53,7 +55,7 @@ class WorkerService {
     private metricsInterval: any = null;
 
     constructor() {
-        if (typeof window !== 'undefined') {
+        if (globalThis.window !== undefined) {
             try {
                 const saved = localStorage.getItem('gstd_pending_results');
                 if (saved) this.pendingQueue = JSON.parse(saved);
@@ -65,7 +67,7 @@ class WorkerService {
 
     private saveToQueue(payload: any) {
         this.pendingQueue.push(payload);
-        if (typeof window !== 'undefined') {
+        if (globalThis.window !== undefined) {
             localStorage.setItem('gstd_pending_results', JSON.stringify(this.pendingQueue));
         }
         logger.debug(`[Resilience] Result saved to Queue. Total pending: ${this.pendingQueue.length}`);
@@ -73,7 +75,7 @@ class WorkerService {
     }
 
     private processQueue() {
-        if (this.pendingQueue.length === 0 || !this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+        if (this.pendingQueue.length === 0 || this.ws?.readyState !== WebSocket.OPEN) return;
 
         logger.debug(`[Resilience] Processing Queue (${this.pendingQueue.length} items)...`);
 
@@ -112,8 +114,10 @@ class WorkerService {
                     try {
                         const audio = new Audio('/sounds/coin.mp3');
                         audio.volume = 0.3;
-                        audio.play().catch(() => { });
-                    } catch (e) { }
+                        audio.play().catch(() => undefined);
+                    } catch {
+                        /* autoplay may be blocked by browser policy */
+                    }
 
                     // Update local metrics
                     this.metrics.tflops = data.result.tflops || 0;
@@ -127,7 +131,7 @@ class WorkerService {
                     this.notifyStats({
                         completed: true,
                         latency: data.result.latency_ms,
-                        reward: data.result.reward_gstd || 0.00001,
+                        reward: data.result.reward_gstd || 1e-5,
                         tflops: data.result.tflops || 0,
                         battery: data.result.battery_pct,
                         profile: data.result.power_profile,
@@ -138,12 +142,12 @@ class WorkerService {
                         result: data.result,
                         proof: {
                             hash: proofHash,
-                            connectivity_score: navigator.onLine ? 1.0 : 0.0,
+                            connectivity_score: navigator.onLine ? 1 : 0,
                             timestamp: Date.now()
                         }
                     };
 
-                    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                    if (this.ws?.readyState === WebSocket.OPEN) {
                         this.ws.send(JSON.stringify(payload));
                     } else {
                         this.saveToQueue(payload);
@@ -255,7 +259,7 @@ class WorkerService {
         logger.debug('[Compute Node] Establishing Socket Connection...');
         const baseWs = process.env.NEXT_PUBLIC_WS_URL || WS_URL;
         const wsUrl = baseWs.includes('/ws') ? baseWs : `${baseWs.replace(/\/+$/, '')}/ws`;
-        const walletAddress = typeof window !== 'undefined' ? useWalletStore.getState().address : null;
+        const walletAddress = globalThis.window === undefined ? null : useWalletStore.getState().address;
         const params = new URLSearchParams({ device_id: this.deviceId });
         if (walletAddress) params.set('wallet_address', walletAddress);
         this.ws = new WebSocket(`${wsUrl}?${params.toString()}`);
@@ -313,7 +317,7 @@ class WorkerService {
         if (this.syncInterval) clearInterval(this.syncInterval);
         this.lastHeartbeatAck = Date.now();
 
-        const getWallet = () => typeof window !== 'undefined' ? useWalletStore.getState().address : null;
+        const getWallet = () => (globalThis.window === undefined ? null : useWalletStore.getState().address);
 
         const performHTTPSync = async () => {
             const currentWallet = getWallet();
@@ -336,7 +340,7 @@ class WorkerService {
         setTimeout(performHTTPSync, 1500);
 
         this.heartbeatInterval = setInterval(() => {
-            if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+            if (this.ws?.readyState !== WebSocket.OPEN) return;
 
             if (Date.now() - this.lastHeartbeatAck > 60000) {
                 logger.error('Heartbeat Timeout: Backend not responding');
@@ -427,7 +431,7 @@ class WorkerService {
         };
     }
 
-    public subscribeStats(callback: WorkerCallback) {
+    public subscribeStats(callback: StatsSubscriber) {
         this.statsSubscribers.push(callback);
         return () => {
             this.statsSubscribers = this.statsSubscribers.filter(cb => cb !== callback);
@@ -446,8 +450,8 @@ class WorkerService {
         this.subscribers.forEach(cb => cb(this.state));
     }
 
-    private notifyStats(data: any) {
-        this.statsSubscribers.forEach(cb => cb(data));
+    private notifyStats(data: Record<string, unknown>) {
+        this.statsSubscribers.forEach((cb) => cb(data));
     }
 
     private notifyMetrics() {
