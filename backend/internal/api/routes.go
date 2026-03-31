@@ -1597,7 +1597,8 @@ func SetupRoutes(deps APIDependencies) {
 			swarmBrain.Start()
 
 			autonomyHandler := NewAutonomyHandler(swarmBrain, compoundAI)
-			adminGroupAuto := v1.Group("/", RequireAdminWallet(tonConfig))
+			// Session/API-key required (protected); admin wallet or X-Admin-API-Key via RequireAdminWallet
+			adminGroupAuto := protected.Group("/", RequireAdminWallet(tonConfig))
 			autonomyHandler.RegisterRoutes(adminGroupAuto)
 
 			// ═══ PLATFORM OPERATOR (full autonomous AI agent) ═══
@@ -1606,13 +1607,12 @@ func SetupRoutes(deps APIDependencies) {
 			operator.Start()
 			operator.StartFullControl() // 7 departments, 24/7/365
 
-			// Operator status endpoint — full dept stats
-			v1.GET("/autonomy/operator", func(c *gin.Context) {
+			autonomyOp := protected.Group("/autonomy")
+			autonomyOp.Use(RequireAdminWallet(tonConfig))
+			autonomyOp.GET("/operator", func(c *gin.Context) {
 				c.JSON(200, operator.GetFullStatus())
 			})
-
-			// Department stats
-			v1.GET("/autonomy/departments", func(c *gin.Context) {
+			autonomyOp.GET("/departments", func(c *gin.Context) {
 				c.JSON(200, operator.GetDepartmentStats(dbConn))
 			})
 
