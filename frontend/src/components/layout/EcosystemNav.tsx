@@ -32,7 +32,8 @@ export default function EcosystemNav() {
     const isOnApp = typeof window !== 'undefined' && window.location.hostname === 'app.gstdtoken.com';
 
     const navItems: NavItem[] = [
-        { key: 'home', href: isOnApp ? '/' : APP_BASE, icon: <Home size={15} />, external: !isOnApp },
+        // Same i18n pattern as other items — label: nav_home ("Home" / главная лендинга)
+        { key: 'nav_home', href: isOnApp ? '/' : APP_BASE, icon: <Home size={15} />, external: !isOnApp },
         { key: 'nav_chat', href: `${APP_BASE}/chat`, icon: <MessageSquare size={15} />, external: !isOnApp, short: 'Chat' },
         { key: 'nav_operator', href: `${APP_BASE}/operator`, icon: <Cpu size={15} />, external: !isOnApp, short: 'Operator' },
         { key: 'nav_bridge', href: `${APP_BASE}/bridge`, icon: <ArrowRightLeft size={15} />, external: !isOnApp, short: 'Bridge' },
@@ -52,7 +53,7 @@ export default function EcosystemNav() {
     const isActive = (href: string) => {
         const path = router.pathname;
         if (href === '/' || href === APP_BASE) return path === '/';
-        const segments = ['/chat', '/bridge', '/swap', '/staking', '/nodes', '/leaderboard', '/stats', '/monitor', '/predictions', '/operator', '/referrals'];
+        const segments = ['/chat', '/bridge', '/swap', '/staking', '/nodes', '/leaderboard', '/stats', '/monitor', '/predictions', '/operator', '/referrals', '/fund', '/developers', '/hive', '/downloads', '/about', '/docs'];
         for (const seg of segments) {
             if (href.includes(seg) && (path === seg || path.startsWith(seg + '/'))) return true;
         }
