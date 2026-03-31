@@ -8,39 +8,57 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// RequireAdminWallet middleware checks if the request is from admin wallet
-// Admin wallet address is verified via TonConnect signature or wallet address header
+func normalizeTONAddr(addr string) string {
+	return strings.ToUpper(strings.ReplaceAll(strings.TrimSpace(addr), "-", ""))
+}
+
+// RequireAdminWallet restricts routes to the configured admin TON wallet.
+//
+// Security: trusting only X-Wallet-Address (public knowledge from /api/v1/config) allowed
+// anyone to call admin APIs with a valid non-admin session. We now require either:
+// 1) Session/API context wallet_address (from ValidateSession) equals AdminWallet, or
+// 2) Valid X-Admin-API-Key / Authorization: Bearer (same secret as /internal/*) for automation.
 func RequireAdminWallet(tonConfig config.TONConfig) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Get wallet address from header or query parameter
-		walletAddress := c.GetHeader("X-Wallet-Address")
-		if walletAddress == "" {
-			walletAddress = c.Query("wallet_address")
-		}
-
-		if walletAddress == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "Wallet address required. Provide X-Wallet-Address header or wallet_address query parameter",
-			})
+		adminNorm := normalizeTONAddr(tonConfig.AdminWallet)
+		if adminNorm == "" {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "admin wallet not configured"})
 			c.Abort()
 			return
 		}
 
-		// Normalize addresses (remove dashes, convert to uppercase for comparison)
-		normalizedRequest := strings.ToUpper(strings.ReplaceAll(walletAddress, "-", ""))
-		normalizedAdmin := strings.ToUpper(strings.ReplaceAll(tonConfig.AdminWallet, "-", ""))
-
-		// Verify wallet address matches admin wallet (case-insensitive, dash-insensitive)
-		if normalizedRequest != normalizedAdmin {
+		// 1) Wallet bound by session / API key auth (cannot be spoofed with a header alone)
+		if w := c.GetString("wallet_address"); w != "" {
+			if normalizeTONAddr(w) == adminNorm {
+				c.Set("admin_wallet", w)
+				c.Next()
+				return
+			}
 			c.JSON(http.StatusForbidden, gin.H{
-				"error": "Access denied. Only admin wallet can access this endpoint",
+				"error": "Access denied. Admin routes require the admin wallet session.",
 			})
 			c.Abort()
 			return
 		}
 
-		// Store admin wallet in context for use in handlers
-		c.Set("admin_wallet", walletAddress)
-		c.Next()
+		// 2) Server-to-server / cron: same key as internal routes
+		key := c.GetHeader("X-Admin-API-Key")
+		if key == "" {
+			if auth := c.GetHeader("Authorization"); strings.HasPrefix(auth, "Bearer ") {
+				key = strings.TrimPrefix(auth, "Bearer ")
+			}
+		}
+		cfg := config.GetConfig()
+		if key != "" && (key == cfg.Server.AdminAPIKey || (cfg.Server.AdminAPIKey2 != "" && key == cfg.Server.AdminAPIKey2)) {
+			c.Set("admin_wallet", tonConfig.AdminWallet)
+			c.Next()
+			return
+		}
+
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error":   "admin authentication required",
+			"message": "Login as admin wallet, or send X-Admin-API-Key for automation",
+		})
+		c.Abort()
 	}
 }
