@@ -7,6 +7,7 @@ import (
 
 	"distributed-computing-platform/internal/config"
 	"distributed-computing-platform/internal/services"
+
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 )
@@ -52,15 +53,13 @@ func HybridAuth(redisClient *redis.Client, apiKeyService APIKeyValidator) gin.Ha
 			}
 		}
 		if apiKey != "" {
-			// Sovereign keys
-			if strings.HasPrefix(apiKey, "sk_sovereign_") {
-				parts := strings.Split(apiKey, "_")
-				if len(parts) >= 4 {
-					uc.WalletAddress = parts[2]
+			if strings.HasPrefix(apiKey, "sk_sovereign_") && redisClient != nil {
+				if w, ok := walletFromRegisteredSovereignKey(ctx, redisClient, apiKey); ok {
+					uc.WalletAddress = w
 					uc.AuthSource = "sovereign"
-					c.Set("wallet_address", uc.WalletAddress)
+					c.Set("wallet_address", w)
 					c.Set("user_context", uc)
-					log.Printf("🤖 HybridAuth: Sovereign agent %s", uc.WalletAddress[:min(8, len(uc.WalletAddress))])
+					log.Printf("🤖 HybridAuth: Sovereign agent %s", w[:min(8, len(w))])
 					c.Next()
 					return
 				}

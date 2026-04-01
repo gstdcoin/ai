@@ -1,8 +1,8 @@
 import { GetServerSideProps } from 'next';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useTranslation } from 'next-i18next';
+import { getCommonStaticProps } from '../../lib/i18n-static-props';
 import { useWalletStore } from '../../store/walletStore';
 import { apiGet } from '../../lib/apiClient';
 import { Activity, Shield, Zap, Coins, Server, ArrowLeft, Trophy } from 'lucide-react';
@@ -227,5 +227,5 @@ export default function ArchitectPage() {
 }
 
 export const getServerSideProps: GetServerSideProps = async ({ locale }) => ({
-  props: { ...(await serverSideTranslations(locale ?? 'en', ['common'])) },
+  props: await getCommonStaticProps(locale),
 });

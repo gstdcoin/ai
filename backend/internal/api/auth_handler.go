@@ -8,13 +8,16 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 )
 
 // AuthHandler manages autonomous key generation via PoW
-type AuthHandler struct{}
+type AuthHandler struct {
+	redis *redis.Client
+}
 
-func NewAuthHandler() *AuthHandler {
-	return &AuthHandler{}
+func NewAuthHandler(redis *redis.Client) *AuthHandler {
+	return &AuthHandler{redis: redis}
 }
 
 // Challenge represents the PoW task
@@ -70,10 +73,17 @@ func (h *AuthHandler) ClaimKey(c *gin.Context) {
 		return
 	}
 
-	// 2. Generate Sovereign Key
-	// In production, save this to DB. Here we accept it statelessly or generate a deterministic one.
-	// We'll generate a signed key (simulated).
+	if h.redis == nil {
+		c.JSON(503, gin.H{"error": "Redis required to issue sovereign API keys"})
+		return
+	}
+
 	apiKey := fmt.Sprintf("sk_sovereign_%s_%s", req.WalletAddress, req.Nonce)
+
+	if err := RegisterSovereignAPIKey(c.Request.Context(), h.redis, apiKey, req.WalletAddress); err != nil {
+		c.JSON(500, gin.H{"error": "failed to register API key"})
+		return
+	}
 
 	c.JSON(201, gin.H{
 		"api_key":     apiKey,

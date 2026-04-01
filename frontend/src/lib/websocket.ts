@@ -1,5 +1,6 @@
 import { toast } from 'sonner';
 import { logger } from './logger';
+import { WS_URL } from './config';
 
 type MessageHandler = (data: any) => void;
 
@@ -164,7 +165,5 @@ class WebSocketClient {
     }
 }
 
-// Singleton instance
-// Use explicit URL or fallback to window.location
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'wss://app.gstdtoken.com/ws';
-export const wsClient = new WebSocketClient(WS_URL);
+const wsRoot = `${WS_URL.replace(/\/+$/, '')}/ws`;
+export const wsClient = new WebSocketClient(wsRoot);

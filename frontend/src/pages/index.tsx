@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { GetStaticProps } from 'next';
-import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useTranslation } from 'next-i18next';
+import { getCommonStaticProps } from '../lib/i18n-static-props';
 import { useState, useEffect, useRef } from 'react';
 import { API_BASE_URL } from '../lib/config';
 import { MessageSquare, ArrowRight, Bot, Brain, Building2, Activity, Zap, Server, Shield, Globe } from 'lucide-react';
@@ -422,5 +422,5 @@ export default function Home() {
 }
 
 export const getStaticProps: GetStaticProps = async ({ locale }) => ({
-  props: { ...(await serverSideTranslations(locale ?? 'en', ['common'])) },
+  props: await getCommonStaticProps(locale),
 });

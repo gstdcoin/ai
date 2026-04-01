@@ -3,26 +3,24 @@
  * Ensures production URLs are used instead of localhost fallbacks
  */
 
+/** Canonical production API host (nginx: api.gstdtoken.com → backend). */
+export const PRODUCTION_API_ORIGIN = 'https://api.gstdtoken.com';
+
 /**
  * Base API URL for backend requests
- * 
+ *
  * Priority:
- * 1. NEXT_PUBLIC_API_URL environment variable (if set)
- * 2. Production URL (https://app.gstdtoken.com) in production mode
- * 3. Development URL (http://localhost:8080) in development mode
+ * 1. NEXT_PUBLIC_API_URL (set in Docker / Vercel)
+ * 2. Production: https://api.gstdtoken.com
+ * 3. Development: http://localhost:8080
  */
 export const API_BASE_URL = (() => {
-  // Check if environment variable is set
   if (process.env.NEXT_PUBLIC_API_URL) {
     return process.env.NEXT_PUBLIC_API_URL.replace(/\/+$/, '');
   }
-
-  // Use production URL in production mode
   if (process.env.NODE_ENV === 'production') {
-    return 'https://app.gstdtoken.com';
+    return PRODUCTION_API_ORIGIN;
   }
-
-  // Development fallback
   return 'http://localhost:8080';
 })();
 
@@ -34,7 +32,12 @@ export const API_URL = `${API_BASE_URL}/api/v1`;
 /**
  * WebSocket URL for real-time updates
  */
+/** WebSocket origin without path; callers append `/ws` where needed. */
 export const WS_URL = (() => {
+  if (process.env.NEXT_PUBLIC_WS_URL) {
+    const u = process.env.NEXT_PUBLIC_WS_URL.replace(/\/+$/, '');
+    return u.endsWith('/ws') ? u.slice(0, -3) : u;
+  }
   const base = API_BASE_URL
     .replace('https://', 'wss://')
     .replace('http://', 'ws://');

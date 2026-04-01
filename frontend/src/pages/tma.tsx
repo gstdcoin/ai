@@ -1,6 +1,6 @@
 'use client';
 import { GetStaticProps } from 'next';
-import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
+import { getCommonStaticProps } from '../lib/i18n-static-props';
 
 /**
  * Sovereign Organism Protocol — GSTD Ecosystem in Telegram Mini App
@@ -355,7 +355,5 @@ function TMAInferenceWorker() {
 }
 
 export const getStaticProps: GetStaticProps = async ({ locale }) => ({
-  props: {
-    ...(await serverSideTranslations(locale || 'en', ['common'])),
-  },
+  props: await getCommonStaticProps(locale),
 });

@@ -38,13 +38,22 @@ func NewNodeWalletHandler(db *sql.DB, redis *redis.Client) *NodeWalletHandler {
 func (h *NodeWalletHandler) HandleHeartbeat(c *gin.Context) {
 	var req struct {
 		WalletAddress string `json:"wallet_address"`
+		// Wallet: legacy field from NaaS uptime daemon (same meaning as wallet_address)
+		Wallet        string `json:"wallet"`
 		NodeName      string `json:"node_name"`
 		NodeVersion   string `json:"node_version"`
 		UptimeHours   int    `json:"uptime_hours"`
 		QueriesServed int    `json:"queries_served"`
 		IsMobile      bool   `json:"is_mobile"`
 	}
-	if err := c.ShouldBindJSON(&req); err != nil || req.WalletAddress == "" {
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": "invalid JSON"})
+		return
+	}
+	if req.WalletAddress == "" {
+		req.WalletAddress = strings.TrimSpace(req.Wallet)
+	}
+	if req.WalletAddress == "" {
 		c.JSON(400, gin.H{"error": "wallet_address required"})
 		return
 	}

@@ -1,7 +1,7 @@
 import Head from 'next/head';
-import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useTranslation } from 'next-i18next';
 import { GetStaticProps } from 'next';
+import { getCommonStaticProps } from '../lib/i18n-static-props';
 import ReferralPanel from '../components/referrals/ReferralPanel';
 
 export default function ReferralsPage() {
@@ -24,5 +24,5 @@ export default function ReferralsPage() {
 }
 
 export const getStaticProps: GetStaticProps = async ({ locale }) => ({
-    props: { ...(await serverSideTranslations(locale ?? 'en', ['common'])) },
+    props: await getCommonStaticProps(locale),
 });

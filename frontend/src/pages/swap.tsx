@@ -1,7 +1,7 @@
 import Head from 'next/head';
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'next-i18next';
-import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
+import { getCommonStaticProps } from '../lib/i18n-static-props';
 import { ArrowDownUp, RefreshCw, AlertCircle, Wallet, Loader2, ExternalLink } from 'lucide-react';
 import { useTonAddress, useTonConnectUI, TonConnectButton } from '@tonconnect/ui-react';
 import { API_BASE_URL, GSTD_CONTRACT_ADDRESS } from '../lib/config';
@@ -430,6 +430,6 @@ export default function SwapPage() {
 
 export async function getStaticProps({ locale }: { locale: string }) {
   return {
-    props: { ...(await serverSideTranslations(locale ?? 'en', ['common'])) },
+    props: await getCommonStaticProps(locale),
   };
 }

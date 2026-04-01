@@ -4,8 +4,17 @@ const { i18n } = require('./next-i18next.config');
 const nextConfig = {
   reactStrictMode: true,
   i18n,
-  eslint: {
-    ignoreDuringBuilds: true,
+  // Production: strip console.* (keep errors/warnings) — smaller bundles, cleaner logs
+  compiler: {
+    removeConsole:
+      process.env.NODE_ENV === 'production'
+        ? { exclude: ['error', 'warn'] }
+        : false,
+  },
+  // Pages Router inlines getStaticProps (incl. next-i18next `common` ~64KB×locales) in __NEXT_DATA__;
+  // default 128kB warns; raise slightly until namespaces are split (layout vs page-specific).
+  experimental: {
+    largePageDataBytes: 200 * 1024,
   },
   images: {
     remotePatterns: [
@@ -14,14 +23,18 @@ const nextConfig = {
         hostname: 'app.gstdtoken.com',
       },
       {
+        protocol: 'https',
+        hostname: 'api.gstdtoken.com',
+      },
+      {
         protocol: 'http',
         hostname: 'localhost',
       },
     ],
   },
   env: {
-    API_URL: process.env.API_URL || 'https://app.gstdtoken.com',
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'https://app.gstdtoken.com',
+    API_URL: process.env.API_URL || 'https://api.gstdtoken.com',
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'https://api.gstdtoken.com',
     TON_NETWORK: process.env.TON_NETWORK || 'mainnet',
     GSTD_JETTON_ADDRESS: process.env.GSTD_JETTON_ADDRESS || '',
   },
@@ -65,6 +78,14 @@ const nextConfig = {
   async headers() {
     return [
       {
+        source: '/:path*',
+        headers: [
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+        ],
+      },
+      {
         source: '/sw.js',
         headers: [
           {
@@ -99,8 +120,9 @@ const nextConfig = {
     ];
   },
   async rewrites() {
+    // Vercel preview: proxy API to canonical backend (same as app + api hosts in prod Docker/nginx).
     const apiDest = process.env.VERCEL
-      ? 'https://app.gstdtoken.com/api/:path*'
+      ? 'https://api.gstdtoken.com/api/:path*'
       : 'http://localhost:8080/api/:path*';
     return {
       beforeFiles: [],

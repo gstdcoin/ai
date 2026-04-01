@@ -11,8 +11,8 @@ import { toast } from '../../lib/toast';
 import { apiGet, apiPost } from '../../lib/apiClient';
 import { useWalletStore } from '../../store/walletStore';
 import { useTonConnectUI, TonConnectButton } from '@tonconnect/ui-react';
-import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { buildSignalPurchaseTx } from '../../lib/jettonTransfer';
+import { getCommonStaticProps } from '../../lib/i18n-static-props';
 
 interface Signal {
     id: string;
@@ -666,8 +666,6 @@ export default function PredictionsPage() {
 
 export async function getServerSideProps({ locale }: { locale: string }) {
     return {
-        props: {
-            ...(await serverSideTranslations(locale || 'en', ['common'])),
-        },
+        props: await getCommonStaticProps(locale),
     };
 }

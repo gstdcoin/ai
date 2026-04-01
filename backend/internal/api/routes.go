@@ -195,7 +195,7 @@ func SetupRoutes(deps APIDependencies) {
 			return false
 		},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Session-Token", "X-API-Key", "X-Admin-API-Key"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Session-Token", "X-API-Key", "X-Admin-API-Key", "X-Wallet-Link-Secret", "X-Telegram-Bot-Api-Secret-Token"},
 		ExposeHeaders:    []string{"Content-Length", "Content-Type"},
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
@@ -795,15 +795,13 @@ func SetupRoutes(deps APIDependencies) {
 			internal.POST("/reconcile-marketplace-task", reconcileMarketplaceTask(db.(*sql.DB), referralService))
 		}
 
-		// Telegram Webhook
-		v1.POST("/telegram/webhook", func(c *gin.Context) {
+		// Telegram Webhook (optional TELEGRAM_WEBHOOK_SECRET via X-Telegram-Bot-Api-Secret-Token or ?secret_token=)
+		v1.POST("/telegram/webhook", telegramWebhookSecretMiddleware(), func(c *gin.Context) {
 			body, err := c.GetRawData()
 			if err != nil {
 				c.JSON(400, gin.H{"error": "failed to read body"})
 				return
 			}
-			// Process in background or synchronously? Synchronous is fine for now as it just sends a request.
-			// But keep it fast.
 			if err := telegramService.ProcessWebhook(c.Request.Context(), body); err != nil {
 				log.Printf("Telegram webhook error: %v", err)
 			}
@@ -833,8 +831,8 @@ func SetupRoutes(deps APIDependencies) {
 		v1.POST("/market/buy-gstd-x402", marketHandler.GetX402BuyDetails)
 		v1.POST("/market/buy-service-x402", marketHandler.BuyServiceX402) // NEW: Service Buying
 
-		// Autonomous Auth (PoW) — devices get API key without session
-		authHandler := NewAuthHandler()
+		// Autonomous Auth (PoW) — devices get API key without session (Redis registers sk_sovereign_*)
+		authHandler := NewAuthHandler(genesisRedis)
 		v1.GET("/auth/challenge", authHandler.GetChallenge)
 		v1.POST("/auth/claim-key", authHandler.ClaimKey)
 		v1.GET("/agents/challenge", authHandler.GetChallenge) // Alias for devices
@@ -853,13 +851,14 @@ func SetupRoutes(deps APIDependencies) {
 			log.Printf("⚠️  Redis client is nil - session middleware will not be applied")
 		}
 
-		// Apply session middleware to protected routes
+		// Apply session middleware to protected routes (never leave protected open without Redis)
 		protected := v1.Group("")
 		if sessionMiddleware != nil {
 			protected.Use(sessionMiddleware)
 			log.Printf("✅ Session middleware applied to protected group (includes /tasks and /nodes)")
 		} else {
-			log.Printf("⚠️  Session middleware is nil - protected routes will NOT require session")
+			protected.Use(ProtectedAuthUnavailable())
+			log.Printf("⚠️  Session middleware unavailable — protected routes return 503 until Redis is configured")
 		}
 
 		// Referrals
@@ -957,71 +956,87 @@ func SetupRoutes(deps APIDependencies) {
 		// TON Wallet Gateway: Direct GSTD purchase via Ston.fi (Ascension)
 		v1.GET("/wallet/buy-gstd", getBuyGSTDLink(tonService, tonConfig))
 
-		// ─── Wallet Link: Telegram ────────────────────────────────
-		// POST /wallet/link-telegram — link node wallet to Telegram user (called by GSTD Node OS)
-		v1.POST("/wallet/link-telegram", func(c *gin.Context) {
-			var req struct {
-				Address        string `json:"address"`
-				TelegramUserID string `json:"telegram_user_id"`
-			}
-			if err := c.ShouldBindJSON(&req); err != nil || req.Address == "" || req.TelegramUserID == "" {
-				c.JSON(400, gin.H{"error": "address and telegram_user_id required"})
-				return
-			}
-			// Ensure user exists
-			_, err := dbConn.ExecContext(c.Request.Context(), `
+		// ─── Wallet Link: Telegram / External (session or X-Wallet-Link-Secret) ───
+		walletLink := v1.Group("")
+		walletLink.Use(OptionalSession(genesisRedis))
+		walletLink.Use(RequireWalletLinkOrSession())
+		{
+			walletLink.POST("/wallet/link-telegram", func(c *gin.Context) {
+				var req struct {
+					Address        string `json:"address"`
+					TelegramUserID string `json:"telegram_user_id"`
+				}
+				if err := c.ShouldBindJSON(&req); err != nil || req.Address == "" || req.TelegramUserID == "" {
+					c.JSON(400, gin.H{"error": "address and telegram_user_id required"})
+					return
+				}
+				if c.GetString("wallet_link_trust") == "session" {
+					sess := c.GetString("wallet_address")
+					if sess != "" && req.Address != sess {
+						c.JSON(http.StatusForbidden, gin.H{"error": "address must match authenticated wallet"})
+						return
+					}
+				}
+				// Ensure user exists
+				_, err := dbConn.ExecContext(c.Request.Context(), `
 				INSERT INTO users (wallet_address, balance, created_at, updated_at)
 				VALUES ($1, 0, NOW(), NOW())
 				ON CONFLICT (wallet_address) DO NOTHING
 			`, req.Address)
-			if err != nil {
-				c.JSON(500, gin.H{"error": "failed to create user"})
-				return
-			}
-			// Update telegram_id
-			_, err = dbConn.ExecContext(c.Request.Context(), `
+				if err != nil {
+					c.JSON(500, gin.H{"error": "failed to create user"})
+					return
+				}
+				// Update telegram_id
+				_, err = dbConn.ExecContext(c.Request.Context(), `
 				UPDATE users SET telegram_id = $1, updated_at = NOW() WHERE wallet_address = $2
 			`, req.TelegramUserID, req.Address)
-			if err != nil {
-				c.JSON(500, gin.H{"error": "failed to link telegram"})
-				return
-			}
-			c.JSON(200, gin.H{"status": "linked", "address": req.Address, "telegram_user_id": req.TelegramUserID})
-		})
+				if err != nil {
+					c.JSON(500, gin.H{"error": "failed to link telegram"})
+					return
+				}
+				c.JSON(200, gin.H{"status": "linked", "address": req.Address, "telegram_user_id": req.TelegramUserID})
+			})
 
-		// ─── Wallet Link: External (Tonkeeper etc.) ──────────────
-		// POST /wallet/link-external — link external wallet for reward payouts
-		v1.POST("/wallet/link-external", func(c *gin.Context) {
-			var req struct {
-				NodeAddress     string `json:"node_address"`
-				ExternalAddress string `json:"external_address"`
-			}
-			if err := c.ShouldBindJSON(&req); err != nil || req.NodeAddress == "" || req.ExternalAddress == "" {
-				c.JSON(400, gin.H{"error": "node_address and external_address required"})
-				return
-			}
-			// Ensure user record exists for external wallet
-			_, _ = dbConn.ExecContext(c.Request.Context(), `
+			walletLink.POST("/wallet/link-external", func(c *gin.Context) {
+				var req struct {
+					NodeAddress     string `json:"node_address"`
+					ExternalAddress string `json:"external_address"`
+				}
+				if err := c.ShouldBindJSON(&req); err != nil || req.NodeAddress == "" || req.ExternalAddress == "" {
+					c.JSON(400, gin.H{"error": "node_address and external_address required"})
+					return
+				}
+				if c.GetString("wallet_link_trust") == "session" {
+					sess := c.GetString("wallet_address")
+					if sess != "" && req.NodeAddress != sess {
+						c.JSON(http.StatusForbidden, gin.H{"error": "node_address must match authenticated wallet"})
+						return
+					}
+				}
+				// Ensure user record exists for external wallet
+				_, _ = dbConn.ExecContext(c.Request.Context(), `
 				INSERT INTO users (wallet_address, balance, created_at, updated_at)
 				VALUES ($1, 0, NOW(), NOW())
 				ON CONFLICT (wallet_address) DO NOTHING
 			`, req.ExternalAddress)
-			// Update node to point to external wallet
-			_, err := dbConn.ExecContext(c.Request.Context(), `
+				// Update node to point to external wallet
+				_, err := dbConn.ExecContext(c.Request.Context(), `
 				UPDATE nodes SET wallet_address = $1, updated_at = NOW() WHERE wallet_address = $2 OR id = $2
 			`, req.ExternalAddress, req.NodeAddress)
-			if err != nil {
-				c.JSON(500, gin.H{"error": "failed to link external wallet"})
-				return
-			}
-			log.Printf("[Wallet] External wallet linked: %s → %s", req.NodeAddress[:min(16, len(req.NodeAddress))], req.ExternalAddress[:min(16, len(req.ExternalAddress))])
-			c.JSON(200, gin.H{
-				"status":           "linked",
-				"node_address":     req.NodeAddress,
-				"external_address": req.ExternalAddress,
-				"message":          "Rewards will now be credited to your external wallet.",
+				if err != nil {
+					c.JSON(500, gin.H{"error": "failed to link external wallet"})
+					return
+				}
+				log.Printf("[Wallet] External wallet linked: %s → %s", req.NodeAddress[:min(16, len(req.NodeAddress))], req.ExternalAddress[:min(16, len(req.ExternalAddress))])
+				c.JSON(200, gin.H{
+					"status":           "linked",
+					"node_address":     req.NodeAddress,
+					"external_address": req.ExternalAddress,
+					"message":          "Rewards will now be credited to your external wallet.",
+				})
 			})
-		})
+		}
 
 		// ─── Node: Heartbeat (backend-verified rewards) ─────────
 		v1.POST("/nodes/heartbeat", nodeWalletHandler.HandleHeartbeat)
@@ -1362,7 +1377,7 @@ func SetupRoutes(deps APIDependencies) {
 				c.JSON(400, gin.H{"error": "invalid payload"})
 				return
 			}
-			
+
 			// Real estimation logic based on payload complexity
 			budget := 2.5
 			workers := 1
@@ -1373,7 +1388,7 @@ func SetupRoutes(deps APIDependencies) {
 				budget = 15.5
 				workers = 3
 				desc = "Dedicated GPU Cluster for AI Inference"
-				
+
 				// Scale budget with token limits if provided
 				if params, ok := payload.Payload["parameters"].(map[string]interface{}); ok {
 					if maxToks, ok := params["max_tokens"].(float64); ok {
@@ -1387,7 +1402,7 @@ func SetupRoutes(deps APIDependencies) {
 				budget = 45.0 // Base price for GPU rendering
 				workers = 5   // Parallel chunking
 				desc = "Distributed GPU Rendering (Blender Cycles)"
-				
+
 				if dur, ok := payload.Payload["duration_estimated"].(float64); ok {
 					// example pricing: 0.1 GSTD per second of estimated standard render
 					budget = dur * 0.1
@@ -1395,8 +1410,8 @@ func SetupRoutes(deps APIDependencies) {
 			}
 
 			c.JSON(200, gin.H{
-				"budget": budget,
-				"workers": workers,
+				"budget":      budget,
+				"workers":     workers,
 				"description": desc,
 			})
 		})

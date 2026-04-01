@@ -6,6 +6,26 @@ description: Full GSTD ecosystem health check and audit
 
 // turbo-all
 
+## Automation (run this first)
+
+From repository root — full check with exit code `0` / `1` (CI-friendly):
+
+```bash
+./scripts/ecosystem-audit.sh
+```
+
+- Skip public URL checks (e.g. laptop without routing to prod): `./scripts/ecosystem-audit.sh --local-only`
+- Optional Telegram alert on failure (requires `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` in `.env`): `./scripts/ecosystem-audit-alert.sh`
+- Optional cron on the production host (example every 6 hours):
+
+```cron
+0 */6 * * * cd /home/ubuntu && ./scripts/ecosystem-audit.sh >> /var/log/gstd-ecosystem-audit.log 2>&1
+```
+
+PostgreSQL logical backups (host cron): `./scripts/backup_postgres.sh` (writes under `backups/postgres/`, retention 7 days).
+
+Manual steps below mirror what the script runs; use them for deep dives only.
+
 ## 1. Check all running containers
 
 ```bash

@@ -65,15 +65,10 @@ func ValidateSession(redisClient *redis.Client, apiKeyService APIKeyValidator, s
 				apiKey = strings.TrimPrefix(authHeader, "Bearer ")
 			}
 
-			// Autonomous Agent Auth (Sovereign Keys)
 			if strings.HasPrefix(apiKey, "sk_sovereign_") {
-				parts := strings.Split(apiKey, "_")
-				// Format: sk_sovereign_{WALLET}_{NONCE}
-				if len(parts) >= 4 {
-					walletAddr := parts[2]
-					// We trust the key structure for this phase (PoW verified at generation)
-					c.Set("wallet_address", walletAddr)
-					log.Printf("🤖 Sovereign Agent Authenticated: %s", walletAddr)
+				if w, ok := walletFromRegisteredSovereignKey(ctx, redisClient, apiKey); ok {
+					c.Set("wallet_address", w)
+					log.Printf("🤖 Sovereign Agent Authenticated (registered key): %s", w[:min(8, len(w))])
 					c.Next()
 					return
 				}
@@ -164,6 +159,18 @@ func ValidateSession(redisClient *redis.Client, apiKeyService APIKeyValidator, s
 		}
 
 		c.Next()
+	}
+}
+
+// ProtectedAuthUnavailable responds 503 for every request when session backend (Redis) is not wired.
+// Use on the same route group that would normally use ValidateSession so protected routes never become open.
+func ProtectedAuthUnavailable() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error":   "authentication service unavailable",
+			"message": "Session storage is not configured",
+		})
+		c.Abort()
 	}
 }
 

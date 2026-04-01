@@ -15,7 +15,7 @@ description: Current ecosystem state — always read FIRST before any changes
 │                    GSTD ECOSYSTEM                           │
 │                 Server: 82.115.48.228                       │
 │                 OS: Ubuntu 24.04                            │
-│                 Last Update: 2026-03-24 (Production v194/v28)       │
+│                 Last Update: 2026-04-01 (compose: docker-compose.prod.yml) │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  ┌─── NGINX (gstd_nginx_lb) ─── Port 80/443 ─────────┐    │
@@ -29,8 +29,8 @@ description: Current ecosystem state — always read FIRST before any changes
 │  └─────────────────────────────────────────────────────┘    │
 │                                                             │
 │  ┌─── BACKEND (Go) ─── 4 replicas ───────────────────┐     │
-│  │  Containers: ubuntu-backend-blue-{1,2,6,7}        │     │
-│  │  Image:      gstd-backend-blue:v194                │     │
+│  │  Containers: ubuntu-backend-blue-{1,2,3,4}         │     │
+│  │  Image:      gstd-backend-blue:v198                 │     │
 │  │  Port:       8080 (internal, via nginx)            │     │
 │  │  DB:         distributed_computing                 │     │
 │  │  Rollback:   gstd-backend-blue:v193                │     │
@@ -38,7 +38,7 @@ description: Current ecosystem state — always read FIRST before any changes
 │                                                             │
 │  ┌─── FRONTEND (Next.js 16.1.6) ─────────────────────┐     │
 │  │  Container: ubuntu-frontend-1 (Docker)             │     │
-│  │  Image:     gstd-frontend:v27                     │     │
+│  │  Image:     gstd-frontend:v17 (see compose)       │     │
 │  │  Path:      /home/ubuntu/frontend                  │     │
 │  │  Pages:     14 (SSG/SSR)                           │     │
 │  │  Note:      Docker-only (systemd disabled)         │     │
@@ -54,7 +54,7 @@ description: Current ecosystem state — always read FIRST before any changes
 │                                                             │
 │  ┌─── TELEGRAM BOT (TypeScript) ─────────────────────┐     │
 │  │  Container: gstd-telegram-bot                      │     │
-│  │  Image:     gstd-bot:v39                           │     │
+│  │  Image:     gstd-bot:v29 (see compose)             │     │
 │  │  Path:      /home/ubuntu/gstdbot                   │     │
 │  └────────────────────────────────────────────────────┘     │
 │                                                             │
@@ -78,9 +78,9 @@ description: Current ecosystem state — always read FIRST before any changes
 
 | Component | Version/Image | Path | Container |
 |-----------|---------------|------|-----------|
-| **Backend** | `gstd-backend-blue:v194` ×4 | `/home/ubuntu/backend` | `ubuntu-backend-blue-{1,2,6,7}` |
-| **Frontend** | `gstd-frontend:v28` (Docker) | `/home/ubuntu/frontend` | `ubuntu-frontend-1` |
-| **Telegram Bot** | `gstd-bot:v32` | `/home/ubuntu/gstdbot` | `gstd-telegram-bot` |
+| **Backend** | `gstd-backend-blue:v198` ×4 | `/home/ubuntu/backend` | `ubuntu-backend-blue-{1,2,3,4}` |
+| **Frontend** | `gstd-frontend:v17` (Docker) | `/home/ubuntu/frontend` | `ubuntu-frontend-1` |
+| **Telegram Bot** | `gstd-bot:v29` | `/home/ubuntu/gstdbot` | `gstd-telegram-bot` |
 | **GSTD Bridge** | `gstd-bridge:latest` | `/home/ubuntu/gstd-bridge` | `gstd-bridge-test` |
 | **Chat UI** | Static HTML | `/home/ubuntu/chat-ui` | *served by nginx* |
 | **PostgreSQL** | `postgres:15-alpine` | — | `gstd_postgres_prod` |
@@ -119,7 +119,38 @@ description: Current ecosystem state — always read FIRST before any changes
 │       ├── chat.conf           # chat.gstdtoken.com
 │       ├── gstdbot.conf        # gstdbot.gstdtoken.com  
 │       └── monitor.conf        # monitor.gstdtoken.com
-└── ssl/                        # SSL certificates
+├── ssl/                        # SSL certificates
+├── agents/                     # → .agents (symlink) — workflows + ecosystem state
+├── .cursorrules                # GSTD canonical rules for AI assistants (always wins)
+└── scripts/
+    ├── ecosystem-audit.sh         # Full stack health (Docker, APIs, SSL, DB, Redis)
+    ├── ecosystem-audit-alert.sh   # Same + optional Telegram on failure (TELEGRAM_* in .env)
+    ├── backup_postgres.sh         # Daily pg_dump gzip; cron on prod host
+    └── sync-agency-agents.sh      # Optional: refresh .cursor/rules from The Agency
+```
+
+## 🤖 AI tooling (Cursor / [The Agency](https://github.com/msitarzewski/agency-agents))
+
+- **Canonical policy:** `.cursorrules` defines GSTD-first behavior (Sovereign Fund split, node verification, Docker, Tact). Never override it with generic agent prompts.
+- **Optional specialists:** After running `./scripts/sync-agency-agents.sh`, Cursor loads `.cursor/rules/*.mdc` from upstream. Use `@rule-name` only when it helps the task; map layers loosely — backend `backend`/`backend-architect`, frontend `frontend-developer`/`ui-designer`, contracts `solidity-smart-contract-engineer` (adapt to Tact/TON), infra `devops-automator`/`sre-site-reliability-engineer`, security `security-engineer`, QA `reality-checker`/`evidence-collector`.
+- **Override URL:** set `AGENCY_AGENTS_GIT` to a fork or mirror if you cannot use GitHub directly.
+
+### Ecosystem health (automation)
+
+Run `./scripts/ecosystem-audit.sh` from the repo root after deploys or on a schedule. It validates Docker, backend health JSON, public endpoints, Postgres/Redis, SSL, bridge/bot/frontend signals, and critical `/api/v1/nodes/...` routes. Exit code `1` means a critical check failed. Use `./scripts/ecosystem-audit-alert.sh` for the same checks plus optional Telegram notification when token/chat id are in `.env`.
+
+### Public URLs (canonical)
+
+- **Web UI:** `https://app.gstdtoken.com` (Nginx → `frontend:3000`)
+- **REST + WebSocket:** `https://api.gstdtoken.com` and `wss://api.gstdtoken.com/ws` (Nginx → `backend-blue:8080`). Production `NEXT_PUBLIC_API_URL` / `NEXT_PUBLIC_WS_URL` / `frontend/src/lib/config.ts` defaults use this origin.
+- **Vercel (optional):** set the same `NEXT_PUBLIC_*` in the dashboard; repo `next.config.js` rewrites `/api/*` to `https://api.gstdtoken.com` when building with `VERCEL` env.
+
+### Rollback (Docker images)
+
+Point `image:` tags in `docker-compose.prod.yml` to the last known-good tag (keep previous tags on the host), then:
+
+```bash
+cd /home/ubuntu && ln -sf docker-compose.prod.yml docker-compose.yml && docker compose up -d
 ```
 
 ## 🔄 Deployment Procedures

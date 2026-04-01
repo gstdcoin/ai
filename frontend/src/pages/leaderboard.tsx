@@ -1,7 +1,7 @@
 import Head from 'next/head';
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'next-i18next';
-import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
+import { getCommonStaticProps } from '../lib/i18n-static-props';
 
 import { RefreshCw } from 'lucide-react';
 import { API_BASE_URL } from '../lib/config';
@@ -125,6 +125,6 @@ export default function LeaderboardPage() {
 
 export async function getStaticProps({ locale }: { locale: string }) {
   return {
-    props: { ...(await serverSideTranslations(locale ?? 'en', ['common'])) },
+    props: await getCommonStaticProps(locale),
   };
 }

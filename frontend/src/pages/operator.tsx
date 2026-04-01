@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'next-i18next';
-import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { GetStaticProps } from 'next';
+import { getCommonStaticProps } from '../lib/i18n-static-props';
 import { API_BASE_URL } from '../lib/config';
 import { Activity, Cpu, Shield, Zap, Terminal, RefreshCw, Layers } from 'lucide-react';
 
@@ -147,10 +147,6 @@ export default function OperatorDashboard() {
   );
 }
 
-export const getStaticProps: GetStaticProps = async ({ locale }) => {
-  return {
-    props: {
-      ...(await serverSideTranslations(locale ?? 'en', ['common'])),
-    },
-  };
-};
+export const getStaticProps: GetStaticProps = async ({ locale }) => ({
+  props: await getCommonStaticProps(locale),
+});

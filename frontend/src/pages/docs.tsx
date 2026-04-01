@@ -3,7 +3,7 @@ import { ROICalculator } from '../components/ROICalculator';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { GetStaticProps } from 'next';
-import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
+import { getCommonStaticProps } from '../lib/i18n-static-props';
 import Header from '../components/layout/Header';
 import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
@@ -101,11 +101,7 @@ export default function Docs() {
     );
 }
 
-export const getStaticProps: GetStaticProps = async ({ locale }) => {
-    return {
-        props: {
-            ...(await serverSideTranslations(locale ?? 'en', ['common'])),
-        },
-    };
-};
+export const getStaticProps: GetStaticProps = async ({ locale }) => ({
+    props: await getCommonStaticProps(locale),
+});
 
