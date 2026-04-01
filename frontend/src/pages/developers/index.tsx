@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
-import { API_BASE_URL } from '../../lib/config';
+import { API_BASE_URL, RPC_GATEWAY_PUBLIC_BASE } from '../../lib/config';
 
 interface ClientProfile {
   client_id: number;
@@ -132,7 +132,7 @@ export default function DevelopersPage() {
           {/* Endpoint Example */}
           <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: '20px 24px', marginBottom: 32, fontFamily: 'monospace', fontSize: 14 }}>
             <div style={{ color: '#8b8fa3', marginBottom: 8 }}>{'// Single endpoint for all chains:'}</div>
-            <div style={{ color: '#64b5f6' }}>POST <span style={{ color: '#d4af37' }}>https://rpc.gstd.network/v1/</span><span style={{ color: '#00c853' }}>{'{'}<em>chain</em>{'}'}</span></div>
+            <div style={{ color: '#64b5f6' }}>POST <span style={{ color: '#d4af37' }}>{RPC_GATEWAY_PUBLIC_BASE}/</span><span style={{ color: '#00c853' }}>{'{'}<em>chain</em>{'}'}</span></div>
             <div style={{ color: '#8b8fa3', marginTop: 8 }}>{'// Headers: X-API-Key: gstd_b2b_sk_...'}</div>
             <div style={{ color: '#8b8fa3' }}>{'// Supported: ton, eth, sol, btc, bsc, arb'}</div>
           </div>
@@ -292,7 +292,7 @@ function DeveloperDashboard({ profile, usage, apiKey, newApiKey, onRefresh }: Re
           <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: 24 }}>
             <h3 style={{ margin: '0 0 16px', color: '#e0e0e0' }}>🚀 Quick Start</h3>
             <pre style={{ background: 'rgba(0,0,0,0.3)', borderRadius: 8, padding: 16, overflow: 'auto', fontSize: 13, lineHeight: 1.6 }}>
-{`curl -X POST https://rpc.gstd.network/v1/eth \\
+{`curl -X POST ${RPC_GATEWAY_PUBLIC_BASE}/eth \\
   -H "Content-Type: application/json" \\
   -H "X-API-Key: ${apiKey?.slice(0, 20) || 'YOUR_API_KEY'}..." \\
   -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}'`}

@@ -15,6 +15,8 @@ class WebSocketClient {
     private pingInterval: NodeJS.Timeout | null = null;
     private token: string | null = null;
     private lastEventTimestamp: number = 0;
+    /** Avoid duplicate “connected” toasts on every reconnect. */
+    private hasAnnouncedConnect = false;
 
     constructor(url: string) {
         this.url = url;
@@ -54,7 +56,10 @@ class WebSocketClient {
                 }
 
                 toast.dismiss('ws-error');
-                toast.success('Real-time connection established');
+                if (!this.hasAnnouncedConnect) {
+                    toast.success('Real-time connection established', { id: 'ws-connected', duration: 2500 });
+                    this.hasAnnouncedConnect = true;
+                }
                 this.emit('connection_status', { status: 'connected' });
             };
 
@@ -89,11 +94,12 @@ class WebSocketClient {
     }
 
     private handleDisconnect(reason: string) {
-        if (!this._isConnected) return; // Already handling
-
+        const wasConnected = this._isConnected;
         this._isConnected = false;
         this.stopHeartbeat();
-        this.emit('connection_status', { status: 'disconnected', reason });
+        if (wasConnected) {
+            this.emit('connection_status', { status: 'disconnected', reason });
+        }
 
         if (this.reconnectAttempts < this.maxReconnectAttempts) {
             const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000);

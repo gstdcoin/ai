@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
+import { APP_PUBLIC_ORIGIN } from '../../lib/config';
 import { TonConnectButton } from '@tonconnect/ui-react';
 import {
     Home, MessageSquare, Activity, Cpu,
@@ -69,8 +70,11 @@ export default function EcosystemNav() {
         };
     }, []);
 
-    const APP_BASE = 'https://app.gstdtoken.com';
-    const isOnApp = typeof window !== 'undefined' && window.location.hostname === 'app.gstdtoken.com';
+    const APP_BASE = APP_PUBLIC_ORIGIN;
+    const isOnApp =
+        typeof window !== 'undefined' &&
+        (window.location.hostname === 'app.gstdtoken.com' ||
+            window.location.origin.replace(/\/+$/, '') === APP_BASE);
 
     const allItems: NavItem[] = [
         { key: 'nav_home', href: isOnApp ? '/' : APP_BASE, icon: <Home size={15} />, external: !isOnApp },

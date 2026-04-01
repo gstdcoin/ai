@@ -299,10 +299,10 @@ class WorkerService {
             }, delay);
         };
 
+        // Browser fires onclose after onerror; reconnect only from onclose to avoid double timers.
         this.ws.onerror = (e) => {
             logger.error('[Compute Node] Socket Error', e);
             if (this.retryCount === 0) toast.error('Connection Lost. Reconnecting...');
-            handleReconnect();
         };
 
         this.ws.onclose = () => {
