@@ -62,10 +62,11 @@ export default function EcosystemNav() {
         const onKey = (e: KeyboardEvent) => {
             if (e.key === 'Escape') setMoreOpen(false);
         };
-        document.addEventListener('mousedown', onDoc);
+        // click (bubble) so we don't fight button mousedown + React toggle on the same interaction
+        document.addEventListener('click', onDoc);
         document.addEventListener('keydown', onKey);
         return () => {
-            document.removeEventListener('mousedown', onDoc);
+            document.removeEventListener('click', onDoc);
             document.removeEventListener('keydown', onKey);
         };
     }, []);
@@ -174,15 +175,24 @@ export default function EcosystemNav() {
                     }}>GSTD</span>
                 </Link>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1, justifyContent: 'center', minWidth: 0 }} className="ecosystem-nav-desktop">
-                    {primaryItems.map((item) => renderNavLink(item))}
+                <div
+                    style={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1, justifyContent: 'center', minWidth: 0 }}
+                    className="ecosystem-nav-desktop"
+                >
+                    {/* Scroll only primary links — overflow on this row was clipping the "More" dropdown */}
+                    <div className="ecosystem-nav-primary-scroll">
+                        {primaryItems.map((item) => renderNavLink(item))}
+                    </div>
                     <div ref={moreRef} style={{ position: 'relative', flexShrink: 0 }}>
                         <button
                             type="button"
                             className="ecosystem-nav-item ecosystem-nav-more-btn"
                             aria-expanded={moreOpen}
                             aria-haspopup="true"
-                            onClick={() => setMoreOpen((v) => !v)}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setMoreOpen((v) => !v);
+                            }}
                             style={{
                                 display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px',
                                 borderRadius: 7, fontSize: 12, fontWeight: moreMenuHasActive ? 600 : 500,
@@ -203,7 +213,7 @@ export default function EcosystemNav() {
                                     minWidth: 220, maxHeight: 'min(70vh, 420px)', overflowY: 'auto',
                                     background: 'rgba(8, 6, 28, 0.98)', backdropFilter: 'blur(20px)',
                                     border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12,
-                                    padding: 8, boxShadow: '0 20px 50px rgba(0,0,0,0.55)', zIndex: 1002,
+                                    padding: 8, boxShadow: '0 20px 50px rgba(0,0,0,0.55)', zIndex: 10050,
                                 }}
                             >
                                 {moreItems.map((item) => {
@@ -347,12 +357,21 @@ export default function EcosystemNav() {
 
             <style dangerouslySetInnerHTML={{ __html: `
         .ecosystem-nav-desktop {
+            min-width: 0;
+        }
+        .ecosystem-nav-primary-scroll {
             overflow-x: auto;
             white-space: nowrap;
+            flex: 1 1 auto;
+            min-width: 0;
+            display: flex;
+            align-items: center;
+            gap: 1px;
+            justify-content: flex-end;
             -ms-overflow-style: none;
             scrollbar-width: none;
         }
-        .ecosystem-nav-desktop::-webkit-scrollbar { display: none; }
+        .ecosystem-nav-primary-scroll::-webkit-scrollbar { display: none; }
         .ecosystem-nav-item:hover {
             color: #ffd700 !important;
             background: rgba(255,215,0,0.06) !important;
