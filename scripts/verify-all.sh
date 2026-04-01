@@ -48,6 +48,9 @@ echo "4/6  npm run lint (frontend)"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 ( cd "$ROOT/frontend" && npm run lint )
 
+echo "     locale parity (en/ru common.json)"
+"$ROOT/scripts/verify-locale-parity.sh"
+
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "5/6  npm run build (frontend)"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
