@@ -1,6 +1,6 @@
 import { GetStaticProps } from 'next';
-import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useTranslation } from 'next-i18next';
+import { getCommonStaticProps } from '../lib/i18n-static-props';
 import { useState, useEffect, useCallback, startTransition } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -254,5 +254,5 @@ export default function PublicStats() {
 }
 
 export const getStaticProps: GetStaticProps = async ({ locale }) => ({
-  props: { ...(await serverSideTranslations(locale ?? 'en', ['common'])) },
+  props: await getCommonStaticProps(locale),
 });

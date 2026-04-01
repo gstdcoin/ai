@@ -805,6 +805,11 @@ func StartApplication(container *dig.Container) error {
 
 		v1Group := deps.Router.Group("/api/v1")
 		protectedGroup := deps.Router.Group("/api/v1")
+		if deps.RedisClient != nil {
+			protectedGroup.Use(api.ValidateSession(deps.RedisClient, deps.ApiKeyService))
+		} else {
+			protectedGroup.Use(api.ProtectedAuthUnavailable())
+		}
 		api.SetupPipelineRoutes(v1Group, protectedGroup, deps.PipelineService)
 		api.SetupSovereignRoutes(v1Group, deps.Db)
 
@@ -817,7 +822,13 @@ func StartApplication(container *dig.Container) error {
 		if deps.SmartRouter != nil {
 			openClawPanelHandler.SetSmartRouter(deps.SmartRouter)
 		}
-		adminGroupClaw := v1Group.Group("/", api.RequireAdminWallet(cfg.TON))
+		adminGroupClaw := v1Group.Group("/")
+		if deps.RedisClient != nil {
+			adminGroupClaw.Use(api.ValidateSession(deps.RedisClient, deps.ApiKeyService))
+		} else {
+			adminGroupClaw.Use(api.ProtectedAuthUnavailable())
+		}
+		adminGroupClaw.Use(api.RequireAdminWallet(cfg.TON))
 		api.SetupOpenClawPanelRoutes(adminGroupClaw, openClawPanelHandler)
 
 		api.SetupUniversalMeshRoutes(v1Group, deps.UniversalMeshService, deps.ContributionMonetization)
@@ -836,12 +847,15 @@ func StartApplication(container *dig.Container) error {
 			if deps.TelegramService != nil {
 				deps.LendingService.SetTelegramNotifier(deps.TelegramService)
 			}
-			
+
 			// Inject Highload Wallet for Oracle Updates
 			if deps.HighloadWallet != nil && deps.HighloadWallet.IsInitialized() {
 				masterAddr := os.Getenv("LENDING_MASTER_ADDRESS")
 				if masterAddr != "" {
 					deps.LendingService.SetHighloadWallet(deps.HighloadWallet, masterAddr)
+					if deps.RedisClient != nil {
+						deps.LendingService.SetRedisForOracleLock(deps.RedisClient)
+					}
 					go deps.LendingService.StartOracleKeeper(ctx, 5*time.Minute)
 				}
 			}

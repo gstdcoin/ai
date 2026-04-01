@@ -9,7 +9,11 @@ import (
 	"log"
 	"math"
 	"net/http"
+	"os"
+	"strconv"
 	"time"
+
+	"github.com/redis/go-redis/v9"
 )
 
 // ═══════════════════════════════════════════════════════════════
@@ -37,11 +41,14 @@ type LendingService struct {
 	lastAlertSent    map[string]time.Time // wallet -> last alert time (prevent spam)
 	hlWallet         *HighloadWalletService
 	lendingMaster    string
-	// Oracle tracking
-	oracleLastPush      time.Time
-	oracleLastGSTDPrice float64
-	oracleLastGoldPrice float64
-	oraclePushCount     int64
+	// Oracle: only one backend replica should push (Redis leader lock); timestamp must be > on-chain oracleTimestamp.
+	oracleRedis            *redis.Client
+	oracleLockInstanceID   string
+	oracleLastSentUnix     uint64
+	oracleLastPush         time.Time
+	oracleLastGSTDPrice    float64
+	oracleLastGoldPrice    float64
+	oraclePushCount        int64
 }
 
 func (s *LendingService) SetPoolMonitor(pm *PoolMonitorService) {
@@ -55,6 +62,13 @@ func (s *LendingService) SetTelegramNotifier(tn TelegramNotifier) {
 func (s *LendingService) SetHighloadWallet(hl *HighloadWalletService, lendingMasterAddr string) {
 	s.hlWallet = hl
 	s.lendingMaster = lendingMasterAddr
+}
+
+// SetRedisForOracleLock wires Redis so a single replica holds the lending oracle push lock (avoids duplicate timestamps across scaled backends).
+func (s *LendingService) SetRedisForOracleLock(r *redis.Client) {
+	s.oracleRedis = r
+	h, _ := os.Hostname()
+	s.oracleLockInstanceID = fmt.Sprintf("%s-%d-%d", h, os.Getpid(), time.Now().UnixNano())
 }
 
 // StartOracleKeeper continuously pushes price updates to LendingMaster
@@ -101,11 +115,52 @@ func (s *LendingService) pushOracleUpdate(ctx context.Context) {
 		}
 	}
 
-	// 3. Send update
-	_, err := s.hlWallet.SignAndSendOracleUpdate(ctx, s.lendingMaster, gstdPrice, goldPrice)
+	// 3. Single-writer among replicas + monotonic timestamp (LendingMaster: require(msg.timestamp > self.oracleTimestamp))
+	const oraclePushLockKey = "gstd:lending:oracle_push_lock"
+	const oracleLastTSKey = "gstd:lending:oracle_last_ts"
+	if s.oracleRedis != nil {
+		ok, err := s.oracleRedis.SetNX(ctx, oraclePushLockKey, s.oracleLockInstanceID, 90*time.Second).Result()
+		if err != nil {
+			log.Printf("[Lending Oracle] Redis leader lock error: %v", err)
+			return
+		}
+		if !ok {
+			return
+		}
+	}
+
+	now := uint64(time.Now().Unix())
+	var ts uint64
+	if s.oracleRedis != nil {
+		lastStr, err := s.oracleRedis.Get(ctx, oracleLastTSKey).Result()
+		var last uint64
+		if err == nil && lastStr != "" {
+			if v, perr := strconv.ParseUint(lastStr, 10, 64); perr == nil {
+				last = v
+			}
+		}
+		ts = now
+		if ts <= last {
+			ts = last + 1
+		}
+	} else {
+		ts = now
+		if ts <= s.oracleLastSentUnix {
+			ts = s.oracleLastSentUnix + 1
+		}
+	}
+
+	_, err := s.hlWallet.SignAndSendOracleUpdate(ctx, s.lendingMaster, gstdPrice, goldPrice, ts)
 	if err != nil {
+		if s.oracleRedis != nil {
+			_ = s.oracleRedis.Del(ctx, oraclePushLockKey).Err()
+		}
 		log.Printf("[Lending Oracle] Error sending update: %v", err)
 		return
+	}
+	s.oracleLastSentUnix = ts
+	if s.oracleRedis != nil {
+		_ = s.oracleRedis.Set(ctx, oracleLastTSKey, strconv.FormatUint(ts, 10), 0).Err()
 	}
 
 	// Track successful push

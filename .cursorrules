@@ -11,11 +11,17 @@ GSTD is mathematically backed by real capital (Sovereign Fund).
 
 ## Agent Workflows & Best Practices
 - **Plan First:** Always define clear implementation steps before writing code.
-- **Verify Architectures:** Use `/agents/workflows/state.md` to understand context before touching production layers.
+- **Verify Architectures:** Read `agents/workflows/state.md` first to understand context before touching production layers. Refresh optional Cursor specialist rules with `./scripts/sync-agency-agents.sh` when needed.
 - **Real-Time Logs:** Use docker logs and MCP tools for debugging instead of guessing.
+- **Ecosystem verification:** After material changes or deploys, run `./scripts/ecosystem-audit.sh` (see `agents/workflows/audit.md`).
 - **Micro-Animations & UI Wow-Factor:** The frontend must feel "alive" (glassmorphism, interactive elements, sleek dark modes) per the Antigravity best practices.
 
 ## Development Constraints
 - **Strict Verification:** Nodes are verifiable through `Age Multiplier` and `Proof-of-Uptime`. Never mock blockchain or node parameters.
 - **Economy Rules:** Every transaction MUST feed the Sovereign Fund (50/20/30 split).
 - **Environment:** Production is Ubuntu 24.04 with Docker Compose. Never run arbitrary node processes without Docker encapsulation.
+
+## The Agency (optional specialists)
+Project-local Cursor rules from [agency-agents](https://github.com/msitarzewski/agency-agents) live under `.cursor/rules/` (`.mdc` files). They **supplement** this document, not replace it: all GSTD constraints above (Sovereign Fund split, node verification, Docker, Tact safety) remain mandatory.
+
+When you need a focused lens, reference the matching rule by name, for example: backend API and service design — `@backend-architect`; Go/TS implementation depth — `@senior-developer` or `@code-reviewer`; Next.js UI — `@frontend-developer` and `@ui-designer`; infra and pipelines — `@devops-automator` or `@sre-site-reliability-engineer`; security review — `@security-engineer`; on-chain EVM-style patterns (adapt mentally to Tact/TON) — `@solidity-smart-contract-engineer`; QA and release confidence — `@reality-checker` or `@evidence-collector`. Use only what fits the task; default behavior stays **GSTD-first**.

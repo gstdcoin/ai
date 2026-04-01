@@ -1,8 +1,8 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { GetStaticProps } from 'next';
-import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useTranslation } from 'next-i18next';
+import { getCommonStaticProps } from '../lib/i18n-static-props';
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import WalletConnect from '../components/WalletConnect';
@@ -455,10 +455,6 @@ export default function About() {
   );
 }
 
-export const getStaticProps: GetStaticProps = async ({ locale }) => {
-  return {
-    props: {
-      ...(await serverSideTranslations(locale ?? 'en', ['common'])),
-    },
-  };
-};
+export const getStaticProps: GetStaticProps = async ({ locale }) => ({
+  props: await getCommonStaticProps(locale),
+});

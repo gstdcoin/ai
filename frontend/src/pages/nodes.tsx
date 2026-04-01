@@ -1,6 +1,6 @@
 import { GetStaticProps } from 'next';
-import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useTranslation } from 'next-i18next';
+import { getCommonStaticProps } from '../lib/i18n-static-props';
 import { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
 import { useTonWallet } from '@tonconnect/ui-react';
@@ -865,5 +865,5 @@ export default function NodesPage() {
 }
 
 export const getStaticProps: GetStaticProps = async ({ locale }) => ({
-  props: { ...(await serverSideTranslations(locale ?? 'en', ['common'])) },
+  props: await getCommonStaticProps(locale),
 });

@@ -1,4 +1,6 @@
+import { GetStaticProps } from 'next';
 import { useTranslation } from 'next-i18next';
+import { getCommonStaticProps } from '../lib/i18n-static-props';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
@@ -1094,11 +1096,6 @@ export default function ChatPage() {
     );
 }
 
-import { GetStaticProps } from 'next';
-import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-
 export const getStaticProps: GetStaticProps = async ({ locale }) => ({
-    props: {
-        ...(await serverSideTranslations(locale || 'en', ['common'])),
-    },
+    props: await getCommonStaticProps(locale),
 });

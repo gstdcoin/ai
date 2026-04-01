@@ -43,8 +43,7 @@ export class TaskWorker {
   }
 
   connect() {
-    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || WS_URL;
-    const url = `${wsUrl}/ws?device_id=${this.deviceID}`;
+    const url = `${WS_URL.replace(/\/+$/, '')}/ws?device_id=${this.deviceID}`;
 
     try {
       this.ws = new WebSocket(url);

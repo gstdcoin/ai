@@ -257,8 +257,7 @@ class WorkerService {
 
     private connectWebSocket() {
         logger.debug('[Compute Node] Establishing Socket Connection...');
-        const baseWs = process.env.NEXT_PUBLIC_WS_URL || WS_URL;
-        const wsUrl = baseWs.includes('/ws') ? baseWs : `${baseWs.replace(/\/+$/, '')}/ws`;
+        const wsUrl = `${WS_URL.replace(/\/+$/, '')}/ws`;
         const walletAddress = globalThis.window === undefined ? null : useWalletStore.getState().address;
         const params = new URLSearchParams({ device_id: this.deviceId });
         if (walletAddress) params.set('wallet_address', walletAddress);

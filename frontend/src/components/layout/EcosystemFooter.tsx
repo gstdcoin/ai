@@ -6,6 +6,8 @@ export default function EcosystemFooter() {
     const { t } = useTranslation('common');
 
     const links = [
+        { label: t('footer_terms', 'Terms'), href: '/terms', external: false },
+        { label: t('footer_privacy', 'Privacy'), href: '/privacy', external: false },
         { label: 'Chat', href: '/chat', external: false },
         { label: 'Bridge', href: '/bridge', external: false },
         { label: 'Swap', href: '/swap', external: false },

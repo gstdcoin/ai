@@ -1,7 +1,7 @@
 import Head from 'next/head';
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'next-i18next';
-import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
+import { getCommonStaticProps } from '../lib/i18n-static-props';
 import { Lock, TrendingUp, Clock, Shield, Zap, RefreshCw, Info, Wallet, Loader2, Unlock } from 'lucide-react';
 import { useTonWallet, useTonConnectUI, TonConnectButton } from '@tonconnect/ui-react';
 import { buildStakingDepositTx } from '../lib/jettonTransfer';
@@ -425,6 +425,6 @@ export default function StakingPage() {
 
 export async function getStaticProps({ locale }: { locale: string }) {
   return {
-    props: { ...(await serverSideTranslations(locale ?? 'en', ['common'])) },
+    props: await getCommonStaticProps(locale),
   };
 }

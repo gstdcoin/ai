@@ -269,8 +269,9 @@ func ParseSeedFromEnv(seedStr string) []string {
 	return parts
 }
 
-// SignAndSendOracleUpdate constructs and sends the UpdateOraclePrice message to LendingMaster
-func (s *HighloadWalletService) SignAndSendOracleUpdate(ctx context.Context, masterAddr string, gstdPriceUsd float64, goldPriceUsd float64) (string, error) {
+// SignAndSendOracleUpdate constructs and sends the UpdateOraclePrice message to LendingMaster.
+// If timestampUnix is 0, time.Now().Unix() is used. Callers should pass a strictly increasing value when the contract already stores a recent oracleTimestamp (see LendingMaster).
+func (s *HighloadWalletService) SignAndSendOracleUpdate(ctx context.Context, masterAddr string, gstdPriceUsd float64, goldPriceUsd float64, timestampUnix uint64) (string, error) {
 	if !s.initialized || s.hlWallet == nil {
 		return "", fmt.Errorf("highload wallet not initialized")
 	}
@@ -285,11 +286,16 @@ func (s *HighloadWalletService) SignAndSendOracleUpdate(ctx context.Context, mas
 	gstdNano := uint64(gstdPriceUsd * 1e9)
 	goldNano := uint64(goldPriceUsd * 1e9)
 
+	ts := timestampUnix
+	if ts == 0 {
+		ts = uint64(time.Now().Unix())
+	}
+
 	payload := cell.BeginCell().
 		MustStoreUInt(0x0dc85fa4, 32). // op UpdateOraclePrice
 		MustStoreCoins(gstdNano).
 		MustStoreCoins(goldNano).
-		MustStoreUInt(uint64(time.Now().Unix()), 64). // timestamp
+		MustStoreUInt(ts, 64). // timestamp
 		EndCell()
 
 	gasAmount := tlb.MustFromTON("0.05") // Fixed fee for updating oracle
