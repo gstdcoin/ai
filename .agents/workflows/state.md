@@ -15,7 +15,7 @@ description: Current ecosystem state — always read FIRST before any changes
 │                    GSTD ECOSYSTEM                           │
 │                 Server: 82.115.48.228                       │
 │                 OS: Ubuntu 24.04                            │
-│                 Last Update: 2026-04-01 — ecosystem-audit PASSED            │
+│                 Last Update: 2026-04-01 — full ecosystem-audit PASSED (public URLs) │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  ┌─── NGINX (gstd_nginx_lb) ─── Port 80/443 ─────────┐    │
@@ -131,6 +131,7 @@ description: Current ecosystem state — always read FIRST before any changes
     ├── backup_postgres.sh         # Daily pg_dump gzip; cron on prod host
     ├── crontab.prod.example           # Example crontab lines (backup + audit + alert)
     ├── backup-offsite-rsync.example.sh # Optional rsync of backups/postgres to remote host
+    ├── gosec-baseline.sh              # gosec args aligned with CI (SECURITY.md)
     └── sync-agency-agents.sh          # Optional: refresh .cursor/rules from The Agency
 ```
 
@@ -144,7 +145,7 @@ description: Current ecosystem state — always read FIRST before any changes
 
 Run `./scripts/ecosystem-audit.sh` from the repo root after deploys or on a schedule. It validates Docker, backend health JSON, public endpoints, Postgres/Redis, SSL, bridge/bot/frontend signals, and critical `/api/v1/nodes/...` routes. Exit code `1` means a critical check failed. Use `./scripts/ecosystem-audit-alert.sh` for the same checks plus optional Telegram notification when token/chat id are in `.env`.
 
-**Last full audit (public URLs + local stack):** 2026-04-01 — `PASSED` (0 failures). Note: Lending Oracle may log TON lite-server `-701` until contract accepts inbound oracle message; monitored separately from audit pass/fail.
+**Last full audit (public URLs + local stack):** 2026-04-01 (post-restart `backend-blue` replicas) — `PASSED` (0 failures). If `https://api.gstdtoken.com` returns 502, confirm all `ubuntu-backend-blue-*` are **Up** (`docker compose up -d backend-blue`). Note: Lending Oracle may log TON lite-server `-701` until contract accepts inbound oracle message; monitored separately from audit pass/fail.
 
 **Frontend API base:** all client calls should use `API_BASE_URL` / `apiClient` from `frontend/src/lib/config.ts` and `apiClient.ts` (canonical prod: `https://api.gstdtoken.com`). Legacy hostname `v2.gstdtoken.com` must not appear in code.
 
