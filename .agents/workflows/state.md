@@ -122,6 +122,7 @@ description: Current ecosystem state — always read FIRST before any changes
 ├── ssl/                        # SSL certificates
 ├── agents/                     # → .agents (symlink) — workflows + ecosystem state
 ├── .cursorrules                # GSTD canonical rules for AI assistants (always wins)
+├── SECURITY.md                 # Vulnerability reporting (private disclosure)
 └── scripts/
     ├── ecosystem-audit.sh         # Full stack health (Docker, APIs, SSL, DB, Redis)
     ├── ecosystem-audit-alert.sh   # Same + optional Telegram on failure (TELEGRAM_* in .env)

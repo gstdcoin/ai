@@ -1,0 +1,23 @@
+# Scans dependency changes in pull requests (licenses + known vulnerabilities).
+# Requires: GitHub Dependency graph enabled (default on public repos).
+name: Dependency Review
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/dependency-review-action@v4
+        with:
+          # Summary on every PR; block merge only on critical issues in *changed* dependencies
+          comment-summary-in-pr: always
+          fail-on-severity: critical
