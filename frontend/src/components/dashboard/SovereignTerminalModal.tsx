@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Terminal, ShieldAlert, Cpu, CheckCircle2, RefreshCw, X } from 'lucide-react';
 import { useWalletStore } from '../../store/walletStore';
 import { toast } from '../../lib/toast';
+import { API_BASE_URL } from '../../lib/config';
 
 interface SovereignTerminalModalProps {
   isOpen: boolean;
@@ -9,12 +10,6 @@ interface SovereignTerminalModalProps {
   mode?: 'faucet' | 'agent_chat';
   agentInfo?: { name: string; id: string; capabilities: string[] };
 }
-
-const API_BASE_URL = typeof window !== 'undefined'
-  ? window.location.hostname.includes('localhost')
-    ? 'http://localhost:8080'
-    : 'https://v2.gstdtoken.com'
-  : 'https://v2.gstdtoken.com';
 
 export default function SovereignTerminalModal({ isOpen, onClose, mode = 'faucet', agentInfo }: SovereignTerminalModalProps) {
   const [isClaiming, setIsClaiming] = useState(false);

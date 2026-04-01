@@ -144,6 +144,8 @@ Run `./scripts/ecosystem-audit.sh` from the repo root after deploys or on a sche
 
 **Last full audit (public URLs + local stack):** 2026-04-01 — `PASSED` (0 failures). Note: Lending Oracle may log TON lite-server `-701` until contract accepts inbound oracle message; monitored separately from audit pass/fail.
 
+**Frontend API base:** all client calls should use `API_BASE_URL` / `apiClient` from `frontend/src/lib/config.ts` and `apiClient.ts` (canonical prod: `https://api.gstdtoken.com`). Legacy hostname `v2.gstdtoken.com` must not appear in code.
+
 ### Public URLs (canonical)
 
 - **Web UI:** `https://app.gstdtoken.com` (Nginx → `frontend:3000`)

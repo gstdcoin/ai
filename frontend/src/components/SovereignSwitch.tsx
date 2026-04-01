@@ -284,7 +284,7 @@ export const SovereignSwitch = ({ className, onModeChange }: SovereignSwitchProp
                                                 <div className="text-[9px] font-black text-violet-400 uppercase tracking-widest mb-2">{t('integration_guide', 'Integration Guide')}</div>
                                                 <div className="text-[10px] text-gray-400 space-y-1">
                                                     <p>1. Open your IDE {">"} Settings {">"} Models</p>
-                                                    <p>2. Set Base URL: <code className="text-violet-300">https://app.gstdtoken.com/v1</code></p>
+                                                    <p>2. Set Base URL: <code className="text-violet-300">https://api.gstdtoken.com/v1</code></p>
                                                     <p>3. Use any API key above as the "OpenAI API Key"</p>
                                                 </div>
                                             </div>
