@@ -139,6 +139,8 @@ description: Current ecosystem state — always read FIRST before any changes
 
 Run `./scripts/ecosystem-audit.sh` from the repo root after deploys or on a schedule. It validates Docker, backend health JSON, public endpoints, Postgres/Redis, SSL, bridge/bot/frontend signals, and critical `/api/v1/nodes/...` routes. Exit code `1` means a critical check failed. Use `./scripts/ecosystem-audit-alert.sh` for the same checks plus optional Telegram notification when token/chat id are in `.env`.
 
+**Last full audit (public URLs + local stack):** 2026-04-01 — `PASSED` (0 failures). Note: Lending Oracle may log TON lite-server `-701` until contract accepts inbound oracle message; monitored separately from audit pass/fail.
+
 ### Public URLs (canonical)
 
 - **Web UI:** `https://app.gstdtoken.com` (Nginx → `frontend:3000`)
