@@ -6,7 +6,7 @@ import { TonConnectButton } from '@tonconnect/ui-react';
 import {
     Home, MessageSquare, Activity, Cpu,
     ExternalLink, Menu, X, ArrowRightLeft, Server, Trophy, Repeat, Landmark,
-    Users, Briefcase, Brain, ChevronDown,
+    Users, Briefcase, Brain, ChevronDown, BookOpen, Download, Boxes, Info,
 } from 'lucide-react';
 
 interface NavItem {
@@ -24,7 +24,8 @@ const PRIMARY_KEYS = [
 
 const MORE_KEYS = [
     'nav_operator', 'nav_referrals', 'nav_monitor', 'nav_predictions',
-    'nav_fund', 'nav_developers', 'nav_telegram',
+    'nav_fund', 'nav_developers', 'nav_hive', 'nav_about', 'nav_docs', 'nav_downloads',
+    'nav_telegram',
 ] as const;
 
 type SectionDef = { titleKey: string; keys: readonly string[] };
@@ -32,7 +33,7 @@ type SectionDef = { titleKey: string; keys: readonly string[] };
 const MOBILE_SECTIONS: SectionDef[] = [
     { titleKey: 'nav_section_core', keys: ['nav_home', 'nav_chat', 'nav_bridge', 'nav_swap', 'nav_staking'] },
     { titleKey: 'nav_section_network', keys: ['nav_nodes', 'nav_stats', 'nav_leaderboard', 'nav_operator', 'nav_referrals'] },
-    { titleKey: 'nav_section_explore', keys: ['nav_monitor', 'nav_predictions', 'nav_fund', 'nav_developers', 'nav_telegram'] },
+    { titleKey: 'nav_section_explore', keys: ['nav_monitor', 'nav_predictions', 'nav_fund', 'nav_developers', 'nav_hive', 'nav_about', 'nav_docs', 'nav_downloads', 'nav_telegram'] },
 ];
 
 export default function EcosystemNav() {
@@ -86,6 +87,10 @@ export default function EcosystemNav() {
         { key: 'nav_predictions', short: 'Signals', href: `${APP_BASE}/predictions`, icon: <Brain size={15} />, external: !isOnApp },
         { key: 'nav_fund', short: 'Fund', href: `${APP_BASE}/fund`, icon: <Landmark size={15} />, external: !isOnApp },
         { key: 'nav_developers', short: 'Developers', href: `${APP_BASE}/developers`, icon: <Server size={15} />, external: !isOnApp },
+        { key: 'nav_hive', short: 'Hive', href: `${APP_BASE}/hive`, icon: <Boxes size={15} />, external: !isOnApp },
+        { key: 'nav_about', short: 'About', href: `${APP_BASE}/about`, icon: <Info size={15} />, external: !isOnApp },
+        { key: 'nav_docs', short: 'Docs', href: `${APP_BASE}/docs`, icon: <BookOpen size={15} />, external: !isOnApp },
+        { key: 'nav_downloads', short: 'Downloads', href: `${APP_BASE}/downloads`, icon: <Download size={15} />, external: !isOnApp },
         { key: 'nav_telegram', href: 'https://t.me/GstdAppBot', icon: <ExternalLink size={13} />, external: true, short: 'TG' },
     ];
 

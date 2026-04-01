@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
-import EcosystemNav from '../components/layout/EcosystemNav';
+import { API_BASE_URL } from '../lib/config';
 
 interface FundData {
   sovereign_fund: {
@@ -39,8 +39,6 @@ interface RevenueSource {
   to_yield: number;
 }
 
-const API = process.env.NEXT_PUBLIC_API_URL || '';
-
 function AnimatedCounter({ value, prefix = '$', decimals = 2 }: { value: number; prefix?: string; decimals?: number }) {
   const [display, setDisplay] = useState(0);
   useEffect(() => {
@@ -68,10 +66,10 @@ export default function SovereignFundPage() {
   const loadData = useCallback(async () => {
     try {
       const [fRes, eRes, rRes, lRes] = await Promise.all([
-        fetch(`${API}/api/v1/fund/status`),
-        fetch(`${API}/api/v1/fund/epoch`),
-        fetch(`${API}/api/v1/fund/revenue`),
-        fetch(`${API}/api/v1/fund/leaderboard`),
+        fetch(`${API_BASE_URL}/api/v1/fund/status`),
+        fetch(`${API_BASE_URL}/api/v1/fund/epoch`),
+        fetch(`${API_BASE_URL}/api/v1/fund/revenue`),
+        fetch(`${API_BASE_URL}/api/v1/fund/leaderboard`),
       ]);
       if (fRes.ok) setFund(await fRes.json());
       if (eRes.ok) setEpoch(await eRes.json());
@@ -93,7 +91,6 @@ export default function SovereignFundPage() {
         <title>Sovereign Fund — GSTD</title>
         <meta name="description" content="GSTD Sovereign Fund: Real-time treasury transparency showing asset backing, floor price, and revenue distribution." />
       </Head>
-      <EcosystemNav />
       <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0a0b1e 0%, #0f1128 40%, #1a0f2e 100%)', color: '#fff', padding: '80px 20px 40px' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
 

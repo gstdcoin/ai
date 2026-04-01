@@ -58,12 +58,6 @@ export interface TransactionResult {
 }
 
 class TokenGatewayService {
-    private readonly baseUrl: string;
-
-    constructor() {
-        this.baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
-    }
-
     // ─── Balance ────────────────────────────────────────────────
 
     async getBalance(walletAddress: string): Promise<TokenBalance> {

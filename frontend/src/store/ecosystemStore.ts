@@ -1,6 +1,7 @@
 import { create } from 'zustand';
+import { API_BASE_URL } from '../lib/config';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api.gstdtoken.com';
+const API_BASE = API_BASE_URL;
 
 // ═══════════════════════════════════════════════════════════════
 // GSTD Ecosystem Store — Centralized API cache
