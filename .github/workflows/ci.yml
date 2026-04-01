@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     name: 🔱 Tact Contracts
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -57,7 +57,7 @@ jobs:
         options: --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 3s --health-retries 10
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: actions/setup-go@v5
         with:
@@ -91,7 +91,7 @@ jobs:
     runs-on: ubuntu-latest
     name: 🖥️ Frontend Build
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: actions/setup-node@v4
         with:
@@ -117,7 +117,7 @@ jobs:
     name: 🛡️ Security Scan
     needs: [test-backend]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: actions/setup-go@v5
         with:
@@ -140,7 +140,7 @@ jobs:
     needs: [test-backend, test-contracts, test-frontend]
     if: github.ref == 'refs/heads/main'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Build Backend Image
         run: docker build -t gstd-backend:ci ./backend
@@ -160,7 +160,7 @@ jobs:
     needs: [test-frontend]
     if: github.ref == 'refs/heads/main'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Deploy to Vercel
         uses: amondnet/vercel-action@v25
