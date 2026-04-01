@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
-import EcosystemNav from '../../components/layout/EcosystemNav';
-
-const API = process.env.NEXT_PUBLIC_API_URL || '';
+import { API_BASE_URL } from '../../lib/config';
 
 interface ClientProfile {
   client_id: number;
@@ -49,8 +47,8 @@ export default function DevelopersPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    fetch(`${API}/api/v1/rpc/chains`).then(r => r.json()).then(d => setChains(d.chains || [])).catch((err) => console.error('[Developers] chains failed:', err));
-    fetch(`${API}/api/v1/rpc/pricing`).then(r => r.json()).then(d => setPricing(d)).catch((err) => console.error('[Developers] pricing failed:', err));
+    fetch(`${API_BASE_URL}/api/v1/rpc/chains`).then(r => r.json()).then(d => setChains(d.chains || [])).catch((err) => console.error('[Developers] chains failed:', err));
+    fetch(`${API_BASE_URL}/api/v1/rpc/pricing`).then(r => r.json()).then(d => setPricing(d)).catch((err) => console.error('[Developers] pricing failed:', err));
     const saved = localStorage.getItem('gstd_b2b_wallet');
     const savedKey = localStorage.getItem('gstd_b2b_apikey');
     if (saved) { setWalletAddress(saved); if (savedKey) { setApiKey(savedKey); setView('dashboard'); } }
@@ -58,13 +56,13 @@ export default function DevelopersPage() {
 
   const loadProfile = useCallback(async () => {
     if (!apiKey) return;
-    const res = await fetch(`${API}/api/v1/b2b/profile`, { headers: { 'X-API-Key': apiKey } });
+    const res = await fetch(`${API_BASE_URL}/api/v1/b2b/profile`, { headers: { 'X-API-Key': apiKey } });
     if (res.ok) { const d = await res.json(); setProfile(d); }
   }, [apiKey]);
 
   const loadUsage = useCallback(async () => {
     if (!apiKey) return;
-    const res = await fetch(`${API}/api/v1/b2b/usage`, { headers: { 'X-API-Key': apiKey } });
+    const res = await fetch(`${API_BASE_URL}/api/v1/b2b/usage`, { headers: { 'X-API-Key': apiKey } });
     if (res.ok) setUsage(await res.json());
   }, [apiKey]);
 
@@ -76,7 +74,7 @@ export default function DevelopersPage() {
     setError('');
     setRegistering(true);
     try {
-      const res = await fetch(`${API}/api/v1/b2b/register`, {
+      const res = await fetch(`${API_BASE_URL}/api/v1/b2b/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ company_name: companyName || 'Developer', email, wallet_address: walletAddress, tier: 'starter' }),
@@ -113,7 +111,6 @@ export default function DevelopersPage() {
         <title>Developer Hub — GSTD</title>
         <meta name="description" content="GSTD Developer Hub: Get RPC access to multi-chain infrastructure and AI inference through a single API key." />
       </Head>
-      <EcosystemNav />
       <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0a0b1e 0%, #0f1128 40%, #1a0f2e 100%)', color: '#fff', padding: '80px 20px 40px' }}>
         <div style={{ maxWidth: 900, margin: '0 auto' }}>
 
@@ -221,7 +218,6 @@ function DeveloperDashboard({ profile, usage, apiKey, newApiKey, onRefresh }: Re
       <Head>
         <title>Dashboard — GSTD Developer Hub</title>
       </Head>
-      <EcosystemNav />
       <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0a0b1e 0%, #0f1128 40%, #1a0f2e 100%)', color: '#fff', padding: '80px 20px 40px' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>
 
