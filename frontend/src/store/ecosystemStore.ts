@@ -48,12 +48,24 @@ interface QueueStats {
   completed_tasks: number;
 }
 
+/** GET /api/v1/ecosystem/features — which optional subsystems are wired (not “broken”). */
+export interface EcosystemFeatures {
+  zk_bridge: boolean;
+  market_maker: boolean;
+  render_engine: boolean;
+  groq_configured: boolean;
+  telegram_bot: boolean;
+  redis: boolean;
+}
+
 interface EcosystemState {
   // Data
   tokenomics: TokenomicsData | null;
   nodeNetwork: NodeNetworkStats | null;
   stakingInfo: StakingInfo | null;
   queueStats: QueueStats | null;
+  /** Optional deployment capabilities (public endpoint). */
+  features: EcosystemFeatures | null;
   lastRefresh: number;
   isLoading: boolean;
   error: string | null;
@@ -64,6 +76,7 @@ interface EcosystemState {
   refreshNodeNetwork: () => Promise<void>;
   refreshStakingInfo: () => Promise<void>;
   refreshQueueStats: () => Promise<void>;
+  refreshFeatures: () => Promise<void>;
   startAutoRefresh: () => () => void;
 }
 
@@ -82,9 +95,15 @@ export const useEcosystemStore = create<EcosystemState>((set, get) => ({
   nodeNetwork: null,
   stakingInfo: null,
   queueStats: null,
+  features: null,
   lastRefresh: 0,
   isLoading: false,
   error: null,
+
+  refreshFeatures: async () => {
+    const data = await safeFetch<EcosystemFeatures>(`${API_BASE}/api/v1/ecosystem/features`);
+    if (data) set({ features: data });
+  },
 
   refreshTokenomics: async () => {
     const data = await safeFetch<TokenomicsData>(`${API_BASE}/api/v1/sovereign/tokenomics`);
@@ -118,6 +137,7 @@ export const useEcosystemStore = create<EcosystemState>((set, get) => ({
         state.refreshNodeNetwork(),
         state.refreshStakingInfo(),
         state.refreshQueueStats(),
+        state.refreshFeatures(),
       ]);
       set({ lastRefresh: Date.now(), isLoading: false });
     } catch (e) {

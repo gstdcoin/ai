@@ -41,6 +41,7 @@ description: Current ecosystem state — always read FIRST before any changes
 │  │  Image:     gstd-frontend:v28 (running)           │     │
 │  │  Path:      /home/ubuntu/frontend                  │     │
 │  │  Pages:     14 (SSG/SSR)                           │     │
+│  │  Features:  Footer reads GET /api/v1/ecosystem/features (optional modules) │     │
 │  │  Note:      Docker-only (systemd disabled)         │     │
 │  └────────────────────────────────────────────────────┘     │
 │                                                             │

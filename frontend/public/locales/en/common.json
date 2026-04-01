@@ -578,6 +578,8 @@
   "footer_telegram": "Telegram",
   "footer_github": "GitHub",
   "footer_tagline": "Sovereign Decentralized Computing",
+  "footer_deployment_hint": "Optional modules off",
+  "footer_deployment_hint_title": "This deployment does not enable every optional subsystem; core platform features still work.",
   "ecosystem_title": "GSTD Ecosystem",
   "tab_home": "Home",
   "tab_tasks": "Tasks",

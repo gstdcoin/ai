@@ -581,6 +581,8 @@
   "footer_telegram": "Телеграм",
   "footer_github": "GitHub",
   "footer_tagline": "Суверенные Децентрализованные Вычисления",
+  "footer_deployment_hint": "Опциональные модули выключены",
+  "footer_deployment_hint_title": "В этом развёртывании не все опциональные подсистемы включены; основные функции платформы работают.",
   "ecosystem_title": "Экосистема GSTD",
   "tab_home": "Главная",
   "tab_tasks": "Задачи",
