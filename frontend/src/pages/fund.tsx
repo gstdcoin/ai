@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Head from 'next/head';
 import { API_BASE_URL } from '../lib/config';
 
@@ -41,16 +41,22 @@ interface RevenueSource {
 
 function AnimatedCounter({ value, prefix = '$', decimals = 2 }: { value: number; prefix?: string; decimals?: number }) {
   const [display, setDisplay] = useState(0);
+  const fromRef = useRef(0);
   useEffect(() => {
     const duration = 1500;
-    const start = display;
+    const start = fromRef.current;
     const startTime = Date.now();
     const animate = () => {
       const elapsed = Date.now() - startTime;
       const progress = Math.min(elapsed / duration, 1);
       const eased = 1 - Math.pow(1 - progress, 3);
-      setDisplay(start + (value - start) * eased);
-      if (progress < 1) requestAnimationFrame(animate);
+      const next = start + (value - start) * eased;
+      setDisplay(next);
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        fromRef.current = value;
+      }
     };
     requestAnimationFrame(animate);
   }, [value]);

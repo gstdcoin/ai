@@ -78,3 +78,18 @@ export const AGENT_REGISTRY_ADDRESS = process.env.NEXT_PUBLIC_AGENT_REGISTRY || 
  * DAO Voting Contract Address
  */
 export const DAO_VOTING_ADDRESS = process.env.NEXT_PUBLIC_DAO_VOTING || 'EQBa-hyO3JkcRJNyYKKOqBjsQ6KAS-dAHj6rf8KOuH4Jzls5';
+
+/** Public web app origin (Nginx → frontend). Nav links use this off-app. */
+export const APP_PUBLIC_ORIGIN = (
+  process.env.NEXT_PUBLIC_APP_URL || 'https://app.gstdtoken.com'
+).replace(/\/+$/, '');
+
+/** TonAPI-compatible REST base for read-only jetton/TON balances in the browser. */
+export const TONAPI_PUBLIC_BASE = (
+  process.env.NEXT_PUBLIC_TONAPI_URL || 'https://tonapi.io'
+).replace(/\/+$/, '');
+
+/** B2B RPC gateway (multi-chain JSON-RPC); must match backend routes_b2b_clients copy. */
+export const RPC_GATEWAY_PUBLIC_BASE = (
+  process.env.NEXT_PUBLIC_RPC_GATEWAY_URL || 'https://rpc.gstd.network/v1'
+).replace(/\/+$/, '');

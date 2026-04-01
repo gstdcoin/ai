@@ -13,7 +13,8 @@
  */
 
 import { apiGet, apiPost } from './apiClient';
-import { GSTD_CONTRACT_ADDRESS } from './config';
+import { GSTD_CONTRACT_ADDRESS, TONAPI_PUBLIC_BASE } from './config';
+import { logger } from './logger';
 
 // GSTD Jetton contract on TON (from centralized config — real jetton master)
 export const GSTD_CONTRACT = GSTD_CONTRACT_ADDRESS;
@@ -63,7 +64,7 @@ class TokenGatewayService {
     async getBalance(walletAddress: string): Promise<TokenBalance> {
         try {
             const [platformRes, chainRes] = await Promise.all([
-                apiGet('/api/v1/wallet/gstd-balance'),
+                apiGet('/wallet/gstd-balance'),
                 this.getOnChainBalance(walletAddress),
             ]);
 
@@ -76,14 +77,14 @@ class TokenGatewayService {
                 escrow: platformRes?.escrow || 0,
             };
         } catch (e) {
-            console.warn('TokenGateway: balance fetch failed:', e);
+            logger.warn('TokenGateway: balance fetch failed', e);
             return { gstd: 0, gstdOnChain: 0, gstdPlatform: 0, ton: 0, pending: 0, escrow: 0 };
         }
     }
 
     private async getOnChainBalance(address: string): Promise<{ gstd: number; ton: number }> {
         try {
-            const res = await fetch(`https://tonapi.io/v2/accounts/${address}/jettons`);
+            const res = await fetch(`${TONAPI_PUBLIC_BASE}/v2/accounts/${address}/jettons`);
             const data = await res.json();
             let gstd = 0;
             if (data?.balances) {
@@ -95,13 +96,13 @@ class TokenGatewayService {
                 }
             }
 
-            const tonRes = await fetch(`https://tonapi.io/v2/accounts/${address}`);
+            const tonRes = await fetch(`${TONAPI_PUBLIC_BASE}/v2/accounts/${address}`);
             const tonData = await tonRes.json();
             const ton = (tonData?.balance || 0) / 1e9;
 
             return { gstd, ton };
         } catch (e) {
-            console.warn('TokenGateway: on-chain balance failed:', e);
+            logger.warn('TokenGateway: on-chain balance failed', e);
             return { gstd: 0, ton: 0 };
         }
     }
@@ -128,7 +129,7 @@ class TokenGatewayService {
 
     async swapGSTDForTON(gstdAmount: number): Promise<TransactionResult> {
         try {
-            const res = await apiPost('/api/v1/swap/gstd-for-ton', { gstd_amount: gstdAmount });
+            const res = await apiPost('/swap/gstd-for-ton', { gstd_amount: gstdAmount });
             if (res?.error) {
                 return { success: false, error: res.error };
             }
@@ -146,7 +147,7 @@ class TokenGatewayService {
 
     async claimWelcomeBonus(walletAddress: string): Promise<TransactionResult> {
         try {
-            const res = await apiPost('/api/v1/bonus/welcome', { wallet_address: walletAddress });
+            const res = await apiPost('/bonus/welcome', { wallet_address: walletAddress });
             return {
                 success: !res?.error,
                 amount: res?.amount || 1.0,
@@ -160,7 +161,7 @@ class TokenGatewayService {
 
     async claimDailyFaucet(walletAddress: string): Promise<TransactionResult> {
         try {
-            const res = await apiPost('/api/v1/telegram/faucet', { wallet_address: walletAddress });
+            const res = await apiPost('/telegram/faucet', { wallet_address: walletAddress });
             return {
                 success: !res?.error,
                 amount: res?.amount || 0.1,
@@ -175,13 +176,13 @@ class TokenGatewayService {
 
     async getPrice(): Promise<{ usd: number; tonPerGstd: number }> {
         try {
-            const res = await apiGet('/api/v1/market/price');
+            const res = await apiGet('/market/price');
             return {
                 usd: res?.gstd_price_usd || 0.00028,
                 tonPerGstd: res?.ton_per_gstd || 0.00005,
             };
         } catch (e) {
-            console.warn('TokenGateway: price fetch failed:', e);
+            logger.warn('TokenGateway: price fetch failed', e);
             return { usd: 0.00028, tonPerGstd: 0.00005 };
         }
     }

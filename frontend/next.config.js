@@ -35,6 +35,9 @@ const nextConfig = {
   env: {
     API_URL: process.env.API_URL || 'https://api.gstdtoken.com',
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'https://api.gstdtoken.com',
+    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'https://app.gstdtoken.com',
+    NEXT_PUBLIC_TONAPI_URL: process.env.NEXT_PUBLIC_TONAPI_URL || 'https://tonapi.io',
+    NEXT_PUBLIC_RPC_GATEWAY_URL: process.env.NEXT_PUBLIC_RPC_GATEWAY_URL || 'https://rpc.gstd.network/v1',
     TON_NETWORK: process.env.TON_NETWORK || 'mainnet',
     GSTD_JETTON_ADDRESS: process.env.GSTD_JETTON_ADDRESS || '',
   },
