@@ -24,7 +24,7 @@ From repository root — full check with exit code `0` / `1` (CI-friendly):
 
 PostgreSQL logical backups (host cron): `./scripts/backup_postgres.sh` (writes under `backups/postgres/`, retention 7 days).
 
-**Production crontab (copy-paste):** see [`scripts/crontab.prod.example`](../../scripts/crontab.prod.example) — daily DB backup, optional audit every 6h, and `ecosystem-audit-alert.sh` for Telegram on failure. After backups, sync `backups/postgres/` off-site (S3, rsync) via your own job.
+**Production crontab (copy-paste):** see [`scripts/crontab.prod.example`](../../scripts/crontab.prod.example) — daily DB backup, optional audit every 6h, and `ecosystem-audit-alert.sh` for Telegram on failure. Optional rsync off-site: [`scripts/backup-offsite-rsync.example.sh`](../../scripts/backup-offsite-rsync.example.sh). Dependency updates: [`.github/dependabot.yml`](../../.github/dependabot.yml) (enable in repo Settings → Code security).
 
 Manual steps below mirror what the script runs; use them for deep dives only.
 

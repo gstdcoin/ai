@@ -16,4 +16,6 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 # --- То же + Telegram при FAIL (нужны TELEGRAM_BOT_TOKEN и TELEGRAM_CHAT_ID в /home/ubuntu/.env)
 0 */6 * * * cd /home/ubuntu && ./scripts/ecosystem-audit-alert.sh >> /var/log/gstd-ecosystem-audit.log 2>&1
 
-# Off-site: после бэкапа копируйте каталог backups/ на s3/другой сервер (отдельная задача).
+# Off-site (опционально): скопируйте scripts/backup-offsite-rsync.example.sh → backup-offsite-rsync.sh,
+# задайте BACKUP_OFFSITE_* и добавьте строку после ежедневного pg backup, например:
+# 30 3 * * * BACKUP_OFFSITE_HOST=user@host BACKUP_OFFSITE_PATH=/backups/gstd/ cd /home/ubuntu && ./scripts/backup-offsite-rsync.sh >> /var/log/gstd-backup-offsite.log 2>&1
