@@ -24,6 +24,8 @@ From repository root — full check with exit code `0` / `1` (CI-friendly):
 
 PostgreSQL logical backups (host cron): `./scripts/backup_postgres.sh` (writes under `backups/postgres/`, retention 7 days).
 
+**Production crontab (copy-paste):** see [`scripts/crontab.prod.example`](../../scripts/crontab.prod.example) — daily DB backup, optional audit every 6h, and `ecosystem-audit-alert.sh` for Telegram on failure. After backups, sync `backups/postgres/` off-site (S3, rsync) via your own job.
+
 Manual steps below mirror what the script runs; use them for deep dives only.
 
 ## 1. Check all running containers
