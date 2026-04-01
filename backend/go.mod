@@ -24,7 +24,7 @@ require (
 	github.com/swaggo/swag v1.16.6
 	github.com/tetratelabs/wazero v1.11.0
 	github.com/uber/h3-go/v3 v3.7.1
-	github.com/xssnick/tonutils-go v1.15.5
+	github.com/xssnick/tonutils-go v1.16.0
 	go.uber.org/dig v1.19.0
 	modernc.org/sqlite v1.45.0
 )
