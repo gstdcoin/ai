@@ -31,7 +31,8 @@ if [[ "${VERIFY_GOSEC:-}" == "1" ]]; then
   if ! command -v gosec &>/dev/null; then
     go install github.com/securego/gosec/v2/cmd/gosec@latest
   fi
-  ( cd "$ROOT/backend" && gosec -exclude-dir=docs ./... )
+  export PATH="${HOME}/go/bin:${PATH}"
+  "$ROOT/scripts/gosec-baseline.sh"
 fi
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

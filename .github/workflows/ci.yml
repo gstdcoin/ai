@@ -126,7 +126,8 @@ jobs:
       - name: GoSec Security Scanner
         run: |
           go install github.com/securego/gosec/v2/cmd/gosec@latest
-          cd backend && gosec -exclude-dir=docs ./...
+          echo "$HOME/go/bin" >> "$GITHUB_PATH"
+          ./scripts/gosec-baseline.sh
 
       - name: Check for secrets
         run: |
