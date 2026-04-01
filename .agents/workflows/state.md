@@ -125,6 +125,7 @@ description: Current ecosystem state — always read FIRST before any changes
 ├── SECURITY.md                 # Vulnerability reporting (private disclosure)
 └── scripts/
     ├── ecosystem-audit.sh         # Full stack health (Docker, APIs, SSL, DB, Redis)
+    ├── verify-all.sh              # go vet/test, Tact, lint+build, ecosystem-audit (local)
     ├── ecosystem-audit-alert.sh   # Same + optional Telegram on failure (TELEGRAM_* in .env)
     ├── backup_postgres.sh         # Daily pg_dump gzip; cron on prod host
     ├── crontab.prod.example           # Example crontab lines (backup + audit + alert)
