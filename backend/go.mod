@@ -1,6 +1,6 @@
 module distributed-computing-platform
 
-go 1.24.6
+go 1.25.0
 
 require (
 	github.com/dgraph-io/ristretto/v2 v2.4.0
@@ -26,7 +26,7 @@ require (
 	github.com/uber/h3-go/v3 v3.7.1
 	github.com/xssnick/tonutils-go v1.15.5
 	go.uber.org/dig v1.19.0
-	modernc.org/sqlite v1.45.0
+	modernc.org/sqlite v1.48.0
 )
 
 require (
@@ -169,7 +169,7 @@ require (
 	golang.org/x/mod v0.33.0 // indirect
 	golang.org/x/net v0.50.0 // indirect
 	golang.org/x/sync v0.19.0 // indirect
-	golang.org/x/sys v0.41.0 // indirect
+	golang.org/x/sys v0.42.0 // indirect
 	golang.org/x/telemetry v0.0.0-20260209163413-e7419c687ee4 // indirect
 	golang.org/x/term v0.39.0 // indirect
 	golang.org/x/text v0.33.0 // indirect
@@ -178,7 +178,7 @@ require (
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	lukechampine.com/blake3 v1.4.1 // indirect
-	modernc.org/libc v1.67.6 // indirect
+	modernc.org/libc v1.70.0 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
 )
