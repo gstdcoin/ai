@@ -1,9 +1,26 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import Link from 'next/link';
 import { useTranslation } from 'next-i18next';
+import { useEcosystemStore, type EcosystemFeatures } from '../../store/ecosystemStore';
+
+function optionalModuleLabels(f: EcosystemFeatures): string[] {
+    const out: string[] = [];
+    if (!f.zk_bridge) out.push('ZK bridge');
+    if (!f.market_maker) out.push('Market maker');
+    if (!f.render_engine) out.push('Render');
+    if (!f.groq_configured) out.push('AI (Groq)');
+    return out;
+}
 
 export default function EcosystemFooter() {
     const { t } = useTranslation('common');
+    const features = useEcosystemStore((s) => s.features);
+    const disabledHint = useMemo(() => {
+        if (!features) return null;
+        const labels = optionalModuleLabels(features);
+        if (labels.length === 0) return null;
+        return labels.join(' · ');
+    }, [features]);
 
     const links = [
         { label: t('footer_terms', 'Terms'), href: '/terms', external: false },
@@ -87,6 +104,26 @@ export default function EcosystemFooter() {
 
                 {/* Divider */}
                 <div style={{ height: 1, background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)', marginBottom: 16 }} />
+
+                {disabledHint && (
+                    <div
+                        style={{
+                            fontSize: 11,
+                            color: 'rgba(255,255,255,0.28)',
+                            marginBottom: 14,
+                            maxWidth: 720,
+                            marginLeft: 'auto',
+                            marginRight: 'auto',
+                            lineHeight: 1.45,
+                        }}
+                        title={t(
+                            'footer_deployment_hint_title',
+                            'This deployment does not enable every optional subsystem; core platform features still work.'
+                        )}
+                    >
+                        {t('footer_deployment_hint', 'Optional modules off')}: {disabledHint}
+                    </div>
+                )}
 
                 {/* Copyright */}
                 <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.15)' }}>
