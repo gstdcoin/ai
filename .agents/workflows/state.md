@@ -132,6 +132,7 @@ description: Current ecosystem state — always read FIRST before any changes
     ├── crontab.prod.example           # Example crontab lines (backup + audit + alert)
     ├── backup-offsite-rsync.example.sh # Optional rsync of backups/postgres to remote host
     ├── gosec-baseline.sh              # gosec args aligned with CI (SECURITY.md)
+    ├── verify-locale-parity.sh        # en vs ru common.json key parity (verify-all)
     └── sync-agency-agents.sh          # Optional: refresh .cursor/rules from The Agency
 ```
 

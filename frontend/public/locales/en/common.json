@@ -341,7 +341,9 @@
     "allTime": "All Time",
     "tasksCompleted": "Tasks Completed"
   },
-  "common": {},
+  "common": {
+    "refresh": "Refresh"
+  },
   "node_class": "Node Class",
   "edge_node": "Edge Node",
   "compute_cluster": "Compute Cluster",
