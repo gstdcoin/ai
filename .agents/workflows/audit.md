@@ -14,6 +14,8 @@ From repository root — full check with exit code `0` / `1` (CI-friendly):
 ./scripts/ecosystem-audit.sh
 ```
 
+**One-shot local QA (CI parity + stack):** [`scripts/verify-all.sh`](../../scripts/verify-all.sh) — `go vet`, `go test -race`, Tact `contracts/*.tact`, `npm run lint` + `build`, `ecosystem-audit.sh --local-only`. Stops on first error. Options: `VERIFY_FULL_AUDIT=1`, `VERIFY_GOSEC=1`, `VERIFY_DOCKER=1`.
+
 - Skip public URL checks (e.g. laptop without routing to prod): `./scripts/ecosystem-audit.sh --local-only`
 - Optional Telegram alert on failure (requires `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` in `.env`): `./scripts/ecosystem-audit-alert.sh`
 - Optional cron on the production host (example every 6 hours):
