@@ -28,15 +28,15 @@ jobs:
 
       - name: Validate contracts syntax
         run: |
-          echo "🔱 Validating Tact smart contracts..."
-          for f in contracts/*.tact; do
+          echo "🔱 Validating Tact smart contracts (recursive, excluding node_modules)..."
+          find contracts -name node_modules -prune -o -name '*.tact' -print0 | sort -z | while IFS= read -r -d '' f; do
             echo "  Checking: $f"
-            npx tact --check "$f" || exit 1
+            tact --check "$f" || exit 1
           done
           echo "✅ All contracts valid"
 
       - name: List contract files
-        run: ls -la contracts/
+        run: find contracts -name node_modules -prune -o -name '*.tact' -print | sort
 
   # ── Go Backend Tests ───────────────────────────────────────────────────
   test-backend:
@@ -109,7 +109,7 @@ jobs:
         working-directory: frontend
         run: npm run build
         env:
-          NEXT_PUBLIC_API_URL: https://app.gstdtoken.com
+          NEXT_PUBLIC_API_URL: https://api.gstdtoken.com
 
   # ── Security Scan ──────────────────────────────────────────────────────
   security-scan:

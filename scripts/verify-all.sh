@@ -35,14 +35,12 @@ if [[ "${VERIFY_GOSEC:-}" == "1" ]]; then
 fi
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "3/6  Tact contracts (contracts/*.tact)"
+echo "3/6  Tact contracts (all *.tact under contracts/)"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-shopt -s nullglob
-for f in "$ROOT"/contracts/*.tact; do
-  echo "  → $(basename "$f")"
+while IFS= read -r -d '' f; do
+  echo "  → ${f#$ROOT/}"
   npx --no-install tact --check "$f" 2>/dev/null || npx tact --check "$f"
-done
-shopt -u nullglob
+done < <(find "$ROOT/contracts" -name node_modules -prune -o -name '*.tact' -print0 | sort -z)
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "4/6  npm run lint (frontend)"

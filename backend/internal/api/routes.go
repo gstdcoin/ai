@@ -430,6 +430,19 @@ func SetupRoutes(deps APIDependencies) {
 			}
 		}
 		v1.GET("/health", getHealth(db.(*sql.DB), tonService, tonConfig, rClient))
+
+		// Public: which optional subsystems are wired in this deployment (avoids blind 501s from UIs)
+		v1.GET("/ecosystem/features", func(c *gin.Context) {
+			c.JSON(200, gin.H{
+				"zk_bridge":       deps.ZKBridge != nil,
+				"market_maker":    deps.MarketMaker != nil,
+				"render_engine":   deps.RenderEngine != nil,
+				"groq_configured": strings.TrimSpace(os.Getenv("GROQ_API_KEY")) != "",
+				"telegram_bot":    strings.TrimSpace(os.Getenv("TELEGRAM_BOT_TOKEN")) != "",
+				"redis":           redisClient != nil,
+			})
+		})
+
 		// @Summary Get public statistics
 		// @Description Returns public platform statistics (no authentication required)
 		// @Tags Public
