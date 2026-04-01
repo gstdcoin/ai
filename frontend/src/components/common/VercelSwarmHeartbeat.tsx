@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-
-const API_BASE = 'https://app.gstdtoken.com';
+import { API_BASE_URL } from '../../lib/config';
 const HEARTBEAT_INTERVAL_MS = 20_000; // Keep within 30s active window
 
 /**
@@ -25,7 +24,7 @@ export default function VercelSwarmHeartbeat() {
     const deviceId = `vercel-${window.location.hostname.replace(/[^a-z0-9-]/gi, '-')}`;
 
     const handshake = () => {
-      fetch(`${API_BASE}/api/v1/agents/handshake`, {
+      fetch(`${API_BASE_URL}/api/v1/agents/handshake`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

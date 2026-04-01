@@ -2,6 +2,8 @@
  * API Client with retry logic and error handling
  */
 
+import { API_BASE_URL } from './config';
+
 interface RetryOptions {
   maxRetries?: number;
   retryDelay?: number;
@@ -84,12 +86,7 @@ export async function apiRequest<T = any>(
   options: RequestInit = {},
   retryOptions?: RetryOptions
 ): Promise<T> {
-  // Base URL: use NEXT_PUBLIC_API_URL with a safe production fallback
-  // Example: NEXT_PUBLIC_API_URL=https://app.gstdtoken.com
-  const rawBase =
-    (process.env.NEXT_PUBLIC_API_URL as string | undefined) ||
-    'https://app.gstdtoken.com';
-  const apiBaseUrl = `${rawBase.replace(/\/+$/, '')}/api/v1`;
+  const apiBaseUrl = `${API_BASE_URL.replace(/\/+$/, '')}/api/v1`;
 
   // Ensure endpoint starts with / if it doesn't already
   let finalEndpoint = endpoint;

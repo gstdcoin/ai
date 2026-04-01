@@ -432,8 +432,8 @@ export default function About() {
               <div>
                 <h4 className="text-sm font-bold text-white uppercase tracking-wider mb-4">{t('legal', 'Legal')}</h4>
                 <ul className="space-y-3 text-sm">
-                  <li><a href="https://gstdtoken.com/legal" className="text-gray-500 hover:text-white transition-colors">{t('privacy_policy', 'Privacy Policy')}</a></li>
-                  <li><a href="https://gstdtoken.com/legal" className="text-gray-500 hover:text-white transition-colors">{t('terms_of_service', 'Terms of Service')}</a></li>
+                  <li><Link href="/privacy" className="text-gray-500 hover:text-white transition-colors">{t('privacy_policy', 'Privacy Policy')}</Link></li>
+                  <li><Link href="/terms" className="text-gray-500 hover:text-white transition-colors">{t('terms_of_service', 'Terms of Service')}</Link></li>
                 </ul>
               </div>
             </div>

@@ -3,12 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { useWalletStore } from '../../store/walletStore';
 import { toast } from 'sonner';
-
-const API_BASE = typeof window !== 'undefined'
-  ? window.location.hostname.includes('localhost')
-    ? 'http://localhost:8080'
-    : 'https://v2.gstdtoken.com'
-  : 'https://v2.gstdtoken.com';
+import { API_BASE_URL } from '../../lib/config';
 
 const CHECK_INTERVAL_MS = 60_000; // Check every 60 seconds
 
@@ -25,7 +20,7 @@ export default function AutoClaimWorker() {
     const checkAndClaim = async () => {
       try {
         // 1. Check pending rewards
-        const res = await fetch(`${API_BASE}/api/v1/nodes/pending-rewards?wallet=${address}`);
+        const res = await fetch(`${API_BASE_URL}/api/v1/nodes/pending-rewards?wallet=${address}`);
         if (!res.ok) return;
         const data = await res.json();
         const pending = data.total_pending || 0;
@@ -33,7 +28,7 @@ export default function AutoClaimWorker() {
         // If we have any accumulated rewards (e.g. >= 0.0001), claim automatically
         if (pending > 0.0001) {
           // 2. Claim rewards
-          const claimRes = await fetch(`${API_BASE}/api/v1/nodes/claim-rewards`, {
+          const claimRes = await fetch(`${API_BASE_URL}/api/v1/nodes/claim-rewards`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ wallet_address: address }),
