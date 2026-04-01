@@ -1,7 +1,7 @@
 // Task Worker - Background execution loop for processing tasks
 import { logger } from './logger';
 import { WS_URL } from './config';
-import { collectTelemetry, ITelemetry } from './apiClient';
+import { apiPost, collectTelemetry, ITelemetry } from './apiClient';
 
 export interface TaskNotification {
   task: {
@@ -25,10 +25,13 @@ const wasmModuleCache: Map<string, WebAssembly.Module> = new Map();
 
 export class TaskWorker {
   private ws: WebSocket | null = null;
-  private deviceID: string;
-  private walletAddress: string;
+  private readonly deviceID: string;
+  private readonly walletAddress: string;
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 5;
+  private readonly maxReconnectAttempts = 5;
+  /** When true, socket onclose must not schedule reconnect (user called disconnect). */
+  private intentionalClose = false;
+  private heartbeatTimer: ReturnType<typeof setTimeout> | null = null;
   private onTaskReceived?: (task: TaskNotification) => void;
   private onError?: (error: Error) => void;
 
@@ -43,15 +46,18 @@ export class TaskWorker {
   }
 
   connect() {
-    const url = `${WS_URL.replace(/\/+$/, '')}/ws?device_id=${this.deviceID}`;
+    const base = `${WS_URL.replace(/\/+$/, '')}/ws`;
+    const params = new URLSearchParams({ device_id: this.deviceID });
+    if (this.walletAddress.trim()) {
+      params.set('wallet_address', this.walletAddress.trim());
+    }
+    const url = `${base}?${params.toString()}`;
 
     try {
       this.ws = new WebSocket(url);
 
       this.ws.onopen = () => {
-        // WebSocket connected
         this.reconnectAttempts = 0;
-        // Send heartbeat
         this.sendHeartbeat();
       };
 
@@ -60,43 +66,53 @@ export class TaskWorker {
           const data = JSON.parse(event.data);
 
           if (data.type === 'heartbeat_ack') {
-            // Heartbeat response - schedule next heartbeat
-            setTimeout(() => this.sendHeartbeat(), 50000);
+            this.scheduleHeartbeat();
             return;
           }
 
-          // Task notification
           if (data.task) {
             const notification: TaskNotification = {
               task: data.task,
               timestamp: data.timestamp,
             };
-            if (this.onTaskReceived) {
-              this.onTaskReceived(notification);
-            }
+            this.onTaskReceived?.(notification);
           }
         } catch (_e) {
-          // Failed to parse message
+          logger.debug('TaskWorker: non-JSON or parse error on WS message');
         }
       };
 
+      // Browsers invoke onclose after onerror; reconnect only from onclose to avoid duplicate timers.
       this.ws.onerror = () => {
-        // WebSocket error
-        if (this.onError) {
-          this.onError(new Error('WebSocket connection error'));
-        }
+        logger.debug('TaskWorker: WebSocket error');
       };
 
       this.ws.onclose = () => {
-        // WebSocket closed, attempting reconnect
+        this.clearHeartbeatTimer();
+        if (this.intentionalClose) {
+          this.intentionalClose = false;
+          return;
+        }
         this.reconnect();
       };
     } catch (error) {
-      // Failed to create WebSocket
       if (this.onError) {
         this.onError(error as Error);
       }
     }
+  }
+
+  private clearHeartbeatTimer() {
+    if (this.heartbeatTimer) {
+      clearTimeout(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
+  }
+
+  /** Next ping ~50s after server ack (aligned with server write deadlines). */
+  private scheduleHeartbeat() {
+    this.clearHeartbeatTimer();
+    this.heartbeatTimer = setTimeout(() => this.sendHeartbeat(), 50000);
   }
 
   private sendHeartbeat() {
@@ -129,9 +145,13 @@ export class TaskWorker {
   }
 
   disconnect() {
+    this.clearHeartbeatTimer();
+    this.intentionalClose = true;
     if (this.ws) {
       this.ws.close();
       this.ws = null;
+    } else {
+      this.intentionalClose = false;
     }
   }
 }
@@ -365,8 +385,6 @@ export async function submitTaskResult(
     // Sign the result
     const signature = await signResultData(taskID, result, tonConnectUI);
 
-    // Use apiPost to automatically include session token
-    const { apiPost } = await import('./apiClient');
     await apiPost(`/device/tasks/${taskID}/result`, {
       device_id: deviceID,
       result: result,
