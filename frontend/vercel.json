@@ -24,8 +24,8 @@
   ],
   "rewrites": [
     {
-      "source": "/api/:path*",
-      "destination": "https://app.gstdtoken.com/api/:path*"
+      "source": "/api/v1/:path*",
+      "destination": "https://api.gstdtoken.com/api/v1/:path*"
     }
   ]
 }
