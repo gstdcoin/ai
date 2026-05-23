@@ -1,13 +1,15 @@
 /**
  * KV Storage abstraction
  *
- * Production: Vercel KV (Upstash Redis) — free tier: 256MB, 3K req/day
+ * Production: Upstash Redis (via Vercel KV integration) — free tier
  * Development: in-memory fallback (no setup needed)
  *
- * Setup on Vercel:
- *   Dashboard → Storage → Create KV Database → link to project
- *   Env vars KV_REST_API_URL + KV_REST_API_TOKEN are added automatically.
+ * Env vars (auto-added by Vercel KV integration):
+ *   KV_REST_API_URL   — Upstash Redis REST URL
+ *   KV_REST_API_TOKEN — Upstash Redis REST token
  */
+
+import type { Redis } from '@upstash/redis';
 
 // ── In-memory fallback for local dev ──────────────────────────────
 const mem = new Map<string, { value: string; exp: number | null }>();
@@ -29,35 +31,42 @@ function memKeys(prefix: string): string[] {
         .map(([k]) => k);
 }
 
-// ── Vercel KV client (dynamic import to avoid build errors in dev) ─
-let _kv: any = null;
-async function getKV() {
-    if (_kv) return _kv;
-    if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
-        try {
-            const mod = await import('@vercel/kv');
-            _kv = mod.kv;
-            return _kv;
-        } catch { /* fall through to in-memory */ }
+// ── Upstash Redis client ───────────────────────────────────────────
+let _redis: Redis | null = null;
+
+async function getRedis(): Promise<Redis | null> {
+    if (_redis) return _redis;
+    const url   = process.env.KV_REST_API_URL   || process.env.UPSTASH_REDIS_REST_URL;
+    const token = process.env.KV_REST_API_TOKEN  || process.env.UPSTASH_REDIS_REST_TOKEN;
+    if (!url || !token) return null;
+    try {
+        const { Redis } = await import('@upstash/redis');
+        _redis = new Redis({ url, token });
+        return _redis;
+    } catch {
+        return null;
     }
-    return null;
 }
 
 // ── Public API ─────────────────────────────────────────────────────
+
 export async function kvGet(key: string): Promise<string | null> {
-    const kv = await getKV();
-    if (kv) {
-        try { return await kv.get<string>(key); } catch { /* fallback */ }
+    const r = await getRedis();
+    if (r) {
+        try {
+            const val = await r.get(key);
+            return val == null ? null : String(val);
+        } catch { /* fallback */ }
     }
     return memGet(key);
 }
 
 export async function kvSet(key: string, value: string, ttlSec?: number): Promise<void> {
-    const kv = await getKV();
-    if (kv) {
+    const r = await getRedis();
+    if (r) {
         try {
-            if (ttlSec) await kv.set(key, value, { ex: ttlSec });
-            else await kv.set(key, value);
+            if (ttlSec) await r.set(key, value, { ex: ttlSec });
+            else        await r.set(key, value);
             return;
         } catch { /* fallback */ }
     }
@@ -65,18 +74,17 @@ export async function kvSet(key: string, value: string, ttlSec?: number): Promis
 }
 
 export async function kvDel(key: string): Promise<void> {
-    const kv = await getKV();
-    if (kv) { try { await kv.del(key); return; } catch { /* fallback */ } }
+    const r = await getRedis();
+    if (r) { try { await r.del(key); return; } catch { /* fallback */ } }
     memDel(key);
 }
 
-/** Scan keys by prefix. Vercel KV free tier: use mem fallback for scans. */
 export async function kvKeys(prefix: string): Promise<string[]> {
-    const kv = await getKV();
-    if (kv) {
+    const r = await getRedis();
+    if (r) {
         try {
-            // @vercel/kv supports scan via keys pattern
-            return await kv.keys(`${prefix}*`);
+            const keys = await r.keys(`${prefix}*`);
+            return keys as string[];
         } catch { /* fallback */ }
     }
     return memKeys(prefix);
@@ -84,20 +92,23 @@ export async function kvKeys(prefix: string): Promise<string[]> {
 
 export async function kvMGet(keys: string[]): Promise<(string | null)[]> {
     if (keys.length === 0) return [];
-    const kv = await getKV();
-    if (kv) {
-        try { return await kv.mget<string[]>(...keys); } catch { /* fallback */ }
+    const r = await getRedis();
+    if (r) {
+        try {
+            const vals = await r.mget(...keys);
+            return (vals as (unknown | null)[]).map(v => v == null ? null : String(v));
+        } catch { /* fallback */ }
     }
     return keys.map(k => memGet(k));
 }
 
 // ── Queue helpers (LPUSH / RPOP) ───────────────────────────────────
+
 export async function kvPush(key: string, ...values: string[]): Promise<void> {
-    const kv = await getKV();
-    if (kv) {
-        try { await kv.lpush(key, ...values); return; } catch { /* fallback */ }
+    const r = await getRedis();
+    if (r) {
+        try { await r.lpush(key, ...values); return; } catch { /* fallback */ }
     }
-    // In-memory queue: store as JSON array
     const raw = memGet(key);
     const list: string[] = raw ? JSON.parse(raw) : [];
     list.push(...values);
@@ -105,9 +116,12 @@ export async function kvPush(key: string, ...values: string[]): Promise<void> {
 }
 
 export async function kvPop(key: string): Promise<string | null> {
-    const kv = await getKV();
-    if (kv) {
-        try { return await kv.rpop<string>(key); } catch { /* fallback */ }
+    const r = await getRedis();
+    if (r) {
+        try {
+            const val = await r.rpop(key);
+            return val == null ? null : String(val);
+        } catch { /* fallback */ }
     }
     const raw = memGet(key);
     if (!raw) return null;
@@ -119,19 +133,18 @@ export async function kvPop(key: string): Promise<string | null> {
 }
 
 export async function kvLLen(key: string): Promise<number> {
-    const kv = await getKV();
-    if (kv) {
-        try { return await kv.llen(key); } catch { /* fallback */ }
+    const r = await getRedis();
+    if (r) {
+        try { return await r.llen(key); } catch { /* fallback */ }
     }
     const raw = memGet(key);
     return raw ? (JSON.parse(raw) as string[]).length : 0;
 }
 
-// ── Increment counter ──────────────────────────────────────────────
 export async function kvIncr(key: string): Promise<number> {
-    const kv = await getKV();
-    if (kv) {
-        try { return await kv.incr(key); } catch { /* fallback */ }
+    const r = await getRedis();
+    if (r) {
+        try { return await r.incr(key); } catch { /* fallback */ }
     }
     const cur = parseInt(memGet(key) || '0', 10) + 1;
     memSet(key, String(cur));

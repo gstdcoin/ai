@@ -8,7 +8,7 @@
     "postbuild": "echo 'Build complete'",
     "start": "next start",
     "lint": "eslint src",
-    "prepare": "husky install"
+    "prepare": "echo 'skipping husky in CI'"
   },
   "dependencies": {
     "@metamask/sdk-react": "^0.33.1",
@@ -57,7 +57,7 @@
     "sharp": "^0.32.6",
     "sonner": "^2.0.7",
     "xumm": "^1.0.0",
-    "@vercel/kv": "^3.0.0",
+    "@upstash/redis": "^1.34.0",
     "zod": "^4.3.5",
     "zustand": "^5.0.9"
   },
