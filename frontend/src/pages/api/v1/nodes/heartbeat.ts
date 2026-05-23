@@ -31,7 +31,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.status(400).json({ error: 'node_id required' });
         }
 
-        const raw = await kvGet(`node:${nodeId}`);
+        // Read existing record only if we need to merge (tasks_completed, gstd_earned).
+        // This saves a KV read when the node sends all fields itself.
+        const hasFullUpdate = body.tasks_completed != null && body.gstd_earned != null && body.uptime_hours != null;
+        const raw = hasFullUpdate ? null : await kvGet(`node:${nodeId}`);
         const record: NodeRecord = raw
             ? JSON.parse(raw)
             : {
@@ -57,12 +60,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (body.multiaddrs?.length) record.multiaddrs = body.multiaddrs;
         if (body.mode) record.mode = body.mode;
 
-        await kvSet(`node:${nodeId}`, JSON.stringify(record), NODE_TTL);
-        await kvIncr('stats:total_heartbeats');
-
-        // Count active nodes
-        const keys = await kvKeys('node:');
-        const peers_online = keys.length;
+        // Write + increment in parallel (2 ops, no extra read)
+        const [, , nodesRaw] = await Promise.all([
+            kvSet(`node:${nodeId}`, JSON.stringify(record), NODE_TTL),
+            kvIncr('stats:total_heartbeats'),
+            kvGet('stats:nodes_online_cached'),
+        ]);
+        const peers_online = nodesRaw ? parseInt(nodesRaw, 10) : 0;
 
         return res.status(200).json({
             ok:           true,

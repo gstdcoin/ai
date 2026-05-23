@@ -3,16 +3,16 @@
  * Ensures production URLs are used instead of localhost fallbacks
  */
 
-/** Canonical production API host (nginx: api.gstdtoken.com → backend). */
-export const PRODUCTION_API_ORIGIN = 'https://api.gstdtoken.com';
+/** Canonical production API host — Next.js serverless routes on Vercel. */
+export const PRODUCTION_API_ORIGIN = 'https://app.gstdtoken.com';
 
 /**
  * Base API URL for backend requests
  *
  * Priority:
- * 1. NEXT_PUBLIC_API_URL (set in Docker / Vercel)
- * 2. Production: https://api.gstdtoken.com
- * 3. Development: http://localhost:8080
+ * 1. NEXT_PUBLIC_API_URL (set in Vercel env vars)
+ * 2. Production: https://app.gstdtoken.com (self — Next.js API routes)
+ * 3. Development: http://localhost:3000
  */
 export const API_BASE_URL = (() => {
   if (process.env.NEXT_PUBLIC_API_URL) {
@@ -21,7 +21,7 @@ export const API_BASE_URL = (() => {
   if (process.env.NODE_ENV === 'production') {
     return PRODUCTION_API_ORIGIN;
   }
-  return 'http://localhost:8080';
+  return 'http://localhost:3000';
 })();
 
 /**

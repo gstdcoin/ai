@@ -6,7 +6,7 @@
  * Used by dashboard, landing page stats, and gstdbot peer discovery.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvKeys, kvMGet } from '../../../../lib/kv';
+import { kvKeys, kvMGet, kvSet } from '../../../../lib/kv';
 import type { NodeRecord } from './register';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -40,6 +40,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             uptime_hours:    n.uptime_hours,
             last_seen:       n.last_seen,
         }));
+
+        // Cache node count for heartbeat endpoint (avoids expensive KEYS scan every heartbeat)
+        await kvSet('stats:nodes_online_cached', String(nodes.length), 120).catch(() => {});
 
         return res.status(200).json({
             count:      nodes.length,
