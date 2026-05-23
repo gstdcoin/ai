@@ -77,5 +77,16 @@
     "axios": "^1.13.5",
     "semver": ">=7.5.4",
     "bl": ">=4.1.0"
+  },
+  "overrides": {
+    "ws": "^8.18.0",
+    "braces": "^3.0.3",
+    "micromatch": "^4.0.8",
+    "semver": "^7.6.0",
+    "tar": "^6.2.1",
+    "cross-spawn": "^7.0.6",
+    "path-to-regexp": "^6.3.0",
+    "tough-cookie": "^4.1.4",
+    "word-wrap": "^1.2.4"
   }
 }
