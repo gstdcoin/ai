@@ -12,6 +12,7 @@ export const config = { maxDuration: 60 };
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { rateLimit, getClientIp } from '../../../../lib/ratelimit';
+import { kvKeys, kvMGet } from '../../../../lib/kv';
 import { randomBytes } from 'crypto';
 
 const MODEL_ALIASES: Record<string, string> = {
@@ -100,24 +101,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
     }
 
-    // Local models: resolve via GSTD node (P2P discovery from KV registry)
+    // Local models: resolve via GSTD node (direct KV lookup — no self-fetch)
     let nodeUrl = (process.env.GSTD_NODE_URL || '').replace(/\/$/, '');
     if (!nodeUrl) {
         try {
-            const origin = process.env.NEXT_PUBLIC_API_URL || `https://${req.headers.host}`;
-            const listRes = await fetch(`${origin}/api/v1/nodes/list`, { signal: AbortSignal.timeout(5000) });
-            if (listRes.ok) {
-                const listData: any = await listRes.json();
-                // Trust KV-registered URL — node TTL is 600s so it's recently alive
-                const candidates: any[] = (listData.nodes || listData.peers || [])
-                    .filter((n: any) => n.multiaddrs?.length || n.node_url)
-                    .sort((a: any, b: any) => (b.tasks_completed || 0) - (a.tasks_completed || 0));
-                for (const candidate of candidates.slice(0, 3)) {
-                    const url = candidate.node_url || candidate.multiaddrs?.[0];
+            const nodeKeys = await kvKeys('node:');
+            if (nodeKeys.length > 0) {
+                const values = await kvMGet(nodeKeys);
+                for (const raw of values) {
+                    if (!raw) continue;
+                    const node: any = JSON.parse(raw);
+                    const url = node.node_url || node.multiaddrs?.[0];
                     if (url?.startsWith('http')) { nodeUrl = url; break; }
                 }
             }
-        } catch { /* discovery failed, fall through */ }
+        } catch { /* KV unavailable */ }
     }
 
     if (!nodeUrl) {
