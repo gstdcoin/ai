@@ -22,6 +22,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         kvKeys('campaign:'),
     ]);
 
+    // Fallback node count from GitHub registry when KV is empty (no Redis configured)
+    let activeNodes = nodeKeys.length;
+    if (activeNodes === 0) {
+        try {
+            const ghResp = await fetch(
+                'https://raw.githubusercontent.com/gstdcoin/ai/main/nodes-registry.json',
+                { signal: AbortSignal.timeout(3000), cache: 'no-store' }
+            );
+            if (ghResp.ok) {
+                const registry: any[] = await ghResp.json();
+                activeNodes = registry.length;
+            }
+        } catch { /* GitHub unavailable */ }
+    }
+
     res.setHeader('Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
 
     return res.status(200).json({
@@ -35,7 +50,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             use:      'Pay for inference, stake for rewards, vote in DAO',
         },
         nodes: {
-            online:   nodeKeys.length,
+            online:   activeNodes,
             endpoint: `${origin}/api/v1/nodes/list`,
             peers:    `${origin}/api/v1/nodes/peers`,
         },

@@ -25,6 +25,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 .map(v => JSON.parse(v) as NodeRecord);
         }
 
+        // Fallback: GitHub registry file (updated by tunnel.sh on each restart)
+        if (nodes.length === 0) {
+            try {
+                const ghResp = await fetch(
+                    'https://raw.githubusercontent.com/gstdcoin/ai/main/nodes-registry.json',
+                    { signal: AbortSignal.timeout(4000), cache: 'no-store' }
+                );
+                if (ghResp.ok) {
+                    const registry: any[] = await ghResp.json();
+                    nodes = registry as NodeRecord[];
+                }
+            } catch { /* GitHub unavailable */ }
+        }
+
         // Strip sensitive fields for public listing
         const public_nodes = nodes.map(n => ({
             node_id:         n.node_id,

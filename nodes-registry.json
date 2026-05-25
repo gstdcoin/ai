@@ -1,0 +1,17 @@
+[
+  {
+    "node_id": "gstd-pi-bootstrap",
+    "name": "Node-gstd-pi-bootstrap",
+    "mode": "node",
+    "version": "3.4.0",
+    "capabilities": ["llama3.2:3b"],
+    "multiaddrs": ["https://arbitrary-buried-incoming-ending.trycloudflare.com"],
+    "node_url": "https://arbitrary-buried-incoming-ending.trycloudflare.com",
+    "platform": "linux",
+    "cpu_cores": 4,
+    "has_gpu": false,
+    "tasks_completed": 0,
+    "uptime_hours": 0,
+    "last_seen": "2026-05-25T20:12:06.000Z"
+  }
+]
