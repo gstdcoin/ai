@@ -68,7 +68,15 @@ function scoreNode(node: any, loadPenalty: number, exactMatch: boolean, now: num
 }
 
 async function findBestNode(model: string, debug?: boolean): Promise<FindResult> {
-    const dbgInfo: any = { model, keys: [] as string[], nodes_raw: [] as any[] };
+    const dbgInfo: any = {
+        model,
+        keys: [] as string[],
+        nodes_raw: [] as any[],
+        env: {
+            has_KV_URL:   !!(process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL),
+            has_KV_TOKEN: !!(process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN),
+        },
+    };
     const keys = await kvKeys('node:');
     dbgInfo.keys = keys;
     if (debug) console.log('[routing] model:', model, 'keys:', keys);
