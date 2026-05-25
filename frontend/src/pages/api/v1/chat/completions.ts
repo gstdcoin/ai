@@ -37,8 +37,18 @@ const MODEL_ALIASES: Record<string, string> = {
     'gemma2:2b':                                   'gemma2:2b',
 };
 
-const DEFAULT_MODEL = 'llama3.2:3b';
+const DEFAULT_MODEL = 'llama-3.1-8b-instant';
 const ROUTE_TIMEOUT = 55_000;
+
+// Cloud models served directly via Groq — no GSTD node needed
+const GROQ_MODELS = new Set([
+    'llama-3.3-70b-versatile', 'llama-3.1-8b-instant',
+    'meta-llama/llama-4-scout-17b-16e-instruct',
+    'qwen/qwen3-32b', 'moonshotai/kimi-k2-instruct',
+    'mixtral-8x7b-32768', 'gemma2-9b-it',
+    'openai/gpt-oss-120b', 'openai/gpt-oss-20b',
+]);
+const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') {
@@ -64,7 +74,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const temp          = Math.min(Math.max(parseFloat(temperature) ?? 0.7, 0), 2);
     const taskId        = randomBytes(8).toString('hex');
 
-    // Resolve node URL: env override → P2P registry → fail
+    // Cloud models: route directly to Groq — no GSTD node needed
+    const groqKey = process.env.GROQ_API_KEY || '';
+    if (GROQ_MODELS.has(resolvedModel) && groqKey) {
+        try {
+            const groqResp = await fetch(GROQ_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${groqKey}` },
+                body: JSON.stringify({ model: resolvedModel, messages, max_tokens: maxTok, temperature: temp }),
+                signal: AbortSignal.timeout(ROUTE_TIMEOUT),
+            });
+            const groqData: any = await groqResp.json();
+            const content = groqData.choices?.[0]?.message?.content || groqData.error?.message || '';
+            return res.status(groqResp.ok ? 200 : 502).json({
+                id:      `chatcmpl-${taskId}`,
+                object:  'chat.completion',
+                created: Math.floor(Date.now() / 1000),
+                model:   resolvedModel,
+                choices: [{ index: 0, message: { role: 'assistant', content }, finish_reason: 'stop' }],
+                usage:   groqData.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+                _gstd:   { routed_via: 'groq', model: resolvedModel },
+            });
+        } catch (e: any) {
+            return res.status(503).json({ error: `Groq error: ${e.message}` });
+        }
+    }
+
+    // Local models: resolve via GSTD node (P2P discovery)
     let nodeUrl = (process.env.GSTD_NODE_URL || '').replace(/\/$/, '');
     if (!nodeUrl) {
         // Auto-discover: pick first live node from registry that claims this model
