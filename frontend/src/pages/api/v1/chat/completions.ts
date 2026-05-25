@@ -75,8 +75,8 @@ async function findBestNode(model: string, debug?: boolean): Promise<FindResult>
         env: {
             has_KV_URL:   !!(process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL),
             has_KV_TOKEN: !!(process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN),
-            // List ALL env keys (not values) to discover what Vercel provides
-            all_keys: Object.keys(process.env).sort(),
+            project_id: process.env.VERCEL_PROJECT_ID,
+            project_name: process.env.VERCEL_PROJECT_NAME,
         },
     };
     const keys = await kvKeys('node:');
