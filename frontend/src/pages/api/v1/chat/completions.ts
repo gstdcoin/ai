@@ -102,17 +102,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Local models: resolve via GSTD node
-    // Try fast path first: cached node_url written by heartbeat endpoint
+    // Priority order:
+    //   1. GSTD_NODE_URL env var (static override, set in Vercel dashboard)
+    //   2. GitHub registry file (always current — updated by tunnel.sh on every URL change)
+    //   3. KV cache (fast but may have stale data from dead tunnel instances)
     let nodeUrl = (process.env.GSTD_NODE_URL || '').replace(/\/$/, '');
+
+    // GitHub file first — updated by tunnel.sh on every restart, cache-busted by timestamp
     if (!nodeUrl) {
         try {
-            // Fast path: heartbeat caches node_url separately for quick lookup
+            const ghResp = await fetch(
+                `https://raw.githubusercontent.com/gstdcoin/ai/main/node-url.txt?t=${Math.floor(Date.now() / 30000)}`,
+                { signal: AbortSignal.timeout(4000) }
+            );
+            if (ghResp.ok) {
+                const url = (await ghResp.text()).trim();
+                if (url.startsWith('http')) nodeUrl = url;
+            }
+        } catch { /* GitHub unavailable */ }
+    }
+
+    // KV fallback — reliable when Redis is configured, may be stale without Redis
+    if (!nodeUrl) {
+        try {
             const nodeUrlKeys = await kvKeys('node_url:');
             if (nodeUrlKeys.length > 0) {
                 const firstUrl = await kvGet(nodeUrlKeys[0]);
                 if (firstUrl?.startsWith('http')) nodeUrl = firstUrl;
             }
-            // Fallback: scan full node records
             if (!nodeUrl) {
                 const nodeKeys = await kvKeys('node:');
                 if (nodeKeys.length > 0) {
@@ -126,20 +143,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 }
             }
         } catch { /* KV unavailable */ }
-    }
-
-    // Last resort: check GitHub-tracked node URL file (updated by tunnel.sh on URL change)
-    if (!nodeUrl) {
-        try {
-            const ghResp = await fetch(
-                'https://raw.githubusercontent.com/gstdcoin/ai/main/node-url.txt',
-                { signal: AbortSignal.timeout(4000), cache: 'no-store' }
-            );
-            if (ghResp.ok) {
-                const url = (await ghResp.text()).trim();
-                if (url.startsWith('http')) nodeUrl = url;
-            }
-        } catch { /* GitHub unavailable */ }
     }
 
     if (!nodeUrl) {
