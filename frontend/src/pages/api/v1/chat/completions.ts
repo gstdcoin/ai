@@ -100,25 +100,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
     }
 
-    // Local models: resolve via GSTD node (P2P discovery)
+    // Local models: resolve via GSTD node (P2P discovery from KV registry)
     let nodeUrl = (process.env.GSTD_NODE_URL || '').replace(/\/$/, '');
     if (!nodeUrl) {
-        // Auto-discover: pick first live node from registry that claims this model
         try {
             const origin = process.env.NEXT_PUBLIC_API_URL || `https://${req.headers.host}`;
-            const listRes = await fetch(`${origin}/api/v1/nodes/list`, { signal: AbortSignal.timeout(4000) });
+            const listRes = await fetch(`${origin}/api/v1/nodes/list`, { signal: AbortSignal.timeout(5000) });
             if (listRes.ok) {
                 const listData: any = await listRes.json();
+                // Trust KV-registered URL — node TTL is 600s so it's recently alive
                 const candidates: any[] = (listData.nodes || listData.peers || [])
                     .filter((n: any) => n.multiaddrs?.length || n.node_url)
                     .sort((a: any, b: any) => (b.tasks_completed || 0) - (a.tasks_completed || 0));
                 for (const candidate of candidates.slice(0, 3)) {
                     const url = candidate.node_url || candidate.multiaddrs?.[0];
-                    if (!url || !url.startsWith('http')) continue;
-                    try {
-                        const probe = await fetch(`${url}/health`, { signal: AbortSignal.timeout(3000) });
-                        if (probe.ok) { nodeUrl = url; break; }
-                    } catch { /* try next */ }
+                    if (url?.startsWith('http')) { nodeUrl = url; break; }
                 }
             }
         } catch { /* discovery failed, fall through */ }
