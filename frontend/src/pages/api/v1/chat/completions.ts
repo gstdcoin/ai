@@ -66,22 +66,25 @@ function scoreNode(node: any, loadPenalty: number, exactMatch: boolean, now: num
     return 1000 + matchBonus + latencyBonus + uptimeBonus + freshnessBonus - loadPenalty;
 }
 
-async function findBestNode(model: string): Promise<NodeScore | null> {
+async function findBestNode(model: string, debug?: boolean): Promise<NodeScore | null> {
     const keys = await kvKeys('node:');
+    if (debug) console.log('[routing] model:', model, 'keys:', keys);
     if (!keys.length) return null;
 
     const raws = await kvMGet(keys);
     const now  = Date.now();
     const nodes: NodeScore[] = [];
 
-    for (const raw of raws) {
-        if (!raw) continue;
+    for (let i = 0; i < raws.length; i++) {
+        const raw = raws[i];
+        if (!raw) { if (debug) console.log('[routing] skip null raw for key:', keys[i]); continue; }
         try {
             const node = JSON.parse(raw);
-            if (new Date(node.last_seen).getTime() < now - NODE_TTL_GRACE) continue;
-
+            const age = now - new Date(node.last_seen).getTime();
             const caps: string[] = node.capabilities || [];
-            if (!caps.length) continue;
+            if (debug) console.log('[routing] node:', node.node_id, 'caps:', caps, 'age:', age, 'ttl_grace:', NODE_TTL_GRACE);
+            if (age > NODE_TTL_GRACE) { if (debug) console.log('[routing] expired'); continue; }
+            if (!caps.length) { if (debug) console.log('[routing] no caps'); continue; }
 
             const loadPenalty = (node.tasks_processing || 0) * 200;
 
@@ -94,12 +97,13 @@ async function findBestNode(model: string): Promise<NodeScore | null> {
 
             // Fallback: any node with AI inference capability (has at least 1 model)
             const hasAI = caps.length > 0;
-            if (!exactMatch && !hasAI) continue;
+            if (!exactMatch && !hasAI) { if (debug) console.log('[routing] no match'); continue; }
 
             nodes.push({ node_id: node.node_id, score: scoreNode(node, loadPenalty, exactMatch, now) });
-        } catch { /* skip malformed */ }
+        } catch (e: any) { if (debug) console.log('[routing] parse error:', e.message); }
     }
 
+    if (debug) console.log('[routing] candidates:', nodes.length, nodes.map(n=>n.node_id));
     if (!nodes.length) return null;
     nodes.sort((a, b) => b.score - a.score);
     return nodes[0];
@@ -146,7 +150,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const taskId        = randomBytes(8).toString('hex');
 
     // ── Find best node ────────────────────────────────────────────
-    const bestNode = await findBestNode(resolvedModel).catch(() => null);
+    const dbg = req.headers['x-debug-routing'] === '1';
+    const bestNode = await findBestNode(resolvedModel, dbg).catch((e) => { if (dbg) console.error('[routing] error:', e); return null; });
 
     if (!bestNode) {
         return res.status(503).json({
