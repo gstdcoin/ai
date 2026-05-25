@@ -11,9 +11,11 @@
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvSet, kvIncr, kvKeys } from '../../../../lib/kv';
+import { rateLimit, getClientIp } from '../../../../lib/ratelimit';
 import type { NodeRecord } from './register';
 
 const NODE_TTL = 600;
+const NODE_ID_RE = /^[a-zA-Z0-9_\-\.]{4,64}$/;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') {
@@ -21,14 +23,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     try {
+        // Per-IP rate limit: max 60 heartbeats/minute (20 nodes × 3/min)
+        const ip = getClientIp(req.headers as any);
+        if (!rateLimit(`hb:${ip}`, 60, 60_000)) {
+            return res.status(429).json({ error: 'Too many heartbeats' });
+        }
+
         const body = req.body as any;
         const nodeId: string =
             body.node_id ||
             (req.headers['x-node-id'] as string) ||
             body.wallet_address;
 
-        if (!nodeId) {
-            return res.status(400).json({ error: 'node_id required' });
+        if (!nodeId || !NODE_ID_RE.test(nodeId)) {
+            return res.status(400).json({ error: 'node_id required (4-64 alphanumeric chars)' });
         }
 
         // Read existing record only if we need to merge (tasks_completed, gstd_earned).

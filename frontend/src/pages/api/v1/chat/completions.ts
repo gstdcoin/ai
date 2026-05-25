@@ -64,7 +64,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const temp          = Math.min(Math.max(parseFloat(temperature) ?? 0.7, 0), 2);
     const taskId        = randomBytes(8).toString('hex');
 
-    const nodeUrl = process.env.GSTD_NODE_URL;
+    // Resolve node URL: env override → P2P registry → fail
+    let nodeUrl = (process.env.GSTD_NODE_URL || '').replace(/\/$/, '');
+    if (!nodeUrl) {
+        // Auto-discover: pick first live node from registry that claims this model
+        try {
+            const origin = process.env.NEXT_PUBLIC_API_URL || `https://${req.headers.host}`;
+            const listRes = await fetch(`${origin}/api/v1/nodes/list`, { signal: AbortSignal.timeout(4000) });
+            if (listRes.ok) {
+                const listData: any = await listRes.json();
+                const candidates: any[] = (listData.nodes || listData.peers || [])
+                    .filter((n: any) => n.multiaddrs?.length || n.node_url)
+                    .sort((a: any, b: any) => (b.tasks_completed || 0) - (a.tasks_completed || 0));
+                for (const candidate of candidates.slice(0, 3)) {
+                    const url = candidate.node_url || candidate.multiaddrs?.[0];
+                    if (!url || !url.startsWith('http')) continue;
+                    try {
+                        const probe = await fetch(`${url}/health`, { signal: AbortSignal.timeout(3000) });
+                        if (probe.ok) { nodeUrl = url; break; }
+                    } catch { /* try next */ }
+                }
+            }
+        } catch { /* discovery failed, fall through */ }
+    }
+
     if (!nodeUrl) {
         return res.status(503).json({
             id: `chatcmpl-${taskId}`,
@@ -73,16 +96,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             model: resolvedModel,
             choices: [{
                 index: 0,
-                message: { role: 'assistant', content: '🐝 GSTD Network: No bootstrap node configured. Set GSTD_NODE_URL in Vercel environment variables.' },
+                message: { role: 'assistant', content: '🐝 GSTD Network: No active nodes found. Set GSTD_NODE_URL in Vercel env vars or wait for a node to register.' },
                 finish_reason: 'stop',
             }],
             usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
-            _gstd: { error: 'no_node_configured' },
+            _gstd: { error: 'no_node_available' },
         });
     }
 
     try {
-        const resp = await fetch(`${nodeUrl.replace(/\/$/, '')}/v1/ollama/completions`, {
+        const resp = await fetch(`${nodeUrl}/v1/ollama/completions`, {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify({ model: resolvedModel, messages, stream: false, max_tokens: maxTok, temperature: temp }),

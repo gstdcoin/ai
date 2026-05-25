@@ -1,26 +1,25 @@
 /**
  * GET /api/v1/network/info
  *
- * Machine-readable network manifest for AI agents, wallets, and integrators.
- * Describes everything needed to interact with the GSTD network:
- * - Available AI models and pricing
- * - Active node count and total capacity
- * - GSTD token contract address
- * - API endpoints
- * - How to authenticate (wallet address)
+ * Machine-readable network manifest — self-describing, no hardcoded external URLs.
+ * All endpoints are relative to this deployment so the manifest is always accurate
+ * regardless of where the frontend is hosted.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvKeys, kvGet } from '../../../../lib/kv';
+import { kvKeys } from '../../../../lib/kv';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'GET') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const [nodeKeys, campaignKeys, queueDepthStr] = await Promise.all([
+    const proto  = req.headers['x-forwarded-proto'] || 'https';
+    const host   = req.headers.host || 'app.gstdtoken.com';
+    const origin = process.env.NEXT_PUBLIC_API_URL || `${proto}://${host}`;
+
+    const [nodeKeys, campaignKeys] = await Promise.all([
         kvKeys('node:'),
         kvKeys('campaign:'),
-        kvGet('tasks:queue').then(() => '0').catch(() => '0'),
     ]);
 
     res.setHeader('Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
@@ -37,10 +36,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         },
         nodes: {
             online:   nodeKeys.length,
-            endpoint: 'https://app.gstdtoken.com/api/v1/nodes/list',
+            endpoint: `${origin}/api/v1/nodes/list`,
+            peers:    `${origin}/api/v1/nodes/peers`,
         },
         inference: {
-            endpoint:      'https://app.gstdtoken.com/api/v1/chat/completions',
+            endpoint:      `${origin}/api/v1/chat/completions`,
             openai_compat:  true,
             cost_per_req:  '0.001 GSTD',
             models: [
@@ -55,19 +55,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             note: 'OpenAI-compatible. Pass wallet address in X-Wallet-Address header to track GSTD usage.',
         },
         marketplace: {
-            resources_endpoint: 'https://app.gstdtoken.com/api/v1/marketplace/resources',
-            campaigns_endpoint: 'https://app.gstdtoken.com/api/v1/campaigns/list',
+            resources_endpoint: `${origin}/api/v1/marketplace/resources`,
+            campaigns_endpoint: `${origin}/api/v1/campaigns/list`,
             active_campaigns:   campaignKeys.length,
             task_types:         ['inference', 'storage', 'compute', 'relay'],
         },
         treasury: {
-            endpoint:       'https://app.gstdtoken.com/api/v1/treasury/status',
+            endpoint:       `${origin}/api/v1/treasury/status`,
             protocol_fee:   '10% of all campaign tasks',
-            distribution:   '50% → Ston.fi LP | 30% → Gold reserve | 20% → Node bonuses',
+            distribution:   '50% → Gold Reserve | 30% → Node Operators | 20% → Dev Fund',
             threshold_gstd: 10,
         },
         install_node: 'curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash',
-        docs:         'https://app.gstdtoken.com',
+        docs:         origin,
         github:       'https://github.com/gstdcoin',
         timestamp:    Date.now(),
     });
