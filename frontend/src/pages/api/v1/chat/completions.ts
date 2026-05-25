@@ -7,7 +7,7 @@
  *   1. Find best available GSTD node for the requested model
  *      - Score by: model match, low load, low latency, high uptime
  *      - Push task to node-specific priority queue
- *      - Short-poll for result (max 25s)
+ *      - Short-poll for result (max 55s — Vercel Pro allows 60s max)
  *   2. If no node available or timeout: return informative error
  *      (grow the network at github.com/gstdcoin/gstdbot)
  *
@@ -16,6 +16,8 @@
  * Body: { model?, messages, stream?, max_tokens?, temperature?, gstd_wallet? }
  * Response: OpenAI-compatible choices array + _gstd routing metadata
  */
+export const config = { maxDuration: 60 };  // Vercel: allow up to 60s for this route
+
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvKeys, kvMGet, kvPush, kvGet, kvIncr } from '../../../../lib/kv';
 import { rateLimit, getClientIp } from '../../../../lib/ratelimit';
@@ -37,10 +39,17 @@ const MODEL_ALIASES: Record<string, string> = {
     'openai/gpt-oss-20b':                          'openai/gpt-oss-20b',
     'mixtral-8x7b-32768':                          'mixtral-8x7b-32768',
     'gemma2-9b-it':                                'gemma2-9b-it',
+    // Ollama model IDs (pass through unchanged)
+    'llama3.2:3b':                                 'llama3.2:3b',
+    'llama3.2:1b':                                 'llama3.2:1b',
+    'llama3.1:8b':                                 'llama3.1:8b',
+    'mistral:7b':                                  'mistral:7b',
+    'phi3:mini':                                   'phi3:mini',
+    'gemma2:2b':                                   'gemma2:2b',
 };
 const DEFAULT_MODEL  = 'llama-3.3-70b-versatile';
 const GSTD_COST      = 0.001;
-const ROUTE_TIMEOUT  = 25_000;
+const ROUTE_TIMEOUT  = 55_000;  // Pi 4 cold-start can take ~16s; 55s gives comfortable margin
 const POLL_INTERVAL  = 1_500;
 const NODE_TTL_GRACE = 10 * 60_000;
 
