@@ -47,6 +47,14 @@ const NODE_TTL_GRACE = 10 * 60_000;
 // ─── Node scoring ─────────────────────────────────────────────────────────
 interface NodeScore { node_id: string; score: number; }
 
+function scoreNode(node: any, loadPenalty: number, exactMatch: boolean): number {
+    const latencyBonus = node.avg_latency_ms ? Math.max(0, 2000 - node.avg_latency_ms) : 500;
+    const uptimeBonus  = Math.min((node.tasks_completed || 0) * 2, 200);
+    // Exact model match is heavily preferred over capability fallback
+    const matchBonus   = exactMatch ? 2000 : 0;
+    return 1000 + matchBonus + latencyBonus + uptimeBonus - loadPenalty;
+}
+
 async function findBestNode(model: string): Promise<NodeScore | null> {
     const keys = await kvKeys('node:');
     if (!keys.length) return null;
@@ -62,15 +70,22 @@ async function findBestNode(model: string): Promise<NodeScore | null> {
             if (new Date(node.last_seen).getTime() < now - NODE_TTL_GRACE) continue;
 
             const caps: string[] = node.capabilities || [];
-            const hasModel = caps.includes(model) || caps.includes(model.split('/').pop() || model);
-            if (!hasModel) continue;
+            if (!caps.length) continue;
 
-            const loadPenalty  = (node.tasks_processing || 0) * 200;
-            const latencyBonus = node.avg_latency_ms ? Math.max(0, 2000 - node.avg_latency_ms) : 500;
-            const uptimeBonus  = Math.min((node.tasks_completed || 0) * 2, 200);
-            const score = 1000 + latencyBonus + uptimeBonus - loadPenalty;
+            const loadPenalty = (node.tasks_processing || 0) * 200;
 
-            nodes.push({ node_id: node.node_id, score });
+            // Exact model match (also accepts short name like 'llama3.2:3b' for 'llama-3.2-3b')
+            const exactMatch =
+                caps.includes(model) ||
+                caps.includes(model.split('/').pop() || model) ||
+                caps.some(c => c.replace(/[^a-z0-9]/gi, '').toLowerCase()
+                    === model.replace(/[^a-z0-9]/gi, '').toLowerCase());
+
+            // Fallback: any node with AI inference capability (has at least 1 model)
+            const hasAI = caps.length > 0;
+            if (!exactMatch && !hasAI) continue;
+
+            nodes.push({ node_id: node.node_id, score: scoreNode(node, loadPenalty, exactMatch) });
         } catch { /* skip malformed */ }
     }
 
