@@ -36,6 +36,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             has_gpu:         !!n.gpu,
             capabilities:    n.capabilities,
             multiaddrs:      n.multiaddrs,
+            node_url:        (n as any).node_url || null,
             tasks_completed: n.tasks_completed,
             uptime_hours:    n.uptime_hours,
             last_seen:       n.last_seen,
