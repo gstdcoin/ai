@@ -38,7 +38,7 @@ export default function EcosystemFooter() {
         { label: 'Bot', href: 'https://gstdbot.gstdtoken.com', external: true },
         { label: t('footer_telegram', 'Telegram'), href: 'https://t.me/GstdAppBot', external: true },
         { label: t('footer_github', 'GitHub'), href: 'https://github.com/gstdcoin', external: true },
-        { label: 'API', href: 'https://api.gstdtoken.com/api/v1/health', external: true },
+        { label: 'API', href: 'https://app.gstdtoken.com/api/v1/stats/public', external: true },
     ];
 
     const linkStyle: React.CSSProperties = {
