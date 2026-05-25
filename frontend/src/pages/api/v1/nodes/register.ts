@@ -5,7 +5,7 @@
  * Node TTL: 10 minutes (heartbeat must refresh it).
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvSet, kvIncr } from '../../../../lib/kv';
+import { kvGet, kvSet, kvIncr } from '../../../../lib/kv';
 
 const NODE_TTL = 600; // 10 minutes
 
@@ -51,6 +51,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const now = new Date().toISOString();
         const specs = body.specs || body;
 
+        // Preserve existing capabilities if the new registration doesn't provide them
+        // (some node modules re-register without model lists; we must not overwrite valid caps)
+        const existingRaw = await kvGet(`node:${nodeId}`);
+        const existing: NodeRecord | null = existingRaw ? JSON.parse(existingRaw) : null;
+
+        const incomingCaps: string[] = specs.capabilities?.models || specs.models || [];
+        const capabilities = incomingCaps.length > 0 ? incomingCaps : (existing?.capabilities || []);
+
         const record: NodeRecord = {
             node_id:         nodeId,
             name:            body.name || specs.node_name || nodeId,
@@ -62,13 +70,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             gpu:             specs.gpu || null,
             mode:            specs.mode || 'cloud',
             version:         specs.version || body.node_version || '3.0',
-            capabilities:    specs.capabilities?.models || specs.models || [],
+            capabilities,
             multiaddrs:      specs.multiaddrs || [],
-            registered_at:   now,
+            registered_at:   existing?.registered_at || now,
             last_seen:       now,
-            tasks_completed: 0,
-            gstd_earned:     0,
-            uptime_hours:    0,
+            tasks_completed: existing?.tasks_completed || 0,
+            gstd_earned:     existing?.gstd_earned     || 0,
+            uptime_hours:    existing?.uptime_hours    || 0,
         };
 
         await kvSet(`node:${nodeId}`, JSON.stringify(record), NODE_TTL);
