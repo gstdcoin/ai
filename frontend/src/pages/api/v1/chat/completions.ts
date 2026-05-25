@@ -128,6 +128,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         } catch { /* KV unavailable */ }
     }
 
+    // Last resort: check GitHub-tracked node URL file (updated by tunnel.sh on URL change)
+    if (!nodeUrl) {
+        try {
+            const ghResp = await fetch(
+                'https://raw.githubusercontent.com/gstdcoin/ai/main/node-url.txt',
+                { signal: AbortSignal.timeout(4000), cache: 'no-store' }
+            );
+            if (ghResp.ok) {
+                const url = (await ghResp.text()).trim();
+                if (url.startsWith('http')) nodeUrl = url;
+            }
+        } catch { /* GitHub unavailable */ }
+    }
+
     if (!nodeUrl) {
         return res.status(503).json({
             id: `chatcmpl-${taskId}`,
