@@ -3,17 +3,16 @@
  *
  * OpenAI-compatible inference endpoint backed by the GSTD node network.
  *
- * Routing:
- *   1. Find best available GSTD node for the requested model
- *      - Score by: model match, low load, low latency, high uptime
- *      - Push task to node-specific priority queue
- *      - Short-poll for result (max 55s — Vercel Pro allows 60s max)
- *   2. If no node available or timeout: return informative error
- *      (grow the network at github.com/gstdcoin/gstdbot)
+ * Routing (in priority order):
+ *   1. GSTD Node Network — find best node via Redis, push task, poll result
+ *      Requires KV_REST_API_URL + KV_REST_API_TOKEN Vercel env vars (Upstash Redis)
+ *   2. Direct Node — call GSTD_NODE_URL directly (e.g. via SSH tunnel to Pi)
+ *      Set GSTD_NODE_URL=https://your-tunnel.lhr.life in Vercel env vars
+ *   3. No nodes: return informative 503
  *
  * Cost: 0.001 GSTD per inference (tracked, burned)
  *
- * Body: { model?, messages, stream?, max_tokens?, temperature?, gstd_wallet? }
+ * Body: { model?, messages, stream?, max_tokens?, temperature? }
  * Response: OpenAI-compatible choices array + _gstd routing metadata
  */
 export const config = { maxDuration: 60 };  // Vercel: allow up to 60s for this route
@@ -49,40 +48,25 @@ const MODEL_ALIASES: Record<string, string> = {
 };
 const DEFAULT_MODEL  = 'llama-3.3-70b-versatile';
 const GSTD_COST      = 0.001;
-const ROUTE_TIMEOUT  = 55_000;  // Pi 4 cold-start can take ~16s; 55s gives comfortable margin
+const ROUTE_TIMEOUT  = 55_000;
 const POLL_INTERVAL  = 1_500;
 const NODE_TTL_GRACE = 10 * 60_000;
 
 // ─── Node scoring ─────────────────────────────────────────────────────────
 interface NodeScore { node_id: string; score: number; }
-interface FindResult { best: NodeScore | null; _debug?: any; }
 
 function scoreNode(node: any, loadPenalty: number, exactMatch: boolean, now: number): number {
-    const latencyBonus = node.avg_latency_ms ? Math.max(0, 2000 - node.avg_latency_ms) : 500;
-    const uptimeBonus  = Math.min((node.tasks_completed || 0) * 2, 200);
-    const matchBonus   = exactMatch ? 2000 : 0;
-    // Prefer freshest heartbeat — nodes seen within 30s score +500, within 2min +200
-    const ageSec = (now - new Date(node.last_seen).getTime()) / 1000;
+    const latencyBonus   = node.avg_latency_ms ? Math.max(0, 2000 - node.avg_latency_ms) : 500;
+    const uptimeBonus    = Math.min((node.tasks_completed || 0) * 2, 200);
+    const matchBonus     = exactMatch ? 2000 : 0;
+    const ageSec         = (now - new Date(node.last_seen).getTime()) / 1000;
     const freshnessBonus = ageSec < 30 ? 500 : ageSec < 120 ? 200 : 0;
     return 1000 + matchBonus + latencyBonus + uptimeBonus + freshnessBonus - loadPenalty;
 }
 
-async function findBestNode(model: string, debug?: boolean): Promise<FindResult> {
-    const dbgInfo: any = {
-        model,
-        keys: [] as string[],
-        nodes_raw: [] as any[],
-        env: {
-            has_KV_URL:   !!(process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL),
-            has_KV_TOKEN: !!(process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN),
-            project_id: process.env.VERCEL_PROJECT_ID,
-            project_name: process.env.VERCEL_PROJECT_NAME,
-        },
-    };
+async function findBestNode(model: string): Promise<NodeScore | null> {
     const keys = await kvKeys('node:');
-    dbgInfo.keys = keys;
-    if (debug) console.log('[routing] model:', model, 'keys:', keys);
-    if (!keys.length) return { best: null, _debug: dbgInfo };
+    if (!keys.length) return null;
 
     const raws = await kvMGet(keys);
     const now  = Date.now();
@@ -90,70 +74,28 @@ async function findBestNode(model: string, debug?: boolean): Promise<FindResult>
 
     for (let i = 0; i < raws.length; i++) {
         const raw = raws[i];
-        const nodeDbg: any = { key: keys[i], raw_type: typeof raw, raw_truthy: !!raw };
-        if (!raw) {
-            nodeDbg.skip_reason = 'null_raw';
-            dbgInfo.nodes_raw.push(nodeDbg);
-            if (debug) console.log('[routing] skip null raw for key:', keys[i]);
-            continue;
-        }
+        if (!raw) continue;
         try {
-            // Upstash may return already-parsed object; handle both string and object
             const node = typeof raw === 'string' ? JSON.parse(raw) : raw;
-            const age = now - new Date(node.last_seen).getTime();
+            const age  = now - new Date(node.last_seen).getTime();
             const caps: string[] = node.capabilities || [];
-            nodeDbg.node_id = node.node_id;
-            nodeDbg.caps = caps;
-            nodeDbg.age_ms = age;
-            if (debug) console.log('[routing] node:', node.node_id, 'caps:', caps, 'age:', age, 'ttl_grace:', NODE_TTL_GRACE);
-            if (age > NODE_TTL_GRACE) {
-                nodeDbg.skip_reason = 'expired';
-                dbgInfo.nodes_raw.push(nodeDbg);
-                if (debug) console.log('[routing] expired');
-                continue;
-            }
-            if (!caps.length) {
-                nodeDbg.skip_reason = 'no_caps';
-                dbgInfo.nodes_raw.push(nodeDbg);
-                if (debug) console.log('[routing] no caps');
-                continue;
-            }
+            if (age > NODE_TTL_GRACE || !caps.length) continue;
 
             const loadPenalty = (node.tasks_processing || 0) * 200;
-
-            // Exact model match (also accepts short name like 'llama3.2:3b' for 'llama-3.2-3b')
-            const exactMatch =
+            const exactMatch  =
                 caps.includes(model) ||
                 caps.includes(model.split('/').pop() || model) ||
                 caps.some(c => c.replace(/[^a-z0-9]/gi, '').toLowerCase()
                     === model.replace(/[^a-z0-9]/gi, '').toLowerCase());
 
-            // Fallback: any node with AI inference capability (has at least 1 model)
-            const hasAI = caps.length > 0;
-            if (!exactMatch && !hasAI) {
-                nodeDbg.skip_reason = 'no_match';
-                dbgInfo.nodes_raw.push(nodeDbg);
-                if (debug) console.log('[routing] no match');
-                continue;
-            }
-
-            const score = scoreNode(node, loadPenalty, exactMatch, now);
-            nodeDbg.score = score;
-            nodeDbg.selected = true;
-            dbgInfo.nodes_raw.push(nodeDbg);
-            nodes.push({ node_id: node.node_id, score });
-        } catch (e: any) {
-            nodeDbg.skip_reason = `parse_error: ${e.message}`;
-            nodeDbg.raw_slice = typeof raw === 'string' ? raw.slice(0, 80) : String(raw).slice(0, 80);
-            dbgInfo.nodes_raw.push(nodeDbg);
-            if (debug) console.log('[routing] parse error:', e.message);
-        }
+            if (!exactMatch && !caps.length) continue;
+            nodes.push({ node_id: node.node_id, score: scoreNode(node, loadPenalty, exactMatch, now) });
+        } catch { /* skip malformed entries */ }
     }
 
-    if (debug) console.log('[routing] candidates:', nodes.length, nodes.map(n=>n.node_id));
-    if (!nodes.length) return { best: null, _debug: dbgInfo };
+    if (!nodes.length) return null;
     nodes.sort((a, b) => b.score - a.score);
-    return { best: nodes[0], _debug: dbgInfo };
+    return nodes[0];
 }
 
 // ─── Wait for node result ─────────────────────────────────────────────────
@@ -162,12 +104,30 @@ async function waitForResult(taskId: string, timeoutMs: number): Promise<any | n
     while (Date.now() < deadline) {
         const raw = await kvGet(`task:result:${taskId}`);
         if (raw) {
-            const r = JSON.parse(raw);
+            const r = typeof raw === 'string' ? JSON.parse(raw) : raw;
             if (r.ready) return r;
         }
         await new Promise(r => setTimeout(r, POLL_INTERVAL));
     }
     return null;
+}
+
+// ─── Direct node call (bypasses Redis queue) ──────────────────────────────
+async function callNodeDirect(nodeUrl: string, model: string, messages: any[], maxTok: number, temp: number): Promise<string | null> {
+    try {
+        // Use /v1/ollama/completions to avoid circular GSTD network routing
+        const resp = await fetch(`${nodeUrl.replace(/\/$/, '')}/v1/ollama/completions`, {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ model, messages, stream: false, max_tokens: maxTok, temperature: temp }),
+            signal:  AbortSignal.timeout(54_000),
+        });
+        if (!resp.ok) return null;
+        const data: any = await resp.json();
+        return data.choices?.[0]?.message?.content || null;
+    } catch {
+        return null;
+    }
 }
 
 // ─── Handler ──────────────────────────────────────────────────────────────
@@ -196,95 +156,102 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const temp          = Math.min(Math.max(parseFloat(temperature) ?? 0.7, 0), 2);
     const taskId        = randomBytes(8).toString('hex');
 
-    // ── Find best node ────────────────────────────────────────────
-    const dbg = req.headers['x-debug-routing'] === '1';
-    const findResult = await findBestNode(resolvedModel, dbg).catch((e) => { if (dbg) console.error('[routing] error:', e); return { best: null, _debug: { error: e.message } } as FindResult; });
-    const bestNode = findResult.best;
+    // ── Path 1: GSTD Node Network via Redis ──────────────────────
+    const bestNode = await findBestNode(resolvedModel).catch(() => null);
 
-    if (!bestNode) {
-        return res.status(503).json({
-            id: `chatcmpl-${taskId}`,
-            object: 'chat.completion',
-            created: Math.floor(Date.now() / 1000),
-            model: resolvedModel,
-            choices: [{
-                index: 0,
-                message: {
-                    role: 'assistant',
-                    content: '🐝 GSTD Network: No nodes available for this model yet. The network is growing — run a node to serve inference: https://github.com/gstdcoin/gstdbot',
+    if (bestNode) {
+        const task = {
+            task_id:     taskId,
+            type:        'inference',
+            model:       resolvedModel,
+            prompt:      messages[messages.length - 1]?.content || '',
+            messages,
+            max_tokens:  maxTok,
+            temperature: temp,
+            reward_gstd: GSTD_COST * 0.9,
+            node_hint:   bestNode.node_id,
+            created_at:  new Date().toISOString(),
+        };
+        await kvPush(`tasks:inference:${bestNode.node_id}`, JSON.stringify(task));
+
+        const nodeResult = await waitForResult(taskId, ROUTE_TIMEOUT);
+
+        if (nodeResult?.result) {
+            const content = nodeResult.result.response || nodeResult.result.choices?.[0]?.message?.content || '';
+            await kvIncr('stats:total_tasks_completed');
+
+            return res.status(200).json({
+                id:      `chatcmpl-${taskId}`,
+                object:  'chat.completion',
+                created: Math.floor(Date.now() / 1000),
+                model:   resolvedModel,
+                choices: [{
+                    index:         0,
+                    message:       { role: 'assistant', content },
+                    finish_reason: 'stop',
+                }],
+                usage: nodeResult.result.tokens
+                    ? { prompt_tokens: 0, completion_tokens: nodeResult.result.tokens, total_tokens: nodeResult.result.tokens }
+                    : { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+                _gstd: {
+                    routed_via_node: true,
+                    node_id:         bestNode.node_id,
+                    latency_ms:      nodeResult.latency_ms,
+                    cost_gstd:       GSTD_COST,
                 },
-                finish_reason: 'stop',
-            }],
-            usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
-            _gstd: { routed_via_node: false, error: 'no_nodes_available', model: resolvedModel },
-            _routing_debug: findResult._debug,
-        });
+            });
+        }
+
+        // Node timed out — fall through to direct path
     }
 
-    // ── Push to node priority queue ───────────────────────────────
-    const task = {
-        task_id:     taskId,
-        type:        'inference',
-        model:       resolvedModel,
-        prompt:      messages[messages.length - 1]?.content || '',
-        messages,
-        max_tokens:  maxTok,
-        temperature: temp,
-        reward_gstd: GSTD_COST * 0.9,
-        node_hint:   bestNode.node_id,
-        created_at:  new Date().toISOString(),
-    };
-    await kvPush(`tasks:inference:${bestNode.node_id}`, JSON.stringify(task));
-
-    // ── Short-poll for result ─────────────────────────────────────
-    const nodeResult = await waitForResult(taskId, ROUTE_TIMEOUT);
-
-    if (nodeResult?.result) {
-        const content = nodeResult.result.response || nodeResult.result.choices?.[0]?.message?.content || '';
-        await kvIncr('stats:total_tasks_completed');
-
-        return res.status(200).json({
-            id:      `chatcmpl-${taskId}`,
-            object:  'chat.completion',
-            created: Math.floor(Date.now() / 1000),
-            model:   resolvedModel,
-            choices: [{
-                index:   0,
-                message: { role: 'assistant', content },
-                finish_reason: 'stop',
-            }],
-            usage: nodeResult.result.tokens
-                ? { prompt_tokens: 0, completion_tokens: nodeResult.result.tokens, total_tokens: nodeResult.result.tokens }
-                : { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
-            _gstd: {
-                routed_via_node: true,
-                node_id:         bestNode.node_id,
-                latency_ms:      nodeResult.latency_ms,
-                cost_gstd:       GSTD_COST,
-            },
-        });
+    // ── Path 2: Direct Node URL (GSTD_NODE_URL env var) ──────────
+    const directUrl = process.env.GSTD_NODE_URL;
+    if (directUrl) {
+        const content = await callNodeDirect(directUrl, resolvedModel, messages, maxTok, temp);
+        if (content) {
+            return res.status(200).json({
+                id:      `chatcmpl-${taskId}`,
+                object:  'chat.completion',
+                created: Math.floor(Date.now() / 1000),
+                model:   resolvedModel,
+                choices: [{
+                    index:         0,
+                    message:       { role: 'assistant', content },
+                    finish_reason: 'stop',
+                }],
+                usage:  { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+                _gstd:  { routed_via_node: true, node_id: 'direct', cost_gstd: GSTD_COST },
+            });
+        }
     }
 
-    // ── Node timeout ──────────────────────────────────────────────
+    // ── No path succeeded ─────────────────────────────────────────
+    const hasRedis   = !!(process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL);
+    const hasDirect  = !!directUrl;
+    const errorHint  = !hasRedis && !hasDirect
+        ? 'Set up Upstash Redis (add KV_REST_API_URL + KV_REST_API_TOKEN to Vercel env vars) or set GSTD_NODE_URL for direct routing.'
+        : bestNode
+            ? 'Node timed out and direct fallback unavailable.'
+            : 'No nodes registered. Run a node: https://github.com/gstdcoin/gstdbot';
+
     return res.status(503).json({
-        id: `chatcmpl-${taskId}`,
-        object: 'chat.completion',
+        id:      `chatcmpl-${taskId}`,
+        object:  'chat.completion',
         created: Math.floor(Date.now() / 1000),
-        model: resolvedModel,
+        model:   resolvedModel,
         choices: [{
-            index: 0,
-            message: {
-                role: 'assistant',
-                content: '⏱️ GSTD Network: The assigned node did not respond in time. Please retry — another node will be selected automatically.',
-            },
+            index:         0,
+            message:       { role: 'assistant', content: `🐝 GSTD Network: ${errorHint}` },
             finish_reason: 'stop',
         }],
         usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
         _gstd: {
             routed_via_node: false,
-            node_id:         bestNode.node_id,
-            error:           'node_timeout',
-            cost_gstd:       0,
+            error:           bestNode ? 'node_timeout' : 'no_nodes_available',
+            model:           resolvedModel,
+            has_redis:       hasRedis,
+            has_direct:      hasDirect,
         },
     });
 }
