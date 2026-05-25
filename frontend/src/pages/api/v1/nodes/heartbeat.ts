@@ -68,6 +68,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (body.multiaddrs?.length)    record.multiaddrs  = body.multiaddrs;
         if (body.capabilities?.length)  record.capabilities = body.capabilities;
         if (body.mode)                  record.mode         = body.mode;
+        if (body.node_url)              (record as any).node_url = body.node_url;
         // Resource stats — enables marketplace matching
         if (body.storage_free_gb != null) (record as any).storage_free_gb = Number(body.storage_free_gb);
         if (body.ram_free_mb     != null) (record as any).ram_free_mb     = Number(body.ram_free_mb);
