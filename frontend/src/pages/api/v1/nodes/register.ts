@@ -10,23 +10,29 @@ import { kvSet, kvIncr } from '../../../../lib/kv';
 const NODE_TTL = 600; // 10 minutes
 
 export interface NodeRecord {
-    node_id: string;
-    name: string;
-    wallet_address: string;
-    platform: string;
-    arch: string;
-    cpu_cores: number;
-    ram_mb: number;
-    gpu: string | null;
-    mode: string;          // cloud | hybrid | sovereign
-    version: string;
-    capabilities: string[];
-    multiaddrs: string[];  // libp2p multiaddrs for P2P bootstrap
-    registered_at: string;
-    last_seen: string;
-    tasks_completed: number;
-    gstd_earned: number;
-    uptime_hours: number;
+    node_id:          string;
+    name:             string;
+    wallet_address:   string;
+    platform:         string;
+    arch:             string;
+    cpu_cores:        number;
+    ram_mb:           number;
+    gpu:              string | null;
+    mode:             string;
+    version:          string;
+    capabilities:     string[];
+    multiaddrs:       string[];
+    registered_at:    string;
+    last_seen:        string;
+    tasks_completed:  number;
+    gstd_earned:      number;
+    uptime_hours:     number;
+    // Live resource stats (updated every heartbeat)
+    storage_free_gb?: number;
+    ram_free_mb?:     number;
+    gpu_vram_mb?:     number;
+    bandwidth_mbps?:  number;
+    cpu_score?:       number;
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {

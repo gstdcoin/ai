@@ -57,17 +57,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         record.tasks_completed = body.tasks_completed ?? body.queries_served ?? record.tasks_completed;
         record.gstd_earned     = body.gstd_earned ?? record.gstd_earned;
         record.uptime_hours    = body.uptime_hours ?? record.uptime_hours;
-        if (body.multiaddrs?.length) record.multiaddrs = body.multiaddrs;
-        if (body.capabilities?.length) record.capabilities = body.capabilities;
-        if (body.mode) record.mode = body.mode;
+        if (body.multiaddrs?.length)    record.multiaddrs  = body.multiaddrs;
+        if (body.capabilities?.length)  record.capabilities = body.capabilities;
+        if (body.mode)                  record.mode         = body.mode;
+        // Resource stats — enables marketplace matching
+        if (body.storage_free_gb != null) (record as any).storage_free_gb = Number(body.storage_free_gb);
+        if (body.ram_free_mb     != null) (record as any).ram_free_mb     = Number(body.ram_free_mb);
+        if (body.gpu_vram_mb     != null) (record as any).gpu_vram_mb     = Number(body.gpu_vram_mb);
+        if (body.bandwidth_mbps  != null) (record as any).bandwidth_mbps  = Number(body.bandwidth_mbps);
+        if (body.cpu_score       != null) (record as any).cpu_score       = Number(body.cpu_score);
 
-        // Write + increment in parallel (2 ops, no extra read)
-        const [, , nodesRaw] = await Promise.all([
+        // Write + increment in parallel
+        const [, nodesKeys] = await Promise.all([
             kvSet(`node:${nodeId}`, JSON.stringify(record), NODE_TTL),
+            kvKeys('node:'),
             kvIncr('stats:total_heartbeats'),
-            kvGet('stats:nodes_online_cached'),
         ]);
-        const peers_online = nodesRaw ? parseInt(nodesRaw, 10) : 0;
+        const peers_online = Array.isArray(nodesKeys) ? nodesKeys.length : 0;
 
         return res.status(200).json({
             ok:           true,
