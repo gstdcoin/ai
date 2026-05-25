@@ -1,18 +1,19 @@
 /**
  * POST /api/v1/tasks/poll
  *
- * Called by gstdbot every 30s. Returns the best-fit task for this node.
+ * Called by gstdbot. Returns the best-fit task for this node.
  * Tasks are matched by: capabilities, resource requirements, priority.
  *
  * Body: {
- *   node_id:      string
- *   capabilities: string[]
- *   resources:    { storage_free_gb, ram_free_mb, cpu_cores, gpu_vram_mb }
- *   max_tasks?:   number
+ *   node_id:       string
+ *   capabilities:  string[]
+ *   resources:     { storage_free_gb, ram_free_mb, cpu_cores, gpu_vram_mb }
+ *   max_tasks?:    number
+ *   priority_only?: boolean  — if true, only check node-specific inference queue (fast)
  * }
  *
- * Strategy: scan up to 20 queued tasks, pick the highest-priority one
- * this node can handle, requeue the rest. O(n) but queue is typically short.
+ * Priority queue (checked first): tasks:inference:{node_id} — pushed by completions.ts
+ * General queue: tasks:queue — scanned up to SCAN_DEPTH tasks
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvPop, kvPush } from '../../../../lib/kv';
@@ -42,11 +43,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     try {
-        const body        = req.body as any;
-        const caps:   string[] = body.capabilities || [];
-        const resources        = body.resources    || {};
+        const body                = req.body as any;
+        const nodeId: string      = body.node_id      || '';
+        const caps:   string[]    = body.capabilities || [];
+        const resources           = body.resources    || {};
+        const priorityOnly: boolean = !!body.priority_only;
 
-        // Scan queue: pop tasks one by one, keep the first match, requeue the rest
+        // ── Priority queue: node-specific inference tasks (fast O(1)) ──────
+        if (nodeId) {
+            const raw = await kvPop(`tasks:inference:${nodeId}`);
+            if (raw) {
+                let task: any;
+                try { task = JSON.parse(raw); } catch { /* malformed */ }
+                if (task) return res.status(200).json({ task, source: 'priority' });
+            }
+        }
+
+        // If priority_only, stop here — don't scan general queue
+        if (priorityOnly) {
+            return res.status(200).json({ task: null });
+        }
+
+        // ── General queue: scan up to SCAN_DEPTH tasks ────────────────────
         const skipped: any[] = [];
         let picked: any = null;
 
@@ -65,11 +83,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         // Requeue skipped tasks in original order (push to back → FIFO preserved)
-        if (skipped.length > 0) {
-            // Push them in reverse so the first skipped ends up at the front again
-            for (let i = skipped.length - 1; i >= 0; i--) {
-                await kvPush('tasks:queue', JSON.stringify(skipped[i]));
-            }
+        for (let i = skipped.length - 1; i >= 0; i--) {
+            await kvPush('tasks:queue', JSON.stringify(skipped[i]));
         }
 
         return res.status(200).json({ task: picked || null });
