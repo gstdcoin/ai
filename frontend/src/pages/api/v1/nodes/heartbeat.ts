@@ -58,6 +58,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         record.gstd_earned     = body.gstd_earned ?? record.gstd_earned;
         record.uptime_hours    = body.uptime_hours ?? record.uptime_hours;
         if (body.multiaddrs?.length) record.multiaddrs = body.multiaddrs;
+        if (body.capabilities?.length) record.capabilities = body.capabilities;
         if (body.mode) record.mode = body.mode;
 
         // Write + increment in parallel (2 ops, no extra read)
