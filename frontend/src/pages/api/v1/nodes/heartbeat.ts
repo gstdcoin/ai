@@ -76,12 +76,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (body.bandwidth_mbps  != null) (record as any).bandwidth_mbps  = Number(body.bandwidth_mbps);
         if (body.cpu_score       != null) (record as any).cpu_score       = Number(body.cpu_score);
 
-        // Write + increment in parallel
-        const [, nodesKeys] = await Promise.all([
+        // Also cache the node_url for fast lookup by completions endpoint
+        const nodeUrlForCache = body.node_url || body.multiaddrs?.[0] || '';
+        const writeOps: Promise<any>[] = [
             kvSet(`node:${nodeId}`, JSON.stringify(record), NODE_TTL),
             kvKeys('node:'),
             kvIncr('stats:total_heartbeats'),
-        ]);
+        ];
+        if (nodeUrlForCache) {
+            writeOps.push(kvSet(`node_url:${nodeId}`, nodeUrlForCache, NODE_TTL));
+        }
+        const [, nodesKeys] = await Promise.all(writeOps);
         const peers_online = Array.isArray(nodesKeys) ? nodesKeys.length : 0;
 
         return res.status(200).json({

@@ -12,7 +12,7 @@ export const config = { maxDuration: 60 };
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { rateLimit, getClientIp } from '../../../../lib/ratelimit';
-import { kvKeys, kvMGet } from '../../../../lib/kv';
+import { kvGet, kvKeys, kvMGet } from '../../../../lib/kv';
 import { randomBytes } from 'crypto';
 
 const MODEL_ALIASES: Record<string, string> = {
@@ -101,18 +101,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
     }
 
-    // Local models: resolve via GSTD node (direct KV lookup — no self-fetch)
+    // Local models: resolve via GSTD node
+    // Try fast path first: cached node_url written by heartbeat endpoint
     let nodeUrl = (process.env.GSTD_NODE_URL || '').replace(/\/$/, '');
     if (!nodeUrl) {
         try {
-            const nodeKeys = await kvKeys('node:');
-            if (nodeKeys.length > 0) {
-                const values = await kvMGet(nodeKeys);
-                for (const raw of values) {
-                    if (!raw) continue;
-                    const node: any = JSON.parse(raw);
-                    const url = node.node_url || node.multiaddrs?.[0];
-                    if (url?.startsWith('http')) { nodeUrl = url; break; }
+            // Fast path: heartbeat caches node_url separately for quick lookup
+            const nodeUrlKeys = await kvKeys('node_url:');
+            if (nodeUrlKeys.length > 0) {
+                const firstUrl = await kvGet(nodeUrlKeys[0]);
+                if (firstUrl?.startsWith('http')) nodeUrl = firstUrl;
+            }
+            // Fallback: scan full node records
+            if (!nodeUrl) {
+                const nodeKeys = await kvKeys('node:');
+                if (nodeKeys.length > 0) {
+                    const values = await kvMGet(nodeKeys);
+                    for (const raw of values) {
+                        if (!raw) continue;
+                        const node: any = JSON.parse(raw);
+                        const url = node.node_url || node.multiaddrs?.[0];
+                        if (url?.startsWith('http')) { nodeUrl = url; break; }
+                    }
                 }
             }
         } catch { /* KV unavailable */ }
