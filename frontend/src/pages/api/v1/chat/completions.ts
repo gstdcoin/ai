@@ -55,6 +55,7 @@ const NODE_TTL_GRACE = 10 * 60_000;
 
 // ─── Node scoring ─────────────────────────────────────────────────────────
 interface NodeScore { node_id: string; score: number; }
+interface FindResult { best: NodeScore | null; _debug?: any; }
 
 function scoreNode(node: any, loadPenalty: number, exactMatch: boolean, now: number): number {
     const latencyBonus = node.avg_latency_ms ? Math.max(0, 2000 - node.avg_latency_ms) : 500;
@@ -66,10 +67,12 @@ function scoreNode(node: any, loadPenalty: number, exactMatch: boolean, now: num
     return 1000 + matchBonus + latencyBonus + uptimeBonus + freshnessBonus - loadPenalty;
 }
 
-async function findBestNode(model: string, debug?: boolean): Promise<NodeScore | null> {
+async function findBestNode(model: string, debug?: boolean): Promise<FindResult> {
+    const dbgInfo: any = { model, keys: [] as string[], nodes_raw: [] as any[] };
     const keys = await kvKeys('node:');
+    dbgInfo.keys = keys;
     if (debug) console.log('[routing] model:', model, 'keys:', keys);
-    if (!keys.length) return null;
+    if (!keys.length) return { best: null, _debug: dbgInfo };
 
     const raws = await kvMGet(keys);
     const now  = Date.now();
@@ -77,14 +80,34 @@ async function findBestNode(model: string, debug?: boolean): Promise<NodeScore |
 
     for (let i = 0; i < raws.length; i++) {
         const raw = raws[i];
-        if (!raw) { if (debug) console.log('[routing] skip null raw for key:', keys[i]); continue; }
+        const nodeDbg: any = { key: keys[i], raw_type: typeof raw, raw_truthy: !!raw };
+        if (!raw) {
+            nodeDbg.skip_reason = 'null_raw';
+            dbgInfo.nodes_raw.push(nodeDbg);
+            if (debug) console.log('[routing] skip null raw for key:', keys[i]);
+            continue;
+        }
         try {
-            const node = JSON.parse(raw);
+            // Upstash may return already-parsed object; handle both string and object
+            const node = typeof raw === 'string' ? JSON.parse(raw) : raw;
             const age = now - new Date(node.last_seen).getTime();
             const caps: string[] = node.capabilities || [];
+            nodeDbg.node_id = node.node_id;
+            nodeDbg.caps = caps;
+            nodeDbg.age_ms = age;
             if (debug) console.log('[routing] node:', node.node_id, 'caps:', caps, 'age:', age, 'ttl_grace:', NODE_TTL_GRACE);
-            if (age > NODE_TTL_GRACE) { if (debug) console.log('[routing] expired'); continue; }
-            if (!caps.length) { if (debug) console.log('[routing] no caps'); continue; }
+            if (age > NODE_TTL_GRACE) {
+                nodeDbg.skip_reason = 'expired';
+                dbgInfo.nodes_raw.push(nodeDbg);
+                if (debug) console.log('[routing] expired');
+                continue;
+            }
+            if (!caps.length) {
+                nodeDbg.skip_reason = 'no_caps';
+                dbgInfo.nodes_raw.push(nodeDbg);
+                if (debug) console.log('[routing] no caps');
+                continue;
+            }
 
             const loadPenalty = (node.tasks_processing || 0) * 200;
 
@@ -97,16 +120,30 @@ async function findBestNode(model: string, debug?: boolean): Promise<NodeScore |
 
             // Fallback: any node with AI inference capability (has at least 1 model)
             const hasAI = caps.length > 0;
-            if (!exactMatch && !hasAI) { if (debug) console.log('[routing] no match'); continue; }
+            if (!exactMatch && !hasAI) {
+                nodeDbg.skip_reason = 'no_match';
+                dbgInfo.nodes_raw.push(nodeDbg);
+                if (debug) console.log('[routing] no match');
+                continue;
+            }
 
-            nodes.push({ node_id: node.node_id, score: scoreNode(node, loadPenalty, exactMatch, now) });
-        } catch (e: any) { if (debug) console.log('[routing] parse error:', e.message); }
+            const score = scoreNode(node, loadPenalty, exactMatch, now);
+            nodeDbg.score = score;
+            nodeDbg.selected = true;
+            dbgInfo.nodes_raw.push(nodeDbg);
+            nodes.push({ node_id: node.node_id, score });
+        } catch (e: any) {
+            nodeDbg.skip_reason = `parse_error: ${e.message}`;
+            nodeDbg.raw_slice = typeof raw === 'string' ? raw.slice(0, 80) : String(raw).slice(0, 80);
+            dbgInfo.nodes_raw.push(nodeDbg);
+            if (debug) console.log('[routing] parse error:', e.message);
+        }
     }
 
     if (debug) console.log('[routing] candidates:', nodes.length, nodes.map(n=>n.node_id));
-    if (!nodes.length) return null;
+    if (!nodes.length) return { best: null, _debug: dbgInfo };
     nodes.sort((a, b) => b.score - a.score);
-    return nodes[0];
+    return { best: nodes[0], _debug: dbgInfo };
 }
 
 // ─── Wait for node result ─────────────────────────────────────────────────
@@ -151,7 +188,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // ── Find best node ────────────────────────────────────────────
     const dbg = req.headers['x-debug-routing'] === '1';
-    const bestNode = await findBestNode(resolvedModel, dbg).catch((e) => { if (dbg) console.error('[routing] error:', e); return null; });
+    const findResult = await findBestNode(resolvedModel, dbg).catch((e) => { if (dbg) console.error('[routing] error:', e); return { best: null, _debug: { error: e.message } } as FindResult; });
+    const bestNode = findResult.best;
 
     if (!bestNode) {
         return res.status(503).json({
@@ -169,6 +207,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }],
             usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
             _gstd: { routed_via_node: false, error: 'no_nodes_available', model: resolvedModel },
+            _routing_debug: findResult._debug,
         });
     }
 
