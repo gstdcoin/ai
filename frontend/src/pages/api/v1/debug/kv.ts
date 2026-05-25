@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvGet, kvKeys, kvSet } from '../../../../../lib/kv';
+import { kvGet, kvKeys, kvSet } from '../../../../lib/kv';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     const hasRedisUrl   = !!(process.env.KV_REST_API_URL   || process.env.UPSTASH_REDIS_REST_URL);
