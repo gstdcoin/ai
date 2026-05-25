@@ -47,12 +47,14 @@ const NODE_TTL_GRACE = 10 * 60_000;
 // ─── Node scoring ─────────────────────────────────────────────────────────
 interface NodeScore { node_id: string; score: number; }
 
-function scoreNode(node: any, loadPenalty: number, exactMatch: boolean): number {
+function scoreNode(node: any, loadPenalty: number, exactMatch: boolean, now: number): number {
     const latencyBonus = node.avg_latency_ms ? Math.max(0, 2000 - node.avg_latency_ms) : 500;
     const uptimeBonus  = Math.min((node.tasks_completed || 0) * 2, 200);
-    // Exact model match is heavily preferred over capability fallback
     const matchBonus   = exactMatch ? 2000 : 0;
-    return 1000 + matchBonus + latencyBonus + uptimeBonus - loadPenalty;
+    // Prefer freshest heartbeat — nodes seen within 30s score +500, within 2min +200
+    const ageSec = (now - new Date(node.last_seen).getTime()) / 1000;
+    const freshnessBonus = ageSec < 30 ? 500 : ageSec < 120 ? 200 : 0;
+    return 1000 + matchBonus + latencyBonus + uptimeBonus + freshnessBonus - loadPenalty;
 }
 
 async function findBestNode(model: string): Promise<NodeScore | null> {
@@ -85,7 +87,7 @@ async function findBestNode(model: string): Promise<NodeScore | null> {
             const hasAI = caps.length > 0;
             if (!exactMatch && !hasAI) continue;
 
-            nodes.push({ node_id: node.node_id, score: scoreNode(node, loadPenalty, exactMatch) });
+            nodes.push({ node_id: node.node_id, score: scoreNode(node, loadPenalty, exactMatch, now) });
         } catch { /* skip malformed */ }
     }
 
