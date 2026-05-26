@@ -54,6 +54,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             tasks_completed: n.tasks_completed,
             uptime_hours:    n.uptime_hours,
             last_seen:       n.last_seen,
+            is_online:       (Date.now() - new Date((n as any).last_seen || 0).getTime()) < 600_000,
         }));
 
         // Cache node count for heartbeat endpoint (avoids expensive KEYS scan every heartbeat)

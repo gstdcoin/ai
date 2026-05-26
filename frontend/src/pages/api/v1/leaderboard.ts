@@ -34,7 +34,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 tasks_done:    node.tasks_completed || 0,
                 gstd_earned:   node.total_earned || 0,
                 uptime_pct:    node.uptime_pct || 99.0,
-                is_online:     (Date.now() / 1000 - (node.last_seen || 0)) < 600,
+                is_online:     (Date.now() - new Date(node.last_seen || 0).getTime()) < 600_000,
             }))
             .sort((a, b) => b.tasks_done - a.tasks_done)
             .slice(0, 50)

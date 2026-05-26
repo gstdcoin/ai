@@ -382,9 +382,8 @@ const SYNTH_FALLBACK_2 = 'llama-3.3-70b-versatile';
 // Knowledge Base lookup from backend (36K+ verified facts)
 async function lookupKnowledge(query: string): Promise<string> {
     try {
-        const BACKEND_URL = process.env.BACKEND_URL || 'http://backend-blue:8080';
         const resp = await fetch(
-            `${BACKEND_URL}/api/v1/knowledge/resonance?q=${encodeURIComponent(query)}&limit=3`,
+            `https://app.gstdtoken.com/api/v1/knowledge/resonance?q=${encodeURIComponent(query)}&limit=3`,
             { signal: AbortSignal.timeout(3000) }
         );
         if (!resp.ok) return '';
@@ -438,10 +437,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             });
         }
 
-        // Deduct GSTD via backend API
-        const BACKEND_URL = process.env.BACKEND_URL || 'http://backend-blue:8080';
+        // Deduct GSTD via internal API
+        const SELF_URL = process.env.VERCEL_URL
+            ? `https://${process.env.VERCEL_URL}`
+            : (process.env.NEXT_PUBLIC_APP_URL || 'https://app.gstdtoken.com');
         try {
-            const deductResp = await fetch(`${BACKEND_URL}/api/v1/chat/deduct`, {
+            const deductResp = await fetch(`${SELF_URL}/api/v1/chat/deduct`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ wallet_address: wallet, amount: collectiveTier.cost, tier, tier_name: collectiveTier.name }),

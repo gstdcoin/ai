@@ -40,7 +40,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 gstd_earned:    node.total_earned || 0,
                 uptime_pct:     node.uptime_pct || 99.0,
                 tier:           getTier(node.total_earned || 0),
-                is_online:      (Date.now() / 1000 - (node.last_seen || 0)) < 600,
+                is_online:      (Date.now() - new Date(node.last_seen || 0).getTime()) < 600_000,
                 joined_at:      node.registered_at || node.created_at || null,
             }))
             .sort((a, b) => b.tasks_done - a.tasks_done)
