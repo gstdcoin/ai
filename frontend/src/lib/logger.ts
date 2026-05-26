@@ -1,44 +1,29 @@
-/**
- * Ascension Protocol: Zero-Leakage Production Logger
- * In production: NO console output. All logging suppressed.
- * Development: Full logging.
- */
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
 class Logger {
-  private formatMessage(level: LogLevel, message: string): string {
-    return `[${new Date().toISOString()}] [${level.toUpperCase()}] ${message}`;
-  }
-
-  debug(_message: string, ..._args: any[]): void {
-    if (!IS_PRODUCTION) {
-       
-      console.debug(this.formatMessage('debug', _message), ..._args);
+    private fmt(level: LogLevel, message: string): string {
+        return `[${new Date().toISOString()}] [${level.toUpperCase()}] ${message}`;
     }
-  }
 
-  info(_message: string, ..._args: any[]): void {
-    if (!IS_PRODUCTION) {
-       
-      console.info(this.formatMessage('info', _message), ..._args);
+    debug(message: string, ...args: unknown[]): void {
+        if (!IS_PRODUCTION) console.debug(this.fmt('debug', message), ...args);
     }
-  }
 
-  warn(message: string, ...args: any[]): void {
-    if (!IS_PRODUCTION) {
-       
-      console.warn(this.formatMessage('warn', message), ...args);
+    info(message: string, ...args: unknown[]): void {
+        if (!IS_PRODUCTION) console.info(this.fmt('info', message), ...args);
     }
-  }
 
-  error(message: string, error?: Error | unknown, ...args: any[]): void {
-    if (!IS_PRODUCTION) {
-       
-      console.error(this.formatMessage('error', message), error, ...args);
+    warn(message: string, ...args: unknown[]): void {
+        // warn goes to Vercel Logs in all envs — useful for quota/rate alerts
+        console.warn(this.fmt('warn', message), ...args);
     }
-  }
+
+    error(message: string, error?: Error | unknown, ...args: unknown[]): void {
+        // errors always surface in Vercel Logs / Sentry
+        console.error(this.fmt('error', message), error, ...args);
+    }
 }
 
 export const logger = new Logger();

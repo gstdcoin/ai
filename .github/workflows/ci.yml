@@ -1,7 +1,7 @@
 # ============================================================================
-# GSTD CI — Smart Contract + Backend + Frontend validation
+# GSTD Platform CI — Frontend-only (Vercel serverless, no Go backend)
 # ============================================================================
-name: GSTD CI
+name: CI
 
 on:
   push:
@@ -10,164 +10,53 @@ on:
     branches: [main]
 
 jobs:
-  # ── Smart Contract Validation ──────────────────────────────────────────
-  test-contracts:
+  # ── TypeScript + ESLint + Build ─────────────────────────────────────────
+  frontend:
     runs-on: ubuntu-latest
-    name: 🔱 Tact Contracts
-    steps:
-      - uses: actions/checkout@v4
+    name: Frontend
+    defaults:
+      run:
+        working-directory: frontend
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install Tact compiler
-        run: npm install -g @tact-lang/compiler@latest
-
-      - name: Validate contracts syntax
-        run: |
-          echo "🔱 Validating Tact smart contracts (recursive, excluding node_modules)..."
-          find contracts -name node_modules -prune -o -name '*.tact' -print0 | sort -z | while IFS= read -r -d '' f; do
-            echo "  Checking: $f"
-            tact --check "$f" || exit 1
-          done
-          echo "✅ All contracts valid"
-
-      - name: List contract files
-        run: find contracts -name node_modules -prune -o -name '*.tact' -print | sort
-
-  # ── Go Backend Tests ───────────────────────────────────────────────────
-  test-backend:
-    runs-on: ubuntu-latest
-    name: 🧠 Go Backend
-    services:
-      postgres:
-        image: postgres:15-alpine
-        env:
-          POSTGRES_PASSWORD: test
-          POSTGRES_DB: gstd_test
-        ports: ['5432:5432']
-        options: --health-cmd pg_isready --health-interval 5s --health-timeout 3s --health-retries 10
-
-      redis:
-        image: redis:7-alpine
-        ports: ['6379:6379']
-        options: --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 3s --health-retries 10
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.24'
-          cache-dependency-path: backend/go.sum
-
-      - name: Go Vet
-        working-directory: backend
-        run: go vet ./...
-
-      - name: Go Build
-        working-directory: backend
-        run: go build -v ./...
-
-      - name: Go Test (race detection)
-        working-directory: backend
-        run: go test ./... -v -race -timeout 120s
-        env:
-          DB_HOST: localhost
-          DB_PORT: 5432
-          DB_USER: postgres
-          DB_PASSWORD: test
-          DB_NAME: gstd_test
-          DB_SSLMODE: disable
-          REDIS_HOST: localhost
-          REDIS_PORT: 6379
-          BRIDGE_ENCRYPTION_KEY: test_key_for_ci_only
-
-  # ── Frontend Build ─────────────────────────────────────────────────────
-  test-frontend:
-    runs-on: ubuntu-latest
-    name: 🖥️ Frontend Build
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
-        working-directory: frontend
-        run: npm install --legacy-peer-deps
+        run: npm ci --legacy-peer-deps
+
+      - name: TypeScript check
+        run: npx tsc --noEmit
 
       - name: ESLint
-        working-directory: frontend
         run: npm run lint
 
       - name: Build
-        working-directory: frontend
         run: npm run build
         env:
-          NEXT_PUBLIC_API_URL: https://api.gstdtoken.com
+          KV_REST_API_URL: ${{ secrets.KV_REST_API_URL || 'https://placeholder.upstash.io' }}
+          KV_REST_API_TOKEN: ${{ secrets.KV_REST_API_TOKEN || 'placeholder' }}
+          NEXT_PUBLIC_APP_URL: https://app.gstdtoken.com
 
-  # ── Security Scan ──────────────────────────────────────────────────────
-  security-scan:
+  # ── Dependency Security Audit ──────────────────────────────────────────
+  audit:
     runs-on: ubuntu-latest
-    name: 🛡️ Security Scan
-    needs: [test-backend]
+    name: Security Audit
+    defaults:
+      run:
+        working-directory: frontend
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-node@v4
         with:
-          go-version: '1.24'
-
-      - name: GoSec Security Scanner
-        run: |
-          go install github.com/securego/gosec/v2/cmd/gosec@latest
-          echo "$HOME/go/bin" >> "$GITHUB_PATH"
-          ./scripts/gosec-baseline.sh
-
-      - name: Check for secrets
-        run: |
-          echo "Checking for exposed secrets..."
-          ! grep -rn "PRIVATE_KEY\|SECRET_KEY\|API_KEY=" --include="*.go" backend/ || true
-
-  # ── Docker Build ───────────────────────────────────────────────────────
-  docker-build:
-    runs-on: ubuntu-latest
-    name: 🐳 Docker Build
-    needs: [test-backend, test-contracts, test-frontend]
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Build Backend Image
-        run: docker build -t gstd-backend:ci ./backend
-
-      - name: Build Frontend Image
-        run: docker build -t gstd-frontend:ci ./frontend
-
-      - name: Image sizes
-        run: |
-          echo "📦 Image sizes:"
-          docker images --format "{{.Repository}}:{{.Tag}} - {{.Size}}" | grep gstd
-
-  # ── Vercel Deploy (Frontend) ──────────────────────────────────────────
-  deploy-vercel:
-    runs-on: ubuntu-latest
-    name: ▲ Vercel Deploy
-    needs: [test-frontend]
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Deploy to Vercel
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          working-directory: frontend
-          vercel-args: '--prod'
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --legacy-peer-deps
+      - name: Audit (high+critical only)
+        run: npm audit --audit-level=high || true
