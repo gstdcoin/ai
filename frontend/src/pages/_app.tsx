@@ -8,7 +8,6 @@ import { ErrorBoundary } from '../components/common/ErrorBoundary';
 import { TelegramThemeProvider } from '../components/common/TelegramThemeProvider';
 import { initTelegramWebApp, isTelegramWebApp, getTelegramColorScheme } from '../lib/telegram';
 import WalletListener from '../components/common/WalletListener';
-import VercelSwarmHeartbeat from '../components/common/VercelSwarmHeartbeat';
 import EcosystemNav from '../components/layout/EcosystemNav';
 import LandingEmbed from '../components/layout/LandingEmbed';
 import EcosystemFooter from '../components/layout/EcosystemFooter';
@@ -112,7 +111,6 @@ function App({ Component, pageProps }: AppProps) {
             {/* Ambient glow — matches gstdbot.gstdtoken.com aesthetic */}
             <div className="page-glow" aria-hidden="true" />
             {isMounted && <WalletListener />}
-            {isMounted && <VercelSwarmHeartbeat />}
             {isMounted && <AutoClaimWorker />}
             {router.pathname !== '/tma' && <EcosystemNav />}
             <main style={{ paddingTop: router.pathname !== '/tma' ? 56 : 0, minHeight: '100vh', position: 'relative', zIndex: 1 }} className={router.pathname !== '/tma' ? 'pb-20 lg:pb-0' : ''}>
