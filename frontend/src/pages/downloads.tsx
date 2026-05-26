@@ -8,7 +8,7 @@ import {
     CheckCircle, Cpu, Zap, Shield, Globe, ChevronRight
 } from 'lucide-react';
 
-const INSTALL_CMD = 'curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash';
+const INSTALL_CMD = 'curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash';
 
 const PLATFORMS = [
     { name: 'Linux (Ubuntu/Debian)', icon: '🐧', arch: 'x86_64 / ARM64', cmd: INSTALL_CMD, recommended: true },

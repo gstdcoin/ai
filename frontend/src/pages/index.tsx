@@ -182,7 +182,7 @@ export default function Home() {
                 <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
               </Link>
               <a
-                href="https://gstdbot.gstdtoken.com"
+                href="https://github.com/gstdcoin/gstdbot"
                 className="group relative w-full sm:w-auto inline-flex items-center justify-center gap-3 px-8 py-4 rounded-2xl glass-pro text-white font-bold text-lg hover:scale-[1.03] active:scale-[0.98] transition-all duration-300 shine-on-hover"
                 style={{ textDecoration: 'none' }}
               >
@@ -220,7 +220,7 @@ export default function Home() {
               <p className="text-gray-400 mb-6 leading-relaxed text-sm">
                 {t('become_node_desc', 'Turn any computer into a sovereign AI node. Wallet auth, Let\'s Encrypt SSL, Cloudflare tunnel, local LLM via Ollama, IPFS storage, earnings dashboard. One command to install, Telegram to manage.')}
               </p>
-              <a href="https://gstdbot.gstdtoken.com" className="flex items-center gap-2 text-emerald-400 font-black hover:gap-3 transition-all text-sm" style={{ textDecoration: 'none' }}>
+              <a href="https://github.com/gstdcoin/gstdbot" className="flex items-center gap-2 text-emerald-400 font-black hover:gap-3 transition-all text-sm" style={{ textDecoration: 'none' }}>
                 {t('ignite_your_node', 'Ignite Your Node')} <ArrowRight size={14} />
               </a>
             </div>
@@ -401,9 +401,9 @@ export default function Home() {
               <h3 className="text-lg font-bold text-white mb-2">⚡ {t('deploy_in_seconds', 'Deploy in seconds')}</h3>
               <p className="text-sm text-gray-400 mb-6">{t('install_desc', 'Run your own GSTD Node and start earning')}</p>
               <div className="bg-black/40 rounded-xl p-4 font-mono text-sm text-emerald-400 border border-emerald-500/20 mb-4 flex items-center justify-between gap-4">
-                <code>curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash</code>
+                <code>curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash</code>
                 <button 
-                  onClick={() => { navigator.clipboard.writeText('curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash'); }}
+                  onClick={() => { navigator.clipboard.writeText('curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash'); }}
                   className="text-xs text-gray-400 hover:text-white border border-white/10 rounded px-3 py-1 transition-colors whitespace-nowrap"
                 >Copy</button>
               </div>

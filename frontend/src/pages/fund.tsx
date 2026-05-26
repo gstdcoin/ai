@@ -100,6 +100,11 @@ export default function SovereignFundPage() {
       <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0a0b1e 0%, #0f1128 40%, #1a0f2e 100%)', color: '#fff', padding: '80px 20px 40px' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
 
+          {/* Coming Soon Banner */}
+          <div style={{ marginBottom: 32, padding: '14px 20px', borderRadius: 16, border: '1px solid rgba(251,191,36,0.3)', background: 'rgba(251,191,36,0.08)', textAlign: 'center' }}>
+            <p style={{ color: '#fbbf24', fontWeight: 600, fontSize: 14, margin: 0 }}>⏳ Sovereign Fund activates upon TON smart contract deployment. Live data will appear here automatically. Updates in <a href="https://t.me/GstdAppBot" style={{ color: '#fbbf24' }} target="_blank" rel="noopener noreferrer">Telegram</a>.</p>
+          </div>
+
           {/* Header */}
           <div style={{ textAlign: 'center', marginBottom: 48 }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 12, background: 'rgba(212, 175, 55, 0.15)', border: '1px solid rgba(212, 175, 55, 0.3)', borderRadius: 30, padding: '8px 24px', marginBottom: 20 }}>

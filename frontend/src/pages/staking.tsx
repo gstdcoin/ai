@@ -88,6 +88,10 @@ export default function StakingPage() {
       </Head>
 
       <main className="max-w-3xl mx-auto px-4 pt-24 pb-16 sovereign-section">
+        {/* Coming Soon Banner */}
+        <div className="mb-8 p-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-center">
+          <p className="text-amber-400 font-semibold text-sm">⏳ Staking is pending TON smart contract deployment. The interface is ready — go live date will be announced in <a href="https://t.me/GstdAppBot" className="underline" target="_blank" rel="noopener noreferrer">Telegram</a>.</p>
+        </div>
         {/* Header */}
         <div className="text-center mb-12 fu d1">
           <div className="sec-tag emerald justify-center inline-flex mb-3">LIQUID STAKING (stGSTD)</div>
@@ -262,7 +266,7 @@ export default function StakingPage() {
           {/* Stake / Unstake Action Buttons */}
           <div className="mt-6 grid grid-cols-2 gap-3">
             <button
-              disabled={!walletAddress || staking || amt < 1}
+              disabled={true}
               onClick={async () => {
                 if (!walletAddress || amt < 1) return;
                 setStaking(true);
@@ -307,7 +311,7 @@ export default function StakingPage() {
               {staking ? <><Loader2 size={14} className="animate-spin mr-2 shrink-0" /> Signing On-Chain...</> : <><Lock size={14} className="mr-2 shrink-0" /> Stake GSTD (TON Wallet)</>}
             </button>
             <button
-              disabled={!walletAddress || unstaking || userStaked <= 0}
+              disabled={true}
               onClick={async () => {
                 if (!walletAddress || userStaked <= 0) return;
                 const unstakeAmount = parseFloat(prompt(`Amount of stGSTD to convert back to GSTD (max: ${userStaked}):`) || '0');

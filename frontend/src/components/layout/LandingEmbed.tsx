@@ -53,7 +53,7 @@ export default function LandingEmbed() {
               {t('landing_embed_chat', 'Sovereign AI')}
             </Link>
             <a
-              href="https://gstdbot.gstdtoken.com"
+              href="https://github.com/gstdcoin/gstdbot"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/[0.06] border border-white/10 text-white text-xs sm:text-sm font-bold hover:bg-white/[0.09] transition-colors"

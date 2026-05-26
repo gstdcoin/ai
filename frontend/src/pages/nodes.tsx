@@ -124,7 +124,7 @@ export default function NodesPage() {
               <a href="https://t.me/GstdAppBot" target="_blank" rel="noopener noreferrer" className="btn-sovereign violet shadow-lg hover:shadow-violet-500/25">
                 <span style={{ fontSize: 18 }}>📱</span> {t('nodes_mobile_btn', 'Mobile Node')}
               </a>
-              <a href="https://gstdbot.gstdtoken.com" target="_blank" rel="noopener noreferrer" className="btn-sovereign emerald shadow-lg hover:shadow-emerald-500/25 text-black">
+              <a href="https://github.com/gstdcoin/gstdbot" target="_blank" rel="noopener noreferrer" className="btn-sovereign emerald shadow-lg hover:shadow-emerald-500/25 text-black">
                 <span style={{ fontSize: 18 }}>💻</span> {t('nodes_desktop_btn', 'Desktop Node')}
               </a>
             </div>
@@ -164,8 +164,8 @@ export default function NodesPage() {
                 <h3 className="text-xl font-bold text-white mb-2">{t('nodes_install_title', 'Install & Activate Node')}</h3>
                 <p className="text-gray-400 text-sm leading-relaxed mb-3">{t('nodes_install_desc', 'One command installs on any device. Your node auto-detects hardware and activates revenue modules proportional to your compute power. Pay in GSTD, earn in GSTD.')}</p>
                 <div className="bg-black/40 rounded-xl border border-emerald-500/20 p-3 mb-4 flex items-center gap-2 group cursor-pointer hover:border-emerald-500/40 transition-colors"
-                  onClick={() => { navigator.clipboard.writeText('curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash'); setInstallCopied(true); setTimeout(() => setInstallCopied(false), 2000); }}>
-                  <code className="text-emerald-400 text-sm font-mono flex-1 break-all">curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash</code>
+                  onClick={() => { navigator.clipboard.writeText('curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash'); setInstallCopied(true); setTimeout(() => setInstallCopied(false), 2000); }}>
+                  <code className="text-emerald-400 text-sm font-mono flex-1 break-all">curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash</code>
                   {installCopied ? <Check size={16} className="text-emerald-400 shrink-0" /> : <Copy size={16} className="text-gray-500 group-hover:text-emerald-400 shrink-0 transition-colors" />}
                 </div>
                 <div className="flex flex-wrap gap-3 mb-4 text-xs font-medium text-gray-500">
@@ -177,7 +177,7 @@ export default function NodesPage() {
                   <span className="flex items-center gap-1.5"><span className="text-base leading-none">🔗</span> Bridge Relay</span>
                 </div>
                 <div className="flex flex-wrap gap-3">
-                  <a href="https://gstdbot.gstdtoken.com" target="_blank" rel="noopener noreferrer" className="btn-sovereign ghost text-emerald-400 hover:text-emerald-300">
+                  <a href="https://github.com/gstdcoin/gstdbot" target="_blank" rel="noopener noreferrer" className="btn-sovereign ghost text-emerald-400 hover:text-emerald-300">
                     <Monitor size={14} className="mr-1" /> Node Dashboard <ArrowRight size={14} />
                   </a>
                 </div>
@@ -831,7 +831,7 @@ export default function NodesPage() {
               </a>
 
               {/* Desktop Node */}
-              <a href="https://gstdbot.gstdtoken.com" target="_blank" rel="noopener noreferrer"
+              <a href="https://github.com/gstdcoin/gstdbot" target="_blank" rel="noopener noreferrer"
                 style={{
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
                   padding: '20px 24px', borderRadius: 14, textDecoration: 'none',
@@ -849,7 +849,7 @@ export default function NodesPage() {
             </div>
 
             <div style={{ background: 'rgba(0,0,0,0.3)', padding: '10px 16px', borderRadius: 10, fontFamily: 'monospace', fontSize: 13, color: '#a78bfa', marginBottom: 8, wordBreak: 'break-all', overflowWrap: 'anywhere' }}>
-              curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash
+              curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash
             </div>
             <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)' }}>{t('nodes_install_hint')}</div>
           </div>

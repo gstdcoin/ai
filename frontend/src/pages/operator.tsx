@@ -54,7 +54,7 @@ export default function OperatorDashboard() {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500" />
             </span>
-            TOTAL CONTROL ACTIVE
+AUTONOMOUS OPERATOR
           </div>
           <h1 className="text-4xl md:text-5xl font-black mb-4">Autonomous Operator <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400">Dashboard</span></h1>
           <p className="text-gray-400 max-w-2xl mx-auto">
@@ -68,8 +68,8 @@ export default function OperatorDashboard() {
           </div>
         ) : !status || !status.departments || !status.server_health ? (
           <div className="text-center py-20">
-            <div className="text-red-500 mb-2">Operator Offline or Unreachable.</div>
-            <p className="text-sm text-gray-500">The autonomous operator requires GROQ_API_KEY on the backend.</p>
+            <div className="text-amber-400 mb-2 font-semibold">⏳ Autonomous Operator — Coming Soon</div>
+            <p className="text-sm text-gray-500 max-w-md mx-auto">The AI Operator runs on-chain once TON governance contracts are deployed. Interface is ready and will activate automatically.</p>
           </div>
         ) : (
           <div className="space-y-6 pb-20">
