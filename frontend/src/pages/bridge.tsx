@@ -1,7 +1,6 @@
 import Head from 'next/head';
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'next-i18next';
-import { GetStaticProps } from 'next';
 import { getCommonStaticProps } from '../lib/i18n-static-props';
 import { ArrowRight, Copy, CheckCircle, ExternalLink, Clock, Shield, Zap, Globe, Info } from 'lucide-react';
 
@@ -317,4 +316,6 @@ export default function BridgePage() {
     );
 }
 
-export const getStaticProps: GetStaticProps = getCommonStaticProps;
+export async function getStaticProps({ locale }: { locale: string }) {
+    return { props: await getCommonStaticProps(locale) };
+}
