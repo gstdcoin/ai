@@ -538,8 +538,11 @@ func (h *AgentAPIHandler) AgentResources(c *gin.Context) {
 func SetupAgentRoutes(router *gin.RouterGroup, h *AgentAPIHandler) {
 	agents := router.Group("/agents")
 
-	// Public: agent registration
+	// Public: registration + leaderboard (no auth needed — good for viral growth)
 	agents.POST("/register", h.RegisterAgent)
+	agents.GET("/leaderboard", h.AgentLeaderboard)
+	agents.GET("/marketplace", h.AgentMarketplaceBrowse)
+	agents.GET("/stats/network", h.AgentNetworkStats)
 
 	// Protected: requires API key
 	protected := agents.Group("")
@@ -554,9 +557,11 @@ func SetupAgentRoutes(router *gin.RouterGroup, h *AgentAPIHandler) {
 	// REST endpoints
 	protected.GET("/balance", h.AgentBalance)
 	protected.GET("/tasks", h.AgentTasks)
+	protected.GET("/tasks/next", h.AgentNextTask)
 	protected.POST("/tasks/claim", h.AgentClaimTask)
 	protected.POST("/tasks/submit", h.AgentSubmitResult)
 	protected.POST("/earn/heartbeat", h.AgentEarnHeartbeat)
+	protected.GET("/profile", h.AgentProfile)
 
 	// Collective Memory
 	protected.GET("/memory/query", h.AgentMemoryQuery)
@@ -600,4 +605,377 @@ func (h *AgentAPIHandler) AgentIntelligenceStats(c *gin.Context) {
 		return
 	}
 	c.JSON(200, h.swarmIntel.GetIntelligenceStats())
+}
+
+// ─── Agent Marketplace & Growth Endpoints ───────────────────────────────────
+
+// AgentLeaderboard — public ranking of top earning agents
+// GET /api/v1/agents/leaderboard?limit=20
+// No auth required — drives viral growth when agents share their ranking
+func (h *AgentAPIHandler) AgentLeaderboard(c *gin.Context) {
+	limit := 20
+	type LeaderboardEntry struct {
+		Rank        int     `json:"rank"`
+		AgentID     string  `json:"agent_id"`
+		AgentName   string  `json:"agent_name"`
+		AgentType   string  `json:"agent_type"`
+		TotalEarned float64 `json:"total_earned_gstd"`
+		Requests    int64   `json:"total_requests"`
+		Wallet      string  `json:"wallet_masked"`
+		JoinedDays  int     `json:"joined_days_ago"`
+		Tier        string  `json:"tier"`
+	}
+
+	rows, err := h.db.QueryContext(c.Request.Context(), `
+		SELECT
+			agent_id,
+			COALESCE(agent_name, agent_type, 'Agent') AS agent_name,
+			COALESCE(agent_type, 'generic') AS agent_type,
+			COALESCE(total_earned_gstd, 0) AS earned,
+			COALESCE(total_requests, 0) AS reqs,
+			wallet_address,
+			EXTRACT(DAY FROM NOW() - created_at)::int AS days_ago
+		FROM agent_api_keys
+		WHERE is_active = true
+		ORDER BY total_earned_gstd DESC
+		LIMIT $1
+	`, limit)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "leaderboard unavailable"})
+		return
+	}
+	defer rows.Close()
+
+	entries := make([]LeaderboardEntry, 0, limit)
+	rank := 1
+	for rows.Next() {
+		var e LeaderboardEntry
+		var wallet string
+		if err := rows.Scan(&e.AgentID, &e.AgentName, &e.AgentType, &e.TotalEarned, &e.Requests, &wallet, &e.JoinedDays); err != nil {
+			continue
+		}
+		e.Rank = rank
+		// Mask wallet for public display
+		if len(wallet) > 10 {
+			e.Wallet = wallet[:6] + "…" + wallet[len(wallet)-4:]
+		} else {
+			e.Wallet = "***"
+		}
+		// Assign tier
+		switch {
+		case e.TotalEarned >= 1000:
+			e.Tier = "diamond"
+		case e.TotalEarned >= 100:
+			e.Tier = "gold"
+		case e.TotalEarned >= 10:
+			e.Tier = "silver"
+		default:
+			e.Tier = "bronze"
+		}
+		entries = append(entries, e)
+		rank++
+	}
+
+	c.JSON(200, gin.H{
+		"leaderboard":  entries,
+		"total_agents": rank - 1,
+		"updated_at":   time.Now().Unix(),
+		"tiers": gin.H{
+			"diamond": "1,000+ GSTD",
+			"gold":    "100+ GSTD",
+			"silver":  "10+ GSTD",
+			"bronze":  "0+ GSTD",
+		},
+	})
+}
+
+// AgentMarketplaceBrowse — browse registered agents available for hire
+// GET /api/v1/agents/marketplace?capability=llm&limit=20
+// Public — lets users find agents; drives agent owner revenue
+func (h *AgentAPIHandler) AgentMarketplaceBrowse(c *gin.Context) {
+	capability := c.Query("capability")
+	limit := 20
+
+	type MarketAgent struct {
+		AgentID      string   `json:"agent_id"`
+		AgentName    string   `json:"agent_name"`
+		AgentType    string   `json:"agent_type"`
+		Capabilities []string `json:"capabilities"`
+		TasksDone    int64    `json:"tasks_done"`
+		Rating       float64  `json:"rating"`
+		PriceGSTD    float64  `json:"price_per_task_gstd"`
+		IsOnline     bool     `json:"is_online"`
+		JoinedDays   int      `json:"joined_days_ago"`
+	}
+
+	query := `
+		SELECT
+			agent_id,
+			COALESCE(agent_name, agent_id) AS name,
+			COALESCE(agent_type, 'generic') AS atype,
+			COALESCE(total_requests, 0) AS tasks_done,
+			COALESCE(total_earned_gstd, 0) AS earned,
+			wallet_address,
+			EXTRACT(DAY FROM NOW() - created_at)::int AS days_ago,
+			EXTRACT(EPOCH FROM (NOW() - last_used_at)) < 300 AS is_online
+		FROM agent_api_keys
+		WHERE is_active = true
+	`
+	args := []interface{}{limit}
+	if capability != "" {
+		query += ` AND agent_type ILIKE '%' || $2 || '%'`
+		args = append(args, capability)
+		args[0] = limit
+		query += ` ORDER BY total_earned_gstd DESC LIMIT $1`
+	} else {
+		query += ` ORDER BY total_earned_gstd DESC LIMIT $1`
+	}
+
+	rows, err := h.db.QueryContext(c.Request.Context(), query, args...)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "marketplace unavailable"})
+		return
+	}
+	defer rows.Close()
+
+	agents := make([]MarketAgent, 0, limit)
+	for rows.Next() {
+		var a MarketAgent
+		var wallet string
+		var earned float64
+		if err := rows.Scan(&a.AgentID, &a.AgentName, &a.AgentType, &a.TasksDone, &earned, &wallet, &a.JoinedDays, &a.IsOnline); err != nil {
+			continue
+		}
+		// Compute simple rating 0–5 from tasks + earnings
+		a.Rating = 3.0
+		if a.TasksDone > 100 {
+			a.Rating = 4.0
+		}
+		if earned > 100 {
+			a.Rating = 4.5
+		}
+		if earned > 1000 {
+			a.Rating = 5.0
+		}
+		// Base price: 0.1 GSTD/task for new agents, increases with experience
+		a.PriceGSTD = 0.1 + (float64(a.TasksDone)/1000)*0.1
+		if a.PriceGSTD > 1.0 {
+			a.PriceGSTD = 1.0
+		}
+		a.Capabilities = []string{a.AgentType}
+		agents = append(agents, a)
+	}
+
+	c.JSON(200, gin.H{
+		"agents":     agents,
+		"count":      len(agents),
+		"updated_at": time.Now().Unix(),
+		"hire_instructions": gin.H{
+			"endpoint":     "/api/v1/agents/tasks",
+			"auth":         "Bearer gstd_agent_xxx",
+			"task_example": `{"task_type":"llm","prompt":"Summarize this text","reward_gstd":0.1}`,
+		},
+	})
+}
+
+// AgentNextTask — simplified "give me my next task" for autonomous agents
+// GET /api/v1/agents/tasks/next
+// Designed for simple polling loops: while True: task = GET /tasks/next; process(task); submit(task)
+func (h *AgentAPIHandler) AgentNextTask(c *gin.Context) {
+	agentID := c.GetString("agent_id")
+
+	// Define task types with base rewards
+	taskTypes := []struct {
+		Type        string  `json:"type"`
+		Description string  `json:"description"`
+		RewardGSTD  float64 `json:"reward_gstd"`
+		Prompt      string  `json:"prompt,omitempty"`
+		TaskID      string  `json:"task_id"`
+	}{
+		{
+			Type:        "heartbeat",
+			Description: "Prove you are alive and processing",
+			RewardGSTD:  0.001,
+			TaskID:      fmt.Sprintf("hb-%d", time.Now().UnixNano()),
+		},
+	}
+
+	// Try to get a real task from OpenClaw queue first
+	rpcReq := &services.RPCRequest{JSONRPC: "2.0", Method: "claw.getNextTask", ID: 1}
+	params, _ := json.Marshal(map[string]interface{}{"agent_id": agentID})
+	rpcReq.Params = params
+	resp := h.clawSvc.HandleRPC(c.Request.Context(), rpcReq)
+
+	if resp.Error == nil && resp.Result != nil {
+		// Real task available
+		c.JSON(200, gin.H{
+			"has_task":    true,
+			"task":        resp.Result,
+			"submit_to":   "/api/v1/agents/tasks/submit",
+			"reward_info": "85% of task reward goes to your wallet",
+		})
+		return
+	}
+
+	// No real task — return heartbeat task (agent always has something to do)
+	c.JSON(200, gin.H{
+		"has_task": true,
+		"task":     taskTypes[0],
+		"type":     "heartbeat",
+		"action":   "POST /api/v1/agents/earn/heartbeat with {cpu_usage, ram_usage, tasks_done}",
+		"next_poll_sec": 60,
+		"message":  "No compute tasks in queue. Complete heartbeat to earn base rewards.",
+	})
+}
+
+// AgentProfile returns complete profile for the authenticated agent
+// GET /api/v1/agents/profile
+func (h *AgentAPIHandler) AgentProfile(c *gin.Context) {
+	agentID := c.GetString("agent_id")
+	wallet := c.GetString("agent_wallet")
+
+	var agentName, agentType string
+	var totalEarned float64
+	var totalRequests int64
+	var createdAt time.Time
+	var lastUsed time.Time
+	h.db.QueryRowContext(c.Request.Context(),
+		`SELECT COALESCE(agent_name,''), COALESCE(agent_type,'generic'),
+		        COALESCE(total_earned_gstd,0), COALESCE(total_requests,0),
+		        created_at, COALESCE(last_used_at, created_at)
+		 FROM agent_api_keys WHERE agent_id = $1`, agentID).
+		Scan(&agentName, &agentType, &totalEarned, &totalRequests, &createdAt, &lastUsed)
+
+	var balance, pending float64
+	h.db.QueryRowContext(c.Request.Context(),
+		`SELECT COALESCE(gstd_balance,0), COALESCE(pending_balance_gstd,0) FROM users WHERE wallet_address = $1`,
+		wallet).Scan(&balance, &pending)
+
+	// Compute rank
+	var rank int
+	h.db.QueryRowContext(c.Request.Context(),
+		`SELECT COUNT(*)+1 FROM agent_api_keys WHERE total_earned_gstd > $1 AND is_active=true`,
+		totalEarned).Scan(&rank)
+
+	// Tier
+	tier := "bronze"
+	switch {
+	case totalEarned >= 1000:
+		tier = "diamond"
+	case totalEarned >= 100:
+		tier = "gold"
+	case totalEarned >= 10:
+		tier = "silver"
+	}
+
+	daysActive := int(time.Since(createdAt).Hours() / 24)
+
+	c.JSON(200, gin.H{
+		"agent_id":      agentID,
+		"agent_name":    agentName,
+		"agent_type":    agentType,
+		"wallet":        wallet,
+		"tier":          tier,
+		"rank":          rank,
+		"days_active":   daysActive,
+		"stats": gin.H{
+			"total_earned_gstd": totalEarned,
+			"total_requests":    totalRequests,
+			"gstd_balance":      balance,
+			"pending_gstd":      pending,
+			"last_active":       lastUsed.Format(time.RFC3339),
+		},
+		"earnings_breakdown": gin.H{
+			"your_cut":     "85% of gross",
+			"gold_reserve": "7% → XAUt backing",
+			"value_fund":   "5% → free tier subsidy",
+			"burn":         "3% → deflation",
+		},
+		"next_milestone": gin.H{
+			"diamond_at": 1000,
+			"gold_at":    100,
+			"silver_at":  10,
+			"current":    totalEarned,
+			"progress":   computeTierProgress(totalEarned),
+		},
+		"capabilities": []string{agentType, "hive_memory", "openai_api"},
+		"integration": gin.H{
+			"openai_base_url":    "https://app.gstdtoken.com/api/v1/agents",
+			"authorization":      "Bearer <your_api_key>",
+			"compatible_with":    []string{"Cursor", "Claude Code", "Windsurf", "Continue.dev", "Jan.ai"},
+			"heartbeat_interval": "60s",
+		},
+	})
+}
+
+// AgentNetworkStats — public summary stats for the entire agent network
+// GET /api/v1/agents/stats/network
+func (h *AgentAPIHandler) AgentNetworkStats(c *gin.Context) {
+	var totalAgents, activeAgents int
+	var totalEarned, totalBurned float64
+	var totalRequests int64
+
+	h.db.QueryRowContext(c.Request.Context(),
+		`SELECT COUNT(*), COUNT(*) FILTER (WHERE is_active=true) FROM agent_api_keys`).
+		Scan(&totalAgents, &activeAgents)
+	h.db.QueryRowContext(c.Request.Context(),
+		`SELECT COALESCE(SUM(total_earned_gstd),0), COALESCE(SUM(total_requests),0) FROM agent_api_keys`).
+		Scan(&totalEarned, &totalRequests)
+	h.db.QueryRowContext(c.Request.Context(),
+		`SELECT COALESCE(SUM(burned_amount),0) FROM recycling_pool WHERE transaction_type LIKE 'agent%'`).
+		Scan(&totalBurned)
+
+	c.JSON(200, gin.H{
+		"total_agents":   totalAgents,
+		"active_agents":  activeAgents,
+		"total_requests": totalRequests,
+		"economics": gin.H{
+			"total_paid_out_gstd": totalEarned,
+			"total_burned_gstd":   totalBurned,
+			"avg_per_agent_gstd":  safeDiv(totalEarned, float64(max(activeAgents, 1))),
+		},
+		"reward_model": gin.H{
+			"base_heartbeat_gstd":   0.001,
+			"with_active_cpu_gstd":  0.002,
+			"with_gpu_gstd":         0.003,
+			"task_completion_range": "0.01–100 GSTD",
+			"agent_net_pct":         85,
+			"gold_reserve_pct":      7,
+			"value_fund_pct":        5,
+			"burn_pct":              3,
+		},
+		"join_instructions": gin.H{
+			"register": "POST /api/v1/agents/register",
+			"python":   "pip install gstd-a2a && python -c \"from gstd_a2a import Agent; Agent.run()\"",
+			"curl":     `curl -X POST https://app.gstdtoken.com/api/v1/agents/register -H "Content-Type: application/json" -d '{"wallet_address":"YOUR_TON_WALLET","agent_name":"MyAgent"}'`,
+			"repo":     "https://github.com/gstdcoin/A2A",
+		},
+	})
+}
+
+func computeTierProgress(earned float64) float64 {
+	switch {
+	case earned >= 1000:
+		return 100.0
+	case earned >= 100:
+		return (earned - 100) / 900.0 * 100
+	case earned >= 10:
+		return (earned - 10) / 90.0 * 100
+	default:
+		return earned / 10.0 * 100
+	}
+}
+
+func safeDiv(a, b float64) float64 {
+	if b == 0 {
+		return 0
+	}
+	return a / b
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
