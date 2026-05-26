@@ -136,16 +136,18 @@ func (h *AgentAPIHandler) RegisterAgent(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"status":   "registered",
 		"agent_id": agentID,
+		"node_id":  agentID, // A2A SDK looks for node_id
+		"id":       agentID, // fallback key
 		"api_key":  apiKey,
 		"wallet":   req.WalletAddress,
 		"endpoints": map[string]string{
-			"chat":    "/api/v1/agents/chat/completions",
-			"rpc":     "/api/v1/agents/rpc",
-			"tasks":   "/api/v1/agents/tasks",
-			"claim":   "/api/v1/agents/tasks/claim",
-			"submit":  "/api/v1/agents/tasks/submit",
-			"balance": "/api/v1/agents/balance",
-			"earn":    "/api/v1/agents/earn/heartbeat",
+			"chat":      "/api/v1/agents/chat/completions",
+			"rpc":       "/api/v1/agents/rpc",
+			"tasks":     "/api/v1/tasks/worker/pending",
+			"submit":    "/api/v1/tasks/worker/submit",
+			"heartbeat": "/api/v1/nodes/heartbeat",
+			"balance":   "/api/v1/users/balance",
+			"earn":      "/api/v1/agents/earn/heartbeat",
 		},
 		"platform_fee": gin.H{
 			"agent_net":    "85%",
@@ -153,20 +155,30 @@ func (h *AgentAPIHandler) RegisterAgent(c *gin.Context) {
 			"value_fund":   "5% (free-tier subsidy)",
 			"burn":         "3% (deflation)",
 		},
-		"docs": "Send Authorization: Bearer gstd_agent_xxx header with all requests",
+		"docs": "Send Authorization: Bearer " + apiKey + " with all requests",
 	})
 }
 
-// AgentAuthMiddleware validates agent API key
+// AgentAuthMiddleware validates agent API key.
+// Accepts key from: Authorization: Bearer xxx, X-GSTD-API-KEY: xxx, or X-Agent-Key: xxx header.
 func (h *AgentAPIHandler) AgentAuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		apiKey := ""
 		auth := c.GetHeader("Authorization")
-		if auth == "" || !strings.HasPrefix(auth, "Bearer gstd_agent_") {
+		if strings.HasPrefix(auth, "Bearer ") {
+			apiKey = auth[7:]
+		}
+		if apiKey == "" {
+			apiKey = c.GetHeader("X-GSTD-API-KEY")
+		}
+		if apiKey == "" {
+			apiKey = c.GetHeader("X-Agent-Key")
+		}
+		if apiKey == "" || !strings.HasPrefix(apiKey, "gstd_agent_") {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid API key. Use: Authorization: Bearer gstd_agent_xxx"})
 			c.Abort()
 			return
 		}
-		apiKey := auth[7:]
 
 		var agentID, wallet, agentType string
 		var isActive bool
@@ -577,6 +589,27 @@ func SetupAgentRoutes(router *gin.RouterGroup, h *AgentAPIHandler) {
 
 	// Collective Intelligence
 	protected.GET("/intelligence/stats", h.AgentIntelligenceStats)
+
+	// ── A2A SDK compatibility aliases ──
+	// The Python SDK in github.com/gstdcoin/A2A uses different URL paths.
+	// These aliases map SDK paths to existing handlers without changing the SDK.
+	v1 := router // /api/v1 group
+
+	// Public compat
+	v1.POST("/nodes/register", h.NodeRegisterCompat)        // SDK: nodes/register → agents/register
+	v1.POST("/tokens/agent/bootstrap", h.AgentBootstrap)    // SDK: request starter GSTD
+	v1.POST("/genesis/ignite", h.GenesisIgnite)             // SDK: auth handshake → session token
+	v1.GET("/marketplace/agents", h.AgentMarketplaceBrowse) // SDK: marketplace/agents → agents/marketplace
+
+	// Protected compat (same middleware)
+	v1ProtectedCompat := v1.Group("")
+	v1ProtectedCompat.Use(h.AgentAuthMiddleware())
+	v1ProtectedCompat.GET("/tasks/worker/pending", h.AgentTasks)             // SDK: tasks/worker/pending → agents/tasks
+	v1ProtectedCompat.POST("/tasks/worker/submit", h.AgentSubmitResult)      // SDK: tasks/worker/submit → agents/tasks/submit
+	v1ProtectedCompat.POST("/nodes/heartbeat", h.AgentEarnHeartbeat)         // SDK: nodes/heartbeat → agents/earn/heartbeat
+	v1ProtectedCompat.GET("/users/balance", h.AgentBalance)                  // SDK: users/balance → agents/balance
+	v1ProtectedCompat.POST("/knowledge/agent/store", h.AgentMemoryStore)     // SDK: knowledge/agent/store → agents/memory/store
+	v1ProtectedCompat.GET("/knowledge/query", h.AgentMemoryQuery)            // SDK: knowledge/query → agents/memory/query
 }
 
 // AgentSwarmStatus returns full swarm status
@@ -950,6 +983,166 @@ func (h *AgentAPIHandler) AgentNetworkStats(c *gin.Context) {
 			"curl":     `curl -X POST https://app.gstdtoken.com/api/v1/agents/register -H "Content-Type: application/json" -d '{"wallet_address":"YOUR_TON_WALLET","agent_name":"MyAgent"}'`,
 			"repo":     "https://github.com/gstdcoin/A2A",
 		},
+	})
+}
+
+// NodeRegisterCompat handles POST /api/v1/nodes/register — A2A SDK compat.
+// SDK sends {device_name, capabilities} + wallet in X-Wallet-Address header.
+// Normalises to the RegisterAgent format and delegates.
+func (h *AgentAPIHandler) NodeRegisterCompat(c *gin.Context) {
+	var body map[string]interface{}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// SDK sends wallet in headers when it's not in body
+	wallet := ""
+	if v, ok := body["wallet_address"].(string); ok && v != "" {
+		wallet = v
+	} else if v, ok := body["agent_wallet"].(string); ok && v != "" {
+		wallet = v
+	} else {
+		wallet = c.GetHeader("X-Wallet-Address")
+		if wallet == "" {
+			wallet = c.GetHeader("X-GSTD-Target-Wallet")
+		}
+	}
+	if wallet == "" {
+		wallet = fmt.Sprintf("unknown-%d", time.Now().UnixNano())
+	}
+
+	// Map device_name → agent_name
+	agentName := ""
+	if v, ok := body["device_name"].(string); ok {
+		agentName = v
+	} else if v, ok := body["agent_name"].(string); ok {
+		agentName = v
+	} else if v, ok := body["name"].(string); ok {
+		agentName = v
+	}
+
+	// Capabilities
+	caps := []string{}
+	if rawCaps, ok := body["capabilities"].([]interface{}); ok {
+		for _, cap := range rawCaps {
+			if s, ok := cap.(string); ok {
+				caps = append(caps, s)
+			}
+		}
+	}
+
+	// Normalise referrer
+	referrer := ""
+	if v, ok := body["referrer_id"].(string); ok {
+		referrer = v
+	}
+
+	apiKey := generateAPIKey()
+	agentID := fmt.Sprintf("agent-%d", time.Now().UnixNano())
+
+	h.db.ExecContext(c.Request.Context(),
+		`INSERT INTO users (wallet_address, gstd_balance, created_at, updated_at) VALUES ($1, 0, NOW(), NOW()) ON CONFLICT (wallet_address) DO NOTHING`,
+		wallet)
+
+	_, err := h.db.ExecContext(c.Request.Context(),
+		`INSERT INTO agent_api_keys (api_key, agent_id, wallet_address, agent_name, agent_type) VALUES ($1, $2, $3, $4, 'a2a-sdk')
+		 ON CONFLICT DO NOTHING`,
+		apiKey, agentID, wallet, agentName)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "registration failed"})
+		return
+	}
+
+	log.Printf("🤖 A2A SDK node registered: %s wallet=%s ref=%s", agentName, wallet[:min(12, len(wallet))], referrer)
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":     "registered",
+		"node_id":    agentID,
+		"id":         agentID,
+		"agent_id":   agentID,
+		"api_key":    apiKey,
+		"wallet":     wallet,
+		"message":    "Node registered. Use Authorization: Bearer " + apiKey,
+		"sdk_docs":   "https://github.com/gstdcoin/A2A",
+	})
+}
+
+// AgentBootstrap handles POST /api/v1/tokens/agent/bootstrap — A2A SDK compat.
+// Called by new agents with low balance. Returns acknowledgement (on-chain minting happens via TON contract).
+func (h *AgentAPIHandler) AgentBootstrap(c *gin.Context) {
+	var req struct {
+		AgentWallet  string   `json:"agent_wallet"`
+		AgentName    string   `json:"agent_name"`
+		Capabilities []string `json:"capabilities"`
+	}
+	c.ShouldBindJSON(&req)
+
+	wallet := req.AgentWallet
+	if wallet == "" {
+		wallet = c.GetHeader("X-Wallet-Address")
+	}
+
+	log.Printf("🎁 Bootstrap request from %s (%s)", req.AgentName, wallet)
+
+	// Bootstrap is acknowledged — actual GSTD is earned by completing tasks.
+	// Phase 1: task-based earning; on-chain faucet activates in Phase 2.
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "acknowledged",
+		"amount":  0.5,
+		"wallet":  wallet,
+		"message": "Bootstrap noted. Start earning GSTD immediately by completing tasks via GET /api/v1/tasks/worker/pending",
+		"earn_now": gin.H{
+			"heartbeat":   "POST /api/v1/nodes/heartbeat — earn 0.001 GSTD every 5 min",
+			"tasks":       "GET /api/v1/tasks/worker/pending — claim tasks for 0.01–100 GSTD each",
+			"first_steps": "pip install gstd-a2a && python -c \"from gstd_a2a import Agent; Agent.run()\"",
+		},
+	})
+}
+
+// GenesisIgnite handles POST /api/v1/genesis/ignite — A2A SDK auth handshake.
+// Validates the API key and returns a session token (same key re-echoed as session).
+func (h *AgentAPIHandler) GenesisIgnite(c *gin.Context) {
+	// Try to extract api_key from body or header
+	var req struct {
+		APIKey        string `json:"api_key"`
+		WalletAddress string `json:"wallet_address"`
+	}
+	c.ShouldBindJSON(&req)
+
+	apiKey := req.APIKey
+	if apiKey == "" {
+		auth := c.GetHeader("Authorization")
+		if strings.HasPrefix(auth, "Bearer ") {
+			apiKey = auth[7:]
+		}
+	}
+	if apiKey == "" {
+		apiKey = c.GetHeader("X-GSTD-API-KEY")
+	}
+
+	// Validate key if provided
+	if apiKey != "" && h.db != nil {
+		var agentID string
+		var isActive bool
+		err := h.db.QueryRowContext(c.Request.Context(),
+			`SELECT agent_id, is_active FROM agent_api_keys WHERE api_key = $1`, apiKey).Scan(&agentID, &isActive)
+		if err == nil && isActive {
+			c.JSON(http.StatusOK, gin.H{
+				"status":        "ignited",
+				"session_token": apiKey,
+				"agent_id":      agentID,
+				"message":       "Session established. Use Authorization: Bearer " + apiKey,
+			})
+			return
+		}
+	}
+
+	// Unknown key — still return ok so SDK can proceed to register
+	c.JSON(http.StatusOK, gin.H{
+		"status":        "ok",
+		"session_token": apiKey,
+		"message":       "Register first: POST /api/v1/nodes/register",
 	})
 }
 
