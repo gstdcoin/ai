@@ -313,13 +313,25 @@ func (h *AgentAPIHandler) AgentBalance(c *gin.Context) {
 }
 
 // AgentTasks returns available tasks
-// GET /api/v1/agents/tasks
+// GET /api/v1/agents/tasks  (also aliased from /api/v1/tasks/worker/pending by A2A SDK)
 func (h *AgentAPIHandler) AgentTasks(c *gin.Context) {
 	rpcReq := &services.RPCRequest{JSONRPC: "2.0", Method: "claw.getAvailableTasks", ID: 1}
 	params, _ := json.Marshal(map[string]interface{}{"agent_id": c.GetString("agent_id")})
 	rpcReq.Params = params
 	resp := h.clawSvc.HandleRPC(c.Request.Context(), rpcReq)
-	c.JSON(http.StatusOK, resp.Result)
+
+	// Never return null — SDK iterates the task list directly
+	if resp.Result == nil {
+		c.JSON(http.StatusOK, gin.H{"tasks": []interface{}{}, "count": 0})
+		return
+	}
+	// If result is already a list, wrap it for SDK compatibility
+	switch v := resp.Result.(type) {
+	case []interface{}:
+		c.JSON(http.StatusOK, gin.H{"tasks": v, "count": len(v)})
+	default:
+		c.JSON(http.StatusOK, resp.Result)
+	}
 }
 
 // AgentClaimTask claims a task
