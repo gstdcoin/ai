@@ -52,7 +52,7 @@ server.tool("execute_rpc", "Execute a JSON-RPC request on a specified blockchain
 server.tool("get_fund_status", "Get mathematical backing and real-time floor price metrics for GSTD.", {}, async () => {
     try {
         // Internal network since this might run on the ecosystem or outside
-        const url = process.env.GSTD_API_URL || 'https://api.gstdtoken.com';
+        const url = process.env.GSTD_API_URL || 'https://app.gstdtoken.com';
         const res = await axios_1.default.get(`${url}/api/v1/fund/status`);
         return {
             content: [{ type: "text", text: JSON.stringify(res.data, null, 2) }]
@@ -65,7 +65,7 @@ server.tool("get_fund_status", "Get mathematical backing and real-time floor pri
 // ─── Tool 3: Get Active GSTD Nodes ──────────────────────────────────────────
 server.tool("list_nodes", "List top performing Swarm nodes handling requests right now.", {}, async () => {
     try {
-        const url = process.env.GSTD_API_URL || 'https://api.gstdtoken.com';
+        const url = process.env.GSTD_API_URL || 'https://app.gstdtoken.com';
         const res = await axios_1.default.get(`${url}/api/v1/fund/leaderboard`);
         const nodes = res.data.leaderboard || [];
         if (nodes.length === 0)

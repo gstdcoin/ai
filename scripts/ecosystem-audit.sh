@@ -65,10 +65,10 @@ if [[ "$LOCAL_ONLY" -eq 0 ]]; then
   section "3. Public HTTPS endpoints"
   URLS=(
     "https://app.gstdtoken.com"
-    "https://api.gstdtoken.com/api/v1/health"
-    "https://chat.gstdtoken.com"
-    "https://gstdbot.gstdtoken.com"
-    "https://monitor.gstdtoken.com"
+    "https://app.gstdtoken.com/api/v1/health"
+    "https://app.gstdtoken.com/api/v1/stats/public"
+    "https://app.gstdtoken.com/api/v1/nodes/list"
+    "https://gstdtoken.com"
   )
   for url in "${URLS[@]}"; do
     code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "$url" || echo "000")
@@ -197,17 +197,18 @@ docker images --format "{{.Repository}}:{{.Tag}} {{.Size}}" | grep -E 'gstd|back
 
 # --- 13. Node / rewards API ---
 if [[ "$LOCAL_ONLY" -eq 0 ]]; then
-  section "13. Node rewards / tools API"
+  section "13. Core API endpoints"
   EPS=(
-    "nodes/rewards/program"
-    "nodes/rewards/network"
-    "nodes/tools/health"
-    "nodes/tools/tasks/available"
-    "nodes/tools/governance/active"
-    "nodes/tools/burn-stats"
+    "nodes/list"
+    "agents/leaderboard"
+    "agents/marketplace"
+    "agents/stats/network"
+    "leaderboard"
+    "network/info"
+    "network/stats"
   )
   for ep in "${EPS[@]}"; do
-    code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "https://api.gstdtoken.com/api/v1/$ep" || echo "000")
+    code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "https://app.gstdtoken.com/api/v1/$ep" || echo "000")
     if [[ "$code" == "200" ]]; then
       pass "$code /api/v1/$ep"
     else

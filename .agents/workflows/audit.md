@@ -4,78 +4,81 @@ description: Full GSTD ecosystem health check and audit
 
 # GSTD Ecosystem Audit Workflow
 
-// turbo-all
+**Architecture:** Vercel (serverless) + Upstash Redis. No Docker, no Go backend, no PostgreSQL.
+All API is at `app.gstdtoken.com/api/v1` — `api.gstdtoken.com` does NOT exist.
 
-## Automation (run this first)
-
-From repository root — full check with exit code `0` / `1` (CI-friendly):
+From repository root — full automated check:
 
 ```bash
 ./scripts/ecosystem-audit.sh
 ```
 
-**One-shot local QA (CI parity + stack):** [`scripts/verify-all.sh`](../../scripts/verify-all.sh) — `go vet`, `go test -race`, Tact `contracts/*.tact`, `npm run lint`, [`scripts/verify-locale-parity.sh`](../../scripts/verify-locale-parity.sh) (en/ru `common.json` keys), `build`, `ecosystem-audit.sh --local-only`. Stops on first error. Options: `VERIFY_FULL_AUDIT=1`, `VERIFY_GOSEC=1`, `VERIFY_DOCKER=1`.
+Skip public URL checks (no internet): `./scripts/ecosystem-audit.sh --local-only`
 
-- Skip public URL checks (e.g. laptop without routing to prod): `./scripts/ecosystem-audit.sh --local-only`
-- Optional Telegram alert on failure (requires `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` in `.env`): `./scripts/ecosystem-audit-alert.sh`
-- Optional cron on the production host (example every 6 hours):
-
-```cron
-0 */6 * * * cd /home/ubuntu && ./scripts/ecosystem-audit.sh >> /var/log/gstd-ecosystem-audit.log 2>&1
-```
-
-PostgreSQL logical backups (host cron): `./scripts/backup_postgres.sh` (writes under `backups/postgres/`, retention 7 days).
-
-**Production crontab (copy-paste):** see [`scripts/crontab.prod.example`](../../scripts/crontab.prod.example) — daily DB backup, optional audit every 6h, and `ecosystem-audit-alert.sh` for Telegram on failure. Optional rsync off-site: [`scripts/backup-offsite-rsync.example.sh`](../../scripts/backup-offsite-rsync.example.sh). Dependency updates: [`.github/dependabot.yml`](../../.github/dependabot.yml). PRs: [`.github/workflows/dependency-review.yml`](../../.github/workflows/dependency-review.yml). Disclosure: [`SECURITY.md`](../../SECURITY.md).
-
-Manual steps below mirror what the script runs; use them for deep dives only.
-
-## 1. Check all running containers
+## 1. Check API health
 
 ```bash
-docker ps -a --format "table {{.Names}}\t{{.Image}}\t{{.Status}}" 2>&1
+curl -s https://app.gstdtoken.com/api/v1/health | python3 -m json.tool
 ```
 
-## 2. Check backend health (inside Docker network)
+Expected: `{"status":"ok","kv":"ok",...}`
+
+## 2. Check external endpoints
 
 ```bash
-docker exec ubuntu-backend-blue-1 wget -qO- http://localhost:8080/api/v1/health 2>&1 | python3 -m json.tool
-```
-
-## 3. Check external endpoints
-
-```bash
-for url in "https://app.gstdtoken.com" "https://api.gstdtoken.com/api/v1/health" "https://chat.gstdtoken.com" "https://gstdbot.gstdtoken.com" "https://monitor.gstdtoken.com"; do
+for url in \
+  "https://app.gstdtoken.com" \
+  "https://app.gstdtoken.com/api/v1/health" \
+  "https://app.gstdtoken.com/api/v1/stats/public" \
+  "https://app.gstdtoken.com/api/v1/nodes/list" \
+  "https://gstdtoken.com"; do
   code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "$url")
   echo "$code $url"
 done
 ```
 
-## 4. Check database stats
+## 3. Check network stats
 
 ```bash
-PG_CONTAINER=$(docker ps --filter "ancestor=postgres:15-alpine" --format "{{.Names}}" | head -1)
-docker exec "$PG_CONTAINER" psql -U postgres -d distributed_computing -c "
-SELECT 'nodes' as metric, COUNT(*) as total, COUNT(*) FILTER(WHERE status='online' AND last_seen > NOW()-INTERVAL '5 min') as active FROM nodes
-UNION ALL
-SELECT 'users', COUNT(*), 0 FROM users
-UNION ALL
-SELECT 'tasks', COUNT(*), COUNT(*) FILTER(WHERE status='completed') FROM tasks;"
+curl -s https://app.gstdtoken.com/api/v1/stats/public | python3 -m json.tool
 ```
 
-## 5. Check Redis health
+## 4. Check active nodes
 
 ```bash
-REDIS_CONTAINER=$(docker ps --filter "ancestor=redis:7-alpine" --format "{{.Names}}" | head -1)
-docker exec "$REDIS_CONTAINER" redis-cli -a ${REDIS_PASSWORD:-GstdRedis2026} ping 2>/dev/null
-docker exec "$REDIS_CONTAINER" redis-cli -a ${REDIS_PASSWORD:-GstdRedis2026} dbsize 2>/dev/null
-docker exec "$REDIS_CONTAINER" redis-cli -a ${REDIS_PASSWORD:-GstdRedis2026} info memory 2>/dev/null | head -5
+curl -s https://app.gstdtoken.com/api/v1/nodes/list | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+nodes=d.get('nodes',[])
+print(f'Active nodes: {len(nodes)}')
+for n in nodes[:5]:
+    print(f'  {n.get(\"name\",\"?\")} | {n.get(\"status\",\"?\")} | {n.get(\"wallet_address\",\"\")[:12]}...')
+"
 ```
 
-## 6. Check backend logs for errors
+## 5. Check inference endpoint
 
 ```bash
-docker logs --tail 50 ubuntu-backend-blue-1 2>&1 | grep -i "error\|panic\|fatal" | tail -10
+curl -s -X POST https://app.gstdtoken.com/api/v1/chat/completions \
+  -H 'Content-Type: application/json' \
+  -d '{"messages":[{"role":"user","content":"ping"}],"max_tokens":5}' \
+  | python3 -m json.tool
+```
+
+## 6. Check critical API endpoints
+
+```bash
+for ep in \
+  "nodes/list" \
+  "agents/leaderboard" \
+  "agents/marketplace" \
+  "agents/stats/network" \
+  "leaderboard" \
+  "network/info" \
+  "network/stats"; do
+  code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "https://app.gstdtoken.com/api/v1/$ep")
+  echo "$code /api/v1/$ep"
+done
 ```
 
 ## 7. Check SSL certificate expiry
@@ -84,42 +87,14 @@ docker logs --tail 50 ubuntu-backend-blue-1 2>&1 | grep -i "error\|panic\|fatal"
 echo | openssl s_client -servername app.gstdtoken.com -connect app.gstdtoken.com:443 2>/dev/null | openssl x509 -noout -enddate
 ```
 
-## 8. Check disk usage
+## 8. Check Vercel deployment (requires Vercel CLI)
 
 ```bash
-df -h / | tail -1
-docker system df 2>&1
+vercel ls --token $VERCEL_TOKEN 2>/dev/null | head -5
 ```
 
-## 9. Check Telegram bot status
+## 9. Verify no broken links (dev)
 
 ```bash
-docker logs --tail 10 gstd-telegram-bot 2>&1
-```
-
-## 10. Check frontend status
-
-```bash
-curl -s -o /dev/null -w '%{http_code}' http://localhost:3000 && echo " frontend responds OK"
-```
-
-## 11. Check bridge status
-
-```bash
-docker logs --tail 5 gstd-bridge-test 2>&1
-```
-
-## 12. Check image cleanup (should be current + rollback only)
-
-```bash
-docker images --format "{{.Repository}}:{{.Tag}} {{.Size}}" | grep -E "gstd|backend|bot|bridge" | sort
-```
-
-## 13. Check node rewards subsystem (critical endpoints)
-
-```bash
-for ep in "nodes/rewards/program" "nodes/rewards/network" "nodes/tools/health" "nodes/tools/tasks/available" "nodes/tools/governance/active" "nodes/tools/burn-stats"; do
-  code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "https://api.gstdtoken.com/api/v1/$ep")
-  echo "$code /api/v1/$ep"
-done
+cd frontend && npm run build 2>&1 | grep -E "error|warn" | tail -20
 ```
