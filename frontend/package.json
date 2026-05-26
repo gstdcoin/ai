@@ -31,7 +31,7 @@
     "@tonconnect/ui-react": "^2.0.0",
     "@twa-dev/sdk": "8.0.2",
     "autoprefixer": "^10.4.16",
-    "axios": "^1.13.5",
+    "axios": "^1.16.1",
     "buffer": "^6.0.3",
     "date-fns": "^2.30.0",
     "ethers": "^6.16.0",
@@ -42,7 +42,7 @@
     "lightweight-charts": "^4.2.3",
     "lucide-react": "^0.294.0",
     "mapbox-gl": "^3.1.2",
-    "next": "^16.1.6",
+    "next": "^16.2.6",
     "next-i18next": "^14.0.0",
     "postcss": "^8.4.31",
     "qrcode.react": "^4.2.0",
@@ -66,7 +66,7 @@
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "eslint": "^9.39.2",
-    "eslint-config-next": "^16.1.6",
+    "eslint-config-next": "^16.2.6",
     "husky": "^9.1.7",
     "lint-staged": "^16.2.7",
     "tailwindcss": "^3.4.19",
@@ -75,7 +75,8 @@
   "overrides": {
     "glob": "^10.4.5",
     "lodash": "^4.17.21",
-    "axios": "^1.13.5",
+    "lodash-es": "^4.17.21",
+    "axios": "^1.16.1",
     "semver": "^7.6.0",
     "bl": ">=4.1.0",
     "ws": "^8.18.0",
@@ -85,6 +86,12 @@
     "cross-spawn": "^7.0.6",
     "path-to-regexp": "^6.3.0",
     "tough-cookie": "^4.1.4",
-    "word-wrap": "^1.2.4"
+    "word-wrap": "^1.2.4",
+    "protobufjs": "^7.6.1",
+    "dompurify": "^3.2.6",
+    "elliptic": "^6.6.1",
+    "secp256k1": "^5.0.1",
+    "node-fetch": "^2.7.0",
+    "undici": "^5.28.5"
   }
 }
