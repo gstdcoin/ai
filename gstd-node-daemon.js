@@ -16,8 +16,8 @@ if (!API_KEY) {
   console.error('Error: GSTD_API_KEY environment variable is missing.');
   process.exit(1);
 }
-const AGENT_ID = 'claw-supernode-1774208952448823498';
-const BASE_URL = 'https://api.gstdtoken.com/api/v1';
+const AGENT_ID = process.env.GSTD_AGENT_ID || 'gstd-node-daemon';
+const BASE_URL = (process.env.GSTD_API_URL || 'https://app.gstdtoken.com') + '/api/v1';
 
 async function apiCall(method, path, body = null) {
   return new Promise((resolve, reject) => {
@@ -115,7 +115,7 @@ async function processTasks() {
 async function contributeKnowledge() {
   try {
     const priceRes = await new Promise((resolve, reject) => {
-      https.get('https://api.gstdtoken.com/api/v1/market/price', {
+      https.get(`${BASE_URL}/market/price`, {
         headers: { 'Authorization': `Bearer ${API_KEY}` }
       }, res => {
         let d = '';

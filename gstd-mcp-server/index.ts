@@ -16,7 +16,7 @@ const server = new McpServer({
 });
 
 const API_KEY = process.env.GSTD_B2B_API_KEY || ''; // Must have a B2B API Key
-const RPC_ENDPOINT = process.env.GSTD_RPC_URL || 'https://rpc.gstd.network/v1';
+const RPC_ENDPOINT = process.env.GSTD_RPC_URL || 'https://rpc.gstdtoken.com/v1';
 
 if (!API_KEY) {
     console.error("Warning: GSTD_B2B_API_KEY is not defined. RPC tools may fail with 401.");
@@ -62,7 +62,7 @@ server.tool(
     async () => {
         try {
             // Internal network since this might run on the ecosystem or outside
-            const url = process.env.GSTD_API_URL || 'https://api.gstdtoken.com';
+            const url = process.env.GSTD_API_URL || 'https://app.gstdtoken.com';
             const res = await axios.get(`${url}/api/v1/fund/status`);
             return {
                 content: [{ type: "text", text: JSON.stringify(res.data, null, 2) }]
@@ -80,7 +80,7 @@ server.tool(
     {},
     async () => {
         try {
-            const url = process.env.GSTD_API_URL || 'https://api.gstdtoken.com';
+            const url = process.env.GSTD_API_URL || 'https://app.gstdtoken.com';
             const res = await axios.get(`${url}/api/v1/fund/leaderboard`);
             const nodes = res.data.leaderboard || [];
             if (nodes.length === 0) return { content: [{ type: "text", text: "No nodes online recently." }] };

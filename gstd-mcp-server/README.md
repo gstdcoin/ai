@@ -1,37 +1,37 @@
-# GSTD Network - MCP Server 🔌
+# GSTD Network MCP Server
 
-This is the officially supported **Model Context Protocol (MCP)** server for the GSTD NaaS Network.
-By running this server, you connect your IDE's Artificial Intelligence Agents (Cursor, Windsurf, Antigravity) directly to the GSTD Ecosystem!
+Officially supported [Model Context Protocol](https://modelcontextprotocol.io) server for the GSTD NaaS Network. Connects any MCP-compatible AI agent to the GSTD ecosystem.
 
-## Features 🚀
-- **Universal Multi-Chain RPC:** Agents can execute raw JSON-RPC commands across TON, ETH, SOL, BTC, BSC, and ARB through the GSTD B2B router.
-- **Real-Time Ecosystem Stats:** Request Live Floor Price, Backing USD, and active Sovereign Fund data.
-- **Node Swarm Interrogation:** Discover Top-Performing nodes dynamically.
+## Features
 
-## Installation 💻
-First, compile the server from source (requires Node.js):
+- **Multi-Chain RPC** — execute JSON-RPC commands across TON, ETH, SOL, BTC, BSC, ARB via the GSTD router
+- **Network Stats** — live floor price, backing USD, active nodes
+- **Node Discovery** — query top-performing nodes dynamically
+
+## Installation
+
 ```bash
 cd gstd-mcp-server
 npm install
 npm run build
 ```
 
-Then, set your B2B API Key in `.env`:
+Create `.env`:
 ```
 GSTD_B2B_API_KEY=gstd_b2b_sk_YOUR_KEY
-GSTD_RPC_URL=https://rpc.gstdtoken.com/v1
-GSTD_API_URL=https://api.gstdtoken.com
+GSTD_API_URL=https://app.gstdtoken.com
 ```
 
-## Adding to Cursor / Windsurf 🧠
-Add this JSON snippet to your Agent's MCP configuration (`.cursor/mcp.json` or equivalent interface):
+## Adding to any MCP-compatible agent
+
+Add to your agent's MCP configuration file (e.g. `mcp.json`):
 
 ```json
 {
   "mcpServers": {
     "gstd-network": {
       "command": "node",
-      "args": ["/home/ubuntu/gstd-mcp-server/dist/index.js"],
+      "args": ["./gstd-mcp-server/dist/index.js"],
       "env": {
         "GSTD_B2B_API_KEY": "gstd_b2b_sk_YOUR_KEY"
       }
@@ -40,4 +40,4 @@ Add this JSON snippet to your Agent's MCP configuration (`.cursor/mcp.json` or e
 }
 ```
 
-Now, ask your AI: "Query the ETH blockchain balance of 0x... using my GSTD MCP server."
+Then ask your AI agent: *"Query the ETH balance of 0x... using the GSTD MCP server."*
