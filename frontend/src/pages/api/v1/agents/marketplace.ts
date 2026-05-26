@@ -5,7 +5,7 @@
  * Returns nodes that are currently online and accepting tasks.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvGet, kvKeys } from '../../../../../lib/kv';
+import { kvGet, kvKeys } from '../../../../lib/kv';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'GET') {

@@ -4,7 +4,7 @@
  * Agent network summary statistics — online agents, tasks completed, GSTD distributed.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvGet, kvKeys } from '../../../../../../lib/kv';
+import { kvGet, kvKeys } from '../../../../../lib/kv';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'GET') {

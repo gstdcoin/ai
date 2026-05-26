@@ -5,7 +5,7 @@
  * Agents are nodes that have completed tasks and registered via the A2A protocol.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvGet, kvKeys } from '../../../../../lib/kv';
+import { kvGet, kvKeys } from '../../../../lib/kv';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'GET') {
