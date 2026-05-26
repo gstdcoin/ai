@@ -879,6 +879,9 @@ func SetupRoutes(deps APIDependencies) {
 		{
 			referrals.GET("/stats", getReferralStats(referralService, userService))
 			referrals.POST("/apply", applyReferralCode(referralService, userService))
+			// A2A SDK compat aliases (/referrals/ml/* → existing handlers)
+			referrals.GET("/ml/stats", getReferralStats(referralService, userService))
+			referrals.POST("/ml/claim", applyReferralCode(referralService, userService))
 		}
 
 		// User data
