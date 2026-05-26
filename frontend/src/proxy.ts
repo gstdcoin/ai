@@ -38,7 +38,7 @@ const LIMITS: Record<string, [number, number]> = {
 
 const DEFAULT_LIMIT: [number, number] = [60, 60_000]; // 60/min default
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
     const { pathname } = req.nextUrl;
 
     // Only protect API routes
