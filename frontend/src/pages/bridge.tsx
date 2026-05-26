@@ -4,7 +4,6 @@ import { useTranslation } from 'next-i18next';
 import { GetStaticProps } from 'next';
 import { getCommonStaticProps } from '../lib/i18n-static-props';
 import { ArrowRight, Copy, CheckCircle, ExternalLink, Clock, Shield, Zap, Globe, Info } from 'lucide-react';
-import AppLayout from '../components/layout/AppLayout';
 
 // Vault addresses — set via env vars when contracts are deployed
 const VAULTS = {
@@ -95,7 +94,7 @@ export default function BridgePage() {
     };
 
     return (
-        <AppLayout>
+        <div className="min-h-screen bg-[#030014] text-white">
             <Head>
                 <title>Bridge — GSTD Cross-Chain</title>
                 <meta name="description" content="Bridge GSTD tokens between TON, Solana, and XRPL — trustless, no custodians." />
@@ -314,7 +313,7 @@ export default function BridgePage() {
                 </div>
 
             </div>
-        </AppLayout>
+        </div>
     );
 }
 

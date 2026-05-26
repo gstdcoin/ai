@@ -17,7 +17,7 @@ No KV credentials needed — `src/lib/kv.ts` falls back to in-memory store.
 ## Architecture Rules
 - ALL API logic lives in `src/pages/api/v1/` as Next.js serverless functions
 - KV access ONLY via `kvGet / kvSet / kvKeys / kvDel / kvIncr` from `src/lib/kv`
-- Rate limiting is handled globally by `src/middleware.ts` (Edge runtime)
+- Rate limiting is handled globally by `src/proxy.ts` (Edge runtime — Next.js 16 uses proxy.ts, not middleware.ts)
 - No Go backend. No `api.gstdtoken.com` proxy. The rewrites were removed.
 
 ## Adding a new API route
