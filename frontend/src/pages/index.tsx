@@ -161,14 +161,14 @@ export default function Home() {
             </div>
 
             <h1 className="text-5xl sm:text-7xl font-black tracking-tight mb-6 leading-[1.08]">
-              <span className="block text-white">{t('corporation_free', 'Corporation-Free AI.')}</span>
-              <span className="block bg-gradient-to-r from-violet-400 via-cyan-400 to-emerald-400 bg-clip-text text-transparent animate-gradient bg-[length:200%_200%]">{t('working_humanity', 'Working for Humanity.')}</span>
+              <span className="block text-white">{t('corporation_free', 'Sovereign AI.')}</span>
+              <span className="block bg-gradient-to-r from-violet-400 via-cyan-400 to-emerald-400 bg-clip-text text-transparent animate-gradient bg-[length:200%_200%]">{t('working_humanity', 'Gold-Backed Compute.')}</span>
             </h1>
 
             <p className="text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed mb-10">
-              {t('hero_desc', 'GSTD forms a decentralized planetary brain. By contributing your unused compute power, you become a neural node—helping humanity solve complex global problems. 77 apps, wallet auth, auto-SSL, self-diagnostics. Access the Hive Mind, or')}{' '}
-              <span className="text-emerald-400 font-bold">{t('connect_devices', 'connect your devices')}</span>{' '}
-              {t('connect_devices_earn', 'to earn GSTD.')}
+              {t('hero_desc', 'A decentralized node network that processes AI requests and validates blockchains. Run your own node to earn GSTD — or access the network to use private, censorship-resistant AI. 70% of fees accumulate as physical gold backing every token.')}{' '}
+              <span className="text-emerald-400 font-bold">{t('connect_devices', 'No corporation. No servers.')}</span>{' '}
+              {t('connect_devices_earn', 'Just nodes and gold.')}
             </p>
 
             {/* CTA Buttons */}
@@ -218,7 +218,7 @@ export default function Home() {
               </div>
               <h2 className="text-xl font-black tracking-tight mb-3 text-white">{t('become_node', 'Become a Neural Node')}</h2>
               <p className="text-gray-400 mb-6 leading-relaxed text-sm">
-                {t('become_node_desc', 'Turn any computer into a sovereign AI node. 77 apps, wallet auth, Let\'s Encrypt SSL, DynDNS, self-diagnostics, earnings calculator. One command to install, Telegram to manage.')}
+                {t('become_node_desc', 'Turn any computer into a sovereign AI node. Wallet auth, Let\'s Encrypt SSL, Cloudflare tunnel, local LLM via Ollama, IPFS storage, earnings dashboard. One command to install, Telegram to manage.')}
               </p>
               <a href="https://gstdbot.gstdtoken.com" className="flex items-center gap-2 text-emerald-400 font-black hover:gap-3 transition-all text-sm" style={{ textDecoration: 'none' }}>
                 {t('ignite_your_node', 'Ignite Your Node')} <ArrowRight size={14} />
@@ -256,8 +256,8 @@ export default function Home() {
             </div>
             <div className="p-4 rounded-2xl glass-pro text-center">
               <div style={{ fontSize: 22, marginBottom: 6 }}>📡</div>
-              <div className="text-xs font-bold text-white">DynDNS</div>
-              <div className="text-[10px] text-gray-500">5 providers</div>
+              <div className="text-xs font-bold text-white">Cloudflare</div>
+              <div className="text-[10px] text-gray-500">Tunnel + DNS</div>
             </div>
             <div className="p-4 rounded-2xl glass-pro text-center">
               <div style={{ fontSize: 22, marginBottom: 6 }}>🩺</div>
@@ -266,8 +266,8 @@ export default function Home() {
             </div>
             <div className="p-4 rounded-2xl glass-pro text-center">
               <div style={{ fontSize: 22, marginBottom: 6 }}>📦</div>
-              <div className="text-xs font-bold text-white">77 Apps</div>
-              <div className="text-[10px] text-gray-500">Docker store</div>
+              <div className="text-xs font-bold text-white">Local LLM</div>
+              <div className="text-[10px] text-gray-500">Ollama · Private</div>
             </div>
             <a href="/bridge" style={{ textDecoration: 'none' }} className="p-4 rounded-2xl glass-pro text-center hover:scale-[1.05] transition-transform">
               <div style={{ fontSize: 22, marginBottom: 6 }}>🔗</div>
