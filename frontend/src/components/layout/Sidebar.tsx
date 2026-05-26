@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'next-i18next';
-import { Home, Server, ListTodo, MessageSquare, BarChart3, HelpCircle, X, Menu, Cpu, ArrowRightLeft, Briefcase, Brain, Landmark } from 'lucide-react';
+import { Home, Server, ListTodo, MessageSquare, BarChart3, HelpCircle, X, Menu, Cpu, ArrowRightLeft, Briefcase, Brain, Landmark, Bot } from 'lucide-react';
 import { Tab } from '../../types/tabs';
 
 interface SidebarProps {
@@ -26,6 +26,7 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
     { label: t('bridge', 'Bridge'), icon: <ArrowRightLeft size={18} />, href: '/bridge' },
     { label: t('stats', 'Stats'), icon: <BarChart3 size={18} />, href: '/stats' },
     { label: t('agent_node', 'Agent'), icon: <Cpu size={18} />, href: '/agent' },
+    { label: t('agent_network', 'Agents'), icon: <Bot size={18} />, href: '/agents' },
     { label: t('help_center', 'Help'), icon: <HelpCircle size={18} />, href: '/about' },
   ];
 
