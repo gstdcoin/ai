@@ -25,28 +25,51 @@ There is no backend server. Everything runs as Vercel serverless functions. Stat
 ```
 app.gstdtoken.com  (Vercel — free)
 ├── /                          Dashboard UI (Next.js)
+│
 ├── /api/v1/nodes/
 │   ├── register               Node startup registration
 │   ├── heartbeat              Keepalive (TTL refresh, 10-min TTL)
 │   ├── list                   All active nodes + capabilities
-│   └── peers                  P2P multiaddrs for bootstrap
+│   ├── peers                  P2P multiaddrs for bridge/bot bootstrap
+│   ├── deregister             Node graceful shutdown
+│   └── rewards/my             Per-node earnings history
+│
 ├── /api/v1/tasks/
 │   ├── poll                   Node picks up next task (priority queue first)
+│   │   also: tasks/worker/pending   (A2A SDK compat alias)
 │   ├── complete               Report task done + earnings
+│   │   also: tasks/worker/submit    (A2A SDK compat alias)
 │   ├── result                 Store/poll inference result (120s TTL)
 │   └── fail                   Report task failed
+│
 ├── /api/v1/chat/
 │   └── completions            OpenAI-compatible inference (routes to GSTD nodes)
+│
 ├── /api/v1/network/
-│   └── info                   Machine-readable network manifest
+│   ├── info                   Machine-readable network manifest (version, endpoints, models)
+│   └── stats                  Live network stats (nodes, tasks, GSTD paid)
+│
+├── /api/v1/agents/
+│   ├── leaderboard            Top agents ranked by tasks completed
+│   ├── marketplace            Online agents available for task routing
+│   └── stats/network          Agent network summary (online count, earnings)
+│
 ├── /api/v1/treasury/
 │   └── status                 Treasury state + distribution trigger
+│
 ├── /api/v1/campaigns/
-│   ├── create                 Company creates GSTD reward campaign
+│   ├── create                 Create a GSTD reward campaign
 │   ├── list                   Active campaigns
-│   └── join                   Node joins campaign
+│   └── join                   Node joins a campaign
+│
+├── /api/v1/marketplace/
+│   ├── resources              Available compute resources
+│   └── request                Request a marketplace task
+│
+├── /api/v1/leaderboard        Global node operator leaderboard
+│
 └── /api/v1/stats/
-    └── public                 Public network stats
+    └── public                 Full public stats (nodes, tasks, treasury)
 ```
 
 ---

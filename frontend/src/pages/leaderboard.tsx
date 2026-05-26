@@ -8,8 +8,12 @@ import { API_BASE_URL } from '../lib/config';
 
 interface LeaderboardEntry {
   rank: number;
+  node_id: string;
+  name: string;
   wallet: string;
-  balance: number;
+  tasks_done: number;
+  gstd_earned: number;
+  is_online: boolean;
 }
 
 export default function LeaderboardPage() {
@@ -24,7 +28,7 @@ export default function LeaderboardPage() {
       const res = await fetch(`${API_BASE_URL}/api/v1/leaderboard`);
       if (res.ok) {
         const json = await res.json();
-        setData(json.leaderboard || []);
+        setData(json.entries || json.leaderboard || []);
         setTotal(json.total || 0);
       }
     } catch (e) {
@@ -99,14 +103,23 @@ export default function LeaderboardPage() {
                 <div className="w-12 flex justify-center items-center">{getRankIcon(entry.rank)}</div>
                 <div className="flex-1 min-w-0">
                   <span className="font-mono text-sm sm:text-base text-gray-200 truncate block font-medium">
-                    {entry.wallet}
+                    {entry.name || entry.node_id || entry.wallet}
                   </span>
+                  {entry.wallet && (
+                    <span className="font-mono text-xs text-gray-600 truncate block">
+                      {entry.wallet.slice(0, 12)}…
+                    </span>
+                  )}
                 </div>
-                <div className="text-right flex flex-col items-end">
+                <div className="text-right flex flex-col items-end gap-0.5">
                   <span className={`font-black text-lg sm:text-xl leading-none ${entry.rank <= 3 ? 'text-amber-400' : 'text-white'}`}>
-                    {entry.balance.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    {(entry.gstd_earned || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}
                   </span>
-                  <span className="text-cyan-400/60 text-[10px] font-bold uppercase tracking-wider mt-1">GSTD</span>
+                  <span className="text-cyan-400/60 text-[10px] font-bold uppercase tracking-wider">GSTD</span>
+                  <span className="text-gray-600 text-[10px]">{entry.tasks_done || 0} tasks</span>
+                  {entry.is_online && (
+                    <span className="text-green-400 text-[10px]">● online</span>
+                  )}
                 </div>
               </div>
             ))}
