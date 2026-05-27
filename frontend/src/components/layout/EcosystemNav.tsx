@@ -5,9 +5,9 @@ import { useTranslation } from 'next-i18next';
 import { APP_PUBLIC_ORIGIN } from '../../lib/config';
 import { TonConnectButton } from '@tonconnect/ui-react';
 import {
-    Home, MessageSquare, Activity, Cpu,
-    ExternalLink, Menu, X, ArrowRightLeft, Server, Trophy, Repeat, Landmark,
-    Users, ChevronDown, BookOpen, Download, Info,
+    Home, MessageSquare, Activity,
+    ExternalLink, Menu, X, Server, Trophy, Landmark,
+    ChevronDown, BookOpen, Download, Info,
 } from 'lucide-react';
 
 interface NavItem {
@@ -19,12 +19,11 @@ interface NavItem {
 }
 
 const PRIMARY_KEYS = [
-    'nav_home', 'nav_chat', 'nav_bridge', 'nav_swap', 'nav_staking',
+    'nav_home', 'nav_chat', 'nav_staking',
     'nav_nodes', 'nav_stats', 'nav_leaderboard',
 ] as const;
 
 const MORE_KEYS = [
-    'nav_operator', 'nav_referrals',
     'nav_fund', 'nav_developers', 'nav_about', 'nav_docs', 'nav_downloads',
     'nav_telegram',
 ] as const;
@@ -32,8 +31,8 @@ const MORE_KEYS = [
 type SectionDef = { titleKey: string; keys: readonly string[] };
 
 const MOBILE_SECTIONS: SectionDef[] = [
-    { titleKey: 'nav_section_core', keys: ['nav_home', 'nav_chat', 'nav_bridge', 'nav_swap', 'nav_staking'] },
-    { titleKey: 'nav_section_network', keys: ['nav_nodes', 'nav_stats', 'nav_leaderboard', 'nav_operator', 'nav_referrals'] },
+    { titleKey: 'nav_section_core', keys: ['nav_home', 'nav_chat', 'nav_staking'] },
+    { titleKey: 'nav_section_network', keys: ['nav_nodes', 'nav_stats', 'nav_leaderboard'] },
     { titleKey: 'nav_section_explore', keys: ['nav_fund', 'nav_developers', 'nav_about', 'nav_docs', 'nav_downloads', 'nav_telegram'] },
 ];
 
@@ -78,22 +77,18 @@ export default function EcosystemNav() {
             window.location.origin.replace(/\/+$/, '') === APP_BASE);
 
     const allItems: NavItem[] = [
-        { key: 'nav_home', href: isOnApp ? '/' : APP_BASE, icon: <Home size={15} />, external: !isOnApp },
-        { key: 'nav_chat', href: `${APP_BASE}/chat`, icon: <MessageSquare size={15} />, external: !isOnApp, short: 'Chat' },
-        { key: 'nav_operator', href: `${APP_BASE}/operator`, icon: <Cpu size={15} />, external: !isOnApp, short: 'Operator' },
-        { key: 'nav_bridge', href: `${APP_BASE}/bridge`, icon: <ArrowRightLeft size={15} />, external: !isOnApp, short: 'Bridge' },
-        { key: 'nav_swap', href: `${APP_BASE}/swap`, icon: <Repeat size={15} />, external: !isOnApp, short: 'Swap' },
-        { key: 'nav_staking', href: `${APP_BASE}/staking`, icon: <Landmark size={15} />, external: !isOnApp, short: 'Staking' },
-        { key: 'nav_nodes', href: `${APP_BASE}/nodes`, icon: <Server size={15} />, external: !isOnApp, short: 'Nodes' },
-        { key: 'nav_referrals', href: `${APP_BASE}/referrals`, icon: <Users size={15} />, external: !isOnApp, short: 'Referrals' },
-        { key: 'nav_leaderboard', href: `${APP_BASE}/leaderboard`, icon: <Trophy size={15} />, external: !isOnApp, short: 'Leaders' },
-        { key: 'nav_stats', href: `${APP_BASE}/stats`, icon: <Activity size={15} />, external: !isOnApp, short: 'Stats' },
-        { key: 'nav_fund', short: 'Fund', href: `${APP_BASE}/fund`, icon: <Landmark size={15} />, external: !isOnApp },
-        { key: 'nav_developers', short: 'Developers', href: `${APP_BASE}/developers`, icon: <Server size={15} />, external: !isOnApp },
-        { key: 'nav_about', short: 'About', href: `${APP_BASE}/about`, icon: <Info size={15} />, external: !isOnApp },
-        { key: 'nav_docs', short: 'Docs', href: `${APP_BASE}/docs`, icon: <BookOpen size={15} />, external: !isOnApp },
-        { key: 'nav_downloads', short: 'Downloads', href: `${APP_BASE}/downloads`, icon: <Download size={15} />, external: !isOnApp },
-        { key: 'nav_telegram', href: 'https://t.me/GstdAppBot', icon: <ExternalLink size={13} />, external: true, short: 'TG' },
+        { key: 'nav_home',       href: isOnApp ? '/' : APP_BASE,    icon: <Home size={15} />,        external: !isOnApp },
+        { key: 'nav_chat',       href: `${APP_BASE}/chat`,           icon: <MessageSquare size={15} />, external: !isOnApp, short: 'Chat' },
+        { key: 'nav_staking',    href: `${APP_BASE}/staking`,        icon: <Landmark size={15} />,    external: !isOnApp, short: 'Staking' },
+        { key: 'nav_nodes',      href: `${APP_BASE}/nodes`,          icon: <Server size={15} />,      external: !isOnApp, short: 'Nodes' },
+        { key: 'nav_leaderboard',href: `${APP_BASE}/leaderboard`,    icon: <Trophy size={15} />,      external: !isOnApp, short: 'Leaders' },
+        { key: 'nav_stats',      href: `${APP_BASE}/stats`,          icon: <Activity size={15} />,    external: !isOnApp, short: 'Stats' },
+        { key: 'nav_fund',       href: `${APP_BASE}/fund`,           icon: <Landmark size={15} />,    external: !isOnApp, short: 'Fund' },
+        { key: 'nav_developers', href: `${APP_BASE}/developers`,     icon: <Server size={15} />,      external: !isOnApp, short: 'Developers' },
+        { key: 'nav_about',      href: `${APP_BASE}/about`,          icon: <Info size={15} />,        external: !isOnApp, short: 'About' },
+        { key: 'nav_docs',       href: `${APP_BASE}/docs`,           icon: <BookOpen size={15} />,    external: !isOnApp, short: 'Docs' },
+        { key: 'nav_downloads',  href: `${APP_BASE}/downloads`,      icon: <Download size={15} />,    external: !isOnApp, short: 'Downloads' },
+        { key: 'nav_telegram',   href: 'https://t.me/GstdAppBot',    icon: <ExternalLink size={13} />, external: true, short: 'Telegram' },
     ];
 
     const byKey = Object.fromEntries(allItems.map((i) => [i.key, i])) as Record<string, NavItem>;
@@ -103,7 +98,7 @@ export default function EcosystemNav() {
     const isActive = (href: string) => {
         const path = router.pathname;
         if (href === '/' || href === APP_BASE) return path === '/';
-        const segments = ['/chat', '/bridge', '/swap', '/staking', '/nodes', '/leaderboard', '/stats', '/operator', '/referrals', '/fund', '/developers', '/downloads', '/about', '/docs'];
+        const segments = ['/chat', '/staking', '/nodes', '/leaderboard', '/stats', '/fund', '/developers', '/downloads', '/about', '/docs'];
         for (const seg of segments) {
             if (href.includes(seg) && (path === seg || path.startsWith(seg + '/'))) return true;
         }
