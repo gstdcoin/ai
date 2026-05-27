@@ -455,7 +455,7 @@ async function resolveNodeUrl(): Promise<string> {
     return nodeUrl.replace(/\/$/, '');
 }
 
-async function callNode(messages: ChatMessage[], maxTokens: number = 2048): Promise<{ content: string; latency: number }> {
+async function callNode(messages: ChatMessage[], maxTokens: number = 512): Promise<{ content: string; latency: number }> {
     const start = Date.now();
     const nodeUrl = await resolveNodeUrl();
     if (!nodeUrl) throw new Error('No GSTD node available');
@@ -463,10 +463,11 @@ async function callNode(messages: ChatMessage[], maxTokens: number = 2048): Prom
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ model: NODE_MODEL, messages, max_tokens: maxTokens, temperature: 0.7, stream: false }),
-        signal: AbortSignal.timeout(55_000),
+        signal: AbortSignal.timeout(30_000),
     });
     if (!resp.ok) throw new Error(`Node ${resp.status}`);
     const data: any = await resp.json();
+    if (data._gstd?.tier === 'fallback') throw new Error('Node busy');
     const content = data.choices?.[0]?.message?.content || '';
     if (!content) throw new Error('Empty node response');
     return { content, latency: Date.now() - start };
@@ -752,7 +753,7 @@ tier: 'free', tierName: 'Single Expert', badge: 'ðŸ†“',
                 collective: { tier: 'free', tierName: 'GSTD Node', badge: '🐝', expertCount: 1, experts: ['GSTD Pi Node'], latency_ms: Date.now() - start, cost_gstd: 0 },
             });
         } catch (_nodeErr) {
-            return res.status(500).json({ error: 'All models unavailable' });
+            return res.status(503).json({ error: 'AI is temporarily busy. Please try again in a moment.' });
         }
     }
 
