@@ -5,13 +5,6 @@ const API_BASE = API_BASE_URL;
 
 // ═══════════════════════════════════════════════════════════════
 // GSTD Ecosystem Store — Centralized API cache
-// Replaces scattered useState+useEffect in each page
-//
-// Benefits:
-//   - Single source of truth for ecosystem-wide data
-//   - Automatic background refresh (30s interval)
-//   - All pages share cached data (no duplicate API calls)
-//   - Graceful error handling with stale data fallback
 // ═══════════════════════════════════════════════════════════════
 
 interface TokenomicsData {
@@ -19,10 +12,8 @@ interface TokenomicsData {
   max_supply: number;
   circulating_supply: number;
   total_minted: number;
-  total_burned: number;
   total_staked: number;
   burn_rate_pct: number;
-  deflation_rate_pct: number;
   supply_mined_pct: number;
   remaining_supply: number;
 }
@@ -41,36 +32,29 @@ interface StakingInfo {
 }
 
 interface QueueStats {
-  active_tasks: number;
-  pending_tasks: number;
-  scheduled_tasks: number;
-  retry_tasks: number;
-  completed_tasks: number;
+  pending: number;
+  completed: number;
+  failed: number;
 }
 
-/** GET /api/v1/ecosystem/features — which optional subsystems are wired (not “broken”). */
 export interface EcosystemFeatures {
-  zk_bridge: boolean;
-  market_maker: boolean;
-  render_engine: boolean;
-  groq_configured: boolean;
   telegram_bot: boolean;
   redis: boolean;
+  node_network: boolean;
+  loans_active: boolean;
+  enterprise_api: boolean;
 }
 
 interface EcosystemState {
-  // Data
   tokenomics: TokenomicsData | null;
   nodeNetwork: NodeNetworkStats | null;
   stakingInfo: StakingInfo | null;
   queueStats: QueueStats | null;
-  /** Optional deployment capabilities (public endpoint). */
   features: EcosystemFeatures | null;
   lastRefresh: number;
   isLoading: boolean;
   error: string | null;
 
-  // Actions
   refreshAll: () => Promise<void>;
   refreshTokenomics: () => Promise<void>;
   refreshNodeNetwork: () => Promise<void>;
@@ -80,25 +64,33 @@ interface EcosystemState {
   startAutoRefresh: () => () => void;
 }
 
+// Fetch with 8s timeout; return null on any error (never throws)
 async function safeFetch<T>(url: string): Promise<T | null> {
   try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    const res = await fetch(url, {
+      signal: AbortSignal.timeout(8000),
+    });
     if (!res.ok) return null;
-    return await res.json();
+    return await res.json() as T;
   } catch {
     return null;
   }
 }
 
+// Throttle: minimum gap between full refreshes (60s — matches API Cache-Control)
+const REFRESH_THROTTLE_MS  = 60_000;
+// Background poll interval (2 min — pages use cached data between polls)
+const AUTO_REFRESH_INTERVAL = 120_000;
+
 export const useEcosystemStore = create<EcosystemState>((set, get) => ({
-  tokenomics: null,
+  tokenomics:  null,
   nodeNetwork: null,
   stakingInfo: null,
-  queueStats: null,
-  features: null,
+  queueStats:  null,
+  features:    null,
   lastRefresh: 0,
-  isLoading: false,
-  error: null,
+  isLoading:   false,
+  error:       null,
 
   refreshFeatures: async () => {
     const data = await safeFetch<EcosystemFeatures>(`${API_BASE}/api/v1/ecosystem/features`);
@@ -127,12 +119,12 @@ export const useEcosystemStore = create<EcosystemState>((set, get) => ({
 
   refreshAll: async () => {
     const state = get();
-    // Throttle: don't refresh more than once per 10 seconds
-    if (Date.now() - state.lastRefresh < 10_000) return;
+    if (Date.now() - state.lastRefresh < REFRESH_THROTTLE_MS) return;
 
     set({ isLoading: true, error: null });
     try {
-      await Promise.all([
+      // Fire in parallel; each uses its own cached endpoint
+      await Promise.allSettled([
         state.refreshTokenomics(),
         state.refreshNodeNetwork(),
         state.refreshStakingInfo(),
@@ -146,15 +138,11 @@ export const useEcosystemStore = create<EcosystemState>((set, get) => ({
   },
 
   startAutoRefresh: () => {
-    // Initial fetch
-    get().refreshAll();
+    // Defer first fetch 2s so it doesn't block page render
+    const initial = setTimeout(() => get().refreshAll(), 2000);
 
-    // Auto-refresh every 30 seconds
-    const interval = setInterval(() => {
-      get().refreshAll();
-    }, 30_000);
+    const interval = setInterval(() => get().refreshAll(), AUTO_REFRESH_INTERVAL);
 
-    // Return cleanup function
-    return () => clearInterval(interval);
+    return () => { clearTimeout(initial); clearInterval(interval); };
   },
 }));

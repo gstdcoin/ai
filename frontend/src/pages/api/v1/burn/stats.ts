@@ -20,12 +20,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const burn_rate_daily  = 0; // activates after contract deploy
 
         return res.status(200).json({
-            total_burned,
-            burn_rate_daily,
-            burn_rate_pct:   2,
-            last_burn_at,
-            effective_supply: 1_000_000_000 - total_burned,
-            note:            'Burns activate after TON contract deployment.',
+            total_burned:    0,
+            burn_rate_daily: 0,
+            burn_rate_pct:   0,
+            last_burn_at:    null,
+            effective_supply: 1_000_000_000,
+            note:            'Token burning is disabled. All protocol fees flow to node operator rewards instead.',
             timestamp:       Date.now(),
         });
     } catch (err: any) {

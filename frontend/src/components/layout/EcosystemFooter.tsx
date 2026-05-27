@@ -5,10 +5,10 @@ import { useEcosystemStore, type EcosystemFeatures } from '../../store/ecosystem
 
 function optionalModuleLabels(f: EcosystemFeatures): string[] {
     const out: string[] = [];
-    if (!f.zk_bridge) out.push('ZK bridge');
-    if (!f.market_maker) out.push('Market maker');
-    if (!f.render_engine) out.push('Render');
-    if (!f.groq_configured) out.push('AI (Groq)');
+    if (!f.node_network) out.push('Node network');
+    if (!f.telegram_bot) out.push('Telegram bot');
+    if (!f.loans_active) out.push('Loans');
+    if (!f.enterprise_api) out.push('Enterprise API');
     return out;
 }
 

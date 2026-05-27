@@ -9,7 +9,7 @@ const MAX_SUPPLY    = 1_000_000_000;
 const WORKER_POOL   = 400_000_000;
 const BASE_REWARD   = 0.5;            // GSTD per hour per node
 const EPOCH_DAYS    = 365;
-const BURN_RATE_PCT = 2;
+// No token burning — all fees route to node operator reward pool
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
@@ -28,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const total_staked    = stakedRaw  ? parseFloat(stakedRaw)  : 0;
         const active_stakers  = stakersRaw ? parseInt(stakersRaw)   : 0;
 
-        const circulating_supply  = total_minted - total_burned;
+        const circulating_supply  = total_minted;
         const remaining_supply    = MAX_SUPPLY - total_minted;
         const supply_mined_pct    = (total_minted / MAX_SUPPLY) * 100;
 
@@ -43,18 +43,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             worker_pool:           WORKER_POOL,
             circulating_supply,
             total_minted,
-            total_burned,
             total_staked,
             active_stakers,
             remaining_supply,
             supply_mined_pct,
-            burn_rate_pct:         BURN_RATE_PCT,
+            burn_rate_pct:         0,
             base_reward_per_hour:  BASE_REWARD,
             epoch,
             next_halving_in_days,
             halving_reduction_pct: 50,
             contracts_live:        false,
-            note:                  'Minting activates after TON contract deployment.',
+            note:                  'No token burning. All fees flow to node operator reward pool. Minting activates after TON contract deployment.',
             timestamp:             Date.now(),
         });
     } catch (err: any) {

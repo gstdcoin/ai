@@ -252,7 +252,7 @@ export default function TMAPage() {
 
         {tab === 'worker' && (
           <div className="space-y-4">
-            <MobileNodePanel address={address} />
+            <MobileNodePanel address={address ?? undefined} />
           </div>
         )}
 
