@@ -252,21 +252,7 @@ export default function TMAPage() {
 
         {tab === 'worker' && (
           <div className="space-y-4">
-            <div className="rounded-xl bg-white/5 border border-white/10 p-4">
-              <div className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-2">
-                {t('tab_nodes', 'Nodes')}
-              </div>
-              <p className="text-xs text-gray-500 mb-3">
-                {t('node_desc', 'Your device processes tasks in the decentralized network.')}
-              </p>
-              <TMAInferenceWorker />
-            </div>
-            <a
-              href="https://app.gstdtoken.com/agent"
-              className="block w-full py-3 px-4 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-center text-sm font-bold"
-            >
-              {t('agent_node', 'Agent Node')} →
-            </a>
+            <MobileNodePanel address={address} />
           </div>
         )}
 
@@ -306,50 +292,242 @@ export default function TMAPage() {
   );
 }
 
-function TMAInferenceWorker() {
+const TIER_COLORS: Record<string, string> = {
+  bronze:   'text-amber-600',
+  silver:   'text-gray-300',
+  gold:     'text-amber-400',
+  platinum: 'text-cyan-300',
+};
+const TIER_BG: Record<string, string> = {
+  bronze:   'bg-amber-900/30 border-amber-700/40',
+  silver:   'bg-gray-700/30 border-gray-500/40',
+  gold:     'bg-amber-500/20 border-amber-400/40',
+  platinum: 'bg-cyan-500/10 border-cyan-400/30',
+};
+const TIER_EMOJI: Record<string, string> = {
+  bronze: '🥉', silver: '🥈', gold: '🥇', platinum: '💎',
+};
+
+function getDeviceId(): string {
+  if (typeof window === 'undefined') return 'server';
+  let id = localStorage.getItem('gstd_device_id');
+  if (!id) {
+    id = `mobile-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    localStorage.setItem('gstd_device_id', id);
+  }
+  return id;
+}
+
+function getDeviceResources() {
+  const nav = navigator as any;
+  const cpu_cores = nav.hardwareConcurrency || 4;
+  const ram_gb = nav.deviceMemory || 4;
+  const conn = nav.connection || nav.mozConnection || nav.webkitConnection;
+  const bandwidth_mbps = conn?.downlink || 5;
+  const network_type = conn?.type || (conn?.effectiveType === '4g' ? 'lte' : 'wifi');
+  return { cpu_cores, ram_gb, bandwidth_mbps, network_type };
+}
+
+function MobileNodePanel({ address }: { address: string | undefined }) {
   const { t } = useTranslation('common');
-  const [result, setResult] = useState<string | null>(null);
-  const workerRef = useRef<Worker | null>(null);
+  const [isRunning, setIsRunning] = useState(false);
+  const [tier, setTier] = useState<string>('bronze');
+  const [ratePerHour, setRatePerHour] = useState(0.5);
+  const [baseGstd, setBaseGstd] = useState(0);
+  const [baseTs, setBaseTs] = useState(Date.now());
+  const [uptimeMinutes, setUptimeMinutes] = useState(0);
+  const [tasksCompleted, setTasksCompleted] = useState(0);
+  const [status, setStatus] = useState<string>('offline');
+  const [claimMsg, setClaimMsg] = useState('');
+  const [loading, setLoading] = useState(false);
+  const heartbeatRef = useRef<NodeJS.Timeout | null>(null);
+  const tgRef = useRef<any>(null);
 
   useEffect(() => {
-    try {
-      workerRef.current = new Worker('/workers/inference-worker.js');
-    } catch (_err) { 
-      console.warn('Worker initialization failure:', _err);
-      // Ignored for environments where Web Workers are not supported
-    }
-    return () => workerRef.current?.terminate();
+    tgRef.current = getTelegramWebApp();
   }, []);
 
-  const runInference = () => {
-    if (!workerRef.current) {
-      setResult('Worker not available');
-      return;
-    }
-    const id = Date.now();
-    workerRef.current.onmessage = (e) => {
-      if (e.data?.id === id && e.data?.type === 'inference_result') {
-        const r = e.data.result;
-        if (e.data.throttled) {
-          setResult(t('node_cooldown', 'Node Cooldown'));
-        } else {
-          setResult(`${r.label} (${(r.score * 100).toFixed(0)}%)`);
-        }
+  // Live earnings counter (updates every second)
+  const [liveGstd, setLiveGstd] = useState(0);
+  useEffect(() => {
+    if (!isRunning) { setLiveGstd(baseGstd); return; }
+    const iv = setInterval(() => {
+      const elapsedH = (Date.now() - baseTs) / 3_600_000;
+      setLiveGstd(baseGstd + elapsedH * ratePerHour);
+    }, 1000);
+    return () => clearInterval(iv);
+  }, [isRunning, baseGstd, baseTs, ratePerHour]);
+
+  const doHeartbeat = async () => {
+    const tg = tgRef.current;
+    const initData = tg?.initData || '';
+    const deviceId = getDeviceId();
+    const resources = getDeviceResources();
+    try {
+      const resp = await fetch('/api/v1/mobile/node/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          telegram_init_data: initData,
+          device_id: deviceId,
+          wallet_address: address || '',
+          ...resources,
+        }),
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        setTier(data.tier || 'bronze');
+        setRatePerHour(data.rate_per_hour || 0.5);
+        setBaseGstd(data.accumulated_gstd || 0);
+        setBaseTs(Date.now());
+        setUptimeMinutes(data.uptime_minutes || 0);
+        setTasksCompleted(data.tasks_completed || 0);
+        setStatus(data.status || 'active');
       }
-    };
-    workerRef.current.postMessage({ id, type: 'inference', payload: { text: 'synchronizing...' } });
-    setResult(t('connecting', 'Connecting...'));
+    } catch (e) { /* network error — keep running */ }
   };
 
+  const startNode = async () => {
+    setLoading(true);
+    await doHeartbeat();
+    setIsRunning(true);
+    heartbeatRef.current = setInterval(doHeartbeat, 300_000);
+    setLoading(false);
+  };
+
+  const stopNode = () => {
+    if (heartbeatRef.current) clearInterval(heartbeatRef.current);
+    setIsRunning(false);
+    setStatus('offline');
+  };
+
+  useEffect(() => () => { if (heartbeatRef.current) clearInterval(heartbeatRef.current); }, []);
+
+  const claimRewards = async () => {
+    if (!address) { setClaimMsg(t('connect_wallet_first', 'Connect wallet first')); return; }
+    if (liveGstd < 0.01) { setClaimMsg(t('min_claim', 'Minimum 0.01 GSTD to claim')); return; }
+    const tg = tgRef.current;
+    const deviceId = getDeviceId();
+    setLoading(true);
+    try {
+      const resp = await fetch('/api/v1/mobile/node/claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tg_user_id: tg?.initDataUnsafe?.user?.id || 'unknown',
+          device_id: deviceId,
+          wallet_address: address,
+        }),
+      });
+      const data = await resp.json();
+      if (resp.ok) {
+        setClaimMsg(`✅ Claimed ${data.claimed_gstd} GSTD → Balance: ${data.new_balance}`);
+        setBaseGstd(0);
+        setBaseTs(Date.now());
+      } else {
+        setClaimMsg(`❌ ${data.error || 'Claim failed'}`);
+      }
+    } catch { setClaimMsg('❌ Network error'); }
+    setLoading(false);
+    setTimeout(() => setClaimMsg(''), 5000);
+  };
+
+  const tierColor = TIER_COLORS[tier] || TIER_COLORS.bronze;
+  const tierBg = TIER_BG[tier] || TIER_BG.bronze;
+  const tierEmoji = TIER_EMOJI[tier] || '🥉';
+
   return (
-    <div>
-      <button
-        onClick={runInference}
-        className="text-xs py-2 px-3 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-bold"
-      >
-        {t('start_node', 'Start Node')}
-      </button>
-      {result && <span className="ml-2 text-xs text-sky-400 font-mono">{result}</span>}
+    <div className="space-y-3">
+      {/* Tier badge */}
+      <div className={`rounded-xl border p-4 ${tierBg}`}>
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <div className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">
+              {t('node_tier', 'Node Tier')}
+            </div>
+            <div className={`text-2xl font-black ${tierColor}`}>
+              {tierEmoji} {tier.charAt(0).toUpperCase() + tier.slice(1)}
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">
+              {t('earn_rate', 'Rate')}
+            </div>
+            <div className={`text-lg font-black ${tierColor}`}>{ratePerHour} GSTD/h</div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 text-center mb-3">
+          <div className="rounded-lg bg-black/20 p-2">
+            <div className="text-[9px] text-gray-500 uppercase font-bold">{t('earned', 'Earned')}</div>
+            <div className="text-sm font-black text-amber-400 tabular-nums">{liveGstd.toFixed(4)}</div>
+          </div>
+          <div className="rounded-lg bg-black/20 p-2">
+            <div className="text-[9px] text-gray-500 uppercase font-bold">{t('uptime', 'Uptime')}</div>
+            <div className="text-sm font-black text-violet-300 tabular-nums">{uptimeMinutes}m</div>
+          </div>
+          <div className="rounded-lg bg-black/20 p-2">
+            <div className="text-[9px] text-gray-500 uppercase font-bold">{t('tasks', 'Tasks')}</div>
+            <div className="text-sm font-black text-emerald-400 tabular-nums">{tasksCompleted}</div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 mb-1">
+          <div className={`w-2 h-2 rounded-full ${isRunning ? 'bg-emerald-400 animate-pulse' : 'bg-gray-600'}`} />
+          <span className="text-xs text-gray-400 font-mono">
+            {isRunning ? `🟢 ${t('node_active', 'Node Active')}` : `⚫ ${t('node_stopped', 'Stopped')}`}
+          </span>
+        </div>
+      </div>
+
+      {/* Controls */}
+      <div className="flex gap-2">
+        {!isRunning ? (
+          <button
+            onClick={startNode}
+            disabled={loading}
+            className="flex-1 py-3 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-bold text-sm disabled:opacity-50"
+          >
+            {loading ? '...' : `⚡ ${t('start_node', 'Start Node')}`}
+          </button>
+        ) : (
+          <button
+            onClick={stopNode}
+            className="flex-1 py-3 rounded-xl bg-red-500/20 border border-red-500/40 text-red-300 font-bold text-sm"
+          >
+            {t('stop_node', 'Stop Node')}
+          </button>
+        )}
+        <button
+          onClick={claimRewards}
+          disabled={loading || liveGstd < 0.01}
+          className="flex-1 py-3 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold text-sm disabled:opacity-50"
+        >
+          {loading ? '...' : `💰 ${t('claim', 'Claim')}`}
+        </button>
+      </div>
+
+      {claimMsg && (
+        <div className="rounded-lg bg-white/5 border border-white/10 p-2 text-xs text-center text-gray-300">
+          {claimMsg}
+        </div>
+      )}
+
+      {/* Tier info */}
+      <div className="rounded-xl bg-white/5 border border-white/10 p-3">
+        <div className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-2">
+          {t('tier_rewards', 'Tier Rewards')}
+        </div>
+        <div className="space-y-1">
+          {[['🥉 Bronze', '0.5 GSTD/h', 'Any phone'], ['🥈 Silver', '1.0 GSTD/h', '4+ cores or 3GB RAM'], ['🥇 Gold', '2.0 GSTD/h', '8+ cores or 8GB RAM'], ['💎 Platinum', '5.0 GSTD/h', '16GB RAM or 50Mbps']].map(([label, rate, req]) => (
+            <div key={label} className="flex justify-between items-center text-xs">
+              <span className="text-gray-300 font-bold">{label}</span>
+              <span className="text-amber-400 font-mono">{rate}</span>
+              <span className="text-gray-500 text-[10px]">{req}</span>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
