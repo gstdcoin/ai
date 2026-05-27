@@ -69,12 +69,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (body.capabilities?.length)  record.capabilities = body.capabilities;
         if (body.mode)                  record.mode         = body.mode;
         if (body.node_url)              (record as any).node_url = body.node_url;
-        // Resource stats — enables marketplace matching
+        // Resource stats — enables marketplace matching + locality scoring
         if (body.storage_free_gb != null) (record as any).storage_free_gb = Number(body.storage_free_gb);
         if (body.ram_free_mb     != null) (record as any).ram_free_mb     = Number(body.ram_free_mb);
         if (body.gpu_vram_mb     != null) (record as any).gpu_vram_mb     = Number(body.gpu_vram_mb);
         if (body.bandwidth_mbps  != null) (record as any).bandwidth_mbps  = Number(body.bandwidth_mbps);
         if (body.cpu_score       != null) (record as any).cpu_score       = Number(body.cpu_score);
+        // models_loaded: list of Ollama models hot in RAM — used for locality-aware routing
+        if (Array.isArray(body.models_loaded) && body.models_loaded.length > 0) {
+            record.capabilities = body.models_loaded;
+        }
 
         // Also cache the node_url for fast lookup by completions endpoint
         const nodeUrlForCache = body.node_url || body.multiaddrs?.[0] || '';

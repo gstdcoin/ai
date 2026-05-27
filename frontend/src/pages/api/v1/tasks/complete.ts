@@ -10,6 +10,7 @@
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvSet, kvIncr } from '../../../../lib/kv';
+import { accrueReward, BASE_TASK_FEE } from '../../../../lib/rewards';
 import type { NodeRecord } from '../nodes/register';
 import type { Campaign } from '../campaigns/create';
 
@@ -63,6 +64,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         writes.push(kvIncr('stats:total_tasks_completed').then(() => {}));
         if (rewardGstd > 0) writes.push(kvIncr('stats:total_gstd_paid').then(() => {}));
         if (protocolFee > 0) writes.push(kvIncr('stats:protocol_treasury_gstd').then(() => {}));
+
+        // F1 reward accrual — accumulate per-node pending balance
+        const walletAddr = nodeRaw ? (JSON.parse(nodeRaw) as NodeRecord).wallet_address : '';
+        if (walletAddr) {
+            writes.push(
+                accrueReward(nodeId, walletAddr, rewardGstd || BASE_TASK_FEE, body.task_id)
+                    .then(() => {})
+                    .catch(() => {})
+            );
+        }
 
         await Promise.all(writes);
 
