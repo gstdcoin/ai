@@ -189,7 +189,8 @@ async function handleAI(chatId: number, userId: number, text: string): Promise<v
     ];
 
     try {
-        const response = await callNodeChat(messages, { maxTokens: 800, temperature: 0.7 });
+        // 20s timeout — keeps total handler well under Vercel's 55s limit
+        const response = await callNodeChat(messages, { maxTokens: 600, temperature: 0.7, timeoutMs: 20_000 });
         const content = response.content || '🐝 No response from the swarm. Try again.';
 
         session.history.push({ role: 'user', content: text });
@@ -198,7 +199,12 @@ async function handleAI(chatId: number, userId: number, text: string): Promise<v
 
         await sendMessage(chatId, content.slice(0, 4096));
     } catch (err: any) {
-        await sendMessage(chatId, `🐝 GSTD Network: ${err.message?.slice(0, 100) || 'Inference error'}`);
+        const msg = err.message || '';
+        if (msg.includes('No GSTD node') || msg.includes('available')) {
+            await sendMessage(chatId, '🐝 Node network is offline right now. Try again in a minute.');
+        } else {
+            await sendMessage(chatId, `🐝 GSTD AI: ${msg.slice(0, 80) || 'Inference error. Try again.'}`);
+        }
     }
 }
 
@@ -303,12 +309,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
     if (!TOKEN) return res.status(503).json({ error: 'TELEGRAM_BOT_TOKEN not configured' });
 
-    // Respond 200 immediately — Telegram will retry on timeout
-    res.status(200).json({ ok: true });
-
+    // Process BEFORE responding — Vercel may terminate the function immediately
+    // after res.json(), so fire-and-forget is unreliable in serverless.
+    // maxDuration=55s gives plenty of headroom for all commands incl. AI (20s timeout).
     try {
         await processUpdate(req.body);
     } catch (err: any) {
         console.error('[telegram/webhook]', err.message);
     }
+
+    return res.status(200).json({ ok: true });
 }
