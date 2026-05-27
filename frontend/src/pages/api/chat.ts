@@ -10,6 +10,8 @@
  *   Ultra    (0.50 GSTD) -> 7 models -> full verification
  */
 
+export const config = { maxDuration: 60 };
+
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvKeys, kvMGet } from '../../lib/kv';
 
@@ -587,10 +589,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 expertCount: 1, experts: [{ name: spec.name, specialty: spec.specialty }],
             });
 
-            // No GROQ key — route directly to GSTD Pi node
+            // No GROQ key — route directly to GSTD Pi node (use lean messages to avoid slow Pi inference)
             if (!GROQ_API_KEY) {
+                const nodeMsgs: ChatMessage[] = [
+                    { role: 'system', content: 'You are a helpful GSTD AI assistant. Be concise and accurate.' },
+                    ...messages.filter((m: ChatMessage) => m.role !== 'system'),
+                ];
                 try {
-                    for await (const chunk of streamNode(enrichedMessages)) {
+                    for await (const chunk of streamNode(nodeMsgs, 512)) {
                         sendSSE(res, 'delta', { content: chunk });
                     }
                 } catch (nodeErr: any) {
@@ -732,9 +738,13 @@ tier: 'free', tierName: 'Single Expert', badge: 'ðŸ†“',
                 continue;
             }
         }
-        // All Groq models failed — fall back to GSTD Pi node
+        // All Groq models failed — fall back to GSTD Pi node (use lean messages, large system prompt is too slow for Pi)
+        const nodeMessages: ChatMessage[] = [
+            { role: 'system', content: 'You are a helpful GSTD AI assistant. Be concise and accurate.' },
+            ...messages.filter((m: ChatMessage) => m.role !== 'system'),
+        ];
         try {
-            const result = await callNode(enrichedMessages);
+            const result = await callNode(nodeMessages, 512);
             return res.status(200).json({
                 id: `ci-${Date.now()}`, object: 'chat.completion',
                 created: Math.floor(Date.now() / 1000), model: NODE_MODEL,
