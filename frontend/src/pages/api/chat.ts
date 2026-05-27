@@ -11,6 +11,7 @@
  */
 
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { kvGet, kvKeys, kvMGet } from '../../lib/kv';
 
 // â”€â”€â”€ Config â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
@@ -411,6 +412,97 @@ function sendSSE(res: NextApiResponse, event: string, data: any) {
 // â”€â”€â”€ Groq fallback list â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const FALLBACK_MODELS = ['llama-3.3-70b-versatile', 'llama-3.1-70b-versatile', 'llama-3.1-8b-instant'];
 
+// ─── Pi node fallback (used when GROQ_API_KEY is absent) ────────────────────
+const NODE_MODEL = 'llama3.2:3b';
+
+async function resolveNodeUrl(): Promise<string> {
+    let nodeUrl = (process.env.GSTD_NODE_URL || '').replace(/\/$/, '');
+    if (!nodeUrl) {
+        try {
+            const ghResp = await fetch(
+                `https://raw.githubusercontent.com/gstdcoin/ai/main/node-url.txt?t=${Math.floor(Date.now() / 30000)}`,
+                { signal: AbortSignal.timeout(4000) }
+            );
+            if (ghResp.ok) {
+                const url = (await ghResp.text()).trim();
+                if (url.startsWith('http')) nodeUrl = url;
+            }
+        } catch { /* GitHub unavailable */ }
+    }
+    if (!nodeUrl) {
+        try {
+            const nodeUrlKeys = await kvKeys('node_url:');
+            if (nodeUrlKeys.length > 0) {
+                const firstUrl = await kvGet(nodeUrlKeys[0]);
+                if (firstUrl?.startsWith('http')) nodeUrl = firstUrl;
+            }
+            if (!nodeUrl) {
+                const nodeKeys = await kvKeys('node:');
+                if (nodeKeys.length > 0) {
+                    const values = await kvMGet(nodeKeys);
+                    for (const raw of values) {
+                        if (!raw) continue;
+                        const node: any = JSON.parse(raw);
+                        const url = node.node_url || node.multiaddrs?.[0];
+                        if (url?.startsWith('http')) { nodeUrl = url; break; }
+                    }
+                }
+            }
+        } catch { /* KV unavailable */ }
+    }
+    return nodeUrl.replace(/\/$/, '');
+}
+
+async function callNode(messages: ChatMessage[], maxTokens: number = 2048): Promise<{ content: string; latency: number }> {
+    const start = Date.now();
+    const nodeUrl = await resolveNodeUrl();
+    if (!nodeUrl) throw new Error('No GSTD node available');
+    const resp = await fetch(`${nodeUrl}/v1/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: NODE_MODEL, messages, max_tokens: maxTokens, temperature: 0.7, stream: false }),
+        signal: AbortSignal.timeout(55_000),
+    });
+    if (!resp.ok) throw new Error(`Node ${resp.status}`);
+    const data: any = await resp.json();
+    const content = data.choices?.[0]?.message?.content || '';
+    if (!content) throw new Error('Empty node response');
+    return { content, latency: Date.now() - start };
+}
+
+async function* streamNode(messages: ChatMessage[], maxTokens: number = 2048): AsyncGenerator<string> {
+    const nodeUrl = await resolveNodeUrl();
+    if (!nodeUrl) throw new Error('No GSTD node available');
+    const resp = await fetch(`${nodeUrl}/v1/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: NODE_MODEL, messages, max_tokens: maxTokens, temperature: 0.7, stream: true }),
+        signal: AbortSignal.timeout(55_000),
+    });
+    if (!resp.ok) throw new Error(`Node ${resp.status}`);
+    const reader = resp.body?.getReader();
+    if (!reader) throw new Error('No reader');
+    const decoder = new TextDecoder();
+    let buffer = '';
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            const chunk = line.slice(6).trim();
+            if (chunk === '[DONE]') return;
+            try {
+                const parsed = JSON.parse(chunk);
+                const delta = parsed.choices?.[0]?.delta?.content;
+                if (delta) yield delta;
+            } catch { continue; }
+        }
+    }
+}
+
 // â”€â”€â”€ Main Handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') {
@@ -491,9 +583,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             res.setHeader('X-Accel-Buffering', 'no');
 
             sendSSE(res, 'meta', {
-                tier: 'free', tierName: 'Single Expert', badge: 'ðŸ†“',
+                tier: 'free', tierName: 'Single Expert', badge: '🐝',
                 expertCount: 1, experts: [{ name: spec.name, specialty: spec.specialty }],
             });
+
+            // No GROQ key — route directly to GSTD Pi node
+            if (!GROQ_API_KEY) {
+                try {
+                    for await (const chunk of streamNode(enrichedMessages)) {
+                        sendSSE(res, 'delta', { content: chunk });
+                    }
+                } catch (nodeErr: any) {
+                    sendSSE(res, 'delta', { content: `🐝 GSTD Node: ${nodeErr.message || 'unavailable'}. Set GSTD_NODE_URL or GROQ_API_KEY in Vercel.` });
+                }
+                sendSSE(res, 'done', { tier: 'free', tierName: 'GSTD Node', badge: '🐝', model: 'GSTD Pi Node', modelId: NODE_MODEL, expertCount: 1, latency_ms: Date.now() - start, cost_gstd: 0 });
+                res.end();
+                return;
+            }
 
             // === SPRINT RACING: Race 3 models in parallel, fastest wins ===
             const sprintModels = [
@@ -626,7 +732,18 @@ tier: 'free', tierName: 'Single Expert', badge: 'ðŸ†“',
                 continue;
             }
         }
-        return res.status(500).json({ error: 'All models unavailable' });
+        // All Groq models failed — fall back to GSTD Pi node
+        try {
+            const result = await callNode(enrichedMessages);
+            return res.status(200).json({
+                id: `ci-${Date.now()}`, object: 'chat.completion',
+                created: Math.floor(Date.now() / 1000), model: NODE_MODEL,
+                choices: [{ index: 0, message: { role: 'assistant', content: result.content }, finish_reason: 'stop' }],
+                collective: { tier: 'free', tierName: 'GSTD Node', badge: '🐝', expertCount: 1, experts: ['GSTD Pi Node'], latency_ms: Date.now() - start, cost_gstd: 0 },
+            });
+        } catch (_nodeErr) {
+            return res.status(500).json({ error: 'All models unavailable' });
+        }
     }
 
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
