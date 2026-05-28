@@ -334,7 +334,7 @@ function MobileNodePanel({ address }: { address: string | undefined }) {
   const [tier, setTier] = useState<string>('bronze');
   const [ratePerHour, setRatePerHour] = useState(0.5);
   const [baseGstd, setBaseGstd] = useState(0);
-  const [baseTs, setBaseTs] = useState(Date.now());
+  const [baseTs, setBaseTs] = useState(() => Date.now());
   const [uptimeMinutes, setUptimeMinutes] = useState(0);
   const [tasksCompleted, setTasksCompleted] = useState(0);
   const [status, setStatus] = useState<string>('offline');

@@ -15,7 +15,7 @@ import { rateLimit, getClientIp } from '../../../../lib/ratelimit';
 import type { NodeRecord } from './register';
 
 const NODE_TTL = 600;
-const NODE_ID_RE = /^[a-zA-Z0-9_\-\.]{4,64}$/;
+const NODE_ID_RE = /^[a-zA-Z0-9_.-]{4,64}$/;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') {
