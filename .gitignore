@@ -189,3 +189,4 @@ gstdbot/
 .sonarlint/
 gstd-universal
 backend/main_backend
+agents/workflows/

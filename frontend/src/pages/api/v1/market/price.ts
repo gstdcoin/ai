@@ -1,7 +1,14 @@
 /**
  * GET /api/v1/market/price
  * Returns GSTD market price data.
- * Reads from KV (updated by admin or oracle), falls back to last known value.
+ *
+ * Priority:
+ *   1. KV override (admin can set `market:gstd_price_usd` directly)
+ *   2. Live fetch from STON.fi + tonapi.io (once token is listed)
+ *   3. Seed price — used pre-launch so Stars ↔ GSTD rate calculation always works
+ *
+ * Seed price = $0.001/GSTD (1000 GSTD per dollar).
+ * Admin can override: POST /api/v1/admin/price-seed { secret, price_usd }
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvSet } from '../../../../lib/kv';
@@ -9,20 +16,21 @@ import { kvGet, kvSet } from '../../../../lib/kv';
 const STON_PAIR_URL = 'https://api.ston.fi/v1/pools/EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO/stats';
 const TON_USD_URL   = 'https://tonapi.io/v2/rates?tokens=ton&currencies=usd';
 const CACHE_TTL     = 60;
+const SEED_PRICE_USD = 0.001;  // pre-launch seed: $0.001 per GSTD
 
 async function fetchLivePrice(): Promise<{ gstd_price_usd: number; gstd_price_ton: number } | null> {
     try {
         const [tonResp, stonResp] = await Promise.all([
-            fetch(TON_USD_URL,   { signal: AbortSignal.timeout(3000) }),
-            fetch(STON_PAIR_URL, { signal: AbortSignal.timeout(3000) }),
+            fetch(TON_USD_URL,   { signal: AbortSignal.timeout(4000) }),
+            fetch(STON_PAIR_URL, { signal: AbortSignal.timeout(4000) }),
         ]);
         if (!tonResp.ok || !stonResp.ok) return null;
 
         const tonData  = await tonResp.json();
         const stonData = await stonResp.json();
 
-        const tonUsd      = tonData?.rates?.TON?.prices?.USD as number | undefined;
-        const gstdTon     = stonData?.stats?.last_price as number | undefined;
+        const tonUsd  = tonData?.rates?.TON?.prices?.USD as number | undefined;
+        const gstdTon = stonData?.stats?.last_price       as number | undefined;
 
         if (!tonUsd || !gstdTon) return null;
 
@@ -39,35 +47,48 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
     res.setHeader('Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
 
-    // Try KV cached price first
-    const [priceRaw, tonRaw, changeRaw] = await Promise.all([
+    // 1. Try KV admin override first
+    const [priceRaw, tonRaw, changeRaw, sourceRaw] = await Promise.all([
         kvGet('market:gstd_price_usd').catch(() => null),
         kvGet('market:gstd_price_ton').catch(() => null),
         kvGet('market:change_24h_pct').catch(() => null),
+        kvGet('market:price_source').catch(() => null),
     ]);
 
-    let gstd_price_usd = priceRaw  ? parseFloat(priceRaw)  : 0;
-    let gstd_price_ton = tonRaw    ? parseFloat(tonRaw)    : 0;
-    const change_24h_pct = changeRaw ? parseFloat(changeRaw) : 0;
+    let gstd_price_usd   = priceRaw  ? parseFloat(priceRaw as string)  : 0;
+    let gstd_price_ton   = tonRaw    ? parseFloat(tonRaw as string)    : 0;
+    const change_24h_pct = changeRaw ? parseFloat(changeRaw as string) : 0;
+    let source           = (sourceRaw as string) || '';
 
-    // If cache is empty, try live fetch and cache result
+    // 2. If no cached price, try live STON.fi fetch
     if (!gstd_price_usd) {
         const live = await fetchLivePrice();
         if (live) {
             gstd_price_usd = live.gstd_price_usd;
             gstd_price_ton = live.gstd_price_ton;
+            source         = 'ston.fi';
             await Promise.all([
-                kvSet('market:gstd_price_usd', String(gstd_price_usd), CACHE_TTL),
-                kvSet('market:gstd_price_ton', String(gstd_price_ton), CACHE_TTL),
+                kvSet('market:gstd_price_usd',  String(gstd_price_usd),  CACHE_TTL),
+                kvSet('market:gstd_price_ton',  String(gstd_price_ton),  CACHE_TTL),
+                kvSet('market:price_source',    source,                   CACHE_TTL),
             ]).catch(() => {});
         }
+    }
+
+    // 3. Fall back to seed price — ensures Stars ↔ GSTD rate is always calculable
+    const is_seed = !gstd_price_usd;
+    if (is_seed) {
+        gstd_price_usd = SEED_PRICE_USD;
+        source = 'seed';
     }
 
     return res.status(200).json({
         gstd_price_usd,
         gstd_price_ton,
         change_24h_pct,
-        source:    gstd_price_usd > 0 ? 'ston.fi' : 'unavailable',
+        source: source || 'seed',
+        is_pre_launch: is_seed,
+        seed_note: is_seed ? 'Pre-launch seed price. Will update automatically once GSTD lists on STON.fi.' : undefined,
         timestamp: Date.now(),
     });
 }
