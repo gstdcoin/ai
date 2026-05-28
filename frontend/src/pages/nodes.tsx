@@ -1,869 +1,623 @@
-import { GetStaticProps } from 'next';
-import { useTranslation } from 'next-i18next';
-import { getCommonStaticProps } from '../lib/i18n-static-props';
-import { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
-import { useTonWallet } from '@tonconnect/ui-react';
-import {
-  Server, Trophy, Flame, Zap, TrendingUp, Clock, Shield,
-  ChevronRight, ExternalLink, Star, Cpu, ArrowRight, Users, Smartphone, MessageCircle,
-  Activity, Vote, Globe, Droplet, Terminal, Copy, Check, Monitor
-} from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { useTonAddress } from '@tonconnect/ui-react';
+import { GetStaticProps } from 'next';
+import { getCommonStaticProps } from '../lib/i18n-static-props';
 import { API_BASE_URL } from '../lib/config';
-import BrowserNodePanel from '../components/nodes/BrowserNodePanel';
+import {
+  Server, Copy, Check, ExternalLink, Smartphone, Terminal,
+  Trophy, Zap, Clock, RefreshCw, ChevronRight, AlertCircle,
+} from 'lucide-react';
 
-const TIER_STYLES: Record<string, { bg: string; border: string; text: string; glow: string }> = {
-  bronze:   { bg: 'rgba(205,127,50,0.08)', border: 'rgba(205,127,50,0.2)', text: '#CD7F32', glow: '0 0 20px rgba(205,127,50,0.15)' },
-  silver:   { bg: 'rgba(192,192,192,0.08)', border: 'rgba(192,192,192,0.2)', text: '#C0C0C0', glow: '0 0 20px rgba(192,192,192,0.15)' },
-  gold:     { bg: 'rgba(255,215,0,0.08)', border: 'rgba(255,215,0,0.2)', text: '#FFD700', glow: '0 0 20px rgba(255,215,0,0.15)' },
-  platinum: { bg: 'rgba(229,228,226,0.08)', border: 'rgba(229,228,226,0.2)', text: '#E5E4E2', glow: '0 0 20px rgba(229,228,226,0.15)' },
-  diamond:  { bg: 'rgba(185,242,255,0.08)', border: 'rgba(185,242,255,0.2)', text: '#B9F2FF', glow: '0 0 25px rgba(185,242,255,0.2)' },
-};
+// ── Types ────────────────────────────────────────────────────────────────────
 
-const TIER_ICONS: Record<string, string> = { bronze: '🥉', silver: '🥈', gold: '🥇', platinum: '💎', diamond: '👑' };
-
-interface TierDef { name: string; min_hours: number; multiplier: number; base_per_hour: number; }
-interface LeaderEntry { rank: number; node: string; tier: string; tier_icon: string; streak_days: number; uptime_hours: number; tasks_completed: number; earned_gstd: number; online: boolean; }
-interface NetworkData { total_nodes: number; online_nodes: number; total_tasks: number; total_uptime_h: number; total_rewards_gstd: number; today_rewards_gstd: number; tier_distribution: Array<{ tier: string; count: number }>; }
-interface StreakBonus { days: number; bonus_percent: number; label: string; }
-interface TaskReward { task: string; reward_gstd: number; }
-interface ProgramData {
-  tiers: TierDef[];
-  streak_bonuses: StreakBonus[];
-  task_rewards: TaskReward[];
+interface NetworkStats {
+  total_nodes: number;
+  active_nodes: number;
+  epoch_reward_rate: number;
 }
-interface HealthData { status: string; total_nodes: number; online_nodes: number; uptime_percent: number; avg_latency_ms: number; aggregate_bandwidth: string; tasks_per_hour: number; protocol_version: string; consensus_health: string; regions: Array<{ region: string; nodes: number; avg_latency_ms: number }>; network_capacity: { ai_inference_tflops: number; storage_available_tb: number; bandwidth_gbps: number }; vs_bitcoin: { gstd_tps: number; bitcoin_tps: number; gstd_finality_sec: number; bitcoin_finality_min: number; gstd_energy_per_tx: string; bitcoin_energy_per_tx: string }; }
-interface TaskItem { id: string; type: string; title: string; description: string; reward_gstd: number; estimated_time: string; priority: string; active_nodes: number; requirements: Record<string, any>; }
-interface Proposal { id: string; title: string; description: string; status: string; category: string; votes_for: number; votes_against: number; votes_total: number; quorum_needed: number; quorum_percent: number; ends_at: string; }
-interface BurnData { total_burned_gstd: number; max_supply: number; current_circulating: number; burn_rate_daily: number; burn_sources: Array<{ source: string; percent: string; burned: number; description: string }>; next_burn_event: { type: string; date: string; estimated: string }; }
-interface VaultState { vault_id: string; node_wallet: string; asset: string; total_liquidity: number; operator_stake: number; delegator_stake: number; management_fee_pct: number; total_volume: number; generated_yield: number; status: string; }
+
+interface TierInfo {
+  balance_gstd: number;
+  pending_gstd: number;
+  current_tier: { name: string; emoji: string };
+  active_nodes: number;
+}
+
+interface LeaderEntry {
+  rank: number;
+  node_id: string;
+  name: string;
+  wallet: string;
+  gstd_earned: number;
+  uptime_hours?: number;
+  is_online: boolean;
+  tier?: string;
+}
+
+// ── Earning tiers (static) ────────────────────────────────────────────────────
+
+const TIERS = [
+  { icon: '📱', name: 'Mobile Bronze', rate: 0.5, daily: 12, req: 'Any phone', color: '#CD7F32' },
+  { icon: '📱', name: 'Mobile Silver', rate: 1.0, daily: 24, req: 'Mid-range device', color: '#C0C0C0' },
+  { icon: '📱', name: 'Mobile Gold',   rate: 2.0, daily: 48, req: 'Flagship phone', color: '#FFD700' },
+  { icon: '🖥', name: 'Desktop 8GB',   rate: 1.5, daily: 36, req: '8GB RAM + Docker', color: '#818cf8' },
+  { icon: '🖥', name: 'Desktop 32GB',  rate: 5.0, daily: 120, req: '32GB RAM, full model', color: '#22d3ee' },
+];
+
+// ── CopyButton ────────────────────────────────────────────────────────────────
+
+function CopyButton({ text, label }: { text: string; label?: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+  return (
+    <button
+      onClick={copy}
+      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+      style={{
+        background: copied ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.07)',
+        border: `1px solid ${copied ? 'rgba(34,197,94,0.4)' : 'rgba(255,255,255,0.12)'}`,
+        color: copied ? '#4ade80' : 'rgba(255,255,255,0.6)',
+        cursor: 'pointer',
+        flexShrink: 0,
+      }}
+    >
+      {copied ? <Check size={12} /> : <Copy size={12} />}
+      {label || (copied ? 'Copied' : 'Copy')}
+    </button>
+  );
+}
+
+// ── Rank Badge ────────────────────────────────────────────────────────────────
+
+function RankBadge({ rank }: { rank: number }) {
+  if (rank === 1) return <span style={{ fontSize: 20 }}>🥇</span>;
+  if (rank === 2) return <span style={{ fontSize: 20 }}>🥈</span>;
+  if (rank === 3) return <span style={{ fontSize: 20 }}>🥉</span>;
+  return (
+    <span className="font-mono font-bold text-sm" style={{ color: 'rgba(255,255,255,0.3)' }}>
+      #{rank}
+    </span>
+  );
+}
+
+// ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function NodesPage() {
-  const { t } = useTranslation('common');
-  const [network, setNetwork] = useState<NetworkData | null>(null);
-  const [leaders, setLeaders] = useState<LeaderEntry[]>([]);
-  const [program, setProgram] = useState<ProgramData | null>(null);
-  const [period, setPeriod] = useState('all');
-  const [health, setHealth] = useState<HealthData | null>(null);
-  const [tasks, setTasks] = useState<TaskItem[]>([]);
-  const [governance, setGovernance] = useState<Proposal[]>([]);
-  const [burn, setBurn] = useState<BurnData | null>(null);
-  const [vaults, setVaults] = useState<VaultState[]>([]);
-  const [tab, setTab] = useState<'overview' | 'tasks' | 'governance' | 'burn' | 'vaults'>('overview');
-  const [naasStats, setNaasStats] = useState<any>(null);
-  const tonWallet = useTonWallet();
-  const walletAddress = tonWallet?.account?.address || '';
-  const [pendingRewards, setPendingRewards] = useState<number>(0);
-  const [claiming, setClaiming] = useState(false);
-  const [installCopied, setInstallCopied] = useState(false);
+  const walletAddress = useTonAddress();
 
-  useEffect(() => {
-    const logErr = (endpoint: string) => (err: unknown) => console.error(`[Nodes] ${endpoint} failed:`, err);
-    fetch(`${API_BASE_URL}/api/v1/nodes/rewards/network`).then(r => r.json()).then(setNetwork).catch(logErr('network'));
-    fetch(`${API_BASE_URL}/api/v1/nodes/rewards/program`).then(r => r.json()).then(setProgram).catch(logErr('program'));
-    fetch(`${API_BASE_URL}/api/v1/nodes/rewards/leaderboard?period=${period}`).then(r => r.json()).then(d => setLeaders(d.leaderboard || [])).catch(logErr('leaderboard'));
-    fetch(`${API_BASE_URL}/api/v1/nodes/tools/health`).then(r => r.json()).then(setHealth).catch(logErr('health'));
-    fetch(`${API_BASE_URL}/api/v1/nodes/tools/tasks/available`).then(r => r.json()).then(d => setTasks(d.tasks || [])).catch(logErr('tasks'));
-    fetch(`${API_BASE_URL}/api/v1/nodes/tools/governance/active`).then(r => r.json()).then(d => setGovernance(d.proposals || [])).catch(logErr('governance'));
-    fetch(`${API_BASE_URL}/api/v1/nodes/tools/burn-stats`).then(r => r.json()).then(setBurn).catch(logErr('burn-stats'));
-    fetch(`${API_BASE_URL}/api/v1/nodes/liquidity/pools`).then(r => r.json()).then(d => setVaults(d || [])).catch(logErr('pools'));
-    fetch(`${API_BASE_URL}/api/v1/naas/stats`).then(r => r.json()).then(setNaasStats).catch(logErr('naas'));
-  }, [period]);
+  const [network, setNetwork]       = useState<NetworkStats | null>(null);
+  const [tier, setTier]             = useState<TierInfo | null>(null);
+  const [leaders, setLeaders]       = useState<LeaderEntry[]>([]);
+  const [loadingNet, setLoadingNet] = useState(true);
+  const [loadingBoard, setLoadingBoard] = useState(true);
+  const [claiming, setClaiming]     = useState(false);
+  const [claimMsg, setClaimMsg]     = useState('');
 
-  // Fetch user's pending rewards when wallet is connected
-  useEffect(() => {
-    if (!walletAddress) return;
-    fetch(`${API_BASE_URL}/api/v1/nodes/pending-rewards?wallet=${encodeURIComponent(walletAddress)}`)
-        .then(r => r.json())
-        .then(d => setPendingRewards(d.total_pending || 0))
-        .catch((err) => console.error('[Nodes] pending-rewards failed:', err));
+  // Fetch network stats
+  const fetchNetwork = useCallback(async () => {
+    setLoadingNet(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/nodes/rewards/network`);
+      if (res.ok) setNetwork(await res.json());
+    } catch { /* silent */ }
+    setLoadingNet(false);
+  }, []);
+
+  // Fetch wallet tier info
+  const fetchTier = useCallback(async () => {
+    if (!walletAddress) { setTier(null); return; }
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/access/tier?wallet=${encodeURIComponent(walletAddress)}`);
+      if (res.ok) setTier(await res.json());
+    } catch { /* silent */ }
   }, [walletAddress]);
 
-  const handleClaim = useCallback(async () => {
-    if (!walletAddress || claiming) return;
-    setClaiming(true);
+  // Fetch leaderboard
+  const fetchLeaderboard = useCallback(async () => {
+    setLoadingBoard(true);
     try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/nodes/claim-rewards`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-Wallet-Address': walletAddress },
-            body: JSON.stringify({ owner_wallet: walletAddress }),
-        });
-        const data = await res.json().catch(() => ({}));
-        if (res.ok && data.ok) {
-            setPendingRewards(0);
-            alert(`✅ ${data.claimed_gstd?.toFixed(4) || '0'} GSTD claimed!`);
-        } else {
-            alert(data.message || data.error || 'Claim failed');
-        }
-    } catch (_e) { alert('Network error — try again'); }
-    setClaiming(false);
-  }, [walletAddress, claiming]);
+      const res = await fetch(`${API_BASE_URL}/api/v1/nodes/rewards/leaderboard?period=all`);
+      if (res.ok) {
+        const data = await res.json();
+        setLeaders((data.leaderboard || data.entries || []).slice(0, 20));
+      }
+    } catch { /* silent */ }
+    setLoadingBoard(false);
+  }, []);
 
-  const tiers: TierDef[] = program?.tiers || [];
+  useEffect(() => {
+    fetchNetwork();
+    fetchLeaderboard();
+    const iv = setInterval(() => { fetchNetwork(); fetchLeaderboard(); }, 30000);
+    return () => clearInterval(iv);
+  }, [fetchNetwork, fetchLeaderboard]);
+
+  useEffect(() => { fetchTier(); }, [fetchTier]);
+
+  const claimRewards = async () => {
+    if (!walletAddress || !tier?.pending_gstd) return;
+    setClaiming(true);
+    setClaimMsg('');
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/telegram/bot/claim_reward`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wallet: walletAddress }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setClaimMsg(`✅ Claimed ${data.claimed_net?.toFixed(4) || ''} GSTD`);
+        fetchTier();
+      } else {
+        setClaimMsg(`❌ ${data.error || 'Claim failed'}`);
+      }
+    } catch { setClaimMsg('❌ Network error'); }
+    setClaiming(false);
+  };
+
+  const activeCount = network?.active_nodes ?? 0;
 
   return (
     <>
       <Head>
-        <title>{t('nodes_page_title')}</title>
-        <meta name="description" content={t('nodes_page_desc')} />
+        <title>Run a Node — Earn GSTD | GSTD Network</title>
+        <meta name="description" content="Run a GSTD node on any device. Earn GSTD tokens for serving AI queries. Bronze to Platinum tiers." />
       </Head>
 
-      <div className="sovereign-section min-h-screen">
-        <div className="max-w-6xl mx-auto px-6">
+      <div className="min-h-screen" style={{ background: '#030014', color: 'white', paddingTop: 80 }}>
+        <div style={{ maxWidth: 900, margin: '0 auto', padding: '0 16px 80px' }}>
 
-          {/* Hero */}
-          <div className="text-center max-w-2xl mx-auto mb-16 fu d1">
-            <div className="sec-tag cyan justify-center inline-flex mb-4">{t('nodes_badge', 'DECENTRALIZED NEURAL NETWORK')}</div>
-            <h1 className="sec-title">
-              {t('nodes_hero_1')} <span className="text-gradient-emerald">{t('nodes_hero_2')}</span>
+          {/* ── Early Bird Banner ─────────────────────────────────────── */}
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(251,191,36,0.12), rgba(245,158,11,0.06))',
+            border: '1px solid rgba(251,191,36,0.25)',
+            borderRadius: 12, padding: '10px 16px',
+            display: 'flex', alignItems: 'center', gap: 10,
+            marginBottom: 32, fontSize: 13,
+          }}>
+            <span style={{ fontSize: 18 }}>🚀</span>
+            <span style={{ color: '#fbbf24', fontWeight: 700 }}>Early Bird Bonus:</span>
+            <span style={{ color: 'rgba(255,255,255,0.7)' }}>
+              Nodes running before token launch earn a <strong style={{ color: '#fbbf24' }}>×1.5 multiplier</strong> on all accumulated GSTD.
+              {activeCount > 0 && <span style={{ marginLeft: 6, color: 'rgba(255,255,255,0.45)' }}>
+                {activeCount} node{activeCount !== 1 ? 's' : ''} online now — join while the pool is small.
+              </span>}
+            </span>
+          </div>
+
+          {/* ── Hero ──────────────────────────────────────────────────── */}
+          <div style={{ textAlign: 'center', marginBottom: 48 }}>
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '4px 12px', borderRadius: 20, marginBottom: 16,
+              background: 'rgba(139,92,246,0.12)',
+              border: '1px solid rgba(139,92,246,0.25)',
+              fontSize: 12, fontWeight: 700, letterSpacing: '0.08em',
+              textTransform: 'uppercase', color: '#a78bfa',
+            }}>
+              <span style={{
+                width: 7, height: 7, borderRadius: '50%',
+                background: activeCount > 0 ? '#4ade80' : '#6b7280',
+                boxShadow: activeCount > 0 ? '0 0 8px #4ade80' : 'none',
+                animation: activeCount > 0 ? 'pulse-dot 2s infinite' : 'none',
+                display: 'inline-block',
+              }} />
+              {loadingNet ? 'Connecting…' : `${activeCount} node${activeCount !== 1 ? 's' : ''} online`}
+            </div>
+
+            <h1 style={{
+              fontSize: 'clamp(36px, 7vw, 64px)', fontWeight: 900,
+              lineHeight: 1.05, letterSpacing: '-0.03em', marginBottom: 16,
+              background: 'linear-gradient(135deg, #ffffff 30%, #a78bfa 70%, #22d3ee)',
+              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+            }}>
+              Run a node.<br />Earn GSTD.
             </h1>
-            <p className="sec-sub mx-auto">
-              {t('nodes_hero_desc')}
+            <p style={{ fontSize: 17, color: 'rgba(255,255,255,0.5)', maxWidth: 480, margin: '0 auto 28px' }}>
+              Share your device's compute. Earn GSTD every hour automatically.
+              No tokens needed to start — just a TON wallet.
             </p>
-            <div className="flex justify-center gap-4 flex-wrap mt-6">
-              <a href="https://t.me/GstdAppBot" target="_blank" rel="noopener noreferrer" className="btn-sovereign violet shadow-lg hover:shadow-violet-500/25">
-                <span style={{ fontSize: 18 }}>📱</span> {t('nodes_mobile_btn', 'Mobile Node')}
-              </a>
-              <a href="https://github.com/gstdcoin/gstdbot" target="_blank" rel="noopener noreferrer" className="btn-sovereign emerald shadow-lg hover:shadow-emerald-500/25 text-black">
-                <span style={{ fontSize: 18 }}>💻</span> {t('nodes_desktop_btn', 'Desktop Node')}
-              </a>
+
+            {/* Live stats row */}
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 24, flexWrap: 'wrap' }}>
+              {[
+                { label: 'Nodes online', value: loadingNet ? '…' : String(activeCount), color: '#4ade80' },
+                { label: 'Max rate', value: '5 GSTD/h', color: '#22d3ee' },
+                { label: 'Min to start', value: '0 GSTD', color: '#a78bfa' },
+              ].map(s => (
+                <div key={s.label} style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: 26, fontWeight: 900, color: s.color, lineHeight: 1 }}>{s.value}</div>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>{s.label}</div>
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* ═══════════ Mobile Node CTA ═══════════ */}
-          <div className="sov-card cyan-top p-8 mb-12 fu d2 relative overflow-hidden">
-            <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full bg-cyan-500/10 blur-2xl pointer-events-none" />
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shrink-0 shadow-lg shadow-cyan-500/20">
-                <div style={{ fontSize: 32, lineHeight: 1 }}>📱</div>
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="text-xl font-bold text-white mb-2">{t('nodes_mobile_title')}</h3>
-                <p className="text-gray-400 text-sm leading-relaxed mb-4">{t('nodes_mobile_desc')}</p>
-                <div className="flex flex-wrap gap-4 mb-4 text-xs font-medium text-gray-500">
-                  <span className="flex items-center gap-1.5"><span className="text-base leading-none">⚡</span> {t('nodes_mobile_feat_1')}</span>
-                  <span className="flex items-center gap-1.5"><span className="text-base leading-none">💰</span> {t('nodes_mobile_feat_2')}</span>
-                  <span className="flex items-center gap-1.5"><span className="text-base leading-none">🔗</span> {t('nodes_mobile_feat_3')}</span>
-                  <span className="flex items-center gap-1.5"><span className="text-base leading-none">📊</span> {t('nodes_mobile_feat_4')}</span>
+          {/* ── My Node Status (wallet connected) ─────────────────────── */}
+          {walletAddress && (
+            <div style={{
+              background: 'rgba(139,92,246,0.08)',
+              border: '1px solid rgba(139,92,246,0.2)',
+              borderRadius: 16, padding: 20, marginBottom: 32,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', marginBottom: 4 }}>
+                    My Wallet
+                  </div>
+                  <div style={{ fontFamily: 'monospace', fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>
+                    {walletAddress.slice(0, 8)}…{walletAddress.slice(-6)}
+                  </div>
                 </div>
-                <a href="https://t.me/GstdAppBot" target="_blank" rel="noopener noreferrer" className="btn-sovereign ghost mt-2 text-cyan-400 hover:text-cyan-300">
-                  <MessageCircle size={14} className="mr-1" /> {t('nodes_mobile_cta')} <ArrowRight size={14} />
+
+                {tier && (
+                  <>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: 22, fontWeight: 900, color: '#22d3ee' }}>
+                        {tier.balance_gstd.toFixed(2)}
+                      </div>
+                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)' }}>GSTD Balance</div>
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: 22, fontWeight: 900, color: tier.pending_gstd > 0 ? '#fbbf24' : 'rgba(255,255,255,0.3)' }}>
+                        {tier.pending_gstd.toFixed(4)}
+                      </div>
+                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)' }}>Pending GSTD</div>
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: 18, lineHeight: 1 }}>{tier.current_tier.emoji}</div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.6)', marginTop: 2 }}>{tier.current_tier.name}</div>
+                    </div>
+                  </>
+                )}
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
+                  {tier && tier.pending_gstd > 0.0001 && (
+                    <button
+                      onClick={claimRewards}
+                      disabled={claiming}
+                      style={{
+                        padding: '8px 18px', borderRadius: 10,
+                        background: claiming ? 'rgba(251,191,36,0.15)' : 'rgba(251,191,36,0.2)',
+                        color: '#fbbf24', fontWeight: 800, fontSize: 13,
+                        cursor: claiming ? 'not-allowed' : 'pointer',
+                        border: '1px solid rgba(251,191,36,0.35)',
+                        transition: 'all 0.2s',
+                      }}
+                    >
+                      {claiming ? 'Claiming…' : '🎁 Claim Rewards'}
+                    </button>
+                  )}
+                  {claimMsg && (
+                    <span style={{ fontSize: 12, color: claimMsg.startsWith('✅') ? '#4ade80' : '#f87171' }}>
+                      {claimMsg}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Install Options ────────────────────────────────────────── */}
+          <div style={{ marginBottom: 48 }}>
+            <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 4 }}>Start earning in minutes</h2>
+            <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', marginBottom: 20 }}>
+              Pick your device — no GSTD required to start.
+            </p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12 }}>
+
+              {/* Mobile */}
+              <div style={{
+                background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.2)',
+                borderRadius: 16, padding: 20,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                  <span style={{ fontSize: 24 }}>📱</span>
+                  <div>
+                    <div style={{ fontWeight: 800, fontSize: 15 }}>Mobile Node</div>
+                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>Any phone • 0.5–2 GSTD/h</div>
+                  </div>
+                </div>
+                <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginBottom: 14, lineHeight: 1.5 }}>
+                  Open the Telegram bot and tap Launch Node. No setup needed.
+                </p>
+                <a
+                  href="https://t.me/gstdtoken_bot?start=node"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    padding: '10px 16px', borderRadius: 10, textDecoration: 'none',
+                    background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)',
+                    color: '#4ade80', fontWeight: 700, fontSize: 14, transition: 'all 0.2s',
+                  }}
+                >
+                  <Smartphone size={15} /> Launch in Telegram
                 </a>
               </div>
-            </div>
-          </div>
 
-          {/* ═══════════ Node License System ═══════════ */}
-          <div className="sov-card emerald-top p-8 mb-8 fu d3 relative overflow-hidden">
-            <div className="absolute -top-10 -left-10 w-32 h-32 rounded-full bg-emerald-500/10 blur-2xl pointer-events-none" />
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-400 to-green-600 flex items-center justify-center shrink-0 shadow-lg shadow-emerald-500/20">
-                <Terminal size={32} className="text-white" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="text-xl font-bold text-white mb-2">{t('nodes_install_title', 'Install & Activate Node')}</h3>
-                <p className="text-gray-400 text-sm leading-relaxed mb-3">{t('nodes_install_desc', 'One command installs on any device. Your node auto-detects hardware and activates revenue modules proportional to your compute power. Pay in GSTD, earn in GSTD.')}</p>
-                <div className="bg-black/40 rounded-xl border border-emerald-500/20 p-3 mb-4 flex items-center gap-2 group cursor-pointer hover:border-emerald-500/40 transition-colors"
-                  onClick={() => { navigator.clipboard.writeText('curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash'); setInstallCopied(true); setTimeout(() => setInstallCopied(false), 2000); }}>
-                  <code className="text-emerald-400 text-sm font-mono flex-1 break-all">curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash</code>
-                  {installCopied ? <Check size={16} className="text-emerald-400 shrink-0" /> : <Copy size={16} className="text-gray-500 group-hover:text-emerald-400 shrink-0 transition-colors" />}
-                </div>
-                <div className="flex flex-wrap gap-3 mb-4 text-xs font-medium text-gray-500">
-                  <span className="flex items-center gap-1.5"><span className="text-base leading-none">🧠</span> AI Inference</span>
-                  <span className="flex items-center gap-1.5"><span className="text-base leading-none">🌐</span> Multi-Chain RPC</span>
-                  <span className="flex items-center gap-1.5"><span className="text-base leading-none">💾</span> Storage Vault</span>
-                  <span className="flex items-center gap-1.5"><span className="text-base leading-none">📡</span> Traffic Relay</span>
-                  <span className="flex items-center gap-1.5"><span className="text-base leading-none">💻</span> Compute Pool</span>
-                  <span className="flex items-center gap-1.5"><span className="text-base leading-none">🔗</span> Bridge Relay</span>
-                </div>
-                <div className="flex flex-wrap gap-3">
-                  <a href="https://github.com/gstdcoin/gstdbot" target="_blank" rel="noopener noreferrer" className="btn-sovereign ghost text-emerald-400 hover:text-emerald-300">
-                    <Monitor size={14} className="mr-1" /> Node Dashboard <ArrowRight size={14} />
-                  </a>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* ═══════════ License Tiers ═══════════ */}
-          <div className="mb-10 fu d3b">
-            <h2 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
-              <Shield size={20} className="text-violet-400" /> {t('nodes_tiers_title', 'Node License Tiers')}
-            </h2>
-            <p className="text-gray-500 text-sm mb-6">{t('nodes_tiers_desc', 'Your node auto-detects hardware and assigns a tier. Higher tier = more modules = higher earnings.')}</p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-              {[
-                { icon: '⚡', name: 'Spark', hw: '2 CPU · 4GB · 50GB', modules: 2, bonus: 0, color: '#888', bg: 'rgba(136,136,136,0.06)', border: 'rgba(136,136,136,0.15)', earn: '~40' },
-                { icon: '🔥', name: 'Flame', hw: '4 CPU · 8GB · 200GB', modules: 4, bonus: 5, color: '#ff6b35', bg: 'rgba(255,107,53,0.06)', border: 'rgba(255,107,53,0.15)', earn: '~250' },
-                { icon: '⛈️', name: 'Storm', hw: '8 CPU · 32GB · 500GB', modules: 6, bonus: 15, color: '#4ecdc4', bg: 'rgba(78,205,196,0.06)', border: 'rgba(78,205,196,0.15)', earn: '~800' },
-                { icon: '🏔️', name: 'Titan', hw: '16 CPU · 64GB · 2TB', modules: 8, bonus: 30, color: '#ffd700', bg: 'rgba(255,215,0,0.06)', border: 'rgba(255,215,0,0.15)', earn: '~2,500' },
-                { icon: '👑', name: 'Sovereign', hw: '64 CPU · 128GB+ · GPU', modules: 99, bonus: 50, color: '#e040fb', bg: 'rgba(224,64,251,0.06)', border: 'rgba(224,64,251,0.15)', earn: '~10,000+' },
-              ].map(tier => (
-                <div key={tier.name} style={{ background: tier.bg, border: `1px solid ${tier.border}`, borderRadius: 16, padding: '20px 16px', textAlign: 'center', transition: 'all 0.3s' }}>
-                  <div style={{ fontSize: 32, lineHeight: 1, marginBottom: 8 }}>{tier.icon}</div>
-                  <div style={{ fontSize: 16, fontWeight: 800, color: tier.color, marginBottom: 4 }}>{tier.name}</div>
-                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', marginBottom: 12, fontFamily: 'monospace' }}>{tier.hw}</div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>
-                    <span>Modules</span>
-                    <span style={{ fontWeight: 700, color: 'white' }}>{tier.modules === 99 ? 'All' : tier.modules}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>
-                    <span>Bonus</span>
-                    <span style={{ fontWeight: 700, color: '#34d399' }}>+{tier.bonus}%</span>
-                  </div>
-                  <div style={{ marginTop: 12, padding: '8px', borderRadius: 8, background: 'rgba(0,0,0,0.3)' }}>
-                    <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', fontWeight: 700, marginBottom: 2 }}>Est. Monthly</div>
-                    <div style={{ fontSize: 16, fontWeight: 800, color: tier.color }}>{tier.earn} <span style={{ fontSize: 9 }}>GSTD</span></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* ═══════════ Revenue Modules ═══════════ */}
-          <div className="mb-12 fu d4">
-            <h2 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
-              <Cpu size={20} className="text-cyan-400" /> {t('nodes_modules_title', 'Revenue Modules')}
-            </h2>
-            <p className="text-gray-500 text-sm mb-6">{t('nodes_modules_desc', 'Each module is an independent revenue stream. Activated automatically based on your hardware. Cost and earnings in GSTD.')}</p>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {[
-                { icon: '🧠', name: 'AI Inference', desc: 'Answer AI queries via Groq/Ollama models', cost: 50, earn: 150, roi: '3.0x', req: '2 CPU · 4GB', share: 85, color: '#a78bfa' },
-                { icon: '📡', name: 'Traffic Relay', desc: 'Proxy VPN/CDN/API traffic for fees', cost: 20, earn: 30, roi: '1.5x', req: '1 CPU · 1GB', share: 90, color: '#22d3ee' },
-                { icon: '💾', name: 'Storage Vault', desc: 'Store & serve sharded blockchain data', cost: 30, earn: 60, roi: '2.0x', req: '1 CPU · 50GB disk', share: 88, color: '#34d399' },
-                { icon: '💻', name: 'Compute Pool', desc: 'Execute rendering & data processing tasks', cost: 80, earn: 320, roi: '4.0x', req: '4 CPU · 8GB', share: 82, color: '#f472b6' },
-                { icon: '🌐', name: 'RPC Gateway', desc: 'Serve multi-chain RPC requests (ETH/SOL/TON)', cost: 100, earn: 500, roi: '5.0x', req: '2 CPU · 4GB', share: 80, color: '#60a5fa' },
-                { icon: '🎓', name: 'Model Training', desc: 'Participate in federated ML training jobs', cost: 200, earn: 1600, roi: '8.0x', req: '8 CPU · 16GB', share: 75, color: '#fbbf24' },
-                { icon: '🔗', name: 'Bridge Relay', desc: 'Validate cross-chain bridge transactions', cost: 150, earn: 900, roi: '6.0x', req: '2 CPU · 4GB', share: 78, color: '#fb923c' },
-                { icon: '🎨', name: 'GPU Rendering', desc: 'GPU-accelerated rendering & AI inference', cost: 500, earn: 7500, roi: '15x', req: 'GPU required', share: 70, color: '#e040fb' },
-              ].map(mod => (
-                <div key={mod.name} className="sov-card !p-5 flex flex-col justify-between" style={{ borderColor: `${mod.color}22` }}>
+              {/* Docker */}
+              <div style={{
+                background: 'rgba(34,211,238,0.06)', border: '1px solid rgba(34,211,238,0.2)',
+                borderRadius: 16, padding: 20,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                  <span style={{ fontSize: 24 }}>🐳</span>
                   <div>
-                    <div className="flex items-center gap-3 mb-3">
-                      <div style={{ width: 40, height: 40, borderRadius: 12, background: `${mod.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, lineHeight: 1 }}>{mod.icon}</div>
-                      <div>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: 'white' }}>{mod.name}</div>
-                        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>{mod.req}</div>
-                      </div>
-                    </div>
-                    <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', lineHeight: 1.5, marginBottom: 12 }}>{mod.desc}</p>
-                  </div>
-                  <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: 10, padding: 12 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 11 }}>
-                      <span style={{ color: 'rgba(255,255,255,0.4)' }}>Cost</span>
-                      <span style={{ fontWeight: 700, color: 'rgba(255,255,255,0.7)' }}>{mod.cost} <span style={{ fontSize: 9 }}>GSTD/mo</span></span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 11 }}>
-                      <span style={{ color: 'rgba(255,255,255,0.4)' }}>Earnings</span>
-                      <span style={{ fontWeight: 700, color: '#34d399' }}>~{mod.earn} <span style={{ fontSize: 9 }}>GSTD/mo</span></span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
-                      <span style={{ color: 'rgba(255,255,255,0.4)' }}>ROI</span>
-                      <span style={{ fontWeight: 800, color: mod.color }}>{mod.roi}</span>
-                    </div>
-                    <div style={{ marginTop: 8, height: 3, borderRadius: 2, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${mod.share}%`, borderRadius: 2, background: mod.color, transition: 'width 0.5s' }} />
-                    </div>
-                    <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)', marginTop: 4, textAlign: 'right' }}>{mod.share}% revenue share</div>
+                    <div style={{ fontWeight: 800, fontSize: 15 }}>Docker</div>
+                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>Desktop • 1.5–5 GSTD/h</div>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* ═══════════ Flywheel Economics ═══════════ */}
-          <div className="sov-card p-6 mb-12 fu d4b border-violet-500/15 bg-gradient-to-r from-violet-500/5 to-transparent">
-            <div className="flex items-center gap-3 mb-4">
-              <TrendingUp size={20} className="text-violet-400" />
-              <h3 className="text-lg font-bold text-white m-0">Revenue Flywheel</h3>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {[
-                { pct: '60%', label: 'To Provider', desc: 'Direct GSTD earnings', color: '#34d399' },
-                { pct: '30%', label: 'Gold Treasury', desc: 'XAUt gold reserve', color: '#ffd700' },
-                { pct: '7%', label: 'Buyback', desc: 'Buy GSTD from market', color: '#60a5fa' },
-                { pct: '3%', label: 'Burn 🔥', desc: 'Permanent deflation', color: '#f97316' },
-              ].map(s => (
-                <div key={s.label} style={{ textAlign: 'center', padding: 16, borderRadius: 12, background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.04)' }}>
-                  <div style={{ fontSize: 28, fontWeight: 900, color: s.color, lineHeight: 1 }}>{s.pct}</div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: 'white', marginTop: 4 }}>{s.label}</div>
-                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>{s.desc}</div>
+                <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginBottom: 14, lineHeight: 1.5 }}>
+                  Replace <code style={{ color: '#22d3ee', fontSize: 12 }}>YOUR_WALLET</code> with your TON address.
+                </p>
+                <div style={{
+                  background: 'rgba(0,0,0,0.4)', borderRadius: 8, padding: '10px 12px',
+                  fontFamily: 'monospace', fontSize: 11.5, color: '#67e8f9',
+                  wordBreak: 'break-all', lineHeight: 1.6, marginBottom: 10, position: 'relative',
+                }}>
+                  docker run -d -p 8080:8080 \<br />
+                  &nbsp;&nbsp;-e GSTD_WALLET_ADDRESS=YOUR_WALLET \<br />
+                  &nbsp;&nbsp;ghcr.io/gstdcoin/gstd-node:latest
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* ═══════════ NaaS Provider Network (Live) ═══════════ */}
-          {naasStats && (
-            <div className="sov-card p-6 mb-12 fu d4c border-blue-500/15 bg-gradient-to-r from-blue-500/5 to-transparent">
-              <div className="flex items-center gap-3 mb-4">
-                <Globe size={20} className="text-blue-400" />
-                <h3 className="text-lg font-bold text-white m-0">NaaS Provider Network</h3>
-                <span className="text-[10px] font-bold px-2 py-1 rounded-md bg-blue-500/10 text-blue-400">LIVE</span>
+                <CopyButton
+                  text="docker run -d -p 8080:8080 -e GSTD_WALLET_ADDRESS=YOUR_WALLET ghcr.io/gstdcoin/gstd-node:latest"
+                  label="Copy command"
+                />
               </div>
-              <p className="text-gray-500 text-xs mb-4">
-                Node-as-a-Service — earn GSTD by serving multi-chain RPC endpoints. Your node auto-detects hardware and assigns blockchain roles.
-              </p>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                {[
-                  { v: naasStats.active_providers || 0, l: 'Active Providers', c: '#34d399', i: '🟢' },
-                  { v: (naasStats.total_rpc_requests || 0).toLocaleString(), l: 'RPC Requests', c: '#60a5fa', i: '📡' },
-                  { v: `${(naasStats.total_gstd_earned || 0).toFixed(2)}`, l: 'GSTD Earned', c: '#ffd700', i: '💎' },
-                  { v: naasStats.supported_chains || 16, l: 'Blockchains', c: '#a78bfa', i: '🔗' },
-                ].map(s => (
-                  <div key={s.l} style={{ textAlign: 'center', padding: 14, borderRadius: 12, background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.04)' }}>
-                    <div style={{ fontSize: 18, lineHeight: 1, marginBottom: 4 }}>{s.i}</div>
-                    <div style={{ fontSize: 22, fontWeight: 900, color: s.c, lineHeight: 1 }}>{s.v}</div>
-                    <div style={{ fontSize: 9, fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginTop: 4 }}>{s.l}</div>
-                  </div>
-                ))}
-              </div>
-              {/* NaaS Staking Tiers */}
-              {naasStats.tiers && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  {naasStats.tiers.map((tier: any) => (
-                    <div key={tier.name} style={{ padding: '10px 12px', borderRadius: 10, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', textAlign: 'center' }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: 'white' }}>{tier.name}</div>
-                      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>Stake: {tier.min_stake.toLocaleString()} GSTD</div>
-                      <div style={{ fontSize: 10, color: '#34d399', fontWeight: 600 }}>Up to {tier.max_chains} chains · {tier.bonus}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {/* Revenue Split */}
-              {naasStats.protocol && (
-                <div style={{ marginTop: 12, display: 'flex', gap: 4, justifyContent: 'center', flexWrap: 'wrap' }}>
-                  {[
-                    { pct: `${naasStats.protocol.provider_rate * 100}%`, label: 'Provider', color: '#34d399' },
-                    { pct: `${naasStats.protocol.treasury_rate * 100}%`, label: 'Treasury', color: '#ffd700' },
-                    { pct: `${naasStats.protocol.buyback_rate * 100}%`, label: 'Buyback', color: '#60a5fa' },
-                    { pct: `${naasStats.protocol.burn_rate * 100}%`, label: 'Burn 🔥', color: '#f97316' },
-                  ].map(s => (
-                    <span key={s.label} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 6, background: `${s.color}10`, color: s.color, fontWeight: 700 }}>
-                      {s.pct} {s.label}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
 
-          {/* ═══════════ WebGPU Browser Node ═══════════ */}
-          <div className="mb-12 fu d3">
-            <BrowserNodePanel />
-          </div>
-        {network && (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-10 fu d3">
-            {[
-              { v: network.total_nodes, l: t('nodes_total_nodes', 'Nodes'), c: 'text-cyan-400', i: '📡' },
-              { v: network.online_nodes, l: t('nodes_online_now', 'Online'), c: 'text-emerald-400', i: '🟢' },
-              { v: network.total_tasks, l: t('nodes_tasks_done', 'Tasks'), c: 'text-violet-400', i: '⚡' },
-              { v: `${Math.round(network.total_rewards_gstd)}`, l: t('nodes_gstd_earned', 'All-Time Earned'), c: 'text-amber-400', i: '💎' },
-              { v: `${network.today_rewards_gstd?.toFixed(2) || '0'}`, l: t('nodes_today_rewards', 'Today'), c: 'text-emerald-400', i: '💸' },
-              { v: `${Math.round(network.total_uptime_h)}h`, l: t('nodes_total_uptime', 'Uptime'), c: 'text-orange-400', i: '⏱️' },
-            ].map((s) => (
-              <div key={s.l} className="sov-card !p-4 flex flex-col items-center justify-center min-h-[110px]">
-                <div style={{ fontSize: 20, lineHeight: 1, marginBottom: 8 }}>{s.i}</div>
-                <div className="text-xl font-black text-white leading-none mb-1">{s.v}</div>
-                <div className="text-[10px] uppercase tracking-widest text-gray-500 font-bold whitespace-nowrap">{s.l}</div>
-              </div>
-            ))}
-          </div>
-        )}
-
-          {/* ═══════════ My Node Rewards (when wallet connected) ═══════════ */}
-          {walletAddress && (
-            <div className="sov-card p-6 mb-10 border-amber-500/20 bg-gradient-to-r from-amber-500/5 to-transparent fu d3b">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center shrink-0 shadow-lg shadow-amber-500/20">
-                    <span style={{ fontSize: 24, lineHeight: 1 }}>💰</span>
-                  </div>
+              {/* Script */}
+              <div style={{
+                background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.2)',
+                borderRadius: 16, padding: 20,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                  <span style={{ fontSize: 24 }}>💻</span>
                   <div>
-                    <h3 className="text-lg font-bold text-white">My Node Rewards</h3>
-                    <p className="text-gray-400 text-sm">
-                      Pending: <span className="text-amber-400 font-bold">{pendingRewards.toFixed(4)} GSTD</span>
-                    </p>
+                    <div style={{ fontWeight: 800, fontSize: 15 }}>Auto-install Script</div>
+                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>Linux / macOS • all tiers</div>
                   </div>
                 </div>
-                <button
-                  onClick={handleClaim}
-                  disabled={claiming || pendingRewards <= 0}
-                  className="px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-black rounded-xl font-bold text-sm hover:from-amber-400 hover:to-orange-400 transition-all transform active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginBottom: 14, lineHeight: 1.5 }}>
+                  Detects your hardware and configures the optimal node tier automatically.
+                </p>
+                <div style={{
+                  background: 'rgba(0,0,0,0.4)', borderRadius: 8, padding: '10px 12px',
+                  fontFamily: 'monospace', fontSize: 11.5, color: '#c4b5fd',
+                  wordBreak: 'break-all', lineHeight: 1.6, marginBottom: 10,
+                }}>
+                  curl -fsSL https://raw.githubusercontent.com/<br />
+                  gstdcoin/gstdbot/main/install.sh | bash
+                </div>
+                <CopyButton
+                  text="curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash"
+                  label="Copy command"
+                />
+              </div>
+
+            </div>
+
+            <div style={{ marginTop: 12, textAlign: 'center' }}>
+              <a
+                href="https://github.com/gstdcoin/gstdbot"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+              >
+                <ExternalLink size={12} /> Full documentation on GitHub
+              </a>
+            </div>
+          </div>
+
+          {/* ── Earning Tiers Table ────────────────────────────────────── */}
+          <div style={{ marginBottom: 48 }}>
+            <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 4 }}>Earning rates</h2>
+            <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', marginBottom: 20 }}>
+              Rates are guaranteed minimums. Higher-spec nodes earn more from task bonuses.
+            </p>
+
+            <div style={{
+              border: '1px solid rgba(255,255,255,0.07)',
+              borderRadius: 14, overflow: 'hidden',
+            }}>
+              {/* Header */}
+              <div style={{
+                display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 2fr',
+                padding: '10px 16px',
+                background: 'rgba(255,255,255,0.03)',
+                fontSize: 10, fontWeight: 700, letterSpacing: '0.1em',
+                textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)',
+                borderBottom: '1px solid rgba(255,255,255,0.06)',
+              }}>
+                <span>Tier</span>
+                <span style={{ textAlign: 'right' }}>Rate</span>
+                <span style={{ textAlign: 'right' }}>Daily</span>
+                <span style={{ textAlign: 'right' }}>Requirement</span>
+              </div>
+
+              {TIERS.map((tier, i) => (
+                <div
+                  key={tier.name}
+                  style={{
+                    display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 2fr',
+                    padding: '13px 16px', alignItems: 'center',
+                    borderBottom: i < TIERS.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+                    transition: 'background 0.15s',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.02)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                 >
-                  {claiming ? '⏳ Claiming...' : pendingRewards > 0 ? '💎 Claim Rewards' : '✓ No Pending'}
-                </button>
-              </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 16 }}>{tier.icon}</span>
+                    <span style={{ fontWeight: 600, fontSize: 14, color: tier.color }}>{tier.name}</span>
+                  </div>
+                  <div style={{ textAlign: 'right', fontWeight: 800, fontSize: 15, color: tier.color }}>
+                    {tier.rate}
+                  </div>
+                  <div style={{ textAlign: 'right', fontWeight: 600, fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>
+                    {tier.daily} GSTD
+                  </div>
+                  <div style={{ textAlign: 'right', fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>
+                    {tier.req}
+                  </div>
+                </div>
+              ))}
             </div>
-          )}
-
-          {/* ═══ Network Tools Tabs ═══ */}
-          <div className="flex gap-2 mb-8 p-1.5 rounded-2xl bg-white/[0.02] border border-white/5 font-medium fu d4 overflow-x-auto hide-scrollbar">
-            {([
-              { id: 'overview' as const, label: 'Overview', icon: '🌍' },
-              { id: 'tasks' as const, label: 'Tasks', icon: '⚡' },
-              { id: 'vaults' as const, label: 'Vaults', icon: '🏦' },
-              { id: 'governance' as const, label: 'Governance', icon: '⚖️' },
-              { id: 'burn' as const, label: 'Burns', icon: '🔥' },
-            ]).map(tb => (
-              <button key={tb.id} onClick={() => setTab(tb.id)} className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border-none cursor-pointer text-xs transition-all whitespace-nowrap min-w-[100px] ${tab === tb.id ? 'bg-violet-500/10 text-white font-bold' : 'bg-transparent text-gray-500 font-medium hover:bg-white/[0.02]'}`}>
-                <span className="text-base leading-none">{tb.icon}</span> {tb.label}
-              </button>
-            ))}
+            <div style={{ marginTop: 8, fontSize: 12, color: 'rgba(255,255,255,0.25)', textAlign: 'right' }}>
+              All rates are in GSTD/hour · ×1.5 early bird multiplier active
+            </div>
           </div>
 
-          {/* ═══ TAB: Network Health ═══ */}
-          {tab === 'overview' && health && (
-            <div className="mb-10 fu d5">
-              <div className="flex items-center gap-3 mb-6">
-                <div style={{ fontSize: 24, lineHeight: 1 }}>❤‍🔥</div>
-                <h2 className="text-xl font-bold text-white m-0">Network Health</h2>
-                <span className="text-[10px] font-bold px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-400">{health.protocol_version}</span>
+          {/* ── Leaderboard ────────────────────────────────────────────── */}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, gap: 12 }}>
+              <div>
+                <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 2 }}>🏆 Node Leaderboard</h2>
+                <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)' }}>All-time GSTD earned per node</p>
               </div>
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                {[
-                  { v: `${health.avg_latency_ms}ms`, l: 'Avg Latency', c: 'text-cyan-400' },
-                  { v: health.aggregate_bandwidth, l: 'Bandwidth', c: 'text-violet-400' },
-                  { v: `${health.uptime_percent}%`, l: 'Uptime', c: 'text-emerald-400' },
-                  { v: health.tasks_per_hour.toFixed(0), l: 'Tasks/hour', c: 'text-amber-400' },
-                ].map((s, i) => (
-                  <div key={s.l} className="sov-card !p-4 flex flex-col items-center justify-center">
-                    <div className={`text-2xl font-black mb-1 leading-none ${s.c}`}>{s.v}</div>
-                    <div className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">{s.l}</div>
-                  </div>
-                ))}
-              </div>
+              <button
+                onClick={fetchLeaderboard}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '7px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)',
+                  background: 'transparent', color: 'rgba(255,255,255,0.4)',
+                  fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.color = 'white'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)'; }}
+                onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.4)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}
+              >
+                <RefreshCw size={13} className={loadingBoard ? 'animate-spin' : ''} />
+                Refresh
+              </button>
+            </div>
 
-              {/* GSTD vs Bitcoin comparison */}
-              <div style={{ padding: '16px', borderRadius: 14, background: 'linear-gradient(135deg, rgba(139,92,246,0.06), rgba(16,185,129,0.04))', border: '1px solid rgba(139,92,246,0.1)', marginBottom: 16 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: 'white', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <TrendingUp size={14} style={{ color: '#a78bfa' }} /> GSTD vs Bitcoin — Network Advantages
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 2, fontSize: 10 }}>
-                  <div style={{ padding: '8px 6px', fontWeight: 700, color: 'rgba(255,255,255,0.4)' }}>Metric</div>
-                  <div style={{ padding: '8px 6px', fontWeight: 700, color: '#a78bfa', textAlign: 'center' }}>GSTD</div>
-                  <div style={{ padding: '8px 6px', fontWeight: 700, color: 'rgba(255,255,255,0.25)', textAlign: 'center' }}>Bitcoin</div>
-
-                  <div style={{ padding: '6px', color: 'rgba(255,255,255,0.4)' }}>TPS</div>
-                  <div style={{ padding: '6px', color: '#34d399', fontWeight: 700, textAlign: 'center' }}>{health.vs_bitcoin.gstd_tps.toLocaleString()}</div>
-                  <div style={{ padding: '6px', color: 'rgba(255,255,255,0.2)', textAlign: 'center' }}>{health.vs_bitcoin.bitcoin_tps}</div>
-
-                  <div style={{ padding: '6px', color: 'rgba(255,255,255,0.4)' }}>Finality</div>
-                  <div style={{ padding: '6px', color: '#34d399', fontWeight: 700, textAlign: 'center' }}>{health.vs_bitcoin.gstd_finality_sec}s</div>
-                  <div style={{ padding: '6px', color: 'rgba(255,255,255,0.2)', textAlign: 'center' }}>{health.vs_bitcoin.bitcoin_finality_min} min</div>
-
-                  <div style={{ padding: '6px', color: 'rgba(255,255,255,0.4)' }}>Energy/TX</div>
-                  <div style={{ padding: '6px', color: '#34d399', fontWeight: 700, textAlign: 'center' }}>{health.vs_bitcoin.gstd_energy_per_tx}</div>
-                  <div style={{ padding: '6px', color: 'rgba(255,255,255,0.2)', textAlign: 'center' }}>{health.vs_bitcoin.bitcoin_energy_per_tx}</div>
+            {loadingBoard ? (
+              <div style={{ textAlign: 'center', padding: '48px 0', color: 'rgba(255,255,255,0.2)' }}>
+                <RefreshCw size={24} className="animate-spin" style={{ margin: '0 auto 12px' }} />
+                <div style={{ fontSize: 12, letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 700 }}>
+                  Syncing swarm…
                 </div>
               </div>
-
-              {/* Regions */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                {health.regions.map(r => (
-                  <div key={r.region} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 8, background: 'rgba(255,255,255,0.02)' }}>
-                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <Globe size={12} style={{ color: '#60a5fa' }} /> {r.region}
-                    </span>
-                    <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)' }}>{r.nodes} nodes · {r.avg_latency_ms}ms</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* ═══ TAB: Liquidity Vaults ═══ */}
-          {tab === 'vaults' && (
-            <div className="mb-8 fu d5">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <div style={{ fontSize: 24, lineHeight: 1 }}>🏦</div>
-                  <h2 className="text-xl font-bold text-white m-0">Sovereign Liquidity Vaults</h2>
+            ) : leaders.length === 0 ? (
+              <div style={{
+                textAlign: 'center', padding: '48px 0',
+                border: '1px dashed rgba(255,255,255,0.08)', borderRadius: 14,
+              }}>
+                <div style={{ fontSize: 32, marginBottom: 12 }}>🌱</div>
+                <div style={{ fontWeight: 700, color: 'rgba(255,255,255,0.4)', marginBottom: 6 }}>No nodes yet</div>
+                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.25)' }}>
+                  Be the first — install above and claim your spot on the board.
                 </div>
-                <button className="btn-sovereign cyan text-xs py-1.5 px-3">
-                  + Create LP Vault
-                </button>
               </div>
+            ) : (
+              <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, overflow: 'hidden' }}>
+                {/* Table header */}
+                <div style={{
+                  display: 'grid', gridTemplateColumns: '48px 1fr auto auto auto',
+                  padding: '10px 16px', gap: 8, alignItems: 'center',
+                  background: 'rgba(255,255,255,0.03)',
+                  fontSize: 10, fontWeight: 700, letterSpacing: '0.1em',
+                  textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)',
+                  borderBottom: '1px solid rgba(255,255,255,0.06)',
+                }}>
+                  <span>#</span>
+                  <span>Node</span>
+                  <span style={{ textAlign: 'right', minWidth: 70 }}>GSTD</span>
+                  <span style={{ textAlign: 'right', minWidth: 60 }}>Uptime</span>
+                  <span style={{ textAlign: 'center', minWidth: 50 }}>Status</span>
+                </div>
 
-              <div className="sov-card cyan-top !p-5 mb-6 text-sm text-gray-400 leading-relaxed shadow-lg">
-                <strong className="text-cyan-400">How it works:</strong> Diamond/Platinum nodes can offer non-custodial cross-chain liquidity. Your node executes atomic swaps (HTLC) securing fees. Delegators can stake into your vault, and you earn an automated management fee on their generated yield. Funds remain completely under Layer 1 Smart Contract protection.
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {vaults.map(v => (
-                  <div key={v.vault_id} className="sov-card !p-5 flex flex-col justify-between">
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center text-sm font-black text-white shadow-lg shadow-cyan-500/20">
-                          {v.asset}
-                        </div>
-                        <div>
-                          <div className="text-sm font-bold text-white">{v.node_wallet?.slice(0, 4) || '????'}...{v.node_wallet?.slice(-4) || '????'} LP Vault</div>
-                          <div className="text-[10px] text-gray-500 font-mono tracking-widest">{v.vault_id}</div>
-                        </div>
-                      </div>
-                      <div className="px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 text-[9px] font-bold uppercase tracking-widest border border-emerald-500/20">
-                        {v.status || 'Active'}
-                      </div>
+                {leaders.map((entry, i) => (
+                  <div
+                    key={entry.node_id || i}
+                    style={{
+                      display: 'grid', gridTemplateColumns: '48px 1fr auto auto auto',
+                      padding: '12px 16px', gap: 8, alignItems: 'center',
+                      borderBottom: i < leaders.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+                      transition: 'background 0.15s',
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.02)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'center' }}>
+                      <RankBadge rank={entry.rank || i + 1} />
                     </div>
-
-                    <div className="grid grid-cols-2 gap-2 bg-black/20 p-3 rounded-xl border border-white/5 mb-4">
-                      <div>
-                        <div className="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-1">TVL (Liquidity)</div>
-                        <div className="text-sm font-black text-white">{v.total_liquidity?.toLocaleString() || 0} <span className="text-gray-500 text-xs">{v.asset}</span></div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, fontSize: 14, color: 'rgba(255,255,255,0.85)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {entry.name || entry.node_id}
                       </div>
-                      <div>
-                        <div className="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-1">Delegated</div>
-                        <div className="text-sm font-black text-violet-400">{v.delegator_stake?.toLocaleString() || 0} <span className="text-violet-400/50 text-xs">{v.asset}</span></div>
-                      </div>
-                      <div>
-                        <div className="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-1">Yield</div>
-                        <div className="text-sm font-black text-emerald-400">+{v.generated_yield?.toLocaleString() || 0} <span className="text-emerald-400/50 text-xs">{v.asset}</span></div>
-                      </div>
-                      <div>
-                        <div className="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-1">Mngmt Fee</div>
-                        <div className="text-sm font-black text-amber-400">{(v.management_fee_pct * 100).toFixed(0)}%</div>
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end mt-auto">
-                      <button className="btn-sovereign ghost text-xs py-1.5 px-4 w-full justify-center">
-                        Stake to Pool
-                      </button>
-                    </div>
-                  </div>
-                ))}
-                
-                {vaults.length === 0 && (
-                   <div className="col-span-1 md:col-span-2 text-center p-8 text-gray-500 text-sm">
-                      No active liquidity vaults right now.
-                   </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* ═══ TAB: Task Marketplace ═══ */}
-          {tab === 'tasks' && (
-            <div style={{ marginBottom: 32 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-                <Zap size={18} style={{ color: '#a78bfa' }} />
-                <h2 style={{ fontSize: 18, fontWeight: 800, color: 'white', margin: 0 }}>Task Marketplace</h2>
-                <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(167,139,250,0.1)', color: '#a78bfa' }}>{tasks.length} available</span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {tasks.map(task => {
-                  let priorityColor = '#60a5fa';
-                  if (task.priority === 'critical') priorityColor = '#ef4444';
-                  else if (task.priority === 'high') priorityColor = '#fb923c';
-                  return (
-                    <div key={task.id} style={{ padding: '14px 16px', borderRadius: 14, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
-                        <div>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: 'white', marginBottom: 2 }}>{task.title}</div>
-                          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', lineHeight: 1.4 }}>{task.description}</div>
-                        </div>
-                        <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 12 }}>
-                          <div style={{ fontSize: 14, fontWeight: 800, color: '#a78bfa' }}>{task.reward_gstd} <span style={{ fontSize: 9 }}>GSTD</span></div>
-                          <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)' }}>{task.estimated_time}</div>
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                          <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 4, textTransform: 'uppercase', background: `${priorityColor}15`, color: priorityColor }}>{task.priority}</span>
-                          <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)' }}>{task.active_nodes} nodes active</span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* ═══ TAB: Governance ═══ */}
-          {tab === 'governance' && (
-            <div style={{ marginBottom: 32 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-                <Vote size={18} style={{ color: '#60a5fa' }} />
-                <h2 style={{ fontSize: 18, fontWeight: 800, color: 'white', margin: 0 }}>Governance</h2>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {governance.map(p => {
-                  const pct = p.votes_total > 0 ? (p.votes_for / p.votes_total * 100) : 0;
-                  let statusColor = '#facc15';
-                  if (p.status === 'passed') statusColor = '#34d399';
-                  else if (p.status === 'voting') statusColor = '#60a5fa';
-                  return (
-                    <div key={p.id} style={{ padding: '16px', borderRadius: 14, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                        <span style={{ fontSize: 10, fontWeight: 700, color: '#a78bfa', fontFamily: 'monospace' }}>{p.id}</span>
-                        <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 4, textTransform: 'uppercase', background: `${statusColor}15`, color: statusColor }}>{p.status}</span>
-                      </div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: 'white', marginBottom: 4 }}>{p.title}</div>
-                      <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginBottom: 10, lineHeight: 1.5 }}>{p.description}</div>
-
-                      {p.votes_total > 0 && (
-                        <div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>
-                            <span>For: {p.votes_for} ({pct.toFixed(0)}%)</span>
-                            <span>Against: {p.votes_against}</span>
-                          </div>
-                          <div style={{ height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.05)', overflow: 'hidden' }}>
-                            <div style={{ height: '100%', width: `${Math.min(pct, 100)}%`, borderRadius: 3, background: `linear-gradient(90deg, #34d399, #60a5fa)`, transition: 'width 0.5s' }} />
-                          </div>
-                          <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)', marginTop: 4 }}>
-                            Quorum: {p.quorum_percent.toFixed(0)}% of {p.quorum_needed} needed
-                          </div>
+                      {entry.wallet && (
+                        <div style={{ fontFamily: 'monospace', fontSize: 11, color: 'rgba(255,255,255,0.25)' }}>
+                          {entry.wallet.slice(0, 8)}…
                         </div>
                       )}
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* ═══ TAB: Token Burns ═══ */}
-          {tab === 'burn' && burn && (
-            <div style={{ marginBottom: 32 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-                <Flame size={18} style={{ color: '#f97316' }} />
-                <h2 style={{ fontSize: 18, fontWeight: 800, color: 'white', margin: 0 }}>Token Burn Tracker</h2>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8, marginBottom: 16 }}>
-                {[
-                  { v: burn.total_burned_gstd.toFixed(2), l: 'Total Burned', c: '#f97316' },
-                  { v: burn.burn_rate_daily.toFixed(2), l: 'Daily Burn Rate', c: '#fb923c' },
-                  { v: `${(burn.current_circulating / 1000000).toFixed(1)}M`, l: 'Circulating', c: '#60a5fa' },
-                  { v: `${(burn.max_supply / 1000000).toFixed(0)}M`, l: 'Max Supply', c: '#a78bfa' },
-                ].map(s => (
-                  <div key={s.l} style={{ textAlign: 'center', padding: '12px 8px', borderRadius: 10, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                    <div style={{ fontSize: 18, fontWeight: 800, color: s.c }}>{s.v}</div>
-                    <div style={{ fontSize: 9, fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase' }}>{s.l}</div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Burn Sources */}
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.5)', marginBottom: 8 }}>Burn Sources</div>
-                {burn.burn_sources.map(bs => (
-                  <div key={bs.source} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderRadius: 8, background: 'rgba(255,255,255,0.02)', marginBottom: 4 }}>
-                    <div>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: 'white' }}>{bs.source} <span style={{ color: '#f97316', fontWeight: 700 }}>{bs.percent}</span></div>
-                      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>{bs.description}</div>
+                    <div style={{ textAlign: 'right', minWidth: 70 }}>
+                      <div style={{ fontWeight: 800, fontSize: 15, color: entry.rank <= 3 ? '#fbbf24' : 'white' }}>
+                        {(entry.gstd_earned || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                      </div>
+                      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.2)' }}>GSTD</div>
                     </div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#fb923c' }}>{bs.burned} <span style={{ fontSize: 9 }}>GSTD</span></div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Next burn event */}
-              <div style={{ padding: '14px 16px', borderRadius: 12, background: 'linear-gradient(135deg, rgba(249,115,22,0.06), rgba(234,88,12,0.03))', border: '1px solid rgba(249,115,22,0.12)' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#fb923c', marginBottom: 4 }}>🔥 Next: {burn.next_burn_event.type}</div>
-                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>
-                  {new Date(burn.next_burn_event.date).toLocaleDateString()} · Est. {burn.next_burn_event.estimated}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Tier System */}
-          <div style={{ marginBottom: 40 }}>
-            <h2 style={{ fontSize: 20, fontWeight: 800, color: 'white', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Trophy size={20} style={{ color: '#FFD700' }} /> {t('nodes_tier_system')}
-            </h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {tiers.map((tier, i) => {
-                const s = TIER_STYLES[tier.name] || TIER_STYLES.bronze;
-                return (
-                  <div key={tier.name} style={{
-                    display: 'flex', alignItems: 'center', padding: '14px 16px', borderRadius: 14,
-                    background: s.bg, border: `1px solid ${s.border}`, boxShadow: s.glow,
-                    transition: 'all 0.3s',
-                  }}>
-                    <span style={{ fontSize: 24, marginRight: 12 }}>{TIER_ICONS[tier.name]}</span>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: s.text, textTransform: 'capitalize' }}>{tier.name}</div>
-                      <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>
-                        {tier.min_hours > 0 ? `${tier.min_hours}+ ${t('nodes_hours_uptime')}` : t('nodes_starting_tier')}
+                    <div style={{ textAlign: 'right', minWidth: 60 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.45)' }}>
+                        {entry.uptime_hours != null ? `${Math.round(entry.uptime_hours)}h` : '—'}
                       </div>
                     </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: 16, fontWeight: 800, color: s.text }}>{tier.base_per_hour} <span style={{ fontSize: 10, fontWeight: 500 }}>GSTD/h</span></div>
-                      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>{tier.multiplier}x</div>
+                    <div style={{ textAlign: 'center', minWidth: 50 }}>
+                      {entry.is_online ? (
+                        <span style={{ fontSize: 12, color: '#4ade80', fontWeight: 700 }}>● Online</span>
+                      ) : (
+                        <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.2)' }}>○ Off</span>
+                      )}
                     </div>
-                    {i < tiers.length - 1 && <ChevronRight size={14} style={{ color: 'rgba(255,255,255,0.15)', marginLeft: 8 }} />}
                   </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Streak Bonuses */}
-          <div style={{ marginBottom: 40 }}>
-            <h2 style={{ fontSize: 20, fontWeight: 800, color: 'white', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Flame size={20} style={{ color: '#f97316' }} /> {t('nodes_streak_bonuses')}
-            </h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
-              {(program?.streak_bonuses || []).map((s) => (
-                <div key={s.days} style={{
-                  padding: '16px 14px', borderRadius: 14, textAlign: 'center',
-                  background: 'rgba(249,115,22,0.04)', border: '1px solid rgba(249,115,22,0.1)',
-                }}>
-                  <div style={{ fontSize: 24, fontWeight: 900, color: '#fb923c' }}>{s.days}</div>
-                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', marginBottom: 6 }}>{t('nodes_days_online')}</div>
-                  <div style={{ fontSize: 16, fontWeight: 800, color: '#34d399' }}>+{s.bonus_percent}%</div>
-                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginTop: 4 }}>{s.label}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Task Rewards */}
-          <div style={{ marginBottom: 40 }}>
-            <h2 style={{ fontSize: 20, fontWeight: 800, color: 'white', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Zap size={20} style={{ color: '#a78bfa' }} /> {t('nodes_task_rewards')}
-            </h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8 }}>
-              {[...(program?.task_rewards || [])].sort((a, b) => b.reward_gstd - a.reward_gstd).map((taskReward) => (
-                <div key={taskReward.task} style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '10px 14px', borderRadius: 10,
-                  background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)',
-                }}>
-                  <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', fontFamily: 'monospace' }}>{taskReward.task}</span>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: '#a78bfa' }}>{taskReward.reward_gstd} <span style={{ fontSize: 9 }}>GSTD</span></span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Leaderboard */}
-          <div style={{ marginBottom: 48 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
-              <h2 style={{ fontSize: 20, fontWeight: 800, color: 'white', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Star size={20} style={{ color: '#facc15' }} /> {t('nodes_leaderboard')}
-              </h2>
-              <div style={{ display: 'flex', gap: 4 }}>
-                {['all', '30d', '7d', 'today'].map(p => (
-                  <button key={p} onClick={() => setPeriod(p)} style={{
-                    padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer',
-                    background: period === p ? 'rgba(139,92,246,0.15)' : 'transparent',
-                    color: period === p ? 'white' : 'rgba(255,255,255,0.35)',
-                    fontSize: 10, fontWeight: 600, textTransform: 'uppercase',
-                  }}>{p === 'all' ? t('nodes_all_time') : p}</button>
                 ))}
-              </div>
-            </div>
-
-            {leaders.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px 20px', borderRadius: 16, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                <Users size={32} style={{ color: 'rgba(255,255,255,0.15)', marginBottom: 12 }} />
-                <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>{t('nodes_no_nodes_yet')}</p>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {leaders.slice(0, 20).map((l, i) => {
-                  const ts = TIER_STYLES[l.tier] || TIER_STYLES.bronze;
-                  const isTopThree = i < 3;
-                  const rankColors = ['#FFD700', '#C0C0C0', '#CD7F32'];
-                  const rankColor = isTopThree ? rankColors[i] : 'rgba(255,255,255,0.3)';
-                  const rankIcons = ['🥇', '🥈', '🥉'];
-                  return (
-                    <div key={l.rank} style={{
-                      display: 'flex', alignItems: 'center', padding: '10px 14px', borderRadius: 12,
-                      background: isTopThree ? ts.bg : 'rgba(255,255,255,0.02)',
-                      border: `1px solid ${isTopThree ? ts.border : 'rgba(255,255,255,0.04)'}`,
-                    }}>
-                      <div style={{ width: 28, fontSize: isTopThree ? 16 : 12, fontWeight: 800, color: rankColor, textAlign: 'center' }}>
-                        {isTopThree ? rankIcons[i] : `#${l.rank}`}
-                      </div>
-                      <span style={{ fontSize: 14, marginRight: 6 }}>{l.tier_icon}</span>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: 'white', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {l.node}
-                          {l.online && <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#34d399', marginLeft: 6 }} />}
-                        </div>
-                        <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)' }}>
-                          {l.uptime_hours}h {t('nodes_uptime')} · {l.streak_days}d {t('nodes_streak')} · {l.tasks_completed} {t('nodes_tasks')}
-                        </div>
-                      </div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: ts.text }}>{l.earned_gstd.toFixed(2)} <span style={{ fontSize: 9 }}>GSTD</span></div>
-                    </div>
-                  );
-                })}
               </div>
             )}
           </div>
 
-          {/* CTA — Two options */}
-          <div style={{
-            textAlign: 'center', padding: '40px 24px', borderRadius: 20, marginBottom: 48,
-            background: 'linear-gradient(135deg, rgba(139,92,246,0.06), rgba(16,185,129,0.04))',
-            border: '1px solid rgba(139,92,246,0.1)',
-          }}>
-            <h3 style={{ fontSize: 22, fontWeight: 800, color: 'white', marginBottom: 8 }}>{t('nodes_ready_title')}</h3>
-            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 20 }}>
-              {t('nodes_ready_desc')}
-            </p>
-
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', alignItems: 'stretch', flexWrap: 'wrap', marginBottom: 20 }}>
-              {/* Mobile Node — Telegram */}
-              <a href="https://t.me/GstdAppBot" target="_blank" rel="noopener noreferrer"
-                style={{
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
-                  padding: '20px 24px', borderRadius: 14, textDecoration: 'none',
-                  background: 'rgba(0,136,204,0.08)', border: '1px solid rgba(0,136,204,0.2)',
-                  flex: '1 1 220px', maxWidth: '100%', transition: 'all 0.3s',
-                }}>
-                <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg, #0088cc, #0066aa)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Smartphone size={20} style={{ color: 'white' }} />
-                </div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: '#5bbfe0' }}>{t('nodes_mobile_card')}</div>
-                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', textAlign: 'center', whiteSpace: 'pre-line' }}>
-                  {t('nodes_mobile_card_desc')}
-                </div>
-              </a>
-
-              {/* Desktop Node */}
-              <a href="https://github.com/gstdcoin/gstdbot" target="_blank" rel="noopener noreferrer"
-                style={{
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
-                  padding: '20px 24px', borderRadius: 14, textDecoration: 'none',
-                  background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.15)',
-                  flex: '1 1 220px', maxWidth: '100%', transition: 'all 0.3s',
-                }}>
-                <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Server size={20} style={{ color: 'white' }} />
-                </div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: '#a78bfa' }}>{t('nodes_desktop_card')}</div>
-                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', textAlign: 'center', whiteSpace: 'pre-line' }}>
-                  {t('nodes_desktop_card_desc')}
-                </div>
-              </a>
+          {/* ── Bottom CTA ────────────────────────────────────────────── */}
+          {!walletAddress && (
+            <div style={{
+              marginTop: 48, textAlign: 'center',
+              padding: '32px 24px',
+              background: 'rgba(139,92,246,0.06)',
+              border: '1px solid rgba(139,92,246,0.15)',
+              borderRadius: 16,
+            }}>
+              <div style={{ fontSize: 28, marginBottom: 10 }}>🔗</div>
+              <div style={{ fontWeight: 800, fontSize: 17, marginBottom: 6 }}>Connect your TON wallet to see your node stats</div>
+              <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>
+                Track earnings, claim rewards, and see your tier — all from the web.
+              </div>
             </div>
-
-            <div style={{ background: 'rgba(0,0,0,0.3)', padding: '10px 16px', borderRadius: 10, fontFamily: 'monospace', fontSize: 13, color: '#a78bfa', marginBottom: 8, wordBreak: 'break-all', overflowWrap: 'anywhere' }}>
-              curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash
-            </div>
-            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)' }}>{t('nodes_install_hint')}</div>
-          </div>
+          )}
 
         </div>
       </div>
 
-      <style dangerouslySetInnerHTML={{ __html: `
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-      ` }} />
+      <style>{`
+        @keyframes pulse-dot {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.4; }
+        }
+        @media (max-width: 600px) {
+          .leaderboard-row { grid-template-columns: 40px 1fr auto auto !important; }
+          .leaderboard-row .uptime { display: none; }
+        }
+      `}</style>
     </>
   );
 }
 
 export const getStaticProps: GetStaticProps = async ({ locale }) => ({
-  props: await getCommonStaticProps(locale),
+  props: await getCommonStaticProps(locale ?? 'en'),
 });
