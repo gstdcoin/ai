@@ -10,7 +10,7 @@
  * Rewards accumulate in Redis and are settled weekly via TON Jetton transfers.
  */
 
-import { kvGet, kvSet, kvIncr, kvKeys } from './kv';
+import { kvGet, kvSet, kvIncr, kvKeys, kvIncrByFloat } from './kv';
 
 export const COMMUNITY_TAX     = 0.05;   // 5% to treasury
 export const BASE_TASK_FEE     = 0.001;  // GSTD per completed inference task
@@ -53,25 +53,9 @@ export async function accrueReward(
     const walletKey      = wallet.toLowerCase();
 
     await Promise.all([
-        // Node's pending rewards (by wallet, for TON settlement)
-        kvGet(`rewards:pending:${walletKey}`).then(async (raw) => {
-            const current = raw ? parseFloat(raw as string) : 0;
-            const next    = Math.round((current + nodeShare) * 1e6) / 1e6;
-            await kvSet(`rewards:pending:${walletKey}`, String(next));
-        }),
-        // Node's lifetime earnings (by nodeId)
-        kvGet(`rewards:lifetime:${nodeId}`).then(async (raw) => {
-            const current = raw ? parseFloat(raw as string) : 0;
-            const next    = Math.round((current + nodeShare) * 1e6) / 1e6;
-            await kvSet(`rewards:lifetime:${nodeId}`, String(next));
-        }),
-        // Community treasury accumulator
-        kvGet('rewards:treasury').then(async (raw) => {
-            const current = raw ? parseFloat(raw as string) : 0;
-            const next    = Math.round((current + communityShare) * 1e6) / 1e6;
-            await kvSet('rewards:treasury', String(next));
-        }),
-        // Epoch counter for settlement tracking
+        kvIncrByFloat(`rewards:pending:${walletKey}`, nodeShare),
+        kvIncrByFloat(`rewards:lifetime:${nodeId}`, nodeShare),
+        kvIncrByFloat('rewards:treasury', communityShare),
         kvSet(`rewards:node_wallet:${nodeId}`, walletKey),
     ]).catch(() => {});
 

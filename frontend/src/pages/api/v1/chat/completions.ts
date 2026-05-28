@@ -167,7 +167,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // ── Forward to GSTD node ───────────────────────────────────────────────
     try {
-        const resp = await fetch(`${nodeUrl}/v1/ollama/completions`, {
+        const resp = await fetch(`${nodeUrl}/v1/chat/completions`, {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify({ model: resolvedModel, messages, stream: false, max_tokens: maxTok, temperature: temp }),

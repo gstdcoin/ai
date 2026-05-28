@@ -28,10 +28,10 @@
 export const config = { maxDuration: 55 };
 
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvGet }        from '../../../../lib/kv';
 import { rateLimit, getClientIp } from '../../../../lib/ratelimit';
-import { getActiveNodes } from '../../../../lib/nodes';
-import { NODE_MODEL }   from '../../../../lib/nodes';
+import { getActiveNodes, NODE_MODEL } from '../../../../lib/nodes';
+import { kvGet }        from '../../../../lib/kv';
+import { validateEnterpriseKey } from '../enterprise/keys';
 
 const MAX_PROMPTS    = 50;
 const MIN_BALANCE    = 100;   // Standard tier minimum
@@ -43,12 +43,12 @@ async function getWalletBalance(wallet: string): Promise<number> {
 }
 
 async function authorizeRequest(req: NextApiRequest): Promise<{ ok: boolean; reason?: string }> {
-    // Enterprise API key
+    // Enterprise API key (validated via hash lookup — not raw key as KV suffix)
     const auth = req.headers['authorization'] || '';
-    if (auth.startsWith('Bearer gstd_')) {
-        const key = auth.slice(7);
-        const raw = await kvGet(`enterprise_key:${key}`).catch(() => null);
-        if (raw) return { ok: true };
+    const bearerMatch = (auth as string).match(/^Bearer (gstd_\S+)$/);
+    if (bearerMatch) {
+        const key = await validateEnterpriseKey(bearerMatch[1]);
+        if (key) return { ok: true };
     }
 
     // Wallet-based auth (Standard+ tier)

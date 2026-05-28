@@ -92,6 +92,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
         const [, nodesKeys] = await Promise.all(writeOps);
         const peers_online = Array.isArray(nodesKeys) ? nodesKeys.length : 0;
+        // Keep stats:nodes_online_cached fresh for /api/v1/ecosystem/features
+        kvSet('stats:nodes_online_cached', String(peers_online), 120).catch(() => {});
 
         return res.status(200).json({
             ok:           true,

@@ -10,7 +10,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=120');
 
     const [nodeCountRaw, telegramRaw] = await Promise.all([
-        kvGet('stats:online_nodes').catch(() => null),
+        kvGet('stats:nodes_online_cached').catch(() => null),
         kvGet('stats:telegram_active').catch(() => null),
     ]);
 

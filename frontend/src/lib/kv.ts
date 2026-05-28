@@ -80,14 +80,25 @@ export async function kvDel(key: string): Promise<void> {
 }
 
 export async function kvKeys(prefix: string): Promise<string[]> {
+    const safePrefix = prefix.replace(/\*+$/, '');
     const r = await getRedis();
     if (r) {
         try {
-            const keys = await r.keys(`${prefix}*`);
+            const keys = await r.keys(`${safePrefix}*`);
             return keys as string[];
         } catch { /* fallback */ }
     }
-    return memKeys(prefix);
+    return memKeys(safePrefix);
+}
+
+export async function kvIncrByFloat(key: string, delta: number): Promise<number> {
+    const r = await getRedis();
+    if (r) {
+        try { return await r.incrbyfloat(key, delta); } catch { /* fallback */ }
+    }
+    const cur = parseFloat(memGet(key) || '0') + delta;
+    memSet(key, String(cur));
+    return cur;
 }
 
 export async function kvMGet(keys: string[]): Promise<(string | null)[]> {

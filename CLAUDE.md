@@ -17,7 +17,7 @@ No KV credentials needed — `src/lib/kv.ts` falls back to in-memory store.
 ## Architecture Rules
 - ALL API logic lives in `src/pages/api/v1/` as Next.js serverless functions
 - KV access ONLY via `kvGet / kvSet / kvKeys / kvDel / kvIncr` from `src/lib/kv`
-- Rate limiting is handled globally by `src/proxy.ts` (Edge runtime — Next.js 16 uses proxy.ts, not middleware.ts)
+- Rate limiting is handled globally by `src/middleware.ts` (Edge runtime — standard Next.js middleware convention)
 - No Go backend. No `api.gstdtoken.com` proxy. The rewrites were removed.
 
 ## Adding a new API route
@@ -29,7 +29,7 @@ No KV credentials needed — `src/lib/kv.ts` falls back to in-memory store.
 ## Key paths
 - `src/lib/kv.ts` — Redis wrapper (in-memory fallback for local)
 - `src/lib/ratelimit.ts` — sliding window (used by individual handlers if needed)
-- `src/middleware.ts` — Edge rate limiting + CORS for all `/api/*`
+- `src/middleware.ts` — Edge rate limiting + CORS for all `/api/*` (Next.js convention; must export `default function middleware()`)
 - `src/lib/logger.ts` — production-safe logger (errors always print to Vercel Logs)
 - `next.config.js` — CSP/security headers, no rewrites
 
