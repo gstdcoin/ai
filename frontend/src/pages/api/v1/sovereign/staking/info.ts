@@ -20,15 +20,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const total_staked   = totalStakedRaw   ? parseFloat(totalStakedRaw)  : 0;
         const active_stakers = totalStakersRaw  ? parseInt(totalStakersRaw)   : 0;
 
-        const global = {
-            total_staked,
-            active_stakers,
+        // platform shape matches what the Telegram bot reads: data.platform.apy / min_stake / lock_period_days
+        const platform = {
+            apy:               12,
             apy_pct:           12,
-            lock_period_days:  0,
+            min_stake:         100,
             min_stake_gstd:    100,
+            lock_period_days:  0,
             contracts_live:    false,
             status:            'pending_contract',
             note:              'Staking activates after TON smart contract deployment.',
+        };
+
+        const global = {
+            total_staked,
+            active_stakers,
+            platform,
+            ...platform,
         };
 
         if (!wallet) return res.status(200).json({ ...global, timestamp: Date.now() });
