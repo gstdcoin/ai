@@ -23,12 +23,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     try {
-        // Per-IP rate limit: max 60 heartbeats/minute (20 nodes × 3/min)
-        const ip = getClientIp(req.headers as any);
-        if (!rateLimit(`hb:${ip}`, 60, 60_000)) {
-            return res.status(429).json({ error: 'Too many heartbeats' });
-        }
-
         const body = req.body as any;
         const nodeId: string =
             body.node_id ||
@@ -37,6 +31,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         if (!nodeId || !NODE_ID_RE.test(nodeId)) {
             return res.status(400).json({ error: 'node_id required (4-64 alphanumeric chars)' });
+        }
+
+        // Rate limit per node_id so multiple nodes behind the same NAT don't share the limit
+        const ip = getClientIp(req.headers as any);
+        if (!rateLimit(`hb:${nodeId}`, 10, 60_000)) {
+            return res.status(429).json({ error: 'Too many heartbeats from this node' });
+        }
+        // Secondary IP-level guard against node_id spoofing floods
+        if (!rateLimit(`hb_ip:${ip}`, 120, 60_000)) {
+            return res.status(429).json({ error: 'Too many heartbeats from this IP' });
         }
 
         // Read existing record only if we need to merge (tasks_completed, gstd_earned).

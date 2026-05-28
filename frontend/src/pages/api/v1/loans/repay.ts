@@ -88,10 +88,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Update loan record
     if (fullyRepaid) {
-        loan.status      = 'repaid';
-        loan.total_owed  = 0;
-        loan.repaid_at   = Date.now();
-        loan.collateral_gstd -= collateralReleased;
+        loan.status          = 'repaid';
+        loan.total_owed      = 0;
+        loan.collateral_gstd = 0;
+        loan.repaid_at       = Date.now();
     } else {
         loan.total_owed  -= actualRepay;
         loan.collateral_gstd -= collateralReleased;

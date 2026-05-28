@@ -22,7 +22,7 @@
  * Protocol fee: 10% of total_budget goes to protocol treasury.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvSet, kvIncr, kvGet } from '../../../../lib/kv';
+import { kvSet, kvIncr, kvIncrByFloat } from '../../../../lib/kv';
 import { randomBytes } from 'crypto';
 
 const PROTOCOL_FEE_PCT = 0.10;
@@ -118,7 +118,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         await Promise.all([
             kvSet(`campaign:${campaign.id}`, JSON.stringify(campaign), ttlSec),
             kvIncr('stats:total_campaigns'),
-            kvIncr('stats:protocol_treasury_gstd'),  // simplified counter
+            kvIncrByFloat('stats:protocol_treasury_gstd', protocolFee),
         ]);
 
         return res.status(200).json({

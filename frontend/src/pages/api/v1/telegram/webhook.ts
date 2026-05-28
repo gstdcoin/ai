@@ -240,7 +240,6 @@ async function processUpdate(update: any): Promise<void> {
     const tonRegex = /^(EQ[A-Za-z0-9_-]{46}|UQ[A-Za-z0-9_-]{46}|0:[a-fA-F0-9]{64})$/;
     if (tonRegex.test(text)) {
         await kvSet(`tg_wallet:${userId}`, text);
-        // Also link via platform API
         try {
             await fetch(`${SWARM_URL}/api/v1/telegram/bot/link`, {
                 method:  'POST',
@@ -249,11 +248,33 @@ async function processUpdate(update: any): Promise<void> {
                 signal:  AbortSignal.timeout(5000),
             });
         } catch {}
+
+        // Fetch live price for Stars rate display
+        const STAR_USD = 0.013;
+        let gstdPerStar = 65;
+        try {
+            const pr = await fetch(`${SWARM_URL}/api/v1/market/price`, { signal: AbortSignal.timeout(3000) });
+            if (pr.ok) {
+                const pd = await pr.json();
+                if (pd.gstd_price_usd > 0) gstdPerStar = Math.round(STAR_USD / pd.gstd_price_usd);
+            }
+        } catch {}
+
         const short = text.slice(0, 6) + '…' + text.slice(-4);
         await sendMessage(chatId,
             `✅ <b>Wallet Linked!</b>\n\n<code>${text}</code>\n\n` +
-            `🐝 Now run a node to start earning: /node\n` +
-            `💰 Rewards will flow to ${short} automatically.`
+            `🎯 GSTD purchases now go <b>directly to your TON wallet</b>.\n\n` +
+            `⭐ <b>Buy GSTD with Telegram Stars:</b>\n` +
+            `10⭐ → <b>${10 * gstdPerStar} GSTD</b>  ·  50⭐ → <b>${50 * gstdPerStar} GSTD</b>  ·  200⭐ → <b>${200 * gstdPerStar} GSTD</b>\n\n` +
+            `🐝 Or earn for free: /node\n` +
+            `💰 Rewards flow to ${short} automatically.`,
+            { reply_markup: { inline_keyboard: [
+                [
+                    { text: `10⭐ → ${10 * gstdPerStar} GSTD`, callback_data: 'buy_stars_10' },
+                    { text: `50⭐ → ${50 * gstdPerStar} GSTD`, callback_data: 'buy_stars_50' },
+                ],
+                [{ text: '🐝 Earn for free', callback_data: 'earn_menu' }],
+            ]}}
         );
         return;
     }
