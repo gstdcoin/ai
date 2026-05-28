@@ -128,8 +128,34 @@ export default function LeaderboardPage() {
 
         {/* Bottom stats */}
         <div className="mt-10 text-center text-gray-500 text-xs">
-          <p>Total holders: {total} · Wallet addresses truncated for privacy</p>
-          <p className="mt-1">Don't see your wallet? Connect and start earning GSTD!</p>
+          <p>Total active nodes: {total} · Wallet addresses truncated for privacy</p>
+          <p className="mt-1">Don't see your node? Connect and start earning GSTD!</p>
+        </div>
+
+        {/* Early bird CTA */}
+        <div className="mt-8 rounded-2xl border border-amber-400/20 bg-amber-400/5 p-6 text-center">
+          <div className="text-2xl mb-2">🚀</div>
+          <div className="font-bold text-amber-300 mb-1">Early Bird Bonus — Active Now</div>
+          <div className="text-gray-400 text-sm mb-4">
+            Nodes running before token launch earn a <strong className="text-amber-300">×1.5 multiplier</strong> on all accumulated GSTD.
+            The network is still small — join now while the rewards pool is most concentrated.
+          </div>
+          <div className="flex gap-3 justify-center flex-wrap">
+            <a
+              href="https://t.me/gstdtoken_bot"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-5 py-2.5 rounded-xl bg-amber-400/10 border border-amber-400/30 text-amber-300 font-bold text-sm hover:bg-amber-400/20 transition-all"
+            >
+              📱 Launch Mobile Node
+            </a>
+            <a
+              href="/nodes"
+              className="px-5 py-2.5 rounded-xl border border-white/10 text-gray-300 font-bold text-sm hover:border-white/20 transition-all"
+            >
+              🖥 Desktop Setup
+            </a>
+          </div>
         </div>
       </main>
     </div>
