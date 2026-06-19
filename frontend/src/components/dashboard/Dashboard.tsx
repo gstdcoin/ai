@@ -42,7 +42,7 @@ function Dashboard({ initialTab, sourceTelegram, modeMining }: DashboardProps = 
   const { address, disconnect, gstdBalance, pendingEarnings } = useWalletStore();
   const [tonConnectUI] = useTonConnectUI();
   const [activeTab, setActiveTab] = useState<Tab>(() => {
-    const valid: Tab[] = ['home', 'tasks', 'nodes', 'lending'];
+    const valid: Tab[] = ['home', 'tasks', 'nodes'];
     if (initialTab && valid.includes(initialTab as Tab)) return initialTab as Tab;
     return 'home';
   });
@@ -59,7 +59,7 @@ function Dashboard({ initialTab, sourceTelegram, modeMining }: DashboardProps = 
 
   // Tab persistence
   useEffect(() => {
-    const valid: Tab[] = ['home', 'tasks', 'nodes', 'lending'];
+    const valid: Tab[] = ['home', 'tasks', 'nodes'];
     if (initialTab && valid.includes(initialTab as Tab)) { setActiveTab(initialTab as Tab); return; }
     const saved = typeof window !== 'undefined' ? localStorage.getItem('activeTab') : null;
     if (saved && valid.includes(saved as Tab)) setActiveTab(saved as Tab);

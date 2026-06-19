@@ -52,31 +52,20 @@ const MODEL_ALIASES: Record<string, string> = {
     'nomic-embed-text': 'nomic-embed-text',
 };
 
-const DEFAULT_MODEL   = 'llama3.1:8b';
+const DEFAULT_MODEL   = 'llama3.2:3b';
 const ROUTE_TIMEOUT   = 55_000;
 
 async function resolveNodeUrl(): Promise<string> {
-    let nodeUrl = (process.env.GSTD_NODE_URL || '').replace(/\/$/, '');
-    if (nodeUrl) return nodeUrl;
+    // 1. Env override (fastest, set in Vercel dashboard)
+    const envUrl = (process.env.GSTD_NODE_URL || '').replace(/\/$/, '');
+    if (envUrl) return envUrl;
 
-    // GitHub registry — updated by tunnel.sh on every reconnect
-    try {
-        const ghResp = await fetch(
-            `https://raw.githubusercontent.com/gstdcoin/ai/main/node-url.txt?t=${Math.floor(Date.now() / 30000)}`,
-            { signal: AbortSignal.timeout(4000) }
-        );
-        if (ghResp.ok) {
-            const url = (await ghResp.text()).trim();
-            if (url.startsWith('http')) return url;
-        }
-    } catch { /* GitHub unavailable */ }
-
-    // KV fallback
+    // 2. KV — written by every heartbeat (fast, no network round-trip to GitHub)
     try {
         const nodeUrlKeys = await kvKeys('node_url:');
         if (nodeUrlKeys.length > 0) {
             const url = await kvGet(nodeUrlKeys[0]);
-            if (url?.startsWith('http')) return url.replace(/\/$/, '');
+            if (url?.startsWith('http')) return (url as string).replace(/\/$/, '');
         }
         const nodeKeys = await kvKeys('node:');
         if (nodeKeys.length > 0) {
@@ -84,11 +73,24 @@ async function resolveNodeUrl(): Promise<string> {
             for (const raw of values) {
                 if (!raw) continue;
                 const node: any = JSON.parse(raw);
-                const url = node.node_url || node.multiaddrs?.[0];
-                if (url?.startsWith('http')) return url.replace(/\/$/, '');
+                const url: string = node.node_url || node.multiaddrs?.[0] || '';
+                const lastSeenMs = Date.now() - new Date(node.last_seen || 0).getTime();
+                if (url.startsWith('http') && lastSeenMs < 600_000) return url.replace(/\/$/, '');
             }
         }
     } catch { /* KV unavailable */ }
+
+    // 3. GitHub fallback — updated by tunnel.sh on each tunnel start
+    try {
+        const ghResp = await fetch(
+            `https://raw.githubusercontent.com/gstdcoin/ai/main/node-url.txt?t=${Math.floor(Date.now() / 30000)}`,
+            { signal: AbortSignal.timeout(4000) }
+        );
+        if (ghResp.ok) {
+            const url = (await ghResp.text()).trim();
+            if (url.startsWith('http')) return url.replace(/\/$/, '');
+        }
+    } catch { /* GitHub unavailable */ }
 
     return '';
 }

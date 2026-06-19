@@ -13,31 +13,31 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvSet } from '../../../../lib/kv';
 
-const STON_PAIR_URL = 'https://api.ston.fi/v1/pools/EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO/stats';
-const TON_USD_URL   = 'https://tonapi.io/v2/rates?tokens=ton&currencies=usd';
-const CACHE_TTL     = 60;
-const SEED_PRICE_USD = 0.001;  // pre-launch seed: $0.001 per GSTD
+const STON_ASSET_URL = 'https://api.ston.fi/v1/assets/EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO';
+const TON_USD_URL    = 'https://tonapi.io/v2/rates?tokens=ton&currencies=usd';
+const CACHE_TTL      = 60;
+const SEED_PRICE_USD = 0.001;
 
 async function fetchLivePrice(): Promise<{ gstd_price_usd: number; gstd_price_ton: number } | null> {
     try {
-        const [tonResp, stonResp] = await Promise.all([
-            fetch(TON_USD_URL,   { signal: AbortSignal.timeout(4000) }),
-            fetch(STON_PAIR_URL, { signal: AbortSignal.timeout(4000) }),
+        const [assetResp, tonResp] = await Promise.all([
+            fetch(STON_ASSET_URL, { signal: AbortSignal.timeout(4000) }),
+            fetch(TON_USD_URL,    { signal: AbortSignal.timeout(4000) }),
         ]);
-        if (!tonResp.ok || !stonResp.ok) return null;
+        if (!assetResp.ok) return null;
 
-        const tonData  = await tonResp.json();
-        const stonData = await stonResp.json();
+        const assetData = await assetResp.json();
+        const gstdUsd   = parseFloat(assetData?.asset?.dex_usd_price || '0');
+        if (!gstdUsd) return null;
 
-        const tonUsd  = tonData?.rates?.TON?.prices?.USD as number | undefined;
-        const gstdTon = stonData?.stats?.last_price       as number | undefined;
+        let gstdTon = 0;
+        if (tonResp.ok) {
+            const tonData = await tonResp.json();
+            const tonUsd  = tonData?.rates?.TON?.prices?.USD as number | undefined;
+            if (tonUsd) gstdTon = gstdUsd / tonUsd;
+        }
 
-        if (!tonUsd || !gstdTon) return null;
-
-        return {
-            gstd_price_ton: gstdTon,
-            gstd_price_usd: gstdTon * tonUsd,
-        };
+        return { gstd_price_usd: gstdUsd, gstd_price_ton: gstdTon };
     } catch {
         return null;
     }
@@ -87,8 +87,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         gstd_price_ton,
         change_24h_pct,
         source: source || 'seed',
-        is_pre_launch: is_seed,
-        seed_note: is_seed ? 'Pre-launch seed price. Will update automatically once GSTD lists on STON.fi.' : undefined,
         timestamp: Date.now(),
     });
 }

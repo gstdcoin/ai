@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import {
     Home, Server, ListTodo, MessageSquare, BarChart3, HelpCircle,
-    X, Menu, Cpu, ArrowRightLeft, Bot, Download, Users, Globe, FileText,
+    X, Menu, Download, Users, Globe, FileText,
 } from 'lucide-react';
 import { Tab } from '../../types/tabs';
 
@@ -21,14 +21,10 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
         { id: 'nodes', label: t('tab_nodes', 'Nodes'), icon: <Server   size={18} /> },
     ];
 
-    // Pages that exist and work
     const tools: Array<{ label: string; icon: React.ReactNode; href: string }> = [
-        { label: t('chat',    'Chat'),    icon: <MessageSquare  size={18} />, href: '/chat'    },
-        { label: t('bridge',  'Bridge'),  icon: <ArrowRightLeft size={18} />, href: '/bridge'  },
-        { label: t('agents',  'Agents'),  icon: <Bot            size={18} />, href: '/agents'  },
-        { label: t('agent',   'My Agent'),icon: <Cpu            size={18} />, href: '/agent'   },
-        { label: t('stats',   'Stats'),   icon: <BarChart3      size={18} />, href: '/stats'   },
-        { label: t('network', 'Network'), icon: <Globe          size={18} />, href: '/network' },
+        { label: t('chat',    'Chat'),    icon: <MessageSquare size={18} />, href: '/chat'    },
+        { label: t('stats',   'Stats'),   icon: <BarChart3     size={18} />, href: '/stats'   },
+        { label: t('network', 'Network'), icon: <Globe         size={18} />, href: '/network' },
     ];
 
     const info: Array<{ label: string; icon: React.ReactNode; href: string }> = [
