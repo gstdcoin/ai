@@ -7,7 +7,7 @@
  * Enterprise: Authorization: Bearer gstd_xxx (created via /api/v1/enterprise/keys)
  * Standard:   No auth — 30 req/min per IP
  */
-export const config = { maxDuration: 60 };
+export const config = { maxDuration: 115 };
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { rateLimit, getClientIp } from '../../../../lib/ratelimit';
@@ -54,32 +54,60 @@ const MODEL_ALIASES: Record<string, string> = {
 };
 
 const DEFAULT_MODEL   = 'llama3.2:3b';
-const ROUTE_TIMEOUT   = 55_000;
+const ROUTE_TIMEOUT   = 110_000;
+const NODE_MAX_AGE_MS = 600_000; // 10 minutes
 
-async function resolveNodeUrl(): Promise<string> {
-    // 1. Env override (fastest, set in Vercel dashboard)
+interface NodeRecord {
+    node_url?: string;
+    multiaddrs?: string[];
+    capabilities?: string[];
+    last_seen?: string;
+    tasks_completed?: number;
+    has_gpu?: boolean;
+}
+
+// Pick the best online node that supports `model`.
+// Falls back to any online node if no capability-specific match (allows unknown models).
+async function resolveNodeUrl(model: string): Promise<string> {
+    // 1. Env override (single-node dev/test mode)
     const envUrl = (process.env.GSTD_NODE_URL || '').replace(/\/$/, '');
     if (envUrl) return envUrl;
 
-    // 2. KV — written by every heartbeat (fast, no network round-trip to GitHub)
+    // 2. Scan KV for live nodes, prefer those with the requested model
+    const withModel: Array<{ url: string; tasks: number }> = [];
+    const anyNode:   Array<{ url: string; tasks: number }> = [];
+
     try {
-        const nodeUrlKeys = await kvKeys('node_url:');
-        if (nodeUrlKeys.length > 0) {
-            const url = await kvGet(nodeUrlKeys[0]);
-            if (url?.startsWith('http')) return (url as string).replace(/\/$/, '');
-        }
         const nodeKeys = await kvKeys('node:');
         if (nodeKeys.length > 0) {
             const values = await kvMGet(nodeKeys);
+            const now = Date.now();
             for (const raw of values) {
                 if (!raw) continue;
-                const node: any = JSON.parse(raw);
-                const url: string = node.node_url || node.multiaddrs?.[0] || '';
-                const lastSeenMs = Date.now() - new Date(node.last_seen || 0).getTime();
-                if (url.startsWith('http') && lastSeenMs < 600_000) return url.replace(/\/$/, '');
+                const node: NodeRecord = JSON.parse(raw as string);
+                const url = (node.node_url || node.multiaddrs?.[0] || '').replace(/\/$/, '');
+                if (!url.startsWith('http')) continue;
+                const age = now - new Date(node.last_seen || 0).getTime();
+                if (age > NODE_MAX_AGE_MS) continue;
+
+                const entry = { url, tasks: node.tasks_completed ?? 0 };
+                anyNode.push(entry);
+
+                const caps: string[] = node.capabilities || [];
+                // Match exact model, or any node if model is a free/basic model
+                if (caps.includes(model) || caps.length === 0) {
+                    withModel.push(entry);
+                }
             }
         }
     } catch { /* KV unavailable */ }
+
+    // Pick least-loaded from capability-matched nodes, then fall back to any
+    const candidates = withModel.length > 0 ? withModel : anyNode;
+    if (candidates.length > 0) {
+        candidates.sort((a, b) => a.tasks - b.tasks);
+        return candidates[0].url;
+    }
 
     // 3. GitHub fallback — updated by tunnel.sh on each tunnel start
     try {
@@ -178,8 +206,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
     }
 
-    // ── Resolve GSTD node ──────────────────────────────────────────────────
-    const nodeUrl = await resolveNodeUrl();
+    // ── Resolve GSTD node (model-aware: picks node that has this model) ───
+    const nodeUrl = await resolveNodeUrl(resolvedModel);
 
     if (!nodeUrl) {
         return res.status(503).json({
@@ -262,7 +290,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             object:  'chat.completion',
             created: Math.floor(Date.now() / 1000),
             model:   resolvedModel,
-            choices: [{ index: 0, message: { role: 'assistant', content: `🐝 GSTD Network: ${isTimeout ? 'Node timeout (55s)' : e.message}` }, finish_reason: 'stop' }],
+            choices: [{ index: 0, message: { role: 'assistant', content: `🐝 GSTD Network: ${isTimeout ? 'Node timeout — model may still be loading, retry in 30s' : e.message}` }, finish_reason: 'stop' }],
             usage:   { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
             _gstd:   { error: isTimeout ? 'timeout' : 'connection_error', refunded: billingCharge > 0 },
         });

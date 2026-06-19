@@ -10,7 +10,7 @@
  *   - commands: optional array of remote commands to execute
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvGet, kvSet, kvIncr, kvKeys } from '../../../../lib/kv';
+import { kvGet, kvSet, kvIncr, kvKeys, kvDel } from '../../../../lib/kv';
 import { rateLimit, getClientIp } from '../../../../lib/ratelimit';
 import type { NodeRecord } from './register';
 
@@ -99,12 +99,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Keep stats:nodes_online_cached fresh for /api/v1/ecosystem/features
         kvSet('stats:nodes_online_cached', String(peers_online), 120).catch(() => {});
 
+        // Read and return pull_queue so node can download new models
+        let pull_queue: string[] = [];
+        const queueKey = `node:${nodeId}:pull_queue`;
+        try {
+            const queueRaw = await kvGet(queueKey);
+            if (queueRaw) {
+                pull_queue = JSON.parse(queueRaw as string);
+                // Clear queue after delivery (node will pull and report back via capabilities)
+                if (pull_queue.length > 0) await kvDel(queueKey);
+            }
+        } catch { pull_queue = []; }
+
         return res.status(200).json({
             ok:           true,
             peers_online,
             active_nodes: peers_online,
             reward:       0,
             commands:     [],
+            pull_queue,
             timestamp:    Date.now(),
         });
     } catch (err: any) {
