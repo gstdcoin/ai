@@ -107,7 +107,6 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
-  const goldReserve = networkStats?.gold_reserve && networkStats.gold_reserve > 0 ? networkStats.gold_reserve.toFixed(6) : '—';
   const totalNodes = networkStats?.total_nodes?.toLocaleString() || '—';
   const totalTasks = networkStats?.total_tasks?.toLocaleString() || '—';
   const gstdPrice = networkStats?.gstd_price_usd && networkStats.gstd_price_usd > 0 ? '$' + networkStats.gstd_price_usd.toFixed(6) : '—';
@@ -162,13 +161,13 @@ export default function Home() {
 
             <h1 className="text-5xl sm:text-7xl font-black tracking-tight mb-6 leading-[1.08]">
               <span className="block text-white">{t('corporation_free', 'Sovereign AI.')}</span>
-              <span className="block bg-gradient-to-r from-violet-400 via-cyan-400 to-emerald-400 bg-clip-text text-transparent animate-gradient bg-[length:200%_200%]">{t('working_humanity', 'Gold-Backed Compute.')}</span>
+              <span className="block bg-gradient-to-r from-violet-400 via-cyan-400 to-emerald-400 bg-clip-text text-transparent animate-gradient bg-[length:200%_200%]">{t('working_humanity', 'Decentralized Compute.')}</span>
             </h1>
 
             <p className="text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed mb-10">
-              {t('hero_desc', 'A decentralized node network that processes AI requests and validates blockchains. Run your own node to earn GSTD — or access the network to use private, censorship-resistant AI. 70% of fees accumulate as physical gold backing every token.')}{' '}
+              {t('hero_desc', 'A DePIN network where nodes serve AI inference and earn GSTD tokens. Pay with GSTD to access any AI model — or run a node to earn GSTD for every request you process. 10% of all fees sustain the ecosystem treasury.')}{' '}
               <span className="text-emerald-400 font-bold">{t('connect_devices', 'No corporation. No servers.')}</span>{' '}
-              {t('connect_devices_earn', 'Just nodes and gold.')}
+              {t('connect_devices_earn', 'Just nodes and utility.')}
             </p>
 
             {/* CTA Buttons */}
@@ -231,9 +230,9 @@ export default function Home() {
               <div className="w-12 h-12 rounded-2xl bg-amber-500/15 flex items-center justify-center mb-6 glow-breathe" style={{ animationDelay: '4s' }}>
                 <Shield className="text-amber-400" size={24} />
               </div>
-              <h2 className="text-xl font-black tracking-tight mb-3 text-white">{t('goldbacked', 'Gold-Backed')}</h2>
+              <h2 className="text-xl font-black tracking-tight mb-3 text-white">{t('utility_token', 'Pure Utility')}</h2>
               <p className="text-gray-400 mb-6 leading-relaxed text-sm">
-                {t('gold_backed_desc', 'GSTD is secured by physical gold reserves. Decentralized. Uncensored.')} {t('manifesto_desc', 'Any device joins the swarm. No tokens? Earn by contributing. Have tokens? Unlock advanced AI. The network learns and grows with every request.')}
+                {t('utility_desc', 'GSTD is the payment token for AI compute inside the network — not an investment. Pay for AI inference, earn by running nodes. 10% of every transaction builds the ecosystem treasury.')}
               </p>
               <a href="https://t.me/goldstandardcoin" className="flex items-center gap-2 text-amber-400 font-black hover:gap-3 transition-all text-sm" style={{ textDecoration: 'none' }}>
                 {t('telegram', 'Telegram')} <ArrowRight size={14} />
@@ -269,10 +268,10 @@ export default function Home() {
               <div className="text-xs font-bold text-white">Local LLM</div>
               <div className="text-[10px] text-gray-500">Ollama · Private</div>
             </div>
-            <a href="/bridge" style={{ textDecoration: 'none' }} className="p-4 rounded-2xl glass-pro text-center hover:scale-[1.05] transition-transform">
-              <div style={{ fontSize: 22, marginBottom: 6 }}>🔗</div>
-              <div className="text-xs font-bold text-white">Bridge</div>
-              <div className="text-[10px] text-gray-500">Cross-chain</div>
+            <a href="/models" style={{ textDecoration: 'none' }} className="p-4 rounded-2xl glass-pro text-center hover:scale-[1.05] transition-transform">
+              <div style={{ fontSize: 22, marginBottom: 6 }}>🧠</div>
+              <div className="text-xs font-bold text-white">Models</div>
+              <div className="text-[10px] text-gray-500">Marketplace</div>
             </a>
             <a href="/leaderboard" style={{ textDecoration: 'none' }} className="p-4 rounded-2xl glass-pro text-center hover:scale-[1.05] transition-transform">
               <div style={{ fontSize: 22, marginBottom: 6 }}>🏆</div>
@@ -286,7 +285,7 @@ export default function Home() {
             <StaggerItem><StatCard value={totalUsers} label={t('total_users', 'Users')} color="text-emerald-400" emoji="👥" /></StaggerItem>
             <StaggerItem><StatCard value={totalNodes} label={t('total_nodes', 'Nodes')} color="text-cyan-400" emoji="📡" /></StaggerItem>
             <StaggerItem><StatCard value={totalTasks} label={t('tasks_completed', 'Tasks')} color="text-violet-400" emoji="⚡" /></StaggerItem>
-            <StaggerItem><StatCard value={goldReserve} sub="XAUt" label={t('xaut_reserve', 'Gold Reserve')} color="text-amber-400" emoji="🥇" /></StaggerItem>
+            <StaggerItem><StatCard value={gstdPrice} label={t('gstd_price', 'GSTD Price')} color="text-amber-400" emoji="💎" /></StaggerItem>
           </StaggerContainer>
 
           {/* ═══════ TOKENOMICS ═══════ */}
@@ -294,7 +293,7 @@ export default function Home() {
             <StaggerItem><StatCard value={circulatingSupply} sub="GSTD" label={t('circulating_supply', 'Circulating')} color="text-cyan-400" emoji="🔄" /></StaggerItem>
             <StaggerItem><StatCard value={totalMinted} sub="GSTD" label={t('total_minted', 'Total Minted')} color="text-violet-400" emoji="🪙" /></StaggerItem>
             <StaggerItem><StatCard value={totalBurned} sub="GSTD" label={t('total_burned', 'Burned')} color="text-red-400" emoji="🔥" /></StaggerItem>
-            <StaggerItem><StatCard value={gstdPrice} label={t('gstd_price', 'GSTD Price')} color="text-amber-400" emoji="💎" /></StaggerItem>
+            <StaggerItem><StatCard value={networkStats?.active_workers ? String(networkStats.active_workers) : '—'} label={t('nodes_online', 'Live Nodes')} color="text-emerald-400" emoji="🟢" /></StaggerItem>
           </StaggerContainer>
 
           {/* ═══════ LIVE NETWORK PULSE ═══════ */}
@@ -342,19 +341,19 @@ export default function Home() {
               <p className="text-sm text-gray-400 max-w-xl mx-auto">{t('super_premium_desc', 'Unlock enterprise capabilities. All token distributions go through the platform with 5% commission. Signed transactions only.')}</p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Validator */}
+              {/* Node Runner */}
               <div className="group p-6 rounded-3xl glass-pro gradient-border shine-on-hover transition-all duration-500 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-violet-500/5 rounded-full blur-[60px]" />
                 <div className="w-12 h-12 rounded-2xl bg-violet-500/15 flex items-center justify-center mb-4">
-                  <Shield className="text-violet-400" size={24} />
+                  <Server className="text-violet-400" size={24} />
                 </div>
-                <h4 className="text-lg font-black text-white mb-1">🔷 TON Validator</h4>
-                <div className="text-xs text-violet-400 font-bold mb-3">1,000,000 GSTD</div>
-                <p className="text-xs text-gray-400 leading-relaxed mb-4">{t('validator_desc', 'Run a TON validator. Other nodes see your validator and can stake. Earn commission on staking rewards. 12-20% APY.')}</p>
+                <h4 className="text-lg font-black text-white mb-1">⚡ Node Operator</h4>
+                <div className="text-xs text-violet-400 font-bold mb-3">Any machine + Ollama</div>
+                <p className="text-xs text-gray-400 leading-relaxed mb-4">{t('node_operator_desc', 'Run a GSTD node on any device with Ollama. Earn 90% of every inference fee processed. The more requests you serve, the more GSTD you earn.')}</p>
                 <div className="flex flex-wrap gap-1.5">
-                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20">Staking</span>
-                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20">12-20% APY</span>
-                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20">Signed TX</span>
+                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20">90% Earnings</span>
+                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20">Any Device</span>
+                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20">Instant Start</span>
                 </div>
               </div>
 

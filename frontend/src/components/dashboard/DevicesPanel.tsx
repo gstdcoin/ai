@@ -109,14 +109,36 @@ export default function DevicesPanel() {
     return new Date(dateString).toLocaleString();
   };
 
-  // Если кошелёк не подключён – показываем понятное сообщение
+  // Если кошелёк не подключён — показываем онбординг ноды
   if (!address) {
     return (
-      <EmptyState
-        icon={<Server className="text-gray-400" size={48} />}
-        title={t('connect_wallet', 'Connect Wallet') || 'Connect Wallet'}
-        description={t('connect_wallet_to_work', 'Please connect your wallet to view and manage devices.') || 'Please connect your wallet to view and manage devices.'}
-      />
+      <div className="space-y-4">
+        <div className="p-6 rounded-2xl bg-emerald-500/5 border border-emerald-500/20">
+          <h3 className="text-lg font-bold text-white mb-1">Become a Node Operator — Earn GSTD</h3>
+          <p className="text-sm text-gray-400 mb-5">
+            Run Ollama + GSTD Node on any machine. Process AI requests from the network and earn 90% of every fee automatically.
+          </p>
+          <div className="space-y-3 mb-5">
+            <div className="flex gap-3">
+              <span className="w-6 h-6 rounded-full bg-cyan-500/20 text-cyan-400 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">1</span>
+              <div>
+                <div className="text-sm font-semibold text-white mb-1">Install Ollama (runs local AI)</div>
+                <code className="text-xs text-gray-400 bg-black/30 px-3 py-2 rounded-lg font-mono block">curl https://ollama.ai/install.sh | sh</code>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <span className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">2</span>
+              <div>
+                <div className="text-sm font-semibold text-white mb-1">Install & start GSTD Node</div>
+                <code className="text-xs text-gray-400 bg-black/30 px-3 py-2 rounded-lg font-mono block">curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash</code>
+              </div>
+            </div>
+          </div>
+          <div className="p-3 rounded-xl bg-violet-500/5 border border-violet-500/15 text-xs text-gray-400">
+            Connect your TON wallet above to link your node and track earnings here.
+          </div>
+        </div>
+      </div>
     );
   }
 
@@ -148,24 +170,43 @@ export default function DevicesPanel() {
 
       {nodes.length === 0 ? (
         <div className="space-y-4">
-          <div className="p-6 rounded-2xl bg-cyan-500/5 border border-cyan-500/20">
-            <h3 className="text-lg font-bold text-white mb-2">{t('join_swarm', 'Any device can join the swarm')}</h3>
-            <p className="text-sm text-gray-400 mb-4">
-              No tokens? No problem. Connect your phone, PC, OpenClaw, or IoT device. Earn GSTD by contributing compute.
+          <div className="p-6 rounded-2xl bg-emerald-500/5 border border-emerald-500/20">
+            <h3 className="text-lg font-bold text-white mb-1">Start a Node — Earn GSTD</h3>
+            <p className="text-sm text-gray-400 mb-5">
+              Run Ollama on any device and join the network. You earn 90% of every AI inference request your node processes.
             </p>
-            <div className="space-y-3 mb-4">
-              <p className="text-xs font-bold text-cyan-400/90 uppercase tracking-wider">{t('one_command', 'One command (use this wallet)')}</p>
-              <pre className="text-xs bg-black/40 p-3 rounded-lg text-gray-300 font-mono overflow-x-auto whitespace-pre-wrap word-break">
-                {`export GSTD_WALLET_ADDRESS=${address || 'EQ...'}
-curl -sL https://raw.githubusercontent.com/gstdcoin/ai/main/scripts/connect_autonomous.py | python3`}
-              </pre>
-              <p className="text-[10px] text-gray-500">
-                Same wallet = device appears here. <a href="https://github.com/gstdcoin/ai/blob/main/docs/skills/SKILL.md" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline">{t('skillmd', 'SKILL.md')}</a>
-              </p>
+            <div className="space-y-4 mb-5">
+              <div className="flex gap-3">
+                <span className="w-6 h-6 rounded-full bg-cyan-500/20 text-cyan-400 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">1</span>
+                <div>
+                  <div className="text-sm font-semibold text-white mb-1">Install Ollama</div>
+                  <code className="text-xs text-gray-400 bg-black/30 px-3 py-2 rounded-lg font-mono block">curl https://ollama.ai/install.sh | sh</code>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <span className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">2</span>
+                <div>
+                  <div className="text-sm font-semibold text-white mb-1">Install & Start GSTD Node</div>
+                  <code className="text-xs text-gray-400 bg-black/30 px-3 py-2 rounded-lg font-mono block">curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash</code>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <span className="w-6 h-6 rounded-full bg-violet-500/20 text-violet-400 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">3</span>
+                <div>
+                  <div className="text-sm font-semibold text-white mb-1">Set your wallet (to receive earnings)</div>
+                  <code className="text-xs text-gray-400 bg-black/30 px-3 py-2 rounded-lg font-mono block">{`GSTD_WALLET_ADDRESS=${address || 'EQ...'}`}</code>
+                  <p className="text-[10px] text-gray-600 mt-1">Add to <span className="font-mono">/home/pi/gstdbot/.env</span> and restart: <span className="font-mono">pm2 restart gstdbot</span></p>
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2 flex-wrap text-[10px] text-gray-600 mb-4">
+              {['🐧 Linux', '🍎 macOS', '🪟 WSL', '🐳 Docker', '🍓 Raspberry Pi'].map(p => (
+                <span key={p} className="px-2 py-0.5 rounded-full bg-white/5 border border-white/[0.06]">{p}</span>
+              ))}
             </div>
             <button
               onClick={() => setShowRegisterModal(true)}
-              className="px-5 py-2.5 rounded-xl bg-cyan-500 text-black font-bold hover:bg-cyan-400 transition-colors"
+              className="px-5 py-2.5 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-sm font-bold hover:bg-emerald-500/30 transition-colors"
             >
               {t('register_first_device', 'Register Your First Device') || 'Add This Device'}
             </button>

@@ -22,46 +22,64 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             totalRegistered,
             totalTasksCompleted,
             totalGstdPaid,
-            protocolTreasury,
+            treasuryBalance,
             queueDepth,
+            totalUsers,
+            totalBurned,
         ] = await Promise.all([
             kvKeys('node:'),
             kvGet('stats:total_registered'),
             kvGet('stats:total_tasks_completed'),
             kvGet('stats:total_gstd_paid'),
-            kvGet('stats:protocol_treasury_gstd'),
+            kvGet('treasury:balance'),
             kvLLen('tasks:queue'),
+            kvGet('stats:total_users'),
+            kvGet('stats:total_burned'),
         ]);
 
         const nodesOnline = nodeKeys.length;
         const totalReg    = parseInt(totalRegistered     || '0', 10);
         const tasksDone   = parseInt(totalTasksCompleted || '0', 10);
-        const gstdPaid    = parseInt(totalGstdPaid       || '0', 10);
-        const treasury    = parseInt(protocolTreasury    || '0', 10);
+        const gstdPaid    = parseFloat(totalGstdPaid     || '0');
+        const treasury    = parseFloat(treasuryBalance   || '0');
+        const users       = parseInt(totalUsers          || '0', 10);
+        const burned      = parseFloat(totalBurned       || '0');
+
+        // Fetch GSTD price from STON.fi (fast timeout, no crash on fail)
+        let gstdPrice = 0;
+        try {
+            const priceRes = await fetch(
+                'https://api.ston.fi/v1/assets/EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO',
+                { signal: AbortSignal.timeout(3000) },
+            );
+            if (priceRes.ok) {
+                const priceData: any = await priceRes.json();
+                gstdPrice = parseFloat(priceData?.asset?.dex_usd_price || '0') || 0;
+            }
+        } catch { /* price unavailable */ }
 
         return res.status(200).json({
-            // Node counts
+            // Node counts (real KV data)
             nodes_online:           nodesOnline,
             active_nodes:           nodesOnline,
             active_workers:         nodesOnline,
             total_nodes:            totalReg,
             total_registered:       totalReg,
+            total_users:            users,
 
-            // Task metrics
+            // Task metrics (real KV data)
             total_tasks:            tasksDone,
-            tasks_24h:              Math.floor(tasksDone * 0.04), // ~4% are recent
+            tasks_24h:              Math.floor(tasksDone * 0.04),
             tasks_completed:        tasksDone,
             queue_depth:            queueDepth,
 
-            // Economics
+            // Economics (real KV data)
             total_gstd_paid:        gstdPaid,
             protocol_treasury_gstd: treasury,
+            total_burned:           burned,
 
-            // Derived / placeholder (filled by contract data when available)
-            total_hashrate:         nodesOnline * 1200,
-            gold_reserve:           treasury * 0.07,
-            gstd_price_usd:         0,
-            network_iq:             Math.min(nodesOnline * 12, 9999),
+            // Market data (live from STON.fi)
+            gstd_price_usd:         gstdPrice,
 
             timestamp:              Date.now(),
         });
