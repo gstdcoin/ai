@@ -107,7 +107,6 @@ function App({ Component, pageProps }: AppProps) {
           }}
           language={tonConnectLanguage}
         >
-          <WalletProviders>
             {/* Ambient glow — matches gstdbot.gstdtoken.com aesthetic */}
             <div className="page-glow" aria-hidden="true" />
             {isMounted && <WalletListener />}
@@ -115,11 +114,12 @@ function App({ Component, pageProps }: AppProps) {
             {router.pathname !== '/tma' && <EcosystemNav />}
             <main style={{ paddingTop: router.pathname !== '/tma' ? 56 : 0, minHeight: '100vh', position: 'relative', zIndex: 1 }} className={router.pathname !== '/tma' ? 'pb-20 lg:pb-0' : ''}>
               {router.pathname !== '/tma' && <LandingEmbed />}
-              <Component {...pageProps} />
+              <WalletProviders>
+                <Component {...pageProps} />
+              </WalletProviders>
             </main>
             {router.pathname !== '/tma' && router.pathname !== '/dashboard' && router.pathname !== '/chat' && !router.pathname.startsWith('/monitor') && <EcosystemFooter />}
             <Toaster position="top-right" richColors closeButton />
-          </WalletProviders>
         </TonConnectUIProvider>
       </TelegramThemeProvider>
     </ErrorBoundary>
