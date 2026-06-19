@@ -15,6 +15,7 @@ import { kvGet, kvKeys, kvMGet, kvSet } from '../../../../lib/kv';
 import { randomBytes } from 'crypto';
 import { validateEnterpriseKey } from '../enterprise/keys';
 import { recordEnterpriseUsage } from '../enterprise/usage';
+import { chargeFee, refundFee } from '../../../../lib/billing';
 
 // Map OpenAI/legacy model IDs → Ollama IDs (all inference via GSTD nodes)
 const MODEL_ALIASES: Record<string, string> = {
@@ -148,6 +149,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const temp    = Math.min(Math.max(parseFloat(temperature) || 0.7, 0), 2);
     const taskId  = randomBytes(8).toString('hex');
 
+    // ── GSTD billing (skip for enterprise keys) ────────────────────────────
+    const walletAddress = !enterpriseKey
+        ? ((req.headers['x-wallet-address'] as string) || null)?.trim() || null
+        : null;
+
+    let billingCharge = 0;
+    if (!enterpriseKey) {
+        const charge = await chargeFee(walletAddress, resolvedModel, null);
+        if (!charge.ok) {
+            if (charge.error === 'no_wallet') {
+                return res.status(402).json({
+                    error: 'Payment required. Add X-Wallet-Address header with your TON wallet, or connect wallet at app.gstdtoken.com to get 50 free requests/day.',
+                    model: resolvedModel,
+                    required_gstd: charge.required ?? 0,
+                    deposit_url: '/api/v1/credits/deposit',
+                });
+            }
+            return res.status(402).json({
+                error: 'Insufficient GSTD balance.',
+                balance: charge.balance,
+                required_gstd: charge.required,
+                deposit_url: '/api/v1/credits/deposit',
+            });
+        }
+        if (!charge.free) {
+            billingCharge = charge.charged;
+        }
+    }
+
     // ── Resolve GSTD node ──────────────────────────────────────────────────
     const nodeUrl = await resolveNodeUrl();
 
@@ -178,6 +208,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         if (!resp.ok) {
             const errText = await resp.text().catch(() => '');
+            if (walletAddress && billingCharge > 0) await refundFee(walletAddress, billingCharge);
             return res.status(502).json({
                 id:      `chatcmpl-${taskId}`,
                 object:  'chat.completion',
@@ -185,7 +216,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 model:   resolvedModel,
                 choices: [{ index: 0, message: { role: 'assistant', content: `🐝 Node error: ${resp.status}` }, finish_reason: 'stop' }],
                 usage:   { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
-                _gstd:   { error: 'node_error', status: resp.status, detail: errText.slice(0, 200) },
+                _gstd:   { error: 'node_error', status: resp.status, detail: errText.slice(0, 200), refunded: billingCharge > 0 },
             });
         }
 
@@ -219,11 +250,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 routed_via: nodeUrl,
                 model:      data.model || resolvedModel,
                 enterprise: enterpriseKey ? { org: enterpriseKey.org, tier: enterpriseKey.tier } : null,
+                billing:    billingCharge > 0 ? { charged_gstd: billingCharge } : { free: true },
             },
         });
 
     } catch (e: any) {
         const isTimeout = e?.name === 'TimeoutError' || e?.name === 'AbortError';
+        if (walletAddress && billingCharge > 0) await refundFee(walletAddress, billingCharge);
         return res.status(503).json({
             id:      `chatcmpl-${taskId}`,
             object:  'chat.completion',
@@ -231,7 +264,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             model:   resolvedModel,
             choices: [{ index: 0, message: { role: 'assistant', content: `🐝 GSTD Network: ${isTimeout ? 'Node timeout (55s)' : e.message}` }, finish_reason: 'stop' }],
             usage:   { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
-            _gstd:   { error: isTimeout ? 'timeout' : 'connection_error' },
+            _gstd:   { error: isTimeout ? 'timeout' : 'connection_error', refunded: billingCharge > 0 },
         });
     }
 }

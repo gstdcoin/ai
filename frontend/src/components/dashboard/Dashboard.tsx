@@ -1,4 +1,4 @@
-import { useEffect, useState, memo, useCallback, lazy, Suspense } from 'react';
+import { useEffect, useState, memo, useCallback } from 'react';
 import { useTranslation } from 'next-i18next';
 import Link from 'next/link';
 import { ErrorBoundary } from '../common/ErrorBoundary';
@@ -11,7 +11,7 @@ import DevicesPanel from './DevicesPanel';
 import { Tab } from '../../types/tabs';
 import { useTonConnectUI } from '@tonconnect/ui-react';
 import { toast } from '../../lib/toast';
-import { Activity, Server, MessageSquare, Globe, Copy, Users, TrendingUp, ArrowRight, ArrowRightLeft, Briefcase } from 'lucide-react';
+import { Activity, Server, MessageSquare, Globe, Copy, Users, TrendingUp, ArrowRight, Briefcase } from 'lucide-react';
 import { apiGet, apiPost } from '../../lib/apiClient';
 import Sidebar from '../layout/Sidebar';
 import { ComponentErrorBoundary } from '../common/ComponentErrorBoundary';
@@ -19,9 +19,6 @@ import { workerService } from '../../services/WorkerService';
 import { ComputeNodePanel } from './ComputeNodePanel';
 import { InstallPwaPrompt } from '../common/InstallPwaPrompt';
 import { isTelegramWebApp, triggerHapticImpact } from '../../lib/telegram';
-
-// Lazy-load LendingPanel to keep initial bundle small
-const LendingPanel = lazy(() => import('./LendingPanel'));
 
 interface NetworkStats {
   active_workers: number;
@@ -246,27 +243,27 @@ function Dashboard({ initialTab, sourceTelegram, modeMining }: DashboardProps = 
                       <ArrowRight size={14} className="text-gray-600 group-hover:text-violet-400 transition-colors" />
                     </Link>
 
-                    <Link
-                      href="/bridge"
+                    <button
+                      onClick={() => handleTabChange('nodes')}
                       style={{
-                        background: 'rgba(249,115,22,0.04)',
-                        border: '1px solid rgba(249,115,22,0.10)',
+                        background: 'rgba(6,182,212,0.04)',
+                        border: '1px solid rgba(6,182,212,0.10)',
                         borderRadius: 14,
                         padding: '16px 20px',
                       }}
-                      className="flex items-center justify-between group hover:border-orange-500/20 transition-all"
+                      className="flex items-center justify-between group hover:border-cyan-500/20 transition-all"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-orange-500/10">
-                          <ArrowRightLeft size={16} className="text-orange-400" />
+                        <div className="p-2 rounded-lg bg-cyan-500/10">
+                          <Server size={16} className="text-cyan-400" />
                         </div>
                         <div>
-                          <div className="text-sm font-semibold text-white">{t('bridge', 'Bridge')}</div>
-                          <div className="text-[11px] text-gray-600">{t('bridge_desc', 'Cross-chain')}</div>
+                          <div className="text-sm font-semibold text-white">{t('my_node', 'My Node')}</div>
+                          <div className="text-[11px] text-gray-600">{t('my_node_desc', 'Earn GSTD')}</div>
                         </div>
                       </div>
-                      <ArrowRight size={14} className="text-gray-600 group-hover:text-orange-400 transition-colors" />
-                    </Link>
+                      <ArrowRight size={14} className="text-gray-600 group-hover:text-cyan-400 transition-colors" />
+                    </button>
 
                     <Link
                       href="/monitor"
@@ -339,17 +336,6 @@ function Dashboard({ initialTab, sourceTelegram, modeMining }: DashboardProps = 
                 <div className="animate-in fade-in duration-300">
                   <ComponentErrorBoundary name="DevicesPanel">
                     <DevicesPanel />
-                  </ComponentErrorBoundary>
-                </div>
-              )}
-
-              {/* ═══ LENDING TAB ═══ */}
-              {activeTab === 'lending' && (
-                <div className="animate-in fade-in duration-300">
-                  <ComponentErrorBoundary name="LendingPanel">
-                    <Suspense fallback={<div className="flex justify-center py-8"><div className="w-6 h-6 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" /></div>}>
-                      <LendingPanel />
-                    </Suspense>
                   </ComponentErrorBoundary>
                 </div>
               )}
