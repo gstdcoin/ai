@@ -3,7 +3,7 @@
 > **Keep this file up to date.** Every time you ship a significant change, update the relevant section.  
 > This prevents "we already did that" and "why did we do it that way" conversations.
 
-Last updated: 2026-05-26
+Last updated: 2026-06-19
 
 ---
 
@@ -30,19 +30,30 @@ Last updated: 2026-05-26
 - [x] OpenAI-compatible inference endpoint (`/api/v1/chat/completions`)
 - [x] Agent leaderboard + marketplace + network stats
 - [x] Global node operator leaderboard
-- [x] Cross-chain bridge UI (vault + memo instructions)
 - [x] Health check endpoint (`/api/v1/health`)
 - [x] Edge rate limiting (proxy.ts — per-route limits)
 - [x] Security headers (CSP, HSTS, X-Frame-Options)
 - [x] Dashboard: Home, Tasks, Nodes tabs
 - [x] Wallet connect: TON Connect, MetaMask, Phantom
 - [x] i18n (multiple languages)
-- [x] Import Skill page (GSTD A2A protocol)
+- [x] **Billing system** (`lib/billing.ts`) — chargeFee/refundFee, free tier 50 req/day
+- [x] **Credits API** (`/api/v1/credits/balance`, `/api/v1/credits/deposit`, `/api/v1/credits/ton-webhook`)
+- [x] **Model Marketplace** (`/models` page + `/api/v1/models/available`)
+- [x] **Odysseus adapter** (`gstdbot/src/odysseus/`) — AGPL-compliant sidecar integration
+- [x] **gstd-node lite** (`gstdbot/src/node-lite/`) — `npx gstd-node --wallet EQ...`
+- [x] **TON Settlement script** (`scripts/settle.ts`) — weekly Jetton payouts
+- [x] **Deposit monitor** (`scripts/deposit-monitor.ts`) — watches treasury wallet
+- [x] **Treasury buyback** (`/api/v1/treasury/buyback`) — STON.fi price feed
+- [x] **Network stats**: real KV data + live GSTD price from STON.fi (no synthetic data)
+- [x] **Node onboarding**: step-by-step Ollama + gstdbot install visible to all visitors
 
 ### Pending
+- [ ] Set `TREASURY_WALLET_ADDRESS` in gstdai/scripts/.env (create treasury TON wallet first)
+- [ ] Start deposit-monitor: `pm2 start scripts/deposit-monitor.ts --interpreter=tsx --name gstd-monitor`
+- [ ] Add `NEXT_PUBLIC_TREASURY_WALLET` to Vercel env vars
 - [ ] Set `GSTD_JETTON_ADDRESS` after TON contract deploy
 - [ ] Set `NEXT_PUBLIC_TON_VAULT` after vault contract deploy
-- [ ] On-chain settlement (blocked by contracts)
+- [ ] On-chain settlement (run `scripts/settle.ts` weekly from Pi)
 
 ### Known issues / Do not re-do
 - `api.gstdtoken.com` does NOT exist — all API is at `app.gstdtoken.com/api/v1`
@@ -177,3 +188,6 @@ Once (4) has 100+ nodes, no single data center failure can affect the network.
 | Bridge uses MPC Shamir t-of-n, not multisig | No single point of failure, threshold signing more flexible | 2026-05 |
 | A2A SDK polls, doesn't use webhooks | Nodes may be behind NAT/firewall, polling is universally compatible | 2026-05 |
 | Dead pages `/monitor` and `/predictions` removed | No API backend existed for them; they called non-existent endpoints | 2026-05 |
+| GSTD is utility-only, no APY/staking language | Token is for AI compute payment, not investment; legal and ethical clarity | 2026-06 |
+| Odysseus via HTTP adapter, not code import | AGPL-3.0 compliance: separate process = no license propagation | 2026-06 |
+| Deposit-monitor runs on Pi, not Vercel | Needs long-running polling process; Vercel functions are stateless/short-lived | 2026-06 |
