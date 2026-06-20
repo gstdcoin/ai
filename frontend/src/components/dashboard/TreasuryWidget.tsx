@@ -65,7 +65,7 @@ export default function TreasuryWidget() {
             {t('platform_treasury', 'Platform Treasury') || 'Platform Treasury'}
           </h3>
           <p className="text-xs text-gray-400 mt-1">
-            {t('golden_reserve', 'Gold Reserve (XAUt)') || 'Golden Reserve (XAUt)'}
+            {t('treasury_fee_desc', '10% of all inference fees') || '10% of all inference fees'}
           </p>
         </div>
         <button

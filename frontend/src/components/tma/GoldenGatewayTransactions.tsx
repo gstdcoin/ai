@@ -79,7 +79,7 @@ export default function GoldenGatewayTransactions({ wallet }: GoldenGatewayTrans
   return (
     <div className="rounded-xl bg-white/5 border border-white/10 p-4">
       <div className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-3">
-        {t('gold_reserve_title', 'Gold Reserve Fund')} — Golden Gateway
+        {t('treasury_title', 'Ecosystem Treasury')} — Task History
       </div>
       {txs.length === 0 ? (
         <p className="text-sm text-gray-500 py-4 text-center">{t('no_tasks', 'No Tasks')}</p>

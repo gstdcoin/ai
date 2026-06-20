@@ -35,3 +35,4 @@ gstd-v*
 
 # Build output
 nohup.out
+.vercel

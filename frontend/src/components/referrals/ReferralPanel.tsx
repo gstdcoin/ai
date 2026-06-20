@@ -79,7 +79,7 @@ export default function ReferralPanel() {
                 <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div>
                         <h2 className="text-3xl font-black text-white mb-2 tracking-tight">{t('expand_the_grid', 'Expand the Grid')}</h2>
-                        <p className="text-gray-400 text-sm">Earn passive income from every task executed by your network.</p>
+                        <p className="text-gray-400 text-sm">Earn GSTD from every AI task executed by your referred nodes.</p>
                     </div>
 
                     <div className="flex flex-col gap-3">

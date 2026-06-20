@@ -187,3 +187,4 @@ gstdbot/
 gstd-universal
 backend/main_backend
 agents/workflows/
+.vercel

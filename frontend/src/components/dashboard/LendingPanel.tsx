@@ -170,7 +170,7 @@ function LendingPanel() {
       <div style={{ background: 'rgba(8,8,26,0.8)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 16, padding: 32, textAlign: 'center' }}>
         <Landmark size={32} className="text-amber-400 mx-auto mb-3" />
         <div className="text-white font-semibold mb-1">Connect Wallet</div>
-        <div className="text-gray-500 text-sm">Connect your wallet to access gold-backed lending</div>
+        <div className="text-gray-500 text-sm">Connect your wallet to view your earnings and task history</div>
       </div>
     );
   }
