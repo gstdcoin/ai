@@ -3,7 +3,7 @@
 // ============================================================================
 // Receives task payments, splits 85/10/5:
 //   85% → Worker Node (TON)
-//   10% → Treasury (→ Gold Reserve)
+//   10% → Ecosystem Treasury (→ buybacks)
 //    5% → Protocol Buyback & Burn
 // Also triggers GSTD bonus minting for workers.
 // ============================================================================
