@@ -32,8 +32,7 @@ GSTD (Guaranteed Service Time Depth) is the utility token powering the GSTD Dist
 ### Supply Mechanics
 - **Total Supply**: Fixed at launch
 - **Burn Mechanism**: Portion of fees burned to reduce supply
-- **Staking Rewards**: Long-term holders earn platform fees
-- **Liquid Staking (stGSTD)**: When users lock GSTD, they receive `stGSTD` (Liquid Staked GSTD) 1:1, allowing them to participate in DeFi (liquidity pools) while earning platform yield natively.
+- **Node Rewards**: Node operators earn 90% of inference fees for compute contributed
 
 ### Fee Structure
 - **Network Fee**: 2% of GSTD transaction value

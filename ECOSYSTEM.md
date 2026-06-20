@@ -170,7 +170,7 @@ Bridge validators watch chain (TON/SOL/XRPL via RPC)
 |------|--------|
 | Task reward (node operator) | 0.01–100 GSTD / task |
 | Node operator share | 85% of task fee |
-| Treasury / Gold Reserve (XAUt) | 7% |
+| Ecosystem Treasury | 10% |
 | Value Fund (free-tier subsidy) | 5% |
 | Burn (deflationary) | 3% |
 | Bridge fee | 0.1% (min 1 GSTD), split among validators |

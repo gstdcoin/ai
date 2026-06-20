@@ -5,7 +5,7 @@ Officially supported [Model Context Protocol](https://modelcontextprotocol.io) s
 ## Features
 
 - **Multi-Chain RPC** — execute JSON-RPC commands across TON, ETH, SOL, BTC, BSC, ARB via the GSTD router
-- **Network Stats** — live floor price, backing USD, active nodes
+- **Network Stats** — live GSTD price, active nodes, requests served
 - **Node Discovery** — query top-performing nodes dynamically
 
 ## Installation

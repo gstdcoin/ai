@@ -57,7 +57,7 @@ server.tool(
 // ─── Tool 2: Check Sovereing Fund Status ────────────────────────────────────
 server.tool(
     "get_fund_status",
-    "Get mathematical backing and real-time floor price metrics for GSTD.",
+    "Get live network stats for GSTD: active nodes, GSTD price, requests served, treasury balance.",
     {},
     async () => {
         try {

@@ -22,8 +22,8 @@ GSTD is used for:
 *   **Escrow**: Funds are locked in smart contracts until "Proof of Result" is verified.
 *   **Slashing**: Malicious or failing nodes lose staked/pending rewards.
 
-### XAUt Backing
-GSTD is backed by **Tether Gold (XAUt)** through a liquidity-depth model. This ensures platform stability even during high market volatility.
+### Ecosystem Treasury
+10% of all inference fees accumulate in the ecosystem treasury. Used for GSTD buybacks on STON.fi. No gold reserves. No staking yields. Earnings come from real compute usage.
 
 ## 5. Security & Privacy
 *   **AES-256-GCM Encryption**: All data transmitted between requesters and workers is encrypted.
