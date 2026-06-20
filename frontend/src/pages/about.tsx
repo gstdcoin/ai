@@ -154,8 +154,8 @@ export default function About() {
 
             <div className="flex items-center gap-6">
               <nav className="hidden md:flex items-center gap-6 mr-2">
-                <a href="#invest" className="text-sm font-medium text-gray-400 hover:text-white transition-colors">
-                  {t('nav_invest', 'Invest') || 'Invest'}
+                <a href="#utility" className="text-sm font-medium text-gray-400 hover:text-white transition-colors">
+                  {t('nav_token', 'Token') || 'Token'}
                 </a>
                 <a href="#technology" className="text-sm font-medium text-gray-400 hover:text-white transition-colors">
                   {t('nav_tech', 'Technology') || 'Technology'}
@@ -215,7 +215,7 @@ export default function About() {
               <div className="max-w-5xl mx-auto">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {[
-                    { value: networkStats?.gold_reserve ? `${networkStats.gold_reserve.toFixed(2)} XAUt` : '—', label: t('stat_gold', 'Gold Reserve') || 'Golden Reserve', icon: Shield, color: 'amber', delay: '0s' },
+                    { value: networkStats?.active_workers ? networkStats.active_workers.toLocaleString() : '—', label: t('stat_nodes', 'Active Nodes') || 'Active Nodes', icon: Shield, color: 'emerald', delay: '0s' },
                     { value: '4.2 PB', label: t('collective_memory', 'Collective Memory'), icon: Brain, color: 'violet', delay: '0.1s' },
                     { value: networkStats?.active_workers ? networkStats.active_workers.toLocaleString() : '—', label: t('active_synapses', 'Active Synapses'), icon: Activity, color: 'emerald', delay: '0.2s' },
                     { value: networkStats?.total_hashrate ? `${networkStats.total_hashrate.toFixed(1)} PFLOPS` : '—', label: t('grid_power', 'Grid Power'), icon: Zap, color: 'cyan', delay: '0.3s' },
@@ -326,8 +326,8 @@ export default function About() {
                 </h2>
                 <p className="text-gray-400 text-lg font-medium leading-relaxed mb-10">
                   While you work, you share. While you create, you consume. The Platform regulates this flow,
-                  ensuring the collective intelligence grows with every transaction. 2% of all operations fund the **Golden Reserve**,
-                  backing the GSTD economy with physical gold value.
+                  ensuring the collective intelligence grows with every transaction. Every AI request is routed to
+                  the best available node — operators earn 90% of fees, 10% funds the ecosystem treasury.
                 </p>
                 <div className="flex flex-wrap gap-4">
                   <div className="flex items-center gap-3 px-6 py-4 rounded-2xl bg-white/[0.03] border border-white/10 group hover:border-violet-500/30 transition-all cursor-pointer" onClick={() => router.push('/hive')}>
@@ -350,7 +350,7 @@ export default function About() {
         </section>
 
         {/* GSTD Utility Section */}
-        <section id="invest" className="py-32 px-6 lg:px-12 border-t border-white/5">
+        <section id="utility" className="py-32 px-6 lg:px-12 border-t border-white/5">
           <div className="max-w-5xl mx-auto">
             <div className="relative p-12 lg:p-20 rounded-[48px] bg-gradient-to-br from-violet-600/[0.08] via-fuchsia-600/[0.08] to-cyan-600/[0.08] border border-white/10 overflow-hidden group">
               <div className="absolute top-0 right-0 w-96 h-96 bg-violet-600/5 rounded-full blur-[100px] -mr-48 -mt-48" />
@@ -366,17 +366,17 @@ export default function About() {
                   <div className="text-[10px] font-black text-violet-400 uppercase tracking-[0.5em] mb-6">{t('asset_spec', 'Asset Specification') || 'Asset Specification'}</div>
                   <h3 className="text-4xl lg:text-5xl font-black text-white mb-6 tracking-tighter">{t('utility_layer', 'GSTD Utility Layer') || 'GSTD Utility Layer'}</h3>
                   <p className="text-gray-400 mb-10 text-xl leading-relaxed font-medium">
-                    {t('utility_desc', 'GSTD (Guaranteed Service Time Depth) is the atomic fuel of the sovereign AI economy. Fully compliant with MiCA (EU) standards and backed by physical gold via the XAUt-Reserve-Pool.') || 'GSTD (Guaranteed Service Time Depth) is the atomic fuel of the sovereign AI economy. Fully compliant with MiCA (EU) standards and backed by physical gold via the XAUt-Reserve-Pool.'}
+                    {t('utility_desc', 'GSTD is the payment token for AI inference on the network. Pay for compute, earn by running nodes. 10% of every transaction funds the ecosystem treasury for buybacks and development.') || 'GSTD is the payment token for AI inference on the network. Pay for compute, earn by running nodes. 10% of every transaction funds the ecosystem treasury for buybacks and development.'}
                   </p>
                   <div className="flex flex-wrap justify-center lg:justify-start gap-4 mb-10">
                     <div className="px-5 py-2 rounded-xl bg-emerald-500/10 text-emerald-400 text-[10px] font-black border border-emerald-500/30 uppercase tracking-widest flex items-center gap-2">
-                      <Shield size={12} /> {t('mica_verified', 'MiCA Verified') || 'MiCA Verified'}
+                      <Shield size={12} /> {t('ton_blockchain', 'TON Blockchain') || 'TON Blockchain'}
                     </div>
                     <div className="px-5 py-2 rounded-xl bg-blue-500/10 text-blue-400 text-[10px] font-black border border-blue-500/30 uppercase tracking-widest flex items-center gap-2">
-                      <Zap size={12} /> {t('gasless_swaps', 'Gasless Swaps') || 'Gasless Swaps'}
+                      <Zap size={12} /> {t('live_on_stonfi', 'Live on STON.fi') || 'Live on STON.fi'}
                     </div>
-                    <div className="px-5 py-2 rounded-xl bg-amber-500/10 text-amber-400 text-[10px] font-black border border-amber-500/30 uppercase tracking-widest flex items-center gap-2">
-                      <Check size={12} /> {t('gold_backed', 'Gold Backed') || 'Gold Backed'}
+                    <div className="px-5 py-2 rounded-xl bg-violet-500/10 text-violet-400 text-[10px] font-black border border-violet-500/30 uppercase tracking-widest flex items-center gap-2">
+                      <Check size={12} /> {t('utility_token', 'Utility Token') || 'Utility Token'}
                     </div>
                   </div>
                   <div className="p-6 rounded-2xl bg-black/40 border border-white/5 backdrop-blur-md group/contract cursor-pointer hover:border-cyan-500/30 transition-colors">
@@ -402,7 +402,7 @@ export default function About() {
                   <span className="text-xl font-bold text-white">{t('title', 'GSTD Platform')}</span>
                 </div>
                 <p className="text-gray-500 text-sm leading-relaxed mb-6">
-                  The Global Planetary Brain backed by Gold. The first intelligence network on TON that turns your device power into humanity's future.
+                  Decentralized AI compute network on TON. Pay with GSTD for inference, earn by running nodes.
                 </p>
                 <div className="flex gap-4">
                   <a href="https://t.me/goldstandardcoin" target="_blank" rel="noopener noreferrer"

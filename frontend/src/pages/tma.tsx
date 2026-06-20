@@ -102,7 +102,7 @@ export default function TMAPage() {
     { id: 'overview', label: t('dashboard', 'Dashboard'), icon: <Activity className="w-4 h-4 shrink-0" /> },
     { id: 'trade', label: t('trade', 'Trade/Swap'), icon: <ArrowRightLeft className="w-4 h-4 shrink-0" /> },
     { id: 'worker', label: t('cta_worker', 'Ignite Node'), icon: <Zap className="w-4 h-4 shrink-0" /> },
-    { id: 'golden', label: t('gold_reserve_title', 'Gold Reserve'), icon: <Coins className="w-4 h-4 shrink-0" /> },
+    { id: 'golden', label: t('treasury_title', 'Treasury'), icon: <Coins className="w-4 h-4 shrink-0" /> },
     { id: 'agents', label: t('hire_agents', 'AI Workers'), icon: <Bot className="w-4 h-4 shrink-0" /> },
   ];
 
@@ -215,7 +215,7 @@ export default function TMAPage() {
                     <div>
                       <h4 className="text-sm font-bold text-gray-200">{t('step3_title', 'Hire AI & Trade')}</h4>
                       <p className="text-xs text-gray-500 mt-1">
-                        {t('step3_desc_prefix', 'Use your earned tokens to hire AI Agents, or secure your yield in the Gold Reserve Fund. Swap tokens seamlessly in the')} <span className="text-blue-400">{t('trade', 'Trade')}</span> {t('step3_desc_suffix', 'tab.')}
+                        {t('step3_desc_prefix', 'Use your earned tokens to hire AI Agents or pay for inference. Swap GSTD seamlessly in the')} <span className="text-blue-400">{t('trade', 'Trade')}</span> {t('step3_desc_suffix', 'tab.')}
                       </p>
                     </div>
                   </div>

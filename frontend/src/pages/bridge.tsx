@@ -298,7 +298,7 @@ export default function BridgePage() {
                         {t('run_validator', 'Run a bridge validator')}
                     </h2>
                     <p className="text-gray-400 text-xs mb-3">
-                        {t('run_validator_desc', 'Earn bridge fees by running a validator node. Requires 10,000+ GSTD staked.')}
+                        {t('run_validator_desc', 'Earn compute fees by running a node. Install Ollama, register your node, start earning GSTD.')}
                     </p>
                     <a
                         href="https://github.com/gstdcoin/gstd-bridge"

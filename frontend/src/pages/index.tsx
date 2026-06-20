@@ -327,8 +327,8 @@ export default function Home() {
                   <div className="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center mx-auto mb-3">
                     <Shield className="text-amber-400" size={18} />
                   </div>
-                  <h4 className="text-sm font-bold text-white mb-1">{t('goldbacked', 'Gold-backed.')}</h4>
-                  <p className="text-xs text-gray-400">{t('gold_backed_desc', 'GSTD is secured by physical gold reserves. Decentralized. Uncensored.')}</p>
+                  <h4 className="text-sm font-bold text-white mb-1">{t('treasury_backed', 'Treasury loop.')}</h4>
+                  <p className="text-xs text-gray-400">{t('treasury_backed_desc', '10% of every inference fee funds the ecosystem treasury — used for buybacks and development.')}</p>
                 </div>
               </div>
             </div>

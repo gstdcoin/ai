@@ -15,7 +15,7 @@ export default function Docs() {
     const [isClient, setIsClient] = useState(false);
     const [content, setContent] = useState('');
     const [loading, setLoading] = useState(true);
-    const { type = 'investment' } = router.query;
+    const { type = 'technical' } = router.query;
 
     useEffect(() => {
         setIsClient(true);
@@ -41,7 +41,7 @@ export default function Docs() {
             .catch(() => { setContent('# Documentation\n\n*Content not found.*'); setLoading(false); });
     }, [type, isClient, router.locale]);
 
-    const isCalculator = String(type) === 'investment';
+    const isCalculator = false;
 
     const switchDoc = (newType: string) => {
         router.push(`/docs?type=${newType}`);
@@ -56,12 +56,6 @@ export default function Docs() {
 
             <div className="max-w-4xl mx-auto px-6 pt-12">
                 <div className="flex gap-2 p-1 bg-white/5 rounded-xl border border-white/10 w-fit mb-8">
-                    <button
-                        onClick={() => switchDoc('investment')}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${type === 'investment' ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/20' : 'text-gray-400 hover:text-white'}`}
-                    >
-                        {router.locale === 'ru' ? 'Инвестиции' : 'Investment'}
-                    </button>
                     <button
                         onClick={() => switchDoc('technical')}
                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${type === 'technical' ? 'bg-violet-500 text-white shadow-lg shadow-violet-500/20' : 'text-gray-400 hover:text-white'}`}
