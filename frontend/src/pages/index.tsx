@@ -18,7 +18,7 @@ interface NetworkStats {
   tasks_24h: number;
   total_tasks: number;
   total_hashrate: number;
-  gold_reserve: number;
+  treasury_balance: number;
   gstd_price_usd: number;
   network_iq?: number;
   global_brain_latency_ms?: number;

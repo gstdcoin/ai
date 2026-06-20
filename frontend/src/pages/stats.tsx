@@ -152,16 +152,16 @@ export default function PublicStats() {
         <div className="sec-tag cyan fu d1">{t('public_dash_title', 'GSTD Network — Live Dashboard') || 'GSTD Network — Live Dashboard'}</div>
         <h1 className="sec-title fu d2">Real-Time Telemetry</h1>
         
-        {/* Golden Reserve Hero */}
+        {/* Ecosystem Treasury Hero */}
         <div className="p-8 rounded-3xl bg-gradient-to-br from-amber-400/10 via-amber-900/10 to-transparent border border-amber-500/20 mb-10 fu d3 shadow-[0_8px_32px_rgba(255,215,0,0.1)] backdrop-blur-md">
           <div className="flex items-center gap-3 mb-6">
-            <div style={{ fontSize: 32, lineHeight: 1 }}>🥇</div>
-            <h2 className="text-2xl font-black text-white">{t('gold_reserve_title', 'Gold Reserve Fund') || 'Golden Reserve'}</h2>
+            <div style={{ fontSize: 32, lineHeight: 1 }}>🏛️</div>
+            <h2 className="text-2xl font-black text-white">{t('ecosystem_treasury_title', 'Ecosystem Treasury') || 'Ecosystem Treasury'}</h2>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
-            <StatCard label="XAUt Reserve" value={stats?.pool?.xaut_balance?.toFixed(6) || '0.000000'} color="text-amber-400" />
+            <StatCard label="Treasury Balance" value={stats?.pool?.xaut_balance?.toFixed(6) || '0.000000'} color="text-amber-400" />
             <StatCard label="Circulating" value={stats?.pool?.gstd_balance?.toFixed(0) || '0'} color="text-violet-400" />
-            <StatCard label={t('gold_reserve_burned', 'Total Burned') || 'Total Burned'} value={stats?.recycling?.total_burned?.toFixed(4) || '0'} color="text-red-400" />
+            <StatCard label={t('total_burned', 'Total Burned') || 'Total Burned'} value={stats?.recycling?.total_burned?.toFixed(4) || '0'} color="text-red-400" />
             <StatCard label="Remaining Supply" value={((stats?.recycling?.effective_supply || 1e9) / 1e9).toFixed(3) + 'B'} color="text-emerald-400" sub="of 1B" />
           </div>
         </div>
@@ -217,7 +217,7 @@ export default function PublicStats() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
             <StatCard label="Total Minted" value={`${(stats?.tokenomics?.total_minted || 0).toFixed(0)}`} color="text-cyan-400" sub="GSTD" />
             <StatCard label="To Node Operators" value={`${(stats?.health?.rewards?.all_time_gstd || stats?.nodes?.total_rewards_gstd || 0).toFixed(2)}`} color="text-emerald-400" sub="GSTD" />
-            <StatCard label="Gold Reserve" value={`${(stats?.pool?.xaut_balance || 0).toFixed(6)}`} color="text-amber-400" sub="XAUt" />
+            <StatCard label="Treasury Balance" value={`${(stats?.pool?.xaut_balance || 0).toFixed(6)}`} color="text-amber-400" />
             <StatCard label="Burned 🔥" value={`${(stats?.recycling?.total_burned || 0).toFixed(4)}`} color="text-red-400" sub="forever" />
           </div>
         </div>

@@ -10,7 +10,7 @@
  * POST /api/v1/treasury/distribute
  * Triggers distribution when threshold reached:
  * - 50% → Ston.fi GSTD/TON liquidity pool (price support)
- * - 30% → TreasuryGold contract (XAUt gold reserve)
+ * - 30% → GSTD buybacks via ecosystem treasury
  * - 20% → Node reward bonus pool
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
@@ -19,7 +19,8 @@ import { kvGet, kvSet, kvIncr } from '../../../../lib/kv';
 // Distribution thresholds and ratios
 const DISTRIBUTE_THRESHOLD = 10;    // GSTD — trigger distribution at 10 GSTD
 const LP_RATIO             = 0.50;  // 50% to Ston.fi LP
-const GOLD_RATIO           = 0.30;  // 30% to TreasuryGold (XAUt)
+const TREASURY_PCT         = 10;    // 10% of fees → ecosystem treasury (buybacks)
+const BUYBACK_RATIO        = 0.30;  // 30% to GSTD buybacks via ecosystem treasury
 const BONUS_RATIO          = 0.20;  // 20% to node bonus pool
 
 // TON contract addresses (mainnet)
@@ -62,7 +63,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             next_distribution_in: nextDistributionIn,
             distribution_ratios: {
                 liquidity_pool_pct: LP_RATIO * 100,
-                gold_reserve_pct:   GOLD_RATIO * 100,
+                treasury_pct:       TREASURY_PCT,
                 node_bonus_pct:     BONUS_RATIO * 100,
             },
             contracts:            CONTRACTS,
@@ -88,9 +89,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             });
         }
 
-        const lpAmount    = Math.round(treasury * LP_RATIO * 100) / 100;
-        const goldAmount  = Math.round(treasury * GOLD_RATIO * 100) / 100;
-        const bonusAmount = Math.round(treasury * BONUS_RATIO * 100) / 100;
+        const lpAmount      = Math.round(treasury * LP_RATIO * 100) / 100;
+        const buybackAmount = Math.round(treasury * BUYBACK_RATIO * 100) / 100;
+        const bonusAmount   = Math.round(treasury * BONUS_RATIO * 100) / 100;
 
         // Reset treasury, accumulate bonus pool
         const bonusRaw = await kvGet('stats:node_bonus_pool');
@@ -103,16 +104,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             kvIncr('stats:distributions_count'),
         ]);
 
-        // In production: submit TON transaction to Ston.fi + TreasuryGold
+        // In production: submit TON transaction to Ston.fi + ecosystem treasury buybacks
         // For now: record the intended distribution (wallet must be funded)
         const distributionRecord = {
-            timestamp:   new Date().toISOString(),
-            total_gstd:  treasury,
-            lp_amount:   lpAmount,     // → Ston.fi GSTD/TON pool
-            gold_amount: goldAmount,   // → TreasuryGold contract
-            bonus_amount: bonusAmount, // → node bonus pool
-            contracts:   CONTRACTS,
-            status:      'pending_on_chain', // changes to 'confirmed' after TON tx
+            timestamp:      new Date().toISOString(),
+            total_gstd:     treasury,
+            lp_amount:      lpAmount,      // → Ston.fi GSTD/TON pool
+            buyback_amount: buybackAmount, // → GSTD buybacks via ecosystem treasury
+            bonus_amount:   bonusAmount,   // → node bonus pool
+            contracts:      CONTRACTS,
+            status:         'pending_on_chain', // changes to 'confirmed' after TON tx
         };
         await kvSet(
             `distribution:${Date.now()}`,
@@ -121,12 +122,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         );
 
         return res.status(200).json({
-            ok:          true,
-            distributed: treasury,
-            lp_amount:   lpAmount,
-            gold_amount: goldAmount,
-            bonus_amount: bonusAmount,
-            note:        CONTRACTS.stonfi_pool
+            ok:             true,
+            distributed:    treasury,
+            lp_amount:      lpAmount,
+            buyback_amount: buybackAmount,
+            bonus_amount:   bonusAmount,
+            note:           CONTRACTS.stonfi_pool
                 ? 'TON transaction submitted to Ston.fi pool'
                 : 'TON wallet not yet funded — distribution recorded, pending on-chain',
         });
