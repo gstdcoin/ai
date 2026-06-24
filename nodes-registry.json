@@ -5,13 +5,13 @@
     "mode": "node",
     "version": "3.4.0",
     "capabilities": ["llama3.2:3b"],
-    "multiaddrs": ["https://manufacturing-star-additions-textile.trycloudflare.com"],
-    "node_url": "https://manufacturing-star-additions-textile.trycloudflare.com",
+    "multiaddrs": ["https://discipline-variety-maui-alfred.trycloudflare.com"],
+    "node_url": "https://discipline-variety-maui-alfred.trycloudflare.com",
     "platform": "linux",
     "cpu_cores": 4,
     "has_gpu": false,
     "tasks_completed": 0,
     "uptime_hours": 0,
-    "last_seen": "2026-06-22T00:48:08.000Z"
+    "last_seen": "2026-06-24T07:21:17.000Z"
   }
 ]
