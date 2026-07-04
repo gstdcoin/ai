@@ -39,6 +39,17 @@ Set these env vars in Vercel dashboard:
 - `TREASURY_SECRET` — any random string
 - `NEXT_PUBLIC_TON_VAULT` / `NEXT_PUBLIC_SOL_VAULT` / `NEXT_PUBLIC_XRP_VAULT` — after contract deploy
 
+## Training Marketplace API (added 2026-07-04)
+New endpoints in `src/pages/api/v1/training/`:
+- `POST /api/v1/training/jobs` — submit fine-tuning job (model + dataset_url + domain)
+- `GET  /api/v1/training/jobs?wallet=EQ...` — list jobs by wallet
+- `GET  /api/v1/training/jobs/:id` — job status, progress, lora_url when done
+- `POST /api/v1/training/gradient` — TrainingNode submits gradient (metacognitive_score ≥ 0.3)
+
+Jobs push `required_caps: ["finetune"]` tasks to `tasks:queue`.
+TrainingNode (gstd-a2a) picks them up via `/api/v1/tasks/poll`.
+Job state stored in KV as `training:job:{job_id}` (7-day TTL).
+
 ## Do NOT
 - Do not add `as any` casts in API routes — use proper types
 - Do not import from `../../../../../lib/kv` (count levels from file location)
