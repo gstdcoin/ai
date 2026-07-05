@@ -516,8 +516,8 @@ export default function TrainingPage() {
                             <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
                                 {[
                                     ['Model cost', `${model.costPerEpoch} GSTD/epoch`],
-                                    ['Node reward', '80% of total'],
-                                    ['Protocol fee', '20% of total'],
+                                    ['Node reward', '90% of total'],
+                                    ['Protocol fee', '10% of total'],
                                     ['Quality gate', 'MetaCog ≥ 0.3'],
                                 ].map(([k, v]) => (
                                     <div key={k} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>

@@ -39,8 +39,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     description: 'Linux/Mac/Windows server — provides AI inference, storage, and P2P routing',
                     min_requirements: { ram_gb: 4, storage_gb: 20, bandwidth_mbps: 10 },
                     earn_per_hour: '2–10 GSTD',
-                    setup: 'docker run -d goldenbit/gstd-node',
-                    docs_url: 'https://gstdtoken.com/docs/run-node',
+                    setup: 'docker run -d -p 8080:8080 -e GSTD_WALLET_ADDRESS=YOUR_WALLET ghcr.io/gstdcoin/gstd-node:latest',
+                    docs_url: 'https://github.com/gstdcoin/gstdbot',
                 },
                 {
                     type: 'mobile',
@@ -52,15 +52,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                         { tier: 'Gold',   earn_per_hour: 2.0, requirements: '8+ cores or 8+ GB RAM or 10Mbps' },
                         { tier: 'Platinum', earn_per_hour: 5.0, requirements: '16+ GB RAM or 50Mbps bandwidth' },
                     ],
-                    setup: 'Open @GSTDBot on Telegram → Start Node',
-                    docs_url: 'https://gstdtoken.com/docs/mobile-node',
+                    setup: 'Open @GstdAppBot on Telegram → Launch Node',
+                    docs_url: 'https://t.me/GstdAppBot',
                 },
             ],
             services: [
                 { name: 'AI Inference',        description: 'Run open-source models (Llama, Mistral, Qwen)', status: 'live' },
                 { name: 'Decentralized Storage', description: 'IPFS-based file storage with GSTD payments', status: 'live' },
                 { name: 'P2P Traffic Relay',   description: 'Route network traffic for rewards', status: 'beta' },
-                { name: 'Federated Training',  description: 'Contribute to collective model training', status: 'coming_soon' },
+                { name: 'Federated Training',  description: 'Fine-tune LoRA adapters via QLoRA on distributed nodes — live at /training', status: 'live' },
                 { name: 'GPU Compute',         description: 'Sell GPU time for rendering and ML training', status: 'coming_soon' },
                 { name: 'Blockchain Hosting',  description: 'Host blockchain nodes and validators', status: 'coming_soon' },
             ],
@@ -73,9 +73,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 token: 'GSTD on TON blockchain',
             },
             quick_start: {
-                telegram: 'https://t.me/GSTDBot',
-                docker: 'docker run -d -e GSTD_WALLET_ADDRESS=<your-wallet> goldenbit/gstd-node',
-                github: 'https://github.com/gstdcoin/node',
+                telegram: 'https://t.me/GstdAppBot',
+                docker: 'docker run -d -p 8080:8080 -e GSTD_WALLET_ADDRESS=<your-wallet> ghcr.io/gstdcoin/gstd-node:latest',
+                github: 'https://github.com/gstdcoin/gstdbot',
             },
         });
     } catch (err: any) {

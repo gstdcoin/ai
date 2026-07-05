@@ -69,7 +69,7 @@ AUTONOMOUS OPERATOR
         ) : !status || !status.departments || !status.server_health ? (
           <div className="text-center py-20">
             <div className="text-amber-400 mb-2 font-semibold">⏳ Autonomous Operator — Coming Soon</div>
-            <p className="text-sm text-gray-500 max-w-md mx-auto">The AI Operator runs on-chain once TON governance contracts are deployed. Interface is ready and will activate automatically.</p>
+            <p className="text-sm text-gray-500 max-w-md mx-auto">The AI Operator is in development. Connect a wallet and check back soon.</p>
           </div>
         ) : (
           <div className="space-y-6 pb-20">
