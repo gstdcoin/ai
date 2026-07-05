@@ -7,13 +7,12 @@ const TREASURY_WALLET = 'EQA--JXG8VSyBJmLMqb2J2t4Pya0TS9SXHh7vHh8Iez25sLp';
 
 export default function TreasuryWidget() {
   const { t } = useTranslation('common');
-  const [xautBalance, setXautBalance] = useState<number | null>(null);
+  const [treasuryGstd, setTreasuryGstd] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadTreasuryBalance();
-    // Refresh every 30 seconds
     const interval = setInterval(loadTreasuryBalance, 30000);
     return () => clearInterval(interval);
   }, []);
@@ -23,17 +22,14 @@ export default function TreasuryWidget() {
       setLoading(true);
       setError(null);
 
-      // Fetch from our backend API (avoids CORS issues)
       const apiBase = API_BASE_URL;
-      const response = await fetch(`${apiBase}/api/v1/stats/public`);
+      const response = await fetch(`${apiBase}/api/v1/fund/status`);
 
       if (!response.ok) {
-        // Skip this update cycle if server returns error, don't crash
         logger.warn(`Treasury API returned ${response.status}: ${response.statusText}`);
         return;
       }
 
-      // Check if response is JSON before parsing
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
         logger.warn('Treasury API returned non-JSON response, skipping');
@@ -42,15 +38,10 @@ export default function TreasuryWidget() {
 
       const data = await response.json();
 
-      // Get golden_reserve_xaut from API response
-      if (data && typeof data === 'object' && 'golden_reserve_xaut' in data) {
-        const balance = data.golden_reserve_xaut || 0;
-        setXautBalance(balance);
-      }
+      const balance = data?.protocol_treasury_gstd ?? data?.treasury_balance ?? 0;
+      setTreasuryGstd(balance);
     } catch (err: any) {
-      // Silently skip this update cycle on error, don't crash the component
       logger.error('Error loading treasury balance', err);
-      // Keep previous balance on error
     } finally {
       setLoading(false);
     }
@@ -96,9 +87,9 @@ export default function TreasuryWidget() {
         <div>
           <div className="text-3xl font-bold text-gold-900 mb-2 flex items-baseline gap-2">
             <span className="bg-gradient-to-r from-yellow-400 to-amber-500 bg-clip-text text-transparent">
-              {xautBalance !== null ? xautBalance.toFixed(6) : '0.000000'}
+              {treasuryGstd !== null ? treasuryGstd.toFixed(2) : '0.00'}
             </span>
-            <span className="text-lg text-gray-400">XAUt</span>
+            <span className="text-lg text-gray-400">GSTD</span>
           </div>
           <div className="text-xs text-gray-500 font-mono bg-black/20 px-3 py-2 rounded-lg">
             {t('treasury_address', 'Treasury') || 'Treasury'}: {TREASURY_WALLET.slice(0, 8)}...{TREASURY_WALLET.slice(-6)}

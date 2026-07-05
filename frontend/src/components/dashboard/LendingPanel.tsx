@@ -192,7 +192,7 @@ function LendingPanel() {
             <Landmark size={20} className="text-amber-400" />
           </div>
           <div>
-            <div className="text-lg font-bold text-white">Gold-Backed Lending</div>
+            <div className="text-lg font-bold text-white">GSTD Lending</div>
             <div className="text-[11px] text-gray-500">Borrow against your GSTD collateral</div>
           </div>
         </div>

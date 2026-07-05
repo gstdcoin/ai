@@ -92,7 +92,7 @@ export default function PublicStats() {
 
     setStats({
       network: networkData,
-      pool: { xaut_balance: networkData?.gold_reserve || 0, gstd_balance: hTokenomics?.circulating || tokenomicsData?.circulating_supply || 0 },
+      pool: { xaut_balance: 0, gstd_balance: hTokenomics?.circulating || tokenomicsData?.circulating_supply || 0 },
       pipeline: { online_nodes: hNetwork?.online_nodes || nodesData?.online_nodes || 0, total_vram_gb: 0 },
       security: null,
       federated: null,
@@ -102,7 +102,7 @@ export default function PublicStats() {
         effective_supply: hTokenomics?.max_supply || tokenomicsData?.remaining_supply || 1e9,
         total_recycled: hTokenomics?.total_minted || tokenomicsData?.total_minted || 0,
         total_to_miners: hRewards?.all_time_gstd || (tokenomicsData?.total_minted ? tokenomicsData.total_minted * 0.93 : 0),
-        total_to_reserve: networkData?.gold_reserve || 0,
+        total_to_reserve: 0,
       },
       airlock: null,
       openclaw: null,
@@ -207,7 +207,7 @@ export default function PublicStats() {
           <div className="sov-card amber-top p-6">
             <div className="flex items-center gap-2 mb-4"><div style={{ fontSize: 18, lineHeight: 1 }}>⛏️</div><span className="text-xs font-bold uppercase tracking-wider text-gray-400">Mining</span></div>
             <StatCard label="Base/Hour" value={`${stats?.tokenomics?.base_reward_per_hour || 0} GSTD`} color="text-amber-400" />
-            <div className="mt-4 pt-4 border-t border-white/[0.06]"><StatCard label="Burn Rate" value={`${stats?.tokenomics?.burn_rate_pct || 2}%`} color="text-red-400" sub="deflationary" /></div>
+            <div className="mt-4 pt-4 border-t border-white/[0.06]"><StatCard label="Burn Rate" value={`${stats?.tokenomics?.burn_rate_pct ?? 0}%`} color="text-gray-400" sub="no active burn" /></div>
           </div>
         </div>
 

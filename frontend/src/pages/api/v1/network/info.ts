@@ -47,7 +47,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             symbol:   'GSTD',
             contract: process.env.GSTD_JETTON_ADDRESS || 'EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO',
             decimals: 9,
-            use:      'Pay for inference, stake for rewards, vote in DAO',
+            use:      'Pay for AI inference and fine-tuning; node operators earn 90% of every fee',
         },
         nodes: {
             online:   activeNodes,
@@ -78,7 +78,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         treasury: {
             endpoint:       `${origin}/api/v1/treasury/status`,
             protocol_fee:   '10% of all campaign tasks',
-            distribution:   '50% → Gold Reserve | 30% → Node Operators | 20% → Dev Fund',
+            distribution:   '90% → Node Operators | 10% → Protocol Treasury (buybacks + liquidity)',
             threshold_gstd: 10,
         },
         install_node: 'curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash',

@@ -95,8 +95,8 @@ export default function About() {
     // No-op
   }, [isConnected, checkingSession, router]);
 
-  // Show loading spinner while checking session or redirecting
-  if (isConnected || checkingSession) {
+  // Show loading spinner only while checking session
+  if (checkingSession) {
     return (
       <div className="min-h-screen bg-[#030014] flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-violet-500 opacity-50"></div>

@@ -19,7 +19,7 @@ const PLATFORMS = [
 
 const FEATURES = [
     { icon: Cpu, title: '8 AI Models', desc: 'Free access to Llama 4, GPT-oss, Qwen 3, Kimi K2 and more' },
-    { icon: Zap, title: 'Earn GSTD', desc: '0.1 GSTD/hour automatically while your node is running' },
+    { icon: Zap, title: 'Earn GSTD', desc: '0.5–5 GSTD/hour depending on hardware tier and network demand' },
     { icon: Shield, title: 'Sovereign AI', desc: 'Your data stays on your device. Run models locally or via cloud' },
     { icon: Globe, title: 'Swarm Network', desc: 'Join the distributed compute grid with 85+ active nodes' },
 ];

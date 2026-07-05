@@ -12,6 +12,7 @@ interface TreasuryData {
   total_users: number;
   total_nodes: number;
   gstd_price_usd: number;
+  protocol_treasury_gstd: number;
 }
 
 function StatCard({ label, value, sub, icon: Icon, color }: {
@@ -43,7 +44,8 @@ export default function TreasuryPage() {
       if (!res.ok) return;
       const d = await res.json();
       setData({
-        treasury_balance: d.treasury_balance ?? 0,
+        treasury_balance: d.protocol_treasury_gstd ?? d.treasury_balance ?? 0,
+        protocol_treasury_gstd: d.protocol_treasury_gstd ?? 0,
         total_burned: d.total_burned ?? 0,
         total_users: d.total_users ?? 0,
         total_nodes: d.active_workers ?? d.total_nodes ?? 0,

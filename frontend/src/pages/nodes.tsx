@@ -173,23 +173,21 @@ export default function NodesPage() {
       <div className="min-h-screen" style={{ background: '#030014', color: 'white', paddingTop: 80 }}>
         <div style={{ maxWidth: 900, margin: '0 auto', padding: '0 16px 80px' }}>
 
-          {/* ── Early Bird Banner ─────────────────────────────────────── */}
-          <div style={{
-            background: 'linear-gradient(135deg, rgba(251,191,36,0.12), rgba(245,158,11,0.06))',
-            border: '1px solid rgba(251,191,36,0.25)',
-            borderRadius: 12, padding: '10px 16px',
-            display: 'flex', alignItems: 'center', gap: 10,
-            marginBottom: 32, fontSize: 13,
-          }}>
-            <span style={{ fontSize: 18 }}>🚀</span>
-            <span style={{ color: '#fbbf24', fontWeight: 700 }}>Early Bird Bonus:</span>
-            <span style={{ color: 'rgba(255,255,255,0.7)' }}>
-              Nodes running before token launch earn a <strong style={{ color: '#fbbf24' }}>×1.5 multiplier</strong> on all accumulated GSTD.
-              {activeCount > 0 && <span style={{ marginLeft: 6, color: 'rgba(255,255,255,0.45)' }}>
-                {activeCount} node{activeCount !== 1 ? 's' : ''} online now — join while the pool is small.
-              </span>}
-            </span>
-          </div>
+          {/* ── Network Banner ────────────────────────────────────────── */}
+          {activeCount > 0 && (
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(139,92,246,0.10), rgba(6,182,212,0.06))',
+              border: '1px solid rgba(139,92,246,0.20)',
+              borderRadius: 12, padding: '10px 16px',
+              display: 'flex', alignItems: 'center', gap: 10,
+              marginBottom: 32, fontSize: 13,
+            }}>
+              <span style={{ fontSize: 18 }}>🌐</span>
+              <span style={{ color: 'rgba(255,255,255,0.7)' }}>
+                <strong style={{ color: '#a78bfa' }}>{activeCount} node{activeCount !== 1 ? 's' : ''} online</strong> — join the network, earn GSTD from every AI inference request routed to your node.
+              </span>
+            </div>
+          )}
 
           {/* ── Hero ──────────────────────────────────────────────────── */}
           <div style={{ textAlign: 'center', marginBottom: 48 }}>
@@ -471,7 +469,7 @@ export default function NodesPage() {
               ))}
             </div>
             <div style={{ marginTop: 8, fontSize: 12, color: 'rgba(255,255,255,0.25)', textAlign: 'right' }}>
-              All rates are in GSTD/hour · ×1.5 early bird multiplier active
+              All rates are in GSTD/hour · actual earnings depend on network demand
             </div>
           </div>
 

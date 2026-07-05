@@ -1,59 +1,37 @@
 /**
  * GET /api/v1/sovereign/staking/info
- * Global staking info (and per-wallet if ?wallet= provided).
+ * Staking info — staking is discontinued (on-chain contract not deployed).
+ * Returns current status so UI can show accurate state.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet } from '../../../../../lib/kv';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
-    res.setHeader('Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
+    res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
 
     const wallet = typeof req.query.wallet === 'string' ? req.query.wallet.toLowerCase() : null;
 
+    const base = {
+        status:           'discontinued',
+        contracts_live:   false,
+        apy:              0,
+        apy_pct:          0,
+        min_stake:        0,
+        note:             'On-chain staking contract has not been deployed. Earn GSTD by running a node instead.',
+        alternative:      'Run a node and earn GSTD from AI inference: app.gstdtoken.com/nodes',
+        timestamp:        Date.now(),
+    };
+
+    if (!wallet) return res.status(200).json(base);
+
     try {
-        const [totalStakedRaw, totalStakersRaw] = await Promise.all([
-            kvGet('stats:total_staked'),
-            kvGet('stats:active_stakers'),
-        ]);
-
-        const total_staked   = totalStakedRaw   ? parseFloat(totalStakedRaw)  : 0;
-        const active_stakers = totalStakersRaw  ? parseInt(totalStakersRaw)   : 0;
-
-        // platform shape matches what the Telegram bot reads: data.platform.apy / min_stake / lock_period_days
-        const platform = {
-            apy:               12,
-            apy_pct:           12,
-            min_stake:         100,
-            min_stake_gstd:    100,
-            lock_period_days:  0,
-            contracts_live:    false,
-            status:            'pending_contract',
-            note:              'Staking activates after TON smart contract deployment.',
-        };
-
-        const global = {
-            total_staked,
-            active_stakers,
-            platform,
-            ...platform,
-        };
-
-        if (!wallet) return res.status(200).json({ ...global, timestamp: Date.now() });
-
-        const [balRaw, stakedRaw, rewardsRaw] = await Promise.all([
-            kvGet(`balance:${wallet}`),
-            kvGet(`staked:${wallet}`),
-            kvGet(`rewards:pending:${wallet}`),
-        ]);
-
+        const stakedRaw = await kvGet(`staked:${wallet}`);
         return res.status(200).json({
-            ...global,
+            ...base,
             wallet,
-            wallet_balance:  balRaw    ? parseFloat(balRaw)    : 0,
             wallet_staked:   stakedRaw ? parseFloat(stakedRaw) : 0,
-            pending_rewards: rewardsRaw ? parseFloat(rewardsRaw) : 0,
-            timestamp:       Date.now(),
+            pending_rewards: 0,
         });
     } catch (err: any) {
         console.error('[sovereign/staking/info]', err.message);

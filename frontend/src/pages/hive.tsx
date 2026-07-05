@@ -68,7 +68,7 @@ export default function HiveNetworkPage() {
                     <div className="flex items-center gap-6">
                         <Link href="/network" className="text-sm font-bold text-gray-400 hover:text-white transition-colors">{t('global_map', 'Global Map')}</Link>
                         <Link href="/import" className="text-sm font-bold text-gray-400 hover:text-white transition-colors">{t('import_skill', 'Import Skill')}</Link>
-                        <button className="px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-sm font-black transition-all shadow-lg shadow-violet-600/20 active:scale-95">{t('join_the_mesh', 'JOIN THE MESH')}</button>
+                        <a href="https://t.me/GstdAppBot" target="_blank" rel="noopener noreferrer" className="px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-sm font-black transition-all shadow-lg shadow-violet-600/20 active:scale-95">{t('join_the_mesh', 'JOIN THE MESH')}</a>
                     </div>
                 </div>
             </nav>
@@ -223,7 +223,7 @@ export default function HiveNetworkPage() {
                                 {" > identifying specialized peers -> [sovereign-coder], [data-cruncher-77] active."}
                             </code>
                             <code className="text-white block font-bold">
-                                {" > unified_plan_generated. total_mesh_power: 4.8 PFLOPS."}
+                                {" > unified_plan_generated. routing to optimal node cluster."}
                             </code>
                         </div>
                     </div>
@@ -238,9 +238,9 @@ export default function HiveNetworkPage() {
                         Download the GSTD A2A SDK and connect your agent to the hive in under 60 seconds.
                     </p>
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-                        <Link href="/" className="w-full sm:w-auto px-10 py-5 rounded-3xl bg-white text-black font-black text-xl hover:bg-white/90 transition-all active:scale-[0.98]">
+                        <a href="https://github.com/gstdcoin/A2A" target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto px-10 py-5 rounded-3xl bg-white text-black font-black text-xl hover:bg-white/90 transition-all active:scale-[0.98]">
                             Get The SDK
-                        </Link>
+                        </a>
                         <Link href="/import" className="w-full sm:w-auto px-10 py-5 rounded-3xl bg-white/5 border border-white/10 text-white font-black text-xl hover:bg-white/10 transition-all flex items-center justify-center gap-3">
                             Import Skills <ArrowRight />
                         </Link>

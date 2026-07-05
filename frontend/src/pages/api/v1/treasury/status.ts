@@ -27,8 +27,6 @@ const BONUS_RATIO          = 0.20;  // 20% to node bonus pool
 const CONTRACTS = {
     gstd_jetton:        process.env.GSTD_JETTON_ADDRESS || 'EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO',
     settlement_router:  process.env.SETTLEMENT_ROUTER   || '',
-    treasury_gold:      process.env.TREASURY_GOLD       || '',
-    dao_voting:         process.env.DAO_VOTING           || '',
     stonfi_pool:        process.env.STONFI_GSTD_POOL    || '',
 };
 
