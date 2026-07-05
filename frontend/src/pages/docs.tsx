@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { ROICalculator } from '../components/ROICalculator';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { GetStaticProps } from 'next';
@@ -40,8 +39,6 @@ export default function Docs() {
             .then(text => { setContent(text); setLoading(false); })
             .catch(() => { setContent('# Documentation\n\n*Content not found.*'); setLoading(false); });
     }, [type, isClient, router.locale]);
-
-    const isCalculator = false;
 
     const switchDoc = (newType: string) => {
         router.push(`/docs?type=${newType}`);
@@ -87,7 +84,6 @@ export default function Docs() {
                 ) : (
                     <div className="prose prose-invert prose-lg max-w-none prose-headings:text-transparent prose-headings:bg-clip-text prose-headings:bg-gradient-to-r prose-headings:from-cyan-400 prose-headings:to-violet-400 prose-a:text-cyan-400 hover:prose-a:text-cyan-300 prose-table:border-collapse prose-th:border prose-th:border-white/20 prose-th:p-3 prose-td:border prose-td:border-white/10 prose-td:p-3 animate-in fade-in slide-in-from-bottom-4 duration-500">
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
-                        {isCalculator && <ROICalculator />}
                     </div>
                 )}
             </main>

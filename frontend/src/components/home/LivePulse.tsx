@@ -75,12 +75,6 @@ export default function LivePulse({ className = '' }: { className?: string }) {
                         addEvent(`${gstdDelta.toFixed(2)} GSTD distributed to workers`, 'text-violet-400');
                     }
 
-                    // Gold reserve changed
-                    const goldDelta = (stats.gold_reserve ?? 0) - (prev.gold_reserve ?? 0);
-                    if (goldDelta > 0) {
-                        addEvent(`+${goldDelta.toFixed(6)} oz XAUt added to reserve → ${stats.gold_reserve?.toFixed(4)} oz`, 'text-amber-400');
-                    }
-
                     // Price movement
                     const priceDelta = (stats.gstd_price_usd ?? 0) - (prev.gstd_price_usd ?? 0);
                     if (Math.abs(priceDelta) > 0.000001 && prev.gstd_price_usd > 0) {

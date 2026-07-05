@@ -418,9 +418,9 @@ export default function About() {
               <div>
                 <h4 className="text-sm font-bold text-white uppercase tracking-wider mb-4">{t('quick_links', 'Quick Links')}</h4>
                 <ul className="space-y-3 text-sm">
-                  <li><a href="https://gstdtoken.com/token" className="text-gray-500 hover:text-white transition-colors">{t('token_info', 'Token Info')}</a></li>
-                  <li><a href="https://gstdtoken.com/buy" className="text-gray-500 hover:text-white transition-colors">{t('buy_gstd', 'Buy GSTD')}</a></li>
-                  <li><a href="https://gstdtoken.com/roadmap" className="text-gray-500 hover:text-white transition-colors">{t('roadmap', 'Roadmap')}</a></li>
+                  <li><Link href="/nodes" className="text-gray-500 hover:text-white transition-colors">{t('run_a_node', 'Run a Node')}</Link></li>
+                  <li><Link href="/training" className="text-gray-500 hover:text-white transition-colors">{t('fine_tune_models', 'Fine-Tune Models')}</Link></li>
+                  <li><Link href="/stats" className="text-gray-500 hover:text-white transition-colors">{t('network_stats', 'Network Stats')}</Link></li>
                   <li><Link href="/hive" className="text-violet-400 hover:text-violet-300 font-bold transition-colors">Hive Mesh (Beta)</Link></li>
                   <li><Link href="/import" className="text-cyan-400 hover:text-cyan-300 font-bold transition-colors">{t('skill_registry', 'Skill Registry')}</Link></li>
                   <li><Link href="/docs" className="text-gray-500 hover:text-white transition-colors">{t('documentation', 'Documentation')}</Link></li>

@@ -107,12 +107,6 @@ export default function PoolStatusWidget() {
               {(poolStatus.gstd_balance ?? 0).toFixed(2)} GSTD
             </span>
           </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-400">{t('xaut_balance', 'XAUt Balance') || 'XAUt Balance'}:</span>
-            <span className="text-sm font-bold text-blue-400">
-              {(poolStatus.xaut_balance ?? 0).toFixed(6)} XAUt
-            </span>
-          </div>
           <div className="text-xs text-gray-500 font-mono pt-3 mt-2 border-t border-white/10 bg-black/20 px-3 py-2 rounded-lg">
             {t('pool_address', 'Pool') || 'Pool'}: {poolStatus.pool_address ? `${poolStatus.pool_address.slice(0, 8)}...${poolStatus.pool_address.slice(-6)}` : 'N/A'}
           </div>
