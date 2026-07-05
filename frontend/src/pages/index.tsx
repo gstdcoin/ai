@@ -4,7 +4,7 @@ import { useTranslation } from 'next-i18next';
 import { getCommonStaticProps } from '../lib/i18n-static-props';
 import { useState, useEffect, useRef } from 'react';
 import { API_BASE_URL } from '../lib/config';
-import { MessageSquare, ArrowRight, Bot, Brain, Building2, Activity, Zap, Server, Shield, Globe } from 'lucide-react';
+import { MessageSquare, ArrowRight, Bot, Brain, Building2, Activity, Zap, Server, Shield, Globe, Sparkles, ChevronRight } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { motion } from 'framer-motion';
 import { StaggerContainer, StaggerItem, SlideUp } from '../components/common/Animations';
@@ -156,7 +156,7 @@ export default function Home() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500" />
               </span>
-              {t('depin_compute_protocol_live', 'DePIN Compute Protocol • Live')}
+              {t('depin_compute_protocol_live', 'DePIN Compute Protocol · Fine-Tuning Marketplace · Live')}
             </div>
 
             <h1 className="text-5xl sm:text-7xl font-black tracking-tight mb-6 leading-[1.08]">
@@ -165,13 +165,13 @@ export default function Home() {
             </h1>
 
             <p className="text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed mb-10">
-              {t('hero_desc', 'A DePIN network where nodes serve AI inference and earn GSTD tokens. Pay with GSTD to access any AI model — or run a node to earn GSTD for every request you process. 10% of all fees sustain the ecosystem treasury.')}{' '}
-              <span className="text-emerald-400 font-bold">{t('connect_devices', 'No corporation. No servers.')}</span>{' '}
-              {t('connect_devices_earn', 'Just nodes and utility.')}
+              {t('hero_desc', 'A DePIN network where nodes serve AI inference and fine-tune models — earning GSTD tokens. Pay with GSTD to access any AI model or fine-tune your own LoRA adapter.')}
+              {' '}<span className="text-emerald-400 font-bold">{t('connect_devices', '10× cheaper than cloud.')}</span>
+              {' '}{t('connect_devices_earn', 'No corporation. No servers.')}
             </p>
 
             {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full max-w-lg mx-auto">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full max-w-2xl mx-auto flex-wrap">
               <Link
                 href="/chat"
                 className="group relative w-full sm:w-auto inline-flex items-center justify-center gap-3 px-8 py-4 rounded-2xl bg-gradient-to-r from-violet-600 to-cyan-600 text-white font-bold text-lg shadow-xl shadow-violet-500/20 hover:shadow-violet-500/40 hover:scale-[1.03] active:scale-[0.98] transition-all duration-300"
@@ -179,6 +179,15 @@ export default function Home() {
                 <Bot size={22} className="group-hover:scale-110 transition-transform" />
                 <span>{t('try_sovereign_ai', 'Try Sovereign AI')}</span>
                 <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+              </Link>
+              <Link
+                href="/training"
+                className="group relative w-full sm:w-auto inline-flex items-center justify-center gap-3 px-8 py-4 rounded-2xl bg-gradient-to-r from-violet-500/20 to-indigo-500/20 border border-violet-500/40 text-violet-300 font-bold text-lg hover:bg-violet-500/30 hover:scale-[1.03] active:scale-[0.98] transition-all duration-300"
+                style={{ textDecoration: 'none' }}
+              >
+                <Brain size={22} className="group-hover:scale-110 transition-transform" />
+                <span>{t('fine_tune_models', 'Fine-Tune Models')}</span>
+                <Sparkles size={16} className="text-violet-400" />
               </Link>
               <a
                 href="https://github.com/gstdcoin/gstdbot"
@@ -241,8 +250,88 @@ export default function Home() {
             </StaggerItem>
           </StaggerContainer>
 
+          {/* ═══════ FINE-TUNING MARKETPLACE ═══════ */}
+          <div className="mb-20">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+              className="p-8 md:p-12 rounded-3xl glass-pro gradient-border relative overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 w-96 h-96 bg-violet-500/5 rounded-full blur-[120px] pointer-events-none" />
+              <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-500/5 rounded-full blur-[80px] pointer-events-none" />
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center relative z-10">
+                <div>
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 text-[11px] font-bold tracking-wide mb-5">
+                    <Brain size={13} />
+                    <span>{t('fine_tuning_marketplace', 'Fine-Tuning Marketplace')} · Live</span>
+                  </div>
+                  <h2 className="text-3xl sm:text-4xl font-black text-white mb-4 leading-tight">
+                    {t('train_any_model', 'Train Any Model.')}<br />
+                    <span className="bg-gradient-to-r from-violet-400 to-indigo-400 bg-clip-text text-transparent">
+                      {t('ten_x_cheaper', '10× Cheaper.')}
+                    </span>
+                  </h2>
+                  <p className="text-gray-400 leading-relaxed mb-4 text-sm">
+                    {t('finetuning_desc', 'Submit your dataset. Distributed GSTD nodes train a LoRA adapter using QLoRA — quality-gated by MetaCognitive scoring. Download your fine-tuned model when done.')}
+                  </p>
+                  <div className="grid grid-cols-3 gap-3 mb-6">
+                    {[
+                      { label: t('ft_models', '8 Models'), sub: 'Llama · Qwen · Phi' },
+                      { label: t('ft_domains', '6 Domains'), sub: 'Code · Medical · Finance' },
+                      { label: t('ft_nodes', 'Distributed'), sub: t('ft_nodes_sub', 'Federated QLoRA') },
+                    ].map((item) => (
+                      <div key={item.label} className="p-3 rounded-xl bg-violet-500/5 border border-violet-500/10 text-center">
+                        <div className="text-xs font-black text-violet-300 mb-0.5">{item.label}</div>
+                        <div className="text-[10px] text-gray-500">{item.sub}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <Link
+                      href="/training"
+                      className="group inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-bold text-sm shadow-lg shadow-violet-500/20 hover:shadow-violet-500/40 hover:scale-[1.02] transition-all duration-300"
+                      style={{ textDecoration: 'none' }}
+                    >
+                      <Brain size={16} />
+                      {t('start_fine_tuning', 'Start Fine-Tuning')}
+                      <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+                    </Link>
+                    <Link
+                      href="/nodes"
+                      className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl glass-pro text-gray-300 font-bold text-sm hover:scale-[1.02] transition-all duration-300"
+                      style={{ textDecoration: 'none' }}
+                    >
+                      <Server size={16} className="text-emerald-400" />
+                      {t('become_training_node', 'Become a Training Node')}
+                    </Link>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { emoji: '🦙', name: 'Llama 3.2 3B', tag: 'Fast · Efficient', color: 'violet' },
+                    { emoji: '🤖', name: 'Qwen 2.5 7B', tag: 'Code · Multilingual', color: 'cyan' },
+                    { emoji: '⚡', name: 'Phi-3 Mini', tag: 'Lightweight · Edge', color: 'emerald' },
+                    { emoji: '🌟', name: 'Mistral 7B', tag: 'General · Strong', color: 'amber' },
+                    { emoji: '💎', name: 'Gemma 2 2B', tag: 'Quality · Compact', color: 'pink' },
+                    { emoji: '🧬', name: 'Llama 3.1 8B', tag: 'Powerful · General', color: 'indigo' },
+                  ].map((model) => (
+                    <div key={model.name} className={`p-3 rounded-2xl glass-pro border border-white/5 hover:border-${model.color}-500/20 transition-colors`}>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span style={{ fontSize: 18 }}>{model.emoji}</span>
+                        <div className="text-xs font-bold text-white leading-tight">{model.name}</div>
+                      </div>
+                      <div className="text-[10px] text-gray-500">{model.tag}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          </div>
+
           {/* ═══════ NODE OS FEATURES STRIP ═══════ */}
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 mb-20 stagger-in">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 mb-20 stagger-in">
             <div className="p-4 rounded-2xl glass-pro text-center">
               <div style={{ fontSize: 22, marginBottom: 6 }}>🔐</div>
               <div className="text-xs font-bold text-white">Wallet Auth</div>
@@ -277,6 +366,11 @@ export default function Home() {
               <div style={{ fontSize: 22, marginBottom: 6 }}>🏆</div>
               <div className="text-xs font-bold text-white">Leaderboard</div>
               <div className="text-[10px] text-gray-500">Top nodes</div>
+            </a>
+            <a href="/training" style={{ textDecoration: 'none' }} className="p-4 rounded-2xl glass-pro text-center hover:scale-[1.05] transition-transform border border-violet-500/20">
+              <div style={{ fontSize: 22, marginBottom: 6 }}>🧬</div>
+              <div className="text-xs font-bold text-violet-300">Fine-Tune</div>
+              <div className="text-[10px] text-gray-500">LoRA · QLoRA</div>
             </a>
           </div>
 
@@ -358,20 +452,25 @@ export default function Home() {
               </div>
 
               {/* Training */}
-              <div className="group p-6 rounded-3xl glass-pro gradient-border shine-on-hover transition-all duration-500 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-[60px]" />
-                <div className="w-12 h-12 rounded-2xl bg-cyan-500/15 flex items-center justify-center mb-4">
-                  <Brain className="text-cyan-400" size={24} />
+              <Link href="/training" style={{ textDecoration: 'none' }}>
+              <div className="group p-6 rounded-3xl glass-pro gradient-border shine-on-hover transition-all duration-500 relative overflow-hidden border border-violet-500/20 hover:border-violet-500/40 cursor-pointer">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-violet-500/5 rounded-full blur-[60px]" />
+                <div className="absolute top-3 right-3">
+                  <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-400 border border-violet-500/30">✨ Live</span>
                 </div>
-                <h4 className="text-lg font-black text-white mb-1">🧠 Model Training</h4>
-                <div className="text-xs text-cyan-400 font-bold mb-3">10,000,000 GSTD</div>
-                <p className="text-xs text-gray-400 leading-relaxed mb-4">{t('training_desc', 'Train custom AI models on swarm GPU/CPU resources. Tokens spent are distributed among contributing nodes. Use the collective power.')}</p>
+                <div className="w-12 h-12 rounded-2xl bg-violet-500/15 flex items-center justify-center mb-4">
+                  <Brain className="text-violet-400" size={24} />
+                </div>
+                <h4 className="text-lg font-black text-white mb-1">🧠 Fine-Tuning Marketplace</h4>
+                <div className="text-xs text-violet-400 font-bold mb-3">{t('fine_tune_any_model', 'Fine-tune any model · LoRA + QLoRA')}</div>
+                <p className="text-xs text-gray-400 leading-relaxed mb-4">{t('training_desc', 'Submit your dataset and distributed nodes train a LoRA adapter. MetaCognitive quality gate ensures only valid gradients are accepted. 10× cheaper than cloud.')}</p>
                 <div className="flex flex-wrap gap-1.5">
-                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">GPU + CPU</span>
-                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">Distributed</span>
-                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">Swarm Memory</span>
+                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20">QLoRA</span>
+                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20">Federated</span>
+                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20">Download LoRA</span>
                 </div>
               </div>
+              </Link>
 
               {/* Enterprise */}
               <div className="group p-6 rounded-3xl glass-pro gradient-border shine-on-hover transition-all duration-500 relative overflow-hidden">
