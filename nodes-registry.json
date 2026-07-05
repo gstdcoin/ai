@@ -5,13 +5,13 @@
     "mode": "node",
     "version": "3.4.0",
     "capabilities": ["llama3.2:3b"],
-    "multiaddrs": ["https://reviews-wolf-giving-simulations.trycloudflare.com"],
-    "node_url": "https://reviews-wolf-giving-simulations.trycloudflare.com",
+    "multiaddrs": ["https://travis-leaf-iron-nail.trycloudflare.com"],
+    "node_url": "https://travis-leaf-iron-nail.trycloudflare.com",
     "platform": "linux",
     "cpu_cores": 4,
     "has_gpu": false,
     "tasks_completed": 0,
     "uptime_hours": 0,
-    "last_seen": "2026-07-04T04:21:38.000Z"
+    "last_seen": "2026-07-05T12:01:14.000Z"
   }
 ]
