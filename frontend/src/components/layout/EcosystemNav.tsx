@@ -94,7 +94,7 @@ export default function EcosystemNav() {
     const isActive = (href: string) => {
         const path = router.pathname;
         if (href === '/' || href === APP_BASE) return path === '/';
-        const segments = ['/chat', '/nodes', '/leaderboard', '/campaigns', '/developers', '/downloads', '/about', '/docs'];
+        const segments = ['/chat', '/nodes', '/leaderboard', '/campaigns', '/developers', '/downloads', '/about', '/docs', '/training'];
         for (const seg of segments) {
             if (href.includes(seg) && (path === seg || path.startsWith(seg + '/'))) return true;
         }
