@@ -56,7 +56,7 @@ export default function TreasuryPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  const JETTON_ADDRESS = 'EQD-LkpGp98MdSCnfDdNmvtpMRFBkHDlhTb7e_gFbCjkUMpP';
+  const JETTON_ADDRESS = 'EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO';
 
   return (
     <div className="min-h-screen bg-[#030014] text-white">
