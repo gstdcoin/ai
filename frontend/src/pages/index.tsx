@@ -189,14 +189,14 @@ export default function Home() {
                 <span>{t('fine_tune_models', 'Fine-Tune Models')}</span>
                 <Sparkles size={16} className="text-violet-400" />
               </Link>
-              <a
-                href="https://github.com/gstdcoin/gstdbot"
+              <Link
+                href="/nodes"
                 className="group relative w-full sm:w-auto inline-flex items-center justify-center gap-3 px-8 py-4 rounded-2xl glass-pro text-white font-bold text-lg hover:scale-[1.03] active:scale-[0.98] transition-all duration-300 shine-on-hover"
                 style={{ textDecoration: 'none' }}
               >
                 <Zap size={22} className="text-emerald-400 group-hover:scale-110 transition-transform" />
                 <span>{t('run_a_node', 'Run a Node')}</span>
-              </a>
+              </Link>
             </div>
           </SlideUp>
         </section>
@@ -228,9 +228,9 @@ export default function Home() {
               <p className="text-gray-400 mb-6 leading-relaxed text-sm">
                 {t('become_node_desc', 'Turn any computer into a sovereign AI node. Wallet auth, Let\'s Encrypt SSL, Cloudflare tunnel, local LLM via Ollama, IPFS storage, earnings dashboard. One command to install, Telegram to manage.')}
               </p>
-              <a href="https://github.com/gstdcoin/gstdbot" className="flex items-center gap-2 text-emerald-400 font-black hover:gap-3 transition-all text-sm" style={{ textDecoration: 'none' }}>
+              <Link href="/nodes" className="flex items-center gap-2 text-emerald-400 font-black hover:gap-3 transition-all text-sm" style={{ textDecoration: 'none' }}>
                 {t('ignite_your_node', 'Ignite Your Node')} <ArrowRight size={14} />
-              </a>
+              </Link>
             </div>
             </StaggerItem>
 

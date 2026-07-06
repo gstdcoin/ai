@@ -38,11 +38,11 @@ interface LeaderEntry {
 // ── Earning tiers (static) ────────────────────────────────────────────────────
 
 const TIERS = [
-  { icon: '📱', name: 'Mobile Bronze', rate: 0.5, daily: 12, req: 'Any phone', color: '#CD7F32' },
-  { icon: '📱', name: 'Mobile Silver', rate: 1.0, daily: 24, req: 'Mid-range device', color: '#C0C0C0' },
-  { icon: '📱', name: 'Mobile Gold',   rate: 2.0, daily: 48, req: 'Flagship phone', color: '#FFD700' },
-  { icon: '🖥', name: 'Desktop 8GB',   rate: 1.5, daily: 36, req: '8GB RAM + Docker', color: '#818cf8' },
-  { icon: '🖥', name: 'Desktop 32GB',  rate: 5.0, daily: 120, req: '32GB RAM, full model', color: '#22d3ee' },
+  { icon: '⚡', name: 'Spark',     rate: 0.5,  daily: 12,  req: 'Any device (×0–0.75)', color: '#888888' },
+  { icon: '🔥', name: 'Flame',     rate: 1.0,  daily: 24,  req: 'Pi 4 / basic laptop (×0.75–1.5)', color: '#ff6b35' },
+  { icon: '⛈️', name: 'Storm',     rate: 2.5,  daily: 60,  req: '16GB RAM server (×1.5–2.5)', color: '#4ecdc4' },
+  { icon: '🏔️', name: 'Titan',     rate: 4.0,  daily: 96,  req: '32GB RAM + GPU (×2.5–4.0)', color: '#ffd700' },
+  { icon: '👑', name: 'Sovereign', rate: 8.0,  daily: 192, req: 'High-end server (×4.0+)', color: '#e040fb' },
 ];
 
 // ── CopyButton ────────────────────────────────────────────────────────────────
