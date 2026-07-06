@@ -72,7 +72,7 @@ export default function TreasuryWidget() {
         </button>
       </div>
 
-      {loading && xautBalance === null ? (
+      {loading && treasuryGstd === null ? (
         <div className="flex items-center justify-center h-16">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gold-900"></div>
         </div>

@@ -65,6 +65,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (rewardGstd > 0) writes.push(kvIncr('stats:total_gstd_paid').then(() => {}));
         if (protocolFee > 0) writes.push(kvIncr('stats:protocol_treasury_gstd').then(() => {}));
 
+        // Advance training job if this was a finetune shard
+        const trainingJobId: string | undefined = body.job_id || body.result?.job_id;
+        if (trainingJobId) {
+            writes.push((async () => {
+                const jobRaw = await kvGet(`training:job:${trainingJobId}`);
+                if (!jobRaw) return;
+                const job = JSON.parse(jobRaw);
+                job.shards_done = (job.shards_done || 0) + 1;
+                job.gradients   = job.gradients || [];
+                job.gradients.push({
+                    shard_id:             body.task_id,
+                    node_id:              nodeId,
+                    metacognitive_score:  body.result?.metacognitive_score  ?? 0.5,
+                    gradient_norm:        body.result?.gradient_norm        ?? 1.0,
+                    val_loss_improvement: body.result?.val_loss_improvement ?? 0.05,
+                    lora_path:            body.result?.lora_path            ?? '',
+                    submitted_at:         new Date().toISOString(),
+                });
+                if (job.shards_done >= job.shards_total) {
+                    job.status = 'done';
+                } else if (job.status === 'pending') {
+                    job.status = 'training';
+                }
+                job.updated_at = new Date().toISOString();
+                const ttl = Math.max(3600, Math.ceil((new Date(job.created_at).getTime() + 7 * 24 * 3600_000 - Date.now()) / 1000));
+                await kvSet(`training:job:${trainingJobId}`, JSON.stringify(job), ttl);
+            })());
+        }
+
         // F1 reward accrual — accumulate per-node pending balance
         const walletAddr = nodeRaw ? (JSON.parse(nodeRaw) as NodeRecord).wallet_address : '';
         if (walletAddr) {

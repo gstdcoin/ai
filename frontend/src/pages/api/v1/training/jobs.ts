@@ -117,7 +117,10 @@ async function handleSubmit(req: NextApiRequest, res: NextApiResponse) {
 
         await kvSet(`training:job:${job_id}`, JSON.stringify(job), JOB_TTL);
         if (wallet) {
-            await kvPush(`training:wallet:${wallet}`, job_id);
+            const existing = await kvGet(`training:wallet:${wallet}`);
+            const ids = existing ? existing.split('\n').filter(Boolean) : [];
+            ids.push(job_id);
+            await kvSet(`training:wallet:${wallet}`, ids.join('\n'), JOB_TTL);
         }
 
         // Push one finetune shard per epoch into tasks:queue
