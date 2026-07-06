@@ -7,10 +7,9 @@ This repository contains the Tact and Fift smart contracts that anchor the GSTD 
 | Contract | Purpose | Feature Details |
 |----------|---------|-----------------|
 | **GSTDJetton** | Core ERC-20 equivalent | 1B max supply natively |
-| **SettlementMaster** | Autonomous Treasury | 85% worker / 10% treasury / 5% burn |
+| **SettlementMaster** | Fee Distribution | 90% → node operators / 10% → protocol treasury |
 | **AgentRegistry** | Identity Mapping | Genesis Lock, Sovereign Tiers |
 | **DAOVoting** | Decentralized Upgrades | On-chain config voting, 48h locks |
-| **TreasuryGold** | Reserve Conversion | 70% XAUt automated purchasing |
 
 ## Compiling & Deploying
 The project is built on modern `Tact` tooling and `@ton/ton`.

@@ -14,23 +14,20 @@ import { useTMALocaleSync } from '../hooks/useTMALocale';
 import LeviathanTMATicker from '../components/tma/LeviathanTMATicker';
 import LiveHashrateChart from '../components/tma/LiveHashrateChart';
 import GoldenAccumulationChart from '../components/tma/GoldenAccumulationChart';
-import GoldenGatewayTransactions from '../components/tma/GoldenGatewayTransactions';
 import { useWalletStore } from '../store/walletStore';
 import WalletConnect from '../components/WalletConnect';
 import AgentMarketplace from '../components/agents/AgentMarketplace';
-import { Zap, Wallet, Coins, Activity, Bot, ArrowRightLeft } from 'lucide-react';
+import { Zap, Activity, Bot, ArrowRightLeft } from 'lucide-react';
 
 interface TMAStats {
   node_status: 'online' | 'offline' | 'mining';
   hashrate: number;
-  gold_balance: number;
-  gold_reserve_gstd: number;
-  gold_multiplier: number;
+  earned_gstd: number;
   active_workers: number;
   tasks_completed_24h: number;
 }
 
-type TabId = 'overview' | 'worker' | 'golden' | 'agents' | 'trade';
+type TabId = 'overview' | 'worker' | 'agents' | 'trade';
 
 export default function TMAPage() {
   const { t } = useTranslation('common');
@@ -53,31 +50,22 @@ export default function TMAPage() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const [publicRes, cosmicRes] = await Promise.all([
-          fetch(`${API_URL}/stats/public`),
-          fetch(`${API_URL}/cosmic/gold-multiplier`),
-        ]);
+        const publicRes = await fetch(`${API_URL}/stats/public`);
         const publicData = publicRes.ok ? await publicRes.json() : {};
-        const cosmicData = cosmicRes.ok ? await cosmicRes.json() : {};
 
         setStats({
           node_status: publicData.active_devices_count > 0 ? 'online' : 'offline',
           hashrate: publicData.total_tasks_completed || 0,
-          gold_balance: publicData.golden_reserve_xaut || 0,
-          gold_reserve_gstd: publicData.total_gstd_paid || 0,
-          gold_multiplier: cosmicData.gold_multiplier || 1.0,
+          earned_gstd: publicData.total_gstd_paid || 0,
           active_workers: publicData.active_devices_count || 0,
           tasks_completed_24h: publicData.completed_tasks || 0,
         });
       } catch (_e) {
         console.warn('Silent fetch stats failure:', _e);
-        // Fallback or offline stats when fetching fails or is unavailable
         setStats({
           node_status: 'offline',
           hashrate: 0,
-          gold_balance: 0,
-          gold_reserve_gstd: 0,
-          gold_multiplier: 1.0,
+          earned_gstd: 0,
           active_workers: 0,
           tasks_completed_24h: 0,
         });
@@ -102,7 +90,6 @@ export default function TMAPage() {
     { id: 'overview', label: t('dashboard', 'Dashboard'), icon: <Activity className="w-4 h-4 shrink-0" /> },
     { id: 'trade', label: t('trade', 'Trade/Swap'), icon: <ArrowRightLeft className="w-4 h-4 shrink-0" /> },
     { id: 'worker', label: t('cta_worker', 'Ignite Node'), icon: <Zap className="w-4 h-4 shrink-0" /> },
-    { id: 'golden', label: t('treasury_title', 'Treasury'), icon: <Coins className="w-4 h-4 shrink-0" /> },
     { id: 'agents', label: t('hire_agents', 'AI Workers'), icon: <Bot className="w-4 h-4 shrink-0" /> },
   ];
 
@@ -177,9 +164,9 @@ export default function TMAPage() {
             />
 
             <GoldenAccumulationChart
-              goldBalance={stats?.gold_balance || 0}
-              goldReserveGstd={stats?.gold_reserve_gstd || 0}
-              goldMultiplier={stats?.gold_multiplier || 1}
+              goldBalance={0}
+              goldReserveGstd={stats?.earned_gstd || 0}
+              goldMultiplier={1}
             />
 
             {!address && (
@@ -253,28 +240,6 @@ export default function TMAPage() {
         {tab === 'worker' && (
           <div className="space-y-4">
             <MobileNodePanel address={address ?? undefined} />
-          </div>
-        )}
-
-        {tab === 'golden' && (
-          <div className="space-y-4">
-            {!address ? (
-              <div className="rounded-xl bg-white/5 border border-white/10 p-4">
-                <p className="text-center text-gray-500 text-xs mb-3">{t('connect_wallet', 'Connect Wallet')} → Golden Gateway</p>
-                <WalletConnect />
-              </div>
-            ) : (
-              <>
-                <GoldenGatewayTransactions wallet={address} />
-                <a
-                  href="https://app.gstdtoken.com/dashboard"
-                  className="flex items-center justify-center gap-2 w-full py-3 px-4 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 text-sm font-bold"
-                >
-                  <Wallet className="w-4 h-4" />
-                  {t('dashboard', 'Dashboard')}
-                </a>
-              </>
-            )}
           </div>
         )}
 

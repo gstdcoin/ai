@@ -247,7 +247,7 @@ export default function About() {
                       </div>
                       <div>
                         <div className="text-white font-black tracking-tight uppercase text-sm">{t('gstd_protocol', 'GSTD-Protocol')}</div>
-                        <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{t('mica_compliant_asset', 'MiCA Compliant Asset')}</div>
+                        <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{t('depin_compute_network', 'DePIN Compute Network')}</div>
                       </div>
                     </div>
                     <div className="flex items-center gap-4 group cursor-default">
@@ -405,7 +405,7 @@ export default function About() {
                   Decentralized AI compute network on TON. Pay with GSTD for inference, earn by running nodes.
                 </p>
                 <div className="flex gap-4">
-                  <a href="https://t.me/goldstandardcoin" target="_blank" rel="noopener noreferrer"
+                  <a href="https://t.me/gstdcoin" target="_blank" rel="noopener noreferrer"
                     className="px-4 py-2 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 text-sm font-medium hover:bg-blue-500/20 transition-colors">{t('telegram', 'Telegram')}</a>
                   <a href="https://twitter.com/gstdtoken" target="_blank" rel="noopener noreferrer"
                     className="px-4 py-2 rounded-lg bg-gray-500/10 border border-gray-500/20 text-gray-400 text-sm font-medium hover:bg-gray-500/20 transition-colors">{t('x_twitter', 'X (Twitter)')}</a>
@@ -443,7 +443,7 @@ export default function About() {
                 © 2026 GSTD Token. All rights reserved.
               </p>
               <div className="flex items-center gap-4 text-xs text-gray-600">
-                <span className="flex items-center gap-1"><Shield size={12} />{t('mica_compliant', 'MiCA Compliant')}</span>
+                <span className="flex items-center gap-1"><Shield size={12} />{t('open_source', 'Open Source')}</span>
                 <span className="flex items-center gap-1"><Zap size={12} />{t('ton_blockchain', 'TON Blockchain')}</span>
                 <span className="flex items-center gap-1"><Globe size={12} />{t('depin_network', 'DePIN Network')}</span>
               </div>

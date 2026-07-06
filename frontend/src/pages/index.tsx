@@ -243,7 +243,7 @@ export default function Home() {
               <p className="text-gray-400 mb-6 leading-relaxed text-sm">
                 {t('utility_desc', 'GSTD is the payment token for AI compute inside the network — not an investment. Pay for AI inference, earn by running nodes. 10% of every transaction builds the ecosystem treasury.')}
               </p>
-              <a href="https://t.me/goldstandardcoin" className="flex items-center gap-2 text-amber-400 font-black hover:gap-3 transition-all text-sm" style={{ textDecoration: 'none' }}>
+              <a href="https://t.me/gstdcoin" className="flex items-center gap-2 text-amber-400 font-black hover:gap-3 transition-all text-sm" style={{ textDecoration: 'none' }}>
                 {t('telegram', 'Telegram')} <ArrowRight size={14} />
               </a>
             </div>

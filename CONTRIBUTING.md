@@ -1,65 +1,52 @@
 # Contributing to GSTD
 
-## 🔱 Quick Start
+## Quick Start
 
 ```bash
-git clone https://github.com/gstdcoin/ai.git && cd ai
-cp .env.example .env
-# Edit .env with your settings
-
-# Backend
-cd backend && go test ./... -race && cd ..
-
-# Frontend
-cd frontend && npm install --legacy-peer-deps && npm run dev && cd ..
-
-# Full stack (Docker)
-docker compose -f docker-compose.dev.yml up -d
+git clone https://github.com/gstdcoin/ai.git && cd ai/frontend
+npm install --legacy-peer-deps
+npm run dev   # → http://localhost:3000
 ```
+
+No KV credentials needed — `src/lib/kv.ts` falls back to in-memory store for local dev.
 
 ## Structure
 
 | Directory | Language | Purpose |
 |-----------|----------|---------|
-| `backend/` | Go 1.24 | API server, A2A protocol, inference routing |
 | `frontend/` | Next.js 16 + TypeScript | Web dashboard & Telegram Web App |
-| `contracts/` | Tact (TON) | Smart contracts (token, settlement, governance) |
-| `scripts/` | Bash/PowerShell | Node runner scripts |
+| `frontend/src/pages/api/v1/` | TypeScript | Serverless API routes (Vercel) |
+| `contracts/` | Tact (TON) | Smart contracts (token, settlement) |
 
-## Running a Node
+## Architecture Rules
 
-### Linux / macOS / WSL
+- All API logic lives in `src/pages/api/v1/` as Next.js serverless functions
+- KV access only via `kvGet / kvSet / kvKeys / kvDel / kvIncr` from `src/lib/kv`
+- No Go backend. No Docker in production. Hosted on Vercel.
+- Rate limiting is handled by `src/middleware.ts` (Edge runtime)
+
+## Running a Node (separate from this repo)
+
 ```bash
-curl -fsSL https://raw.githubusercontent.com/gstdcoin/ai/main/scripts/node-runner.sh | bash
+curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash
 ```
 
-### Windows (PowerShell)
-```powershell
-irm https://raw.githubusercontent.com/gstdcoin/ai/main/scripts/node-runner.ps1 | iex
-```
-
-### Vercel (Frontend only)
-```bash
-cd frontend
-npx vercel
-```
+The node software lives in [gstdcoin/gstdbot](https://github.com/gstdcoin/gstdbot), not in this repo.
 
 ## Checks Before PR
 
 ```bash
-cd backend
-go vet ./...        # No warnings
-go test ./... -race # All pass
-go build ./...      # Zero errors
+cd frontend
+npx tsc --noEmit   # No TypeScript errors
+npm run lint       # No ESLint warnings
 ```
 
 ## Code Style
 
-- **Go**: `gofmt`, no exported functions without doc comments
 - **TypeScript**: ESLint + Prettier
 - **Tact**: Follow existing contract patterns
 - **Commits**: `feat:`, `fix:`, `docs:`, `test:`, `ci:` prefixes
 
 ## License
 
-MIT
+Apache 2.0
