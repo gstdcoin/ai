@@ -49,6 +49,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const resources           = body.resources    || {};
         const priorityOnly: boolean = !!body.priority_only;
 
+        // ── Node identity check ───────────────────────────────────────────
+        if (!nodeId) return res.status(400).json({ error: 'node_id required' });
+        const { kvGet } = await import('../../../../lib/kv');
+        const nodeRaw = await kvGet(`node:${nodeId}`);
+        if (!nodeRaw) return res.status(403).json({ error: 'Unknown node — register first' });
+        const storedWallet: string = (JSON.parse(nodeRaw) as any).wallet_address || '';
+        const headerWallet: string = (req.headers['x-wallet-address'] as string || '').trim();
+        if (storedWallet && headerWallet && storedWallet !== headerWallet) {
+            return res.status(403).json({ error: 'Wallet mismatch' });
+        }
+
         // ── Priority queue: node-specific inference tasks (fast O(1)) ──────
         if (nodeId) {
             const raw = await kvPop(`tasks:inference:${nodeId}`);

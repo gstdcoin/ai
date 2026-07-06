@@ -231,11 +231,11 @@ export default function PublicStats() {
             <div className="mt-4 pt-4 border-t border-white/[0.06]"><StatCard label="Users" value={stats?.health?.network?.total_users || stats?.network?.total_users || 0} color="text-cyan-400" /></div>
           </div>
 
-          {/* Staking */}
+          {/* Treasury */}
           <div className="sov-card violet-top p-6">
-            <div className="flex items-center gap-2 mb-4"><div style={{ fontSize: 18, lineHeight: 1 }}>🔒</div><span className="text-xs font-bold uppercase tracking-wider text-gray-400">Staking</span></div>
-            <StatCard label="Total Staked" value={`${(stats?.health?.tokenomics?.total_staked || stats?.tokenomics?.total_staked || 0).toFixed(2)} GSTD`} color="text-violet-400" />
-            <div className="mt-4 pt-4 border-t border-white/[0.06]"><StatCard label="Active Stakers" value={stats?.health?.tokenomics?.active_stakers || 0} color="text-cyan-400" /></div>
+            <div className="flex items-center gap-2 mb-4"><div style={{ fontSize: 18, lineHeight: 1 }}>🏛️</div><span className="text-xs font-bold uppercase tracking-wider text-gray-400">Treasury</span></div>
+            <StatCard label="Protocol Reserve" value={`${(stats?.health?.tokenomics?.treasury_gstd || 0).toFixed(2)} GSTD`} color="text-violet-400" />
+            <div className="mt-4 pt-4 border-t border-white/[0.06]"><StatCard label="Fee Split" value="10% protocol / 90% nodes" color="text-cyan-400" /></div>
           </div>
 
           {/* Revenue & Platform */}

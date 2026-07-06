@@ -258,19 +258,21 @@ export default function TMAPage() {
 }
 
 const TIER_COLORS: Record<string, string> = {
-  bronze:   'text-amber-600',
-  silver:   'text-gray-300',
-  gold:     'text-amber-400',
-  platinum: 'text-cyan-300',
+  spark:     'text-gray-400',
+  flame:     'text-orange-400',
+  storm:     'text-cyan-300',
+  titan:     'text-yellow-300',
+  sovereign: 'text-purple-300',
 };
 const TIER_BG: Record<string, string> = {
-  bronze:   'bg-amber-900/30 border-amber-700/40',
-  silver:   'bg-gray-700/30 border-gray-500/40',
-  gold:     'bg-amber-500/20 border-amber-400/40',
-  platinum: 'bg-cyan-500/10 border-cyan-400/30',
+  spark:     'bg-gray-700/30 border-gray-500/40',
+  flame:     'bg-orange-900/30 border-orange-700/40',
+  storm:     'bg-cyan-500/10 border-cyan-400/30',
+  titan:     'bg-yellow-500/10 border-yellow-400/30',
+  sovereign: 'bg-purple-500/10 border-purple-400/30',
 };
 const TIER_EMOJI: Record<string, string> = {
-  bronze: '🥉', silver: '🥈', gold: '🥇', platinum: '💎',
+  spark: '⚡', flame: '🔥', storm: '⛈️', titan: '🏔️', sovereign: '👑',
 };
 
 function getDeviceId(): string {
@@ -484,7 +486,7 @@ function MobileNodePanel({ address }: { address: string | undefined }) {
           {t('tier_rewards', 'Tier Rewards')}
         </div>
         <div className="space-y-1">
-          {[['🥉 Bronze', '0.5 GSTD/h', 'Any phone'], ['🥈 Silver', '1.0 GSTD/h', '4+ cores or 3GB RAM'], ['🥇 Gold', '2.0 GSTD/h', '8+ cores or 8GB RAM'], ['💎 Platinum', '5.0 GSTD/h', '16GB RAM or 50Mbps']].map(([label, rate, req]) => (
+          {[['⚡ Spark', '0.5 GSTD/h', 'Any device'], ['🔥 Flame', '1.0 GSTD/h', 'Pi 4 / basic laptop'], ['⛈️ Storm', '2.5 GSTD/h', '16GB RAM server'], ['🏔️ Titan', '4.0 GSTD/h', '32GB RAM + GPU'], ['👑 Sovereign', '8.0 GSTD/h', 'High-end server']].map(([label, rate, req]) => (
             <div key={label} className="flex justify-between items-center text-xs">
               <span className="text-gray-300 font-bold">{label}</span>
               <span className="text-amber-400 font-mono">{rate}</span>

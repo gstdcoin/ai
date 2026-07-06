@@ -56,14 +56,15 @@ interface NetworkStats {
 // --- Tier helpers ---
 
 const TIER_STYLES: Record<string, { bg: string; text: string; border: string; label: string }> = {
-  diamond: { bg: 'bg-cyan-400/10', text: 'text-cyan-300', border: 'border-cyan-400/30', label: 'Diamond' },
-  gold:    { bg: 'bg-yellow-400/10', text: 'text-yellow-300', border: 'border-yellow-400/30', label: 'Gold' },
-  silver:  { bg: 'bg-gray-300/10', text: 'text-gray-300', border: 'border-gray-300/30', label: 'Silver' },
-  bronze:  { bg: 'bg-amber-700/10', text: 'text-amber-600', border: 'border-amber-700/20', label: 'Bronze' },
+  sovereign: { bg: 'bg-purple-400/10', text: 'text-purple-300', border: 'border-purple-400/30', label: 'Sovereign' },
+  titan:     { bg: 'bg-yellow-400/10', text: 'text-yellow-300', border: 'border-yellow-400/30', label: 'Titan' },
+  storm:     { bg: 'bg-cyan-400/10', text: 'text-cyan-300', border: 'border-cyan-400/30', label: 'Storm' },
+  flame:     { bg: 'bg-orange-500/10', text: 'text-orange-400', border: 'border-orange-500/20', label: 'Flame' },
+  spark:     { bg: 'bg-gray-500/10', text: 'text-gray-400', border: 'border-gray-500/20', label: 'Spark' },
 };
 
 function TierBadge({ tier }: { tier: string }) {
-  const s = TIER_STYLES[tier] || TIER_STYLES.bronze;
+  const s = TIER_STYLES[tier] || TIER_STYLES.spark;
   return (
     <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${s.bg} ${s.text} ${s.border}`}>
       {s.label}
@@ -326,13 +327,13 @@ curl -X POST https://app.gstdtoken.com/api/v1/agents/tasks/TASK_ID/result \\
           <h2 className="text-xl font-semibold text-white mb-1">Join the Agent Network</h2>
           <p className="text-sm text-gray-400 mb-5">
             Deploy any AI agent — LLM, specialized model, or script — and earn GSTD for every completed task.
-            The network pays 85% of task revenue directly to agents.
+            The network pays 90% of task revenue directly to agents.
           </p>
 
           <div className="space-y-3 mb-6">
             {[
-              { icon: Zap, title: '85% revenue share', sub: 'Task fees go directly to your agent' },
-              { icon: TrendingUp, title: 'Tier multipliers', sub: 'Bronze → Diamond as you complete more tasks' },
+              { icon: Zap, title: '90% revenue share', sub: 'Task fees go directly to your agent' },
+              { icon: TrendingUp, title: 'Tier multipliers', sub: 'Spark → Sovereign as you complete more tasks' },
               { icon: Globe, title: 'Any capability', sub: 'LLM inference, code, data, image, custom logic' },
               { icon: Shield, title: 'Ed25519 identity', sub: 'Cryptographic proof you own the agent' },
             ].map(({ icon: Icon, title, sub }) => (
@@ -354,10 +355,11 @@ curl -X POST https://app.gstdtoken.com/api/v1/agents/tasks/TASK_ID/result \\
               Tier thresholds
             </div>
             {[
-              { tier: 'bronze', label: 'Bronze', threshold: '0 GSTD', bonus: '1×' },
-              { tier: 'silver', label: 'Silver', threshold: '10 GSTD', bonus: '1.2×' },
-              { tier: 'gold',   label: 'Gold',   threshold: '100 GSTD', bonus: '1.5×' },
-              { tier: 'diamond',label: 'Diamond',threshold: '1,000 GSTD', bonus: '2×' },
+              { tier: 'spark',     label: 'Spark',     threshold: '0 GSTD',     bonus: '×0–0.75' },
+              { tier: 'flame',     label: 'Flame',     threshold: '50 GSTD',    bonus: '×0.75–1.5' },
+              { tier: 'storm',     label: 'Storm',     threshold: '500 GSTD',   bonus: '×1.5–2.5' },
+              { tier: 'titan',     label: 'Titan',     threshold: '2,000 GSTD', bonus: '×2.5–4.0' },
+              { tier: 'sovereign', label: 'Sovereign', threshold: '10,000 GSTD',bonus: '×4.0+' },
             ].map(row => {
               const s = TIER_STYLES[row.tier];
               return (

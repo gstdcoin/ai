@@ -489,7 +489,7 @@ export default function Home() {
               </div>
             </div>
             <div className="text-center mt-6">
-              <p className="text-[11px] text-gray-600">💰 5% platform commission · 95% distributed to node operators · All transactions signed by initiator</p>
+              <p className="text-[11px] text-gray-600">💰 10% protocol treasury · 90% distributed to node operators · All transactions signed by initiator</p>
             </div>
           </div>
 

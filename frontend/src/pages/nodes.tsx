@@ -167,7 +167,7 @@ export default function NodesPage() {
     <>
       <Head>
         <title>Run a Node — Earn GSTD | GSTD Network</title>
-        <meta name="description" content="Run a GSTD node on any device. Earn GSTD tokens for serving AI queries. Bronze to Platinum tiers." />
+        <meta name="description" content="Run a GSTD node on any device. Earn GSTD tokens for serving AI queries. Spark to Sovereign tiers." />
       </Head>
 
       <div className="min-h-screen" style={{ background: '#030014', color: 'white', paddingTop: 80 }}>
@@ -404,12 +404,10 @@ export default function NodesPage() {
 
             <div style={{ marginTop: 12, textAlign: 'center' }}>
               <a
-                href="https://github.com/gstdcoin/gstdbot"
-                target="_blank"
-                rel="noopener noreferrer"
+                href="/nodes"
                 style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
               >
-                <ExternalLink size={12} /> Full documentation on GitHub
+                <ExternalLink size={12} /> Node setup guide
               </a>
             </div>
           </div>

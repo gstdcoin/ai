@@ -29,15 +29,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.status(400).json({ error: 'node_id required' });
         }
 
-        const rewardGstd    = Number(body.reward_gstd) || 0;
-        const protocolFee   = Number(body.protocol_fee) || 0;
+        // Cap reward to prevent arbitrary inflation
+        const MAX_REWARD    = 50;
+        const rewardGstd    = Math.min(MAX_REWARD, Math.max(0, Number(body.reward_gstd) || 0));
+        const protocolFee   = Math.min(10, Math.max(0, Number(body.protocol_fee) || 0));
         const campaignId    = body.campaign_id as string | undefined;
+
+        // Verify node identity: X-Wallet-Address must match stored wallet
+        const headerWallet = (req.headers['x-wallet-address'] as string || '').trim();
 
         // Parallel: update node record + campaign + global stats
         const [nodeRaw, campaignRaw] = await Promise.all([
             kvGet(`node:${nodeId}`),
             campaignId ? kvGet(`campaign:${campaignId}`) : Promise.resolve(null),
         ]);
+
+        if (nodeRaw && headerWallet) {
+            const storedWallet = (JSON.parse(nodeRaw) as NodeRecord).wallet_address;
+            if (storedWallet && storedWallet !== headerWallet) {
+                return res.status(403).json({ error: 'Wallet mismatch' });
+            }
+        }
 
         const writes: Promise<void>[] = [];
 

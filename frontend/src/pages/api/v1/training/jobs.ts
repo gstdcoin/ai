@@ -65,6 +65,17 @@ export interface GradientRecord {
 
 const JOB_TTL = 7 * 24 * 3600; // 7 days
 
+// SSRF protection: block private/loopback/cloud-metadata addresses
+const BLOCKED_HOSTS = /^(localhost|127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|169\.254\.|::1|fd|fc)/i;
+
+function validateDatasetUrl(raw: string): { ok: true; url: URL } | { ok: false; reason: string } {
+    let u: URL;
+    try { u = new URL(raw); } catch { return { ok: false, reason: 'Invalid URL' }; }
+    if (u.protocol !== 'https:') return { ok: false, reason: 'dataset_url must use https' };
+    if (BLOCKED_HOSTS.test(u.hostname)) return { ok: false, reason: 'dataset_url host not allowed' };
+    return { ok: true, url: u };
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method === 'POST') {
         return handleSubmit(req, res);
@@ -87,6 +98,10 @@ async function handleSubmit(req: NextApiRequest, res: NextApiResponse) {
 
         if (!dataset_url) {
             return res.status(400).json({ error: 'dataset_url required' });
+        }
+        const urlCheck = validateDatasetUrl(dataset_url);
+        if (!urlCheck.ok) {
+            return res.status(400).json({ error: urlCheck.reason });
         }
         if (!SUPPORTED_MODELS.includes(model)) {
             return res.status(400).json({
@@ -171,6 +186,11 @@ async function handleList(req: NextApiRequest, res: NextApiResponse) {
         const wallet = (req.query.wallet as string) || '';
         if (!wallet) {
             return res.status(400).json({ error: 'wallet query param required' });
+        }
+        // IDOR protection: requester must prove wallet ownership via header
+        const headerWallet = (req.headers['x-wallet-address'] as string || '').trim();
+        if (!headerWallet || headerWallet !== wallet) {
+            return res.status(403).json({ error: 'X-Wallet-Address header must match wallet param' });
         }
 
         // Get all job IDs for this wallet (stored as a list)

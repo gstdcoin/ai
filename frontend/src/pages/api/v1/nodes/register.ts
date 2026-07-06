@@ -59,10 +59,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const incomingCaps: string[] = specs.capabilities?.models || specs.models || [];
         const capabilities = incomingCaps.length > 0 ? incomingCaps : (existing?.capabilities || []);
 
+        // Prevent wallet hijacking: if node exists, incoming wallet must match stored wallet
+        const incomingWallet = ((req.headers['x-wallet-address'] as string) || body.wallet_address || '').trim();
+        if (existing && existing.wallet_address && incomingWallet &&
+            incomingWallet !== existing.wallet_address) {
+            return res.status(403).json({ error: 'Node already registered with a different wallet' });
+        }
+
         const record: NodeRecord = {
             node_id:         nodeId,
             name:            body.name || specs.node_name || nodeId,
-            wallet_address:  (req.headers['x-wallet-address'] as string) || body.wallet_address || '',
+            wallet_address:  incomingWallet || existing?.wallet_address || '',
             platform:        specs.platform || 'unknown',
             arch:            specs.arch || 'unknown',
             cpu_cores:       specs.cpu_cores || specs.capabilities?.cpu_cores || 1,
