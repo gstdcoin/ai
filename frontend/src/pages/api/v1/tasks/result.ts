@@ -23,6 +23,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.status(400).json({ error: 'task_id and result required' });
         }
 
+        // Verify node ownership: X-Wallet-Address must match stored wallet
+        const headerWallet = ((req.headers['x-wallet-address'] as string) || '').trim().toLowerCase();
+        if (node_id && headerWallet) {
+            const nodeRaw = await kvGet(`node:${node_id}`).catch(() => null);
+            if (nodeRaw) {
+                const storedWallet = (JSON.parse(nodeRaw).wallet_address || '').toLowerCase();
+                if (storedWallet && storedWallet !== headerWallet) {
+                    return res.status(403).json({ error: 'Wallet mismatch' });
+                }
+            }
+        }
+
         // Store node performance stat for routing
         if (node_id && latency_ms > 0) {
             const raw = await kvGet(`node:${node_id}`);

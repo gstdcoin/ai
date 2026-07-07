@@ -99,6 +99,9 @@ async function handleSubmit(req: NextApiRequest, res: NextApiResponse) {
         if (!dataset_url) {
             return res.status(400).json({ error: 'dataset_url required' });
         }
+        if (!wallet) {
+            return res.status(400).json({ error: 'wallet required — GSTD balance will be deducted' });
+        }
         const urlCheck = validateDatasetUrl(dataset_url);
         if (!urlCheck.ok) {
             return res.status(400).json({ error: urlCheck.reason });

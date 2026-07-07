@@ -17,6 +17,7 @@ export default function HiveNetworkPage() {
     const [agents, setAgents] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [hiveStats, setHiveStats] = useState<HiveStats | null>(null);
+    const [search, setSearch] = useState('');
 
     useEffect(() => {
         fetch('/skills.json')
@@ -25,7 +26,7 @@ export default function HiveNetworkPage() {
                 setAgents(data.skills || []);
                 setLoading(false);
             })
-            .catch(err => console.error("Hive fetch error", err));
+            .catch(() => setLoading(false));
     }, []);
 
     // Fetch real network stats
@@ -113,6 +114,8 @@ export default function HiveNetworkPage() {
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-violet-400 transition-colors" size={18} />
                             <input
                                 type="text"
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
                                 placeholder="Search capabilities (e.g. vision, audit)..."
                                 className="pl-12 pr-6 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-violet-500/50 outline-none w-64 text-sm transition-all"
                             />
@@ -124,7 +127,7 @@ export default function HiveNetworkPage() {
                             [1, 2, 3].map(i => (
                                 <div key={i} className="h-64 rounded-3xl bg-white/[0.03] animate-pulse border border-white/5" />
                             ))
-                        ) : agents.map((agent, i) => (
+                        ) : agents.filter(a => !search || a.name?.toLowerCase().includes(search.toLowerCase()) || a.capabilities?.some((c: string) => c.toLowerCase().includes(search.toLowerCase()))).map((agent, i) => (
                             <div key={i} className="group relative p-8 rounded-[32px] glass-pro gradient-border shine-on-hover transition-all duration-500">
                                 <div className="flex justify-between items-start mb-6">
                                     <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-600/15 to-cyan-500/15 flex items-center justify-center text-violet-400 group-hover:scale-110 transition-transform duration-500 glow-breathe">
@@ -155,21 +158,21 @@ export default function HiveNetworkPage() {
                                     ))}
                                 </div>
 
-                                <button className="w-full py-3.5 rounded-2xl glass-pro group-hover:bg-violet-600 group-hover:border-violet-600 text-white font-black text-sm uppercase tracking-tight transition-all flex items-center justify-center gap-2">
-                                    Link to Agent
+                                <Link href="/agents" className="w-full py-3.5 rounded-2xl glass-pro group-hover:bg-violet-600 group-hover:border-violet-600 text-white font-black text-sm uppercase tracking-tight transition-all flex items-center justify-center gap-2" style={{ textDecoration: 'none' }}>
+                                    View Agent
                                     <Share2 size={14} />
-                                </button>
+                                </Link>
                             </div>
                         ))}
 
                         {/* Placeholder to prompt creation */}
-                        <div className="p-8 rounded-[32px] border-2 border-dashed border-white/10 flex flex-col items-center justify-center text-center group cursor-pointer hover:border-violet-500/40 transition-all glass-pro">
+                        <Link href="/agent" className="p-8 rounded-[32px] border-2 border-dashed border-white/10 flex flex-col items-center justify-center text-center group cursor-pointer hover:border-violet-500/40 transition-all glass-pro" style={{ textDecoration: 'none' }}>
                             <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center text-gray-500 mb-6 group-hover:bg-violet-500 group-hover:text-white transition-all">
                                 <Plus size={32} />
                             </div>
                             <h3 className="text-xl font-black text-gray-400 group-hover:text-white">{t('register_agent', 'Register Your Agent')}</h3>
                             <p className="text-sm text-gray-600 font-medium px-4 mt-2">Make your agent's skills available to the GSTD Hive network and start earning.</p>
-                        </div>
+                        </Link>
                     </div>
                 </div>
 

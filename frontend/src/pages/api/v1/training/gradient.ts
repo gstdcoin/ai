@@ -39,8 +39,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const lora_path:           string = body.lora_path || body.loraPath || '';
         const domain:              string = body.domain || 'general';
 
-        if (!job_id) {
-            return res.status(400).json({ error: 'job_id required' });
+        if (!job_id || !node_id) {
+            return res.status(400).json({ error: 'job_id and node_id required' });
+        }
+
+        // Verify node ownership
+        const headerWallet = ((req.headers['x-wallet-address'] as string) || '').trim().toLowerCase();
+        if (headerWallet) {
+            const nodeRaw = await kvGet(`node:${node_id}`).catch(() => null);
+            if (nodeRaw) {
+                const storedWallet = (JSON.parse(nodeRaw).wallet_address || '').toLowerCase();
+                if (storedWallet && storedWallet !== headerWallet) {
+                    return res.status(403).json({ error: 'Wallet mismatch' });
+                }
+            }
         }
 
         // Quality gate — reject low-quality gradients

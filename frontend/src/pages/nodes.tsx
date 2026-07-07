@@ -226,7 +226,7 @@ export default function NodesPage() {
             <div style={{ display: 'flex', justifyContent: 'center', gap: 24, flexWrap: 'wrap' }}>
               {[
                 { label: 'Nodes online', value: loadingNet ? '…' : String(activeCount), color: '#4ade80' },
-                { label: 'Max rate', value: '5 GSTD/h', color: '#22d3ee' },
+                { label: 'Max rate', value: '8 GSTD/h', color: '#22d3ee' },
                 { label: 'Min to start', value: '0 GSTD', color: '#a78bfa' },
               ].map(s => (
                 <div key={s.label} style={{ textAlign: 'center' }}>
@@ -350,7 +350,7 @@ export default function NodesPage() {
                   <span style={{ fontSize: 24 }}>🐳</span>
                   <div>
                     <div style={{ fontWeight: 800, fontSize: 15 }}>Docker</div>
-                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>Desktop • 1.5–5 GSTD/h</div>
+                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>Desktop • 1.5–8 GSTD/h</div>
                   </div>
                 </div>
                 <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginBottom: 14, lineHeight: 1.5 }}>

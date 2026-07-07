@@ -78,9 +78,9 @@ export default function BridgePage() {
         fetch('/api/v1/stats/public')
             .then(r => r.json())
             .then(d => setStats({
-                validators_online: d.nodes_online || 0,
-                transfers_today:   d.tasks_completed || 0,
-                avg_time_secs:     120,
+                validators_online: d.active_nodes || 0,
+                transfers_today:   0,
+                avg_time_secs:     0,
             }))
             .catch(() => {});
     }, []);
@@ -115,9 +115,9 @@ export default function BridgePage() {
                 {stats && (
                     <div className="grid grid-cols-3 gap-3">
                         {[
-                            { label: t('validators', 'Validators'), value: stats.validators_online, icon: <Shield size={14} /> },
-                            { label: t('transfers', 'Transfers'), value: stats.transfers_today, icon: <Zap size={14} /> },
-                            { label: t('avg_time', 'Avg time'), value: `~${Math.round(stats.avg_time_secs / 60)}m`, icon: <Clock size={14} /> },
+                            { label: t('validators', 'Validators'), value: stats.validators_online || '—', icon: <Shield size={14} /> },
+                            { label: t('status', 'Status'), value: 'Beta', icon: <Zap size={14} /> },
+                            { label: t('network', 'Network'), value: 'TON', icon: <Clock size={14} /> },
                         ].map(s => (
                             <div key={s.label} className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-3 text-center">
                                 <div className="flex items-center justify-center gap-1 text-gray-500 text-xs mb-1">

@@ -45,10 +45,12 @@ export default function DevelopersPage() {
   const [email, setEmail] = useState('');
   const [showRegister, setShowRegister] = useState(false);
   const [error, setError] = useState('');
+  const [nodeCount, setNodeCount] = useState<number>(0);
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/api/v1/rpc/chains`).then(r => r.json()).then(d => setChains(d.chains || [])).catch((err) => console.error('[Developers] chains failed:', err));
-    fetch(`${API_BASE_URL}/api/v1/rpc/pricing`).then(r => r.json()).then(d => setPricing(d)).catch((err) => console.error('[Developers] pricing failed:', err));
+    fetch(`${API_BASE_URL}/api/v1/rpc/chains`).then(r => r.json()).then(d => setChains(d.chains || [])).catch(() => {});
+    fetch(`${API_BASE_URL}/api/v1/rpc/pricing`).then(r => r.json()).then(d => setPricing(d)).catch(() => {});
+    fetch(`${API_BASE_URL}/api/v1/stats/public`).then(r => r.json()).then(d => setNodeCount(d.active_nodes || 0)).catch(() => {});
     const saved = localStorage.getItem('gstd_b2b_wallet');
     const savedKey = localStorage.getItem('gstd_b2b_apikey');
     if (saved) { setWalletAddress(saved); if (savedKey) { setApiKey(savedKey); setView('dashboard'); } }
@@ -125,7 +127,7 @@ export default function DevelopersPage() {
             </h1>
             <p style={{ color: '#8b8fa3', fontSize: 16, maxWidth: 560, margin: '0 auto' }}>
               Get decentralized RPC access to TON, ETH, SOL, BTC and AI inference — powered by{' '}
-              <strong style={{ color: '#d4af37' }}>94 node operators</strong> worldwide.
+              <strong style={{ color: '#d4af37' }}>{nodeCount > 0 ? `${nodeCount} node operators` : 'a growing network of nodes'}</strong> worldwide.
             </p>
           </div>
 

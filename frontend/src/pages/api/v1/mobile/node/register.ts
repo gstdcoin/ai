@@ -12,6 +12,7 @@
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvSet, kvIncr } from '../../../../../lib/kv';
+import { createHmac } from 'crypto';
 
 const MOBILE_NODE_TTL = 360; // 6 minutes (heartbeat every 5 min)
 
@@ -30,11 +31,25 @@ function determineTier(cpu_cores: number, ram_gb: number, bandwidth_mbps: number
 }
 
 function validateTelegramInitData(initData: string): string | null {
-    // Basic validation: check that initData contains user field
-    // Full HMAC validation requires TELEGRAM_BOT_TOKEN on backend
     if (!initData) return null;
+    const botToken = process.env.TELEGRAM_BOT_TOKEN || '';
     try {
         const params = new URLSearchParams(initData);
+        const hash = params.get('hash');
+        if (!hash) return null;
+
+        if (botToken) {
+            // Real HMAC-SHA256 validation per Telegram WebApp spec
+            params.delete('hash');
+            const checkString = [...params.entries()]
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([k, v]) => `${k}=${v}`)
+                .join('\n');
+            const secretKey = createHmac('sha256', 'WebAppData').update(botToken).digest();
+            const expected  = createHmac('sha256', secretKey).update(checkString).digest('hex');
+            if (expected !== hash) return null;
+        }
+
         const userStr = params.get('user');
         if (!userStr) return null;
         const user = JSON.parse(decodeURIComponent(userStr));

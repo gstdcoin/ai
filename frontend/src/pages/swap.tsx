@@ -58,7 +58,7 @@ export default function SwapPage() {
     fetch(`${API_BASE_URL}/api/v1/network/stats`)
       .then(r => r.json())
       .then(d => { if (d.gstd_price_usd > 0) setGstdPrice(d.gstd_price_usd); })
-      .catch((err) => { console.error('[Swap] price fetch failed:', err); });
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -66,7 +66,7 @@ export default function SwapPage() {
     fetch(`${API_BASE_URL}/api/v1/balance/public?wallet=${encodeURIComponent(userAddress)}`)
       .then(r => r.json())
       .then(d => setBalance((d.gstd_balance || 0) + (d.pending_earnings || 0)))
-      .catch((err) => { console.error('[Swap] balance fetch failed:', err); });
+      .catch(() => {});
   }, [userAddress]);
 
   const fromToken = direction === 'buy' ? 'TON' : 'GSTD';
@@ -102,7 +102,6 @@ export default function SwapPage() {
       });
       setStatus('simulated');
     } catch (err: any) {
-      console.error('Simulation failed:', err);
       setError(err?.message || 'No liquidity pool found for this pair');
       setStatus('error');
     }
@@ -178,7 +177,6 @@ export default function SwapPage() {
       setTxHash(result.boc || '');
       setStatus('success');
     } catch (err: any) {
-      console.error('Swap failed:', err);
       const msg = err?.message || 'Swap failed';
       if (msg.includes('User rejected') || msg.includes('Cancelled')) {
         setError('Transaction cancelled by user');

@@ -216,8 +216,8 @@ export default function About() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {[
                     { value: networkStats?.active_workers ? networkStats.active_workers.toLocaleString() : '—', label: t('stat_nodes', 'Active Nodes') || 'Active Nodes', icon: Shield, color: 'emerald', delay: '0s' },
-                    { value: '4.2 PB', label: t('collective_memory', 'Collective Memory'), icon: Brain, color: 'violet', delay: '0.1s' },
-                    { value: networkStats?.active_workers ? networkStats.active_workers.toLocaleString() : '—', label: t('active_synapses', 'Active Synapses'), icon: Activity, color: 'emerald', delay: '0.2s' },
+                    { value: networkStats?.total_tasks ? networkStats.total_tasks.toLocaleString() : '—', label: t('tasks_completed', 'Tasks Completed'), icon: Brain, color: 'violet', delay: '0.1s' },
+                    { value: networkStats?.total_gstd_paid ? `${networkStats.total_gstd_paid.toFixed(0)} GSTD` : '—', label: t('gstd_distributed', 'GSTD Distributed'), icon: Activity, color: 'emerald', delay: '0.2s' },
                     { value: networkStats?.total_hashrate ? `${networkStats.total_hashrate.toFixed(1)} PFLOPS` : '—', label: t('grid_power', 'Grid Power'), icon: Zap, color: 'cyan', delay: '0.3s' },
                   ].map((stat, i) => (
                     <div key={i} className="relative group overflow-hidden" style={{ animationDelay: stat.delay }}>

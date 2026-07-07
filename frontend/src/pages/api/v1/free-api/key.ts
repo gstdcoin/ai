@@ -47,9 +47,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const balance = balRaw ? parseFloat(balRaw as string) : 0;
 
     if (balance < REQUIRED_BALANCE) {
-        throw new Error(
-            `Need ${REQUIRED_BALANCE} GSTD on linked wallet. Current: ${balance.toFixed(2)}`
-        );
+        return res.status(402).json({
+            error: `Insufficient GSTD balance. Need ${REQUIRED_BALANCE} GSTD, you have ${balance.toFixed(2)} GSTD.`,
+            required: REQUIRED_BALANCE,
+            available: balance,
+        });
     }
 
     // Reuse existing key if one was already issued for this wallet

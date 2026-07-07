@@ -41,8 +41,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.status(400).json({ error: 'task_id and node_id required' });
         }
 
-        // ── Node earnings ────────────────────────────────────────────────────
+        // Verify node ownership
+        const headerWallet = ((req.headers['x-wallet-address'] as string) || '').trim().toLowerCase();
         const nodeRaw = await kvGet(`node:${nodeId}`);
+        if (nodeRaw && headerWallet) {
+            const storedWallet = (JSON.parse(nodeRaw).wallet_address || '').toLowerCase();
+            if (storedWallet && storedWallet !== headerWallet) {
+                return res.status(403).json({ error: 'Wallet mismatch' });
+            }
+        }
         const nodeWrites: Promise<any>[] = [];
 
         if (nodeRaw) {

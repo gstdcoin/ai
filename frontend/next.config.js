@@ -96,7 +96,7 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: https:",
               "font-src 'self' data:",
-              "connect-src 'self' https://app.gstdtoken.com https://tonapi.io https://toncenter.com wss: ws:",
+              "connect-src 'self' https://app.gstdtoken.com https://tonapi.io https://toncenter.com https://rpc.gstd.network https://api.github.com wss: ws:",
               "frame-ancestors 'self'",
             ].join('; '),
           },
