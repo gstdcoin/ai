@@ -16,6 +16,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
+    res.setHeader('Cache-Control', 'public, max-age=10, stale-while-revalidate=30');
+
     let kvOk = false;
     try {
         await kvGet('health:ping');

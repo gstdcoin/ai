@@ -266,7 +266,7 @@ function Dashboard({ initialTab, sourceTelegram, modeMining }: DashboardProps = 
                     </button>
 
                     <Link
-                      href="/monitor"
+                      href="/training"
                       style={{
                         background: 'rgba(16,185,129,0.04)',
                         border: '1px solid rgba(16,185,129,0.10)',

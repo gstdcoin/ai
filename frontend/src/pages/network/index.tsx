@@ -89,7 +89,6 @@ export default function NetworkMapPage() {
         <div className="min-h-screen bg-[#050510] text-white overflow-hidden relative font-sans selection:bg-cyan-500/30">
             <Head>
                 <title>Global Connectivity Map | GSTD Network</title>
-                <link href="https://api.mapbox.com/mapbox-gl-js/v3.1.2/mapbox-gl.css" rel="stylesheet" />
             </Head>
 
             {/* Decorative background elements */}

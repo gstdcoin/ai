@@ -140,14 +140,14 @@ const nextConfig = {
   // Backed by Upstash Redis (Vercel KV). No separate Go backend.
   async redirects() {
     return [
-      { source: '/bridge',   destination: '/nodes', permanent: false },
-      { source: '/swap',     destination: '/nodes', permanent: false },
-      { source: '/agents',   destination: '/chat',  permanent: false },
-      { source: '/agent',    destination: '/chat',  permanent: false },
-      { source: '/staking',  destination: '/',      permanent: false },
-      { source: '/fund',     destination: '/',      permanent: false },
-      { source: '/operator', destination: '/',      permanent: false },
-      { source: '/hive',     destination: '/',      permanent: false },
+      { source: '/bridge',   destination: '/nodes', permanent: true },
+      { source: '/swap',     destination: '/nodes', permanent: true },
+      { source: '/agents',   destination: '/chat',  permanent: true },
+      { source: '/agent',    destination: '/chat',  permanent: true },
+      { source: '/staking',  destination: '/nodes', permanent: true },
+      { source: '/fund',     destination: '/stats', permanent: true },
+      { source: '/operator', destination: '/nodes', permanent: true },
+      { source: '/hive',     destination: '/chat',  permanent: true },
     ];
   },
 

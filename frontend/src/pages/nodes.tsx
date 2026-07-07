@@ -1,6 +1,6 @@
 import Head from 'next/head';
 import { useState, useEffect, useCallback } from 'react';
-import { useTonAddress } from '@tonconnect/ui-react';
+import { useTonAddress, TonConnectButton } from '@tonconnect/ui-react';
 import { GetStaticProps } from 'next';
 import { getCommonStaticProps } from '../lib/i18n-static-props';
 import { API_BASE_URL } from '../lib/config';
@@ -404,7 +404,7 @@ export default function NodesPage() {
 
             <div style={{ marginTop: 12, textAlign: 'center' }}>
               <a
-                href="/nodes"
+                href="/docs"
                 style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
               >
                 <ExternalLink size={12} /> Node setup guide
@@ -591,8 +591,11 @@ export default function NodesPage() {
             }}>
               <div style={{ fontSize: 28, marginBottom: 10 }}>🔗</div>
               <div style={{ fontWeight: 800, fontSize: 17, marginBottom: 6 }}>Connect your TON wallet to see your node stats</div>
-              <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>
+              <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', marginBottom: 16 }}>
                 Track earnings, claim rewards, and see your tier — all from the web.
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                <TonConnectButton />
               </div>
             </div>
           )}

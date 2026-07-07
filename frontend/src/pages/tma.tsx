@@ -54,11 +54,11 @@ export default function TMAPage() {
         const publicData = publicRes.ok ? await publicRes.json() : {};
 
         setStats({
-          node_status: publicData.active_devices_count > 0 ? 'online' : 'offline',
+          node_status: publicData.active_nodes > 0 ? 'online' : 'offline',
           hashrate: publicData.total_tasks_completed || 0,
           earned_gstd: publicData.total_gstd_paid || 0,
-          active_workers: publicData.active_devices_count || 0,
-          tasks_completed_24h: publicData.completed_tasks || 0,
+          active_workers: publicData.active_nodes || 0,
+          tasks_completed_24h: publicData.tasks_completed || 0,
         });
       } catch (_e) {
         console.warn('Silent fetch stats failure:', _e);
@@ -182,7 +182,7 @@ export default function TMAPage() {
                     <div>
                       <h4 className="text-sm font-bold text-gray-200">{t('step1_title', 'Connect Wallet')}</h4>
                       <p className="text-xs text-gray-500 mt-1">
-                        {t('step1_desc_prefix', 'Link your TON wallet securely to receive your')} <span className="text-amber-400 font-bold">1.0 GSTD Welcome Bonus</span> {t('step1_desc_suffix', 'automatically and create your Sovereign Identity.')}
+                        {t('step1_desc', 'Link your TON wallet securely to create your Sovereign Identity and start earning GSTD.')}
                       </p>
                     </div>
                   </div>
@@ -227,7 +227,7 @@ export default function TMAPage() {
               
               <div className="rounded-xl overflow-hidden bg-[#1a1a24] shadow-[0_0_30px_rgba(139,92,246,0.15)] border border-white/5 h-[500px]">
                 <iframe 
-                  src="https://app.ston.fi/swap?ft=TON&tt=GSTD"
+                  src="https://app.ston.fi/swap?ft=TON&tt=EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO"
                   className="w-full h-full border-0"
                   title="STON.fi DEX Swap"
                   allow="clipboard-read; clipboard-write; microphone; camera"
@@ -298,7 +298,7 @@ function getDeviceResources() {
 function MobileNodePanel({ address }: { address: string | undefined }) {
   const { t } = useTranslation('common');
   const [isRunning, setIsRunning] = useState(false);
-  const [tier, setTier] = useState<string>('bronze');
+  const [tier, setTier] = useState<string>('spark');
   const [ratePerHour, setRatePerHour] = useState(0.5);
   const [baseGstd, setBaseGstd] = useState(0);
   const [baseTs, setBaseTs] = useState(() => Date.now());
@@ -343,7 +343,7 @@ function MobileNodePanel({ address }: { address: string | undefined }) {
       });
       if (resp.ok) {
         const data = await resp.json();
-        setTier(data.tier || 'bronze');
+        setTier(data.tier || 'spark');
         setRatePerHour(data.rate_per_hour || 0.5);
         setBaseGstd(data.accumulated_gstd || 0);
         setBaseTs(Date.now());
@@ -399,9 +399,9 @@ function MobileNodePanel({ address }: { address: string | undefined }) {
     setTimeout(() => setClaimMsg(''), 5000);
   };
 
-  const tierColor = TIER_COLORS[tier] || TIER_COLORS.bronze;
-  const tierBg = TIER_BG[tier] || TIER_BG.bronze;
-  const tierEmoji = TIER_EMOJI[tier] || '🥉';
+  const tierColor = TIER_COLORS[tier] || TIER_COLORS.spark;
+  const tierBg = TIER_BG[tier] || TIER_BG.spark;
+  const tierEmoji = TIER_EMOJI[tier] || '✨';
 
   return (
     <div className="space-y-3">

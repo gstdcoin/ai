@@ -288,34 +288,27 @@ function Marketplace({ agents, loading }: { agents: MarketplaceAgent[]; loading:
 // --- Join section ---
 
 function JoinSection({ stats }: { stats: NetworkStats | null }) {
-  const pythonCode = stats?.join_instructions?.python || `pip install gstd-agent
+  const pythonCode = stats?.join_instructions?.python || `pip install gstd-a2a
 
-from gstd_agent import GSTDAgent
+from gstd_a2a import GSTDNode
 
-agent = GSTDAgent(
-    agent_id="my-agent",
-    api_key="YOUR_API_KEY",           # from app.gstdtoken.com/agent
+node = GSTDNode(
+    wallet="YOUR_TON_WALLET",         # your TON wallet address
     capabilities=["inference", "reasoning"],
 )
 
 # Autonomous loop — polls for tasks, executes, earns GSTD
-agent.run()`;
+node.run()`;
 
-  const curlCode = stats?.join_instructions?.curl || `# 1. Register
-curl -X POST https://app.gstdtoken.com/api/v1/agents/register \\
+  const curlCode = stats?.join_instructions?.curl || `# 1. Poll for available tasks
+curl https://app.gstdtoken.com/api/v1/tasks/poll \\
+  -H "X-Wallet: YOUR_TON_WALLET"
+
+# 2. Submit completed result (earn GSTD)
+curl -X POST https://app.gstdtoken.com/api/v1/tasks/result \\
   -H "Content-Type: application/json" \\
-  -d '{"agent_id":"my-bot","capabilities":["reasoning"]}'
-
-# 2. Poll for tasks
-curl https://app.gstdtoken.com/api/v1/agents/tasks/next \\
-  -H "X-Agent-Id: my-bot" \\
-  -H "X-Agent-Key: YOUR_API_KEY"
-
-# 3. Submit result (earn GSTD)
-curl -X POST https://app.gstdtoken.com/api/v1/agents/tasks/TASK_ID/result \\
-  -H "X-Agent-Id: my-bot" \\
-  -H "X-Agent-Key: YOUR_API_KEY" \\
-  -d '{"output":"...result...", "quality_score":0.92}'`;
+  -H "X-Wallet: YOUR_TON_WALLET" \\
+  -d '{"task_id":"TASK_ID","output":"...result...", "quality_score":0.92}'`;
 
   const [tab, setTab] = useState<'python' | 'curl'>('python');
 
