@@ -1,0 +1,40 @@
+/**
+ * GET /api/v1/settlement/pending
+ *
+ * Returns all wallets with pending (unsettled) GSTD rewards.
+ * Used by the admin to see what needs to be settled on-chain.
+ * After SettlementMaster is deployed, the trigger endpoint uses this data.
+ */
+import type { NextApiRequest, NextApiResponse } from 'next';
+import { computeSettlement, getTreasuryBalance } from '../../../../lib/rewards';
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+    if (req.method !== 'GET') {
+        return res.status(405).json({ error: 'Method not allowed' });
+    }
+
+    const secret = req.headers['x-admin-secret'] || req.query.secret;
+    if (secret !== process.env.TREASURY_SECRET) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    try {
+        const [entries, treasury] = await Promise.all([
+            computeSettlement(0),
+            getTreasuryBalance(),
+        ]);
+
+        const totalPending = entries.reduce((sum, e) => sum + e.amount, 0);
+
+        return res.status(200).json({
+            entries,
+            total_pending_gstd: totalPending,
+            treasury_gstd:      treasury,
+            count:              entries.length,
+            settlement_master:  process.env.NEXT_PUBLIC_SETTLEMENT_MASTER || null,
+        });
+    } catch (err: any) {
+        console.error('[settlement/pending]', err.message);
+        return res.status(500).json({ error: 'Internal error' });
+    }
+}
