@@ -25,7 +25,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 wallet:      n.wallet_address || n.operator_wallet || '',
                 tasks_done:  n.tasks_completed || 0,
                 gstd_earned: n.gstd_earned || 0,
-                uptime_pct:  n.uptime_pct || 99,
+                uptime_pct:  n.uptime_pct ?? null,
                 is_online:   (Date.now() - new Date(n.last_seen || 0).getTime()) < 600_000,
             }))
             .sort((a, b) => b.gstd_earned - a.gstd_earned)

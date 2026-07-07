@@ -38,7 +38,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 wallet:         node.wallet_address || node.operator_wallet || '',
                 tasks_done:     node.tasks_completed || 0,
                 gstd_earned:    node.total_earned || 0,
-                uptime_pct:     node.uptime_pct || 99.0,
+                uptime_pct:     node.uptime_pct ?? null,
                 tier:           getTier(node.total_earned || 0),
                 is_online:      (Date.now() - new Date(node.last_seen || 0).getTime()) < 600_000,
                 joined_at:      node.registered_at || node.created_at || null,

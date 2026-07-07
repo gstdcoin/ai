@@ -10,7 +10,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     return res.status(200).json({
         chains: [
-            { id: 'ton',      name: 'TON',      symbol: 'TON', status: 'active',  icon: '/icons/ton.svg'  },
+            { id: 'ton',      name: 'TON',      symbol: 'TON', status: 'live',    icon: '/icons/ton.svg'  },
             { id: 'ethereum', name: 'Ethereum', symbol: 'ETH', status: 'coming',  icon: '/icons/eth.svg'  },
             { id: 'solana',   name: 'Solana',   symbol: 'SOL', status: 'coming',  icon: '/icons/sol.svg'  },
             { id: 'xrpl',     name: 'XRPL',     symbol: 'XRP', status: 'coming',  icon: '/icons/xrp.svg'  },

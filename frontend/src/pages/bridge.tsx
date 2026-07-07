@@ -101,6 +101,19 @@ export default function BridgePage() {
 
             <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
 
+                {/* Phase 2 Notice — bridge not yet live */}
+                <div className="flex items-start gap-3 bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
+                    <span className="text-amber-400 text-xl mt-0.5">⚠</span>
+                    <div>
+                        <p className="text-amber-300 font-semibold text-sm">Bridge in Development — Phase 2</p>
+                        <p className="text-amber-200/70 text-xs mt-1">
+                            Cross-chain bridge contracts are not yet deployed. The deposit addresses below are read-only previews.
+                            Do <strong>not</strong> send funds — transfers will not be processed until Phase 2 launch.
+                            Follow <a href="https://t.me/gstdcoin" className="underline">@gstdcoin</a> for the launch announcement.
+                        </p>
+                    </div>
+                </div>
+
                 {/* Header */}
                 <div>
                     <h1 className="text-2xl font-bold text-white mb-1">
@@ -234,7 +247,7 @@ export default function BridgePage() {
                     <div className="flex items-start gap-2 text-xs text-gray-500">
                         <Info size={13} className="mt-0.5 shrink-0" />
                         <span>
-                            {t('fee_note', '0.1% flat fee (min 1 GSTD). After 3 confirmations validators reach quorum and release funds on')} {targetChain} {t('in_approx', 'in ~2 minutes')}.
+                            {t('fee_note', '1% flat fee (min 1 GSTD). After 3 confirmations validators reach quorum and release funds on')} {targetChain} {t('in_approx', 'in ~2 minutes')}.
                         </span>
                     </div>
                 </div>

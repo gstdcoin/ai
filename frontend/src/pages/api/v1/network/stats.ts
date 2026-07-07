@@ -61,7 +61,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
             // Task metrics (real KV data)
             total_tasks:            tasksDone,
-            tasks_24h:              Math.floor(tasksDone * 0.04),
+            tasks_24h:              null,
             tasks_completed:        tasksDone,
             queue_depth:            queueDepth,
 

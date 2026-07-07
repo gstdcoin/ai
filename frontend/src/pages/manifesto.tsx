@@ -303,9 +303,11 @@ IW < 0.50  →  Low Intelligence Trade   →  excluded from training`}
                     ['Memory', '3-layer collective (in-process → Redis → Platform)', '✅ Live'],
                     ['Routing', 'ThermalRouter (entropy-weighted specialisation)', '✅ Live'],
                     ['Oracle API', 'POST /api/v1/oracle/evaluate — 10/day free tier', '✅ Live'],
-                    ['Fine-tuning', 'QLoRA adapter marketplace — Alpaca JSONL format', '✅ Live'],
+                    ['Fine-tuning', 'QLoRA task queue — Alpaca JSONL format', '🔄 Beta'],
                     ['Validation', 'GSTD-Validation-Layer — IW score + LoRA dataset', '✅ Live'],
-                    ['Settlement', 'TON blockchain — GSTDJetton + AgentRegistry', '✅ Deployed'],
+                    ['Jetton', 'GSTDJetton on TON mainnet (EQDv6c…)', '✅ Deployed'],
+                    ['AgentRegistry', 'On-chain node reputation (TON mainnet)', '✅ Deployed'],
+                    ['SettlementMaster', 'Automated reward settlement contract', '🔄 Phase 2'],
                     ['Bridge', 'TON ↔ Solana ↔ XRPL (Rust, P2P consensus)', '🔄 Phase 2'],
                   ].map(([layer, tech, status]) => (
                     <tr key={layer as string}>
