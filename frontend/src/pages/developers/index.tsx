@@ -46,11 +46,13 @@ export default function DevelopersPage() {
   const [showRegister, setShowRegister] = useState(false);
   const [error, setError] = useState('');
   const [nodeCount, setNodeCount] = useState<number>(0);
+  const [oracleStats, setOracleStats] = useState<{ total?: number; enter?: number; skip?: number; enter_pct?: number; avg_confidence?: number; avg_latency_ms?: number } | null>(null);
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/api/v1/rpc/chains`).then(r => r.json()).then(d => setChains(d.chains || [])).catch(() => {});
     fetch(`${API_BASE_URL}/api/v1/rpc/pricing`).then(r => r.json()).then(d => setPricing(d)).catch(() => {});
     fetch(`${API_BASE_URL}/api/v1/stats/public`).then(r => r.json()).then(d => setNodeCount(d.active_nodes || 0)).catch(() => {});
+    fetch(`${API_BASE_URL}/api/v1/oracle/stats`).then(r => r.json()).then(d => setOracleStats(d)).catch(() => {});
     const saved = localStorage.getItem('gstd_b2b_wallet');
     const savedKey = localStorage.getItem('gstd_b2b_apikey');
     if (saved) { setWalletAddress(saved); if (savedKey) { setApiKey(savedKey); setView('dashboard'); } }
@@ -170,6 +172,71 @@ export default function DevelopersPage() {
               </div>
             </div>
           )}
+
+          {/* Oracle Demo Section */}
+          <div style={{ background: 'rgba(0,200,83,0.04)', border: '1px solid rgba(0,200,83,0.2)', borderRadius: 16, padding: '28px 24px', marginBottom: 32 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <span style={{ fontSize: 24 }}>🧠</span>
+              <div>
+                <h3 style={{ margin: 0, color: '#00e676' }}>Real-world Demo: AI Trading Oracle</h3>
+                <div style={{ color: '#6b7085', fontSize: 13, marginTop: 2 }}>Live Binance futures bot uses GSTD network to validate every trade signal</div>
+              </div>
+            </div>
+
+            {/* Live Oracle Stats */}
+            {oracleStats && oracleStats.total !== undefined && oracleStats.total > 0 && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 12, marginBottom: 20 }}>
+                {[
+                  { label: 'Total evaluated', val: oracleStats.total?.toLocaleString() ?? '—' },
+                  { label: 'Entered', val: `${oracleStats.enter_pct ?? 0}%` },
+                  { label: 'Avg confidence', val: oracleStats.avg_confidence != null ? (oracleStats.avg_confidence * 100).toFixed(0) + '%' : '—' },
+                  { label: 'Avg latency', val: oracleStats.avg_latency_ms != null ? `${(oracleStats.avg_latency_ms / 1000).toFixed(1)}s` : '—' },
+                ].map(s => (
+                  <div key={s.label} style={{ background: 'rgba(0,0,0,0.3)', borderRadius: 10, padding: '12px 16px', textAlign: 'center' }}>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: '#00e676' }}>{s.val}</div>
+                    <div style={{ fontSize: 11, color: '#6b7085', marginTop: 4 }}>{s.label}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Code examples */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, marginBottom: 16 }}>
+              <div style={{ background: 'rgba(0,0,0,0.4)', borderRadius: 10, padding: '14px 16px', fontFamily: 'monospace', fontSize: 12, overflowX: 'auto' }}>
+                <div style={{ color: '#6b7085', marginBottom: 6 }}># curl example</div>
+                <div style={{ color: '#e0e0e0', whiteSpace: 'pre' }}>{`curl -X POST ${API_BASE_URL}/api/v1/oracle/evaluate \\
+  -H 'Content-Type: application/json' \\
+  -H 'Authorization: Bearer gstd_xxx' \\
+  -d '{
+    "symbol": "BTCUSDT",
+    "side": "LONG",
+    "strength": 7.2,
+    "rsi": 58
+  }'`}</div>
+              </div>
+              <div style={{ background: 'rgba(0,0,0,0.4)', borderRadius: 10, padding: '14px 16px', fontFamily: 'monospace', fontSize: 12, overflowX: 'auto' }}>
+                <div style={{ color: '#6b7085', marginBottom: 6 }}># Response</div>
+                <div style={{ color: '#00e676', whiteSpace: 'pre' }}>{`{
+  "enter": true,
+  "confidence": 0.78,
+  "reason": "Strong momentum, RSI neutral",
+  "source": "gstd:sovereign",
+  "model": "llama3.2:3b",
+  "latency_ms": 1240
+}`}</div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+              <div style={{ fontSize: 13, color: '#8b8fa3' }}>
+                <span style={{ color: '#00e676' }}>10 requests/day free</span> · Unlimited with API key
+              </div>
+              <a href="https://github.com/gstdcoin/gstdbot" target="_blank" rel="noopener noreferrer"
+                style={{ fontSize: 13, color: '#64b5f6', textDecoration: 'none' }}>
+                View source (gstd_oracle.py) →
+              </a>
+            </div>
+          </div>
 
           {/* Auth / Register */}
           <div style={{ background: 'linear-gradient(135deg, rgba(41,121,255,0.1), rgba(0,0,0,0.2))', border: '1px solid rgba(41,121,255,0.25)', borderRadius: 16, padding: '32px 24px', textAlign: 'center' }}>
