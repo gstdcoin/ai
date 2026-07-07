@@ -11,6 +11,8 @@ interface SkillData {
     description: string;
     version: string;
     type: string;
+    stars?: number;
+    language?: string;
 }
 
 export default function ImportSkillPage() {
@@ -28,20 +30,26 @@ export default function ImportSkillPage() {
         setError(null);
         setSkillData(null);
 
-        setTimeout(() => {
-            if (url.includes('github.com')) {
-                const repoName = url.split('/').pop() || 'new-skill';
-                setSkillData({
-                    name: repoName,
-                    description: 'Autonomous skill identified from repository. Validated for GSTD A2A protocol.',
-                    version: '1.0.0',
-                    type: 'mcp',
-                });
+        try {
+            const res = await fetch(`/api/v1/import/verify?url=${encodeURIComponent(url)}`);
+            const data = await res.json();
+            if (!res.ok) {
+                setError(data.error || 'Verification failed');
             } else {
-                setError('Invalid URL. Please provide a valid GitHub repository URL.');
+                setSkillData({
+                    name:        data.name,
+                    description: data.description || 'No description provided.',
+                    version:     '1.0.0',
+                    type:        'mcp',
+                    stars:       data.stars,
+                    language:    data.language,
+                });
             }
+        } catch {
+            setError('Network error — could not reach verification service.');
+        } finally {
             setIsVerifying(false);
-        }, 1500);
+        }
     };
 
     const copyCommand = () => {
@@ -150,7 +158,11 @@ export default function ImportSkillPage() {
                                                 </div>
                                                 <div>
                                                     <div className="text-xl font-black tracking-tight">{skillData.name}</div>
-                                                    <div className="text-xs font-bold text-gray-500">v{skillData.version} · {skillData.type.toUpperCase()}</div>
+                                                    <div className="text-xs font-bold text-gray-500">
+                                                        {skillData.language && <span>{skillData.language} · </span>}
+                                                        {skillData.stars !== undefined && <span>⭐ {skillData.stars} · </span>}
+                                                        {skillData.type.toUpperCase()}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -162,8 +174,8 @@ export default function ImportSkillPage() {
                                                 <Check size={20} className="bg-emerald-400/10 p-1 rounded-full" />
                                                 {t('valid_skillmd_found', 'Valid repository found')}
                                             </div>
-                                            <div className="mt-2 text-[10px] text-gray-600 uppercase tracking-widest">
-                                                {t('signed_by_protocol', 'Signed by GSTD Protocol')}
+                                            <div className="mt-2 text-[11px] text-gray-500 leading-relaxed">
+                                                {skillData.description}
                                             </div>
                                         </div>
                                     </div>

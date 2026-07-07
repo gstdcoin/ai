@@ -15,7 +15,7 @@
  * TrainingNode picks them up via /api/v1/tasks/poll.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvGet, kvSet, kvPush, kvKeys, kvIncr } from '../../../../lib/kv';
+import { kvGet, kvSet, kvPush, kvKeys, kvIncr, kvIncrByFloat } from '../../../../lib/kv';
 import { randomBytes } from 'crypto';
 
 const SUPPORTED_MODELS = [
@@ -110,8 +110,24 @@ async function handleSubmit(req: NextApiRequest, res: NextApiResponse) {
             });
         }
 
-        const job_id   = randomBytes(10).toString('hex');
+        const job_id    = randomBytes(10).toString('hex');
         const cost_gstd = (COST_PER_EPOCH[model] || 1.0) * epochs;
+
+        // Enforce payment: deduct GSTD balance if wallet provided
+        if (wallet) {
+            const walletKey = wallet.trim().toLowerCase();
+            const balRaw    = await kvGet(`balance:${walletKey}`);
+            const balance   = parseFloat(balRaw || '0');
+            if (balance < cost_gstd) {
+                return res.status(402).json({
+                    error:     'Insufficient GSTD balance',
+                    required:  cost_gstd,
+                    available: balance,
+                    deposit_to: process.env.NEXT_PUBLIC_TON_VAULT || '',
+                });
+            }
+            await kvIncrByFloat(`balance:${walletKey}`, -cost_gstd);
+        }
 
         const job: TrainingJob = {
             job_id,

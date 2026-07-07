@@ -232,10 +232,21 @@ export default function TrainingPage() {
     const [error, setError] = useState('');
     const [job, setJob] = useState<JobStatus | null>(null);
     const [showAll, setShowAll] = useState(false);
+    const [balance, setBalance] = useState<number | null>(null);
     const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const model = MODELS.find(m => m.id === selectedModel) || MODELS[2];
     const cost  = model.costPerEpoch * epochs;
+
+    // Fetch GSTD credit balance when wallet is set
+    useEffect(() => {
+        const w = wallet.trim();
+        if (!w) { setBalance(null); return; }
+        fetch(`${API_BASE_URL}/api/v1/credits/balance?wallet=${encodeURIComponent(w)}`)
+            .then(r => r.ok ? r.json() : null)
+            .then(d => d ? setBalance(d.balance_gstd) : null)
+            .catch(() => null);
+    }, [wallet]);
 
     // Poll job status
     useEffect(() => {
@@ -274,7 +285,15 @@ export default function TrainingPage() {
                 }),
             });
             const data = await res.json();
-            if (!res.ok) { setError(data.error || 'Submission failed'); return; }
+            if (!res.ok) {
+                if (res.status === 402) {
+                    setError(`Insufficient GSTD balance. Need ${data.required} GSTD, you have ${(data.available || 0).toFixed(2)} GSTD. Send GSTD to your vault to top up.`);
+                    setBalance(data.available || 0);
+                } else {
+                    setError(data.error || 'Submission failed');
+                }
+                return;
+            }
 
             // Start tracking
             setJob({
@@ -451,12 +470,19 @@ export default function TrainingPage() {
                                     />
                                 </label>
                                 <label style={{ display: 'block' }}>
-                                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 6 }}>TON Wallet (optional)</div>
+                                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 6, display: 'flex', justifyContent: 'space-between' }}>
+                                        <span>TON Wallet <span style={{ color: 'rgba(248,113,113,0.8)' }}>*required for payment</span></span>
+                                        {balance !== null && (
+                                            <span style={{ color: balance >= cost ? '#4ade80' : '#f87171' }}>
+                                                Balance: {balance.toFixed(2)} GSTD {balance < cost ? `(need ${cost} GSTD)` : ''}
+                                            </span>
+                                        )}
+                                    </div>
                                     <input
                                         type="text" value={wallet}
                                         onChange={e => setWallet(e.target.value)}
                                         placeholder="EQ..."
-                                        style={{ width: '100%', padding: '12px 14px', borderRadius: 10, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: '#fff', fontSize: 14, outline: 'none' }}
+                                        style={{ width: '100%', padding: '12px 14px', borderRadius: 10, background: 'rgba(255,255,255,0.05)', border: `1px solid ${balance !== null && balance < cost ? 'rgba(248,113,113,0.4)' : 'rgba(255,255,255,0.12)'}`, color: '#fff', fontSize: 14, outline: 'none' }}
                                     />
                                 </label>
                             </div>
