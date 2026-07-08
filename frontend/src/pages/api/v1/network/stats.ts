@@ -7,7 +7,7 @@
  * extra fields for backward compatibility.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvGet, kvKeys, kvMGet, kvLLen } from '../../../../lib/kv';
+import { kvGet, kvSet, kvKeys, kvMGet, kvLLen } from '../../../../lib/kv';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'GET') {

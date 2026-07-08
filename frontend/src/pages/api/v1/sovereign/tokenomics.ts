@@ -5,10 +5,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet } from '../../../../lib/kv';
 
-const MAX_SUPPLY    = 1_000_000_000;
-const WORKER_POOL   = 400_000_000;
-const BASE_REWARD   = 0.5;            // GSTD per hour per node
-const EPOCH_DAYS    = 365;
+const MAX_SUPPLY         = 1_000_000_000;
+const WORKER_POOL        = 400_000_000;
+const BASE_REWARD        = 0.5;            // GSTD per hour per node
+const EPOCH_DAYS         = 365;
+// Pre-minted at TGE (Jul 2026) — full supply on TON mainnet, vested per schedule
+const TGE_MINTED         = 1_000_000_000;
 // No token burning — all fees route to node operator reward pool
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -24,13 +26,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         ]);
 
         const total_burned    = burnedRaw  ? parseFloat(burnedRaw)  : 0;
-        const total_minted    = mintedRaw  ? parseFloat(mintedRaw)  : 0;
+        const total_minted    = mintedRaw  ? parseFloat(mintedRaw)  : TGE_MINTED;
         const total_staked    = stakedRaw  ? parseFloat(stakedRaw)  : 0;
         const active_stakers  = stakersRaw ? parseInt(stakersRaw)   : 0;
 
-        const circulating_supply  = total_minted;
-        const remaining_supply    = MAX_SUPPLY - total_minted;
-        const supply_mined_pct    = (total_minted / MAX_SUPPLY) * 100;
+        // Circulating supply = total minted minus locked/vested (worker pool locked until earned)
+        const circulating_supply  = total_minted - WORKER_POOL;  // initial public float ~600M
+        const remaining_supply    = WORKER_POOL;  // worker pool earnable by node operators
+        const supply_mined_pct    = parseFloat(burnedRaw || '0') / MAX_SUPPLY * 100;
 
         // Epoch 1 started at project genesis; halving every EPOCH_DAYS days
         const genesis = new Date('2025-01-01').getTime();
