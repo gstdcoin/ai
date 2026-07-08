@@ -19,7 +19,7 @@ export const config = { maxDuration: 115 };
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { rateLimit, getClientIp } from '../../../../lib/ratelimit';
-import { kvGet, kvSet, kvKeys, kvMGet, kvIncrByFloat, kvIncr } from '../../../../lib/kv';
+import { kvGet, kvSet, kvKeys, kvMGet, kvIncrByFloat } from '../../../../lib/kv';
 import { validateEnterpriseKey } from '../enterprise/keys';
 import { accrueReward, BASE_TASK_FEE } from '../../../../lib/rewards';
 
@@ -126,8 +126,8 @@ function parseDecision(text: string): { enter: boolean; confidence: number; reas
 const NODE_TTL = 600;
 
 async function recordOracleTask(nodeUrl: string, taskId: string): Promise<void> {
-    // Always increment global task counter
-    await kvIncr('stats:total_tasks_completed');
+    // Always increment global task counter (kvIncrByFloat is proven reliable on Upstash)
+    await kvIncrByFloat('stats:total_tasks_completed', 1);
     // Find node by URL and credit it
     const nodeKeys = await kvKeys('node:');
     if (!nodeKeys.length) return;

@@ -39,6 +39,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             } catch { /* GitHub unavailable */ }
         }
 
+        // Deduplicate by node_url: prefer named nodes (e.g. "gstd-pi-bootstrap") over UUID-generated IDs
+        const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-/i;
+        nodes.sort((a, b) => {
+            const aUuid = UUID_RE.test(a.node_id) ? 1 : 0;
+            const bUuid = UUID_RE.test(b.node_id) ? 1 : 0;
+            return aUuid - bUuid;
+        });
+        const seenUrls = new Set<string>();
+        nodes = nodes.filter(n => {
+            const url = (n as any).node_url || n.multiaddrs?.[0] || '';
+            if (!url) return true;
+            if (seenUrls.has(url)) return false;
+            seenUrls.add(url);
+            return true;
+        });
+
         // Strip sensitive fields for public listing
         const public_nodes = nodes.map(n => ({
             node_id:         n.node_id,
