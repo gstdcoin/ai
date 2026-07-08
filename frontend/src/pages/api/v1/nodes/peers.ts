@@ -16,7 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     try {
-        const keys = await kvKeys('node:');
+        const keys = (await kvKeys('node:')).filter((k: string) => !k.slice(5).includes(':'));
         let addrs: string[] = [];
         let peers: { node_id: string; multiaddrs: string[] }[] = [];
 

@@ -16,7 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     try {
-        const keys = await kvKeys('node:');
+        const keys = (await kvKeys('node:')).filter((k: string) => !k.slice(5).includes(':'));
         if (keys.length === 0) {
             return res.status(200).json({
                 network: { nodes: 0, storage_gb: 0, ram_gb: 0, cpu_cores: 0, gpu_nodes: 0, models: [] },
