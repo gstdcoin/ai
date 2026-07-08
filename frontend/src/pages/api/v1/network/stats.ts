@@ -62,13 +62,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const users       = parseInt(totalUsers          || '0', 10);
         const burned      = parseFloat(totalBurned       || '0');
 
-        // Tasks completed: prefer KV counter; fall back to oracle/stats cache (gstdbot's own counter)
+        // Tasks completed: prefer KV counter; fall back to summing node records (heartbeat sets these)
+        // then oracle/stats cache as last resort
         let tasksDone = parseInt(totalTasksCompleted || '0', 10);
+        if (!tasksDone) {
+            // Sum tasks_completed from all node records (updated by PlatformLink heartbeat)
+            if (rootNodeKeys.length > 0) {
+                const nodeVals = await kvMGet(rootNodeKeys).catch(() => [] as (string|null)[]);
+                for (const raw of nodeVals) {
+                    if (!raw) continue;
+                    try { tasksDone += parseInt(JSON.parse(raw as string).tasks_completed || '0', 10); } catch { /* ignore */ }
+                }
+            }
+        }
         if (!tasksDone) {
             const oracleCacheRaw = await kvGet('oracle:stats:cache').catch(() => null);
             if (oracleCacheRaw) {
                 try { tasksDone = JSON.parse(oracleCacheRaw as string)?.total || 0; } catch { /* ignore */ }
             }
+        }
+        // Sync the authoritative counter so subsequent reads are fast
+        if (tasksDone > parseInt(totalTasksCompleted || '0', 10)) {
+            kvSet('stats:total_tasks_completed', String(tasksDone)).catch(() => {});
         }
 
         // Read GSTD price from KV cache; fall back to seed price ($0.001) pre-STON.fi listing
