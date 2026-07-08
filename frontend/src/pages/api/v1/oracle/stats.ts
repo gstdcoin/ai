@@ -10,43 +10,50 @@
  */
 
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvGet, kvSet, kvIncr } from '../../../../lib/kv';
+import { kvGet, kvSet, kvKeys, kvMGet } from '../../../../lib/kv';
 
 const CACHE_KEY = 'oracle:stats:cache';
 const CACHE_TTL = 120; // 2 minutes
 
-async function fetchFromNode(): Promise<object | null> {
-    const nodeUrl = (process.env.GSTD_NODE_URL || '').replace(/\/$/, '');
-    if (!nodeUrl) {
-        // Try GitHub-published tunnel URL
-        try {
-            const r = await fetch(
-                `https://raw.githubusercontent.com/gstdcoin/ai/main/node-url.txt?t=${Math.floor(Date.now() / 30000)}`,
-                { signal: AbortSignal.timeout(3000) }
-            );
-            if (!r.ok) return null;
-            const url = (await r.text()).trim();
-            if (!url.startsWith('http')) return null;
-
-            const statsRes = await fetch(`${url}/api/oracle/stats`, {
-                signal: AbortSignal.timeout(8000),
-            });
-            if (!statsRes.ok) return null;
-            return await statsRes.json();
-        } catch {
-            return null;
-        }
-    }
-
+async function findNodeUrl(): Promise<string | null> {
+    // 1. Env override
+    if (process.env.GSTD_NODE_URL) return process.env.GSTD_NODE_URL.replace(/\/$/, '');
+    // 2. Live KV registry (most reliable — updated by every heartbeat)
     try {
-        const res = await fetch(`${nodeUrl}/api/oracle/stats`, {
-            signal: AbortSignal.timeout(8000),
-        });
+        const keys = (await kvKeys('node:')).filter((k: string) => !k.slice(5).includes(':'));
+        if (keys.length > 0) {
+            const values = await kvMGet(keys);
+            const now = Date.now();
+            for (const raw of values) {
+                if (!raw) continue;
+                const n: any = JSON.parse(raw as string);
+                const url = (n.node_url || n.multiaddrs?.[0] || '').replace(/\/$/, '');
+                if (!url.startsWith('http')) continue;
+                if (now - new Date(n.last_seen || 0).getTime() > 600_000) continue;
+                return url;
+            }
+        }
+    } catch { /* KV unavailable */ }
+    // 3. Fallback: GitHub-published tunnel URL
+    try {
+        const r = await fetch(
+            `https://raw.githubusercontent.com/gstdcoin/ai/main/node-url.txt?t=${Math.floor(Date.now() / 30000)}`,
+            { signal: AbortSignal.timeout(3000) }
+        );
+        if (!r.ok) return null;
+        const url = (await r.text()).trim();
+        return url.startsWith('http') ? url : null;
+    } catch { return null; }
+}
+
+async function fetchFromNode(): Promise<object | null> {
+    const nodeUrl = await findNodeUrl();
+    if (!nodeUrl) return null;
+    try {
+        const res = await fetch(`${nodeUrl}/api/oracle/stats`, { signal: AbortSignal.timeout(8000) });
         if (!res.ok) return null;
         return await res.json();
-    } catch {
-        return null;
-    }
+    } catch { return null; }
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
