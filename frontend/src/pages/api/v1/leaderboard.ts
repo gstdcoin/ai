@@ -14,7 +14,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.setHeader('Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
 
     try {
-        const nodeKeys = await kvKeys('node:');
+        const allKeys = await kvKeys('node:');
+        // Filter out sub-keys like node:X:pull_queue — only process root node entries
+        const nodeKeys = allKeys.filter((k: string) => !k.slice(5).includes(':'));
 
         const nodeData = await Promise.all(
             nodeKeys.slice(0, 100).map(async (key) => {
@@ -44,7 +46,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 name:          node.name || node.node_id,
                 wallet:        node.wallet_address || node.operator_wallet || '',
                 tasks_done:    node.tasks_completed || 0,
-                gstd_earned:   node.total_earned || 0,
+                gstd_earned:   node.gstd_earned || node.total_earned || 0,
                 uptime_pct:    node.uptime_pct || 99.0,
                 is_online:     (Date.now() - new Date(node.last_seen || 0).getTime()) < 600_000,
             }))
