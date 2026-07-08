@@ -38,7 +38,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         ]);
 
         const nodesOnline = nodeKeys.length;
-        const totalReg    = parseInt(totalRegistered     || '0', 10);
+        // If total_registered KV counter is 0 (likely due to kvIncr failure), fall back to actual node count
+        const totalReg    = Math.max(parseInt(totalRegistered || '0', 10), nodesOnline);
         const gstdPaid    = parseFloat(totalGstdPaid     || '0');
         const treasury    = parseFloat(treasuryBalance   || '0');
         const users       = parseInt(totalUsers          || '0', 10);
