@@ -88,7 +88,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const nodeUrlForCache = body.node_url || body.multiaddrs?.[0] || '';
         const writeOps: Promise<any>[] = [
             kvSet(`node:${nodeId}`, JSON.stringify(record), NODE_TTL),
-            kvKeys('node:'),
+            kvKeys('node:').then(ks => ks.filter((k: string) => !k.slice(5).includes(':'))),
             kvIncr('stats:total_heartbeats'),
         ];
         if (nodeUrlForCache) {

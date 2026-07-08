@@ -15,7 +15,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     try {
-        const keys = await kvKeys('node:');
+        // Filter out sub-keys like node:X:pull_queue — only process root node entries
+        const keys = (await kvKeys('node:')).filter(k => !k.slice(5).includes(':'));
 
         let nodes: NodeRecord[] = [];
         if (keys.length > 0) {

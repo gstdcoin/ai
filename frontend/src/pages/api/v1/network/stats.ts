@@ -37,7 +37,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             kvGet('stats:total_burned'),
         ]);
 
-        const nodesOnline = nodeKeys.length;
+        // Filter out sub-keys like node:X:pull_queue — only count root node entries
+        const rootNodeKeys = nodeKeys.filter((k: string) => !k.slice(5).includes(':'));
+        const nodesOnline = rootNodeKeys.length;
         // If total_registered KV counter is 0 (likely due to kvIncr failure), fall back to actual node count
         const totalReg    = Math.max(parseInt(totalRegistered || '0', 10), nodesOnline);
         const gstdPaid    = parseFloat(totalGstdPaid     || '0');

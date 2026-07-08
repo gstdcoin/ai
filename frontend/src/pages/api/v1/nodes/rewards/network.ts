@@ -10,12 +10,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.setHeader('Cache-Control', 'public, max-age=15, stale-while-revalidate=30');
 
     try {
-        const [nodeKeys, rewardPoolRaw, distributedRaw, totalTasksRaw] = await Promise.all([
+        const [allNodeKeys, rewardPoolRaw, distributedRaw, totalTasksRaw] = await Promise.all([
             kvKeys('node:'),
             kvGet('rewards:pool_total'),
             kvGet('rewards:distributed_total'),
             kvGet('stats:total_tasks_completed'),
         ]);
+        // Filter out sub-keys like node:X:pull_queue — only count root node entries
+        const nodeKeys = allNodeKeys.filter(k => !k.slice(5).includes(':'));
         const totalNodes = nodeKeys.length;
         let tasksDone = Math.round(parseFloat(totalTasksRaw || '0'));
         // Fallback: read oracle/stats cache if counter is 0
