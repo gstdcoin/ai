@@ -42,7 +42,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     try {
         const body = req.body as any;
-        const nodeId: string = body.node_id || body.specs?.node_id || body.name?.replace(/\s/g, '-');
+        let nodeId: string = body.node_id || body.specs?.node_id || body.name?.replace(/\s/g, '-');
 
         if (!nodeId) {
             return res.status(400).json({ error: 'node_id required' });
@@ -51,10 +51,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const now = new Date().toISOString();
         const specs = body.specs || body;
 
+        // URL-based deduplication: if a node with this URL already exists under a different key,
+        // reuse the canonical node_id so we never get two KV entries for the same physical node.
+        const incomingUrl = (body.node_url || specs.node_url || body.multiaddrs?.[0] || '').replace(/\/$/, '');
+        let isNewNode = true;
+
+        if (incomingUrl) {
+            // Fast path: URL index
+            const urlIdxKey = `url_idx:${Buffer.from(incomingUrl).toString('base64url').slice(0, 80)}`;
+            const cachedId = await kvGet(urlIdxKey);
+            if (cachedId && cachedId !== nodeId) {
+                // Redirect to the canonical node_id
+                nodeId = cachedId as string;
+                isNewNode = false;
+            } else if (!cachedId) {
+                // Register this URL → nodeId mapping (24h, well beyond tunnel rotation)
+                await kvSet(urlIdxKey, nodeId, 86400);
+            } else {
+                isNewNode = false; // same URL, same nodeId — re-registration
+            }
+        }
+
         // Preserve existing capabilities if the new registration doesn't provide them
         // (some node modules re-register without model lists; we must not overwrite valid caps)
         const existingRaw = await kvGet(`node:${nodeId}`);
         const existing: NodeRecord | null = existingRaw ? JSON.parse(existingRaw) : null;
+        if (existing) isNewNode = false;
 
         const incomingCaps: string[] = specs.capabilities?.models || specs.models || [];
         const capabilities = incomingCaps.length > 0 ? incomingCaps : (existing?.capabilities || []);
@@ -66,7 +88,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.status(403).json({ error: 'Node already registered with a different wallet' });
         }
 
-        const record: NodeRecord = {
+        const record: NodeRecord & { node_url?: string } = {
             node_id:         nodeId,
             name:            body.name || specs.node_name || nodeId,
             wallet_address:  incomingWallet || existing?.wallet_address || '',
@@ -85,9 +107,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             gstd_earned:     existing?.gstd_earned     || 0,
             uptime_hours:    existing?.uptime_hours    || 0,
         };
+        if (incomingUrl) record.node_url = incomingUrl;
 
         await kvSet(`node:${nodeId}`, JSON.stringify(record), NODE_TTL);
-        await kvIncr('stats:total_registered');
+        if (isNewNode) await kvIncr('stats:total_registered');
 
         return res.status(200).json({
             ok: true,

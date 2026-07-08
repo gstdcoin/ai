@@ -10,7 +10,7 @@
  */
 
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvGet, kvSet } from '../../../../lib/kv';
+import { kvGet, kvSet, kvIncr } from '../../../../lib/kv';
 
 const CACHE_KEY = 'oracle:stats:cache';
 const CACHE_TTL = 120; // 2 minutes
@@ -55,10 +55,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=120');
 
     // Try live node first
-    const live = await fetchFromNode();
+    const live = await fetchFromNode() as any;
     if (live) {
         // Cache for fallback
-        await kvSet(CACHE_KEY, JSON.stringify({ ...live as object, _cached_at: Date.now() }), CACHE_TTL * 10);
+        await kvSet(CACHE_KEY, JSON.stringify({ ...live, _cached_at: Date.now() }), CACHE_TTL * 10);
+        // Seed the global task counter if it's behind the oracle log
+        if (live.total > 0) {
+            const stored = parseInt((await kvGet('stats:total_tasks_completed').catch(() => '0')) as string || '0', 10);
+            if (stored < live.total) {
+                await kvSet('stats:total_tasks_completed', String(live.total)).catch(() => {});
+            }
+        }
         return res.status(200).json(live);
     }
 
