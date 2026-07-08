@@ -45,10 +45,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const users       = parseInt(totalUsers          || '0', 10);
         const burned      = parseFloat(totalBurned       || '0');
 
-        // Read GSTD price from KV cache (populated by /api/v1/market/price, TTL=60s).
-        // Avoids calling STON.fi on every stats request — market/price owns that fetch.
+        // Read GSTD price from KV cache; fall back to seed price ($0.001) pre-STON.fi listing
         const cachedPrice = await kvGet('market:gstd_price_usd').catch(() => null);
-        const gstdPrice = cachedPrice ? parseFloat(cachedPrice as string) || 0 : 0;
+        const gstdPrice = (cachedPrice ? parseFloat(cachedPrice as string) : 0) || 0.001;
 
         return res.status(200).json({
             // Node counts (real KV data)
