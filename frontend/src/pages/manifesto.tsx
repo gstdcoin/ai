@@ -117,13 +117,28 @@ interface OracleStats {
   avg_latency_ms?: number;
 }
 
+interface PoiStats {
+  experiences_total?: number;
+  experiences_7d?: number;
+  high_intelligence_total?: number;
+  avg_iw?: number;
+  win_rate_7d?: number;
+  anomaly_capture_rate?: number;
+  avg_components?: { alignment?: number; timing?: number; selectivity?: number };
+}
+
 export default function Manifesto() {
   const [stats, setStats] = useState<OracleStats | null>(null);
+  const [poi, setPoi] = useState<PoiStats | null>(null);
 
   useEffect(() => {
     fetch('/api/v1/oracle/stats')
       .then(r => r.json())
       .then(setStats)
+      .catch(() => null);
+    fetch('/api/v1/oracle/poi')
+      .then(r => r.json())
+      .then(setPoi)
       .catch(() => null);
   }, []);
 
@@ -249,6 +264,29 @@ IW < 0.50  →  Low Intelligence Trade   →  excluded from training`}
                 High-IW trades form a self-curated LoRA fine-tuning dataset, closing the learning loop
                 without human intervention.
               </p>
+              {(poi?.experiences_total ?? 0) > 0 && (
+                <div style={{ marginTop: 20, paddingTop: 18, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                  <div style={{ fontSize: 11, color: '#546070', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.8 }}>Live PoI Sidecar Data — Updated every 30s</div>
+                  <div style={S.statGrid}>
+                    {[
+                      { val: poi?.experiences_total ?? '—', label: 'Experience Records' },
+                      { val: poi?.avg_iw != null ? poi.avg_iw.toFixed(3) : '—', label: 'Avg Intelligence Weight' },
+                      { val: poi?.high_intelligence_total ?? '—', label: 'High-IW Trades (≥0.70)' },
+                      { val: poi?.win_rate_7d != null ? `${(poi.win_rate_7d * 100).toFixed(0)}%` : '—', label: 'Win Rate 7d' },
+                      { val: poi?.avg_components?.alignment != null ? poi.avg_components.alignment.toFixed(2) : '—', label: 'Avg Alignment' },
+                      { val: poi?.avg_components?.timing != null ? poi.avg_components.timing.toFixed(2) : '—', label: 'Avg Timing' },
+                    ].map(({ val, label }, i) => (
+                      <div key={i} style={S.statBox}>
+                        <div style={{ ...S.statVal, fontSize: 20 }}>{val}</div>
+                        <div style={S.statLabel}>{label}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <p style={{ margin: '12px 0 0', fontSize: 12, color: '#546070' }}>
+                    Source: <code style={{ color: '#80cbc4' }}>GET /api/v1/oracle/poi</code> — live from GSTD-Validation-Layer sidecar
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
