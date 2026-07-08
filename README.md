@@ -1,122 +1,164 @@
-# GSTD Platform
+# GSTD AI Platform
 
-> Dashboard and serverless API for the GSTD decentralized compute network.  
-> Deployed on Vercel. Zero server costs. Fully open-source.
+> **Edge-sovereign AI infrastructure with on-chain rewards.**  
+> Every inference is verifiable. Every node earns GSTD. No cloud dependencies.
 
-Live: [app.gstdtoken.com](https://app.gstdtoken.com)
+[![Live](https://img.shields.io/badge/live-app.gstdtoken.com-00d2ff?style=flat-square)](https://app.gstdtoken.com)
+[![Nodes](https://img.shields.io/badge/nodes-live-green?style=flat-square)](https://app.gstdtoken.com/api/v1/nodes/list)
+[![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 
 ---
 
-## What This Repo Is
+## What is GSTD?
 
-This is the coordination layer of the GSTD network. It does four things:
+GSTD is a **DePIN (Decentralized Physical Infrastructure Network)** for AI compute.
 
-1. **Node Registry** — nodes register here on startup, heartbeat every 8 minutes to stay visible
-2. **Task Queue** — AI/compute tasks are submitted here and dispatched to available nodes via per-node priority queues
-3. **AI Inference API** — OpenAI-compatible endpoint (`/api/v1/chat/completions`) that routes requests to the best available node in the network
-4. **Dashboard UI** — wallet connection, AI chat, network stats, earnings tracker
+| Centralized AI | GSTD Network |
+|---|---|
+| Black-box inference | Every decision scored with Intelligence Weight (IW) |
+| Provider lock-in | Any device runs a node (Raspberry Pi, laptop, server) |
+| No economic return | Nodes earn GSTD tokens for every completed inference |
+| API goes down → app breaks | Swarm routing + fallback across nodes |
 
-There is no backend server. Everything runs as Vercel serverless functions. State is stored in Upstash Redis (Vercel KV). Cost at any scale within Vercel's free tier: **$0/month**.
+Live demonstration: the GSTD oracle evaluates 30+ crypto trading signals per day through the network, generating a self-curated LoRA training dataset from the results (111+ ExperienceRecords).
+
+---
+
+## Live Network
+
+```bash
+# Active nodes + their capabilities
+curl https://app.gstdtoken.com/api/v1/nodes/list
+
+# Oracle AI decisions (real-time)
+curl https://app.gstdtoken.com/api/v1/oracle/stats
+
+# Proof-of-Intelligence data from the validation sidecar
+curl https://app.gstdtoken.com/api/v1/oracle/poi
+
+# Network stats: nodes, tasks, GSTD distributed
+curl https://app.gstdtoken.com/api/v1/network/stats
+
+# Try the oracle yourself (10 free/day)
+curl -X POST https://app.gstdtoken.com/api/v1/oracle/evaluate \
+  -H 'Content-Type: application/json' \
+  -d '{"symbol":"BTCUSDT","side":"LONG","strength":6.2,"btc_trend":"BULLISH","ml_score":0.71}'
+```
+
+---
+
+## Proof of Intelligence (PoI)
+
+The GSTD-Validation-Layer is an autonomous sidecar that converts every AI decision into a verifiable **Intelligence Weight (IW)** score:
+
+```
+IW  =  0.40 × Alignment      # Did the AI call the right direction?
+    +  0.25 × Timing          # Optimal entry position in the candle?
+    +  0.20 × Selectivity     # Win rate over last 7 days
+    -  0.15 × Noise           # Penalizes weak signals
+
+IW ≥ 0.70 → High Intelligence → added to LoRA dataset (weight 3×)
+IW ≥ 0.50 → Normal → added to LoRA dataset (weight 1×)
+IW < 0.50 → Low quality → excluded from training
+```
+
+All components are computed from **public Binance OHLCV data** — fully auditable by any third party. This creates a self-improving loop: high-quality decisions generate better training data, making future decisions smarter.
+
+---
+
+## On-Chain Settlement
+
+GSTD rewards are settled on the **TON blockchain** via audited smart contracts:
+
+| Contract | Address | Purpose |
+|---|---|---|
+| GSTD Jetton | `EQDv6cY...skTO` | 1B supply, mint locked |
+| SettlementMaster | `EQAhuR_...ZrSS` | 85/10/5 split to worker/treasury/protocol |
+| AgentRegistry | `EQBfrc8...NLR9` | On-chain node identity + reputation |
+| DAOVoting | `EQBQXvF...ck-z` | Token-weighted governance |
+| EcosystemTreasury | `EQAbtTC...Ii_` | TON vault for protocol buybacks |
+
+Revenue split per task: **85% → node operator · 10% → treasury · 5% → protocol**
 
 ---
 
 ## Architecture
 
 ```
-app.gstdtoken.com  (Vercel — free)
-├── /                          Dashboard UI (Next.js)
-│
-├── /api/v1/nodes/
-│   ├── register               Node startup registration
-│   ├── heartbeat              Keepalive (TTL refresh, 10-min TTL)
-│   ├── list                   All active nodes + capabilities
-│   ├── peers                  P2P multiaddrs for bridge/bot bootstrap
-│   ├── deregister             Node graceful shutdown
-│   └── rewards/my             Per-node earnings history
-│
-├── /api/v1/tasks/
-│   ├── poll                   Node picks up next task (priority queue first)
-│   │   also: tasks/worker/pending   (A2A SDK compat alias)
-│   ├── complete               Report task done + earnings
-│   │   also: tasks/worker/submit    (A2A SDK compat alias)
-│   ├── result                 Store/poll inference result (120s TTL)
-│   └── fail                   Report task failed
-│
-├── /api/v1/chat/
-│   └── completions            OpenAI-compatible inference (routes to GSTD nodes)
-│
-├── /api/v1/network/
-│   ├── info                   Machine-readable network manifest (version, endpoints, models)
-│   └── stats                  Live network stats (nodes, tasks, GSTD paid)
-│
-├── /api/v1/agents/
-│   ├── leaderboard            Top agents ranked by tasks completed
-│   ├── marketplace            Online agents available for task routing
-│   └── stats/network          Agent network summary (online count, earnings)
-│
-├── /api/v1/treasury/
-│   └── status                 Treasury state + distribution trigger
-│
-├── /api/v1/campaigns/
-│   ├── create                 Create a GSTD reward campaign
-│   ├── list                   Active campaigns
-│   └── join                   Node joins a campaign
-│
-├── /api/v1/marketplace/
-│   ├── resources              Available compute resources
-│   └── request                Request a marketplace task
-│
-├── /api/v1/leaderboard        Global node operator leaderboard
-│
-└── /api/v1/stats/
-    └── public                 Full public stats (nodes, tasks, treasury)
+[User / Trading Bot]
+        │ POST /api/v1/oracle/evaluate
+        ▼
+[Vercel — app.gstdtoken.com]           ← this repo
+  ├── Node registry (Upstash KV)
+  ├── Task queue (per-node priority)
+  ├── Rate limiting + auth
+  └── Records: tasks_completed, gstd_paid
+        │ routes to best available node
+        ▼
+[GSTD Node (gstdbot)]                  ← gstdcoin/gstdbot
+  ├── Ollama inference (llama3.2:3b)
+  ├── P2P mesh (libp2p)
+  ├── GSTD-Validation-Layer sidecar    ← 111+ ExperienceRecords
+  └── Cloudflare tunnel (public URL)
+        │ on completion
+        ▼
+[TON Blockchain]                       ← gstdcoin/contracts
+  └── SettlementMaster: 85/10/5 split
 ```
 
 ---
 
-## How Inference Works
+## API Reference
 
-When a request hits `/api/v1/chat/completions`:
+### Oracle (DePIN AI evaluation)
 
-1. The platform scores all active nodes by model match, load, latency, and uptime
-2. The task is pushed to the best node's priority queue (`tasks:inference:{node_id}`)
-3. The node polls every 5 seconds, picks up the task, and processes it
-4. The result is stored at `task:result:{task_id}` (120s TTL)
-5. The platform short-polls for the result and returns it to the client (max 25s)
+```http
+POST /api/v1/oracle/evaluate
+Authorization: Bearer gstd_xxx  # optional — enterprise key
 
-If no nodes are available for the requested model, the API returns a helpful 503 with a link to set up a node. No external AI provider fallback.
+{
+  "symbol": "BTCUSDT",
+  "side": "LONG",
+  "strength": 6.2,
+  "rsi": 54,
+  "btc_trend": "BULLISH",
+  "ml_score": 0.71,
+  "atr_pct": 1.3
+}
+```
+
+Free tier: 10 requests/day per IP. Enterprise: unlimited via API key.
+
+### Nodes
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/v1/nodes/register` | POST | Node startup registration |
+| `/api/v1/nodes/heartbeat` | POST | Keepalive (10-min TTL) |
+| `/api/v1/nodes/list` | GET | All active nodes + capabilities |
+| `/api/v1/leaderboard` | GET | Ranked by tasks completed |
+
+### Network
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/v1/network/stats` | GET | Live network metrics |
+| `/api/v1/oracle/stats` | GET | Oracle decision history |
+| `/api/v1/oracle/poi` | GET | Proof-of-Intelligence summary |
+| `/api/v1/settlement/pending` | GET | Pending GSTD rewards (admin) |
 
 ---
 
-## Stack
+## Tech Stack
 
 | Layer | Technology |
 |---|---|
 | Framework | Next.js (Pages Router), TypeScript |
-| Styling | Tailwind CSS, shadcn/ui, Framer Motion |
-| State | Vercel KV (Upstash Redis) |
-| AI Inference | GSTD node network (routed via task queue) |
-| Hosting | Vercel (free tier) |
-| Wallets | TON Connect, MetaMask, Phantom |
-
----
-
-## Monorepo Structure
-
-```
-gstdai/
-└── frontend/
-    ├── src/
-    │   ├── pages/
-    │   │   ├── api/v1/         ← serverless API routes
-    │   │   └── ...             ← dashboard UI pages
-    │   ├── components/         ← React components
-    │   └── lib/
-    │       ├── kv.ts           ← Upstash Redis wrapper
-    │       └── ratelimit.ts    ← sliding-window rate limiter
-    ├── package.json
-    └── vercel.json
-```
+| State / DB | Vercel KV (Upstash Redis) |
+| Hosting | Vercel (serverless, free tier) |
+| AI Inference | Ollama via GSTD node network |
+| Blockchain | TON (Tact smart contracts) |
+| Node software | gstdbot (TypeScript, libp2p, ARM64) |
 
 ---
 
@@ -125,68 +167,27 @@ gstdai/
 ```bash
 cd frontend
 npm install --legacy-peer-deps
-npm run dev
-# → http://localhost:3000
+npm run dev   # → http://localhost:3000
 ```
 
-No KV credentials needed for local dev — `src/lib/kv.ts` automatically falls back to an in-memory store.
+No KV credentials needed — `src/lib/kv.ts` falls back to in-memory store.
 
 ---
 
-## Vercel Deployment
+## Deploy Your Own Node
 
-### 1. Connect the repo
-
-In Vercel dashboard → New Project → Import `gstdcoin/ai` → Root directory: `frontend`
-
-### 2. Add environment variables
-
-| Variable | Where to get it |
-|---|---|
-| `KV_REST_API_URL` | Vercel → Storage → Create KV store → auto-added |
-| `KV_REST_API_TOKEN` | Same — auto-added when KV store is connected |
-| `TREASURY_SECRET` | Any secure random string — protects the treasury POST endpoint |
-
-### 3. Deploy
-
-Vercel auto-deploys on every push to `main`.
-
----
-
-## AI Models Supported
-
-| Model ID | Alias / Notes |
-|---|---|
-| `llama-3.3-70b-versatile` | Default — also accepts `gpt-4`, `gpt-4o`, `auto` |
-| `llama-3.1-8b-instant` | Fast — also accepts `gpt-3.5-turbo` |
-| `meta-llama/llama-4-scout-17b-16e-instruct` | Latest Llama 4 |
-| `qwen/qwen3-32b` | Reasoning |
-| `moonshotai/kimi-k2-instruct` | Long context |
-| `openai/gpt-oss-120b` | Large |
-| `openai/gpt-oss-20b` | Balanced |
-| `mixtral-8x7b-32768` | Fast, large context |
-
-All inference routes to nodes in the GSTD network. Model availability depends on which nodes are online.
-
----
-
-## Health Checks
+Run a GSTD node on any Linux machine and earn GSTD for AI inference:
 
 ```bash
-# Network stats
-curl https://app.gstdtoken.com/api/v1/stats/public
-
-# Active nodes
-curl https://app.gstdtoken.com/api/v1/nodes/list
-
-# Network manifest (for AI agents)
-curl https://app.gstdtoken.com/api/v1/network/info
-
-# Inference test
-curl -s -X POST https://app.gstdtoken.com/api/v1/chat/completions \
-  -H 'Content-Type: application/json' \
-  -d '{"messages":[{"role":"user","content":"ping"}],"max_tokens":10}'
+git clone https://github.com/gstdcoin/gstdbot
+cd gstdbot
+npm install
+cp .env.example .env
+# Set GSTD_WALLET_ADDRESS and GSTD_SWARM_URL
+npm start
 ```
+
+See [gstdcoin/gstdbot](https://github.com/gstdcoin/gstdbot) for full setup guide.
 
 ---
 
@@ -194,11 +195,9 @@ curl -s -X POST https://app.gstdtoken.com/api/v1/chat/completions \
 
 | Repo | Description |
 |---|---|
-| [gstdcoin/web](https://github.com/gstdcoin/web) | Landing page |
-| **gstdcoin/ai** | **This repo — Dashboard + API** |
-| [gstdcoin/gstdbot](https://github.com/gstdcoin/gstdbot) | Node OS software |
-| [gstdcoin/contracts](https://github.com/gstdcoin/contracts) | TON smart contracts |
-| [gstdcoin/gstd-bridge](https://github.com/gstdcoin/gstd-bridge) | Cross-chain bridge |
+| **gstdcoin/ai** | **This repo — Platform API + Dashboard** |
+| [gstdcoin/gstdbot](https://github.com/gstdcoin/gstdbot) | Node OS (TypeScript, ARM64, Ollama) |
+| [gstdcoin/contracts](https://github.com/gstdcoin/contracts) | TON smart contracts (Tact) |
 
 ---
 
