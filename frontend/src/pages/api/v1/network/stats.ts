@@ -39,11 +39,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         const nodesOnline = nodeKeys.length;
         const totalReg    = parseInt(totalRegistered     || '0', 10);
-        const tasksDone   = parseInt(totalTasksCompleted || '0', 10);
         const gstdPaid    = parseFloat(totalGstdPaid     || '0');
         const treasury    = parseFloat(treasuryBalance   || '0');
         const users       = parseInt(totalUsers          || '0', 10);
         const burned      = parseFloat(totalBurned       || '0');
+
+        // Tasks completed: prefer KV counter; fall back to oracle/stats cache (gstdbot's own counter)
+        let tasksDone = parseInt(totalTasksCompleted || '0', 10);
+        if (!tasksDone) {
+            const oracleCacheRaw = await kvGet('oracle:stats:cache').catch(() => null);
+            if (oracleCacheRaw) {
+                try { tasksDone = JSON.parse(oracleCacheRaw as string)?.total || 0; } catch { /* ignore */ }
+            }
+        }
 
         // Read GSTD price from KV cache; fall back to seed price ($0.001) pre-STON.fi listing
         const cachedPrice = await kvGet('market:gstd_price_usd').catch(() => null);

@@ -3,7 +3,7 @@
  * Network-wide reward statistics.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvGet, kvKeys } from '../../../../../lib/kv';
+import { kvGet, kvKeys, kvSet } from '../../../../../lib/kv';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
@@ -17,7 +17,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             kvGet('stats:total_tasks_completed'),
         ]);
         const totalNodes = nodeKeys.length;
-        const tasksDone = Math.round(parseFloat(totalTasksRaw || '0'));
+        let tasksDone = Math.round(parseFloat(totalTasksRaw || '0'));
+        // Fallback: read oracle/stats cache if counter is 0
+        if (!tasksDone) {
+            const oracleCacheRaw = await kvGet('oracle:stats:cache').catch(() => null);
+            if (oracleCacheRaw) {
+                try {
+                    const oc = JSON.parse(oracleCacheRaw as string);
+                    if (oc?.total) {
+                        tasksDone = oc.total;
+                        // Sync the authoritative counter so future reads don't re-fetch
+                        kvSet('stats:total_tasks_completed', String(tasksDone)).catch(() => {});
+                    }
+                } catch { /* ignore */ }
+            }
+        }
 
         return res.status(200).json({
             total_nodes:          totalNodes,
