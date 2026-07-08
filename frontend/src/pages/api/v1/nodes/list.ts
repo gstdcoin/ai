@@ -69,6 +69,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             multiaddrs:      n.multiaddrs,
             node_url:        (n as any).node_url || null,
             tasks_completed: n.tasks_completed,
+            gstd_earned:     n.gstd_earned || 0,
             uptime_hours:    n.uptime_hours,
             last_seen:       n.last_seen,
             is_online:       (Date.now() - new Date((n as any).last_seen || 0).getTime()) < 600_000,
