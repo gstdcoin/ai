@@ -19,7 +19,7 @@ export const config = { maxDuration: 115 };
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { rateLimit, getClientIp } from '../../../../lib/ratelimit';
-import { kvGet, kvSet, kvKeys, kvMGet, kvIncr } from '../../../../lib/kv';
+import { kvGet, kvSet, kvKeys, kvMGet, kvIncr, kvIncrByFloat } from '../../../../lib/kv';
 import { validateEnterpriseKey } from '../enterprise/keys';
 import { accrueReward, BASE_TASK_FEE } from '../../../../lib/rewards';
 
