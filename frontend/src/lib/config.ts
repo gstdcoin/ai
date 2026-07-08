@@ -82,12 +82,12 @@ export const TON_VAULT_ADDRESS = process.env.NEXT_PUBLIC_TON_VAULT || 'EQAbtTCst
 /**
  * Agent Registry Contract Address
  */
-export const AGENT_REGISTRY_ADDRESS = process.env.NEXT_PUBLIC_AGENT_REGISTRY || 'EQDtWcGCQXLFdh7TmkL5QFbFNYXxL9mjOk4ehmsNFwCtsDoT';
+export const AGENT_REGISTRY_ADDRESS = process.env.NEXT_PUBLIC_AGENT_REGISTRY || 'EQBfrc8qzoJ39-9ldQyC2Wif4HXbYHXKARvCUlY0IbwqNLR9';
 
 /**
- * DAO Voting Contract Address
+ * DAO Voting Contract Address (Phase 2 mainnet, deployed 2026-07-08)
  */
-export const DAO_VOTING_ADDRESS = process.env.NEXT_PUBLIC_DAO_VOTING || 'EQBa-hyO3JkcRJNyYKKOqBjsQ6KAS-dAHj6rf8KOuH4Jzls5';
+export const DAO_VOTING_ADDRESS = process.env.NEXT_PUBLIC_DAO_VOTING || 'EQBQXvFtHbQnuUuLgkF-TKYw5dgo__XCEzVfBIm_OfW2ck-z';
 
 /** Public web app origin (Nginx → frontend). Nav links use this off-app. */
 export const APP_PUBLIC_ORIGIN = (
