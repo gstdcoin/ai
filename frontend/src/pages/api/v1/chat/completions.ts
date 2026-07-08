@@ -78,7 +78,7 @@ async function resolveNodeUrl(model: string): Promise<string> {
     const anyNode:   Array<{ url: string; tasks: number }> = [];
 
     try {
-        const nodeKeys = await kvKeys('node:');
+        const nodeKeys = (await kvKeys('node:')).filter((k: string) => !k.slice(5).includes(':'));
         if (nodeKeys.length > 0) {
             const values = await kvMGet(nodeKeys);
             const now = Date.now();

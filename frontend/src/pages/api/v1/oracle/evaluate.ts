@@ -37,7 +37,7 @@ async function getNodeUrl(): Promise<string> {
     if (envUrl) return envUrl;
 
     try {
-        const nodeKeys = await kvKeys('node:');
+        const nodeKeys = (await kvKeys('node:')).filter((k: string) => !k.slice(5).includes(':'));
         if (nodeKeys.length > 0) {
             const values = await kvMGet(nodeKeys);
             const now = Date.now();
@@ -129,7 +129,7 @@ async function recordOracleTask(nodeUrl: string, taskId: string): Promise<void> 
     // Increment global task counter
     await kvIncr('stats:total_tasks_completed');
     // Find node by URL and credit it
-    const nodeKeys = await kvKeys('node:');
+    const nodeKeys = (await kvKeys('node:')).filter((k: string) => !k.slice(5).includes(':'));
     if (!nodeKeys.length) return;
     const values = await kvMGet(nodeKeys);
     for (let i = 0; i < values.length; i++) {
