@@ -15,33 +15,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.setHeader('Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
 
     try {
-        const nodeKeys = await kvKeys('node:');
-
+        const rootKeys = (await kvKeys('node:')).filter((k: string) => !k.slice(5).includes(':'));
         const agentData = await Promise.all(
-            nodeKeys.slice(0, 50).map(async (key) => {
+            rootKeys.slice(0, 50).map(async (key) => {
                 const raw = await kvGet(key);
                 if (!raw) return null;
-                try {
-                    return JSON.parse(raw);
-                } catch {
-                    return null;
-                }
+                try { return JSON.parse(raw); }
+                catch { return null; }
             })
         );
 
-        const agents = agentData
-            .filter(Boolean)
+        // Deduplicate by URL; prefer named nodes over UUID IDs
+        const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-/i;
+        const allNodes = agentData.filter(Boolean) as any[];
+        allNodes.sort((a, b) => (UUID_RE.test(a.node_id) ? 1 : 0) - (UUID_RE.test(b.node_id) ? 1 : 0));
+        const seen = new Set<string>();
+        const deduped = allNodes.filter(n => {
+            const url = n.node_url || n.multiaddrs?.[0] || '';
+            if (!url) return true;
+            if (seen.has(url)) return false;
+            seen.add(url); return true;
+        });
+
+        const agents = deduped
             .map((node: any, idx: number) => ({
-                rank:           idx + 1,
-                id:             node.node_id || node.id || `agent-${idx}`,
-                name:           node.name || node.node_id || `Agent #${idx + 1}`,
-                wallet:         node.wallet_address || node.operator_wallet || '',
-                tasks_done:     node.tasks_completed || 0,
-                gstd_earned:    node.total_earned || 0,
-                uptime_pct:     node.uptime_pct ?? null,
-                tier:           getTier(node.total_earned || 0),
-                is_online:      (Date.now() - new Date(node.last_seen || 0).getTime()) < 600_000,
-                joined_at:      node.registered_at || node.created_at || null,
+                rank:        idx + 1,
+                id:          node.node_id || node.id || `agent-${idx}`,
+                name:        node.name || node.node_id || `Agent #${idx + 1}`,
+                wallet:      node.wallet_address || node.operator_wallet || '',
+                tasks_done:  node.tasks_completed || 0,
+                gstd_earned: node.gstd_earned || node.total_earned || 0,
+                uptime_pct:  node.uptime_pct ?? null,
+                tier:        getTier(node.gstd_earned || node.total_earned || 0),
+                is_online:   (Date.now() - new Date(node.last_seen || 0).getTime()) < 600_000,
+                joined_at:   node.registered_at || node.created_at || null,
             }))
             .sort((a, b) => b.tasks_done - a.tasks_done)
             .map((a, idx) => ({ ...a, rank: idx + 1 }));

@@ -10,7 +10,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=120');
 
     try {
-        const nodeKeys = (await kvKeys('node:')).slice(0, 100);
+        const nodeKeys = (await kvKeys('node:')).filter((k: string) => !k.slice(5).includes(':')).slice(0, 100);
         const raws = nodeKeys.length > 0 ? await kvMGet(nodeKeys) : [];
         // Deduplicate by node_url: prefer named nodes over UUID-generated IDs
         const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-/i;

@@ -15,11 +15,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.setHeader('Cache-Control', 'public, max-age=20, stale-while-revalidate=40');
 
     try {
-        const nodeKeys = await kvKeys('node:');
-        const now = Date.now() / 1000;
-
+        const rootKeys = (await kvKeys('node:')).filter((k: string) => !k.slice(5).includes(':'));
+        const now = Date.now();
         const agentData = await Promise.all(
-            nodeKeys.slice(0, 100).map(async (key) => {
+            rootKeys.slice(0, 100).map(async (key) => {
                 const raw = await kvGet(key);
                 if (!raw) return null;
                 try { return JSON.parse(raw); }
@@ -27,22 +26,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             })
         );
 
-        const agents = agentData
-            .filter(Boolean)
-            .filter((node: any) => (now - (node.last_seen || 0)) < 600)
+        // Deduplicate by node_url; prefer named over UUID-generated IDs
+        const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-/i;
+        const allNodes = agentData.filter(Boolean) as any[];
+        allNodes.sort((a, b) => (UUID_RE.test(a.node_id) ? 1 : 0) - (UUID_RE.test(b.node_id) ? 1 : 0));
+        const seenUrls = new Set<string>();
+        const deduped = allNodes.filter(n => {
+            const url = n.node_url || n.multiaddrs?.[0] || '';
+            if (!url) return true;
+            if (seenUrls.has(url)) return false;
+            seenUrls.add(url); return true;
+        });
+
+        const agents = deduped
+            .filter((node: any) => (now - new Date(node.last_seen || 0).getTime()) < 600_000)
             .map((node: any) => ({
-                id:          node.node_id || node.id,
-                name:        node.name || node.node_id,
-                description: node.description || 'General-purpose GSTD compute node',
-                wallet:      node.wallet_address || node.operator_wallet || '',
+                id:           node.node_id || node.id,
+                name:         node.name || node.node_id,
+                description:  node.description || 'General-purpose GSTD compute node',
+                wallet:       node.wallet_address || node.operator_wallet || '',
                 capabilities: node.capabilities || ['inference', 'compute'],
                 rating:       node.rating || 5.0,
                 tasks_done:   node.tasks_completed || 0,
-                gstd_earned:  node.total_earned || 0,
-                tier:         getTier(node.total_earned || 0),
+                gstd_earned:  node.gstd_earned || node.total_earned || 0,
+                tier:         getTier(node.gstd_earned || node.total_earned || 0),
                 is_online:    true,
                 cost_per_task: '0.001 GSTD',
-                models:       node.models || [],
+                models:       node.models || node.capabilities || [],
             }));
 
         return res.status(200).json({ agents, total: agents.length });
