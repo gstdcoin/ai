@@ -17,10 +17,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const host   = req.headers.host || 'app.gstdtoken.com';
     const origin = process.env.NEXT_PUBLIC_API_URL || `${proto}://${host}`;
 
-    const [nodeKeys, campaignKeys] = await Promise.all([
+    const [allNodeKeys, campaignKeys] = await Promise.all([
         kvKeys('node:'),
         kvKeys('campaign:'),
     ]);
+    const nodeKeys = allNodeKeys.filter((k: string) => !k.slice(5).includes(':'));
 
     // Fallback node count from GitHub registry when KV is empty (no Redis configured)
     let activeNodes = nodeKeys.length;

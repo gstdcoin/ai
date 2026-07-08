@@ -79,7 +79,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const modelLatency: Record<string, number[]>   = {};
 
     try {
-        const nodeKeys = await kvKeys('node:');
+        const nodeKeys = (await kvKeys('node:')).filter((k: string) => !k.slice(5).includes(':'));
         if (nodeKeys.length > 0) {
             const values = await kvMGet(nodeKeys);
             const now = Date.now();

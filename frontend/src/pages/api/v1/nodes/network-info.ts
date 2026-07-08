@@ -11,14 +11,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     try {
-        const [activeNodeKeys, mobileNodeKeys, totalMintedRaw, totalStakedRaw] = await Promise.all([
+        const [allNodeKeys, mobileNodeKeys, totalMintedRaw, totalStakedRaw] = await Promise.all([
             kvKeys('node:'),
             kvKeys('mobile_node:'),
             kvGet('stats:total_minted'),
             kvGet('stats:total_staked'),
         ]);
 
-        const activeServerNodes = activeNodeKeys.length;
+        const activeServerNodes = allNodeKeys.filter((k: string) => !k.slice(5).includes(':')).length;
         const activeMobileNodes = mobileNodeKeys.length;
 
         return res.status(200).json({

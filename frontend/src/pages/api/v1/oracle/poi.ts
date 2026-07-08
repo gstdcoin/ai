@@ -14,7 +14,7 @@ const CACHE_TTL = 300; // 5 minutes
 async function fetchFromNode(): Promise<object | null> {
     // Find node URL from KV registry
     try {
-        const nodeKeys = await kvKeys('node:');
+        const nodeKeys = (await kvKeys('node:')).filter((k: string) => !k.slice(5).includes(':'));
         if (nodeKeys.length === 0) return null;
         const values = await kvMGet(nodeKeys);
         const now = Date.now();

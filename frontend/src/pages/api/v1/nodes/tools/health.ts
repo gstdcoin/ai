@@ -10,10 +10,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.setHeader('Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
 
     try {
-        const nodeKeys = await kvKeys('node:');
+        const rootKeys = (await kvKeys('node:')).filter((k: string) => !k.slice(5).includes(':'));
         return res.status(200).json({
             status:          'healthy',
-            nodes_online:    nodeKeys.length,
+            nodes_online:    rootKeys.length,
             api_latency_ms:  12,
             uptime_pct:      99.9,
             last_checked:    new Date().toISOString(),
