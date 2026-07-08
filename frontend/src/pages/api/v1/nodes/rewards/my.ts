@@ -15,16 +15,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const wallet = req.query.wallet as string;
 
-    // Find node record by wallet address
+    // Find node record by wallet address (root keys only; prefer named over UUID)
     let record: NodeRecord | null = null;
     if (wallet) {
-        const keys = await kvKeys('node:');
+        const keys = (await kvKeys('node:')).filter(k => !k.slice(5).includes(':'));
         if (keys.length > 0) {
             const values = await kvMGet(keys);
-            record = values
+            const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-/i;
+            const matches = values
                 .filter((v): v is string => v !== null)
                 .map(v => JSON.parse(v) as NodeRecord)
-                .find(n => n.wallet_address === wallet) || null;
+                .filter(n => n.wallet_address === wallet);
+            // Prefer named node over UUID-generated IDs
+            record = matches.find(n => !UUID_RE.test(n.node_id)) || matches[0] || null;
         }
     }
 

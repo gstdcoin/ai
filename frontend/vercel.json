@@ -4,6 +4,9 @@
   "buildCommand": "npm run build",
   "installCommand": "npm install --legacy-peer-deps --include=dev",
   "outputDirectory": ".next",
+  "crons": [
+    { "path": "/api/cron/refresh-stats", "schedule": "*/5 * * * *" }
+  ],
   "headers": [
     {
       "source": "/(.*)",
