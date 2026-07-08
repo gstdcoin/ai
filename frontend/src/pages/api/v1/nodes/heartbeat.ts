@@ -66,8 +66,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         // Update live fields
         record.last_seen       = new Date().toISOString();
-        record.tasks_completed = body.tasks_completed ?? body.queries_served ?? record.tasks_completed;
-        record.gstd_earned     = body.gstd_earned ?? record.gstd_earned;
+        // Only update tasks_completed if explicitly sent (not zero from a volatile in-memory counter)
+        if (body.tasks_completed != null && body.tasks_completed > 0) {
+            record.tasks_completed = body.tasks_completed;
+        } else if (body.tasks_completed == null && body.queries_served != null && body.queries_served > 0) {
+            record.tasks_completed = body.queries_served;
+        }
+        if (body.gstd_earned != null && body.gstd_earned > 0) record.gstd_earned = body.gstd_earned;
         record.uptime_hours    = body.uptime_hours ?? record.uptime_hours;
         if (body.multiaddrs?.length)    record.multiaddrs  = body.multiaddrs;
         if (body.capabilities?.length)  record.capabilities = body.capabilities;
