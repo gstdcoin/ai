@@ -19,8 +19,9 @@ export const config = { maxDuration: 115 };
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { rateLimit, getClientIp } from '../../../../lib/ratelimit';
-import { kvGet, kvKeys, kvMGet, kvIncrByFloat } from '../../../../lib/kv';
+import { kvGet, kvSet, kvKeys, kvMGet, kvIncrByFloat, kvIncr } from '../../../../lib/kv';
 import { validateEnterpriseKey } from '../enterprise/keys';
+import { accrueReward, BASE_TASK_FEE } from '../../../../lib/rewards';
 
 const NODE_MAX_AGE_MS = 600_000;
 
@@ -122,6 +123,32 @@ function parseDecision(text: string): { enter: boolean; confidence: number; reas
     return { enter: !!(enter && !skip), confidence: Math.round(confidence * 1000) / 1000, reason };
 }
 
+const NODE_TTL = 600;
+
+async function recordOracleTask(nodeUrl: string, taskId: string): Promise<void> {
+    // Always increment global task counter
+    await kvIncr('stats:total_tasks_completed');
+    // Find node by URL and credit it
+    const nodeKeys = await kvKeys('node:');
+    if (!nodeKeys.length) return;
+    const values = await kvMGet(nodeKeys);
+    for (let i = 0; i < values.length; i++) {
+        const raw = values[i];
+        if (!raw) continue;
+        let node: any;
+        try { node = JSON.parse(raw as string); } catch { continue; }
+        const url = (node.node_url || node.multiaddrs?.[0] || '').replace(/\/$/, '');
+        if (url !== nodeUrl) continue;
+        node.tasks_completed = (node.tasks_completed || 0) + 1;
+        node.last_seen = new Date().toISOString();
+        await kvSet(nodeKeys[i], JSON.stringify(node), NODE_TTL);
+        if (node.wallet_address) {
+            accrueReward(node.node_id, node.wallet_address, BASE_TASK_FEE, taskId).catch(() => {});
+        }
+        break;
+    }
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -186,6 +213,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const { enter, confidence, reason } = parseDecision(text);
         const source = `gstd:${gstd.tier || 'node'}`;
         const model  = data?.model || 'llama3.2:3b';
+
+        // Record task completion: update node stats + global counters (fire-and-forget)
+        const taskId = `oracle:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`;
+        recordOracleTask(nodeUrl, taskId).catch(() => {});
 
         return res.status(200).json({
             enter, confidence, reason,
