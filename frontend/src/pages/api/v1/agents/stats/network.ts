@@ -4,7 +4,7 @@
  * Agent network summary statistics — online agents, tasks completed, GSTD distributed.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvGet, kvKeys } from '../../../../../lib/kv';
+import { kvGet, kvKeys, kvMGet } from '../../../../../lib/kv';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'GET') {
@@ -14,34 +14,43 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.setHeader('Cache-Control', 'public, max-age=15, stale-while-revalidate=30');
 
     try {
-        const [nodeKeys, totalTasksDone, totalGstdPaid] = await Promise.all([
+        const [allNodeKeys, totalTasksDone, totalGstdPaid] = await Promise.all([
             kvKeys('node:'),
             kvGet('stats:total_tasks_completed'),
             kvGet('stats:total_gstd_paid'),
         ]);
 
-        const now = Date.now() / 1000;
-        const nodeData = await Promise.all(
-            nodeKeys.slice(0, 200).map(async (key) => {
-                const raw = await kvGet(key);
-                if (!raw) return null;
-                try { return JSON.parse(raw); }
-                catch { return null; }
-            })
-        );
+        // Filter sub-keys and deduplicate by URL
+        const rootKeys = allNodeKeys.filter((k: string) => !k.slice(5).includes(':'));
+        const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-/i;
+        let online = 0;
+        let tasksDone = parseInt(totalTasksDone || '0', 10);
 
-        const online = nodeData.filter(
-            (n: any) => n && (now - (n.last_seen || 0)) < 600
-        ).length;
+        if (rootKeys.length > 0) {
+            const values = await kvMGet(rootKeys).catch(() => [] as (string|null)[]);
+            const records = values.filter((v): v is string => v !== null).map(v => { try { return JSON.parse(v); } catch { return null; } }).filter(Boolean) as any[];
+            records.sort((a, b) => (UUID_RE.test(a.node_id) ? 1 : 0) - (UUID_RE.test(b.node_id) ? 1 : 0));
+            const seenUrls = new Set<string>();
+            const deduped = records.filter((n: any) => {
+                const url = n.node_url || n.multiaddrs?.[0] || '';
+                if (!url) return true;
+                if (seenUrls.has(url)) return false;
+                seenUrls.add(url); return true;
+            });
+            const now = Date.now();
+            online = deduped.filter((n: any) => (now - new Date(n.last_seen || 0).getTime()) < 600_000).length;
+            if (!tasksDone) {
+                for (const n of deduped) tasksDone += parseInt(n.tasks_completed || '0', 10);
+            }
+        }
 
         return res.status(200).json({
-            total_agents:        nodeKeys.length,
-            online_agents:       online,
-            active_workers:      online,
-            total_tasks_done:    parseInt(totalTasksDone || '0', 10),
-            total_gstd_earned:   parseInt(totalGstdPaid  || '0', 10),
-            avg_uptime_pct:      99.1,
-            timestamp:           Date.now(),
+            total_agents:      rootKeys.length,
+            online_agents:     online,
+            active_workers:    online,
+            total_tasks_done:  tasksDone,
+            total_gstd_earned: parseFloat(totalGstdPaid || '0'),
+            timestamp:         Date.now(),
         });
     } catch (err: any) {
         console.error('[agents/stats/network]', err.message);

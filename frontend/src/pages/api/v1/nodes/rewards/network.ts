@@ -3,7 +3,7 @@
  * Network-wide reward statistics.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvGet, kvKeys, kvSet } from '../../../../../lib/kv';
+import { kvGet, kvKeys, kvMGet, kvSet } from '../../../../../lib/kv';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
@@ -16,28 +16,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             kvGet('rewards:distributed_total'),
             kvGet('stats:total_tasks_completed'),
         ]);
-        // Filter out sub-keys like node:X:pull_queue — only count root node entries
-        const nodeKeys = allNodeKeys.filter(k => !k.slice(5).includes(':'));
-        const totalNodes = nodeKeys.length;
-        let tasksDone = Math.round(parseFloat(totalTasksRaw || '0'));
-        // Fallback: read oracle/stats cache if counter is 0
-        if (!tasksDone) {
-            const oracleCacheRaw = await kvGet('oracle:stats:cache').catch(() => null);
-            if (oracleCacheRaw) {
-                try {
-                    const oc = JSON.parse(oracleCacheRaw as string);
-                    if (oc?.total) {
-                        tasksDone = oc.total;
-                        // Sync the authoritative counter so future reads don't re-fetch
-                        kvSet('stats:total_tasks_completed', String(tasksDone)).catch(() => {});
-                    }
-                } catch { /* ignore */ }
+        const rootKeys = allNodeKeys.filter((k: string) => !k.slice(5).includes(':'));
+        let nodesOnline = rootKeys.length;
+        let tasksDone = parseInt(totalTasksRaw || '0', 10);
+
+        if (rootKeys.length > 0) {
+            const values = await kvMGet(rootKeys).catch(() => [] as (string|null)[]);
+            const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-/i;
+            const records = values.filter((v): v is string => v !== null).map(v => { try { return JSON.parse(v); } catch { return null; } }).filter(Boolean) as any[];
+            records.sort((a: any, b: any) => (UUID_RE.test(a.node_id) ? 1 : 0) - (UUID_RE.test(b.node_id) ? 1 : 0));
+            const seen = new Set<string>();
+            const deduped = records.filter((n: any) => {
+                const url = n.node_url || n.multiaddrs?.[0] || '';
+                if (!url) return true;
+                if (seen.has(url)) return false;
+                seen.add(url); return true;
+            });
+            nodesOnline = deduped.length;
+            if (!tasksDone) {
+                for (const n of deduped) tasksDone += parseInt(n.tasks_completed || '0', 10);
+                if (tasksDone > 0) kvSet('stats:total_tasks_completed', String(tasksDone)).catch(() => {});
             }
         }
 
         return res.status(200).json({
-            total_nodes:          totalNodes,
-            active_nodes:         totalNodes,
+            total_nodes:          nodesOnline,
+            active_nodes:         nodesOnline,
             total_tasks:          tasksDone,
             reward_pool_gstd:     parseFloat(rewardPoolRaw || '0'),
             distributed_total:    parseFloat(distributedRaw || '0'),
