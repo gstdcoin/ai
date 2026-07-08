@@ -7,7 +7,7 @@
  * extra fields for backward compatibility.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvGet, kvKeys, kvLLen } from '../../../../lib/kv';
+import { kvGet, kvKeys, kvMGet, kvLLen } from '../../../../lib/kv';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'GET') {
@@ -39,7 +39,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         // Filter out sub-keys like node:X:pull_queue — only count root node entries
         const rootNodeKeys = nodeKeys.filter((k: string) => !k.slice(5).includes(':'));
-        const nodesOnline = rootNodeKeys.length;
+        // Deduplicate by node_url (same as nodes/list) to avoid counting ghost/duplicate nodes
+        let nodesOnline = rootNodeKeys.length;
+        if (rootNodeKeys.length > 1) {
+            const values = await kvMGet(rootNodeKeys);
+            const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-/i;
+            const records = values.filter((v): v is string => v !== null).map(v => { try { return JSON.parse(v); } catch { return null; } }).filter(Boolean);
+            records.sort((a: any, b: any) => (UUID_RE.test(a.node_id) ? 1 : 0) - (UUID_RE.test(b.node_id) ? 1 : 0));
+            const seenUrls = new Set<string>();
+            const dedupedCount = records.filter((n: any) => {
+                const url = n.node_url || n.multiaddrs?.[0] || '';
+                if (!url) return true;
+                if (seenUrls.has(url)) return false;
+                seenUrls.add(url); return true;
+            }).length;
+            nodesOnline = dedupedCount;
+        }
         // If total_registered KV counter is 0 (likely due to kvIncr failure), fall back to actual node count
         const totalReg    = Math.max(parseInt(totalRegistered || '0', 10), nodesOnline);
         const gstdPaid    = parseFloat(totalGstdPaid     || '0');
