@@ -12,12 +12,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
         const nodeKeys = (await kvKeys('node:')).slice(0, 100);
         const raws = nodeKeys.length > 0 ? await kvMGet(nodeKeys) : [];
-        const entries = raws
-            .map((raw) => {
-                if (!raw) return null;
-                try { return JSON.parse(raw); } catch { return null; }
-            })
-            .filter(Boolean)
+        // Deduplicate by node_url: prefer named nodes over UUID-generated IDs
+        const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-/i;
+        const allNodes = raws.map(raw => { try { return raw ? JSON.parse(raw) : null; } catch { return null; } }).filter(Boolean) as any[];
+        allNodes.sort((a, b) => (UUID_RE.test(a.node_id) ? 1 : 0) - (UUID_RE.test(b.node_id) ? 1 : 0));
+        const seenRwUrls = new Set<string>();
+        const dedupedRwNodes = allNodes.filter(n => {
+            const url = n.node_url || n.multiaddrs?.[0] || '';
+            if (!url) return true;
+            if (seenRwUrls.has(url)) return false;
+            seenRwUrls.add(url);
+            return true;
+        });
+
+        const entries = dedupedRwNodes
             .map((n: any) => ({
                 rank:        0,
                 node_id:     n.node_id,

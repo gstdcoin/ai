@@ -25,8 +25,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             })
         );
 
-        const entries = nodeData
-            .filter(Boolean)
+        // Deduplicate by node_url: prefer named nodes over UUID-generated IDs
+        const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-/i;
+        const filteredNodes = nodeData.filter(Boolean) as any[];
+        filteredNodes.sort((a, b) => (UUID_RE.test(a.node_id) ? 1 : 0) - (UUID_RE.test(b.node_id) ? 1 : 0));
+        const seenLbUrls = new Set<string>();
+        const dedupedNodes = filteredNodes.filter(n => {
+            const url = n.node_url || n.multiaddrs?.[0] || '';
+            if (!url) return true;
+            if (seenLbUrls.has(url)) return false;
+            seenLbUrls.add(url);
+            return true;
+        });
+
+        const entries = dedupedNodes
             .map((node: any) => ({
                 node_id:       node.node_id || node.id,
                 name:          node.name || node.node_id,
