@@ -18,10 +18,10 @@ const PLATFORMS = [
 ];
 
 const FEATURES = [
-    { icon: Cpu, title: '8 AI Models', desc: 'Free access to Llama 4, GPT-oss, Qwen 3, Kimi K2 and more' },
-    { icon: Zap, title: 'Earn GSTD', desc: '0.5–5 GSTD/hour depending on hardware tier and network demand' },
-    { icon: Shield, title: 'Sovereign AI', desc: 'Your data stays on your device. Run models locally or via cloud' },
-    { icon: Globe, title: 'Swarm Network', desc: 'Join the distributed compute grid with 85+ active nodes' },
+    { icon: Cpu, title: 'AI Inference', desc: 'Serve Ollama models (llama3.2:3b and others) to the GSTD oracle network' },
+    { icon: Zap, title: 'Earn GSTD', desc: '0.5 GSTD per completed inference task, settled on TON blockchain' },
+    { icon: Shield, title: 'Sovereign AI', desc: 'Your data stays on your device. Inference runs locally via Ollama' },
+    { icon: Globe, title: 'Swarm Network', desc: 'Join the growing distributed compute grid. Operators earn 85% of task fees' },
 ];
 
 export default function DownloadsPage() {
@@ -38,7 +38,7 @@ export default function DownloadsPage() {
         <>
             <Head>
                 <title>{t('downloads_title', 'Download GSTD Node OS')}</title>
-                <meta name="description" content="Install GSTD Node OS on any device. Earn GSTD tokens, access 8 AI models, join the Swarm network." />
+                <meta name="description" content="Install GSTD Node OS on any device. Earn GSTD tokens for AI inference, join the DePIN swarm network on TON." />
             </Head>
 
             <div className="sovereign-section min-h-screen">

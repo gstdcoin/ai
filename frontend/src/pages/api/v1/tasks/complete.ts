@@ -9,7 +9,7 @@
  * Body: { node_id, task_id, result?, reward_gstd?, campaign_id? }
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvGet, kvSet, kvIncr } from '../../../../lib/kv';
+import { kvGet, kvSet } from '../../../../lib/kv';
 import { accrueReward, BASE_TASK_FEE } from '../../../../lib/rewards';
 import type { NodeRecord } from '../nodes/register';
 import type { Campaign } from '../campaigns/create';
@@ -72,10 +72,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
         }
 
-        // Global stats
-        writes.push(kvIncr('stats:total_tasks_completed').then(() => {}));
-        if (rewardGstd > 0) writes.push(kvIncr('stats:total_gstd_paid').then(() => {}));
-        if (protocolFee > 0) writes.push(kvIncr('stats:protocol_treasury_gstd').then(() => {}));
+        // Global stats — use kvGet+kvSet since kvIncr silently falls back to in-memory on this instance
+        writes.push((async () => {
+            const [tasksRaw, paidRaw, treasuryRaw] = await Promise.all([
+                kvGet('stats:total_tasks_completed'),
+                rewardGstd > 0 ? kvGet('stats:total_gstd_paid') : Promise.resolve(null),
+                protocolFee > 0 ? kvGet('stats:protocol_treasury_gstd') : Promise.resolve(null),
+            ]);
+            const ops: Promise<void>[] = [
+                kvSet('stats:total_tasks_completed', String((parseInt(tasksRaw || '0', 10) || 0) + 1)),
+            ];
+            if (rewardGstd > 0) ops.push(kvSet('stats:total_gstd_paid', String((parseFloat(paidRaw || '0') || 0) + rewardGstd)));
+            if (protocolFee > 0) ops.push(kvSet('stats:protocol_treasury_gstd', String((parseFloat(treasuryRaw || '0') || 0) + protocolFee)));
+            await Promise.all(ops);
+        })());
 
         // Advance training job if this was a finetune shard
         const trainingJobId: string | undefined = body.job_id || body.result?.job_id;

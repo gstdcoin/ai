@@ -52,8 +52,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             epoch,
             next_halving_in_days,
             halving_reduction_pct: 50,
-            contracts_live:        false,
-            note:                  'No token burning. All fees flow to node operator reward pool. Minting activates after TON contract deployment.',
+            contracts_live:        true,
+            note:                  'No token burning. All fees flow to node operator reward pool. Contracts live on TON mainnet (Jul 2026).',
             timestamp:             Date.now(),
         });
     } catch (err: any) {
