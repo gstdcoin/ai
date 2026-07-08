@@ -55,7 +55,7 @@ export const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 export const IS_DEVELOPMENT = process.env.NODE_ENV === 'development';
 
 /**
- * GSTD Jetton Contract Address on TON
+ * GSTD Jetton Contract Address on TON (1B supply, mint locked forever)
  */
 export const GSTD_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_GSTD_CONTRACT || 'EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO';
 
@@ -65,9 +65,19 @@ export const GSTD_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_GSTD_CONTRACT || 'E
 export const ADMIN_WALLET_ADDRESS = process.env.NEXT_PUBLIC_ADMIN_WALLET || 'UQCkXFlNRsubUp7Uh7lg_ScUqLCiff1QCLsdQU0a7kphqQED';
 
 /**
- * Escrow Contract Address
+ * Escrow Contract Address (Phase 1 mainnet, deployed 2026-07-08)
  */
-export const ESCROW_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_ESCROW_CONTRACT || 'EQCucUHZGCr8KwBalmumsITvtMBtc5ZylAfw7sJk5SXpBWVh';
+export const ESCROW_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_ESCROW_CONTRACT || 'EQDqdyFsruwXzlScIVM0c7LKbBb4EOgwLeFO4bpNnuwc7rTF';
+
+/**
+ * SettlementMaster Contract Address (Phase 1 mainnet, deployed 2026-07-08)
+ */
+export const SETTLEMENT_MASTER_ADDRESS = process.env.NEXT_PUBLIC_SETTLEMENT_MASTER || 'EQAhuR_cEaIkRqs4gvgXSD-Qw2FRUkkBUZQkTBrFT5n-ZrSS';
+
+/**
+ * EcosystemTreasury — TON vault for platform buybacks (Phase 1 mainnet, deployed 2026-07-08)
+ */
+export const TON_VAULT_ADDRESS = process.env.NEXT_PUBLIC_TON_VAULT || 'EQAbtTCsty8-gpX-45eotGWxnYG1c7ew7NFsZ9LJBRiv_Ii_';
 
 /**
  * Agent Registry Contract Address

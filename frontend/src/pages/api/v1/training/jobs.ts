@@ -17,6 +17,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvSet, kvPush, kvKeys, kvIncr, kvIncrByFloat } from '../../../../lib/kv';
 import { randomBytes } from 'crypto';
+import { TON_VAULT_ADDRESS } from '../../../../lib/config';
 
 const SUPPORTED_MODELS = [
     'llama3.1:8b', 'llama3.2:3b', 'llama3.2:1b',
@@ -126,7 +127,7 @@ async function handleSubmit(req: NextApiRequest, res: NextApiResponse) {
                     error:     'Insufficient GSTD balance',
                     required:  cost_gstd,
                     available: balance,
-                    deposit_to: process.env.NEXT_PUBLIC_TON_VAULT || '',
+                    deposit_to: TON_VAULT_ADDRESS,
                 });
             }
             await kvIncrByFloat(`balance:${walletKey}`, -cost_gstd);

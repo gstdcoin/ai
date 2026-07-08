@@ -4,10 +4,12 @@ import { useTranslation } from 'next-i18next';
 import { getCommonStaticProps } from '../lib/i18n-static-props';
 import { ArrowRight, Copy, CheckCircle, ExternalLink, Clock, Shield, Zap, Globe, Info } from 'lucide-react';
 
+import { TON_VAULT_ADDRESS } from '../lib/config';
+
 // Vault addresses — set via env vars when contracts are deployed
 const VAULTS = {
     TON: {
-        address: process.env.NEXT_PUBLIC_TON_VAULT || 'EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO',
+        address: TON_VAULT_ADDRESS,
         explorer: 'https://tonscan.org/address/',
         label: 'TON',
         color: 'from-blue-500/20 to-blue-600/10',

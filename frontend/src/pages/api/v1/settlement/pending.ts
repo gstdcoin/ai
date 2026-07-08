@@ -7,6 +7,7 @@
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { computeSettlement, getTreasuryBalance } from '../../../../lib/rewards';
+import { SETTLEMENT_MASTER_ADDRESS } from '../../../../lib/config';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'GET') {
@@ -31,7 +32,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             total_pending_gstd: totalPending,
             treasury_gstd:      treasury,
             count:              entries.length,
-            settlement_master:  process.env.NEXT_PUBLIC_SETTLEMENT_MASTER || null,
+            settlement_master:  SETTLEMENT_MASTER_ADDRESS,
         });
     } catch (err: any) {
         console.error('[settlement/pending]', err.message);
