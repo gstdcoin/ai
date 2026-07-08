@@ -10,7 +10,7 @@
         "test": "echo \"No tests defined\" && exit 0"
     },
     "dependencies": {
-        "@tact-lang/compiler": "^1.5.0",
+        "@tact-lang/compiler": "^1.6.13",
         "@ton/core": "^0.62.0",
         "@ton/crypto": "^3.3.0",
         "@ton/ton": "^15.0.0",
@@ -19,5 +19,10 @@
     "devDependencies": {
         "ts-node": "^10.9.2",
         "typescript": "^6.0.2"
+    },
+    "overrides": {
+        "protobufjs": "^7.4.0",
+        "axios": "^1.9.0",
+        "form-data": "^4.0.4"
     }
 }
