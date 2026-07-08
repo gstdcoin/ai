@@ -6,7 +6,7 @@
  * Runs every 5 minutes via vercel.json crons config.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvGet, kvSet } from '../../../lib/kv';
+import { kvGet, kvSet, kvKeys, kvMGet } from '../../../lib/kv';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     // Only allow cron invocations (Vercel sets this header automatically)
@@ -40,6 +40,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             const stored = parseInt((await kvGet('stats:total_tasks_completed').catch(() => '0')) as string || '0', 10);
             if (stored < live.total) {
                 await kvSet('stats:total_tasks_completed', String(live.total)).catch(() => {});
+            }
+        }
+
+        // Backfill rewards:pending for nodes whose gstd_earned > 0 but pending balance is 0
+        // (happens when tasks ran before wallet_address was set in the KV record)
+        const nodeKeys = (await kvKeys('node:').catch(() => [] as string[])).filter((k: string) => !k.slice(5).includes(':'));
+        if (nodeKeys.length > 0) {
+            const values = await kvMGet(nodeKeys).catch(() => [] as (string | null)[]);
+            for (const raw of values) {
+                if (!raw) continue;
+                let node: any;
+                try { node = JSON.parse(raw as string); } catch { continue; }
+                const wallet = node.wallet_address;
+                const earned = parseFloat(node.gstd_earned || '0');
+                if (!wallet || earned <= 0) continue;
+                const walletKey = `rewards:pending:${wallet.toLowerCase()}`;
+                const pending = parseFloat((await kvGet(walletKey).catch(() => null) as string | null) || '0');
+                if (pending < earned * 0.9) {
+                    await kvSet(walletKey, String(Math.round(earned * 1e6) / 1e6)).catch(() => {});
+                }
             }
         }
 
