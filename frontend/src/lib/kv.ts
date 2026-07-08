@@ -94,7 +94,15 @@ export async function kvKeys(prefix: string): Promise<string[]> {
 export async function kvIncrByFloat(key: string, delta: number): Promise<number> {
     const r = await getRedis();
     if (r) {
-        try { return await r.incrbyfloat(key, delta); } catch { /* fallback */ }
+        try { return await r.incrbyfloat(key, delta); } catch { /* try GET+SET instead */ }
+        // INCRBYFLOAT fails on some Upstash plans — use GET+SET as fallback
+        try {
+            const raw = await r.get(key);
+            const cur = parseFloat((raw as string) || '0') || 0;
+            const next = cur + delta;
+            await r.set(key, String(next));
+            return next;
+        } catch { /* Redis fully unavailable */ }
     }
     const cur = parseFloat(memGet(key) || '0') + delta;
     memSet(key, String(cur));
@@ -155,7 +163,14 @@ export async function kvLLen(key: string): Promise<number> {
 export async function kvIncr(key: string): Promise<number> {
     const r = await getRedis();
     if (r) {
-        try { return await r.incr(key); } catch { /* fallback */ }
+        try { return await r.incr(key); } catch { /* try GET+SET instead */ }
+        // INCR fails on some Upstash plans — use GET+SET as fallback
+        try {
+            const raw = await r.get(key);
+            const cur = parseInt((raw as string) || '0', 10) || 0;
+            await r.set(key, String(cur + 1));
+            return cur + 1;
+        } catch { /* Redis fully unavailable */ }
     }
     const cur = parseInt(memGet(key) || '0', 10) + 1;
     memSet(key, String(cur));
