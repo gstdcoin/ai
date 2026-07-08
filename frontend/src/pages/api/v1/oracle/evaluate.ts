@@ -214,9 +214,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const source = `gstd:${gstd.tier || 'node'}`;
         const model  = data?.model || 'llama3.2:3b';
 
-        // Record task completion: update node stats + global counters (fire-and-forget)
+        // Record task completion before returning (Vercel serverless kills context after send)
         const taskId = `oracle:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`;
-        recordOracleTask(nodeUrl, taskId).catch(() => {});
+        await recordOracleTask(nodeUrl, taskId).catch(() => {});
 
         return res.status(200).json({
             enter, confidence, reason,
