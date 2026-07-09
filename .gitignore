@@ -160,8 +160,9 @@ test-project/
 *_recent_filtered.txt
 mcp_config.json
 
-# Vercel
-frontend/.vercel/
+# Vercel — project.json is safe to commit (only project/org IDs, no secrets)
+frontend/.vercel/*
+!frontend/.vercel/project.json
 
 # System / User config (never commit)
 .bash_history
@@ -189,4 +190,5 @@ gstdbot/
 gstd-universal
 backend/main_backend
 agents/workflows/
-.vercel
+.vercel/*
+!.vercel/project.json

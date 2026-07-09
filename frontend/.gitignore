@@ -35,4 +35,5 @@ gstd-v*
 
 # Build output
 nohup.out
-.vercel
+.vercel/*
+!.vercel/project.json
