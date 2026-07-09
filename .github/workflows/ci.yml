@@ -8,6 +8,7 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main]
+  workflow_dispatch:  # allow manual deploy from GitHub UI
 
 jobs:
   # ── TypeScript + ESLint + Build ─────────────────────────────────────────
@@ -48,7 +49,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Deploy
     needs: frontend
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: (github.ref == 'refs/heads/main' && github.event_name == 'push') || github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v4
 
