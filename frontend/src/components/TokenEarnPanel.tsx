@@ -2,24 +2,13 @@ import { useTranslation } from 'next-i18next';
 import React, { useState, useEffect } from 'react';
 import { API_BASE_URL } from '../lib/config';
 
-interface EarnMethod {
-    name: string;
-    reward: string;
-    description: string;
-    difficulty: string;
-    action: () => void;
-    icon: string;
-}
-
 interface TokenEarnPanelProps {
     walletAddress?: string;
-    language?: string;
     onClaimSuccess?: (amount: number, type: string) => void;
 }
 
 export const TokenEarnPanel: React.FC<TokenEarnPanelProps> = ({
     walletAddress,
-    language = 'en',
     onClaimSuccess
 }) => {
     const { t } = useTranslation('common');
@@ -72,7 +61,7 @@ export const TokenEarnPanel: React.FC<TokenEarnPanelProps> = ({
             } else {
                 showMessage(data.error || 'Already claimed', 'error');
             }
-        } catch (error) {
+        } catch {
             showMessage('Failed to claim', 'error');
         } finally {
             setLoading(null);
@@ -101,7 +90,7 @@ export const TokenEarnPanel: React.FC<TokenEarnPanelProps> = ({
             } else {
                 showMessage(data.error || 'Try again later', 'error');
             }
-        } catch (error) {
+        } catch {
             showMessage('Failed to claim', 'error');
         } finally {
             setLoading(null);

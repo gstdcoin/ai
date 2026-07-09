@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useWalletStore } from '../store/walletStore';
 import { useTonConnectUI } from '@tonconnect/ui-react';
 import { API_BASE_URL } from '../lib/config';
-import { Zap, Brain, Shield, Rocket, Activity, AlertCircle, CheckCircle, Terminal, Key, Copy, Plus } from 'lucide-react';
+import { Zap, Brain, Shield, Activity, Terminal, Key, Copy, Plus } from 'lucide-react';
 import { useTranslation } from 'next-i18next';
 
 interface SovereignSwitchProps {
@@ -19,7 +19,6 @@ export const SovereignSwitch = ({ className, onModeChange }: SovereignSwitchProp
     // Producer = Hive Worker (Earns GSTD)
 
     const [isAnimating, setIsAnimating] = useState(false);
-    const [showConsole, setShowConsole] = useState(false);
     const [command, setCommand] = useState('');
     const [consoleLogs, setConsoleLogs] = useState<string[]>([
         "> System Initialized...",
@@ -36,17 +35,7 @@ export const SovereignSwitch = ({ className, onModeChange }: SovereignSwitchProp
 
     const balance = gstdBalance ?? 0;
 
-    useEffect(() => {
-        // Auto-switch based on balance if not manually overridden
-        if (isConnected && balance >= MASTER_THRESHOLD) {
-            setMode('consumer');
-            fetchKeys();
-        } else {
-            setMode('producer');
-        }
-    }, [isConnected, balance]);
-
-    const fetchKeys = async () => {
+    const fetchKeys = useCallback(async () => {
         if (!isConnected) return;
         try {
             const token = localStorage.getItem('session_token');
@@ -58,7 +47,17 @@ export const SovereignSwitch = ({ className, onModeChange }: SovereignSwitchProp
         } catch (e) {
             console.error(e);
         }
-    };
+    }, [isConnected]);
+
+    useEffect(() => {
+        // Auto-switch based on balance if not manually overridden
+        if (isConnected && balance >= MASTER_THRESHOLD) {
+            setMode('consumer');
+            fetchKeys();
+        } else {
+            setMode('producer');
+        }
+    }, [isConnected, balance, fetchKeys]);
 
     const generateKey = async () => {
         setIsGeneratingKey(true);
@@ -79,7 +78,7 @@ export const SovereignSwitch = ({ className, onModeChange }: SovereignSwitchProp
             } else if (data.error) {
                 addLog(`> [ERROR] ${data.error}`);
             }
-        } catch (e) {
+        } catch {
             addLog(`> [ERROR] Key generation failed.`);
         } finally {
             setIsGeneratingKey(false);
