@@ -62,10 +62,13 @@ export const NetworkMap: React.FC<NetworkMapProps> = ({ nodes }) => {
                     ))}
 
                     {/* Nodes */}
-                    {nodes.map((node) => {
-                        const { x, y } = project(node.lat, node.lon);
+                    {nodes.map((node, i) => {
+                        const lat = (node as any).lat ?? (30 + i * 20);
+                        const lon = (node as any).lon ?? (-60 + i * 40);
+                        const { x, y } = project(lat, lon);
+                        const nodeKey = (node as any).node_id || node.id || String(i);
                         return (
-                            <g key={node.id} className="cursor-pointer">
+                            <g key={nodeKey} className="cursor-pointer">
                                 {/* Pulse Effect */}
                                 <circle cx={x} cy={y} r="6" fill="rgba(59, 130, 246, 0.4)">
                                     <animate attributeName="r" from="4" to="12" dur="2s" repeatCount="indefinite" />
@@ -84,9 +87,9 @@ export const NetworkMap: React.FC<NetworkMapProps> = ({ nodes }) => {
 
             <div className="mt-4 flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
                 {nodes.slice(0, 5).map(node => (
-                    <div key={node.id} className="flex items-center gap-2 bg-white/5 px-2 py-1 rounded-lg border border-white/10 whitespace-nowrap">
+                    <div key={node.id || node.node_id} className="flex items-center gap-2 bg-white/5 px-2 py-1 rounded-lg border border-white/10 whitespace-nowrap">
                         <div className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
-                        <span className="text-[10px] text-gray-400 font-mono">Node-{node.id.substring(0, 4)}</span>
+                        <span className="text-[10px] text-gray-400 font-mono">Node-{(node.id || node.node_id || '????').substring(0, 4)}</span>
                     </div>
                 ))}
             </div>
