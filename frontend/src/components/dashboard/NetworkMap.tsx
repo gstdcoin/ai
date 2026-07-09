@@ -87,9 +87,9 @@ export const NetworkMap: React.FC<NetworkMapProps> = ({ nodes }) => {
 
             <div className="mt-4 flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
                 {nodes.slice(0, 5).map(node => (
-                    <div key={node.id || node.node_id} className="flex items-center gap-2 bg-white/5 px-2 py-1 rounded-lg border border-white/10 whitespace-nowrap">
+                    <div key={node.id || (node as any).node_id} className="flex items-center gap-2 bg-white/5 px-2 py-1 rounded-lg border border-white/10 whitespace-nowrap">
                         <div className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
-                        <span className="text-[10px] text-gray-400 font-mono">Node-{(node.id || node.node_id || '????').substring(0, 4)}</span>
+                        <span className="text-[10px] text-gray-400 font-mono">Node-{(node.id || (node as any).node_id || '????').substring(0, 4)}</span>
                     </div>
                 ))}
             </div>
