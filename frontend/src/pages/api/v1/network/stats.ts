@@ -102,7 +102,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 if (r.ok) {
                     const d = await r.json();
                     gstdPrice = parseFloat(d?.asset?.dex_usd_price || '0');
-                    if (gstdPrice) kvSet('market:gstd_price_usd', String(gstdPrice), 1800).catch(() => {});
+                    if (gstdPrice) {
+                        kvSet('market:gstd_price_usd', String(gstdPrice), 1800).catch(() => {});
+                        kvSet('market:price_source', 'ston.fi', 1800).catch(() => {});
+                    }
                 }
             } catch { /* ignore */ }
         }
