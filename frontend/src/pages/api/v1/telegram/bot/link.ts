@@ -8,7 +8,7 @@
  * Body: { telegram_id, wallet_address, username?, first_name?, referrer_id? }
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvGet, kvSet, kvIncrByFloat } from '../../../../../lib/kv';
+import { kvGet, kvSet, kvIncr, kvIncrByFloat } from '../../../../../lib/kv';
 
 const TON_ADDRESS_RE = /^(EQ[A-Za-z0-9_-]{46}|UQ[A-Za-z0-9_-]{46}|0:[a-fA-F0-9]{64})$/;
 const WELCOME_BONUS    = 0.5;
@@ -51,6 +51,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (isNew) {
         const bonuses: Promise<any>[] = [
             kvIncrByFloat(`balance:${walletKey}`, WELCOME_BONUS).catch(() => {}),
+            kvIncr('stats:total_users').catch(() => {}),
         ];
         subsidized = true;
 

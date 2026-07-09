@@ -6,7 +6,6 @@ import { getCommonStaticProps } from '../lib/i18n-static-props';
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { NetworkMap } from '../components/dashboard/NetworkMap';
-import { useWalletStore } from '../store/walletStore';
 import { GSTD_CONTRACT_ADDRESS, API_BASE_URL } from '../lib/config';
 import dynamic from 'next/dynamic';
 import { Zap, Shield, Globe, Activity, Check, DollarSign, Workflow, Sparkles, Brain } from 'lucide-react';
@@ -28,7 +27,6 @@ interface NetworkStats {
 export default function About() {
   const { t } = useTranslation('common');
   const router = useRouter();
-  const { isConnected } = useWalletStore();
   const [networkStats, setNetworkStats] = useState<NetworkStats | null>(null);
   const [isClient, setIsClient] = useState(false);
 
@@ -58,10 +56,10 @@ export default function About() {
         if (res.ok) setNetworkStats(await res.json());
       } catch (_e) { /* silent */ }
     };
-    if (!isConnected) fetchStats();
+    fetchStats();
     const interval = setInterval(fetchStats, 60000);
     return () => clearInterval(interval);
-  }, [isConnected]);
+  }, []);
 
   const [publicNodes, setPublicNodes] = useState<any[]>([]);
   useEffect(() => {
@@ -74,37 +72,12 @@ export default function About() {
         }
       } catch (_e) { }
     };
-    if (!isConnected) fetchNodes();
-  }, [isConnected]);
-
-  // Prevent flashing of landing page while checking connection
-  const [checkingSession, setCheckingSession] = useState(true);
-
-  useEffect(() => {
-    // Allow time for wallet restoration
-    const timer = setTimeout(() => {
-      setCheckingSession(false);
-    }, 1000); // 1 second buffer
-    return () => clearTimeout(timer);
+    fetchNodes();
   }, []);
 
   const changeLanguage = () => {
     router.push(router.pathname, router.asPath, { locale: router.locale === 'ru' ? 'en' : 'ru' });
   };
-
-  // Redirect removed
-  useEffect(() => {
-    // No-op
-  }, [isConnected, checkingSession, router]);
-
-  // Show loading spinner only while checking session
-  if (checkingSession) {
-    return (
-      <div className="min-h-screen bg-[#030014] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-violet-500 opacity-50"></div>
-      </div>
-    );
-  }
 
 
   // Landing Page - Elite Cosmic Premium Design
@@ -220,7 +193,7 @@ export default function About() {
                     { value: networkStats?.active_workers ? networkStats.active_workers.toLocaleString() : '—', label: t('stat_nodes', 'Active Nodes') || 'Active Nodes', icon: Shield, color: 'emerald', delay: '0s' },
                     { value: networkStats?.total_tasks ? networkStats.total_tasks.toLocaleString() : '—', label: t('tasks_completed', 'Tasks Completed'), icon: Brain, color: 'violet', delay: '0.1s' },
                     { value: networkStats?.total_gstd_paid ? `${networkStats.total_gstd_paid.toFixed(0)} GSTD` : '—', label: t('gstd_distributed', 'GSTD Distributed'), icon: Activity, color: 'emerald', delay: '0.2s' },
-                    { value: networkStats?.total_hashrate ? `${networkStats.total_hashrate.toFixed(1)} PFLOPS` : '—', label: t('grid_power', 'Grid Power'), icon: Zap, color: 'cyan', delay: '0.3s' },
+                    { value: networkStats?.gstd_price_usd ? `$${networkStats.gstd_price_usd.toFixed(6)}` : '—', label: t('gstd_price', 'GSTD Price'), icon: Zap, color: 'cyan', delay: '0.3s' },
                   ].map((stat, i) => (
                     <div key={i} className="relative group overflow-hidden" style={{ animationDelay: stat.delay }}>
                       <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-violet-500/10 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -285,7 +258,7 @@ export default function About() {
                 {
                   icon: Zap,
                   title: t('feat_speed_title', 'Lightning Fast') || 'Lightning Fast',
-                  desc: t('feat_speed_desc', '5-second average task completion with intelligent load balancing across global network nodes.') || '5-second average task completion with intelligent load balancing across global network nodes.',
+                  desc: t('feat_speed_desc', 'Intelligent load balancing routes every request to the fastest available node in the global network for optimal response time.') || 'Intelligent load balancing routes every request to the fastest available node in the global network for optimal response time.',
                   gradient: 'from-amber-500 to-orange-600'
                 },
                 {
@@ -332,13 +305,13 @@ export default function About() {
                   the best available node — operators earn 90% of fees, 10% funds the ecosystem treasury.
                 </p>
                 <div className="flex flex-wrap gap-4">
-                  <div className="flex items-center gap-3 px-6 py-4 rounded-2xl bg-white/[0.03] border border-white/10 group hover:border-violet-500/30 transition-all cursor-pointer" onClick={() => router.push('/hive')}>
+                  <div className="flex items-center gap-3 px-6 py-4 rounded-2xl bg-white/[0.03] border border-white/10 group hover:border-violet-500/30 transition-all cursor-pointer" onClick={() => router.push('/chat')}>
                     <Brain className="text-violet-500 group-hover:scale-110 transition-transform" />
-                    <span className="font-black text-sm uppercase tracking-tight">{t('sync_history', 'Sync History')}</span>
+                    <span className="font-black text-sm uppercase tracking-tight">{t('open_ai_chat', 'Open AI Chat')}</span>
                   </div>
-                  <div className="flex items-center gap-3 px-6 py-4 rounded-2xl bg-white/[0.03] border border-white/10 group hover:border-cyan-500/30 transition-all cursor-pointer" onClick={() => router.push('/import')}>
+                  <div className="flex items-center gap-3 px-6 py-4 rounded-2xl bg-white/[0.03] border border-white/10 group hover:border-cyan-500/30 transition-all cursor-pointer" onClick={() => router.push('/nodes')}>
                     <Workflow className="text-cyan-500 group-hover:scale-110 transition-transform" />
-                    <span className="font-black text-sm uppercase tracking-tight">{t('skill_matrix', 'Skill Matrix')}</span>
+                    <span className="font-black text-sm uppercase tracking-tight">{t('run_a_node', 'Run a Node')}</span>
                   </div>
                 </div>
               </div>
@@ -423,7 +396,7 @@ export default function About() {
                   <li><Link href="/nodes" className="text-gray-500 hover:text-white transition-colors">{t('run_a_node', 'Run a Node')}</Link></li>
                   <li><Link href="/training" className="text-gray-500 hover:text-white transition-colors">{t('fine_tune_models', 'Fine-Tune Models')}</Link></li>
                   <li><Link href="/stats" className="text-gray-500 hover:text-white transition-colors">{t('network_stats', 'Network Stats')}</Link></li>
-                  <li><Link href="/hive" className="text-violet-400 hover:text-violet-300 font-bold transition-colors">Hive Mesh (Beta)</Link></li>
+                  <li><Link href="/chat" className="text-violet-400 hover:text-violet-300 font-bold transition-colors">{t('ai_chat', 'AI Chat')}</Link></li>
                   <li><Link href="/import" className="text-cyan-400 hover:text-cyan-300 font-bold transition-colors">{t('skill_registry', 'Skill Registry')}</Link></li>
                   <li><Link href="/docs" className="text-gray-500 hover:text-white transition-colors">{t('documentation', 'Documentation')}</Link></li>
                 </ul>

@@ -55,7 +55,9 @@ export async function kvGet(key: string): Promise<string | null> {
     if (r) {
         try {
             const val = await r.get(key);
-            return val == null ? null : String(val);
+            if (val == null) return null;
+            // Upstash auto-parses JSON strings into objects — serialize back to string
+            return typeof val === 'string' ? val : JSON.stringify(val);
         } catch { /* fallback */ }
     }
     return memGet(key);

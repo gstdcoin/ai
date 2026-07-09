@@ -78,8 +78,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (!tasksDone) {
             const oracleCacheRaw = await kvGet('oracle:stats:cache').catch(() => null);
             if (oracleCacheRaw) {
-                try { tasksDone = JSON.parse(oracleCacheRaw as string)?.total || 0; } catch { /* ignore */ }
+                try {
+                    const parsed = typeof oracleCacheRaw === 'string' ? JSON.parse(oracleCacheRaw) : oracleCacheRaw;
+                    tasksDone = parsed?.total || 0;
+                } catch { /* ignore */ }
             }
+        }
+        // Last resort: call oracle stats live from node
+        if (!tasksDone) {
+            try {
+                const keys = rootNodeKeys.length > 0 ? rootNodeKeys : [];
+                if (keys.length > 0) {
+                    const nodeValsForUrl = await kvMGet(keys).catch(() => [] as (string|null)[]);
+                    const now = Date.now();
+                    for (const raw of nodeValsForUrl) {
+                        if (!raw) continue;
+                        try {
+                            const n: any = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                            const url = (n.node_url || n.multiaddrs?.[0] || '').replace(/\/$/, '');
+                            if (!url.startsWith('http')) continue;
+                            if (now - new Date(n.last_seen || 0).getTime() > 600_000) continue;
+                            const r = await fetch(`${url}/api/oracle/stats`, { signal: AbortSignal.timeout(4000) });
+                            if (r.ok) {
+                                const od: any = await r.json();
+                                tasksDone = od?.total || 0;
+                                if (tasksDone) break;
+                            }
+                        } catch { /* try next node */ }
+                    }
+                }
+            } catch { /* ignore */ }
         }
         // Sync the authoritative counter so subsequent reads are fast
         if (tasksDone > parseInt(totalTasksCompleted || '0', 10)) {

@@ -56,6 +56,7 @@ export async function accrueReward(
         kvIncrByFloat(`rewards:pending:${walletKey}`, nodeShare),
         kvIncrByFloat(`rewards:lifetime:${nodeId}`, nodeShare),
         kvIncrByFloat('rewards:treasury', communityShare),
+        kvIncrByFloat('stats:total_gstd_paid', feeGstd),
         kvSet(`rewards:node_wallet:${nodeId}`, walletKey),
     ]).catch(() => {});
 
