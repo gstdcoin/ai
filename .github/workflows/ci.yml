@@ -50,20 +50,38 @@ jobs:
     name: Deploy
     needs: frontend
     if: (github.ref == 'refs/heads/main' && github.event_name == 'push') || github.event_name == 'workflow_dispatch'
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: team_nJrl4HPx1kF1r635js1KE2qd
+      VERCEL_PROJECT_ID: prj_j2gQqRULHdMowbDHZt7wSqs2z3Bf
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+      - name: Verify VERCEL_TOKEN secret is set
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "::error::VERCEL_TOKEN secret is empty or not configured in GitHub repo secrets"
+            exit 1
+          fi
+          echo "VERCEL_TOKEN is set (${#VERCEL_TOKEN} chars)"
 
-      - name: Deploy to Vercel
-        run: npx vercel deploy --prod --yes --token "$VERCEL_TOKEN"
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Verify token + identity
+        run: vercel whoami --token "$VERCEL_TOKEN"
+
+      - name: Pull Vercel project settings
         working-directory: frontend
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: team_nJrl4HPx1kF1r635js1KE2qd
-          VERCEL_PROJECT_ID: prj_j2gQqRULHdMowbDHZt7wSqs2z3Bf
+        run: vercel pull --yes --environment=production --token "$VERCEL_TOKEN"
+
+      - name: Build for production
+        working-directory: frontend
+        run: vercel build --prod --token "$VERCEL_TOKEN"
+
+      - name: Deploy prebuilt to production
+        working-directory: frontend
+        run: vercel deploy --prebuilt --prod --token "$VERCEL_TOKEN"
 
   # ── Dependency Security Audit ──────────────────────────────────────────
   audit:
