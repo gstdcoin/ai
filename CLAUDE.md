@@ -39,6 +39,19 @@ Set these env vars in Vercel dashboard:
 - `TREASURY_SECRET` — any random string
 - `NEXT_PUBLIC_TON_VAULT` / `NEXT_PUBLIC_SOL_VAULT` / `NEXT_PUBLIC_XRP_VAULT` — after contract deploy
 
+**CI/CD**: GitHub Actions (`ci.yml`) deploys on every push to `main` via `vercel deploy --prod`.
+`VERCEL_TOKEN` must be set in GitHub repo Secrets. Run from **repo root** (not `frontend/`).
+
+**⚠ Hobby plan cron limit**: `vercel.json` crons must run ≤ 1x/day. Use `0 H * * *` format.
+`*/5 * * * *` causes Vercel to reject ALL deployments silently — root cause of broken auto-deploy.
+
+**Manual deploy from Pi** (emergency):
+```bash
+cd /home/bot/gstdai
+VERCEL_ORG_ID=team_nJrl4HPx1kF1r635js1KE2qd VERCEL_PROJECT_ID=prj_j2gQqRULHdMowbDHZt7wSqs2z3Bf \
+  npx vercel deploy --prod --yes --token "$VERCEL_TOKEN"
+```
+
 ## Training Marketplace API (added 2026-07-04)
 New endpoints in `src/pages/api/v1/training/`:
 - `POST /api/v1/training/jobs` — submit fine-tuning job (model + dataset_url + domain)
