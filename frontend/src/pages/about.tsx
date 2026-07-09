@@ -5,13 +5,15 @@ import { useTranslation } from 'next-i18next';
 import { getCommonStaticProps } from '../lib/i18n-static-props';
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
-import WalletConnect from '../components/WalletConnect';
-
 import { NetworkMap } from '../components/dashboard/NetworkMap';
 import { useWalletStore } from '../store/walletStore';
 import { GSTD_CONTRACT_ADDRESS, API_BASE_URL } from '../lib/config';
-import { Zap, Shield, Globe, ArrowRight, Users, Activity, Code, BookOpen, Terminal, Server, Cpu, Download, Copy, Check, Play, DollarSign, Monitor, Layers, Radio, Workflow, Sparkles, MapPin, Brain, Rocket } from 'lucide-react';
-import { SovereignSwitch } from '../components/SovereignSwitch';
+import dynamic from 'next/dynamic';
+import { Zap, Shield, Globe, Activity, Check, DollarSign, Workflow, Sparkles, Brain } from 'lucide-react';
+
+// Components using useTonConnectUI must be client-only to avoid hydration mismatch
+const SovereignSwitch = dynamic(() => import('../components/SovereignSwitch').then(m => ({ default: m.SovereignSwitch })), { ssr: false });
+const WalletConnect = dynamic(() => import('../components/WalletConnect'), { ssr: false });
 
 interface NetworkStats {
   active_workers: number;

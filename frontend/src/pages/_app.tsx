@@ -111,12 +111,12 @@ function App({ Component, pageProps }: AppProps) {
             <div className="page-glow" aria-hidden="true" />
             {isMounted && <WalletListener />}
             {isMounted && <AutoClaimWorker />}
-            {router.pathname !== '/tma' && <EcosystemNav />}
-            <main style={{ paddingTop: router.pathname !== '/tma' ? 56 : 0, minHeight: '100vh', position: 'relative', zIndex: 1 }} className={router.pathname !== '/tma' ? 'pb-20 lg:pb-0' : ''}>
-              {router.pathname !== '/tma' && <LandingEmbed />}
+            {router.pathname !== '/tma' && router.pathname !== '/about' && <EcosystemNav />}
+            <main style={{ paddingTop: (router.pathname !== '/tma' && router.pathname !== '/about') ? 56 : 0, minHeight: '100vh', position: 'relative', zIndex: 1 }} className={(router.pathname !== '/tma' && router.pathname !== '/about') ? 'pb-20 lg:pb-0' : ''}>
+              {router.pathname !== '/tma' && router.pathname !== '/about' && <LandingEmbed />}
               <Component {...pageProps} />
             </main>
-            {router.pathname !== '/tma' && router.pathname !== '/dashboard' && router.pathname !== '/chat' && !router.pathname.startsWith('/monitor') && <EcosystemFooter />}
+            {router.pathname !== '/tma' && router.pathname !== '/about' && router.pathname !== '/dashboard' && router.pathname !== '/chat' && !router.pathname.startsWith('/monitor') && <EcosystemFooter />}
             <Toaster position="top-right" richColors closeButton />
         </TonConnectUIProvider>
       </TelegramThemeProvider>
