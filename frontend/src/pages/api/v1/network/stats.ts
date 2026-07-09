@@ -86,9 +86,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             kvSet('stats:total_tasks_completed', String(tasksDone)).catch(() => {});
         }
 
-        // Read GSTD price from KV cache; fall back to seed price ($0.001) pre-STON.fi listing
+        // Read GSTD price: KV cache → live STON.fi fetch → seed fallback
+        let gstdPrice = 0;
         const cachedPrice = await kvGet('market:gstd_price_usd').catch(() => null);
-        const gstdPrice = (cachedPrice ? parseFloat(cachedPrice as string) : 0) || 0.001;
+        if (cachedPrice) {
+            gstdPrice = parseFloat(cachedPrice as string);
+        }
+        if (!gstdPrice) {
+            // KV expired — fetch live from STON.fi and refresh cache
+            try {
+                const r = await fetch(
+                    'https://api.ston.fi/v1/assets/EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO',
+                    { signal: AbortSignal.timeout(3000) }
+                );
+                if (r.ok) {
+                    const d = await r.json();
+                    gstdPrice = parseFloat(d?.asset?.dex_usd_price || '0');
+                    if (gstdPrice) kvSet('market:gstd_price_usd', String(gstdPrice), 1800).catch(() => {});
+                }
+            } catch { /* ignore */ }
+        }
+        if (!gstdPrice) gstdPrice = 0.001; // pre-listing seed
 
         return res.status(200).json({
             // Node counts (real KV data)

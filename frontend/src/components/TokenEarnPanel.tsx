@@ -123,7 +123,7 @@ export const TokenEarnPanel: React.FC<TokenEarnPanelProps> = ({
             } else {
                 showMessage(data.error || 'Try again', 'error');
             }
-        } catch (error) {
+        } catch {
             showMessage('Failed to complete task', 'error');
         } finally {
             setLoading(null);

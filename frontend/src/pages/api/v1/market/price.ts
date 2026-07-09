@@ -15,7 +15,7 @@ import { kvGet, kvSet } from '../../../../lib/kv';
 
 const STON_ASSET_URL = 'https://api.ston.fi/v1/assets/EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO';
 const TON_USD_URL    = 'https://tonapi.io/v2/rates?tokens=ton&currencies=usd';
-const CACHE_TTL      = 60;
+const CACHE_TTL      = 1800; // 30 min — price doesn't change second-to-second
 const SEED_PRICE_USD = 0.001;
 
 async function fetchLivePrice(): Promise<{ gstd_price_usd: number; gstd_price_ton: number } | null> {
