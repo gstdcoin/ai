@@ -5,13 +5,13 @@
     "mode": "node",
     "version": "3.4.0",
     "capabilities": ["llama3.2:3b"],
-    "multiaddrs": ["https://peak-guy-drug-janet.trycloudflare.com"],
-    "node_url": "https://peak-guy-drug-janet.trycloudflare.com",
+    "multiaddrs": ["https://notification-yet-sentence-eau.trycloudflare.com"],
+    "node_url": "https://notification-yet-sentence-eau.trycloudflare.com",
     "platform": "linux",
     "cpu_cores": 4,
     "has_gpu": false,
     "tasks_completed": 0,
     "uptime_hours": 0,
-    "last_seen": "2026-07-10T11:33:12.000Z"
+    "last_seen": "2026-07-10T11:48:19.000Z"
   }
 ]
