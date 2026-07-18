@@ -196,7 +196,7 @@ stats:nodes_peak                  Counter  Peak concurrent nodes
 ### Platform (app.gstdtoken.com)
 - [ ] Connect Vercel KV store (auto-adds `KV_REST_API_URL` + `KV_REST_API_TOKEN`)
 - [ ] Set `TREASURY_SECRET` (any random string)
-- [ ] After contract deploy: set `NEXT_PUBLIC_TON_VAULT`, `NEXT_PUBLIC_SOL_VAULT`, `NEXT_PUBLIC_XRP_VAULT`
+- [ ] `NEXT_PUBLIC_TON_VAULT` already set (EcosystemTreasury, live). Leave `NEXT_PUBLIC_SOL_VAULT` / `NEXT_PUBLIC_XRP_VAULT` unset — bridge is deferred, see "What's NOT Yet Live" below
 - [ ] After contract deploy: set `GSTD_JETTON_ADDRESS`
 
 ### Node OS (gstdbot)
@@ -222,12 +222,9 @@ stats:nodes_peak                  Counter  Peak concurrent nodes
 
 | Feature | Blocked by |
 |---------|-----------|
-| On-chain task settlement | `GSTD_JETTON_ADDRESS` not set |
-| Staking / NaaS registry | `SettlementMaster.tact` not deployed |
-| DAO governance | `DAOVoting.tact` not deployed |
-| Bridge vault enforcement | TON vault contract not deployed |
+| Cross-chain bridge (TON ↔ Solana ↔ XRPL) | **Deferred.** `gstd-bridge` is code-only — no validators running, no MPC key shares generated, no Solana/XRPL vault wallets. `/bridge` permanently redirects to `/nodes` in production until this is actually built out (see gstd-bridge CLAUDE.md). |
 
-Everything else is live and working at app.gstdtoken.com.
+GSTDJetton, SettlementMaster, and AgentRegistry are deployed and live on TON mainnet (verified on-chain 2026-07-18). DAOVoting deploy status not independently re-verified in this pass.
 
 ---
 

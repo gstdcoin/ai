@@ -6,7 +6,10 @@ import { ArrowRight, Copy, CheckCircle, ExternalLink, Clock, Shield, Zap, Globe,
 
 import { TON_VAULT_ADDRESS } from '../lib/config';
 
-// Vault addresses — set via env vars when contracts are deployed
+// Vault addresses — set via env vars once gstd-bridge validators are actually running.
+// NEVER fall back to the GSTD token/mint address here: it is not a monitored deposit
+// vault, and gstd-bridge (the service that would credit deposits) isn't deployed yet.
+const NOT_DEPLOYED = 'not yet deployed';
 const VAULTS = {
     TON: {
         address: TON_VAULT_ADDRESS,
@@ -17,7 +20,7 @@ const VAULTS = {
         dot: 'bg-blue-400',
     },
     Solana: {
-        address: process.env.NEXT_PUBLIC_SOL_VAULT || 'AzN7uPhQZgThxsRvhNGHPUPRjdEjScTbqQdf5gt6Fqby',
+        address: process.env.NEXT_PUBLIC_SOL_VAULT || NOT_DEPLOYED,
         explorer: 'https://solscan.io/account/',
         label: 'Solana',
         color: 'from-purple-500/20 to-purple-600/10',
@@ -25,7 +28,7 @@ const VAULTS = {
         dot: 'bg-purple-400',
     },
     XRPL: {
-        address: process.env.NEXT_PUBLIC_XRP_VAULT || 'ryHSvxUqpcTjoESHbCkMJoqzenjFgPQSf',
+        address: process.env.NEXT_PUBLIC_XRP_VAULT || NOT_DEPLOYED,
         explorer: 'https://xrpscan.com/account/',
         label: 'XRPL',
         color: 'from-cyan-500/20 to-cyan-600/10',
