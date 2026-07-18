@@ -5,3 +5,4 @@ dist/
 .env.*
 !.env.example
 *.js.map
+deployer.json
