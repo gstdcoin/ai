@@ -21,7 +21,7 @@ import { TON_VAULT_ADDRESS } from '../../../../lib/config';
 
 const SUPPORTED_MODELS = [
     'llama3.1:8b', 'llama3.2:3b', 'llama3.2:1b',
-    'qwen2.5:7b', 'qwen2.5:3b', 'mistral:7b',
+    'qwen2.5:7b', 'qwen2.5:3b', 'qwen2.5:0.5b', 'mistral:7b',
     'phi3:mini', 'gemma2:2b',
 ];
 
@@ -29,6 +29,7 @@ const COST_PER_EPOCH: Record<string, number> = {
     'llama3.1:8b': 2.0, 'qwen2.5:7b': 2.0, 'mistral:7b': 2.0,
     'llama3.2:3b': 0.8, 'qwen2.5:3b': 0.8, 'phi3:mini': 0.8,
     'llama3.2:1b': 0.4, 'gemma2:2b': 0.4,
+    'qwen2.5:0.5b': 0.2,
 };
 
 // V1: one shard per job (dataset_url points to full JSONL)
