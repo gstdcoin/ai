@@ -192,3 +192,4 @@ backend/main_backend
 agents/workflows/
 .vercel/*
 !.vercel/project.json
+.superpowers/
