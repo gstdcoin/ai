@@ -20,7 +20,8 @@ import React, { useMemo, type ReactNode } from 'react';
 import { MetaMaskProvider } from '@metamask/sdk-react';
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
-import { PhantomWalletAdapter, SolflareWalletAdapter } from '@solana/wallet-adapter-wallets';
+import { PhantomWalletAdapter } from '@solana/wallet-adapter-phantom';
+import { SolflareWalletAdapter } from '@solana/wallet-adapter-solflare';
 import { clusterApiUrl } from '@solana/web3.js';
 
 // Import Solana wallet adapter default styles
@@ -35,7 +36,9 @@ export default function WalletProviders({ children }: WalletProvidersProps) {
   // Using Solana mainnet for production
   const solanaEndpoint = useMemo(() => clusterApiUrl('mainnet-beta'), []);
 
-  // Official wallet adapters from @solana/wallet-adapter-wallets
+  // Dedicated single-wallet adapter packages (not the @solana/wallet-adapter-wallets
+  // bundle — that pulls in every adapter including an unused, vulnerable
+  // Particle Network chain via uuidv4)
   // These use the Solana Mobile Wallet Adapter protocol for mobile
   const solanaWallets = useMemo(() => [
     new PhantomWalletAdapter(),
