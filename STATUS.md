@@ -3,7 +3,7 @@
 > **Keep this file up to date.** Every time you ship a significant change, update the relevant section.  
 > This prevents "we already did that" and "why did we do it that way" conversations.
 
-Last updated: 2026-06-19
+Last updated: 2026-07-19
 
 ---
 
@@ -14,9 +14,11 @@ Last updated: 2026-06-19
 | app.gstdtoken.com | ✅ Live | Vercel, auto-deploys on push to main |
 | gstdtoken.com | ✅ Live | Vercel, landing page |
 | Upstash Redis (KV) | ✅ Connected | Vercel KV store |
-| TON Contracts | ⏳ Pending deploy | Code complete, needs mainnet deploy |
-| Bridge validators | ⏳ Needs operators | Code complete, needs 3+ validators with staked GSTD |
+| TON Contracts | ✅ Deployed | GSTDJetton, SettlementMaster, AgentRegistry live on mainnet (verified on-chain 2026-07-18); GSTDJetton admin renounced (`addr_none`), SettlementMaster owner is a separate admin wallet |
+| gstd-a2a (PyPI) | ✅ Published | `pip install gstd-a2a` — v2.1.0, first publish 2026-07-19 |
+| Bridge validators | ❌ Deferred, not deployed | No MPC key shares generated, no Solana/XRPL vault wallets exist, CI red since 2026-05-26. Not just "needs operators" — needs to actually be built out first. See gstd-bridge/README.md status banner. |
 | Docker node image | ✅ Published | `goldenbit/gstd-node:latest` |
+| Known vulnerabilities | ✅ Remediated 2026-07-19 | npm (frontend/web), Go (backend), Cargo (bridge, partial) — see Decision Log |
 
 ---
 
@@ -48,12 +50,8 @@ Last updated: 2026-06-19
 - [x] **Node onboarding**: step-by-step Ollama + gstdbot install visible to all visitors
 
 ### Pending
-- [ ] Set `TREASURY_WALLET_ADDRESS` in gstdai/scripts/.env (create treasury TON wallet first)
-- [ ] Start deposit-monitor: `pm2 start scripts/deposit-monitor.ts --interpreter=tsx --name gstd-monitor`
-- [ ] Add `NEXT_PUBLIC_TREASURY_WALLET` to Vercel env vars
-- [ ] Set `GSTD_JETTON_ADDRESS` after TON contract deploy
-- [ ] Set `NEXT_PUBLIC_TON_VAULT` after vault contract deploy
-- [ ] On-chain settlement (run `scripts/settle.ts` weekly from Pi)
+- [ ] Confirm deposit-monitor / settle.ts are actually running on schedule (not re-verified this pass)
+- [ ] DAOVoting deploy status not independently re-verified 2026-07-19 (Jetton/SettlementMaster/AgentRegistry were)
 
 ### Known issues / Do not re-do
 - `api.gstdtoken.com` does NOT exist — all API is at `app.gstdtoken.com/api/v1`
@@ -87,31 +85,31 @@ Last updated: 2026-06-19
 ## gstdcoin/gstd-bridge — Cross-Chain Bridge
 
 **Language:** Rust | **Deploy:** docker-compose on validator machines
+**Status (verified 2026-07-19): deferred.** The items below are *implemented in
+code* but have never been run — no validator, no key shares, no vault wallets.
+Treat as design docs, not a working system, until the Pending items are done.
 
-### What's working
+### Implemented in code (not yet run in practice)
 - [x] libp2p P2P network (Kademlia + Gossipsub)
 - [x] Multi-chain monitoring: TON, Solana, XRPL
 - [x] Consensus engine (67% quorum, 10min timeout)
 - [x] MPC threshold signing (Ed25519 Shamir t-of-n)
-- [x] Persistent key shares (`./data/key_share.bin`, chmod 600)
-- [x] On-chain deposit verification before voting
-- [x] Real withdrawal execution via chain monitors
-- [x] Vault balance accounting (re-lock on failure)
 - [x] GSTD platform heartbeat + peer bootstrap
 - [x] docker-compose for production
-- [x] CI: cargo fmt + clippy + test
 
-### Pending
-- [ ] 3+ validator operators needed to go live
-- [ ] TON vault contract address (currently placeholder)
-- [ ] Solana SPL token program address
-- [ ] XRPL trust line setup
+### Pending (blockers — none of this has happened yet)
+- [ ] CI red since 2026-05-26 — fix before anything else
+- [ ] Generate real MPC key shares (`./data/key_share.bin` doesn't exist)
+- [ ] Create actual Solana and XRPL vault wallets (`vault_address = ""` for all 3 chains in bridge.toml)
+- [ ] Recruit 3+ validator operators with 10K+ GSTD staked
+- [ ] First real end-to-end bridge transfer, on testnet before mainnet
+- [ ] Cargo dependency vulnerabilities: `cargo update` applied 2026-07-19 (20→14 via OSV.dev), remaining 14 need a libp2p 0.52→newer major bump (gossipsub/yamux/quinn-proto/rustls-webpki all pinned by libp2p's own deps) — deferred until the bridge is actually being built out, since it's a breaking change with no way to test it against a real validator set yet
 
 ---
 
 ## gstdcoin/A2A — Python Agent SDK
 
-**Package:** `pip install gstd-a2a` | **PyPI:** pending first publish
+**Package:** `pip install gstd-a2a` | **PyPI:** live, v2.1.0 (published 2026-07-19)
 
 ### What's working
 - [x] `GSTDClient` — low-level HTTP client with auto-auth headers
@@ -126,28 +124,34 @@ Last updated: 2026-06-19
 - [x] `setup.py` with proper extras (`dev`, `ton`, `mcp`, `full`)
 
 ### Pending
-- [ ] First PyPI publish (push `git tag v2.0.0 && git push --tags`)
 - [ ] Async client variant (`aiohttp` based)
+
+### Notes
+- CI's `on.push` trigger never included `tags:`, so the tag-triggered publish job
+  was dead code until fixed 2026-07-19 — this is *why* it took until v2.1.0 to
+  actually publish despite the publish step existing since the SDK's early days.
+- Repo has two diverged, unrelated default-branch candidates: `master` (active,
+  what CI/PyPI publish actually run from) and a stale `main` (last touched with
+  an abandoned Vercel/OpenClaw/Groq direction, unrelated to the current
+  architecture). Recommend deleting `main` unless someone has a reason to keep it.
 
 ---
 
-## gstdcoin/contracts — TON Smart Contracts
+## gstdcoin/contracts — TON Smart Contracts (lives in gstdai/contracts)
 
-**Language:** Tact | **Status:** Code complete, not yet deployed
+**Language:** Tact | **Status:** Deployed to TON mainnet, verified on-chain 2026-07-18
 
 ### What's working
-- [x] `GSTDJetton.tact` — GSTD token (Jetton standard)
-- [x] `SettlementMaster.tact` — task payment settlement
-- [x] `AgentRegistry.tact` — on-chain node/agent registry
-- [x] `DAOVoting.tact` — governance voting
+- [x] `GSTDJetton.tact` — GSTD token (Jetton standard), live, admin renounced (`addr_none`)
+- [x] `SettlementMaster.tact` — task payment settlement, live, owner set to a dedicated admin wallet, not paused
+- [x] `AgentRegistry.tact` — on-chain node/agent registry, live
+- [x] TON EcosystemTreasury vault — live, deployed 2026-07-08, correctly separate from the jetton master address
 - [x] CI: syntax validation on push
 
-### Pending (BLOCKERS for full decentralization)
-- [ ] Compile all contracts: `npx blueprint build`
-- [ ] Deploy to TON testnet and verify
-- [ ] Deploy to TON mainnet
-- [ ] Set contract addresses as Vercel env vars in gstdcoin/ai
-- [ ] Bridge vault contract (`bridge/ton/GstdBridge.tact`) — missing build output
+### Pending
+- [ ] DAOVoting deploy status not independently re-verified this pass
+- [ ] `bridge/ton/GstdBridge.tact` — bridge is deferred (see gstd-bridge section), no build output needed yet
+- [ ] `contracts/deployer.json` mnemonic was leaked in git history — rotated to a new (currently unfunded) wallet 2026-07-18, purged from history + force-pushed. Fund the new deployer wallet before the next contract deploy.
 
 ---
 
@@ -167,14 +171,10 @@ Last updated: 2026-06-19
 
 In priority order:
 
-1. **Deploy TON contracts** → unlocks on-chain settlement, staking, governance
-2. **Set Vercel env vars** → connects UI to real contracts  
-3. **Recruit bridge validators** (3+ operators with 10K GSTD staked) → bridge goes live
-4. **Grow node network** → more compute = more resilient, more models available
+1. **Actually build out gstd-bridge** (MPC keys, real vault wallets, 3+ validators) → cross-chain transfer without custodians works
+2. **Grow node network** → more compute = more resilient, more models available; single node today (this Pi)
 
-Once (1) and (2) are done, the system can replace centralized AI API providers.  
-Once (3) is done, cross-chain value transfer without custodians works.  
-Once (4) has 100+ nodes, no single data center failure can affect the network.
+TON contracts (1 and 2 from the old list) are done — settlement/registry/token are live on mainnet.
 
 ---
 
@@ -191,3 +191,7 @@ Once (4) has 100+ nodes, no single data center failure can affect the network.
 | GSTD is utility-only, no APY/staking language | Token is for AI compute payment, not investment; legal and ethical clarity | 2026-06 |
 | Odysseus via HTTP adapter, not code import | AGPL-3.0 compliance: separate process = no license propagation | 2026-06 |
 | Deposit-monitor runs on Pi, not Vercel | Needs long-running polling process; Vercel functions are stateless/short-lived | 2026-06 |
+| Removed stale `replace` pins on x/crypto, x/net, gin in backend/go.mod | They were added to "force secure versions" but never revisited; x/crypto v0.47.0 alone had 26 open advisories a year later. The pin was also silently reverting a gin 1.12.0 bump back to 1.11.0. | 2026-07-19 |
+| Swapped `@solana/wallet-adapter-wallets` for individual `-phantom`/`-solflare` packages | The bundle pulls in every wallet adapter including an unused Particle Network chain, the source of most of frontend's 61 npm vulnerabilities | 2026-07-19 |
+| Rotated `contracts/deployer.json`, purged old mnemonic from git history via filter-repo + force-push | Leaked plaintext mnemonic in a public repo; on-chain check confirmed it no longer had owner rights on live contracts, but future deploys must not reuse it | 2026-07-19 |
+| Fixed `GSTD_P2P_PORT` collision with the local `ipfs` pm2 process (both defaulted to 4001) | libp2p mesh was silently falling back to platform-only mode on every restart; node network stats were observed flapping to zero live during audit | 2026-07-19 |
