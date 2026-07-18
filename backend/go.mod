@@ -1,18 +1,18 @@
 module distributed-computing-platform
 
-go 1.24.6
+go 1.25.0
 
 require (
 	github.com/dgraph-io/ristretto/v2 v2.4.0
 	github.com/gagliardetto/solana-go v1.14.0
-	github.com/gin-contrib/cors v1.7.2
-	github.com/gin-contrib/gzip v1.2.5
-	github.com/gin-gonic/gin v1.11.0
+	github.com/gin-contrib/cors v1.7.7
+	github.com/gin-contrib/gzip v1.2.6
+	github.com/gin-gonic/gin v1.12.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/hibiken/asynq v0.26.0
 	github.com/joho/godotenv v1.5.1
-	github.com/lib/pq v1.11.1
+	github.com/lib/pq v1.12.1
 	github.com/libp2p/go-libp2p v0.47.0
 	github.com/libp2p/go-libp2p-pubsub v0.15.0
 	github.com/mr-tron/base58 v1.2.0
@@ -24,9 +24,9 @@ require (
 	github.com/swaggo/swag v1.16.6
 	github.com/tetratelabs/wazero v1.11.0
 	github.com/uber/h3-go/v3 v3.7.1
-	github.com/xssnick/tonutils-go v1.15.5
+	github.com/xssnick/tonutils-go v1.16.0
 	go.uber.org/dig v1.19.0
-	modernc.org/sqlite v1.45.0
+	modernc.org/sqlite v1.48.0
 )
 
 require (
@@ -167,18 +167,18 @@ require (
 	golang.org/x/crypto v0.48.0 // indirect
 	golang.org/x/exp v0.0.0-20251023183803-a4bb9ffd2546 // indirect
 	golang.org/x/mod v0.33.0 // indirect
-	golang.org/x/net v0.50.0 // indirect
+	golang.org/x/net v0.51.0 // indirect
 	golang.org/x/sync v0.19.0 // indirect
-	golang.org/x/sys v0.41.0 // indirect
+	golang.org/x/sys v0.42.0 // indirect
 	golang.org/x/telemetry v0.0.0-20260209163413-e7419c687ee4 // indirect
 	golang.org/x/term v0.39.0 // indirect
-	golang.org/x/text v0.33.0 // indirect
+	golang.org/x/text v0.35.0 // indirect
 	golang.org/x/time v0.14.0 // indirect
 	golang.org/x/tools v0.42.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	lukechampine.com/blake3 v1.4.1 // indirect
-	modernc.org/libc v1.67.6 // indirect
+	modernc.org/libc v1.70.0 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
 )
