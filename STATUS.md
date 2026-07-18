@@ -75,10 +75,24 @@ Last updated: 2026-07-19
 - [x] Dashboard UI on port 8080
 - [x] CI: TypeScript check + tests
 - [x] CI: Docker multi-arch build + push on main/tags
+- [x] Real fine-tuning: `finetune` capability gated on a verified Python/PEFT
+      environment (`scripts/finetune.py --check`); produces genuine LoRA
+      adapters (Qwen2.5 family, CPU or GPU) uploaded to the node's local
+      IPFS daemon. Verified live 2026-07-19: a real task processed end-to-end
+      on this Pi, `metacognitive_score: 0.44` (computed, not the old
+      `Math.random()` placeholder), resulting adapter fetched back from IPFS
+      and confirmed non-trivial (96 LoRA tensors, all with nonzero `lora_B`
+      weights — proof gradient descent actually ran, since LoRA B matrices
+      are zero-initialized by convention). See
+      `gstdbot/docs/superpowers/plans/2026-07-19-real-finetuning.md`.
 
 ### Pending
 - [ ] P2P stub in `src/p2p/peers.ts` — needs real peer discovery implementation
 - [ ] Structured logging (currently console.log only)
+- [ ] Only `qwen2.5:0.5b` is wired into the platform's job-submission API so far
+      (the only size this one CPU-only node can serve); larger Qwen2.5 sizes
+      are already supported in `finetune.py`'s code but need a GPU node to
+      actually claim them before adding to `gstdai`'s `SUPPORTED_MODELS`
 
 ---
 
