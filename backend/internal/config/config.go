@@ -120,7 +120,7 @@ func Load() *Config {
 			HighloadWalletSeed:       getVaultOrEnv("highload/seed", "HIGHLOAD_WALLET_SEED"), // 24-word seed for batch payouts from HashiCorp Vault
 			TONAPIKeys:               getEnv("TON_API_KEYS", ""),                             // Comma-separated for rotation (if primary < 100/s)
 			AgentRegistryAddress:     getEnv("AGENT_REGISTRY_ADDRESS", "EQDtWcGCQXLFdh7TmkL5QFbFNYXxL9mjOk4ehmsNFwCtsDoT"),
-			DAOVotingAddress:         getEnv("DAO_VOTING_ADDRESS", "EQA1R_LuQCLHlMgOo1S4G7Y7W1cd0FrAkbA10Zq7rddKxi9k"),
+			DAOVotingAddress:         getEnv("DAO_VOTING_ADDRESS", ""), // no DAO voting contract deployed yet -- was copy-pasted from XAUtJettonAddress
 		},
 		Server: ServerConfig{
 			Port:         getEnv("PORT", "8080"),
