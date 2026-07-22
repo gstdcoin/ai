@@ -18,6 +18,8 @@ import (
 	"strings"
 	"time"
 
+	"distributed-computing-platform/internal/config"
+
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
@@ -550,7 +552,7 @@ func (s *SovereignBridgeService) executeAutoSwap(ctx context.Context, walletAddr
 	}
 
 	// Get real-time swap quote from STON.fi DEX
-	gstdAddr := "EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO"
+	gstdAddr := config.GetConfig().TON.GSTDJettonAddress
 	quote, err := s.stonfi.GetSwapQuote(ctx, int64(tonAmount*1e9), "TON", gstdAddr)
 	if err != nil || quote == nil {
 		s.db.ExecContext(ctx, `UPDATE bridge_swaps SET status = 'failed', completed_at = NOW() WHERE id = $1`, swapID)

@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"distributed-computing-platform/internal/config"
 )
 
 type StonFiService struct {
@@ -204,10 +206,10 @@ func (s *StonFiService) GetSwapQuote(ctx context.Context, amountIn int64, tokenI
 	// Token Addresses
 	const (
 		Token_TON  = "TON"
-		Token_GSTD = "EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO"
 		Token_XAUT = "EQA1R_LuQCLHlMgOo1S4G7Y7W1cd0FrAkbA10Zq7rddKxi9k" // From Pool Data
 		// Note: Keep legacy XAUt address check if needed, but prioritized pool data
 	)
+	Token_GSTD := config.GetConfig().TON.GSTDJettonAddress
 
 	// GSTD/TON Pool logic
 	if (tokenIn == Token_TON && tokenOut == Token_GSTD) ||
