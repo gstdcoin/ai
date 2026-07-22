@@ -165,7 +165,7 @@ export const SovereignSwitch = ({ className, onModeChange }: SovereignSwitchProp
                                         <Activity size={12} />{t('hive_worker', 'Hive Worker')}</div>
                                 )}
                                 <div className="px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-500 text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2">
-                                    <Shield size={10} />{t('golden_fund_verified', 'Golden Fund: Verified')}</div>
+                                    <Shield size={10} />{t('treasury_verified', 'Treasury: Verified')}</div>
                             </div>
 
                             <h2 className="text-3xl font-black text-white tracking-tighter mb-1">
@@ -319,7 +319,7 @@ export const SovereignSwitch = ({ className, onModeChange }: SovereignSwitchProp
                             </div>
                             <div className="flex justify-between mt-2 text-[9px] font-black text-gray-600 uppercase tracking-widest">
                                 <span>{t('distributing_local_shards', 'Distributing local shards')}</span>
-                                <span>Platform Fee: 2% (Golden Fund)</span>
+                                <span>Platform Fee: 2% (Treasury)</span>
                             </div>
                         </div>
                     </div>
