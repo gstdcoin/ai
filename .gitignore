@@ -193,3 +193,4 @@ agents/workflows/
 .vercel/*
 !.vercel/project.json
 .superpowers/
+/backend/cmd/worker/gstd-worker
