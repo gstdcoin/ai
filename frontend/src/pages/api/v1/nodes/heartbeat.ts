@@ -113,7 +113,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         } else {
             const nodesKeys = await kvKeys('node:').then(ks => ks.filter((k: string) => !k.slice(5).includes(':')));
             peers_online = nodesKeys.length;
-            kvSet('stats:nodes_online_cached', String(peers_online), 120).catch(() => {});
+            kvSet('stats:nodes_online_cached', String(peers_online), 300).catch(() => {});
         }
 
         // Read and return pull_queue so node can download new models

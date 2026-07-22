@@ -76,7 +76,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }));
 
         // Cache node count for heartbeat endpoint (avoids expensive KEYS scan every heartbeat)
-        await kvSet('stats:nodes_online_cached', String(nodes.length), 120).catch(() => {});
+        await kvSet('stats:nodes_online_cached', String(nodes.length), 300).catch(() => {});
 
         return res.status(200).json({
             count:      nodes.length,
