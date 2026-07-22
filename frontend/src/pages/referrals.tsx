@@ -11,7 +11,7 @@ export default function ReferralsPage() {
         <>
             <Head>
                 <title>{t('referrals_title', 'Referral Program — GSTD')}</title>
-                <meta name="description" content={t('referrals_desc', 'Earn GSTD by inviting others to the network. 3-level multi-tier referral rewards.')} />
+                <meta name="description" content={t('referrals_desc', 'Earn GSTD by inviting others to the network via the GSTD Telegram bot.')} />
             </Head>
 
             <div className="sovereign-section min-h-screen">
