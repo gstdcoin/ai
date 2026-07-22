@@ -46,7 +46,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Read existing record only if we need to merge (tasks_completed, gstd_earned).
         // This saves a KV read when the node sends all fields itself.
         const hasFullUpdate = body.tasks_completed != null && body.gstd_earned != null && body.uptime_hours != null;
-        const raw = hasFullUpdate ? null : await kvGet(`node:${nodeId}`);
+        const queueKey = `node:${nodeId}:pull_queue`;
+        // Each Redis round-trip to this KV backend runs ~4-5s regardless of payload size
+        // (observed live, not just for the old KEYS scan) -- these 3 reads are independent
+        // of each other, so run them concurrently instead of serially to avoid stacking
+        // that latency 3x on every heartbeat.
+        const [raw, cachedPeersOnline, queueRawInitial] = await Promise.all([
+            hasFullUpdate ? Promise.resolve(null) : kvGet(`node:${nodeId}`),
+            kvGet('stats:nodes_online_cached'),
+            kvGet(queueKey),
+        ]);
         const record: NodeRecord = raw
             ? JSON.parse(raw)
             : {
@@ -96,15 +105,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // that scan was observed live taking ~18s (kv.ts's kvKeys() uses Redis KEYS, an O(N)
         // full-keyspace operation), causing every heartbeat from at least one real node's
         // 10s-timeout client to fail for 3+ days straight. Only fall back to a live scan
-        // when the cache has expired (nothing else has refreshed it in the last 120s),
+        // when the cache has expired (nothing else has refreshed it in the last 300s),
         // so the cost of the expensive scan is paid rarely instead of on every heartbeat.
-        const cachedPeersOnline = await kvGet('stats:nodes_online_cached');
+        let pull_queue: string[] = [];
+        try {
+            if (queueRawInitial) pull_queue = JSON.parse(queueRawInitial as string);
+        } catch { pull_queue = []; }
+
         const writeOps: Promise<any>[] = [
             kvSet(`node:${nodeId}`, JSON.stringify(record), NODE_TTL),
             kvIncr('stats:total_heartbeats'),
         ];
         if (nodeUrlForCache) {
             writeOps.push(kvSet(`node_url:${nodeId}`, nodeUrlForCache, NODE_TTL));
+        }
+        // Clear queue after delivery (node will pull and report back via capabilities)
+        if (pull_queue.length > 0) {
+            writeOps.push(kvDel(queueKey));
         }
         await Promise.all(writeOps);
         let peers_online: number;
@@ -115,18 +132,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             peers_online = nodesKeys.length;
             kvSet('stats:nodes_online_cached', String(peers_online), 300).catch(() => {});
         }
-
-        // Read and return pull_queue so node can download new models
-        let pull_queue: string[] = [];
-        const queueKey = `node:${nodeId}:pull_queue`;
-        try {
-            const queueRaw = await kvGet(queueKey);
-            if (queueRaw) {
-                pull_queue = JSON.parse(queueRaw as string);
-                // Clear queue after delivery (node will pull and report back via capabilities)
-                if (pull_queue.length > 0) await kvDel(queueKey);
-            }
-        } catch { pull_queue = []; }
 
         return res.status(200).json({
             ok:           true,
