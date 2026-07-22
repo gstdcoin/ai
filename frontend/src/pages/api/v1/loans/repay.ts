@@ -10,6 +10,8 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvSet } from '../../../../lib/kv';
 import type { LoanRecord } from './create';
 
+export const config = { maxDuration: 55 };
+
 const DAILY_INTEREST = 0.005;
 
 function accrueInterest(loan: LoanRecord): LoanRecord {
@@ -38,7 +40,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const walletKey = wallet.toLowerCase();
     const loanKey   = `loan:${walletKey}:${loan_id}`;
-    const raw       = await kvGet(loanKey).catch(() => null);
+
+    // Independent reads -- run concurrently (each KV round-trip is slow, ~5s).
+    // credit/balance/locked don't depend on the loan lookup, so fetch them all
+    // up front instead of serially after validating the loan.
+    const [raw, creditRaw, balRaw, lockedRaw] = await Promise.all([
+        kvGet(loanKey).catch(() => null),
+        kvGet(`credit:${walletKey}`).catch(() => '0'),
+        kvGet(`balance:${walletKey}`).catch(() => '0'),
+        kvGet(`locked:${walletKey}`).catch(() => '0'),
+    ]);
 
     if (!raw) return res.status(404).json({ error: 'Loan not found' });
 
@@ -56,7 +67,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Check user has enough credit balance to repay
-    const creditRaw  = await kvGet(`credit:${walletKey}`).catch(() => '0');
     const creditBalance = creditRaw ? parseFloat(creditRaw as string) : 0;
     const actualRepay   = Math.min(repayAmount, loan.total_owed, creditBalance);
 
@@ -73,18 +83,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const collateralReleased = parseFloat((loan.collateral_gstd * repayFraction).toFixed(4));
     const fullyRepaid = actualRepay >= loan.total_owed - 0.0001;
 
-    // Deduct from credit balance
-    await kvSet(`credit:${walletKey}`, String(Math.max(0, creditBalance - actualRepay)));
-
-    // Release collateral to wallet balance
-    const balRaw = await kvGet(`balance:${walletKey}`).catch(() => '0');
     const balance = balRaw ? parseFloat(balRaw as string) : 0;
-    await kvSet(`balance:${walletKey}`, String(balance + collateralReleased));
-
-    // Update locked tracker
-    const lockedRaw = await kvGet(`locked:${walletKey}`).catch(() => '0');
-    const locked    = lockedRaw ? parseFloat(lockedRaw as string) : 0;
-    await kvSet(`locked:${walletKey}`, String(Math.max(0, locked - collateralReleased)));
+    const locked  = lockedRaw ? parseFloat(lockedRaw as string) : 0;
 
     // Update loan record
     if (fullyRepaid) {
@@ -100,7 +100,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             : 0;
     }
 
-    await kvSet(loanKey, JSON.stringify(loan));
+    // Independent writes -- run concurrently for the same reason as the reads above
+    await Promise.all([
+        kvSet(`credit:${walletKey}`, String(Math.max(0, creditBalance - actualRepay))),
+        kvSet(`balance:${walletKey}`, String(balance + collateralReleased)),
+        kvSet(`locked:${walletKey}`, String(Math.max(0, locked - collateralReleased))),
+        kvSet(loanKey, JSON.stringify(loan)),
+    ]);
 
     return res.status(200).json({
         loan_id,

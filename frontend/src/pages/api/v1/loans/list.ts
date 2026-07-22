@@ -6,6 +6,8 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvKeys } from '../../../../lib/kv';
 import type { LoanRecord } from './create';
 
+export const config = { maxDuration: 55 };
+
 const DAILY_INTEREST = 0.005;
 
 function withAccruedInterest(loan: LoanRecord): LoanRecord & { accrued_since_update: number } {
@@ -30,13 +32,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const walletKey  = wallet.toLowerCase();
-    const loanKeys   = await kvKeys(`loan:${walletKey}:*`).catch(() => [] as string[]);
-    const creditRaw  = await kvGet(`credit:${walletKey}`).catch(() => '0');
-    const lockedRaw  = await kvGet(`locked:${walletKey}`).catch(() => '0');
+    const [loanKeys, creditRaw, lockedRaw] = await Promise.all([
+        kvKeys(`loan:${walletKey}:*`).catch(() => [] as string[]),
+        kvGet(`credit:${walletKey}`).catch(() => '0'),
+        kvGet(`locked:${walletKey}`).catch(() => '0'),
+    ]);
 
+    const loanRaws = await Promise.all(loanKeys.map(k => kvGet(k).catch(() => null)));
     const loans: Array<LoanRecord & { accrued_since_update: number }> = [];
-    for (const k of loanKeys) {
-        const raw = await kvGet(k).catch(() => null);
+    for (const raw of loanRaws) {
         if (!raw) continue;
         try {
             loans.push(withAccruedInterest(JSON.parse(raw as string)));
