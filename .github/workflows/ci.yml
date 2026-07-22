@@ -49,7 +49,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Deploy
     needs: frontend
-    if: (github.ref == 'refs/heads/main' && github.event_name == 'push') || github.event_name == 'workflow_dispatch'
+    if: github.repository == 'gstdcoin/ai' && ((github.ref == 'refs/heads/main' && github.event_name == 'push') || github.event_name == 'workflow_dispatch')
     env:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: team_nJrl4HPx1kF1r635js1KE2qd
