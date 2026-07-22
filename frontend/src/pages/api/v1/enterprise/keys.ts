@@ -40,13 +40,14 @@ const TIER_LIMITS = {
 };
 
 function getMasterKey(): string {
-    return process.env.ENTERPRISE_MASTER_KEY || 'dev_master_key_change_in_production';
+    return process.env.ENTERPRISE_MASTER_KEY || '';
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     // Auth check
     const masterKey = req.headers['x-master-key'];
-    if (masterKey !== getMasterKey()) {
+    const expectedKey = getMasterKey();
+    if (!expectedKey || masterKey !== expectedKey) {
         return res.status(401).json({ error: 'Invalid or missing X-Master-Key header' });
     }
 

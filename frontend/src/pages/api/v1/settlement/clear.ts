@@ -15,7 +15,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const secret = req.headers['x-admin-secret'] || req.query.secret;
-    if (secret !== process.env.TREASURY_SECRET) {
+    const expectedSecret = process.env.TREASURY_SECRET || '';
+    if (!expectedSecret || secret !== expectedSecret) {
         return res.status(401).json({ error: 'Unauthorized' });
     }
 

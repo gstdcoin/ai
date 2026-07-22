@@ -73,7 +73,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (req.method === 'POST') {
         // Distribute treasury — callable internally or by DAO vote
         const secret = req.headers['x-treasury-key'] || req.body?.key;
-        if (secret !== process.env.TREASURY_SECRET && secret !== process.env.WALLET_LINK_SECRET) {
+        const validSecrets = [process.env.TREASURY_SECRET, process.env.WALLET_LINK_SECRET].filter(Boolean);
+        if (!secret || !validSecrets.includes(secret as string)) {
             return res.status(403).json({ error: 'Unauthorized' });
         }
 

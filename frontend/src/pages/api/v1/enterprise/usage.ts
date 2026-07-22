@@ -11,7 +11,7 @@ import type { EnterpriseKey } from './keys';
 const GSTD_PRICE_PER_1M_TOKENS = 0.10;
 
 function getMasterKey(): string {
-    return process.env.ENTERPRISE_MASTER_KEY || 'dev_master_key_change_in_production';
+    return process.env.ENTERPRISE_MASTER_KEY || '';
 }
 
 function currentPeriodKey(): string {
@@ -28,7 +28,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
     const masterKey = req.headers['x-master-key'];
-    if (masterKey !== getMasterKey()) {
+    const expectedKey = getMasterKey();
+    if (!expectedKey || masterKey !== expectedKey) {
         return res.status(401).json({ error: 'Invalid or missing X-Master-Key header' });
     }
 
