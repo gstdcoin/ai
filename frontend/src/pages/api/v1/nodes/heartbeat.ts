@@ -91,18 +91,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         // Also cache the node_url for fast lookup by completions endpoint
         const nodeUrlForCache = body.node_url || body.multiaddrs?.[0] || '';
+        // peers_online: read the cache maintained by this endpoint and nodes/list.ts rather
+        // than recomputing it via a full `KEYS node:*` scan on every single heartbeat --
+        // that scan was observed live taking ~18s (kv.ts's kvKeys() uses Redis KEYS, an O(N)
+        // full-keyspace operation), causing every heartbeat from at least one real node's
+        // 10s-timeout client to fail for 3+ days straight. Only fall back to a live scan
+        // when the cache has expired (nothing else has refreshed it in the last 120s),
+        // so the cost of the expensive scan is paid rarely instead of on every heartbeat.
+        const cachedPeersOnline = await kvGet('stats:nodes_online_cached');
         const writeOps: Promise<any>[] = [
             kvSet(`node:${nodeId}`, JSON.stringify(record), NODE_TTL),
-            kvKeys('node:').then(ks => ks.filter((k: string) => !k.slice(5).includes(':'))),
             kvIncr('stats:total_heartbeats'),
         ];
         if (nodeUrlForCache) {
             writeOps.push(kvSet(`node_url:${nodeId}`, nodeUrlForCache, NODE_TTL));
         }
-        const [, nodesKeys] = await Promise.all(writeOps);
-        const peers_online = Array.isArray(nodesKeys) ? nodesKeys.length : 0;
-        // Keep stats:nodes_online_cached fresh for /api/v1/ecosystem/features
-        kvSet('stats:nodes_online_cached', String(peers_online), 120).catch(() => {});
+        await Promise.all(writeOps);
+        let peers_online: number;
+        if (cachedPeersOnline != null) {
+            peers_online = parseInt(cachedPeersOnline as string, 10) || 0;
+        } else {
+            const nodesKeys = await kvKeys('node:').then(ks => ks.filter((k: string) => !k.slice(5).includes(':')));
+            peers_online = nodesKeys.length;
+            kvSet('stats:nodes_online_cached', String(peers_online), 120).catch(() => {});
+        }
 
         // Read and return pull_queue so node can download new models
         let pull_queue: string[] = [];
