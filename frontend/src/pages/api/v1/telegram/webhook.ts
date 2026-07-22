@@ -408,6 +408,9 @@ async function processUpdate(update: any): Promise<void> {
             await saveSession(userId, { model: 'auto', history: [] });
             await sendMessage(chatId, '🔄 Conversation reset.');
             break;
+        case '🤖 AI Chat':
+            await sendMessage(chatId, '🤖 Just type your question and I\'ll answer using the GSTD node network.');
+            break;
         default:
             if (!text.startsWith('/')) await handleAI(chatId, userId, text);
     }

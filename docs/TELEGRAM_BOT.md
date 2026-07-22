@@ -1,74 +1,74 @@
-# GSTD Telegram Bot — Команды и локализация
+# GSTD Telegram Bot — Команды
 
-Бот поддерживает команды для работы с GSTD токенами. Локализация: **RU** и **EN** (по `language_code` пользователя).
+Бот реализован как единый Vercel-вебхук: [`frontend/src/pages/api/v1/telegram/webhook.ts`](../frontend/src/pages/api/v1/telegram/webhook.ts).
+Токен (`TELEGRAM_BOT_TOKEN`) живёт только в Vercel env vars. У Pi-ноды токена нет — она только отдаёт inference.
+
+Локализации нет: все тексты на английском, независимо от `language_code` пользователя.
 
 ---
 
 ## Команды
 
-| Команда | Описание | RU | EN |
-|---------|-----------|----|----|
-| `/connect <wallet>` | Привязать TON-кошелёк | ✅ | ✅ |
-| `/ai <prompt>` | AI inference (~0.01 GSTD) | ✅ | ✅ |
-| `/buy` | Ссылки Ston.fi, DeDust | ✅ | ✅ |
-| `/withdraw` | Вывод GSTD (min 0.1) | ✅ | ✅ |
-| `/balance` | Баланс GSTD | ✅ | ✅ |
-| `/take <task_id>` | Взять задачу | ✅ | ✅ |
-| `/complete <task_id>` | Завершить задачу | ✅ | ✅ |
-| `/buy` или `/buy N` | Купить GSTD за Stars (без кошелька) | ✅ | ✅ |
-| `💎 My Balance` | Баланс (кнопка) | ✅ | ✅ |
-| `🚀 My Nodes` | Список нод | ✅ | ✅ |
+| Команда | Описание |
+|---------|-----------|
+| `/start` | Приветствие + клавиатура (Earn / Balance / Mobile Node / Wallet / Loan / AI Chat) |
+| `/wallet` | Показать привязанный кошелёк или запросить TON-адрес для привязки |
+| `/balance` | Баланс GSTD, tier, pending reward |
+| `/earn` | Как зарабатывать GSTD (описание тарифов ноды) |
+| `/node` | Запуск мобильной ноды (кнопка запускает TMA — `app.gstdtoken.com/tma`) |
+| `/loan` | Займы под залог GSTD — см. ниже |
+| `/help` | Список команд |
+| `/new` | Сбросить историю AI-диалога |
+| Любой текст без `/` | Отправляется в AI-чат (через `callNodeChat`, роутится на живую ноду сети) |
+
+Кнопки клавиатуры дублируют команды по тексту (`💎 Balance`, `🔗 Wallet`, `🏦 Loan`, и т.д.); `🤖 AI Chat` отвечает подсказкой "just type your question".
+
+Привязка кошелька происходит автоматически: если сообщение — валидный TON-адрес (`EQ.../UQ.../0:...`), бот сохраняет его как `tg_wallet:{userId}` и вызывает `/api/v1/telegram/bot/link` (welcome-бонус + реферальные бонусы).
 
 ---
 
-## API endpoints (X-Bot-Token)
+## Займы (`/loan`)
 
-| Endpoint | Метод | Описание |
-|----------|-------|----------|
-| `/api/v1/telegram/bot/link` | POST | Привязать кошелёк |
-| `/api/v1/telegram/bot/balance` | GET | Баланс по telegram_id |
-| `/api/v1/telegram/bot/nodes` | GET | Ноды по telegram_id |
-| `/api/v1/telegram/bot/claim` | POST | Взять задачу |
-| `/api/v1/telegram/bot/complete` | POST | Завершить задачу |
-| `/api/v1/telegram/bot/ai` | POST | AI inference (telegram_id, prompt, lang) |
+Текстовые команды (не слэш-команды, обычные сообщения):
 
----
+| Сообщение | Действие |
+|-----------|----------|
+| `loan 50` | Занять под залог 50 GSTD (LTV 70% → выдаётся 35 GSTD кредита) |
+| `repay all` | Погасить весь долг по самому старому активному займу |
+| `repay 10` | Частично погасить 10 GSTD |
 
-## /ai — AI за GSTD
-
-- Требуется привязанный кошелёк (`/connect`)
-- Минимум ~0.005 GSTD на балансе
-- Стоимость: ~0.01 GSTD за запрос (7b модель)
-- Вызов gateway: `POST /api/v1/chat/completions` с `X-GSTD-Target-Wallet`
+Требуется привязанный кошелёк (`/wallet`). Реализовано через `POST /api/v1/loans/create` и `POST /api/v1/loans/repay`
+(бот сначала вызывает `GET /api/v1/loans/list`, чтобы найти `loan_id`).
 
 ---
 
-## Локализация
+## Внутренние API-эндпоинты, используемые ботом
 
-Файл: `backend/internal/services/telegram_bot_i18n.go`
+| Endpoint | Метод | Кем вызывается |
+|----------|-------|-----------------|
+| `/api/v1/telegram/bot/link` | POST | webhook.ts при обнаружении TON-адреса в сообщении |
+| `/api/v1/market/price` | GET | webhook.ts для курса GSTD/Stars при привязке кошелька |
+| `/api/v1/loans/create`, `/repay`, `/list` | POST/GET | webhook.ts для команд `loan <n>` / `repay ...` |
+| `/api/v1/chat/completions` (через `lib/nodes.ts::callNodeChat`) | — | webhook.ts для AI-чата |
 
-Ключи: `ai_wallet_not_linked`, `ai_insufficient_balance`, `ai_error`, `ai_cost`, `ai_usage`, `buy_title`, `withdraw_title`, `withdraw_wallet_not_linked`, `withdraw_insufficient`, `withdraw_btn`, `connect_success`, `balance_not_linked`, `balance_format`.
+Отдельные REST-эндпоинты `/api/v1/telegram/bot/balance`, `/wallet`, `/topup` существуют, но **не вызываются** из webhook.ts —
+похоже, остались от более раннего варианта бота или предназначены для внешних интеграций.
+`/api/v1/telegram/bot/claim_reward` используется дашбордом (`frontend/src/pages/nodes.tsx`), не самим ботом.
 
 ---
 
-## Покупка GSTD за Stars
+## Устарело / не существует в текущей реализации
 
-Без кошелька. Пользователь может купить GSTD прямо в Telegram:
-
-- `/buy` — счёт на 10 Stars
-- `/buy 50` — счёт на 50 Stars
-- Кнопка «⭐ 10 Stars» в меню
-
-При оплате GSTD зачисляется мгновенно. Если кошелёк не привязан — создаётся виртуальный `tg-{id}`. При `/connect` баланс переносится на реальный кошелёк.
-
-Подробнее: [docs/STARS_PURCHASE.md](STARS_PURCHASE.md)
+Более ранняя версия этого документа описывала команды `/connect`, `/ai`, `/buy`, `/withdraw`, `/take`, `/complete`,
+X-Bot-Token авторизацию и `backend/internal/services/telegram_bot_i18n.go`. Ничего из этого не задействовано в
+живом боте — `backend/` (Go) нигде не задеплоен (см. корневой `CLAUDE.md`: "No Go backend... in production").
+Покупка GSTD за Stars, описанная в `STARS_PURCHASE.md`, также не реализована в текущем `webhook.ts` — при
+необходимости этот флоу нужно строить заново.
 
 ## Проверка
 
 ```bash
-# С X-Bot-Token (значение = TELEGRAM_BOT_TOKEN или BOT_API_KEY)
-curl -X POST https://app.gstdtoken.com/api/v1/telegram/bot/ai \
+curl -X POST https://app.gstdtoken.com/api/v1/telegram/webhook \
   -H "Content-Type: application/json" \
-  -H "X-Bot-Token: YOUR_BOT_TOKEN" \
-  -d '{"telegram_id":123,"prompt":"Hello","lang":"en"}'
+  -d '{"message":{"message_id":1,"chat":{"id":1,"type":"private"},"from":{"id":1,"first_name":"test"},"text":"/help"}}'
 ```
