@@ -124,7 +124,7 @@ func Load() *Config {
 		},
 		Server: ServerConfig{
 			Port:         getEnv("PORT", "8080"),
-			AdminAPIKey:  getEnv("ADMIN_API_KEY", "gstd_system_key_2026"),
+			AdminAPIKey:  getEnv("ADMIN_API_KEY", ""),
 			AdminAPIKey2: getEnv("ADMIN_API_KEY_2", ""), // Omega: Emergency fallback if primary revoked
 		},
 		Telegram: TelegramConfig{

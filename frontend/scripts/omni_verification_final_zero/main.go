@@ -38,7 +38,8 @@ func main() {
 	apiURL = strings.TrimSuffix(apiURL, "/")
 	adminKey := os.Getenv("ADMIN_API_KEY")
 	if adminKey == "" {
-		adminKey = "gstd_system_key_2026"
+		fmt.Println("ERROR: ADMIN_API_KEY environment variable must be set -- no insecure default")
+		os.Exit(1)
 	}
 
 	var critical []string
