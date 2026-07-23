@@ -12,6 +12,7 @@ export const config = { maxDuration: 60 };
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { resolveNodeUrl, callNodeChat, streamNodeChat, NODE_MODEL, ChatMessage } from '../../lib/nodes';
+import { kvGet } from '../../lib/kv';
 
 // ─── Expert personas ──────────────────────────────────────────────────────────
 // Virtual specialties — each gets a unique system prompt to the same GSTD node
@@ -230,19 +231,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: 'messages required' });
     }
 
-    const wallet = (req.headers['x-wallet-address'] as string) || '';
+    const sessionToken = req.headers['x-session-token'] as string | undefined;
     const start = Date.now();
     const collectiveTier = TIERS[tier] || TIERS.free;
 
-    // ═══ GSTD DEDUCTION: Paid tiers require wallet + balance ═══
+    // ═══ GSTD DEDUCTION: Paid tiers require an authenticated session ═══
+    // Wallet is resolved from the session token (set by /api/v1/users/login),
+    // never trusted from a client-supplied header/body field -- otherwise
+    // anyone could name an arbitrary victim wallet to charge for their query.
+    let wallet = '';
     if (collectiveTier.cost > 0) {
-        if (!wallet) {
+        const walletKey = sessionToken ? await kvGet(`session:${sessionToken}`).catch(() => null) : null;
+        if (!walletKey) {
             return res.status(402).json({
                 error: 'wallet_required',
                 message: `Connect your wallet to use ${collectiveTier.name} (${collectiveTier.cost} GSTD). Free tier is available without wallet.`,
                 cost: collectiveTier.cost,
             });
         }
+        wallet = walletKey as string;
 
         const SELF_URL = process.env.VERCEL_URL
             ? `https://${process.env.VERCEL_URL}`
@@ -250,14 +257,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         try {
             const deductResp = await fetch(`${SELF_URL}/api/v1/chat/deduct`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ wallet_address: wallet, amount: collectiveTier.cost, tier, tier_name: collectiveTier.name }),
+                headers: { 'Content-Type': 'application/json', 'X-Session-Token': sessionToken! },
+                body: JSON.stringify({ amount: collectiveTier.cost, tier, tier_name: collectiveTier.name }),
             });
             if (deductResp.ok) {
                 const deductData = await deductResp.json();
                 console.log(`[CI] 💰 Deducted ${collectiveTier.cost} GSTD from ${wallet.substring(0, 12)}... (remaining: ${deductData.remaining || '?'})`);
-            } else if (deductResp.status === 404) {
-                console.warn('[CI] /chat/deduct endpoint not available; proceeding without deduction');
             } else {
                 const errData = await deductResp.json().catch(() => ({ message: 'Deduction failed' }));
                 return res.status(402).json({
@@ -269,6 +274,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
         } catch (err: any) {
             console.error('[CI] Backend deduction failed (network):', err?.message?.substring(0, 80));
+            return res.status(502).json({ error: 'deduction_failed', message: 'Could not verify balance. Please try again.' });
         }
     }
 

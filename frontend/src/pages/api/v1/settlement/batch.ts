@@ -31,13 +31,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         const batchId = `batch_${nodeId}_${Date.now()}`;
 
-        // Verify wallet against stored node record
+        // Node must be a registered, real node -- otherwise anyone could settle an
+        // uncapped batch of fabricated events under any node_id/wallet_address with
+        // no proof it was ever a real node.
         const nodeRaw = await kvGet(`node:${nodeId}`).catch(() => null);
-        if (nodeRaw) {
-            const record: NodeRecord = JSON.parse(nodeRaw as string);
-            if (record.wallet_address && record.wallet_address !== walletAddr) {
-                return res.status(403).json({ error: 'Wallet mismatch' });
-            }
+        if (!nodeRaw) {
+            return res.status(404).json({ error: 'Unknown node — register first' });
+        }
+        const record: NodeRecord = JSON.parse(nodeRaw as string);
+        if (record.wallet_address && record.wallet_address !== walletAddr) {
+            return res.status(403).json({ error: 'Wallet mismatch' });
         }
 
         // Record pending settlement in KV — idempotent via batch_id
@@ -46,12 +49,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.status(200).json({ ok: true, batch_id: batchId, status: 'already_processed' });
         }
 
+        // Cap per-event/per-batch amount to prevent arbitrary inflation (same ceiling
+        // used by tasks/complete.ts's per-task reward cap)
+        const MAX_EVENT_AMOUNT = 50;
+
         // Accrue to node's pending balance (KV) — individual events deduplicated by ID
         const events: any[] = body.events || [];
         let accrued = 0;
         for (const ev of events.slice(0, 100)) {
             const taskId = ev.id;
-            const amount = Number(ev.amount) || 0;
+            const amount = Math.min(MAX_EVENT_AMOUNT, Number(ev.amount) || 0);
             if (amount <= 0) continue;
             const { nodeShare } = await accrueReward(nodeId, walletAddr, amount, taskId).catch(() => ({ nodeShare: 0 }));
             accrued += nodeShare;
@@ -59,7 +66,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         // Fallback: if events array is empty but total_amount is set, accrue total once
         if (events.length === 0 && totalAmount > 0) {
-            const { nodeShare } = await accrueReward(nodeId, walletAddr, totalAmount, batchId).catch(() => ({ nodeShare: 0 }));
+            const cappedTotal = Math.min(MAX_EVENT_AMOUNT, totalAmount);
+            const { nodeShare } = await accrueReward(nodeId, walletAddr, cappedTotal, batchId).catch(() => ({ nodeShare: 0 }));
             accrued += nodeShare;
         }
 
@@ -67,13 +75,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         await kvSet(`settlement_seen:${batchId}`, '1', 604800).catch(() => {});
 
         // Update node record total
-        if (nodeRaw && accrued > 0) {
-            try {
-                const record: NodeRecord = JSON.parse(nodeRaw as string);
-                record.gstd_earned = Math.round(((record.gstd_earned || 0) + accrued) * 1e6) / 1e6;
-                record.last_seen   = new Date().toISOString();
-                await kvSet(`node:${nodeId}`, JSON.stringify(record), 600);
-            } catch {}
+        if (accrued > 0) {
+            record.gstd_earned = Math.round(((record.gstd_earned || 0) + accrued) * 1e6) / 1e6;
+            record.last_seen   = new Date().toISOString();
+            await kvSet(`node:${nodeId}`, JSON.stringify(record), 600).catch(() => {});
         }
 
         return res.status(200).json({

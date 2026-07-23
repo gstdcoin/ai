@@ -16,9 +16,10 @@
  * General queue: tasks:queue — scanned up to SCAN_DEPTH tasks
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvPop, kvPush } from '../../../../lib/kv';
+import { kvPop, kvPush, kvSet } from '../../../../lib/kv';
 
 const SCAN_DEPTH = 20; // max tasks to inspect before giving up
+const ASSIGNMENT_TTL = 3600; // 1h window to complete a task before its assignment record expires
 
 function nodeCanHandle(task: any, caps: string[], resources: any): boolean {
     // Check required capabilities
@@ -96,6 +97,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Requeue skipped tasks in original order (push to back → FIFO preserved)
         for (let i = skipped.length - 1; i >= 0; i--) {
             await kvPush('tasks:queue', JSON.stringify(skipped[i]));
+        }
+
+        // Record which node this task was handed to, so tasks/complete.ts can verify
+        // the reward it's asked to pay out corresponds to a task actually assigned --
+        // without this, any node_id could claim a reward for a fabricated task_id.
+        if (picked?.task_id) {
+            await kvSet(`task_assigned:${picked.task_id}`, JSON.stringify({ node_id: nodeId, assigned_at: Date.now() }), ASSIGNMENT_TTL).catch(() => {});
         }
 
         return res.status(200).json({ task: picked || null });

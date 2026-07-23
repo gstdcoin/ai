@@ -23,6 +23,18 @@ const RAM_REQUIREMENTS: Record<string, number> = {
     'codellama:70b': 40,
 };
 
+// SSRF protection: block private/loopback/cloud-metadata addresses (same pattern
+// used by training/jobs.ts's dataset_url validation)
+const BLOCKED_HOSTS = /^(localhost|127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|169\.254\.|::1|fd|fc)/i;
+
+function validateNodeUrl(raw: string): { ok: true; url: string } | { ok: false; reason: string } {
+    let u: URL;
+    try { u = new URL(raw); } catch { return { ok: false, reason: 'Invalid node_url' }; }
+    if (u.protocol !== 'https:') return { ok: false, reason: 'node_url must use https' };
+    if (BLOCKED_HOSTS.test(u.hostname)) return { ok: false, reason: 'node_url host not allowed' };
+    return { ok: true, url: `${u.origin}${u.pathname}`.replace(/\/$/, '') };
+}
+
 function getRequiredRam(modelId: string): number {
     if (RAM_REQUIREMENTS[modelId]) return RAM_REQUIREMENTS[modelId];
     // HuggingFace GGUF — estimate from URL tokens
@@ -79,7 +91,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Resolve target node
     let targetUrl: string;
     if (explicitNodeUrl) {
-        targetUrl = explicitNodeUrl.replace(/\/$/, '');
+        const validated = validateNodeUrl(explicitNodeUrl);
+        if (!validated.ok) return res.status(400).json({ error: validated.reason });
+        targetUrl = validated.url;
     } else {
         const autoNode = await findCapableNode(model_id);
         if (autoNode) {

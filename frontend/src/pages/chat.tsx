@@ -480,11 +480,13 @@ export default function ChatPage() {
                 { role: 'user' as const, content: userMessage }
             ];
 
+            const sessionToken = typeof window !== 'undefined' ? localStorage.getItem('session_token') : null;
             const response = await fetch('/api/chat', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     ...(address ? { 'X-Wallet-Address': address } : {}),
+                    ...(sessionToken ? { 'X-Session-Token': sessionToken } : {}),
                 },
                 body: JSON.stringify({
                     model: selectedModel,
