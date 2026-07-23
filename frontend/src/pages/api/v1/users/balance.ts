@@ -3,8 +3,8 @@
  *
  * Returns GSTD balance for the wallet identified by the X-Session-Token
  * header set after POST /api/v1/users/login. Shares the same `balance:*`
- * KV key used by loans/create.ts, loans/repay.ts and the Telegram bot, so
- * a wallet's balance is consistent across every surface.
+ * KV key used by the Telegram bot, so a wallet's balance is consistent
+ * across every surface.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet } from '../../../../lib/kv';

@@ -86,14 +86,14 @@ async function handleStart(chatId: number, userId: number, firstName: string): P
         `Hi ${firstName}! Here's how to get started:\n\n` +
         `1️⃣ <b>Link your wallet</b> — paste your TON address\n` +
         `2️⃣ <b>Run a node</b> /node — earn GSTD automatically\n` +
-        `3️⃣ <b>Use GSTD</b> — better AI, loans /loan, staking\n\n` +
+        `3️⃣ <b>Use GSTD</b> — better AI models\n\n` +
         `${walletLine}\n\n` +
         `<b>You need 0 GSTD to start. Just link + run.</b>\n\n` +
-        `Commands: /earn /balance /node /loan /wallet /help`,
+        `Commands: /earn /balance /node /wallet /help`,
         { reply_markup: { keyboard: [
             [{ text: '🐝 Earn GSTD' }, { text: '💎 Balance' }],
             [{ text: '📱 Mobile Node' }, { text: '🔗 Wallet' }],
-            [{ text: '🏦 Loan' }, { text: '🤖 AI Chat' }],
+            [{ text: '🤖 AI Chat' }],
         ], resize_keyboard: true } }
     );
 }
@@ -120,12 +120,11 @@ async function handleBalance(chatId: number, userId: number): Promise<void> {
         `💎 <b>Balance</b>\n\n${walletLine}\n\n` +
         `💰 <b>${balance.toFixed(4)} GSTD</b>\n` +
         `${tierEmoji} Tier: <b>${tierName}</b>` + pendingLine +
-        `\n\n/earn to get more · /loan to borrow · /node to run`,
+        `\n\n/earn to get more · /node to run`,
         {
             reply_markup: { inline_keyboard: [
                 ...(pending > 0.01 ? [[{ text: '🎁 Claim Reward', callback_data: 'claim_reward' }]] : []),
                 [{ text: '🐝 Earn More', callback_data: 'earn_menu' }],
-                ...(balance > 0 ? [[{ text: '🏦 Take a Loan', callback_data: 'loan_menu' }]] : []),
             ]},
         }
     );
@@ -138,7 +137,7 @@ async function handleWalletCommand(chatId: number, userId: number): Promise<void
             `🔗 <b>Your Wallet</b>\n\n` +
             `✅ <code>${wallet}</code>\n\n` +
             `To change: paste a new TON address in chat.\n` +
-            `/earn · /balance · /loan`
+            `/earn · /balance`
         );
     } else {
         await sendMessage(chatId,
@@ -163,7 +162,7 @@ async function handleEarn(chatId: number, userId: number): Promise<void> {
         `${step1}\n` +
         `2️⃣ Run a node — share device resources\n` +
         `3️⃣ Earn GSTD automatically\n` +
-        `4️⃣ Use for AI queries, models, or loans\n\n` +
+        `4️⃣ Use for AI queries or models\n\n` +
         `💰 <b>Rates:</b>\n` +
         `📱 Mobile Bronze — 0.5 GSTD/h\n` +
         `📱 Mobile Gold   — 2.0 GSTD/h\n` +
@@ -175,79 +174,6 @@ async function handleEarn(chatId: number, userId: number): Promise<void> {
             [{ text: '💎 Check Balance', callback_data: 'check_balance' }],
         ]}}
     );
-}
-
-async function handleLoanCreate(chatId: number, userId: number, collateral: number): Promise<void> {
-    const wallet = await getWallet(userId);
-    if (!wallet) {
-        await sendMessage(chatId, '🔗 Link your wallet first — use /wallet');
-        return;
-    }
-    try {
-        const resp = await fetch(`${SWARM_URL}/api/v1/loans/create`, {
-            method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ wallet, collateral_gstd: collateral }),
-            signal:  AbortSignal.timeout(40_000),
-        });
-        const data = await resp.json();
-        if (!resp.ok) {
-            await sendMessage(chatId, `🏦 ${data.error || 'Could not create loan.'}`);
-            return;
-        }
-        await sendMessage(chatId,
-            `✅ <b>Loan created</b>\n\n` +
-            `💰 Borrowed: <b>${data.borrowed_gstd} GSTD</b>\n` +
-            `🔒 Collateral locked: <b>${collateral} GSTD</b>\n` +
-            `📊 Health factor: ${data.health_factor}\n` +
-            `📈 Credit balance: ${data.credit_balance} GSTD\n\n` +
-            `Repay anytime: <code>repay all</code> or <code>repay 10</code>`
-        );
-    } catch (err: any) {
-        await sendMessage(chatId, `🏦 Loan request failed: ${(err.message || 'try again later').slice(0, 100)}`);
-    }
-}
-
-async function handleLoanRepay(chatId: number, userId: number, amountArg: string): Promise<void> {
-    const wallet = await getWallet(userId);
-    if (!wallet) {
-        await sendMessage(chatId, '🔗 Link your wallet first — use /wallet');
-        return;
-    }
-    try {
-        const listResp = await fetch(`${SWARM_URL}/api/v1/loans/list?wallet=${encodeURIComponent(wallet)}`, {
-            signal: AbortSignal.timeout(40_000),
-        });
-        const listData = await listResp.json();
-        const activeLoans = (listData.active_loans || []) as Array<{ loan_id: string }>;
-        if (!listResp.ok || activeLoans.length === 0) {
-            await sendMessage(chatId, '🏦 No active loans to repay.');
-            return;
-        }
-        // Repay the oldest active loan first (active_loans is sorted newest-first, so take the last)
-        const loanId = activeLoans[activeLoans.length - 1].loan_id;
-        const repayGstd: number | 'all' = amountArg === 'all' ? 'all' : Number(amountArg);
-
-        const resp = await fetch(`${SWARM_URL}/api/v1/loans/repay`, {
-            method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ wallet, loan_id: loanId, repay_gstd: repayGstd }),
-            signal:  AbortSignal.timeout(40_000),
-        });
-        const data = await resp.json();
-        if (!resp.ok) {
-            await sendMessage(chatId, `🏦 ${data.error || 'Could not repay loan.'}`);
-            return;
-        }
-        await sendMessage(chatId,
-            `✅ <b>Repaid ${data.repaid_gstd} GSTD</b>\n\n` +
-            `🔓 Collateral released: <b>${data.collateral_released} GSTD</b>\n` +
-            `📊 Status: ${data.status}\n` +
-            (data.remaining_debt > 0 ? `💸 Remaining debt: ${data.remaining_debt} GSTD` : `🎉 Loan fully repaid!`)
-        );
-    } catch (err: any) {
-        await sendMessage(chatId, `🏦 Repay request failed: ${(err.message || 'try again later').slice(0, 100)}`);
-    }
 }
 
 async function handleAI(chatId: number, userId: number, text: string): Promise<void> {
@@ -308,20 +234,6 @@ async function processUpdate(update: any): Promise<void> {
     const isPrivate = msg.chat?.type === 'private';
 
     if (!isPrivate) return; // Only handle private chats
-
-    // "loan <amount>" — matches the syntax advertised by the /loan command
-    const loanMatch = text.match(/^loan\s+(\d+(?:\.\d+)?)$/i);
-    if (loanMatch) {
-        await handleLoanCreate(chatId, userId, parseFloat(loanMatch[1]));
-        return;
-    }
-
-    // "repay" / "repay all" / "repay <amount>" — matches the syntax advertised above
-    const repayMatch = text.match(/^repay(?:\s+(all|\d+(?:\.\d+)?))?$/i);
-    if (repayMatch) {
-        await handleLoanRepay(chatId, userId, (repayMatch[1] || 'all').toLowerCase());
-        return;
-    }
 
     // TON address detection
     const tonRegex = /^(EQ[A-Za-z0-9_-]{46}|UQ[A-Za-z0-9_-]{46}|0:[a-fA-F0-9]{64})$/;
@@ -384,14 +296,6 @@ async function processUpdate(update: any): Promise<void> {
             );
             break;
         }
-        case '/loan': case '🏦 Loan':
-            await sendMessage(chatId,
-                `🏦 <b>GSTD Loans</b>\n\nLock GSTD as collateral → get 70% back as credit.\n\n` +
-                `Send: <code>loan 50</code> to borrow 50 GSTD (locks 71.4 GSTD)\n` +
-                `Repay: <code>repay all</code> or <code>repay 10</code>\n\n` +
-                `0.5%/day interest · Repay anytime · Up to 3 loans`
-            );
-            break;
         case '/help':
             await sendMessage(chatId,
                 `❓ <b>Commands</b>\n\n` +
@@ -399,7 +303,6 @@ async function processUpdate(update: any): Promise<void> {
                 `/wallet — Link your TON wallet\n` +
                 `/balance — Balance & tier\n` +
                 `/node — Run mobile node\n` +
-                `/loan — Borrow against GSTD (<code>loan 50</code> / <code>repay all</code>)\n` +
                 `/new — Reset AI conversation\n\n` +
                 `Just type any question to chat with the AI.`
             );

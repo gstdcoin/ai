@@ -7,7 +7,6 @@ function optionalModuleLabels(f: EcosystemFeatures): string[] {
     const out: string[] = [];
     if (!f.node_network) out.push('Node network');
     if (!f.telegram_bot) out.push('Telegram bot');
-    if (!f.loans_active) out.push('Loans');
     if (!f.enterprise_api) out.push('Enterprise API');
     return out;
 }

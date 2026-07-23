@@ -41,7 +41,6 @@ export interface EcosystemFeatures {
   telegram_bot: boolean;
   redis: boolean;
   node_network: boolean;
-  loans_active: boolean;
   enterprise_api: boolean;
 }
 

@@ -20,7 +20,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         telegram_bot:   telegramRaw === 'true' || !!process.env.TELEGRAM_BOT_TOKEN,
         redis:          true,
         node_network:   onlineNodes > 0,
-        loans_active:   true,
         enterprise_api: !!process.env.ENTERPRISE_MASTER_KEY,
         timestamp:      Date.now(),
     });
