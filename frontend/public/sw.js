@@ -1,9 +1,20 @@
 // ═══════════════════════════════════════════════════════════════
-// GSTD Service Worker v8 — Full PWA (awesome-pwa)
-// Strategy: Stale-While-Revalidate for pages, Cache-First for assets
+// GSTD Service Worker v9 — Full PWA (awesome-pwa)
+// Strategy: Network-First for pages, Cache-First for assets
 // Push notifications for signals, offline fallback page
+//
+// v9 note: pages were previously Stale-While-Revalidate (serve cached
+// HTML instantly, refresh in the background for next time). After a
+// deploy, that meant returning visitors got old cached HTML pointing
+// at old-build _next/static/* chunk filenames -- a hydration/build-id
+// mismatch that only resolved on a second load once the background
+// refresh had landed. Network-first for pages fixes that: online users
+// always get the current deploy immediately, and the cache is only a
+// fallback when the network request actually fails (offline). Bumping
+// CACHE_VERSION also forces every previously-installed service worker
+// to purge its old caches via the existing activate-time cleanup.
 // ═══════════════════════════════════════════════════════════════
-const CACHE_VERSION = 'gstd-v8';
+const CACHE_VERSION = 'gstd-v9';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const DYNAMIC_CACHE = `${CACHE_VERSION}-dynamic`;
 
@@ -84,25 +95,25 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Strategy 2: Stale-While-Revalidate for pages (/, /monitor, /predictions, /chat)
+  // Strategy 2: Network-First for pages (/, /monitor, /predictions, /chat)
+  // Always try the current deploy first; only fall back to cache if the
+  // network request actually fails (offline), so a stale cached page can
+  // never shadow a fresh deploy for an online visitor.
   if (request.headers.get('accept')?.includes('text/html')) {
     event.respondWith(
-      caches.match(request).then((cached) => {
-        const fetchPromise = fetch(request)
-          .then((response) => {
-            if (response.ok) {
-              const clone = response.clone();
-              caches.open(DYNAMIC_CACHE).then((cache) => cache.put(request, clone));
-            }
-            return response;
-          })
-          .catch(() => {
-            // Offline fallback
-            return caches.match('/offline') || caches.match('/');
-          });
-
-        return cached || fetchPromise;
-      })
+      fetch(request)
+        .then((response) => {
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(DYNAMIC_CACHE).then((cache) => cache.put(request, clone));
+          }
+          return response;
+        })
+        .catch(() =>
+          caches.match(request).then(
+            (cached) => cached || caches.match('/offline') || caches.match('/')
+          )
+        )
     );
     return;
   }
