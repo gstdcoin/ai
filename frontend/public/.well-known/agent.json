@@ -73,7 +73,7 @@
     "node_cost": "$0.72/month vs $100+/month for Bitcoin mining",
     "energy_efficiency": "Useful compute vs wasted energy",
     "governance": "Democratic node voting vs mining pool oligarchy",
-    "revenue_streams": "6 streams (uptime, queries, staking, revenue share, referrals, lending) vs 1 (mining)"
+    "revenue_streams": "5 streams (uptime, queries, staking, revenue share, referrals) vs 1 (mining)"
   },
   "contact": {
     "telegram": "https://t.me/GstdAppBot",

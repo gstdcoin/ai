@@ -124,14 +124,11 @@ fi
 
 # --- 6. Backend logs (errors) ---
 section "6. Backend logs (recent errors)"
-# Exclude benign operator lines; Lending Oracle + lite server -701 is a known class (stale/rejected external msg) — backend uses Redis lock + monotonic ts; redeploy image if it persists alone.
 RAW_LOG=$(docker logs --tail 120 "$BACKEND_CONTAINER" 2>&1 || true)
-ORACLE_701=$(echo "$RAW_LOG" | grep -E '\[Lending Oracle\].*Error sending update:.*code -701' || true)
 ERR_LINES=$(
   echo "$RAW_LOG" \
     | grep -iE 'panic|fatal|error' \
     | grep -viE '0 errors|errors in [0-9]+min|no errors|→ monitored' \
-    | grep -viE '\[Lending Oracle\].*Error sending update:.*code -701' \
     || true
 )
 if [[ -z "$ERR_LINES" ]]; then ERR_COUNT=0; else ERR_COUNT=$(echo "$ERR_LINES" | wc -l); fi
@@ -140,10 +137,6 @@ if [[ "${ERR_COUNT:-0}" -gt 0 ]]; then
   printf '%s\n' "$ERR_LINES" | tail -5
 else
   pass "no suspicious panic/fatal/error lines in last 120 lines"
-fi
-if [[ -n "$ORACLE_701" ]]; then
-  note "Lending Oracle TON -701 in logs (contract rejected inbound msg). If this is the only issue, redeploy backend with current oracle keeper (Redis lock + monotonic timestamp)."
-  echo "$ORACLE_701" | tail -2
 fi
 
 # --- 7. SSL ---

@@ -74,11 +74,6 @@
             "name": "ProofOfLiquidity",
             "path": "./pol/ProofOfLiquidity.tact",
             "output": "./build/ProofOfLiquidity"
-        },
-        {
-            "name": "LendingMaster",
-            "path": "./lending/LendingMaster.tact",
-            "output": "./build/LendingMaster"
         }
     ]
 }

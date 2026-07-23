@@ -40,13 +40,6 @@
 | `POST /api/v1/mobile/node/claim` | ✅ | Claim mobile rewards |
 | `GET /api/v1/mobile/network-stats` | ✅ | Network stats for TMA |
 
-### Loans
-| Feature | Status | Notes |
-|---------|--------|-------|
-| `POST /api/v1/loans/create` | ✅ | Lock collateral, receive 70% credit |
-| `POST /api/v1/loans/repay` | ✅ | Partial/full repayment with interest |
-| `GET /api/v1/loans/list` | ✅ | Active loans with accrued interest |
-
 ### Enterprise API
 | Feature | Status | Notes |
 |---------|--------|-------|
@@ -178,7 +171,7 @@ These env vars exist in code but may not be in Vercel dashboard:
 ## 🏗️ Architecture Notes
 
 - **No Go backend** — everything is Next.js serverless on Vercel + Upstash Redis KV
-- **KV schema**: `balance:{wallet}`, `node:{nodeId}`, `tg_wallet:{userId}`, `tg_session:{userId}`, `rewards:pending:{wallet}`, `loan:{loanId}`, `enterprise:key:{keyId}`
+- **KV schema**: `balance:{wallet}`, `node:{nodeId}`, `tg_wallet:{userId}`, `tg_session:{userId}`, `rewards:pending:{wallet}`, `enterprise:key:{keyId}`
 - **AI inference path**: Frontend → `lib/nodes.ts` → Pi node Cloudflare tunnel → Ollama
 - **Pi process manager**: pm2 with `ecosystem.config.js` running `gstdnode` and `gstdbot`
 - **Tunnel**: `tunnel.sh` (Cloudflare) writes URL to `/tmp/gstd_tunnel_url.txt`, optionally pushes to GitHub seed file

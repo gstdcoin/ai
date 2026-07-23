@@ -41,7 +41,6 @@ type PlatformOperator struct {
 	vault        *ObsidianVault
 	mirofish     *MiroFishService
 	externalData *ExternalDataFetcher
-	lending      *LendingService
 	mu           sync.RWMutex
 	stopCh       chan struct{}
 
@@ -133,11 +132,6 @@ func (op *PlatformOperator) SetExternalData(fetcher *ExternalDataFetcher) {
 	op.externalData = fetcher
 }
 
-// SetLending injects the lending service for periodic risk assessments
-func (op *PlatformOperator) SetLending(ls *LendingService) {
-	op.lending = ls
-}
-
 // ═══════════════════════════════════════════════════════════════
 // START — Launch all autonomous operator loops
 // ═══════════════════════════════════════════════════════════════
@@ -182,9 +176,6 @@ func (op *PlatformOperator) Start() {
 
 	// DB maintenance — every 12 hours
 	go op.loop("db", 12*time.Hour, op.dbMaintenance)
-
-	// Lending risk assessment — every 4 hours
-	go op.loop("lending", 4*time.Hour, op.lendingMaintenance)
 
 	// Initial report after 30 seconds
 	go func() {
@@ -562,52 +553,6 @@ func (op *PlatformOperator) dbMaintenance() {
 	// Vacuum analyze
 	op.db.ExecContext(ctx, "VACUUM ANALYZE")
 	op.logAction("db", "Database maintenance: VACUUM ANALYZE", "done", true)
-}
-
-// ═══════════════════════════════════════════════════════════════
-// 7b. LENDING MAINTENANCE (AI risk scans)
-// ═══════════════════════════════════════════════════════════════
-
-func (op *PlatformOperator) lendingMaintenance() {
-	if op.lending == nil || op.db == nil {
-		return
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-	defer cancel()
-
-	// 1. Interest accrual
-	op.lending.AccrueInterest(ctx)
-
-	// 2. Liquidation check
-	liquidated := op.lending.CheckLiquidations(ctx)
-	if liquidated > 0 {
-		op.logAction("lending", fmt.Sprintf("Liquidated %d unhealthy vault(s)", liquidated), "liquidated", true)
-		op.sendTelegram(fmt.Sprintf("🏦 *Lending Alert*\n\n%d vault(s) liquidated due to low Health Factor.\nSafety fund absorbing bad debt.", liquidated))
-	}
-
-	// 3. AI risk sweep: scan top-10 riskiest vaults
-	if op.ai != nil {
-		rows, err := op.db.QueryContext(ctx,
-			`SELECT wallet_address FROM lending_vaults WHERE status = 'active' AND health_factor < 1.5 ORDER BY health_factor ASC LIMIT 10`)
-		if err == nil {
-			defer rows.Close()
-			for rows.Next() {
-				var wallet string
-				if rows.Scan(&wallet) == nil {
-					op.lending.AIRiskCheck(ctx, wallet, op.ai)
-				}
-			}
-		}
-	}
-
-	// 4. Notify users with at-risk vaults (HF < 1.2) via Telegram
-	notified := op.lending.NotifyAtRiskUsers(ctx)
-	if notified > 0 {
-		op.logAction("lending", fmt.Sprintf("Sent risk alerts to %d user(s)", notified), "alerts_sent", true)
-		op.sendTelegram(fmt.Sprintf("📩 Lending: Sent %d user alert(s) for low Health Factor vaults", notified))
-	}
-
-	op.logAction("lending", "Lending maintenance cycle complete", "done", true)
 }
 
 // ═══════════════════════════════════════════════════════════════

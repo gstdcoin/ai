@@ -48,7 +48,6 @@ type InferRequest struct {
 	Stream            bool   `form:"stream" json:"stream"`                       // SSE streaming
 	PriorityPlatform  string `form:"priority_platform" json:"priority_platform"` // mobile, desktop, server — Mesh Routing for Agents
 	RequesterWallet   string `form:"-" json:"-"`                                 // from X-Wallet-Address / X-GSTD-Target-Wallet — Eternal Synergy Reputation Shield
-	UseInternalCredit bool   `form:"-" json:"-"`                                 // X-Use-Internal-Credit: 1 — Zero-Start micro-loan
 }
 
 // InferResponse is the public inference response
@@ -94,22 +93,6 @@ func (s *UniversalMeshService) Infer(ctx context.Context, req *InferRequest) (*I
 
 	if req.Prompt == "" {
 		return nil, ErrInferPromptRequired
-	}
-
-	// Zero-Start: Internal Credit — 1 infer on loan, repaid from first PoW payout
-	if req.RequesterWallet != "" && req.UseInternalCredit && s.db != nil {
-		var balance, creditUsed float64
-		err := s.db.QueryRowContext(ctx, `SELECT COALESCE(balance, 0), COALESCE(internal_credit_used, 0) FROM users WHERE wallet_address = $1`, req.RequesterWallet).Scan(&balance, &creditUsed)
-		if err != nil {
-			_, _ = s.db.ExecContext(ctx, `INSERT INTO users (wallet_address, balance, internal_credit_used, created_at, updated_at) VALUES ($1, 0, 1, NOW(), NOW()) ON CONFLICT (wallet_address) DO NOTHING`, req.RequesterWallet)
-			_ = s.db.QueryRowContext(ctx, `SELECT COALESCE(internal_credit_used, 0) FROM users WHERE wallet_address = $1`, req.RequesterWallet).Scan(&creditUsed)
-		}
-		if balance < 0.01 && creditUsed < 1 {
-			res, _ := s.db.ExecContext(ctx, `UPDATE users SET internal_credit_used = 1 WHERE wallet_address = $1 AND COALESCE(internal_credit_used, 0) < 1`, req.RequesterWallet)
-			if rows, _ := res.RowsAffected(); rows > 0 {
-				log.Printf("[Zero-Start] Internal Credit: 1 infer granted to %s (repay from first PoW payout)", truncateAddr(req.RequesterWallet, 16))
-			}
-		}
 	}
 
 	// Eternal Synergy: Reputation Shield — 2x fee for low-rated agents (spam protection)

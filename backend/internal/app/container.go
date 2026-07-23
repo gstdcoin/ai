@@ -239,7 +239,6 @@ func BuildContainer() *dig.Container {
 		return services.NewEvolutionEngine(knowledge)
 	})
 	c.Provide(services.NewFinancialMonitorService)
-	c.Provide(services.NewLendingService)
 	c.Provide(func(db *sql.DB, escrow *services.EscrowService) *services.MonetizationMetricsService {
 		return services.NewMonetizationMetricsService(db, escrow)
 	})
@@ -568,7 +567,6 @@ type ApplicationDependencies struct {
 	OrganismHub               *services.OrganismHubService
 	SwarmNode                 *p2p.SwarmNode
 	SwarmLedger               *p2p.Ledger
-	LendingService            *services.LendingService
 	TaskQueue                 *queue.TaskQueueManager `optional:"true"`
 }
 
@@ -834,49 +832,11 @@ func StartApplication(container *dig.Container) error {
 		api.SetupUniversalMeshRoutes(v1Group, deps.UniversalMeshService, deps.ContributionMonetization)
 		api.SetupMeshConstitutionRoutes(v1Group, deps.MeshConstitution)
 		api.SetupBillingRoutes(v1Group, deps.BillingService)
-		api.SetupLendingRoutes(v1Group, deps.LendingService)
 		api.SetupCleanCoreRoutes(protectedGroup, deps.CleanCoreService, cfg.TON)
 		api.SetupGlobalAbsorptionRoutes(v1Group, deps.GlobalAbsorption)
 		api.SetupCosmicGenesisRoutes(v1Group, protectedGroup, deps.Db, deps.AgentSubcontractService, deps.GoldHashRateService)
 		api.SetupMCPRoutes(deps.Router, v1Group)
 		queue.RegisterQueueRoutes(v1Group, deps.TaskQueue)
-
-		// ═══ LENDING MODULE — Interest Accrual + Liquidation Engine ═══
-		if deps.LendingService != nil {
-			deps.LendingService.SetPoolMonitor(deps.PoolMonitor)
-			if deps.TelegramService != nil {
-				deps.LendingService.SetTelegramNotifier(deps.TelegramService)
-			}
-
-			// Inject Highload Wallet for Oracle Updates
-			if deps.HighloadWallet != nil && deps.HighloadWallet.IsInitialized() {
-				masterAddr := os.Getenv("LENDING_MASTER_ADDRESS")
-				if masterAddr != "" {
-					deps.LendingService.SetHighloadWallet(deps.HighloadWallet, masterAddr)
-					if deps.RedisClient != nil {
-						deps.LendingService.SetRedisForOracleLock(deps.RedisClient)
-					}
-					go deps.LendingService.StartOracleKeeper(ctx, 5*time.Minute)
-				}
-			}
-			go func() {
-				ticker := time.NewTicker(1 * time.Hour)
-				defer ticker.Stop()
-				log.Printf("🏦 Lending Module: Interest accrual + liquidation engine ACTIVE (1h cycle)")
-				for {
-					select {
-					case <-ticker.C:
-						deps.LendingService.AccrueInterest(ctx)
-						liquidated := deps.LendingService.CheckLiquidations(ctx)
-						if liquidated > 0 {
-							log.Printf("🏦 Lending: %d vault(s) liquidated this cycle", liquidated)
-						}
-					case <-ctx.Done():
-						return
-					}
-				}
-			}()
-		}
 
 		// Ollama connectivity check
 		checkOllamaConnectivity()

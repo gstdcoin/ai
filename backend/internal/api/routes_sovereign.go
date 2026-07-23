@@ -15,7 +15,7 @@ const errInsufficientBalance = "insufficient balance"
 
 // ═══════════════════════════════════════════════════════════════
 // SOVEREIGN PROTOCOL: Decentralized Financial Operating System
-// Replaces banking: P2P payments, staking, lending, governance
+// Replaces banking: P2P payments, staking, governance
 // Sovereign Protocol: compute-backed value, zero-fee mesh, AI utility
 // Full autonomy: nodes operate independently of platform
 // ═══════════════════════════════════════════════════════════════
@@ -38,11 +38,6 @@ func SetupSovereignRoutes(v1 *gin.RouterGroup, db *sql.DB) {
 		sovereign.POST("/unstake", unstakePool(db))
 		sovereign.GET("/staking/info", getStakingInfo(db))
 		sovereign.GET("/staking/yield", getYieldEstimate(db))
-
-		// ─── Micro-Lending ───────────────────────────────
-		sovereign.POST("/loan/request", requestLoan(db))
-		sovereign.POST("/loan/repay", repayLoan(db))
-		sovereign.GET("/loans", getLoans(db))
 
 		// ─── Revenue Sharing ─────────────────────────────
 		sovereign.GET("/revenue", getRevenueSharing(db))
@@ -658,164 +653,6 @@ func getYieldEstimate(_ *sql.DB) gin.HandlerFunc {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// MICRO-LENDING: Collateralized by compute power
-// ═══════════════════════════════════════════════════════════════
-
-func requestLoan(db *sql.DB) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var req struct {
-			Wallet  string  `json:"wallet" binding:"required"`
-			Amount  float64 `json:"amount" binding:"required"`
-			DueDays int     `json:"due_days"`
-		}
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(400, gin.H{"error": err.Error()})
-			return
-		}
-		if req.DueDays <= 0 {
-			req.DueDays = 30
-		}
-		if req.Amount > 1000 {
-			c.JSON(400, gin.H{"error": "max loan amount is 1000 GSTD"})
-			return
-		}
-
-		// Calculate collateral: node uptime + staked amount
-		var uptimeHours float64
-		db.QueryRowContext(c.Request.Context(),
-			`SELECT COALESCE(SUM(total_uptime_hours),0) FROM node_tiers WHERE node_address = $1`,
-			req.Wallet).Scan(&uptimeHours)
-
-		var stakedAmount float64
-		db.QueryRowContext(c.Request.Context(),
-			`SELECT COALESCE(SUM(staked_amount),0) FROM staking_pools WHERE wallet_address = $1 AND is_active = true`,
-			req.Wallet).Scan(&stakedAmount)
-
-		collateralValue := uptimeHours*0.01 + stakedAmount*0.5
-		if collateralValue < req.Amount*0.5 {
-			c.JSON(400, gin.H{
-				"error":            "insufficient collateral",
-				"collateral_value": collateralValue,
-				"required":         req.Amount * 0.5,
-				"tip":              "Run a node or stake GSTD to increase your collateral",
-			})
-			return
-		}
-
-		dueDate := time.Now().Add(time.Duration(req.DueDays) * 24 * time.Hour)
-		interestRate := 5.0 // 5% annual
-
-		var loanID string
-		db.QueryRowContext(c.Request.Context(),
-			`INSERT INTO micro_loans (borrower_wallet, principal, interest_rate, collateral_type, collateral_value, due_date, status)
-			 VALUES ($1, $2, $3, 'compute+stake', $4, $5, 'active') RETURNING id`,
-			req.Wallet, req.Amount, interestRate, collateralValue, dueDate).Scan(&loanID)
-
-		// Credit loan amount
-		db.ExecContext(c.Request.Context(),
-			`UPDATE users SET gstd_balance = COALESCE(gstd_balance,0) + $1, updated_at = NOW() WHERE wallet_address = $2`,
-			req.Amount, req.Wallet)
-
-		c.JSON(200, gin.H{
-			"loan_id":         loanID,
-			"amount":          req.Amount,
-			"interest_rate":   interestRate,
-			"interest_amount": req.Amount * (interestRate / 100) * (float64(req.DueDays) / 365),
-			"total_repayment": req.Amount + req.Amount*(interestRate/100)*(float64(req.DueDays)/365),
-			"collateral":      collateralValue,
-			"due_date":        dueDate.Format(time.RFC3339),
-			"vs_bank":         "Traditional bank: 15-25% interest, weeks of paperwork, credit checks. GSTD: 5% interest, instant approval, collateralized by your compute contribution.",
-		})
-	}
-}
-
-func repayLoan(db *sql.DB) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var req struct {
-			Wallet string  `json:"wallet" binding:"required"`
-			LoanID string  `json:"loan_id" binding:"required"`
-			Amount float64 `json:"amount" binding:"required"`
-		}
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(400, gin.H{"error": err.Error()})
-			return
-		}
-
-		ctx := c.Request.Context()
-		var principal, repaid float64
-		err := db.QueryRowContext(ctx,
-			`SELECT principal, repaid_amount FROM micro_loans WHERE id = $1 AND borrower_wallet = $2 AND status = 'active'`,
-			req.LoanID, req.Wallet).Scan(&principal, &repaid)
-		if err != nil {
-			c.JSON(404, gin.H{"error": "loan not found"})
-			return
-		}
-
-		remaining := principal - repaid
-		if req.Amount > remaining {
-			req.Amount = remaining
-		}
-
-		// Deduct from balance
-		db.ExecContext(ctx,
-			`UPDATE users SET gstd_balance = COALESCE(gstd_balance,0) - $1 WHERE wallet_address = $2`,
-			req.Amount, req.Wallet)
-
-		newRepaid := repaid + req.Amount
-		newStatus := "active"
-		if newRepaid >= principal {
-			newStatus = "repaid"
-		}
-
-		db.ExecContext(ctx,
-			`UPDATE micro_loans SET repaid_amount = $1, status = $2 WHERE id = $3`,
-			newRepaid, newStatus, req.LoanID)
-
-		c.JSON(200, gin.H{
-			"repaid":    req.Amount,
-			"remaining": remaining - req.Amount,
-			"status":    newStatus,
-		})
-	}
-}
-
-func getLoans(db *sql.DB) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		wallet := c.Query("wallet")
-		if wallet == "" {
-			c.JSON(400, gin.H{"error": "wallet required"})
-			return
-		}
-		rows, err := db.QueryContext(c.Request.Context(),
-			`SELECT id, principal, interest_rate, collateral_value, status, repaid_amount, due_date, created_at
-			 FROM micro_loans WHERE borrower_wallet = $1 ORDER BY created_at DESC LIMIT 20`, wallet)
-		if err != nil {
-			c.JSON(200, gin.H{"loans": []interface{}{}, "count": 0})
-			return
-		}
-		defer rows.Close()
-
-		var loans []gin.H
-		for rows.Next() {
-			var id, status string
-			var principal, rate, collateral, repaid float64
-			var dueDate, createdAt time.Time
-			if rows.Scan(&id, &principal, &rate, &collateral, &status, &repaid, &dueDate, &createdAt) == nil {
-				loans = append(loans, gin.H{
-					"id": id, "principal": principal, "interest_rate": rate,
-					"collateral": collateral, "status": status, "repaid": repaid,
-					"remaining": principal - repaid, "due_date": dueDate.Format(time.RFC3339),
-				})
-			}
-		}
-		if loans == nil {
-			loans = []gin.H{}
-		}
-		c.JSON(200, gin.H{"loans": loans, "count": len(loans)})
-	}
-}
-
-// ═══════════════════════════════════════════════════════════════
 // REVENUE SHARING: 85% to nodes, 10% treasury, 5% burn
 // ═══════════════════════════════════════════════════════════════
 
@@ -1324,7 +1161,6 @@ func getProtocolSummary(db *sql.DB) gin.HandlerFunc {
 				"deflationary":     "2% burn on every transaction, 1B cap with halving",
 				"instant_payments": "Zero-fee P2P payments, instant settlement",
 				"real_yield":       "8-36% APY from real compute revenue, 2x for node operators",
-				"micro_lending":    "5% interest, collateralized by compute power",
 				"governance":       "Democratic voting, weighted by stake + uptime",
 				"node_autonomy":    "P2P mesh, local consensus, autonomous operation",
 				"compute_backed":   "Every GSTD backed by real AI compute & storage",
@@ -1334,7 +1170,6 @@ func getProtocolSummary(db *sql.DB) gin.HandlerFunc {
 				"speed":         "Instant vs 1-3 business days",
 				"fees":          "0% vs 1-3% per transaction",
 				"savings_yield": "8-36% vs 0.5% (bank savings)",
-				"lending_rate":  "5% vs 15-25% (bank loans)",
 				"availability":  "24/7/365 vs banking hours",
 				"access":        "Anyone with internet vs KYC/credit checks",
 				"transparency":  "100% auditable vs opaque",
@@ -1347,7 +1182,7 @@ func getProtocolSummary(db *sql.DB) gin.HandlerFunc {
 				"backing":        "Gold + compute vs speculative",
 				"energy":         "Minimal PoS vs enormous PoW",
 				"governance":     "Democratic vs mining pools",
-				"smart_features": "Lending, staking, P2P payments vs simple transfers",
+				"smart_features": "Staking, P2P payments vs simple transfers",
 				"scalability":    "Unlimited vs 7 TPS",
 			},
 		})
