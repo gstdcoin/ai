@@ -40,20 +40,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         const agents = deduped
             .filter((node: any) => (now - new Date(node.last_seen || 0).getTime()) < 600_000)
-            .map((node: any) => ({
-                id:           node.node_id || node.id,
-                name:         node.name || node.node_id,
-                description:  node.description || 'General-purpose GSTD compute node',
-                wallet:       node.wallet_address || node.operator_wallet || '',
-                capabilities: node.capabilities || ['inference', 'compute'],
-                rating:       node.rating || 5.0,
-                tasks_done:   node.tasks_completed || 0,
-                gstd_earned:  node.gstd_earned || node.total_earned || 0,
-                tier:         getTier(node.gstd_earned || node.total_earned || 0),
-                is_online:    true,
-                cost_per_task: '0.001 GSTD',
-                models:       node.models || node.capabilities || [],
-            }));
+            .map((node: any) => {
+                const gstdEarned = node.gstd_earned || node.total_earned || 0;
+                return {
+                    agent_id:            node.node_id || node.id,
+                    name:                node.name || node.node_id,
+                    description:         node.description || 'General-purpose GSTD compute node',
+                    capabilities:        node.capabilities || ['inference', 'compute'],
+                    tier:                getTier(gstdEarned),
+                    tasks_completed:     node.tasks_completed || 0,
+                    average_rating:      node.rating ?? null,
+                    price_per_task_gstd: node.price_per_task_gstd ?? null,
+                    online:              true,
+                };
+            });
 
         return res.status(200).json({ agents, total: agents.length });
     } catch (err: any) {
@@ -63,8 +63,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 }
 
 function getTier(gstdEarned: number): string {
-    if (gstdEarned >= 1000) return 'diamond';
-    if (gstdEarned >= 100)  return 'gold';
-    if (gstdEarned >= 10)   return 'silver';
-    return 'bronze';
+    if (gstdEarned >= 10000) return 'sovereign';
+    if (gstdEarned >= 2000)  return 'titan';
+    if (gstdEarned >= 500)   return 'storm';
+    if (gstdEarned >= 50)    return 'flame';
+    return 'spark';
 }

@@ -38,19 +38,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
 
         const agents = deduped
-            .map((node: any, idx: number) => ({
-                rank:        idx + 1,
-                id:          node.node_id || node.id || `agent-${idx}`,
-                name:        node.name || node.node_id || `Agent #${idx + 1}`,
-                wallet:      node.wallet_address || node.operator_wallet || '',
-                tasks_done:  node.tasks_completed || 0,
-                gstd_earned: node.gstd_earned || node.total_earned || 0,
-                uptime_pct:  node.uptime_pct ?? null,
-                tier:        getTier(node.gstd_earned || node.total_earned || 0),
-                is_online:   (Date.now() - new Date(node.last_seen || 0).getTime()) < 600_000,
-                joined_at:   node.registered_at || node.created_at || null,
-            }))
-            .sort((a, b) => b.tasks_done - a.tasks_done)
+            .map((node: any, idx: number) => {
+                const gstdEarned = node.gstd_earned || node.total_earned || 0;
+                return {
+                    rank:              idx + 1,
+                    agent_id:          node.node_id || node.id || `agent-${idx}`,
+                    name:              node.name || node.node_id || `Agent #${idx + 1}`,
+                    tier:              getTier(gstdEarned),
+                    total_earned_gstd: gstdEarned,
+                    tasks_completed:   node.tasks_completed || 0,
+                    uptime_pct:        node.uptime_pct ?? null,
+                    capabilities:      node.capabilities || [],
+                    online:            (Date.now() - new Date(node.last_seen || 0).getTime()) < 600_000,
+                };
+            })
+            .sort((a, b) => b.tasks_completed - a.tasks_completed)
             .map((a, idx) => ({ ...a, rank: idx + 1 }));
 
         return res.status(200).json({ agents, total: agents.length });
@@ -61,8 +63,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 }
 
 function getTier(gstdEarned: number): string {
-    if (gstdEarned >= 1000) return 'diamond';
-    if (gstdEarned >= 100)  return 'gold';
-    if (gstdEarned >= 10)   return 'silver';
-    return 'bronze';
+    if (gstdEarned >= 10000) return 'sovereign';
+    if (gstdEarned >= 2000)  return 'titan';
+    if (gstdEarned >= 500)   return 'storm';
+    if (gstdEarned >= 50)    return 'flame';
+    return 'spark';
 }

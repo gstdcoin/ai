@@ -1,7 +1,7 @@
 /**
  * GET /api/v1/agents/stats/network
  *
- * Agent network summary statistics — online agents, tasks completed, GSTD distributed.
+ * Agent network summary statistics — online agents, GSTD distributed.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvKeys, kvMGet } from '../../../../../lib/kv';
@@ -14,9 +14,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.setHeader('Cache-Control', 'public, max-age=15, stale-while-revalidate=30');
 
     try {
-        const [allNodeKeys, totalTasksDone, totalGstdPaid] = await Promise.all([
+        const [allNodeKeys, totalGstdPaid] = await Promise.all([
             kvKeys('node:'),
-            kvGet('stats:total_tasks_completed'),
             kvGet('stats:total_gstd_paid'),
         ]);
 
@@ -24,7 +23,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const rootKeys = allNodeKeys.filter((k: string) => !k.slice(5).includes(':'));
         const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-/i;
         let online = 0;
-        let tasksDone = parseInt(totalTasksDone || '0', 10);
 
         if (rootKeys.length > 0) {
             const values = await kvMGet(rootKeys).catch(() => [] as (string|null)[]);
@@ -39,18 +37,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             });
             const now = Date.now();
             online = deduped.filter((n: any) => (now - new Date(n.last_seen || 0).getTime()) < 600_000).length;
-            if (!tasksDone) {
-                for (const n of deduped) tasksDone += parseInt(n.tasks_completed || '0', 10);
-            }
         }
 
         return res.status(200).json({
-            total_agents:      rootKeys.length,
-            online_agents:     online,
-            active_workers:    online,
-            total_tasks_done:  tasksDone,
-            total_gstd_earned: parseFloat(totalGstdPaid || '0'),
-            timestamp:         Date.now(),
+            total_agents:     rootKeys.length,
+            online_agents:    online,
+            total_gstd_paid:  parseFloat(totalGstdPaid || '0'),
+            timestamp:        Date.now(),
         });
     } catch (err: any) {
         console.error('[agents/stats/network]', err.message);
