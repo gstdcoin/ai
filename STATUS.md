@@ -3,7 +3,7 @@
 > **Keep this file up to date.** Every time you ship a significant change, update the relevant section.  
 > This prevents "we already did that" and "why did we do it that way" conversations.
 
-Last updated: 2026-07-19
+Last updated: 2026-08-13
 
 ---
 
@@ -11,10 +11,11 @@ Last updated: 2026-07-19
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| app.gstdtoken.com | ✅ Live | Vercel, auto-deploys on push to main |
-| gstdtoken.com | ✅ Live | Vercel, landing page |
-| Upstash Redis (KV) | ✅ Connected | Vercel KV store |
-| TON Contracts | ✅ Deployed | GSTDJetton, SettlementMaster v2, AgentRegistry, DAOVoting, EcosystemTreasury, Escrow live on mainnet (re-verified on-chain 2026-08-13); GSTDJetton admin renounced (`addr_none`); SettlementMaster v2 adds quorum-attested P2P settlement, not externally audited; SettlementMaster/EcosystemTreasury owner not yet transferred to DAOVoting |
+| app.gstdtoken.com | ❌ DOWN since 2026-08-13 21:01 UTC | Vercel blocked the whole team: "exceeded our fair use limits" (http://vercel.link/fair-use), returns HTTP 402 DEPLOYMENT_DISABLED on every route. Not a code bug — needs a human to resolve in the Vercel dashboard (team `aidos-projects-1732011b`, project `prj_j2gQqRULHdMowbDHZt7wSqs2z3Bf`). Breaks node register/heartbeat, task poll/complete, settlement relay, and the Telegram bot (all call this host). |
+| gstdtoken.com | ✅ Live | Cloudflare Workers, landing page — unaffected by the Vercel outage above |
+| Upstash Redis (KV) | ✅ Connected | Vercel KV store (unreachable while the outage above lasts, since it's only ever accessed via app.gstdtoken.com's API routes) |
+| TON Contracts | ✅ Deployed | GSTDJetton, SettlementMaster v2, AgentRegistry, DAOVoting, EcosystemTreasury, Escrow live on mainnet (re-verified on-chain 2026-08-13); GSTDJetton admin renounced (`addr_none`); SettlementMaster v2 adds quorum-attested P2P settlement, not externally audited. SettlementMaster/EcosystemTreasury owner deliberately NOT transferred to DAOVoting — see governance quorum bug below. |
+| DAOVoting governance | ⚠️ Live but unusable as designed | `Proposal.quorumStake` is set from `minProposalStake` (a GSTD-denominated constant, 10,000 GSTD = `1e13`) but votes are counted in raw attached TON (`CastVote`'s weight = `context().value`), not GSTD — see `DAOVoting.tact:243,284`. Since both use 9-decimal nano units, the code compares a TON-vote-sum against a threshold meant for GSTD, i.e. ~10,000 TON of real voter stake is needed to ever reach quorum. No proposal can realistically pass. Do not transfer SettlementMaster/EcosystemTreasury ownership to this contract until a v2 fixes the quorum math — doing so now would permanently brick protocol admin actions (pause, key rotation, parameter changes) with no way to ever govern your way out. |
 | gstd-a2a (PyPI) | ✅ Published | `pip install gstd-a2a` — v2.1.0, first publish 2026-07-19 |
 | Bridge validators | ❌ Deferred, not deployed | No MPC key shares generated, no Solana/XRPL vault wallets exist, CI red since 2026-05-26. Not just "needs operators" — needs to actually be built out first. See gstd-bridge/README.md status banner. |
 | Docker node image | ⚠️ Stale until next push | `ghcr.io/gstdcoin/gstd-node` — CI publish job existed but had `if: github.repository == 'gstdcoin/gstd-node'` (repo is actually `gstdcoin/gstdbot`), so it silently never ran; fixed 2026-08-13. `goldenbit/gstd-node:latest` on Docker Hub is a one-off manual push from 2026-03, not kept current — don't treat it as the maintained image. |
@@ -163,7 +164,7 @@ Treat as design docs, not a working system, until the Pending items are done.
 - [x] CI: syntax validation on push
 
 ### Pending
-- [ ] DAOVoting deploy status not independently re-verified this pass
+- [ ] `DAOVoting.tact` governance quorum is unreachable in practice (GSTD-denominated threshold compared against TON-denominated votes) — see System Health above. Needs a v2 redesign before any contract ownership is handed to it; not started, deliberately deferred rather than rushed.
 - [ ] `bridge/ton/GstdBridge.tact` — bridge is deferred (see gstd-bridge section), no build output needed yet
 - [ ] `contracts/deployer.json` mnemonic was leaked in git history — rotated to a new (currently unfunded) wallet 2026-07-18, purged from history + force-pushed. Fund the new deployer wallet before the next contract deploy.
 
