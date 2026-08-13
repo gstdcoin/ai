@@ -1,6 +1,6 @@
 #!/bin/bash
 # Load environment variables from .env (secrets should NOT be hardcoded here)
-[ -f /home/ubuntu/backend/.env ] && set -a && source /home/ubuntu/backend/.env && set +a
+[ -f /home/ubuntu/frontend/.env ] && set -a && source /home/ubuntu/frontend/.env && set +a
 export GSTD_SWARM_URL="${GSTD_SWARM_URL:-http://localhost:8080}"
 export NODE_ENV=production
 

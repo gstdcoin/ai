@@ -18,7 +18,7 @@ Last updated: 2026-07-19
 | gstd-a2a (PyPI) | ✅ Published | `pip install gstd-a2a` — v2.1.0, first publish 2026-07-19 |
 | Bridge validators | ❌ Deferred, not deployed | No MPC key shares generated, no Solana/XRPL vault wallets exist, CI red since 2026-05-26. Not just "needs operators" — needs to actually be built out first. See gstd-bridge/README.md status banner. |
 | Docker node image | ✅ Published | `goldenbit/gstd-node:latest` |
-| Known vulnerabilities | ✅ Remediated 2026-07-19 | npm (frontend/web), Go (backend), Cargo (bridge, partial) — see Decision Log |
+| Known vulnerabilities | ✅ Remediated 2026-07-19 | npm (frontend/web), Cargo (bridge, partial) — see Decision Log |
 
 ---
 
@@ -58,7 +58,7 @@ Last updated: 2026-07-19
 - No Go backend. No Docker in production. Vercel + Upstash Redis only.
 - `proxy.ts` is the Next.js 16 name for what was `middleware.ts` in Next.js 13-15
 - Dead pages `monitor/` and `predictions/` were removed — no API backend for them
-- `backend/` folder in repo root is legacy Go code, not deployed
+- Legacy Go `backend/` folder (never deployed) removed 2026-08-13, along with its coupled `docker-compose*.yml`, `nginx/`, and Docker-only scripts — do not recreate it; Vercel + Upstash Redis remains the only production runtime
 
 ---
 
