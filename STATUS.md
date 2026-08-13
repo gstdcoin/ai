@@ -14,10 +14,10 @@ Last updated: 2026-07-19
 | app.gstdtoken.com | ✅ Live | Vercel, auto-deploys on push to main |
 | gstdtoken.com | ✅ Live | Vercel, landing page |
 | Upstash Redis (KV) | ✅ Connected | Vercel KV store |
-| TON Contracts | ✅ Deployed | GSTDJetton, SettlementMaster, AgentRegistry live on mainnet (verified on-chain 2026-07-18); GSTDJetton admin renounced (`addr_none`), SettlementMaster owner is a separate admin wallet |
+| TON Contracts | ✅ Deployed | GSTDJetton, SettlementMaster v2, AgentRegistry, DAOVoting, EcosystemTreasury, Escrow live on mainnet (re-verified on-chain 2026-08-13); GSTDJetton admin renounced (`addr_none`); SettlementMaster v2 adds quorum-attested P2P settlement, not externally audited; SettlementMaster/EcosystemTreasury owner not yet transferred to DAOVoting |
 | gstd-a2a (PyPI) | ✅ Published | `pip install gstd-a2a` — v2.1.0, first publish 2026-07-19 |
 | Bridge validators | ❌ Deferred, not deployed | No MPC key shares generated, no Solana/XRPL vault wallets exist, CI red since 2026-05-26. Not just "needs operators" — needs to actually be built out first. See gstd-bridge/README.md status banner. |
-| Docker node image | ✅ Published | `goldenbit/gstd-node:latest` |
+| Docker node image | ⚠️ Stale until next push | `ghcr.io/gstdcoin/gstd-node` — CI publish job existed but had `if: github.repository == 'gstdcoin/gstd-node'` (repo is actually `gstdcoin/gstdbot`), so it silently never ran; fixed 2026-08-13. `goldenbit/gstd-node:latest` on Docker Hub is a one-off manual push from 2026-03, not kept current — don't treat it as the maintained image. |
 | Known vulnerabilities | ✅ Remediated 2026-07-19 | npm (frontend/web), Cargo (bridge, partial) — see Decision Log |
 
 ---
@@ -64,7 +64,7 @@ Last updated: 2026-07-19
 
 ## gstdcoin/gstdbot — Node OS
 
-**Docker:** `goldenbit/gstd-node:latest` | **Multi-arch:** amd64 + arm64
+**Docker:** `ghcr.io/gstdcoin/gstd-node:latest` (CI publish job fixed 2026-08-13 — see System Health above) | **Multi-arch:** amd64 + arm64
 
 ### What's working
 - [x] Node registration on startup
