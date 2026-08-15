@@ -22,7 +22,7 @@
  * Protocol fee: 10% of total_budget goes to protocol treasury.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvSet, kvIncr, kvIncrByFloat } from '../../../../lib/kv';
+import { kvGet, kvSet, kvIncr, kvIncrByFloat } from '../../../../lib/kv';
 import { randomBytes } from 'crypto';
 
 const PROTOCOL_FEE_PCT = 0.10;
@@ -33,6 +33,7 @@ const CAMPAIGN_TTL_BUF = 3600;  // keep 1h after expiry for reporting
 
 export interface Campaign {
     id:              string;
+    funder_wallet:   string;
     company:         string;
     title:           string;
     description:     string;
@@ -82,6 +83,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.status(400).json({ error: 'reward_per_task cannot exceed total_budget' });
         }
 
+        // total_budget was previously just a self-declared number -- a campaign
+        // went live and started paying out real GSTD to completing nodes with
+        // no funds ever deposited for it. Require the creator's already-verified
+        // credit balance (the same balance:<wallet> that real TON deposits via
+        // credits/ton-webhook.ts and paid inference both use) to actually cover
+        // it, and debit it now, same check-then-debit pattern as billing.ts.
+        const wallet = String(body.wallet_address || '').trim().toLowerCase();
+        if (!wallet) {
+            return res.status(400).json({ error: 'wallet_address required to fund the campaign budget' });
+        }
+        const balanceKey = `balance:${wallet}`;
+        const balRaw = await kvGet(balanceKey);
+        const balance = parseFloat(balRaw || '0');
+        if (balance < totalBudget) {
+            return res.status(402).json({ error: 'insufficient_balance', balance, required: totalBudget });
+        }
+        await kvIncrByFloat(balanceKey, -totalBudget);
+
         const protocolFee = Math.round(totalBudget * PROTOCOL_FEE_PCT * 100) / 100;
         const netBudget   = Math.round((totalBudget - protocolFee) * 100) / 100;
         const expiresAt   = new Date(Date.now() + durationH * 3600_000).toISOString();
@@ -89,6 +108,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         const campaign: Campaign = {
             id:               randomBytes(8).toString('hex'),
+            funder_wallet:    wallet,
             company:          String(body.company).slice(0, 128),
             title:            String(body.title).slice(0, 256),
             description:      String(body.description || '').slice(0, 1024),

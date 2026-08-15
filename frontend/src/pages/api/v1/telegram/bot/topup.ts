@@ -8,6 +8,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvSet } from '../../../../../lib/kv';
 import { kvIncrByFloat } from '../../../../../lib/kv';
+import { isValidBotToken } from '../../../../../lib/botAuth';
 
 const STAR_USD   = 0.013;   // 1 Telegram Star ≈ $0.013 USD
 const GSTD_FLOOR = 0.0001;  // fallback GSTD price if oracle unavailable
@@ -20,6 +21,12 @@ async function getGstdPriceUsd(): Promise<number> {
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+    // stars_amount/charge_id are trusted as coming from a real Telegram
+    // successful_payment webhook -- that's only true if the caller really is
+    // gstdbot (which independently verified the payment with Telegram before
+    // forwarding here). Without this check, anyone could credit themselves
+    // GSTD with a fabricated charge_id and no real Stars payment at all.
+    if (!isValidBotToken(req)) return res.status(401).json({ error: 'Invalid bot token' });
 
     const { telegram_id, stars_amount, telegram_payment_charge_id } = req.body as {
         telegram_id?: string | number;

@@ -10,10 +10,11 @@
  * Response: { tasks: [...] }  (list, may be empty)
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvGet, kvPop, kvPush } from '../../../../../lib/kv';
+import { kvGet, kvPop, kvPush, kvSet } from '../../../../../lib/kv';
 import type { NodeRecord } from '../../nodes/register';
 
 const SCAN_DEPTH = 20;
+const ASSIGNMENT_TTL = 3600; // matches tasks/poll.ts
 
 function nodeCanHandle(task: any, caps: string[], resources: Record<string, number>): boolean {
     const required: string[] = task.required_caps || [];
@@ -59,7 +60,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             if (raw) {
                 let task: any;
                 try { task = JSON.parse(raw); } catch { /* skip */ }
-                if (task) return res.status(200).json({ tasks: [task] });
+                if (task) {
+                    // Record which node this task was handed to, so worker/submit.ts can
+                    // verify the reward it's asked to pay out corresponds to a task
+                    // actually assigned -- mirrors tasks/poll.ts's identical fix.
+                    if (task.task_id) {
+                        await kvSet(`task_assigned:${task.task_id}`, JSON.stringify({ node_id: nodeId, assigned_at: Date.now() }), ASSIGNMENT_TTL).catch(() => {});
+                    }
+                    return res.status(200).json({ tasks: [task] });
+                }
             }
         }
 
@@ -84,6 +93,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Requeue skipped tasks (preserve FIFO)
         for (let i = skipped.length - 1; i >= 0; i--) {
             await kvPush('tasks:queue', JSON.stringify(skipped[i]));
+        }
+
+        if (picked?.task_id) {
+            await kvSet(`task_assigned:${picked.task_id}`, JSON.stringify({ node_id: nodeId, assigned_at: Date.now() }), ASSIGNMENT_TTL).catch(() => {});
         }
 
         return res.status(200).json({ tasks: picked ? [picked] : [] });
