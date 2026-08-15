@@ -41,23 +41,39 @@ interface SettlementEntry {
 }
 
 interface SettleApiResponse {
-    entries:          SettlementEntry[];
-    treasury_balance: number;
-    total_gstd:       number;
-    epoch:            string;
+    entries:  SettlementEntry[];
+    treasury: number;
+    total:    number;
+    epoch:    string;
 }
 
 async function fetchSettlementPlan(): Promise<SettleApiResponse> {
+    // /settle only ever returns a plan now -- it never clears balances.
+    // See confirmSettled() below for the step that actually clears them,
+    // called only for wallets whose transfer really succeeded.
     const resp = await fetch(`${SWARM_URL}/api/v1/nodes/rewards/settle`, {
         method:  'POST',
         headers: {
             'Content-Type':    'application/json',
             'x-treasury-secret': TREASURY_SECRET,
         },
-        body: JSON.stringify({ dry_run: false }),
+        body: JSON.stringify({}),
     });
     if (!resp.ok) throw new Error(`Settlement API ${resp.status}: ${await resp.text()}`);
     return resp.json() as Promise<SettleApiResponse>;
+}
+
+async function confirmSettled(epoch: string, wallets: string[]): Promise<void> {
+    if (wallets.length === 0) return;
+    const resp = await fetch(`${SWARM_URL}/api/v1/nodes/rewards/confirm-settlement`, {
+        method:  'POST',
+        headers: {
+            'Content-Type':      'application/json',
+            'x-treasury-secret': TREASURY_SECRET,
+        },
+        body: JSON.stringify({ epoch, wallets }),
+    });
+    if (!resp.ok) throw new Error(`Confirm-settlement API ${resp.status}: ${await resp.text()}`);
 }
 
 // Build Jetton transfer message (TEP-74)
@@ -82,8 +98,8 @@ async function main() {
 
     const payouts = (plan.entries || []).filter(e => e.amount_gstd >= MIN_PAYOUT);
     console.log(`[Settle] Epoch: ${plan.epoch}`);
-    console.log(`[Settle] Total GSTD to distribute: ${plan.total_gstd}`);
-    console.log(`[Settle] Treasury balance: ${plan.treasury_balance}`);
+    console.log(`[Settle] Total GSTD to distribute: ${plan.total}`);
+    console.log(`[Settle] Treasury balance: ${plan.treasury}`);
     console.log(`[Settle] Payouts (≥${MIN_PAYOUT} GSTD): ${payouts.length}`);
     payouts.forEach(e => console.log(`  → ${e.wallet}: ${e.amount_gstd} GSTD`));
 
@@ -119,6 +135,10 @@ async function main() {
     console.log(`[Settle] Settlement wallet's GSTD jetton wallet: ${settlementJettonWallet.toString()}`);
 
     let sentCount = 0;
+    // Only wallets that get pushed here have their pending balance cleared
+    // (see confirmSettled() below) -- a skipped or failed entry keeps its
+    // balance intact so it's retried on the next run instead of being lost.
+    const confirmedWallets: string[] = [];
     for (const entry of payouts) {
         let toAddr: Address;
         try {
@@ -142,13 +162,25 @@ async function main() {
             });
             console.log(`  ✓ Sent ${entry.amount_gstd} GSTD → ${entry.wallet}`);
             sentCount++;
+            confirmedWallets.push(entry.wallet);
             await new Promise(r => setTimeout(r, 2000)); // avoid rate limit
         } catch (e: any) {
             console.error(`  ✗ Failed for ${entry.wallet}: ${e.message}`);
         }
     }
 
-    console.log(`\n[Settle] Done. Sent ${sentCount}/${payouts.length} transfers.`);
+    // Note: sendTransfer() not throwing only confirms the settlement
+    // wallet's outgoing message was accepted, not that the jetton wallet
+    // contract actually processed it on-chain (that happens in a later
+    // block). This is an existing limitation of this script's fire-and-
+    // forget model, not something newly introduced here -- a genuinely
+    // airtight version would poll for on-chain confirmation before
+    // clearing. What this fix guarantees is the narrower, still important
+    // property: balances are never cleared before a transfer was even
+    // attempted, which was the actual bug.
+    await confirmSettled(plan.epoch, confirmedWallets);
+
+    console.log(`\n[Settle] Done. Sent ${sentCount}/${payouts.length} transfers. Cleared ${confirmedWallets.length} balances.`);
 }
 
 main().catch(err => { console.error(err); process.exit(1); });
