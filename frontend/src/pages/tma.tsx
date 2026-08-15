@@ -381,7 +381,7 @@ function MobileNodePanel({ address }: { address: string | undefined }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          tg_user_id: tg?.initDataUnsafe?.user?.id || 'unknown',
+          telegram_init_data: tg?.initData || '',
           device_id: deviceId,
           wallet_address: address,
         }),

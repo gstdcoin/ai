@@ -7,6 +7,7 @@
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvSet, kvIncr } from '../../../../../lib/kv';
+import { validateTelegramInitData } from '../../../../../lib/telegramAuth';
 
 const MIN_CLAIM = 0.01; // minimum claimable amount
 const MOBILE_NODE_TTL = 360;
@@ -16,9 +17,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const { tg_user_id, device_id, wallet_address } = req.body as any;
-    if (!tg_user_id || !device_id) {
-        return res.status(400).json({ error: 'tg_user_id and device_id required' });
+    const { telegram_init_data, device_id, wallet_address } = req.body as any;
+
+    // Require the same signed initData as register.ts — without this, anyone
+    // who knows/guesses a tg_user_id + device_id (device_id has limited
+    // entropy, see tma.tsx's getDeviceId()) could redirect someone else's
+    // accumulated rewards to their own wallet_address.
+    const tg_user_id = validateTelegramInitData(telegram_init_data);
+    if (!tg_user_id) {
+        return res.status(401).json({ error: 'Invalid Telegram auth' });
+    }
+
+    if (!device_id) {
+        return res.status(400).json({ error: 'device_id required' });
     }
 
     if (!wallet_address) {
