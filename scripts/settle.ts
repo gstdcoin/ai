@@ -17,6 +17,17 @@
 import { TonClient, WalletContractV4, internal, toNano, Address, beginCell } from '@ton/ton';
 import { mnemonicToPrivateKey } from '@ton/crypto';
 
+// TEP-74: a Transfer message (op 0xf8a7ea5) must go to the SENDER'S OWN
+// jetton wallet (which then forwards to the recipient's jetton wallet),
+// never to the jetton master directly -- the master doesn't implement the
+// wallet-side transfer receive handler at all.
+async function getJettonWalletAddress(client: TonClient, jettonMaster: Address, owner: Address): Promise<Address> {
+    const result = await client.runMethod(jettonMaster, 'get_wallet_address', [
+        { type: 'slice', cell: beginCell().storeAddress(owner).endCell() },
+    ]);
+    return result.stack.readAddress();
+}
+
 const SWARM_URL      = (process.env.GSTD_SWARM_URL || 'https://app.gstdtoken.com').replace(/\/$/, '');
 const TREASURY_SECRET = process.env.TREASURY_SECRET || '';
 const JETTON_ADDRESS  = process.env.GSTD_JETTON_ADDRESS || '';
@@ -104,6 +115,8 @@ async function main() {
     console.log(`[Settle] Seqno: ${seqno}`);
 
     const jettonMaster = Address.parse(JETTON_ADDRESS);
+    const settlementJettonWallet = await getJettonWalletAddress(client, jettonMaster, wallet.address);
+    console.log(`[Settle] Settlement wallet's GSTD jetton wallet: ${settlementJettonWallet.toString()}`);
 
     let sentCount = 0;
     for (const entry of payouts) {
@@ -122,7 +135,7 @@ async function main() {
                 seqno: seqno + sentCount,
                 secretKey: keyPair.secretKey,
                 messages: [internal({
-                    to:    jettonMaster,
+                    to:    settlementJettonWallet,
                     value: toNano('0.05'),
                     body:  buildJettonTransferBody(toAddr, nanoAmount),
                 })],
