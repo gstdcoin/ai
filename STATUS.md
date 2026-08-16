@@ -3,7 +3,7 @@
 > **Keep this file up to date.** Every time you ship a significant change, update the relevant section.  
 > This prevents "we already did that" and "why did we do it that way" conversations.
 
-Last updated: 2026-08-13
+Last updated: 2026-08-16
 
 ---
 
@@ -86,9 +86,19 @@ Last updated: 2026-08-13
       weights — proof gradient descent actually ran, since LoRA B matrices
       are zero-initialized by convention). See
       `gstdbot/docs/superpowers/plans/2026-07-19-real-finetuning.md`.
+- [x] Real, non-stub P2P peer discovery: `src/p2p/peers.ts` is a genuine
+      decentralized plain-HTTP gossip implementation (disk-persisted peer
+      table, TTL, latency-based scoring, capability-match routing, gossip
+      propagation), bootstrapping from `GSTD_SEED_PEERS` + a GitHub-raw seed
+      list -- not app.gstdtoken.com. Corrected 2026-08-16: this file used to
+      say "P2P stub ... needs real peer discovery implementation" here, which
+      was wrong by the time it was checked (verified by reading the file in
+      full, then by actually running a node live and watching it gossip with
+      a real peer). Separate from this: `src/p2p/node.ts`'s libp2p mesh (used
+      for quorum-attested settlement) is a second, disconnected P2P system --
+      that redundancy is real and still unaddressed.
 
 ### Pending
-- [ ] P2P stub in `src/p2p/peers.ts` — needs real peer discovery implementation
 - [ ] Structured logging (currently console.log only)
 - [ ] Only `qwen2.5:0.5b` is wired into the platform's job-submission API so far
       (the only size this one CPU-only node can serve); larger Qwen2.5 sizes
@@ -173,12 +183,24 @@ Treat as design docs, not a working system, until the Pending items are done.
 ## gstdcoin/web — Landing Page (gstdtoken.com)
 
 ### What's working
-- [x] Static Next.js site
+- [x] Static Next.js site (Cloudflare Workers, independent of app.gstdtoken.com's Vercel outage)
 - [x] CI: TypeScript check + build
+- [x] Real network stats widget: `LiveNetworkStatus.tsx` calls
+      `/api/v1/stats/public` and is honest about failure -- shows an amber
+      "API temporarily unreachable" banner and `—` instead of a fake `0` when
+      the platform is down, never fabricates numbers. Corrected 2026-08-16:
+      this was already built by the time it was checked, this file was stale.
+- [x] Live chat that bypasses app.gstdtoken.com entirely (`/api/chat`,
+      `/ai` page): tries real network nodes first via the same GitHub-raw
+      seed list gstdbot's own peers.ts bootstraps from, falls back to
+      Cloudflare Workers AI (same account, no new vendor) only if every node
+      is unreachable, with real token streaming end-to-end. Also implements
+      the network's own peer protocol (`/v1/ollama/completions`,
+      `/api/peers/heartbeat`) so it's a real, always-on bootstrap peer, not
+      just a proxy -- added to `gstd-seed-peers.txt`. Added 2026-08-16.
 
 ### Pending
 - [ ] Update contract addresses section once deployed
-- [ ] Add real network stats widget (calls `/api/v1/stats/public`)
 
 ---
 
