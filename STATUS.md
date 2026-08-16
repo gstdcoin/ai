@@ -61,6 +61,38 @@ Last updated: 2026-08-16
 - Dead pages `monitor/` and `predictions/` were removed — no API backend for them
 - Legacy Go `backend/` folder (never deployed) removed 2026-08-13, along with its coupled `docker-compose*.yml`, `nginx/`, and Docker-only scripts — do not recreate it; Vercel + Upstash Redis remains the only production runtime
 
+### Security audit note (2026-08-17) — node registration has no wallet-ownership proof
+Traced the full mechanism behind the standing "reward-fraud risk" concern rather than
+leaving it vague:
+- `POST /api/v1/nodes/register` accepts any `wallet_address` with zero signature/proof
+  of ownership. The only check (`nodes/register.ts`) is that *re*-registering an
+  *existing* `node_id` must match the wallet already on file — a brand-new `node_id`
+  can claim any wallet address on first registration, no proof required.
+- `POST /api/v1/nodes/claim-rewards` takes `{ wallet }` from the request body with no
+  auth at all and moves `rewards:pending:{wallet}` into that wallet's spendable GSTD
+  credit balance. This doesn't let an attacker redirect funds to a *different* wallet
+  (the balance stays keyed to the target wallet), but it is an unauthenticated action
+  on someone else's account state.
+- `POST /api/v1/tasks/complete` (`tasks/complete.ts`) is better than it looks at first
+  read: it requires a real `task_assigned:{task_id}` record created by `tasks/poll.ts`
+  and consumes it (no replay), and enforces the wallet-header match. But there is no
+  check on the *quality* of `result` — a self-registered node can poll for a real,
+  paying-user task and "complete" it with garbage, and still collect the reward as
+  long as the assignment record is genuine.
+- Net effect: the cheapest real attack isn't wallet hijacking (accrual stays keyed to
+  the wallet on the node record, not stealable to a different address) -- it's Sybil
+  farming: one wallet, many free self-registered `node_id`s, each polling for and
+  fake-completing real tasks, multiplying reward accrual with no extra hardware.
+- **Mitigated 2026-08-17** (does not close the gap, only bounds its cheapest form):
+  `nodes/register.ts` now caps new `node_id` registrations at 10 per wallet
+  (`wallet_node_count:{wallet}` in KV). Real fixes would need either (a) TonConnect
+  signature-proof at registration (prove the caller controls the wallet's private
+  key, standard "sign this challenge" pattern) or (b) redundant/quorum verification
+  of task results before paying out, the same principle SettlementMaster's on-chain
+  `SettleTaskWithProof` already uses for on-chain settlement -- this platform-level KV
+  credit system has no equivalent. Neither implemented here: both are security-critical
+  changes to a live payout path that need real review, not a rushed pass.
+
 ---
 
 ## gstdcoin/gstdbot — Node OS
