@@ -120,7 +120,7 @@ When a request hits `/api/v1/chat/completions`:
 
 1. Platform scores all active nodes by model match, load, latency, and uptime
 2. Task pushed to best node's priority queue (`tasks:inference:{node_id}`)
-3. Node polls every 5s, picks up task, processes it via local AI (Ollama / Groq)
+3. Node polls every 5s, picks up task, processes it via local AI (Ollama)
 4. Result stored at `task:result:{task_id}` (120s TTL)
 5. Platform short-polls for result and returns to client (max 25s timeout)
 

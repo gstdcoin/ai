@@ -87,7 +87,7 @@ Last updated: 2026-07-19
       `gstdbot/docs/superpowers/plans/2026-07-19-real-finetuning.md`.
 
 ### Pending
-- [ ] P2P stub in `src/p2p/peers.ts` — needs real peer discovery implementation
+- [x] ~~P2P stub in `src/p2p/peers.ts` — needs real peer discovery implementation~~ — shipped: nodes now discover and connect to each other directly via libp2p (Kademlia DHT + mDNS); the platform's central registry (`/api/v1/nodes/*`) is a last-resort fallback, not primary
 - [ ] Structured logging (currently console.log only)
 - [ ] Only `qwen2.5:0.5b` is wired into the platform's job-submission API so far
       (the only size this one CPU-only node can serve); larger Qwen2.5 sizes

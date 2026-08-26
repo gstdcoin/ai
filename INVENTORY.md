@@ -18,9 +18,9 @@
 |---------|--------|-------|
 | `GET /api/v1/sovereign/tokenomics` | ✅ | Burn rate = 0, all fees → node operators |
 | `GET /api/v1/burn/stats` | ✅ | Returns 0 (burning disabled by design) |
-| `GET /api/v1/sovereign/staking/info` | ✅ | APY tiers, global staked |
-| `POST /api/v1/sovereign/stake` | ✅ | Locks GSTD, sets tier |
-| `POST /api/v1/sovereign/unstake` | ✅ | Releases stake after cooldown |
+| `GET /api/v1/sovereign/staking/info` | ✅ | Staking discontinued — returns `status: "discontinued"`, on-chain contract never deployed |
+| `POST /api/v1/sovereign/stake` | ❌ | Returns `410 Gone` — staking discontinued |
+| `POST /api/v1/sovereign/unstake` | ❌ | Returns `410 Gone` — staking discontinued |
 
 ### Node Network
 | Feature | Status | Notes |

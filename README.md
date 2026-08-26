@@ -131,6 +131,8 @@ Free tier: 10 requests/day per IP. Enterprise: unlimited via API key.
 
 ### Nodes
 
+Nodes primarily find each other directly via a P2P mesh (libp2p). This platform's registry below is a last-resort fallback, not the primary coordination path.
+
 | Endpoint | Method | Description |
 |---|---|---|
 | `/api/v1/nodes/register` | POST | Node startup registration |

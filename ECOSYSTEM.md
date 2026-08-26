@@ -12,7 +12,7 @@ A decentralized compute network where:
 - **Tasks** are queued through a serverless platform and dispatched to the best available node
 - **GSTD tokens** (on TON blockchain) are paid to node operators per completed task
 - **The bridge** moves GSTD tokens across chains (TON ↔ Solana ↔ XRPL) without custodians
-- **Smart contracts** on TON handle staking, governance, and settlement
+- **Smart contracts** on TON handle governance and settlement (on-chain staking was never deployed and is discontinued — see Decision Log in STATUS.md)
 
 No central servers. No data centers owned by GSTD. The network is the product.
 
@@ -26,7 +26,7 @@ No central servers. No data centers owned by GSTD. The network is the product.
 | [gstdcoin/gstdbot](https://github.com/gstdcoin/gstdbot) | TypeScript/Node.js | Node operator machines | Node OS — runs on every compute node |
 | [gstdcoin/gstd-bridge](https://github.com/gstdcoin/gstd-bridge) | Rust | Validator machines | Cross-chain bridge validator |
 | [gstdcoin/A2A](https://github.com/gstdcoin/A2A) | Python | pip package | Agent SDK — connects any AI agent as a node |
-| [gstdcoin/contracts](https://github.com/gstdcoin/contracts) | Tact (TON) | TON blockchain | Smart contracts: token, staking, governance |
+| [gstdcoin/contracts](https://github.com/gstdcoin/contracts) | Tact (TON) | TON blockchain | Smart contracts: token, governance, settlement |
 | [gstdcoin/web](https://github.com/gstdcoin/web) | TypeScript/Next.js | gstdtoken.com (Vercel) | Public landing page |
 
 ---
