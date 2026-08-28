@@ -131,7 +131,7 @@ export const TokenEarnPanel: React.FC<TokenEarnPanelProps> = ({
     };
 
     const getRefLink = () => {
-        const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://app.gstdtoken.com';
+        const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://platform.gstdtoken.com';
         return `${baseUrl}?ref=${walletAddress?.slice(0, 10) || 'gstd'}`;
     };
 

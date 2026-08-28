@@ -51,8 +51,8 @@ export default function WalletProviders({ children }: WalletProvidersProps) {
       sdkOptions={{
         dappMetadata: {
           name: 'GSTD Bridge',
-          url: typeof window !== 'undefined' ? window.location.origin : 'https://app.gstdtoken.com',
-          iconUrl: 'https://app.gstdtoken.com/favicon.ico',
+          url: typeof window !== 'undefined' ? window.location.origin : 'https://platform.gstdtoken.com',
+          iconUrl: 'https://platform.gstdtoken.com/favicon.ico',
         },
         // Enable EIP-6963 for Trust Wallet, Coinbase, and other injected wallets
         useDeeplink: false,

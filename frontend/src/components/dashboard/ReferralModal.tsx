@@ -43,7 +43,7 @@ export default function ReferralModal({ onClose }: ReferralModalProps) {
                     referral_code: address ? address.slice(0, 8) : '--------',
                     total_referred: 0,
                     total_earned: 0,
-                    referral_link: `https://app.gstdtoken.com?ref=${address ? address.slice(0, 8) : ''}`
+                    referral_link: `https://platform.gstdtoken.com?ref=${address ? address.slice(0, 8) : ''}`
                 });
             }
         } catch (error) {
@@ -108,10 +108,10 @@ export default function ReferralModal({ onClose }: ReferralModalProps) {
                                 <label className="text-xs text-gray-400 uppercase tracking-wider">{t('your_referral_link', 'Your Referral Link')}</label>
                                 <div className="flex gap-2">
                                     <div className="flex-1 bg-black/50 border border-white/10 rounded-lg px-4 py-3 text-sm text-gray-300 font-mono truncate">
-                                        {stats.referral_link || `https://app.gstdtoken.com?ref=${stats.referral_code || ''}`}
+                                        {stats.referral_link || `https://platform.gstdtoken.com?ref=${stats.referral_code || ''}`}
                                     </div>
                                     <button
-                                        onClick={() => copyToClipboard(stats.referral_link || `https://app.gstdtoken.com?ref=${stats.referral_code || ''}`)}
+                                        onClick={() => copyToClipboard(stats.referral_link || `https://platform.gstdtoken.com?ref=${stats.referral_code || ''}`)}
                                         className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
                                     >
                                         <Copy size={18} />

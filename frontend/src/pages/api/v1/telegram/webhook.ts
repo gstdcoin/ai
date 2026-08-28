@@ -8,7 +8,7 @@
  * To activate:
  *   1. Set TELEGRAM_BOT_TOKEN in Vercel dashboard (not in any .env file)
  *   2. Register webhook: POST https://api.telegram.org/bot<TOKEN>/setWebhook
- *      { "url": "https://app.gstdtoken.com/api/v1/telegram/webhook" }
+ *      { "url": "https://platform.gstdtoken.com/api/v1/telegram/webhook" }
  *   3. Remove TELEGRAM_BOT_TOKEN from Pi's gstdbot/.env
  *
  * Security: Telegram sends updates over HTTPS. No shared secret needed
@@ -21,7 +21,7 @@ import { kvGet, kvSet, kvIncr } from '../../../../lib/kv';
 import { resolveNodeUrl, callNodeChat } from '../../../../lib/nodes';
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
-const SWARM_URL = process.env.GSTD_SWARM_URL || 'https://app.gstdtoken.com';
+const SWARM_URL = process.env.GSTD_SWARM_URL || 'https://platform.gstdtoken.com';
 
 // ── Telegram API helper ───────────────────────────────────────────────────────
 async function tg(method: string, body: object): Promise<any> {
@@ -154,7 +154,7 @@ async function handleWalletCommand(chatId: number, userId: number): Promise<void
 
 async function handleEarn(chatId: number, userId: number): Promise<void> {
     const wallet = await getWallet(userId);
-    const tmaUrl = 'https://app.gstdtoken.com/tma';
+    const tmaUrl = 'https://platform.gstdtoken.com/tma';
     const step1 = wallet ? `✅ Wallet linked` : `1️⃣ /wallet — link your wallet (0 GSTD needed)`;
 
     await sendMessage(chatId,
@@ -288,7 +288,7 @@ async function processUpdate(update: any): Promise<void> {
         case '/earn': case '🐝 Earn GSTD':
             await handleEarn(chatId, userId); break;
         case '/node': case '📱 Mobile Node': {
-            const tmaUrl = 'https://app.gstdtoken.com/tma';
+            const tmaUrl = 'https://platform.gstdtoken.com/tma';
             await sendMessage(chatId,
                 `📱 <b>GSTD Mobile Node</b>\n\n<b>0 GSTD needed to start.</b>\n\n` +
                 `💰 Bronze 0.5/h · Silver 1.0/h · Gold 2.0/h · Platinum 5.0/h`,

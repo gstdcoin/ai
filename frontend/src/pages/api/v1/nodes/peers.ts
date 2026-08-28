@@ -4,7 +4,7 @@
  * Returns P2P multiaddrs of active nodes.
  * Used by gstdbot as bootstrap peer list for libp2p WAN discovery.
  *
- * gstdbot config: GSTD_BOOTSTRAP_PEERS=$(curl -s https://app.gstdtoken.com/api/v1/nodes/peers | jq -r '.addrs[]' | tr '\n' ',')
+ * gstdbot config: GSTD_BOOTSTRAP_PEERS=$(curl -s https://platform.gstdtoken.com/api/v1/nodes/peers | jq -r '.addrs[]' | tr '\n' ',')
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvKeys, kvMGet } from '../../../../lib/kv';

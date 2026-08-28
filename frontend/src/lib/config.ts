@@ -4,14 +4,14 @@
  */
 
 /** Canonical production API host — Next.js serverless routes on Vercel. */
-export const PRODUCTION_API_ORIGIN = 'https://app.gstdtoken.com';
+export const PRODUCTION_API_ORIGIN = 'https://platform.gstdtoken.com';
 
 /**
  * Base API URL for backend requests
  *
  * Priority:
  * 1. NEXT_PUBLIC_API_URL (set in Vercel env vars)
- * 2. Production: https://app.gstdtoken.com (self — Next.js API routes)
+ * 2. Production: https://platform.gstdtoken.com (self — Next.js API routes)
  * 3. Development: http://localhost:3000
  */
 export const API_BASE_URL = (() => {
@@ -102,7 +102,7 @@ export const DAO_VOTING_ADDRESS = process.env.NEXT_PUBLIC_DAO_VOTING || 'EQBa-hy
 
 /** Public web app origin (Nginx → frontend). Nav links use this off-app. */
 export const APP_PUBLIC_ORIGIN = (
-  process.env.NEXT_PUBLIC_APP_URL || 'https://app.gstdtoken.com'
+  process.env.NEXT_PUBLIC_APP_URL || 'https://platform.gstdtoken.com'
 ).replace(/\/+$/, '');
 
 /** TonAPI-compatible REST base for read-only jetton/TON balances in the browser. */

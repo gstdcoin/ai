@@ -118,7 +118,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             api_key: rawKey,
             warning: 'Store this key securely — it will not be shown again.',
             usage:   `Authorization: Bearer ${rawKey}`,
-            endpoint: 'https://app.gstdtoken.com/api/v1/chat/completions',
+            endpoint: 'https://platform.gstdtoken.com/api/v1/chat/completions',
         });
     }
 

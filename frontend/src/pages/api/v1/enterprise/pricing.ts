@@ -124,7 +124,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
         ],
         onboarding: {
             step_1: 'POST /api/v1/enterprise/keys to create an API key',
-            step_2: 'Use endpoint: https://app.gstdtoken.com/api/v1/chat/completions',
+            step_2: 'Use endpoint: https://platform.gstdtoken.com/api/v1/chat/completions',
             step_3: 'Authorization: Bearer gstd_your_api_key',
             step_4: 'Same format as OpenAI API — drop-in replacement',
             openai_compatible: true,
@@ -134,7 +134,7 @@ import OpenAI from 'openai';
 
 const client = new OpenAI({
   apiKey: 'gstd_your_api_key',
-  baseURL: 'https://app.gstdtoken.com/api/v1',
+  baseURL: 'https://platform.gstdtoken.com/api/v1',
 });
 
 const response = await client.chat.completions.create({

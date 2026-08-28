@@ -82,7 +82,7 @@ export default function HelpPanel() {
               <p className="text-sm sm:text-base text-gray-300 mb-4">{t('api_desc', 'Integrate GSTD into your applications using our REST API')}</p>
               <div className="bg-black/50 rounded-lg p-3 sm:p-4 font-mono text-xs sm:text-sm text-gray-300 overflow-x-auto border border-white/10">
                 <p className="text-green-400"># Create task via API</p>
-                <p className="text-gray-300">curl -X POST https://app.gstdtoken.com/api/v1/tasks/submit \</p>
+                <p className="text-gray-300">curl -X POST https://platform.gstdtoken.com/api/v1/tasks/submit \</p>
                 <p className="text-gray-300">  -H "Content-Type: application/json" \</p>
                 <p className="text-gray-300">  -d &#123;</p>
                 <p className="text-yellow-300">    "type": "AI_INFERENCE",</p>

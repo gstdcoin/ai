@@ -14,7 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const proto  = req.headers['x-forwarded-proto'] || 'https';
-    const host   = req.headers.host || 'app.gstdtoken.com';
+    const host   = req.headers.host || 'platform.gstdtoken.com';
     const origin = process.env.NEXT_PUBLIC_API_URL || `${proto}://${host}`;
 
     const [allNodeKeys, campaignKeys] = await Promise.all([

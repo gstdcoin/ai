@@ -301,11 +301,11 @@ node = GSTDNode(
 node.run()`;
 
   const curlCode = stats?.join_instructions?.curl || `# 1. Poll for available tasks
-curl https://app.gstdtoken.com/api/v1/tasks/poll \\
+curl https://platform.gstdtoken.com/api/v1/tasks/poll \\
   -H "X-Wallet: YOUR_TON_WALLET"
 
 # 2. Submit completed result (earn GSTD)
-curl -X POST https://app.gstdtoken.com/api/v1/tasks/result \\
+curl -X POST https://platform.gstdtoken.com/api/v1/tasks/result \\
   -H "Content-Type: application/json" \\
   -H "X-Wallet: YOUR_TON_WALLET" \\
   -d '{"task_id":"TASK_ID","output":"...result...", "quality_score":0.92}'`;

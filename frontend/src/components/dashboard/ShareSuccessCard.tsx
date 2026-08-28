@@ -117,7 +117,7 @@ export default function ShareSuccessCard() {
             </div>
           </div>
           <div className="text-[10px] text-gray-500 font-bold">
-            Join the Grid • app.gstdtoken.com
+            Join the GSTD Grid
           </div>
         </div>
       </div>

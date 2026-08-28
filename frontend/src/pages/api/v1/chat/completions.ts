@@ -188,7 +188,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (!charge.ok) {
             if (charge.error === 'no_wallet') {
                 return res.status(402).json({
-                    error: 'Payment required. Add X-Wallet-Address header with your TON wallet, or connect wallet at app.gstdtoken.com to get 50 free requests/day.',
+                    error: 'Payment required. Add X-Wallet-Address header with your TON wallet, or connect wallet at platform.gstdtoken.com to get 50 free requests/day.',
                     model: resolvedModel,
                     required_gstd: charge.required ?? 0,
                     deposit_url: '/api/v1/credits/deposit',

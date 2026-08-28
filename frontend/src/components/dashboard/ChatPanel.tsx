@@ -136,7 +136,7 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
   // Viral Sharing: generate share link with model for analytics, record share
   const handleShare = (msg: Message) => {
     const modelId = msg.model || selectedModel;
-    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://app.gstdtoken.com';
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://platform.gstdtoken.com';
     const viralUrl = `${baseUrl}/dashboard?tab=chat&viral=1&model=${encodeURIComponent(modelId)}`;
     const devices = msg.powStats?.swarm_devices ?? 1500;
     const shareTextPostfix = t('chat_share_postfix', '\n\n— This answer was calculated by {{devices}} smartphones in the GSTD network. Join and earn gold! {{url}}').replace('{{devices}}', String(devices)).replace('{{url}}', viralUrl);

@@ -196,7 +196,7 @@ async function* streamNodeClean(messages: ChatMessage[], opts = {}): AsyncGenera
 async function lookupKnowledge(query: string): Promise<string> {
     try {
         const resp = await fetch(
-            `https://app.gstdtoken.com/api/v1/knowledge/resonance?q=${encodeURIComponent(query)}&limit=3`,
+            `https://platform.gstdtoken.com/api/v1/knowledge/resonance?q=${encodeURIComponent(query)}&limit=3`,
             { signal: AbortSignal.timeout(3000) }
         );
         if (!resp.ok) return '';
@@ -253,7 +253,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         const SELF_URL = process.env.VERCEL_URL
             ? `https://${process.env.VERCEL_URL}`
-            : (process.env.NEXT_PUBLIC_APP_URL || 'https://app.gstdtoken.com');
+            : (process.env.NEXT_PUBLIC_APP_URL || 'https://platform.gstdtoken.com');
         try {
             const deductResp = await fetch(`${SELF_URL}/api/v1/chat/deduct`, {
                 method: 'POST',

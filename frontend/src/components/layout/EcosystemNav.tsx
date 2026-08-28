@@ -70,7 +70,7 @@ export default function EcosystemNav() {
     const APP_BASE = APP_PUBLIC_ORIGIN;
     const isOnApp =
         typeof window !== 'undefined' &&
-        (window.location.hostname === 'app.gstdtoken.com' ||
+        (window.location.hostname === 'platform.gstdtoken.com' ||
             window.location.origin.replace(/\/+$/, '') === APP_BASE);
 
     const allItems: NavItem[] = [

@@ -19,7 +19,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         apy_pct:          0,
         min_stake:        0,
         note:             'On-chain staking contract has not been deployed. Earn GSTD by running a node instead.',
-        alternative:      'Run a node and earn GSTD from AI inference: app.gstdtoken.com/nodes',
+        alternative:      'Run a node and earn GSTD from AI inference: platform.gstdtoken.com/api/v1/nodes',
         timestamp:        Date.now(),
     };
 

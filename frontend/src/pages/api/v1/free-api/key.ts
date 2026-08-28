@@ -67,7 +67,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 balance:           balance,
                 required_balance:  REQUIRED_BALANCE,
                 model:             'gstd-free-ultra-speed',
-                endpoint:          'https://app.gstdtoken.com/api/v1/free-api/chat',
+                endpoint:          'https://platform.gstdtoken.com/api/v1/free-api/chat',
                 already_issued:    true,
             });
         }
@@ -91,7 +91,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         balance:           balance,
         required_balance:  REQUIRED_BALANCE,
         model:             'gstd-free-ultra-speed',
-        endpoint:          'https://app.gstdtoken.com/api/v1/free-api/chat',
+        endpoint:          'https://platform.gstdtoken.com/api/v1/free-api/chat',
         already_issued:    false,
     });
 }

@@ -126,7 +126,7 @@ function Dashboard({ initialTab, sourceTelegram, modeMining }: DashboardProps = 
 
   const handleCopyReferral = useCallback(() => {
     if (!address) return;
-    const link = `https://app.gstdtoken.com/?ref=${address.slice(0, 12)}`;
+    const link = `https://platform.gstdtoken.com/?ref=${address.slice(0, 12)}`;
     navigator.clipboard.writeText(link);
     setLinkCopied(true);
     setTimeout(() => setLinkCopied(false), 2000);

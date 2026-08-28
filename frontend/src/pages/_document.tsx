@@ -27,8 +27,8 @@ export default function Document(props: DocumentProps) {
         <meta name="description" content="Decentralized AI platform powered by GSTD token. Run nodes, earn rewards, and access sovereign AI services." />
         <meta property="og:title" content="GSTD — Sovereign AI Network" />
         <meta property="og:description" content="Decentralized AI platform. Run nodes, earn GSTD tokens, bridge cross-chain, and access 163+ AI skills." />
-        <meta property="og:image" content="https://app.gstdtoken.com/og-image.png" />
-        <meta property="og:url" content="https://app.gstdtoken.com" />
+        <meta property="og:image" content="https://platform.gstdtoken.com/og-image.png" />
+        <meta property="og:url" content="https://platform.gstdtoken.com" />
         <meta property="og:type" content="website" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="GSTD — Sovereign AI Network" />

@@ -30,7 +30,7 @@ const getManifestUrl = (): string => {
     }
   }
   // Fallback to default HTTPS URL
-  return process.env.NEXT_PUBLIC_TONCONNECT_MANIFEST_URL || 'https://app.gstdtoken.com/tonconnect-manifest.json';
+  return process.env.NEXT_PUBLIC_TONCONNECT_MANIFEST_URL || 'https://platform.gstdtoken.com/tonconnect-manifest.json';
 };
 
 function App({ Component, pageProps }: AppProps) {
