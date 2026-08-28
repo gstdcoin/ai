@@ -3,8 +3,8 @@
 > **Edge-sovereign AI infrastructure with on-chain rewards.**  
 > Every inference is verifiable. Every node earns GSTD. No cloud dependencies.
 
-[![Live](https://img.shields.io/badge/live-app.gstdtoken.com-00d2ff?style=flat-square)](https://app.gstdtoken.com)
-[![Nodes](https://img.shields.io/badge/nodes-live-green?style=flat-square)](https://app.gstdtoken.com/api/v1/nodes/list)
+[![Live](https://img.shields.io/badge/live-platform.gstdtoken.com-00d2ff?style=flat-square)](https://platform.gstdtoken.com)
+[![Nodes](https://img.shields.io/badge/nodes-live-green?style=flat-square)](https://platform.gstdtoken.com/api/v1/nodes)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 
 ---
@@ -28,21 +28,13 @@ Live demonstration: the GSTD oracle evaluates 30+ crypto trading signals per day
 
 ```bash
 # Active nodes + their capabilities
-curl https://app.gstdtoken.com/api/v1/nodes/list
-
-# Oracle AI decisions (real-time)
-curl https://app.gstdtoken.com/api/v1/oracle/stats
-
-# Proof-of-Intelligence data from the validation sidecar
-curl https://app.gstdtoken.com/api/v1/oracle/poi
+curl https://platform.gstdtoken.com/api/v1/nodes
 
 # Network stats: nodes, tasks, GSTD distributed
-curl https://app.gstdtoken.com/api/v1/network/stats
+curl https://platform.gstdtoken.com/api/v1/network/stats
 
-# Try the oracle yourself (10 free/day)
-curl -X POST https://app.gstdtoken.com/api/v1/oracle/evaluate \
-  -H 'Content-Type: application/json' \
-  -d '{"symbol":"BTCUSDT","side":"LONG","strength":6.2,"btc_trend":"BULLISH","ml_score":0.71}'
+# Health check
+curl https://platform.gstdtoken.com/health
 ```
 
 ---
@@ -86,23 +78,23 @@ Revenue split per task: **85% → node operator · 10% → treasury · 5% → pr
 
 ```
 [User / Trading Bot]
-        │ POST /api/v1/oracle/evaluate
+        │ POST /api/v1/tasks/submit
         ▼
-[Vercel — app.gstdtoken.com]           ← this repo
-  ├── Node registry (Upstash KV)
-  ├── Task queue (per-node priority)
-  ├── Rate limiting + auth
-  └── Records: tasks_completed, gstd_paid
+[Cloudflare Worker — platform.gstdtoken.com]   ← this repo
+  ├── Node registry (Cloudflare KV)
+  ├── Task queue (per-node priority, KV)
+  ├── Auto DNS subdomain for new nodes
+  └── Records: tasks_completed, node stats
         │ routes to best available node
         ▼
-[GSTD Node (gstdbot)]                  ← gstdcoin/gstdbot
+[GSTD Node (gstdbot)]                          ← gstdcoin/gstdbot
   ├── Ollama inference (llama3.2:3b)
   ├── P2P mesh (libp2p)
   ├── GSTD-Validation-Layer sidecar    ← 111+ ExperienceRecords
-  └── Cloudflare tunnel (public URL)
+  └── Cloudflare Named Tunnel → node.gstdtoken.com
         │ on completion
         ▼
-[TON Blockchain]                       ← gstdcoin/contracts
+[TON Blockchain]                               ← gstdcoin/contracts
   └── SettlementMaster v2: 85/10/5 split
 ```
 
@@ -110,44 +102,30 @@ Revenue split per task: **85% → node operator · 10% → treasury · 5% → pr
 
 ## API Reference
 
-### Oracle (DePIN AI evaluation)
-
-```http
-POST /api/v1/oracle/evaluate
-Authorization: Bearer gstd_xxx  # optional — enterprise key
-
-{
-  "symbol": "BTCUSDT",
-  "side": "LONG",
-  "strength": 6.2,
-  "rsi": 54,
-  "btc_trend": "BULLISH",
-  "ml_score": 0.71,
-  "atr_pct": 1.3
-}
-```
-
-Free tier: 10 requests/day per IP. Enterprise: unlimited via API key.
-
 ### Nodes
 
-Nodes primarily find each other directly via a P2P mesh (libp2p). This platform's registry below is a last-resort fallback, not the primary coordination path.
+Nodes primarily find each other directly via a P2P mesh (libp2p). The platform registry below is a last-resort fallback, not the primary coordination path.
 
 | Endpoint | Method | Description |
 |---|---|---|
 | `/api/v1/nodes/register` | POST | Node startup registration |
-| `/api/v1/nodes/heartbeat` | POST | Keepalive (10-min TTL) |
-| `/api/v1/nodes/list` | GET | All active nodes + capabilities |
-| `/api/v1/leaderboard` | GET | Ranked by tasks completed |
+| `/api/v1/nodes/heartbeat` | POST | Keepalive (15-min TTL) |
+| `/api/v1/nodes` | GET | All active nodes + capabilities |
+
+### Tasks
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/v1/tasks/submit` | POST | Submit task to queue |
+| `/api/v1/tasks/poll?node_id=X` | GET | Node polls for assigned task |
+| `/api/v1/tasks/complete` | POST | Node reports task result |
+| `/api/v1/tasks/:id` | GET | Get task status + result |
 
 ### Network
 
 | Endpoint | Method | Description |
 |---|---|---|
-| `/api/v1/network/stats` | GET | Live network metrics |
-| `/api/v1/oracle/stats` | GET | Oracle decision history |
-| `/api/v1/oracle/poi` | GET | Proof-of-Intelligence summary |
-| `/api/v1/settlement/pending` | GET | Pending GSTD rewards (admin) |
+| `/health` | GET | Worker health check |
 
 ---
 
@@ -155,24 +133,25 @@ Nodes primarily find each other directly via a P2P mesh (libp2p). This platform'
 
 | Layer | Technology |
 |---|---|
-| Framework | Next.js (Pages Router), TypeScript |
-| State / DB | Vercel KV (Upstash Redis) |
-| Hosting | Vercel (serverless, free tier) |
+| Platform API | Cloudflare Worker (TypeScript) |
+| State / DB | Cloudflare KV |
+| Hosting | Cloudflare Workers (free tier, always-on) |
 | AI Inference | Ollama via GSTD node network |
 | Blockchain | TON (Tact smart contracts) |
 | Node software | gstdbot (TypeScript, libp2p, ARM64) |
+| Node tunnel | Cloudflare Named Tunnel → node.gstdtoken.com |
 
 ---
 
 ## Local Development
 
 ```bash
-cd frontend
-npm install --legacy-peer-deps
-npm run dev   # → http://localhost:3000
+cd gstd-platform
+npm install
+npx wrangler dev   # → http://localhost:8787
 ```
 
-No KV credentials needed — `src/lib/kv.ts` falls back to in-memory store.
+No KV credentials needed for local dev — wrangler uses in-memory KV.
 
 ---
 
@@ -185,7 +164,7 @@ git clone https://github.com/gstdcoin/gstdbot
 cd gstdbot
 npm install
 cp .env.example .env
-# Set GSTD_WALLET_ADDRESS and GSTD_SWARM_URL
+# Set GSTD_WALLET_ADDRESS and GSTD_SWARM_URL=https://platform.gstdtoken.com
 npm start
 ```
 
@@ -197,7 +176,7 @@ See [gstdcoin/gstdbot](https://github.com/gstdcoin/gstdbot) for full setup guide
 
 | Repo | Description |
 |---|---|
-| **gstdcoin/ai** | **This repo — Platform API + Dashboard** |
+| **gstdcoin/ai** | **This repo — Cloudflare Worker platform API** |
 | [gstdcoin/gstdbot](https://github.com/gstdcoin/gstdbot) | Node OS (TypeScript, ARM64, Ollama) |
 | [gstdcoin/contracts](https://github.com/gstdcoin/contracts) | TON smart contracts (Tact) |
 
