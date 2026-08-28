@@ -1,2 +1,1 @@
-https://eng-consultants-engagement-primary.trycloudflare.com
-https://gstdtoken.com
+https://node.gstdtoken.com
