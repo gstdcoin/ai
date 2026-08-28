@@ -7,13 +7,7 @@ description: Full GSTD ecosystem health check and audit
 **Architecture:** Vercel (serverless) + Upstash Redis. No Docker, no Go backend, no PostgreSQL.
 All API is at `app.gstdtoken.com/api/v1` — `api.gstdtoken.com` does NOT exist.
 
-From repository root — full automated check:
-
-```bash
-./scripts/ecosystem-audit.sh
-```
-
-Skip public URL checks (no internet): `./scripts/ecosystem-audit.sh --local-only`
+Run the checks below manually from repository root.
 
 ## 1. Check API health
 

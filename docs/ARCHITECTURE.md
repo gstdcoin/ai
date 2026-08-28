@@ -137,6 +137,6 @@ If no nodes are available: returns `503` with setup link. No external AI provide
 
 ---
 
-## What the `backend/` folder is
+## What the `backend/` folder was
 
-Legacy Go + PostgreSQL + nginx code from the previous architecture (pre-2026-05). **Not deployed.** Kept for historical reference. The entire production stack is Vercel serverless.
+Legacy Go + PostgreSQL + nginx code from the previous architecture (pre-2026-05). It was never deployed and was removed from the repo on 2026-08-13, along with its coupled `docker-compose*.yml`, `nginx/`, and Docker-only scripts. The entire production stack is Vercel serverless.

@@ -1,14 +1,25 @@
 /**
  * POST /api/v1/treasury/buyback
- * Triggers a GSTD buyback from STON.fi using treasury funds.
- * Protected by TREASURY_SECRET.
- * Actual on-chain execution runs via scripts/settle.ts on Pi.
- * This endpoint records the buyback intent in KV and returns the plan.
+ * Returns a GSTD buyback plan (treasury has enough, at current STON.fi
+ * price, etc) for review. Protected by TREASURY_SECRET.
  *
- * Body: { dry_run?: boolean }
+ * dry_run:false previously deducted treasury:balance immediately and
+ * recorded the plan as an executed buyback, on the claim that
+ * "scripts/settle.ts on Pi" performs the real STON.fi swap -- it never
+ * did (grep the whole repo: buyback.ts is the only file mentioning
+ * buyback). Every live call silently destroyed real treasury GSTD from
+ * the accounting with no swap, no XAUt/GSTD ever actually bought, and
+ * no way to notice short of manually reconciling the balance. Until a
+ * real, verified STON.fi swap exists (needs the same pTON-wrapping
+ * research documented for TreasuryGold), this only ever returns a plan
+ * and never touches the balance -- do not resurrect the old deduct-now
+ * behavior without wiring it to an execution step that actually runs.
+ *
+ * Body: { dry_run?: boolean } -- dry_run is accepted for API compatibility
+ * but has no effect; nothing is ever executed or recorded as executed.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvGet, kvSet, kvIncrByFloat } from '../../../../lib/kv';
+import { kvGet } from '../../../../lib/kv';
 
 const BUYBACK_MIN_GSTD   = 100;  // Only buyback when treasury has at least 100 GSTD
 const BUYBACK_PERCENT    = 0.5;  // Use 50% of treasury for each buyback cycle
@@ -31,8 +42,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const secret = process.env.TREASURY_SECRET || '';
     const auth   = req.headers['x-treasury-secret'] || req.headers['authorization']?.replace('Bearer ', '');
     if (!secret || auth !== secret) return res.status(401).json({ error: 'Unauthorized' });
-
-    const dryRun = req.body?.dry_run !== false;
 
     const treasuryRaw = await kvGet('treasury:balance');
     const treasuryBalance = parseFloat(treasuryRaw || '0');
@@ -58,22 +67,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         gstd_price_usd:        gstdPrice,
         remaining_treasury:    treasuryBalance - buybackGstd,
         via:                   'ston.fi',
-        dry_run:               dryRun,
+        executed:              false, // see file header -- no execution path exists yet
         timestamp:             new Date().toISOString(),
     };
-
-    if (!dryRun) {
-        // Record buyback intent — actual execution via scripts/settle.ts on Pi
-        await kvSet(
-            `buyback:${Date.now()}`,
-            JSON.stringify(plan),
-            86400 * 90,
-        );
-        // Deduct from treasury balance
-        await kvIncrByFloat('treasury:balance', -buybackGstd);
-        // Accumulate locked amount (proof of backing)
-        await kvIncrByFloat('treasury:total_bought_back', buybackGstd);
-    }
 
     return res.status(200).json({ ok: true, plan });
 }

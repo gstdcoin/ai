@@ -11,10 +11,11 @@
  *   Platinum: RAM 16GB+ or bandwidth 50Mbps+                 — 5.0 GSTD/h
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvGet, kvSet, kvIncr } from '../../../../../lib/kv';
-import { createHmac } from 'crypto';
+import { kvGet, kvSet, kvIncr, kvKeys } from '../../../../../lib/kv';
+import { validateTelegramInitData } from '../../../../../lib/telegramAuth';
 
 const MOBILE_NODE_TTL = 360; // 6 minutes (heartbeat every 5 min)
+const MAX_SESSIONS_PER_USER = 3; // caps the "spin up many fake device_ids" farming vector
 
 const TIER_RATES: Record<string, number> = {
     bronze: 0.5,
@@ -23,38 +24,22 @@ const TIER_RATES: Record<string, number> = {
     platinum: 5.0,
 };
 
+// Realistic phone/tablet upper bounds — clamp rather than reject so genuine
+// high-end devices aren't blocked, but claimed specs can no longer be
+// inflated arbitrarily to farm the Platinum rate for free.
+function clampDeviceSpecs(cpu_cores: number, ram_gb: number, bandwidth_mbps: number) {
+    return {
+        cpu_cores: Math.max(1, Math.min(12, Number(cpu_cores) || 1)),
+        ram_gb: Math.max(0.5, Math.min(16, Number(ram_gb) || 1)),
+        bandwidth_mbps: Math.max(0, Math.min(100, Number(bandwidth_mbps) || 0)),
+    };
+}
+
 function determineTier(cpu_cores: number, ram_gb: number, bandwidth_mbps: number): string {
     if (ram_gb >= 16 || bandwidth_mbps >= 50) return 'platinum';
     if (cpu_cores >= 8 || ram_gb >= 8 || bandwidth_mbps >= 10) return 'gold';
     if (cpu_cores >= 4 || ram_gb >= 3) return 'silver';
     return 'bronze';
-}
-
-function validateTelegramInitData(initData: string): string | null {
-    if (!initData) return null;
-    const botToken = process.env.TELEGRAM_BOT_TOKEN || '';
-    try {
-        const params = new URLSearchParams(initData);
-        const hash = params.get('hash');
-        if (!hash) return null;
-
-        if (botToken) {
-            // Real HMAC-SHA256 validation per Telegram WebApp spec
-            params.delete('hash');
-            const checkString = [...params.entries()]
-                .sort(([a], [b]) => a.localeCompare(b))
-                .map(([k, v]) => `${k}=${v}`)
-                .join('\n');
-            const secretKey = createHmac('sha256', 'WebAppData').update(botToken).digest();
-            const expected  = createHmac('sha256', secretKey).update(checkString).digest('hex');
-            if (expected !== hash) return null;
-        }
-
-        const userStr = params.get('user');
-        if (!userStr) return null;
-        const user = JSON.parse(decodeURIComponent(userStr));
-        return String(user.id || '');
-    } catch { return null; }
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -91,7 +76,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const existingRaw = await kvGet(sessionKey);
     const existing = existingRaw ? JSON.parse(existingRaw) : null;
 
-    const tier = determineTier(Number(cpu_cores), Number(ram_gb), Number(bandwidth_mbps));
+    // Cap concurrent sessions per Telegram user — without this, one user could
+    // spin up unlimited device_ids to farm rewards many times over.
+    if (!existing) {
+        const userSessions = await kvKeys(`mobile_node:${tg_user_id}:`);
+        if (userSessions.length >= MAX_SESSIONS_PER_USER) {
+            return res.status(429).json({
+                error: 'too_many_sessions',
+                message: `Max ${MAX_SESSIONS_PER_USER} active mobile node sessions per account.`,
+            });
+        }
+    }
+
+    const clamped = clampDeviceSpecs(cpu_cores, ram_gb, bandwidth_mbps);
+    const tier = determineTier(clamped.cpu_cores, clamped.ram_gb, clamped.bandwidth_mbps);
     const rate = TIER_RATES[tier];
 
     // Calculate earnings since last heartbeat

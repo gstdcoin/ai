@@ -140,7 +140,11 @@ export function useMultiChainWallet() {
   // MetaMask SDK: also detects Trust Wallet via EIP-6963
   const connectEthereum = useCallback(async () => {
     try {
-      const accounts = await metamask.sdk?.connect();
+      // MetaMask SDK's own type declarations return `Maybe<unknown>` here
+      // (a version-to-version type-precision quirk, not something this repo
+      // controls) — the real runtime value is documented and always an
+      // array of connected account addresses.
+      const accounts = await metamask.sdk?.connect() as string[] | undefined;
       if (!accounts || accounts.length === 0) {
         console.warn('[Bridge] MetaMask: no accounts returned');
       }

@@ -68,14 +68,14 @@ All components are computed from **public Binance OHLCV data** — fully auditab
 
 ## On-Chain Settlement
 
-GSTD rewards are settled on the **TON blockchain** via audited smart contracts:
+GSTD rewards are settled on the **TON blockchain**. These contracts have **not** had an external security audit — see gstdcoin/contracts' P2P_SETTLEMENT_RFC.md for why that matters for the newer settlement path specifically:
 
 | Contract | Address | Purpose |
 |---|---|---|
 | GSTD Jetton | `EQDv6cY...skTO` | 1B supply, mint locked |
-| SettlementMaster | `EQAhuR_...ZrSS` | 85/10/5 split to worker/treasury/protocol |
-| AgentRegistry | `EQBfrc8...NLR9` | On-chain node identity + reputation |
-| DAOVoting | `EQBQXvF...ck-z` | Token-weighted governance |
+| SettlementMaster v2 | `EQCi-Qja...gZQezhE` | 85/10/5 split; adds quorum-attested P2P settlement (2026-08-13) |
+| AgentRegistry | `EQDtWcGC...NFwCtsDoT` | On-chain node identity + reputation |
+| DAOVoting | `EQBa-hyO...4Jzls5` | Token-weighted governance |
 | EcosystemTreasury | `EQAbtTC...Ii_` | TON vault for protocol buybacks |
 
 Revenue split per task: **85% → node operator · 10% → treasury · 5% → protocol**
@@ -103,7 +103,7 @@ Revenue split per task: **85% → node operator · 10% → treasury · 5% → pr
         │ on completion
         ▼
 [TON Blockchain]                       ← gstdcoin/contracts
-  └── SettlementMaster: 85/10/5 split
+  └── SettlementMaster v2: 85/10/5 split
 ```
 
 ---

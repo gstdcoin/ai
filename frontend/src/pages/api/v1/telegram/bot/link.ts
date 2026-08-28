@@ -9,6 +9,7 @@
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvSet, kvIncr, kvIncrByFloat } from '../../../../../lib/kv';
+import { isValidBotToken } from '../../../../../lib/botAuth';
 
 const TON_ADDRESS_RE = /^(EQ[A-Za-z0-9_-]{46}|UQ[A-Za-z0-9_-]{46}|0:[a-fA-F0-9]{64})$/;
 const WELCOME_BONUS    = 0.5;
@@ -17,6 +18,10 @@ const INVITEE_BONUS    = 0.2;  // extra for the new user (on top of welcome bonu
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+    // Without this, anyone could re-point an arbitrary telegram_id's wallet
+    // mapping (hijacking future payouts) or farm welcome/referral bonuses
+    // with fabricated telegram_ids that were never real Telegram accounts.
+    if (!isValidBotToken(req)) return res.status(401).json({ error: 'Invalid bot token' });
 
     const { telegram_id, wallet_address, username, first_name, referrer_id } = req.body as {
         telegram_id?:  string | number;

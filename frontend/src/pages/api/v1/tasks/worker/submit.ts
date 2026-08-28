@@ -16,7 +16,7 @@
  * also forwards the gradient to update the training job.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvGet, kvSet, kvIncr } from '../../../../../lib/kv';
+import { kvGet, kvSet, kvIncr, kvDel } from '../../../../../lib/kv';
 import { accrueReward, BASE_TASK_FEE } from '../../../../../lib/rewards';
 import type { NodeRecord } from '../../nodes/register';
 import type { TrainingJob, GradientRecord } from '../../training/jobs';
@@ -24,6 +24,7 @@ import type { TrainingJob, GradientRecord } from '../../training/jobs';
 const NODE_TTL    = 600;
 const JOB_TTL     = 7 * 24 * 3600;
 const MIN_MC_SCORE = 0.3;
+const MAX_REWARD  = 50; // matches tasks/complete.ts -- caps arbitrary inflation
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') {
@@ -35,31 +36,52 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const taskId:  string = body.task_id  || '';
         const nodeId:  string = body.node_id  || (req.headers['x-node-id'] as string) || '';
         const result:  any    = body.result   || {};
-        const rewardGstd = Number(body.reward_gstd) || 0;
+        const rewardGstd = Math.min(MAX_REWARD, Math.max(0, Number(body.reward_gstd) || 0));
 
         if (!taskId || !nodeId) {
             return res.status(400).json({ error: 'task_id and node_id required' });
         }
 
-        // Verify node ownership
+        // Verify node ownership. If the node has a wallet on file, the caller
+        // must present a matching X-Wallet-Address -- omitting the header no
+        // longer bypasses the check (previously `nodeRaw && headerWallet`
+        // skipped verification entirely when the header was absent).
         const headerWallet = ((req.headers['x-wallet-address'] as string) || '').trim().toLowerCase();
-        const nodeRaw = await kvGet(`node:${nodeId}`);
-        if (nodeRaw && headerWallet) {
+        const [nodeRaw, assignedRaw] = await Promise.all([
+            kvGet(`node:${nodeId}`),
+            kvGet(`task_assigned:${taskId}`),
+        ]);
+        if (nodeRaw) {
             const storedWallet = (JSON.parse(nodeRaw).wallet_address || '').toLowerCase();
             if (storedWallet && storedWallet !== headerWallet) {
                 return res.status(403).json({ error: 'Wallet mismatch' });
             }
         }
+
+        // Only credit a reward for a task_id this node was actually handed by
+        // tasks/worker/pending.ts -- otherwise a fabricated task_id could mint
+        // GSTD with no proof of work (same fix already applied to
+        // tasks/complete.ts / tasks/poll.ts). Consume the assignment so it
+        // can't be reused.
+        let assignmentValid = false;
+        if (assignedRaw) {
+            try {
+                const assignment = JSON.parse(assignedRaw as string) as { node_id: string };
+                assignmentValid = assignment.node_id === nodeId;
+            } catch { /* malformed, treat as invalid */ }
+            if (assignmentValid) await kvDel(`task_assigned:${taskId}`).catch(() => {});
+        }
+
         const nodeWrites: Promise<any>[] = [];
 
         if (nodeRaw) {
             const record: NodeRecord = JSON.parse(nodeRaw);
             record.tasks_completed = (record.tasks_completed || 0) + 1;
-            record.gstd_earned     = Math.round(((record.gstd_earned || 0) + rewardGstd) * 1e6) / 1e6;
+            record.gstd_earned     = Math.round(((record.gstd_earned || 0) + (assignmentValid ? rewardGstd : 0)) * 1e6) / 1e6;
             record.last_seen       = new Date().toISOString();
             nodeWrites.push(kvSet(`node:${nodeId}`, JSON.stringify(record), NODE_TTL));
 
-            if (record.wallet_address) {
+            if (record.wallet_address && assignmentValid) {
                 nodeWrites.push(
                     accrueReward(nodeId, record.wallet_address, rewardGstd || BASE_TASK_FEE, taskId)
                         .catch(() => {})
@@ -123,7 +145,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(200).json({
             ok:               true,
             task_id:          taskId,
-            reward_gstd:      rewardGstd,
+            reward_gstd:      assignmentValid ? rewardGstd : 0,
             gradient_accepted: gradientAccepted,
             job_status:       jobStatus || undefined,
         });

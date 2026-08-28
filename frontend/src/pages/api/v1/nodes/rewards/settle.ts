@@ -6,9 +6,13 @@
  *
  * Auth: TREASURY_SECRET header (set in Vercel env vars).
  *
- * In dry_run mode (default): returns the settlement plan without clearing balances.
- * In execute mode: marks balances as settled (actual TON transfer is done off-chain
- * via a separate script that reads this response and calls the TON Jetton contract).
+ * Always returns a plan without clearing any balances -- the actual TON
+ * transfer is done off-chain by scripts/settle.ts, which then calls
+ * /nodes/rewards/confirm-settlement with only the wallets that actually
+ * received their transfer. Clearing here unconditionally (the old
+ * behavior) meant a balance was zeroed before any transfer was attempted,
+ * so a failed or interrupted transfer silently lost the reward with no
+ * rollback.
  *
  * Request body:
  *   { dry_run?: boolean; min_amount?: number }
@@ -23,7 +27,7 @@
  *   }
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { computeSettlement, getTreasuryBalance, clearSettledRewards } from '../../../../../lib/rewards';
+import { computeSettlement, getTreasuryBalance } from '../../../../../lib/rewards';
 
 function currentEpoch(): string {
     const now  = new Date();
@@ -43,7 +47,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     try {
-        const dryRun    = req.body?.dry_run !== false;  // default: dry_run = true
         const minAmount = Number(req.body?.min_amount) || 0.01;
         const epoch     = currentEpoch();
 
@@ -54,10 +57,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         const total = entries.reduce((sum, e) => sum + e.amount, 0);
 
-        if (!dryRun && entries.length > 0) {
-            await clearSettledRewards(entries.map((e) => e.wallet), epoch);
-        }
-
         return res.status(200).json({
             epoch,
             entries: entries.map((e) => ({
@@ -67,8 +66,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             })),
             treasury:    Math.round(treasury * 1e6) / 1e6,
             total:       Math.round(total * 1e6) / 1e6,
-            dry_run:     dryRun,
-            settled_at:  dryRun ? null : new Date().toISOString(),
         });
     } catch (err: any) {
         console.error('[nodes/rewards/settle]', err.message);

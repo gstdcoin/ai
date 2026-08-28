@@ -7,7 +7,10 @@ import { Address, TonClient } from '@ton/ton';
 import { beginCell } from '@ton/core';
 
 const GSTD_JETTON    = 'EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO';
-const SM_ADDRESS     = 'EQAhuR_cEaIkRqs4gvgXSD-Qw2FRUkkBUZQkTBrFT5n-ZrSS';
+// SettlementMaster v2 (deployed 2026-08-13, supports quorum-attested
+// settlement). v1 (EQAhuR_cEaIkRqs4gvgXSD-Qw2FRUkkBUZQkTBrFT5n-ZrSS) is
+// abandoned in place.
+const SM_ADDRESS     = 'EQCi-QjafvcYE7wgl9Dc5jAFJrmiy_oGfcobzORb2gZQezhE';
 const TON_API_KEY    = process.env.TON_API_KEY || '';
 
 async function main() {

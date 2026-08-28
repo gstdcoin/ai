@@ -11,7 +11,7 @@
     "prepare": "echo 'skipping husky in CI'"
   },
   "dependencies": {
-    "@metamask/sdk-react": "^0.33.1",
+    "@metamask/sdk-react": "^0.14.1",
     "@solana/connector": "^0.2.4",
     "@solana/wallet-adapter-base": "^0.9.27",
     "@solana/wallet-adapter-phantom": "^0.9.29",
@@ -54,7 +54,7 @@
     "react-markdown": "^10.1.0",
     "recharts": "^3.6.0",
     "remark-gfm": "^4.0.1",
-    "sharp": "^0.32.6",
+    "sharp": "^0.35.3",
     "sonner": "^2.0.7",
     "xumm": "^1.0.0",
     "zod": "^4.3.5",

@@ -3,7 +3,7 @@
 > **Keep this file up to date.** Every time you ship a significant change, update the relevant section.  
 > This prevents "we already did that" and "why did we do it that way" conversations.
 
-Last updated: 2026-07-19
+Last updated: 2026-08-16
 
 ---
 
@@ -11,14 +11,15 @@ Last updated: 2026-07-19
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| app.gstdtoken.com | ✅ Live | Vercel, auto-deploys on push to main |
-| gstdtoken.com | ✅ Live | Vercel, landing page |
-| Upstash Redis (KV) | ✅ Connected | Vercel KV store |
-| TON Contracts | ✅ Deployed | GSTDJetton, SettlementMaster, AgentRegistry live on mainnet (verified on-chain 2026-07-18); GSTDJetton admin renounced (`addr_none`), SettlementMaster owner is a separate admin wallet |
+| app.gstdtoken.com | ❌ DOWN since 2026-08-13 21:01 UTC | Vercel blocked the whole team: "exceeded our fair use limits" (http://vercel.link/fair-use), returns HTTP 402 DEPLOYMENT_DISABLED on every route. Not a code bug — needs a human to resolve in the Vercel dashboard (team `aidos-projects-1732011b`, project `prj_j2gQqRULHdMowbDHZt7wSqs2z3Bf`). Breaks node register/heartbeat, task poll/complete, settlement relay, and the Telegram bot (all call this host). |
+| gstdtoken.com | ✅ Live | Cloudflare Workers, landing page — unaffected by the Vercel outage above |
+| Upstash Redis (KV) | ✅ Connected | Vercel KV store (unreachable while the outage above lasts, since it's only ever accessed via app.gstdtoken.com's API routes) |
+| TON Contracts | ✅ Deployed | GSTDJetton, SettlementMaster v2, AgentRegistry, DAOVoting, EcosystemTreasury, Escrow live on mainnet (re-verified on-chain 2026-08-13); GSTDJetton admin renounced (`addr_none`); SettlementMaster v2 adds quorum-attested P2P settlement, not externally audited. SettlementMaster/EcosystemTreasury owner deliberately NOT transferred to DAOVoting — see governance quorum bug below. |
+| DAOVoting governance | ⚠️ Live but unusable as designed | `Proposal.quorumStake` is set from `minProposalStake` (a GSTD-denominated constant, 10,000 GSTD = `1e13`) but votes are counted in raw attached TON (`CastVote`'s weight = `context().value`), not GSTD — see `DAOVoting.tact:243,284`. Since both use 9-decimal nano units, the code compares a TON-vote-sum against a threshold meant for GSTD, i.e. ~10,000 TON of real voter stake is needed to ever reach quorum. No proposal can realistically pass. Do not transfer SettlementMaster/EcosystemTreasury ownership to this contract until a v2 fixes the quorum math — doing so now would permanently brick protocol admin actions (pause, key rotation, parameter changes) with no way to ever govern your way out. |
 | gstd-a2a (PyPI) | ✅ Published | `pip install gstd-a2a` — v2.1.0, first publish 2026-07-19 |
 | Bridge validators | ❌ Deferred, not deployed | No MPC key shares generated, no Solana/XRPL vault wallets exist, CI red since 2026-05-26. Not just "needs operators" — needs to actually be built out first. See gstd-bridge/README.md status banner. |
-| Docker node image | ✅ Published | `goldenbit/gstd-node:latest` |
-| Known vulnerabilities | ✅ Remediated 2026-07-19 | npm (frontend/web), Go (backend), Cargo (bridge, partial) — see Decision Log |
+| Docker node image | ⚠️ Stale until next push | `ghcr.io/gstdcoin/gstd-node` — CI publish job existed but had `if: github.repository == 'gstdcoin/gstd-node'` (repo is actually `gstdcoin/gstdbot`), so it silently never ran; fixed 2026-08-13. `goldenbit/gstd-node:latest` on Docker Hub is a one-off manual push from 2026-03, not kept current — don't treat it as the maintained image. |
+| Known vulnerabilities | ✅ Remediated 2026-07-19 | npm (frontend/web), Cargo (bridge, partial) — see Decision Log |
 
 ---
 
@@ -58,13 +59,45 @@ Last updated: 2026-07-19
 - No Go backend. No Docker in production. Vercel + Upstash Redis only.
 - `proxy.ts` is the Next.js 16 name for what was `middleware.ts` in Next.js 13-15
 - Dead pages `monitor/` and `predictions/` were removed — no API backend for them
-- `backend/` folder in repo root is legacy Go code, not deployed
+- Legacy Go `backend/` folder (never deployed) removed 2026-08-13, along with its coupled `docker-compose*.yml`, `nginx/`, and Docker-only scripts — do not recreate it; Vercel + Upstash Redis remains the only production runtime
+
+### Security audit note (2026-08-17) — node registration has no wallet-ownership proof
+Traced the full mechanism behind the standing "reward-fraud risk" concern rather than
+leaving it vague:
+- `POST /api/v1/nodes/register` accepts any `wallet_address` with zero signature/proof
+  of ownership. The only check (`nodes/register.ts`) is that *re*-registering an
+  *existing* `node_id` must match the wallet already on file — a brand-new `node_id`
+  can claim any wallet address on first registration, no proof required.
+- `POST /api/v1/nodes/claim-rewards` takes `{ wallet }` from the request body with no
+  auth at all and moves `rewards:pending:{wallet}` into that wallet's spendable GSTD
+  credit balance. This doesn't let an attacker redirect funds to a *different* wallet
+  (the balance stays keyed to the target wallet), but it is an unauthenticated action
+  on someone else's account state.
+- `POST /api/v1/tasks/complete` (`tasks/complete.ts`) is better than it looks at first
+  read: it requires a real `task_assigned:{task_id}` record created by `tasks/poll.ts`
+  and consumes it (no replay), and enforces the wallet-header match. But there is no
+  check on the *quality* of `result` — a self-registered node can poll for a real,
+  paying-user task and "complete" it with garbage, and still collect the reward as
+  long as the assignment record is genuine.
+- Net effect: the cheapest real attack isn't wallet hijacking (accrual stays keyed to
+  the wallet on the node record, not stealable to a different address) -- it's Sybil
+  farming: one wallet, many free self-registered `node_id`s, each polling for and
+  fake-completing real tasks, multiplying reward accrual with no extra hardware.
+- **Mitigated 2026-08-17** (does not close the gap, only bounds its cheapest form):
+  `nodes/register.ts` now caps new `node_id` registrations at 10 per wallet
+  (`wallet_node_count:{wallet}` in KV). Real fixes would need either (a) TonConnect
+  signature-proof at registration (prove the caller controls the wallet's private
+  key, standard "sign this challenge" pattern) or (b) redundant/quorum verification
+  of task results before paying out, the same principle SettlementMaster's on-chain
+  `SettleTaskWithProof` already uses for on-chain settlement -- this platform-level KV
+  credit system has no equivalent. Neither implemented here: both are security-critical
+  changes to a live payout path that need real review, not a rushed pass.
 
 ---
 
 ## gstdcoin/gstdbot — Node OS
 
-**Docker:** `goldenbit/gstd-node:latest` | **Multi-arch:** amd64 + arm64
+**Docker:** `ghcr.io/gstdcoin/gstd-node:latest` (CI publish job fixed 2026-08-13 — see System Health above) | **Multi-arch:** amd64 + arm64
 
 ### What's working
 - [x] Node registration on startup
@@ -85,9 +118,19 @@ Last updated: 2026-07-19
       weights — proof gradient descent actually ran, since LoRA B matrices
       are zero-initialized by convention). See
       `gstdbot/docs/superpowers/plans/2026-07-19-real-finetuning.md`.
+- [x] Real, non-stub P2P peer discovery: `src/p2p/peers.ts` is a genuine
+      decentralized plain-HTTP gossip implementation (disk-persisted peer
+      table, TTL, latency-based scoring, capability-match routing, gossip
+      propagation), bootstrapping from `GSTD_SEED_PEERS` + a GitHub-raw seed
+      list -- not app.gstdtoken.com. Corrected 2026-08-16: this file used to
+      say "P2P stub ... needs real peer discovery implementation" here, which
+      was wrong by the time it was checked (verified by reading the file in
+      full, then by actually running a node live and watching it gossip with
+      a real peer). Separate from this: `src/p2p/node.ts`'s libp2p mesh (used
+      for quorum-attested settlement) is a second, disconnected P2P system --
+      that redundancy is real and still unaddressed.
 
 ### Pending
-- [x] ~~P2P stub in `src/p2p/peers.ts` — needs real peer discovery implementation~~ — shipped: nodes now discover and connect to each other directly via libp2p (Kademlia DHT + mDNS); the platform's central registry (`/api/v1/nodes/*`) is a last-resort fallback, not primary
 - [ ] Structured logging (currently console.log only)
 - [ ] Only `qwen2.5:0.5b` is wired into the platform's job-submission API so far
       (the only size this one CPU-only node can serve); larger Qwen2.5 sizes
@@ -163,7 +206,7 @@ Treat as design docs, not a working system, until the Pending items are done.
 - [x] CI: syntax validation on push
 
 ### Pending
-- [ ] DAOVoting deploy status not independently re-verified this pass
+- [ ] `DAOVoting.tact` governance quorum is unreachable in practice (GSTD-denominated threshold compared against TON-denominated votes) — see System Health above. Needs a v2 redesign before any contract ownership is handed to it; not started, deliberately deferred rather than rushed.
 - [ ] `bridge/ton/GstdBridge.tact` — bridge is deferred (see gstd-bridge section), no build output needed yet
 - [ ] `contracts/deployer.json` mnemonic was leaked in git history — rotated to a new (currently unfunded) wallet 2026-07-18, purged from history + force-pushed. Fund the new deployer wallet before the next contract deploy.
 
@@ -172,12 +215,24 @@ Treat as design docs, not a working system, until the Pending items are done.
 ## gstdcoin/web — Landing Page (gstdtoken.com)
 
 ### What's working
-- [x] Static Next.js site
+- [x] Static Next.js site (Cloudflare Workers, independent of app.gstdtoken.com's Vercel outage)
 - [x] CI: TypeScript check + build
+- [x] Real network stats widget: `LiveNetworkStatus.tsx` calls
+      `/api/v1/stats/public` and is honest about failure -- shows an amber
+      "API temporarily unreachable" banner and `—` instead of a fake `0` when
+      the platform is down, never fabricates numbers. Corrected 2026-08-16:
+      this was already built by the time it was checked, this file was stale.
+- [x] Live chat that bypasses app.gstdtoken.com entirely (`/api/chat`,
+      `/ai` page): tries real network nodes first via the same GitHub-raw
+      seed list gstdbot's own peers.ts bootstraps from, falls back to
+      Cloudflare Workers AI (same account, no new vendor) only if every node
+      is unreachable, with real token streaming end-to-end. Also implements
+      the network's own peer protocol (`/v1/ollama/completions`,
+      `/api/peers/heartbeat`) so it's a real, always-on bootstrap peer, not
+      just a proxy -- added to `gstd-seed-peers.txt`. Added 2026-08-16.
 
 ### Pending
 - [ ] Update contract addresses section once deployed
-- [ ] Add real network stats widget (calls `/api/v1/stats/public`)
 
 ---
 

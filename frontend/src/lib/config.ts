@@ -70,9 +70,13 @@ export const ADMIN_WALLET_ADDRESS = process.env.NEXT_PUBLIC_ADMIN_WALLET || 'UQC
 export const ESCROW_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_ESCROW_CONTRACT || 'EQDqdyFsruwXzlScIVM0c7LKbBb4EOgwLeFO4bpNnuwc7rTF';
 
 /**
- * SettlementMaster Contract Address (Phase 1 mainnet, deployed 2026-07-08)
+ * SettlementMaster v2 Contract Address (mainnet, deployed 2026-08-13).
+ * Adds quorum-attested P2P settlement (SettleTaskWithProof/SettleBatch) on
+ * top of the original SettleTask path. The v1 address
+ * (EQAhuR_cEaIkRqs4gvgXSD-Qw2FRUkkBUZQkTBrFT5n-ZrSS) is abandoned in place —
+ * it held no GSTD and ~0.1 TON at migration time, nothing to move.
  */
-export const SETTLEMENT_MASTER_ADDRESS = process.env.NEXT_PUBLIC_SETTLEMENT_MASTER || 'EQAhuR_cEaIkRqs4gvgXSD-Qw2FRUkkBUZQkTBrFT5n-ZrSS';
+export const SETTLEMENT_MASTER_ADDRESS = process.env.NEXT_PUBLIC_SETTLEMENT_MASTER || 'EQCi-QjafvcYE7wgl9Dc5jAFJrmiy_oGfcobzORb2gZQezhE';
 
 /**
  * EcosystemTreasury — TON vault for platform buybacks (Phase 1 mainnet, deployed 2026-07-08)
@@ -80,14 +84,21 @@ export const SETTLEMENT_MASTER_ADDRESS = process.env.NEXT_PUBLIC_SETTLEMENT_MAST
 export const TON_VAULT_ADDRESS = process.env.NEXT_PUBLIC_TON_VAULT || 'EQAbtTCsty8-gpX-45eotGWxnYG1c7ew7NFsZ9LJBRiv_Ii_';
 
 /**
- * Agent Registry Contract Address
+ * Agent Registry Contract Address. This constant previously pointed at
+ * EQBfrc8qzoJ39-9ldQyC2Wif4HXbYHXKARvCUlY0IbwqNLR9 — a genuinely live
+ * contract, but a stale/superseded deployment (unused anywhere in this
+ * codebase, only this display constant). Corrected to match the address
+ * gstdcoin/contracts' own README and deployment-mainnet.json treat as
+ * canonical (verified on-chain 2026-08-13).
  */
-export const AGENT_REGISTRY_ADDRESS = process.env.NEXT_PUBLIC_AGENT_REGISTRY || 'EQBfrc8qzoJ39-9ldQyC2Wif4HXbYHXKARvCUlY0IbwqNLR9';
+export const AGENT_REGISTRY_ADDRESS = process.env.NEXT_PUBLIC_AGENT_REGISTRY || 'EQDtWcGCQXLFdh7TmkL5QFbFNYXxL9mjOk4ehmsNFwCtsDoT';
 
 /**
- * DAO Voting Contract Address (Phase 2 mainnet, deployed 2026-07-08)
+ * DAO Voting Contract Address. Same correction as AGENT_REGISTRY_ADDRESS
+ * above — was pointing at a stale/superseded (but also genuinely live)
+ * deployment, EQBQXvFtHbQnuUuLgkF-TKYw5dgo__XCEzVfBIm_OfW2ck-z.
  */
-export const DAO_VOTING_ADDRESS = process.env.NEXT_PUBLIC_DAO_VOTING || 'EQBQXvFtHbQnuUuLgkF-TKYw5dgo__XCEzVfBIm_OfW2ck-z';
+export const DAO_VOTING_ADDRESS = process.env.NEXT_PUBLIC_DAO_VOTING || 'EQBa-hyO3JkcRJNyYKKOqBjsQ6KAS-dAHj6rf8KOuH4Jzls5';
 
 /** Public web app origin (Nginx → frontend). Nav links use this off-app. */
 export const APP_PUBLIC_ORIGIN = (

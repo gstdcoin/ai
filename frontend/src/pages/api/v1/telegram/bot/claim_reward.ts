@@ -8,12 +8,17 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvSet } from '../../../../../lib/kv';
 import { kvIncrByFloat } from '../../../../../lib/kv';
+import { isValidBotToken } from '../../../../../lib/botAuth';
 
 const DEV_FUND_PCT       = 0.10;  // 10% → development fund
 const SOVEREIGN_POOL_PCT = 0.05;  // 5% → sovereign AI pool
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+    // Without this, anyone could force-claim on another user's behalf,
+    // involuntarily converting their pending rewards through the 10%+5%
+    // fee deduction before they chose to.
+    if (!isValidBotToken(req)) return res.status(401).json({ error: 'Invalid bot token' });
 
     const { telegram_id } = req.body as { telegram_id?: string | number };
     if (!telegram_id) return res.status(400).json({ error: 'telegram_id required' });

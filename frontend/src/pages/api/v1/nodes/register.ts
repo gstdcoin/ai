@@ -88,6 +88,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.status(403).json({ error: 'Node already registered with a different wallet' });
         }
 
+        // Cap new node_ids per wallet. Registration has no proof of wallet
+        // ownership (no signature -- see STATUS.md's security audit note), so a single
+        // actor can spin up unlimited free node_ids under one wallet, each
+        // polling for and "completing" real tasks with no result-quality
+        // check, multiplying reward accrual with no extra hardware or cost.
+        // This doesn't close that gap, only bounds its cheapest form.
+        const MAX_NODES_PER_WALLET = 10;
+        if (isNewNode && incomingWallet) {
+            const walletNodeCountKey = `wallet_node_count:${incomingWallet.toLowerCase()}`;
+            const currentCount = parseInt((await kvGet(walletNodeCountKey)) || '0', 10);
+            if (currentCount >= MAX_NODES_PER_WALLET) {
+                return res.status(429).json({
+                    error: 'too_many_nodes',
+                    message: `Max ${MAX_NODES_PER_WALLET} node_ids per wallet. Contact support if you have a legitimate need for more.`,
+                });
+            }
+            await kvIncr(walletNodeCountKey).catch(() => {});
+        }
+
         const record: NodeRecord & { node_url?: string } = {
             node_id:         nodeId,
             name:            body.name || specs.node_name || nodeId,
