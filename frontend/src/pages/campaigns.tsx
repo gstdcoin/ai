@@ -106,7 +106,7 @@ export default function CampaignsPage() {
             <div className="text-sm text-gray-400">Post a campaign — 250+ node operators worldwide bid to serve your workload. GSTD tokens are your payment currency.</div>
           </div>
           <a
-            href="https://t.me/gstdtoken_bot"
+            href="https://t.me/gstdaibot"
             target="_blank"
             rel="noopener noreferrer"
             className="flex-shrink-0 px-4 py-2 rounded-xl bg-amber-400/10 border border-amber-400/30 text-amber-300 font-bold text-sm hover:bg-amber-400/20 transition-all flex items-center gap-2"
@@ -152,7 +152,7 @@ export default function CampaignsPage() {
               Be the first to post one — or run a node and earn GSTD from inference tasks.
             </div>
             <a
-              href="https://t.me/gstdtoken_bot"
+              href="https://t.me/gstdaibot"
               target="_blank"
               rel="noopener noreferrer"
               className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-violet-600/20 border border-violet-500/30 text-violet-300 font-bold text-sm hover:bg-violet-600/30 transition-all"
@@ -226,7 +226,7 @@ export default function CampaignsPage() {
                 {/* Join CTA */}
                 <div className="mt-4 flex justify-end">
                   <a
-                    href={`https://t.me/gstdtoken_bot?start=campaign_${c.id}`}
+                    href={`https://t.me/gstdaibot?start=campaign_${c.id}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="px-4 py-2 rounded-xl bg-violet-600/15 border border-violet-500/25 text-violet-300 font-bold text-sm hover:bg-violet-600/25 transition-all flex items-center gap-2"
@@ -249,7 +249,7 @@ export default function CampaignsPage() {
             </div>
             <div className="flex gap-3 justify-center flex-wrap">
               <a
-                href="https://t.me/gstdtoken_bot"
+                href="https://t.me/gstdaibot"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="px-5 py-2.5 rounded-xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 font-bold text-sm hover:bg-cyan-500/25 transition-all flex items-center gap-2"

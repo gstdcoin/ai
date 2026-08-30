@@ -69,7 +69,7 @@ export default function HiveNetworkPage() {
                     <div className="flex items-center gap-6">
                         <Link href="/network" className="text-sm font-bold text-gray-400 hover:text-white transition-colors">{t('global_map', 'Global Map')}</Link>
                         <Link href="/import" className="text-sm font-bold text-gray-400 hover:text-white transition-colors">{t('import_skill', 'Import Skill')}</Link>
-                        <a href="https://t.me/GstdAppBot" target="_blank" rel="noopener noreferrer" className="px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-sm font-black transition-all shadow-lg shadow-violet-600/20 active:scale-95">{t('join_the_mesh', 'JOIN THE MESH')}</a>
+                        <a href="https://t.me/gstdaibot" target="_blank" rel="noopener noreferrer" className="px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-sm font-black transition-all shadow-lg shadow-violet-600/20 active:scale-95">{t('join_the_mesh', 'JOIN THE MESH')}</a>
                     </div>
                 </div>
             </nav>

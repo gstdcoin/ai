@@ -151,12 +151,12 @@ export default function DownloadsPage() {
                                 </div>
                             </div>
                             <a
-                                href="https://t.me/GstdAppBot"
+                                href="https://t.me/gstdaibot"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="flex items-center gap-2 px-6 py-3 bg-blue-500 text-white rounded-xl font-bold text-sm hover:bg-blue-400 transition-all transform active:scale-95 whitespace-nowrap"
                             >
-                                Open @GstdAppBot <ChevronRight size={16} />
+                                Open @gstdaibot <ChevronRight size={16} />
                             </a>
                         </div>
                     </div>

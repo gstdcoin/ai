@@ -84,7 +84,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             const statsRaw = await kvGet(statsKey).catch(() => null);
             const stats = statsRaw
                 ? JSON.parse(statsRaw as string)
-                : { telegram_id: refId, total_referrals: 0, active_referrals: 0, total_earned: 0, referral_link: `https://t.me/gstdtoken_bot?start=ref_${refId}` };
+                : { telegram_id: refId, total_referrals: 0, active_referrals: 0, total_earned: 0, referral_link: `https://t.me/gstdaibot?start=ref_${refId}` };
             stats.total_referrals  = (stats.total_referrals  || 0) + 1;
             stats.active_referrals = (stats.active_referrals || 0) + 1;
             stats.total_earned     = (stats.total_earned     || 0) + REFERRER_BONUS;

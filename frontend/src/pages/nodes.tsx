@@ -333,7 +333,7 @@ export default function NodesPage() {
                   Open the Telegram bot and tap Launch Node. No setup needed.
                 </p>
                 <a
-                  href="https://t.me/gstdtoken_bot?start=node"
+                  href="https://t.me/gstdaibot?start=node"
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{

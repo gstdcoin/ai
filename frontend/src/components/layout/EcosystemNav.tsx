@@ -84,7 +84,7 @@ export default function EcosystemNav() {
         { key: 'nav_about',      href: `${APP_BASE}/about`,          icon: <Info size={15} />,           external: !isOnApp, short: 'About' },
         { key: 'nav_docs',       href: `${APP_BASE}/docs`,           icon: <BookOpen size={15} />,       external: !isOnApp, short: 'Docs' },
         { key: 'nav_downloads',  href: `${APP_BASE}/downloads`,      icon: <Download size={15} />,       external: !isOnApp, short: 'Downloads' },
-        { key: 'nav_telegram',   href: 'https://t.me/GstdAppBot',    icon: <ExternalLink size={13} />,   external: true,     short: 'Telegram' },
+        { key: 'nav_telegram',   href: 'https://t.me/gstdaibot',    icon: <ExternalLink size={13} />,   external: true,     short: 'Telegram' },
     ];
 
     const byKey = Object.fromEntries(allItems.map((i) => [i.key, i])) as Record<string, NavItem>;

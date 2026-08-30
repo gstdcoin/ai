@@ -1,6 +1,6 @@
 import { Users, Gift, Zap } from 'lucide-react';
 
-const BOT_URL = 'https://t.me/gstdtoken_bot';
+const BOT_URL = 'https://t.me/gstdaibot';
 
 export default function ReferralPanel() {
     return (
@@ -24,7 +24,7 @@ export default function ReferralPanel() {
                         rel="noopener noreferrer"
                         className="px-6 py-3 bg-white text-black rounded-xl font-bold uppercase text-xs tracking-widest hover:bg-violet-400 hover:text-white transition-all"
                     >
-                        Open @gstdtoken_bot
+                        Open @gstdaibot
                     </a>
                 </div>
             </div>
@@ -56,7 +56,7 @@ export default function ReferralPanel() {
                 <p className="text-xs text-gray-500 leading-relaxed max-w-2xl">
                     In the bot, send <code>/start</code>, link your TON wallet, then use <code>/wallet</code> to see
                     it again anytime. Your personal invite link looks like
-                    <code className="mx-1">t.me/gstdtoken_bot?start=ref_&lt;your_telegram_id&gt;</code>
+                    <code className="mx-1">t.me/gstdaibot?start=ref_&lt;your_telegram_id&gt;</code>
                     and is shown once your wallet is linked.
                 </p>
             </div>

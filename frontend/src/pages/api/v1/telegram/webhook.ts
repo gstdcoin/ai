@@ -281,7 +281,7 @@ async function processUpdate(update: any): Promise<void> {
     switch (text) {
         case '/start': case '🐝 GSTD':
             await handleStart(chatId, userId, firstName); break;
-        case '/balance': case '💎 Balance': case '/balance@GstdAppBot':
+        case '/balance': case '💎 Balance': case '/balance@gstdaibot':
             await handleBalance(chatId, userId); break;
         case '/wallet': case '🔗 Wallet':
             await handleWalletCommand(chatId, userId); break;

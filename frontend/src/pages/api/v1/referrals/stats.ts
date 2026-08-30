@@ -37,11 +37,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             total_referrals:  0,
             active_referrals: 0,
             total_earned:     0,
-            referral_link:    `https://t.me/gstdtoken_bot?start=ref_${telegram_id}`,
+            referral_link:    `https://t.me/gstdaibot?start=ref_${telegram_id}`,
         };
 
     if (!stats.referral_link) {
-        stats.referral_link = `https://t.me/gstdtoken_bot?start=ref_${telegram_id}`;
+        stats.referral_link = `https://t.me/gstdaibot?start=ref_${telegram_id}`;
     }
 
     return res.status(200).json(stats);

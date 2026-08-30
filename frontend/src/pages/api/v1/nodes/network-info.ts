@@ -52,8 +52,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                         { tier: 'Gold',   earn_per_hour: 2.0, requirements: '8+ cores or 8+ GB RAM or 10Mbps' },
                         { tier: 'Platinum', earn_per_hour: 5.0, requirements: '16+ GB RAM or 50Mbps bandwidth' },
                     ],
-                    setup: 'Open @GstdAppBot on Telegram → Launch Node',
-                    docs_url: 'https://t.me/GstdAppBot',
+                    setup: 'Open @gstdaibot on Telegram → Launch Node',
+                    docs_url: 'https://t.me/gstdaibot',
                 },
             ],
             services: [
@@ -73,7 +73,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 token: 'GSTD on TON blockchain',
             },
             quick_start: {
-                telegram: 'https://t.me/GstdAppBot',
+                telegram: 'https://t.me/gstdaibot',
                 docker: 'docker run -d -p 8080:8080 -e GSTD_WALLET_ADDRESS=<your-wallet> ghcr.io/gstdcoin/gstd-node:latest',
                 github: 'https://github.com/gstdcoin/gstdbot',
             },

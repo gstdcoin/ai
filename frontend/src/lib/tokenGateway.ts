@@ -241,7 +241,7 @@ class TokenGatewayService {
             stonfi: STON_FI_SWAP,
             dedust: DEDUST_SWAP,
             contract: GSTD_CONTRACT,
-            botStars: 'https://t.me/GstdAppBot?start=buy',
+            botStars: 'https://t.me/gstdaibot?start=buy',
         };
     }
 
@@ -249,7 +249,7 @@ class TokenGatewayService {
 
     async buyWithStars(amount: number): Promise<{ url: string }> {
         return {
-            url: `https://t.me/GstdAppBot?start=buy_${amount}`,
+            url: `https://t.me/gstdaibot?start=buy_${amount}`,
         };
     }
 
