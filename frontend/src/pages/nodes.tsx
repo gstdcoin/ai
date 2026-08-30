@@ -14,7 +14,11 @@ import {
 interface NetworkStats {
   total_nodes: number;
   active_nodes: number;
+  active_workers: number;
   epoch_reward_rate: number;
+  total_tasks: number;
+  total_earned_gstd: number;
+  gstd_price_usd: number;
 }
 
 interface TierInfo {
@@ -31,7 +35,9 @@ interface LeaderEntry {
   wallet: string;
   gstd_earned: number;
   uptime_hours?: number;
-  is_online: boolean;
+  online: boolean;
+  is_online?: boolean;
+  reputation_score?: number;
   tier?: string;
 }
 
@@ -122,7 +128,7 @@ export default function NodesPage() {
   const fetchLeaderboard = useCallback(async () => {
     setLoadingBoard(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/v1/nodes/rewards/leaderboard?period=all`);
+      const res = await fetch(`${API_BASE_URL}/api/v1/nodes/leaderboard?limit=20`);
       if (res.ok) {
         const data = await res.json();
         setLeaders((data.leaderboard || data.entries || []).slice(0, 20));
@@ -161,7 +167,7 @@ export default function NodesPage() {
     setClaiming(false);
   };
 
-  const activeCount = network?.active_nodes ?? 0;
+  const activeCount = network?.active_workers ?? network?.active_nodes ?? 0;
 
   return (
     <>
@@ -568,7 +574,7 @@ export default function NodesPage() {
                       </div>
                     </div>
                     <div style={{ textAlign: 'center', minWidth: 50 }}>
-                      {entry.is_online ? (
+                      {(entry.online || entry.is_online) ? (
                         <span style={{ fontSize: 12, color: '#4ade80', fontWeight: 700 }}>● Online</span>
                       ) : (
                         <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.2)' }}>○ Off</span>
