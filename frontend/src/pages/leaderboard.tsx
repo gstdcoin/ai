@@ -11,9 +11,14 @@ interface LeaderboardEntry {
   node_id: string;
   name: string;
   wallet: string;
-  tasks_done: number;
+  tasks_completed: number;
   gstd_earned: number;
-  is_online: boolean;
+  usd_earned: number | null;
+  reputation_score: number;
+  online: boolean;
+  // legacy aliases from old KV-based API
+  tasks_done?: number;
+  is_online?: boolean;
 }
 
 export default function LeaderboardPage() {
@@ -21,15 +26,18 @@ export default function LeaderboardPage() {
   const [data, setData] = useState<LeaderboardEntry[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [gstdPrice, setGstdPrice] = useState(0);
 
   const fetchLeaderboard = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/v1/leaderboard`);
+      const res = await fetch(`${API_BASE_URL}/api/v1/nodes/leaderboard`);
       if (res.ok) {
         const json = await res.json();
-        setData(json.entries || json.leaderboard || []);
-        setTotal(json.total || 0);
+        const entries = json.leaderboard || json.entries || [];
+        setData(entries);
+        setTotal(entries.length);
+        if (json.gstd_price_usd) setGstdPrice(json.gstd_price_usd);
       }
     } catch (e) {
       console.error('Failed to fetch leaderboard:', e);
@@ -113,11 +121,17 @@ export default function LeaderboardPage() {
                 </div>
                 <div className="text-right flex flex-col items-end gap-0.5">
                   <span className={`font-black text-lg sm:text-xl leading-none ${entry.rank <= 3 ? 'text-amber-400' : 'text-white'}`}>
-                    {(entry.gstd_earned || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    {(entry.gstd_earned || 0).toLocaleString(undefined, { maximumFractionDigits: 4 })}
                   </span>
                   <span className="text-cyan-400/60 text-[10px] font-bold uppercase tracking-wider">GSTD</span>
-                  <span className="text-gray-600 text-[10px]">{entry.tasks_done || 0} tasks</span>
-                  {entry.is_online && (
+                  {gstdPrice > 0 && entry.gstd_earned > 0 && (
+                    <span className="text-gray-500 text-[10px]">≈ ${(entry.gstd_earned * gstdPrice).toFixed(4)}</span>
+                  )}
+                  <span className="text-gray-600 text-[10px]">{entry.tasks_completed || entry.tasks_done || 0} tasks</span>
+                  {entry.reputation_score > 0 && (
+                    <span className="text-violet-400/60 text-[10px]">⭐ {entry.reputation_score}/100</span>
+                  )}
+                  {(entry.online || entry.is_online) && (
                     <span className="text-green-400 text-[10px]">● online</span>
                   )}
                 </div>
@@ -142,7 +156,7 @@ export default function LeaderboardPage() {
           </div>
           <div className="flex gap-3 justify-center flex-wrap">
             <a
-              href="https://t.me/gstdtoken_bot"
+              href="https://t.me/gstdaibot"
               target="_blank"
               rel="noopener noreferrer"
               className="px-5 py-2.5 rounded-xl bg-amber-400/10 border border-amber-400/30 text-amber-300 font-bold text-sm hover:bg-amber-400/20 transition-all"
