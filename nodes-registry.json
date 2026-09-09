@@ -5,13 +5,13 @@
     "mode": "node",
     "version": "3.4.0",
     "capabilities": ["llama3.2:3b"],
-    "multiaddrs": ["https://conversations-circuit-designs-arguments.trycloudflare.com"],
-    "node_url": "https://conversations-circuit-designs-arguments.trycloudflare.com",
+    "multiaddrs": ["https://perl-results-craps-insulin.trycloudflare.com"],
+    "node_url": "https://perl-results-craps-insulin.trycloudflare.com",
     "platform": "linux",
     "cpu_cores": 4,
     "has_gpu": false,
     "tasks_completed": 0,
     "uptime_hours": 0,
-    "last_seen": "2026-09-08T13:21:17.000Z"
+    "last_seen": "2026-09-09T12:15:49.000Z"
   }
 ]
