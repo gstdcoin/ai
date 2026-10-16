@@ -158,6 +158,93 @@ jobs:
         env:
           WORKER_URL: ${{ steps.bootstrap.outputs.url }}
 
+      - name: Verify preview pages
+        run: |
+          set -euo pipefail
+          tail_log="$RUNNER_TEMP/worker-tail.jsonl"
+          npx wrangler tail gstd-ai-platform --config wrangler.jsonc --format json --header 'x-gstd-page-smoke: ci' > "$tail_log" 2>&1 &
+          tail_pid=$!
+          sleep 5
+          if ! kill -0 "$tail_pid" 2>/dev/null; then
+            echo "::warning::Worker Tail did not stay connected; check the Workers Tail Read token permission"
+          fi
+
+          failed=0
+          index=0
+          for path in / /en /ru /en/stats /en/network; do
+            index=$((index + 1))
+            body="$RUNNER_TEMP/page-${index}.html"
+            status="$(curl --silent --show-error --location --max-time 30 --header 'x-gstd-page-smoke: ci' --output "$body" --write-out '%{http_code}' "$WORKER_URL$path" || true)"
+            if [ "$status" != "200" ] || ! grep -iq '<!doctype html' "$body"; then
+              echo "::error::Preview page $path returned HTTP ${status:-000} or non-HTML content"
+              failed=1
+            else
+              echo "Preview page $path returned HTTP 200"
+            fi
+          done
+          sleep 2
+          kill "$tail_pid" 2>/dev/null || true
+          wait "$tail_pid" 2>/dev/null || true
+
+          node - "$tail_log" <<'NODE'
+          const fs = require('fs');
+          const logPath = process.argv[2];
+          const secretValues = [
+            process.env.CLOUDFLARE_API_TOKEN,
+          ].filter(Boolean);
+          const details = [];
+          let invalidLines = 0;
+
+          for (const line of fs.readFileSync(logPath, 'utf8').split(/\r?\n/)) {
+            const jsonStart = line.indexOf('{');
+            if (jsonStart < 0) continue;
+            try {
+              const event = JSON.parse(line.slice(jsonStart));
+              for (const exception of event.exceptions ?? []) {
+                let message = String(exception.message ?? '');
+                for (const secret of secretValues) message = message.replaceAll(secret, '[redacted]');
+                message = message
+                  .replace(/https?:\/\/[^\s"'<>]+/gi, '[url]')
+                  .replace(/[\r\n\t]/g, ' ')
+                  .slice(0, 240);
+                details.push(`${String(exception.name ?? 'Error').slice(0, 80)}: ${message}`);
+              }
+              for (const log of event.logs ?? []) {
+                if (log.level !== 'error') continue;
+                const values = Array.isArray(log.message) ? log.message : [log.message];
+                let message = values
+                  .map((value) => typeof value === 'string' ? value : JSON.stringify(value))
+                  .join(' ');
+                for (const secret of secretValues) message = message.replaceAll(secret, '[redacted]');
+                message = message
+                  .replace(/https?:\/\/[^\s"'<>]+/gi, '[url]')
+                  .replace(/[\r\n\t]/g, ' ')
+                  .slice(0, 240);
+                details.push(`Worker log: ${message}`);
+              }
+            } catch (error) {
+              if (!(error instanceof SyntaxError)) throw error;
+              invalidLines += 1;
+            }
+          }
+
+          const summaryLines = details.length
+            ? ['### Preview Worker errors (redacted)', '', ...details.map((value) => `- ${value}`)]
+            : ['No matching preview Worker exception details were captured.'];
+          if (invalidLines > 0) summaryLines.push(`Skipped ${invalidLines} non-JSON tail output line(s).`);
+          const summary = `${summaryLines.join('\n')}\n`;
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary);
+          console.log(`Captured ${details.length} filtered Worker error detail(s).`);
+          NODE
+
+          if [ "$failed" -ne 0 ]; then
+            exit 1
+          fi
+        env:
+          WORKER_URL: ${{ steps.bootstrap.outputs.url }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
       - name: Deploy production route
         run: npm run cf:deploy -- --config=wrangler.production.jsonc
         env:
