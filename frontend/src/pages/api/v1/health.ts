@@ -26,9 +26,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         kvOk = true;
     } catch (error) {
         logger.error('Health check failed to reach Upstash Redis', error);
+        const message = error instanceof Error ? error.message.toLowerCase() : '';
         kvError = error instanceof Error ? error.name : 'UnknownError';
         if (error instanceof Error && error.message === 'Upstash Redis credentials are required in production') {
             kvError = 'missing_credentials';
+        } else if (message.includes('fetch failed') || message.includes('network')) {
+            kvError = 'network_error';
+        } else if (message.includes('timeout') || message.includes('timed out')) {
+            kvError = 'timeout';
         } else if (error !== null && typeof error === 'object' && 'status' in error && typeof error.status === 'number') {
             kvError = `upstream_http_${error.status}`;
         }
