@@ -34,7 +34,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Node must be a registered, real node -- otherwise anyone could settle an
         // uncapped batch of fabricated events under any node_id/wallet_address with
         // no proof it was ever a real node.
-        const nodeRaw = await kvGet(`node:${nodeId}`).catch(() => null);
+        const nodeRaw = await kvGet(`node:${nodeId}`);
         if (!nodeRaw) {
             return res.status(404).json({ error: 'Unknown node — register first' });
         }
@@ -44,7 +44,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         // Record pending settlement in KV — idempotent via batch_id
-        const seen = await kvGet(`settlement_seen:${batchId}`).catch(() => null);
+        const seen = await kvGet(`settlement_seen:${batchId}`);
         if (seen) {
             return res.status(200).json({ ok: true, batch_id: batchId, status: 'already_processed' });
         }
@@ -60,25 +60,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             const taskId = ev.id;
             const amount = Math.min(MAX_EVENT_AMOUNT, Number(ev.amount) || 0);
             if (amount <= 0) continue;
-            const { nodeShare } = await accrueReward(nodeId, walletAddr, amount, taskId).catch(() => ({ nodeShare: 0 }));
+            const { nodeShare } = await accrueReward(nodeId, walletAddr, amount, taskId);
             accrued += nodeShare;
         }
 
         // Fallback: if events array is empty but total_amount is set, accrue total once
         if (events.length === 0 && totalAmount > 0) {
             const cappedTotal = Math.min(MAX_EVENT_AMOUNT, totalAmount);
-            const { nodeShare } = await accrueReward(nodeId, walletAddr, cappedTotal, batchId).catch(() => ({ nodeShare: 0 }));
+            const { nodeShare } = await accrueReward(nodeId, walletAddr, cappedTotal, batchId);
             accrued += nodeShare;
         }
 
         // Mark batch processed (1 week TTL)
-        await kvSet(`settlement_seen:${batchId}`, '1', 604800).catch(() => {});
+        await kvSet(`settlement_seen:${batchId}`, '1', 604800);
 
         // Update node record total
         if (accrued > 0) {
             record.gstd_earned = Math.round(((record.gstd_earned || 0) + accrued) * 1e6) / 1e6;
             record.last_seen   = new Date().toISOString();
-            await kvSet(`node:${nodeId}`, JSON.stringify(record), 600).catch(() => {});
+            await kvSet(`node:${nodeId}`, JSON.stringify(record), 600);
         }
 
         return res.status(200).json({

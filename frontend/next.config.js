@@ -137,7 +137,7 @@ const nextConfig = {
     ];
   },
   // No rewrites — all /api/v1/* are served by Next.js serverless functions.
-  // Backed by Upstash Redis (Vercel KV). No separate Go backend.
+  // Backed by Upstash Redis REST API. No separate Go backend.
   async redirects() {
     return [
       { source: '/bridge',   destination: '/nodes', permanent: true },

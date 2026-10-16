@@ -11,9 +11,9 @@ description: Current ecosystem state — always read FIRST before any changes
 ## 🏗️ Architecture
 
 ```
-gstdcoin/ai          (this repo) — Vercel serverless + Next.js dashboard
+gstdcoin/ai          (this repo) — Next.js dashboard/API; Cloudflare deployment pending
 gstdcoin/gstdbot     — Node OS: Pi node + Telegram bot (TypeScript)
-gstdcoin/web         — Landing page (Next.js, Vercel)
+gstdcoin/web         — Landing page (Next.js, Cloudflare)
 gstdcoin/contracts   — TON smart contracts (Tact)
 gstdcoin/gstd-bridge — Cross-chain bridge (Rust)
 ```
@@ -22,8 +22,8 @@ gstdcoin/gstd-bridge — Cross-chain bridge (Rust)
 
 | Service | Host | URL |
 |---|---|---|
-| Dashboard + API | Vercel (free) | `app.gstdtoken.com` |
-| Landing page | Vercel (free) | `gstdtoken.com` |
+| Dashboard + API | Not deployed; Cloudflare target | `app.gstdtoken.com` |
+| Landing page | Cloudflare Workers | `gstdtoken.com` |
 | Bootstrap node | Raspberry Pi | `gstd-pi-bootstrap` |
 | State storage | Upstash Redis (KV) | via `UPSTASH_REDIS_REST_*` |
 | AI inference | GSTD node network | `app.gstdtoken.com/api/v1/chat/completions` |
@@ -31,7 +31,7 @@ gstdcoin/gstd-bridge — Cross-chain bridge (Rust)
 ## 📁 Repo Structure (gstdcoin/ai)
 
 ```
-frontend/                      # Next.js app (Vercel)
+frontend/                      # Next.js app (Cloudflare target; not deployed)
 ├── src/pages/                 # UI pages (chat, nodes, bridge, staking…)
 ├── src/pages/api/v1/
 │   ├── nodes/
@@ -73,14 +73,14 @@ All GSTD-specific context is in this `state.md` and the codebase itself.
 - Always read `state.md` before making changes
 - After material changes, run: `curl https://app.gstdtoken.com/api/v1/stats/public`
 - Node-to-platform communication uses HTTPS REST only (no WebSocket)
-- All secrets are in Vercel env vars (never commit keys)
+- Production secrets belong in GitHub Actions / Cloudflare Worker settings (never commit keys); values are not configured yet
 
 ## 🔄 Deployment Procedures
 
-### Vercel (gstdai)
+### Platform API (gstdcoin/ai)
 ```bash
-git push origin main   # Vercel auto-deploys on push
-# Check: https://app.gstdtoken.com/api/v1/stats/public
+# Do not deploy through Vercel. Cloudflare deployment is not configured yet.
+# Configure and verify the Worker, cron replacement, Redis secrets, and smoke tests first.
 ```
 
 ### Node OS (gstdbot)
@@ -93,7 +93,7 @@ pm2 logs gstdbot --lines 30
 
 ### Landing page (gstdweb)
 ```bash
-git push origin main   # Vercel auto-deploys
+git push origin main   # Cloudflare deployment for the landing page
 ```
 
 ## ⚡ Health Check
@@ -150,7 +150,7 @@ Nodes process and post result to `task:result:{task_id}`.
 - Rate limit: 30 req/min per IP on inference endpoint
 - Treasury POST: requires `x-treasury-key` header (`TREASURY_SECRET` env var)
 - Node registration: no auth required (public network)
-- All env secrets managed in Vercel dashboard
+- Production secrets managed in GitHub Actions / Cloudflare settings; app deployment is blocked until the required secrets are configured
 
 ## 🛡️ CORS Allowed Origins
 

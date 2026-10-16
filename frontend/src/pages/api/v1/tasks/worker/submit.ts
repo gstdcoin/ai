@@ -69,7 +69,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 const assignment = JSON.parse(assignedRaw as string) as { node_id: string };
                 assignmentValid = assignment.node_id === nodeId;
             } catch { /* malformed, treat as invalid */ }
-            if (assignmentValid) await kvDel(`task_assigned:${taskId}`).catch(() => {});
+            if (assignmentValid) await kvDel(`task_assigned:${taskId}`);
         }
 
         const nodeWrites: Promise<any>[] = [];
@@ -84,7 +84,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             if (record.wallet_address && assignmentValid) {
                 nodeWrites.push(
                     accrueReward(nodeId, record.wallet_address, rewardGstd || BASE_TASK_FEE, taskId)
-                        .catch(() => {})
                 );
             }
         }

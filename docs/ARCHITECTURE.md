@@ -1,21 +1,21 @@
 # GSTD Platform — Architecture
 
-> Last updated: 2026-05-26
+> Status checked: 2026-10-16
 > Full ecosystem overview: [`/ECOSYSTEM.md`](../ECOSYSTEM.md)
 
 ---
 
 ## Stack
 
-**Production: Vercel (serverless) + Upstash Redis. No Docker. No Go backend. No PostgreSQL.**
+**Deployment status:** `app.gstdtoken.com` is not currently deployed. The target is Cloudflare Workers + the existing Upstash Redis database. The Vercel deploy job is disabled; do not deploy through Vercel.
 
 | Layer | Technology |
 |---|---|
 | Framework | Next.js 16 (Pages Router), TypeScript |
-| API | Vercel serverless functions (`/src/pages/api/v1/`) |
-| State / DB | Upstash Redis via Vercel KV |
-| Hosting | Vercel (auto-deploys on push to `main`) |
-| CDN / SSL | Vercel Edge Network (automatic) |
+| API | Next.js API routes (`/src/pages/api/v1/`), Cloudflare Worker deployment pending |
+| State / DB | Existing Upstash Redis via REST API |
+| Hosting | Cloudflare Workers (target; deployment not configured) |
+| CDN / SSL | Cloudflare (for the deployed landing site) |
 | Wallets | TON Connect, MetaMask, Phantom |
 
 ---
@@ -26,16 +26,16 @@
 graph TB
     CLIENT["Browser / AI Agent / Node"]
 
-    subgraph "Vercel Edge"
+    subgraph "Cloudflare (target)"
         PROXY["proxy.ts — rate limit + CORS + security headers"]
     end
 
-    subgraph "Vercel Serverless Functions"
+    subgraph "Cloudflare Worker (not deployed)"
         API["src/pages/api/v1/*"]
     end
 
     subgraph "Upstash Redis"
-        KV["Vercel KV\n(nodes, tasks, stats, results)"]
+        KV["Redis REST API\n(nodes, tasks, stats, results)"]
     end
 
     subgraph "GSTD Node Network"
@@ -132,11 +132,11 @@ If no nodes are available: returns `503` with setup link. No external AI provide
 
 - Rate limiting: `src/proxy.ts` (Edge runtime) — per-route sliding window
 - Security headers: CSP, HSTS, X-Frame-Options, X-Content-Type-Options (in `next.config.js`)
-- Secrets: Vercel dashboard env vars only — never committed
+- Secrets: GitHub Actions / Cloudflare Worker secrets — deployment secrets are not configured yet; never commit them
 - Node auth: `Authorization: Bearer {api_key}` + `X-Wallet-Address`
 
 ---
 
 ## What the `backend/` folder was
 
-Legacy Go + PostgreSQL + nginx code from the previous architecture (pre-2026-05). It was never deployed and was removed from the repo on 2026-08-13, along with its coupled `docker-compose*.yml`, `nginx/`, and Docker-only scripts. The entire production stack is Vercel serverless.
+Legacy Go + PostgreSQL + nginx code from the previous architecture (pre-2026-05). It was never deployed and was removed from the repo on 2026-08-13, along with its coupled `docker-compose*.yml`, `nginx/`, and Docker-only scripts. The intended app runtime is Cloudflare Workers, but that deployment is still pending.

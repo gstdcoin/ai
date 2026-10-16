@@ -143,7 +143,7 @@ async function recordOracleTask(nodeUrl: string, taskId: string): Promise<void> 
         node.last_seen = new Date().toISOString();
         await kvSet(nodeKeys[i], JSON.stringify(node), NODE_TTL);
         if (node.wallet_address) {
-            accrueReward(node.node_id, node.wallet_address, BASE_TASK_FEE, taskId).catch(() => {});
+            await accrueReward(node.node_id, node.wallet_address, BASE_TASK_FEE, taskId);
         }
         break;
     }
@@ -214,9 +214,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const source = `gstd:${gstd.tier || 'node'}`;
         const model  = data?.model || 'llama3.2:3b';
 
-        // Record task completion before returning (Vercel serverless kills context after send)
+        // Persist task completion before returning; the execution context may end with the response.
         const taskId = `oracle:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`;
-        await recordOracleTask(nodeUrl, taskId).catch(() => {});
+        try {
+            await recordOracleTask(nodeUrl, taskId);
+        } catch (error) {
+            console.error('[oracle/evaluate] Failed to persist task accounting', error);
+            return res.status(503).json({ error: 'Inference completed but task accounting could not be persisted' });
+        }
 
         return res.status(200).json({
             enter, confidence, reason,

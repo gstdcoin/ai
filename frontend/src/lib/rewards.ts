@@ -43,9 +43,9 @@ export async function accrueReward(
 ): Promise<{ nodeShare: number; communityShare: number }> {
     // Idempotency guard
     if (taskId) {
-        const seen = await kvGet(`reward_seen:${taskId}`).catch(() => null);
+        const seen = await kvGet(`reward_seen:${taskId}`);
         if (seen) return { nodeShare: 0, communityShare: 0 };
-        await kvSet(`reward_seen:${taskId}`, '1', 86400 * 7).catch(() => {});
+        await kvSet(`reward_seen:${taskId}`, '1', 86400 * 7);
     }
 
     const nodeShare      = Math.round(feeGstd * (1 - COMMUNITY_TAX) * 1e6) / 1e6;
@@ -58,7 +58,7 @@ export async function accrueReward(
         kvIncrByFloat('rewards:treasury', communityShare),
         kvIncrByFloat('stats:total_gstd_paid', feeGstd),
         kvSet(`rewards:node_wallet:${nodeId}`, walletKey),
-    ]).catch(() => {});
+    ]);
 
     return { nodeShare, communityShare };
 }
@@ -67,7 +67,7 @@ export async function accrueReward(
  * Read a node's pending (unsettled) reward balance for a wallet.
  */
 export async function getPendingReward(wallet: string): Promise<number> {
-    const raw = await kvGet(`rewards:pending:${wallet.toLowerCase()}`).catch(() => null);
+    const raw = await kvGet(`rewards:pending:${wallet.toLowerCase()}`);
     return raw ? parseFloat(raw as string) : 0;
 }
 
@@ -75,7 +75,7 @@ export async function getPendingReward(wallet: string): Promise<number> {
  * Read a node's lifetime total earnings.
  */
 export async function getLifetimeReward(nodeId: string): Promise<number> {
-    const raw = await kvGet(`rewards:lifetime:${nodeId}`).catch(() => null);
+    const raw = await kvGet(`rewards:lifetime:${nodeId}`);
     return raw ? parseFloat(raw as string) : 0;
 }
 
@@ -83,7 +83,7 @@ export async function getLifetimeReward(nodeId: string): Promise<number> {
  * Read the community treasury balance.
  */
 export async function getTreasuryBalance(): Promise<number> {
-    const raw = await kvGet('rewards:treasury').catch(() => null);
+    const raw = await kvGet('rewards:treasury');
     return raw ? parseFloat(raw as string) : 0;
 }
 
@@ -95,14 +95,14 @@ export async function getTreasuryBalance(): Promise<number> {
 export async function computeSettlement(
     minAmount: number = 0.01,
 ): Promise<SettlementEntry[]> {
-    const walletKeys     = await kvKeys('rewards:pending:').catch(() => [] as string[]);
-    const nodeWalletKeys = await kvKeys('rewards:node_wallet:').catch(() => [] as string[]);
+    const walletKeys     = await kvKeys('rewards:pending:');
+    const nodeWalletKeys = await kvKeys('rewards:node_wallet:');
 
     // Build wallet→nodeIds map once
     const walletNodes: Record<string, string[]> = {};
     await Promise.all(
         nodeWalletKeys.map(async (nk) => {
-            const w = await kvGet(nk).catch(() => null);
+            const w = await kvGet(nk);
             if (!w) return;
             const wallet = w as string;
             if (!walletNodes[wallet]) walletNodes[wallet] = [];
@@ -114,7 +114,7 @@ export async function computeSettlement(
     await Promise.all(
         walletKeys.map(async (key) => {
             const wallet = key.replace('rewards:pending:', '');
-            const raw    = await kvGet(key).catch(() => null);
+            const raw    = await kvGet(key);
             const amount = raw ? parseFloat(raw as string) : 0;
             if (amount < minAmount) return;
             entries.push({ wallet, amount, nodeIds: walletNodes[wallet] || [] });
@@ -134,8 +134,8 @@ export async function clearSettledRewards(
 ): Promise<void> {
     await Promise.all(
         wallets.map((w) =>
-            kvSet(`rewards:pending:${w.toLowerCase()}`, '0').catch(() => {})
+            kvSet(`rewards:pending:${w.toLowerCase()}`, '0')
         )
     );
-    await kvSet(SETTLEMENT_KEY, epochId).catch(() => {});
+    await kvSet(SETTLEMENT_KEY, epochId);
 }

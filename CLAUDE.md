@@ -2,8 +2,8 @@
 
 ## Stack
 - **Framework**: Next.js 16 (Pages Router), TypeScript, Tailwind CSS
-- **State / DB**: Upstash Redis via `@vercel/kv` — all in `src/lib/kv.ts`
-- **Hosting**: Vercel (serverless). No Go backend. No Docker in production.
+- **State / DB**: Upstash Redis via `@upstash/redis` — all in `src/lib/kv.ts`
+- **Hosting**: Cloudflare Workers is the target. The production app is not deployed yet; do not use Vercel.
 - **Wallets**: TON Connect, MetaMask, Phantom
 
 ## Local Dev
@@ -12,7 +12,7 @@ cd frontend
 npm install --legacy-peer-deps
 npm run dev   # → http://localhost:3000
 ```
-No KV credentials needed — `src/lib/kv.ts` falls back to in-memory store.
+No KV credentials needed for local development — `src/lib/kv.ts` uses an in-memory store outside production. Production requires Redis credentials and fails closed without them.
 
 ## Architecture Rules
 - ALL API logic lives in `src/pages/api/v1/` as Next.js serverless functions
@@ -30,27 +30,13 @@ No KV credentials needed — `src/lib/kv.ts` falls back to in-memory store.
 - `src/lib/kv.ts` — Redis wrapper (in-memory fallback for local)
 - `src/lib/ratelimit.ts` — sliding window (used by individual handlers if needed)
 - `src/middleware.ts` — Edge rate limiting + CORS for all `/api/*` (Next.js convention; must export `default function middleware()`)
-- `src/lib/logger.ts` — production-safe logger (errors always print to Vercel Logs)
+- `src/lib/logger.ts` — production-safe logger (errors always print to runtime logs)
 - `next.config.js` — CSP/security headers, no rewrites
 
-## Vercel Deployment
-Set these env vars in Vercel dashboard:
-- `KV_REST_API_URL` + `KV_REST_API_TOKEN` — from Vercel KV (Storage tab)
-- `TREASURY_SECRET` — any random string
-- `NEXT_PUBLIC_TON_VAULT` / `NEXT_PUBLIC_SOL_VAULT` / `NEXT_PUBLIC_XRP_VAULT` — after contract deploy
+## Cloudflare Deployment
+The Vercel deploy job has been removed. Cloudflare deployment is not ready until a Worker workflow, cron replacement, Redis secrets, and production smoke tests are configured. Do not point `app.gstdtoken.com` at a new Worker until those checks pass.
 
-**CI/CD**: GitHub Actions (`ci.yml`) deploys on every push to `main` via `vercel deploy --prod`.
-`VERCEL_TOKEN` must be set in GitHub repo Secrets. Run from **repo root** (not `frontend/`).
-
-**⚠ Hobby plan cron limit**: `vercel.json` crons must run ≤ 1x/day. Use `0 H * * *` format.
-`*/5 * * * *` causes Vercel to reject ALL deployments silently — root cause of broken auto-deploy.
-
-**Manual deploy from Pi** (emergency):
-```bash
-cd /home/bot/gstdai
-VERCEL_ORG_ID=team_nJrl4HPx1kF1r635js1KE2qd VERCEL_PROJECT_ID=prj_j2gQqRULHdMowbDHZt7wSqs2z3Bf \
-  npx vercel deploy --prod --yes --token "$VERCEL_TOKEN"
-```
+Required GitHub Actions secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `KV_REST_API_URL`, and `KV_REST_API_TOKEN`. Configure values in GitHub/Cloudflare settings; never send or commit secret values. Keep the existing Upstash database to preserve stored data.
 
 ## Training Marketplace API (added 2026-07-04)
 New endpoints in `src/pages/api/v1/training/`:

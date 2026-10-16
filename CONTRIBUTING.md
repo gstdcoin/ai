@@ -15,14 +15,14 @@ No KV credentials needed — `src/lib/kv.ts` falls back to in-memory store for l
 | Directory | Language | Purpose |
 |-----------|----------|---------|
 | `frontend/` | Next.js 16 + TypeScript | Web dashboard & Telegram Web App |
-| `frontend/src/pages/api/v1/` | TypeScript | Serverless API routes (Vercel) |
+| `frontend/src/pages/api/v1/` | TypeScript | Next.js API routes (Cloudflare deployment target) |
 | `contracts/` | Tact (TON) | Smart contracts (token, settlement) |
 
 ## Architecture Rules
 
 - All API logic lives in `src/pages/api/v1/` as Next.js serverless functions
 - KV access only via `kvGet / kvSet / kvKeys / kvDel / kvIncr` from `src/lib/kv`
-- No Go backend. No Docker in production. Hosted on Vercel.
+- No Go backend. No Docker in production. Cloudflare Workers is the target; production deployment is not configured. Do not deploy through Vercel.
 - Rate limiting is handled by `src/middleware.ts` (Edge runtime)
 
 ## Running a Node (separate from this repo)

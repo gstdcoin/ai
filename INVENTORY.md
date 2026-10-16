@@ -1,6 +1,8 @@
 # GSTD Platform — Functionality Inventory & Technical Debt
 *Generated 2026-05-27*
 
+> Historical snapshot; its production-status claims and Vercel references are obsolete. See [STATUS.md](./STATUS.md) for current availability. Do not use the Vercel deployment instructions.
+
 ---
 
 ## ✅ What Works (Production-Ready)

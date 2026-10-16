@@ -16,12 +16,12 @@ class Logger {
     }
 
     warn(message: string, ...args: unknown[]): void {
-        // warn goes to Vercel Logs in all envs — useful for quota/rate alerts
+        // Warnings are emitted in all environments for quota and rate alerts.
         console.warn(this.fmt('warn', message), ...args);
     }
 
     error(message: string, error?: Error | unknown, ...args: unknown[]): void {
-        // errors always surface in Vercel Logs / Sentry
+        // Errors are always emitted for runtime logs and Sentry.
         console.error(this.fmt('error', message), error, ...args);
     }
 }

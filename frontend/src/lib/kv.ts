@@ -1,12 +1,11 @@
 /**
  * KV Storage abstraction
  *
- * Production: Upstash Redis (via Vercel KV integration) — free tier
+ * Production: Upstash Redis REST API
  * Development: in-memory fallback (no setup needed)
  *
- * Env vars (auto-added by Vercel KV integration):
- *   KV_REST_API_URL   — Upstash Redis REST URL
- *   KV_REST_API_TOKEN — Upstash Redis REST token
+ * Production requires KV_REST_API_URL and KV_REST_API_TOKEN. The in-memory
+ * fallback is development-only because it is not shared or durable.
  */
 
 import type { Redis } from '@upstash/redis';
@@ -14,6 +13,15 @@ import { logger } from './logger';
 
 // ── In-memory fallback for local dev ──────────────────────────────
 const mem = new Map<string, { value: string; exp: number | null }>();
+const ALLOW_MEMORY_FALLBACK = process.env.NODE_ENV !== 'production';
+
+function handleRedisFailure(operation: string, error: unknown): void {
+    const fallback = ALLOW_MEMORY_FALLBACK
+        ? 'using in-memory fallback in development'
+        : 'in-memory fallback is disabled in production';
+    logger.error(`${operation} failed; ${fallback}`, error);
+    if (!ALLOW_MEMORY_FALLBACK) throw error;
+}
 
 function memGet(key: string): string | null {
     const entry = mem.get(key);
@@ -39,12 +47,21 @@ async function getRedis(): Promise<Redis | null> {
     if (_redis) return _redis;
     const url   = process.env.KV_REST_API_URL   || process.env.UPSTASH_REDIS_REST_URL;
     const token = process.env.KV_REST_API_TOKEN  || process.env.UPSTASH_REDIS_REST_TOKEN;
-    if (!url || !token) return null;
+    if (!url || !token) {
+        if (!ALLOW_MEMORY_FALLBACK) {
+            throw new Error('Upstash Redis credentials are required in production');
+        }
+        return null;
+    }
     try {
         const { Redis } = await import('@upstash/redis');
         _redis = new Redis({ url, token });
         return _redis;
-    } catch {
+    } catch (error) {
+        if (!ALLOW_MEMORY_FALLBACK) {
+            logger.error('Failed to initialize Upstash Redis in production', error);
+            throw error;
+        }
         return null;
     }
 }
@@ -59,7 +76,7 @@ export async function kvGet(key: string): Promise<string | null> {
             if (val == null) return null;
             // Upstash auto-parses JSON strings into objects — serialize back to string
             return typeof val === 'string' ? val : JSON.stringify(val);
-        } catch (e) { logger.error(`kvGet('${key}') failed, falling back to in-memory store`, e); }
+        } catch (e) { handleRedisFailure(`kvGet('${key}')`, e); }
     }
     return memGet(key);
 }
@@ -71,14 +88,14 @@ export async function kvSet(key: string, value: string, ttlSec?: number): Promis
             if (ttlSec) await r.set(key, value, { ex: ttlSec });
             else        await r.set(key, value);
             return;
-        } catch (e) { logger.error(`kvSet('${key}') failed, falling back to in-memory store`, e); }
+        } catch (e) { handleRedisFailure(`kvSet('${key}')`, e); }
     }
     memSet(key, value, ttlSec);
 }
 
 export async function kvDel(key: string): Promise<void> {
     const r = await getRedis();
-    if (r) { try { await r.del(key); return; } catch (e) { logger.error(`kvDel('${key}') failed, falling back to in-memory store`, e); } }
+    if (r) { try { await r.del(key); return; } catch (e) { handleRedisFailure(`kvDel('${key}')`, e); } }
     memDel(key);
 }
 
@@ -89,7 +106,7 @@ export async function kvKeys(prefix: string): Promise<string[]> {
         try {
             const keys = await r.keys(`${safePrefix}*`);
             return keys as string[];
-        } catch (e) { logger.error(`kvKeys('${safePrefix}') failed, falling back to in-memory store`, e); }
+        } catch (e) { handleRedisFailure(`kvKeys('${safePrefix}')`, e); }
     }
     return memKeys(safePrefix);
 }
@@ -97,14 +114,8 @@ export async function kvKeys(prefix: string): Promise<string[]> {
 export async function kvIncrByFloat(key: string, delta: number): Promise<number> {
     const r = await getRedis();
     if (r) {
-        try { return await r.incrbyfloat(key, delta); } catch { /* INCRBYFLOAT unsupported on some Upstash plans — try GET+SET instead */ }
-        try {
-            const raw = await r.get(key);
-            const cur = parseFloat((raw as string) || '0') || 0;
-            const next = cur + delta;
-            await r.set(key, String(next));
-            return next;
-        } catch (e) { logger.error(`kvIncrByFloat('${key}') failed, falling back to in-memory store`, e); }
+        try { return await r.incrbyfloat(key, delta); }
+        catch (e) { handleRedisFailure(`kvIncrByFloat('${key}')`, e); }
     }
     const cur = parseFloat(memGet(key) || '0') + delta;
     memSet(key, String(cur));
@@ -118,7 +129,7 @@ export async function kvMGet(keys: string[]): Promise<(string | null)[]> {
         try {
             const vals = await r.mget(...keys);
             return (vals as (unknown | null)[]).map(v => v == null ? null : String(v));
-        } catch (e) { logger.error(`kvMGet(${keys.length} keys) failed, falling back to in-memory store`, e); }
+        } catch (e) { handleRedisFailure(`kvMGet(${keys.length} keys)`, e); }
     }
     return keys.map(k => memGet(k));
 }
@@ -128,7 +139,7 @@ export async function kvMGet(keys: string[]): Promise<(string | null)[]> {
 export async function kvPush(key: string, ...values: string[]): Promise<void> {
     const r = await getRedis();
     if (r) {
-        try { await r.lpush(key, ...values); return; } catch (e) { logger.error(`kvPush('${key}') failed, falling back to in-memory store`, e); }
+        try { await r.lpush(key, ...values); return; } catch (e) { handleRedisFailure(`kvPush('${key}')`, e); }
     }
     const raw = memGet(key);
     const list: string[] = raw ? JSON.parse(raw) : [];
@@ -142,7 +153,7 @@ export async function kvPop(key: string): Promise<string | null> {
         try {
             const val = await r.rpop(key);
             return val == null ? null : String(val);
-        } catch (e) { logger.error(`kvPop('${key}') failed, falling back to in-memory store`, e); }
+        } catch (e) { handleRedisFailure(`kvPop('${key}')`, e); }
     }
     const raw = memGet(key);
     if (!raw) return null;
@@ -156,7 +167,7 @@ export async function kvPop(key: string): Promise<string | null> {
 export async function kvLLen(key: string): Promise<number> {
     const r = await getRedis();
     if (r) {
-        try { return await r.llen(key); } catch (e) { logger.error(`kvLLen('${key}') failed, falling back to in-memory store`, e); }
+        try { return await r.llen(key); } catch (e) { handleRedisFailure(`kvLLen('${key}')`, e); }
     }
     const raw = memGet(key);
     return raw ? (JSON.parse(raw) as string[]).length : 0;
@@ -165,13 +176,8 @@ export async function kvLLen(key: string): Promise<number> {
 export async function kvIncr(key: string): Promise<number> {
     const r = await getRedis();
     if (r) {
-        try { return await r.incr(key); } catch { /* INCR unsupported on some Upstash plans — try GET+SET instead */ }
-        try {
-            const raw = await r.get(key);
-            const cur = parseInt((raw as string) || '0', 10) || 0;
-            await r.set(key, String(cur + 1));
-            return cur + 1;
-        } catch (e) { logger.error(`kvIncr('${key}') failed, falling back to in-memory store`, e); }
+        try { return await r.incr(key); }
+        catch (e) { handleRedisFailure(`kvIncr('${key}')`, e); }
     }
     const cur = parseInt(memGet(key) || '0', 10) + 1;
     memSet(key, String(cur));
