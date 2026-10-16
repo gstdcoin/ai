@@ -8,7 +8,7 @@
  * fallback is development-only because it is not shared or durable.
  */
 
-import type { Redis } from '@upstash/redis/cloudflare';
+import { Redis } from '@upstash/redis/cloudflare';
 import { logger } from './logger';
 
 // ── In-memory fallback for local dev ──────────────────────────────
@@ -54,7 +54,6 @@ async function getRedis(): Promise<Redis | null> {
         return null;
     }
     try {
-        const { Redis } = await import('@upstash/redis/cloudflare');
         _redis = new Redis({ url, token });
         return _redis;
     } catch (error) {
