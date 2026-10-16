@@ -25,6 +25,22 @@ function getErrorIdentifier(error: unknown): string {
     return identifiers.join('_caused_by_') || 'UnknownError';
 }
 
+function getSafeErrorDetail(error: unknown): string {
+    if (!(error instanceof Error)) return getErrorIdentifier(error);
+
+    let message = error.message;
+    for (const secret of [process.env.KV_REST_API_TOKEN, process.env.UPSTASH_REDIS_REST_TOKEN]) {
+        if (secret) message = message.replaceAll(secret, '[redacted]');
+    }
+    message = message
+        .replace(/https?:\/\/[^\s"'<>]+/gi, '[redacted-url]')
+        .replace(/\b(?:bearer|authorization|token)\s*[:=]?\s*[^\s,;]+/gi, '[redacted]')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    return message ? `${getErrorIdentifier(error)}: ${message.slice(0, 160)}` : getErrorIdentifier(error);
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'GET') {
         return res.status(405).json({ error: 'Method not allowed' });
@@ -40,7 +56,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     } catch (error) {
         logger.error('Health check failed to reach Upstash Redis', error);
         const message = error instanceof Error ? error.message.toLowerCase() : '';
-        kvError = getErrorIdentifier(error);
+        kvError = getSafeErrorDetail(error);
         if (error instanceof Error && error.message === 'Upstash Redis credentials are required in production') {
             kvError = 'missing_credentials';
         } else if (message.includes('fetch failed') || message.includes('network')) {
