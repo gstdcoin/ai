@@ -3,6 +3,7 @@ const { i18n } = require('./next-i18next.config');
 
 const nextConfig = {
   reactStrictMode: true,
+  transpilePackages: ['@upstash/redis'],
   i18n,
   // Production: strip console.* (keep errors/warnings) — smaller bundles, cleaner logs
   compiler: {
