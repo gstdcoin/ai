@@ -251,9 +251,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
         wallet = walletKey as string;
 
-        const SELF_URL = process.env.VERCEL_URL
-            ? `https://${process.env.VERCEL_URL}`
-            : (process.env.NEXT_PUBLIC_APP_URL || 'https://platform.gstdtoken.com');
+        const SELF_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://platform.gstdtoken.com';
         try {
             const deductResp = await fetch(`${SELF_URL}/api/v1/chat/deduct`, {
                 method: 'POST',

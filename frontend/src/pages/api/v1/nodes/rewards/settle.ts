@@ -4,7 +4,7 @@
  * Weekly settlement endpoint — computes F1 reward distribution and returns
  * the list of TON Jetton transfers to execute.
  *
- * Auth: TREASURY_SECRET header (set in Vercel env vars).
+ * Auth: TREASURY_SECRET header (configure as a Cloudflare Worker secret).
  *
  * Always returns a plan without clearing any balances -- the actual TON
  * transfer is done off-chain by scripts/settle.ts, which then calls

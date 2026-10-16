@@ -1,21 +1,19 @@
 /**
  * POST /api/v1/telegram/webhook
  *
- * Telegram webhook receiver — handles all bot updates on Vercel.
- * The TELEGRAM_BOT_TOKEN lives ONLY in Vercel env vars (dashboard).
+ * Telegram webhook receiver — handles bot updates on the platform API.
+ * Configure TELEGRAM_BOT_TOKEN as a Cloudflare Worker secret when deployment is ready.
  * The Pi node has NO token — it only serves AI inference.
  *
  * To activate:
- *   1. Set TELEGRAM_BOT_TOKEN in Vercel dashboard (not in any .env file)
+ *   1. Set TELEGRAM_BOT_TOKEN as a Cloudflare Worker secret (not in any committed file)
  *   2. Register webhook: POST https://api.telegram.org/bot<TOKEN>/setWebhook
- *      { "url": "https://platform.gstdtoken.com/api/v1/telegram/webhook" }
+ *      { "url": "https://app.gstdtoken.com/api/v1/telegram/webhook" }
  *   3. Remove TELEGRAM_BOT_TOKEN from Pi's gstdbot/.env
  *
  * Security: Telegram sends updates over HTTPS. No shared secret needed
  * because the URL itself is the secret (not guessable without the token).
  */
-export const config = { maxDuration: 55 };
-
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvSet, kvIncr } from '../../../../lib/kv';
 import { resolveNodeUrl, callNodeChat } from '../../../../lib/nodes';
@@ -188,7 +186,7 @@ async function handleAI(chatId: number, userId: number, text: string): Promise<v
     ];
 
     try {
-        // 20s timeout — keeps total handler well under Vercel's 55s limit
+        // Bound node inference time so webhook processing stays within request limits.
         const response = await callNodeChat(messages, { maxTokens: 600, temperature: 0.7, timeoutMs: 20_000 });
         const content = response.content || '🐝 No response from the swarm. Try again.';
 
@@ -324,9 +322,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
     if (!TOKEN) return res.status(503).json({ error: 'TELEGRAM_BOT_TOKEN not configured' });
 
-    // Process BEFORE responding — Vercel may terminate the function immediately
-    // after res.json(), so fire-and-forget is unreliable in serverless.
-    // maxDuration=55s gives plenty of headroom for all commands incl. AI (20s timeout).
+    // Complete processing before responding; do not rely on background work after the response.
     try {
         await processUpdate(req.body);
     } catch (err: any) {

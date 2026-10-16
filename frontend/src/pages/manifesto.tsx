@@ -101,7 +101,7 @@ const ARCH_SVG = (
     ))}
 
     {/* Bottom labels */}
-    {['Vercel Serverless', 'Upstash KV', 'libp2p · ARM64', 'Collective Memory', 'oracle_log.jsonl'].map((t, i) => (
+    {['Cloudflare (planned)', 'Upstash Redis', 'libp2p · ARM64', 'Collective Memory', 'oracle_log.jsonl'].map((t, i) => (
       <text key={i} x={20 + i * 170 + 60} y={182} textAnchor="middle"
         fill="rgba(255,255,255,0.22)" fontSize="9">{t}</text>
     ))}

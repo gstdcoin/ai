@@ -1,9 +1,9 @@
 /**
  * GET /api/cron/refresh-stats
  *
- * Vercel cron job — refreshes oracle stats cache and keeps
+ * Scheduled endpoint — refreshes oracle stats cache and keeps
  * stats:total_tasks_completed in sync with gstdbot's oracle log.
- * Runs every 5 minutes via vercel.json crons config.
+ * A Cloudflare Cron Trigger replacement must be configured before deployment.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvSet, kvKeys, kvMGet } from '../../../lib/kv';
@@ -33,7 +33,7 @@ async function findNodeUrl(): Promise<string> {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-    // Only allow cron invocations (Vercel sets this header automatically)
+    // Only allow authenticated scheduled invocations.
     if (req.headers['authorization'] !== `Bearer ${process.env.CRON_SECRET}` &&
         req.method !== 'GET') {
         return res.status(401).json({ error: 'Unauthorized' });

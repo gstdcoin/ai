@@ -49,7 +49,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 seenUrls.add(url); return true;
             });
             nodesOnline = dedupedRecords.length;
-            // Sum tasks from node records (trading bot calls gstdbot directly, not Vercel oracle)
+            // Sum tasks from node records when the platform oracle has no total.
             if (!tasksDone) {
                 for (const n of dedupedRecords) {
                     tasksDone += parseInt(n.tasks_completed || '0', 10);

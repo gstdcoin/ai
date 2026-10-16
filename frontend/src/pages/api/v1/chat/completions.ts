@@ -217,7 +217,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             model:   resolvedModel,
             choices: [{
                 index:         0,
-                message:       { role: 'assistant', content: '🐝 GSTD Network: No active nodes available. Set GSTD_NODE_URL in Vercel env vars or wait for a node to come online.' },
+                message:       { role: 'assistant', content: '🐝 GSTD Network: No active nodes available. Set GSTD_NODE_URL in Cloudflare Worker settings or wait for a node to come online.' },
                 finish_reason: 'stop',
             }],
             usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
