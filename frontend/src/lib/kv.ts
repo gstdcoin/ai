@@ -9,7 +9,15 @@
  */
 
 import type { Redis } from '@upstash/redis';
+import { getCloudflareContext } from '@opennextjs/cloudflare/cloudflare-context';
 import { logger } from './logger';
+
+declare global {
+    interface CloudflareEnv {
+        KV_REST_API_URL?: string;
+        KV_REST_API_TOKEN?: string;
+    }
+}
 
 // ── In-memory fallback for local dev ──────────────────────────────
 const mem = new Map<string, { value: string; exp: number | null }>();
@@ -43,10 +51,28 @@ function memKeys(prefix: string): string[] {
 // ── Upstash Redis client ───────────────────────────────────────────
 let _redis: Redis | null = null;
 
+function getRuntimeSecret(name: 'KV_REST_API_URL' | 'KV_REST_API_TOKEN'): string | undefined {
+    if (process.env.NODE_ENV !== 'production') return process.env[name];
+
+    try {
+        const env = getCloudflareContext().env;
+        if (name in env) {
+            const value = env[name];
+            if (typeof value === 'string' && value.length > 0) return value;
+        }
+    } catch (error) {
+        if (process.env[name]) return process.env[name];
+        logger.error(`Failed to read Cloudflare runtime binding '${name}'`, error);
+        throw error;
+    }
+
+    return process.env[name];
+}
+
 async function getRedis(): Promise<Redis | null> {
     if (_redis) return _redis;
-    const url   = process.env.KV_REST_API_URL   || process.env.UPSTASH_REDIS_REST_URL;
-    const token = process.env.KV_REST_API_TOKEN  || process.env.UPSTASH_REDIS_REST_TOKEN;
+    const url   = getRuntimeSecret('KV_REST_API_URL')   || process.env.UPSTASH_REDIS_REST_URL;
+    const token = getRuntimeSecret('KV_REST_API_TOKEN') || process.env.UPSTASH_REDIS_REST_TOKEN;
     if (!url || !token) {
         if (!ALLOW_MEMORY_FALLBACK) {
             throw new Error('Upstash Redis credentials are required in production');

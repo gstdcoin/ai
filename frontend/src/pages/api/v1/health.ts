@@ -27,7 +27,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     } catch (error) {
         logger.error('Health check failed to reach Upstash Redis', error);
         kvError = error instanceof Error ? error.name : 'UnknownError';
-        if (error !== null && typeof error === 'object' && 'status' in error && typeof error.status === 'number') {
+        if (error instanceof Error && error.message === 'Upstash Redis credentials are required in production') {
+            kvError = 'missing_credentials';
+        } else if (error !== null && typeof error === 'object' && 'status' in error && typeof error.status === 'number') {
             kvError = `upstream_http_${error.status}`;
         }
         kvOk = false;
