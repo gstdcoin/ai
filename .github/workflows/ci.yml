@@ -86,6 +86,28 @@ jobs:
           KV_REST_API_URL: ${{ secrets.KV_REST_API_URL }}
           KV_REST_API_TOKEN: ${{ secrets.KV_REST_API_TOKEN }}
 
+      - name: Verify Upstash connectivity
+        run: |
+          node --input-type=module -e '
+            import { Redis } from "@upstash/redis";
+            try {
+              const redis = new Redis({
+                url: process.env.KV_REST_API_URL,
+                token: process.env.KV_REST_API_TOKEN
+              });
+              const response = await redis.ping();
+              if (response !== "PONG") throw new Error("Unexpected ping response");
+              console.log("Upstash REST ping succeeded");
+            } catch (error) {
+              const status = Number.isInteger(error?.status) ? ` (HTTP ${error.status})` : "";
+              console.error(`Upstash REST ping failed${status}; verify the configured database credentials and availability.`);
+              process.exit(1);
+            }
+          '
+        env:
+          KV_REST_API_URL: ${{ secrets.KV_REST_API_URL }}
+          KV_REST_API_TOKEN: ${{ secrets.KV_REST_API_TOKEN }}
+
       - name: Bootstrap preview Worker
         id: bootstrap
         run: |
