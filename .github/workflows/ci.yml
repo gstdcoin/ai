@@ -97,10 +97,12 @@ jobs:
               });
               const response = await redis.ping();
               if (response !== "PONG") throw new Error("Unexpected ping response");
-              console.log("Upstash REST ping succeeded");
+              await redis.get("health:ping");
+              console.log("Upstash REST PING and GET succeeded");
             } catch (error) {
               const status = Number.isInteger(error?.status) ? ` (HTTP ${error.status})` : "";
-              console.error(`Upstash REST ping failed${status}; verify the configured database credentials and availability.`);
+              const type = error instanceof Error ? ` (${error.name})` : "";
+              console.error(`Upstash REST health probe failed${type}${status}; verify the configured database credentials and availability.`);
               process.exit(1);
             }
           '
