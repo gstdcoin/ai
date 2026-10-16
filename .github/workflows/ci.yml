@@ -234,6 +234,13 @@ jobs:
           if (invalidLines > 0) summaryLines.push(`Skipped ${invalidLines} non-JSON tail output line(s).`);
           const summary = `${summaryLines.join('\n')}\n`;
           fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary);
+          for (const detail of [...new Set(details)].slice(0, 10)) {
+            const annotation = detail.replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
+            process.stdout.write(`::error title=Preview Worker::${annotation}\n`);
+          }
+          if (details.length === 0) {
+            process.stdout.write('::warning title=Preview Worker::No filtered error logs were captured; check the tail permission and connection.\n');
+          }
           console.log(`Captured ${details.length} filtered Worker error detail(s).`);
           NODE
 
