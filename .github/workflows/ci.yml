@@ -1,5 +1,5 @@
 # ============================================================================
-# GSTD Platform CI — Frontend-only (Vercel serverless, no Go backend)
+# GSTD Platform CI — frontend and API checks
 # ============================================================================
 name: CI
 
@@ -8,7 +8,7 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main]
-  workflow_dispatch:  # allow manual deploy from GitHub UI
+  workflow_dispatch:  # allow manual checks from GitHub UI
 
 jobs:
   # ── TypeScript + ESLint + Build ─────────────────────────────────────────
@@ -43,25 +43,6 @@ jobs:
           KV_REST_API_URL: ${{ secrets.KV_REST_API_URL || 'https://placeholder.upstash.io' }}
           KV_REST_API_TOKEN: ${{ secrets.KV_REST_API_TOKEN || 'placeholder' }}
           NEXT_PUBLIC_APP_URL: https://app.gstdtoken.com
-
-  # ── Deploy to Vercel (production) ─────────────────────────────────────
-  deploy:
-    runs-on: ubuntu-latest
-    name: Deploy
-    needs: frontend
-    if: github.repository == 'gstdcoin/ai' && ((github.ref == 'refs/heads/main' && github.event_name == 'push') || github.event_name == 'workflow_dispatch')
-    env:
-      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      VERCEL_ORG_ID: team_nJrl4HPx1kF1r635js1KE2qd
-      VERCEL_PROJECT_ID: prj_j2gQqRULHdMowbDHZt7wSqs2z3Bf
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Vercel CLI
-        run: npm install --global vercel@latest
-
-      - name: Deploy to production
-        run: vercel deploy --prod --yes --token "$VERCEL_TOKEN"
 
   # ── Dependency Security Audit ──────────────────────────────────────────
   audit:
