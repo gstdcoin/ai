@@ -8,6 +8,7 @@
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet } from '../../../lib/kv';
+import { logger } from '../../../lib/logger';
 
 const START_TIME = Date.now();
 
@@ -22,7 +23,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
         await kvGet('health:ping');
         kvOk = true;
-    } catch {
+    } catch (error) {
+        logger.error('Health check failed to reach Upstash Redis', error);
         kvOk = false;
     }
 
