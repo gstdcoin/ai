@@ -20,11 +20,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.setHeader('Cache-Control', 'public, max-age=10, stale-while-revalidate=30');
 
     let kvOk = false;
+    let kvError: string | undefined;
     try {
         await kvGet('health:ping');
         kvOk = true;
     } catch (error) {
         logger.error('Health check failed to reach Upstash Redis', error);
+        kvError = error instanceof Error ? error.name : 'UnknownError';
+        if (error !== null && typeof error === 'object' && 'status' in error && typeof error.status === 'number') {
+            kvError = `upstream_http_${error.status}`;
+        }
         kvOk = false;
     }
 
@@ -36,6 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         version: process.env.npm_package_version || '1.0.0',
         uptime_ms: Date.now() - START_TIME,
         kv: kvOk ? 'ok' : 'error',
+        ...(kvError ? { kv_error: kvError } : {}),
         ts: new Date().toISOString(),
     });
 }
