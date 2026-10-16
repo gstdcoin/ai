@@ -1,0 +1,21 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "gstd-ai-platform",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-10-16",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "workers_dev": true,
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "vars": {
+    "NEXTJS_ENV": "production"
+  },
+  "routes": [
+    {
+      "pattern": "app.gstdtoken.com/*",
+      "zone_name": "gstdtoken.com"
+    }
+  ]
+}

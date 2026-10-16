@@ -11,9 +11,9 @@ Last updated: 2026-10-16
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| app.gstdtoken.com | ❌ Unavailable (last checked: HTTP 404) | Vercel deployment was disabled in the repository; the Cloudflare Worker, deployment workflow, cron replacement, and production secrets are not configured. Node registration, task APIs, settlement relay, and Telegram API integration are unavailable until deployment and smoke tests pass. |
+| app.gstdtoken.com | ⚠️ Deployment pending | Cloudflare Worker configuration and a preview-first deploy job are prepared in `gstdcoin/ai`; production routing is added only after preview health succeeds. The app remains unavailable until the GitHub Actions deployment and production health check pass. Cron scheduling is still deferred. |
 | gstdtoken.com | ✅ Live | Landing page on Cloudflare Workers |
-| Upstash Redis | ⚠️ Existing data store retained | Keep the existing database to preserve data. The app cannot access it until the Cloudflare Worker and Redis secrets are configured. |
+| Upstash Redis | ⚠️ Existing data store retained | GitHub Actions secrets are present; deployment provisions them on the Worker. Health must return HTTP 200 before the app is considered live. |
 | TON Contracts | ✅ Deployed | GSTDJetton, SettlementMaster v2, AgentRegistry, DAOVoting, EcosystemTreasury, Escrow live on mainnet (re-verified on-chain 2026-08-13); GSTDJetton admin renounced (`addr_none`); SettlementMaster v2 adds quorum-attested P2P settlement, not externally audited. SettlementMaster/EcosystemTreasury owner deliberately NOT transferred to DAOVoting — see governance quorum bug below. |
 | DAOVoting governance | ⚠️ Live but unusable as designed | `Proposal.quorumStake` is set from `minProposalStake` (a GSTD-denominated constant, 10,000 GSTD = `1e13`) but votes are counted in raw attached TON (`CastVote`'s weight = `context().value`), not GSTD — see `DAOVoting.tact:243,284`. Since both use 9-decimal nano units, the code compares a TON-vote-sum against a threshold meant for GSTD, i.e. ~10,000 TON of real voter stake is needed to ever reach quorum. No proposal can realistically pass. Do not transfer SettlementMaster/EcosystemTreasury ownership to this contract until a v2 fixes the quorum math — doing so now would permanently brick protocol admin actions (pause, key rotation, parameter changes) with no way to ever govern your way out. |
 | gstd-a2a (PyPI) | ✅ Published | `pip install gstd-a2a` — v2.1.0, first publish 2026-07-19 |
@@ -25,7 +25,7 @@ Last updated: 2026-10-16
 
 ## gstdcoin/ai — Platform (app.gstdtoken.com)
 
-**Branch:** `main` | **Deploy:** Cloudflare Workers target; not configured. Do not deploy via Vercel.
+**Branch:** `main` | **Deploy:** Cloudflare Workers via GitHub Actions; pending the first successful preview and production health checks. Do not deploy via Vercel.
 
 ### Implemented in the repository (not currently reachable in production)
 - [x] Node registry (register, heartbeat, list, peers, deregister)
@@ -56,7 +56,7 @@ Last updated: 2026-10-16
 
 ### Known issues / Do not re-do
 - `api.gstdtoken.com` does NOT exist — all API is at `app.gstdtoken.com/api/v1`
-- No Go backend. No Docker in production. Cloudflare Workers + the existing Upstash Redis database are the target runtime; the app deployment is pending.
+- No Go backend. No Docker in production. Cloudflare Workers + the existing Upstash Redis database are the target runtime; deployment stays pending until its smoke checks pass.
 - `proxy.ts` is the Next.js 16 name for what was `middleware.ts` in Next.js 13-15
 - Dead pages `monitor/` and `predictions/` were removed — no API backend for them
 - Legacy Go `backend/` folder (never deployed) removed 2026-08-13, along with its coupled `docker-compose*.yml`, `nginx/`, and Docker-only scripts — do not recreate it; the app's intended Cloudflare + Upstash runtime is not yet deployed.

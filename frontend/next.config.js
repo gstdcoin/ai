@@ -17,6 +17,7 @@ const nextConfig = {
     largePageDataBytes: 200 * 1024,
   },
   images: {
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: 'https',
