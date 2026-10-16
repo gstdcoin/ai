@@ -12,6 +12,19 @@ import { logger } from '../../../lib/logger';
 
 const START_TIME = Date.now();
 
+function getErrorIdentifier(error: unknown): string {
+    const identifiers: string[] = [];
+    let current = error;
+    while (current instanceof Error && identifiers.length < 2) {
+        const code = 'code' in current && typeof current.code === 'string' && /^[A-Z0-9_]+$/i.test(current.code)
+            ? `_${current.code}`
+            : '';
+        identifiers.push(`${current.name}${code}`);
+        current = current.cause;
+    }
+    return identifiers.join('_caused_by_') || 'UnknownError';
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'GET') {
         return res.status(405).json({ error: 'Method not allowed' });
@@ -27,7 +40,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     } catch (error) {
         logger.error('Health check failed to reach Upstash Redis', error);
         const message = error instanceof Error ? error.message.toLowerCase() : '';
-        kvError = error instanceof Error ? error.name : 'UnknownError';
+        kvError = getErrorIdentifier(error);
         if (error instanceof Error && error.message === 'Upstash Redis credentials are required in production') {
             kvError = 'missing_credentials';
         } else if (message.includes('fetch failed') || message.includes('network')) {
