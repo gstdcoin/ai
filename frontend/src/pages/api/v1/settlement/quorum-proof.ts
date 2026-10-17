@@ -19,8 +19,8 @@
  *   workerAddr: string,    // TON address to be paid — should be a real, externally-linked wallet
  *   resultHash: string,    // hex, uint256
  *   attestations: { pubkeyHex: string; signatureHex: string }[],
- *   gstdBonusAmount?: number, // optional GSTD bonus; inert until ownJettonWallet is funded
- *   computeUnits?: number,
+ *   gstdBonusAmount: string, // GSTD nanotokens, bound by the quorum signatures
+ *   computeUnits: number,    // bound by the quorum signatures
  * }
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
@@ -56,8 +56,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
         }
 
-        const gstdBonusAmount = typeof body.gstdBonusAmount === 'number' && body.gstdBonusAmount > 0 ? body.gstdBonusAmount : 0;
-        const computeUnits = typeof body.computeUnits === 'number' && body.computeUnits > 0 ? body.computeUnits : 1;
+        if (typeof body.gstdBonusAmount !== 'string' || !/^\d{1,36}$/.test(body.gstdBonusAmount)) {
+            return res.status(400).json({ error: 'gstdBonusAmount must be an unsigned decimal string in GSTD nanotokens' });
+        }
+        if (!Number.isSafeInteger(body.computeUnits) || body.computeUnits < 0 || body.computeUnits > 1_000_000_000) {
+            return res.status(400).json({ error: 'computeUnits must be an integer between 0 and 1000000000' });
+        }
+        const gstdBonusAmount = body.gstdBonusAmount;
+        const computeUnits = body.computeUnits;
 
         const id = `proof_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
         const record = {
