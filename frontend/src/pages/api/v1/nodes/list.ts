@@ -6,7 +6,7 @@
  * Used by dashboard, landing page stats, and gstdbot peer discovery.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvKeys, kvMGet, kvSet } from '../../../../lib/kv';
+import { kvGet, kvKeys, kvMGet, kvSet } from '../../../../lib/kv';
 import { dedupeNodeRecords, isNodeOnline } from '../../../../lib/node-status';
 import type { NodeRecord } from './register';
 
@@ -17,7 +17,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     try {
         // Filter out sub-keys like node:X:pull_queue — only process root node entries
-        const keys = (await kvKeys('node:')).filter(k => !k.slice(5).includes(':'));
+        const [keys, totalRegistered] = await Promise.all([
+            kvKeys('node:').then(nodeKeys => nodeKeys.filter(k => !k.slice(5).includes(':'))),
+            kvGet('stats:total_registered'),
+        ]);
 
         let nodes: NodeRecord[] = [];
         if (keys.length > 0) {
@@ -27,22 +30,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 .map(v => JSON.parse(v) as NodeRecord);
         }
 
-        // Fallback: GitHub registry file (updated by tunnel.sh on each restart)
-        if (nodes.length === 0) {
-            try {
-                const ghResp = await fetch(
-                    'https://raw.githubusercontent.com/gstdcoin/ai/main/nodes-registry.json',
-                    { signal: AbortSignal.timeout(4000), cache: 'no-store' }
-                );
-                if (ghResp.ok) {
-                    const registry: any[] = await ghResp.json();
-                    nodes = registry as NodeRecord[];
-                }
-            } catch { /* GitHub unavailable */ }
-        }
-
         const registeredNodes = dedupeNodeRecords(nodes);
-        const onlineNodes = dedupeNodeRecords(nodes.filter(node => isNodeOnline(node)));
+        const onlineNodes = registeredNodes.filter(node => isNodeOnline(node));
+        const totalRegisteredCount = Math.max(
+            parseInt(totalRegistered || '0', 10),
+            registeredNodes.length,
+        );
 
         // Strip sensitive fields for public listing
         const public_nodes = onlineNodes.map(n => ({
@@ -68,8 +61,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         return res.status(200).json({
             count:      public_nodes.length,
-            total_registered: registeredNodes.length,
-            offline_count: registeredNodes.length - public_nodes.length,
+            total_registered: totalRegisteredCount,
+            offline_count: Math.max(0, totalRegisteredCount - public_nodes.length),
             peers:      public_nodes,
             nodes:      public_nodes,
             timestamp:  Date.now(),
