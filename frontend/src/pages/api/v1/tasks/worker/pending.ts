@@ -10,7 +10,8 @@
  * Response: { tasks: [...] }  (list, may be empty)
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvGet, kvPop, kvPush, kvSet } from '../../../../../lib/kv';
+import { kvGet, kvPop, kvPush } from '../../../../../lib/kv';
+import { assignTaskToNode } from '../../../../../lib/task-assignment';
 import type { NodeRecord } from '../../nodes/register';
 
 const SCAN_DEPTH = 20;
@@ -36,23 +37,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
         const nodeId = (req.query.node_id as string) || '';
 
-        // Look up node capabilities from registry
-        let caps: string[] = [];
-        let resources: Record<string, number> = {};
-
-        if (nodeId) {
-            const raw = await kvGet(`node:${nodeId}`);
-            if (raw) {
-                const record: NodeRecord = JSON.parse(raw);
-                caps = record.capabilities || [];
-                resources = {
-                    storage_free_gb: record.storage_free_gb ?? 10,
-                    ram_free_mb:     record.ram_free_mb     ?? 2048,
-                    gpu_vram_mb:     record.gpu_vram_mb     ?? 0,
-                    cpu_cores:       record.cpu_cores       ?? 1,
-                };
-            }
+        if (!nodeId) return res.status(400).json({ error: 'node_id required' });
+        const nodeRaw = await kvGet(`node:${nodeId}`);
+        if (!nodeRaw) return res.status(403).json({ error: 'Unknown node — register first' });
+        const record: NodeRecord = JSON.parse(nodeRaw);
+        const storedWallet = (record.wallet_address || '').trim().toLowerCase();
+        if (!storedWallet) return res.status(403).json({ error: 'Wallet required for paid task assignments' });
+        const headerWallet = ((req.headers['x-wallet-address'] as string) || '').trim().toLowerCase();
+        if (storedWallet && storedWallet !== headerWallet) {
+            return res.status(403).json({ error: 'Wallet mismatch' });
         }
+        const caps = record.capabilities || [];
+        const resources: Record<string, number> = {
+            storage_free_gb: record.storage_free_gb ?? 10,
+            ram_free_mb:     record.ram_free_mb     ?? 2048,
+            gpu_vram_mb:     record.gpu_vram_mb     ?? 0,
+            cpu_cores:       record.cpu_cores       ?? 1,
+        };
 
         // Check node-specific priority queue first (O(1))
         if (nodeId) {
@@ -61,13 +62,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 let task: any;
                 try { task = JSON.parse(raw); } catch { /* skip */ }
                 if (task) {
-                    // Record which node this task was handed to, so worker/submit.ts can
-                    // verify the reward it's asked to pay out corresponds to a task
-                    // actually assigned -- mirrors tasks/poll.ts's identical fix.
-                    if (task.task_id) {
-                        await kvSet(`task_assigned:${task.task_id}`, JSON.stringify({ node_id: nodeId, assigned_at: Date.now() }), ASSIGNMENT_TTL).catch(() => {});
+                    try {
+                        if (await assignTaskToNode(task, nodeId, ASSIGNMENT_TTL)) {
+                            return res.status(200).json({ tasks: [task] });
+                        }
+                    } catch (error) {
+                        await kvPush(`tasks:inference:${nodeId}`, raw);
+                        throw error;
                     }
-                    return res.status(200).json({ tasks: [task] });
                 }
             }
         }
@@ -95,8 +97,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             await kvPush('tasks:queue', JSON.stringify(skipped[i]));
         }
 
-        if (picked?.task_id) {
-            await kvSet(`task_assigned:${picked.task_id}`, JSON.stringify({ node_id: nodeId, assigned_at: Date.now() }), ASSIGNMENT_TTL).catch(() => {});
+        if (picked) {
+            try {
+                if (!(await assignTaskToNode(picked, nodeId, ASSIGNMENT_TTL))) picked = null;
+            } catch (error) {
+                await kvPush('tasks:queue', JSON.stringify(picked));
+                throw error;
+            }
         }
 
         return res.status(200).json({ tasks: picked ? [picked] : [] });

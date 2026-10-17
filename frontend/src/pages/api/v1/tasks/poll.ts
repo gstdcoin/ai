@@ -16,10 +16,11 @@
  * General queue: tasks:queue — scanned up to SCAN_DEPTH tasks
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvPop, kvPush, kvSet } from '../../../../lib/kv';
+import { kvGet, kvPop, kvPush } from '../../../../lib/kv';
+import { assignTaskToNode } from '../../../../lib/task-assignment';
 
 const SCAN_DEPTH = 20; // max tasks to inspect before giving up
-const ASSIGNMENT_TTL = 3600; // 1h window to complete a task before its assignment record expires
+const ASSIGNMENT_TTL = 3600;
 
 function nodeCanHandle(task: any, caps: string[], resources: any): boolean {
     // Check required capabilities
@@ -52,12 +53,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         // ── Node identity check ───────────────────────────────────────────
         if (!nodeId) return res.status(400).json({ error: 'node_id required' });
-        const { kvGet } = await import('../../../../lib/kv');
         const nodeRaw = await kvGet(`node:${nodeId}`);
         if (!nodeRaw) return res.status(403).json({ error: 'Unknown node — register first' });
         const storedWallet: string = (JSON.parse(nodeRaw) as any).wallet_address || '';
-        const headerWallet: string = (req.headers['x-wallet-address'] as string || '').trim();
-        if (storedWallet && headerWallet && storedWallet !== headerWallet) {
+        if (!storedWallet.trim()) return res.status(403).json({ error: 'Wallet required for paid task assignments' });
+        const headerWallet: string = ((req.headers['x-wallet-address'] as string) || '').trim().toLowerCase();
+        if (storedWallet && storedWallet.trim().toLowerCase() !== headerWallet) {
             return res.status(403).json({ error: 'Wallet mismatch' });
         }
 
@@ -67,7 +68,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             if (raw) {
                 let task: any;
                 try { task = JSON.parse(raw); } catch { /* malformed */ }
-                if (task) return res.status(200).json({ task, source: 'priority' });
+                if (task) {
+                    try {
+                        if (await assignTaskToNode(task, nodeId, ASSIGNMENT_TTL)) {
+                            return res.status(200).json({ task, source: 'priority' });
+                        }
+                    } catch (error) {
+                        await kvPush(`tasks:inference:${nodeId}`, raw);
+                        throw error;
+                    }
+                }
             }
         }
 
@@ -102,8 +112,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Record which node this task was handed to, so tasks/complete.ts can verify
         // the reward it's asked to pay out corresponds to a task actually assigned --
         // without this, any node_id could claim a reward for a fabricated task_id.
-        if (picked?.task_id) {
-            await kvSet(`task_assigned:${picked.task_id}`, JSON.stringify({ node_id: nodeId, assigned_at: Date.now() }), ASSIGNMENT_TTL).catch(() => {});
+        if (picked) {
+            try {
+                if (!(await assignTaskToNode(picked, nodeId, ASSIGNMENT_TTL))) picked = null;
+            } catch (error) {
+                await kvPush('tasks:queue', JSON.stringify(picked));
+                throw error;
+            }
         }
 
         return res.status(200).json({ task: picked || null });

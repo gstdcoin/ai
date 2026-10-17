@@ -6,11 +6,13 @@
  * - Records campaign task completion
  * - Accumulates protocol treasury from campaign fee
  *
- * Body: { node_id, task_id, result?, reward_gstd?, campaign_id? }
+ * Body: { node_id, task_id, result? }. Reward and campaign metadata come from
+ * the server-side task assignment; client-supplied reward fields are ignored.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvGet, kvSet, kvIncr, kvDel } from '../../../../lib/kv';
+import { kvGet, kvGetDelForNode, kvSet, kvIncr, kvIncrByFloat } from '../../../../lib/kv';
 import { accrueReward, BASE_TASK_FEE } from '../../../../lib/rewards';
+import type { TaskAssignment } from '../../../../lib/task-assignment';
 import type { NodeRecord } from '../nodes/register';
 import type { Campaign } from '../campaigns/create';
 
@@ -29,53 +31,46 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.status(400).json({ error: 'node_id required' });
         }
 
-        // Cap reward to prevent arbitrary inflation
-        const MAX_REWARD    = 50;
-        const rewardGstd    = Math.min(MAX_REWARD, Math.max(0, Number(body.reward_gstd) || 0));
-        const protocolFee   = Math.min(10, Math.max(0, Number(body.protocol_fee) || 0));
-        const campaignId    = body.campaign_id as string | undefined;
+        // Verify the registered wallet before consuming the one-time assignment.
+        const headerWallet = ((req.headers['x-wallet-address'] as string) || '').trim().toLowerCase();
 
-        // Verify node identity: X-Wallet-Address must match stored wallet
-        const headerWallet = (req.headers['x-wallet-address'] as string || '').trim();
-
-        // Parallel: update node record + campaign + global stats + task assignment proof
-        const [nodeRaw, campaignRaw, assignedRaw] = await Promise.all([
-            kvGet(`node:${nodeId}`),
-            campaignId ? kvGet(`campaign:${campaignId}`) : Promise.resolve(null),
-            body.task_id ? kvGet(`task_assigned:${body.task_id}`) : Promise.resolve(null),
-        ]);
-
-        if (nodeRaw) {
-            const storedWallet = (JSON.parse(nodeRaw) as NodeRecord).wallet_address;
-            // If the node has a wallet on file, the caller must present it -- omitting
-            // the header no longer bypasses the check.
-            if (storedWallet && storedWallet !== headerWallet) {
-                return res.status(403).json({ error: 'Wallet mismatch' });
-            }
+        const nodeRaw = await kvGet(`node:${nodeId}`);
+        if (!nodeRaw) return res.status(403).json({ error: 'Unknown node — register first' });
+        const storedWallet = ((JSON.parse(nodeRaw) as NodeRecord).wallet_address || '').trim().toLowerCase();
+        if (!storedWallet) return res.status(403).json({ error: 'Wallet required for paid task completions' });
+        if (storedWallet && storedWallet !== headerWallet) {
+            return res.status(403).json({ error: 'Wallet mismatch' });
         }
 
-        // Only credit a reward for a task_id this node was actually handed by
-        // tasks/poll.ts -- otherwise a fabricated task_id could mint GSTD with no
-        // proof of work. Consume the assignment record so it can't be reused.
-        let assignmentValid = false;
-        if (assignedRaw) {
-            try {
-                const assignment = JSON.parse(assignedRaw as string) as { node_id: string };
-                assignmentValid = assignment.node_id === nodeId;
-            } catch { /* malformed, treat as invalid */ }
-            if (assignmentValid) await kvDel(`task_assigned:${body.task_id}`);
+        const assignedRaw = body.task_id
+            ? await kvGetDelForNode(`task_assigned:${body.task_id}`, nodeId)
+            : null;
+        if (!assignedRaw) {
+            return res.status(409).json({ error: 'Task is not assigned to this node or was already completed' });
         }
+        let assignment: TaskAssignment;
+        try {
+            assignment = JSON.parse(assignedRaw) as TaskAssignment;
+        } catch {
+            return res.status(409).json({ error: 'Invalid task assignment' });
+        }
+        const rewardGstd = Number.isFinite(assignment.reward_gstd) && assignment.reward_gstd >= 0
+            ? assignment.reward_gstd
+            : BASE_TASK_FEE;
+        const protocolFee = Number.isFinite(assignment.protocol_fee_gstd) && assignment.protocol_fee_gstd >= 0
+            ? assignment.protocol_fee_gstd
+            : 0;
+        const campaignId = assignment.campaign_id;
+        const campaignRaw = campaignId ? await kvGet(`campaign:${campaignId}`) : null;
 
         const writes: Promise<void>[] = [];
 
         // Update node earnings
-        if (nodeRaw) {
-            const record: NodeRecord = JSON.parse(nodeRaw);
-            record.tasks_completed = (record.tasks_completed || 0) + 1;
-            record.gstd_earned     = Math.round(((record.gstd_earned || 0) + rewardGstd) * 1e6) / 1e6;
-            record.last_seen       = new Date().toISOString();
-            writes.push(kvSet(`node:${nodeId}`, JSON.stringify(record), NODE_TTL));
-        }
+        const record: NodeRecord = JSON.parse(nodeRaw);
+        record.tasks_completed = (record.tasks_completed || 0) + 1;
+        record.gstd_earned     = Math.round(((record.gstd_earned || 0) + rewardGstd) * 1e6) / 1e6;
+        record.last_seen       = new Date().toISOString();
+        writes.push(kvSet(`node:${nodeId}`, JSON.stringify(record), NODE_TTL));
 
         // Update campaign stats
         if (campaignRaw && campaignId) {
@@ -89,8 +84,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         // Global stats
         writes.push(kvIncr('stats:total_tasks_completed').then(() => {}));
-        if (rewardGstd > 0) writes.push(kvIncr('stats:total_gstd_paid').then(() => {}));
-        if (protocolFee > 0) writes.push(kvIncr('stats:protocol_treasury_gstd').then(() => {}));
+        if (protocolFee > 0) writes.push(kvIncrByFloat('stats:protocol_treasury_gstd', protocolFee).then(() => {}));
 
         // Advance training job if this was a finetune shard
         const trainingJobId: string | undefined = body.job_id || body.result?.job_id;
@@ -121,13 +115,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             })());
         }
 
-        // F1 reward accrual — accumulate per-node pending balance.
-        // Requires a verified task_assigned record (see assignmentValid above) so a
-        // fabricated task_id can't mint a reward with no proof of work.
-        const walletAddr = nodeRaw ? (JSON.parse(nodeRaw) as NodeRecord).wallet_address : '';
-        if (walletAddr && assignmentValid) {
+        // Accumulate the server-assigned reward in the node's pending balance.
+        const walletAddr = (JSON.parse(nodeRaw) as NodeRecord).wallet_address;
+        if (walletAddr && rewardGstd > 0) {
             writes.push(
-                accrueReward(nodeId, walletAddr, rewardGstd || BASE_TASK_FEE, body.task_id)
+                accrueReward(nodeId, walletAddr, rewardGstd, body.task_id)
                     .then(() => {})
             );
         }
@@ -137,7 +129,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(200).json({
             ok:          true,
             task_id:     body.task_id,
-            reward_gstd: assignmentValid ? rewardGstd : 0,
+            reward_gstd: rewardGstd,
         });
     } catch (err: any) {
         console.error('[tasks/complete]', err.message);

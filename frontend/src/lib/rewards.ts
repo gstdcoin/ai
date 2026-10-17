@@ -10,7 +10,7 @@
  * Rewards accumulate in Redis and are settled weekly via TON Jetton transfers.
  */
 
-import { kvGet, kvSet, kvIncr, kvKeys, kvIncrByFloat } from './kv';
+import { kvGet, kvSet, kvIncr, kvKeys, kvIncrByFloat, kvAccrueTaskReward } from './kv';
 
 export const COMMUNITY_TAX     = 0.05;   // 5% to treasury
 export const BASE_TASK_FEE     = 0.001;  // GSTD per completed inference task
@@ -41,16 +41,18 @@ export async function accrueReward(
     feeGstd: number = BASE_TASK_FEE,
     taskId?: string,
 ): Promise<{ nodeShare: number; communityShare: number }> {
-    // Idempotency guard
-    if (taskId) {
-        const seen = await kvGet(`reward_seen:${taskId}`);
-        if (seen) return { nodeShare: 0, communityShare: 0 };
-        await kvSet(`reward_seen:${taskId}`, '1', 86400 * 7);
-    }
-
     const nodeShare      = Math.round(feeGstd * (1 - COMMUNITY_TAX) * 1e6) / 1e6;
     const communityShare = Math.round(feeGstd * COMMUNITY_TAX * 1e6) / 1e6;
     const walletKey      = wallet.toLowerCase();
+
+    if (taskId) {
+        const credited = await kvAccrueTaskReward(
+            taskId, walletKey, nodeId, nodeShare, communityShare, feeGstd,
+        );
+        return credited
+            ? { nodeShare, communityShare }
+            : { nodeShare: 0, communityShare: 0 };
+    }
 
     await Promise.all([
         kvIncrByFloat(`rewards:pending:${walletKey}`, nodeShare),

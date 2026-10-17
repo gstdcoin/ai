@@ -92,6 +92,93 @@ export async function kvSet(key: string, value: string, ttlSec?: number): Promis
     memSet(key, value, ttlSec);
 }
 
+export async function kvSetNX(key: string, value: string, ttlSec: number): Promise<boolean> {
+    const r = await getRedis();
+    if (r) {
+        try {
+            return (await r.set(key, value, { nx: true, ex: ttlSec })) === 'OK';
+        } catch (e) { handleRedisFailure(`kvSetNX('${key}')`, e); }
+    }
+    if (memGet(key) !== null) return false;
+    memSet(key, value, ttlSec);
+    return true;
+}
+
+export async function kvAccrueTaskReward(
+    taskId: string,
+    walletKey: string,
+    nodeId: string,
+    nodeShare: number,
+    communityShare: number,
+    feeGstd: number,
+): Promise<boolean> {
+    const r = await getRedis();
+    const seenKey = `reward_seen:${taskId}`;
+    const pendingKey = `rewards:pending:${walletKey}`;
+    const lifetimeKey = `rewards:lifetime:${nodeId}`;
+    if (r) {
+        const script = `
+            if redis.call('SET', KEYS[1], '1', 'EX', ARGV[5], 'NX') then
+                redis.call('INCRBYFLOAT', KEYS[2], ARGV[1])
+                redis.call('INCRBYFLOAT', KEYS[3], ARGV[1])
+                redis.call('INCRBYFLOAT', KEYS[4], ARGV[2])
+                redis.call('INCRBYFLOAT', KEYS[5], ARGV[3])
+                redis.call('SET', KEYS[6], ARGV[4])
+                return 1
+            end
+            return 0
+        `;
+        try {
+            const result = await r.eval<[string, string, string, string, number], number>(
+                script,
+                [seenKey, pendingKey, lifetimeKey, 'rewards:treasury', 'stats:total_gstd_paid', `rewards:node_wallet:${nodeId}`],
+                [String(nodeShare), String(communityShare), String(feeGstd), walletKey, 86400 * 7],
+            );
+            return result === 1;
+        } catch (e) { handleRedisFailure(`kvAccrueTaskReward('${taskId}')`, e); }
+    }
+    if (memGet(seenKey) !== null) return false;
+    memSet(seenKey, '1', 86400 * 7);
+    const add = (key: string, amount: number) => {
+        memSet(key, String((parseFloat(memGet(key) || '0') || 0) + amount));
+    };
+    add(pendingKey, nodeShare);
+    add(lifetimeKey, nodeShare);
+    add('rewards:treasury', communityShare);
+    add('stats:total_gstd_paid', feeGstd);
+    memSet(`rewards:node_wallet:${nodeId}`, walletKey);
+    return true;
+}
+
+export async function kvGetDelForNode(key: string, nodeId: string): Promise<string | null> {
+    const r = await getRedis();
+    if (r) {
+        const script = `
+            local value = redis.call('GET', KEYS[1])
+            if not value then return nil end
+            local ok, assignment = pcall(cjson.decode, value)
+            if not ok or assignment.node_id ~= ARGV[1] then return nil end
+            redis.call('DEL', KEYS[1])
+            return value
+        `;
+        try {
+            const value = await r.eval<[string], unknown>(script, [key], [nodeId]);
+            if (value == null) return null;
+            return typeof value === 'string' ? value : JSON.stringify(value);
+        } catch (e) { handleRedisFailure(`kvGetDelForNode('${key}')`, e); }
+    }
+    const value = memGet(key);
+    if (!value) return null;
+    try {
+        if (JSON.parse(value).node_id !== nodeId) return null;
+    } catch {
+        memDel(key);
+        return null;
+    }
+    memDel(key);
+    return value;
+}
+
 export async function kvDel(key: string): Promise<void> {
     const r = await getRedis();
     if (r) { try { await r.del(key); return; } catch (e) { handleRedisFailure(`kvDel('${key}')`, e); } }
