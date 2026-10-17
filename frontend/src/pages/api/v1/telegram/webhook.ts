@@ -11,15 +11,17 @@
  *      { "url": "https://app.gstdtoken.com/api/v1/telegram/webhook" }
  *   3. Remove TELEGRAM_BOT_TOKEN from Pi's gstdbot/.env
  *
- * Security: Telegram sends updates over HTTPS. No shared secret needed
- * because the URL itself is the secret (not guessable without the token).
+ * Security: every request must carry X-Telegram-Bot-Api-Secret-Token (derived from the
+ * bot token, see lib/telegramWebhookAuth.ts). Register with scripts/set-telegram-webhook.mjs.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvSet, kvIncr } from '../../../../lib/kv';
 import { resolveNodeUrl, callNodeChat } from '../../../../lib/nodes';
+import { isValidWebhookRequest } from '../../../../lib/telegramWebhookAuth';
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
-const SWARM_URL = process.env.GSTD_SWARM_URL || 'https://platform.gstdtoken.com';
+const SWARM_URL = process.env.GSTD_SWARM_URL || 'https://app.gstdtoken.com';
+const TMA_URL = `${SWARM_URL}/tma`;
 
 // ── Telegram API helper ───────────────────────────────────────────────────────
 async function tg(method: string, body: object): Promise<any> {
@@ -152,27 +154,64 @@ async function handleWalletCommand(chatId: number, userId: number): Promise<void
 
 async function handleEarn(chatId: number, userId: number): Promise<void> {
     const wallet = await getWallet(userId);
-    const tmaUrl = 'https://platform.gstdtoken.com/tma';
+    const tmaUrl = TMA_URL;
     const step1 = wallet ? `✅ Wallet linked` : `1️⃣ /wallet — link your wallet (0 GSTD needed)`;
 
     await sendMessage(chatId,
-        `🐝 <b>Earn GSTD — No Tokens Needed</b>\n\n` +
+        `🐝 <b>Earn GSTD by contributing compute</b>\n\n` +
         `${step1}\n` +
-        `2️⃣ Run a node — share device resources\n` +
-        `3️⃣ Earn GSTD automatically\n` +
-        `4️⃣ Use for AI queries or models\n\n` +
-        `💰 <b>Rates:</b>\n` +
-        `📱 Mobile Bronze — 0.5 GSTD/h\n` +
-        `📱 Mobile Gold   — 2.0 GSTD/h\n` +
-        `🖥 Desktop 8GB   — 1.5 GSTD/h\n` +
-        `🖥 Desktop 32GB  — 5.0 GSTD/h\n\n` +
-        `🔓 10 GSTD → more models · 100 → experts · 1k → flagship`,
+        `2️⃣ Run a node — one command:\n` +
+        `<code>curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | GSTD_WALLET_ADDRESS=${wallet || '&lt;YOUR_TON_WALLET&gt;'} bash</code>\n` +
+        `3️⃣ Check status and rewards: /node\n\n` +
+        `<i>Rewards are paid for completed, accepted tasks and depend on network demand. There are no guaranteed hourly rates.</i>`,
         { reply_markup: { inline_keyboard: [
-            [{ text: '📱 Launch Mobile Node', web_app: { url: tmaUrl } }],
+            [{ text: '🖥 My node', callback_data: 'node_status' }],
             [{ text: '💎 Check Balance', callback_data: 'check_balance' }],
         ]}}
     );
 }
+
+async function botApi(path: string, init: { method?: string; body?: unknown } = {}): Promise<any> {
+    const r = await fetch(`${SWARM_URL}${path}`, {
+        method:  init.method || 'GET',
+        headers: { 'Content-Type': 'application/json', 'X-Bot-Token': TOKEN },
+        body:    init.body ? JSON.stringify(init.body) : undefined,
+        signal:  AbortSignal.timeout(8000),
+    });
+    if (!r.ok) throw new Error(`API ${r.status}`);
+    return r.json();
+}
+
+const escHtml = (s: unknown) => String(s ?? '?').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] as string));
+
+async function handleNodeStatus(chatId: number, userId: number): Promise<void> {
+    let data: any;
+    try { data = await botApi(`/api/v1/telegram/bot/nodes?telegram_id=${userId}`); }
+    catch { await sendMessage(chatId, '❌ Could not load node status. Try again later.'); return; }
+
+    if (!data.linked) { await sendMessage(chatId, '🖥 Link your TON wallet first → /wallet'); return; }
+    const nodes: any[] = Array.isArray(data.nodes) ? data.nodes : [];
+    if (!nodes.length) {
+        await sendMessage(chatId, '🖥 <b>No node found for your wallet.</b>\nMake sure GSTD_WALLET_ADDRESS in the node .env matches your linked wallet.\n\nStart one → /earn');
+        return;
+    }
+    const lines = nodes.slice(0, 5).map(n =>
+        `${n.online ? '🟢' : '🔴'} <b>${escHtml(n.name || n.node_id)}</b> v${escHtml(n.version)}\n   tasks: ${Number(n.tasks_completed) || 0} · earned: ${(Number(n.gstd_earned) || 0).toFixed(4)} GSTD`
+    ).join('\n\n');
+    const pending = Number(data.pending_gstd) || 0;
+    await sendMessage(chatId, `🖥 <b>Your nodes</b> (${nodes.length})\n\n${lines}\n\n💰 Claimable: <b>${pending.toFixed(4)} GSTD</b>`,
+        { reply_markup: { inline_keyboard: pending >= 0.01 ? [[{ text: '🎁 Claim', callback_data: 'claim_reward' }]] : [] } });
+}
+
+async function handleClaim(chatId: number, userId: number): Promise<void> {
+    try {
+        const r = await botApi('/api/v1/telegram/bot/claim_reward', { method: 'POST', body: { telegram_id: userId } });
+        await sendMessage(chatId, r.success
+            ? `✅ Claimed <b>${Number(r.claimed_net).toFixed(4)} GSTD</b> to your balance.`
+            : 'Nothing to claim yet.');
+    } catch { await sendMessage(chatId, '❌ Claim failed. Try again later.'); }
+}
+
 
 async function handleAI(chatId: number, userId: number, text: string): Promise<void> {
     const session = await getSession(userId);
@@ -216,7 +255,9 @@ async function processUpdate(update: any): Promise<void> {
         const data   = cbQuery.data || '';
         await answerCallback(cbQuery.id);
 
-        if (data === 'check_balance' || data === 'earn_menu') {
+        if (data === 'node_status') await handleNodeStatus(chatId, userId);
+        else if (data === 'claim_reward') await handleClaim(chatId, userId);
+        else if (data === 'check_balance' || data === 'earn_menu') {
             if (data === 'earn_menu') await handleEarn(chatId, userId);
             else await handleBalance(chatId, userId);
         }
@@ -236,15 +277,20 @@ async function processUpdate(update: any): Promise<void> {
     // TON address detection
     const tonRegex = /^(EQ[A-Za-z0-9_-]{46}|UQ[A-Za-z0-9_-]{46}|0:[a-fA-F0-9]{64})$/;
     if (tonRegex.test(text)) {
-        await kvSet(`tg_wallet:${userId}`, text);
+        let linked = false;
         try {
-            await fetch(`${SWARM_URL}/api/v1/telegram/bot/link`, {
+            const lr = await fetch(`${SWARM_URL}/api/v1/telegram/bot/link`, {
                 method:  'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', 'X-Bot-Token': TOKEN },
                 body:    JSON.stringify({ telegram_id: userId, wallet_address: text, username: msg.from?.username || '' }),
                 signal:  AbortSignal.timeout(5000),
             });
+            linked = lr.ok;
         } catch {}
+        if (!linked) {
+            await sendMessage(chatId, '❌ Could not link the wallet right now. Try again in a minute.');
+            return;
+        }
 
         // Fetch live price for Stars rate display
         const STAR_USD = 0.013;
@@ -285,15 +331,8 @@ async function processUpdate(update: any): Promise<void> {
             await handleWalletCommand(chatId, userId); break;
         case '/earn': case '🐝 Earn GSTD':
             await handleEarn(chatId, userId); break;
-        case '/node': case '📱 Mobile Node': {
-            const tmaUrl = 'https://platform.gstdtoken.com/tma';
-            await sendMessage(chatId,
-                `📱 <b>GSTD Mobile Node</b>\n\n<b>0 GSTD needed to start.</b>\n\n` +
-                `💰 Bronze 0.5/h · Silver 1.0/h · Gold 2.0/h · Platinum 5.0/h`,
-                { reply_markup: { inline_keyboard: [[{ text: '🚀 Launch Node', web_app: { url: tmaUrl } }]] }}
-            );
-            break;
-        }
+        case '/node': case '📱 Mobile Node':
+            await handleNodeStatus(chatId, userId); break;
         case '/help':
             await sendMessage(chatId,
                 `❓ <b>Commands</b>\n\n` +
@@ -321,6 +360,7 @@ async function processUpdate(update: any): Promise<void> {
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
     if (!TOKEN) return res.status(503).json({ error: 'TELEGRAM_BOT_TOKEN not configured' });
+    if (!isValidWebhookRequest(req, TOKEN)) return res.status(401).json({ error: 'Invalid webhook secret' });
 
     // Complete processing before responding; do not rely on background work after the response.
     try {
