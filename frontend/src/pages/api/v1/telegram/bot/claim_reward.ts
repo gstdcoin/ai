@@ -6,8 +6,7 @@
  * Body: { telegram_id }
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvGet, kvSet } from '../../../../../lib/kv';
-import { kvIncrByFloat } from '../../../../../lib/kv';
+import { kvGet, kvClaimPending } from '../../../../../lib/kv';
 import { isValidBotToken } from '../../../../../lib/botAuth';
 
 const DEV_FUND_PCT       = 0.10;  // 10% → development fund
@@ -29,25 +28,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(404).json({ error: 'No wallet linked', telegram_id: userId });
     }
 
-    const key    = wallet.toLowerCase();
-    const pendRaw = await kvGet(`rewards:pending:${key}`).catch(() => null);
-    const pending = pendRaw ? parseFloat(pendRaw) : 0;
-
-    if (pending < 0.0001) {
+    const r = await kvClaimPending(wallet, 0.0001, [
+        { key: 'rewards:treasury', pct: DEV_FUND_PCT },
+        { key: 'rewards:sovereign_pool', pct: SOVEREIGN_POOL_PCT },
+    ]);
+    if (r.status === 'invalid') return res.status(409).json({ success: false, message: 'Reward state invalid' });
+    if (r.status === 'nothing') {
         return res.status(200).json({ success: false, pending_gstd: 0, message: 'Nothing to claim' });
     }
-
+    const pending     = r.gross;
+    const netClaim    = r.net;
     const devFund     = Math.round(pending * DEV_FUND_PCT * 1e6)       / 1e6;
     const sovereignAi = Math.round(pending * SOVEREIGN_POOL_PCT * 1e6) / 1e6;
-    const netClaim    = Math.round((pending - devFund - sovereignAi) * 1e6) / 1e6;
-
-    await Promise.all([
-        kvSet(`rewards:pending:${key}`, '0'),
-        kvIncrByFloat(`balance:${key}`, netClaim),
-        kvIncrByFloat('rewards:treasury', devFund),
-        kvIncrByFloat('rewards:sovereign_pool', sovereignAi),
-    ]);
-
     return res.status(200).json({
         success:       true,
         claimed_gross: pending,

@@ -199,6 +199,78 @@ export async function kvDebitBalance(
     return { status: 'debited', balance: remaining };
 }
 
+export type ClaimPendingResult =
+    | { status: 'claimed'; gross: number; net: number; balance: number }
+    | { status: 'nothing' }
+    | { status: 'invalid' };
+
+/**
+ * Atomically moves `rewards:pending:{wallet}` into `balance:{wallet}` (minus optional fee shares
+ * credited to other keys). Concurrent claims can never credit the same pending amount twice.
+ */
+export async function kvClaimPending(
+    walletKey: string,
+    minAmount: number,
+    fees: Array<{ key: string; pct: number }> = [],
+): Promise<ClaimPendingResult> {
+    const wallet = walletKey.toLowerCase();
+    const pendingKey = `rewards:pending:${wallet}`;
+    const balanceKey = `balance:${wallet}`;
+    const totalPct = fees.reduce((s, f) => s + f.pct, 0);
+    if (!wallet || !(minAmount >= 0) || fees.some(f => !(f.pct >= 0)) || totalPct >= 1) return { status: 'invalid' };
+
+    const round = (v: number) => Math.round(v * 1e6) / 1e6;
+    const r = await getRedis();
+    if (r) {
+        const script = `
+            local function finite(v) return v and v == v and v ~= math.huge and v ~= -math.huge end
+            local t = redis.call('TYPE', KEYS[1]).ok
+            if t ~= 'none' and t ~= 'string' then return {'invalid'} end
+            local gross = tonumber(redis.call('GET', KEYS[1]) or '0')
+            if not finite(gross) or gross < 0 then return {'invalid'} end
+            if gross < tonumber(ARGV[1]) or gross <= 0 then return {'nothing'} end
+            local function r6(v) return math.floor(v * 1e6 + 0.5) / 1e6 end
+            local net = gross
+            local n = (#ARGV - 1)
+            for i = 1, n do
+                local share = r6(gross * tonumber(ARGV[i + 1]))
+                net = net - share
+                redis.call('INCRBYFLOAT', KEYS[i + 2], tostring(share))
+            end
+            net = r6(net)
+            redis.call('SET', KEYS[1], '0')
+            local bal = redis.call('INCRBYFLOAT', KEYS[2], tostring(net))
+            return {'claimed', tostring(gross), tostring(net), tostring(bal)}
+        `;
+        try {
+            const res = await r.eval<string[], string[]>(
+                script,
+                [pendingKey, balanceKey, ...fees.map(f => f.key)],
+                [String(minAmount), ...fees.map(f => String(f.pct))],
+            );
+            if (res[0] === 'claimed') {
+                return { status: 'claimed', gross: Number(res[1]), net: Number(res[2]), balance: Number(res[3]) };
+            }
+            return { status: res[0] === 'nothing' ? 'nothing' : 'invalid' };
+        } catch (e) { handleRedisFailure(`kvClaimPending('${pendingKey}')`, e); }
+    }
+
+    const gross = Number(memGet(pendingKey) || '0');
+    if (!Number.isFinite(gross) || gross < 0) return { status: 'invalid' };
+    if (gross < minAmount || gross <= 0) return { status: 'nothing' };
+    let net = gross;
+    for (const f of fees) {
+        const share = round(gross * f.pct);
+        net -= share;
+        memSet(f.key, String(round(Number(memGet(f.key) || '0') + share)));
+    }
+    net = round(net);
+    memSet(pendingKey, '0');
+    const balance = round(Number(memGet(balanceKey) || '0') + net);
+    memSet(balanceKey, String(balance));
+    return { status: 'claimed', gross, net, balance };
+}
+
 export type FundedRecordResult =
     | { status: 'created'; balance: number }
     | { status: 'insufficient'; balance: number }
