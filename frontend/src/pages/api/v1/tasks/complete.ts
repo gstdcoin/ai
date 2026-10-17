@@ -6,7 +6,7 @@
  * - Records campaign task completion
  * - Accumulates protocol treasury from campaign fee
  *
- * Body: { node_id, task_id, result? }. Reward and campaign metadata come from
+ * Body: { node_id, task_id, result }. Reward and campaign metadata come from
  * the server-side task assignment; client-supplied reward fields are ignored.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
@@ -44,6 +44,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         if (!body.task_id) {
             return res.status(400).json({ error: 'task_id required' });
+        }
+        const result = body.result;
+        const hasResult = typeof result === 'string'
+            ? result.trim().length > 0
+            : Array.isArray(result)
+                ? result.length > 0
+                : typeof result === 'object' && result !== null
+                    ? Object.keys(result).length > 0
+                    : result !== undefined && result !== null;
+        if (body.error || !hasResult) {
+            return res.status(422).json({ error: 'A non-empty successful task result is required' });
         }
         const completion = await kvCompleteAssignedTask(
             body.task_id, nodeId, storedWallet, BASE_TASK_FEE, COMMUNITY_TAX, NODE_TTL, 86400 * 7,

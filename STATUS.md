@@ -3,7 +3,7 @@
 > **Keep this file up to date.** Every time you ship a significant change, update the relevant section.  
 > This prevents "we already did that" and "why did we do it that way" conversations.
 
-Last updated: 2026-10-16
+Last updated: 2026-10-17
 
 ---
 
@@ -11,9 +11,9 @@ Last updated: 2026-10-16
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| app.gstdtoken.com | ⚠️ Deployment pending | Cloudflare Worker configuration and a preview-first deploy job are prepared in `gstdcoin/ai`; production routing is added only after preview health succeeds. The app remains unavailable until the GitHub Actions deployment and production health check pass. Cron scheduling is still deferred. |
+| app.gstdtoken.com | ✅ Live | Cloudflare Worker; GitHub Actions run #636 deployed successfully and production health/KV returned `ok` on 2026-10-17. Public stats still report 0 online nodes and 0 completed tasks; a separate registry query reports 1 offline node. The network is not operationally active yet. Cron scheduling is still deferred. |
 | gstdtoken.com | ✅ Live | Landing page on Cloudflare Workers |
-| Upstash Redis | ⚠️ Existing data store retained | GitHub Actions secrets are present; deployment provisions them on the Worker. Health must return HTTP 200 before the app is considered live. |
+| Upstash Redis | ✅ Connected | Production Worker health/KV check returned `ok` on 2026-10-17. |
 | TON Contracts | ✅ Deployed | GSTDJetton, SettlementMaster v2, AgentRegistry, DAOVoting, EcosystemTreasury, Escrow live on mainnet (re-verified on-chain 2026-08-13); GSTDJetton admin renounced (`addr_none`); SettlementMaster v2 adds quorum-attested P2P settlement, not externally audited. SettlementMaster/EcosystemTreasury owner deliberately NOT transferred to DAOVoting — see governance quorum bug below. |
 | DAOVoting governance | ⚠️ Live but unusable as designed | `Proposal.quorumStake` is set from `minProposalStake` (a GSTD-denominated constant, 10,000 GSTD = `1e13`) but votes are counted in raw attached TON (`CastVote`'s weight = `context().value`), not GSTD — see `DAOVoting.tact:243,284`. Since both use 9-decimal nano units, the code compares a TON-vote-sum against a threshold meant for GSTD, i.e. ~10,000 TON of real voter stake is needed to ever reach quorum. No proposal can realistically pass. Do not transfer SettlementMaster/EcosystemTreasury ownership to this contract until a v2 fixes the quorum math — doing so now would permanently brick protocol admin actions (pause, key rotation, parameter changes) with no way to ever govern your way out. |
 | gstd-a2a (PyPI) | ✅ Published | `pip install gstd-a2a` — v2.1.0, first publish 2026-07-19 |
@@ -25,9 +25,9 @@ Last updated: 2026-10-16
 
 ## gstdcoin/ai — Platform (app.gstdtoken.com)
 
-**Branch:** `main` | **Deploy:** Cloudflare Workers via GitHub Actions; pending the first successful preview and production health checks. Do not deploy via Vercel.
+**Branch:** `main` | **Deploy:** Cloudflare Workers via GitHub Actions; production deploy and health checks succeeded on 2026-10-17. Do not deploy via Vercel.
 
-### Implemented in the repository (not currently reachable in production)
+### Implemented and deployed
 - [x] Node registry (register, heartbeat, list, peers, deregister)
 - [x] Task queue (poll, complete, fail, result with 120s TTL)
 - [x] OpenAI-compatible inference endpoint (`/api/v1/chat/completions`)
@@ -56,10 +56,10 @@ Last updated: 2026-10-16
 
 ### Known issues / Do not re-do
 - `api.gstdtoken.com` does NOT exist — all API is at `app.gstdtoken.com/api/v1`
-- No Go backend. No Docker in production. Cloudflare Workers + the existing Upstash Redis database are the target runtime; deployment stays pending until its smoke checks pass.
+- No Go backend. No Docker in production. Cloudflare Workers + the existing Upstash Redis database are the production runtime; deploy changes only through the verified Cloudflare workflow.
 - `proxy.ts` is the Next.js 16 name for what was `middleware.ts` in Next.js 13-15
 - Dead pages `monitor/` and `predictions/` were removed — no API backend for them
-- Legacy Go `backend/` folder (never deployed) removed 2026-08-13, along with its coupled `docker-compose*.yml`, `nginx/`, and Docker-only scripts — do not recreate it; the app's intended Cloudflare + Upstash runtime is not yet deployed.
+- Legacy Go `backend/` folder (never deployed) removed 2026-08-13, along with its coupled `docker-compose*.yml`, `nginx/`, and Docker-only scripts — do not recreate it.
 
 ### Security audit note (2026-08-17) — node registration has no wallet-ownership proof
 Traced the full mechanism behind the standing "reward-fraud risk" concern rather than
@@ -73,7 +73,8 @@ leaving it vague:
   credit balance. This doesn't let an attacker redirect funds to a *different* wallet
   (the balance stays keyed to the target wallet), but it is an unauthenticated action
   on someone else's account state.
-- `POST /api/v1/tasks/complete` (`tasks/complete.ts`) is better than it looks at first
+- `POST /api/v1/tasks/complete` (`tasks/complete.ts`) requires a registered wallet header
+  and a non-empty result, and is better than it looks at first
   read: it requires a real `task_assigned:{task_id}` record created by `tasks/poll.ts`
   and consumes it (no replay), and enforces the wallet-header match. But there is no
   check on the *quality* of `result` — a self-registered node can poll for a real,
@@ -101,8 +102,8 @@ leaving it vague:
 
 ### What's working
 - [x] Node registration on startup
-- [x] Heartbeat every 8 min
-- [x] Task polling every 5s
+- [x] Heartbeat every 2 min (source; allow time for the node image release to publish)
+- [x] Task polling every 30s (POST with registered wallet header)
 - [x] Local AI inference execution
 - [x] Earnings reporting
 - [x] Dashboard UI on port 8080
@@ -215,7 +216,7 @@ Treat as design docs, not a working system, until the Pending items are done.
 ## gstdcoin/web — Landing Page (gstdtoken.com)
 
 ### What's working
-- [x] Static Next.js site on Cloudflare Workers; `app.gstdtoken.com` remains unavailable pending its separate Worker deployment
+- [x] Static Next.js site on Cloudflare Workers; the separate platform Worker at `app.gstdtoken.com` is live (see System Health)
 - [x] CI: TypeScript check + build
 - [x] Real network stats widget: `LiveNetworkStatus.tsx` calls
       `/api/v1/stats/public` and is honest about failure -- shows an amber
