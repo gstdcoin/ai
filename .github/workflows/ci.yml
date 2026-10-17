@@ -162,7 +162,7 @@ jobs:
         run: |
           set -euo pipefail
           tail_log="$RUNNER_TEMP/worker-tail.jsonl"
-          npx wrangler tail gstd-ai-platform --config wrangler.jsonc --format json --header x-gstd-page-smoke > "$tail_log" 2>&1 &
+          npx wrangler tail gstd-ai-platform --config wrangler.jsonc --format json > "$tail_log" 2>&1 &
           tail_pid=$!
           sleep 5
           if ! kill -0 "$tail_pid" 2>/dev/null; then
@@ -192,6 +192,7 @@ jobs:
           const secretValues = [
             process.env.CLOUDFLARE_API_TOKEN,
           ].filter(Boolean);
+          const pagePaths = new Set(['/', '/en', '/ru', '/en/stats', '/en/network']);
           const details = [];
           let invocationCount = 0;
           let invalidLines = 0;
@@ -201,7 +202,9 @@ jobs:
             if (jsonStart < 0) continue;
             try {
               const event = JSON.parse(line.slice(jsonStart));
-              if (event.event?.request) invocationCount += 1;
+              const requestUrl = event.event?.request?.url;
+              if (typeof requestUrl !== 'string' || !pagePaths.has(new URL(requestUrl).pathname)) continue;
+              invocationCount += 1;
               for (const exception of event.exceptions ?? []) {
                 let message = String(exception.message ?? '');
                 for (const secret of secretValues) message = message.replaceAll(secret, '[redacted]');
