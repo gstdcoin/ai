@@ -11,15 +11,15 @@ Last updated: 2026-10-17
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| app.gstdtoken.com | ✅ Live | Cloudflare Worker; GitHub Actions run #636 deployed successfully and production health/KV returned `ok` on 2026-10-17. Public stats still report 0 online nodes and 0 completed tasks; a separate registry query reports 1 offline node. The network is not operationally active yet. Cron scheduling is still deferred. |
+| app.gstdtoken.com | ✅ Live | Cloudflare deployment run #640 succeeded; production health/KV returned `ok` on 2026-10-17. The node-list and public-stats endpoints now agree: 0 registered/online nodes, tasks, and payouts. No live node end-to-end cycle has been verified. Cron scheduling is still deferred. |
 | gstdtoken.com | ✅ Live | Landing page on Cloudflare Workers |
 | Upstash Redis | ✅ Connected | Production Worker health/KV check returned `ok` on 2026-10-17. |
 | TON Contracts | ✅ Deployed | GSTDJetton, SettlementMaster v2, AgentRegistry, DAOVoting, EcosystemTreasury, Escrow live on mainnet (re-verified on-chain 2026-08-13); GSTDJetton admin renounced (`addr_none`); SettlementMaster v2 adds quorum-attested P2P settlement, not externally audited. SettlementMaster/EcosystemTreasury owner deliberately NOT transferred to DAOVoting — see governance quorum bug below. |
 | DAOVoting governance | ⚠️ Live but unusable as designed | `Proposal.quorumStake` is set from `minProposalStake` (a GSTD-denominated constant, 10,000 GSTD = `1e13`) but votes are counted in raw attached TON (`CastVote`'s weight = `context().value`), not GSTD — see `DAOVoting.tact:243,284`. Since both use 9-decimal nano units, the code compares a TON-vote-sum against a threshold meant for GSTD, i.e. ~10,000 TON of real voter stake is needed to ever reach quorum. No proposal can realistically pass. Do not transfer SettlementMaster/EcosystemTreasury ownership to this contract until a v2 fixes the quorum math — doing so now would permanently brick protocol admin actions (pause, key rotation, parameter changes) with no way to ever govern your way out. |
 | gstd-a2a (PyPI) | ✅ Published | `pip install gstd-a2a` — v2.1.0, first publish 2026-07-19 |
 | Bridge validators | ❌ Deferred, not deployed | No MPC key shares generated, no Solana/XRPL vault wallets exist, CI red since 2026-05-26. Not just "needs operators" — needs to actually be built out first. See gstd-bridge/README.md status banner. |
-| Docker node image | ⚠️ Stale until next push | `ghcr.io/gstdcoin/gstd-node` — CI publish job existed but had `if: github.repository == 'gstdcoin/gstd-node'` (repo is actually `gstdcoin/gstdbot`), so it silently never ran; fixed 2026-08-13. `goldenbit/gstd-node:latest` on Docker Hub is a one-off manual push from 2026-03, not kept current — don't treat it as the maintained image. |
-| Known vulnerabilities | ✅ Remediated 2026-07-19 | npm (frontend/web), Cargo (bridge, partial) — see Decision Log |
+| Docker node image | ✅ Published | `ghcr.io/gstdcoin/gstd-node:latest` is publicly pullable; Docker build/push run #270 succeeded for `gstdbot` commit `1027d49` on 2026-10-17. `goldenbit/gstd-node:latest` on Docker Hub remains a one-off manual push from 2026-03 and is not maintained. |
+| Known vulnerabilities | ⚠️ Triage required | GitHub reports 92 open vulnerability alerts for `gstdcoin/ai` (1 critical, 38 high) and 32 for `gstdcoin/gstdbot` (1 critical, 16 high). The 2026-07-19 remediation did not clear the current alert set; see Dependabot before calling the ecosystem security-ready. |
 
 ---
 
