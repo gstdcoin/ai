@@ -18,6 +18,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvPop, kvPush } from '../../../../lib/kv';
 import { assignTaskToNode } from '../../../../lib/task-assignment';
+import { requireNodeSignature } from '../../../../lib/nodeAuth';
 
 const SCAN_DEPTH = 20; // max tasks to inspect before giving up
 const ASSIGNMENT_TTL = 3600;
@@ -61,6 +62,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (storedWallet && storedWallet.trim().toLowerCase() !== headerWallet) {
             return res.status(403).json({ error: 'Wallet mismatch' });
         }
+        const auth = await requireNodeSignature(nodeId, req.headers as any);
+        if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
 
         // ── Priority queue: node-specific inference tasks (fast O(1)) ──────
         if (nodeId) {

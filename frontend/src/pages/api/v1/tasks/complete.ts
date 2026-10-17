@@ -12,6 +12,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvSet, kvIncrByFloat, kvCompleteAssignedTask } from '../../../../lib/kv';
 import { COMMUNITY_TAX, BASE_TASK_FEE } from '../../../../lib/rewards';
+import { requireNodeSignature } from '../../../../lib/nodeAuth';
 import type { TaskAssignment } from '../../../../lib/task-assignment';
 import type { NodeRecord } from '../nodes/register';
 import type { Campaign } from '../campaigns/create';
@@ -41,6 +42,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (storedWallet && storedWallet !== headerWallet) {
             return res.status(403).json({ error: 'Wallet mismatch' });
         }
+        const auth = await requireNodeSignature(nodeId, req.headers as any);
+        if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
 
         if (!body.task_id) {
             return res.status(400).json({ error: 'task_id required' });

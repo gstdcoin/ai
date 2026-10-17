@@ -11,6 +11,7 @@
     "postbuild": "echo 'Build complete'",
     "start": "next start",
     "lint": "eslint src",
+    "test": "vitest run src && node --test tests/tonProof.test.mjs",
     "prepare": "echo 'skipping husky in CI'"
   },
   "dependencies": {
@@ -75,6 +76,7 @@
     "lint-staged": "^16.2.7",
     "tailwindcss": "^3.4.19",
     "typescript": "^5.3.0",
+    "vitest": "^3.2.7",
     "wrangler": "^4.151.1"
   },
   "overrides": {

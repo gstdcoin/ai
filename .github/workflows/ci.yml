@@ -1,5 +1,5 @@
 # ============================================================================
-# GSTD Platform CI — frontend and API checks
+# GSTD Platform CI вЂ” frontend and API checks
 # ============================================================================
 name: CI
 
@@ -11,7 +11,7 @@ on:
   workflow_dispatch:  # allow manual checks from GitHub UI
 
 jobs:
-  # ── TypeScript + ESLint + Build ─────────────────────────────────────────
+  # в”Ђв”Ђ TypeScript + ESLint + Build в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
   frontend:
     runs-on: ubuntu-latest
     name: Frontend
@@ -36,6 +36,8 @@ jobs:
 
       - name: ESLint
         run: npm run lint
+      - name: Unit tests
+        run: npm test
 
       - name: Build
         run: npm run build
@@ -44,7 +46,7 @@ jobs:
           KV_REST_API_TOKEN: ${{ secrets.KV_REST_API_TOKEN || 'placeholder' }}
           NEXT_PUBLIC_APP_URL: https://app.gstdtoken.com
 
-  # ── Cloudflare Workers deployment ──────────────────────────────────────
+  # в”Ђв”Ђ Cloudflare Workers deployment в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
   deploy:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
@@ -348,7 +350,7 @@ jobs:
           cat "$RUNNER_TEMP/production-health.json" || true
           exit 1
 
-  # ── Dependency Security Audit ──────────────────────────────────────────
+  # в”Ђв”Ђ Dependency Security Audit в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
   audit:
     runs-on: ubuntu-latest
     name: Security Audit
