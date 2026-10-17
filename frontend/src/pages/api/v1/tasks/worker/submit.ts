@@ -16,8 +16,8 @@
  * also forwards the gradient to update the training job.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvGet, kvGetDelForNode, kvSet, kvIncr, kvIncrByFloat } from '../../../../../lib/kv';
-import { accrueReward, BASE_TASK_FEE } from '../../../../../lib/rewards';
+import { kvGet, kvSet, kvIncr, kvIncrByFloat, kvCompleteAssignedTask } from '../../../../../lib/kv';
+import { COMMUNITY_TAX, BASE_TASK_FEE } from '../../../../../lib/rewards';
 import type { TaskAssignment } from '../../../../../lib/task-assignment';
 import type { NodeRecord } from '../../nodes/register';
 import type { TrainingJob, GradientRecord } from '../../training/jobs';
@@ -53,11 +53,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.status(403).json({ error: 'Wallet mismatch' });
         }
 
-        const assignedRaw = await kvGetDelForNode(`task_assigned:${taskId}`, nodeId);
-        if (!assignedRaw) return res.status(409).json({ error: 'Task is not assigned to this node or was already completed' });
+        const completion = await kvCompleteAssignedTask(
+            taskId, nodeId, walletAddress, BASE_TASK_FEE, COMMUNITY_TAX, NODE_TTL, 86400 * 7,
+        );
+        if (completion.status === 'invalid') {
+            return res.status(409).json({ error: 'Task is not assigned to this node' });
+        }
+        if (completion.status === 'wallet_mismatch') {
+            return res.status(403).json({ error: 'Wallet mismatch' });
+        }
+        if (completion.status === 'duplicate') {
+            return res.status(200).json({ ok: true, task_id: taskId, duplicate: true });
+        }
         let assignment: TaskAssignment;
         try {
-            assignment = JSON.parse(assignedRaw) as TaskAssignment;
+            assignment = JSON.parse(completion.assignment) as TaskAssignment;
         } catch {
             return res.status(409).json({ error: 'Invalid task assignment' });
         }
@@ -69,17 +79,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             : null;
 
         const nodeWrites: Promise<any>[] = [];
-
-        nodeRecord.tasks_completed = (nodeRecord.tasks_completed || 0) + 1;
-        nodeRecord.gstd_earned     = Math.round(((nodeRecord.gstd_earned || 0) + rewardGstd) * 1e6) / 1e6;
-        nodeRecord.last_seen       = new Date().toISOString();
-        nodeWrites.push(kvSet(`node:${nodeId}`, JSON.stringify(nodeRecord), NODE_TTL));
-
-        if (rewardGstd > 0) {
-            nodeWrites.push(accrueReward(nodeId, walletAddress, rewardGstd, taskId));
-        }
-
-        nodeWrites.push(kvIncr('stats:total_tasks_completed').then(() => {}));
         if (assignment.protocol_fee_gstd > 0) {
             nodeWrites.push(kvIncrByFloat('stats:protocol_treasury_gstd', assignment.protocol_fee_gstd).then(() => {}));
         }

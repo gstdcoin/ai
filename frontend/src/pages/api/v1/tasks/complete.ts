@@ -10,8 +10,8 @@
  * the server-side task assignment; client-supplied reward fields are ignored.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvGet, kvGetDelForNode, kvSet, kvIncr, kvIncrByFloat } from '../../../../lib/kv';
-import { accrueReward, BASE_TASK_FEE } from '../../../../lib/rewards';
+import { kvGet, kvSet, kvIncrByFloat, kvCompleteAssignedTask } from '../../../../lib/kv';
+import { COMMUNITY_TAX, BASE_TASK_FEE } from '../../../../lib/rewards';
 import type { TaskAssignment } from '../../../../lib/task-assignment';
 import type { NodeRecord } from '../nodes/register';
 import type { Campaign } from '../campaigns/create';
@@ -42,15 +42,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.status(403).json({ error: 'Wallet mismatch' });
         }
 
-        const assignedRaw = body.task_id
-            ? await kvGetDelForNode(`task_assigned:${body.task_id}`, nodeId)
-            : null;
-        if (!assignedRaw) {
-            return res.status(409).json({ error: 'Task is not assigned to this node or was already completed' });
+        if (!body.task_id) {
+            return res.status(400).json({ error: 'task_id required' });
+        }
+        const completion = await kvCompleteAssignedTask(
+            body.task_id, nodeId, storedWallet, BASE_TASK_FEE, COMMUNITY_TAX, NODE_TTL, 86400 * 7,
+        );
+        if (completion.status === 'invalid') {
+            return res.status(409).json({ error: 'Task is not assigned to this node' });
+        }
+        if (completion.status === 'wallet_mismatch') {
+            return res.status(403).json({ error: 'Wallet mismatch' });
+        }
+        if (completion.status === 'duplicate') {
+            return res.status(200).json({ ok: true, task_id: body.task_id, duplicate: true });
         }
         let assignment: TaskAssignment;
         try {
-            assignment = JSON.parse(assignedRaw) as TaskAssignment;
+            assignment = JSON.parse(completion.assignment) as TaskAssignment;
         } catch {
             return res.status(409).json({ error: 'Invalid task assignment' });
         }
@@ -65,13 +74,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         const writes: Promise<void>[] = [];
 
-        // Update node earnings
-        const record: NodeRecord = JSON.parse(nodeRaw);
-        record.tasks_completed = (record.tasks_completed || 0) + 1;
-        record.gstd_earned     = Math.round(((record.gstd_earned || 0) + rewardGstd) * 1e6) / 1e6;
-        record.last_seen       = new Date().toISOString();
-        writes.push(kvSet(`node:${nodeId}`, JSON.stringify(record), NODE_TTL));
-
         // Update campaign stats
         if (campaignRaw && campaignId) {
             const campaign: Campaign = JSON.parse(campaignRaw);
@@ -83,7 +85,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         // Global stats
-        writes.push(kvIncr('stats:total_tasks_completed').then(() => {}));
         if (protocolFee > 0) writes.push(kvIncrByFloat('stats:protocol_treasury_gstd', protocolFee).then(() => {}));
 
         // Advance training job if this was a finetune shard
@@ -116,14 +117,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         // Accumulate the server-assigned reward in the node's pending balance.
-        const walletAddr = (JSON.parse(nodeRaw) as NodeRecord).wallet_address;
-        if (walletAddr && rewardGstd > 0) {
-            writes.push(
-                accrueReward(nodeId, walletAddr, rewardGstd, body.task_id)
-                    .then(() => {})
-            );
-        }
-
         await Promise.all(writes);
 
         return res.status(200).json({

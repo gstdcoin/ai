@@ -150,6 +150,163 @@ export async function kvAccrueTaskReward(
     return true;
 }
 
+export type TaskCompletionResult =
+    | { status: 'completed'; assignment: string }
+    | { status: 'duplicate'; assignment: string }
+    | { status: 'invalid' }
+    | { status: 'wallet_mismatch' };
+
+export async function kvCompleteAssignedTask(
+    taskId: string,
+    nodeId: string,
+    wallet: string,
+    fallbackReward: number,
+    communityTax: number,
+    nodeTtlSec: number,
+    completionTtlSec: number,
+): Promise<TaskCompletionResult> {
+    const assignmentKey = `task_assigned:${taskId}`;
+    const completionKey = `task_completed:${taskId}`;
+    const nodeKey = `node:${nodeId}`;
+    const walletKey = wallet.toLowerCase();
+    const keys = [
+        assignmentKey,
+        completionKey,
+        nodeKey,
+        `rewards:pending:${walletKey}`,
+        `rewards:lifetime:${nodeId}`,
+        'rewards:treasury',
+        'stats:total_gstd_paid',
+        `rewards:node_wallet:${nodeId}`,
+        'stats:total_tasks_completed',
+        `reward_seen:${taskId}`,
+    ];
+    const args = [
+        nodeId,
+        walletKey,
+        String(fallbackReward),
+        String(communityTax),
+        String(nodeTtlSec),
+        String(completionTtlSec),
+    ];
+    const timestamp = new Date().toISOString();
+    args.push(timestamp);
+    const r = await getRedis();
+    if (r) {
+        const script = `
+            local completed = redis.call('GET', KEYS[2])
+            if completed then
+                local ok, previous = pcall(cjson.decode, completed)
+                if ok and previous.node_id == ARGV[1] then
+                    return {'duplicate', previous.assignment}
+                end
+                return {'invalid', ''}
+            end
+            local raw = redis.call('GET', KEYS[1])
+            if not raw then return {'invalid', ''} end
+            local ok, assignment = pcall(cjson.decode, raw)
+            if not ok or assignment.node_id ~= ARGV[1] then return {'invalid', ''} end
+            local nodeRaw = redis.call('GET', KEYS[3])
+            if not nodeRaw then return {'invalid', ''} end
+            local nodeOk, node = pcall(cjson.decode, nodeRaw)
+            if not nodeOk then return {'invalid', ''} end
+            local storedWallet = string.lower(node.wallet_address or '')
+            if storedWallet == '' or storedWallet ~= ARGV[2] then return {'wallet_mismatch', ''} end
+
+            local reward = tonumber(assignment.reward_gstd)
+            if not reward or reward < 0 then reward = tonumber(ARGV[3]) end
+            local tax = tonumber(ARGV[4])
+            local nodeShare = math.floor((reward * (1 - tax) * 1000000) + 0.5) / 1000000
+            local communityShare = math.floor((reward * tax * 1000000) + 0.5) / 1000000
+            node.tasks_completed = (tonumber(node.tasks_completed) or 0) + 1
+            node.gstd_earned = math.floor(((tonumber(node.gstd_earned) or 0) + reward) * 1000000 + 0.5) / 1000000
+            node.last_seen = ARGV[7]
+            redis.call('SET', KEYS[3], cjson.encode(node), 'EX', tonumber(ARGV[5]))
+            redis.call('INCR', KEYS[9])
+
+            if reward > 0 and redis.call('SET', KEYS[10], '1', 'EX', 604800, 'NX') then
+                redis.call('INCRBYFLOAT', KEYS[4], nodeShare)
+                redis.call('INCRBYFLOAT', KEYS[5], nodeShare)
+                redis.call('INCRBYFLOAT', KEYS[6], communityShare)
+                redis.call('INCRBYFLOAT', KEYS[7], reward)
+                redis.call('SET', KEYS[8], ARGV[2])
+            end
+
+            local completion = cjson.encode({node_id = ARGV[1], assignment = raw})
+            redis.call('SET', KEYS[2], completion, 'EX', tonumber(ARGV[6]))
+            redis.call('DEL', KEYS[1])
+            return {'completed', raw}
+        `;
+        try {
+            const result = await r.eval<string[], unknown[]>(script, keys, args);
+            const status = String(result?.[0] ?? 'invalid');
+            if (status === 'completed' || status === 'duplicate') {
+                const value = result[1];
+                return {
+                    status,
+                    assignment: typeof value === 'string' ? value : JSON.stringify(value),
+                };
+            }
+            return { status: status === 'wallet_mismatch' ? 'wallet_mismatch' : 'invalid' };
+        } catch (e) { handleRedisFailure(`kvCompleteAssignedTask('${taskId}')`, e); }
+    }
+
+    const completionRaw = memGet(completionKey);
+    if (completionRaw) {
+        try {
+            const previous = JSON.parse(completionRaw) as { node_id: string; assignment: string };
+            return previous.node_id === nodeId
+                ? { status: 'duplicate', assignment: previous.assignment }
+                : { status: 'invalid' };
+        } catch {
+            memDel(completionKey);
+        }
+    }
+    const raw = memGet(assignmentKey);
+    if (!raw) return { status: 'invalid' };
+    let assignment: { node_id?: string };
+    try {
+        assignment = JSON.parse(raw);
+    } catch {
+        return { status: 'invalid' };
+    }
+    if (assignment.node_id !== nodeId) return { status: 'invalid' };
+    const nodeRaw = memGet(nodeKey);
+    if (!nodeRaw) return { status: 'invalid' };
+    let node: Record<string, any>;
+    try {
+        node = JSON.parse(nodeRaw);
+    } catch {
+        return { status: 'invalid' };
+    }
+    if (String(node.wallet_address || '').trim().toLowerCase() !== walletKey || !walletKey) {
+        return { status: 'wallet_mismatch' };
+    }
+    node.tasks_completed = (Number(node.tasks_completed) || 0) + 1;
+    const assignedReward = Number((JSON.parse(raw) as { reward_gstd?: unknown }).reward_gstd);
+    const rewardGstd = Number.isFinite(assignedReward) && assignedReward >= 0 ? assignedReward : fallbackReward;
+    const nodeShare = Math.round(rewardGstd * (1 - communityTax) * 1e6) / 1e6;
+    const communityShare = Math.round(rewardGstd * communityTax * 1e6) / 1e6;
+    node.gstd_earned = Math.round(((Number(node.gstd_earned) || 0) + rewardGstd) * 1e6) / 1e6;
+    node.last_seen = timestamp;
+    memSet(nodeKey, JSON.stringify(node), nodeTtlSec);
+    const increment = (key: string, amount: number) => {
+        memSet(key, String((parseFloat(memGet(key) || '0') || 0) + amount));
+    };
+    increment('stats:total_tasks_completed', 1);
+    if (rewardGstd > 0 && memGet(`reward_seen:${taskId}`) === null) {
+        memSet(`reward_seen:${taskId}`, '1', 604800);
+        increment(`rewards:pending:${walletKey}`, nodeShare);
+        increment(`rewards:lifetime:${nodeId}`, nodeShare);
+        increment('rewards:treasury', communityShare);
+        increment('stats:total_gstd_paid', rewardGstd);
+        memSet(`rewards:node_wallet:${nodeId}`, walletKey);
+    }
+    memDel(assignmentKey);
+    memSet(completionKey, JSON.stringify({ node_id: nodeId, assignment: raw }), completionTtlSec);
+    return { status: 'completed', assignment: raw };
+}
+
 export async function kvGetDelForNode(key: string, nodeId: string): Promise<string | null> {
     const r = await getRedis();
     if (r) {
