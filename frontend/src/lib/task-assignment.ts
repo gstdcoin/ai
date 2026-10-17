@@ -1,4 +1,3 @@
-import { BASE_TASK_FEE } from './rewards';
 import { kvSetNX } from './kv';
 
 const MAX_TASK_REWARD = 50;
@@ -27,14 +26,12 @@ export async function assignTaskToNode(
 ): Promise<boolean> {
     if (typeof task.task_id !== 'string' || !task.task_id) return false;
 
-    const payloadReward = task.payload && typeof task.payload === 'object'
-        ? task.payload.reward_gstd
-        : undefined;
-    const reward = task.reward_gstd ?? payloadReward;
+    // Only server-funded tasks (campaigns, marketplace) set task.reward_gstd. Client-controlled
+    // payload fields and unfunded public submissions must never create ledger earnings.
     const assignment: TaskAssignment = {
         node_id: nodeId,
         assigned_at: Date.now(),
-        reward_gstd: boundedAmount(reward, BASE_TASK_FEE, MAX_TASK_REWARD),
+        reward_gstd: boundedAmount(task.reward_gstd, 0, MAX_TASK_REWARD),
         protocol_fee_gstd: boundedAmount(task.protocol_fee, 0, MAX_PROTOCOL_FEE),
     };
     if (typeof task.campaign_id === 'string') assignment.campaign_id = task.campaign_id;
