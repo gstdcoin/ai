@@ -104,6 +104,135 @@ export async function kvSetNX(key: string, value: string, ttlSec: number): Promi
     return true;
 }
 
+export type CampaignTaskReservation =
+    | { status: 'reserved'; remainingBudget: number; nodeReward: number; protocolFee: number }
+    | { status: 'not_found' | 'inactive' | 'expired' | 'exhausted' | 'invalid' };
+
+export async function kvReserveCampaignTask(
+    campaignKey: string,
+    queueKey: string,
+    taskJson: string,
+    ttlSec: number,
+    nowMs: number,
+    expiresAtMs: number,
+): Promise<CampaignTaskReservation> {
+    const r = await getRedis();
+    if (r) {
+        const script = `
+            local campaignRaw = redis.call('GET', KEYS[1])
+            if not campaignRaw then return {'not_found'} end
+            local ok, campaign = pcall(cjson.decode, campaignRaw)
+            if not ok or type(campaign) ~= 'table' then return {'invalid'} end
+            if campaign.active ~= true then return {'inactive'} end
+            local reward = tonumber(campaign.reward_per_task)
+            local budget = tonumber(campaign.remaining_budget)
+            if not reward or reward <= 0 or not budget then return {'invalid'} end
+            if tonumber(ARGV[4]) >= tonumber(ARGV[5]) then return {'expired'} end
+            if budget < reward then return {'exhausted'} end
+            local taskOk, task = pcall(cjson.decode, ARGV[1])
+            if not taskOk or type(task) ~= 'table' then return {'invalid'} end
+
+            local queueType = redis.call('TYPE', KEYS[2]).ok
+            local taskStatsType = redis.call('TYPE', KEYS[3]).ok
+            local rewardStatsType = redis.call('TYPE', KEYS[4]).ok
+            if (queueType ~= 'none' and queueType ~= 'list')
+                or (taskStatsType ~= 'none' and taskStatsType ~= 'string')
+                or (rewardStatsType ~= 'none' and rewardStatsType ~= 'string') then
+                return {'invalid'}
+            end
+            local taskCount = redis.call('GET', KEYS[3])
+            local rewardTotal = redis.call('GET', KEYS[4])
+            if (taskCount and not tonumber(taskCount)) or (rewardTotal and not tonumber(rewardTotal)) then
+                return {'invalid'}
+            end
+
+            local protocolFee = math.floor(reward * tonumber(ARGV[2]) * 100 + 0.5) / 100
+            local nodeReward = math.floor((reward - protocolFee) * 100 + 0.5) / 100
+            local remaining = math.floor((budget - reward) * 100 + 0.5) / 100
+            campaign.remaining_budget = remaining
+            task.campaign_id = campaign.id
+            task.company = campaign.company
+            task.reward_gstd = nodeReward
+            task.protocol_fee = protocolFee
+            if task.required_caps == nil or task.required_caps == cjson.null then task.required_caps = campaign.required_caps or {} end
+            if task.min_resources == nil or task.min_resources == cjson.null then task.min_resources = campaign.min_resources or {} end
+            if task.requester == nil or task.requester == cjson.null then task.requester = campaign.company end
+
+            redis.call('LPUSH', KEYS[2], cjson.encode(task))
+            redis.call('SET', KEYS[1], cjson.encode(campaign), 'EX', tonumber(ARGV[3]))
+            redis.call('INCR', KEYS[3])
+            redis.call('INCRBYFLOAT', KEYS[4], tostring(nodeReward))
+            return {'reserved', tostring(remaining), tostring(nodeReward), tostring(protocolFee)}
+        `;
+        try {
+            const result = await r.eval<
+                [string, string, string, string, string],
+                [string, string?, string?, string?]
+            >(
+                script,
+                [campaignKey, queueKey, 'stats:total_tasks_submitted', 'stats:total_reward_gstd'],
+                [taskJson, '0.1', String(ttlSec), String(nowMs), String(expiresAtMs)],
+            );
+            const status = result[0];
+            if (status !== 'reserved') {
+                if (status === 'not_found' || status === 'inactive' || status === 'expired'
+                    || status === 'exhausted' || status === 'invalid') {
+                    return { status };
+                }
+                return { status: 'invalid' };
+            }
+            return {
+                status: 'reserved',
+                remainingBudget: Number(result[1]),
+                nodeReward: Number(result[2]),
+                protocolFee: Number(result[3]),
+            };
+        } catch (e) { handleRedisFailure(`kvReserveCampaignTask('${campaignKey}')`, e); }
+    }
+
+    const raw = memGet(campaignKey);
+    if (!raw) return { status: 'not_found' };
+    let campaign: Record<string, any>;
+    let task: Record<string, any>;
+    try {
+        campaign = JSON.parse(raw);
+        task = JSON.parse(taskJson);
+    } catch {
+        return { status: 'invalid' };
+    }
+    if (campaign.active !== true) return { status: 'inactive' };
+    const reward = Number(campaign.reward_per_task);
+    const budget = Number(campaign.remaining_budget);
+    const expiry = Date.parse(campaign.expires_at);
+    if (!Number.isFinite(reward) || reward <= 0 || !Number.isFinite(budget) || !Number.isFinite(expiry)) {
+        return { status: 'invalid' };
+    }
+    if (nowMs >= expiry) return { status: 'expired' };
+    if (budget < reward) return { status: 'exhausted' };
+
+    const protocolFee = Math.round(reward * 0.1 * 100) / 100;
+    const nodeReward = Math.round((reward - protocolFee) * 100) / 100;
+    const remainingBudget = Math.round((budget - reward) * 100) / 100;
+    campaign.remaining_budget = remainingBudget;
+    task.campaign_id = campaign.id;
+    task.company = campaign.company;
+    task.reward_gstd = nodeReward;
+    task.protocol_fee = protocolFee;
+    if (task.required_caps == null) task.required_caps = campaign.required_caps || [];
+    if (task.min_resources == null) task.min_resources = campaign.min_resources || {};
+    if (task.requester == null) task.requester = campaign.company;
+
+    const rawQueue = memGet(queueKey);
+    const queue: string[] = rawQueue ? JSON.parse(rawQueue) : [];
+    queue.push(JSON.stringify(task));
+    memSet(queueKey, JSON.stringify(queue));
+    memSet(campaignKey, JSON.stringify(campaign), ttlSec);
+    memSet('stats:total_tasks_submitted', String((parseInt(memGet('stats:total_tasks_submitted') || '0', 10) || 0) + 1));
+    const rewardTotal = (parseFloat(memGet('stats:total_reward_gstd') || '0') || 0) + nodeReward;
+    memSet('stats:total_reward_gstd', String(Math.round(rewardTotal * 1e6) / 1e6));
+    return { status: 'reserved', remainingBudget, nodeReward, protocolFee };
+}
+
 export async function kvAccrueTaskReward(
     taskId: string,
     walletKey: string,

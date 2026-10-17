@@ -14,13 +14,11 @@
  *   priority        number   — 1–10 (default 1)
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvGet, kvSet, kvPush, kvIncr } from '../../../../lib/kv';
+import { kvGet, kvReserveCampaignTask } from '../../../../lib/kv';
 import { randomBytes } from 'crypto';
 import type { Campaign } from '../campaigns/create';
 
 const CAMPAIGN_TTL_BUF = 3600;
-const PROTOCOL_FEE_PCT = 0.10;
-
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
@@ -46,23 +44,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.status(409).json({ error: 'Campaign budget exhausted' });
         }
 
-        // Deduct reward from campaign budget (reserve it)
-        const grossReward  = campaign.reward_per_task;
-        const protocolCut  = Math.round(grossReward * PROTOCOL_FEE_PCT * 100) / 100;
-        const nodeReward   = Math.round((grossReward - protocolCut) * 100) / 100;
-        campaign.remaining_budget = Math.round((campaign.remaining_budget - grossReward) * 100) / 100;
-
         const taskId = randomBytes(8).toString('hex');
 
         // Build routable task with resource requirements
         const task = {
             task_id:          taskId,
-            campaign_id:      campaign.id,
-            company:          campaign.company,
             type:             body.type,
             payload:          body.payload,
-            reward_gstd:      nodeReward,
-            protocol_fee:     protocolCut,
             priority:         Math.min(Math.max(parseInt(body.priority) || 1, 1), 10),
             required_caps:    body.required_caps || campaign.required_caps || [],
             min_resources:    body.min_resources || campaign.min_resources || {},
@@ -71,21 +59,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         };
 
         const remaining = Math.ceil((new Date(campaign.expires_at).getTime() - Date.now()) / 1000);
-
-        await Promise.all([
-            kvPush('tasks:queue', JSON.stringify(task)),
-            kvSet(`campaign:${campaign.id}`, JSON.stringify(campaign), remaining + CAMPAIGN_TTL_BUF),
-            kvIncr('stats:total_tasks_submitted'),
-            kvIncr('stats:total_reward_gstd'),
-        ]);
+        const reservation = await kvReserveCampaignTask(
+            `campaign:${campaign.id}`,
+            'tasks:queue',
+            JSON.stringify(task),
+            remaining + CAMPAIGN_TTL_BUF,
+            Date.now(),
+            Date.parse(campaign.expires_at),
+        );
+        if (reservation.status !== 'reserved') {
+            if (reservation.status === 'not_found') {
+                return res.status(404).json({ error: 'Campaign not found or expired' });
+            }
+            if (reservation.status === 'inactive' || reservation.status === 'expired') {
+                return res.status(410).json({ error: 'Campaign expired' });
+            }
+            if (reservation.status === 'exhausted') {
+                return res.status(409).json({ error: 'Campaign budget exhausted' });
+            }
+            console.error('[marketplace/request] Campaign reservation rejected invalid stored state');
+            return res.status(500).json({ error: 'Campaign reservation failed' });
+        }
 
         return res.status(200).json({
             ok:           true,
             task_id:      taskId,
-            reward_gstd:  nodeReward,
-            protocol_fee: protocolCut,
-            budget_left:  campaign.remaining_budget,
-            tasks_left:   Math.floor(campaign.remaining_budget / campaign.reward_per_task),
+            reward_gstd:  reservation.nodeReward,
+            protocol_fee: reservation.protocolFee,
+            budget_left:  reservation.remainingBudget,
+            tasks_left:   Math.floor(reservation.remainingBudget / campaign.reward_per_task),
         });
     } catch (err: any) {
         console.error('[marketplace/request]', err.message);
