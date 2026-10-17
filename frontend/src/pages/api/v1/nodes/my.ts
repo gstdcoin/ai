@@ -17,7 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     try {
-        const keys = await kvKeys('node:*');
+        const keys = (await kvKeys('node:')).filter(k => !k.slice(5).includes(':'));
         const nodeRaws = await Promise.all(keys.map(k => kvGet(k)));
 
         const myNodes = nodeRaws
