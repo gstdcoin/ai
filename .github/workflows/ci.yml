@@ -189,77 +189,104 @@ jobs:
           node - "$tail_log" <<'NODE'
           const fs = require('fs');
           const logPath = process.argv[2];
+          const logText = fs.readFileSync(logPath, 'utf8').replace(/\u001b\[[0-9;]*m/g, '');
           const secretValues = [
             process.env.CLOUDFLARE_API_TOKEN,
           ].filter(Boolean);
           const pagePaths = new Set(['/', '/en', '/ru', '/en/stats', '/en/network']);
           const details = [];
           const requestPaths = new Map();
-          let eventCount = 0;
+          const events = [];
           let requestCount = 0;
           let invocationCount = 0;
-          let invalidLines = 0;
+          let invalidRecords = 0;
 
-          for (const line of fs.readFileSync(logPath, 'utf8').split(/\r?\n/)) {
-            const jsonStart = line.indexOf('{');
-            if (jsonStart < 0) {
-              if (line.trim()) invalidLines += 1;
+          let recordStart = -1;
+          let depth = 0;
+          let inString = false;
+          let escaped = false;
+          for (let i = 0; i < logText.length; i++) {
+            const character = logText[i];
+            if (recordStart < 0) {
+              if (character === '{') {
+                recordStart = i;
+                depth = 1;
+              }
               continue;
             }
-            try {
-              const event = JSON.parse(line.slice(jsonStart));
-              eventCount += 1;
-              const requestUrl = event.event?.request?.url;
-              if (typeof requestUrl !== 'string') continue;
-              requestCount += 1;
-              let requestPath;
+            if (inString) {
+              if (escaped) escaped = false;
+              else if (character === '\\') escaped = true;
+              else if (character === '"') inString = false;
+              continue;
+            }
+            if (character === '"') inString = true;
+            else if (character === '{') depth += 1;
+            else if (character === '}' && --depth === 0) {
               try {
-                requestPath = new URL(requestUrl).pathname;
-              } catch {
-                invalidLines += 1;
-                continue;
+                events.push(JSON.parse(logText.slice(recordStart, i + 1)));
+              } catch (error) {
+                if (!(error instanceof SyntaxError)) throw error;
+                invalidRecords += 1;
               }
-              requestPaths.set(requestPath, (requestPaths.get(requestPath) ?? 0) + 1);
-              if (!pagePaths.has(requestPath)) continue;
-              invocationCount += 1;
-              for (const exception of event.exceptions ?? []) {
-                let message = String(exception.message ?? '');
-                for (const secret of secretValues) message = message.replaceAll(secret, '[redacted]');
-                message = message
-                  .replace(/https?:\/\/[^\s"'<>]+/gi, '[url]')
-                  .replace(/[\r\n\t]/g, ' ')
-                  .slice(0, 240);
-                details.push(`${String(exception.name ?? 'Error').slice(0, 80)}: ${message}`);
-              }
-              for (const log of event.logs ?? []) {
-                if (log.level !== 'error') continue;
-                const values = Array.isArray(log.message) ? log.message : [log.message];
-                let message = values
-                  .map((value) => typeof value === 'string' ? value : JSON.stringify(value))
-                  .join(' ');
-                for (const secret of secretValues) message = message.replaceAll(secret, '[redacted]');
-                message = message
-                  .replace(/https?:\/\/[^\s"'<>]+/gi, '[url]')
-                  .replace(/[\r\n\t]/g, ' ')
-                  .slice(0, 240);
-                details.push(`Worker log: ${message}`);
-              }
-            } catch (error) {
-              if (!(error instanceof SyntaxError)) throw error;
-              invalidLines += 1;
+              recordStart = -1;
             }
           }
 
-          const tailMessages = fs.readFileSync(logPath, 'utf8')
+          for (const event of events) {
+            const requestUrl = event.event?.request?.url ?? event.request?.url;
+            let requestPath;
+            if (typeof requestUrl === 'string') {
+              requestCount += 1;
+              try {
+                requestPath = new URL(requestUrl).pathname;
+                requestPaths.set(requestPath, (requestPaths.get(requestPath) ?? 0) + 1);
+              } catch {
+                invalidRecords += 1;
+              }
+            }
+            if (requestPath && pagePaths.has(requestPath)) invocationCount += 1;
+            else if (requestPath) continue;
+
+            const exceptions = [
+              ...(Array.isArray(event.exceptions) ? event.exceptions : []),
+              ...(Array.isArray(event.errorInfo) ? event.errorInfo : []),
+              ...(Array.isArray(event.event?.exceptions) ? event.event.exceptions : []),
+              ...(Array.isArray(event.event?.errorInfo) ? event.event.errorInfo : []),
+            ];
+            for (const exception of exceptions) {
+              let message = String(exception.message ?? exception.error ?? '');
+              for (const secret of secretValues) message = message.replaceAll(secret, '[redacted]');
+              message = message
+                .replace(/https?:\/\/[^\s"'<>]+/gi, '[url]')
+                .replace(/[\r\n\t]/g, ' ')
+                .slice(0, 400);
+              details.push(`${String(exception.name ?? 'Error').slice(0, 80)}: ${message}`);
+            }
+            for (const log of event.logs ?? event.event?.logs ?? []) {
+              if (log.level !== 'error') continue;
+              const values = Array.isArray(log.message) ? log.message : [log.message];
+              let message = values
+                .map((value) => typeof value === 'string' ? value : JSON.stringify(value))
+                .join(' ');
+              for (const secret of secretValues) message = message.replaceAll(secret, '[redacted]');
+              message = message
+                .replace(/https?:\/\/[^\s"'<>]+/gi, '[url]')
+                .replace(/[\r\n\t]/g, ' ')
+                .slice(0, 400);
+              details.push(`Worker log: ${message}`);
+            }
+          }
+
+          const tailMessages = logText
             .split(/\r?\n/)
             .filter((line) => /error|failed|permission|denied|tail/i.test(line))
             .map((line) => {
               let message = line
-                .replace(/\u001b\[[0-9;]*m/g, '')
                 .replace(/[\r\n\t]/g, ' ')
                 .replace(/https?:\/\/[^\s"'<>]+/gi, '[url]');
               for (const secret of secretValues) message = message.replaceAll(secret, '[redacted]');
-              return message.replace(/[^\x20-\x7E]/g, ' ').slice(0, 160);
+              return message.replace(/[^\x20-\x7E]/g, ' ').slice(0, 400);
             })
             .filter(Boolean)
             .slice(0, 3);
@@ -271,8 +298,8 @@ jobs:
             ? ['### Preview Worker errors (redacted)', '', ...details.map((value) => `- ${value}`)]
             : [invocationCount > 0
               ? `Worker Tail captured ${invocationCount} matching request event(s), but no exceptions or error logs.`
-              : `Worker Tail captured ${eventCount} JSON event(s), ${requestCount} request(s), and no smoke-test paths${pathSummary ? `; observed: ${pathSummary}` : ''}.`];
-          if (invalidLines > 0) summaryLines.push(`Skipped ${invalidLines} non-JSON tail output line(s).`);
+              : `Worker Tail captured ${events.length} JSON event(s), ${requestCount} request(s), and no smoke-test paths${pathSummary ? `; observed: ${pathSummary}` : ''}.`];
+          if (invalidRecords > 0) summaryLines.push(`Skipped ${invalidRecords} malformed JSON record(s).`);
           if (invocationCount === 0 && tailMessages.length > 0) {
             summaryLines.push(`Tail output: ${tailMessages.join(' | ')}`);
           }
@@ -285,11 +312,11 @@ jobs:
           if (details.length === 0) {
             const message = invocationCount > 0
               ? `Tail captured ${invocationCount} matching request event(s) without errors.`
-              : `Tail captured ${eventCount} JSON event(s), ${requestCount} request(s)${pathSummary ? `; paths: ${pathSummary}` : ''}. ${tailMessages.join(' | ')}`;
+              : `Tail captured ${events.length} JSON event(s), ${requestCount} request(s)${pathSummary ? `; paths: ${pathSummary}` : ''}. ${tailMessages.join(' | ')}`;
             const annotation = message.replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
             process.stdout.write(`::warning title=Preview Worker::${annotation}\n`);
           }
-          console.log(`Captured ${eventCount} JSON event(s), ${requestCount} request(s), ${invocationCount} smoke-test request(s), and ${details.length} filtered Worker error detail(s).`);
+          console.log(`Captured ${events.length} JSON event(s), ${requestCount} request(s), ${invocationCount} smoke-test request(s), and ${details.length} filtered Worker error detail(s).`);
           NODE
 
           if [ "$failed" -ne 0 ]; then
