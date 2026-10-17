@@ -4,6 +4,7 @@
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvSet, kvKeys, kvMGet, kvLLen } from '../../../../lib/kv';
+import { dedupeNodeRecords, isNodeOnline } from '../../../../lib/node-status';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'GET') {
@@ -32,23 +33,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         // Filter sub-keys (node:X:pull_queue etc.) and deduplicate by URL
         const rootNodeKeys = allNodeKeys.filter((k: string) => !k.slice(5).includes(':'));
-        let nodesOnline = rootNodeKeys.length;
+        let nodesOnline = 0;
+        let registeredNodes = 0;
         let tasksDone = parseInt(totalTasksCompleted || '0', 10);
 
         if (rootNodeKeys.length > 0) {
             const values = await kvMGet(rootNodeKeys).catch(() => [] as (string|null)[]);
-            const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-/i;
             const records = values.filter((v): v is string => v !== null).map(v => { try { return JSON.parse(v); } catch { return null; } }).filter(Boolean);
-            // Dedup by URL; prefer named nodes over UUID IDs
-            records.sort((a: any, b: any) => (UUID_RE.test(a.node_id) ? 1 : 0) - (UUID_RE.test(b.node_id) ? 1 : 0));
-            const seenUrls = new Set<string>();
-            const dedupedRecords = records.filter((n: any) => {
-                const url = n.node_url || n.multiaddrs?.[0] || '';
-                if (!url) return true;
-                if (seenUrls.has(url)) return false;
-                seenUrls.add(url); return true;
-            });
-            nodesOnline = dedupedRecords.length;
+            const dedupedRecords = dedupeNodeRecords(records);
+            registeredNodes = dedupedRecords.length;
+            nodesOnline = dedupedRecords.filter(node => isNodeOnline(node)).length;
             // Sum tasks from node records when the platform oracle has no total.
             if (!tasksDone) {
                 for (const n of dedupedRecords) {
@@ -60,7 +54,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             kvSet('stats:total_tasks_completed', String(tasksDone)).catch(() => {});
         }
 
-        const totalReg = Math.max(parseInt(totalRegistered || '0', 10), nodesOnline);
+        const totalReg = Math.max(parseInt(totalRegistered || '0', 10), registeredNodes);
 
         return res.status(200).json({
             nodes_online:           nodesOnline,
