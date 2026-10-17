@@ -17,6 +17,9 @@ const nextConfig = {
   experimental: {
     largePageDataBytes: 200 * 1024,
   },
+  outputFileTracingIncludes: {
+    '/*': ['./node_modules/ofetch/dist/**'],
+  },
   images: {
     unoptimized: true,
     remotePatterns: [
