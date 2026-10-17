@@ -40,6 +40,15 @@ function memKeys(prefix: string): string[] {
         .map(([k]) => k);
 }
 
+function isJsonObject(value: string): boolean {
+    try {
+        const parsed: unknown = JSON.parse(value);
+        return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed);
+    } catch {
+        return false;
+    }
+}
+
 // ── Upstash Redis client ───────────────────────────────────────────
 let _redis: Redis | null = null;
 
@@ -102,6 +111,442 @@ export async function kvSetNX(key: string, value: string, ttlSec: number): Promi
     if (memGet(key) !== null) return false;
     memSet(key, value, ttlSec);
     return true;
+}
+
+export type BalanceDebitResult =
+    | { status: 'debited'; balance: number }
+    | { status: 'insufficient'; balance: number }
+    | { status: 'invalid' };
+
+export async function kvDebitBalance(
+    wallet: string,
+    amount: number,
+    increments: Array<{ key: string; amount: number }> = [],
+): Promise<BalanceDebitResult> {
+    if (!wallet || !Number.isFinite(amount) || amount <= 0
+        || increments.some(item => !item.key || item.key === `balance:${wallet.toLowerCase()}`
+            || !Number.isFinite(item.amount))
+        || new Set(increments.map(item => item.key)).size !== increments.length) {
+        return { status: 'invalid' };
+    }
+
+    const balanceKey = `balance:${wallet.toLowerCase()}`;
+    const keys = [balanceKey, ...increments.map(item => item.key)];
+    const r = await getRedis();
+    if (r) {
+        const script = `
+            local function finite(value)
+                return value and value == value and value ~= math.huge and value ~= -math.huge
+            end
+            local balanceType = redis.call('TYPE', KEYS[1]).ok
+            if balanceType ~= 'none' and balanceType ~= 'string' then return {'invalid'} end
+            local rawBalance = redis.call('GET', KEYS[1])
+            local balance = tonumber(rawBalance or '0')
+            if not finite(balance) then return {'invalid'} end
+            local charge = tonumber(ARGV[1])
+            if not finite(charge) or charge <= 0 then return {'invalid'} end
+            if balance < charge then return {'insufficient', tostring(balance)} end
+
+            for index = 2, #KEYS do
+                local valueType = redis.call('TYPE', KEYS[index]).ok
+                if valueType ~= 'none' and valueType ~= 'string' then return {'invalid'} end
+                local rawValue = redis.call('GET', KEYS[index])
+                local current = tonumber(rawValue or '0')
+                local increment = tonumber(ARGV[index])
+                if not finite(current) or not finite(increment) or not finite(current + increment) then
+                    return {'invalid'}
+                end
+            end
+            if not finite(balance - charge) then return {'invalid'} end
+
+            local remaining = redis.call('INCRBYFLOAT', KEYS[1], -charge)
+            for index = 2, #KEYS do
+                redis.call('INCRBYFLOAT', KEYS[index], ARGV[index])
+            end
+            return {'debited', tostring(remaining)}
+        `;
+        try {
+            const result = await r.eval<string[], [string, string?]>(
+                script,
+                keys,
+                [String(amount), ...increments.map(item => String(item.amount))],
+            );
+            if (result[0] === 'debited' && result[1] !== undefined) {
+                return { status: 'debited', balance: Number(result[1]) };
+            }
+            if (result[0] === 'insufficient' && result[1] !== undefined) {
+                return { status: 'insufficient', balance: Number(result[1]) };
+            }
+            return { status: 'invalid' };
+        } catch (e) { handleRedisFailure(`kvDebitBalance('${balanceKey}')`, e); }
+    }
+
+    const rawBalance = memGet(balanceKey);
+    const balance = Number(rawBalance || '0');
+    if (!Number.isFinite(balance)) return { status: 'invalid' };
+    if (balance < amount) return { status: 'insufficient', balance };
+    for (const increment of increments) {
+        const rawValue = memGet(increment.key);
+        if (rawValue !== null && !Number.isFinite(Number(rawValue))) return { status: 'invalid' };
+    }
+    const remaining = Math.round((balance - amount) * 1e9) / 1e9;
+    memSet(balanceKey, String(remaining));
+    for (const increment of increments) {
+        const current = Number(memGet(increment.key) || '0');
+        const next = Math.round((current + increment.amount) * 1e9) / 1e9;
+        memSet(increment.key, String(next));
+    }
+    return { status: 'debited', balance: remaining };
+}
+
+export type FundedRecordResult =
+    | { status: 'created'; balance: number }
+    | { status: 'insufficient'; balance: number }
+    | { status: 'exists' }
+    | { status: 'invalid' };
+
+export async function kvCreateFundedCampaign(
+    wallet: string,
+    amount: number,
+    protocolFee: number,
+    campaignKey: string,
+    campaignJson: string,
+    ttlSec: number,
+): Promise<FundedRecordResult> {
+    const balanceKey = `balance:${wallet.toLowerCase()}`;
+    const keys = [balanceKey, campaignKey, 'stats:protocol_treasury_gstd', 'stats:total_campaigns'];
+    if (!wallet || !campaignKey || !Number.isFinite(amount) || amount <= 0
+        || !Number.isFinite(protocolFee) || protocolFee < 0 || protocolFee > amount
+        || !Number.isInteger(ttlSec) || ttlSec < 1 || !isJsonObject(campaignJson)
+        || new Set(keys).size !== keys.length) {
+        return { status: 'invalid' };
+    }
+
+    const r = await getRedis();
+    if (r) {
+        const script = `
+            local function finite(value)
+                return value and value == value and value ~= math.huge and value ~= -math.huge
+            end
+            if redis.call('EXISTS', KEYS[2]) == 1 then return {'exists'} end
+            for index = 1, #KEYS do
+                local valueType = redis.call('TYPE', KEYS[index]).ok
+                if valueType ~= 'none' and valueType ~= 'string' then return {'invalid'} end
+            end
+            local balance = tonumber(redis.call('GET', KEYS[1]) or '0')
+            local feeTotal = tonumber(redis.call('GET', KEYS[3]) or '0')
+            local campaignCount = tonumber(redis.call('GET', KEYS[4]) or '0')
+            local amount = tonumber(ARGV[1])
+            local fee = tonumber(ARGV[2])
+            if not finite(balance) or not finite(feeTotal) or not finite(campaignCount)
+                or campaignCount < 0 or campaignCount ~= math.floor(campaignCount)
+                or not finite(amount) or amount <= 0 or not finite(fee) or fee < 0
+                or fee > amount or not finite(feeTotal + fee) then
+                return {'invalid'}
+            end
+            if balance < amount then return {'insufficient', tostring(balance)} end
+
+            local remaining = redis.call('INCRBYFLOAT', KEYS[1], -amount)
+            if fee > 0 then redis.call('INCRBYFLOAT', KEYS[3], fee) end
+            redis.call('SET', KEYS[2], ARGV[3], 'EX', tonumber(ARGV[4]))
+            redis.call('INCR', KEYS[4])
+            return {'created', tostring(remaining)}
+        `;
+        try {
+            const result = await r.eval<string[], [string, string?]>(
+                script,
+                keys,
+                [String(amount), String(protocolFee), campaignJson, String(ttlSec)],
+            );
+            if (result[0] === 'created' && result[1] !== undefined) {
+                return { status: 'created', balance: Number(result[1]) };
+            }
+            if (result[0] === 'insufficient' && result[1] !== undefined) {
+                return { status: 'insufficient', balance: Number(result[1]) };
+            }
+            return result[0] === 'exists' ? { status: 'exists' } : { status: 'invalid' };
+        } catch (e) { handleRedisFailure(`kvCreateFundedCampaign('${campaignKey}')`, e); }
+    }
+
+    const rawBalance = memGet(balanceKey);
+    const balance = Number(rawBalance || '0');
+    const treasury = Number(memGet(keys[2]) || '0');
+    const campaignCount = Number(memGet(keys[3]) || '0');
+    if (memGet(campaignKey) !== null) return { status: 'exists' };
+    if (!Number.isFinite(balance) || !Number.isFinite(treasury) || !Number.isInteger(campaignCount)
+        || !Number.isFinite(treasury + protocolFee) || !Number.isFinite(balance - amount)) {
+        return { status: 'invalid' };
+    }
+    if (balance < amount) return { status: 'insufficient', balance };
+    const remaining = Math.round((balance - amount) * 1e9) / 1e9;
+    memSet(balanceKey, String(remaining));
+    if (protocolFee > 0) memSet(keys[2], String(Math.round((treasury + protocolFee) * 1e9) / 1e9));
+    memSet(campaignKey, campaignJson, ttlSec);
+    memSet(keys[3], String(campaignCount + 1));
+    return { status: 'created', balance: remaining };
+}
+
+export async function kvCreateFundedTrainingJob(
+    wallet: string,
+    amount: number,
+    jobKey: string,
+    jobJson: string,
+    walletJobsKey: string,
+    jobId: string,
+    taskJsons: string[],
+    ttlSec: number,
+): Promise<FundedRecordResult> {
+    const balanceKey = `balance:${wallet.toLowerCase()}`;
+    const keys = [balanceKey, jobKey, walletJobsKey, 'tasks:queue', 'stats:training_jobs_submitted'];
+    if (!wallet || !jobKey || !walletJobsKey || !jobId || !Number.isFinite(amount) || amount <= 0
+        || !Number.isInteger(ttlSec) || ttlSec < 1 || !isJsonObject(jobJson) || taskJsons.length < 1
+        || taskJsons.some(task => !isJsonObject(task))
+        || new Set(keys).size !== keys.length) {
+        return { status: 'invalid' };
+    }
+
+    const r = await getRedis();
+    if (r) {
+        const script = `
+            local function finite(value)
+                return value and value == value and value ~= math.huge and value ~= -math.huge
+            end
+            if redis.call('EXISTS', KEYS[2]) == 1 then return {'exists'} end
+            for index = 1, #KEYS do
+                local valueType = redis.call('TYPE', KEYS[index]).ok
+                if valueType ~= 'none' and valueType ~= 'string'
+                    and not (index == 4 and valueType == 'list') then
+                    return {'invalid'}
+                end
+            end
+            local balance = tonumber(redis.call('GET', KEYS[1]) or '0')
+            local submitted = tonumber(redis.call('GET', KEYS[5]) or '0')
+            local oldJobIds = redis.call('GET', KEYS[3]) or ''
+            local amount = tonumber(ARGV[1])
+            if not finite(balance) or not finite(submitted) or submitted < 0
+                or submitted ~= math.floor(submitted) or not finite(amount) or amount <= 0 then
+                return {'invalid'}
+            end
+            if balance < amount then return {'insufficient', tostring(balance)} end
+
+            local remaining = redis.call('INCRBYFLOAT', KEYS[1], -amount)
+            redis.call('SET', KEYS[2], ARGV[2], 'EX', tonumber(ARGV[3]))
+            local updatedIds = oldJobIds
+            if updatedIds ~= '' then updatedIds = updatedIds .. '\\n' end
+            updatedIds = updatedIds .. ARGV[4]
+            redis.call('SET', KEYS[3], updatedIds, 'EX', tonumber(ARGV[3]))
+            for index = 1, tonumber(ARGV[5]) do
+                redis.call('LPUSH', KEYS[4], ARGV[5 + index])
+            end
+            redis.call('INCR', KEYS[5])
+            return {'created', tostring(remaining)}
+        `;
+        try {
+            const args = [String(amount), jobJson, String(ttlSec), jobId, String(taskJsons.length), ...taskJsons];
+            const result = await r.eval<string[], [string, string?]>(script, keys, args);
+            if (result[0] === 'created' && result[1] !== undefined) {
+                return { status: 'created', balance: Number(result[1]) };
+            }
+            if (result[0] === 'insufficient' && result[1] !== undefined) {
+                return { status: 'insufficient', balance: Number(result[1]) };
+            }
+            return result[0] === 'exists' ? { status: 'exists' } : { status: 'invalid' };
+        } catch (e) { handleRedisFailure(`kvCreateFundedTrainingJob('${jobId}')`, e); }
+    }
+
+    const rawBalance = memGet(balanceKey);
+    const balance = Number(rawBalance || '0');
+    const submitted = Number(memGet(keys[4]) || '0');
+    if (memGet(jobKey) !== null) return { status: 'exists' };
+    if (!Number.isFinite(balance) || !Number.isInteger(submitted) || submitted < 0
+        || !Number.isFinite(balance - amount)) {
+        return { status: 'invalid' };
+    }
+    if (balance < amount) return { status: 'insufficient', balance };
+
+    const oldJobIds = memGet(walletJobsKey) || '';
+    const rawQueue = memGet(keys[3]);
+    let queue: string[] = [];
+    if (rawQueue) {
+        try { queue = JSON.parse(rawQueue) as string[]; } catch { return { status: 'invalid' }; }
+        if (!Array.isArray(queue)) return { status: 'invalid' };
+    }
+    const remaining = Math.round((balance - amount) * 1e9) / 1e9;
+    memSet(balanceKey, String(remaining));
+    memSet(jobKey, jobJson, ttlSec);
+    memSet(walletJobsKey, oldJobIds ? `${oldJobIds}\n${jobId}` : jobId, ttlSec);
+    memSet(keys[3], JSON.stringify([...queue, ...taskJsons]));
+    memSet(keys[4], String(submitted + 1));
+    return { status: 'created', balance: remaining };
+}
+
+export async function kvApplyDeltas(deltas: Array<{ key: string; amount: number }>): Promise<void> {
+    if (deltas.length === 0 || deltas.some(item => !item.key || !Number.isFinite(item.amount))
+        || new Set(deltas.map(item => item.key)).size !== deltas.length) {
+        throw new Error('Invalid balance adjustment parameters');
+    }
+    const r = await getRedis();
+    if (r) {
+        const keys = deltas.map(item => item.key);
+        const script = `
+            local function finite(value)
+                return value and value == value and value ~= math.huge and value ~= -math.huge
+            end
+            for index = 1, #KEYS do
+                local valueType = redis.call('TYPE', KEYS[index]).ok
+                if valueType ~= 'none' and valueType ~= 'string' then return redis.error_reply('Invalid balance key type') end
+                local current = tonumber(redis.call('GET', KEYS[index]) or '0')
+                local delta = tonumber(ARGV[index])
+                if not finite(current) or not finite(delta) or not finite(current + delta) then
+                    return redis.error_reply('Invalid balance adjustment')
+                end
+            end
+            for index = 1, #KEYS do
+                redis.call('INCRBYFLOAT', KEYS[index], ARGV[index])
+            end
+            return 1
+        `;
+        try {
+            await r.eval<string[], number>(script, keys, deltas.map(item => String(item.amount)));
+            return;
+        } catch (e) { handleRedisFailure('kvApplyDeltas', e); }
+    }
+
+    for (const delta of deltas) {
+        const raw = memGet(delta.key);
+        if (raw !== null && !Number.isFinite(Number(raw))) {
+            throw new Error(`Invalid stored balance for '${delta.key}'`);
+        }
+    }
+    for (const delta of deltas) {
+        const current = Number(memGet(delta.key) || '0');
+        const next = Math.round((current + delta.amount) * 1e9) / 1e9;
+        memSet(delta.key, String(next));
+    }
+}
+
+export type IdempotentCreditResult =
+    | { status: 'credited'; balance: number }
+    | { status: 'duplicate' }
+    | { status: 'invalid' };
+
+export async function kvCreditOnce(
+    dedupKey: string,
+    wallet: string,
+    amount: number,
+    dedupTtlSec: number,
+    event?: { key: string; value: string; ttlSec: number },
+): Promise<IdempotentCreditResult> {
+    const balanceKey = `balance:${wallet.toLowerCase()}`;
+    const keys = [dedupKey, balanceKey, ...(event ? [event.key] : [])];
+    if (!dedupKey || !wallet || !Number.isFinite(amount) || amount <= 0
+        || !Number.isInteger(dedupTtlSec) || dedupTtlSec < 1
+        || (event && (!event.key || !event.value || !Number.isInteger(event.ttlSec) || event.ttlSec < 1))
+        || new Set(keys).size !== keys.length) {
+        return { status: 'invalid' };
+    }
+
+    const r = await getRedis();
+    if (r) {
+        const script = `
+            local function finite(value)
+                return value and value == value and value ~= math.huge and value ~= -math.huge
+            end
+            if redis.call('EXISTS', KEYS[1]) == 1 then return {'duplicate'} end
+            if #KEYS == 3 and redis.call('EXISTS', KEYS[3]) == 1 then return {'invalid'} end
+            for index = 1, #KEYS do
+                local valueType = redis.call('TYPE', KEYS[index]).ok
+                if valueType ~= 'none' and valueType ~= 'string' then return {'invalid'} end
+            end
+            local current = tonumber(redis.call('GET', KEYS[2]) or '0')
+            local amount = tonumber(ARGV[1])
+            if not finite(current) or not finite(amount) or amount <= 0 or not finite(current + amount) then
+                return {'invalid'}
+            end
+            local seen = redis.call('SET', KEYS[1], '1', 'EX', tonumber(ARGV[2]), 'NX')
+            if not seen then return {'duplicate'} end
+            local balance = redis.call('INCRBYFLOAT', KEYS[2], amount)
+            if #KEYS == 3 then redis.call('SET', KEYS[3], ARGV[3], 'EX', tonumber(ARGV[4])) end
+            return {'credited', tostring(balance)}
+        `;
+        const args = [String(amount), String(dedupTtlSec)];
+        if (event) args.push(event.value, String(event.ttlSec));
+        try {
+            const result = await r.eval<string[], [string, string?]>(script, keys, args);
+            if (result[0] === 'credited' && result[1] !== undefined) {
+                return { status: 'credited', balance: Number(result[1]) };
+            }
+            if (result[0] === 'duplicate') return { status: 'duplicate' };
+            return { status: 'invalid' };
+        } catch (e) { handleRedisFailure(`kvCreditOnce('${dedupKey}')`, e); }
+    }
+
+    if (memGet(dedupKey) !== null) return { status: 'duplicate' };
+    const rawBalance = memGet(balanceKey);
+    const balance = Number(rawBalance || '0');
+    if (!Number.isFinite(balance) || !Number.isFinite(balance + amount)) return { status: 'invalid' };
+    if (event && memGet(event.key) !== null) return { status: 'invalid' };
+    const nextBalance = Math.round((balance + amount) * 1e9) / 1e9;
+    memSet(dedupKey, '1', dedupTtlSec);
+    memSet(balanceKey, String(nextBalance));
+    if (event) memSet(event.key, event.value, event.ttlSec);
+    return { status: 'credited', balance: nextBalance };
+}
+
+export type QuotaReservation =
+    | { allowed: true; remaining: number }
+    | { allowed: false; remaining: 0 | number };
+
+export async function kvConsumeQuota(key: string, limit: number, ttlSec: number): Promise<QuotaReservation> {
+    if (!key || !Number.isInteger(limit) || limit < 1 || !Number.isInteger(ttlSec) || ttlSec < 1) {
+        throw new Error('Invalid quota reservation parameters');
+    }
+    const r = await getRedis();
+    if (r) {
+        const script = `
+            local function finite(value)
+                return value and value == value and value ~= math.huge and value ~= -math.huge
+            end
+            local valueType = redis.call('TYPE', KEYS[1]).ok
+            if valueType ~= 'none' and valueType ~= 'string' then return {'invalid'} end
+            local raw = redis.call('GET', KEYS[1])
+            local used = tonumber(raw or '0')
+            if not finite(used) or used < 0 or used ~= math.floor(used) then return {'invalid'} end
+            local limit = tonumber(ARGV[1])
+            if used >= limit then return {'denied', '0'} end
+            local nextUsed = redis.call('INCR', KEYS[1])
+            if nextUsed == 1 or redis.call('TTL', KEYS[1]) < 0 then
+                redis.call('EXPIRE', KEYS[1], tonumber(ARGV[2]))
+            end
+            return {'allowed', tostring(limit - nextUsed)}
+        `;
+        try {
+            const result = await r.eval<[string, string], [string, string]>(
+                script,
+                [key],
+                [String(limit), String(ttlSec)],
+            );
+            if (result[0] === 'allowed') return { allowed: true, remaining: Number(result[1]) };
+            if (result[0] === 'denied') return { allowed: false, remaining: 0 };
+            throw new Error(`Invalid stored quota value for '${key}'`);
+        } catch (e) {
+            if (e instanceof Error && e.message.startsWith('Invalid stored quota value')) throw e;
+            handleRedisFailure(`kvConsumeQuota('${key}')`, e);
+        }
+    }
+
+    const raw = memGet(key);
+    const used = Number(raw || '0');
+    if (!Number.isInteger(used) || used < 0) throw new Error(`Invalid stored quota value for '${key}'`);
+    if (used >= limit) return { allowed: false, remaining: 0 };
+    const nextUsed = used + 1;
+    const current = mem.get(key);
+    if (nextUsed === 1 || current?.exp == null) {
+        memSet(key, String(nextUsed), ttlSec);
+    } else {
+        mem.set(key, { value: String(nextUsed), exp: current.exp });
+    }
+    return { allowed: true, remaining: limit - nextUsed };
 }
 
 export type CampaignTaskReservation =

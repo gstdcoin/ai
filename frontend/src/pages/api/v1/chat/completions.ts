@@ -210,6 +210,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const nodeUrl = await resolveNodeUrl(resolvedModel);
 
     if (!nodeUrl) {
+        if (walletAddress && billingCharge > 0) await refundFee(walletAddress, billingCharge);
         return res.status(503).json({
             id:      `chatcmpl-${taskId}`,
             object:  'chat.completion',

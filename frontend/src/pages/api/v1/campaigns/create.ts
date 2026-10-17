@@ -22,7 +22,7 @@
  * Protocol fee: 10% of total_budget goes to protocol treasury.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvGet, kvSet, kvIncr, kvIncrByFloat } from '../../../../lib/kv';
+import { kvCreateFundedCampaign } from '../../../../lib/kv';
 import { randomBytes } from 'crypto';
 
 const PROTOCOL_FEE_PCT = 0.10;
@@ -83,24 +83,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.status(400).json({ error: 'reward_per_task cannot exceed total_budget' });
         }
 
-        // total_budget was previously just a self-declared number -- a campaign
-        // went live and started paying out real GSTD to completing nodes with
-        // no funds ever deposited for it. Require the creator's already-verified
-        // credit balance (the same balance:<wallet> that real TON deposits via
-        // credits/ton-webhook.ts and paid inference both use) to actually cover
-        // it, and debit it now, same check-then-debit pattern as billing.ts.
+        // Fund the campaign from the creator's verified credit balance.
         const wallet = String(body.wallet_address || '').trim().toLowerCase();
         if (!wallet) {
             return res.status(400).json({ error: 'wallet_address required to fund the campaign budget' });
         }
-        const balanceKey = `balance:${wallet}`;
-        const balRaw = await kvGet(balanceKey);
-        const balance = parseFloat(balRaw || '0');
-        if (balance < totalBudget) {
-            return res.status(402).json({ error: 'insufficient_balance', balance, required: totalBudget });
-        }
-        await kvIncrByFloat(balanceKey, -totalBudget);
-
         const protocolFee = Math.round(totalBudget * PROTOCOL_FEE_PCT * 100) / 100;
         const netBudget   = Math.round((totalBudget - protocolFee) * 100) / 100;
         const expiresAt   = new Date(Date.now() + durationH * 3600_000).toISOString();
@@ -134,12 +121,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             active:           true,
         };
 
-        // Store campaign + accumulate protocol treasury
-        await Promise.all([
-            kvSet(`campaign:${campaign.id}`, JSON.stringify(campaign), ttlSec),
-            kvIncr('stats:total_campaigns'),
-            kvIncrByFloat('stats:protocol_treasury_gstd', protocolFee),
-        ]);
+        const funding = await kvCreateFundedCampaign(
+            wallet,
+            totalBudget,
+            protocolFee,
+            `campaign:${campaign.id}`,
+            JSON.stringify(campaign),
+            ttlSec,
+        );
+        if (funding.status === 'insufficient') {
+            return res.status(402).json({ error: 'insufficient_balance', balance: funding.balance, required: totalBudget });
+        }
+        if (funding.status !== 'created') throw new Error('Could not atomically create funded campaign');
 
         return res.status(200).json({
             ok:               true,

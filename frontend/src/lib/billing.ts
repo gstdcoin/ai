@@ -1,4 +1,4 @@
-import { kvGet, kvIncrByFloat, kvIncr, kvSet } from './kv';
+import { kvApplyDeltas, kvConsumeQuota, kvDebitBalance, kvGet } from './kv';
 
 // GSTD cost per request by Ollama model ID
 const MODEL_PRICES: Record<string, number> = {
@@ -51,12 +51,7 @@ export async function checkFreeQuota(identifier: string): Promise<{ allowed: boo
 
 export async function incrementFreeUsage(identifier: string): Promise<void> {
     const key = `usage:free:${identifier.toLowerCase()}:${todayKey()}`;
-    await kvIncr(key);
-    // TTL 25h so it doesn't stack across days
-    const raw = await kvGet(key);
-    if (raw === '1') {
-        await kvSet(key, '1', 90_000);
-    }
+    await kvConsumeQuota(key, FREE_DAILY_LIMIT, 90_000);
 }
 
 export type ChargeResult =
@@ -80,10 +75,13 @@ export async function chargeFee(
     // Free models — check daily quota
     if (price === 0) {
         const identifier = wallet || 'anon';
-        const quota = await checkFreeQuota(identifier);
+        const quota = await kvConsumeQuota(
+            `usage:free:${identifier.toLowerCase()}:${todayKey()}`,
+            FREE_DAILY_LIMIT,
+            90_000,
+        );
         if (quota.allowed) {
-            await incrementFreeUsage(identifier);
-            return { ok: true, free: true, remaining: quota.remaining - 1 };
+            return { ok: true, free: true, remaining: quota.remaining };
         }
         // Over free limit: if no wallet → reject
         if (!wallet) {
@@ -96,41 +94,30 @@ export async function chargeFee(
         return { ok: false, error: 'no_wallet', required: price };
     }
 
-    const balanceKey = `balance:${wallet.toLowerCase()}`;
-    const raw = await kvGet(balanceKey);
-    const balance = parseFloat(raw || '0');
     const charge = price === 0 ? 0.001 : price;
-
-    if (balance < charge) {
-        return { ok: false, error: 'insufficient_balance', balance, required: charge };
-    }
-
-    // Deduct from user
-    await kvIncrByFloat(balanceKey, -charge);
-
     // 10% to treasury
     const treasury  = charge * COMMISSION_RATE;
     const nodeReward = charge - treasury;
-
-    await kvIncrByFloat('treasury:balance', treasury);
-
-    // Credit node rewards if node known
-    if (nodeId) {
-        const nodeKey = `rewards:pending:${nodeId.toLowerCase()}`;
-        await kvIncrByFloat(nodeKey, nodeReward);
-    } else {
-        // Pool unattributed rewards — settled proportionally
-        await kvIncrByFloat('rewards:pool', nodeReward);
+    const rewardKey = nodeId ? `rewards:pending:${nodeId.toLowerCase()}` : 'rewards:pool';
+    const debit = await kvDebitBalance(wallet, charge, [
+        { key: 'treasury:balance', amount: treasury },
+        { key: rewardKey, amount: nodeReward },
+    ]);
+    if (debit.status === 'insufficient') {
+        return { ok: false, error: 'insufficient_balance', balance: debit.balance, required: charge };
     }
+    if (debit.status !== 'debited') throw new Error('Could not apply inference charge');
 
     return { ok: true, free: false, charged: charge, treasury, nodeReward };
 }
 
 export async function refundFee(wallet: string, amount: number): Promise<void> {
     if (amount <= 0) return;
-    const balanceKey = `balance:${wallet.toLowerCase()}`;
-    await kvIncrByFloat(balanceKey, amount);
-    // Reverse treasury portion
     const treasury = amount * COMMISSION_RATE;
-    await kvIncrByFloat('treasury:balance', -treasury);
+    const nodeReward = amount - treasury;
+    await kvApplyDeltas([
+        { key: `balance:${wallet.toLowerCase()}`, amount },
+        { key: 'treasury:balance', amount: -treasury },
+        { key: 'rewards:pool', amount: -nodeReward },
+    ]);
 }

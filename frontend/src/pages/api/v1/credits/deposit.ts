@@ -6,7 +6,7 @@
  * Body: { wallet: string, amount_gstd: number, tx_hash?: string }
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvGet, kvIncrByFloat, kvSet } from '../../../../lib/kv';
+import { kvCreditOnce, kvIncrByFloat } from '../../../../lib/kv';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -19,27 +19,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { wallet, amount_gstd, tx_hash } = req.body || {};
 
-    if (!wallet || typeof wallet !== 'string') {
+    if (typeof wallet !== 'string' || !wallet.trim()) {
         return res.status(400).json({ error: 'wallet required' });
     }
-    const amount = parseFloat(amount_gstd);
-    if (!amount || amount <= 0 || amount > 1_000_000) {
+    const amount = Number(amount_gstd);
+    if (!Number.isFinite(amount) || amount <= 0 || amount > 1_000_000) {
         return res.status(400).json({ error: 'amount_gstd must be positive number' });
     }
 
     const walletKey = wallet.trim().toLowerCase();
-
-    // Idempotency: if tx_hash provided, skip duplicate
-    if (tx_hash) {
-        const dedupKey = `deposit:seen:${tx_hash}`;
-        const existing = await kvGet(dedupKey);
-        if (existing) {
-            return res.status(200).json({ ok: true, duplicate: true, tx_hash });
-        }
-        await kvSet(dedupKey, '1', 86400 * 30); // 30-day dedup window
+    if (tx_hash !== undefined && (typeof tx_hash !== 'string' || !tx_hash.trim())) {
+        return res.status(400).json({ error: 'tx_hash must be a non-empty string' });
     }
 
-    const newBalance = await kvIncrByFloat(`balance:${walletKey}`, amount);
+    // Idempotency: if tx_hash provided, skip duplicate
+    let newBalance: number;
+    if (tx_hash) {
+        const result = await kvCreditOnce(`deposit:seen:${tx_hash}`, walletKey, amount, 86400 * 30);
+        if (result.status === 'duplicate') {
+            return res.status(200).json({ ok: true, duplicate: true, tx_hash });
+        }
+        if (result.status !== 'credited') {
+            console.error('[credits/deposit] Invalid credit state', { tx_hash });
+            return res.status(500).json({ error: 'Could not credit deposit' });
+        }
+        newBalance = result.balance;
+    } else {
+        newBalance = await kvIncrByFloat(`balance:${walletKey}`, amount);
+    }
 
     return res.status(200).json({
         ok: true,

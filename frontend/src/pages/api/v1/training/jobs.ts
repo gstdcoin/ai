@@ -15,7 +15,7 @@
  * TrainingNode picks them up via /api/v1/tasks/poll.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvGet, kvSet, kvPush, kvKeys, kvIncr, kvIncrByFloat } from '../../../../lib/kv';
+import { kvGet, kvCreateFundedTrainingJob } from '../../../../lib/kv';
 import { randomBytes } from 'crypto';
 import { TON_VAULT_ADDRESS } from '../../../../lib/config';
 
@@ -118,22 +118,6 @@ async function handleSubmit(req: NextApiRequest, res: NextApiResponse) {
         const job_id    = randomBytes(10).toString('hex');
         const cost_gstd = (COST_PER_EPOCH[model] || 1.0) * epochs;
 
-        // Enforce payment: deduct GSTD balance if wallet provided
-        if (wallet) {
-            const walletKey = wallet.trim().toLowerCase();
-            const balRaw    = await kvGet(`balance:${walletKey}`);
-            const balance   = parseFloat(balRaw || '0');
-            if (balance < cost_gstd) {
-                return res.status(402).json({
-                    error:     'Insufficient GSTD balance',
-                    required:  cost_gstd,
-                    available: balance,
-                    deposit_to: TON_VAULT_ADDRESS,
-                });
-            }
-            await kvIncrByFloat(`balance:${walletKey}`, -cost_gstd);
-        }
-
         const job: TrainingJob = {
             job_id,
             model,
@@ -151,15 +135,8 @@ async function handleSubmit(req: NextApiRequest, res: NextApiResponse) {
             gradients:    [],
         };
 
-        await kvSet(`training:job:${job_id}`, JSON.stringify(job), JOB_TTL);
-        if (wallet) {
-            const existing = await kvGet(`training:wallet:${wallet}`);
-            const ids = existing ? existing.split('\n').filter(Boolean) : [];
-            ids.push(job_id);
-            await kvSet(`training:wallet:${wallet}`, ids.join('\n'), JOB_TTL);
-        }
-
         // Push one finetune shard per epoch into tasks:queue
+        const tasks: string[] = [];
         for (let epoch = 0; epoch < epochs; epoch++) {
             const shard_id = `${job_id}-e${epoch}`;
             const task = {
@@ -180,10 +157,28 @@ async function handleSubmit(req: NextApiRequest, res: NextApiResponse) {
                 priority:   2,
                 created_at: new Date().toISOString(),
             };
-            await kvPush('tasks:queue', JSON.stringify(task));
+            tasks.push(JSON.stringify(task));
         }
 
-        await kvIncr('stats:training_jobs_submitted');
+        const funding = await kvCreateFundedTrainingJob(
+            wallet,
+            cost_gstd,
+            `training:job:${job_id}`,
+            JSON.stringify(job),
+            `training:wallet:${wallet}`,
+            job_id,
+            tasks,
+            JOB_TTL,
+        );
+        if (funding.status === 'insufficient') {
+            return res.status(402).json({
+                error:     'Insufficient GSTD balance',
+                required:  cost_gstd,
+                available: funding.balance,
+                deposit_to: TON_VAULT_ADDRESS,
+            });
+        }
+        if (funding.status !== 'created') throw new Error('Could not atomically create funded training job');
 
         return res.status(200).json({
             ok:        true,
