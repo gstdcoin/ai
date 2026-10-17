@@ -9,12 +9,17 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvSet, kvIncr } from '../../../../../lib/kv';
 import { validateTelegramInitData } from '../../../../../lib/telegramAuth';
 
+const TON_ADDRESS_RE = /^(EQ[A-Za-z0-9_-]{46}|UQ[A-Za-z0-9_-]{46}|0:[a-fA-F0-9]{64})$/;
 const MIN_CLAIM = 0.01; // minimum claimable amount
 const MOBILE_NODE_TTL = 360;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
+    }
+
+    if (process.env.MOBILE_PRESENCE_REWARDS !== 'enabled') {
+        return res.status(403).json({ error: 'presence_rewards_disabled', message: 'Phones earn GSTD for completed tasks, not for keeping the app open.' });
     }
 
     const { telegram_init_data, device_id, wallet_address } = req.body as any;

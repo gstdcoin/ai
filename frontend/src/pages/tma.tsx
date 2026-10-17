@@ -192,7 +192,7 @@ export default function TMAPage() {
                     <div>
                       <h4 className="text-sm font-bold text-gray-200">{t('step2_title', 'Ignite Your Node')}</h4>
                       <p className="text-xs text-gray-500 mt-1">
-                        {t('step2_desc_prefix', 'Go to the')} <span className="text-emerald-400">{t('cta_worker', 'Ignite Node')}</span> {t('step2_desc_suffix', 'tab. Keep the app open to process decentralized AI tasks and earn GSTD passively.')}
+                        {t('step2_desc_prefix', 'Go to the')} <span className="text-emerald-400">{t('cta_worker', 'Ignite Node')}</span> {t('step2_desc_suffix', 'tab. Rewards are paid for completed AI tasks; keeping the app open only shows your device as online.')}
                       </p>
                     </div>
                   </div>
@@ -344,7 +344,7 @@ function MobileNodePanel({ address }: { address: string | undefined }) {
       if (resp.ok) {
         const data = await resp.json();
         setTier(data.tier || 'spark');
-        setRatePerHour(data.rate_per_hour || 0.5);
+        setRatePerHour(Number(data.rate_per_hour) || 0);
         setBaseGstd(data.accumulated_gstd || 0);
         setBaseTs(Date.now());
         setUptimeMinutes(data.uptime_minutes || 0);
@@ -486,7 +486,7 @@ function MobileNodePanel({ address }: { address: string | undefined }) {
           {t('tier_rewards', 'Tier Rewards')}
         </div>
         <div className="space-y-1">
-          {[['⚡ Spark', '0.5 GSTD/h', 'Any device'], ['🔥 Flame', '1.0 GSTD/h', 'Pi 4 / basic laptop'], ['⛈️ Storm', '2.5 GSTD/h', '16GB RAM server'], ['🏔️ Titan', '4.0 GSTD/h', '32GB RAM + GPU'], ['👑 Sovereign', '8.0 GSTD/h', 'High-end server']].map(([label, rate, req]) => (
+          {[['⚡ Spark', 'per task', 'Any device'], ['🔥 Flame', 'per task', 'Pi 4 / basic laptop'], ['⛈️ Storm', 'per task', '16GB RAM server'], ['🏔️ Titan', 'per task', '32GB RAM + GPU'], ['👑 Sovereign', 'per task', 'High-end server']].map(([label, rate, req]) => (
             <div key={label} className="flex justify-between items-center text-xs">
               <span className="text-gray-300 font-bold">{label}</span>
               <span className="text-amber-400 font-mono">{rate}</span>

@@ -50,3 +50,10 @@ contracts; other repos call these, they do not re-implement them.
 - Cloudflare only for hosting (no Vercel). Free-tier limits are a design constraint; avoid unbounded polling.
 - Never commit secrets; use `.env.example` placeholders and GitHub/Cloudflare secrets.
 - Do not claim features that are not verified in production.
+
+## Phones and growth (honest status)
+
+- **Today a phone can use the network** (free AI chat in the Telegram bot) and **show up as an online device** in the mini app. It does not earn GSTD for keeping the app open: presence-only payouts were unfunded emission and are disabled (`MOBILE_PRESENCE_REWARDS=enabled` re-enables them for a funded programme).
+- **Earning is per completed, funded task.** Full nodes (`gstdbot`) do this today. A phone worker (WebGPU/WASM tiny models, signed with a device key) is the open roadmap item; see [good first contributions](#good-first-contributions).
+- **Referrals** pay a one-time bonus per new wallet (inviter capped at 20 paid referrals; one bonus per wallet; 100 subsidised sign-ups per day). Self-referral and re-linking the same wallet pay nothing.
+- **Bot growth loop:** referral deep links, inline-mode share card (enable inline mode in @BotFather), and a daily post of real network numbers to the configured community chat (`communityChat`) only when the numbers changed.
