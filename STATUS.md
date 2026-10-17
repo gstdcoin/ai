@@ -102,8 +102,9 @@ leaving it vague:
 
 ### What's working
 - [x] Node registration on startup
-- [x] Heartbeat every 2 min (source; allow time for the node image release to publish)
-- [x] Task polling every 30s (POST with registered wallet header)
+- [x] Platform heartbeat every 2 min, with an 8 min SwarmAgent fallback
+- [x] Authenticated inference polling every 5s; general queue polling every 30s
+- [x] Resource capacity reported through the registered-node heartbeat API
 - [x] Local AI inference execution
 - [x] Earnings reporting
 - [x] Dashboard UI on port 8080
