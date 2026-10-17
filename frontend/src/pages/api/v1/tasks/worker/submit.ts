@@ -97,8 +97,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         let jobStatus = '';
 
         const mcScore: number = Number(result.metacognitive_score ?? result.score ?? -1);
-        const jobId: string   = result.job_id   || body.job_id   || '';
-        const shardId: string = result.shard_id || body.shard_id || taskId;
+        const jobId = assignment.job_id || '';
+        const shardId = assignment.shard_id || taskId;
 
         if (jobId && mcScore >= 0) {
             // This is a finetune result — update training job

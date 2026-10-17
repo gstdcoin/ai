@@ -9,6 +9,8 @@ export interface TaskAssignment {
     reward_gstd: number;
     protocol_fee_gstd: number;
     campaign_id?: string;
+    job_id?: string;
+    shard_id?: string;
 }
 
 function boundedAmount(value: unknown, fallback: number, maximum: number): number {
@@ -36,6 +38,11 @@ export async function assignTaskToNode(
         protocol_fee_gstd: boundedAmount(task.protocol_fee, 0, MAX_PROTOCOL_FEE),
     };
     if (typeof task.campaign_id === 'string') assignment.campaign_id = task.campaign_id;
+    const payload = task.payload && typeof task.payload === 'object' ? task.payload : {};
+    if (typeof payload.job_id === 'string') assignment.job_id = payload.job_id;
+    if (typeof payload.shard_id === 'string') assignment.shard_id = payload.shard_id;
+    if (typeof task.job_id === 'string') assignment.job_id = task.job_id;
+    if (typeof task.shard_id === 'string') assignment.shard_id = task.shard_id;
 
     return kvSetNX(`task_assigned:${task.task_id}`, JSON.stringify(assignment), ttlSeconds);
 }

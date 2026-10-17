@@ -87,7 +87,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (protocolFee > 0) writes.push(kvIncrByFloat('stats:protocol_treasury_gstd', protocolFee).then(() => {}));
 
         // Advance training job if this was a finetune shard
-        const trainingJobId: string | undefined = body.job_id || body.result?.job_id;
+        const trainingJobId = assignment.job_id;
         if (trainingJobId) {
             writes.push((async () => {
                 const jobRaw = await kvGet(`training:job:${trainingJobId}`);
@@ -96,7 +96,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 job.shards_done = (job.shards_done || 0) + 1;
                 job.gradients   = job.gradients || [];
                 job.gradients.push({
-                    shard_id:             body.task_id,
+                    shard_id:             assignment.shard_id || body.task_id,
                     node_id:              nodeId,
                     metacognitive_score:  body.result?.metacognitive_score  ?? 0.5,
                     gradient_norm:        body.result?.gradient_norm        ?? 1.0,
