@@ -19,7 +19,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const sessionToken = req.headers['x-session-token'] as string | undefined;
     if (!sessionToken) return res.status(401).json({ error: 'Not authenticated' });
 
-    const walletKey = await kvGet(`session:${sessionToken}`).catch(() => null);
+    const walletKey = await kvGet(`ton-auth:session:${sessionToken}`);
     if (!walletKey) return res.status(401).json({ error: 'Session expired' });
 
     const { amount, tier } = req.body || {};

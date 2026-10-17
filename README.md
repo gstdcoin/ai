@@ -145,6 +145,10 @@ npm run dev   # → http://localhost:3000
 
 Local API development uses the development storage fallback. Production requires configured Upstash credentials.
 
+### Wallet authentication
+
+Dashboard login requires a fresh TonConnect proof. Set `GSTD_TONCONNECT_AUTH_DOMAINS` to a comma-separated list of allowed origin hostnames (the default production hosts are `app.gstdtoken.com` and `platform.gstdtoken.com`; include `localhost:3000` for local development). Proofs are accepted only for supported standard TON wallet contracts, with single-use challenges and a five-minute expiry. Sessions issued by the older address-only login are intentionally invalidated, so existing users must reconnect once after this update.
+
 ---
 
 ## Deploy Your Own Node

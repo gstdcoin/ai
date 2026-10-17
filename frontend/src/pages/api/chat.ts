@@ -241,7 +241,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // anyone could name an arbitrary victim wallet to charge for their query.
     let wallet = '';
     if (collectiveTier.cost > 0) {
-        const walletKey = sessionToken ? await kvGet(`session:${sessionToken}`).catch(() => null) : null;
+        const walletKey = sessionToken ? await kvGet(`ton-auth:session:${sessionToken}`) : null;
         if (!walletKey) {
             return res.status(402).json({
                 error: 'wallet_required',
