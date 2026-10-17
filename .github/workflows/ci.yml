@@ -194,16 +194,33 @@ jobs:
           ].filter(Boolean);
           const pagePaths = new Set(['/', '/en', '/ru', '/en/stats', '/en/network']);
           const details = [];
+          const requestPaths = new Map();
+          let eventCount = 0;
+          let requestCount = 0;
           let invocationCount = 0;
           let invalidLines = 0;
 
           for (const line of fs.readFileSync(logPath, 'utf8').split(/\r?\n/)) {
             const jsonStart = line.indexOf('{');
-            if (jsonStart < 0) continue;
+            if (jsonStart < 0) {
+              if (line.trim()) invalidLines += 1;
+              continue;
+            }
             try {
               const event = JSON.parse(line.slice(jsonStart));
+              eventCount += 1;
               const requestUrl = event.event?.request?.url;
-              if (typeof requestUrl !== 'string' || !pagePaths.has(new URL(requestUrl).pathname)) continue;
+              if (typeof requestUrl !== 'string') continue;
+              requestCount += 1;
+              let requestPath;
+              try {
+                requestPath = new URL(requestUrl).pathname;
+              } catch {
+                invalidLines += 1;
+                continue;
+              }
+              requestPaths.set(requestPath, (requestPaths.get(requestPath) ?? 0) + 1);
+              if (!pagePaths.has(requestPath)) continue;
               invocationCount += 1;
               for (const exception of event.exceptions ?? []) {
                 let message = String(exception.message ?? '');
@@ -233,12 +250,32 @@ jobs:
             }
           }
 
+          const tailMessages = fs.readFileSync(logPath, 'utf8')
+            .split(/\r?\n/)
+            .filter((line) => /error|failed|permission|denied|tail/i.test(line))
+            .map((line) => {
+              let message = line
+                .replace(/\u001b\[[0-9;]*m/g, '')
+                .replace(/[\r\n\t]/g, ' ')
+                .replace(/https?:\/\/[^\s"'<>]+/gi, '[url]');
+              for (const secret of secretValues) message = message.replaceAll(secret, '[redacted]');
+              return message.replace(/[^\x20-\x7E]/g, ' ').slice(0, 160);
+            })
+            .filter(Boolean)
+            .slice(0, 3);
+          const pathSummary = [...requestPaths.entries()]
+            .map(([path, count]) => `${path} (${count})`)
+            .slice(0, 10)
+            .join(', ');
           const summaryLines = details.length
             ? ['### Preview Worker errors (redacted)', '', ...details.map((value) => `- ${value}`)]
             : [invocationCount > 0
               ? `Worker Tail captured ${invocationCount} matching request event(s), but no exceptions or error logs.`
-              : 'Worker Tail captured no matching request events.'];
+              : `Worker Tail captured ${eventCount} JSON event(s), ${requestCount} request(s), and no smoke-test paths${pathSummary ? `; observed: ${pathSummary}` : ''}.`];
           if (invalidLines > 0) summaryLines.push(`Skipped ${invalidLines} non-JSON tail output line(s).`);
+          if (invocationCount === 0 && tailMessages.length > 0) {
+            summaryLines.push(`Tail output: ${tailMessages.join(' | ')}`);
+          }
           const summary = `${summaryLines.join('\n')}\n`;
           fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary);
           for (const detail of [...new Set(details)].slice(0, 10)) {
@@ -248,10 +285,11 @@ jobs:
           if (details.length === 0) {
             const message = invocationCount > 0
               ? `Tail captured ${invocationCount} matching request event(s) without errors.`
-              : 'Tail captured no matching request events; check permission and header filter.';
-            process.stdout.write(`::warning title=Preview Worker::${message}\n`);
+              : `Tail captured ${eventCount} JSON event(s), ${requestCount} request(s)${pathSummary ? `; paths: ${pathSummary}` : ''}. ${tailMessages.join(' | ')}`;
+            const annotation = message.replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
+            process.stdout.write(`::warning title=Preview Worker::${annotation}\n`);
           }
-          console.log(`Captured ${invocationCount} request event(s) and ${details.length} filtered Worker error detail(s).`);
+          console.log(`Captured ${eventCount} JSON event(s), ${requestCount} request(s), ${invocationCount} smoke-test request(s), and ${details.length} filtered Worker error detail(s).`);
           NODE
 
           if [ "$failed" -ne 0 ]; then
