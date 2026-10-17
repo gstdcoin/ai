@@ -7,14 +7,14 @@
 
 ## Stack
 
-**Deployment status:** `app.gstdtoken.com` is not currently deployed. The target is Cloudflare Workers + the existing Upstash Redis database. The Vercel deploy job is disabled; do not deploy through Vercel.
+**Deployment status:** `app.gstdtoken.com` is deployed on Cloudflare Workers with the existing Upstash Redis database; CI deploys on push to `main`. Vercel is not used.
 
 | Layer | Technology |
 |---|---|
 | Framework | Next.js 16 (Pages Router), TypeScript |
 | API | Next.js API routes (`/src/pages/api/v1/`), Cloudflare Worker deployment pending |
 | State / DB | Existing Upstash Redis via REST API |
-| Hosting | Cloudflare Workers (target; deployment not configured) |
+| Hosting | Cloudflare Workers |
 | CDN / SSL | Cloudflare (for the deployed landing site) |
 | Wallets | TON Connect, MetaMask, Phantom |
 

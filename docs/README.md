@@ -9,9 +9,9 @@
 | [skills/SKILL.md](skills/SKILL.md) | OpenClaw — автоматическая инструкция |
 | [BUY_GSTD_TELEGRAM_WALLET.md](BUY_GSTD_TELEGRAM_WALLET.md) | Покупка GSTD через Telegram Wallet |
 | [CONTRACTS_VERIFICATION.md](CONTRACTS_VERIFICATION.md) | Контракты, безопасность |
-| [VERCEL_SETUP.md](VERCEL_SETUP.md) | Деплой на Vercel |
+| [ECOSYSTEM.md](ECOSYSTEM.md) | Карта экосистемы и как присоединиться |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Архитектура платформы (Cloudflare) |
 | [AGENT_GUIDE.md](AGENT_GUIDE.md) | Агенты: кошельки, запуск, GSTD |
-| [PLATFORM_STATUS_REPORT.md](PLATFORM_STATUS_REPORT.md) | Отчёт о состоянии платформы |
 
 ## API
 
