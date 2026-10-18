@@ -60,7 +60,7 @@
   },
   "protocols": ["A2A-Standard-v1", "MCP-v1", "OpenAI-Compatible"],
   "installation": {
-    "one_liner": "curl -fsSL https://gstdbot.gstdtoken.com/install.sh | bash",
+    "one_liner": "curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash",
     "source_code": "https://github.com/gstdcoin/gstdbot",
     "a2a_sdk": "https://github.com/gstdcoin/A2A"
   },
