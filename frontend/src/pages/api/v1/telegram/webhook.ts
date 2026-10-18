@@ -1,362 +1,341 @@
 /**
  * POST /api/v1/telegram/webhook
  *
- * Telegram webhook receiver — handles bot updates on the platform API.
- * Configure TELEGRAM_BOT_TOKEN as a Cloudflare Worker secret when deployment is ready.
- * The Pi node has NO token — it only serves AI inference.
+ * Telegram webhook receiver for @gstdaibot — runs on the platform (Cloudflare Worker).
+ * TELEGRAM_BOT_TOKEN lives only as a Worker secret; nodes never hold it.
  *
- * To activate:
- *   1. Set TELEGRAM_BOT_TOKEN as a Cloudflare Worker secret (not in any committed file)
- *   2. Register webhook: POST https://api.telegram.org/bot<TOKEN>/setWebhook
- *      { "url": "https://app.gstdtoken.com/api/v1/telegram/webhook" }
- *   3. Remove TELEGRAM_BOT_TOKEN from Pi's gstdbot/.env
+ * Activate: set the secret, then run scripts/set-telegram-webhook.mjs (registers the
+ * webhook with a secret token, localized command menus and descriptions).
  *
  * Security: every request must carry X-Telegram-Bot-Api-Secret-Token (derived from the
- * bot token, see lib/telegramWebhookAuth.ts). Register with scripts/set-telegram-webhook.mjs.
+ * bot token, see lib/telegramWebhookAuth.ts). Updates are deduplicated by update_id.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvGet, kvSet, kvIncr } from '../../../../lib/kv';
-import { resolveNodeUrl, callNodeChat } from '../../../../lib/nodes';
+import { kvGet, kvSet, kvSetNX, kvConsumeQuota } from '../../../../lib/kv';
+import { callNodeChat } from '../../../../lib/nodes';
 import { isValidWebhookRequest } from '../../../../lib/telegramWebhookAuth';
+import { LANGS, LANG_NAMES, Lang, resolveLang, t, parseCommand, parseReferrer } from '../../../../lib/tgbot/i18n';
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
 const SWARM_URL = process.env.GSTD_SWARM_URL || 'https://app.gstdtoken.com';
 const TMA_URL = `${SWARM_URL}/tma`;
+const BOT_USERNAME = 'gstdaibot';
+const AI_DAILY_LIMIT = Math.max(1, parseInt(process.env.TG_AI_DAILY_LIMIT || '30', 10) || 30);
+const TON_ADDRESS_RE = /^(EQ[A-Za-z0-9_-]{46}|UQ[A-Za-z0-9_-]{46}|0:[a-fA-F0-9]{64})$/;
+const INSTALL_URL = 'https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh';
 
-// ── Telegram API helper ───────────────────────────────────────────────────────
+interface Ctx { chatId: number; userId: number; lang: Lang; name: string; msgId?: number }
+interface View { text: string; kb?: any[][] }
+
+const escHtml = (s: unknown) => String(s ?? '?').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] as string));
+const fmt = (n: unknown, d = 4) => (Number(n) || 0).toFixed(d);
+const shortAddr = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
+
+// ── Telegram + platform API ──────────────────────────────────────────────────
 async function tg(method: string, body: object): Promise<any> {
     if (!TOKEN) return null;
     const resp = await fetch(`https://api.telegram.org/bot${TOKEN}/${method}`, {
-        method:  'POST',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify(body),
-        signal:  AbortSignal.timeout(10_000),
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(10_000),
     });
     return resp.json().catch(() => ({}));
 }
 
-async function sendMessage(chatId: number, text: string, extra: object = {}): Promise<void> {
-    await tg('sendMessage', { chat_id: chatId, text, parse_mode: 'HTML', ...extra });
+async function botApi(path: string, init: { method?: string; body?: unknown } = {}): Promise<any> {
+    const r = await fetch(`${SWARM_URL}${path}`, {
+        method: init.method || 'GET',
+        headers: { 'Content-Type': 'application/json', 'X-Bot-Token': TOKEN },
+        body: init.body ? JSON.stringify(init.body) : undefined,
+        signal: AbortSignal.timeout(8000),
+    });
+    if (!r.ok) throw new Error(`API ${r.status}`);
+    return r.json();
 }
 
-async function answerCallback(callbackQueryId: string): Promise<void> {
-    await tg('answerCallbackQuery', { callback_query_id: callbackQueryId });
+// Sends a view; when triggered from a button, edits the original message in place.
+async function show(ctx: Ctx, v: View): Promise<void> {
+    const payload: any = { text: v.text, parse_mode: 'HTML', disable_web_page_preview: true };
+    if (v.kb) payload.reply_markup = { inline_keyboard: v.kb };
+    if (ctx.msgId) {
+        const r = await tg('editMessageText', { chat_id: ctx.chatId, message_id: ctx.msgId, ...payload });
+        if (r?.ok || /not modified/i.test(r?.description || '')) return;
+    }
+    await tg('sendMessage', { chat_id: ctx.chatId, ...payload });
 }
 
-// ── Session (Telegram user state) ────────────────────────────────────────────
+// ── State ────────────────────────────────────────────────────────────────────
+async function getLang(userId: number, code?: string): Promise<Lang> {
+    const saved = await kvGet(`tg_lang:${userId}`).catch(() => null);
+    return saved ? resolveLang(saved as string) : resolveLang(code);
+}
+
+async function getWallet(userId: number): Promise<string> {
+    return ((await kvGet(`tg_wallet:${userId}`).catch(() => null)) as string) || '';
+}
+
 async function getSession(userId: number): Promise<{ model: string; history: any[] }> {
     const raw = await kvGet(`tg_session:${userId}`).catch(() => null);
     if (raw) try { return JSON.parse(raw as string); } catch {}
     return { model: 'auto', history: [] };
 }
 
-async function saveSession(userId: number, session: { model: string; history: any[] }): Promise<void> {
-    if (session.history.length > 40) session.history = session.history.slice(-30);
-    await kvSet(`tg_session:${userId}`, JSON.stringify(session), 3600).catch(() => {});
+async function saveSession(userId: number, s: { model: string; history: any[] }): Promise<void> {
+    if (s.history.length > 40) s.history = s.history.slice(-30);
+    await kvSet(`tg_session:${userId}`, JSON.stringify(s), 3600).catch(() => {});
 }
 
-// ── Wallet helpers ────────────────────────────────────────────────────────────
-async function getWallet(userId: number): Promise<string> {
-    const raw = await kvGet(`tg_wallet:${userId}`).catch(() => null);
-    return raw ? (raw as string) : '';
+// ── Views ────────────────────────────────────────────────────────────────────
+const menuKb = (l: Lang): any[][] => [
+    [{ text: t(l, 'btn_ai'), callback_data: 'ai' }, { text: t(l, 'btn_earn'), callback_data: 'earn' }],
+    [{ text: t(l, 'btn_wallet'), callback_data: 'wallet' }, { text: t(l, 'btn_invite'), callback_data: 'invite' }],
+    [{ text: t(l, 'btn_network'), callback_data: 'network' }, { text: t(l, 'btn_settings'), callback_data: 'lang' }],
+    [{ text: t(l, 'btn_app'), web_app: { url: TMA_URL } }, { text: t(l, 'btn_help'), callback_data: 'help' }],
+];
+const backKb = (l: Lang): any[][] => [[{ text: t(l, 'btn_menu'), callback_data: 'menu' }]];
+
+async function viewMenu(c: Ctx): Promise<View> {
+    return { text: t(c.lang, 'menu_title'), kb: menuKb(c.lang) };
 }
 
-async function getBalance(userId: number): Promise<{ balance: number; pending: number }> {
-    const wallet = await getWallet(userId);
-    if (!wallet) return { balance: 0, pending: 0 };
-    const [balRaw, pendRaw] = await Promise.all([
-        kvGet(`balance:${wallet.toLowerCase()}`).catch(() => null),
-        kvGet(`rewards:pending:${wallet.toLowerCase()}`).catch(() => null),
-    ]);
+async function viewStart(c: Ctx): Promise<View> {
+    const wallet = await getWallet(c.userId);
+    const w = wallet ? t(c.lang, 'wallet_linked', { wallet: shortAddr(wallet) }) : t(c.lang, 'wallet_none');
+    return { text: t(c.lang, 'welcome', { name: escHtml(c.name), wallet: w }), kb: menuKb(c.lang) };
+}
+
+async function viewBalance(c: Ctx): Promise<View> {
+    const wallet = await getWallet(c.userId);
+    if (!wallet) return { text: t(c.lang, 'wallet_prompt'), kb: backKb(c.lang) };
+    const data = await botApi(`/api/v1/telegram/bot/balance?telegram_id=${c.userId}`);
+    const pending = Number(data.pending_gstd) || 0;
+    const kb: any[][] = [];
+    if (pending >= 0.01) kb.push([{ text: t(c.lang, 'btn_claim'), callback_data: 'claim' }]);
+    kb.push([{ text: t(c.lang, 'btn_node'), callback_data: 'nodes' }], ...backKb(c.lang));
     return {
-        balance: balRaw  ? parseFloat(balRaw  as string) : 0,
-        pending: pendRaw ? parseFloat(pendRaw as string) : 0,
+        text: t(c.lang, 'balance', {
+            wallet: t(c.lang, 'wallet_linked', { wallet: shortAddr(wallet) }),
+            balance: fmt(data.balance_gstd), pending: fmt(pending),
+        }),
+        kb,
     };
 }
 
-// ── Command handlers ──────────────────────────────────────────────────────────
-async function handleStart(chatId: number, userId: number, firstName: string): Promise<void> {
-    const wallet = await getWallet(userId);
-    const walletLine = wallet
-        ? `🔗 Wallet: <code>${wallet.slice(0, 8)}…${wallet.slice(-4)}</code>`
-        : `🔗 Link wallet to start earning: send your TON address`;
-
-    await sendMessage(chatId,
-        `🐝 <b>Welcome to GSTD Sovereign AI Network</b>\n\n` +
-        `Hi ${firstName}! Here's how to get started:\n\n` +
-        `1️⃣ <b>Link your wallet</b> — paste your TON address\n` +
-        `2️⃣ <b>Run a node</b> /node — earn GSTD automatically\n` +
-        `3️⃣ <b>Use GSTD</b> — better AI models\n\n` +
-        `${walletLine}\n\n` +
-        `<b>You need 0 GSTD to start. Just link + run.</b>\n\n` +
-        `Commands: /earn /balance /node /wallet /help`,
-        { reply_markup: { keyboard: [
-            [{ text: '🐝 Earn GSTD' }, { text: '💎 Balance' }],
-            [{ text: '📱 Mobile Node' }, { text: '🔗 Wallet' }],
-            [{ text: '🤖 AI Chat' }],
-        ], resize_keyboard: true } }
-    );
+async function viewEarn(c: Ctx): Promise<View> {
+    const wallet = await getWallet(c.userId);
+    const step1 = t(c.lang, wallet ? 'step_wallet_ok' : 'step_wallet_todo');
+    const cmd = `curl -fsSL ${INSTALL_URL} | GSTD_WALLET_ADDRESS=${wallet || '<YOUR_TON_WALLET>'} bash`;
+    return {
+        text: t(c.lang, 'earn', { step1, cmd: escHtml(cmd) }),
+        kb: [[{ text: t(c.lang, 'btn_node'), callback_data: 'nodes' }, { text: t(c.lang, 'btn_wallet'), callback_data: 'wallet' }], ...backKb(c.lang)],
+    };
 }
 
-async function handleBalance(chatId: number, userId: number): Promise<void> {
-    const wallet = await getWallet(userId);
-    const { balance, pending } = await getBalance(userId);
-
-    // Get tier
-    let tierEmoji = '🌱', tierName = 'Basic';
-    if (balance >= 10000) { tierEmoji = '🧠'; tierName = 'Ultra'; }
-    else if (balance >= 1000) { tierEmoji = '🔥'; tierName = 'Pro'; }
-    else if (balance >= 100)  { tierEmoji = '⚡'; tierName = 'Standard'; }
-    else if (balance >= 10)   { tierEmoji = '🐝'; tierName = 'Contributor'; }
-
-    const walletLine = wallet
-        ? `🔗 <code>${wallet.slice(0, 6)}…${wallet.slice(-4)}</code>`
-        : `⚠️ No wallet linked — use /wallet`;
-
-    const pendingLine = pending > 0.001
-        ? `\n⏳ Pending reward: <b>${pending.toFixed(4)} GSTD</b>` : '';
-
-    await sendMessage(chatId,
-        `💎 <b>Balance</b>\n\n${walletLine}\n\n` +
-        `💰 <b>${balance.toFixed(4)} GSTD</b>\n` +
-        `${tierEmoji} Tier: <b>${tierName}</b>` + pendingLine +
-        `\n\n/earn to get more · /node to run`,
-        {
-            reply_markup: { inline_keyboard: [
-                ...(pending > 0.01 ? [[{ text: '🎁 Claim Reward', callback_data: 'claim_reward' }]] : []),
-                [{ text: '🐝 Earn More', callback_data: 'earn_menu' }],
-            ]},
-        }
-    );
+async function viewNodes(c: Ctx): Promise<View> {
+    const data = await botApi(`/api/v1/telegram/bot/nodes?telegram_id=${c.userId}`);
+    if (!data.linked) return { text: t(c.lang, 'need_wallet'), kb: backKb(c.lang) };
+    const nodes: any[] = Array.isArray(data.nodes) ? data.nodes : [];
+    if (!nodes.length) return { text: t(c.lang, 'node_none'), kb: backKb(c.lang) };
+    const lines = nodes.slice(0, 5).map(n => t(c.lang, 'node_line', {
+        dot: n.online ? '🟢' : '🔴', name: escHtml(n.name || n.node_id), version: escHtml(n.version),
+        tasks: Number(n.tasks_completed) || 0, earned: fmt(n.gstd_earned),
+    })).join('\n\n');
+    const pending = Number(data.pending_gstd) || 0;
+    return {
+        text: t(c.lang, 'node_list', { count: nodes.length, lines, pending: fmt(pending) }),
+        kb: [...(pending >= 0.01 ? [[{ text: t(c.lang, 'btn_claim'), callback_data: 'claim' }]] : []), ...backKb(c.lang)],
+    };
 }
 
-async function handleWalletCommand(chatId: number, userId: number): Promise<void> {
-    const wallet = await getWallet(userId);
-    if (wallet) {
-        await sendMessage(chatId,
-            `🔗 <b>Your Wallet</b>\n\n` +
-            `✅ <code>${wallet}</code>\n\n` +
-            `To change: paste a new TON address in chat.\n` +
-            `/earn · /balance`
-        );
-    } else {
-        await sendMessage(chatId,
-            `🔗 <b>Link Wallet — Step 1 to Earning</b>\n\n` +
-            `<b>You need 0 GSTD to start.</b>\n\n` +
-            `Paste your TON wallet address:\n` +
-            `<code>EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO</code>\n\n` +
-            `No wallet yet?\n` +
-            `• <a href="https://tonkeeper.com">Tonkeeper</a>\n` +
-            `• <a href="https://mytonwallet.io">MyTonWallet</a>`
-        );
+async function viewClaim(c: Ctx): Promise<View> {
+    const r = await botApi('/api/v1/telegram/bot/claim_reward', { method: 'POST', body: { telegram_id: c.userId } });
+    return {
+        text: r.success ? t(c.lang, 'claim_ok', { amount: fmt(r.claimed_net) }) : t(c.lang, 'claim_none'),
+        kb: backKb(c.lang),
+    };
+}
+
+async function viewNetwork(c: Ctx): Promise<View> {
+    const r = await fetch(`${SWARM_URL}/api/v1/network/stats`, { signal: AbortSignal.timeout(6000) });
+    if (!r.ok) throw new Error(`stats ${r.status}`);
+    const s: any = await r.json();
+    return {
+        text: t(c.lang, 'network', {
+            online: Number(s.nodes_online) || 0, total: Number(s.total_nodes) || 0,
+            tasks: Number(s.tasks_completed) || 0, queue: Number(s.queue_depth) || 0, paid: fmt(s.total_gstd_paid),
+        }),
+        kb: [[{ text: t(c.lang, 'btn_earn'), callback_data: 'earn' }], ...backKb(c.lang)],
+    };
+}
+
+async function viewInvite(c: Ctx): Promise<View> {
+    const link = `https://t.me/${BOT_USERNAME}?start=ref_${c.userId}`;
+    const raw = await kvGet(`referral_stats:${c.userId}`).catch(() => null);
+    let count = 0;
+    if (raw) try { count = Number(JSON.parse(raw as string).total_referrals) || 0; } catch {}
+    const share = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(t(c.lang, 'invite_share'))}`;
+    return {
+        text: t(c.lang, 'invite', { link, count }),
+        kb: [[{ text: t(c.lang, 'btn_invite'), url: share }], ...backKb(c.lang)],
+    };
+}
+
+async function viewWallet(c: Ctx): Promise<View> {
+    const wallet = await getWallet(c.userId);
+    return wallet ? viewBalance(c) : { text: t(c.lang, 'wallet_prompt'), kb: backKb(c.lang) };
+}
+
+const viewHelp = async (c: Ctx): Promise<View> => ({ text: t(c.lang, 'help'), kb: backKb(c.lang) });
+const viewAiHint = async (c: Ctx): Promise<View> => ({ text: t(c.lang, 'ai_hint'), kb: backKb(c.lang) });
+
+async function viewLang(c: Ctx): Promise<View> {
+    const rows = LANGS.map(l => ({ text: LANG_NAMES[l], callback_data: `setlang:${l}` }));
+    const kb: any[][] = [];
+    for (let i = 0; i < rows.length; i += 2) kb.push(rows.slice(i, i + 2));
+    return { text: t(c.lang, 'lang_pick'), kb };
+}
+
+const VIEWS: Record<string, (c: Ctx) => Promise<View>> = {
+    menu: viewMenu, start: viewStart, balance: viewBalance, earn: viewEarn, nodes: viewNodes, claim: viewClaim,
+    network: viewNetwork, invite: viewInvite, wallet: viewWallet, help: viewHelp, ai: viewAiHint, lang: viewLang,
+};
+const COMMAND_VIEW: Record<string, string> = {
+    start: 'start', menu: 'menu', help: 'help', balance: 'balance', wallet: 'wallet', earn: 'earn',
+    node: 'nodes', nodes: 'nodes', claim: 'claim', network: 'network', invite: 'invite', lang: 'lang',
+};
+
+async function runView(c: Ctx, name: string): Promise<void> {
+    try {
+        await show(c, await VIEWS[name](c));
+    } catch (err: any) {
+        console.error('[telegram/webhook] view', name, err.message);
+        await show(c, { text: t(c.lang, 'error'), kb: backKb(c.lang) });
     }
 }
 
-async function handleEarn(chatId: number, userId: number): Promise<void> {
-    const wallet = await getWallet(userId);
-    const tmaUrl = TMA_URL;
-    const step1 = wallet ? `✅ Wallet linked` : `1️⃣ /wallet — link your wallet (0 GSTD needed)`;
-
-    await sendMessage(chatId,
-        `🐝 <b>Earn GSTD by contributing compute</b>\n\n` +
-        `${step1}\n` +
-        `2️⃣ Run a node — one command:\n` +
-        `<code>curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | GSTD_WALLET_ADDRESS=${wallet || '&lt;YOUR_TON_WALLET&gt;'} bash</code>\n` +
-        `3️⃣ Check status and rewards: /node\n\n` +
-        `<i>Rewards are paid for completed, accepted tasks and depend on network demand. There are no guaranteed hourly rates.</i>`,
-        { reply_markup: { inline_keyboard: [
-            [{ text: '🖥 My node', callback_data: 'node_status' }],
-            [{ text: '💎 Check Balance', callback_data: 'check_balance' }],
-        ]}}
-    );
-}
-
-async function botApi(path: string, init: { method?: string; body?: unknown } = {}): Promise<any> {
-    const r = await fetch(`${SWARM_URL}${path}`, {
-        method:  init.method || 'GET',
-        headers: { 'Content-Type': 'application/json', 'X-Bot-Token': TOKEN },
-        body:    init.body ? JSON.stringify(init.body) : undefined,
-        signal:  AbortSignal.timeout(8000),
-    });
-    if (!r.ok) throw new Error(`API ${r.status}`);
-    return r.json();
-}
-
-const escHtml = (s: unknown) => String(s ?? '?').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] as string));
-
-async function handleNodeStatus(chatId: number, userId: number): Promise<void> {
-    let data: any;
-    try { data = await botApi(`/api/v1/telegram/bot/nodes?telegram_id=${userId}`); }
-    catch { await sendMessage(chatId, '❌ Could not load node status. Try again later.'); return; }
-
-    if (!data.linked) { await sendMessage(chatId, '🖥 Link your TON wallet first → /wallet'); return; }
-    const nodes: any[] = Array.isArray(data.nodes) ? data.nodes : [];
-    if (!nodes.length) {
-        await sendMessage(chatId, '🖥 <b>No node found for your wallet.</b>\nMake sure GSTD_WALLET_ADDRESS in the node .env matches your linked wallet.\n\nStart one → /earn');
+// ── Wallet linking ───────────────────────────────────────────────────────────
+async function linkWallet(c: Ctx, address: string, username: string): Promise<void> {
+    const refRaw = await kvGet(`tg_ref:${c.userId}`).catch(() => null);
+    try {
+        await botApi('/api/v1/telegram/bot/link', {
+            method: 'POST',
+            body: { telegram_id: c.userId, wallet_address: address, username, first_name: c.name, referrer_id: refRaw || undefined },
+        });
+    } catch {
+        await show(c, { text: t(c.lang, 'wallet_fail') });
         return;
     }
-    const lines = nodes.slice(0, 5).map(n =>
-        `${n.online ? '🟢' : '🔴'} <b>${escHtml(n.name || n.node_id)}</b> v${escHtml(n.version)}\n   tasks: ${Number(n.tasks_completed) || 0} · earned: ${(Number(n.gstd_earned) || 0).toFixed(4)} GSTD`
-    ).join('\n\n');
-    const pending = Number(data.pending_gstd) || 0;
-    await sendMessage(chatId, `🖥 <b>Your nodes</b> (${nodes.length})\n\n${lines}\n\n💰 Claimable: <b>${pending.toFixed(4)} GSTD</b>`,
-        { reply_markup: { inline_keyboard: pending >= 0.01 ? [[{ text: '🎁 Claim', callback_data: 'claim_reward' }]] : [] } });
+    await show(c, {
+        text: t(c.lang, 'wallet_ok', { wallet: escHtml(address) }),
+        kb: [[{ text: t(c.lang, 'btn_earn'), callback_data: 'earn' }], ...backKb(c.lang)],
+    });
 }
 
-async function handleClaim(chatId: number, userId: number): Promise<void> {
-    try {
-        const r = await botApi('/api/v1/telegram/bot/claim_reward', { method: 'POST', body: { telegram_id: userId } });
-        await sendMessage(chatId, r.success
-            ? `✅ Claimed <b>${Number(r.claimed_net).toFixed(4)} GSTD</b> to your balance.`
-            : 'Nothing to claim yet.');
-    } catch { await sendMessage(chatId, '❌ Claim failed. Try again later.'); }
-}
+// ── AI chat ──────────────────────────────────────────────────────────────────
+async function handleAI(c: Ctx, text: string): Promise<void> {
+    if (!(await kvSetNX(`tg_ai_gap:${c.userId}`, '1', 3).catch(() => true))) {
+        await show(c, { text: t(c.lang, 'ai_slow') });
+        return;
+    }
+    const day = new Date().toISOString().slice(0, 10);
+    const quota = await kvConsumeQuota(`tg_ai_day:${c.userId}:${day}`, AI_DAILY_LIMIT, 90_000).catch(() => ({ allowed: true }));
+    if (!quota.allowed) {
+        await show(c, { text: t(c.lang, 'ai_limit', { limit: AI_DAILY_LIMIT }), kb: [[{ text: t(c.lang, 'btn_earn'), callback_data: 'earn' }]] });
+        return;
+    }
 
-
-async function handleAI(chatId: number, userId: number, text: string): Promise<void> {
-    const session = await getSession(userId);
-
-    await tg('sendChatAction', { chat_id: chatId, action: 'typing' });
-
+    const session = await getSession(c.userId);
+    await tg('sendChatAction', { chat_id: c.chatId, action: 'typing' });
     const messages = [
         { role: 'system', content: 'You are GSTD Sovereign AI — a decentralized AI running on the GSTD node network. Respond in the user\'s language. Be accurate, concise, and helpful.' },
         ...session.history.slice(-16),
         { role: 'user', content: text },
     ];
-
     try {
-        // Bound node inference time so webhook processing stays within request limits.
         const response = await callNodeChat(messages, { maxTokens: 600, temperature: 0.7, timeoutMs: 20_000 });
-        const content = response.content || '🐝 No response from the swarm. Try again.';
-
-        session.history.push({ role: 'user', content: text });
-        session.history.push({ role: 'assistant', content });
-        await saveSession(userId, session);
-
-        await sendMessage(chatId, content.slice(0, 4096));
+        if (!response.content) { await show(c, { text: t(c.lang, 'ai_empty') }); return; }
+        session.history.push({ role: 'user', content: text }, { role: 'assistant', content: response.content });
+        await saveSession(c.userId, session);
+        await tg('sendMessage', { chat_id: c.chatId, text: response.content.slice(0, 4096) });
     } catch (err: any) {
-        const msg = err.message || '';
-        if (msg.includes('No GSTD node') || msg.includes('available')) {
-            await sendMessage(chatId, '🐝 Node network is offline right now. Try again in a minute.');
-        } else {
-            await sendMessage(chatId, `🐝 GSTD AI: ${msg.slice(0, 80) || 'Inference error. Try again.'}`);
-        }
+        const msg = err?.message || '';
+        const offline = msg.includes('No GSTD node') || msg.includes('available');
+        await show(c, {
+            text: t(c.lang, offline ? 'ai_offline' : 'ai_empty'),
+            kb: offline ? [[{ text: t(c.lang, 'btn_earn'), callback_data: 'earn' }]] : undefined,
+        });
     }
 }
 
-// ── Update dispatcher ─────────────────────────────────────────────────────────
+// ── Dispatcher ───────────────────────────────────────────────────────────────
 async function processUpdate(update: any): Promise<void> {
-    const msg     = update.message;
-    const cbQuery = update.callback_query;
+    if (update.update_id != null && !(await kvSetNX(`tg_upd:${update.update_id}`, '1', 3600).catch(() => true))) return;
 
-    if (cbQuery) {
-        const chatId = cbQuery.message?.chat?.id;
-        const userId = cbQuery.from?.id;
-        const data   = cbQuery.data || '';
-        await answerCallback(cbQuery.id);
+    if (update.inline_query) {
+        const q = update.inline_query;
+        const lang = await getLang(q.from.id, q.from.language_code);
+        const link = `https://t.me/${BOT_USERNAME}?start=ref_${q.from.id}`;
+        await tg('answerInlineQuery', {
+            inline_query_id: q.id, cache_time: 60, is_personal: true,
+            results: [{
+                type: 'article', id: `invite_${q.from.id}`, title: 'GSTD', description: t(lang, 'invite_share'),
+                input_message_content: { message_text: `${t(lang, 'invite_share')}\n${link}` },
+            }],
+        });
+        return;
+    }
 
-        if (data === 'node_status') await handleNodeStatus(chatId, userId);
-        else if (data === 'claim_reward') await handleClaim(chatId, userId);
-        else if (data === 'check_balance' || data === 'earn_menu') {
-            if (data === 'earn_menu') await handleEarn(chatId, userId);
-            else await handleBalance(chatId, userId);
+    const cb = update.callback_query;
+    if (cb) {
+        const userId = cb.from?.id;
+        const chatId = cb.message?.chat?.id;
+        await tg('answerCallbackQuery', { callback_query_id: cb.id });
+        if (!userId || !chatId) return;
+        const lang = await getLang(userId, cb.from?.language_code);
+        const ctx: Ctx = { chatId, userId, lang, name: cb.from?.first_name || '', msgId: cb.message?.message_id };
+        const data: string = cb.data || '';
+        if (data.startsWith('setlang:')) {
+            const nl = resolveLang(data.slice(8));
+            await kvSet(`tg_lang:${userId}`, nl).catch(() => {});
+            ctx.lang = nl;
+            await show(ctx, { text: `${t(nl, 'lang_set')}\n\n${t(nl, 'menu_title')}`, kb: menuKb(nl) });
+        } else if (VIEWS[data]) {
+            await runView(ctx, data);
         }
         return;
     }
 
-    if (!msg || !msg.text) return;
+    const msg = update.message;
+    if (!msg?.text || msg.chat?.type !== 'private') return;
+    const userId: number = msg.from?.id;
+    const lang = await getLang(userId, msg.from?.language_code);
+    const ctx: Ctx = { chatId: msg.chat.id, userId, lang, name: msg.from?.first_name || '' };
+    const text: string = msg.text.trim();
 
-    const chatId   = msg.chat?.id;
-    const userId   = msg.from?.id;
-    const text     = msg.text.trim();
-    const firstName = msg.from?.first_name || 'friend';
-    const isPrivate = msg.chat?.type === 'private';
+    if (TON_ADDRESS_RE.test(text)) { await linkWallet(ctx, text, msg.from?.username || ''); return; }
 
-    if (!isPrivate) return; // Only handle private chats
-
-    // TON address detection
-    const tonRegex = /^(EQ[A-Za-z0-9_-]{46}|UQ[A-Za-z0-9_-]{46}|0:[a-fA-F0-9]{64})$/;
-    if (tonRegex.test(text)) {
-        let linked = false;
-        try {
-            const lr = await fetch(`${SWARM_URL}/api/v1/telegram/bot/link`, {
-                method:  'POST',
-                headers: { 'Content-Type': 'application/json', 'X-Bot-Token': TOKEN },
-                body:    JSON.stringify({ telegram_id: userId, wallet_address: text, username: msg.from?.username || '' }),
-                signal:  AbortSignal.timeout(5000),
-            });
-            linked = lr.ok;
-        } catch {}
-        if (!linked) {
-            await sendMessage(chatId, '❌ Could not link the wallet right now. Try again in a minute.');
-            return;
+    const parsed = parseCommand(text);
+    if (parsed) {
+        if (parsed.cmd === 'start') {
+            const ref = parseReferrer(parsed.args);
+            if (ref && ref !== String(userId)) await kvSetNX(`tg_ref:${userId}`, ref, 30 * 86400).catch(() => {});
         }
-
-        // Fetch live price for Stars rate display
-        const STAR_USD = 0.013;
-        let gstdPerStar = 65;
-        try {
-            const pr = await fetch(`${SWARM_URL}/api/v1/market/price`, { signal: AbortSignal.timeout(3000) });
-            if (pr.ok) {
-                const pd = await pr.json();
-                if (pd.gstd_price_usd > 0) gstdPerStar = Math.round(STAR_USD / pd.gstd_price_usd);
-            }
-        } catch {}
-
-        const short = text.slice(0, 6) + '…' + text.slice(-4);
-        await sendMessage(chatId,
-            `✅ <b>Wallet Linked!</b>\n\n<code>${text}</code>\n\n` +
-            `🎯 GSTD purchases now go <b>directly to your TON wallet</b>.\n\n` +
-            `⭐ <b>Buy GSTD with Telegram Stars:</b>\n` +
-            `10⭐ → <b>${10 * gstdPerStar} GSTD</b>  ·  50⭐ → <b>${50 * gstdPerStar} GSTD</b>  ·  200⭐ → <b>${200 * gstdPerStar} GSTD</b>\n\n` +
-            `🐝 Or earn for free: /node\n` +
-            `💰 Rewards flow to ${short} automatically.`,
-            { reply_markup: { inline_keyboard: [
-                [
-                    { text: `10⭐ → ${10 * gstdPerStar} GSTD`, callback_data: 'buy_stars_10' },
-                    { text: `50⭐ → ${50 * gstdPerStar} GSTD`, callback_data: 'buy_stars_50' },
-                ],
-                [{ text: '🐝 Earn for free', callback_data: 'earn_menu' }],
-            ]}}
-        );
-        return;
-    }
-
-    switch (text) {
-        case '/start': case '🐝 GSTD':
-            await handleStart(chatId, userId, firstName); break;
-        case '/balance': case '💎 Balance': case '/balance@gstdaibot':
-            await handleBalance(chatId, userId); break;
-        case '/wallet': case '🔗 Wallet':
-            await handleWalletCommand(chatId, userId); break;
-        case '/earn': case '🐝 Earn GSTD':
-            await handleEarn(chatId, userId); break;
-        case '/node': case '📱 Mobile Node':
-            await handleNodeStatus(chatId, userId); break;
-        case '/help':
-            await sendMessage(chatId,
-                `❓ <b>Commands</b>\n\n` +
-                `/earn — Earn GSTD (no tokens needed)\n` +
-                `/wallet — Link your TON wallet\n` +
-                `/balance — Balance & tier\n` +
-                `/node — Run mobile node\n` +
-                `/new — Reset AI conversation\n\n` +
-                `Just type any question to chat with the AI.`
-            );
-            break;
-        case '/new':
+        if (parsed.cmd === 'new') {
             await saveSession(userId, { model: 'auto', history: [] });
-            await sendMessage(chatId, '🔄 Conversation reset.');
-            break;
-        case '🤖 AI Chat':
-            await sendMessage(chatId, '🤖 Just type your question and I\'ll answer using the GSTD node network.');
-            break;
-        default:
-            if (!text.startsWith('/')) await handleAI(chatId, userId, text);
+            await show(ctx, { text: t(lang, 'reset') });
+        } else if (COMMAND_VIEW[parsed.cmd]) {
+            await runView(ctx, COMMAND_VIEW[parsed.cmd]);
+        } else {
+            await runView(ctx, 'help');
+        }
+        return;
     }
+
+    await handleAI(ctx, text);
 }
 
-// ── Handler ───────────────────────────────────────────────────────────────────
+// ── Handler ──────────────────────────────────────────────────────────────────
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
     if (!TOKEN) return res.status(503).json({ error: 'TELEGRAM_BOT_TOKEN not configured' });
@@ -368,6 +347,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     } catch (err: any) {
         console.error('[telegram/webhook]', err.message);
     }
-
     return res.status(200).json({ ok: true });
 }
