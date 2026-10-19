@@ -1,96 +1,52 @@
 'use client';
 
 /**
- * Total Domination — Leviathan Stream Bridge
- * SSE/WebSocket ticker on ALL TMA screens. Omnipresent.
+ * Live network ticker shown on all mini-app screens.
+ * Every figure comes from the platform registry (/api/v1/network/stats); nothing is simulated.
  */
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'next-i18next';
-import { API_BASE_URL } from '../../lib/config';
+import { API_URL } from '../../lib/config';
 
-const RECONNECT_DELAY_MS = 5000;
-const MAX_ITEMS = 8;
+const REFRESH_MS = 30_000;
 
 export default function LeviathanTMATicker() {
   const { t } = useTranslation('common');
   const [items, setItems] = useState<string[]>([]);
-  const [connected, setConnected] = useState(false);
-  const esRef = useRef<EventSource | null>(null);
 
-  const translate = useCallback((msg: string): string => {
-    if (msg.includes('Alpha found:')) return msg.replace('Alpha found:', t('ticker_alpha', 'Alpha found') + ':');
-    if (msg.includes('No data from Leviathan')) return t('ticker_no_data', 'No data from Leviathan. Check Backend Pollers.');
-    if (msg.includes('АРХИТЕКТОР')) return t('ticker_architect_ready', 'Leviathan Live Stream — АРХИТЕКТОР, СИСТЕМА СТАЛА ПРОЗРАЧНОЙ');
-    if (msg.includes('ЛЕВИАФАН ИЩЕТ')) return t('ticker_seeking', 'STATUS: LEVIATHAN SEEKING SIGNAL...');
-    return msg;
+  useEffect(() => {
+    let alive = true;
+    const load = async () => {
+      try {
+        const res = await fetch(`${API_URL}/network/stats`);
+        if (!res.ok) throw new Error(String(res.status));
+        const s = await res.json();
+        if (!alive) return;
+        setItems([
+          `${t('ticker_nodes_online', 'Nodes online')}: ${s.nodes_online ?? 0} / ${s.total_nodes ?? 0}`,
+          `${t('ticker_tasks_done', 'Tasks completed')}: ${s.tasks_completed ?? 0}`,
+          `${t('ticker_queue', 'Queue')}: ${s.queue_depth ?? 0}`,
+          `${t('ticker_paid', 'GSTD paid')}: ${s.total_gstd_paid ?? 0}`,
+        ]);
+      } catch {
+        if (alive) setItems([t('ticker_unavailable', 'Network stats temporarily unavailable')]);
+      }
+    };
+    load();
+    const iv = setInterval(load, REFRESH_MS);
+    return () => { alive = false; clearInterval(iv); };
   }, [t]);
 
-  const connectRef = useRef<() => void>(() => { });
-
-  const connect = useCallback(() => {
-    if (esRef.current) {
-      esRef.current.close();
-      esRef.current = null;
-    }
-    const url = `${API_BASE_URL}/api/v1/leviathan/stream`;
-    const es = new EventSource(url);
-    esRef.current = es;
-
-    es.onopen = () => setConnected(true);
-    es.onmessage = (e) => {
-      const msg = e.data?.trim();
-      if (msg && !msg.startsWith(':')) {
-        setItems((prev) => [...prev.slice(-(MAX_ITEMS - 1)), translate(msg)]);
-      }
-    };
-    es.onerror = () => {
-      setConnected(false);
-      es.close();
-      esRef.current = null;
-      setTimeout(() => {
-        if (connectRef.current) connectRef.current();
-      }, RECONNECT_DELAY_MS);
-    };
-  }, [translate]);
-
-  useEffect(() => {
-    connectRef.current = connect;
-  }, [connect]);
-
-  useEffect(() => {
-    connect();
-    return () => {
-      if (esRef.current) {
-        esRef.current.close();
-        esRef.current = null;
-      }
-    };
-  }, [connect]);
-
-  const displayItems = items.length === 0
-    ? [connected ? t('ticker_architect_ready', 'Leviathan Live Stream — АРХИТЕКТОР, СИСТЕМА СТАЛА ПРОЗРАЧНОЙ') : t('ticker_seeking', 'STATUS: LEVIATHAN SEEKING SIGNAL...')]
-    : items;
+  if (items.length === 0) return null;
 
   return (
     <div
       className="overflow-hidden border-b border-white/5 bg-black/40 py-1.5"
       style={{ position: 'sticky', top: 0, zIndex: 9998 }}
     >
-      <div
-        className="flex animate-marquee w-max py-0.5 text-[10px] text-gray-400"
-        style={{ animationDuration: `${Math.max(15, displayItems.length * 2)}s` }}
-      >
-        {displayItems.map((msg, i) => (
-          <span key={`${i}-${msg.slice(0, 15)}`} className="px-3 shrink-0 flex items-center gap-2">
-            {msg}
-            <span className="text-white/10">•</span>
-          </span>
-        ))}
-        {displayItems.map((msg, i) => (
-          <span key={`d-${i}`} className="px-3 shrink-0 flex items-center gap-2" aria-hidden>
-            {msg}
-            <span className="text-white/10">•</span>
-          </span>
+      <div className="flex flex-wrap justify-center gap-x-4 gap-y-0.5 text-[10px] text-gray-400">
+        {items.map((msg) => (
+          <span key={msg} className="shrink-0">{msg}</span>
         ))}
       </div>
     </div>

@@ -225,13 +225,25 @@ export default function TMAPage() {
                 {t('swap_desc', 'Exchange TON for GSTD securely via STON.fi decentralised liqudity pools. Powered directly inside Telegram.')}
               </p>
               
-              <div className="rounded-xl overflow-hidden bg-[#1a1a24] shadow-[0_0_30px_rgba(139,92,246,0.15)] border border-white/5 h-[500px]">
-                <iframe 
-                  src="https://app.ston.fi/swap?ft=TON&tt=EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO"
-                  className="w-full h-full border-0"
-                  title="STON.fi DEX Swap"
-                  allow="clipboard-read; clipboard-write; microphone; camera"
-                />
+              <div className="flex flex-col gap-3 max-w-sm mx-auto">
+                {[
+                  { label: 'STON.fi', url: 'https://app.ston.fi/swap?ft=TON&tt=EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO' },
+                ].map((d) => (
+                  <a
+                    key={d.label}
+                    href={d.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(ev) => {
+                      const wa: any = getTelegramWebApp();
+                      if (wa?.openLink) { ev.preventDefault(); wa.openLink(d.url); }
+                    }}
+                    className="rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold py-3 text-sm transition-colors"
+                  >
+                    {t('swap_open', 'Swap on')} {d.label}
+                  </a>
+                ))}
+                <p className="text-[11px] text-gray-500">{t('swap_note', 'DEXes do not allow embedding, so the swap opens in your browser. Always verify the GSTD contract address.')}</p>
               </div>
             </div>
           </div>
@@ -299,7 +311,7 @@ function MobileNodePanel({ address }: { address: string | undefined }) {
   const { t } = useTranslation('common');
   const [isRunning, setIsRunning] = useState(false);
   const [tier, setTier] = useState<string>('spark');
-  const [ratePerHour, setRatePerHour] = useState(0.5);
+  const [ratePerHour, setRatePerHour] = useState(0);
   const [baseGstd, setBaseGstd] = useState(0);
   const [baseTs, setBaseTs] = useState(() => Date.now());
   const [uptimeMinutes, setUptimeMinutes] = useState(0);
