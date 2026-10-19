@@ -16,6 +16,7 @@ import LiveHashrateChart from '../components/tma/LiveHashrateChart';
 import GoldenAccumulationChart from '../components/tma/GoldenAccumulationChart';
 import { useWalletStore } from '../store/walletStore';
 import WalletConnect from '../components/WalletConnect';
+import BrowserWorkerPanel from '../components/tma/BrowserWorkerPanel';
 import AgentMarketplace from '../components/agents/AgentMarketplace';
 import { Zap, Activity, Bot, ArrowRightLeft } from 'lucide-react';
 
@@ -252,6 +253,7 @@ export default function TMAPage() {
         {tab === 'worker' && (
           <div className="space-y-4">
             <MobileNodePanel address={address ?? undefined} />
+            <BrowserWorkerPanel address={address ?? undefined} />
           </div>
         )}
 

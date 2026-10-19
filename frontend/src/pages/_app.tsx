@@ -18,7 +18,6 @@ import dynamic from 'next/dynamic';
 import '../styles/globals.css';
 
 // Lazy-load wallet providers to avoid SSR issues
-const WalletProviders = dynamic(() => import('../components/common/WalletProviders'), { ssr: false });
 
 // Get manifestUrl from environment variable or use fallback
 const getManifestUrl = (): string => {

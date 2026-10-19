@@ -15,20 +15,9 @@
     "prepare": "echo 'skipping husky in CI'"
   },
   "dependencies": {
-    "@metamask/sdk-react": "^0.14.1",
-    "@solana/connector": "^0.2.4",
-    "@solana/wallet-adapter-base": "^0.9.27",
-    "@solana/wallet-adapter-phantom": "^0.9.29",
-    "@solana/wallet-adapter-react": "^0.15.39",
-    "@solana/wallet-adapter-react-ui": "^0.9.39",
-    "@solana/wallet-adapter-solflare": "^0.6.33",
-    "@solana/web3.js": "^1.98.4",
     "@ston-fi/api": "^0.31.0",
     "@ston-fi/sdk": "^2.7.0",
     "@tailwindcss/typography": "^0.5.19",
-    "@tensorflow/tfjs": "^4.22.0",
-    "@tensorflow/tfjs-backend-webgl": "^4.22.0",
-    "@tensorflow/tfjs-backend-webgpu": "^4.22.0",
     "@ton/core": "^0.57.0",
     "@ton/crypto": "^3.3.0",
     "@ton/ton": "^16.2.2",
@@ -61,7 +50,6 @@
     "remark-gfm": "^4.0.1",
     "sharp": "^0.35.3",
     "sonner": "^2.0.7",
-    "xumm": "^1.0.0",
     "zod": "^4.3.5",
     "zustand": "^5.0.9"
   },
