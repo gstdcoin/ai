@@ -104,6 +104,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Read GSTD price: KV cache → live STON.fi fetch → seed fallback
         let gstdPrice = 0;
         const cachedPrice = await kvGet('market:gstd_price_usd').catch(() => null);
+        const [probeOk, probeFail] = await Promise.all([kvGet('stats:probe_verified').catch(() => null), kvGet('stats:probe_failed').catch(() => null)]);
         if (cachedPrice) {
             gstdPrice = parseFloat(cachedPrice as string);
         }
@@ -137,6 +138,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
             // Task metrics (real KV data)
             total_tasks:            tasksDone,
+            probes_verified:        Number(probeOk) || 0,
+            probes_failed:          Number(probeFail) || 0,
             tasks_24h:              null,
             tasks_completed:        tasksDone,
             queue_depth:            queueDepth,
