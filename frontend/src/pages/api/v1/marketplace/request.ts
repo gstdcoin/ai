@@ -1,7 +1,7 @@
 /**
  * POST /api/v1/marketplace/request
  *
- * Submit a resource request tied to a campaign.
+ * Submit a resource request tied to a campaign. Requires X-Session-Token of the campaign's funding wallet.
  * The task is queued with routing metadata so the best-fit node picks it up.
  *
  * Body:
@@ -15,6 +15,7 @@
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvReserveCampaignTask } from '../../../../lib/kv';
+import { sessionWallet } from '../../../../lib/walletSession';
 import { randomBytes } from 'crypto';
 import type { Campaign } from '../campaigns/create';
 
@@ -37,6 +38,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         const campaign: Campaign = JSON.parse(raw);
+        // Tasks spend the funder's budget, so only the funding wallet may request them.
+        if ((await sessionWallet(req.headers)) !== String(campaign.funder_wallet || '').toLowerCase()) {
+            return res.status(403).json({ error: 'Only the campaign funder can request tasks' });
+        }
         if (!campaign.active || new Date(campaign.expires_at).getTime() < Date.now()) {
             return res.status(410).json({ error: 'Campaign expired' });
         }

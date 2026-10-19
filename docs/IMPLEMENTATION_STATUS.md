@@ -27,7 +27,7 @@ Telegram bot (webhook, i18n, edge-AI fallback), Mini App framing/CSP, DEX iframe
 - Contract owner actions (deploy/sign) are outside this scope.
 
 ## Next three tasks
-1. Add task-source tests for campaigns (funded tasks) end to end; check Docker image on arm64.
+1. Review other wallet-by-header spend paths (credits/chat deduct, campaigns/join) for the same missing-session issue; check Docker image on arm64.
 2. Check `A2A` SDK against current `/api/v1/tasks/*` (install, types, timeouts) with a compatibility test.
 3. Audit `gstdbot` node start-up on Linux/Raspberry Pi 4 (non-root, resource limits, restart after connection loss).
 
@@ -47,3 +47,6 @@ Deploy of `ai` is automatic on push to `main` (needs your permission to push).
 - Fixed in install.sh: A && B || C precedence made the systemd branch run on any host with passwordless sudo; now requires systemctl. Non-root users get a per-user systemd unit plus linger (no root needed). Unit now has network-online ordering, MemoryMax=768M, CPUQuota=80%, Nice=10, and hardening in system mode. Bridge unit is created only if its binary exists (previously crash-looped every 5s). CLI wrapper uses journalctl --user in user mode. Added .gitattributes (LF for *.sh/*.service).
 - Already fine: Restart=always, node-side backoff for platform/mesh failures, SIGTERM handler, Docker memory limit and healthcheck.
 - Not verified: real Raspberry Pi run (bash -n syntax check only), arm64 Docker build.
+
+## Stage 5 - funded task source
+- Security fix: `campaigns/create` debited any wallet's balance given only its address, and `marketplace/request` let anyone spend any campaign's budget (a colluding node could then collect the reward). Both now require the X-Session-Token of the funding wallet (lib/walletSession.ts). Tests: lib/campaignAuth.test.ts (401/403 without matching session, success with it, balance untouched on rejection). No frontend caller used these routes; API clients must log in via /users/login first.

@@ -23,6 +23,7 @@
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvCreateFundedCampaign } from '../../../../lib/kv';
+import { sessionWallet } from '../../../../lib/walletSession';
 import { randomBytes } from 'crypto';
 
 const PROTOCOL_FEE_PCT = 0.10;
@@ -87,6 +88,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const wallet = String(body.wallet_address || '').trim().toLowerCase();
         if (!wallet) {
             return res.status(400).json({ error: 'wallet_address required to fund the campaign budget' });
+        }
+        if ((await sessionWallet(req.headers)) !== wallet) {
+            return res.status(401).json({ error: 'Log in with this wallet (X-Session-Token) to fund a campaign' });
         }
         const protocolFee = Math.round(totalBudget * PROTOCOL_FEE_PCT * 100) / 100;
         const netBudget   = Math.round((totalBudget - protocolFee) * 100) / 100;
