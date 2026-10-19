@@ -9,6 +9,7 @@
  *   - reward: GSTD earned this heartbeat (0 for now, platform controls this)
  *   - commands: optional array of remote commands to execute
  */
+import { nodeKeyRedisKey, requireNodeSignature } from '../../../../lib/nodeAuth';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvSet, kvIncr, kvKeys, kvDel } from '../../../../lib/kv';
 import { rateLimit, getClientIp } from '../../../../lib/ratelimit';
@@ -31,6 +32,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         if (!nodeId || !NODE_ID_RE.test(nodeId)) {
             return res.status(400).json({ error: 'node_id required (4-64 alphanumeric chars)' });
+        }
+
+        // A node that has a bound identity key must prove it; otherwise anyone could fake its liveness and stats.
+        if (await kvGet(nodeKeyRedisKey(nodeId))) {
+            const auth = await requireNodeSignature(nodeId, req.headers as any);
+            if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
         }
 
         // Rate limit per node_id so multiple nodes behind the same NAT don't share the limit

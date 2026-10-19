@@ -27,7 +27,7 @@ Telegram bot (webhook, i18n, edge-AI fallback), Mini App framing/CSP, DEX iframe
 - Contract owner actions (deploy/sign) are outside this scope.
 
 ## Next three tasks
-1. Check Docker image on arm64; confirm live CI/deploy on latest commit; verify unauthenticated mutation paths in nodes/* and credits/*.
+1. Check Docker image on arm64; require signed heartbeat for all nodes once old clients are updated (unbound nodes are still accepted); constant-time TREASURY_SECRET compare.
 2. Check `A2A` SDK against current `/api/v1/tasks/*` (install, types, timeouts) with a compatibility test.
 3. Audit `gstdbot` node start-up on Linux/Raspberry Pi 4 (non-root, resource limits, restart after connection loss).
 
@@ -51,3 +51,4 @@ Deploy of `ai` is automatic on push to `main` (needs your permission to push).
 ## Stage 5 - funded task source
 - Security fix: `campaigns/create` debited any wallet's balance given only its address, and `marketplace/request` let anyone spend any campaign's budget (a colluding node could then collect the reward). Both now require the X-Session-Token of the funding wallet (lib/walletSession.ts). Tests: lib/campaignAuth.test.ts (401/403 without matching session, success with it, balance untouched on rejection). No frontend caller used these routes; API clients must log in via /users/login first.
 - Reviewed chat/deduct: already session-bound. Fixed a budget race: campaigns/join, tasks/complete and tasks/worker/submit rewrote the whole campaign blob (read-modify-write), so a stale write could restore already-reserved budget. They now only INCR a separate `cstats:<id>:tasks` counter (merged in campaigns/list); join is read-only. Test added.
+- Reviewed nodes/* and credits/*: settle, confirm-settlement, ton-webhook need TREASURY_SECRET; deregister needs wallet match; claim-rewards only moves a wallet's own pending to its own balance. Gap: nodes/heartbeat was unauthenticated, so anyone could fake liveness/stats of any node. Now a node with a bound key must send a valid Ed25519 signature (gstdbot platform-link already does). Unbound legacy nodes still accepted for compatibility - remaining spoofing surface. Test: lib/heartbeatAuth.test.ts.
