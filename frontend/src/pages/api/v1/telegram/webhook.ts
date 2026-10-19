@@ -13,6 +13,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvSet, kvSetNX, kvConsumeQuota } from '../../../../lib/kv';
 import { callNodeChat } from '../../../../lib/nodes';
+import { edgeChat } from '../../../../lib/edgeAi';
 import { isValidWebhookRequest } from '../../../../lib/telegramWebhookAuth';
 import { LANGS, LANG_NAMES, Lang, resolveLang, t, parseCommand, parseReferrer } from '../../../../lib/tgbot/i18n';
 
@@ -261,6 +262,21 @@ async function handleAI(c: Ctx, text: string): Promise<void> {
     } catch (err: any) {
         const msg = err?.message || '';
         const offline = msg.includes('No GSTD node') || msg.includes('available');
+        if (offline) {
+            try {
+                const content = await edgeChat(messages, 500);
+                if (content) {
+                    session.history.push({ role: 'user', content: text }, { role: 'assistant', content });
+                    await saveSession(c.userId, session);
+                    await tg('sendMessage', {
+                        chat_id: c.chatId,
+                        text: `${content.slice(0, 3900)}\n\n${t(c.lang, 'ai_edge_note')}`,
+                        reply_markup: { inline_keyboard: [[{ text: t(c.lang, 'btn_earn'), callback_data: 'earn' }]] },
+                    });
+                    return;
+                }
+            } catch { /* fall through to the offline message */ }
+        }
         await show(c, {
             text: t(c.lang, offline ? 'ai_offline' : 'ai_empty'),
             kb: offline ? [[{ text: t(c.lang, 'btn_earn'), callback_data: 'earn' }]] : undefined,
