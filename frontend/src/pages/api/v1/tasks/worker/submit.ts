@@ -25,7 +25,6 @@ import type { Campaign } from '../../campaigns/create';
 
 const NODE_TTL    = 600;
 const JOB_TTL     = 7 * 24 * 3600;
-const CAMPAIGN_TTL_BUF = 3600;
 const MIN_MC_SCORE = 0.3;
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') {
@@ -74,22 +73,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const rewardGstd = Number.isFinite(assignment.reward_gstd) && assignment.reward_gstd >= 0
             ? assignment.reward_gstd
             : BASE_TASK_FEE;
-        const campaignRaw = assignment.campaign_id
-            ? await kvGet(`campaign:${assignment.campaign_id}`)
-            : null;
-
         const nodeWrites: Promise<any>[] = [];
         if (assignment.protocol_fee_gstd > 0) {
             nodeWrites.push(kvIncrByFloat('stats:protocol_treasury_gstd', assignment.protocol_fee_gstd).then(() => {}));
         }
-        if (campaignRaw && assignment.campaign_id) {
-            const campaign: Campaign = JSON.parse(campaignRaw);
-            campaign.tasks_completed = (campaign.tasks_completed || 0) + 1;
-            const remaining = Math.ceil((new Date(campaign.expires_at).getTime() - Date.now()) / 1000);
-            if (remaining > 0) {
-                nodeWrites.push(kvSet(`campaign:${assignment.campaign_id}`, JSON.stringify(campaign), remaining + CAMPAIGN_TTL_BUF));
-            }
-        }
+        if (assignment.campaign_id) nodeWrites.push(kvIncr(`cstats:${assignment.campaign_id}:tasks`));
 
         // ── Finetune gradient handling ────────────────────────────────────────
         let gradientAccepted = false;

@@ -8,10 +8,8 @@
  *   resources: { storage_free_gb, ram_free_mb, cpu_cores, gpu_vram_mb }
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvGet, kvSet } from '../../../../lib/kv';
+import { kvGet } from '../../../../lib/kv';
 import type { Campaign } from './create';
-
-const CAMPAIGN_TTL_BUF = 3600;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') {
@@ -63,14 +61,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
         }
 
-        // Register node in campaign (deduplicated)
-        if (!campaign.nodes_joined.includes(node_id)) {
-            campaign.nodes_joined.push(node_id);
-        }
-
-        const remaining = Math.ceil((new Date(campaign.expires_at).getTime() - Date.now()) / 1000);
-        await kvSet(`campaign:${campaign_id}`, JSON.stringify(campaign), remaining + CAMPAIGN_TTL_BUF);
-
+        // Read-only: rewriting the campaign blob here raced with budget reservations and could restore spent budget.
         return res.status(200).json({
             ok:              true,
             campaign_id:     campaign.id,

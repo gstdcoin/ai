@@ -10,7 +10,7 @@
  *   min_reward  — filter by minimum reward_per_task
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvKeys, kvMGet } from '../../../../lib/kv';
+import { kvGet, kvKeys, kvMGet } from '../../../../lib/kv';
 import type { Campaign } from './create';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -40,6 +40,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 if (c.remaining_budget < c.reward_per_task) continue;
                 if (type && c.required_type !== 'any' && c.required_type !== type) continue;
                 if (minReward && c.reward_per_task < minReward) continue;
+                c.tasks_completed = (c.tasks_completed || 0) + (Number(await kvGet(`cstats:${c.id}:tasks`)) || 0);
                 campaigns.push(c);
             } catch { /* skip malformed */ }
         }

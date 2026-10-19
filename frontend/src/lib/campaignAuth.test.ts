@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { kvSet, kvGet, kvLLen } from './kv';
+import joinCampaign from '../pages/api/v1/campaigns/join';
 import createCampaign from '../pages/api/v1/campaigns/create';
 import requestTask from '../pages/api/v1/marketplace/request';
 
@@ -44,5 +45,17 @@ describe('campaign funding authorization', () => {
         expect(ok.status).toBe(200);
         expect(ok.json.reward_gstd).toBeGreaterThan(0);
         expect(await kvLLen('tasks:queue')).toBe(before + 1);
+    });
+    it('joining does not rewrite the campaign record (budget stays as reserved)', async () => {
+        const w = `uqj${Math.random().toString(16).slice(2)}`; const tk = `tj${Math.random().toString(16).slice(2)}`;
+        await kvSet(`balance:${w}`, '100', 600);
+        await kvSet(`ton-auth:session:${tk}`, w, 600);
+        const c = await call(createCampaign, { ...base, wallet_address: w }, { 'x-session-token': tk });
+        const id = c.json.campaign_id;
+        await call(requestTask, { campaign_id: id, type: 'custom', payload: {} }, { 'x-session-token': tk });
+        const before = JSON.parse((await kvGet(`campaign:${id}`))!);
+        const j = await call(joinCampaign, { campaign_id: id, node_id: 'web-abc', capabilities: [], resources: {} });
+        expect(j.status).toBe(200);
+        expect(JSON.parse((await kvGet(`campaign:${id}`))!)).toEqual(before);
     });
 });

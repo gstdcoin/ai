@@ -10,7 +10,7 @@
  * the server-side task assignment; client-supplied reward fields are ignored.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvGet, kvSet, kvIncrByFloat, kvCompleteAssignedTask } from '../../../../lib/kv';
+import { kvGet, kvSet, kvIncr, kvIncrByFloat, kvCompleteAssignedTask } from '../../../../lib/kv';
 import { COMMUNITY_TAX, BASE_TASK_FEE } from '../../../../lib/rewards';
 import { probeResultMatches } from '../../../../lib/verifyProbe';
 import { requireNodeSignature } from '../../../../lib/nodeAuth';
@@ -88,19 +88,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             await kvIncrByFloat(probeResultMatches(assignment.expected_hash, body.result) ? 'stats:probe_verified' : 'stats:probe_failed', 1);
         }
         const campaignId = assignment.campaign_id;
-        const campaignRaw = campaignId ? await kvGet(`campaign:${campaignId}`) : null;
 
         const writes: Promise<void>[] = [];
 
-        // Update campaign stats
-        if (campaignRaw && campaignId) {
-            const campaign: Campaign = JSON.parse(campaignRaw);
-            campaign.tasks_completed = (campaign.tasks_completed || 0) + 1;
-            const remaining = Math.ceil((new Date(campaign.expires_at).getTime() - Date.now()) / 1000);
-            if (remaining > 0) {
-                writes.push(kvSet(`campaign:${campaignId}`, JSON.stringify(campaign), remaining + 3600));
-            }
-        }
+        // Separate counter: rewriting the campaign blob would race with budget reservations.
+        if (campaignId) writes.push(kvIncr(`cstats:${campaignId}:tasks`).then(() => {}));
 
         // Global stats
         if (protocolFee > 0) writes.push(kvIncrByFloat('stats:protocol_treasury_gstd', protocolFee).then(() => {}));
