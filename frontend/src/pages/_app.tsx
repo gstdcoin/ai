@@ -107,7 +107,7 @@ function App({ Component, pageProps }: AppProps) {
           }}
           language={tonConnectLanguage}
         >
-            {/* Ambient glow — matches gstdbot.gstdtoken.com aesthetic */}
+            {/* Ambient glow — matches the GSTD bot landing aesthetic */}
             <div className="page-glow" aria-hidden="true" />
             {isMounted && <WalletListener />}
             {isMounted && <AutoClaimWorker />}
