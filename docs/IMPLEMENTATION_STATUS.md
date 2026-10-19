@@ -27,7 +27,7 @@ Telegram bot (webhook, i18n, edge-AI fallback), Mini App framing/CSP, DEX iframe
 - Contract owner actions (deploy/sign) are outside this scope.
 
 ## Next three tasks
-1. Expose probe stats in `/network/stats`; check A2A SDK compatibility.
+1. Audit gstdbot node start on Linux/Raspberry Pi 4 (no root, resource limits, restart on connection loss).
 2. Check `A2A` SDK against current `/api/v1/tasks/*` (install, types, timeouts) with a compatibility test.
 3. Audit `gstdbot` node start-up on Linux/Raspberry Pi 4 (non-root, resource limits, restart after connection loss).
 
@@ -38,3 +38,7 @@ npx.cmd tsc --noEmit; npm.cmd test; npx.cmd next build
 node ..\scripts\guard.mjs        # from ai\ root
 ```
 Deploy of `ai` is automatic on push to `main` (needs your permission to push).
+
+## Stage 3 - A2A compatibility
+- A2A SDK/swarm use legacy unsigned endpoints (tasks/worker/pending, tasks/worker/submit, nodes/register, nodes/heartbeat, genesis/ignite, training/gradient, credits/balance, chat/completions): all exist in this repo; live probe of health, nodes/public, agents/stats/network = 200, unregistered pending = 403 (expected).
+- Fixed: A2A swarm_client defaulted to POST /registry/join, which returns 404; now uses /nodes/register. Python tests not run locally (no Python); node tests 2/2.
