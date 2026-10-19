@@ -21,6 +21,7 @@ export default function Document(props: DocumentProps) {
 
         {/* Telegram WebApp optimization */}
         <meta name="telegram-web-app" content="yes" />
+        <script src="https://telegram.org/js/telegram-web-app.js" async></script>
 
         {/* SEO */}
         <title>GSTD — Sovereign AI Network</title>
