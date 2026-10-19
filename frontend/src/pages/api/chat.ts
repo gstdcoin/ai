@@ -196,7 +196,7 @@ async function* streamNodeClean(messages: ChatMessage[], opts = {}): AsyncGenera
 async function lookupKnowledge(query: string): Promise<string> {
     try {
         const resp = await fetch(
-            `https://platform.gstdtoken.com/api/v1/knowledge/resonance?q=${encodeURIComponent(query)}&limit=3`,
+            `https://app.gstdtoken.com/api/v1/knowledge/resonance?q=${encodeURIComponent(query)}&limit=3`,
             { signal: AbortSignal.timeout(3000) }
         );
         if (!resp.ok) return '';
@@ -251,7 +251,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
         wallet = walletKey as string;
 
-        const SELF_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://platform.gstdtoken.com';
+        const SELF_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://app.gstdtoken.com';
         try {
             const deductResp = await fetch(`${SELF_URL}/api/v1/chat/deduct`, {
                 method: 'POST',
