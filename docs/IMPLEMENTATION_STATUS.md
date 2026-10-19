@@ -27,7 +27,7 @@ Telegram bot (webhook, i18n, edge-AI fallback), Mini App framing/CSP, DEX iframe
 - Contract owner actions (deploy/sign) are outside this scope.
 
 ## Next three tasks
-1. Audit gstdbot node start on Linux/Raspberry Pi 4 (no root, resource limits, restart on connection loss).
+1. Add task-source tests for campaigns (funded tasks) end to end; check Docker image on arm64.
 2. Check `A2A` SDK against current `/api/v1/tasks/*` (install, types, timeouts) with a compatibility test.
 3. Audit `gstdbot` node start-up on Linux/Raspberry Pi 4 (non-root, resource limits, restart after connection loss).
 
@@ -42,3 +42,8 @@ Deploy of `ai` is automatic on push to `main` (needs your permission to push).
 ## Stage 3 - A2A compatibility
 - A2A SDK/swarm use legacy unsigned endpoints (tasks/worker/pending, tasks/worker/submit, nodes/register, nodes/heartbeat, genesis/ignite, training/gradient, credits/balance, chat/completions): all exist in this repo; live probe of health, nodes/public, agents/stats/network = 200, unregistered pending = 403 (expected).
 - Fixed: A2A swarm_client defaulted to POST /registry/join, which returns 404; now uses /nodes/register. Python tests not run locally (no Python); node tests 2/2.
+
+## Stage 4 - gstdbot node start (Linux / Raspberry Pi 4)
+- Fixed in install.sh: A && B || C precedence made the systemd branch run on any host with passwordless sudo; now requires systemctl. Non-root users get a per-user systemd unit plus linger (no root needed). Unit now has network-online ordering, MemoryMax=768M, CPUQuota=80%, Nice=10, and hardening in system mode. Bridge unit is created only if its binary exists (previously crash-looped every 5s). CLI wrapper uses journalctl --user in user mode. Added .gitattributes (LF for *.sh/*.service).
+- Already fine: Restart=always, node-side backoff for platform/mesh failures, SIGTERM handler, Docker memory limit and healthcheck.
+- Not verified: real Raspberry Pi run (bash -n syntax check only), arm64 Docker build.
