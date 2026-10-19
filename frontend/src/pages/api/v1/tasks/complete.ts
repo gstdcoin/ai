@@ -12,6 +12,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvSet, kvIncrByFloat, kvCompleteAssignedTask } from '../../../../lib/kv';
 import { COMMUNITY_TAX, BASE_TASK_FEE } from '../../../../lib/rewards';
+import { probeResultMatches } from '../../../../lib/verifyProbe';
 import { requireNodeSignature } from '../../../../lib/nodeAuth';
 import type { TaskAssignment } from '../../../../lib/task-assignment';
 import type { NodeRecord } from '../nodes/register';
@@ -83,6 +84,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const protocolFee = Number.isFinite(assignment.protocol_fee_gstd) && assignment.protocol_fee_gstd >= 0
             ? assignment.protocol_fee_gstd
             : 0;
+        if (assignment.expected_hash) {
+            await kvIncrByFloat(probeResultMatches(assignment.expected_hash, body.result) ? 'stats:probe_verified' : 'stats:probe_failed', 1);
+        }
         const campaignId = assignment.campaign_id;
         const campaignRaw = campaignId ? await kvGet(`campaign:${campaignId}`) : null;
 

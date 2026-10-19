@@ -10,6 +10,7 @@ export interface TaskAssignment {
     campaign_id?: string;
     job_id?: string;
     shard_id?: string;
+    expected_hash?: string;
 }
 
 function boundedAmount(value: unknown, fallback: number, maximum: number): number {
@@ -34,6 +35,7 @@ export async function assignTaskToNode(
         reward_gstd: boundedAmount(task.reward_gstd, 0, MAX_TASK_REWARD),
         protocol_fee_gstd: boundedAmount(task.protocol_fee, 0, MAX_PROTOCOL_FEE),
     };
+    if (typeof task.expected_hash === 'string' && /^[0-9a-f]{64}$/.test(task.expected_hash)) assignment.expected_hash = task.expected_hash;
     if (typeof task.campaign_id === 'string') assignment.campaign_id = task.campaign_id;
     const payload = task.payload && typeof task.payload === 'object' ? task.payload : {};
     if (typeof payload.job_id === 'string') assignment.job_id = payload.job_id;

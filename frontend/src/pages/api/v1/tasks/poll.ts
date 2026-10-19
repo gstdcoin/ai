@@ -18,6 +18,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvPop, kvPush } from '../../../../lib/kv';
 import { assignTaskToNode } from '../../../../lib/task-assignment';
+import { maybeCreateVerifyProbe } from '../../../../lib/verifyProbe';
 import { requireNodeSignature } from '../../../../lib/nodeAuth';
 
 const SCAN_DEPTH = 20; // max tasks to inspect before giving up
@@ -121,6 +122,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             } catch (error) {
                 await kvPush('tasks:queue', JSON.stringify(picked));
                 throw error;
+            }
+        }
+
+        if (!picked) {
+            const probe = await maybeCreateVerifyProbe(nodeId, caps);
+            if (probe && (await assignTaskToNode(probe, nodeId, ASSIGNMENT_TTL))) {
+                const { expected_hash: _hidden, ...visible } = probe;
+                return res.status(200).json({ task: visible, source: 'probe' });
             }
         }
 

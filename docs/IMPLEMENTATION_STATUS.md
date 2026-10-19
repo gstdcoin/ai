@@ -20,14 +20,14 @@ Telegram bot (webhook, i18n, edge-AI fallback), Mini App framing/CSP, DEX iframe
 
 ## Known blockers
 - No online nodes and no external task source: network is idle (0 nodes online, 0 tasks).
-- Nothing creates `sha256_verify` tasks yet, so the browser worker has no work until a funded task source exists.
+- Stage 2: `lib/verifyProbe.ts` — poll hands capable workers an unpaid `sha256_verify` self-check (server-known answer, max one per node per 5 min, answer hidden from the worker); `tasks/complete` counts `stats:probe_verified` / `stats:probe_failed`. Tests cover duplicate and unassigned completion.
 - Presence rewards are off (`MOBILE_PRESENCE_REWARDS`), correctly: no work, no payout.
 - Browser worker needs Ed25519 in WebCrypto (recent iOS/Android WebViews); unsupported browsers see a notice.
 - Not tested end-to-end against production KV (needs a funded task and a wallet).
 - Contract owner actions (deploy/sign) are outside this scope.
 
 ## Next three tasks
-1. Add a task producer for `sha256_verify` (or reuse quorum verification) and test poll -> complete with duplicate/expired submissions against `kvCompleteAssignedTask`.
+1. Expose probe stats in `/network/stats`; check A2A SDK compatibility.
 2. Check `A2A` SDK against current `/api/v1/tasks/*` (install, types, timeouts) with a compatibility test.
 3. Audit `gstdbot` node start-up on Linux/Raspberry Pi 4 (non-root, resource limits, restart after connection loss).
 
