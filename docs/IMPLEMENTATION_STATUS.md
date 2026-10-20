@@ -43,9 +43,10 @@ repositories. A second daily observation is still needed before reporting trends
   Participation" permission (running nodes / receiving GSTD rewards is allowed;
   commercial products, hosting and competing networks need a separate license).
   Package metadata, READMEs, CONTRIBUTING and the public site now say
-  "source-available" instead of "open source". `contracts` and `gstd-bridge`
-  were intentionally not touched (the former still has no license file, the
-  latter still says MIT) and need a separate decision. Earlier releases stay
+  "source-available" instead of "open source". On the owner's follow-up request
+  `contracts` and `gstd-bridge` received the same LICENSE plus README/package
+  metadata only (no contract or bridge source changed). `gstd-lending-platform`
+  is not public on GitHub (404) and was left untouched. Earlier releases stay
   under their previous license, bundled third-party skills/models keep their
   own licenses, and the wording should be reviewed by a lawyer.
 - Node OTA updates: the platform now publishes the latest node-client version
