@@ -49,4 +49,4 @@ npm run lint       # No ESLint warnings
 
 ## License
 
-Apache 2.0
+Contributions are accepted under the project's [PolyForm Noncommercial License 1.0.0](LICENSE) with the network-participation permission.

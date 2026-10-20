@@ -211,7 +211,7 @@ export default function Home() {
               </div>
               <h2 className="text-xl font-black tracking-tight mb-3 text-white">{t('tap_hive', 'Tap the Hive Mind')}</h2>
               <p className="text-gray-400 mb-6 leading-relaxed text-sm">
-                {t('tap_hive_desc', 'Use the Global Brain to solve any task. Pay with GSTD to route your queries through the collective intelligence of thousands of nodes. True privacy, open-source models, zero corporate control.')}
+                {t('tap_hive_desc', 'Use the Global Brain to solve any task. Pay with GSTD to route your queries to nodes in the network. The network is in early launch: availability depends on how many nodes are online. Open models, no central operator.')}
               </p>
               <Link href="/chat" className="flex items-center gap-2 text-violet-400 font-black hover:gap-3 transition-all text-sm" style={{ textDecoration: 'none' }}>
                 {t('access_intelligence', 'Access Intelligence')} <ArrowRight size={14} />

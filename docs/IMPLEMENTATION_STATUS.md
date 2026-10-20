@@ -38,6 +38,16 @@ repositories. A second daily observation is still needed before reporting trends
   path. The legacy submit route now rejects empty/error results before consuming
   the task assignment.
 - `web`: `npm.cmd run type-check` passes.
+- Licensing: `ai`, `web`, `gstdbot` and `A2A` moved from MIT/Apache-2.0 to the
+  unmodified PolyForm Noncommercial License 1.0.0 plus an appended "GSTD Network
+  Participation" permission (running nodes / receiving GSTD rewards is allowed;
+  commercial products, hosting and competing networks need a separate license).
+  Package metadata, READMEs, CONTRIBUTING and the public site now say
+  "source-available" instead of "open source". `contracts` and `gstd-bridge`
+  were intentionally not touched (the former still has no license file, the
+  latter still says MIT) and need a separate decision. Earlier releases stay
+  under their previous license, bundled third-party skills/models keep their
+  own licenses, and the wording should be reviewed by a lawyer.
 - Node OTA updates: the platform now publishes the latest node-client version
   (read from `gstdbot/main/package.json`, cached 1 h) in every heartbeat
   response (`update`) and at `GET /api/v1/nodes/update/check?version=x.y.z`

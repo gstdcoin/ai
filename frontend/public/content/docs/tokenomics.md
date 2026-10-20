@@ -131,7 +131,7 @@ GSTD (Guaranteed Service Time Depth) is the utility token powering the GSTD Dist
 ### Community Governance
 - **Forum**: Community discussions and proposals
 - **Discord**: Real-time community support
-- **GitHub**: Open-source development and issues
+- **GitHub**: Public source (PolyForm Noncommercial) and issues
 
 ---
 

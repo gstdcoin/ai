@@ -5,7 +5,7 @@
 
 [![Platform](https://img.shields.io/badge/platform-app.gstdtoken.com-00d2ff?style=flat-square)](https://app.gstdtoken.com)
 [![Network status](https://img.shields.io/badge/network-check_live_stats-blue?style=flat-square)](https://app.gstdtoken.com/api/v1/stats/public)
-[![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
+[![License](https://img.shields.io/badge/license-PolyForm%20NC%201.0.0-orange?style=flat-square)](LICENSE)
 
 ---
 
@@ -180,4 +180,4 @@ See [gstdcoin/gstdbot](https://github.com/gstdcoin/gstdbot) for full setup guide
 
 ## License
 
-MIT
+Source-available under the [PolyForm Noncommercial License 1.0.0](LICENSE), with an additional permission for taking part in the GSTD network (including receiving GSTD rewards). Commercial use by companies needs a separate license. Not an OSI open-source license.

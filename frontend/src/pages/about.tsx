@@ -418,7 +418,7 @@ export default function About() {
                 © 2026 GSTD Token. All rights reserved.
               </p>
               <div className="flex items-center gap-4 text-xs text-gray-600">
-                <span className="flex items-center gap-1"><Shield size={12} />{t('open_source', 'Open Source')}</span>
+                <span className="flex items-center gap-1"><Shield size={12} />{t('open_source', 'Source-available')}</span>
                 <span className="flex items-center gap-1"><Zap size={12} />{t('ton_blockchain', 'TON Blockchain')}</span>
                 <span className="flex items-center gap-1"><Globe size={12} />{t('depin_network', 'DePIN Network')}</span>
               </div>
