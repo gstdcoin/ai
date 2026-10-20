@@ -38,6 +38,14 @@ repositories. A second daily observation is still needed before reporting trends
   path. The legacy submit route now rejects empty/error results before consuming
   the task assignment.
 - `web`: `npm.cmd run type-check` passes.
+- Node OTA updates: the platform now publishes the latest node-client version
+  (read from `gstdbot/main/package.json`, cached 1 h) in every heartbeat
+  response (`update`) and at `GET /api/v1/nodes/update/check?version=x.y.z`
+  (previously a 404 page), so the existing snapshot/build/rollback updater in
+  `gstdbot` actually triggers. `AUTO_UPDATE=false` is now honored. Limitations:
+  one attempt per session, updates track `main` (no signed rollout; manifest
+  signing stays opt-in via `PLATFORM_SIGNING_ENFORCED`), and no operator-issued
+  `update` command exists yet. Not verified on a live node (none online).
 - `ai/frontend` Tailwind 4 migration (approved by the owner): ran the official
   `@tailwindcss/upgrade` tool, which converted the theme to CSS `@theme`, the
   custom component classes to `@utility`, and the PostCSS setup to
