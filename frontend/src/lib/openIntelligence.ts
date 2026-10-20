@@ -1,7 +1,7 @@
 import { kvDel, kvGet, kvSet, kvSetNX } from './kv';
 
 export const OPEN_INTELLIGENCE_DATASET = 'gstd-ecosystem-repository-activity';
-export const OPEN_INTELLIGENCE_ALGORITHM = 'github-repository-metadata-diff-v1';
+export const OPEN_INTELLIGENCE_ALGORITHM = 'github-atom-commit-observation-v1';
 export const OPEN_INTELLIGENCE_HISTORY_LIMIT = 180;
 export const OPEN_INTELLIGENCE_REPOSITORIES = [
     'ai',
@@ -11,37 +11,41 @@ export const OPEN_INTELLIGENCE_REPOSITORIES = [
 ] as const;
 
 const OWNER = 'gstdcoin';
-const SOURCE_BASE = 'https://api.github.com/repos';
-const STATE_PREFIX = 'open-intelligence:github:v1:';
-const STATUS_KEY = 'open-intelligence:github:status:v1';
-const LOCK_KEY = 'open-intelligence:github:harvest-lock:v1';
-const ATTEMPT_KEY_PREFIX = 'open-intelligence:github:attempt:v1:';
-const MAX_RESPONSE_BYTES = 128 * 1024;
+const SOURCE_BASE = 'https://github.com';
+const STATE_PREFIX = 'open-intelligence:github:v2:';
+const STATUS_KEY = 'open-intelligence:github:status:v2';
+const LOCK_KEY = 'open-intelligence:github:harvest-lock:v2';
+const ATTEMPT_KEY_PREFIX = 'open-intelligence:github:attempt:v2:';
+const MAX_RESPONSE_BYTES = 256 * 1024;
 const LOCK_TTL_SECONDS = 600;
 const ATTEMPT_TTL_SECONDS = 2 * 86_400;
 const SOURCE_REQUEST_GAP_MS = 1_000;
+const COMMIT_FEED_LIMIT = 20;
+const DEFAULT_BRANCHES: Record<TrackedRepository, string> = {
+    ai: 'main',
+    gstdbot: 'main',
+    A2A: 'master',
+    web: 'main',
+};
 
 export type TrackedRepository = typeof OPEN_INTELLIGENCE_REPOSITORIES[number];
 
 export interface RepositoryMetadata {
     name: string;
     url: string;
-    license_spdx: string | null;
-    archived: boolean;
-    stars: number;
-    forks: number;
-    open_issues: number;
     default_branch: string;
-    created_at: string;
-    updated_at: string;
-    pushed_at: string | null;
+    commits: Array<{ id: string; committed_at: string }>;
+    latest_commit_id: string | null;
+    latest_commit_at: string | null;
+    new_commits: number | null;
+    new_commits_is_lower_bound: boolean;
 }
 
 export interface RepositorySnapshot {
     observed_at: string;
     source_url: string;
     source_status: 'fetched' | 'not_modified';
-    schema_version: 1;
+    schema_version: 2;
     quality: {
         valid: true;
         warnings: string[];
@@ -50,7 +54,7 @@ export interface RepositorySnapshot {
 }
 
 interface RepositoryState {
-    schema_version: 1;
+    schema_version: 2;
     etag: string | null;
     snapshots: RepositorySnapshot[];
 }
@@ -59,11 +63,8 @@ export interface RepositoryChange {
     repository: TrackedRepository;
     from: string;
     to: string;
-    days_since_push: number | null;
-    pushed_at_changed: boolean;
-    stars_delta: number;
-    forks_delta: number;
-    open_issues_delta: number;
+    latest_commit_changed: boolean;
+    new_commits: number | null;
 }
 
 export interface HarvestSourceResult {
@@ -85,17 +86,13 @@ function isDateTime(value: unknown): value is string {
     return typeof value === 'string' && Number.isFinite(Date.parse(value));
 }
 
-function nonNegativeInteger(value: unknown): value is number {
-    return Number.isInteger(value) && Number(value) >= 0;
-}
-
 function parseState(raw: string | null): RepositoryState {
-    if (!raw) return { schema_version: 1, etag: null, snapshots: [] };
+    if (!raw) return { schema_version: 2, etag: null, snapshots: [] };
     try {
         const parsed: unknown = JSON.parse(raw);
         if (
             !isRecord(parsed)
-            || parsed.schema_version !== 1
+            || parsed.schema_version !== 2
             || !Array.isArray(parsed.snapshots)
             || (parsed.etag !== null && typeof parsed.etag !== 'string')
         ) {
@@ -109,47 +106,45 @@ function parseState(raw: string | null): RepositoryState {
     }
 }
 
-export function normalizeRepositoryMetadata(
+export function normalizeCommitFeed(
     repository: TrackedRepository,
-    value: unknown,
+    value: string,
 ): RepositoryMetadata {
-    if (!isRecord(value)) throw new Error('GitHub response must be an object');
-    const expectedName = `${OWNER}/${repository}`;
-    if (value.full_name !== expectedName) throw new Error('GitHub response repository identity did not match');
-    if (
-        typeof value.html_url !== 'string'
-        || value.html_url !== `https://github.com/${expectedName}`
-        || typeof value.archived !== 'boolean'
-        || !nonNegativeInteger(value.stargazers_count)
-        || !nonNegativeInteger(value.forks_count)
-        || !nonNegativeInteger(value.open_issues_count)
-        || typeof value.default_branch !== 'string'
-        || !value.default_branch
-        || !isDateTime(value.created_at)
-        || !isDateTime(value.updated_at)
-        || (value.pushed_at !== null && !isDateTime(value.pushed_at))
-    ) {
-        throw new Error('GitHub response failed repository metadata validation');
+    if (typeof value !== 'string' || new TextEncoder().encode(value).byteLength > MAX_RESPONSE_BYTES) {
+        throw new Error('GitHub Atom feed exceeded the size limit');
     }
-    if (Date.parse(value.updated_at) < Date.parse(value.created_at)) {
-        throw new Error('repository updated_at predates created_at');
+    if (!/<feed(?:\s|>)/.test(value) || /<!DOCTYPE|<!ENTITY/i.test(value)) {
+        throw new Error('GitHub response was not a safe Atom feed');
     }
-    const license = isRecord(value.license) && typeof value.license.spdx_id === 'string'
-        ? value.license.spdx_id
-        : null;
-
+    const branch = DEFAULT_BRANCHES[repository];
+    const feedId = value.match(/<feed(?:\s[^>]*)?>[\s\S]*?<id>([^<]+)<\/id>/)?.[1]?.trim();
+    if (feedId !== `tag:github.com,2008:/${OWNER}/${repository}/commits/${branch}`) {
+        throw new Error('GitHub Atom feed repository identity did not match');
+    }
+    const commits: RepositoryMetadata['commits'] = [];
+    for (const entry of value.matchAll(/<entry(?:\s[^>]*)?>([\s\S]*?)<\/entry>/g)) {
+        const id = entry[1].match(/<id>([^<]+)<\/id>/)?.[1]?.trim();
+        const committedAt = entry[1].match(/<updated>([^<]+)<\/updated>/)?.[1]?.trim();
+        const commitId = id?.match(/^tag:github\.com,2008:Grit::Commit\/([0-9a-f]{40,64})$/i)?.[1];
+        if (!commitId || !isDateTime(committedAt)) {
+            throw new Error('GitHub Atom feed entry failed commit metadata validation');
+        }
+        if (!commits.some(commit => commit.id === commitId)) {
+            commits.push({ id: commitId.toLowerCase(), committed_at: committedAt });
+        }
+        if (commits.length >= COMMIT_FEED_LIMIT) break;
+    }
+    commits.sort((a, b) => Date.parse(b.committed_at) - Date.parse(a.committed_at));
+    const latest = commits[0];
     return {
-        name: expectedName,
-        url: `https://github.com/${expectedName}`,
-        license_spdx: license,
-        archived: value.archived,
-        stars: value.stargazers_count,
-        forks: value.forks_count,
-        open_issues: value.open_issues_count,
-        default_branch: value.default_branch,
-        created_at: value.created_at,
-        updated_at: value.updated_at,
-        pushed_at: value.pushed_at as string | null,
+        name: `${OWNER}/${repository}`,
+        url: `https://github.com/${OWNER}/${repository}`,
+        default_branch: branch,
+        commits,
+        latest_commit_id: latest?.id ?? null,
+        latest_commit_at: latest?.committed_at ?? null,
+        new_commits: null,
+        new_commits_is_lower_bound: false,
     };
 }
 
@@ -168,41 +163,27 @@ export function deriveRepositoryChange(
     repository: TrackedRepository,
     previous: RepositorySnapshot | undefined,
     latest: RepositorySnapshot | undefined,
-    now = Date.now(),
 ): RepositoryChange | null {
     if (!previous || !latest) return null;
-    const pushedAt = latest.data.pushed_at ? Date.parse(latest.data.pushed_at) : NaN;
     return {
         repository,
         from: previous.observed_at,
         to: latest.observed_at,
-        days_since_push: Number.isFinite(pushedAt)
-            ? Math.max(0, Math.floor((now - pushedAt) / 86_400_000))
-            : null,
-        pushed_at_changed: previous.data.pushed_at !== latest.data.pushed_at,
-        stars_delta: latest.data.stars - previous.data.stars,
-        forks_delta: latest.data.forks - previous.data.forks,
-        open_issues_delta: latest.data.open_issues - previous.data.open_issues,
+        latest_commit_changed: previous.data.latest_commit_id !== latest.data.latest_commit_id,
+        new_commits: latest.data.new_commits,
     };
 }
 
 function emptyChange(
     repository: TrackedRepository,
     latest: RepositorySnapshot,
-    now: number,
 ): RepositoryChange {
-    const pushedAt = latest.data.pushed_at ? Date.parse(latest.data.pushed_at) : NaN;
     return {
         repository,
         from: latest.observed_at,
         to: latest.observed_at,
-        days_since_push: Number.isFinite(pushedAt)
-            ? Math.max(0, Math.floor((now - pushedAt) / 86_400_000))
-            : null,
-        pushed_at_changed: false,
-        stars_delta: 0,
-        forks_delta: 0,
-        open_issues_delta: 0,
+        latest_commit_changed: false,
+        new_commits: latest.data.new_commits,
     };
 }
 
@@ -230,13 +211,12 @@ async function fetchRepository(
     }
 
     const headers: Record<string, string> = {
-        Accept: 'application/vnd.github+json',
+        Accept: 'application/atom+xml',
         'User-Agent': 'GSTD-Open-Intelligence (+https://app.gstdtoken.com)',
-        'X-GitHub-Api-Version': '2022-11-28',
     };
     if (state.etag) headers['If-None-Match'] = state.etag;
 
-    const sourceUrl = `${SOURCE_BASE}/${OWNER}/${repository}`;
+    const sourceUrl = `${SOURCE_BASE}/${OWNER}/${repository}/commits/${DEFAULT_BRANCHES[repository]}.atom`;
     const response = await fetch(sourceUrl, {
         headers,
         signal: AbortSignal.timeout(8_000),
@@ -250,6 +230,11 @@ async function fetchRepository(
             ...latest,
             observed_at: observedAt,
             source_status: 'not_modified',
+            data: {
+                ...latest.data,
+                new_commits: latest.data.latest_commit_id ? 0 : null,
+                new_commits_is_lower_bound: false,
+            },
         };
     } else {
         if (!response.ok) {
@@ -257,39 +242,45 @@ async function fetchRepository(
             const retryAfter = response.headers.get('retry-after');
             if (response.status === 429 || remaining === '0' || retryAfter) {
                 throw new Error(
-                    `GitHub API rate limited (HTTP ${response.status}; remaining ${remaining ?? 'unknown'}; retry after ${retryAfter ?? 'unknown'})`,
+                    `GitHub source rate limited (HTTP ${response.status}; remaining ${remaining ?? 'unknown'}; retry after ${retryAfter ?? 'unknown'})`,
                 );
             }
-            throw new Error(`GitHub API returned HTTP ${response.status}`);
+            throw new Error(`GitHub source returned HTTP ${response.status}`);
         }
         const contentLength = Number(response.headers.get('content-length') || 0);
         if (contentLength > MAX_RESPONSE_BYTES) {
-            throw new Error('GitHub response exceeded the size limit');
+            throw new Error('GitHub Atom feed exceeded the size limit');
         }
         const body = await response.text();
         if (new TextEncoder().encode(body).byteLength > MAX_RESPONSE_BYTES) {
-            throw new Error('GitHub response exceeded the size limit');
+            throw new Error('GitHub Atom feed exceeded the size limit');
         }
-        let parsed: unknown;
-        try {
-            parsed = JSON.parse(body);
-        } catch {
-            throw new Error('GitHub response was not valid JSON');
-        }
+        const metadata = normalizeCommitFeed(repository, body);
+        const previousCommitIds = new Set(latest?.data.commits.map(commit => commit.id) || []);
+        const newCommits = latest
+            ? metadata.commits.filter(commit => !previousCommitIds.has(commit.id)).length
+            : null;
+        const overlapsPreviousFeed = metadata.commits.some(commit => previousCommitIds.has(commit.id));
         snapshot = {
             observed_at: observedAt,
             source_url: sourceUrl,
             source_status: 'fetched',
-            schema_version: 1,
+            schema_version: 2,
             quality: { valid: true, warnings: [] },
-            data: normalizeRepositoryMetadata(repository, parsed),
+            data: {
+                ...metadata,
+                new_commits: newCommits,
+                new_commits_is_lower_bound: Boolean(
+                    latest && previousCommitIds.size > 0 && metadata.commits.length > 0 && !overlapsPreviousFeed,
+                ),
+            },
         };
         etag = response.headers.get('etag');
     }
 
     const snapshots = appendDailySnapshot(state.snapshots, snapshot);
     await kvSet(stateKey(repository), JSON.stringify({
-        schema_version: 1,
+        schema_version: 2,
         etag,
         snapshots,
     } satisfies RepositoryState));
@@ -335,7 +326,7 @@ export async function harvestGithubEcosystem(now = Date.now()): Promise<{
             source.status === 'updated' || source.status === 'not_modified' || source.status === 'skipped_today',
         ).length;
         const status = {
-            schema_version: 1,
+            schema_version: 2,
             attempted_at: attemptedAt,
             source_count: sources.length,
             succeeded,
@@ -365,7 +356,7 @@ export async function getGithubEcosystemDataset(limit = 30, now = Date.now()) {
         const latest = history[history.length - 1] || null;
         const previous = history.length > 1 ? history[history.length - 2] : undefined;
         const change = latest
-            ? deriveRepositoryChange(repository, previous, latest, now) || emptyChange(repository, latest, now)
+            ? deriveRepositoryChange(repository, previous, latest) || emptyChange(repository, latest)
             : null;
         return {
             repository,
@@ -377,9 +368,9 @@ export async function getGithubEcosystemDataset(limit = 30, now = Date.now()) {
         };
     });
     const latest = repositories.flatMap(entry => entry.latest ? [entry.latest] : []);
-    const recentPushes = latest.filter(snapshot => {
-        const pushedAt = snapshot.data.pushed_at ? Date.parse(snapshot.data.pushed_at) : NaN;
-        return Number.isFinite(pushedAt) && now - pushedAt <= 7 * 86_400_000;
+    const recentCommitRepositories = latest.filter(snapshot => {
+        const committedAt = snapshot.data.latest_commit_at ? Date.parse(snapshot.data.latest_commit_at) : NaN;
+        return Number.isFinite(committedAt) && now >= committedAt && now - committedAt <= 7 * 86_400_000;
     }).length;
     const statusRaw = await kvGet(STATUS_KEY);
     let updateStatus: unknown = null;
@@ -393,31 +384,32 @@ export async function getGithubEcosystemDataset(limit = 30, now = Date.now()) {
 
     return {
         dataset: OPEN_INTELLIGENCE_DATASET,
-        schema_version: 1,
+        schema_version: 2,
         algorithm_version: OPEN_INTELLIGENCE_ALGORITHM,
         generated_at: new Date(now).toISOString(),
         source: {
-            id: 'github-rest-repository-metadata',
-            name: 'GitHub REST API - repository metadata',
-            url: 'https://docs.github.com/en/rest/repos/repos#get-a-repository',
-            attribution: 'Data retrieved from GitHub public repository metadata; each repository links to its canonical GitHub page.',
-            collection: 'Unauthenticated conditional GET, at most once per repository per UTC day; ETag used when available.',
-            data_policy: 'Only repository-level counts, dates, license identifier, branch name, archive flag, and canonical URL are retained. No source code, issue text, release text, account data, or raw API payload is stored.',
-            rate_limit: 'Unauthenticated GitHub REST API limit is 60 requests per hour per originating IP; this collector is capped at four repository requests per UTC day.',
+            id: 'github-atom-commit-feed',
+            name: 'GitHub Atom commit feeds',
+            url: 'https://github.com/gstdcoin/ai/commits/main.atom',
+            attribution: 'Commit timestamps and identifiers are derived from GitHub public Atom feeds; each repository links to its canonical GitHub page.',
+            collection: 'Unauthenticated conditional GET, at most once per repository per UTC day; ETag used when available. At most the 20 newest feed entries are observed per repository.',
+            data_policy: 'Only canonical repository URL, configured branch, commit identifiers, and commit timestamps are retained. Commit messages, authors, source code, and raw feed content are not stored.',
+            rate_limit: 'GitHub does not publish a fixed Atom feed request quota. Collection is capped at four requests per UTC day across the tracked repositories.',
         },
         research: {
-            question: 'What is the recent public repository update footprint of the GSTD ecosystem?',
+            question: 'What recent commit activity is visible in the GSTD ecosystem repositories?',
             status: latest.length === 0
                 ? 'awaiting_first_collection'
                 : repositories.some(entry => entry.snapshot_count < 2) ? 'baseline' : 'observed',
-            method: 'Count the tracked repositories with GitHub pushed_at timestamps within the last seven days; compare consecutive daily snapshots for metadata deltas.',
+            method: 'Compare the newest 20 commit identifiers in each daily Atom feed with the previous observation; count distinct newly visible commits and track the latest commit timestamp.',
             tracked_repositories: OPEN_INTELLIGENCE_REPOSITORIES.length,
             repositories_with_data: latest.length,
-            pushed_within_7_days: recentPushes,
+            repositories_with_commit_in_7_days: recentCommitRepositories,
             limitations: [
-                'GitHub pushed_at is a repository metadata timestamp, not a measure of code quality, user demand, project health, or production activity.',
+                'The feed exposes only its newest 20 entries; when observations do not overlap, the new-commit count is reported as a lower bound.',
+                'Commit activity is not a measure of code quality, user demand, project health, or production activity.',
                 'A first snapshot is only a baseline. Trend comparisons require at least two observations.',
-                'GitHub is the sole source; values have not been independently verified.',
+                'GitHub is the sole source; default branches are configured in this collector and have not been independently verified.',
             ],
         },
         update_status: updateStatus,

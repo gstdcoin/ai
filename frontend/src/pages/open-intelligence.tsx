@@ -10,13 +10,11 @@ interface Snapshot {
   source_status: 'fetched' | 'not_modified';
   data: {
     url: string;
-    license_spdx: string | null;
-    archived: boolean;
-    stars: number;
-    forks: number;
-    open_issues: number;
     default_branch: string;
-    pushed_at: string | null;
+    commits: Array<{ id: string; committed_at: string }>;
+    latest_commit_at: string | null;
+    new_commits: number | null;
+    new_commits_is_lower_bound: boolean;
   };
 }
 
@@ -25,9 +23,8 @@ interface RepositoryEntry {
   snapshot_count: number;
   latest: Snapshot | null;
   change: {
-    stars_delta: number;
-    forks_delta: number;
-    open_issues_delta: number;
+    latest_commit_changed: boolean;
+    new_commits: number | null;
   } | null;
   history: Snapshot[];
 }
@@ -47,7 +44,8 @@ interface EcosystemDataset {
     status: 'awaiting_first_collection' | 'baseline' | 'observed';
     tracked_repositories: number;
     repositories_with_data: number;
-    pushed_within_7_days: number;
+    repositories_with_commit_in_7_days: number;
+    method: string;
     limitations: string[];
   };
   update_status: {
@@ -69,12 +67,6 @@ function formatDate(value: string | null, locale: string): string {
 
 function formatNumber(value: number, locale: string): string {
   return new Intl.NumberFormat(locale).format(value);
-}
-
-function Delta({ value }: { value: number }) {
-  const color = value > 0 ? '#86efac' : value < 0 ? '#fca5a5' : '#9ca3af';
-  const sign = value > 0 ? '+' : '';
-  return <span style={{ color }}>{sign}{value}</span>;
 }
 
 export default function OpenIntelligencePage() {
@@ -133,7 +125,7 @@ export default function OpenIntelligencePage() {
                 {t('oi_title', 'Ecosystem activity')}
               </h1>
               <p style={{ color: '#9ca3af', maxWidth: 760, margin: 0 }}>
-                {t('oi_question', 'A transparent daily view of public repository metadata — not a measure of network usage or project quality.')}
+                {t('oi_question', 'A transparent daily view of public commit activity — not a measure of network usage or project quality.')}
               </p>
             </div>
             <button
@@ -163,7 +155,7 @@ export default function OpenIntelligencePage() {
             <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 24 }}>
               {[
                 [t('oi_repositories', 'Tracked repositories'), `${dataset.research.repositories_with_data}/${dataset.research.tracked_repositories}`],
-                [t('oi_recent_updates', 'Pushed in last 7 days'), number(dataset.research.pushed_within_7_days)],
+                [t('oi_recent_updates', 'Repositories with commits in last 7 days'), number(dataset.research.repositories_with_commit_in_7_days)],
                 [t('oi_research_status', 'Evidence status'), t(`oi_status_${status}`, status === 'baseline' ? 'Baseline' : status === 'observed' ? 'Observed' : 'Awaiting first collection')],
                 [t('oi_generated_at', 'Dataset generated'), date(dataset.generated_at)],
               ].map(([label, value]) => (
@@ -220,28 +212,24 @@ export default function OpenIntelligencePage() {
                   {snapshot ? (
                     <>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginTop: 18 }}>
-                        {[
-                          [t('oi_stars', 'Stars'), snapshot.data.stars, entry.change?.stars_delta],
-                          [t('oi_forks', 'Forks'), snapshot.data.forks, entry.change?.forks_delta],
-                          [t('oi_open_issues', 'Open issues'), snapshot.data.open_issues, entry.change?.open_issues_delta],
-                        ].map(([label, value, delta]) => (
-                          <div key={String(label)} style={{ padding: 12, borderRadius: 10, background: '#00000030' }}>
-                            <div style={{ color: '#9ca3af', fontSize: 11 }}>{label}</div>
-                            <div style={{ fontSize: 18, fontWeight: 700, marginTop: 4 }}>
-                              {number(Number(value))}
-                              {typeof delta === 'number' && entry.history.length > 1 && <small style={{ marginLeft: 8, fontSize: 12 }}><Delta value={delta} /></small>}
-                            </div>
-                          </div>
-                        ))}
                         <div style={{ padding: 12, borderRadius: 10, background: '#00000030' }}>
-                          <div style={{ color: '#9ca3af', fontSize: 11 }}>{t('oi_last_push', 'Last pushed')}</div>
-                          <div style={{ fontSize: 15, fontWeight: 600, marginTop: 6 }}>{date(snapshot.data.pushed_at)}</div>
+                          <div style={{ color: '#9ca3af', fontSize: 11 }}>{t('oi_new_commits', 'New commits since prior observation')}</div>
+                          <div style={{ fontSize: 18, fontWeight: 700, marginTop: 4 }}>
+                            {snapshot.data.new_commits === null ? '—' : number(snapshot.data.new_commits)}
+                            {snapshot.data.new_commits_is_lower_bound && <small style={{ marginLeft: 8, color: '#fbbf24', fontSize: 11 }}>{t('oi_lower_bound', 'at least')}</small>}
+                          </div>
+                        </div>
+                        <div style={{ padding: 12, borderRadius: 10, background: '#00000030' }}>
+                          <div style={{ color: '#9ca3af', fontSize: 11 }}>{t('oi_latest_commit', 'Latest commit')}</div>
+                          <div style={{ fontSize: 15, fontWeight: 600, marginTop: 6 }}>{date(snapshot.data.latest_commit_at)}</div>
+                        </div>
+                        <div style={{ padding: 12, borderRadius: 10, background: '#00000030' }}>
+                          <div style={{ color: '#9ca3af', fontSize: 11 }}>{t('oi_feed_entries', 'Feed entries sampled')}</div>
+                          <div style={{ fontSize: 18, fontWeight: 700, marginTop: 4 }}>{number(snapshot.data.commits.length)}</div>
                         </div>
                       </div>
                       <div style={{ marginTop: 14, color: '#9ca3af', fontSize: 12 }}>
-                        {t('oi_branch', 'Default branch')}: <code>{snapshot.data.default_branch}</code>
-                        {' · '}{t('oi_license', 'License')}: {snapshot.data.license_spdx || t('oi_unspecified', 'not specified')}
-                        {snapshot.data.archived && ` · ${t('oi_archived', 'Archived')}`}
+                        {t('oi_branch', 'Tracked branch')}: <code>{snapshot.data.default_branch}</code>
                         {' · '}{number(entry.snapshot_count)} {t('oi_observations', 'daily observations')}
                       </div>
                       {entry.history.length > 1 && (
@@ -251,7 +239,7 @@ export default function OpenIntelligencePage() {
                             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 12 }}>
                               <thead>
                                 <tr style={{ color: '#9ca3af' }}>
-                                  {[t('oi_observed_at', 'Observed'), t('oi_stars', 'Stars'), t('oi_forks', 'Forks'), t('oi_open_issues', 'Open issues')].map((label) => (
+                                  {[t('oi_observed_at', 'Observed'), t('oi_latest_commit', 'Latest commit'), t('oi_new_commits', 'New commits')].map((label) => (
                                     <th key={label} style={{ padding: '8px 10px', borderBottom: '1px solid #ffffff18' }}>{label}</th>
                                   ))}
                                 </tr>
@@ -260,9 +248,8 @@ export default function OpenIntelligencePage() {
                                 {entry.history.slice(-7).reverse().map((point) => (
                                   <tr key={point.observed_at}>
                                     <td style={{ padding: '8px 10px', borderBottom: '1px solid #ffffff0c' }}>{date(point.observed_at)}</td>
-                                    <td style={{ padding: '8px 10px', borderBottom: '1px solid #ffffff0c' }}>{number(point.data.stars)}</td>
-                                    <td style={{ padding: '8px 10px', borderBottom: '1px solid #ffffff0c' }}>{number(point.data.forks)}</td>
-                                    <td style={{ padding: '8px 10px', borderBottom: '1px solid #ffffff0c' }}>{number(point.data.open_issues)}</td>
+                                    <td style={{ padding: '8px 10px', borderBottom: '1px solid #ffffff0c' }}>{date(point.data.latest_commit_at)}</td>
+                                    <td style={{ padding: '8px 10px', borderBottom: '1px solid #ffffff0c' }}>{point.data.new_commits === null ? '—' : `${point.data.new_commits_is_lower_bound ? '≥ ' : ''}${number(point.data.new_commits)}`}</td>
                                   </tr>
                                 ))}
                               </tbody>
@@ -281,6 +268,7 @@ export default function OpenIntelligencePage() {
             <section style={{ marginTop: 28, padding: 20, border: '1px solid #ffffff12', borderRadius: 16 }}>
               <h2 style={{ marginTop: 0 }}>{t('oi_methodology', 'Source and methodology')}</h2>
               <p style={{ color: '#d1d5db' }}>{dataset.source.attribution}</p>
+              <p style={{ color: '#d1d5db' }}>{dataset.research.method}</p>
               <p style={{ color: '#9ca3af', fontSize: 13 }}>{dataset.source.collection}</p>
               <p style={{ color: '#9ca3af', fontSize: 13 }}>{dataset.source.rate_limit}</p>
               <p style={{ color: '#9ca3af', fontSize: 13 }}>{dataset.source.data_policy}</p>
@@ -288,7 +276,7 @@ export default function OpenIntelligencePage() {
                 {dataset.research.limitations.map((limitation) => <li key={limitation} style={{ marginTop: 6 }}>{limitation}</li>)}
               </ul>
               <a href={dataset.source.url} target="_blank" rel="noopener noreferrer" style={{ color: '#fbbf24' }}>
-                {t('oi_source_docs', 'GitHub API source documentation')}
+                {t('oi_source_docs', 'GitHub Atom feed')}
               </a>
             </section>
           </>
