@@ -422,7 +422,7 @@ export default function NodesPage() {
           <div style={{ marginBottom: 48 }}>
             <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 4 }}>Earning rates</h2>
             <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', marginBottom: 20 }}>
-              Rates are guaranteed minimums. Higher-spec nodes earn more from task bonuses.
+              Indicative rates, not guaranteed. Rewards are paid only for completed, accepted tasks and depend on network demand.
             </p>
 
             <div style={{

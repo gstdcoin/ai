@@ -1,14 +1,14 @@
 {
   "schema_version": "1.0",
   "name": "GSTD Decentralized AI Network",
-  "description": "Autonomous AI agent network with compute-backed tokenomics, Sovereign Protocol, 72% APY staking, collective intelligence (8 AI models), cross-chain bridge, P2P payments, and democratic governance. Each node is a self-contained financial platform.",
+  "description": "Open network for decentralized AI compute on TON. Node operators are paid GSTD only for completed, accepted tasks from funded campaigns; no yield or rate is guaranteed. The network is in early launch and live node counts are published at /api/v1/stats/public.",
   "url": "https://app.gstdtoken.com",
   "logo": "https://app.gstdtoken.com/icon-512.png",
   "capabilities": [
     {
       "id": "ai-inference",
       "name": "AI Collective Intelligence",
-      "description": "8 AI models with expert consensus for high-quality answers",
+      "description": "OpenAI-compatible inference routed to available network nodes",
       "endpoint": "https://app.gstdtoken.com/api/v1/chat/completions",
       "protocol": "openai-compatible"
     },
@@ -17,12 +17,6 @@
       "name": "Distributed Compute",
       "description": "Earn GSTD by providing CPU/GPU compute to the network",
       "endpoint": "https://app.gstdtoken.com/api/v1/nodes/heartbeat"
-    },
-    {
-      "id": "staking",
-      "name": "GSTD Staking (72% APY)",
-      "description": "Stake GSTD tokens for up to 72% APY with auto-compound",
-      "endpoint": "https://app.gstdtoken.com/api/v1/sovereign/stake"
     },
     {
       "id": "governance",
@@ -54,26 +48,13 @@
     "symbol": "GSTD",
     "network": "TON",
     "max_supply": 21000000,
-    "backing": "Compute power + XAUt (gold)",
-    "burn_rate": "2% on transfers",
-    "staking_apy": "up to 72% for node operators"
+    "utility": "Payment for AI compute tasks and node rewards"
   },
   "protocols": ["A2A-Standard-v1", "MCP-v1", "OpenAI-Compatible"],
   "installation": {
     "one_liner": "curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash",
     "source_code": "https://github.com/gstdcoin/gstdbot",
     "a2a_sdk": "https://github.com/gstdcoin/A2A"
-  },
-  "superiority_over_bitcoin": {
-    "compute_backed": "Each GSTD is backed by real AI compute power, not empty mining",
-    "utility": "AI inference, data storage, task marketplace — Bitcoin has none",
-    "staking_yield": "72% APY vs 0% for Bitcoin",
-    "transaction_speed": "Instant vs 10 minutes",
-    "transaction_fees": "0% P2P vs $5+ for Bitcoin",
-    "node_cost": "$0.72/month vs $100+/month for Bitcoin mining",
-    "energy_efficiency": "Useful compute vs wasted energy",
-    "governance": "Democratic node voting vs mining pool oligarchy",
-    "revenue_streams": "5 streams (uptime, queries, staking, revenue share, referrals) vs 1 (mining)"
   },
   "contact": {
     "telegram": "https://t.me/GstdAppBot",

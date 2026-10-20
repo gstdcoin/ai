@@ -696,7 +696,7 @@ export default function ChatPage() {
         <div className="h-screen w-screen max-w-full flex bg-[#030014] text-white overflow-hidden">
             <Head>
                 <title>GSTD Chat — Sovereign AI · Powered by Swarm Network</title>
-                <meta name="description" content="GSTD Collective Intelligence — 8 AI models reach consensus. Powered by 50+ nodes with wallet auth, auto-SSL, self-diagnostics. Free single expert or paid collective tiers." />
+                <meta name="description" content="GSTD Collective Intelligence — AI answers routed to GSTD network nodes. Free single expert or paid collective tiers; availability depends on online nodes." />
             </Head>
 
             {/* Mobile overlay */}
