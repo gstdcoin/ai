@@ -47,12 +47,24 @@ repositories. A second daily observation is still needed before reporting trends
   2 moderate CSS parser advisories and no high/critical issues. The suggested
   clean fixes require major Tailwind/ESLint/parser changes; those are not being
   forced into this deployment.
+- Release: commit
+  [`b348539`](https://github.com/gstdcoin/ai/commit/b3485397de69f2a78b1e8e390ef98b6c71c47c32)
+  was pushed to `main`. GitHub Actions
+  [run #673](https://github.com/gstdcoin/ai/actions/runs/39420560078) passed all
+  jobs, including the Linux Cloudflare build, preview health/page/API checks,
+  production deploy, and production health verification.
+- Post-deploy smoke checks on `app.gstdtoken.com` returned HTTP 200 for health,
+  TMA, Open Intelligence page, and its public API. CI also collected and
+  verified a four-repository Open Intelligence baseline. The apex
+  `gstdtoken.com` still serves its home page, but `/api/v1/health` returns 404;
+  the existing deployment workflow targets `app.gstdtoken.com`. The apex
+  routing was not changed to avoid replacing the existing site.
 - Read-only production network check: 0 nodes online, 10 registered nodes
   offline, and 0 tasks. The network therefore has no active task workload.
 
 ## Current work and release boundary
 
-The local `ai` changes include constant-time secret comparisons,
+The `ai` changes now deployed include constant-time secret comparisons,
 node-capabilities registration compatibility, and task-route authorization /
 result validation. The browser worker also filters polling to supported
 `sha256_verify` payloads, leaves unsupported work queued, retries registration
@@ -60,8 +72,8 @@ after failure, prevents overlapping polls, and refreshes its 10-minute node
 lease with a signed heartbeat every 3 minutes. Tests, TypeScript, lint, and
 Next.js build were rerun successfully after the dependency updates. Local
 OpenNext Cloudflare packaging fails on Windows with `EPERM` creating a
-dependency symlink; Linux CI is the Cloudflare build gate. Production changes
-remain gated by successful Cloudflare CI preview checks.
+dependency symlink; the Linux CI build and preview/deploy gates passed for the
+published commit.
 
 ## Remaining blockers and next steps
 
