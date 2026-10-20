@@ -5,13 +5,13 @@
  * Every figure comes from the platform registry (/api/v1/network/stats); nothing is simulated.
  */
 import { useEffect, useState } from 'react';
-import { useTranslation } from 'next-i18next';
+import { useTmaTranslation } from '../../lib/tmaI18n';
 import { API_URL } from '../../lib/config';
 
 const REFRESH_MS = 30_000;
 
 export default function LeviathanTMATicker() {
-  const { t } = useTranslation('common');
+  const { t } = useTmaTranslation();
   const [items, setItems] = useState<string[]>([]);
 
   useEffect(() => {

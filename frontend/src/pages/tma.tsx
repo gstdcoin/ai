@@ -7,7 +7,7 @@ import { getCommonStaticProps } from '../lib/i18n-static-props';
  * Unified Dashboard | Neural Node Logic | Leviathan Stream | Escrow 2.0 | RU/EN Localization
  */
 import React, { useEffect, useState, useRef } from 'react';
-import { useTranslation } from 'next-i18next';
+import { useTmaTranslation } from '../lib/tmaI18n';
 import { isTelegramWebApp, getTelegramWebApp } from '../lib/telegram';
 import { API_URL } from '../lib/config';
 import { useTMALocaleSync } from '../hooks/useTMALocale';
@@ -31,7 +31,7 @@ interface TMAStats {
 type TabId = 'overview' | 'worker' | 'agents' | 'trade';
 
 export default function TMAPage() {
-  const { t } = useTranslation('common');
+  const { t } = useTmaTranslation();
   useTMALocaleSync();
   const { address } = useWalletStore();
   const [stats, setStats] = useState<TMAStats | null>(null);
@@ -95,7 +95,7 @@ export default function TMAPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#030014] text-white pb-24">
+    <div className="min-h-screen bg-[#030014] text-white pb-24 overflow-x-hidden w-full max-w-full">
       {/* Leviathan Stream Bridge — Omnipresent on ALL screens */}
       <LeviathanTMATicker />
 
@@ -109,18 +109,18 @@ export default function TMAPage() {
         </header>
 
         {/* Tab Nav */}
-        <div className="flex gap-2 mb-4 overflow-x-auto scrollbar-hide pb-2 snap-x">
+        <div className="grid grid-cols-2 gap-2 mb-4">
           {tabs.map(({ id, label, icon }) => (
             <button
               key={id}
               onClick={() => setTab(id)}
-              className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-bold transition-colors whitespace-nowrap snap-start ${tab === id
+              className={`flex min-w-0 items-center justify-center gap-2 py-2.5 px-2 rounded-xl text-xs sm:text-sm font-bold transition-colors ${tab === id
                 ? 'bg-violet-500/30 border border-violet-500/50 text-violet-300'
                 : 'bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10'
                 }`}
             >
               {icon}
-              {label}
+              <span className="truncate">{label}</span>
             </button>
           ))}
         </div>
@@ -252,8 +252,8 @@ export default function TMAPage() {
 
         {tab === 'worker' && (
           <div className="space-y-4">
-            <MobileNodePanel address={address ?? undefined} />
             <BrowserWorkerPanel address={address ?? undefined} />
+            <MobileNodePanel address={address ?? undefined} />
           </div>
         )}
 
@@ -310,7 +310,7 @@ function getDeviceResources() {
 }
 
 function MobileNodePanel({ address }: { address: string | undefined }) {
-  const { t } = useTranslation('common');
+  const { t } = useTmaTranslation();
   const [isRunning, setIsRunning] = useState(false);
   const [tier, setTier] = useState<string>('spark');
   const [ratePerHour, setRatePerHour] = useState(0);
@@ -439,8 +439,8 @@ function MobileNodePanel({ address }: { address: string | undefined }) {
         </div>
 
         <div className="grid grid-cols-3 gap-2 text-center mb-3">
-          <div className="rounded-lg bg-black/20 p-2">
-            <div className="text-[9px] text-gray-500 uppercase font-bold">{t('earned', 'Earned')}</div>
+          <div className="min-w-0 rounded-lg bg-black/20 p-2">
+            <div className="truncate text-[9px] text-gray-500 uppercase font-bold">{t('earned', 'Earned')}</div>
             <div className="text-sm font-black text-amber-400 tabular-nums">{liveGstd.toFixed(4)}</div>
           </div>
           <div className="rounded-lg bg-black/20 p-2">
@@ -482,7 +482,7 @@ function MobileNodePanel({ address }: { address: string | undefined }) {
         <button
           onClick={claimRewards}
           disabled={loading || liveGstd < 0.01}
-          className="flex-1 py-3 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold text-sm disabled:opacity-50"
+          className={`flex-1 py-3 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold text-sm disabled:opacity-50 ${ratePerHour > 0 || liveGstd > 0 ? '' : 'hidden'}`}
         >
           {loading ? '...' : `💰 ${t('claim', 'Claim')}`}
         </button>
@@ -500,11 +500,10 @@ function MobileNodePanel({ address }: { address: string | undefined }) {
           {t('tier_rewards', 'Tier Rewards')}
         </div>
         <div className="space-y-1">
-          {[['⚡ Spark', 'per task', 'Any device'], ['🔥 Flame', 'per task', 'Pi 4 / basic laptop'], ['⛈️ Storm', 'per task', '16GB RAM server'], ['🏔️ Titan', 'per task', '32GB RAM + GPU'], ['👑 Sovereign', 'per task', 'High-end server']].map(([label, rate, req]) => (
-            <div key={label} className="flex justify-between items-center text-xs">
+          {[['⚡ Spark'], ['🔥 Flame'], ['⛈️ Storm'], ['🏔️ Titan'], ['👑 Sovereign']].map(([label]) => (
+            <div key={label} className="flex justify-between items-center gap-2 text-xs">
               <span className="text-gray-300 font-bold">{label}</span>
-              <span className="text-amber-400 font-mono">{rate}</span>
-              <span className="text-gray-500 text-[10px]">{req}</span>
+              <span className="text-amber-400 font-mono">{t('per_task', 'per task')}</span>
             </div>
           ))}
         </div>

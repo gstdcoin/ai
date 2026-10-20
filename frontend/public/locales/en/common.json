@@ -1504,5 +1504,21 @@
   "updated_live": "Updated live",
   "utility_token": "Pure Utility",
   "validators": "Validators",
-  "vault_addresses": "Vault addresses"
+  "vault_addresses": "Vault addresses",
+  "bw_title": "Compute worker",
+  "bw_desc": "Verify results with your phone while this screen is open. Rewards are paid only for completed, accepted tasks from funded campaigns; there is no guaranteed rate.",
+  "bw_start": "Start worker",
+  "bw_stop": "Stop worker",
+  "bw_done": "Tasks completed this session",
+  "bw_error": "Could not reach the network, retrying…",
+  "bw_need_wallet": "Connect a wallet first.",
+  "bw_unsupported": "This browser does not support the required cryptography (Ed25519).",
+  "swap_open": "Swap on",
+  "swap_note": "DEXes do not allow embedding, so the swap opens in your browser. Always verify the GSTD contract address.",
+  "ticker_nodes_online": "Nodes online",
+  "ticker_tasks_done": "Tasks completed",
+  "ticker_queue": "Queue",
+  "ticker_paid": "GSTD paid",
+  "ticker_unavailable": "Network stats temporarily unavailable",
+  "per_task": "per task"
 }

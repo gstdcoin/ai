@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useTranslation } from 'next-i18next';
+import { useTmaTranslation } from '../../lib/tmaI18n';
 import {
     heartbeatWorker, isBrowserWorkerSupported, loadOrCreateIdentity, registerWorker, runOnce, type WorkerIdentity,
 } from '../../lib/browserWorker';
@@ -11,7 +11,7 @@ const HEARTBEAT_MS = 180_000;
 
 /** Lets a phone run verification tasks in the browser. Rewards come only from funded, accepted tasks. */
 export default function BrowserWorkerPanel({ address }: { address?: string }) {
-    const { t } = useTranslation('common');
+    const { t } = useTmaTranslation();
     const [active, setActive] = useState(false);
     const [done, setDone] = useState(0);
     const [msg, setMsg] = useState('');

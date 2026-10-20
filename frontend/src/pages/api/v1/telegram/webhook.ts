@@ -129,7 +129,7 @@ async function viewEarn(c: Ctx): Promise<View> {
     const cmd = `curl -fsSL ${INSTALL_URL} | GSTD_WALLET_ADDRESS=${wallet || '<YOUR_TON_WALLET>'} bash`;
     return {
         text: t(c.lang, 'earn', { step1, cmd: escHtml(cmd) }),
-        kb: [[{ text: t(c.lang, 'btn_node'), callback_data: 'nodes' }, { text: t(c.lang, 'btn_wallet'), callback_data: 'wallet' }], ...backKb(c.lang)],
+        kb: [[{ text: t(c.lang, 'btn_app'), web_app: { url: TMA_URL } }], [{ text: t(c.lang, 'btn_node'), callback_data: 'nodes' }, { text: t(c.lang, 'btn_wallet'), callback_data: 'wallet' }], ...backKb(c.lang)],
     };
 }
 
