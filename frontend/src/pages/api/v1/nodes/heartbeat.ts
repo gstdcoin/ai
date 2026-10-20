@@ -13,6 +13,7 @@ import { nodeKeyRedisKey, requireNodeSignature } from '../../../../lib/nodeAuth'
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvSet, kvIncr, kvKeys, kvDel } from '../../../../lib/kv';
 import { rateLimit, getClientIp } from '../../../../lib/ratelimit';
+import { nodeUpdateInfo } from '../../../../lib/nodeUpdate';
 import type { NodeRecord } from './register';
 
 const NODE_TTL = 600;
@@ -140,12 +141,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             kvSet('stats:nodes_online_cached', String(peers_online), 300).catch(() => {});
         }
 
+        const update = await nodeUpdateInfo(body.node_version, 1500);
+
         return res.status(200).json({
             ok:           true,
             peers_online,
             active_nodes: peers_online,
             reward:       0,
             commands:     [],
+            update,
             pull_queue,
             timestamp:    Date.now(),
         });
