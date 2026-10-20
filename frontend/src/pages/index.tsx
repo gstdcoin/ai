@@ -278,7 +278,7 @@ export default function Home() {
                   </p>
                   <div className="grid grid-cols-3 gap-3 mb-6">
                     {[
-                      { label: t('ft_models', '8 Models'), sub: 'Llama · Qwen · Phi' },
+                      { label: t('ft_models', 'Open Models'), sub: 'Llama · Qwen · Phi' },
                       { label: t('ft_domains', '6 Domains'), sub: 'Code · Medical · Finance' },
                       { label: t('ft_nodes', 'Distributed'), sub: t('ft_nodes_sub', 'Federated QLoRA') },
                     ].map((item) => (
