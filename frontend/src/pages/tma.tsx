@@ -103,7 +103,7 @@ export default function TMAPage() {
         {/* Header */}
         <header className="text-center py-3">
           <h1 className="text-lg font-black tracking-tight">
-            <span className="bg-gradient-to-r from-amber-400 to-amber-600 bg-clip-text text-transparent">GSTD</span>
+            <span className="bg-linear-to-r from-amber-400 to-amber-600 bg-clip-text text-transparent">GSTD</span>
             {' '}{t('platform', 'Platform')}
           </h1>
         </header>
@@ -171,7 +171,7 @@ export default function TMAPage() {
             />
 
             {!address && (
-              <div className="rounded-xl bg-gradient-to-br from-violet-500/10 to-amber-500/10 border border-white/10 p-5 mt-4">
+              <div className="rounded-xl bg-linear-to-br from-violet-500/10 to-amber-500/10 border border-white/10 p-5 mt-4">
                 <h3 className="text-lg font-black text-white mb-2">{t('welcome_guide', 'Welcome to GSTD Sovereign Network')}</h3>
                 <p className="text-xs text-gray-400 mb-5 leading-relaxed">
                   {t('welcome_desc', 'The decentralized AI ecosystem that pays you. Start your journey in 3 simple steps:')}
@@ -220,7 +220,7 @@ export default function TMAPage() {
 
         {tab === 'trade' && (
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="rounded-xl bg-gradient-to-br from-violet-600/10 to-blue-600/10 border border-violet-500/20 p-4 sm:p-6 text-center">
+            <div className="rounded-xl bg-linear-to-br from-violet-600/10 to-blue-600/10 border border-violet-500/20 p-4 sm:p-6 text-center">
               <h3 className="text-xl font-black text-white mb-2">{t('swap_title', 'GSTD Native Swap')}</h3>
               <p className="text-xs text-violet-300/70 mb-4 max-w-sm mx-auto">
                 {t('swap_desc', 'Exchange TON for GSTD securely via STON.fi decentralised liqudity pools. Powered directly inside Telegram.')}

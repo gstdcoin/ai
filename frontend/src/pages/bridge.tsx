@@ -137,7 +137,7 @@ export default function BridgePage() {
                             { label: t('status', 'Status'), value: 'Beta', icon: <Zap size={14} /> },
                             { label: t('network', 'Network'), value: 'TON', icon: <Clock size={14} /> },
                         ].map(s => (
-                            <div key={s.label} className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-3 text-center">
+                            <div key={s.label} className="bg-white/3 border border-white/6 rounded-xl p-3 text-center">
                                 <div className="flex items-center justify-center gap-1 text-gray-500 text-xs mb-1">
                                     {s.icon} {s.label}
                                 </div>
@@ -148,7 +148,7 @@ export default function BridgePage() {
                 )}
 
                 {/* Bridge card */}
-                <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-5 space-y-5">
+                <div className="bg-white/3 border border-white/6 rounded-2xl p-5 space-y-5">
 
                     {/* Chain selector */}
                     <div className="flex items-center gap-3">
@@ -163,7 +163,7 @@ export default function BridgePage() {
                                     setSourceChain(v);
                                     if (v === targetChain) setTargetChain(chains.find(c => c !== v)!);
                                 }}
-                                className="w-full bg-white/[0.05] border border-white/[0.10] rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-violet-500"
+                                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-hidden focus:border-violet-500"
                             >
                                 {chains.map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
@@ -171,7 +171,7 @@ export default function BridgePage() {
 
                         <button
                             onClick={swapChains}
-                            className="mt-5 p-2.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.10] border border-white/[0.08] text-gray-400 hover:text-white transition-all"
+                            className="mt-5 p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/8 text-gray-400 hover:text-white transition-all"
                             title="Swap"
                         >
                             <ArrowRight size={16} />
@@ -188,7 +188,7 @@ export default function BridgePage() {
                                     setTargetChain(v);
                                     if (v === sourceChain) setSourceChain(chains.find(c => c !== v)!);
                                 }}
-                                className="w-full bg-white/[0.05] border border-white/[0.10] rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-violet-500"
+                                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-hidden focus:border-violet-500"
                             >
                                 {chains.filter(c => c !== sourceChain).map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
@@ -205,12 +205,12 @@ export default function BridgePage() {
                             value={recipient}
                             onChange={e => setRecipient(e.target.value)}
                             placeholder={`Your ${targetChain} wallet address`}
-                            className="w-full bg-white/[0.05] border border-white/[0.10] rounded-xl px-3 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-violet-500"
+                            className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-hidden focus:border-violet-500"
                         />
                     </div>
 
                     {/* Vault + instructions */}
-                    <div className={`rounded-xl p-4 bg-gradient-to-br ${vault.color} border ${vault.border} space-y-3`}>
+                    <div className={`rounded-xl p-4 bg-linear-to-br ${vault.color} border ${vault.border} space-y-3`}>
                         <div className="flex items-center gap-2">
                             <div className={`w-2 h-2 rounded-full ${vault.dot}`} />
                             <span className="text-xs text-gray-300 font-medium">
@@ -258,7 +258,7 @@ export default function BridgePage() {
                 </div>
 
                 {/* How it works */}
-                <div className="bg-white/[0.02] border border-white/[0.05] rounded-2xl p-5">
+                <div className="bg-white/2 border border-white/5 rounded-2xl p-5">
                     <h2 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
                         <Globe size={15} className="text-violet-400" />
                         {t('how_it_works', 'How it works')}
@@ -284,7 +284,7 @@ export default function BridgePage() {
                 </div>
 
                 {/* All vaults reference */}
-                <div className="bg-white/[0.02] border border-white/[0.05] rounded-2xl p-5">
+                <div className="bg-white/2 border border-white/5 rounded-2xl p-5">
                     <h2 className="text-sm font-semibold text-white mb-4">
                         {t('vault_addresses', 'Vault addresses')}
                     </h2>
@@ -311,7 +311,7 @@ export default function BridgePage() {
                 </div>
 
                 {/* Run a validator */}
-                <div className="bg-gradient-to-br from-violet-500/10 to-cyan-500/10 border border-violet-500/20 rounded-2xl p-5">
+                <div className="bg-linear-to-br from-violet-500/10 to-cyan-500/10 border border-violet-500/20 rounded-2xl p-5">
                     <h2 className="text-sm font-semibold text-white mb-2">
                         {t('run_validator', 'Run a bridge validator')}
                     </h2>

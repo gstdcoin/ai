@@ -55,7 +55,7 @@ export const VoiceBanner: React.FC = () => {
 
     return (
         <div className="relative group animate-in slide-in-from-top-4 duration-500 mb-8">
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-violet-600 to-cyan-500 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
+            <div className="absolute -inset-0.5 bg-linear-to-r from-violet-600 to-cyan-500 rounded-2xl blur-sm opacity-20 group-hover:opacity-40 transition duration-1000"></div>
             <div className="relative px-6 py-4 bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl flex items-center gap-4">
                 <div className="p-2 bg-violet-500/10 rounded-xl border border-violet-500/20 text-violet-400">
                     <Megaphone className="w-5 h-5 animate-bounce" />

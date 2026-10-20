@@ -115,14 +115,14 @@ export const WalletBalanceWidget: React.FC = () => {
 
     if (loading) {
         return (
-            <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-6 flex items-center justify-center min-h-[200px]">
+            <div className="bg-linear-to-br from-gray-900 to-gray-800 rounded-2xl p-6 flex items-center justify-center min-h-[200px]">
                 <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
             </div>
         );
     }
 
     return (
-        <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-6 border border-gray-700/50">
+        <div className="bg-linear-to-br from-gray-900 to-gray-800 rounded-2xl p-6 border border-gray-700/50">
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center space-x-3">
                     <div className="w-10 h-10 bg-blue-500/20 rounded-xl flex items-center justify-center">
@@ -161,7 +161,7 @@ export const WalletBalanceWidget: React.FC = () => {
 
             <div className="space-y-4">
                 {/* Swarm GSTD Balance (Zero-Gas) */}
-                <div className="bg-gradient-to-r from-emerald-500/10 to-teal-500/10 rounded-xl p-4 border border-emerald-500/40 relative overflow-hidden">
+                <div className="bg-linear-to-r from-emerald-500/10 to-teal-500/10 rounded-xl p-4 border border-emerald-500/40 relative overflow-hidden">
                     <div className="absolute top-0 right-0 p-2 opacity-10">
                         <Wallet className="w-16 h-16 text-emerald-500" />
                     </div>
@@ -183,7 +183,7 @@ export const WalletBalanceWidget: React.FC = () => {
                 </div>
 
                 {/* TON GSTD Balance */}
-                <div className="bg-gradient-to-r from-blue-500/5 to-purple-500/5 rounded-xl p-4 border border-blue-500/20">
+                <div className="bg-linear-to-r from-blue-500/5 to-purple-500/5 rounded-xl p-4 border border-blue-500/20">
                     <div className="flex items-center justify-between">
                         <span className="text-sm text-gray-400">Wallet GSTD</span>
                         <span className="text-[10px] px-2 py-0.5 bg-blue-500/20 text-blue-300 rounded-full font-semibold">
@@ -354,7 +354,7 @@ export const TransactionHistory: React.FC = () => {
                 <select
                     value={filter}
                     onChange={(e) => setFilter(e.target.value)}
-                    className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="bg-gray-800 text-white text-sm rounded-lg px-3 py-2 border border-gray-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                 >
                     <option value="all">{t('wallet.allTransactions')}</option>
                     <option value="worker_payout">{t('wallet.payouts')}</option>
@@ -491,7 +491,7 @@ export const WorkerEarnings: React.FC = () => {
     }
 
     return (
-        <div className="bg-gradient-to-br from-green-900/20 to-emerald-900/20 rounded-2xl p-6 border border-green-500/30">
+        <div className="bg-linear-to-br from-green-900/20 to-emerald-900/20 rounded-2xl p-6 border border-green-500/30">
             <div className="flex items-center space-x-3 mb-6">
                 <div className="w-10 h-10 bg-green-500/20 rounded-xl flex items-center justify-center">
                     <TrendingUp className="w-5 h-5 text-green-400" />

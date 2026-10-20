@@ -36,7 +36,7 @@ export default function LiveHashrateChart({ hashrate, tasksPerHour, activeWorker
       </div>
       <div className="h-2 rounded-full bg-white/5 overflow-hidden">
         <div
-          className="h-full bg-gradient-to-r from-violet-500 to-violet-400 rounded-full transition-all duration-500"
+          className="h-full bg-linear-to-r from-violet-500 to-violet-400 rounded-full transition-all duration-500"
           style={{
             width: `${fillPct}%`,
             boxShadow: pulse > 10 ? '0 0 12px rgba(139, 92, 246, 0.6)' : 'none',

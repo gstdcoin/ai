@@ -91,7 +91,7 @@ export default function ShareSuccessCard() {
       {/* Hidden card for export (styled for Stories: 9:16) */}
       <div
         ref={cardRef}
-        className="absolute -left-[9999px] w-[360px] h-[640px] overflow-hidden rounded-2xl"
+        className="absolute left-[-9999px] w-[360px] h-[640px] overflow-hidden rounded-2xl"
         style={{
           background: 'linear-gradient(135deg, #030014 0%, #1a0a2e 50%, #0d0d1a 100%)',
           border: '2px solid rgba(251, 191, 36, 0.3)',

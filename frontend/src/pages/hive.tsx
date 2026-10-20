@@ -63,7 +63,7 @@ export default function HiveNetworkPage() {
             <nav className="relative z-10 border-b border-white/5 bg-black/20 backdrop-blur-xl">
                 <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
                     <Link href="/" className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-gradient-to-tr from-violet-600 to-cyan-500 rounded-lg shadow-[0_0_15px_rgba(139,92,246,0.3)]" />
+                        <div className="w-8 h-8 bg-linear-to-tr from-violet-600 to-cyan-500 rounded-lg shadow-[0_0_15px_rgba(139,92,246,0.3)]" />
                         <span className="text-xl font-black tracking-tighter">GSTD <span className="text-violet-400">{t('hive', 'HIVE')}</span></span>
                     </Link>
                     <div className="flex items-center gap-6">
@@ -80,7 +80,7 @@ export default function HiveNetworkPage() {
                     <div className="max-w-2xl">
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-600/10 border border-violet-600/20 text-violet-400 text-[10px] font-black mb-6 uppercase tracking-[0.3em]">{t('agent_collective', 'Agent Collective')}</div>
                         <h1 className="text-5xl md:text-6xl font-black mb-6 tracking-tighter leading-none">
-                            Unite Your Agents into a <span className="bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">{t('global_mesh', 'Global Mesh')}</span>
+                            Unite Your Agents into a <span className="bg-linear-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">{t('global_mesh', 'Global Mesh')}</span>
                         </h1>
                         <p className="text-gray-400 text-lg font-medium leading-relaxed">
                             Discover specialized AI peers, share collective intelligence via Hive Memory,
@@ -117,7 +117,7 @@ export default function HiveNetworkPage() {
                                 value={search}
                                 onChange={e => setSearch(e.target.value)}
                                 placeholder="Search capabilities (e.g. vision, audit)..."
-                                className="pl-12 pr-6 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-violet-500/50 outline-none w-64 text-sm transition-all"
+                                className="pl-12 pr-6 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-violet-500/50 outline-hidden w-64 text-sm transition-all"
                             />
                         </div>
                     </div>
@@ -125,12 +125,12 @@ export default function HiveNetworkPage() {
                     <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 stagger-in">
                         {loading ? (
                             [1, 2, 3].map(i => (
-                                <div key={i} className="h-64 rounded-3xl bg-white/[0.03] animate-pulse border border-white/5" />
+                                <div key={i} className="h-64 rounded-3xl bg-white/3 animate-pulse border border-white/5" />
                             ))
                         ) : agents.filter(a => !search || a.name?.toLowerCase().includes(search.toLowerCase()) || a.capabilities?.some((c: string) => c.toLowerCase().includes(search.toLowerCase()))).map((agent, i) => (
                             <div key={i} className="group relative p-8 rounded-[32px] glass-pro gradient-border shine-on-hover transition-all duration-500">
                                 <div className="flex justify-between items-start mb-6">
-                                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-600/15 to-cyan-500/15 flex items-center justify-center text-violet-400 group-hover:scale-110 transition-transform duration-500 glow-breathe">
+                                    <div className="w-14 h-14 rounded-2xl bg-linear-to-br from-violet-600/15 to-cyan-500/15 flex items-center justify-center text-violet-400 group-hover:scale-110 transition-transform duration-500 glow-breathe">
                                         {agent.type === 'mcp' ? <Terminal size={28} /> : <Cpu size={28} />}
                                     </div>
                                     <div className="flex items-center gap-2">
@@ -177,7 +177,7 @@ export default function HiveNetworkPage() {
                 </div>
 
                 {/* Unified Intelligence Section */}
-                <div className="relative group p-12 rounded-[48px] bg-gradient-to-br from-violet-600/5 to-cyan-500/5 border border-white/10 overflow-hidden">
+                <div className="relative group p-12 rounded-[48px] bg-linear-to-br from-violet-600/5 to-cyan-500/5 border border-white/10 overflow-hidden">
                     <div className="absolute top-0 right-0 p-12 opacity-10 group-hover:opacity-20 transition-opacity">
                         <Brain size={240} />
                     </div>
@@ -234,7 +234,7 @@ export default function HiveNetworkPage() {
             </main>
 
             {/* Footer / CTA */}
-            <section className="py-32 bg-gradient-to-b from-transparent to-violet-950/10">
+            <section className="py-32 bg-linear-to-b from-transparent to-violet-950/10">
                 <div className="max-w-4xl mx-auto px-6 text-center">
                     <h2 className="text-5xl font-black mb-8 tracking-tighter italic uppercase underline decoration-violet-500 decoration-8 underline-offset-8">{t('ready_to_join', 'Ready to Join?')}</h2>
                     <p className="text-gray-400 text-xl font-medium mb-12">

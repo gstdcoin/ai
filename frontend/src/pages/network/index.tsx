@@ -101,7 +101,7 @@ export default function NetworkMapPage() {
             <div className="absolute top-0 left-0 right-0 z-20 p-6 pointer-events-none">
                 <div className="max-w-7xl mx-auto flex justify-between items-start">
                     <div className="pointer-events-auto bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl shadow-cyan-900/10">
-                        <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-500 mb-1">{t('gstd_global_grid', 'GSTD Global Grid')}</h1>
+                        <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-linear-to-r from-cyan-400 to-blue-500 mb-1">{t('gstd_global_grid', 'GSTD Global Grid')}</h1>
                         <p className="text-sm text-gray-400 uppercase tracking-widest mb-4 font-mono">{t('live_network_topology', 'Live Network Topology')}</p>
 
                         <div className="grid grid-cols-3 gap-6">

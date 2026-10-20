@@ -183,7 +183,7 @@ export default function SmartTaskWidget({ onTaskCreated }: SmartTaskWidgetProps)
             <div className="relative z-10">
                 <div className="flex items-center justify-between mb-6">
                     <h3 className="text-xl font-bold text-white flex items-center gap-3">
-                        <div className="p-2 bg-gradient-to-r from-violet-600 to-fuchsia-600 rounded-lg shadow-lg">
+                        <div className="p-2 bg-linear-to-r from-violet-600 to-fuchsia-600 rounded-lg shadow-lg">
                             <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
                             </svg>
@@ -200,7 +200,7 @@ export default function SmartTaskWidget({ onTaskCreated }: SmartTaskWidgetProps)
                                 onChange={(e) => setPrompt(e.target.value)}
                                 placeholder={t('prompt_placeholder', 'Describe your task (e.g. \'I need to train a LoRA model on 50 images\')...') || "Describe your task (e.g. 'I need to train a LoRA model on 50 images')..."}
                                 disabled={isAnalyzing}
-                                className="w-full h-32 bg-black/40 border border-white/10 rounded-xl p-4 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent resize-none font-mono text-sm transition-all group-hover:bg-black/50"
+                                className="w-full h-32 bg-black/40 border border-white/10 rounded-xl p-4 text-white placeholder-gray-500 focus:outline-hidden focus:ring-2 focus:ring-violet-500 focus:border-transparent resize-none font-mono text-sm transition-all group-hover:bg-black/50"
                             />
                             <div className="absolute bottom-4 right-4 text-xs text-gray-500 pointer-events-none">{t('ai_powered', 'AI Powered')}</div>
                         </div>
@@ -208,7 +208,7 @@ export default function SmartTaskWidget({ onTaskCreated }: SmartTaskWidgetProps)
                             <button
                                 onClick={handleAnalyze}
                                 disabled={isAnalyzing || !prompt.trim()}
-                                className={`px-6 py-2.5 rounded-xl font-bold text-white transition-all flex items-center gap-2 ${isAnalyzing ? 'bg-gray-700 cursor-not-allowed opacity-70' : 'bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:shadow-[0_0_20px_rgba(139,92,246,0.3)] hover:-translate-y-0.5'
+                                className={`px-6 py-2.5 rounded-xl font-bold text-white transition-all flex items-center gap-2 ${isAnalyzing ? 'bg-gray-700 cursor-not-allowed opacity-70' : 'bg-linear-to-r from-violet-600 to-fuchsia-600 hover:shadow-[0_0_20px_rgba(139,92,246,0.3)] hover:-translate-y-0.5'
                                     }`}
                             >
                                 {isAnalyzing ? (
@@ -274,7 +274,7 @@ export default function SmartTaskWidget({ onTaskCreated }: SmartTaskWidgetProps)
                                 <button
                                     onClick={handleCreateAndPay}
                                     disabled={!address || !tonConnectUI?.connected}
-                                    className="flex-1 px-4 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-bold hover:shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                    className="flex-1 px-4 py-3 rounded-xl bg-linear-to-r from-emerald-600 to-teal-600 text-white font-bold hover:shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                                 >
                                     {!address || !tonConnectUI?.connected ? (
                                         <>

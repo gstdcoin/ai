@@ -86,9 +86,9 @@ export default function About() {
       {/* Animated Cosmic Background */}
       <div className="fixed inset-0 z-0 pointer-events-none">
         {/* Gradient Orbs */}
-        <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-gradient-to-br from-violet-600/20 to-transparent rounded-full blur-[100px] animate-pulse" />
-        <div className="absolute bottom-[-20%] right-[-10%] w-[600px] h-[600px] bg-gradient-to-tl from-cyan-500/15 to-transparent rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-to-r from-blue-600/5 via-purple-600/5 to-pink-600/5 rounded-full blur-[120px]" />
+        <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-linear-to-br from-violet-600/20 to-transparent rounded-full blur-[100px] animate-pulse" />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[600px] h-[600px] bg-linear-to-tl from-cyan-500/15 to-transparent rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-linear-to-r from-blue-600/5 via-purple-600/5 to-pink-600/5 rounded-full blur-[120px]" />
 
         {/* Grid Overlay */}
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0wIDBoNjB2NjBIMHoiLz48cGF0aCBkPSJNMzAgMzBtLTEgMGExIDEgMCAxIDAgMiAwYTEgMSAwIDEgMCAtMiAwIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDMpIi8+PC9nPjwvc3ZnPg==')] opacity-40" />
@@ -119,10 +119,10 @@ export default function About() {
             <div className="flex items-center gap-3">
               <div className="relative">
                 <Image src="/logo.png" alt="GSTD" width={40} height={40} className="rounded-full" />
-                <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-violet-500 blur-lg opacity-50" />
+                <div className="absolute inset-0 bg-linear-to-r from-cyan-500 to-violet-500 blur-lg opacity-50" />
               </div>
               <span className="text-xl font-bold tracking-tight">
-                <span className="bg-gradient-to-r from-cyan-400 via-violet-400 to-fuchsia-400 bg-clip-text text-transparent">GSTD</span>
+                <span className="bg-linear-to-r from-cyan-400 via-violet-400 to-fuchsia-400 bg-clip-text text-transparent">GSTD</span>
                 <span className="text-white/80 ml-1">{t('platform', 'Platform')}</span>
               </span>
             </div>
@@ -158,7 +158,7 @@ export default function About() {
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-16">
               {/* Status Badge */}
-              <div className="inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-500/20 mb-8">
+              <div className="inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-linear-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-500/20 mb-8">
                 <span className="relative flex h-2.5 w-2.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400" />
@@ -171,7 +171,7 @@ export default function About() {
               {/* Hero Title */}
               <h1 className="text-6xl sm:text-7xl lg:text-9xl font-black mb-8 tracking-tighter leading-[0.9] perspective-1000">
                 <span className="block text-white opacity-95 drop-shadow-[0_0_30px_rgba(255,255,255,0.1)]">{t('hero_line1', 'Corporation-Free') || 'Corporation-Free'}</span>
-                <span className="block bg-gradient-to-r from-cyan-400 via-violet-500 to-fuchsia-500 bg-clip-text text-transparent animate-gradient-x py-2">
+                <span className="block bg-linear-to-r from-cyan-400 via-violet-500 to-fuchsia-500 bg-clip-text text-transparent animate-gradient-x py-2">
                   {t('hero_line2', 'AI for Humanity') || 'AI Grid'}
                 </span>
               </h1>
@@ -196,8 +196,8 @@ export default function About() {
                     { value: networkStats?.gstd_price_usd ? `$${networkStats.gstd_price_usd.toFixed(6)}` : '—', label: t('gstd_price', 'GSTD Price'), icon: Zap, color: 'cyan', delay: '0.3s' },
                   ].map((stat, i) => (
                     <div key={i} className="relative group overflow-hidden" style={{ animationDelay: stat.delay }}>
-                      <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-violet-500/10 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
-                      <div className="relative p-7 rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-xl hover:border-white/30 transition-all text-left">
+                      <div className="absolute inset-0 bg-linear-to-r from-cyan-500/10 to-violet-500/10 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <div className="relative p-7 rounded-2xl bg-white/3 border border-white/10 backdrop-blur-xl hover:border-white/30 transition-all text-left">
                         <stat.icon className={`w-6 h-6 text-${stat.color}-400 mb-4`} />
                         <div className="text-2xl sm:text-3xl font-black text-white mb-1 tracking-tighter">{stat.value}</div>
                         <div className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">{stat.label}</div>
@@ -206,7 +206,7 @@ export default function About() {
                   ))}
 
                   {/* Trust Badge / Secondary Stats */}
-                  <div className="col-span-2 md:col-span-4 p-8 rounded-3xl bg-gradient-to-r from-blue-600/10 to-violet-600/10 border border-blue-500/20 flex flex-wrap items-center justify-between gap-8 backdrop-blur-md">
+                  <div className="col-span-2 md:col-span-4 p-8 rounded-3xl bg-linear-to-r from-blue-600/10 to-violet-600/10 border border-blue-500/20 flex flex-wrap items-center justify-between gap-8 backdrop-blur-md">
                     <div className="flex items-center gap-4 group cursor-default">
                       <div className="w-14 h-14 rounded-2xl bg-blue-500/20 flex items-center justify-center text-blue-400 border border-blue-500/30 group-hover:scale-110 transition-transform">
                         <Shield className="w-7 h-7" />
@@ -275,9 +275,9 @@ export default function About() {
                 },
               ].map((feat, i) => (
                 <div key={i} className="group relative">
-                  <div className={`absolute inset-0 bg-gradient-to-br ${feat.gradient} rounded-2xl blur-xl opacity-0 group-hover:opacity-20 transition-opacity duration-500`} />
-                  <div className="relative h-full p-8 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-white/20 transition-all">
-                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${feat.gradient} flex items-center justify-center mb-5`}>
+                  <div className={`absolute inset-0 bg-linear-to-br ${feat.gradient} rounded-2xl blur-xl opacity-0 group-hover:opacity-20 transition-opacity duration-500`} />
+                  <div className="relative h-full p-8 rounded-2xl bg-white/2 border border-white/10 hover:border-white/20 transition-all">
+                    <div className={`w-12 h-12 rounded-xl bg-linear-to-br ${feat.gradient} flex items-center justify-center mb-5`}>
                       <feat.icon className="w-6 h-6 text-white" />
                     </div>
                     <h3 className="text-xl font-bold text-white mb-3">{feat.title}</h3>
@@ -297,7 +297,7 @@ export default function About() {
               <div className="flex-1">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-600/10 border border-violet-600/20 text-violet-400 text-[10px] font-black mb-6 uppercase tracking-[0.3em]">{t('collective_intelligence', 'Collective Intelligence')}</div>
                 <h2 className="text-4xl md:text-6xl font-black text-white mb-6 tracking-tighter leading-tight">
-                  The <span className="bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">{t('hive_memory', 'Hive Memory')}</span>
+                  The <span className="bg-linear-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">{t('hive_memory', 'Hive Memory')}</span>
                 </h2>
                 <p className="text-gray-400 text-lg font-medium leading-relaxed mb-10">
                   While you work, you share. While you create, you consume. The Platform regulates this flow,
@@ -305,11 +305,11 @@ export default function About() {
                   the best available node — operators earn 90% of fees, 10% funds the ecosystem treasury.
                 </p>
                 <div className="flex flex-wrap gap-4">
-                  <div className="flex items-center gap-3 px-6 py-4 rounded-2xl bg-white/[0.03] border border-white/10 group hover:border-violet-500/30 transition-all cursor-pointer" onClick={() => router.push('/chat')}>
+                  <div className="flex items-center gap-3 px-6 py-4 rounded-2xl bg-white/3 border border-white/10 group hover:border-violet-500/30 transition-all cursor-pointer" onClick={() => router.push('/chat')}>
                     <Brain className="text-violet-500 group-hover:scale-110 transition-transform" />
                     <span className="font-black text-sm uppercase tracking-tight">{t('open_ai_chat', 'Open AI Chat')}</span>
                   </div>
-                  <div className="flex items-center gap-3 px-6 py-4 rounded-2xl bg-white/[0.03] border border-white/10 group hover:border-cyan-500/30 transition-all cursor-pointer" onClick={() => router.push('/nodes')}>
+                  <div className="flex items-center gap-3 px-6 py-4 rounded-2xl bg-white/3 border border-white/10 group hover:border-cyan-500/30 transition-all cursor-pointer" onClick={() => router.push('/nodes')}>
                     <Workflow className="text-cyan-500 group-hover:scale-110 transition-transform" />
                     <span className="font-black text-sm uppercase tracking-tight">{t('run_a_node', 'Run a Node')}</span>
                   </div>
@@ -327,13 +327,13 @@ export default function About() {
         {/* GSTD Utility Section */}
         <section id="utility" className="py-32 px-6 lg:px-12 border-t border-white/5">
           <div className="max-w-5xl mx-auto">
-            <div className="relative p-12 lg:p-20 rounded-[48px] bg-gradient-to-br from-violet-600/[0.08] via-fuchsia-600/[0.08] to-cyan-600/[0.08] border border-white/10 overflow-hidden group">
+            <div className="relative p-12 lg:p-20 rounded-[48px] bg-linear-to-br from-violet-600/8 via-fuchsia-600/8 to-cyan-600/8 border border-white/10 overflow-hidden group">
               <div className="absolute top-0 right-0 w-96 h-96 bg-violet-600/5 rounded-full blur-[100px] -mr-48 -mt-48" />
 
               <div className="flex flex-col lg:flex-row items-center gap-16 relative z-10">
-                <div className="flex-shrink-0 relative">
+                <div className="shrink-0 relative">
                   <div className="absolute inset-0 bg-white/20 blur-3xl rounded-full" />
-                  <div className="w-32 h-32 rounded-[32px] bg-gradient-to-br from-violet-600/40 to-fuchsia-600/40 flex items-center justify-center backdrop-blur-md border border-white/20 shadow-2xl transform group-hover:rotate-12 transition-transform duration-700">
+                  <div className="w-32 h-32 rounded-[32px] bg-linear-to-br from-violet-600/40 to-fuchsia-600/40 flex items-center justify-center backdrop-blur-md border border-white/20 shadow-2xl transform group-hover:rotate-12 transition-transform duration-700">
                     <DollarSign className="w-16 h-16 text-white" />
                   </div>
                 </div>

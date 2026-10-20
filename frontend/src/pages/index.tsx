@@ -121,15 +121,15 @@ export default function Home() {
       {isClient && <AmbientMesh activeNodes={networkStats?.active_workers ?? 0} />}
 
       {/* Gradient overlay */}
-      <div className="fixed inset-0 z-[1] pointer-events-none">
-        <div className="absolute top-0 left-0 right-0 h-[40%] bg-gradient-to-b from-[#030014] to-transparent" />
-        <div className="absolute bottom-0 left-0 right-0 h-[30%] bg-gradient-to-t from-[#030014] to-transparent" />
+      <div className="fixed inset-0 z-1 pointer-events-none">
+        <div className="absolute top-0 left-0 right-0 h-[40%] bg-linear-to-b from-[#030014] to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 h-[30%] bg-linear-to-t from-[#030014] to-transparent" />
       </div>
 
       <div className="relative z-10">
         {/* ═══════ LIVE RIBBON ═══════ */}
         {networkStats != null && (
-          <div className="bg-black/50 backdrop-blur-xl border-b border-white/[0.04] px-4 py-1.5 text-center text-[11px] font-medium text-cyan-400/80">
+          <div className="bg-black/50 backdrop-blur-xl border-b border-white/4 px-4 py-1.5 text-center text-[11px] font-medium text-cyan-400/80">
             <span className="inline-flex items-center gap-1.5">
               <span className="relative flex h-1.5 w-1.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
@@ -161,7 +161,7 @@ export default function Home() {
 
             <h1 className="text-5xl sm:text-7xl font-black tracking-tight mb-6 leading-[1.08]">
               <span className="block text-white">{t('corporation_free', 'Sovereign AI.')}</span>
-              <span className="block bg-gradient-to-r from-violet-400 via-cyan-400 to-emerald-400 bg-clip-text text-transparent animate-gradient bg-[length:200%_200%]">{t('working_humanity', 'Decentralized Compute.')}</span>
+              <span className="block bg-linear-to-r from-violet-400 via-cyan-400 to-emerald-400 bg-clip-text text-transparent animate-gradient bg-size-[200%_200%]">{t('working_humanity', 'Decentralized Compute.')}</span>
             </h1>
 
             <p className="text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed mb-10">
@@ -174,7 +174,7 @@ export default function Home() {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full max-w-2xl mx-auto flex-wrap">
               <Link
                 href="/chat"
-                className="group relative w-full sm:w-auto inline-flex items-center justify-center gap-3 px-8 py-4 rounded-2xl bg-gradient-to-r from-violet-600 to-cyan-600 text-white font-bold text-lg shadow-xl shadow-violet-500/20 hover:shadow-violet-500/40 hover:scale-[1.03] active:scale-[0.98] transition-all duration-300"
+                className="group relative w-full sm:w-auto inline-flex items-center justify-center gap-3 px-8 py-4 rounded-2xl bg-linear-to-r from-violet-600 to-cyan-600 text-white font-bold text-lg shadow-xl shadow-violet-500/20 hover:shadow-violet-500/40 hover:scale-[1.03] active:scale-[0.98] transition-all duration-300"
               >
                 <Bot size={22} className="group-hover:scale-110 transition-transform" />
                 <span>{t('try_sovereign_ai', 'Try Sovereign AI')}</span>
@@ -182,7 +182,7 @@ export default function Home() {
               </Link>
               <Link
                 href="/training"
-                className="group relative w-full sm:w-auto inline-flex items-center justify-center gap-3 px-8 py-4 rounded-2xl bg-gradient-to-r from-violet-500/20 to-indigo-500/20 border border-violet-500/40 text-violet-300 font-bold text-lg hover:bg-violet-500/30 hover:scale-[1.03] active:scale-[0.98] transition-all duration-300"
+                className="group relative w-full sm:w-auto inline-flex items-center justify-center gap-3 px-8 py-4 rounded-2xl bg-linear-to-r from-violet-500/20 to-indigo-500/20 border border-violet-500/40 text-violet-300 font-bold text-lg hover:bg-violet-500/30 hover:scale-[1.03] active:scale-[0.98] transition-all duration-300"
                 style={{ textDecoration: 'none' }}
               >
                 <Brain size={22} className="group-hover:scale-110 transition-transform" />
@@ -269,7 +269,7 @@ export default function Home() {
                   </div>
                   <h2 className="text-3xl sm:text-4xl font-black text-white mb-4 leading-tight">
                     {t('train_any_model', 'Train Any Model.')}<br />
-                    <span className="bg-gradient-to-r from-violet-400 to-indigo-400 bg-clip-text text-transparent">
+                    <span className="bg-linear-to-r from-violet-400 to-indigo-400 bg-clip-text text-transparent">
                       {t('ten_x_cheaper', '10× Cheaper.')}
                     </span>
                   </h2>
@@ -291,7 +291,7 @@ export default function Home() {
                   <div className="flex flex-col sm:flex-row gap-3">
                     <Link
                       href="/training"
-                      className="group inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-bold text-sm shadow-lg shadow-violet-500/20 hover:shadow-violet-500/40 hover:scale-[1.02] transition-all duration-300"
+                      className="group inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-linear-to-r from-violet-600 to-indigo-600 text-white font-bold text-sm shadow-lg shadow-violet-500/20 hover:shadow-violet-500/40 hover:scale-[1.02] transition-all duration-300"
                       style={{ textDecoration: 'none' }}
                     >
                       <Brain size={16} />
@@ -502,7 +502,7 @@ export default function Home() {
                 <code>curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash</code>
                 <button 
                   onClick={() => { navigator.clipboard.writeText('curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash'); }}
-                  className="text-xs text-gray-400 hover:text-white border border-white/10 rounded px-3 py-1 transition-colors whitespace-nowrap"
+                  className="text-xs text-gray-400 hover:text-white border border-white/10 rounded-sm px-3 py-1 transition-colors whitespace-nowrap"
                 >Copy</button>
               </div>
               <div className="flex gap-4 justify-center text-xs text-gray-500">

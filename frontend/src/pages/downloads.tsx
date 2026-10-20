@@ -57,7 +57,7 @@ export default function DownloadsPage() {
                     </div>
 
                     {/* Quick Install */}
-                    <div className="glass-card p-8 mb-12 border-amber-500/20 bg-gradient-to-br from-amber-500/5 to-transparent relative overflow-hidden fu d2">
+                    <div className="glass-card p-8 mb-12 border-amber-500/20 bg-linear-to-br from-amber-500/5 to-transparent relative overflow-hidden fu d2">
                         <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/5 rounded-full blur-[80px] -mr-32 -mt-32" />
                         <div className="relative z-10">
                             <div className="flex items-center gap-3 mb-4">
@@ -74,7 +74,7 @@ export default function DownloadsPage() {
                                 </code>
                                 <button
                                     onClick={() => copyCmd(INSTALL_CMD, 'main')}
-                                    className="p-3 bg-white text-black rounded-xl hover:bg-amber-400 transition-all transform active:scale-95 flex-shrink-0"
+                                    className="p-3 bg-white text-black rounded-xl hover:bg-amber-400 transition-all transform active:scale-95 shrink-0"
                                 >
                                     {copied === 'main' ? <CheckCircle size={16} /> : <Copy size={16} />}
                                 </button>
@@ -115,7 +115,7 @@ export default function DownloadsPage() {
                                             </div>
                                         </div>
                                         {p.recommended && (
-                                            <span className="px-2 py-1 rounded bg-emerald-500/20 text-emerald-400 text-[9px] font-black uppercase">
+                                            <span className="px-2 py-1 rounded-sm bg-emerald-500/20 text-emerald-400 text-[9px] font-black uppercase">
                                                 Recommended
                                             </span>
                                         )}
@@ -137,7 +137,7 @@ export default function DownloadsPage() {
                     </div>
 
                     {/* Telegram Mini App */}
-                    <div className="glass-card p-8 mb-12 border-blue-500/20 bg-gradient-to-br from-blue-500/5 to-transparent fu d3">
+                    <div className="glass-card p-8 mb-12 border-blue-500/20 bg-linear-to-br from-blue-500/5 to-transparent fu d3">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                             <div className="flex items-center gap-4">
                                 <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20">
@@ -179,7 +179,7 @@ export default function DownloadsPage() {
                     </div>
 
                     {/* VPS Guide */}
-                    <div className="glass-card p-8 mb-12 border-violet-500/20 bg-gradient-to-br from-violet-500/5 to-transparent fu d4">
+                    <div className="glass-card p-8 mb-12 border-violet-500/20 bg-linear-to-br from-violet-500/5 to-transparent fu d4">
                         <div className="flex items-center gap-3 mb-4">
                             <Server className="w-6 h-6 text-violet-400" />
                             <h2 className="text-xl font-black text-white">Run 24/7 on a VPS</h2>
@@ -195,7 +195,7 @@ export default function DownloadsPage() {
                                 { step: '4', text: 'Open http://your-server-ip:8080 — your dashboard is live!' },
                             ].map((s) => (
                                 <div key={s.step} className="flex items-start gap-3">
-                                    <div className="w-6 h-6 rounded-full bg-violet-500/20 border border-violet-500/30 flex items-center justify-center text-violet-400 text-xs font-black flex-shrink-0 mt-0.5">
+                                    <div className="w-6 h-6 rounded-full bg-violet-500/20 border border-violet-500/30 flex items-center justify-center text-violet-400 text-xs font-black shrink-0 mt-0.5">
                                         {s.step}
                                     </div>
                                     <p className="text-gray-300 text-sm">{s.text}</p>

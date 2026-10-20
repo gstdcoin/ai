@@ -169,10 +169,10 @@ export default function WorkerTaskCard({ task, onTaskCompleted }: WorkerTaskCard
           </div>
           <div className="h-2 bg-black/40 rounded-full overflow-hidden border border-white/5">
             <div
-              className="h-full bg-gradient-to-r from-violet-600 via-fuchsia-500 to-cyan-400 transition-all duration-300 ease-out relative"
+              className="h-full bg-linear-to-r from-violet-600 via-fuchsia-500 to-cyan-400 transition-all duration-300 ease-out relative"
               style={{ width: `${progress.progress}%` }}
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
+              <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
             </div>
           </div>
         </div>
@@ -183,9 +183,9 @@ export default function WorkerTaskCard({ task, onTaskCompleted }: WorkerTaskCard
         <button
           onClick={handleStartWork}
           disabled={isRunning || !address || !tonConnectUI?.connected}
-          className="w-full relative h-[60px] bg-white/[0.03] border-2 border-white/5 rounded-2xl overflow-hidden group/btn hover:border-violet-500/50 transition-all active:scale-[0.98] disabled:opacity-30"
+          className="w-full relative h-[60px] bg-white/3 border-2 border-white/5 rounded-2xl overflow-hidden group/btn hover:border-violet-500/50 transition-all active:scale-[0.98] disabled:opacity-30"
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-violet-600/10 to-fuchsia-600/10 opacity-0 group-hover/btn:opacity-100 transition-opacity" />
+          <div className="absolute inset-0 bg-linear-to-r from-violet-600/10 to-fuchsia-600/10 opacity-0 group-hover/btn:opacity-100 transition-opacity" />
           <div className="relative z-10 flex items-center justify-center gap-3">
             {isRunning ? (
               <>

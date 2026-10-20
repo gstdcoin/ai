@@ -141,7 +141,7 @@ export const TokenEarnPanel: React.FC<TokenEarnPanelProps> = ({
     };
 
     return (
-        <div className="bg-gradient-to-br from-purple-900/30 to-blue-900/30 backdrop-blur-xl rounded-2xl p-6 border border-white/10">
+        <div className="bg-linear-to-br from-purple-900/30 to-blue-900/30 backdrop-blur-xl rounded-2xl p-6 border border-white/10">
             {/* Message Toast */}
             {message && (
                 <div className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-xl shadow-lg animate-fade-in
@@ -257,7 +257,7 @@ export const TokenEarnPanel: React.FC<TokenEarnPanelProps> = ({
                 </div>
 
                 {/* Become Worker */}
-                <div className="bg-gradient-to-r from-orange-500/20 to-red-500/20 rounded-xl p-4 border border-orange-500/30">
+                <div className="bg-linear-to-r from-orange-500/20 to-red-500/20 rounded-xl p-4 border border-orange-500/30">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <span className="text-3xl">🚀</span>
@@ -268,7 +268,7 @@ export const TokenEarnPanel: React.FC<TokenEarnPanelProps> = ({
                         </div>
                         <a
                             href="/dashboard?tab=nodes"
-                            className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+                            className="px-4 py-2 bg-linear-to-r from-orange-500 to-red-500 text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
                         >
                             Setup (5 min)
                         </a>

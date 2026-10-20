@@ -90,7 +90,7 @@ export default function CampaignsPage() {
           <div className="inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest border border-violet-500/30 text-violet-400 mb-4">
             Live Network
           </div>
-          <h1 className="text-4xl font-black mb-3 bg-gradient-to-r from-white via-violet-200 to-cyan-300 bg-clip-text text-transparent">
+          <h1 className="text-4xl font-black mb-3 bg-linear-to-r from-white via-violet-200 to-cyan-300 bg-clip-text text-transparent">
             Compute Campaigns
           </h1>
           <p className="text-gray-400 max-w-xl mx-auto text-sm">
@@ -109,7 +109,7 @@ export default function CampaignsPage() {
             href="https://t.me/gstdaibot"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex-shrink-0 px-4 py-2 rounded-xl bg-amber-400/10 border border-amber-400/30 text-amber-300 font-bold text-sm hover:bg-amber-400/20 transition-all flex items-center gap-2"
+            className="shrink-0 px-4 py-2 rounded-xl bg-amber-400/10 border border-amber-400/30 text-amber-300 font-bold text-sm hover:bg-amber-400/20 transition-all flex items-center gap-2"
           >
             Post Campaign <ExternalLink size={14} />
           </a>
@@ -165,7 +165,7 @@ export default function CampaignsPage() {
             {campaigns.map(c => (
               <div
                 key={c.id}
-                className="rounded-2xl border border-white/[0.07] bg-white/[0.02] hover:bg-white/[0.04] p-5 transition-all hover:border-violet-500/20"
+                className="rounded-2xl border border-white/[0.07] bg-white/2 hover:bg-white/4 p-5 transition-all hover:border-violet-500/20"
               >
                 {/* Top row */}
                 <div className="flex items-start justify-between gap-4 mb-3">
@@ -179,7 +179,7 @@ export default function CampaignsPage() {
                     </div>
                     <div className="text-xs text-gray-500 font-medium">by {c.company}</div>
                   </div>
-                  <div className="text-right flex-shrink-0">
+                  <div className="text-right shrink-0">
                     <div className="text-xl font-black text-amber-400">
                       {c.reward_per_task.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                     </div>
@@ -199,7 +199,7 @@ export default function CampaignsPage() {
                   </div>
                   <div className="h-1.5 rounded-full bg-white/5">
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-violet-500 to-cyan-500 transition-all"
+                      className="h-full rounded-full bg-linear-to-r from-violet-500 to-cyan-500 transition-all"
                       style={{ width: `${budgetPct(c)}%` }}
                     />
                   </div>

@@ -33,11 +33,11 @@ export default React.memo(function Header({ onLogout, isPublic = false }: Header
       <header className="glass-dark border-b border-white/10 sticky top-0 z-30">
         <div className="px-4 sm:px-6 py-4 flex items-center justify-between">
           <a href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <div className="flex-shrink-0">
+            <div className="shrink-0">
               <img src="/logo.png" alt="GSTD Logo" className="w-10 h-10" />
             </div>
             <h1 className="text-xl font-bold text-white font-display">
-              <span className="bg-gradient-to-r from-gold-400 to-gold-600 bg-clip-text text-transparent">GSTD</span>
+              <span className="bg-linear-to-r from-gold-400 to-gold-600 bg-clip-text text-transparent">GSTD</span>
               <span className="text-gray-300 ml-2">{t('documentation', 'Documentation')}</span>
             </h1>
           </a>
@@ -54,9 +54,9 @@ export default React.memo(function Header({ onLogout, isPublic = false }: Header
     <header className="glass-dark border-b border-white/10 sticky top-0 z-40">
       <div className="px-3 sm:px-6 py-2.5 sm:py-3">
         <div className="flex items-center justify-between gap-2 sm:gap-4">
-          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             {/* Logo */}
-            <div className="flex-shrink-0 relative">
+            <div className="shrink-0 relative">
               <img
                 src="/logo.png"
                 alt="GSTD Logo"
@@ -66,7 +66,7 @@ export default React.memo(function Header({ onLogout, isPublic = false }: Header
             </div>
             <div className="hidden sm:block">
               <h1 className="text-lg sm:text-xl font-black text-white font-display flex items-center gap-1.5 tracking-tighter uppercase whitespace-nowrap">
-                <span className="bg-gradient-to-r from-cyan-400 via-violet-500 to-fuchsia-500 bg-clip-text text-transparent">GSTD</span>
+                <span className="bg-linear-to-r from-cyan-400 via-violet-500 to-fuchsia-500 bg-clip-text text-transparent">GSTD</span>
                 <span className="text-gray-500 text-sm hidden sm:inline">/ CONTROL</span>
               </h1>
               {address && (
@@ -91,7 +91,7 @@ export default React.memo(function Header({ onLogout, isPublic = false }: Header
             </div>
 
             {/* Quick Metrics */}
-            <div className="hidden lg:flex items-center gap-6 px-4 py-1.5 rounded-xl bg-white/[0.02] border border-white/5">
+            <div className="hidden lg:flex items-center gap-6 px-4 py-1.5 rounded-xl bg-white/2 border border-white/5">
               <div className="flex items-center gap-2">
                 <span className="text-[9px] text-gray-600 font-black uppercase tracking-widest">{t('grid', 'Grid')}</span>
                 <span className="text-[10px] font-black text-orange-400 font-mono" id="network-temperature">0 T</span>
@@ -103,7 +103,7 @@ export default React.memo(function Header({ onLogout, isPublic = false }: Header
             </div>
 
             {/* Language & Profile */}
-            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
               <LanguageSwitcher />
               <button
                 onClick={onLogout}

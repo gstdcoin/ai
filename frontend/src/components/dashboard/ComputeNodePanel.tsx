@@ -197,7 +197,7 @@ export function ComputeNodePanel() {
                     {/* Top row: status + battery */}
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-3">
-                            <div className={`p-3 rounded-xl ${isRunning ? 'bg-indigo-500/20' : 'bg-white/[0.04]'}`}>
+                            <div className={`p-3 rounded-xl ${isRunning ? 'bg-indigo-500/20' : 'bg-white/4'}`}>
                                 {isIgniting ? (
                                     <div className="w-6 h-6 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
                                 ) : isRunning ? (

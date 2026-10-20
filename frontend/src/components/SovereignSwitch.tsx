@@ -138,8 +138,8 @@ export const SovereignSwitch = ({ className, onModeChange }: SovereignSwitchProp
             <div className={`
                 relative w-full max-w-2xl mx-auto p-1 rounded-[32px] transition-all duration-500
                 ${mode === 'consumer'
-                    ? 'bg-gradient-to-r from-violet-600 via-fuchsia-600 to-cyan-500 shadow-[0_0_50px_rgba(139,92,246,0.3)]'
-                    : 'bg-gradient-to-r from-emerald-600 to-teal-600 shadow-[0_0_50px_rgba(16,185,129,0.2)]'}
+                    ? 'bg-linear-to-r from-violet-600 via-fuchsia-600 to-cyan-500 shadow-[0_0_50px_rgba(139,92,246,0.3)]'
+                    : 'bg-linear-to-r from-emerald-600 to-teal-600 shadow-[0_0_50px_rgba(16,185,129,0.2)]'}
             `}>
                 <div className="bg-[#050510] rounded-[30px] p-2 relative overflow-hidden">
 
@@ -193,8 +193,8 @@ export const SovereignSwitch = ({ className, onModeChange }: SovereignSwitchProp
                                 <div className={`
                                     absolute top-1 left-1 w-10 h-10 rounded-full shadow-lg flex items-center justify-center transition-all duration-500 ease-out transform
                                     ${mode === 'consumer'
-                                        ? 'translate-x-12 bg-gradient-to-br from-white to-violet-200'
-                                        : 'translate-x-0 bg-gradient-to-br from-emerald-400 to-teal-500'}
+                                        ? 'translate-x-12 bg-linear-to-br from-white to-violet-200'
+                                        : 'translate-x-0 bg-linear-to-br from-emerald-400 to-teal-500'}
                                     ${isAnimating ? 'scale-90' : 'scale-100'}
                                 `}>
                                     {mode === 'consumer' ? <Zap size={20} className="text-violet-600 fill-violet-600" /> : <Activity size={20} className="text-emerald-900" />}
@@ -223,7 +223,7 @@ export const SovereignSwitch = ({ className, onModeChange }: SovereignSwitchProp
                                     onChange={(e) => setCommand(e.target.value)}
                                     onKeyDown={(e) => e.key === 'Enter' && executeCommand()}
                                     placeholder="Enter command (e.g., 'Build landing page')"
-                                    className="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-600 font-bold"
+                                    className="flex-1 bg-transparent border-none outline-hidden text-white placeholder-gray-600 font-bold"
                                 />
                                 <button
                                     onClick={executeCommand}

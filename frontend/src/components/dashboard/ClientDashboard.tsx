@@ -183,7 +183,7 @@ export const ClientDashboard: React.FC = () => {
             {/* Stats Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <Tooltip content={t('client.tooltips.totalTasks')}>
-                    <div className="bg-gradient-to-br from-blue-900/30 to-blue-800/20 rounded-2xl p-5 border border-blue-500/30 h-full">
+                    <div className="bg-linear-to-br from-blue-900/30 to-blue-800/20 rounded-2xl p-5 border border-blue-500/30 h-full">
                         <div className="flex items-center space-x-3 mb-3">
                             <Package className="w-5 h-5 text-blue-400" />
                             <span className="text-sm text-gray-400">{t('client.totalTasks')}</span>
@@ -193,7 +193,7 @@ export const ClientDashboard: React.FC = () => {
                 </Tooltip>
 
                 <Tooltip content={t('client.tooltips.completed')}>
-                    <div className="bg-gradient-to-br from-green-900/30 to-green-800/20 rounded-2xl p-5 border border-green-500/30 h-full">
+                    <div className="bg-linear-to-br from-green-900/30 to-green-800/20 rounded-2xl p-5 border border-green-500/30 h-full">
                         <div className="flex items-center space-x-3 mb-3">
                             <CheckCircle className="w-5 h-5 text-green-400" />
                             <span className="text-sm text-gray-400">{t('client.completed')}</span>
@@ -203,7 +203,7 @@ export const ClientDashboard: React.FC = () => {
                 </Tooltip>
 
                 <Tooltip content={t('client.tooltips.totalSpent')}>
-                    <div className="bg-gradient-to-br from-purple-900/30 to-purple-800/20 rounded-2xl p-5 border border-purple-500/30 h-full">
+                    <div className="bg-linear-to-br from-purple-900/30 to-purple-800/20 rounded-2xl p-5 border border-purple-500/30 h-full">
                         <div className="flex items-center space-x-3 mb-3">
                             <DollarSign className="w-5 h-5 text-purple-400" />
                             <span className="text-sm text-gray-400">{t('client.totalSpent')}</span>
@@ -214,7 +214,7 @@ export const ClientDashboard: React.FC = () => {
                 </Tooltip>
 
                 <Tooltip content={t('client.tooltips.lockedEscrow')}>
-                    <div className="bg-gradient-to-br from-orange-900/30 to-orange-800/20 rounded-2xl p-5 border border-orange-500/30 h-full">
+                    <div className="bg-linear-to-br from-orange-900/30 to-orange-800/20 rounded-2xl p-5 border border-orange-500/30 h-full">
                         <div className="flex items-center space-x-3 mb-3">
                             <Clock className="w-5 h-5 text-orange-400" />
                             <span className="text-sm text-gray-400">{t('client.lockedEscrow')}</span>
@@ -622,7 +622,7 @@ export const ClientDashboard: React.FC = () => {
                                                 style={{ width: '100%' }}
                                             />
                                             <div
-                                                className="bg-blue-500 h-full -ml-[100%]"
+                                                className="bg-blue-500 h-full ml-[-100%]"
                                                 style={{ width: `${(item.gstd / item.cloud) * 100}%` }}
                                             />
                                         </div>

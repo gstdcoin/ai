@@ -40,7 +40,7 @@ export default function GoldenReservePanel() {
   if (loading && !treasury) {
     return (
       <div className="col-span-2 lg:col-span-4 glass-card p-8 animate-pulse">
-        <div className="h-6 bg-violet-500/10 rounded w-48 mb-4" />
+        <div className="h-6 bg-violet-500/10 rounded-sm w-48 mb-4" />
         <div className="h-20 bg-violet-500/5 rounded-2xl" />
       </div>
     );
@@ -52,7 +52,7 @@ export default function GoldenReservePanel() {
   const distributions = treasury?.distributions_count ?? 0;
 
   return (
-    <div className="col-span-2 lg:col-span-4 relative overflow-hidden rounded-3xl bg-gradient-to-br from-violet-900/10 via-cyan-900/5 to-emerald-900/10 border border-violet-500/20 p-6 lg:p-8">
+    <div className="col-span-2 lg:col-span-4 relative overflow-hidden rounded-3xl bg-linear-to-br from-violet-900/10 via-cyan-900/5 to-emerald-900/10 border border-violet-500/20 p-6 lg:p-8">
       {/* Background decorations */}
       <div className="absolute top-0 right-0 w-64 h-64 bg-violet-500/5 rounded-full blur-[80px] -mr-32 -mt-32 pointer-events-none" />
       <div className="absolute bottom-0 left-0 w-48 h-48 bg-cyan-600/5 rounded-full blur-[60px] -ml-24 -mb-24 pointer-events-none" />
@@ -60,7 +60,7 @@ export default function GoldenReservePanel() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6 relative z-10">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500/20 to-cyan-600/20 border border-violet-500/30 flex items-center justify-center">
+          <div className="w-12 h-12 rounded-2xl bg-linear-to-br from-violet-500/20 to-cyan-600/20 border border-violet-500/30 flex items-center justify-center">
             <Landmark className="w-6 h-6 text-violet-400" />
           </div>
           <div>
@@ -86,7 +86,7 @@ export default function GoldenReservePanel() {
             <div className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-2">
               {t('treasury_balance', 'Treasury Balance')}
             </div>
-            <div className="text-3xl font-black bg-gradient-to-r from-violet-400 via-cyan-400 to-emerald-400 bg-clip-text text-transparent tabular-nums mb-1">
+            <div className="text-3xl font-black bg-linear-to-r from-violet-400 via-cyan-400 to-emerald-400 bg-clip-text text-transparent tabular-nums mb-1">
               {treasuryGstd.toFixed(2)}
             </div>
             <div className="text-sm text-gray-400 font-bold">GSTD</div>

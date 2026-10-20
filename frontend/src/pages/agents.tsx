@@ -94,7 +94,7 @@ function CodeBlock({ code, lang = 'bash' }: { code: string; lang?: string }) {
   };
   return (
     <div className="relative rounded-xl bg-black/60 border border-white/10 overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-2 border-b border-white/5 bg-white/[0.02]">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-white/5 bg-white/2">
         <span className="text-xs text-gray-500 font-mono">{lang}</span>
         <button onClick={copy} className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white transition-colors">
           {copied ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
@@ -122,7 +122,7 @@ function Leaderboard({ entries, loading }: { entries: AgentEntry[]; loading: boo
     return (
       <div className="space-y-2">
         {[...Array(5)].map((_, i) => (
-          <div key={i} className="h-16 rounded-xl bg-white/[0.03] animate-pulse" />
+          <div key={i} className="h-16 rounded-xl bg-white/3 animate-pulse" />
         ))}
       </div>
     );
@@ -145,9 +145,9 @@ function Leaderboard({ entries, loading }: { entries: AgentEntry[]; loading: boo
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: i * 0.04 }}
-          className="flex items-center gap-4 px-4 py-3 rounded-xl border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] transition-colors"
+          className="flex items-center gap-4 px-4 py-3 rounded-xl border border-white/6 bg-white/2 hover:bg-white/4 transition-colors"
         >
-          <div className="w-8 text-center flex-shrink-0">{rankDisplay(agent.rank)}</div>
+          <div className="w-8 text-center shrink-0">{rankDisplay(agent.rank)}</div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-medium text-white text-sm truncate">{agent.name || agent.agent_id}</span>
@@ -159,7 +159,7 @@ function Leaderboard({ entries, loading }: { entries: AgentEntry[]; loading: boo
               <span>{agent.uptime_pct.toFixed(0)}% uptime</span>
             </div>
           </div>
-          <div className="text-right flex-shrink-0">
+          <div className="text-right shrink-0">
             <div className="text-sm font-semibold text-violet-300">
               {agent.total_earned_gstd.toFixed(2)} GSTD
             </div>
@@ -194,7 +194,7 @@ function Marketplace({ agents, loading }: { agents: MarketplaceAgent[]; loading:
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {[...Array(4)].map((_, i) => (
-          <div key={i} className="h-40 rounded-xl bg-white/[0.03] animate-pulse" />
+          <div key={i} className="h-40 rounded-xl bg-white/3 animate-pulse" />
         ))}
       </div>
     );
@@ -209,12 +209,12 @@ function Marketplace({ agents, loading }: { agents: MarketplaceAgent[]; loading:
           placeholder="Search agents..."
           value={filter}
           onChange={e => setFilter(e.target.value)}
-          className="flex-1 px-3 py-2 rounded-lg bg-white/[0.04] border border-white/10 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-violet-500/50"
+          className="flex-1 px-3 py-2 rounded-lg bg-white/4 border border-white/10 text-sm text-white placeholder-gray-500 focus:outline-hidden focus:border-violet-500/50"
         />
         <div className="flex gap-2 flex-wrap">
           <button
             onClick={() => setCapFilter('all')}
-            className={`px-3 py-1.5 rounded-lg text-xs border transition-colors ${capFilter === 'all' ? 'bg-violet-600/30 border-violet-500/50 text-violet-300' : 'bg-white/[0.03] border-white/10 text-gray-400 hover:border-white/20'}`}
+            className={`px-3 py-1.5 rounded-lg text-xs border transition-colors ${capFilter === 'all' ? 'bg-violet-600/30 border-violet-500/50 text-violet-300' : 'bg-white/3 border-white/10 text-gray-400 hover:border-white/20'}`}
           >
             All
           </button>
@@ -222,7 +222,7 @@ function Marketplace({ agents, loading }: { agents: MarketplaceAgent[]; loading:
             <button
               key={cap}
               onClick={() => setCapFilter(cap === capFilter ? 'all' : cap)}
-              className={`px-3 py-1.5 rounded-lg text-xs border transition-colors ${capFilter === cap ? 'bg-violet-600/30 border-violet-500/50 text-violet-300' : 'bg-white/[0.03] border-white/10 text-gray-400 hover:border-white/20'}`}
+              className={`px-3 py-1.5 rounded-lg text-xs border transition-colors ${capFilter === cap ? 'bg-violet-600/30 border-violet-500/50 text-violet-300' : 'bg-white/3 border-white/10 text-gray-400 hover:border-white/20'}`}
             >
               {cap}
             </button>
@@ -241,7 +241,7 @@ function Marketplace({ agents, loading }: { agents: MarketplaceAgent[]; loading:
               initial={{ opacity: 0, scale: 0.97 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: i * 0.05 }}
-              className="p-4 rounded-xl border border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04] transition-colors"
+              className="p-4 rounded-xl border border-white/8 bg-white/2 hover:bg-white/4 transition-colors"
             >
               <div className="flex items-start justify-between mb-2">
                 <div>
@@ -271,7 +271,7 @@ function Marketplace({ agents, loading }: { agents: MarketplaceAgent[]; loading:
                 </div>
                 <div className="flex gap-1 flex-wrap justify-end">
                   {agent.capabilities?.slice(0, 3).map(cap => (
-                    <span key={cap} className="px-1.5 py-0.5 rounded bg-white/[0.05] border border-white/[0.08] text-gray-400">
+                    <span key={cap} className="px-1.5 py-0.5 rounded-sm bg-white/5 border border-white/8 text-gray-400">
                       {cap}
                     </span>
                   ))}
@@ -313,7 +313,7 @@ curl -X POST https://app.gstdtoken.com/api/v1/tasks/result \\
   const [tab, setTab] = useState<'python' | 'curl'>('python');
 
   return (
-    <div className="rounded-2xl border border-violet-500/20 bg-violet-500/[0.04] p-6 md:p-8">
+    <div className="rounded-2xl border border-violet-500/20 bg-violet-500/4 p-6 md:p-8">
       <div className="flex flex-col md:flex-row gap-8">
         {/* Left: Economics */}
         <div className="flex-1">
@@ -331,7 +331,7 @@ curl -X POST https://app.gstdtoken.com/api/v1/tasks/result \\
               { icon: Shield, title: 'Ed25519 identity', sub: 'Cryptographic proof you own the agent' },
             ].map(({ icon: Icon, title, sub }) => (
               <div key={title} className="flex items-start gap-3">
-                <div className="mt-0.5 w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center flex-shrink-0">
+                <div className="mt-0.5 w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center shrink-0">
                   <Icon size={15} className="text-violet-400" />
                 </div>
                 <div>
@@ -343,8 +343,8 @@ curl -X POST https://app.gstdtoken.com/api/v1/tasks/result \\
           </div>
 
           {/* Tier table */}
-          <div className="rounded-xl border border-white/[0.06] overflow-hidden text-xs">
-            <div className="px-3 py-2 bg-white/[0.03] text-gray-400 font-medium border-b border-white/[0.06]">
+          <div className="rounded-xl border border-white/6 overflow-hidden text-xs">
+            <div className="px-3 py-2 bg-white/3 text-gray-400 font-medium border-b border-white/6">
               Tier thresholds
             </div>
             {[
@@ -356,7 +356,7 @@ curl -X POST https://app.gstdtoken.com/api/v1/tasks/result \\
             ].map(row => {
               const s = TIER_STYLES[row.tier];
               return (
-                <div key={row.tier} className="flex items-center px-3 py-2 border-b border-white/[0.04] last:border-0 hover:bg-white/[0.02]">
+                <div key={row.tier} className="flex items-center px-3 py-2 border-b border-white/4 last:border-0 hover:bg-white/2">
                   <span className={`w-14 font-medium ${s.text}`}>{row.label}</span>
                   <span className="flex-1 text-gray-500">{row.threshold} earned</span>
                   <span className="text-violet-400 font-semibold">{row.bonus} rate</span>
@@ -371,13 +371,13 @@ curl -X POST https://app.gstdtoken.com/api/v1/tasks/result \\
           <div className="flex gap-2 mb-3">
             <button
               onClick={() => setTab('python')}
-              className={`px-3 py-1.5 rounded-lg text-xs border transition-colors ${tab === 'python' ? 'bg-violet-600/30 border-violet-500/50 text-violet-300' : 'bg-white/[0.03] border-white/10 text-gray-400 hover:border-white/20'}`}
+              className={`px-3 py-1.5 rounded-lg text-xs border transition-colors ${tab === 'python' ? 'bg-violet-600/30 border-violet-500/50 text-violet-300' : 'bg-white/3 border-white/10 text-gray-400 hover:border-white/20'}`}
             >
               Python SDK
             </button>
             <button
               onClick={() => setTab('curl')}
-              className={`px-3 py-1.5 rounded-lg text-xs border transition-colors ${tab === 'curl' ? 'bg-violet-600/30 border-violet-500/50 text-violet-300' : 'bg-white/[0.03] border-white/10 text-gray-400 hover:border-white/20'}`}
+              className={`px-3 py-1.5 rounded-lg text-xs border transition-colors ${tab === 'curl' ? 'bg-violet-600/30 border-violet-500/50 text-violet-300' : 'bg-white/3 border-white/10 text-gray-400 hover:border-white/20'}`}
             >
               REST / curl
             </button>
@@ -400,7 +400,7 @@ curl -X POST https://app.gstdtoken.com/api/v1/tasks/result \\
               href="https://github.com/gstdcoin/A2A"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.06] border border-white/10 text-sm text-white hover:bg-white/[0.10] transition-colors"
+              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white/6 border border-white/10 text-sm text-white hover:bg-white/10 transition-colors"
             >
               <Code size={15} />
               A2A SDK on GitHub
@@ -517,7 +517,7 @@ export default function AgentsPage() {
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.06 }}
-                className="p-4 rounded-xl border border-white/[0.06] bg-white/[0.02]"
+                className="p-4 rounded-xl border border-white/6 bg-white/2"
               >
                 <div className={`w-7 h-7 rounded-lg ${colorMap[color]} flex items-center justify-center mb-2`}>
                   <Icon size={14} />
@@ -529,14 +529,14 @@ export default function AgentsPage() {
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-1 p-1 rounded-xl bg-white/[0.03] border border-white/[0.06] mb-6 w-fit">
+          <div className="flex gap-1 p-1 rounded-xl bg-white/3 border border-white/6 mb-6 w-fit">
             {TABS.map(t => (
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                   tab === t.id
-                    ? 'bg-violet-600 text-white shadow-sm shadow-violet-500/20'
+                    ? 'bg-violet-600 text-white shadow-xs shadow-violet-500/20'
                     : 'text-gray-400 hover:text-white'
                 }`}
               >
@@ -573,7 +573,7 @@ export default function AgentsPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3 }}
-              className="mt-8 flex items-center justify-between p-4 rounded-xl border border-violet-500/20 bg-violet-500/[0.04]"
+              className="mt-8 flex items-center justify-between p-4 rounded-xl border border-violet-500/20 bg-violet-500/4"
             >
               <div>
                 <div className="text-sm font-medium text-white">Want to join as an agent owner?</div>
@@ -581,7 +581,7 @@ export default function AgentsPage() {
               </div>
               <button
                 onClick={() => setTab('join')}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-sm text-white font-medium transition-colors flex-shrink-0"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-sm text-white font-medium transition-colors shrink-0"
               >
                 How to join
                 <ChevronRight size={14} />

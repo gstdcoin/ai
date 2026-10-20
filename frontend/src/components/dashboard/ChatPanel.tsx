@@ -453,7 +453,7 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
           <select
             value={selectedModel}
             onChange={(e) => setSelectedModel(e.target.value)}
-            className="bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white font-medium focus:outline-none focus:border-violet-500/50 appearance-none cursor-pointer"
+            className="bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white font-medium focus:outline-hidden focus:border-violet-500/50 appearance-none cursor-pointer"
           >
             {models.map(m => (
               <option key={m.id} value={m.id} className="bg-[#0a0a1a] text-white">
@@ -524,7 +524,7 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
       {/* Ultra Upgrade Prompt: User selected Ultra but lacks access */}
       {isUltraModel(selectedModel) && ultraStatus && !ultraStatus.ultra_available && (
         <div className="mx-2 mb-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-3">
-          <Crown size={16} className="text-amber-400 mt-0.5 flex-shrink-0" />
+          <Crown size={16} className="text-amber-400 mt-0.5 shrink-0" />
           <div>
             <p className="text-xs text-amber-300 font-bold mb-1">{t('chat_ultra_upgrade_prompt', 'Upgrade to Ultra for expert responses') || 'Upgrade to Ultra for expert responses'}</p>
             <p className="text-[10px] text-gray-400 leading-relaxed">
@@ -540,7 +540,7 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
       {/* Speculative Decoding Info Banner */}
       {speculativeEnabled && messages.length === 0 && (
         <div className="mx-2 mb-4 p-3 rounded-xl bg-cyan-500/5 border border-cyan-500/10 flex items-start gap-3">
-          <Zap size={16} className="text-cyan-400 mt-0.5 flex-shrink-0" />
+          <Zap size={16} className="text-cyan-400 mt-0.5 shrink-0" />
           <div>
             <p className="text-xs text-cyan-300 font-bold mb-1">{t('chat_speculative_title', 'Speculative Decoding Active') || 'Speculative Decoding Active'}</p>
             <p className="text-[10px] text-gray-400 leading-relaxed">
@@ -554,7 +554,7 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
       <div className="flex-1 overflow-y-auto custom-scrollbar space-y-1 px-2">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center px-4">
-            <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-violet-600/20 to-cyan-500/20 border border-white/10 flex items-center justify-center mb-6">
+            <div className="w-20 h-20 rounded-3xl bg-linear-to-br from-violet-600/20 to-cyan-500/20 border border-white/10 flex items-center justify-center mb-6">
               <Sparkles className="w-10 h-10 text-violet-400" />
             </div>
             <h2 className="text-2xl font-black text-white mb-3 tracking-tight">
@@ -571,7 +571,7 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
                 { text: t('chat_suggestion_4', 'Analyze my tokenomics model') || 'Analyze my tokenomics model', icon: '📊' },
               ].map((s, i) => (
                 <button key={i} onClick={() => { setInput(s.text); inputRef.current?.focus(); }}
-                  className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-violet-500/30 hover:bg-white/[0.05] transition-all text-left group">
+                  className="p-4 rounded-2xl bg-white/3 border border-white/10 hover:border-violet-500/30 hover:bg-white/5 transition-all text-left group">
                   <span className="text-lg mb-2 block">{s.icon}</span>
                   <span className="text-sm text-gray-300 group-hover:text-white transition-colors font-medium">{s.text}</span>
                 </button>
@@ -591,7 +591,7 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
             return (
               <div key={msg.id + '-' + nextMsg.id} className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
                 <div className="flex gap-3 p-4 rounded-2xl bg-cyan-500/5 border border-cyan-500/10">
-                  <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-cyan-500/20 flex items-center justify-center"><Bot size={16} className="text-cyan-400" /></div>
+                  <div className="shrink-0 w-8 h-8 rounded-xl bg-cyan-500/20 flex items-center justify-center"><Bot size={16} className="text-cyan-400" /></div>
                   <div className="flex-1 min-w-0">
                     <div className="text-[10px] text-cyan-500/80 font-bold mb-2">{models.find(m => m.id === msg.model)?.name || msg.model}</div>
                     <div className="prose prose-invert prose-sm max-w-none [&_pre]:bg-black/40 [&_code]:text-violet-300"><ReactMarkdown>{msg.content}</ReactMarkdown></div>
@@ -606,7 +606,7 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
                   </div>
                 </div>
                 <div className="flex gap-3 p-4 rounded-2xl bg-amber-500/5 border border-amber-500/10">
-                  <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-amber-500/20 flex items-center justify-center"><Bot size={16} className="text-amber-400" /></div>
+                  <div className="shrink-0 w-8 h-8 rounded-xl bg-amber-500/20 flex items-center justify-center"><Bot size={16} className="text-amber-400" /></div>
                   <div className="flex-1 min-w-0">
                     <div className="text-[10px] text-amber-500/80 font-bold mb-2">{models.find(m => m.id === nextMsg.model)?.name || nextMsg.model}</div>
                     <div className="prose prose-invert prose-sm max-w-none [&_pre]:bg-black/40 [&_code]:text-violet-300"><ReactMarkdown>{nextMsg.content}</ReactMarkdown></div>
@@ -625,8 +625,8 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
           }
           if (msg.role === 'assistant' && nextMsg?.role === 'assistant' && msg.model === nextMsg.model) return null; // skip second of pair
           return (
-            <div key={msg.id} className={`flex gap-3 py-4 px-4 rounded-2xl ${msg.role === 'user' ? 'bg-white/[0.02]' : ''}`}>
-              <div className={`flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center ${msg.role === 'user' ? 'bg-violet-600/20 text-violet-400' : 'bg-cyan-500/20 text-cyan-400'
+            <div key={msg.id} className={`flex gap-3 py-4 px-4 rounded-2xl ${msg.role === 'user' ? 'bg-white/2' : ''}`}>
+              <div className={`shrink-0 w-8 h-8 rounded-xl flex items-center justify-center ${msg.role === 'user' ? 'bg-violet-600/20 text-violet-400' : 'bg-cyan-500/20 text-cyan-400'
                 }`}>
                 {msg.role === 'user' ? <User size={16} /> : <Bot size={16} />}
               </div>
@@ -644,7 +644,7 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
 
                   {/* Streaming indicator */}
                   {msg.isStreaming && (
-                    <span className="inline-block w-2 h-4 bg-cyan-400 animate-pulse ml-0.5 rounded-sm" />
+                    <span className="inline-block w-2 h-4 bg-cyan-400 animate-pulse ml-0.5 rounded-xs" />
                   )}
                 </div>
 
@@ -700,7 +700,7 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
         {/* Loading indicator */}
         {isLoading && messages[messages.length - 1]?.content === '' && !messages[messages.length - 1]?.speculativeContent && (
           <div className="flex gap-3 py-4 px-4">
-            <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-cyan-500/20 flex items-center justify-center">
+            <div className="shrink-0 w-8 h-8 rounded-xl bg-cyan-500/20 flex items-center justify-center">
               <Loader2 size={16} className="text-cyan-400 animate-spin" />
             </div>
             <div className="flex items-center gap-2 text-gray-400 text-sm">
@@ -719,7 +719,7 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
 
       {/* Input Area */}
       <div className="mt-4 px-2">
-        <div className="relative flex items-end gap-2 p-3 rounded-2xl bg-white/[0.03] border border-white/10 focus-within:border-violet-500/30 transition-colors">
+        <div className="relative flex items-end gap-2 p-3 rounded-2xl bg-white/3 border border-white/10 focus-within:border-violet-500/30 transition-colors">
           <textarea
             ref={inputRef}
             value={input}
@@ -727,7 +727,7 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
             onKeyDown={handleKeyDown}
             placeholder={t('chat_placeholder', 'Ask anything... (Shift+Enter for new line)') || 'Ask anything... (Shift+Enter for new line)'}
             rows={1}
-            className="flex-1 bg-transparent text-white placeholder-gray-500 resize-none outline-none text-sm font-medium max-h-32 min-h-[24px]"
+            className="flex-1 bg-transparent text-white placeholder-gray-500 resize-none outline-hidden text-sm font-medium max-h-32 min-h-[24px]"
             style={{ height: 'auto', overflow: 'hidden' }}
             onInput={(e) => {
               const target = e.target as HTMLTextAreaElement;
@@ -736,12 +736,12 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
             }}
           />
           {isLoading ? (
-            <button onClick={stopGeneration} className="flex-shrink-0 p-2.5 rounded-xl bg-red-600/80 hover:bg-red-500 text-white transition-all active:scale-95">
-              <div className="w-4 h-4 rounded-sm bg-white" />
+            <button onClick={stopGeneration} className="shrink-0 p-2.5 rounded-xl bg-red-600/80 hover:bg-red-500 text-white transition-all active:scale-95">
+              <div className="w-4 h-4 rounded-xs bg-white" />
             </button>
           ) : (
             <button onClick={sendMessage} disabled={!input.trim()}
-              className="flex-shrink-0 p-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:bg-gray-700 disabled:cursor-not-allowed text-white transition-all active:scale-95">
+              className="shrink-0 p-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:bg-gray-700 disabled:cursor-not-allowed text-white transition-all active:scale-95">
               <Send size={16} />
             </button>
           )}

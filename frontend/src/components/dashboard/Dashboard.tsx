@@ -308,7 +308,7 @@ function Dashboard({ initialTab, sourceTelegram, modeMining }: DashboardProps = 
                         </div>
                         <button
                           onClick={handleCopyReferral}
-                          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] text-sm text-gray-300 hover:bg-white/[0.06] hover:text-white transition-all"
+                          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/4 border border-white/8 text-sm text-gray-300 hover:bg-white/6 hover:text-white transition-all"
                         >
                           <Copy size={13} />
                           {linkCopied ? t('link_copied', 'Copied!') : t('copy_link', 'Copy Link')}

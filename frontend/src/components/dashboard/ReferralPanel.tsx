@@ -122,7 +122,7 @@ export default function ReferralPanel() {
                         value={inviteCode}
                         onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
                         placeholder={t('enter_code', 'ENTER CODE')}
-                        className="flex-1 bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-gold-500/50"
+                        className="flex-1 bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-hidden focus:border-gold-500/50"
                         maxLength={10}
                     />
                     <button

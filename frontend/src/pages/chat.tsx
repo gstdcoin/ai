@@ -58,7 +58,7 @@ function CodeBlock({ inline, className, children, ...props }: any) {
     const code = String(children).replace(/\n$/, '');
 
     if (inline) {
-        return <code className="bg-white/[0.08] text-violet-300 px-1.5 py-0.5 rounded text-[13px] font-mono">{children}</code>;
+        return <code className="bg-white/8 text-violet-300 px-1.5 py-0.5 rounded-sm text-[13px] font-mono">{children}</code>;
     }
 
     const handleCopy = () => {
@@ -68,12 +68,12 @@ function CodeBlock({ inline, className, children, ...props }: any) {
     };
 
     return (
-        <div className="relative group my-3 rounded-xl overflow-hidden border border-white/[0.08] bg-[#0d0d1a]">
-            <div className="flex items-center justify-between px-4 py-2 bg-white/[0.04] border-b border-white/[0.06]">
+        <div className="relative group my-3 rounded-xl overflow-hidden border border-white/8 bg-[#0d0d1a]">
+            <div className="flex items-center justify-between px-4 py-2 bg-white/4 border-b border-white/6">
                 <span className="text-[11px] text-gray-500 font-mono uppercase tracking-wider">{lang || 'code'}</span>
                 <button
                     onClick={handleCopy}
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] text-gray-500 hover:text-gray-200 hover:bg-white/[0.06] transition font-medium"
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] text-gray-500 hover:text-gray-200 hover:bg-white/6 transition font-medium"
                 >
                     {copied ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
                     {copied ? 'Copied!' : 'Copy'}
@@ -112,10 +112,10 @@ function ExpertPanel({ isReasoning, collectivePhase, expertResults = [], consens
 
     if (expertCount <= 1) {
         return (
-            <div className="flex items-center gap-4 py-4 px-5 rounded-2xl bg-violet-500/[0.04] border border-violet-500/10 my-4 group hover:border-violet-500/20 transition-all duration-300">
+            <div className="flex items-center gap-4 py-4 px-5 rounded-2xl bg-violet-500/4 border border-violet-500/10 my-4 group hover:border-violet-500/20 transition-all duration-300">
                 <div className="relative w-10 h-10 flex items-center justify-center">
                     <div className="absolute inset-0 rounded-full border-2 border-violet-500/20 border-t-violet-400 animate-spin" />
-                    <div className="absolute inset-0 rounded-full bg-violet-500/5 blur-sm" />
+                    <div className="absolute inset-0 rounded-full bg-violet-500/5 blur-xs" />
                     <Brain size={18} className="relative text-violet-400 group-hover:scale-110 transition-transform" />
                 </div>
                 <div className="flex flex-col">
@@ -142,10 +142,10 @@ function ExpertPanel({ isReasoning, collectivePhase, expertResults = [], consens
         <div className="my-3 space-y-2">
             <div className={`rounded-2xl overflow-hidden border transition-all duration-500 ${
                 isSynthesizing || isStreamingPhase
-                    ? 'bg-gradient-to-r from-violet-500/[0.08] to-cyan-500/[0.06] border-violet-500/20'
-                    : 'bg-white/[0.02] border-white/[0.08]'
+                    ? 'bg-linear-to-r from-violet-500/8 to-cyan-500/6 border-violet-500/20'
+                    : 'bg-white/2 border-white/8'
             }`}>
-                <div className="px-4 py-2.5 flex items-center justify-between border-b border-white/[0.04]">
+                <div className="px-4 py-2.5 flex items-center justify-between border-b border-white/4">
                     <div className="flex items-center gap-2.5">
                         <div className="relative w-5 h-5">
                             {(isConsulting || isSynthesizing) ? (
@@ -184,10 +184,10 @@ function ExpertPanel({ isReasoning, collectivePhase, expertResults = [], consens
                                 onClick={() => isDone ? setExpandedExpert(isExpanded ? null : expertId) : undefined}
                                 className={`relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] transition-all duration-300 ${
                                     isDone
-                                        ? 'bg-emerald-500/[0.08] border border-emerald-500/20 text-emerald-300 hover:bg-emerald-500/[0.15] cursor-pointer'
+                                        ? 'bg-emerald-500/8 border border-emerald-500/20 text-emerald-300 hover:bg-emerald-500/15 cursor-pointer'
                                         : isConsulting
-                                            ? 'bg-violet-500/[0.06] border border-violet-500/15 text-violet-300 cursor-default'
-                                            : 'bg-white/[0.03] border border-white/[0.06] text-gray-500 cursor-default'
+                                            ? 'bg-violet-500/6 border border-violet-500/15 text-violet-300 cursor-default'
+                                            : 'bg-white/3 border border-white/6 text-gray-500 cursor-default'
                                 }`}
                             >
                                 {isConsulting && !isDone && (
@@ -205,7 +205,7 @@ function ExpertPanel({ isReasoning, collectivePhase, expertResults = [], consens
                 </div>
 
                 {expandedExpert && expertResults.find(r => r.id === expandedExpert) && (
-                    <div className="mx-4 mb-3 p-3 rounded-lg bg-black/30 border border-white/[0.06] text-[11px] text-gray-400 leading-relaxed">
+                    <div className="mx-4 mb-3 p-3 rounded-lg bg-black/30 border border-white/6 text-[11px] text-gray-400 leading-relaxed">
                         <div className="flex items-center gap-2 mb-1.5 text-gray-300 font-semibold">
                             <span>{expertIcons[expandedExpert] || '🤖'}</span>
                             <span>{expertResults.find(r => r.id === expandedExpert)?.name}</span>
@@ -218,12 +218,12 @@ function ExpertPanel({ isReasoning, collectivePhase, expertResults = [], consens
                 {consensusScore != null && (
                     <div className="px-4 pb-3">
                         <div className="flex items-center gap-3">
-                            <div className="flex-1 h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+                            <div className="flex-1 h-1.5 rounded-full bg-white/6 overflow-hidden">
                                 <div
                                     className={`h-full rounded-full transition-all duration-1000 ease-out ${
-                                        consensusScore > 85 ? 'bg-gradient-to-r from-emerald-500 to-emerald-400' :
-                                        consensusScore > 60 ? 'bg-gradient-to-r from-amber-500 to-yellow-400' :
-                                        'bg-gradient-to-r from-violet-500 to-purple-400'
+                                        consensusScore > 85 ? 'bg-linear-to-r from-emerald-500 to-emerald-400' :
+                                        consensusScore > 60 ? 'bg-linear-to-r from-amber-500 to-yellow-400' :
+                                        'bg-linear-to-r from-violet-500 to-purple-400'
                                     }`}
                                     style={{ width: `${consensusScore}%` }}
                                 />
@@ -247,16 +247,16 @@ interface MarkdownMessageProps {
 
 function MarkdownMessage({ content, isStreaming }: MarkdownMessageProps) {
     return (
-        <div className={`prose prose-invert prose-sm max-w-full overflow-hidden break-words relative
+        <div className={`prose prose-invert prose-sm max-w-full overflow-hidden wrap-break-word relative
             prose-headings:text-white prose-headings:font-bold prose-headings:mt-8 prose-headings:mb-4
             prose-h1:text-2xl prose-h1:tracking-tight prose-h2:text-xl prose-h2:tracking-tight prose-h3:text-lg
             prose-p:text-gray-200 prose-p:leading-[1.7] prose-p:my-4 prose-p:text-[15px]
-            prose-strong:text-white prose-strong:font-bold prose-strong:bg-violet-500/10 prose-strong:px-1 prose-strong:rounded
+            prose-strong:text-white prose-strong:font-bold prose-strong:bg-violet-500/10 prose-strong:px-1 prose-strong:rounded-sm
             prose-em:text-gray-400 prose-em:italic
-            prose-a:text-violet-400 prose-a:no-underline prose-a:font-medium hover:prose-a:text-violet-300 hover:prose-a:underline
+            prose-a:text-violet-400 prose-a:no-underline prose-a:font-medium prose-a:hover:text-violet-300 prose-a:hover:underline
             prose-ul:my-6 prose-ol:my-6 prose-li:text-gray-200 prose-li:my-2 prose-li:text-[15px]
-            prose-blockquote:border-l-4 prose-blockquote:border-violet-500/40 prose-blockquote:bg-violet-500/[0.03] prose-blockquote:rounded-r-xl prose-blockquote:py-2 prose-blockquote:px-6 prose-blockquote:text-gray-300 prose-blockquote:italic
-            prose-table:border-white/10 prose-table:my-8 prose-th:text-gray-300 prose-th:font-bold prose-th:bg-white/[0.05] prose-th:p-3 prose-td:text-gray-400 prose-td:p-3 prose-td:border-b prose-td:border-white/[0.04]
+            prose-blockquote:border-l-4 prose-blockquote:border-violet-500/40 prose-blockquote:bg-violet-500/3 prose-blockquote:rounded-r-xl prose-blockquote:py-2 prose-blockquote:px-6 prose-blockquote:text-gray-300 prose-blockquote:italic
+            prose-table:border-white/10 prose-table:my-8 prose-th:text-gray-300 prose-th:font-bold prose-th:bg-white/5 prose-th:p-3 prose-td:text-gray-400 prose-td:p-3 prose-td:border-b prose-td:border-white/4
             prose-hr:border-white/10 prose-hr:my-10
             ${isStreaming ? 'streaming-content' : ''}
         `}>
@@ -265,15 +265,15 @@ function MarkdownMessage({ content, isStreaming }: MarkdownMessageProps) {
                 components={{
                     code: CodeBlock as any,
                     table: ({ children }) => (
-                        <div className="overflow-x-auto my-3 rounded-lg border border-white/[0.08]">
+                        <div className="overflow-x-auto my-3 rounded-lg border border-white/8">
                             <table className="w-full text-sm">{children}</table>
                         </div>
                     ),
                     th: ({ children }) => (
-                        <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 bg-white/[0.04] border-b border-white/[0.06]">{children}</th>
+                        <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 bg-white/4 border-b border-white/6">{children}</th>
                     ),
                     td: ({ children }) => (
-                        <td className="px-3 py-2 text-[13px] text-gray-300 border-b border-white/[0.04]">{children}</td>
+                        <td className="px-3 py-2 text-[13px] text-gray-300 border-b border-white/4">{children}</td>
                     ),
                 }}
             >
@@ -293,25 +293,25 @@ export default function ChatPage() {
         {
             id: 'free', name: 'Standard Mode', badge: '🆓', cost: 0, expertCount: 1,
             desc: 'High-performance model tuned for precision and thoroughness.',
-            color: 'text-gray-400', bg: 'bg-white/[0.03]', border: 'border-white/[0.06]',
+            color: 'text-gray-400', bg: 'bg-white/3', border: 'border-white/6',
             icon: <Shield size={16} />
         },
         {
             id: 'standard', name: 'Council of 3', badge: '🔬', cost: 0.05, expertCount: 3,
             desc: 'Triple-reasoning synthesis for a significant leap in analytical quality.',
-            color: 'text-blue-400', bg: 'bg-blue-500/[0.06]', border: 'border-blue-500/20',
+            color: 'text-blue-400', bg: 'bg-blue-500/6', border: 'border-blue-500/20',
             icon: <Zap size={16} />
         },
         {
             id: 'pro', name: 'Consensus 5', badge: '🔥', cost: 0.15, expertCount: 5,
             desc: 'Quint-expert cross-verification. Filters hallucinations with 99% accuracy.',
-            color: 'text-amber-400', bg: 'bg-amber-500/[0.06]', border: 'border-amber-500/20',
+            color: 'text-amber-400', bg: 'bg-amber-500/6', border: 'border-amber-500/20',
             icon: <Globe size={16} />
         },
         {
             id: 'ultra', name: 'Expert Swarm', badge: '🧠', cost: 0.50, expertCount: 7,
             desc: 'Max-tier intelligence. 7 distinct architectures synthesized for the literal best answer.',
-            color: 'text-violet-400', bg: 'bg-violet-500/[0.06]', border: 'border-violet-500/20',
+            color: 'text-violet-400', bg: 'bg-violet-500/6', border: 'border-violet-500/20',
             icon: <Cpu size={16} />
         },
     ];
@@ -707,13 +707,13 @@ export default function ChatPage() {
                 ${showSidebar ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
                 fixed lg:relative z-50 lg:z-auto w-72 lg:w-64 h-full
                 transition-transform duration-300 ease-out
-                bg-[#08081a]/95 backdrop-blur-xl border-r border-white/[0.06] flex flex-col
+                bg-[#08081a]/95 backdrop-blur-xl border-r border-white/6 flex flex-col
             `}>
                 {/* Sidebar header */}
-                <div className="p-4 border-b border-white/[0.06]">
+                <div className="p-4 border-b border-white/6">
                     <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center">
+                            <div className="w-7 h-7 rounded-lg bg-linear-to-br from-violet-500 to-cyan-500 flex items-center justify-center">
                                 <Sparkles size={14} className="text-white" />
                             </div>
                             <span className="text-sm font-bold text-white">{t('gstd_chat', 'GSTD Chat')}</span>
@@ -742,10 +742,10 @@ export default function ChatPage() {
                             onClick={() => { setActiveConvId(conv.id); setShowSidebar(false); }}
                             className={`group flex items-center gap-2 px-3 py-2.5 rounded-xl cursor-pointer transition-all text-[13px] ${activeConvId === conv.id
                                 ? 'bg-violet-500/10 text-white border border-violet-500/20'
-                                : 'text-gray-400 hover:bg-white/[0.04] hover:text-gray-200 border border-transparent'
+                                : 'text-gray-400 hover:bg-white/4 hover:text-gray-200 border border-transparent'
                                 }`}
                         >
-                            <MessageSquare size={13} className="flex-shrink-0 opacity-50" />
+                            <MessageSquare size={13} className="shrink-0 opacity-50" />
                             <span className="truncate flex-1">{conv.title}</span>
                             <button
                                 onClick={(e) => { e.stopPropagation(); deleteConversation(conv.id); }}
@@ -758,7 +758,7 @@ export default function ChatPage() {
                 </div>
 
                 {/* Wallet & model info */}
-                <div className="p-4 border-t border-white/[0.06] space-y-3">
+                <div className="p-4 border-t border-white/6 space-y-3">
                     {/* Active tier badge */}
                     <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${currentTier.bg} border ${currentTier.border}`}>
                         <span className="text-sm">{currentTier.badge}</span>
@@ -774,15 +774,15 @@ export default function ChatPage() {
                     </div>
 
                     {isConnected ? (
-                        <div className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-                            <div className="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center flex-shrink-0">
+                        <div className="flex items-center gap-3 p-3 rounded-xl bg-white/3 border border-white/6">
+                            <div className="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center shrink-0">
                                 <Wallet size={14} className="text-emerald-400" />
                             </div>
                             <div className="min-w-0 flex-1">
                                 <div className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">{t('balance', 'Balance')}</div>
                                 <div className="text-sm text-white font-bold truncate">{(gstdBalance || 0).toFixed(2)} <span className="text-gray-500 font-normal text-xs">GSTD</span></div>
                             </div>
-                            <div className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0" />
+                            <div className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
                         </div>
                     ) : (
                         <Link href="/?source=chat" className="flex items-center justify-center gap-2 p-3 rounded-xl bg-violet-500/10 border border-violet-500/20 text-sm text-violet-400 hover:bg-violet-500/15 transition-all font-medium">
@@ -797,7 +797,7 @@ export default function ChatPage() {
             <main className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
 
                 {/* Header */}
-                <header className="h-14 flex items-center justify-between px-4 border-b border-white/[0.06] flex-shrink-0 bg-[#030014]/80 backdrop-blur-sm">
+                <header className="h-14 flex items-center justify-between px-4 border-b border-white/6 shrink-0 bg-[#030014]/80 backdrop-blur-sm">
                     <div className="flex items-center gap-3">
                         <button onClick={() => setShowSidebar(!showSidebar)} className="p-2 rounded-lg hover:bg-white/5 transition lg:hidden">
                             {showSidebar ? <X size={18} /> : <Menu size={18} />}
@@ -809,10 +809,10 @@ export default function ChatPage() {
                                 onClick={() => { setShowTierPicker(!showTierPicker); }}
                                 className={`flex items-center gap-2.5 px-3.5 py-1.5 rounded-xl transition-all duration-300 text-[13px] font-bold border shadow-lg ${selectedTier !== 'free'
                                     ? `${currentTier.bg} ${currentTier.color} ${currentTier.border} shadow-violet-500/5`
-                                    : 'text-gray-400 border-white/[0.08] hover:bg-white/5 hover:border-white/10'
+                                    : 'text-gray-400 border-white/8 hover:bg-white/5 hover:border-white/10'
                                     }`}
                             >
-                                <span className="text-base filter drop-shadow-sm">{currentTier.badge}</span>
+                                <span className="text-base filter drop-shadow-xs">{currentTier.badge}</span>
                                 <span className="hidden sm:inline tracking-tight">{currentTier.name}</span>
                                 <ChevronDown size={14} className={`opacity-40 transition-transform duration-300 ${showTierPicker ? 'rotate-180' : ''}`} />
                             </button>
@@ -821,7 +821,7 @@ export default function ChatPage() {
                                 <>
                                     <div className="fixed inset-0 z-40" onClick={() => setShowTierPicker(false)} />
                                     <div className="absolute top-full left-0 mt-3 w-84 bg-[#0a0a1f] border border-white/10 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.8)] z-50 py-1.5 overflow-hidden backdrop-blur-3xl">
-                                        <div className="px-4 py-2.5 border-b border-white/[0.04] bg-white/[0.02]">
+                                        <div className="px-4 py-2.5 border-b border-white/4 bg-white/2">
                                             <span className="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em]">Collective Intelligence Engine</span>
                                         </div>
                                         <div className="p-1 px-2 space-y-1">
@@ -829,10 +829,10 @@ export default function ChatPage() {
                                                 <button
                                                     key={tier.id}
                                                     onClick={() => { setSelectedTier(tier.id); setShowTierPicker(false); }}
-                                                    className={`w-full px-3 py-3 rounded-xl transition-all duration-200 text-left relative group ${selectedTier === tier.id ? `${tier.bg} border border-white/5` : 'hover:bg-white/[0.03]'}`}
+                                                    className={`w-full px-3 py-3 rounded-xl transition-all duration-200 text-left relative group ${selectedTier === tier.id ? `${tier.bg} border border-white/5` : 'hover:bg-white/3'}`}
                                                 >
                                                     <div className="flex items-start gap-3.5">
-                                                        <div className={`w-10 h-10 rounded-xl ${selectedTier === tier.id ? 'bg-white/10' : 'bg-white/[0.04] group-hover:bg-white/[0.08] group-hover:scale-110'} flex items-center justify-center text-xl transition-all duration-300 shadow-inner`}>
+                                                        <div className={`w-10 h-10 rounded-xl ${selectedTier === tier.id ? 'bg-white/10' : 'bg-white/4 group-hover:bg-white/8 group-hover:scale-110'} flex items-center justify-center text-xl transition-all duration-300 shadow-inner`}>
                                                             {tier.badge}
                                                         </div>
                                                         <div className="flex-1 min-w-0">
@@ -859,9 +859,9 @@ export default function ChatPage() {
                                                 </button>
                                             ))}
                                         </div>
-                                        <div className="px-4 py-3 border-t border-white/[0.04] bg-violet-500/[0.03]">
+                                        <div className="px-4 py-3 border-t border-white/4 bg-violet-500/3">
                                             <div className="flex gap-2.5">
-                                                <Brain size={14} className="text-violet-400 flex-shrink-0 mt-0.5" />
+                                                <Brain size={14} className="text-violet-400 shrink-0 mt-0.5" />
                                                 <p className="text-[10px] text-gray-500 leading-relaxed font-medium">
                                                     Premium tiers activate parallel consensus. Every token is verified across multiple architectures to eliminate hallucinations.
                                                 </p>
@@ -878,7 +878,7 @@ export default function ChatPage() {
                                 <select
                                     value={selectedModel}
                                     onChange={(e) => setSelectedModel(e.target.value)}
-                                    className="appearance-none pl-3.5 pr-8 py-1.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-[12px] font-bold text-gray-400 outline-none hover:border-violet-500/30 hover:bg-white/[0.06] transition-all cursor-pointer shadow-sm tracking-tight"
+                                    className="appearance-none pl-3.5 pr-8 py-1.5 rounded-xl bg-white/3 border border-white/8 text-[12px] font-bold text-gray-400 outline-hidden hover:border-violet-500/30 hover:bg-white/6 transition-all cursor-pointer shadow-xs tracking-tight"
                                     title="Select AI architecture"
                                 >
                                     <option value="compound">🌐 Sovereign Compound AI</option>
@@ -895,7 +895,7 @@ export default function ChatPage() {
 
                     <div className="flex items-center gap-3">
                         {isConnected && (
-                            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.06]">
+                            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/3 border border-white/6">
                                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                                 <span className="text-xs text-gray-400 font-medium">{(gstdBalance || 0).toFixed(2)} GSTD</span>
                             </div>
@@ -910,12 +910,12 @@ export default function ChatPage() {
                         /* ─── Empty state with suggestions ─── */
                         <div className="flex flex-col items-center justify-center h-full px-4">
                             <div className="text-center max-w-lg">
-                                <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-violet-600/20 to-cyan-500/20 border border-violet-500/15 flex items-center justify-center mx-auto mb-6 shadow-[0_0_60px_rgba(139,92,246,0.12)]">
+                                <div className="w-20 h-20 rounded-3xl bg-linear-to-br from-violet-600/20 to-cyan-500/20 border border-violet-500/15 flex items-center justify-center mx-auto mb-6 shadow-[0_0_60px_rgba(139,92,246,0.12)]">
                                     <Bot size={36} className="text-violet-400" />
                                 </div>
                                 <div className="space-y-4">
                                     <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-white mb-2">
-                                        <span className="bg-clip-text text-transparent bg-gradient-to-r from-white via-white to-white/40">Sovereign</span>
+                                        <span className="bg-clip-text text-transparent bg-linear-to-r from-white via-white to-white/40">Sovereign</span>
                                         <span className="block text-violet-400 drop-shadow-[0_0_20px_rgba(167,139,250,0.3)]">Intelligence</span>
                                     </h1>
                                     <div className="flex items-center justify-center gap-3 py-1">
@@ -941,7 +941,7 @@ export default function ChatPage() {
                                         <button
                                             key={i}
                                             onClick={() => handleSend(s.prompt)}
-                                            className="flex items-start gap-3 p-4 rounded-xl border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/[0.12] transition-all text-left group"
+                                            className="flex items-start gap-3 p-4 rounded-xl border border-white/6 bg-white/2 hover:bg-white/5 hover:border-white/12 transition-all text-left group"
                                         >
                                             <span className="text-xl">{s.icon}</span>
                                             <span className="text-[13px] text-gray-400 group-hover:text-gray-200 transition leading-snug">{s.text}</span>
@@ -957,7 +957,7 @@ export default function ChatPage() {
                                 <div key={msg.id} className={`group py-4`}>
                                     {msg.role === 'assistant' ? (
                                         <div className="flex gap-3">
-                                            <div className="w-7 h-7 rounded-lg bg-violet-500/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                            <div className="w-7 h-7 rounded-lg bg-violet-500/15 flex items-center justify-center shrink-0 mt-0.5">
                                                 <Bot size={14} className="text-violet-400" />
                                             </div>
                                             <div className="flex-1 min-w-0 max-w-full overflow-hidden space-y-2">
@@ -974,8 +974,8 @@ export default function ChatPage() {
                                                 {/* Model & latency badge (always visible) */}
                                                 {msg.content && !msg.isStreaming && (msg.latencyMs || msg.collectiveInfo) && (
                                                     <div className="flex items-center flex-wrap gap-2 pt-1.5">
-                                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/[0.04] border border-white/[0.06] text-[11px] text-gray-500">
-                                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400/80 flex-shrink-0" />
+                                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/4 border border-white/6 text-[11px] text-gray-500">
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400/80 shrink-0" />
                                                             {msg.collectiveInfo?.badge || '🆓'}
                                                             <span className="text-gray-400 font-medium">{msg.actualModel || msg.model || 'auto'}</span>
                                                             <span className="text-gray-600">·</span>
@@ -995,11 +995,11 @@ export default function ChatPage() {
                                                 {/* Action buttons */}
                                                 {msg.content && !msg.isStreaming && (
                                                     <div className="flex items-center gap-2 pt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <button onClick={() => copyMessage(msg.id, msg.content)} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-gray-600 hover:text-gray-200 hover:bg-white/[0.06] transition text-xs font-medium">
+                                                        <button onClick={() => copyMessage(msg.id, msg.content)} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-gray-600 hover:text-gray-200 hover:bg-white/6 transition text-xs font-medium">
                                                             {copiedId === msg.id ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
                                                             {copiedId === msg.id ? 'Copied' : 'Copy'}
                                                         </button>
-                                                        <button onClick={handleRegenerate} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-gray-600 hover:text-gray-200 hover:bg-white/[0.06] transition text-xs font-medium">
+                                                        <button onClick={handleRegenerate} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-gray-600 hover:text-gray-200 hover:bg-white/6 transition text-xs font-medium">
                                                             <RotateCcw size={13} />
                                                             Regenerate
                                                         </button>
@@ -1012,7 +1012,7 @@ export default function ChatPage() {
                                         <div className="flex justify-end">
                                             <div className="max-w-[85%] sm:max-w-[75%]">
                                                 <div className="bg-violet-600/10 border border-violet-500/10 rounded-2xl rounded-br-md px-4 py-3">
-                                                    <div className="text-[13px] sm:text-sm leading-relaxed whitespace-pre-wrap break-words">{msg.content}</div>
+                                                    <div className="text-[13px] sm:text-sm leading-relaxed whitespace-pre-wrap wrap-break-word">{msg.content}</div>
                                                 </div>
                                                 <div className="text-right mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <span className="text-[10px] text-gray-700">{formatTime(msg.timestamp)}</span>
@@ -1028,9 +1028,9 @@ export default function ChatPage() {
                 </div>
 
                 {/* ─── Input area ─────────────────────────────────────── */}
-                <div className="border-t border-white/[0.06] p-3 sm:p-5 bg-gradient-to-t from-[#030014] via-[#030014]/95 to-transparent">
+                <div className="border-t border-white/6 p-3 sm:p-5 bg-linear-to-t from-[#030014] via-[#030014]/95 to-transparent">
                     <div className="max-w-3xl mx-auto w-full">
-                        <div className="relative flex items-end gap-0 bg-white/[0.04] border border-white/[0.08] rounded-2xl px-4 sm:px-5 py-3 sm:py-3.5 focus-within:border-violet-500/30 focus-within:shadow-[0_0_30px_rgba(139,92,246,0.08)] transition-all shadow-[0_-8px_40px_rgba(0,0,0,0.4)]">
+                        <div className="relative flex items-end gap-0 bg-white/4 border border-white/8 rounded-2xl px-4 sm:px-5 py-3 sm:py-3.5 focus-within:border-violet-500/30 focus-within:shadow-[0_0_30px_rgba(139,92,246,0.08)] transition-all shadow-[0_-8px_40px_rgba(0,0,0,0.4)]">
                             <textarea
                                 ref={inputRef}
                                 value={input}
@@ -1039,13 +1039,13 @@ export default function ChatPage() {
                                 placeholder={`Message GSTD ${currentTier.name}…`}
                                 rows={1}
                                 disabled={isStreaming}
-                                className="flex-1 bg-transparent outline-none resize-none text-sm sm:text-[15px] text-gray-200 placeholder:text-gray-600 max-h-48 py-1 leading-relaxed disabled:opacity-50"
+                                className="flex-1 bg-transparent outline-hidden resize-none text-sm sm:text-[15px] text-gray-200 placeholder:text-gray-600 max-h-48 py-1 leading-relaxed disabled:opacity-50"
                                 style={{ minHeight: '28px' }}
                             />
                             {isStreaming ? (
                                 <button
                                     onClick={handleStop}
-                                    className="p-2.5 sm:p-3 rounded-2xl transition-all flex-shrink-0 ml-2 text-white bg-rose-600 hover:bg-rose-500 shadow-lg shadow-rose-500/25"
+                                    className="p-2.5 sm:p-3 rounded-2xl transition-all shrink-0 ml-2 text-white bg-rose-600 hover:bg-rose-500 shadow-lg shadow-rose-500/25"
                                     title="Stop generating"
                                 >
                                     <Square size={18} />
@@ -1054,9 +1054,9 @@ export default function ChatPage() {
                                 <button
                                     onClick={() => handleSend()}
                                     disabled={!input.trim()}
-                                    className={`p-2.5 sm:p-3 rounded-2xl transition-all flex-shrink-0 ml-2 ${input.trim()
+                                    className={`p-2.5 sm:p-3 rounded-2xl transition-all shrink-0 ml-2 ${input.trim()
                                         ? 'text-white bg-violet-600 hover:bg-violet-500 shadow-lg shadow-violet-500/25 scale-100 hover:scale-105'
-                                        : 'text-gray-600 cursor-not-allowed bg-white/[0.04]'
+                                        : 'text-gray-600 cursor-not-allowed bg-white/4'
                                         }`}
                                 >
                                     <Send size={18} />

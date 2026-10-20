@@ -27,7 +27,7 @@ export default function NotFound() {
             <Link
               key={href}
               href={href}
-              className="flex items-center justify-between p-4 rounded-xl bg-white/[0.03] border border-white/10 hover:border-white/20 transition-all group text-left"
+              className="flex items-center justify-between p-4 rounded-xl bg-white/3 border border-white/10 hover:border-white/20 transition-all group text-left"
             >
               <div>
                 <div className="text-sm font-semibold text-white group-hover:text-cyan-400 transition-colors">{label}</div>

@@ -186,7 +186,7 @@ export default function Marketplace() {
                             if (tab.id === 'my-tasks') fetchMyTasks();
                         }}
                         className={`px-5 py-2.5 rounded-xl font-medium transition-all duration-300 flex items-center gap-2 whitespace-nowrap ${activeTab === tab.id
-                            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/20'
+                            ? 'bg-linear-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/20'
                             : 'bg-gray-800/50 text-gray-400 hover:text-white hover:bg-gray-700/50 border border-gray-700/50'
                             }`}
                     >
@@ -206,7 +206,7 @@ export default function Marketplace() {
                         { label: t('platform_fund', 'Platform Fund'), value: ((marketStats.platform_funds?.dev_fund || 0) + (marketStats.platform_funds?.gold_reserve || 0)).toFixed(2), icon: Shield, color: 'text-amber-400' }
                     ].map((stat, idx) => (
                         <div key={idx} className="bg-gray-900/40 backdrop-blur-md rounded-2xl p-4 border border-gray-700/50 flex flex-col items-center justify-center group overflow-hidden relative">
-                            <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${stat.color.replace('text', 'from')} to-transparent opacity-0 group-hover:opacity-100 transition-opacity`} />
+                            <div className={`absolute top-0 left-0 w-full h-1 bg-linear-to-r ${stat.color.replace('text', 'from')} to-transparent opacity-0 group-hover:opacity-100 transition-opacity`} />
                             <stat.icon className={`w-5 h-5 ${stat.color} mb-2 opacity-80 group-hover:scale-110 transition-transform`} />
                             <div className="text-xl font-bold text-white font-mono">{stat.value}</div>
                             <div className="text-[10px] uppercase tracking-wider text-gray-500 font-medium">{stat.label}</div>
@@ -275,7 +275,7 @@ export default function Marketplace() {
                                             <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.05)_0%,transparent_50%)] pointer-events-none" />
 
                                             {isHot && (
-                                                <div className="absolute -top-2.5 -right-2.5 px-3 py-1 bg-gradient-to-br from-amber-400 via-orange-500 to-red-600 rounded-lg text-[10px] font-black text-white shadow-xl flex items-center gap-1.5 animate-bounce-subtle z-10">
+                                                <div className="absolute -top-2.5 -right-2.5 px-3 py-1 bg-linear-to-br from-amber-400 via-orange-500 to-red-600 rounded-lg text-[10px] font-black text-white shadow-xl flex items-center gap-1.5 animate-bounce-subtle z-10">
                                                     <Sparkles className="w-3 h-3" />{t('premium_reward', 'PREMIUM REWARD')}</div>
                                             )}
 
@@ -400,7 +400,7 @@ export default function Marketplace() {
                                     <div key={task.task_id} className="glass-card p-4">
                                         <div className="flex items-center justify-between mb-2">
                                             <div className="font-semibold">{task.operation || task.task_type}</div>
-                                            <span className={`px-2 py-1 rounded text-xs ${getStatusColor(task.status)}`}>
+                                            <span className={`px-2 py-1 rounded-sm text-xs ${getStatusColor(task.status)}`}>
                                                 {task.status}
                                             </span>
                                         </div>

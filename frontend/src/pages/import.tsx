@@ -98,7 +98,7 @@ export default function ImportSkillPage() {
 
                 {/* Main card */}
                 <div className="relative group">
-                    <div className="absolute -inset-1 bg-gradient-to-r from-violet-600 to-cyan-600 rounded-[32px] blur opacity-20 group-hover:opacity-40 transition duration-1000" />
+                    <div className="absolute -inset-1 bg-linear-to-r from-violet-600 to-cyan-600 rounded-[32px] blur-sm opacity-20 group-hover:opacity-40 transition duration-1000" />
                     <div className="relative p-8 md:p-12 rounded-[32px] bg-black/60 border border-white/10 backdrop-blur-3xl shadow-2xl overflow-hidden">
 
                         <div className="text-center mb-12">
@@ -107,7 +107,7 @@ export default function ImportSkillPage() {
                             </div>
                             <h1 className="text-4xl md:text-5xl font-black mb-4 tracking-tighter">
                                 {t('import_from', 'Import Skill from')}{' '}
-                                <span className="bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">GitHub</span>
+                                <span className="bg-linear-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">GitHub</span>
                             </h1>
                             <p className="text-gray-400 text-lg max-w-xl mx-auto font-medium">
                                 {t('import_desc', 'Paste a GitHub repository URL to verify and install it as a GSTD agent skill.')}
@@ -125,7 +125,7 @@ export default function ImportSkillPage() {
                                     onChange={e => setUrl(e.target.value)}
                                     onKeyDown={e => e.key === 'Enter' && handleVerify()}
                                     placeholder="https://github.com/username/skill-repo"
-                                    className="w-full pl-14 pr-32 py-5 rounded-2xl bg-white/5 border border-white/10 focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 outline-none transition-all font-medium text-white placeholder:text-gray-600"
+                                    className="w-full pl-14 pr-32 py-5 rounded-2xl bg-white/5 border border-white/10 focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 outline-hidden transition-all font-medium text-white placeholder:text-gray-600"
                                 />
                                 <button
                                     onClick={handleVerify}
@@ -148,7 +148,7 @@ export default function ImportSkillPage() {
                             {skillData && (
                                 <div className="mt-12 space-y-8">
                                     <div className="grid md:grid-cols-2 gap-6">
-                                        <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/10">
+                                        <div className="p-6 rounded-2xl bg-white/3 border border-white/10">
                                             <div className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-3">
                                                 {t('skill_identity', 'Skill Identity')}
                                             </div>
@@ -166,7 +166,7 @@ export default function ImportSkillPage() {
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/10">
+                                        <div className="p-6 rounded-2xl bg-white/3 border border-white/10">
                                             <div className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-3">
                                                 {t('verification_status', 'Verification Status')}
                                             </div>
@@ -186,7 +186,7 @@ export default function ImportSkillPage() {
                                             {t('installation_command', 'Installation Command')}
                                         </div>
                                         <div className="group/code relative">
-                                            <div className="absolute -inset-0.5 bg-gradient-to-r from-violet-500/20 to-cyan-500/20 rounded-2xl blur opacity-0 group-hover/code:opacity-100 transition duration-500" />
+                                            <div className="absolute -inset-0.5 bg-linear-to-r from-violet-500/20 to-cyan-500/20 rounded-2xl blur-sm opacity-0 group-hover/code:opacity-100 transition duration-500" />
                                             <div className="relative flex items-center justify-between p-6 rounded-2xl bg-black/80 border border-white/10 font-mono text-sm overflow-hidden">
                                                 <div className="flex items-center gap-3">
                                                     <Terminal size={18} className="text-gray-500" />
@@ -207,7 +207,7 @@ export default function ImportSkillPage() {
                                     <div>
                                         <button
                                             onClick={() => router.push('/docs')}
-                                            className="w-full py-5 rounded-2xl bg-gradient-to-r from-violet-600 to-cyan-600 text-white font-black text-lg hover:shadow-[0_0_30px_rgba(139,92,246,0.3)] transition-all active:scale-[0.98] flex items-center justify-center gap-3"
+                                            className="w-full py-5 rounded-2xl bg-linear-to-r from-violet-600 to-cyan-600 text-white font-black text-lg hover:shadow-[0_0_30px_rgba(139,92,246,0.3)] transition-all active:scale-[0.98] flex items-center justify-center gap-3"
                                         >
                                             {t('read_docs', 'Read the documentation')}
                                             <ArrowRight size={20} />
@@ -226,7 +226,7 @@ export default function ImportSkillPage() {
                         { icon: Layout,  title: t('modular',  'Modular'),  desc: 'Skills follow the MCP standard — compatible with Claude, Cursor, and any LLM.' },
                         { icon: Brain,   title: t('secure',   'Secure'),   desc: 'All imported skills are sandboxed and verified for economic safety on TON.' },
                     ].map((item, i) => (
-                        <div key={i} className="p-8 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all">
+                        <div key={i} className="p-8 rounded-2xl bg-white/2 border border-white/5 hover:border-white/10 transition-all">
                             <item.icon className="w-6 h-6 text-violet-400 mb-4" />
                             <h4 className="text-white font-black uppercase tracking-tight mb-2">{item.title}</h4>
                             <p className="text-sm text-gray-500 leading-relaxed font-medium">{item.desc}</p>

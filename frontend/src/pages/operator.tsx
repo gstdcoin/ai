@@ -56,7 +56,7 @@ export default function OperatorDashboard() {
             </span>
 AUTONOMOUS OPERATOR
           </div>
-          <h1 className="text-4xl md:text-5xl font-black mb-4">Autonomous Operator <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400">Dashboard</span></h1>
+          <h1 className="text-4xl md:text-5xl font-black mb-4">Autonomous Operator <span className="text-transparent bg-clip-text bg-linear-to-r from-violet-400 to-cyan-400">Dashboard</span></h1>
           <p className="text-gray-400 max-w-2xl mx-auto">
             The GSTD ecosystem is 100% autonomously managed by a continuously running AI Operator. 9 specialized AI departments orchestrate economics, code validation, scaling, and governance in real-time.
           </p>
@@ -101,7 +101,7 @@ AUTONOMOUS OPERATOR
                     <div key={index} className="glass-pro p-5 rounded-xl shine-on-hover hover:border-cyan-500/30 transition-all">
                       <div className="flex justify-between items-start mb-2">
                         <div className="font-bold text-emerald-400">DEPT {index+1}: {dept.name}</div>
-                        <div className="text-[10px] uppercase font-bold px-2 py-1 bg-white/5 rounded text-gray-400">⏱ {dept.interval}</div>
+                        <div className="text-[10px] uppercase font-bold px-2 py-1 bg-white/5 rounded-sm text-gray-400">⏱ {dept.interval}</div>
                       </div>
                       <p className="text-xs text-gray-400">{dept.scope}</p>
                     </div>

@@ -135,7 +135,7 @@ export default function SovereignTerminalModal({ isOpen, onClose, mode = 'faucet
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+    <div className="fixed inset-0 z-100 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
       <div className="bg-[#0a0a0c] border border-emerald-500/30 rounded-2xl w-full max-w-2xl overflow-hidden shadow-[0_0_50px_rgba(16,185,129,0.15)] relative my-auto">
         
         {/* Header */}
@@ -144,7 +144,7 @@ export default function SovereignTerminalModal({ isOpen, onClose, mode = 'faucet
             <Terminal className="w-5 h-5" />
             <h2 className="font-mono text-sm tracking-wider font-bold">SOVEREIGN_SWARM_TERMINAL v1.0.0</h2>
           </div>
-          <button onClick={onClose} className="p-1 text-emerald-400/50 hover:text-emerald-400 hover:bg-emerald-400/10 rounded transition-colors">
+          <button onClick={onClose} className="p-1 text-emerald-400/50 hover:text-emerald-400 hover:bg-emerald-400/10 rounded-sm transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -188,7 +188,7 @@ export default function SovereignTerminalModal({ isOpen, onClose, mode = 'faucet
 
             {/* ASCII / Shell Terminal */}
             <div className={`bg-black border border-emerald-500/20 rounded-xl p-4 font-mono text-xs flex flex-col ${mode === 'agent_chat' ? 'h-80' : 'justify-between'}`}>
-              <div className={`space-y-2 text-emerald-500 overflow-y-auto mt-2 flex-grow ${mode === 'agent_chat' ? 'h-full mb-4 scrollbar-hide' : 'h-48'}`}>
+              <div className={`space-y-2 text-emerald-500 overflow-y-auto mt-2 grow ${mode === 'agent_chat' ? 'h-full mb-4 scrollbar-hide' : 'h-48'}`}>
                 {terminalLog.map((log, i) => (
                   <div key={i} className="animate-fade-in-up flex gap-2">
                     <span className="opacity-50 text-emerald-700">{(new Date()).toISOString().split('T')[1].slice(0, 8)}</span>
@@ -215,7 +215,7 @@ export default function SovereignTerminalModal({ isOpen, onClose, mode = 'faucet
                   <button
                     onClick={handleClaim}
                     disabled={isClaiming || !address}
-                    className="w-full py-3 sm:py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded shadow-[0_0_10px_rgba(16,185,129,0.2)] hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all flex items-center justify-center gap-2 font-bold uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
+                    className="w-full py-3 sm:py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-sm shadow-[0_0_10px_rgba(16,185,129,0.2)] hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all flex items-center justify-center gap-2 font-bold uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
                   >
                     {isClaiming ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
                     {isClaiming ? 'EXECUTING...' : 'Claim Genesis Grid (5 GSTD)'}
@@ -229,7 +229,7 @@ export default function SovereignTerminalModal({ isOpen, onClose, mode = 'faucet
                    <div className="text-emerald-500 font-bold absolute left-0 top-1/2 -translate-y-1/2 pl-2"> {`>`} </div>
                    <input
                       type="text"
-                      className="w-full bg-transparent border border-emerald-500/30 outline-none rounded-lg py-2.5 pl-8 pr-4 text-emerald-400 font-mono text-sm placeholder:text-emerald-500/30 focus:border-emerald-400 focus:shadow-[0_0_15px_rgba(16,185,129,0.3)]"
+                      className="w-full bg-transparent border border-emerald-500/30 outline-hidden rounded-lg py-2.5 pl-8 pr-4 text-emerald-400 font-mono text-sm placeholder:text-emerald-500/30 focus:border-emerald-400 focus:shadow-[0_0_15px_rgba(16,185,129,0.3)]"
                       placeholder="ENTER COMMAND..."
                       value={chatInput}
                       onChange={(e) => setChatInput(e.target.value)}

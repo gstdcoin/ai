@@ -38,7 +38,19 @@ repositories. A second daily observation is still needed before reporting trends
   path. The legacy submit route now rejects empty/error results before consuming
   the task assignment.
 - `web`: `npm.cmd run type-check` passes.
-- `ai/frontend` dependency audit: upgraded Vitest to `4.1.11` (supports the
+- `ai/frontend` Tailwind 4 migration (approved by the owner): ran the official
+  `@tailwindcss/upgrade` tool, which converted the theme to CSS `@theme`, the
+  custom component classes to `@utility`, and the PostCSS setup to
+  `@tailwindcss/postcss`. `next build` succeeds, `tsc` and 69 unit tests pass,
+  and the home page and Mini App render correctly (Mini App tabs fit at 320 px
+  with no horizontal scroll). An `overrides` entry pins `postcss-selector-parser`
+  to `^7.1.6` for `@tailwindcss/typography`, so `npm audit --omit=dev` now
+  reports 0 vulnerabilities. The full audit still lists 5 high dev-only
+  advisories from `braces` via `eslint-config-next`'s `fast-glob` (no patched
+  `braces` exists); they never reach the production bundle. Known limitation:
+  Tailwind 4 targets Safari 16.4+/Chrome 111+, so very old Telegram WebViews may
+  render degraded styles.
+- `ai/frontend` dependency audit (earlier state): upgraded Vitest to `4.1.11` (supports the
   repository's Node 20 CI) to remove the two critical test-runner advisories;
   removed a stale `undici` v5 override so Wrangler resolves its declared
   patched v7 dependency. Current full audit still reports 7 high and 3 moderate

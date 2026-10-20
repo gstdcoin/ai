@@ -131,10 +131,10 @@ export default function AgentNode() {
   return (
     <div className="flex flex-col lg:flex-row h-screen bg-[#030014] overflow-hidden">
       {/* Left Panel */}
-      <aside className="lg:w-64 flex-shrink-0 border-b lg:border-b-0 lg:border-r border-white/10 bg-black/20">
+      <aside className="lg:w-64 shrink-0 border-b lg:border-b-0 lg:border-r border-white/10 bg-black/20">
         <div className="p-4 border-b border-white/10">
           <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-600/30 to-cyan-500/30 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-linear-to-br from-violet-600/30 to-cyan-500/30 flex items-center justify-center">
               <Bot size={22} className="text-violet-400" />
             </div>
             <div>
@@ -243,7 +243,7 @@ export default function AgentNode() {
                               {skill.capabilities.slice(0, 5).map((c) => (
                                 <span
                                   key={c}
-                                  className="text-[10px] px-2 py-0.5 rounded bg-white/5 text-gray-400"
+                                  className="text-[10px] px-2 py-0.5 rounded-sm bg-white/5 text-gray-400"
                                 >
                                   {c}
                                 </span>
@@ -347,7 +347,7 @@ export default function AgentNode() {
               <ComponentErrorBoundary name="FleetCommandPanel">
                 <FleetCommandPanel />
               </ComponentErrorBoundary>
-              <div className="mt-6 p-4 rounded-2xl bg-white/[0.02] border border-white/5">
+              <div className="mt-6 p-4 rounded-2xl bg-white/2 border border-white/5">
                 <p className="text-gray-400 text-sm">
                   <Zap size={14} className="inline mr-1 text-amber-400" />
                   {t('agent_miner_hint', 'Personal AI assistant + miner + node for any device. Free hardware but no OpenClaw? This is your advanced miner — all in one.') || 'Personal AI assistant + miner + node for any device. Free hardware but no OpenClaw? This is your advanced miner — all in one.'}

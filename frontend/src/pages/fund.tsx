@@ -23,7 +23,7 @@ function StatCard({ label, value, sub, icon: Icon, color }: {
   color: string;
 }) {
   return (
-    <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-white/20 transition-all">
+    <div className="p-6 rounded-2xl bg-white/3 border border-white/10 hover:border-white/20 transition-all">
       <div className={`w-10 h-10 rounded-xl bg-${color}-500/15 flex items-center justify-center mb-4`}>
         <Icon className={`text-${color}-400`} size={20} />
       </div>
@@ -81,13 +81,13 @@ export default function TreasuryPage() {
         </div>
 
         {/* Fee split visual */}
-        <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/10 mb-8">
+        <div className="p-6 rounded-2xl bg-white/3 border border-white/10 mb-8">
           <div className="text-xs text-gray-500 font-black uppercase tracking-widest mb-4">Fee Distribution — Per Inference Request</div>
           <div className="flex gap-2 h-8 rounded-xl overflow-hidden mb-3">
-            <div className="flex-[90] bg-gradient-to-r from-violet-600 to-cyan-600 rounded-l-xl flex items-center justify-center text-white text-xs font-black">
+            <div className="flex-90 bg-linear-to-r from-violet-600 to-cyan-600 rounded-l-xl flex items-center justify-center text-white text-xs font-black">
               90% → Node Operator
             </div>
-            <div className="flex-[10] bg-gradient-to-r from-amber-600 to-orange-600 rounded-r-xl flex items-center justify-center text-white text-xs font-black">
+            <div className="flex-10 bg-linear-to-r from-amber-600 to-orange-600 rounded-r-xl flex items-center justify-center text-white text-xs font-black">
               10%
             </div>
           </div>
@@ -130,7 +130,7 @@ export default function TreasuryPage() {
         </div>
 
         {/* How treasury is used */}
-        <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/10 mb-6">
+        <div className="p-6 rounded-2xl bg-white/3 border border-white/10 mb-6">
           <h2 className="text-lg font-black text-white mb-4">Treasury Use of Funds</h2>
           <div className="space-y-3">
             {[
@@ -138,7 +138,7 @@ export default function TreasuryPage() {
               { label: 'Network Development', desc: 'Infrastructure, API improvements, node tooling', pct: '30%', color: 'violet' },
               { label: 'Ecosystem Grants', desc: 'Community builders, integrations, partnerships', pct: '10%', color: 'emerald' },
             ].map(item => (
-              <div key={item.label} className="flex items-center gap-4 p-4 rounded-xl bg-white/[0.02] border border-white/5">
+              <div key={item.label} className="flex items-center gap-4 p-4 rounded-xl bg-white/2 border border-white/5">
                 <div className={`text-lg font-black text-${item.color}-400 w-12 shrink-0`}>{item.pct}</div>
                 <div>
                   <div className="text-sm font-bold text-white">{item.label}</div>

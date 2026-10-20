@@ -48,7 +48,7 @@ export default function TreasuryWidget() {
   };
 
   return (
-    <div className="glass-card p-6 border-gold-900/30 bg-gradient-to-br from-gold-900/10 to-amber-900/5 hover:border-gold-900/50 transition-all duration-300">
+    <div className="glass-card p-6 border-gold-900/30 bg-linear-to-br from-gold-900/10 to-amber-900/5 hover:border-gold-900/50 transition-all duration-300">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="text-lg font-bold text-white flex items-center gap-2 font-display">
@@ -86,7 +86,7 @@ export default function TreasuryWidget() {
       ) : (
         <div>
           <div className="text-3xl font-bold text-gold-900 mb-2 flex items-baseline gap-2">
-            <span className="bg-gradient-to-r from-yellow-400 to-amber-500 bg-clip-text text-transparent">
+            <span className="bg-linear-to-r from-yellow-400 to-amber-500 bg-clip-text text-transparent">
               {treasuryGstd !== null ? treasuryGstd.toFixed(2) : '0.00'}
             </span>
             <span className="text-lg text-gray-400">GSTD</span>

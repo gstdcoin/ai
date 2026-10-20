@@ -247,7 +247,7 @@ export default function SwapPage() {
         {status !== 'success' && (
           <>
             {/* Swap Card */}
-            <div className="sov-card !p-6 fu d2 relative mb-6">
+            <div className="sov-card p-6! fu d2 relative mb-6">
               <div className="absolute top-0 right-0 w-64 h-64 bg-violet-500/5 rounded-full blur-3xl pointer-events-none -z-10" />
 
               {/* Wallet bar */}
@@ -259,7 +259,7 @@ export default function SwapPage() {
                       {userAddress.slice(0, 6)}...{userAddress.slice(-4)}
                     </span>
                     {balance > 0 && (
-                      <span className="text-[10px] text-emerald-400/50 bg-emerald-400/10 px-1.5 py-0.5 rounded ml-1">{balance.toFixed(1)} GSTD</span>
+                      <span className="text-[10px] text-emerald-400/50 bg-emerald-400/10 px-1.5 py-0.5 rounded-sm ml-1">{balance.toFixed(1)} GSTD</span>
                     )}
                   </div>
                 ) : (
@@ -269,7 +269,7 @@ export default function SwapPage() {
               </div>
 
               {/* FROM input */}
-              <div className="rounded-2xl bg-white/[0.02] border border-white/5 p-4 mb-2 hover:bg-white/[0.04] transition-colors">
+              <div className="rounded-2xl bg-white/2 border border-white/5 p-4 mb-2 hover:bg-white/4 transition-colors">
                 <div className="flex justify-between items-center mb-3">
                   <span className="text-[10px] uppercase tracking-widest font-bold text-gray-500">You pay</span>
                   {direction === 'sell' && balance > 0 && (
@@ -283,7 +283,7 @@ export default function SwapPage() {
                     type="number" value={amount}
                     onChange={(e) => { setAmount(e.target.value); setStatus('idle'); }}
                     placeholder="0.0" min="0" step="0.1"
-                    className="flex-1 bg-transparent border-none outline-none text-3xl font-black text-white min-w-0"
+                    className="flex-1 bg-transparent border-none outline-hidden text-3xl font-black text-white min-w-0"
                   />
                   <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 shrink-0">
                     <div className="text-lg leading-none">{fromToken === 'TON' ? '💎' : '⚡'}</div>
@@ -300,7 +300,7 @@ export default function SwapPage() {
               </div>
 
               {/* TO output */}
-              <div className="rounded-2xl bg-white/[0.02] border border-white/5 p-4 mt-2 hover:bg-white/[0.04] transition-colors">
+              <div className="rounded-2xl bg-white/2 border border-white/5 p-4 mt-2 hover:bg-white/4 transition-colors">
                 <div className="mb-3">
                   <span className="text-[10px] uppercase tracking-widest font-bold text-gray-500">You receive</span>
                 </div>
@@ -321,7 +321,7 @@ export default function SwapPage() {
 
               {/* Quote */}
               {simResult && status === 'simulated' && (
-                <div className="rounded-xl bg-white/[0.02] border border-white/5 p-4 mt-4 text-xs font-medium space-y-2">
+                <div className="rounded-xl bg-white/2 border border-white/5 p-4 mt-4 text-xs font-medium space-y-2">
                   {[
                     ['Rate', `1 ${fromToken} ≈ ${(outputAmount / (Number.parseFloat(amount) || 1)).toLocaleString(undefined, { maximumFractionDigits: 4 })} ${toToken}`],
                     ['Min received', `${minOutput.toFixed(4)} ${toToken}`],
@@ -353,14 +353,14 @@ export default function SwapPage() {
                   }
                   if (status === 'swapping') {
                     return (
-                      <button disabled className="btn-sovereign w-full !bg-white/5 border border-white/10 text-gray-400">
+                      <button disabled className="btn-sovereign w-full bg-white/5! border border-white/10 text-gray-400">
                         <Loader2 size={16} className="animate-spin mr-2" /> Confirming in wallet...
                       </button>
                     );
                   }
                   if (status === 'simulating') {
                     return (
-                      <button disabled className="btn-sovereign w-full !bg-white/5 border border-white/10 text-gray-500 opacity-50">
+                      <button disabled className="btn-sovereign w-full bg-white/5! border border-white/10 text-gray-500 opacity-50">
                         <Loader2 size={16} className="animate-spin mr-2" /> Getting quote...
                       </button>
                     );
@@ -387,7 +387,7 @@ export default function SwapPage() {
                 {['0.5', '1', '5', '10'].map(val => (
                   <button key={val} onClick={() => { setAmount(val); setStatus('idle'); }}
                     className={`py-2 rounded-xl text-xs font-bold transition-all border ${
-                      amount === val ? 'border-violet-500/40 bg-violet-500/10 text-violet-300' : 'border-white/5 bg-white/[0.02] text-gray-400 hover:bg-white/[0.04]'
+                      amount === val ? 'border-violet-500/40 bg-violet-500/10 text-violet-300' : 'border-white/5 bg-white/2 text-gray-400 hover:bg-white/4'
                     }`}>
                     {val} TON
                   </button>

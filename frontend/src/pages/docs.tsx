@@ -77,12 +77,12 @@ export default function Docs() {
             <main className="max-w-4xl mx-auto px-6 pb-24">
                 {loading ? (
                     <div className="animate-pulse space-y-4">
-                        <div className="h-8 bg-white/10 rounded w-1/3"></div>
-                        <div className="h-4 bg-white/10 rounded w-full"></div>
-                        <div className="h-4 bg-white/10 rounded w-5/6"></div>
+                        <div className="h-8 bg-white/10 rounded-sm w-1/3"></div>
+                        <div className="h-4 bg-white/10 rounded-sm w-full"></div>
+                        <div className="h-4 bg-white/10 rounded-sm w-5/6"></div>
                     </div>
                 ) : (
-                    <div className="prose prose-invert prose-lg max-w-none prose-headings:text-transparent prose-headings:bg-clip-text prose-headings:bg-gradient-to-r prose-headings:from-cyan-400 prose-headings:to-violet-400 prose-a:text-cyan-400 hover:prose-a:text-cyan-300 prose-table:border-collapse prose-th:border prose-th:border-white/20 prose-th:p-3 prose-td:border prose-td:border-white/10 prose-td:p-3 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="prose prose-invert prose-lg max-w-none prose-headings:text-transparent prose-headings:bg-clip-text prose-headings:bg-linear-to-r prose-headings:from-cyan-400 prose-headings:to-violet-400 prose-a:text-cyan-400 prose-a:hover:text-cyan-300 prose-table:border-collapse prose-th:border prose-th:border-white/20 prose-th:p-3 prose-td:border prose-td:border-white/10 prose-td:p-3 animate-in fade-in slide-in-from-bottom-4 duration-500">
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
                     </div>
                 )}

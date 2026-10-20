@@ -56,10 +56,10 @@ export default function LeaderboardPage() {
   };
 
   const getRankColor = (rank: number) => {
-    if (rank === 1) return 'gold-top bg-yellow-400/[0.04] border-yellow-400/20';
-    if (rank === 2) return 'bg-gray-300/[0.03] border-gray-300/20';
-    if (rank === 3) return 'bg-amber-600/[0.03] border-amber-600/20';
-    if (rank <= 10) return 'violet-top bg-violet-400/[0.02] border-violet-400/10';
+    if (rank === 1) return 'gold-top bg-yellow-400/4 border-yellow-400/20';
+    if (rank === 2) return 'bg-gray-300/3 border-gray-300/20';
+    if (rank === 3) return 'bg-amber-600/3 border-amber-600/20';
+    if (rank <= 10) return 'violet-top bg-violet-400/2 border-violet-400/10';
     return '';
   };
 
@@ -105,7 +105,7 @@ export default function LeaderboardPage() {
             {data.map((entry, i) => (
               <div
                 key={entry.rank}
-                className={`sov-card flex items-center gap-4 !p-4 transition-all !duration-200 hover:scale-[1.02] ${getRankColor(entry.rank)}`}
+                className={`sov-card flex items-center gap-4 p-4! transition-all duration-200! hover:scale-[1.02] ${getRankColor(entry.rank)}`}
                 style={{ animationDelay: `${(i * 0.05).toFixed(2)}s` }}
               >
                 <div className="w-12 flex justify-center items-center">{getRankIcon(entry.rank)}</div>

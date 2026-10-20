@@ -110,21 +110,21 @@ export default function HelpPanel() {
             <h3 className="font-bold text-base sm:text-lg text-white mb-3">{t('how_to_earn', 'How to Earn')}</h3>
             <ul className="space-y-4">
               <li className="flex gap-3">
-                <span className="bg-gold-900/30 text-gold-900 border border-gold-900/50 w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">1</span>
+                <span className="bg-gold-900/30 text-gold-900 border border-gold-900/50 w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold shrink-0">1</span>
                 <div>
                   <p className="font-semibold text-white text-sm sm:text-base">{t('step_exec_1_title', 'Register Your Device')}</p>
                   <p className="text-gray-300 text-xs sm:text-sm">{t('step_exec_1_desc', 'Add your device to the network')}</p>
                 </div>
               </li>
               <li className="flex gap-3">
-                <span className="bg-gold-900/30 text-gold-900 border border-gold-900/50 w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">2</span>
+                <span className="bg-gold-900/30 text-gold-900 border border-gold-900/50 w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold shrink-0">2</span>
                 <div>
                   <p className="font-semibold text-white text-sm sm:text-base">{t('step_exec_2_title', 'Keep Browser Open')}</p>
                   <p className="text-gray-300 text-xs sm:text-sm">{t('step_exec_2_desc', 'Tasks are processed automatically in your browser')}</p>
                 </div>
               </li>
               <li className="flex gap-3">
-                <span className="bg-gold-900/30 text-gold-900 border border-gold-900/50 w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">3</span>
+                <span className="bg-gold-900/30 text-gold-900 border border-gold-900/50 w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold shrink-0">3</span>
                 <div>
                   <p className="font-semibold text-white text-sm sm:text-base">{t('step_exec_3_title', 'Receive Compensation')}</p>
                   <p className="text-gray-300 text-xs sm:text-sm">{t('step_exec_3_desc', 'Get paid in TON for completed tasks')}</p>
@@ -183,7 +183,7 @@ export default function HelpPanel() {
             <div className="space-y-4">
               <div className="glass-card border-blue-500/20 bg-blue-500/5 p-4 rounded-lg">
                 <div className="flex items-start gap-3">
-                  <span className="bg-blue-500/30 text-blue-400 border border-blue-500/50 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">1</span>
+                  <span className="bg-blue-500/30 text-blue-400 border border-blue-500/50 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0">1</span>
                   <div>
                     <h4 className="font-bold text-white mb-1">{t('step_1_register', 'Register Your Device') || 'Register Your Device'}</h4>
                     <p className="text-sm text-gray-300">
@@ -194,7 +194,7 @@ export default function HelpPanel() {
               </div>
               <div className="glass-card border-blue-500/20 bg-blue-500/5 p-4 rounded-lg">
                 <div className="flex items-start gap-3">
-                  <span className="bg-blue-500/30 text-blue-400 border border-blue-500/50 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">2</span>
+                  <span className="bg-blue-500/30 text-blue-400 border border-blue-500/50 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0">2</span>
                   <div>
                     <h4 className="font-bold text-white mb-1">{t('step_2_execute', 'Execute Tasks') || 'Execute Tasks'}</h4>
                     <p className="text-sm text-gray-300">
@@ -205,7 +205,7 @@ export default function HelpPanel() {
               </div>
               <div className="glass-card border-blue-500/20 bg-blue-500/5 p-4 rounded-lg">
                 <div className="flex items-start gap-3">
-                  <span className="bg-blue-500/30 text-blue-400 border border-blue-500/50 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">3</span>
+                  <span className="bg-blue-500/30 text-blue-400 border border-blue-500/50 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0">3</span>
                   <div>
                     <h4 className="font-bold text-white mb-1">{t('step_3_earn', 'Earn Labor Compensation') || 'Earn Labor Compensation'}</h4>
                     <p className="text-sm text-gray-300">
