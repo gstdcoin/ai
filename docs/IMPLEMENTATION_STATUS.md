@@ -59,6 +59,9 @@ repositories. A second daily observation is still needed before reporting trends
   `gstdtoken.com` still serves its home page, but `/api/v1/health` returns 404;
   the existing deployment workflow targets `app.gstdtoken.com`. The apex
   routing was not changed to avoid replacing the existing site.
+- `gstd-mcp-server`: `npm audit fix` (lockfile only, no major bumps) cleared
+  its 1 critical (`proxy-addr`), 3 high and 3 moderate advisories; `npm run
+  build` passes. `contracts/` manifests were intentionally left untouched.
 - Read-only production network check: 0 nodes online, 10 registered nodes
   offline, and 0 tasks. The network therefore has no active task workload.
 
