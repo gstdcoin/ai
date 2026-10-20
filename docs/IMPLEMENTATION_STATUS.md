@@ -44,9 +44,15 @@ repositories. A second daily observation is still needed before reporting trends
   patched v7 dependency. Current full audit still reports 7 high and 3 moderate
   issues in development/build tooling (Tailwind 3 / its glob dependencies,
   Next ESLint tooling, and CSS selector parsing). Production-only audit reports
-  2 moderate CSS parser advisories and no high/critical issues. The suggested
-  clean fixes require major Tailwind/ESLint/parser changes; those are not being
-  forced into this deployment.
+  2 moderate CSS parser advisories and no high/critical issues. All 7 high
+  advisories trace to `braces` (via Tailwind 3 and `eslint-config-next`'s
+  `fast-glob`), which has no patched release upstream (latest 3.0.3 is
+  affected), so no version bump can clear them; Tailwind 4 would remove only the
+  Tailwind share and risks UI regressions (`@apply` of custom classes, changed
+  border/ring defaults, older Telegram WebViews). They are a build-time DoS on
+  trusted glob patterns, accepted until `braces` is patched. The CI audit job
+  now runs `npm audit --omit=dev --audit-level=high` without `|| true`, so any
+  high/critical advisory in production dependencies fails the job.
 - Release: commit
   [`b348539`](https://github.com/gstdcoin/ai/commit/b3485397de69f2a78b1e8e390ef98b6c71c47c32)
   was pushed to `main`. GitHub Actions
@@ -56,9 +62,11 @@ repositories. A second daily observation is still needed before reporting trends
 - Post-deploy smoke checks on `app.gstdtoken.com` returned HTTP 200 for health,
   TMA, Open Intelligence page, and its public API. CI also collected and
   verified a four-repository Open Intelligence baseline. The apex
-  `gstdtoken.com` still serves its home page, but `/api/v1/health` returns 404;
-  the existing deployment workflow targets `app.gstdtoken.com`. The apex
-  routing was not changed to avoid replacing the existing site.
+  `gstdtoken.com` is the separate Cloudflare marketing site (`web` repo) with
+  its own `/api/health` (HTTP 200); the platform API intentionally lives only on
+  `app.gstdtoken.com`, so `gstdtoken.com/api/v1/health` returning 404 is by
+  design. Routing `/api/*` from the apex was deliberately not done: the site's
+  live chat is designed to stay independent of the platform worker.
 - `gstd-mcp-server`: `npm audit fix` (lockfile only, no major bumps) cleared
   its 1 critical (`proxy-addr`), 3 high and 3 moderate advisories; `npm run
   build` passes. `contracts/` manifests were intentionally left untouched.

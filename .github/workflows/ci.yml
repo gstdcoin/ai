@@ -461,5 +461,7 @@ jobs:
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci --legacy-peer-deps
-      - name: Audit (high+critical only)
-        run: npm audit --audit-level=high || true
+      # Dev/build-only advisories (braces via Tailwind 3 / eslint-config-next) have
+      # no upstream patch; production dependencies must stay free of high+critical.
+      - name: Audit production dependencies (high+critical)
+        run: npm audit --omit=dev --audit-level=high
