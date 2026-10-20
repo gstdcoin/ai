@@ -2,6 +2,8 @@
 
 Scope: `ai`, `gstdbot`, `A2A`, `web`. Out of scope: `contracts`, `gstd-bridge` (do not touch).
 
+Open Intelligence MVP work-in-progress and verification status: [GSTD_OPEN_INTELLIGENCE_STATUS.md](./GSTD_OPEN_INTELLIGENCE_STATUS.md). It is local only, not deployed; do not infer completion from older stage notes below.
+
 ## Current stage
 Stage 1 done locally (uncommitted, not pushed): in-browser worker for the phone, edge-AI budget guard, removal of unused wallet/TensorFlow dependencies.
 

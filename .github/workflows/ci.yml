@@ -127,10 +127,17 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
+      - name: Generate Open Intelligence cron secret
+        run: |
+          cron_secret="$(openssl rand -hex 32)"
+          echo "::add-mask::$cron_secret"
+          printf 'OPEN_INTELLIGENCE_CRON_SECRET=%s\n' "$cron_secret" >> "$GITHUB_ENV"
+
       - name: Configure Upstash runtime secrets
         run: |
           printf '%s' "$KV_REST_API_URL" | npx wrangler secret put KV_REST_API_URL --config=wrangler.jsonc
           printf '%s' "$KV_REST_API_TOKEN" | npx wrangler secret put KV_REST_API_TOKEN --config=wrangler.jsonc
+          printf '%s' "$OPEN_INTELLIGENCE_CRON_SECRET" | npx wrangler secret put OPEN_INTELLIGENCE_CRON_SECRET --config=wrangler.jsonc
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -173,7 +180,7 @@ jobs:
 
           failed=0
           index=0
-          for path in / /en /ru /en/stats /en/network; do
+          for path in / /en /ru /en/stats /en/network /open-intelligence; do
             index=$((index + 1))
             body="$RUNNER_TEMP/page-${index}.html"
             status="$(curl --silent --show-error --location --max-time 30 --header 'x-gstd-page-smoke: ci' --output "$body" --write-out '%{http_code}' "$WORKER_URL$path" || true)"
@@ -184,6 +191,37 @@ jobs:
               echo "Preview page $path returned HTTP 200"
             fi
           done
+
+          dataset_body="$RUNNER_TEMP/open-intelligence-dataset.json"
+          dataset_status="$(curl --silent --show-error --location --max-time 30 --output "$dataset_body" --write-out '%{http_code}' "$WORKER_URL/api/v1/open-intelligence/ecosystem?limit=30" || true)"
+          if [ "$dataset_status" != "200" ] || ! node - "$dataset_body" <<'NODE'
+          const fs = require('fs');
+          const dataset = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          const expected = ['ai', 'gstdbot', 'A2A', 'web'];
+          if (dataset.dataset !== 'gstd-ecosystem-repository-activity'
+            || !Array.isArray(dataset.repositories)
+            || dataset.repositories.length !== expected.length
+            || expected.some((name, index) => dataset.repositories[index]?.repository !== name)
+            || !['awaiting_first_collection', 'baseline', 'observed'].includes(dataset.research?.status)) {
+            console.error('Open Intelligence API returned an unexpected dataset shape.');
+            process.exit(1);
+          }
+          NODE
+          then
+            echo "::error::Open Intelligence dataset API returned HTTP ${dataset_status:-000} or invalid data"
+            failed=1
+          else
+            echo "Open Intelligence dataset API returned the expected allowlisted schema"
+          fi
+
+          cron_status="$(curl --silent --show-error --location --max-time 30 --request POST --output "$RUNNER_TEMP/open-intelligence-cron.json" --write-out '%{http_code}' "$WORKER_URL/api/cron/open-intelligence" || true)"
+          if [ "$cron_status" != "401" ]; then
+            echo "::error::Unauthenticated Open Intelligence cron request returned HTTP ${cron_status:-000}, expected 401"
+            failed=1
+          else
+            echo "Open Intelligence cron rejects unauthenticated requests"
+          fi
+
           sleep 2
           kill "$tail_pid" 2>/dev/null || true
           wait "$tail_pid" 2>/dev/null || true
@@ -194,8 +232,9 @@ jobs:
           const logText = fs.readFileSync(logPath, 'utf8').replace(/\u001b\[[0-9;]*m/g, '');
           const secretValues = [
             process.env.CLOUDFLARE_API_TOKEN,
+            process.env.OPEN_INTELLIGENCE_CRON_SECRET,
           ].filter(Boolean);
-          const pagePaths = new Set(['/', '/en', '/ru', '/en/stats', '/en/network']);
+          const pagePaths = new Set(['/', '/en', '/ru', '/en/stats', '/en/network', '/open-intelligence']);
           const details = [];
           const requestPaths = new Map();
           const events = [];
@@ -351,6 +390,54 @@ jobs:
           exit 1
 
   # в”Ђв”Ђ Dependency Security Audit в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+      - name: Publish and verify Open Intelligence baseline
+        run: |
+          set -euo pipefail
+
+          page_status="$(curl --silent --show-error --location --max-time 30 --output "$RUNNER_TEMP/open-intelligence-production.html" --write-out '%{http_code}' https://app.gstdtoken.com/open-intelligence || true)"
+          if [ "$page_status" != "200" ] || ! grep -iq 'Ecosystem activity' "$RUNNER_TEMP/open-intelligence-production.html"; then
+            echo "::error::Production Open Intelligence page returned HTTP ${page_status:-000} or did not render its title"
+            exit 1
+          fi
+
+          harvest_status="$(curl --silent --show-error --location --max-time 60 --request POST --header "Authorization: Bearer $OPEN_INTELLIGENCE_CRON_SECRET" --output "$RUNNER_TEMP/open-intelligence-harvest.json" --write-out '%{http_code}' https://app.gstdtoken.com/api/cron/open-intelligence || true)"
+          if [ "$harvest_status" != "200" ] || ! node - "$RUNNER_TEMP/open-intelligence-harvest.json" <<'NODE'
+          const fs = require('fs');
+          const harvest = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          if (harvest.complete !== true
+            || !Array.isArray(harvest.sources)
+            || harvest.sources.length !== 4
+            || harvest.sources.some(source => source.status === 'error')) {
+            console.error('Open Intelligence baseline collection was incomplete.');
+            process.exit(1);
+          }
+          NODE
+          then
+            echo "::error::Production Open Intelligence collection returned HTTP ${harvest_status:-000} or an incomplete result"
+            exit 1
+          fi
+
+          dataset_status="$(curl --silent --show-error --location --max-time 30 --header 'Cache-Control: no-cache' --output "$RUNNER_TEMP/open-intelligence-production.json" --write-out '%{http_code}' "https://app.gstdtoken.com/api/v1/open-intelligence/ecosystem?limit=30&verified_at=$(date +%s)" || true)"
+          if [ "$dataset_status" != "200" ] || ! node - "$RUNNER_TEMP/open-intelligence-production.json" <<'NODE'
+          const fs = require('fs');
+          const dataset = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          const expected = ['ai', 'gstdbot', 'A2A', 'web'];
+          if (!['baseline', 'observed'].includes(dataset.research?.status)
+            || dataset.research?.repositories_with_data !== 4
+            || !Array.isArray(dataset.repositories)
+            || expected.some((name, index) => dataset.repositories[index]?.repository !== name
+              || !dataset.repositories[index]?.latest)) {
+            console.error('Open Intelligence public API did not expose all collected snapshots.');
+            process.exit(1);
+          }
+          NODE
+          then
+            echo "::error::Production Open Intelligence API returned HTTP ${dataset_status:-000} or missing snapshots"
+            exit 1
+          fi
+
+          echo "Open Intelligence page, authenticated four-repository collection, and public baseline API all verified."
+
   audit:
     runs-on: ubuntu-latest
     name: Security Audit
