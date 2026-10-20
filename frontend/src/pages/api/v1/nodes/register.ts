@@ -36,6 +36,26 @@ export interface NodeRecord {
     cpu_score?:       number;
 }
 
+export function normalizeNodeCapabilities(specs: { capabilities?: unknown; models?: unknown }): string[] {
+    let models: unknown;
+    if (Array.isArray(specs.capabilities)) {
+        models = specs.capabilities;
+    } else if (
+        typeof specs.capabilities === 'object'
+        && specs.capabilities !== null
+        && 'models' in specs.capabilities
+    ) {
+        models = specs.capabilities.models;
+    } else {
+        models = specs.models;
+    }
+
+    const candidates = models || specs.models || [];
+    return Array.isArray(candidates)
+        ? candidates.filter((capability): capability is string => typeof capability === 'string')
+        : [];
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
@@ -90,7 +110,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const existing: NodeRecord | null = existingRaw ? JSON.parse(existingRaw) : null;
         if (existing) isNewNode = false;
 
-        const incomingCaps: string[] = specs.capabilities?.models || specs.models || [];
+        const incomingCaps = normalizeNodeCapabilities(specs);
         const capabilities = incomingCaps.length > 0 ? incomingCaps : (existing?.capabilities || []);
 
         // Prevent wallet hijacking: if node exists, incoming wallet must match stored wallet

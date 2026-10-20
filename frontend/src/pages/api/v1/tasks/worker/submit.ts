@@ -22,6 +22,8 @@ import type { TaskAssignment } from '../../../../../lib/task-assignment';
 import type { NodeRecord } from '../../nodes/register';
 import type { TrainingJob, GradientRecord } from '../../training/jobs';
 import type { Campaign } from '../../campaigns/create';
+import { requireNodeSignatureIfBound } from '../../../../../lib/nodeAuth';
+import { hasTaskResult } from '../../../../../lib/taskValidation';
 
 const NODE_TTL    = 600;
 const JOB_TTL     = 7 * 24 * 3600;
@@ -35,7 +37,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const body = req.body as any;
         const taskId:  string = body.task_id  || '';
         const nodeId:  string = body.node_id  || (req.headers['x-node-id'] as string) || '';
-        const result:  any    = body.result   || {};
+        const result:  any    = body.result;
 
         if (!taskId || !nodeId) {
             return res.status(400).json({ error: 'task_id and node_id required' });
@@ -50,6 +52,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (!walletAddress) return res.status(403).json({ error: 'Wallet required for paid task submissions' });
         if (walletAddress.toLowerCase() !== headerWallet) {
             return res.status(403).json({ error: 'Wallet mismatch' });
+        }
+        const auth = await requireNodeSignatureIfBound(nodeId, req.headers as any);
+        if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
+        if (body.error || !hasTaskResult(result)) {
+            return res.status(422).json({ error: 'A non-empty successful task result is required' });
         }
 
         const completion = await kvCompleteAssignedTask(

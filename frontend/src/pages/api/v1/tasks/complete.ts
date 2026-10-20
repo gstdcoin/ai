@@ -14,6 +14,7 @@ import { kvGet, kvSet, kvIncr, kvIncrByFloat, kvCompleteAssignedTask } from '../
 import { COMMUNITY_TAX, BASE_TASK_FEE } from '../../../../lib/rewards';
 import { probeResultMatches } from '../../../../lib/verifyProbe';
 import { requireNodeSignature } from '../../../../lib/nodeAuth';
+import { hasTaskResult } from '../../../../lib/taskValidation';
 import type { TaskAssignment } from '../../../../lib/task-assignment';
 import type { NodeRecord } from '../nodes/register';
 import type { Campaign } from '../campaigns/create';
@@ -49,15 +50,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (!body.task_id) {
             return res.status(400).json({ error: 'task_id required' });
         }
-        const result = body.result;
-        const hasResult = typeof result === 'string'
-            ? result.trim().length > 0
-            : Array.isArray(result)
-                ? result.length > 0
-                : typeof result === 'object' && result !== null
-                    ? Object.keys(result).length > 0
-                    : result !== undefined && result !== null;
-        if (body.error || !hasResult) {
+        if (body.error || !hasTaskResult(body.result)) {
             return res.status(422).json({ error: 'A non-empty successful task result is required' });
         }
         const completion = await kvCompleteAssignedTask(

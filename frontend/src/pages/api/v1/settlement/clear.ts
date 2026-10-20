@@ -8,6 +8,7 @@
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { clearSettledRewards } from '../../../../lib/rewards';
+import { matchesSecret } from '../../../../lib/secretAuth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') {
@@ -16,7 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const secret = req.headers['x-admin-secret'] || req.query.secret;
     const expectedSecret = process.env.TREASURY_SECRET || '';
-    if (!expectedSecret || secret !== expectedSecret) {
+    if (!matchesSecret(secret, expectedSecret)) {
         return res.status(401).json({ error: 'Unauthorized' });
     }
 

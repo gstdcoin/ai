@@ -13,6 +13,7 @@
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvCreditOnce } from '../../../../lib/kv';
+import { matchesSecret } from '../../../../lib/secretAuth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -20,7 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { secret, from_wallet, amount_gstd, tx_hash, memo } = req.body || {};
 
     const expectedSecret = process.env.TREASURY_SECRET || '';
-    if (!expectedSecret || secret !== expectedSecret) {
+    if (!matchesSecret(secret, expectedSecret)) {
         return res.status(401).json({ error: 'Unauthorized' });
     }
     if (typeof from_wallet !== 'string' || !from_wallet.trim() || typeof tx_hash !== 'string' || !tx_hash.trim()) {

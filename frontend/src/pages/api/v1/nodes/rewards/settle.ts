@@ -27,6 +27,7 @@
  *   }
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { matchesSecret } from '../../../../../lib/secretAuth';
 import { computeSettlement, getTreasuryBalance } from '../../../../../lib/rewards';
 
 function currentEpoch(): string {
@@ -42,7 +43,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const secret = process.env.TREASURY_SECRET || '';
     const auth   = req.headers['x-treasury-secret'] || req.headers['authorization']?.replace('Bearer ', '');
-    if (!secret || auth !== secret) {
+    if (!matchesSecret(auth, secret)) {
         return res.status(401).json({ error: 'Unauthorized' });
     }
 

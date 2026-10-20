@@ -12,6 +12,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvPop, kvPush } from '../../../../../lib/kv';
 import { assignTaskToNode } from '../../../../../lib/task-assignment';
+import { requireNodeSignatureIfBound } from '../../../../../lib/nodeAuth';
 import type { NodeRecord } from '../../nodes/register';
 
 const SCAN_DEPTH = 20;
@@ -47,6 +48,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (storedWallet && storedWallet !== headerWallet) {
             return res.status(403).json({ error: 'Wallet mismatch' });
         }
+        const auth = await requireNodeSignatureIfBound(nodeId, req.headers as any);
+        if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
         const caps = record.capabilities || [];
         const resources: Record<string, number> = {
             storage_free_gb: record.storage_free_gb ?? 10,

@@ -45,6 +45,21 @@ export async function requireNodeSignature(
     if (!pubkey) {
         return { ok: false, status: 403, error: 'Node has no bound identity key — update gstdbot and re-register' };
     }
+    return verifyBoundNodeSignature(nodeId, pubkey, headers);
+}
+
+/** Requires proof for bound nodes but preserves the unsigned legacy-node path. */
+export async function requireNodeSignatureIfBound(
+    nodeId: string, headers: Record<string, any>,
+): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
+    const pubkey = await kvGet(nodeKeyRedisKey(nodeId));
+    if (!pubkey) return { ok: true };
+    return verifyBoundNodeSignature(nodeId, pubkey, headers);
+}
+
+function verifyBoundNodeSignature(
+    nodeId: string, pubkey: string, headers: Record<string, any>,
+): { ok: true } | { ok: false; status: number; error: string } {
     const ok = verifyNodeSignature(
         nodeId, pubkey, header(headers, 'x-gstd-node-ts'), header(headers, 'x-gstd-node-sig'),
     );

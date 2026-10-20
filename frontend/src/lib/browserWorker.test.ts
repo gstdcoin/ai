@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { signedHeaders, executeTask, type WorkerIdentity } from './browserWorker';
+import { describe, it, expect, vi } from 'vitest';
+import { heartbeatWorker, signedHeaders, executeTask, type WorkerIdentity } from './browserWorker';
 import { verifyNodeSignature } from './nodeAuth';
 
 const hex = (b: ArrayBuffer) => Array.from(new Uint8Array(b)).map((x) => x.toString(16).padStart(2, '0')).join('');
@@ -27,5 +27,33 @@ describe('browser worker', () => {
     it('ignores task kinds it cannot run', async () => {
         expect(await executeTask({ payload: { kind: 'llm_inference', data: 'x' } })).toBeNull();
         expect(await executeTask({ payload: { kind: 'sha256_verify', data: 'x'.repeat(1_000_001) } })).toBeNull();
+    });
+
+    it('refreshes the registered node with a signed heartbeat', async () => {
+        const id = await identity();
+        const requests: Array<{ path: string; init: RequestInit }> = [];
+        vi.stubGlobal('fetch', async (path: string, init: RequestInit) => {
+            requests.push({ path, init });
+            return { ok: true } as Response;
+        });
+
+        try {
+            expect(await heartbeatWorker(id, 'EQwallet')).toBe(true);
+        } finally {
+            vi.unstubAllGlobals();
+        }
+
+        expect(requests).toHaveLength(1);
+        expect(requests[0].path).toBe('/api/v1/nodes/heartbeat');
+        const headers = requests[0].init.headers as Record<string, string>;
+        expect(verifyNodeSignature(
+            id.nodeId, id.pubkeyHex, headers['X-GSTD-Node-Ts'], headers['X-GSTD-Node-Sig'],
+        )).toBe(true);
+        expect(JSON.parse(requests[0].init.body as string)).toMatchObject({
+            node_id: id.nodeId,
+            wallet_address: 'EQwallet',
+            mode: 'browser',
+            capabilities: ['browser-sha256-verify'],
+        });
     });
 });

@@ -1,56 +1,92 @@
-# Implementation status
+# GSTD ecosystem implementation status
 
-Scope: `ai`, `gstdbot`, `A2A`, `web`. Out of scope: `contracts`, `gstd-bridge` (do not touch).
+Status checked: 2026-10-20. Scope: `ai`, `gstdbot`, `A2A`, and `web`.
+`contracts` and `gstd-bridge` remain out of scope and were not changed.
 
-Open Intelligence MVP work-in-progress and verification status: [GSTD_OPEN_INTELLIGENCE_STATUS.md](./GSTD_OPEN_INTELLIGENCE_STATUS.md). It is local only, not deployed; do not infer completion from older stage notes below.
-
-## Current stage
-Stage 1 done locally (uncommitted, not pushed): in-browser worker for the phone, edge-AI budget guard, removal of unused wallet/TensorFlow dependencies.
+The Open Intelligence implementation and its data-collection method are tracked
+separately in [GSTD_OPEN_INTELLIGENCE_STATUS.md](./GSTD_OPEN_INTELLIGENCE_STATUS.md).
+It is deployed: the first production Atom-feed baseline covers all four tracked
+repositories. A second daily observation is still needed before reporting trends.
 
 ## Verified
-- `ai/frontend`: `tsc --noEmit` clean; `npm test` 26 vitest + 11 node tests pass; `next build` compiles.
-- Live: `app.gstdtoken.com` health/network stats/`/tma` return 200; Telegram webhook returns 401 without the secret header; legacy `gstdbot.gstdtoken-site.workers.dev` redirects (301) to `app.gstdtoken.com`.
-- `gstdbot`: tests 107/107 (after URL cleanup, pushed).
 
-## Changed in this stage (uncommitted in `ai`)
-- `frontend/src/lib/browserWorker.ts` (+ test), `components/tma/BrowserWorkerPanel.tsx`, `pages/tma.tsx`: phone/browser worker using the signed node protocol; runs `sha256_verify` tasks only.
-- `frontend/src/lib/edgeAi.ts`: global daily cap (`EDGE_AI_DAILY_CAP`, default 400) and 1h cache for context-free questions.
-- Removed unused `useMultiChainWallet`, `WalletProviders`, `BrowserNodePanel` and the MetaMask/Solana/TensorFlow/xumm packages; prod audit now 2 moderate (`@tailwindcss/typography` -> `postcss-selector-parser`).
+- `ai/frontend`: `npm.cmd test` passes (67 Vitest tests and 11 Node tests);
+  `npx.cmd tsc --noEmit`, `npm.cmd run build`, and `npm.cmd run lint` pass. Lint
+  reports warnings but no errors. The build includes both legacy worker API
+  routes.
+- `ai`: `node scripts/guard.mjs` passes (451 files checked).
+- Shared-secret hardening is implemented locally, not committed or deployed:
+  `matchesSecret`/`matchesAnySecret` use SHA-256 digests with
+  `timingSafeEqual`. Ten admin API routes now use the shared helper; the new
+  helper tests pass as part of the frontend suite.
+- Existing authentication inputs were preserved. In particular, legacy
+  settlement query-secret support remains; migrate any external callers before
+  considering its removal.
+- `gstdbot`: all 107 tests pass locally, and the latest main-branch CI checks
+  passed. Docker
+  workflow run [#278](https://github.com/gstdcoin/gstdbot/actions/runs/39277327914)
+  completed successfully for commit `a6d876e`; the workflow builds and pushes
+  `linux/amd64` and `linux/arm64` images.
+- `A2A`: Node test suite passes (2/2). Broader Python SDK compatibility tests
+  have not been run in this environment. Fixed a registration contract mismatch:
+  current A2A/browser clients send `specs.capabilities` as a string array,
+  while the API only read `specs.capabilities.models`, silently discarding
+  those capabilities. Registration now accepts that array as well as the
+  existing nested and top-level `models` forms; regression tests cover all
+  three formats. The legacy worker queue routes now require a fresh signature
+  when a node has a bound identity key, while keeping the unbound legacy-client
+  path. The legacy submit route now rejects empty/error results before consuming
+  the task assignment.
+- `web`: `npm.cmd run type-check` passes.
+- `ai/frontend` dependency audit: upgraded Vitest to `4.1.11` (supports the
+  repository's Node 20 CI) to remove the two critical test-runner advisories;
+  removed a stale `undici` v5 override so Wrangler resolves its declared
+  patched v7 dependency. Current full audit still reports 7 high and 3 moderate
+  issues in development/build tooling (Tailwind 3 / its glob dependencies,
+  Next ESLint tooling, and CSS selector parsing). Production-only audit reports
+  2 moderate CSS parser advisories and no high/critical issues. The suggested
+  clean fixes require major Tailwind/ESLint/parser changes; those are not being
+  forced into this deployment.
+- Read-only production network check: 0 nodes online, 10 registered nodes
+  offline, and 0 tasks. The network therefore has no active task workload.
 
-## Fixed earlier (pushed)
-Telegram bot (webhook, i18n, edge-AI fallback), Mini App framing/CSP, DEX iframe replaced by link, real network ticker, dead `platform.gstdtoken.com` URLs replaced.
+## Current work and release boundary
 
-## Known blockers
-- No online nodes and no external task source: network is idle (0 nodes online, 0 tasks).
-- Stage 2: `lib/verifyProbe.ts` — poll hands capable workers an unpaid `sha256_verify` self-check (server-known answer, max one per node per 5 min, answer hidden from the worker); `tasks/complete` counts `stats:probe_verified` / `stats:probe_failed`. Tests cover duplicate and unassigned completion.
-- Presence rewards are off (`MOBILE_PRESENCE_REWARDS`), correctly: no work, no payout.
-- Browser worker needs Ed25519 in WebCrypto (recent iOS/Android WebViews); unsupported browsers see a notice.
-- Not tested end-to-end against production KV (needs a funded task and a wallet).
-- Contract owner actions (deploy/sign) are outside this scope.
+The local `ai` changes include constant-time secret comparisons,
+node-capabilities registration compatibility, and task-route authorization /
+result validation. The browser worker also filters polling to supported
+`sha256_verify` payloads, leaves unsupported work queued, retries registration
+after failure, prevents overlapping polls, and refreshes its 10-minute node
+lease with a signed heartbeat every 3 minutes. Tests, TypeScript, lint, and
+Next.js build were rerun successfully after the dependency updates. Local
+OpenNext Cloudflare packaging fails on Windows with `EPERM` creating a
+dependency symlink; Linux CI is the Cloudflare build gate. Production changes
+remain gated by successful Cloudflare CI preview checks.
 
-## Next three tasks
-1. Check Docker image on arm64; require signed heartbeat for all nodes once old clients are updated (unbound nodes are still accepted); constant-time TREASURY_SECRET compare.
-2. Check `A2A` SDK against current `/api/v1/tasks/*` (install, types, timeouts) with a compatibility test.
-3. Audit `gstdbot` node start-up on Linux/Raspberry Pi 4 (non-root, resource limits, restart after connection loss).
+## Remaining blockers and next steps
 
-## Commands
-```
-cd D:\gstd\upstream\ai\frontend
-npx.cmd tsc --noEmit; npm.cmd test; npx.cmd next build
-node ..\scripts\guard.mjs        # from ai\ root
-```
-Deploy of `ai` is automatic on push to `main` (needs your permission to push).
+1. Keep presence rewards disabled while there are no online workers or validated
+   tasks. Do not treat registration as proof of useful work or enable payouts
+   without a real task source and successful verification.
+2. Verify a real Linux/Raspberry Pi node startup and recovery. The ARM64 image
+   build is verified in CI, but no physical-device runtime test has been done.
+3. Run a production end-to-end task through a live node, including task
+   assignment, verification, and settlement, once a node and funded/authorized
+   task source are available. Production KV behavior is not verified by the
+   local tests.
+4. Expand A2A compatibility coverage against the current task API. The existing
+   two Node tests and targeted API tests do not establish full SDK/Python
+   compatibility; Python is unavailable in this environment.
+5. Check the next scheduled Open Intelligence collection at 04:17 UTC on
+   2026-10-21. Confirm all four sources and a second observation before
+   describing commit trends.
+6. Legacy unbound node heartbeats remain accepted for compatibility with older
+   clients. Do not require signatures from every node until client migration is
+   understood and tested.
+7. Keep the legacy query-secret migration separate from the constant-time
+   comparison change to avoid breaking existing callers.
 
-## Stage 3 - A2A compatibility
-- A2A SDK/swarm use legacy unsigned endpoints (tasks/worker/pending, tasks/worker/submit, nodes/register, nodes/heartbeat, genesis/ignite, training/gradient, credits/balance, chat/completions): all exist in this repo; live probe of health, nodes/public, agents/stats/network = 200, unregistered pending = 403 (expected).
-- Fixed: A2A swarm_client defaulted to POST /registry/join, which returns 404; now uses /nodes/register. Python tests not run locally (no Python); node tests 2/2.
-
-## Stage 4 - gstdbot node start (Linux / Raspberry Pi 4)
-- Fixed in install.sh: A && B || C precedence made the systemd branch run on any host with passwordless sudo; now requires systemctl. Non-root users get a per-user systemd unit plus linger (no root needed). Unit now has network-online ordering, MemoryMax=768M, CPUQuota=80%, Nice=10, and hardening in system mode. Bridge unit is created only if its binary exists (previously crash-looped every 5s). CLI wrapper uses journalctl --user in user mode. Added .gitattributes (LF for *.sh/*.service).
-- Already fine: Restart=always, node-side backoff for platform/mesh failures, SIGTERM handler, Docker memory limit and healthcheck.
-- Not verified: real Raspberry Pi run (bash -n syntax check only), arm64 Docker build.
-
-## Stage 5 - funded task source
-- Security fix: `campaigns/create` debited any wallet's balance given only its address, and `marketplace/request` let anyone spend any campaign's budget (a colluding node could then collect the reward). Both now require the X-Session-Token of the funding wallet (lib/walletSession.ts). Tests: lib/campaignAuth.test.ts (401/403 without matching session, success with it, balance untouched on rejection). No frontend caller used these routes; API clients must log in via /users/login first.
-- Reviewed chat/deduct: already session-bound. Fixed a budget race: campaigns/join, tasks/complete and tasks/worker/submit rewrote the whole campaign blob (read-modify-write), so a stale write could restore already-reserved budget. They now only INCR a separate `cstats:<id>:tasks` counter (merged in campaigns/list); join is read-only. Test added.
-- Reviewed nodes/* and credits/*: settle, confirm-settlement, ton-webhook need TREASURY_SECRET; deregister needs wallet match; claim-rewards only moves a wallet's own pending to its own balance. Gap: nodes/heartbeat was unauthenticated, so anyone could fake liveness/stats of any node. Now a node with a bound key must send a valid Ed25519 signature (gstdbot platform-link already does). Unbound legacy nodes still accepted for compatibility - remaining spoofing surface. Test: lib/heartbeatAuth.test.ts.
+This status records targeted implementation checks and known operational
+blockers; it is not a claim that every line of every repository received a
+fresh security audit. No contracts, `gstd-bridge`, paid operations, or
+production changes were included.

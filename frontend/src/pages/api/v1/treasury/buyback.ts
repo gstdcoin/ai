@@ -19,6 +19,7 @@
  * but has no effect; nothing is ever executed or recorded as executed.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { matchesSecret } from '../../../../lib/secretAuth';
 import { kvGet } from '../../../../lib/kv';
 
 const BUYBACK_MIN_GSTD   = 100;  // Only buyback when treasury has at least 100 GSTD
@@ -41,7 +42,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const secret = process.env.TREASURY_SECRET || '';
     const auth   = req.headers['x-treasury-secret'] || req.headers['authorization']?.replace('Bearer ', '');
-    if (!secret || auth !== secret) return res.status(401).json({ error: 'Unauthorized' });
+    if (!matchesSecret(auth, secret)) return res.status(401).json({ error: 'Unauthorized' });
 
     const treasuryRaw = await kvGet('treasury:balance');
     const treasuryBalance = parseFloat(treasuryRaw || '0');

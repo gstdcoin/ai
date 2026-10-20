@@ -86,11 +86,23 @@ export async function registerWorker(id: WorkerIdentity, wallet: string): Promis
     return r.ok;
 }
 
+export async function heartbeatWorker(id: WorkerIdentity, wallet: string): Promise<boolean> {
+    const r = await post('/api/v1/nodes/heartbeat', id, wallet, {
+        node_id: id.nodeId,
+        wallet_address: wallet,
+        mode: 'browser',
+        capabilities: [BROWSER_CAPABILITY],
+        uptime_hours: 0,
+    });
+    return r.ok;
+}
+
 /** One poll → execute → complete cycle. Returns true when a task was completed. */
 export async function runOnce(id: WorkerIdentity, wallet: string): Promise<boolean> {
     const poll = await post('/api/v1/tasks/poll', id, wallet, {
         node_id: id.nodeId,
         capabilities: [BROWSER_CAPABILITY],
+        supported_task_kinds: ['sha256_verify'],
         resources: { cpu_cores: (navigator as any).hardwareConcurrency || 2 },
     });
     if (!poll.ok) return false;

@@ -7,13 +7,14 @@
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvCreditOnce, kvIncrByFloat } from '../../../../lib/kv';
+import { matchesSecret } from '../../../../lib/secretAuth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
     const secret = process.env.TREASURY_SECRET || '';
     const auth   = req.headers['x-treasury-secret'] || req.headers['authorization']?.replace('Bearer ', '');
-    if (!secret || auth !== secret) {
+    if (!matchesSecret(auth, secret)) {
         return res.status(401).json({ error: 'Unauthorized' });
     }
 

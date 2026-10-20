@@ -3,10 +3,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import {
-    isBrowserWorkerSupported, loadOrCreateIdentity, registerWorker, runOnce, type WorkerIdentity,
+    heartbeatWorker, isBrowserWorkerSupported, loadOrCreateIdentity, registerWorker, runOnce, type WorkerIdentity,
 } from '../../lib/browserWorker';
 
 const POLL_MS = 20_000;
+const HEARTBEAT_MS = 180_000;
 
 /** Lets a phone run verification tasks in the browser. Rewards come only from funded, accepted tasks. */
 export default function BrowserWorkerPanel({ address }: { address?: string }) {
@@ -15,21 +16,33 @@ export default function BrowserWorkerPanel({ address }: { address?: string }) {
     const [done, setDone] = useState(0);
     const [msg, setMsg] = useState('');
     const idRef = useRef<WorkerIdentity | null>(null);
+    const busyRef = useRef(false);
+    const lastHeartbeatRef = useRef(0);
     const supported = typeof window !== 'undefined' && isBrowserWorkerSupported();
 
     useEffect(() => {
         if (!active || !address) return;
         let alive = true;
         const tick = async () => {
+            if (busyRef.current) return;
+            busyRef.current = true;
             try {
                 if (!idRef.current) {
-                    idRef.current = await loadOrCreateIdentity();
-                    if (!(await registerWorker(idRef.current, address))) throw new Error('register');
+                    const identity = await loadOrCreateIdentity();
+                    if (!(await registerWorker(identity, address))) throw new Error('register');
+                    idRef.current = identity;
+                    lastHeartbeatRef.current = Date.now();
+                }
+                if (Date.now() - lastHeartbeatRef.current >= HEARTBEAT_MS) {
+                    if (!(await heartbeatWorker(idRef.current, address))) throw new Error('heartbeat');
+                    lastHeartbeatRef.current = Date.now();
                 }
                 if (await runOnce(idRef.current, address)) setDone((n) => n + 1);
                 if (alive) setMsg('');
             } catch {
                 if (alive) setMsg(t('bw_error', 'Could not reach the network, retrying…'));
+            } finally {
+                busyRef.current = false;
             }
         };
         tick();

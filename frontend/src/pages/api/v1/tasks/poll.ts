@@ -20,6 +20,7 @@ import { kvGet, kvPop, kvPush } from '../../../../lib/kv';
 import { assignTaskToNode } from '../../../../lib/task-assignment';
 import { maybeCreateVerifyProbe } from '../../../../lib/verifyProbe';
 import { requireNodeSignature } from '../../../../lib/nodeAuth';
+import { supportsTaskKind } from '../../../../lib/taskKinds';
 
 const SCAN_DEPTH = 20; // max tasks to inspect before giving up
 const ASSIGNMENT_TTL = 3600;
@@ -50,6 +51,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const body                = req.body as any;
         const nodeId: string      = body.node_id      || '';
         const caps:   string[]    = body.capabilities || [];
+        const supportedTaskKinds: string[] = Array.isArray(body.supported_task_kinds)
+            ? body.supported_task_kinds.filter((kind: unknown): kind is string => typeof kind === 'string')
+            : [];
         const resources           = body.resources    || {};
         const priorityOnly: boolean = !!body.priority_only;
 
@@ -74,8 +78,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 try { task = JSON.parse(raw); } catch { /* malformed */ }
                 if (task) {
                     try {
-                        if (await assignTaskToNode(task, nodeId, ASSIGNMENT_TTL)) {
+                        if (supportsTaskKind(task, supportedTaskKinds)
+                            && await assignTaskToNode(task, nodeId, ASSIGNMENT_TTL)) {
                             return res.status(200).json({ task, source: 'priority' });
+                        }
+                        if (!supportsTaskKind(task, supportedTaskKinds)) {
+                            await kvPush(`tasks:inference:${nodeId}`, raw);
                         }
                     } catch (error) {
                         await kvPush(`tasks:inference:${nodeId}`, raw);
@@ -101,7 +109,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             let task: any;
             try { task = JSON.parse(raw); } catch { continue; }
 
-            if (!picked && nodeCanHandle(task, caps, resources)) {
+            if (!picked
+                && nodeCanHandle(task, caps, resources)
+                && supportsTaskKind(task, supportedTaskKinds)) {
                 picked = task;
             } else {
                 skipped.push(task);
@@ -128,7 +138,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (!picked) {
             const probe = await maybeCreateVerifyProbe(nodeId, caps);
             if (probe && (await assignTaskToNode(probe, nodeId, ASSIGNMENT_TTL))) {
-                const { expected_hash: _hidden, ...visible } = probe;
+                const visible = { ...probe };
+                delete visible.expected_hash;
                 return res.status(200).json({ task: visible, source: 'probe' });
             }
         }
