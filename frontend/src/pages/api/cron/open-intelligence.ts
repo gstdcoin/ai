@@ -19,7 +19,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (!result.ok) {
             return res.status(502).json({ ...result, error: 'All configured GitHub sources failed' });
         }
-        const failed = result.sources.filter(source => source.status === 'error');
+        const failed = result.sources.filter(source =>
+            source.status === 'error' || source.status === 'skipped_after_attempt',
+        );
         return res.status(failed.length > 0 ? 207 : 200).json({
             ...result,
             complete: failed.length === 0,

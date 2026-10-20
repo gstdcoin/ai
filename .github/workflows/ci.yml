@@ -401,18 +401,27 @@ jobs:
           fi
 
           harvest_status="$(curl --silent --show-error --location --max-time 60 --request POST --header "Authorization: Bearer $OPEN_INTELLIGENCE_CRON_SECRET" --output "$RUNNER_TEMP/open-intelligence-harvest.json" --write-out '%{http_code}' https://app.gstdtoken.com/api/cron/open-intelligence || true)"
-          if [ "$harvest_status" != "200" ] || ! node - "$RUNNER_TEMP/open-intelligence-harvest.json" <<'NODE'
+          harvest_valid=0
+          if node - "$RUNNER_TEMP/open-intelligence-harvest.json" <<'NODE'
           const fs = require('fs');
           const harvest = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          const failures = Array.isArray(harvest.sources)
+            ? harvest.sources.filter(source => source.status === 'error' || source.status === 'skipped_after_attempt')
+            : [];
+          if (failures.length) {
+            console.error(`Source failures: ${failures.map(source => `${source.repository}: ${source.error || source.status}`).join('; ')}`);
+          }
           if (harvest.complete !== true
             || !Array.isArray(harvest.sources)
             || harvest.sources.length !== 4
-            || harvest.sources.some(source => source.status === 'error')) {
+            || failures.length > 0) {
             console.error('Open Intelligence baseline collection was incomplete.');
             process.exit(1);
           }
           NODE
-          then
+          then harvest_valid=1
+          fi
+          if [ "$harvest_status" != "200" ] || [ "$harvest_valid" -ne 1 ]; then
             echo "::error::Production Open Intelligence collection returned HTTP ${harvest_status:-000} or an incomplete result"
             exit 1
           fi

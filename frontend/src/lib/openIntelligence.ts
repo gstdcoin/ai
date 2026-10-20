@@ -15,8 +15,11 @@ const SOURCE_BASE = 'https://api.github.com/repos';
 const STATE_PREFIX = 'open-intelligence:github:v1:';
 const STATUS_KEY = 'open-intelligence:github:status:v1';
 const LOCK_KEY = 'open-intelligence:github:harvest-lock:v1';
+const ATTEMPT_KEY_PREFIX = 'open-intelligence:github:attempt:v1:';
 const MAX_RESPONSE_BYTES = 128 * 1024;
 const LOCK_TTL_SECONDS = 600;
+const ATTEMPT_TTL_SECONDS = 2 * 86_400;
+const SOURCE_REQUEST_GAP_MS = 1_000;
 
 export type TrackedRepository = typeof OPEN_INTELLIGENCE_REPOSITORIES[number];
 
@@ -65,7 +68,7 @@ export interface RepositoryChange {
 
 export interface HarvestSourceResult {
     repository: TrackedRepository;
-    status: 'updated' | 'not_modified' | 'skipped_today' | 'error';
+    status: 'updated' | 'not_modified' | 'skipped_today' | 'skipped_after_attempt' | 'error';
     observed_at?: string;
     error?: string;
 }
@@ -214,6 +217,17 @@ async function fetchRepository(
     if (latest?.observed_at.slice(0, 10) === today) {
         return { repository, status: 'skipped_today', observed_at: latest.observed_at };
     }
+    if (!(await kvSetNX(
+        `${ATTEMPT_KEY_PREFIX}${today}:${repository}`,
+        observedAt,
+        ATTEMPT_TTL_SECONDS,
+    ))) {
+        return {
+            repository,
+            status: 'skipped_after_attempt',
+            error: 'A source request was already attempted today; retry after the next UTC day',
+        };
+    }
 
     const headers: Record<string, string> = {
         Accept: 'application/vnd.github+json',
@@ -239,6 +253,13 @@ async function fetchRepository(
         };
     } else {
         if (!response.ok) {
+            const remaining = response.headers.get('x-ratelimit-remaining');
+            const retryAfter = response.headers.get('retry-after');
+            if (response.status === 429 || remaining === '0' || retryAfter) {
+                throw new Error(
+                    `GitHub API rate limited (HTTP ${response.status}; remaining ${remaining ?? 'unknown'}; retry after ${retryAfter ?? 'unknown'})`,
+                );
+            }
             throw new Error(`GitHub API returned HTTP ${response.status}`);
         }
         const contentLength = Number(response.headers.get('content-length') || 0);
@@ -291,17 +312,25 @@ export async function harvestGithubEcosystem(now = Date.now()): Promise<{
     }
 
     try {
-        const sources = await Promise.all(OPEN_INTELLIGENCE_REPOSITORIES.map(async repository => {
+        const sources: HarvestSourceResult[] = [];
+        let previousRequestWasSent = false;
+        for (const [index, repository] of OPEN_INTELLIGENCE_REPOSITORIES.entries()) {
+            if (index > 0 && previousRequestWasSent) {
+                await new Promise(resolve => setTimeout(resolve, SOURCE_REQUEST_GAP_MS));
+            }
             try {
-                return await fetchRepository(repository, now);
+                const source = await fetchRepository(repository, now);
+                sources.push(source);
+                previousRequestWasSent = ['updated', 'not_modified', 'error'].includes(source.status);
             } catch (error) {
-                return {
+                sources.push({
                     repository,
                     status: 'error' as const,
                     error: error instanceof Error ? error.message.slice(0, 160) : 'unknown source error',
-                };
+                });
+                previousRequestWasSent = true;
             }
-        }));
+        }
         const succeeded = sources.filter(source =>
             source.status === 'updated' || source.status === 'not_modified' || source.status === 'skipped_today',
         ).length;

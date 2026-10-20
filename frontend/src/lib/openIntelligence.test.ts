@@ -76,15 +76,18 @@ describe('GSTD Open Intelligence collector', () => {
 
     it('harvests a bounded baseline, skips duplicate daily requests, then uses ETags', async () => {
         let requestCount = 0;
+        const requestOrder: string[] = [];
         vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
             requestCount += 1;
             const repository = String(input).split('/').pop() || '';
+            requestOrder.push(repository);
             return response(apiRecord(repository), 200, { ETag: `"${repository}-v1"` });
         }));
         const firstRun = await harvestGithubEcosystem(Date.parse('2041-01-01T04:15:00Z'));
         expect(firstRun.ok).toBe(true);
         expect(firstRun.sources).toHaveLength(4);
         expect(requestCount).toBe(4);
+        expect(requestOrder).toEqual(['ai', 'gstdbot', 'A2A', 'web']);
 
         const sameDay = await harvestGithubEcosystem(Date.parse('2041-01-01T12:00:00Z'));
         expect(sameDay.sources.every(source => source.status === 'skipped_today')).toBe(true);
@@ -97,5 +100,22 @@ describe('GSTD Open Intelligence collector', () => {
         const nextDay = await harvestGithubEcosystem(Date.parse('2041-01-02T04:15:00Z'));
         expect(nextDay.sources.every(source => source.status === 'not_modified')).toBe(true);
         expect(requestCount).toBe(8);
+    }, 15_000);
+
+    it('does not retry a failed repository request on the same UTC day', async () => {
+        let requestCount = 0;
+        vi.stubGlobal('fetch', vi.fn(async () => {
+            requestCount += 1;
+            return response({ message: 'rate limited' }, 403, { 'X-RateLimit-Remaining': '0' });
+        }));
+
+        const firstRun = await harvestGithubEcosystem(Date.parse('2042-01-01T04:15:00Z'));
+        expect(firstRun.sources.every(source => source.status === 'error')).toBe(true);
+        expect(firstRun.sources[0].error).toMatch(/rate limited/);
+        expect(requestCount).toBe(4);
+
+        const retry = await harvestGithubEcosystem(Date.parse('2042-01-01T12:00:00Z'));
+        expect(retry.sources.every(source => source.status === 'skipped_after_attempt')).toBe(true);
+        expect(requestCount).toBe(4);
     });
 });

@@ -50,6 +50,15 @@ interface EcosystemDataset {
     pushed_within_7_days: number;
     limitations: string[];
   };
+  update_status: {
+    attempted_at?: string;
+    complete?: boolean;
+    sources?: Array<{
+      repository: string;
+      status: string;
+      error?: string;
+    }>;
+  } | null;
   repositories: RepositoryEntry[];
 }
 
@@ -169,6 +178,27 @@ export default function OpenIntelligencePage() {
               <p style={{ padding: 14, borderRadius: 10, color: '#fde68a', background: '#78350f33', border: '1px solid #f59e0b33' }}>
                 {t('oi_baseline_notice', 'This is a baseline snapshot. Trend comparisons will be available after a later daily observation.')}
               </p>
+            )}
+
+            {dataset.update_status && (
+              <section aria-live="polite" style={{ padding: 16, margin: '18px 0', border: `1px solid ${dataset.update_status.complete ? '#166534' : '#92400e'}`, borderRadius: 12, background: dataset.update_status.complete ? '#052e1622' : '#451a0322' }}>
+                <h2 style={{ margin: '0 0 10px', fontSize: 15 }}>
+                  {t('oi_collection_status', 'Latest collection')}
+                  {' · '}
+                  {dataset.update_status.complete
+                    ? t('oi_collection_complete', 'All sources collected')
+                    : t('oi_collection_partial', 'Some sources unavailable')}
+                </h2>
+                <div style={{ display: 'grid', gap: 6, color: '#d1d5db', fontSize: 12 }}>
+                  {dataset.update_status.sources?.map((source) => (
+                    <div key={source.repository}>
+                      <strong>gstdcoin/{source.repository}</strong>
+                      {' · '}{t(`oi_source_status_${source.status}`, source.status)}
+                      {source.error && <span style={{ color: '#fca5a5' }}> — {source.error}</span>}
+                    </div>
+                  ))}
+                </div>
+              </section>
             )}
 
             {dataset.repositories.map((entry) => {
