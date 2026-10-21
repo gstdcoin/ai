@@ -21,6 +21,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { getClientIp } from '../../../../lib/ratelimit';
 import { kvGet, kvSet, kvKeys, kvMGet, kvIncr, kvIncrByFloat, kvRateLimit } from '../../../../lib/kv';
 import { safeNodeUrl } from '../../../../lib/safeNodeUrl';
+import { randomId } from '../../../../lib/randomId';
 import { validateEnterpriseKey } from '../enterprise/keys';
 import { accrueReward, BASE_TASK_FEE } from '../../../../lib/rewards';
 
@@ -214,7 +215,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const model  = data?.model || 'llama3.2:3b';
 
         // Persist task completion before returning; the execution context may end with the response.
-        const taskId = `oracle:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`;
+        const taskId = `oracle:${Date.now()}:${randomId()}`;
         try {
             await recordOracleTask(nodeUrl, taskId);
         } catch (error) {

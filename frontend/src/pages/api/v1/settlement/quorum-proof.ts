@@ -29,6 +29,7 @@ import { signVerify } from '@ton/crypto';
 import { createHash } from 'crypto';
 import { kvRateLimit, kvSet } from '../../../../lib/kv';
 import { requireNodeSignature } from '../../../../lib/nodeAuth';
+import { randomId } from '../../../../lib/randomId';
 
 function taskIdToUint64(taskId: string): bigint {
     const digest = createHash('sha256').update(taskId, 'utf8').digest();
@@ -128,7 +129,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
         }
 
-        const id = `proof_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const id = `proof_${Date.now()}_${randomId()}`;
         const record = {
             id,
             submittedByNodeId: nodeId,

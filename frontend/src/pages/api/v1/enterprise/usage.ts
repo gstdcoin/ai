@@ -6,6 +6,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvKeys } from '../../../../lib/kv';
 import type { EnterpriseKey } from './keys';
+import { randomId } from '../../../../lib/randomId';
 
 // GSTD pricing: $0.10 per 1M tokens (vs OpenAI $1-15, AWS $1.5-21)
 const GSTD_PRICE_PER_1M_TOKENS = 0.10;
@@ -139,7 +140,7 @@ export async function recordEnterpriseUsage(
     promptTokens: number,
     completionTokens: number,
 ): Promise<void> {
-    const requestId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const requestId = `${Date.now()}_${randomId()}`;
     const record = {
         key_id:            keyId,
         timestamp:         Date.now(),
