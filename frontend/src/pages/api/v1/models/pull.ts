@@ -10,6 +10,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvSet, kvKeys } from '../../../../lib/kv';
 import { resolveNodeUrl } from '../../../../lib/nodes';
+import { safeNodeUrl } from '../../../../lib/safeNodeUrl';
 
 const RAM_REQUIREMENTS: Record<string, number> = {
     'llama3.2:1b':  1.5, 'llama3.2:3b':  3,   'gemma2:2b':   2,
@@ -23,16 +24,10 @@ const RAM_REQUIREMENTS: Record<string, number> = {
     'codellama:70b': 40,
 };
 
-// SSRF protection: block private/loopback/cloud-metadata addresses (same pattern
-// used by training/jobs.ts's dataset_url validation)
-const BLOCKED_HOSTS = /^(localhost|127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|169\.254\.|::1|fd|fc)/i;
-
 function validateNodeUrl(raw: string): { ok: true; url: string } | { ok: false; reason: string } {
-    let u: URL;
-    try { u = new URL(raw); } catch { return { ok: false, reason: 'Invalid node_url' }; }
-    if (u.protocol !== 'https:') return { ok: false, reason: 'node_url must use https' };
-    if (BLOCKED_HOSTS.test(u.hostname)) return { ok: false, reason: 'node_url host not allowed' };
-    return { ok: true, url: `${u.origin}${u.pathname}`.replace(/\/$/, '') };
+    const url = safeNodeUrl(raw);
+    if (!url) return { ok: false, reason: 'node_url must be a public https URL' };
+    return { ok: true, url };
 }
 
 function getRequiredRam(modelId: string): number {
@@ -58,8 +53,9 @@ async function findCapableNode(modelId: string): Promise<string | null> {
         if (!raw) continue;
         try {
             const node = JSON.parse(raw as string);
-            if (node.ram_gb >= requiredRam && node.url) {
-                candidates.push({ url: node.url, ram_gb: node.ram_gb, latency: node.latency_ms || 9999 });
+            const candidateUrl = safeNodeUrl(node.url);
+            if (node.ram_gb >= requiredRam && candidateUrl) {
+                candidates.push({ url: candidateUrl, ram_gb: node.ram_gb, latency: node.latency_ms || 9999 });
             }
         } catch { /* skip */ }
     }

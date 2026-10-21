@@ -23,9 +23,10 @@ const REGION_SEEDS: [number, number][] = [
 
 function nodeToCoords(node: NodeRecord): { lat: number; lng: number } {
     // Deterministic scatter within a region based on node_id hash
+    const nodeId = String(node.node_id || '').slice(0, 128);
     let hash = 0;
-    for (let i = 0; i < node.node_id.length; i++) {
-        hash = ((hash << 5) - hash) + node.node_id.charCodeAt(i);
+    for (let i = 0; i < nodeId.length; i++) {
+        hash = ((hash << 5) - hash) + nodeId.charCodeAt(i);
         hash |= 0;
     }
     const region = REGION_SEEDS[Math.abs(hash) % REGION_SEEDS.length];

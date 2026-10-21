@@ -17,6 +17,7 @@ import { validateEnterpriseKey } from '../enterprise/keys';
 import { recordEnterpriseUsage } from '../enterprise/usage';
 import { chargeFee, refundFee } from '../../../../lib/billing';
 import { sessionWallet } from '../../../../lib/walletSession';
+import { safeNodeUrl } from '../../../../lib/safeNodeUrl';
 
 // Map OpenAI/legacy model IDs → Ollama IDs (all inference via GSTD nodes)
 const MODEL_ALIASES: Record<string, string> = {
@@ -71,7 +72,7 @@ interface NodeRecord {
 // Falls back to any online node if no capability-specific match (allows unknown models).
 async function resolveNodeUrl(model: string): Promise<string> {
     // 1. Env override (single-node dev/test mode)
-    const envUrl = (process.env.GSTD_NODE_URL || '').replace(/\/$/, '');
+    const envUrl = safeNodeUrl(process.env.GSTD_NODE_URL, { trusted: true });
     if (envUrl) return envUrl;
 
     // 2. Scan KV for live nodes, prefer those with the requested model
@@ -86,8 +87,8 @@ async function resolveNodeUrl(model: string): Promise<string> {
             for (const raw of values) {
                 if (!raw) continue;
                 const node: NodeRecord = JSON.parse(raw as string);
-                const url = (node.node_url || node.multiaddrs?.[0] || '').replace(/\/$/, '');
-                if (!url.startsWith('http')) continue;
+                const url = safeNodeUrl(node.node_url || node.multiaddrs?.[0] || '');
+                if (!url) continue;
                 const age = now - new Date(node.last_seen || 0).getTime();
                 if (age > NODE_MAX_AGE_MS) continue;
 
@@ -117,8 +118,8 @@ async function resolveNodeUrl(model: string): Promise<string> {
             { signal: AbortSignal.timeout(4000) }
         );
         if (ghResp.ok) {
-            const url = (await ghResp.text()).trim();
-            if (url.startsWith('http')) return url.replace(/\/$/, '');
+            const url = safeNodeUrl(await ghResp.text());
+            if (url) return url;
         }
     } catch { /* GitHub unavailable */ }
 

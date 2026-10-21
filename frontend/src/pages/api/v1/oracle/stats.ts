@@ -11,13 +11,14 @@
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvSet, kvKeys, kvMGet } from '../../../../lib/kv';
+import { safeNodeUrl } from '../../../../lib/safeNodeUrl';
 
 const CACHE_KEY = 'oracle:stats:cache';
 const CACHE_TTL = 120; // 2 minutes
 
 async function findNodeUrl(): Promise<string | null> {
     // 1. Env override
-    if (process.env.GSTD_NODE_URL) return process.env.GSTD_NODE_URL.replace(/\/$/, '');
+    if (process.env.GSTD_NODE_URL) return safeNodeUrl(process.env.GSTD_NODE_URL, { trusted: true });
     // 2. Live KV registry (most reliable — updated by every heartbeat)
     try {
         const keys = (await kvKeys('node:')).filter((k: string) => !k.slice(5).includes(':'));
@@ -27,8 +28,8 @@ async function findNodeUrl(): Promise<string | null> {
             for (const raw of values) {
                 if (!raw) continue;
                 const n: any = JSON.parse(raw as string);
-                const url = (n.node_url || n.multiaddrs?.[0] || '').replace(/\/$/, '');
-                if (!url.startsWith('http')) continue;
+                const url = safeNodeUrl(n.node_url || n.multiaddrs?.[0] || '');
+                if (!url) continue;
                 if (now - new Date(n.last_seen || 0).getTime() > 600_000) continue;
                 return url;
             }
@@ -41,8 +42,8 @@ async function findNodeUrl(): Promise<string | null> {
             { signal: AbortSignal.timeout(3000) }
         );
         if (!r.ok) return null;
-        const url = (await r.text()).trim();
-        return url.startsWith('http') ? url : null;
+        const url = safeNodeUrl(await r.text());
+        return url;
     } catch { return null; }
 }
 
