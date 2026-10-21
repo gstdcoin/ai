@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import {
-    Home, Server, ListTodo, MessageSquare, BarChart3, HelpCircle,
-    X, Menu, Download, Users, Globe, FileText, Cpu,
+    Home, Server, ListTodo, MessageSquare, BarChart3,
+    X, Menu, Download, Users, FileText,
 } from 'lucide-react';
 import { Tab } from '../../types/tabs';
 
@@ -23,16 +23,13 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
 
     const tools: Array<{ label: string; icon: React.ReactNode; href: string }> = [
         { label: t('chat',    'Chat'),    icon: <MessageSquare size={18} />, href: '/chat'    },
-        { label: t('models',  'Models'),  icon: <Cpu           size={18} />, href: '/models'  },
         { label: t('stats',   'Stats'),   icon: <BarChart3     size={18} />, href: '/stats'   },
-        { label: t('network', 'Network'), icon: <Globe         size={18} />, href: '/network' },
     ];
 
     const info: Array<{ label: string; icon: React.ReactNode; href: string }> = [
         { label: t('downloads',  'Downloads'),  icon: <Download  size={18} />, href: '/downloads'  },
         { label: t('referrals',  'Referrals'),  icon: <Users     size={18} />, href: '/referrals'  },
         { label: t('docs',       'Docs'),        icon: <FileText  size={18} />, href: '/docs'       },
-        { label: t('help_center','Help'),        icon: <HelpCircle size={18} />, href: '/about'     },
     ];
 
     const close = () => setIsOpen(false);

@@ -26,14 +26,12 @@ export default function EcosystemFooter() {
         { label: t('footer_privacy', 'Privacy'), href: '/privacy', external: false },
         { label: 'Chat', href: '/chat', external: false },
         { label: 'Nodes', href: '/nodes', external: false },
-        { label: 'Fine-Tune', href: '/training', external: false },
-        { label: 'Agents', href: '/agents', external: false },
         { label: 'Leaderboard', href: '/leaderboard', external: false },
         { label: 'Stats', href: '/stats', external: false },
         { label: 'Docs', href: '/docs', external: false },
-        { label: 'Developers', href: '/developers', external: false },
         { label: 'Downloads', href: '/downloads', external: false },
-        { label: t('footer_telegram', 'Telegram'), href: 'https://t.me/gstdaibot', external: true },
+        { label: t('footer_telegram', 'Telegram'), href: 'https://t.me/gstdtoken', external: true },
+        { label: 'Bot', href: 'https://t.me/gstdaibot', external: true },
         { label: t('footer_github', 'GitHub'), href: 'https://github.com/gstdcoin', external: true },
         { label: 'API', href: 'https://app.gstdtoken.com/api/v1/stats/public', external: true },
     ];
@@ -124,7 +122,7 @@ export default function EcosystemFooter() {
 
                 {/* Copyright */}
                 <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.15)' }}>
-                    © 2026 GSTD — {t('footer_tagline', 'Sovereign Decentralized Computing')} 🐝
+                    © 2026 GSTD — {t('footer_tagline', 'Decentralized AI compute')}
                 </div>
             </div>
         </footer>

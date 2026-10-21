@@ -85,7 +85,7 @@ export default function ReferralModal({ onClose }: ReferralModalProps) {
                         </div>
                         <h3 className="text-lg font-medium text-white mb-1">{t('invite_earn', 'Invite Friends & Earn')}</h3>
                         <p className="text-sm text-gray-400">
-                            Get 5% of all GSTD earned by your referrals forever.
+                            +1 GSTD when a friend links a new wallet (up to 20 friends); the friend gets +0.2 GSTD. One bonus per wallet, daily budget is limited.
                         </p>
                     </div>
 

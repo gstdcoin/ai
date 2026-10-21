@@ -1,520 +1,193 @@
 import Link from 'next/link';
 import { GetStaticProps } from 'next';
-import { useTranslation } from 'next-i18next';
+import { useRouter } from 'next/router';
 import { getCommonStaticProps } from '../lib/i18n-static-props';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { API_BASE_URL } from '../lib/config';
-import { MessageSquare, ArrowRight, Bot, Brain, Building2, Activity, Zap, Server, Shield, Globe, Sparkles, ChevronRight } from 'lucide-react';
-import dynamic from 'next/dynamic';
-import { motion } from 'framer-motion';
-import { StaggerContainer, StaggerItem, SlideUp } from '../components/common/Animations';
-
-const AmbientMesh = dynamic(() => import('../components/home/AmbientMesh'), { ssr: false });
-const LivePulse = dynamic(() => import('../components/home/LivePulse'), { ssr: false });
+import { MessageSquare, ArrowRight, Server, Download, BarChart3 } from 'lucide-react';
 
 interface NetworkStats {
-  active_workers: number;
-  total_gstd_paid: number;
-  tasks_24h: number;
-  total_tasks: number;
-  total_hashrate: number;
-  treasury_balance: number;
-  gstd_price_usd: number;
-  network_iq?: number;
-  global_brain_latency_ms?: number;
-  total_burned?: number;
-  total_users?: number;
+  active_workers?: number;
   total_nodes?: number;
+  total_tasks?: number;
+  total_users?: number;
+  gstd_price_usd?: number;
 }
 
-interface Tokenomics {
-  circulating_supply: number;
-  max_supply: number;
-  total_burned: number;
-  total_minted: number;
-  remaining_supply: number;
-  supply_mined_pct: number;
-  burn_rate_pct: number;
-  base_reward_per_hour: number;
-  epoch: number;
-  next_halving_in_days: number;
-}
+const COPY = {
+  en: {
+    title: 'Decentralized AI compute on TON',
+    lead: 'GSTD connects people who need AI inference with node operators who run open models on their own hardware. Requests are paid in GSTD.',
+    statusLive: (n: number) => `${n} node${n === 1 ? '' : 's'} online`,
+    statusEmpty: 'The network is in early launch: no nodes are online right now, so requests are not served by the network yet.',
+    statusEmptyHint: 'You can help by running a node. Until then, a short demo chat is available on gstdtoken.com.',
+    chat: 'Open chat',
+    node: 'Run a node',
+    demo: 'Demo chat on gstdtoken.com',
+    stats: 'Network now',
+    registered: 'Registered nodes',
+    online: 'Nodes online',
+    tasks: 'Tasks processed',
+    users: 'Users',
+    price: 'GSTD price',
+    cards: [
+      { title: 'Chat', text: 'Send a request to the network. It is served only while a node is online.', href: '/chat', cta: 'Open chat' },
+      { title: 'Run a node', text: 'Install the open-source node with one command on a computer with Ollama.', href: '/nodes', cta: 'Setup guide' },
+      { title: 'Live statistics', text: 'Numbers come directly from the network API, with no estimates.', href: '/stats', cta: 'Open statistics' },
+    ],
+    links: 'Also',
+    docs: 'Documentation',
+    code: 'Source code',
+    tg: 'Telegram channel',
+    note: 'GSTD is a utility token for paying for compute in the network. It is not an investment product.',
+  },
+  ru: {
+    title: 'Децентрализованные ИИ-вычисления на TON',
+    lead: 'GSTD соединяет тех, кому нужен ИИ-инференс, с операторами нод, которые запускают открытые модели на своём оборудовании. Запросы оплачиваются в GSTD.',
+    statusLive: (n: number) => `Нод онлайн: ${n}`,
+    statusEmpty: 'Сеть на раннем старте: сейчас ни одной ноды нет онлайн, поэтому сеть пока не обрабатывает запросы.',
+    statusEmptyHint: 'Помочь можно, запустив ноду. А пока на gstdtoken.com доступен короткий демо-чат.',
+    chat: 'Открыть чат',
+    node: 'Запустить ноду',
+    demo: 'Демо-чат на gstdtoken.com',
+    stats: 'Сеть сейчас',
+    registered: 'Зарегистрировано нод',
+    online: 'Нод онлайн',
+    tasks: 'Обработано заданий',
+    users: 'Пользователи',
+    price: 'Цена GSTD',
+    cards: [
+      { title: 'Чат', text: 'Отправьте запрос в сеть. Он обрабатывается, только пока хотя бы одна нода онлайн.', href: '/chat', cta: 'Открыть чат' },
+      { title: 'Запуск ноды', text: 'Установите ноду с открытым кодом одной командой на компьютере с Ollama.', href: '/nodes', cta: 'Инструкция' },
+      { title: 'Живая статистика', text: 'Цифры берутся напрямую из API сети, без оценок.', href: '/stats', cta: 'Открыть статистику' },
+    ],
+    links: 'Ещё',
+    docs: 'Документация',
+    code: 'Исходный код',
+    tg: 'Канал в Telegram',
+    note: 'GSTD — утилитарный токен для оплаты вычислений в сети. Это не инвестиционный продукт.',
+  },
+} as const;
 
-function StatCard({ value, label, color, icon, emoji, sub }: {
-  value: string;
-  label: string;
-  color: string;
-  icon?: React.ReactNode;
-  emoji?: string;
-  sub?: string;
-}) {
-  const [flash, setFlash] = useState(false);
-  const prevValue = useRef(value);
-
-  useEffect(() => {
-    if (prevValue.current !== value && prevValue.current !== '—') {
-      setFlash(true);
-      const timer = setTimeout(() => setFlash(false), 1000);
-      prevValue.current = value;
-      return () => clearTimeout(timer);
-    }
-    prevValue.current = value;
-  }, [value]);
-
+function Stat({ value, label }: { value: string; label: string }) {
   return (
-    <motion.div
-      className={`p-6 rounded-2xl glass-pro shine-on-hover transition-all duration-500 text-center relative overflow-hidden ${flash ? 'stat-flash' : ''}`}
-      whileHover={{ scale: 1.04, y: -3 }}
-      whileTap={{ scale: 0.97 }}
-      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-    >
-      {/* Emoji icon (gstdbot style) */}
-      {emoji && <div style={{ fontSize: 28, marginBottom: 8, opacity: 0.85, lineHeight: 1 }}>{emoji}</div>}
-      {/* Lucide icon fallback */}
-      {!emoji && icon && <div className="mb-2 flex justify-center opacity-50">{icon}</div>}
-      {/* Value */}
-      <div className={`text-3xl font-black ${color} mb-0.5 counter-value leading-none`}>{value}</div>
-      {/* Optional sub-unit (e.g. "XAUt", "GSTD") */}
-      {sub && <div className={`text-sm font-bold ${color} opacity-70 mb-1`}>{sub}</div>}
-      {/* Label */}
-      <div className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mt-1">{label}</div>
-    </motion.div>
+    <div className="p-5 rounded-2xl glass-pro text-center">
+      <div className="text-3xl font-black text-white leading-none mb-1">{value}</div>
+      <div className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">{label}</div>
+    </div>
   );
 }
 
-// ─── Main Page ───────────────────────────────────────────────
 export default function Home() {
-  const { t } = useTranslation('common');
-  const [networkStats, setNetworkStats] = useState<NetworkStats | null>(null);
-  const [tokenomics, setTokenomics] = useState<Tokenomics | null>(null);
-  const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => { setIsClient(true); }, []);
+  const { locale } = useRouter();
+  const c = locale === 'ru' ? COPY.ru : COPY.en;
+  const [stats, setStats] = useState<NetworkStats | null>(null);
 
   useEffect(() => {
-    const fetchStats = async () => {
+    const load = async () => {
       try {
-        const [netRes, tokRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/api/v1/network/stats`),
-          fetch(`${API_BASE_URL}/api/v1/sovereign/tokenomics`),
-        ]);
-        if (netRes.ok) setNetworkStats(await netRes.json());
-        if (tokRes.ok) setTokenomics(await tokRes.json());
-      } catch (_e) { /* silent */ }
+        const res = await fetch(`${API_BASE_URL}/api/v1/network/stats`);
+        if (res.ok) setStats(await res.json());
+      } catch {
+        // keep the previous values
+      }
     };
-    fetchStats();
-    const interval = setInterval(fetchStats, 15000);
-    return () => clearInterval(interval);
+    load();
+    const id = setInterval(load, 30000);
+    return () => clearInterval(id);
   }, []);
 
-  const totalNodes = networkStats?.total_nodes?.toLocaleString() || '—';
-  const totalTasks = networkStats?.total_tasks?.toLocaleString() || '—';
-  const gstdPrice = networkStats?.gstd_price_usd && networkStats.gstd_price_usd > 0 ? '$' + networkStats.gstd_price_usd.toFixed(6) : '—';
-  const circulatingSupply = tokenomics ? tokenomics.circulating_supply.toLocaleString(undefined, { maximumFractionDigits: 0 }) : '—';
-  const totalBurned = tokenomics?.total_burned && tokenomics.total_burned > 0 ? tokenomics.total_burned.toFixed(4) : networkStats?.total_burned && networkStats.total_burned > 0 ? networkStats.total_burned.toFixed(4) : '—';
-  const totalMinted = tokenomics ? tokenomics.total_minted.toLocaleString(undefined, { maximumFractionDigits: 0 }) : '—';
-  const totalUsers = networkStats?.total_users?.toLocaleString() || '—';
+  const online = stats?.active_workers ?? 0;
+  const num = (v?: number) => (typeof v === 'number' ? v.toLocaleString() : '—');
+  const price = stats?.gstd_price_usd && stats.gstd_price_usd > 0 ? `$${stats.gstd_price_usd.toFixed(6)}` : '—';
+  const icons = [MessageSquare, Server, BarChart3];
 
   return (
-    <div className="min-h-screen bg-[#030014] text-white overflow-x-hidden font-sans selection:bg-violet-500/30">
-      {/* ═══════ AMBIENT MESH BACKGROUND ═══════ */}
-      {isClient && <AmbientMesh activeNodes={networkStats?.active_workers ?? 0} />}
+    <div className="min-h-screen bg-[#030014] text-white font-sans selection:bg-violet-500/30">
+      <section className="px-4 sm:px-6 pt-16 pb-10 w-full max-w-4xl mx-auto text-center">
+        <h1 className="text-4xl sm:text-6xl font-black tracking-tight mb-5 leading-[1.1]">{c.title}</h1>
+        <p className="text-lg text-gray-400 max-w-2xl mx-auto leading-relaxed mb-8">{c.lead}</p>
 
-      {/* Gradient overlay */}
-      <div className="fixed inset-0 z-1 pointer-events-none">
-        <div className="absolute top-0 left-0 right-0 h-[40%] bg-linear-to-b from-[#030014] to-transparent" />
-        <div className="absolute bottom-0 left-0 right-0 h-[30%] bg-linear-to-t from-[#030014] to-transparent" />
-      </div>
-
-      <div className="relative z-10">
-        {/* ═══════ LIVE RIBBON ═══════ */}
-        {networkStats != null && (
-          <div className="bg-black/50 backdrop-blur-xl border-b border-white/4 px-4 py-1.5 text-center text-[11px] font-medium text-cyan-400/80">
-            <span className="inline-flex items-center gap-1.5">
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
-                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
-              </span>
-              {networkStats.active_workers?.toLocaleString() ?? '—'} {t('nodes', 'nodes')}
-            </span>
-            <span className="mx-2 text-white/10">•</span>
-            <span>{networkStats.total_tasks?.toLocaleString() ?? '—'} {t('tasks', 'tasks')}</span>
-            {networkStats.gstd_price_usd > 0 && (
+        {stats && (
+          <div
+            className={`max-w-2xl mx-auto mb-8 rounded-2xl border px-5 py-4 text-sm text-left ${
+              online > 0 ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-300' : 'border-amber-500/30 bg-amber-500/5 text-amber-200'
+            }`}
+          >
+            {online > 0 ? (
+              <strong>{c.statusLive(online)}</strong>
+            ) : (
               <>
-                <span className="mx-2 text-white/10">•</span>
-                <span className="text-amber-400/80">${networkStats.gstd_price_usd.toFixed(6)}</span>
+                <p className="font-semibold mb-1">{c.statusEmpty}</p>
+                <p className="text-amber-200/80">{c.statusEmptyHint}</p>
               </>
             )}
           </div>
         )}
 
-        {/* ═══════ HERO ═══════ */}
-        <section className="px-4 sm:px-6 py-16 lg:py-24 w-full max-w-7xl mx-auto">
-          <SlideUp className="text-center max-w-4xl mx-auto mb-16">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full glass-pro text-[11px] font-bold tracking-wide text-cyan-400 mb-6">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500" />
-              </span>
-              {t('depin_compute_protocol_live', 'DePIN Compute Protocol · Training Paused')}
-            </div>
-
-            <h1 className="text-5xl sm:text-7xl font-black tracking-tight mb-6 leading-[1.08]">
-              <span className="block text-white">{t('corporation_free', 'Sovereign AI.')}</span>
-              <span className="block bg-linear-to-r from-violet-400 via-cyan-400 to-emerald-400 bg-clip-text text-transparent animate-gradient bg-size-[200%_200%]">{t('working_humanity', 'Decentralized Compute.')}</span>
-            </h1>
-
-            <p className="text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed mb-10">
-              {t('hero_desc', 'A DePIN network where nodes serve AI inference. Fine-tuning is paused until isolated worker sandboxing is ready.')}
-              {' '}<span className="text-emerald-400 font-bold">{t('connect_devices', 'Availability depends on live network capacity.')}</span>
-              {' '}{t('connect_devices_earn', 'No corporation. No servers.')}
-            </p>
-
-            {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full max-w-2xl mx-auto flex-wrap">
-              <Link
-                href="/chat"
-                className="group relative w-full sm:w-auto inline-flex items-center justify-center gap-3 px-8 py-4 rounded-2xl bg-linear-to-r from-violet-600 to-cyan-600 text-white font-bold text-lg shadow-xl shadow-violet-500/20 hover:shadow-violet-500/40 hover:scale-[1.03] active:scale-[0.98] transition-all duration-300"
-              >
-                <Bot size={22} className="group-hover:scale-110 transition-transform" />
-                <span>{t('try_sovereign_ai', 'Try Sovereign AI')}</span>
-                <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-              </Link>
-              <Link
-                href="/training"
-                className="group relative w-full sm:w-auto inline-flex items-center justify-center gap-3 px-8 py-4 rounded-2xl bg-linear-to-r from-violet-500/20 to-indigo-500/20 border border-violet-500/40 text-violet-300 font-bold text-lg hover:bg-violet-500/30 hover:scale-[1.03] active:scale-[0.98] transition-all duration-300"
-                style={{ textDecoration: 'none' }}
-              >
-                <Brain size={22} className="group-hover:scale-110 transition-transform" />
-                <span>{t('fine_tune_models', 'Fine-Tune Models')}</span>
-                <Sparkles size={16} className="text-violet-400" />
-              </Link>
-              <Link
-                href="/nodes"
-                className="group relative w-full sm:w-auto inline-flex items-center justify-center gap-3 px-8 py-4 rounded-2xl glass-pro text-white font-bold text-lg hover:scale-[1.03] active:scale-[0.98] transition-all duration-300 shine-on-hover"
-                style={{ textDecoration: 'none' }}
-              >
-                <Zap size={22} className="text-emerald-400 group-hover:scale-110 transition-transform" />
-                <span>{t('run_a_node', 'Run a Node')}</span>
-              </Link>
-            </div>
-          </SlideUp>
-        </section>
-
-        {/* ═══════ WHAT YOU GET (3 columns) ═══════ */}
-        <section className="px-4 sm:px-6 pb-20 w-full max-w-6xl mx-auto" id="features">
-          <StaggerContainer className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-20">
-            <StaggerItem>
-            <div className="group p-8 rounded-3xl glass-pro gradient-border shine-on-hover transition-all duration-500">
-              <div className="w-12 h-12 rounded-2xl bg-violet-500/15 flex items-center justify-center mb-6 glow-breathe">
-                <MessageSquare className="text-violet-400" size={24} />
-              </div>
-              <h2 className="text-xl font-black tracking-tight mb-3 text-white">{t('tap_hive', 'Tap the Hive Mind')}</h2>
-              <p className="text-gray-400 mb-6 leading-relaxed text-sm">
-                {t('tap_hive_desc', 'Use the Global Brain to solve any task. Pay with GSTD to route your queries to nodes in the network. The network is in early launch: availability depends on how many nodes are online. Open models, no central operator.')}
-              </p>
-              <Link href="/chat" className="flex items-center gap-2 text-violet-400 font-black hover:gap-3 transition-all text-sm" style={{ textDecoration: 'none' }}>
-                {t('access_intelligence', 'Access Intelligence')} <ArrowRight size={14} />
-              </Link>
-            </div>
-            </StaggerItem>
-
-            <StaggerItem>
-            <div className="group p-8 rounded-3xl glass-pro gradient-border shine-on-hover transition-all duration-500">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 flex items-center justify-center mb-6 glow-breathe" style={{ animationDelay: '2s' }}>
-                <Server className="text-emerald-400" size={24} />
-              </div>
-              <h2 className="text-xl font-black tracking-tight mb-3 text-white">{t('become_node', 'Become a Neural Node')}</h2>
-              <p className="text-gray-400 mb-6 leading-relaxed text-sm">
-                {t('become_node_desc', 'Turn any computer into a sovereign AI node. Wallet auth, Let\'s Encrypt SSL, Cloudflare tunnel, local LLM via Ollama, IPFS storage, earnings dashboard. One command to install, Telegram to manage.')}
-              </p>
-              <Link href="/nodes" className="flex items-center gap-2 text-emerald-400 font-black hover:gap-3 transition-all text-sm" style={{ textDecoration: 'none' }}>
-                {t('ignite_your_node', 'Ignite Your Node')} <ArrowRight size={14} />
-              </Link>
-            </div>
-            </StaggerItem>
-
-            <StaggerItem>
-            <div className="group p-8 rounded-3xl glass-pro gradient-border shine-on-hover transition-all duration-500">
-              <div className="w-12 h-12 rounded-2xl bg-amber-500/15 flex items-center justify-center mb-6 glow-breathe" style={{ animationDelay: '4s' }}>
-                <Shield className="text-amber-400" size={24} />
-              </div>
-              <h2 className="text-xl font-black tracking-tight mb-3 text-white">{t('utility_token', 'Pure Utility')}</h2>
-              <p className="text-gray-400 mb-6 leading-relaxed text-sm">
-                {t('utility_desc', 'GSTD is the payment token for AI compute inside the network — not an investment. Pay for AI inference, earn by running nodes. 10% of every transaction builds the ecosystem treasury.')}
-              </p>
-              <a href="https://t.me/gstdcoin" className="flex items-center gap-2 text-amber-400 font-black hover:gap-3 transition-all text-sm" style={{ textDecoration: 'none' }}>
-                {t('telegram', 'Telegram')} <ArrowRight size={14} />
-              </a>
-            </div>
-            </StaggerItem>
-          </StaggerContainer>
-
-          {/* ═══════ FINE-TUNING MARKETPLACE ═══════ */}
-          <div className="mb-20">
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
-              className="p-8 md:p-12 rounded-3xl glass-pro gradient-border relative overflow-hidden"
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+          <Link
+            href="/chat"
+            className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-2xl bg-linear-to-r from-violet-600 to-cyan-600 text-white font-bold"
+            style={{ textDecoration: 'none' }}
+          >
+            <MessageSquare size={18} /> {c.chat} <ArrowRight size={16} />
+          </Link>
+          <Link
+            href="/nodes"
+            className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-2xl glass-pro text-white font-bold"
+            style={{ textDecoration: 'none' }}
+          >
+            <Server size={18} className="text-emerald-400" /> {c.node}
+          </Link>
+          {online === 0 && (
+            <a
+              href="https://gstdtoken.com/ai"
+              className="inline-flex items-center justify-center gap-2 px-5 py-3.5 text-sm text-cyan-300 font-semibold"
+              style={{ textDecoration: 'none' }}
             >
-              <div className="absolute top-0 right-0 w-96 h-96 bg-violet-500/5 rounded-full blur-[120px] pointer-events-none" />
-              <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-500/5 rounded-full blur-[80px] pointer-events-none" />
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center relative z-10">
-                <div>
-                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 text-[11px] font-bold tracking-wide mb-5">
-                    <Brain size={13} />
-                    <span>{t('fine_tuning_marketplace', 'Fine-Tuning Paused')} · {t('training_status_paused', 'Paused')}</span>
-                  </div>
-                  <h2 className="text-3xl sm:text-4xl font-black text-white mb-4 leading-tight">
-                    {t('train_any_model', 'Training is paused.')}<br />
-                    <span className="bg-linear-to-r from-violet-400 to-indigo-400 bg-clip-text text-transparent">
-                      {t('ten_x_cheaper', 'Sandboxing required.')}
-                    </span>
-                  </h2>
-                  <p className="text-gray-400 leading-relaxed mb-4 text-sm">
-                    {t('finetuning_desc', 'Fine-tuning submissions are paused until isolated worker sandboxing and settlement verification are available. No new jobs are accepted.')}
-                  </p>
-                  <div className="grid grid-cols-3 gap-3 mb-6">
-                    {[
-                      { label: t('ft_models', 'Service paused'), sub: 'No new jobs' },
-                      { label: t('ft_domains', 'Sandbox needed'), sub: 'Before re-opening' },
-                      { label: t('ft_nodes', 'Dispatch disabled'), sub: t('ft_nodes_sub', 'No training tasks') },
-                    ].map((item) => (
-                      <div key={item.label} className="p-3 rounded-xl bg-violet-500/5 border border-violet-500/10 text-center">
-                        <div className="text-xs font-black text-violet-300 mb-0.5">{item.label}</div>
-                        <div className="text-[10px] text-gray-500">{item.sub}</div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <Link
-                      href="/training"
-                      className="group inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-linear-to-r from-violet-600 to-indigo-600 text-white font-bold text-sm shadow-lg shadow-violet-500/20 hover:shadow-violet-500/40 hover:scale-[1.02] transition-all duration-300"
-                      style={{ textDecoration: 'none' }}
-                    >
-                      <Brain size={16} />
-                      {t('start_fine_tuning', 'View Training Status')}
-                      <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
-                    </Link>
-                    <Link
-                      href="/nodes"
-                      className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl glass-pro text-gray-300 font-bold text-sm hover:scale-[1.02] transition-all duration-300"
-                      style={{ textDecoration: 'none' }}
-                    >
-                      <Server size={16} className="text-emerald-400" />
-                      {t('become_training_node', 'Run a GSTD Node')}
-                    </Link>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  {[
-                    { emoji: '🦙', name: 'Llama 3.2 3B', tag: 'Fast · Efficient', color: 'violet' },
-                    { emoji: '🤖', name: 'Qwen 2.5 7B', tag: 'Code · Multilingual', color: 'cyan' },
-                    { emoji: '⚡', name: 'Phi-3 Mini', tag: 'Lightweight · Edge', color: 'emerald' },
-                    { emoji: '🌟', name: 'Mistral 7B', tag: 'General · Strong', color: 'amber' },
-                    { emoji: '💎', name: 'Gemma 2 2B', tag: 'Quality · Compact', color: 'pink' },
-                    { emoji: '🧬', name: 'Llama 3.1 8B', tag: 'Powerful · General', color: 'indigo' },
-                  ].map((model) => (
-                    <div key={model.name} className={`p-3 rounded-2xl glass-pro border border-white/5 hover:border-${model.color}-500/20 transition-colors`}>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span style={{ fontSize: 18 }}>{model.emoji}</span>
-                        <div className="text-xs font-bold text-white leading-tight">{model.name}</div>
-                      </div>
-                      <div className="text-[10px] text-gray-500">{model.tag}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </motion.div>
-          </div>
-
-          {/* ═══════ NODE OS FEATURES STRIP ═══════ */}
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 mb-20 stagger-in">
-            <div className="p-4 rounded-2xl glass-pro text-center">
-              <div style={{ fontSize: 22, marginBottom: 6 }}>🔐</div>
-              <div className="text-xs font-bold text-white">Wallet Auth</div>
-              <div className="text-[10px] text-gray-500">TON Connect</div>
-            </div>
-            <div className="p-4 rounded-2xl glass-pro text-center">
-              <div style={{ fontSize: 22, marginBottom: 6 }}>🌐</div>
-              <div className="text-xs font-bold text-white">Auto SSL</div>
-              <div className="text-[10px] text-gray-500">Let's Encrypt</div>
-            </div>
-            <div className="p-4 rounded-2xl glass-pro text-center">
-              <div style={{ fontSize: 22, marginBottom: 6 }}>📡</div>
-              <div className="text-xs font-bold text-white">Cloudflare</div>
-              <div className="text-[10px] text-gray-500">Tunnel + DNS</div>
-            </div>
-            <div className="p-4 rounded-2xl glass-pro text-center">
-              <div style={{ fontSize: 22, marginBottom: 6 }}>🩺</div>
-              <div className="text-xs font-bold text-white">Self-Heal</div>
-              <div className="text-[10px] text-gray-500">8 auto-checks</div>
-            </div>
-            <div className="p-4 rounded-2xl glass-pro text-center">
-              <div style={{ fontSize: 22, marginBottom: 6 }}>📦</div>
-              <div className="text-xs font-bold text-white">Local LLM</div>
-              <div className="text-[10px] text-gray-500">Ollama · Private</div>
-            </div>
-            <a href="/models" style={{ textDecoration: 'none' }} className="p-4 rounded-2xl glass-pro text-center hover:scale-[1.05] transition-transform">
-              <div style={{ fontSize: 22, marginBottom: 6 }}>🧠</div>
-              <div className="text-xs font-bold text-white">Models</div>
-              <div className="text-[10px] text-gray-500">Marketplace</div>
+              {c.demo} <ArrowRight size={14} />
             </a>
-            <a href="/leaderboard" style={{ textDecoration: 'none' }} className="p-4 rounded-2xl glass-pro text-center hover:scale-[1.05] transition-transform">
-              <div style={{ fontSize: 22, marginBottom: 6 }}>🏆</div>
-              <div className="text-xs font-bold text-white">Leaderboard</div>
-              <div className="text-[10px] text-gray-500">Top nodes</div>
-            </a>
-            <a href="/training" style={{ textDecoration: 'none' }} className="p-4 rounded-2xl glass-pro text-center hover:scale-[1.05] transition-transform border border-violet-500/20">
-              <div style={{ fontSize: 22, marginBottom: 6 }}>🧬</div>
-              <div className="text-xs font-bold text-violet-300">Fine-Tune</div>
-              <div className="text-[10px] text-gray-500">LoRA · QLoRA</div>
-            </a>
-          </div>
+          )}
+        </div>
+      </section>
 
-          {/* ═══════ NETWORK STATS ═══════ */}
-          <StaggerContainer className="w-full max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4 mb-8" id="stats">
-            <StaggerItem><StatCard value={totalUsers} label={t('total_users', 'Users')} color="text-emerald-400" emoji="👥" /></StaggerItem>
-            <StaggerItem><StatCard value={totalNodes} label={t('total_nodes', 'Nodes')} color="text-cyan-400" emoji="📡" /></StaggerItem>
-            <StaggerItem><StatCard value={totalTasks} label={t('tasks_completed', 'Tasks')} color="text-violet-400" emoji="⚡" /></StaggerItem>
-            <StaggerItem><StatCard value={gstdPrice} label={t('gstd_price', 'GSTD Price')} color="text-amber-400" emoji="💎" /></StaggerItem>
-          </StaggerContainer>
+      <section className="px-4 sm:px-6 pb-12 w-full max-w-4xl mx-auto" id="stats">
+        <h2 className="text-xs uppercase tracking-widest text-gray-500 font-bold mb-3 text-center">{c.stats}</h2>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <Stat value={num(stats?.total_nodes)} label={c.registered} />
+          <Stat value={num(stats?.active_workers)} label={c.online} />
+          <Stat value={num(stats?.total_tasks)} label={c.tasks} />
+          <Stat value={num(stats?.total_users)} label={c.users} />
+          <Stat value={price} label={c.price} />
+        </div>
+      </section>
 
-          {/* ═══════ TOKENOMICS ═══════ */}
-          <StaggerContainer className="w-full max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4 mb-20">
-            <StaggerItem><StatCard value={circulatingSupply} sub="GSTD" label={t('circulating_supply', 'Circulating')} color="text-cyan-400" emoji="🔄" /></StaggerItem>
-            <StaggerItem><StatCard value={totalMinted} sub="GSTD" label={t('total_minted', 'Total Minted')} color="text-violet-400" emoji="🪙" /></StaggerItem>
-            <StaggerItem><StatCard value={totalBurned} sub="GSTD" label={t('total_burned', 'Burned')} color="text-red-400" emoji="🔥" /></StaggerItem>
-            <StaggerItem><StatCard value={networkStats?.active_workers ? String(networkStats.active_workers) : '—'} label={t('nodes_online', 'Live Nodes')} color="text-emerald-400" emoji="🟢" /></StaggerItem>
-          </StaggerContainer>
-
-          {/* ═══════ LIVE NETWORK PULSE ═══════ */}
-          <div className="w-full max-w-5xl mx-auto mb-20" id="pulse">
-            {isClient && <LivePulse className="glow-breathe" />}
-          </div>
-
-          {/* ═══════ HOW IT WORKS ═══════ */}
-          <div className="w-full max-w-3xl mx-auto mb-16 stagger-in">
-            <div className="p-8 rounded-3xl glass-pro gradient-border">
-              <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-                <Activity size={18} className="text-cyan-400" />
-                {t('how_it_works', 'How it works')}
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                <div className="text-center">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center mx-auto mb-3">
-                    <Globe className="text-emerald-400" size={18} />
-                  </div>
-                  <h4 className="text-sm font-bold text-white mb-1">{t('no_tokens', 'No tokens?')}</h4>
-                  <p className="text-xs text-gray-400">{t('no_tokens_desc', 'Connect your device and earn GSTD by contributing compute. Any device can join the swarm.')}</p>
-                </div>
-                <div className="text-center">
-                  <div className="w-10 h-10 rounded-xl bg-violet-500/15 flex items-center justify-center mx-auto mb-3">
-                    <Zap className="text-violet-400" size={18} />
-                  </div>
-                  <h4 className="text-sm font-bold text-white mb-1">{t('have_tokens', 'Have tokens?')}</h4>
-                  <p className="text-xs text-gray-400">{t('have_tokens_desc', 'Unlock advanced AI features: better models, Hive Memory, and priority access.')}</p>
-                </div>
-                <div className="text-center">
-                  <div className="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center mx-auto mb-3">
-                    <Shield className="text-amber-400" size={18} />
-                  </div>
-                  <h4 className="text-sm font-bold text-white mb-1">{t('treasury_backed', 'Treasury loop.')}</h4>
-                  <p className="text-xs text-gray-400">{t('treasury_backed_desc', '10% of every inference fee funds the ecosystem treasury — used for buybacks and development.')}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* ═══════ SUPER-PREMIUM TIERS ═══════ */}
-          <div className="w-full max-w-5xl mx-auto mb-20 stagger-in">
-            <div className="text-center mb-10">
-              <h3 className="text-2xl sm:text-3xl font-black text-white mb-3">{t('super_premium', 'Super-Premium Tiers')}</h3>
-              <p className="text-sm text-gray-400 max-w-xl mx-auto">{t('super_premium_desc', 'Unlock enterprise capabilities. All token distributions go through the platform with 5% commission. Signed transactions only.')}</p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Node Runner */}
-              <div className="group p-6 rounded-3xl glass-pro gradient-border shine-on-hover transition-all duration-500 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-violet-500/5 rounded-full blur-[60px]" />
-                <div className="w-12 h-12 rounded-2xl bg-violet-500/15 flex items-center justify-center mb-4">
-                  <Server className="text-violet-400" size={24} />
-                </div>
-                <h4 className="text-lg font-black text-white mb-1">⚡ Node Operator</h4>
-                <div className="text-xs text-violet-400 font-bold mb-3">Any machine + Ollama</div>
-                <p className="text-xs text-gray-400 leading-relaxed mb-4">{t('node_operator_desc', 'Run a GSTD node on any device with Ollama. Earn 90% of every inference fee processed. The more requests you serve, the more GSTD you earn.')}</p>
-                <div className="flex flex-wrap gap-1.5">
-                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20">90% Earnings</span>
-                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20">Any Device</span>
-                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20">Instant Start</span>
-                </div>
-              </div>
-
-              {/* Training */}
-              <Link href="/training" style={{ textDecoration: 'none' }}>
-              <div className="group p-6 rounded-3xl glass-pro gradient-border shine-on-hover transition-all duration-500 relative overflow-hidden border border-violet-500/20 hover:border-violet-500/40 cursor-pointer">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-violet-500/5 rounded-full blur-[60px]" />
-                <div className="absolute top-3 right-3">
-                  <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">{t('training_status_paused', 'Paused')}</span>
-                </div>
-                <div className="w-12 h-12 rounded-2xl bg-violet-500/15 flex items-center justify-center mb-4">
-                  <Brain className="text-violet-400" size={24} />
-                </div>
-                <h4 className="text-lg font-black text-white mb-1">🧠 {t('fine_tuning_marketplace', 'Fine-Tuning Paused')}</h4>
-                <div className="text-xs text-violet-400 font-bold mb-3">{t('fine_tune_any_model', 'Fine-tune any model · LoRA + QLoRA')}</div>
-                <p className="text-xs text-gray-400 leading-relaxed mb-4">{t('training_desc', 'Training jobs and gradient submissions are disabled until workers can process datasets in an isolated sandbox. No credits will be charged.')}</p>
-                <div className="flex flex-wrap gap-1.5">
-                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20">QLoRA</span>
-                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20">Federated</span>
-                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20">Download LoRA</span>
-                </div>
-              </div>
+      <section className="px-4 sm:px-6 pb-12 w-full max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-4">
+        {c.cards.map((card, i) => {
+          const Icon = icons[i];
+          return (
+            <div key={card.href} className="p-6 rounded-3xl glass-pro">
+              <Icon className="text-cyan-400 mb-3" size={22} />
+              <h2 className="text-lg font-black mb-2">{card.title}</h2>
+              <p className="text-sm text-gray-400 leading-relaxed mb-4">{card.text}</p>
+              <Link href={card.href} className="inline-flex items-center gap-2 text-cyan-300 font-bold text-sm" style={{ textDecoration: 'none' }}>
+                {card.cta} <ArrowRight size={14} />
               </Link>
+            </div>
+          );
+        })}
+      </section>
 
-              {/* Enterprise */}
-              <div className="group p-6 rounded-3xl glass-pro gradient-border shine-on-hover transition-all duration-500 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-[60px]" />
-                <div className="w-12 h-12 rounded-2xl bg-amber-500/15 flex items-center justify-center mb-4">
-                  <Building2 className="text-amber-400" size={24} />
-                </div>
-                <h4 className="text-lg font-black text-white mb-1">🏢 Enterprise Swarm</h4>
-                <div className="text-xs text-amber-400 font-bold mb-3">100,000,000 GSTD</div>
-                <p className="text-xs text-gray-400 leading-relaxed mb-4">{t('enterprise_desc', 'Rent the swarm for distributed computing. Fault-tolerant, enterprise-grade. GSTD tokens distributed among participating nodes.')}</p>
-                <div className="flex flex-wrap gap-1.5">
-                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">Data Centers</span>
-                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">Fault-Tolerant</span>
-                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">SLA</span>
-                </div>
-              </div>
-            </div>
-            <div className="text-center mt-6">
-              <p className="text-[11px] text-gray-600">💰 10% protocol treasury · 90% distributed to node operators · All transactions signed by initiator</p>
-            </div>
-          </div>
-
-          {/* ═══════ QUICK INSTALL ═══════ */}
-          <div className="w-full max-w-3xl mx-auto stagger-in">
-            <div className="p-8 rounded-3xl glass-pro gradient-border text-center">
-              <h3 className="text-lg font-bold text-white mb-2">⚡ {t('deploy_in_seconds', 'Deploy in seconds')}</h3>
-              <p className="text-sm text-gray-400 mb-6">{t('install_desc', 'Run your own GSTD Node and start earning')}</p>
-              <div className="bg-black/40 rounded-xl p-4 font-mono text-sm text-emerald-400 border border-emerald-500/20 mb-4 flex items-center justify-between gap-4">
-                <code>curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash</code>
-                <button 
-                  onClick={() => { navigator.clipboard.writeText('curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash'); }}
-                  className="text-xs text-gray-400 hover:text-white border border-white/10 rounded-sm px-3 py-1 transition-colors whitespace-nowrap"
-                >Copy</button>
-              </div>
-              <div className="flex gap-4 justify-center text-xs text-gray-500">
-                <span>🐧 Linux</span>
-                <span>🍎 macOS</span>
-                <span>🪟 WSL</span>
-                <span>🐳 Docker</span>
-              </div>
-            </div>
-          </div>
-        </section>
-      </div>
+      <section className="px-4 sm:px-6 pb-16 w-full max-w-4xl mx-auto text-center">
+        <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-gray-400 mb-4">
+          <Link href="/docs" style={{ textDecoration: 'none' }} className="hover:text-white">{c.docs}</Link>
+          <Link href="/downloads" style={{ textDecoration: 'none' }} className="hover:text-white inline-flex items-center gap-1"><Download size={13} /> {locale === 'ru' ? 'Загрузки' : 'Downloads'}</Link>
+          <a href="https://github.com/gstdcoin" style={{ textDecoration: 'none' }} className="hover:text-white">{c.code}</a>
+          <a href="https://t.me/gstdtoken" style={{ textDecoration: 'none' }} className="hover:text-white">{c.tg}</a>
+        </div>
+        <p className="text-xs text-gray-600 max-w-xl mx-auto">{c.note}</p>
+      </section>
     </div>
   );
 }

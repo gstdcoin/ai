@@ -7,7 +7,7 @@ import { TonConnectButton } from '@tonconnect/ui-react';
 import {
     Home, MessageSquare, Activity,
     ExternalLink, Menu, X, Server, Trophy,
-    ChevronDown, BookOpen, Download, Info, Zap, Brain,
+    ChevronDown, BookOpen, Download, BarChart3,
 } from 'lucide-react';
 
 interface NavItem {
@@ -19,18 +19,18 @@ interface NavItem {
 }
 
 const PRIMARY_KEYS = [
-    'nav_home', 'nav_chat', 'nav_training', 'nav_nodes', 'nav_leaderboard', 'nav_campaigns',
+    'nav_home', 'nav_chat', 'nav_nodes', 'nav_stats', 'nav_leaderboard',
 ] as const;
 
 const MORE_KEYS = [
-    'nav_open_intelligence', 'nav_developers', 'nav_about', 'nav_docs', 'nav_downloads', 'nav_telegram',
+    'nav_open_intelligence', 'nav_docs', 'nav_downloads', 'nav_telegram',
 ] as const;
 
 type SectionDef = { titleKey: string; keys: readonly string[] };
 
 const MOBILE_SECTIONS: SectionDef[] = [
-    { titleKey: 'nav_section_core', keys: ['nav_home', 'nav_chat', 'nav_training', 'nav_nodes', 'nav_leaderboard', 'nav_campaigns'] },
-    { titleKey: 'nav_section_explore', keys: ['nav_open_intelligence', 'nav_developers', 'nav_about', 'nav_docs', 'nav_downloads', 'nav_telegram'] },
+    { titleKey: 'nav_section_core', keys: ['nav_home', 'nav_chat', 'nav_nodes', 'nav_stats', 'nav_leaderboard'] },
+    { titleKey: 'nav_section_explore', keys: ['nav_open_intelligence', 'nav_docs', 'nav_downloads', 'nav_telegram'] },
 ];
 
 export default function EcosystemNav() {
@@ -76,13 +76,10 @@ export default function EcosystemNav() {
     const allItems: NavItem[] = [
         { key: 'nav_home',       href: isOnApp ? '/' : APP_BASE,    icon: <Home size={15} />,           external: !isOnApp },
         { key: 'nav_chat',       href: `${APP_BASE}/chat`,           icon: <MessageSquare size={15} />,  external: !isOnApp, short: 'AI Chat' },
-        { key: 'nav_training',   href: `${APP_BASE}/training`,       icon: <Brain size={15} />,          external: !isOnApp, short: 'Fine-Tune' },
         { key: 'nav_nodes',      href: `${APP_BASE}/nodes`,          icon: <Server size={15} />,         external: !isOnApp, short: 'Nodes' },
+        { key: 'nav_stats',      href: `${APP_BASE}/stats`,          icon: <BarChart3 size={15} />,      external: !isOnApp, short: 'Stats' },
         { key: 'nav_leaderboard',href: `${APP_BASE}/leaderboard`,    icon: <Trophy size={15} />,         external: !isOnApp, short: 'Leaders' },
-        { key: 'nav_campaigns',  href: `${APP_BASE}/campaigns`,      icon: <Zap size={15} />,            external: !isOnApp, short: 'Campaigns' },
         { key: 'nav_open_intelligence', href: `${APP_BASE}/open-intelligence`, icon: <Activity size={15} />, external: !isOnApp },
-        { key: 'nav_developers', href: `${APP_BASE}/developers`,     icon: <Activity size={15} />,       external: !isOnApp, short: 'Developers' },
-        { key: 'nav_about',      href: `${APP_BASE}/about`,          icon: <Info size={15} />,           external: !isOnApp, short: 'About' },
         { key: 'nav_docs',       href: `${APP_BASE}/docs`,           icon: <BookOpen size={15} />,       external: !isOnApp, short: 'Docs' },
         { key: 'nav_downloads',  href: `${APP_BASE}/downloads`,      icon: <Download size={15} />,       external: !isOnApp, short: 'Downloads' },
         { key: 'nav_telegram',   href: 'https://t.me/gstdaibot',    icon: <ExternalLink size={13} />,   external: true,     short: 'Telegram' },
@@ -95,7 +92,7 @@ export default function EcosystemNav() {
     const isActive = (href: string) => {
         const path = router.pathname;
         if (href === '/' || href === APP_BASE) return path === '/';
-        const segments = ['/chat', '/nodes', '/leaderboard', '/campaigns', '/open-intelligence', '/developers', '/downloads', '/about', '/docs', '/training'];
+        const segments = ['/chat', '/nodes', '/stats', '/leaderboard', '/open-intelligence', '/downloads', '/docs'];
         for (const seg of segments) {
             if (href.includes(seg) && (path === seg || path.startsWith(seg + '/'))) return true;
         }

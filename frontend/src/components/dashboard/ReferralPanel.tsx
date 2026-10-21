@@ -62,7 +62,7 @@ export default function ReferralPanel() {
                 <div>
                     <h2 className="text-2xl font-bold text-white mb-2">{t('referral_program', 'Referral Program') || 'Referral Program'}</h2>
                     <p className="text-gray-400">
-                        {t('referral_desc', 'Earn +5% rewards for each friend you invite') || 'Invite friends and earn 5% of platform fees from their tasks.'}
+                        {t('referral_desc', 'Invite friends: +1 GSTD for you when a friend links a new wallet (up to 20 friends), +0.2 GSTD for the friend.') || 'Invite friends: +1 GSTD for you when a friend links a new wallet (up to 20 friends), +0.2 GSTD for the friend.'}
                     </p>
                 </div>
             </div>

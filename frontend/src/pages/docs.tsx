@@ -1,97 +1,145 @@
-import React, { useEffect, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import { GetStaticProps } from 'next';
-import { getCommonStaticProps } from '../lib/i18n-static-props';
-import Header from '../components/layout/Header';
-import { useTranslation } from 'next-i18next';
-import { useRouter } from 'next/router';
 import Head from 'next/head';
+import Link from 'next/link';
+import { GetStaticProps } from 'next';
+import { useRouter } from 'next/router';
+import { getCommonStaticProps } from '../lib/i18n-static-props';
+
+const COPY = {
+  en: {
+    title: 'Documentation',
+    intro: 'GSTD is an early-stage network for AI inference on open models. Node operators serve requests and are paid in GSTD on TON. This page only describes what exists today.',
+    sections: [
+      {
+        h: 'How a request flows',
+        p: [
+          'A client sends a chat request to the platform API.',
+          'The platform picks an online node that supports the requested model and forwards the request.',
+          'The node runs the model locally (Ollama) and returns the answer. If no node is online, the request fails with a clear error.',
+        ],
+      },
+      {
+        h: 'Running a node',
+        p: [
+          'Install the open-source node with Docker or the install script. Both are listed on the Nodes page.',
+          'A node is identified by the TON wallet address you configure.',
+          'Rewards are paid for completed and accepted tasks only and are not guaranteed.',
+        ],
+      },
+      {
+        h: 'Public API',
+        p: [
+          'GET /api/v1/health — service status.',
+          'GET /api/v1/network/stats — nodes, tasks and price.',
+          'GET /api/v1/nodes/list — registered nodes and whether they are online.',
+        ],
+      },
+      {
+        h: 'What is not available yet',
+        p: [
+          'Fine-tuning is disabled until isolated worker sandboxing is ready.',
+          'There are no fixed earning rates; the network has not processed paid tasks yet.',
+        ],
+      },
+    ],
+    links: 'Links',
+    items: [
+      ['Nodes', '/nodes'],
+      ['Network statistics', '/stats'],
+      ['Source code (GitHub)', 'https://github.com/gstdcoin'],
+      ['Telegram channel', 'https://t.me/gstdtoken'],
+      ['Main site', 'https://gstdtoken.com'],
+    ],
+  },
+  ru: {
+    title: 'Документация',
+    intro: 'GSTD — сеть для ИИ-инференса на открытых моделях на раннем этапе. Операторы нод обрабатывают запросы и получают оплату в GSTD на TON. Здесь описано только то, что существует сегодня.',
+    sections: [
+      {
+        h: 'Как проходит запрос',
+        p: [
+          'Клиент отправляет чат-запрос в API платформы.',
+          'Платформа выбирает онлайн-ноду, поддерживающую нужную модель, и пересылает запрос.',
+          'Нода запускает модель локально (Ollama) и возвращает ответ. Если нод онлайн нет, запрос завершается понятной ошибкой.',
+        ],
+      },
+      {
+        h: 'Запуск ноды',
+        p: [
+          'Установите ноду с открытым кодом через Docker или скрипт установки. Оба способа есть на странице «Ноды».',
+          'Нода определяется адресом кошелька TON, который вы настроили.',
+          'Вознаграждение платится только за выполненные и принятые задания и не гарантируется.',
+        ],
+      },
+      {
+        h: 'Публичный API',
+        p: [
+          'GET /api/v1/health — состояние сервиса.',
+          'GET /api/v1/network/stats — ноды, задания и цена.',
+          'GET /api/v1/nodes/list — зарегистрированные ноды и их статус.',
+        ],
+      },
+      {
+        h: 'Чего пока нет',
+        p: [
+          'Дообучение отключено, пока не будет готова изоляция воркеров.',
+          'Фиксированных ставок вознаграждения нет; платных заданий сеть пока не обработала.',
+        ],
+      },
+    ],
+    links: 'Ссылки',
+    items: [
+      ['Ноды', '/nodes'],
+      ['Статистика сети', '/stats'],
+      ['Исходный код (GitHub)', 'https://github.com/gstdcoin'],
+      ['Канал в Telegram', 'https://t.me/gstdtoken'],
+      ['Основной сайт', 'https://gstdtoken.com'],
+    ],
+  },
+} as const;
 
 export default function Docs() {
-    const { t } = useTranslation('common');
-    const router = useRouter();
-    const [isClient, setIsClient] = useState(false);
-    const [content, setContent] = useState('');
-    const [loading, setLoading] = useState(true);
-    const { type = 'technical' } = router.query;
+  const { locale } = useRouter();
+  const c = locale === 'ru' ? COPY.ru : COPY.en;
 
-    useEffect(() => {
-        setIsClient(true);
-    }, []);
+  return (
+    <div className="min-h-screen bg-[#030014] text-white">
+      <Head>
+        <title>{c.title} — GSTD</title>
+      </Head>
+      <main className="max-w-3xl mx-auto px-6 pt-16 pb-24">
+        <h1 className="text-4xl font-black mb-4">{c.title}</h1>
+        <p className="text-gray-400 leading-relaxed mb-10">{c.intro}</p>
 
-    useEffect(() => {
-        if (!isClient) return;
-        const locale = router.locale || 'en';
-        let filename = '';
-        if (type === 'technical') {
-            filename = locale === 'ru' ? 'TECHNICAL_DOCS_RU.md' : 'TECHNICAL_DOCS.md';
-        } else if (type === 'agents') {
-            filename = locale === 'ru' ? 'AGENTS_DOCS_RU.md' : 'AGENTS_DOCS.md';
-        } else if (type === 'unified') {
-            filename = locale === 'ru' ? 'UNIFIED_ORGANISM_RU.md' : 'UNIFIED_ORGANISM.md';
-        } else {
-            filename = locale === 'ru' ? 'INVESTMENT_COMPARISON_RU.md' : 'INVESTMENT_COMPARISON.md';
-        }
-        setLoading(true);
-        fetch(`/docs/${filename}`)
-            .then(r => r.ok ? r.text() : '# Documentation\n\n*Content not found.*')
-            .then(text => { setContent(text); setLoading(false); })
-            .catch(() => { setContent('# Documentation\n\n*Content not found.*'); setLoading(false); });
-    }, [type, isClient, router.locale]);
+        {c.sections.map((s) => (
+          <section key={s.h} className="mb-8">
+            <h2 className="text-xl font-bold mb-3">{s.h}</h2>
+            <ul className="space-y-2 text-gray-300 text-sm leading-relaxed list-disc pl-5">
+              {s.p.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          </section>
+        ))}
 
-    const switchDoc = (newType: string) => {
-        router.push(`/docs?type=${newType}`);
-    };
-
-    return (
-        <div className="min-h-screen bg-[#030014] text-white">
-            <Head>
-                <title>GSTD Platform - Documentation</title>
-            </Head>
-            <Header onLogout={() => router.push('/')} isPublic={true} />
-
-            <div className="max-w-4xl mx-auto px-6 pt-12">
-                <div className="flex gap-2 p-1 bg-white/5 rounded-xl border border-white/10 w-fit mb-8">
-                    <button
-                        onClick={() => switchDoc('technical')}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${type === 'technical' ? 'bg-violet-500 text-white shadow-lg shadow-violet-500/20' : 'text-gray-400 hover:text-white'}`}
-                    >
-                        {router.locale === 'ru' ? 'Технологии' : 'Technical'}
-                    </button>
-                    <button
-                        onClick={() => switchDoc('agents')}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${type === 'agents' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-gray-400 hover:text-white'}`}
-                    >
-                        {router.locale === 'ru' ? 'Агенты (A2A)' : 'Agents (A2A)'}
-                    </button>
-                    <button
-                        onClick={() => switchDoc('unified')}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${type === 'unified' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'text-gray-400 hover:text-white'}`}
-                    >
-                        {router.locale === 'ru' ? 'Единый организм' : 'Unified Organism'}
-                    </button>
-                </div>
-            </div>
-
-            <main className="max-w-4xl mx-auto px-6 pb-24">
-                {loading ? (
-                    <div className="animate-pulse space-y-4">
-                        <div className="h-8 bg-white/10 rounded-sm w-1/3"></div>
-                        <div className="h-4 bg-white/10 rounded-sm w-full"></div>
-                        <div className="h-4 bg-white/10 rounded-sm w-5/6"></div>
-                    </div>
+        <section>
+          <h2 className="text-xl font-bold mb-3">{c.links}</h2>
+          <ul className="space-y-2 text-sm">
+            {c.items.map(([label, href]) => (
+              <li key={href}>
+                {href.startsWith('/') ? (
+                  <Link href={href} className="text-cyan-300 hover:text-cyan-200">{label}</Link>
                 ) : (
-                    <div className="prose prose-invert prose-lg max-w-none prose-headings:text-transparent prose-headings:bg-clip-text prose-headings:bg-linear-to-r prose-headings:from-cyan-400 prose-headings:to-violet-400 prose-a:text-cyan-400 prose-a:hover:text-cyan-300 prose-table:border-collapse prose-th:border prose-th:border-white/20 prose-th:p-3 prose-td:border prose-td:border-white/10 prose-td:p-3 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
-                    </div>
+                  <a href={href} target="_blank" rel="noopener noreferrer" className="text-cyan-300 hover:text-cyan-200">{label}</a>
                 )}
-            </main>
-        </div>
-    );
+              </li>
+            ))}
+          </ul>
+        </section>
+      </main>
+    </div>
+  );
 }
 
 export const getStaticProps: GetStaticProps = async ({ locale }) => ({
-    props: await getCommonStaticProps(locale),
+  props: await getCommonStaticProps(locale),
 });
-
