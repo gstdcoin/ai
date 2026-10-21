@@ -10,9 +10,8 @@
  * the server-side task assignment; client-supplied reward fields are ignored.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvGet, kvSet, kvIncr, kvIncrByFloat, kvCompleteAssignedTask } from '../../../../lib/kv';
+import { kvGet, kvIncr, kvIncrByFloat, kvCompleteAssignedTask } from '../../../../lib/kv';
 import { COMMUNITY_TAX, BASE_TASK_FEE } from '../../../../lib/rewards';
-import { probeResultMatches } from '../../../../lib/verifyProbe';
 import { requireNodeSignature } from '../../../../lib/nodeAuth';
 import { hasTaskResult } from '../../../../lib/taskValidation';
 import type { TaskAssignment } from '../../../../lib/task-assignment';
@@ -54,13 +53,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.status(422).json({ error: 'A non-empty successful task result is required' });
         }
         const completion = await kvCompleteAssignedTask(
-            body.task_id, nodeId, storedWallet, BASE_TASK_FEE, COMMUNITY_TAX, NODE_TTL, 86400 * 7,
+            body.task_id,
+            nodeId,
+            storedWallet,
+            BASE_TASK_FEE,
+            COMMUNITY_TAX,
+            NODE_TTL,
+            86400 * 7,
+            typeof body.result?.hash === 'string' ? body.result.hash : '',
         );
+        if (completion.status === 'invalid_result') {
+            await kvIncrByFloat('stats:probe_failed', 1);
+            return res.status(422).json({ error: 'Task result does not match the server verification probe' });
+        }
         if (completion.status === 'invalid') {
             return res.status(409).json({ error: 'Task is not assigned to this node' });
         }
         if (completion.status === 'wallet_mismatch') {
             return res.status(403).json({ error: 'Wallet mismatch' });
+        }
+        if (completion.status === 'disabled_task') {
+            return res.status(410).json({ error: 'Task execution is disabled' });
         }
         if (completion.status === 'duplicate') {
             return res.status(200).json({ ok: true, task_id: body.task_id, duplicate: true });
@@ -78,7 +91,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             ? assignment.protocol_fee_gstd
             : 0;
         if (assignment.expected_hash) {
-            await kvIncrByFloat(probeResultMatches(assignment.expected_hash, body.result) ? 'stats:probe_verified' : 'stats:probe_failed', 1);
+            await kvIncrByFloat('stats:probe_verified', 1);
         }
         const campaignId = assignment.campaign_id;
 
@@ -89,35 +102,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         // Global stats
         if (protocolFee > 0) writes.push(kvIncrByFloat('stats:protocol_treasury_gstd', protocolFee).then(() => {}));
-
-        // Advance training job if this was a finetune shard
-        const trainingJobId = assignment.job_id;
-        if (trainingJobId) {
-            writes.push((async () => {
-                const jobRaw = await kvGet(`training:job:${trainingJobId}`);
-                if (!jobRaw) return;
-                const job = JSON.parse(jobRaw);
-                job.shards_done = (job.shards_done || 0) + 1;
-                job.gradients   = job.gradients || [];
-                job.gradients.push({
-                    shard_id:             assignment.shard_id || body.task_id,
-                    node_id:              nodeId,
-                    metacognitive_score:  body.result?.metacognitive_score  ?? 0.5,
-                    gradient_norm:        body.result?.gradient_norm        ?? 1.0,
-                    val_loss_improvement: body.result?.val_loss_improvement ?? 0.05,
-                    lora_path:            body.result?.lora_path            ?? '',
-                    submitted_at:         new Date().toISOString(),
-                });
-                if (job.shards_done >= job.shards_total) {
-                    job.status = 'done';
-                } else if (job.status === 'pending') {
-                    job.status = 'training';
-                }
-                job.updated_at = new Date().toISOString();
-                const ttl = Math.max(3600, Math.ceil((new Date(job.created_at).getTime() + 7 * 24 * 3600_000 - Date.now()) / 1000));
-                await kvSet(`training:job:${trainingJobId}`, JSON.stringify(job), ttl);
-            })());
-        }
 
         // Accumulate the server-assigned reward in the node's pending balance.
         await Promise.all(writes);

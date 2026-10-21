@@ -3,7 +3,7 @@
  * Register an external AI agent to the GSTD task network.
  *
  * Body: {
- *   wallet:       string   — TON wallet address (identity)
+ *   wallet?:      string   — if provided, must match the verified TON session
  *   capabilities: string[] — e.g. ["inference", "reasoning", "finetune"]
  *   agent_id?:    string   — custom ID; defaults to wallet prefix
  *   endpoint?:    string   — optional public HTTPS endpoint for push tasks
@@ -11,18 +11,23 @@
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvSet, kvIncr } from '../../../../lib/kv';
+import { sessionWallet } from '../../../../lib/walletSession';
 
-const VALID_CAPS = ['inference', 'reasoning', 'finetune', 'embedding', 'vision', 'audio', 'code'];
+const VALID_CAPS = ['inference', 'reasoning', 'embedding', 'vision', 'audio', 'code'];
 const AGENT_TTL  = 7 * 24 * 3600; // 7 days — must re-register to stay active
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-    const { wallet, capabilities, agent_id, endpoint } = req.body || {};
-
-    if (!wallet || typeof wallet !== 'string' || wallet.length < 10) {
-        return res.status(400).json({ error: 'wallet is required (TON address)' });
+    const { wallet: requestedWallet, capabilities, agent_id, endpoint } = req.body || {};
+    const wallet = await sessionWallet(req.headers);
+    if (!wallet) return res.status(401).json({ error: 'Verified wallet session required' });
+    if (requestedWallet !== undefined) {
+        if (typeof requestedWallet !== 'string' || requestedWallet.trim().toLowerCase() !== wallet) {
+            return res.status(403).json({ error: 'Wallet does not match the authenticated session' });
+        }
     }
+
     if (!Array.isArray(capabilities) || capabilities.length === 0) {
         return res.status(400).json({ error: 'capabilities must be a non-empty array', valid: VALID_CAPS });
     }
@@ -37,6 +42,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Idempotent: if agent already registered, update it
     const existingRaw = await kvGet(`agent:${id}`);
     const existing    = existingRaw ? JSON.parse(existingRaw) : null;
+    if (existing && existing.wallet !== walletKey) {
+        return res.status(403).json({ error: 'Agent ID is already registered to another wallet' });
+    }
 
     const agent = {
         agent_id:      id,

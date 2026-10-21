@@ -4,6 +4,7 @@ import { useTonAddress, TonConnectButton } from '@tonconnect/ui-react';
 import { GetStaticProps } from 'next';
 import { getCommonStaticProps } from '../lib/i18n-static-props';
 import { API_BASE_URL } from '../lib/config';
+import { apiGet } from '../lib/apiClient';
 import {
   Server, Copy, Check, ExternalLink, Smartphone, Terminal,
   Trophy, Zap, Clock, RefreshCw, ChevronRight, AlertCircle,
@@ -119,8 +120,7 @@ export default function NodesPage() {
   const fetchTier = useCallback(async () => {
     if (!walletAddress) { setTier(null); return; }
     try {
-      const res = await fetch(`${API_BASE_URL}/api/v1/access/tier?wallet=${encodeURIComponent(walletAddress)}`);
-      if (res.ok) setTier(await res.json());
+      setTier(await apiGet<TierInfo>('/access/tier', { wallet: walletAddress }));
     } catch { /* silent */ }
   }, [walletAddress]);
 

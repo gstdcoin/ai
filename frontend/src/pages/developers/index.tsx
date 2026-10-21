@@ -80,7 +80,12 @@ export default function DevelopersPage() {
     try {
       const res = await fetch(`${API_BASE_URL}/api/v1/b2b/register`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(localStorage.getItem('session_token')
+            ? { 'X-Session-Token': localStorage.getItem('session_token')! }
+            : {}),
+        },
         body: JSON.stringify({ company_name: companyName || 'Developer', email, wallet_address: walletAddress, tier: 'starter' }),
       });
       const data = await res.json();

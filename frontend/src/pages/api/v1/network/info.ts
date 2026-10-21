@@ -48,7 +48,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             symbol:   'GSTD',
             contract: process.env.GSTD_JETTON_ADDRESS || 'EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO',
             decimals: 9,
-            use:      'Pay for AI inference and fine-tuning; node operators earn 90% of every fee',
+            use:      'Fine-tuning is paused pending worker sandboxing; eligible node task rewards are tracked by the platform',
         },
         nodes: {
             online:   activeNodes,
@@ -68,7 +68,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 'mixtral-8x7b-32768',
                 'gemma2-9b-it',
             ],
-            note: 'OpenAI-compatible. Pass wallet address in X-Wallet-Address header to track GSTD usage.',
+            note: 'OpenAI-compatible. Use an enterprise API key or a verified TON wallet session (X-Session-Token) for wallet billing.',
         },
         marketplace: {
             resources_endpoint: `${origin}/api/v1/marketplace/resources`,

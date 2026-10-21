@@ -60,7 +60,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 { name: 'AI Inference',        description: 'Run open-source models (Llama, Mistral, Qwen)', status: 'live' },
                 { name: 'Decentralized Storage', description: 'IPFS-based file storage with GSTD payments', status: 'live' },
                 { name: 'P2P Traffic Relay',   description: 'Route network traffic for rewards', status: 'beta' },
-                { name: 'Federated Training',  description: 'Fine-tune LoRA adapters via QLoRA on distributed nodes — live at /training', status: 'live' },
+                { name: 'Federated Training',  description: 'Temporarily paused until isolated worker sandboxing and settlement verification are implemented', status: 'paused' },
                 { name: 'GPU Compute',         description: 'Sell GPU time for rendering and ML training', status: 'coming_soon' },
                 { name: 'Blockchain Hosting',  description: 'Host blockchain nodes and validators', status: 'coming_soon' },
             ],

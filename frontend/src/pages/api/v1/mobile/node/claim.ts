@@ -6,7 +6,8 @@
  * Resets accumulated_gstd to 0 after claim.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvGet, kvSet, kvIncr } from '../../../../../lib/kv';
+import { Address } from '@ton/core';
+import { kvClaimMobileRewards } from '../../../../../lib/kv';
 import { validateTelegramInitData } from '../../../../../lib/telegramAuth';
 
 const TON_ADDRESS_RE = /^(EQ[A-Za-z0-9_-]{46}|UQ[A-Za-z0-9_-]{46}|0:[a-fA-F0-9]{64})$/;
@@ -37,57 +38,50 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: 'device_id required' });
     }
 
-    if (!wallet_address) {
-        return res.status(400).json({ error: 'wallet_address required to claim rewards' });
+    if (typeof wallet_address !== 'string' || !TON_ADDRESS_RE.test(wallet_address)) {
+        return res.status(400).json({ error: 'A valid TON wallet_address is required to claim rewards' });
     }
 
     const sessionKey = `mobile_node:${tg_user_id}:${device_id}`;
-    const raw = await kvGet(sessionKey);
-    if (!raw) {
+    let canonicalWallet: string;
+    try {
+        canonicalWallet = Address.parse(wallet_address).toRawString();
+    } catch {
+        return res.status(400).json({ error: 'Invalid TON wallet_address' });
+    }
+    const claim = await kvClaimMobileRewards(
+        sessionKey,
+        `balance:${wallet_address}`,
+        wallet_address,
+        Date.now(),
+        MIN_CLAIM,
+        MOBILE_NODE_TTL,
+    );
+    if (claim.status === 'not_found') {
         return res.status(404).json({ error: 'No active session found' });
     }
-
-    const session = JSON.parse(raw);
-    const nowTs = Date.now();
-
-    // Add earnings since last heartbeat
-    let accumulated = session.accumulated_gstd || 0;
-    if (session.last_heartbeat_ts) {
-        const elapsedHours = (nowTs - session.last_heartbeat_ts) / 3_600_000;
-        accumulated += elapsedHours * (session.rate_per_hour || 0.5);
+    if (claim.status === 'wallet_mismatch') {
+        return res.status(403).json({ error: 'Wallet does not match the wallet linked to this mobile session' });
     }
-
-    if (accumulated < MIN_CLAIM) {
+    if (claim.status === 'invalid') {
+        return res.status(500).json({ error: 'Mobile reward session data is invalid' });
+    }
+    if (claim.status === 'insufficient') {
         return res.status(400).json({
             error: 'insufficient_earnings',
-            message: `Minimum claim is ${MIN_CLAIM} GSTD. You have ${accumulated.toFixed(6)} GSTD accumulated.`,
-            accumulated: Math.round(accumulated * 10000) / 10000,
+            message: `Minimum claim is ${MIN_CLAIM} GSTD. You have ${claim.amount.toFixed(6)} GSTD accumulated.`,
+            accumulated: Math.round(claim.amount * 10000) / 10000,
         });
     }
-
-    // Credit GSTD to wallet balance
-    const balanceKey = `balance:${wallet_address}`;
-    const currentBalRaw = await kvGet(balanceKey);
-    const currentBal = currentBalRaw ? parseFloat(currentBalRaw) : 0;
-    const newBal = currentBal + accumulated;
-    await kvSet(balanceKey, String(newBal));
-
-    // Reset session earnings and save
-    session.accumulated_gstd = 0;
-    session.last_heartbeat_ts = nowTs;
-    session.wallet_address = wallet_address;
-    await kvSet(sessionKey, JSON.stringify(session), MOBILE_NODE_TTL);
-
-    // Track total mobile earnings
-    await kvIncr('stats:mobile_total_claimed');
-
-    console.log(`[mobile/claim] ${tg_user_id} claimed ${accumulated.toFixed(6)} GSTD → ${wallet_address.substring(0, 12)}...`);
+    const claimed = claim.amount;
+    const newBal = claim.balance;
+    console.log(`[mobile/claim] ${tg_user_id} claimed ${claimed.toFixed(6)} GSTD → ${canonicalWallet.slice(0, 12)}...`);
 
     return res.status(200).json({
         ok: true,
-        claimed_gstd: Math.round(accumulated * 10000) / 10000,
+        claimed_gstd: Math.round(claimed * 10000) / 10000,
         new_balance: Math.round(newBal * 10000) / 10000,
-        wallet_address,
+        wallet_address: canonicalWallet,
         claimed_at: new Date().toISOString(),
     });
 }

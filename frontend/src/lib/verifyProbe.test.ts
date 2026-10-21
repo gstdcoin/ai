@@ -29,20 +29,65 @@ describe('verify probe', () => {
         expect(await assignTaskToNode(probe, nodeId, 3600)).toBe(true);
         expect(await assignTaskToNode(probe, nodeId, 3600)).toBe(false);
 
-        const first = await kvCompleteAssignedTask(probe.task_id, nodeId, wallet, 0, 0, 600, 3600);
+        const first = await kvCompleteAssignedTask(
+            probe.task_id, nodeId, wallet, 0, 0, 600, 3600, probe.expected_hash,
+        );
         expect(first.status).not.toBe('duplicate');
         if ('assignment' in first) {
             const a = JSON.parse(first.assignment);
             expect(a.reward_gstd).toBe(0);
             expect(a.expected_hash).toBe(probe.expected_hash);
         }
-        const second = await kvCompleteAssignedTask(probe.task_id, nodeId, wallet, 0, 0, 600, 3600);
+        const second = await kvCompleteAssignedTask(
+            probe.task_id, nodeId, wallet, 0, 0, 600, 3600, probe.expected_hash,
+        );
         expect(second.status).toBe('duplicate');
+    });
+
+    it('rejects a mismatching probe before completing or rewarding it', async () => {
+        const nodeId = `web-${Math.random().toString(16).slice(2)}`;
+        const wallet = 'UQtest';
+        await kvSet(`node:${nodeId}`, JSON.stringify({ node_id: nodeId, wallet_address: wallet }), 600);
+        const probe = (await maybeCreateVerifyProbe(nodeId, [VERIFY_CAP]))!;
+        expect(await assignTaskToNode(probe, nodeId, 3600)).toBe(true);
+
+        const invalid = await kvCompleteAssignedTask(
+            probe.task_id, nodeId, wallet, 0, 0, 600, 3600, '00',
+        );
+        expect(invalid.status).toBe('invalid_result');
+
+        const valid = await kvCompleteAssignedTask(
+            probe.task_id, nodeId, wallet, 0, 0, 600, 3600, probe.expected_hash,
+        );
+        expect(valid.status).toBe('completed');
     });
 
     it('rejects completion of an unassigned or expired task', async () => {
         const r = await kvCompleteAssignedTask('deadbeefdeadbeef', 'web-x', 'UQtest', 0, 0, 600, 3600);
         expect(r.status).not.toBe('ok');
         expect(r.status).not.toBe('duplicate');
+    });
+
+    it('does not assign or complete disabled training tasks', async () => {
+        const nodeId = `web-${Math.random().toString(16).slice(2)}`;
+        const wallet = 'UQtest';
+        const taskId = `train-${Math.random().toString(16).slice(2)}`;
+        await kvSet(`node:${nodeId}`, JSON.stringify({ node_id: nodeId, wallet_address: wallet }), 600);
+
+        expect(await assignTaskToNode({
+            task_id: taskId,
+            type: 'finetune',
+            payload: { job_id: 'legacy-job', shard_id: 'legacy-shard' },
+        }, nodeId, 3600)).toBe(false);
+
+        await kvSet(`task_assigned:${taskId}`, JSON.stringify({
+            node_id: nodeId,
+            assigned_at: Date.now(),
+            reward_gstd: 1,
+            job_id: 'legacy-job',
+            shard_id: 'legacy-shard',
+        }), 3600);
+        const completion = await kvCompleteAssignedTask(taskId, nodeId, wallet, 0, 0, 600, 3600);
+        expect(completion.status).toBe('disabled_task');
     });
 });

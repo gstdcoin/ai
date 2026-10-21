@@ -11,8 +11,8 @@
  */
 import { nodeKeyRedisKey, requireNodeSignature } from '../../../../lib/nodeAuth';
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvGet, kvSet, kvIncr, kvKeys, kvDel } from '../../../../lib/kv';
-import { rateLimit, getClientIp } from '../../../../lib/ratelimit';
+import { kvGet, kvSet, kvIncr, kvKeys, kvDel, kvRateLimit } from '../../../../lib/kv';
+import { getClientIp } from '../../../../lib/ratelimit';
 import { nodeUpdateInfo } from '../../../../lib/nodeUpdate';
 import type { NodeRecord } from './register';
 
@@ -43,11 +43,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         // Rate limit per node_id so multiple nodes behind the same NAT don't share the limit
         const ip = getClientIp(req.headers as any);
-        if (!rateLimit(`hb:${nodeId}`, 10, 60_000)) {
+        if (!(await kvRateLimit(`hb:${nodeId}`, 10, 60_000))) {
             return res.status(429).json({ error: 'Too many heartbeats from this node' });
         }
         // Secondary IP-level guard against node_id spoofing floods
-        if (!rateLimit(`hb_ip:${ip}`, 120, 60_000)) {
+        if (!(await kvRateLimit(`hb_ip:${ip}`, 120, 60_000))) {
             return res.status(429).json({ error: 'Too many heartbeats from this IP' });
         }
 

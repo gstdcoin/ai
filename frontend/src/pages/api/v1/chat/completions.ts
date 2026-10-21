@@ -5,17 +5,18 @@
  * Supports both standard (IP-rate-limited) and enterprise (API key) access.
  *
  * Enterprise: Authorization: Bearer gstd_xxx (created via /api/v1/enterprise/keys)
- * Standard:   No auth — 30 req/min per IP
+ * Standard:   30 req/min per IP; wallet billing requires a verified TON session
  */
 export const config = { maxDuration: 115 };
 
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { rateLimit, getClientIp } from '../../../../lib/ratelimit';
-import { kvGet, kvKeys, kvMGet, kvSet } from '../../../../lib/kv';
+import { getClientIp } from '../../../../lib/ratelimit';
+import { kvGet, kvKeys, kvMGet, kvSet, kvRateLimit } from '../../../../lib/kv';
 import { randomBytes } from 'crypto';
 import { validateEnterpriseKey } from '../enterprise/keys';
 import { recordEnterpriseUsage } from '../enterprise/usage';
 import { chargeFee, refundFee } from '../../../../lib/billing';
+import { sessionWallet } from '../../../../lib/walletSession';
 
 // Map OpenAI/legacy model IDs → Ollama IDs (all inference via GSTD nodes)
 const MODEL_ALIASES: Record<string, string> = {
@@ -131,24 +132,41 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // ── Auth: enterprise key OR standard IP rate limit ─────────────────────
     let enterpriseKey = null;
+    let authenticatedWallet: string | null = null;
     const authHeader = req.headers['authorization'] || '';
     const bearerMatch = authHeader.match(/^Bearer (gstd_\S+)$/);
 
     if (bearerMatch) {
         enterpriseKey = await validateEnterpriseKey(bearerMatch[1]);
         if (!enterpriseKey) {
-            return res.status(401).json({ error: 'Invalid or expired enterprise API key' });
-        }
-        // Enterprise rate limit by key RPM
-        if (!rateLimit(`enterprise:${enterpriseKey.id}`, enterpriseKey.rpm_limit, 60_000)) {
-            return res.status(429).json({
-                error: `Enterprise rate limit: ${enterpriseKey.rpm_limit} requests/minute`,
-                tier: enterpriseKey.tier,
-            });
+            try {
+                authenticatedWallet = await sessionWallet(req.headers);
+            } catch (err: any) {
+                console.error('[chat/completions session]', err?.message || err);
+                return res.status(503).json({ error: 'Could not verify wallet session' });
+            }
+            if (!authenticatedWallet) {
+                return res.status(401).json({ error: 'Invalid enterprise key or wallet session' });
+            }
+            const ip = getClientIp(req.headers as any);
+            if (!(await kvRateLimit(`chat:${ip}`, 30, 60_000))) {
+                return res.status(429).json({
+                    error: 'Rate limit exceeded. 30 requests/minute per IP. Use an enterprise API key for higher limits.',
+                    upgrade: 'POST /api/v1/enterprise/keys',
+                });
+            }
+        } else {
+            // Enterprise rate limit by key RPM
+            if (!(await kvRateLimit(`enterprise:${enterpriseKey.id}`, enterpriseKey.rpm_limit, 60_000))) {
+                return res.status(429).json({
+                    error: `Enterprise rate limit: ${enterpriseKey.rpm_limit} requests/minute`,
+                    tier: enterpriseKey.tier,
+                });
+            }
         }
     } else {
         const ip = getClientIp(req.headers as any);
-        if (!rateLimit(`chat:${ip}`, 30, 60_000)) {
+        if (!(await kvRateLimit(`chat:${ip}`, 30, 60_000))) {
             return res.status(429).json({
                 error: 'Rate limit exceeded. 30 requests/minute per IP. Use an enterprise API key for higher limits.',
                 upgrade: 'POST /api/v1/enterprise/keys',
@@ -178,9 +196,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const taskId  = randomBytes(8).toString('hex');
 
     // ── GSTD billing (skip for enterprise keys) ────────────────────────────
-    const walletAddress = !enterpriseKey
-        ? ((req.headers['x-wallet-address'] as string) || null)?.trim() || null
-        : null;
+    if (!enterpriseKey && !authenticatedWallet) {
+        try {
+            authenticatedWallet = await sessionWallet(req.headers);
+        } catch (err: any) {
+            console.error('[chat/completions session]', err?.message || err);
+            return res.status(503).json({ error: 'Could not verify wallet session' });
+        }
+    }
+    const walletAddress = !enterpriseKey ? authenticatedWallet : null;
 
     let billingCharge = 0;
     if (!enterpriseKey) {
@@ -188,7 +212,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (!charge.ok) {
             if (charge.error === 'no_wallet') {
                 return res.status(402).json({
-                    error: 'Payment required. Add X-Wallet-Address header with your TON wallet, or connect wallet at app.gstdtoken.com to get 50 free requests/day.',
+                    error: 'Payment required. Authenticate with a verified TON wallet session to use wallet credits. Anonymous free requests are limited.',
                     model: resolvedModel,
                     required_gstd: charge.required ?? 0,
                     deposit_url: '/api/v1/credits/deposit',

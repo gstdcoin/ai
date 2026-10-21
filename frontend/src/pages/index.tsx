@@ -156,7 +156,7 @@ export default function Home() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500" />
               </span>
-              {t('depin_compute_protocol_live', 'DePIN Compute Protocol · Fine-Tuning Marketplace · Live')}
+              {t('depin_compute_protocol_live', 'DePIN Compute Protocol · Training Paused')}
             </div>
 
             <h1 className="text-5xl sm:text-7xl font-black tracking-tight mb-6 leading-[1.08]">
@@ -165,8 +165,8 @@ export default function Home() {
             </h1>
 
             <p className="text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed mb-10">
-              {t('hero_desc', 'A DePIN network where nodes serve AI inference and fine-tune models — earning GSTD tokens. Pay with GSTD to access any AI model or fine-tune your own LoRA adapter.')}
-              {' '}<span className="text-emerald-400 font-bold">{t('connect_devices', '10× cheaper than cloud.')}</span>
+              {t('hero_desc', 'A DePIN network where nodes serve AI inference. Fine-tuning is paused until isolated worker sandboxing is ready.')}
+              {' '}<span className="text-emerald-400 font-bold">{t('connect_devices', 'Availability depends on live network capacity.')}</span>
               {' '}{t('connect_devices_earn', 'No corporation. No servers.')}
             </p>
 
@@ -265,22 +265,22 @@ export default function Home() {
                 <div>
                   <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 text-[11px] font-bold tracking-wide mb-5">
                     <Brain size={13} />
-                    <span>{t('fine_tuning_marketplace', 'Fine-Tuning Marketplace')} · Live</span>
+                    <span>{t('fine_tuning_marketplace', 'Fine-Tuning Paused')} · {t('training_status_paused', 'Paused')}</span>
                   </div>
                   <h2 className="text-3xl sm:text-4xl font-black text-white mb-4 leading-tight">
-                    {t('train_any_model', 'Train Any Model.')}<br />
+                    {t('train_any_model', 'Training is paused.')}<br />
                     <span className="bg-linear-to-r from-violet-400 to-indigo-400 bg-clip-text text-transparent">
-                      {t('ten_x_cheaper', '10× Cheaper.')}
+                      {t('ten_x_cheaper', 'Sandboxing required.')}
                     </span>
                   </h2>
                   <p className="text-gray-400 leading-relaxed mb-4 text-sm">
-                    {t('finetuning_desc', 'Submit your dataset. Distributed GSTD nodes train a LoRA adapter using QLoRA — quality-gated by MetaCognitive scoring. Download your fine-tuned model when done.')}
+                    {t('finetuning_desc', 'Fine-tuning submissions are paused until isolated worker sandboxing and settlement verification are available. No new jobs are accepted.')}
                   </p>
                   <div className="grid grid-cols-3 gap-3 mb-6">
                     {[
-                      { label: t('ft_models', 'Open Models'), sub: 'Llama · Qwen · Phi' },
-                      { label: t('ft_domains', '6 Domains'), sub: 'Code · Medical · Finance' },
-                      { label: t('ft_nodes', 'Distributed'), sub: t('ft_nodes_sub', 'Federated QLoRA') },
+                      { label: t('ft_models', 'Service paused'), sub: 'No new jobs' },
+                      { label: t('ft_domains', 'Sandbox needed'), sub: 'Before re-opening' },
+                      { label: t('ft_nodes', 'Dispatch disabled'), sub: t('ft_nodes_sub', 'No training tasks') },
                     ].map((item) => (
                       <div key={item.label} className="p-3 rounded-xl bg-violet-500/5 border border-violet-500/10 text-center">
                         <div className="text-xs font-black text-violet-300 mb-0.5">{item.label}</div>
@@ -295,7 +295,7 @@ export default function Home() {
                       style={{ textDecoration: 'none' }}
                     >
                       <Brain size={16} />
-                      {t('start_fine_tuning', 'Start Fine-Tuning')}
+                      {t('start_fine_tuning', 'View Training Status')}
                       <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
                     </Link>
                     <Link
@@ -304,7 +304,7 @@ export default function Home() {
                       style={{ textDecoration: 'none' }}
                     >
                       <Server size={16} className="text-emerald-400" />
-                      {t('become_training_node', 'Become a Training Node')}
+                      {t('become_training_node', 'Run a GSTD Node')}
                     </Link>
                   </div>
                 </div>
@@ -456,14 +456,14 @@ export default function Home() {
               <div className="group p-6 rounded-3xl glass-pro gradient-border shine-on-hover transition-all duration-500 relative overflow-hidden border border-violet-500/20 hover:border-violet-500/40 cursor-pointer">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-violet-500/5 rounded-full blur-[60px]" />
                 <div className="absolute top-3 right-3">
-                  <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-400 border border-violet-500/30">✨ Live</span>
+                  <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">{t('training_status_paused', 'Paused')}</span>
                 </div>
                 <div className="w-12 h-12 rounded-2xl bg-violet-500/15 flex items-center justify-center mb-4">
                   <Brain className="text-violet-400" size={24} />
                 </div>
-                <h4 className="text-lg font-black text-white mb-1">🧠 Fine-Tuning Marketplace</h4>
+                <h4 className="text-lg font-black text-white mb-1">🧠 {t('fine_tuning_marketplace', 'Fine-Tuning Paused')}</h4>
                 <div className="text-xs text-violet-400 font-bold mb-3">{t('fine_tune_any_model', 'Fine-tune any model · LoRA + QLoRA')}</div>
-                <p className="text-xs text-gray-400 leading-relaxed mb-4">{t('training_desc', 'Submit your dataset and distributed nodes train a LoRA adapter. MetaCognitive quality gate ensures only valid gradients are accepted. 10× cheaper than cloud.')}</p>
+                <p className="text-xs text-gray-400 leading-relaxed mb-4">{t('training_desc', 'Training jobs and gradient submissions are disabled until workers can process datasets in an isolated sandbox. No credits will be charged.')}</p>
                 <div className="flex flex-wrap gap-1.5">
                   <span className="text-[9px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20">QLoRA</span>
                   <span className="text-[9px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20">Federated</span>

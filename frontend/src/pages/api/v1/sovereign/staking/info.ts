@@ -5,12 +5,27 @@
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet } from '../../../../../lib/kv';
+import { sessionWallet } from '../../../../../lib/walletSession';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
-    res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
 
-    const wallet = typeof req.query.wallet === 'string' ? req.query.wallet.toLowerCase() : null;
+    const requestedWallet = req.query.wallet;
+    let wallet: string | null = null;
+    if (requestedWallet === undefined) {
+        res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
+    } else {
+        if (typeof requestedWallet !== 'string' || !requestedWallet.trim()) {
+            return res.status(400).json({ error: 'wallet query param must be a single address' });
+        }
+        const authenticatedWallet = await sessionWallet(req.headers);
+        if (!authenticatedWallet) return res.status(401).json({ error: 'Verified wallet session required' });
+        if (requestedWallet.trim().toLowerCase() !== authenticatedWallet) {
+            return res.status(403).json({ error: 'Wallet does not match the authenticated session' });
+        }
+        wallet = authenticatedWallet;
+        res.setHeader('Cache-Control', 'private, no-store');
+    }
 
     const base = {
         status:           'discontinued',
@@ -27,10 +42,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     try {
         const stakedRaw = await kvGet(`staked:${wallet}`);
+        const walletStaked = stakedRaw ? Number(stakedRaw) : 0;
+        if (!Number.isFinite(walletStaked) || walletStaked < 0) throw new Error('Invalid stored stake balance');
         return res.status(200).json({
             ...base,
             wallet,
-            wallet_staked:   stakedRaw ? parseFloat(stakedRaw) : 0,
+            wallet_staked:   walletStaked,
             pending_rewards: 0,
         });
     } catch (err: any) {
