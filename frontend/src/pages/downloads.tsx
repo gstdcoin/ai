@@ -21,7 +21,7 @@ const FEATURES = [
     { icon: Cpu, title: 'AI Inference', desc: 'Serve Ollama models (llama3.2:3b and others) to the GSTD oracle network' },
     { icon: Zap, title: 'Earn GSTD', desc: '0.5 GSTD per completed inference task, settled on TON blockchain' },
     { icon: Shield, title: 'Sovereign AI', desc: 'Your data stays on your device. Inference runs locally via Ollama' },
-    { icon: Globe, title: 'Swarm Network', desc: 'Join the growing distributed compute grid. Operators earn 85% of task fees' },
+    { icon: Globe, title: 'Swarm Network', desc: 'Join the growing distributed compute grid. Operators receive the larger share of task fees' },
 ];
 
 export default function DownloadsPage() {
@@ -185,7 +185,7 @@ export default function DownloadsPage() {
                             <h2 className="text-xl font-black text-white">Run 24/7 on a VPS</h2>
                         </div>
                         <p className="text-gray-400 text-sm mb-6">
-                            For maximum earnings, deploy on a cheap VPS ($3-5/month). Your node earns GSTD tokens around the clock.
+                            Run the node on any always-on machine or VPS. Rewards depend on the tasks your node actually processes.
                         </p>
                         <div className="space-y-3">
                             {[

@@ -24,19 +24,17 @@ interface LeaderboardEntry {
 export default function LeaderboardPage() {
   const { t } = useTranslation('common');
   const [data, setData] = useState<LeaderboardEntry[]>([]);
-  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [gstdPrice, setGstdPrice] = useState(0);
 
   const fetchLeaderboard = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/v1/nodes/leaderboard`);
+      const res = await fetch(`${API_BASE_URL}/api/v1/nodes/rewards/leaderboard`);
       if (res.ok) {
         const json = await res.json();
         const entries = json.leaderboard || json.entries || [];
         setData(entries);
-        setTotal(entries.length);
         if (json.gstd_price_usd) setGstdPrice(json.gstd_price_usd);
       }
     } catch (e) {
@@ -67,22 +65,20 @@ export default function LeaderboardPage() {
     <div className="min-h-screen bg-[#030014] text-white">
       <Head>
         <title>Leaderboard — GSTD Ecosystem</title>
-        <meta name="description" content="Top GSTD token holders leaderboard. See who leads the decentralized AI network." />
+        <meta name="description" content="Node operators ranked by completed tasks on the GSTD network." />
       </Head>
 
 
       <main className="max-w-3xl mx-auto px-4 pt-20 pb-16 sovereign-section">
         {/* Header */}
         <div className="text-center mb-12">
-          <div className="sec-tag gold fu d1 text-center">{t('updated_live', 'Updated live')}</div>
           <div className="flex items-center justify-center gap-4 mb-4 fu d2">
-            <div style={{ fontSize: 36, lineHeight: 1 }}>🏆</div>
             <h1 className="sec-title mb-0">
               {t('leaderboard', 'Leaderboard')}
             </h1>
           </div>
           <p className="sec-sub mx-auto fu d3">
-            Top {total} GSTD node operators and holders on the network.
+            {t('leaderboard_sub', 'Node operators ranked by GSTD earned for completed tasks.')}
           </p>
           <button
             onClick={fetchLeaderboard}
@@ -96,10 +92,12 @@ export default function LeaderboardPage() {
         {loading ? (
           <div className="text-center text-cyan-400 py-20 fu d5">
             <RefreshCw className="animate-spin mx-auto mb-4" size={28} />
-            <span className="font-bold tracking-widest uppercase text-xs">Syncing Swarm...</span>
           </div>
         ) : data.length === 0 ? (
-          <div className="text-center text-gray-500 py-20 fu d5 font-bold">No active nodes found</div>
+          <div className="text-center text-gray-400 py-16 fu d5">
+            <p className="font-bold mb-2">{t('leaderboard_empty', 'No node has completed a task yet.')}</p>
+            <p className="text-sm text-gray-500">{t('leaderboard_empty_hint', 'The list fills in automatically once nodes start serving requests.')}</p>
+          </div>
         ) : (
           <div className="space-y-3 fu d5">
             {data.map((entry, i) => (
@@ -142,34 +140,19 @@ export default function LeaderboardPage() {
 
         {/* Bottom stats */}
         <div className="mt-10 text-center text-gray-500 text-xs">
-          <p>Total active nodes: {total} · Wallet addresses truncated for privacy</p>
-          <p className="mt-1">Don't see your node? Connect and start earning GSTD!</p>
+          <p>{t('leaderboard_privacy', 'Wallet addresses are truncated for privacy.')}</p>
         </div>
 
-        {/* Join CTA */}
-        <div className="mt-8 rounded-2xl border border-violet-500/20 bg-violet-500/5 p-6 text-center">
-          <div className="text-2xl mb-2">🌐</div>
-          <div className="font-bold text-violet-300 mb-1">Join the Network</div>
+        <div className="mt-8 rounded-2xl border border-white/10 bg-white/3 p-6 text-center">
           <div className="text-gray-400 text-sm mb-4">
-            Run a node and earn GSTD on every AI inference request routed through your machine.
-            Earnings depend on your hardware tier and network demand.
+            {t('leaderboard_join', 'Want to see your node here? Install a node and keep it online.')}
           </div>
-          <div className="flex gap-3 justify-center flex-wrap">
-            <a
-              href="https://t.me/gstdaibot"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-5 py-2.5 rounded-xl bg-amber-400/10 border border-amber-400/30 text-amber-300 font-bold text-sm hover:bg-amber-400/20 transition-all"
-            >
-              📱 Launch Mobile Node
-            </a>
-            <a
-              href="/nodes"
-              className="px-5 py-2.5 rounded-xl border border-white/10 text-gray-300 font-bold text-sm hover:border-white/20 transition-all"
-            >
-              🖥 Desktop Setup
-            </a>
-          </div>
+          <a
+            href="/nodes"
+            className="px-5 py-2.5 rounded-xl border border-white/10 text-gray-300 font-bold text-sm hover:border-white/20 transition-all"
+          >
+            {t('leaderboard_setup', 'Node setup guide')}
+          </a>
         </div>
       </main>
     </div>

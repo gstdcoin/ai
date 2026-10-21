@@ -116,7 +116,7 @@ export default function DevicesPanel() {
         <div className="p-6 rounded-2xl bg-emerald-500/5 border border-emerald-500/20">
           <h3 className="text-lg font-bold text-white mb-1">Become a Node Operator — Earn GSTD</h3>
           <p className="text-sm text-gray-400 mb-5">
-            Run Ollama + GSTD Node on any machine. Process AI requests from the network and earn 90% of every fee automatically.
+            Run Ollama + GSTD Node on any machine. Process AI requests from the network and receive the node share of each fee.
           </p>
           <div className="space-y-3 mb-5">
             <div className="flex gap-3">
@@ -173,7 +173,7 @@ export default function DevicesPanel() {
           <div className="p-6 rounded-2xl bg-emerald-500/5 border border-emerald-500/20">
             <h3 className="text-lg font-bold text-white mb-1">Start a Node — Earn GSTD</h3>
             <p className="text-sm text-gray-400 mb-5">
-              Run Ollama on any device and join the network. You earn 90% of every AI inference request your node processes.
+              Run Ollama on any device and join the network. You receive the node share of every AI inference request your node processes.
             </p>
             <div className="space-y-4 mb-5">
               <div className="flex gap-3">

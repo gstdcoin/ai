@@ -266,7 +266,7 @@ function Dashboard({ initialTab, sourceTelegram, modeMining }: DashboardProps = 
                     </button>
 
                     <Link
-                      href="/training"
+                      href="/stats"
                       style={{
                         background: 'rgba(16,185,129,0.04)',
                         border: '1px solid rgba(16,185,129,0.10)',
@@ -280,11 +280,11 @@ function Dashboard({ initialTab, sourceTelegram, modeMining }: DashboardProps = 
                           <Briefcase size={16} className="text-emerald-400" />
                         </div>
                         <div>
-                          <div className="text-sm font-semibold text-white">{t('live_monitor', 'Tasks')}</div>
-                          <div className="text-[11px] text-gray-600">{t('monitor_desc', 'Physical marketplace')}</div>
+                          <div className="text-sm font-semibold text-white">{t('network_stats', 'Network stats')}</div>
+                          <div className="text-[11px] text-gray-600">{t('network_stats_desc', 'Nodes and tasks')}</div>
                         </div>
                       </div>
-                      <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      <ArrowRight size={14} className="text-gray-600 group-hover:text-emerald-400 transition-colors" />
                     </Link>
                   </div>
 

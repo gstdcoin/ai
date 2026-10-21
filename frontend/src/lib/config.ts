@@ -109,8 +109,3 @@ export const APP_PUBLIC_ORIGIN = (
 export const TONAPI_PUBLIC_BASE = (
   process.env.NEXT_PUBLIC_TONAPI_URL || 'https://tonapi.io'
 ).replace(/\/+$/, '');
-
-/** B2B RPC gateway (multi-chain JSON-RPC); must match backend routes_b2b_clients copy. */
-export const RPC_GATEWAY_PUBLIC_BASE = (
-  process.env.NEXT_PUBLIC_RPC_GATEWAY_URL || 'https://rpc.gstd.network/v1'
-).replace(/\/+$/, '');
