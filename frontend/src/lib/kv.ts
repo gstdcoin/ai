@@ -113,6 +113,151 @@ export async function kvSetNX(key: string, value: string, ttlSec: number): Promi
     return true;
 }
 
+const localRateLimits = new Map<string, { count: number; expiresAt: number }>();
+
+export async function kvRateLimit(key: string, maxRequests: number, windowMs: number): Promise<boolean> {
+    if (!key || !Number.isSafeInteger(maxRequests) || maxRequests < 1
+        || !Number.isSafeInteger(windowMs) || windowMs < 1) {
+        throw new Error('Invalid rate limit configuration');
+    }
+
+    const r = await getRedis();
+    if (r) {
+        const script = `
+            local count = redis.call('INCR', KEYS[1])
+            if count == 1 then redis.call('PEXPIRE', KEYS[1], ARGV[1]) end
+            return count
+        `;
+        try {
+            const count = await r.eval<[string], number>(script, [key], [String(windowMs)]);
+            return count <= maxRequests;
+        } catch (e) {
+            handleRedisFailure(`kvRateLimit('${key}')`, e);
+        }
+    }
+
+    const now = Date.now();
+    const entry = localRateLimits.get(key);
+    if (!entry || entry.expiresAt <= now) {
+        localRateLimits.set(key, { count: 1, expiresAt: now + windowMs });
+        return true;
+    }
+    entry.count += 1;
+    if (localRateLimits.size > 5000) {
+        for (const [storedKey, value] of localRateLimits) {
+            if (value.expiresAt <= now) localRateLimits.delete(storedKey);
+        }
+    }
+    return entry.count <= maxRequests;
+}
+
+export type MobileRewardClaimResult =
+    | { status: 'claimed'; amount: number; balance: number }
+    | { status: 'insufficient'; amount: number }
+    | { status: 'not_found' }
+    | { status: 'wallet_mismatch' }
+    | { status: 'invalid' };
+
+export async function kvClaimMobileRewards(
+    sessionKey: string,
+    balanceKey: string,
+    walletAddress: string,
+    nowTs: number,
+    minimumClaim: number,
+    sessionTtlSec: number,
+): Promise<MobileRewardClaimResult> {
+    const r = await getRedis();
+    if (r) {
+        const script = `
+            local raw = redis.call('GET', KEYS[1])
+            if not raw then return {'not_found'} end
+            local ok, session = pcall(cjson.decode, raw)
+            if not ok or type(session) ~= 'table' then return {'invalid'} end
+            local requestedWallet = ARGV[1]
+            local storedWallet = session.wallet_address or ''
+            if storedWallet ~= '' and storedWallet ~= requestedWallet then
+                return {'wallet_mismatch'}
+            end
+            local accrued = tonumber(session.accumulated_gstd or 0)
+            local rate = tonumber(session.rate_per_hour or 0)
+            local lastHeartbeat = tonumber(session.last_heartbeat_ts or 0)
+            local now = tonumber(ARGV[2])
+            if not accrued or accrued < 0 or not rate or rate < 0 or not now then
+                return {'invalid'}
+            end
+            if lastHeartbeat > 0 and now > lastHeartbeat then
+                accrued = accrued + ((now - lastHeartbeat) / 3600000) * rate
+            end
+            if accrued < tonumber(ARGV[3]) then
+                return {'insufficient', tostring(accrued)}
+            end
+            local currentBalance = tonumber(redis.call('GET', KEYS[2]) or '0')
+            if not currentBalance or currentBalance < 0 then return {'invalid'} end
+            redis.call('INCRBYFLOAT', KEYS[2], tostring(accrued))
+            currentBalance = currentBalance + accrued
+            session.accumulated_gstd = 0
+            session.last_heartbeat_ts = now
+            session.wallet_address = requestedWallet
+            redis.call('SET', KEYS[1], cjson.encode(session), 'EX', tonumber(ARGV[4]))
+            redis.call('INCR', KEYS[3])
+            return {'claimed', tostring(accrued), tostring(currentBalance)}
+        `;
+        try {
+            const result = await r.eval<string[], [string, string, string, string]>(
+                script,
+                [sessionKey, balanceKey, 'stats:mobile_total_claimed'],
+                [walletAddress, String(nowTs), String(minimumClaim), String(sessionTtlSec)],
+            );
+            const status = result[0];
+            if (status === 'claimed') {
+                return { status, amount: Number(result[1]), balance: Number(result[2]) };
+            }
+            if (status === 'insufficient') return { status, amount: Number(result[1]) };
+            if (status === 'not_found' || status === 'wallet_mismatch' || status === 'invalid') {
+                return { status };
+            }
+            return { status: 'invalid' };
+        } catch (e) {
+            handleRedisFailure(`kvClaimMobileRewards('${sessionKey}')`, e);
+        }
+    }
+
+    const raw = memGet(sessionKey);
+    if (!raw) return { status: 'not_found' };
+    let session: Record<string, any>;
+    try {
+        session = JSON.parse(raw);
+    } catch {
+        return { status: 'invalid' };
+    }
+    const requestedWallet = walletAddress;
+    const storedWallet = String(session.wallet_address || '');
+    if (storedWallet && storedWallet !== requestedWallet) return { status: 'wallet_mismatch' };
+    const accrued = Number(session.accumulated_gstd || 0);
+    const rate = Number(session.rate_per_hour || 0);
+    const lastHeartbeat = Number(session.last_heartbeat_ts || 0);
+    if (!Number.isFinite(accrued) || accrued < 0 || !Number.isFinite(rate) || rate < 0) {
+        return { status: 'invalid' };
+    }
+    const amount = accrued + (lastHeartbeat > 0 && nowTs > lastHeartbeat
+        ? ((nowTs - lastHeartbeat) / 3_600_000) * rate
+        : 0);
+    if (amount < minimumClaim) return { status: 'insufficient', amount };
+    const currentBalance = Number(memGet(balanceKey) || 0);
+    if (!Number.isFinite(currentBalance) || currentBalance < 0) return { status: 'invalid' };
+    session.accumulated_gstd = 0;
+    session.last_heartbeat_ts = nowTs;
+    session.wallet_address = requestedWallet;
+    memSet(sessionKey, JSON.stringify(session), sessionTtlSec);
+    const balance = currentBalance + amount;
+    memSet(balanceKey, String(balance));
+    memSet(
+        'stats:mobile_total_claimed',
+        String((Number(memGet('stats:mobile_total_claimed')) || 0) + 1),
+    );
+    return { status: 'claimed', amount, balance };
+}
+
 export type BalanceDebitResult =
     | { status: 'debited'; balance: number }
     | { status: 'insufficient'; balance: number }
@@ -217,28 +362,57 @@ export async function kvClaimPending(
     const pendingKey = `rewards:pending:${wallet}`;
     const balanceKey = `balance:${wallet}`;
     const totalPct = fees.reduce((s, f) => s + f.pct, 0);
-    if (!wallet || !(minAmount >= 0) || fees.some(f => !(f.pct >= 0)) || totalPct >= 1) return { status: 'invalid' };
+    const destinationKeys = [balanceKey, ...fees.map(f => f.key)];
+    if (!wallet || !Number.isFinite(minAmount) || minAmount < 0
+        || fees.some(f => !f.key || !Number.isFinite(f.pct) || f.pct < 0)
+        || !Number.isFinite(totalPct) || totalPct >= 1
+        || new Set(destinationKeys).size !== destinationKeys.length
+        || destinationKeys.includes(pendingKey)) {
+        return { status: 'invalid' };
+    }
 
     const round = (v: number) => Math.round(v * 1e6) / 1e6;
     const r = await getRedis();
     if (r) {
         const script = `
             local function finite(v) return v and v == v and v ~= math.huge and v ~= -math.huge end
+            local minAmount = tonumber(ARGV[1])
+            if not finite(minAmount) or minAmount < 0 then return {'invalid'} end
             local t = redis.call('TYPE', KEYS[1]).ok
             if t ~= 'none' and t ~= 'string' then return {'invalid'} end
             local gross = tonumber(redis.call('GET', KEYS[1]) or '0')
             if not finite(gross) or gross < 0 then return {'invalid'} end
-            if gross < tonumber(ARGV[1]) or gross <= 0 then return {'nothing'} end
+            if gross < minAmount or gross <= 0 then return {'nothing'} end
             local function r6(v) return math.floor(v * 1e6 + 0.5) / 1e6 end
+            local destinationBalances = {}
+            for i = 2, #KEYS do
+                local destinationType = redis.call('TYPE', KEYS[i]).ok
+                if destinationType ~= 'none' and destinationType ~= 'string' then return {'invalid'} end
+                local destinationBalance = tonumber(redis.call('GET', KEYS[i]) or '0')
+                if not finite(destinationBalance) or destinationBalance < 0 then return {'invalid'} end
+                destinationBalances[i] = destinationBalance
+            end
             local net = gross
             local n = (#ARGV - 1)
+            local shares = {}
             for i = 1, n do
-                local share = r6(gross * tonumber(ARGV[i + 1]))
+                local pct = tonumber(ARGV[i + 1])
+                if not finite(pct) or pct < 0 then return {'invalid'} end
+                local share = r6(gross * pct)
+                if not finite(share) or not finite(destinationBalances[i + 2] + share) then
+                    return {'invalid'}
+                end
+                shares[i] = share
                 net = net - share
-                redis.call('INCRBYFLOAT', KEYS[i + 2], tostring(share))
             end
             net = r6(net)
+            if not finite(net) or net < 0 or not finite(destinationBalances[2] + net) then
+                return {'invalid'}
+            end
             redis.call('SET', KEYS[1], '0')
+            for i = 1, n do
+                redis.call('INCRBYFLOAT', KEYS[i + 2], tostring(shares[i]))
+            end
             local bal = redis.call('INCRBYFLOAT', KEYS[2], tostring(net))
             return {'claimed', tostring(gross), tostring(net), tostring(bal)}
         `;
@@ -258,15 +432,30 @@ export async function kvClaimPending(
     const gross = Number(memGet(pendingKey) || '0');
     if (!Number.isFinite(gross) || gross < 0) return { status: 'invalid' };
     if (gross < minAmount || gross <= 0) return { status: 'nothing' };
+
+    const balances = destinationKeys.map(key => {
+        const raw = memGet(key);
+        const balance = raw === null ? 0 : Number(raw);
+        return Number.isFinite(balance) && balance >= 0 ? balance : null;
+    });
+    if (balances.some(balance => balance === null)) return { status: 'invalid' };
+
     let net = gross;
-    for (const f of fees) {
+    const feeShares = fees.map(f => {
         const share = round(gross * f.pct);
         net -= share;
-        memSet(f.key, String(round(Number(memGet(f.key) || '0') + share)));
-    }
+        return share;
+    });
     net = round(net);
+    const updatedFeeBalances = feeShares.map((share, index) => round((balances[index + 1] ?? 0) + share));
+    const balance = round((balances[0] ?? 0) + net);
+    if (!Number.isFinite(net) || net < 0 || !Number.isFinite(balance)
+        || updatedFeeBalances.some(value => !Number.isFinite(value))) {
+        return { status: 'invalid' };
+    }
+
+    fees.forEach((fee, index) => memSet(fee.key, String(updatedFeeBalances[index])));
     memSet(pendingKey, '0');
-    const balance = round(Number(memGet(balanceKey) || '0') + net);
     memSet(balanceKey, String(balance));
     return { status: 'claimed', gross, net, balance };
 }
@@ -799,7 +988,9 @@ export async function kvAccrueTaskReward(
 export type TaskCompletionResult =
     | { status: 'completed'; assignment: string }
     | { status: 'duplicate'; assignment: string }
+    | { status: 'disabled_task' }
     | { status: 'invalid' }
+    | { status: 'invalid_result' }
     | { status: 'wallet_mismatch' };
 
 export async function kvCompleteAssignedTask(
@@ -810,6 +1001,7 @@ export async function kvCompleteAssignedTask(
     communityTax: number,
     nodeTtlSec: number,
     completionTtlSec: number,
+    resultHash?: string,
 ): Promise<TaskCompletionResult> {
     const assignmentKey = `task_assigned:${taskId}`;
     const completionKey = `task_completed:${taskId}`;
@@ -836,7 +1028,7 @@ export async function kvCompleteAssignedTask(
         String(completionTtlSec),
     ];
     const timestamp = new Date().toISOString();
-    args.push(timestamp);
+    args.push(timestamp, resultHash || '');
     const r = await getRedis();
     if (r) {
         const script = `
@@ -852,6 +1044,13 @@ export async function kvCompleteAssignedTask(
             if not raw then return {'invalid', ''} end
             local ok, assignment = pcall(cjson.decode, raw)
             if not ok or assignment.node_id ~= ARGV[1] then return {'invalid', ''} end
+            if assignment.task_type == 'finetune' or assignment.task_type == 'bridge_verify'
+                or assignment.job_id or assignment.shard_id then
+                return {'disabled_task', ''}
+            end
+            if assignment.expected_hash and string.lower(assignment.expected_hash) ~= string.lower(ARGV[8]) then
+                return {'invalid_result', ''}
+            end
             local nodeRaw = redis.call('GET', KEYS[3])
             if not nodeRaw then return {'invalid', ''} end
             local nodeOk, node = pcall(cjson.decode, nodeRaw)
@@ -893,7 +1092,12 @@ export async function kvCompleteAssignedTask(
                     assignment: typeof value === 'string' ? value : JSON.stringify(value),
                 };
             }
-            return { status: status === 'wallet_mismatch' ? 'wallet_mismatch' : 'invalid' };
+            return {
+                status: status === 'wallet_mismatch'
+                    ? 'wallet_mismatch'
+                    : status === 'invalid_result' ? 'invalid_result'
+                    : status === 'disabled_task' ? 'disabled_task' : 'invalid',
+            };
         } catch (e) { handleRedisFailure(`kvCompleteAssignedTask('${taskId}')`, e); }
     }
 
@@ -910,13 +1114,27 @@ export async function kvCompleteAssignedTask(
     }
     const raw = memGet(assignmentKey);
     if (!raw) return { status: 'invalid' };
-    let assignment: { node_id?: string };
+    let assignment: {
+        node_id?: string;
+        expected_hash?: unknown;
+        task_type?: unknown;
+        job_id?: unknown;
+        shard_id?: unknown;
+    };
     try {
         assignment = JSON.parse(raw);
     } catch {
         return { status: 'invalid' };
     }
     if (assignment.node_id !== nodeId) return { status: 'invalid' };
+    if (assignment.task_type === 'finetune' || assignment.task_type === 'bridge_verify'
+        || 'job_id' in assignment || 'shard_id' in assignment) {
+        return { status: 'disabled_task' };
+    }
+    if (typeof assignment.expected_hash === 'string'
+        && assignment.expected_hash.toLowerCase() !== String(resultHash || '').toLowerCase()) {
+        return { status: 'invalid_result' };
+    }
     const nodeRaw = memGet(nodeKey);
     if (!nodeRaw) return { status: 'invalid' };
     let node: Record<string, any>;

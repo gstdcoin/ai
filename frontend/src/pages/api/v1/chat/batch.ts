@@ -28,21 +28,24 @@
 export const config = { maxDuration: 55 };
 
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { rateLimit, getClientIp } from '../../../../lib/ratelimit';
+import { getClientIp } from '../../../../lib/ratelimit';
+import { kvRateLimit } from '../../../../lib/kv';
 import { getActiveNodes, NODE_MODEL } from '../../../../lib/nodes';
 import { kvGet }        from '../../../../lib/kv';
 import { validateEnterpriseKey } from '../enterprise/keys';
+import { sessionWallet } from '../../../../lib/walletSession';
 
 const MAX_PROMPTS    = 50;
 const MIN_BALANCE    = 100;   // Standard tier minimum
-const STANDARD_TIER  = 'standard';
 
 async function getWalletBalance(wallet: string): Promise<number> {
-    const raw = await kvGet(`balance:${wallet.toLowerCase()}`).catch(() => null);
-    return raw ? parseFloat(raw as string) : 0;
+    const raw = await kvGet(`balance:${wallet}`);
+    const balance = raw === null ? 0 : Number(raw);
+    if (!Number.isFinite(balance) || balance < 0) throw new Error('Invalid wallet balance');
+    return balance;
 }
 
-async function authorizeRequest(req: NextApiRequest): Promise<{ ok: boolean; reason?: string }> {
+async function authorizeRequest(req: NextApiRequest): Promise<{ ok: boolean; reason?: string; status?: number }> {
     // Enterprise API key (validated via hash lookup — not raw key as KV suffix)
     const auth = req.headers['authorization'] || '';
     const bearerMatch = (auth as string).match(/^Bearer (gstd_\S+)$/);
@@ -51,27 +54,33 @@ async function authorizeRequest(req: NextApiRequest): Promise<{ ok: boolean; rea
         if (key) return { ok: true };
     }
 
-    // Wallet-based auth (Standard+ tier)
-    const wallet = (req.headers['x-wallet-address'] as string) || req.body?.wallet;
-    if (wallet) {
-        const balance = await getWalletBalance(wallet);
-        if (balance >= MIN_BALANCE) return { ok: true };
-        return { ok: false, reason: `Batch API requires ${MIN_BALANCE}+ GSTD (Standard tier). Your balance: ${balance.toFixed(2)} GSTD` };
+    // Wallet identity must come from a session created after TON proof.
+    const wallet = await sessionWallet(req.headers);
+    if (!wallet) {
+        return { ok: false, status: 401, reason: 'Batch API requires a verified TON wallet session or enterprise API key.' };
     }
 
-    return { ok: false, reason: 'Batch API requires Standard tier (100+ GSTD). Provide x-wallet-address header or enterprise API key.' };
+    const balance = await getWalletBalance(wallet);
+    if (balance >= MIN_BALANCE) return { ok: true };
+    return { ok: false, reason: `Batch API requires ${MIN_BALANCE}+ GSTD (Standard tier). Your balance: ${balance.toFixed(2)} GSTD` };
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
     const ip = getClientIp(req.headers as any);
-    if (!rateLimit(`batch:${ip}`, 5, 60_000)) {
+    if (!(await kvRateLimit(`batch:${ip}`, 5, 60_000))) {
         return res.status(429).json({ error: 'Rate limit: 5 batch requests/minute' });
     }
 
-    const auth = await authorizeRequest(req);
-    if (!auth.ok) return res.status(403).json({ error: auth.reason });
+    let auth: Awaited<ReturnType<typeof authorizeRequest>>;
+    try {
+        auth = await authorizeRequest(req);
+    } catch (err: any) {
+        console.error('[chat/batch auth]', err?.message || err);
+        return res.status(500).json({ error: 'Could not verify batch API access' });
+    }
+    if (!auth.ok) return res.status(auth.status || 403).json({ error: auth.reason });
 
     const { prompts, system, model, max_tokens = 256 } = req.body || {};
 

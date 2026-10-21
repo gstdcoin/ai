@@ -24,7 +24,16 @@
  * }
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvSet } from '../../../../lib/kv';
+import { Address, beginCell } from '@ton/core';
+import { signVerify } from '@ton/crypto';
+import { createHash } from 'crypto';
+import { kvRateLimit, kvSet } from '../../../../lib/kv';
+import { requireNodeSignature } from '../../../../lib/nodeAuth';
+
+function taskIdToUint64(taskId: string): bigint {
+    const digest = createHash('sha256').update(taskId, 'utf8').digest();
+    return BigInt(`0x${digest.subarray(0, 8).toString('hex')}`);
+}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') {
@@ -34,8 +43,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
         const body: any = req.body || {};
         const { taskId, workerAddr, resultHash, attestations } = body;
+        const nodeId = String(req.headers['x-gstd-node-id'] || '');
 
-        if (!taskId || typeof taskId !== 'string') {
+        if (!nodeId) {
+            return res.status(401).json({ error: 'Bound node identity required' });
+        }
+        const auth = await requireNodeSignature(nodeId, req.headers as any);
+        if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
+        if (!(await kvRateLimit('quorum-proof:global', 100, 60_000))
+            || !(await kvRateLimit(`quorum-proof:${nodeId}`, 10, 60_000))) {
+            return res.status(429).json({ error: 'Quorum proof submission rate limit exceeded' });
+        }
+
+        const settlementAddressRaw = process.env.GSTD_SETTLEMENT_ADDRESS;
+        if (!settlementAddressRaw) {
+            return res.status(503).json({ error: 'Quorum settlement is not configured' });
+        }
+        let settlementAddress: Address;
+        try {
+            settlementAddress = Address.parse(settlementAddressRaw);
+        } catch {
+            console.error('[settlement/quorum-proof] GSTD_SETTLEMENT_ADDRESS is invalid');
+            return res.status(503).json({ error: 'Quorum settlement is not configured' });
+        }
+
+        if (!taskId || typeof taskId !== 'string' || taskId.length > 128) {
             return res.status(400).json({ error: 'taskId (string) required' });
         }
         if (!workerAddr || typeof workerAddr !== 'string') {
@@ -44,9 +76,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (!resultHash || typeof resultHash !== 'string' || !/^[0-9a-fA-F]{1,64}$/.test(resultHash)) {
             return res.status(400).json({ error: 'resultHash must be a hex string (uint256)' });
         }
-        if (!Array.isArray(attestations) || attestations.length < 2) {
-            return res.status(400).json({ error: 'attestations array required (>= 2 entries — this endpoint is for already-quorum-reached proofs)' });
+        if (!Array.isArray(attestations) || attestations.length < 2 || attestations.length > 5) {
+            return res.status(400).json({ error: 'attestations array must contain between 2 and 5 entries' });
         }
+        const pubkeys = new Set<string>();
         for (const a of attestations) {
             if (typeof a?.pubkeyHex !== 'string' || !/^[0-9a-fA-F]{64}$/.test(a.pubkeyHex)) {
                 return res.status(400).json({ error: 'each attestation needs a 64-hex-char pubkeyHex' });
@@ -54,6 +87,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             if (typeof a?.signatureHex !== 'string' || !/^[0-9a-fA-F]{128}$/.test(a.signatureHex)) {
                 return res.status(400).json({ error: 'each attestation needs a 128-hex-char signatureHex' });
             }
+            const pubkey = a.pubkeyHex.toLowerCase();
+            if (pubkeys.has(pubkey)) {
+                return res.status(400).json({ error: 'attestations must use distinct public keys' });
+            }
+            pubkeys.add(pubkey);
         }
 
         if (typeof body.gstdBonusAmount !== 'string' || !/^\d{1,36}$/.test(body.gstdBonusAmount)) {
@@ -64,10 +102,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
         const gstdBonusAmount = body.gstdBonusAmount;
         const computeUnits = body.computeUnits;
+        let messageHash: Buffer;
+        try {
+            const hash = beginCell()
+                .storeAddress(settlementAddress)
+                .storeUint(taskIdToUint64(taskId), 64)
+                .storeAddress(Address.parse(workerAddr))
+                .storeUint(BigInt(`0x${resultHash}`), 256)
+                .storeCoins(BigInt(gstdBonusAmount))
+                .storeUint(computeUnits, 64)
+                .endCell()
+                .hash();
+            messageHash = Buffer.from(hash);
+        } catch {
+            return res.status(400).json({ error: 'Invalid task settlement fields' });
+        }
+        for (const attestation of attestations) {
+            const valid = signVerify(
+                messageHash,
+                Buffer.from(attestation.signatureHex, 'hex'),
+                Buffer.from(attestation.pubkeyHex, 'hex'),
+            );
+            if (!valid) {
+                return res.status(400).json({ error: 'Invalid quorum attestation signature' });
+            }
+        }
 
         const id = `proof_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
         const record = {
             id,
+            submittedByNodeId: nodeId,
             taskId,
             workerAddr,
             resultHash: resultHash.toLowerCase(),

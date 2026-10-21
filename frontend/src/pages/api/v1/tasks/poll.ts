@@ -20,7 +20,7 @@ import { kvGet, kvPop, kvPush } from '../../../../lib/kv';
 import { assignTaskToNode } from '../../../../lib/task-assignment';
 import { maybeCreateVerifyProbe } from '../../../../lib/verifyProbe';
 import { requireNodeSignature } from '../../../../lib/nodeAuth';
-import { supportsTaskKind } from '../../../../lib/taskKinds';
+import { isTaskExecutionEnabled, supportsTaskKind } from '../../../../lib/taskKinds';
 
 const SCAN_DEPTH = 20; // max tasks to inspect before giving up
 const ASSIGNMENT_TTL = 3600;
@@ -77,12 +77,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 let task: any;
                 try { task = JSON.parse(raw); } catch { /* malformed */ }
                 if (task) {
+                    if (!isTaskExecutionEnabled(task)) task = null;
+                }
+                if (task) {
                     try {
                         if (supportsTaskKind(task, supportedTaskKinds)
                             && await assignTaskToNode(task, nodeId, ASSIGNMENT_TTL)) {
                             return res.status(200).json({ task, source: 'priority' });
                         }
-                        if (!supportsTaskKind(task, supportedTaskKinds)) {
+                        if (isTaskExecutionEnabled(task) && !supportsTaskKind(task, supportedTaskKinds)) {
                             await kvPush(`tasks:inference:${nodeId}`, raw);
                         }
                     } catch (error) {
@@ -109,6 +112,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             let task: any;
             try { task = JSON.parse(raw); } catch { continue; }
 
+            if (!isTaskExecutionEnabled(task)) continue;
             if (!picked
                 && nodeCanHandle(task, caps, resources)
                 && supportsTaskKind(task, supportedTaskKinds)) {

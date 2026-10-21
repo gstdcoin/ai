@@ -83,10 +83,10 @@ beforeEach(() => {
 });
 
 describe('legacy worker task routes', () => {
-    it('preserves queue polling for unbound legacy nodes', async () => {
+    it('rejects unbound legacy identities before polling the task queue', async () => {
         const response = await call(pending, 'GET', {});
-        expect(response.status).toBe(200);
-        expect(kvPop).toHaveBeenCalled();
+        expect(response.status).toBe(403);
+        expect(kvPop).not.toHaveBeenCalled();
     });
 
     it('requires a fresh identity signature before polling for bound nodes', async () => {
@@ -97,11 +97,12 @@ describe('legacy worker task routes', () => {
     });
 
     it('rejects empty results before consuming an assignment', async () => {
+        store.set(`node_key:${nodeId}`, publicKey);
         const response = await call(submit, 'POST', {
             task_id: 'task-1',
             node_id: nodeId,
             result: {},
-        });
+        }, signedHeaders());
         expect(response.status).toBe(422);
         expect(kvCompleteAssignedTask).not.toHaveBeenCalled();
     });

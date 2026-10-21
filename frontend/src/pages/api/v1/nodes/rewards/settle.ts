@@ -1,21 +1,16 @@
 /**
  * POST /api/v1/nodes/rewards/settle
  *
- * Weekly settlement endpoint — computes F1 reward distribution and returns
- * the list of TON Jetton transfers to execute.
+ * Read-only settlement-plan endpoint. It computes pending balances for
+ * inspection; it does not reserve funds, execute transfers, or clear balances.
  *
  * Auth: TREASURY_SECRET header (configure as a Cloudflare Worker secret).
  *
- * Always returns a plan without clearing any balances -- the actual TON
- * transfer is done off-chain by scripts/settle.ts, which then calls
- * /nodes/rewards/confirm-settlement with only the wallets that actually
- * received their transfer. Clearing here unconditionally (the old
- * behavior) meant a balance was zeroed before any transfer was attempted,
- * so a failed or interrupted transfer silently lost the reward with no
- * rollback.
+ * Payout execution and balance confirmation are disabled until transfers
+ * can be reserved atomically and independently verified on-chain.
  *
  * Request body:
- *   { dry_run?: boolean; min_amount?: number }
+ *   { min_amount?: number }
  *
  * Response:
  *   {
@@ -23,7 +18,6 @@
  *     entries:  { wallet, amount_gstd, node_ids }[]
  *     treasury: number   // community tax accumulated
  *     total:    number   // sum of all entries
- *     dry_run:  boolean
  *   }
  */
 import type { NextApiRequest, NextApiResponse } from 'next';

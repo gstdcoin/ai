@@ -3,10 +3,13 @@ import { useState, useEffect, useRef } from 'react';
 import { GetStaticProps } from 'next';
 import { getCommonStaticProps } from '../lib/i18n-static-props';
 import { API_BASE_URL } from '../lib/config';
+import { apiGet } from '../lib/apiClient';
 import {
-    Brain, Zap, CheckCircle, Clock, AlertCircle, Download,
+    Brain, Zap, CheckCircle, AlertCircle, Download,
     ChevronDown, Loader2, ExternalLink, Cpu, Globe,
 } from 'lucide-react';
+
+const TRAINING_ENABLED = false;
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -242,9 +245,8 @@ export default function TrainingPage() {
     useEffect(() => {
         const w = wallet.trim();
         if (!w) { setBalance(null); return; }
-        fetch(`${API_BASE_URL}/api/v1/credits/balance?wallet=${encodeURIComponent(w)}`)
-            .then(r => r.ok ? r.json() : null)
-            .then(d => d ? setBalance(d.balance_gstd) : null)
+        apiGet<{ balance_gstd: number }>('/credits/balance', { wallet: w })
+            .then(d => setBalance(d.balance_gstd))
             .catch(() => null);
     }, [wallet]);
 
@@ -256,11 +258,8 @@ export default function TrainingPage() {
         }
         pollRef.current = setInterval(async () => {
             try {
-                const res = await fetch(`${API_BASE_URL}/api/v1/training/jobs/${job.job_id}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setJob(data);
-                }
+                const data = await apiGet<JobStatus>(`/training/jobs/${job.job_id}`);
+                setJob(data);
             } catch { /* ignore */ }
         }, 3000);
         return () => { if (pollRef.current) clearInterval(pollRef.current); };
@@ -268,6 +267,10 @@ export default function TrainingPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!TRAINING_ENABLED) {
+            setError('Fine-tuning is paused until workers can run in an isolated sandbox.');
+            return;
+        }
         setError('');
         if (!datasetUrl.trim()) { setError('Dataset URL is required (public JSONL file)'); return; }
 
@@ -320,8 +323,8 @@ export default function TrainingPage() {
     return (
         <>
             <Head>
-                <title>AI Fine-Tuning Marketplace — GSTD</title>
-                <meta name="description" content="Fine-tune open-source LLMs on the GSTD decentralised computing network. 10–30× cheaper than cloud." />
+                <title>Distributed Fine-Tuning — GSTD</title>
+                <meta name="description" content="GSTD distributed fine-tuning is temporarily paused while secure worker sandboxing is developed." />
             </Head>
 
             <style>{`
@@ -354,7 +357,7 @@ export default function TrainingPage() {
                         fontSize: 12, color: '#a78bfa', fontWeight: 600,
                         marginBottom: 24,
                     }}>
-                        <Zap size={13} /> Powered by GSTD Node Network
+                        <Zap size={13} /> {TRAINING_ENABLED ? 'Powered by GSTD Node Network' : 'Training temporarily paused'}
                     </div>
                     <h1 style={{
                         fontSize: 'clamp(28px, 5vw, 52px)',
@@ -366,14 +369,16 @@ export default function TrainingPage() {
                         WebkitBackgroundClip: 'text',
                         WebkitTextFillColor: 'transparent',
                     }}>
-                        Fine-Tune Any LLM<br />for Cents, Not Dollars
+                        {TRAINING_ENABLED ? <>Fine-Tune Any LLM<br />for Cents, Not Dollars</> : <>Distributed Fine-Tuning<br />Is Temporarily Paused</>}
                     </h1>
                     <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 16, lineHeight: 1.6, maxWidth: 520, margin: '0 auto 48px' }}>
-                        Upload your dataset. Pick a model. Distributed nodes train a LoRA adapter using QLoRA — with a built-in quality gate before any gradient is accepted.
+                        {TRAINING_ENABLED
+                            ? 'Upload your dataset. Pick a model. Distributed nodes train a LoRA adapter using QLoRA — with a built-in quality gate before any gradient is accepted.'
+                            : 'New jobs, worker assignments, and gradient submissions are disabled until datasets can be processed in an isolated worker sandbox. No credits will be charged.'}
                     </p>
 
                     {/* Stats row */}
-                    <div style={{ display: 'flex', justifyContent: 'center', gap: 32, marginBottom: 64, flexWrap: 'wrap' }}>
+                    {TRAINING_ENABLED && <div style={{ display: 'flex', justifyContent: 'center', gap: 32, marginBottom: 64, flexWrap: 'wrap' }}>
                         {[
                             { icon: '💰', label: 'From 0.4 GSTD', sub: 'per epoch' },
                             { icon: '🛡', label: 'Quality gate',   sub: 'MetaCognitive score ≥ 0.3' },
@@ -386,11 +391,11 @@ export default function TrainingPage() {
                                 <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>{sub}</div>
                             </div>
                         ))}
-                    </div>
+                    </div>}
                 </div>
 
                 {/* Main Form + Sidebar */}
-                <div style={{ maxWidth: 900, margin: '0 auto', padding: '0 20px 80px', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 320px', gap: 24, alignItems: 'start' }}>
+                {TRAINING_ENABLED ? <div style={{ maxWidth: 900, margin: '0 auto', padding: '0 20px 80px', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 320px', gap: 24, alignItems: 'start' }}>
 
                     {/* Form column */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -586,7 +591,36 @@ export default function TrainingPage() {
                             </div>
                         </a>
                     </div>
-                </div>
+                </div> : (
+                    <section
+                        role="status"
+                        style={{
+                            maxWidth: 900,
+                            margin: '0 auto',
+                            padding: '24px 20px 80px',
+                        }}
+                    >
+                        <div style={{
+                            display: 'flex',
+                            gap: 14,
+                            alignItems: 'flex-start',
+                            padding: 24,
+                            borderRadius: 16,
+                            background: 'rgba(250,204,21,0.08)',
+                            border: '1px solid rgba(250,204,21,0.3)',
+                            color: '#fde68a',
+                        }}>
+                            <AlertCircle size={20} style={{ flexShrink: 0, marginTop: 2 }} />
+                            <div>
+                                <strong style={{ display: 'block', marginBottom: 8 }}>Fine-tuning is unavailable</strong>
+                                <span style={{ color: 'rgba(255,255,255,0.65)', lineHeight: 1.6 }}>
+                                    Submissions and gradient updates are rejected, and workers will not receive training tasks.
+                                    This feature can reopen after isolated worker sandboxing and its security checks are in place.
+                                </span>
+                            </div>
+                        </div>
+                    </section>
+                )}
             </div>
         </>
     );

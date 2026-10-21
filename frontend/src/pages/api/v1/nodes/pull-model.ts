@@ -5,11 +5,12 @@
  * The node must be online (active heartbeat). Request is queued in KV;
  * the node picks it up on next heartbeat and initiates `ollama pull`.
  *
- * Body: { node_id: string, model: string, wallet_address: string }
- * Auth: wallet_address must match node's registered wallet
+ * Body: { node_id: string, model: string, wallet_address?: string }
+ * Auth: verified TON session must match the node's registered wallet.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvSet } from '../../../../lib/kv';
+import { sessionWallet } from '../../../../lib/walletSession';
 
 const ALLOWED_MODEL_RE = /^[a-zA-Z0-9._:/-]{2,80}$/;
 const MAX_QUEUE_PER_NODE = 5;
@@ -18,13 +19,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
     const { node_id, model, wallet_address } = req.body || {};
+    const wallet = await sessionWallet(req.headers);
+    if (!wallet) return res.status(401).json({ error: 'Verified wallet session required' });
+    if (wallet_address !== undefined) {
+        if (typeof wallet_address !== 'string' || wallet_address.trim().toLowerCase() !== wallet) {
+            return res.status(403).json({ error: 'Wallet does not match the authenticated session' });
+        }
+    }
 
     if (!node_id || typeof node_id !== 'string') return res.status(400).json({ error: 'node_id required' });
     if (!model || typeof model !== 'string' || !ALLOWED_MODEL_RE.test(model)) {
         return res.status(400).json({ error: 'Invalid model name. Use Ollama format e.g. llama3.1:8b' });
     }
-    if (!wallet_address) return res.status(400).json({ error: 'wallet_address required' });
-
     // Verify node exists and wallet matches
     const nodeRaw = await kvGet(`node:${node_id}`);
     if (!nodeRaw) return res.status(404).json({ error: 'Node not found' });
@@ -32,8 +38,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let node: any;
     try { node = JSON.parse(nodeRaw as string); } catch { return res.status(500).json({ error: 'Bad node data' }); }
 
-    if (node.wallet_address && node.wallet_address !== wallet_address) {
-        return res.status(403).json({ error: 'wallet_address does not match node owner' });
+    if (!node.wallet_address || String(node.wallet_address).toLowerCase() !== wallet) {
+        return res.status(403).json({ error: 'Authenticated wallet does not own this node' });
     }
 
     // Check node is online (last seen < 10 min)

@@ -7,15 +7,14 @@
  * so the formula simplifies to: nodeReward = jobFee × (1 - COMMUNITY_TAX).
  * Community tax flows to the treasury for protocol development and grants.
  *
- * Rewards accumulate in Redis and are settled weekly via TON Jetton transfers.
+ * Rewards accumulate in Redis. Payouts remain disabled until a verified,
+ * idempotent on-chain settlement flow is available.
  */
 
-import { kvGet, kvSet, kvIncr, kvKeys, kvIncrByFloat, kvAccrueTaskReward } from './kv';
+import { kvGet, kvSet, kvKeys, kvIncrByFloat, kvAccrueTaskReward } from './kv';
 
 export const COMMUNITY_TAX     = 0.05;   // 5% to treasury
 export const BASE_TASK_FEE     = 0.001;  // GSTD per completed inference task
-export const SETTLEMENT_KEY    = 'rewards:settlement_epoch';
-
 export interface RewardSnapshot {
     nodeId:        string;
     wallet:        string;
@@ -92,7 +91,7 @@ export async function getTreasuryBalance(): Promise<number> {
 /**
  * Compute settlement amounts for all wallets with pending rewards above minAmount.
  * Returns list of {wallet, amount, nodeIds} to be sent as TON Jetton transfers.
- * Does NOT clear balances — call clearSettledRewards() after on-chain confirmation.
+ * This is a read-only plan. No current API clears balances after a transfer.
  */
 export async function computeSettlement(
     minAmount: number = 0.01,
@@ -124,20 +123,4 @@ export async function computeSettlement(
     );
 
     return entries.sort((a, b) => b.amount - a.amount);
-}
-
-/**
- * Zero out pending balances after on-chain settlement confirmation.
- * Pass the wallets that were successfully settled.
- */
-export async function clearSettledRewards(
-    wallets: string[],
-    epochId: string,
-): Promise<void> {
-    await Promise.all(
-        wallets.map((w) =>
-            kvSet(`rewards:pending:${w.toLowerCase()}`, '0')
-        )
-    );
-    await kvSet(SETTLEMENT_KEY, epochId);
 }

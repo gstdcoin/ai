@@ -341,7 +341,7 @@ IW < 0.50  →  Low Intelligence Trade   →  excluded from training`}
                     ['Memory', '3-layer collective (in-process → Redis → Platform)', '✅ Live'],
                     ['Routing', 'ThermalRouter (entropy-weighted specialisation)', '✅ Live'],
                     ['Oracle API', 'POST /api/v1/oracle/evaluate — 10/day free tier', '✅ Live'],
-                    ['Fine-tuning', 'QLoRA task queue — Alpaca JSONL format', '🔄 Beta'],
+                    ['Fine-tuning', 'Submissions and worker task dispatch are disabled pending isolated sandboxing', '⏸ Paused'],
                     ['Validation', 'GSTD-Validation-Layer — IW score + LoRA dataset', '✅ Live'],
                     ['Jetton', 'GSTDJetton on TON mainnet (EQDv6c…)', '✅ Deployed'],
                     ['AgentRegistry', 'On-chain node reputation (TON mainnet)', '✅ Deployed'],
@@ -373,7 +373,7 @@ IW < 0.50  →  Low Intelligence Trade   →  excluded from training`}
               <div style={{ marginTop: 20, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
                 {[
                   ['Oracle API', 'POST /api/v1/oracle/evaluate', 'Evaluate a trade signal through the live network'],
-                  ['Train a Model', 'POST /api/v1/training/jobs', 'Fine-tune any supported LLM on your dataset'],
+                  ['Training status', 'POST /api/v1/training/jobs', 'Returns 410 until isolated worker sandboxing and settlement verification are implemented'],
                   ['Enterprise Keys', 'POST /api/v1/enterprise/keys', 'Unlimited API access with rate-controlled keys'],
                 ].map(([title, route, desc]) => (
                   <div key={route as string} style={{ background: 'rgba(0,0,0,0.3)', borderRadius: 10, padding: '14px 16px' }}>

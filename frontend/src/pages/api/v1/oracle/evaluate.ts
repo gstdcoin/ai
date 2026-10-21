@@ -18,8 +18,8 @@
 export const config = { maxDuration: 115 };
 
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { rateLimit, getClientIp } from '../../../../lib/ratelimit';
-import { kvGet, kvSet, kvKeys, kvMGet, kvIncr, kvIncrByFloat } from '../../../../lib/kv';
+import { getClientIp } from '../../../../lib/ratelimit';
+import { kvGet, kvSet, kvKeys, kvMGet, kvIncr, kvIncrByFloat, kvRateLimit } from '../../../../lib/kv';
 import { validateEnterpriseKey } from '../enterprise/keys';
 import { accrueReward, BASE_TASK_FEE } from '../../../../lib/rewards';
 
@@ -161,20 +161,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (bearerMatch) {
         const key = await validateEnterpriseKey(bearerMatch[1]);
         if (!key) return res.status(401).json({ error: 'Invalid or expired enterprise API key' });
-        if (!rateLimit(`oracle_ent:${key.id}`, key.rpm_limit, 60_000))
+        if (!(await kvRateLimit(`oracle_ent:${key.id}`, key.rpm_limit, 60_000)))
             return res.status(429).json({ error: `Rate limit: ${key.rpm_limit} rpm` });
     } else {
         // Free tier: 10 requests per day per IP
         const dayKey = `oracle_free:${ip}:${new Date().toISOString().slice(0, 10)}`;
-        const used = parseInt((await kvGet(dayKey)) || '0', 10);
-        if (used >= 10) {
+        if (!(await kvRateLimit(dayKey, 10, 24 * 60 * 60 * 1000))) {
             return res.status(429).json({
                 error: 'Free tier: 10 oracle requests/day per IP. Get an API key for unlimited access.',
                 upgrade: 'POST /api/v1/enterprise/keys',
-                used, limit: 10,
+                limit: 10,
             });
         }
-        await kvIncrByFloat(dayKey, 1);
     }
 
     const body: Record<string, unknown> = req.body || {};

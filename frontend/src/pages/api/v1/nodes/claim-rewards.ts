@@ -1,17 +1,18 @@
 /**
  * POST /api/v1/nodes/claim-rewards
- * Move pending node rewards to the wallet's spendable GSTD credit balance.
+ * Move pending node rewards for the authenticated wallet to spendable GSTD credits.
  * Credits can be used immediately for training jobs and inference.
  * On-chain TON transfer will be available after smart contract deployment.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvClaimPending } from '../../../../lib/kv';
+import { sessionWallet } from '../../../../lib/walletSession';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-    const { wallet } = req.body || {};
-    if (typeof wallet !== 'string' || !wallet) return res.status(400).json({ error: 'wallet required' });
+    const wallet = await sessionWallet(req.headers);
+    if (!wallet) return res.status(401).json({ error: 'Not authenticated' });
 
     try {
         const r = await kvClaimPending(wallet, 0.001);

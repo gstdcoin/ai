@@ -12,7 +12,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvPop, kvPush } from '../../../../../lib/kv';
 import { assignTaskToNode } from '../../../../../lib/task-assignment';
-import { requireNodeSignatureIfBound } from '../../../../../lib/nodeAuth';
+import { requireNodeSignature } from '../../../../../lib/nodeAuth';
+import { isTaskExecutionEnabled } from '../../../../../lib/taskKinds';
 import type { NodeRecord } from '../../nodes/register';
 
 const SCAN_DEPTH = 20;
@@ -48,7 +49,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (storedWallet && storedWallet !== headerWallet) {
             return res.status(403).json({ error: 'Wallet mismatch' });
         }
-        const auth = await requireNodeSignatureIfBound(nodeId, req.headers as any);
+        const auth = await requireNodeSignature(nodeId, req.headers as any);
         if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
         const caps = record.capabilities || [];
         const resources: Record<string, number> = {
@@ -64,6 +65,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             if (raw) {
                 let task: any;
                 try { task = JSON.parse(raw); } catch { /* skip */ }
+                if (task) {
+                    if (!isTaskExecutionEnabled(task)) {
+                        task = null;
+                    }
+                }
                 if (task) {
                     try {
                         if (await assignTaskToNode(task, nodeId, ASSIGNMENT_TTL)) {
@@ -88,7 +94,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             let task: any;
             try { task = JSON.parse(raw); } catch { continue; }
 
-            if (!picked && nodeCanHandle(task, caps, resources)) {
+            if (!isTaskExecutionEnabled(task)) continue;
+            if (!picked && isTaskExecutionEnabled(task) && nodeCanHandle(task, caps, resources)) {
                 picked = task;
             } else {
                 skipped.push(task);

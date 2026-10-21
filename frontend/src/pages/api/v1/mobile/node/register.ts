@@ -77,6 +77,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Load existing session or start new one
     const existingRaw = await kvGet(sessionKey);
     const existing = existingRaw ? JSON.parse(existingRaw) : null;
+    if (existing?.wallet_address && wallet_address && existing.wallet_address !== wallet_address) {
+        return res.status(403).json({ error: 'This mobile session is already linked to a different wallet' });
+    }
 
     // Cap concurrent sessions per Telegram user — without this, one user could
     // spin up unlimited device_ids to farm rewards many times over.

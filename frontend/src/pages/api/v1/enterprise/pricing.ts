@@ -115,7 +115,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
                     'Everything in Professional',
                     'Dedicated node pools',
                     'Private model deployment',
-                    'Custom fine-tuned models',
+                    'Fine-tuning is paused; custom fine-tuned models are unavailable',
                     'Dedicated support',
                     'SLA 99.9%',
                     'On-prem deployment option',
