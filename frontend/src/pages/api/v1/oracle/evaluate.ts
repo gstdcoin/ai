@@ -20,6 +20,7 @@ export const config = { maxDuration: 115 };
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getClientIp } from '../../../../lib/ratelimit';
 import { kvGet, kvSet, kvKeys, kvMGet, kvIncr, kvIncrByFloat, kvRateLimit } from '../../../../lib/kv';
+import { safeNodeUrl } from '../../../../lib/safeNodeUrl';
 import { validateEnterpriseKey } from '../enterprise/keys';
 import { accrueReward, BASE_TASK_FEE } from '../../../../lib/rewards';
 
@@ -33,7 +34,7 @@ interface NodeRecord {
 }
 
 async function getNodeUrl(): Promise<string> {
-    const envUrl = (process.env.GSTD_NODE_URL || '').replace(/\/$/, '');
+    const envUrl = safeNodeUrl(process.env.GSTD_NODE_URL, { trusted: true });
     if (envUrl) return envUrl;
 
     try {
@@ -45,8 +46,8 @@ async function getNodeUrl(): Promise<string> {
             for (const raw of values) {
                 if (!raw) continue;
                 const node: NodeRecord = JSON.parse(raw as string);
-                const url = (node.node_url || node.multiaddrs?.[0] || '').replace(/\/$/, '');
-                if (!url.startsWith('http')) continue;
+                const url = safeNodeUrl(node.node_url || node.multiaddrs?.[0] || '');
+                if (!url) continue;
                 const age = now - new Date(node.last_seen || 0).getTime();
                 if (age > NODE_MAX_AGE_MS) continue;
                 alive.push({ url, tasks: node.tasks_completed ?? 0 });
@@ -65,8 +66,8 @@ async function getNodeUrl(): Promise<string> {
             { signal: AbortSignal.timeout(4000) }
         );
         if (r.ok) {
-            const url = (await r.text()).trim();
-            if (url.startsWith('http')) return url.replace(/\/$/, '');
+            const url = safeNodeUrl(await r.text());
+            if (url) return url;
         }
     } catch { /* ignored */ }
     return '';

@@ -1207,7 +1207,8 @@ export async function kvDel(key: string): Promise<void> {
 }
 
 export async function kvKeys(prefix: string): Promise<string[]> {
-    const safePrefix = prefix.replace(/\*+$/, '');
+    let safePrefix = prefix;
+    while (safePrefix.endsWith('*')) safePrefix = safePrefix.slice(0, -1);
     const r = await getRedis();
     if (r) {
         try {

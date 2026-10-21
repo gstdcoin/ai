@@ -8,21 +8,21 @@ class Logger {
     }
 
     debug(message: string, ...args: unknown[]): void {
-        if (!IS_PRODUCTION) console.debug(this.fmt('debug', message), ...args);
+        if (!IS_PRODUCTION) console.debug('%s', this.fmt('debug', message), ...args);
     }
 
     info(message: string, ...args: unknown[]): void {
-        if (!IS_PRODUCTION) console.info(this.fmt('info', message), ...args);
+        if (!IS_PRODUCTION) console.info('%s', this.fmt('info', message), ...args);
     }
 
     warn(message: string, ...args: unknown[]): void {
         // Warnings are emitted in all environments for quota and rate alerts.
-        console.warn(this.fmt('warn', message), ...args);
+        console.warn('%s', this.fmt('warn', message), ...args);
     }
 
     error(message: string, error?: Error | unknown, ...args: unknown[]): void {
         // Errors are always emitted for runtime logs and Sentry.
-        console.error(this.fmt('error', message), error, ...args);
+        console.error('%s', this.fmt('error', message), error, ...args);
     }
 }
 

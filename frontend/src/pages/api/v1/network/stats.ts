@@ -9,6 +9,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvSet, kvKeys, kvMGet, kvLLen } from '../../../../lib/kv';
 import { dedupeNodeRecords, isNodeOnline } from '../../../../lib/node-status';
+import { safeNodeUrl } from '../../../../lib/safeNodeUrl';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'GET') {
@@ -83,8 +84,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     for (const n of nodeRecords) {
                         try {
                             if (!isNodeOnline(n, now)) continue;
-                            const url = (n.node_url || n.multiaddrs?.[0] || '').replace(/\/$/, '');
-                            if (!url.startsWith('http')) continue;
+                            const url = safeNodeUrl(n.node_url || n.multiaddrs?.[0] || '');
+                            if (!url) continue;
                             const r = await fetch(`${url}/api/oracle/stats`, { signal: AbortSignal.timeout(4000) });
                             if (r.ok) {
                                 const od: any = await r.json();

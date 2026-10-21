@@ -7,6 +7,7 @@
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvSet, kvKeys, kvMGet } from '../../../../lib/kv';
+import { safeNodeUrl } from '../../../../lib/safeNodeUrl';
 
 const CACHE_KEY = 'oracle:poi:cache';
 const CACHE_TTL = 300; // 5 minutes
@@ -21,8 +22,8 @@ async function fetchFromNode(): Promise<object | null> {
         for (const raw of values) {
             if (!raw) continue;
             const node: any = JSON.parse(raw as string);
-            const url = (node.node_url || node.multiaddrs?.[0] || '').replace(/\/$/, '');
-            if (!url.startsWith('http')) continue;
+            const url = safeNodeUrl(node.node_url || node.multiaddrs?.[0] || '');
+            if (!url) continue;
             const age = now - new Date(node.last_seen || 0).getTime();
             if (age > 600_000) continue;
 
