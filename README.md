@@ -1,9 +1,10 @@
 # GSTD Platform
 
-> Source for the GSTD web application and API, deployed on Cloudflare Workers.
+> The web app, API and Telegram bot behind GSTD — decentralized AI compute on TON — running on Cloudflare Workers.
 > Node software is maintained separately in [gstdcoin/gstdbot](https://github.com/gstdcoin/gstdbot).
 
 [![Platform](https://img.shields.io/badge/platform-app.gstdtoken.com-00d2ff?style=flat-square)](https://app.gstdtoken.com)
+[![Telegram](https://img.shields.io/badge/Telegram-@gstdaibot-26a5e4?style=flat-square)](https://t.me/gstdaibot)
 [![Network status](https://img.shields.io/badge/network-check_live_stats-blue?style=flat-square)](https://app.gstdtoken.com/api/v1/stats/public)
 [![License](https://img.shields.io/badge/license-PolyForm%20NC%201.0.0-orange?style=flat-square)](LICENSE)
 
@@ -11,7 +12,7 @@
 
 ## Project status
 
-The platform provides APIs and UI for node registration, heartbeats, task queues, and network statistics. These capabilities do not mean workers or paid jobs are currently available. As of 2026-10-17, production stats report **0 registered/online nodes, 0 tasks, and 0 payouts**. Check the live endpoints before relying on network availability.
+The platform provides APIs and UI for node registration, heartbeats, task queues, and network statistics. These capabilities do not mean workers or paid jobs are currently available. At the last check (2026-10-21) production stats reported **0 online nodes, 0 tasks and 0 payouts**. Check the live endpoints before relying on network availability.
 
 The codebase is evolving and is not an externally audited production financial system. Smart-contract deployment and limitations are documented in [gstdcoin/contracts](https://github.com/gstdcoin/contracts).
 
@@ -30,22 +31,16 @@ curl https://app.gstdtoken.com/api/v1/health
 
 ---
 
-## Experimental: Proof of Intelligence (PoI)
+## Telegram bot — @gstdaibot
 
-The repository includes experimental scoring and training components. The following formula describes the intended scoring model; it is not a claim that every production inference is currently verified:
+The bot runs as a Cloudflare Worker webhook in this repo (`frontend/src/pages/api/v1/telegram/webhook.ts`), with no separate server:
 
-```
-IW  =  0.40 × Alignment      # Did the AI call the right direction?
-    +  0.25 × Timing          # Optimal entry position in the candle?
-    +  0.20 × Selectivity     # Win rate over last 7 days
-    -  0.15 × Noise           # Penalizes weak signals
+- AI chat with a daily per-user limit; when no GSTD node is online it falls back to Workers AI and says so.
+- Link a TON wallet, see your balance and nodes, claim accepted-task rewards.
+- Referral link and inline sharing; 6 languages (EN, RU, UK, ES, TR, ZH).
+- Webhook requests are verified by a secret header; the `bot/*` endpoints require a shared token and are not public.
 
-IW ≥ 0.70 → High Intelligence → added to LoRA dataset (weight 3×)
-IW ≥ 0.50 → Normal → added to LoRA dataset (weight 1×)
-IW < 0.50 → Low quality → excluded from training
-```
-
-Evaluations depend on their input data and implementation. Do not treat a score as an independent audit or proof of a model's correctness.
+Register the webhook and command menus with `frontend/scripts/set-telegram-webhook.mjs` (token from the environment only).
 
 ---
 
@@ -78,12 +73,12 @@ The 85/10/5 split is a protocol design described in the contracts repository, no
         │ task assignment depends on currently registered nodes
         ▼
 [GSTD Node (gstdbot)]                          ← gstdcoin/gstdbot
-  ├── Ollama inference (llama3.2:3b)
+  ├── Ollama inference
   ├── P2P mesh (libp2p)
-  ├── GSTD-Validation-Layer sidecar    ← 111+ ExperienceRecords
-  └── Cloudflare Named Tunnel → node.gstdtoken.com
-        │ on completion
-        ▼
+  └── Sovereign verified-task core (experimental, no real payouts)
+        │
+[Telegram @gstdaibot]  ← webhook served by this repo
+        │
 [TON Blockchain]                               ← gstdcoin/contracts
   └── deployed contracts; platform task-to-payout settlement is not verified
 ```
@@ -131,7 +126,7 @@ Nodes register with the platform API and periodically send heartbeats. Registrat
 | AI Inference | Ollama via GSTD node network |
 | Blockchain | TON (Tact smart contracts) |
 | Node software | gstdbot (TypeScript, libp2p, ARM64) |
-| Node tunnel | Cloudflare Named Tunnel → node.gstdtoken.com |
+| Bot | Telegram webhook on the same Worker |
 
 ---
 
@@ -147,7 +142,7 @@ Local API development uses the development storage fallback. Production requires
 
 ### Wallet authentication
 
-Dashboard login requires a fresh TonConnect proof. Set `GSTD_TONCONNECT_AUTH_DOMAINS` to a comma-separated list of allowed origin hostnames (the default production hosts are `app.gstdtoken.com` and `app.gstdtoken.com`; include `localhost:3000` for local development). Proofs are accepted only for supported standard TON wallet contracts, with single-use challenges and a five-minute expiry. Sessions issued by the older address-only login are intentionally invalidated, so existing users must reconnect once after this update.
+Dashboard login requires a fresh TonConnect proof. Set `GSTD_TONCONNECT_AUTH_DOMAINS` to a comma-separated list of allowed origin hostnames (the default production host is `app.gstdtoken.com`; include `localhost:3000` for local development). Proofs are accepted only for supported standard TON wallet contracts, with single-use challenges and a five-minute expiry. Sessions issued by the older address-only login are intentionally invalidated, so existing users must reconnect once after this update.
 
 ---
 
@@ -172,9 +167,12 @@ See [gstdcoin/gstdbot](https://github.com/gstdcoin/gstdbot) for full setup guide
 
 | Repo | Description |
 |---|---|
-| **gstdcoin/ai** | **This repo — Cloudflare-hosted platform app and API** |
-| [gstdcoin/gstdbot](https://github.com/gstdcoin/gstdbot) | Node OS (TypeScript, ARM64, Ollama) |
-| [gstdcoin/contracts](https://github.com/gstdcoin/contracts) | TON smart contracts (Tact) |
+| **gstdcoin/ai** | **This repo — Cloudflare-hosted platform app, API and Telegram bot** |
+| [gstdcoin/web](https://github.com/gstdcoin/web) | Public website (gstdtoken.com) |
+| [gstdcoin/gstdbot](https://github.com/gstdcoin/gstdbot) | Node software (TypeScript, ARM64, Ollama) |
+| [gstdcoin/A2A](https://github.com/gstdcoin/A2A) | Experimental client libraries and agent docs |
+| [gstdcoin/contracts](https://github.com/gstdcoin/contracts) | TON smart contracts (Tact, unaudited) |
+| [gstdcoin/gstd-bridge](https://github.com/gstdcoin/gstd-bridge) | Bridge research scaffold (deferred, not deployed) |
 
 ---
 
