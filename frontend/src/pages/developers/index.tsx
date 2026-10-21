@@ -54,8 +54,9 @@ export default function DevelopersPage() {
     fetch(`${API_BASE_URL}/api/v1/stats/public`).then(r => r.json()).then(d => setNodeCount(d.active_nodes || 0)).catch(() => {});
     fetch(`${API_BASE_URL}/api/v1/oracle/stats`).then(r => r.json()).then(d => setOracleStats(d)).catch(() => {});
     const saved = localStorage.getItem('gstd_b2b_wallet');
-    const savedKey = sessionStorage.getItem('gstd_b2b_apikey');
-    if (saved) { setWalletAddress(saved); if (savedKey) { setApiKey(savedKey); setView('dashboard'); } }
+    if (saved) setWalletAddress(saved);
+    // The API key is kept in memory only; a removed legacy copy must not linger in the browser.
+    sessionStorage.removeItem('gstd_b2b_apikey');
   }, []);
 
   const loadProfile = useCallback(async () => {
@@ -93,7 +94,6 @@ export default function DevelopersPage() {
         setNewApiKey(data.api_key);
         setApiKey(data.api_key);
         localStorage.setItem('gstd_b2b_wallet', walletAddress);
-        sessionStorage.setItem('gstd_b2b_apikey', data.api_key);
         setView('dashboard');
       } else {
         setError(data.error || 'Registration failed');
@@ -104,7 +104,6 @@ export default function DevelopersPage() {
 
   const handleLogin = () => {
     if (apiKey) {
-      sessionStorage.setItem('gstd_b2b_apikey', apiKey);
       localStorage.setItem('gstd_b2b_wallet', walletAddress);
       setView('dashboard');
     }

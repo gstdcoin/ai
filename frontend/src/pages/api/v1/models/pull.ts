@@ -11,6 +11,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvSet, kvKeys } from '../../../../lib/kv';
 import { resolveNodeUrl } from '../../../../lib/nodes';
 import { safeNodeUrl } from '../../../../lib/safeNodeUrl';
+import { randomId } from '../../../../lib/randomId';
 
 const RAM_REQUIREMENTS: Record<string, number> = {
     'llama3.2:1b':  1.5, 'llama3.2:3b':  3,   'gemma2:2b':   2,
@@ -129,7 +130,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         // Record pull job in KV for status tracking
-        const jobId = `pull_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const jobId = `pull_${Date.now()}_${randomId()}`;
         await kvSet(`model_pull:${jobId}`, JSON.stringify({
             job_id:      jobId,
             model_id,
