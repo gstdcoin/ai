@@ -6,17 +6,16 @@
  * Body: { telegram_id, stars_amount, telegram_payment_charge_id, provider_payment_charge_id?, payload? }
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvGet, kvSet } from '../../../../../lib/kv';
-import { kvIncrByFloat } from '../../../../../lib/kv';
+import { kvGet, kvSetNX, kvIncrByFloat } from '../../../../../lib/kv';
 import { isValidBotToken } from '../../../../../lib/botAuth';
 
 const STAR_USD   = 0.013;   // 1 Telegram Star ≈ $0.013 USD
-const GSTD_FLOOR = 0.0001;  // fallback GSTD price if oracle unavailable
 
+// No price fallback: crediting at a guessed price would mint unbacked GSTD.
 async function getGstdPriceUsd(): Promise<number> {
     const cached = await kvGet('market:gstd_price_usd').catch(() => null);
-    if (cached) return parseFloat(cached);
-    return GSTD_FLOOR;
+    const price = cached ? parseFloat(cached) : NaN;
+    return Number.isFinite(price) && price > 0 ? price : 0;
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -40,22 +39,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!stars_amount || stars_amount <= 0) return res.status(400).json({ error: 'stars_amount required' });
     if (!telegram_payment_charge_id) return res.status(400).json({ error: 'telegram_payment_charge_id required' });
 
-    // Idempotency — prevent double-credit for same payment
-    const dedupeKey = `topup_seen:${telegram_payment_charge_id}`;
-    const seen = await kvGet(dedupeKey).catch(() => null);
-    if (seen) {
-        return res.status(200).json({ ok: true, already_processed: true, gstd_credited: parseFloat(seen) });
-    }
+    if (!Number.isFinite(Number(stars_amount))) return res.status(400).json({ error: 'stars_amount invalid' });
+
+    const gstdPrice = await getGstdPriceUsd();
+    if (gstdPrice <= 0) return res.status(503).json({ error: 'GSTD price unavailable, retry later' });
 
     const userId = String(telegram_id);
     const wallet = await kvGet(`tg_wallet:${userId}`).catch(() => null);
 
-    const gstdPrice  = await getGstdPriceUsd();
-    const gstdPerStar = gstdPrice > 0 ? STAR_USD / gstdPrice : 65;
-    const gstdAmount  = Math.floor(stars_amount * gstdPerStar * 100) / 100;
+    const gstdPerStar = STAR_USD / gstdPrice;
+    const gstdAmount  = Math.floor(Number(stars_amount) * gstdPerStar * 100) / 100;
 
-    // Mark as processed (keep 90 days for reconciliation)
-    await kvSet(dedupeKey, String(gstdAmount), 86400 * 90);
+    // Atomic idempotency: only the first request for a charge id credits (kept 90 days for reconciliation).
+    const dedupeKey = `topup_seen:${telegram_payment_charge_id}`;
+    if (!(await kvSetNX(dedupeKey, String(gstdAmount), 86400 * 90))) {
+        const seen = await kvGet(dedupeKey).catch(() => null);
+        return res.status(200).json({ ok: true, already_processed: true, gstd_credited: seen ? parseFloat(seen) : 0 });
+    }
 
     if (wallet) {
         const key = wallet.toLowerCase();
