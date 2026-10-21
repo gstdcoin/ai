@@ -14,5 +14,9 @@
     "@solana/web3.js": "^1.98.4",
     "@ton/crypto": "^3.3.0",
     "xrpl": "^4.6.0"
+  },
+  "overrides": {
+    "stream-json": "^3.6.0",
+    "uuid": "^11.1.1"
   }
 }
