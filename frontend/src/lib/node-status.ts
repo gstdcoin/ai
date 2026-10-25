@@ -27,3 +27,15 @@ export function isNodeOnline(record: NodeStatusRecord, nowMs = Date.now()): bool
     const ageMs = nowMs - lastSeenMs;
     return Number.isFinite(lastSeenMs) && ageMs >= 0 && ageMs < NODE_ONLINE_WINDOW_MS;
 }
+
+/** Only registry records belong in node totals; the prefix also contains cache metadata. */
+export function parseNodeRecords<T extends NodeStatusRecord = NodeStatusRecord>(values: readonly (string | null)[]): T[] {
+    return values.flatMap(value => {
+        if (!value) return [];
+        try {
+            const record = JSON.parse(value);
+            return record && typeof record === 'object' && !Array.isArray(record)
+                && typeof record.node_id === 'string' ? [record as T] : [];
+        } catch { return []; }
+    });
+}

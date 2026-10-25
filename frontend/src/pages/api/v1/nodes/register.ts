@@ -12,6 +12,7 @@ const NODE_TTL = 600; // 10 minutes
 
 export interface NodeRecord {
     node_id:          string;
+    node_url?:        string;
     name:             string;
     wallet_address:   string;
     platform:         string;

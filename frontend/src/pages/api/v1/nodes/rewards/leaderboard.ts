@@ -4,6 +4,8 @@
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvKeys, kvMGet } from '../../../../../lib/kv';
+import { parseNodeRecords } from '../../../../../lib/node-status';
+import type { NodeRecord } from '../register';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
@@ -14,7 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const raws = nodeKeys.length > 0 ? await kvMGet(nodeKeys) : [];
         // Deduplicate by node_url: prefer named nodes over UUID-generated IDs
         const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-/i;
-        const allNodes = raws.map(raw => { try { return raw ? JSON.parse(raw) : null; } catch { return null; } }).filter(Boolean) as any[];
+        const allNodes = parseNodeRecords<NodeRecord>(raws);
         allNodes.sort((a, b) => (UUID_RE.test(a.node_id) ? 1 : 0) - (UUID_RE.test(b.node_id) ? 1 : 0));
         const seenRwUrls = new Set<string>();
         const dedupedRwNodes = allNodes.filter(n => {

@@ -3,8 +3,9 @@
  * Full network statistics including marketplace and treasury.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvGet, kvSet, kvKeys, kvMGet, kvLLen } from '../../../../lib/kv';
-import { dedupeNodeRecords, isNodeOnline } from '../../../../lib/node-status';
+import { kvGet, kvKeys, kvMGet, kvLLen } from '../../../../lib/kv';
+import { dedupeNodeRecords, isNodeOnline, parseNodeRecords } from '../../../../lib/node-status';
+import type { NodeRecord } from '../nodes/register';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'GET') {
@@ -35,23 +36,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const rootNodeKeys = allNodeKeys.filter((k: string) => !k.slice(5).includes(':'));
         let nodesOnline = 0;
         let registeredNodes = 0;
-        let tasksDone = parseInt(totalTasksCompleted || '0', 10);
+        const tasksDone = parseInt(totalTasksCompleted || '0', 10);
 
         if (rootNodeKeys.length > 0) {
             const values = await kvMGet(rootNodeKeys).catch(() => [] as (string|null)[]);
-            const records = values.filter((v): v is string => v !== null).map(v => { try { return JSON.parse(v); } catch { return null; } }).filter(Boolean);
+            const records = parseNodeRecords<NodeRecord>(values);
             const dedupedRecords = dedupeNodeRecords(records);
             registeredNodes = dedupedRecords.length;
             nodesOnline = dedupedRecords.filter(node => isNodeOnline(node)).length;
-            // Sum tasks from node records when the platform oracle has no total.
-            if (!tasksDone) {
-                for (const n of dedupedRecords) {
-                    tasksDone += parseInt(n.tasks_completed || '0', 10);
-                }
-            }
-        }
-        if (tasksDone > parseInt(totalTasksCompleted || '0', 10)) {
-            kvSet('stats:total_tasks_completed', String(tasksDone)).catch(() => {});
         }
 
         const totalReg = Math.max(parseInt(totalRegistered || '0', 10), registeredNodes);

@@ -7,7 +7,7 @@
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvKeys, kvMGet, kvSet } from '../../../../lib/kv';
-import { dedupeNodeRecords, isNodeOnline } from '../../../../lib/node-status';
+import { dedupeNodeRecords, isNodeOnline, parseNodeRecords } from '../../../../lib/node-status';
 import type { NodeRecord } from './register';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -25,9 +25,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         let nodes: NodeRecord[] = [];
         if (keys.length > 0) {
             const values = await kvMGet(keys);
-            nodes = values
-                .filter((v): v is string => v !== null)
-                .map(v => JSON.parse(v) as NodeRecord);
+            nodes = parseNodeRecords<NodeRecord>(values);
         }
 
         const registeredNodes = dedupeNodeRecords(nodes);

@@ -9,6 +9,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvKeys, kvMGet } from '../../../../../lib/kv';
 import { sessionWallet } from '../../../../../lib/walletSession';
 import type { NodeRecord } from '../register';
+import { parseNodeRecords } from '../../../../../lib/node-status';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'GET') {
@@ -35,10 +36,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (keys.length > 0) {
             const values = await kvMGet(keys);
             const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-/i;
-            const matches = values
-                .filter((v): v is string => v !== null)
-                .map(v => JSON.parse(v) as NodeRecord)
-                .filter(n => n.wallet_address.toLowerCase() === wallet);
+            const matches = parseNodeRecords<NodeRecord>(values)
+                .filter(n => typeof n.wallet_address === 'string' && n.wallet_address.toLowerCase() === wallet);
             // Prefer named node over UUID-generated IDs
             record = matches.find(n => !UUID_RE.test(n.node_id)) || matches[0] || null;
         }
@@ -62,7 +61,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         node_id:    record.node_id,
         tier,
         streak:  { days: Math.floor(uptimeHours / 24), best: Math.floor(uptimeHours / 24) },
-        stats:   { effective_rate_per_h: 0.5, tasks_completed: record.tasks_completed },
+        stats:   { effective_rate_per_h: 0, tasks_completed: record.tasks_completed },
         earnings: { total: record.gstd_earned || 0 },
         next_tier: tier.name === 'bronze' ? { name: 'silver', hours_needed: Math.max(0, 48 - uptimeHours) } : null,
     });

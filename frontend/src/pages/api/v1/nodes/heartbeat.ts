@@ -53,14 +53,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         // Read existing record only if we need to merge (tasks_completed, gstd_earned).
         // This saves a KV read when the node sends all fields itself.
-        const hasFullUpdate = body.tasks_completed != null && body.gstd_earned != null && body.uptime_hours != null;
+        // Task counters and earnings come only from accepted completions, never node claims.
         const queueKey = `node:${nodeId}:pull_queue`;
         // Each Redis round-trip to this KV backend runs ~4-5s regardless of payload size
         // (observed live, not just for the old KEYS scan) -- these 3 reads are independent
         // of each other, so run them concurrently instead of serially to avoid stacking
         // that latency 3x on every heartbeat.
         const [raw, cachedPeersOnline, queueRawInitial] = await Promise.all([
-            hasFullUpdate ? Promise.resolve(null) : kvGet(`node:${nodeId}`),
+            kvGet(`node:${nodeId}`),
             kvGet('stats:nodes_online_cached'),
             kvGet(queueKey),
         ]);
@@ -83,13 +83,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         // Update live fields
         record.last_seen       = new Date().toISOString();
-        // Only update tasks_completed if explicitly sent (not zero from a volatile in-memory counter)
-        if (body.tasks_completed != null && body.tasks_completed > 0) {
-            record.tasks_completed = body.tasks_completed;
-        } else if (body.tasks_completed == null && body.queries_served != null && body.queries_served > 0) {
-            record.tasks_completed = body.queries_served;
-        }
-        if (body.gstd_earned != null && body.gstd_earned > 0) record.gstd_earned = body.gstd_earned;
+        // Preserve server-owned task counters and earnings from the stored record.
         record.uptime_hours    = body.uptime_hours ?? record.uptime_hours;
         if (body.multiaddrs?.length)    record.multiaddrs  = body.multiaddrs;
         if (body.capabilities?.length)  record.capabilities = body.capabilities;

@@ -9,6 +9,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvKeys, kvMGet } from '../../../../lib/kv';
 import type { NodeRecord } from './register';
+import { parseNodeRecords, isNodeOnline } from '../../../../lib/node-status';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'GET') {
@@ -22,10 +23,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         if (keys.length > 0) {
             const values = await kvMGet(keys);
-            const nodes = values
-                .filter((v): v is string => v !== null)
-                .map(v => JSON.parse(v) as NodeRecord)
-                .filter(n => n.multiaddrs?.length > 0);
+            const nodes = parseNodeRecords<NodeRecord>(values)
+                .filter(n => isNodeOnline(n) && n.multiaddrs?.length > 0);
 
             peers = nodes.map(n => ({ node_id: n.node_id, multiaddrs: n.multiaddrs }));
             addrs = nodes.flatMap(n => n.multiaddrs);
