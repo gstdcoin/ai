@@ -17,9 +17,9 @@ The Redis SDK may return decoded JSON objects; multi-get and queue pop preserve 
 
 ## Validation for this release
 
-- Platform: 148 Vitest tests and 11 TonConnect tests pass; TypeScript, ESLint (warnings only) and Next.js production build pass.
-- Node: version 3.5.3; 207 tests pass, including subprocess failure/recovery; TypeScript build passes on Linux ARM64.
-- A2A: 24 Python tests and 2 Node tests pass.
+- Platform: 149 Vitest tests and 11 TonConnect tests pass; TypeScript, ESLint (warnings only) and Next.js production build pass.
+- Node: version 3.5.4; 207 tests pass, including subprocess failure/recovery; TypeScript build passes on Linux ARM64.
+- A2A: 24 Python tests and 5 Node tests pass.
 - Contracts: 21 sandbox tests pass. These are not a production settlement transaction or independent audit.
 
 The release must also pass the repository's Cloudflare preview/deploy workflow and live node/task checks. Local tests alone do not prove production health.
@@ -42,3 +42,17 @@ A green health response does not substitute for a completed task and successful 
 Keep the node package version and the current public URL in the registry, and check error logs after a restart.
 
 Preview and production must use separate Worker names. Preview cron is disabled, and production secrets/routes are changed only after preview health/page validation passes. A preview failure must never replace the running production Worker.
+
+## Live single-node acceptance, 2026-10-25
+
+Cloudflare workflow 40221527621 passed frontend validation, security audit,
+isolated preview health/pages and production health. OpenNext Cloudflare
+1.20.13 is required with this Next.js release; the older adapter failed at runtime.
+
+Public unpaid inference task `bba8a5c5b8de5971` was assigned to the existing
+node `d8edbeee-909a-49e5-908d-922b9bf98c43`. Its local `llama3.2:3b`
+returned `GSTD_E2E_OK`; the public result API returned ready=true with that
+node identity. The accepted-task counter increased, the queue drained and
+the reward remained zero. An unsigned completion attempt was rejected with HTTP 401.
+This demonstrates the single-node execution path; it does not demonstrate settlement,
+multi-host consensus, the bridge or distributed training.
