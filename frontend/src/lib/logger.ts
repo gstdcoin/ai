@@ -8,21 +8,21 @@ class Logger {
     }
 
     debug(message: string, ...args: unknown[]): void {
-        if (!IS_PRODUCTION) console.debug(this.fmt('debug', message), ...args);
+        if (!IS_PRODUCTION) console.debug('%s', this.fmt('debug', message), ...args);
     }
 
     info(message: string, ...args: unknown[]): void {
-        if (!IS_PRODUCTION) console.info(this.fmt('info', message), ...args);
+        if (!IS_PRODUCTION) console.info('%s', this.fmt('info', message), ...args);
     }
 
     warn(message: string, ...args: unknown[]): void {
-        // warn goes to Vercel Logs in all envs — useful for quota/rate alerts
-        console.warn(this.fmt('warn', message), ...args);
+        // Warnings are emitted in all environments for quota and rate alerts.
+        console.warn('%s', this.fmt('warn', message), ...args);
     }
 
     error(message: string, error?: Error | unknown, ...args: unknown[]): void {
-        // errors always surface in Vercel Logs / Sentry
-        console.error(this.fmt('error', message), error, ...args);
+        // Errors are always emitted for runtime logs and Sentry.
+        console.error('%s', this.fmt('error', message), error, ...args);
     }
 }
 

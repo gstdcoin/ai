@@ -28,6 +28,8 @@ Thumbs.db
 docker-compose.override.yml
 node_modules
 .next/
+.open-next/
+wrangler-env.d.ts
 
 # Leaked backend binaries (cross-contamination prevention)
 gstd-backend

@@ -59,7 +59,7 @@ export default function PoolStatusWidget() {
   };
 
   return (
-    <div className="glass-card p-6 border-blue-500/30 bg-gradient-to-br from-blue-500/10 to-cyan-500/5 hover:border-blue-500/50 transition-all duration-300">
+    <div className="glass-card p-6 border-blue-500/30 bg-linear-to-br from-blue-500/10 to-cyan-500/5 hover:border-blue-500/50 transition-all duration-300">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="text-lg font-bold text-white flex items-center gap-2 font-display">
@@ -85,10 +85,10 @@ export default function PoolStatusWidget() {
 
       {loading && !poolStatus ? (
         <div className="space-y-3 animate-pulse">
-          <div className="h-4 bg-blue-500/20 rounded w-3/4"></div>
-          <div className="h-4 bg-blue-500/20 rounded w-1/2"></div>
-          <div className="h-4 bg-blue-500/20 rounded w-2/3"></div>
-          <div className="h-3 bg-blue-500/20 rounded w-full mt-2"></div>
+          <div className="h-4 bg-blue-500/20 rounded-sm w-3/4"></div>
+          <div className="h-4 bg-blue-500/20 rounded-sm w-1/2"></div>
+          <div className="h-4 bg-blue-500/20 rounded-sm w-2/3"></div>
+          <div className="h-3 bg-blue-500/20 rounded-sm w-full mt-2"></div>
         </div>
       ) : poolStatus ? (
         <div className="space-y-3">
@@ -103,7 +103,7 @@ export default function PoolStatusWidget() {
           </div>
           <div className="flex items-center justify-between">
             <span className="text-sm text-gray-400">{t('gstd_balance', 'GSTD Balance') || 'GSTD Balance'}:</span>
-            <span className="text-sm font-bold bg-gradient-to-r from-yellow-400 to-amber-500 bg-clip-text text-transparent">
+            <span className="text-sm font-bold bg-linear-to-r from-yellow-400 to-amber-500 bg-clip-text text-transparent">
               {(poolStatus.gstd_balance ?? 0).toFixed(2)} GSTD
             </span>
           </div>

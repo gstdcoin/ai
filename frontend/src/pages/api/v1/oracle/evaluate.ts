@@ -18,8 +18,10 @@
 export const config = { maxDuration: 115 };
 
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { rateLimit, getClientIp } from '../../../../lib/ratelimit';
-import { kvGet, kvSet, kvKeys, kvMGet, kvIncr, kvIncrByFloat } from '../../../../lib/kv';
+import { getClientIp } from '../../../../lib/ratelimit';
+import { kvGet, kvSet, kvKeys, kvMGet, kvIncr, kvIncrByFloat, kvRateLimit } from '../../../../lib/kv';
+import { safeNodeUrl } from '../../../../lib/safeNodeUrl';
+import { randomId } from '../../../../lib/randomId';
 import { validateEnterpriseKey } from '../enterprise/keys';
 import { accrueReward, BASE_TASK_FEE } from '../../../../lib/rewards';
 
@@ -33,7 +35,7 @@ interface NodeRecord {
 }
 
 async function getNodeUrl(): Promise<string> {
-    const envUrl = (process.env.GSTD_NODE_URL || '').replace(/\/$/, '');
+    const envUrl = safeNodeUrl(process.env.GSTD_NODE_URL, { trusted: true });
     if (envUrl) return envUrl;
 
     try {
@@ -45,8 +47,8 @@ async function getNodeUrl(): Promise<string> {
             for (const raw of values) {
                 if (!raw) continue;
                 const node: NodeRecord = JSON.parse(raw as string);
-                const url = (node.node_url || node.multiaddrs?.[0] || '').replace(/\/$/, '');
-                if (!url.startsWith('http')) continue;
+                const url = safeNodeUrl(node.node_url || node.multiaddrs?.[0] || '');
+                if (!url) continue;
                 const age = now - new Date(node.last_seen || 0).getTime();
                 if (age > NODE_MAX_AGE_MS) continue;
                 alive.push({ url, tasks: node.tasks_completed ?? 0 });
@@ -65,8 +67,8 @@ async function getNodeUrl(): Promise<string> {
             { signal: AbortSignal.timeout(4000) }
         );
         if (r.ok) {
-            const url = (await r.text()).trim();
-            if (url.startsWith('http')) return url.replace(/\/$/, '');
+            const url = safeNodeUrl(await r.text());
+            if (url) return url;
         }
     } catch { /* ignored */ }
     return '';
@@ -143,7 +145,7 @@ async function recordOracleTask(nodeUrl: string, taskId: string): Promise<void> 
         node.last_seen = new Date().toISOString();
         await kvSet(nodeKeys[i], JSON.stringify(node), NODE_TTL);
         if (node.wallet_address) {
-            accrueReward(node.node_id, node.wallet_address, BASE_TASK_FEE, taskId).catch(() => {});
+            await accrueReward(node.node_id, node.wallet_address, BASE_TASK_FEE, taskId);
         }
         break;
     }
@@ -161,20 +163,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (bearerMatch) {
         const key = await validateEnterpriseKey(bearerMatch[1]);
         if (!key) return res.status(401).json({ error: 'Invalid or expired enterprise API key' });
-        if (!rateLimit(`oracle_ent:${key.id}`, key.rpm_limit, 60_000))
+        if (!(await kvRateLimit(`oracle_ent:${key.id}`, key.rpm_limit, 60_000)))
             return res.status(429).json({ error: `Rate limit: ${key.rpm_limit} rpm` });
     } else {
         // Free tier: 10 requests per day per IP
         const dayKey = `oracle_free:${ip}:${new Date().toISOString().slice(0, 10)}`;
-        const used = parseInt((await kvGet(dayKey)) || '0', 10);
-        if (used >= 10) {
+        if (!(await kvRateLimit(dayKey, 10, 24 * 60 * 60 * 1000))) {
             return res.status(429).json({
                 error: 'Free tier: 10 oracle requests/day per IP. Get an API key for unlimited access.',
                 upgrade: 'POST /api/v1/enterprise/keys',
-                used, limit: 10,
+                limit: 10,
             });
         }
-        await kvIncrByFloat(dayKey, 1);
     }
 
     const body: Record<string, unknown> = req.body || {};
@@ -214,9 +214,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const source = `gstd:${gstd.tier || 'node'}`;
         const model  = data?.model || 'llama3.2:3b';
 
-        // Record task completion before returning (Vercel serverless kills context after send)
-        const taskId = `oracle:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`;
-        await recordOracleTask(nodeUrl, taskId).catch(() => {});
+        // Persist task completion before returning; the execution context may end with the response.
+        const taskId = `oracle:${Date.now()}:${randomId()}`;
+        try {
+            await recordOracleTask(nodeUrl, taskId);
+        } catch (error) {
+            console.error('[oracle/evaluate] Failed to persist task accounting', error);
+            return res.status(503).json({ error: 'Inference completed but task accounting could not be persisted' });
+        }
 
         return res.status(200).json({
             enter, confidence, reason,

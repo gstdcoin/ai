@@ -19,15 +19,15 @@ export default function NotFound() {
 
         <div className="flex flex-col gap-2 mb-8">
           {[
-            { href: '/chat', label: 'AI Chat', desc: 'Talk to GSTD network models' },
-            { href: '/nodes', label: 'Run a Node', desc: 'Earn GSTD by providing compute' },
+            { href: '/chat', label: 'AI Chat', desc: 'Send a request to the network' },
+            { href: '/nodes', label: 'Run a Node', desc: 'Provide compute and serve requests' },
             { href: '/stats', label: 'Network Stats', desc: 'Live network metrics' },
-            { href: '/training', label: 'Fine-Tuning', desc: 'Submit a training job' },
+            { href: '/docs', label: 'Docs', desc: 'How the network works' },
           ].map(({ href, label, desc }) => (
             <Link
               key={href}
               href={href}
-              className="flex items-center justify-between p-4 rounded-xl bg-white/[0.03] border border-white/10 hover:border-white/20 transition-all group text-left"
+              className="flex items-center justify-between p-4 rounded-xl bg-white/3 border border-white/10 hover:border-white/20 transition-all group text-left"
             >
               <div>
                 <div className="text-sm font-semibold text-white group-hover:text-cyan-400 transition-colors">{label}</div>

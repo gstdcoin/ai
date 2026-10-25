@@ -16,10 +16,14 @@
  * General queue: tasks:queue — scanned up to SCAN_DEPTH tasks
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvPop, kvPush, kvSet } from '../../../../lib/kv';
+import { kvGet, kvPop, kvPush } from '../../../../lib/kv';
+import { assignTaskToNode } from '../../../../lib/task-assignment';
+import { maybeCreateVerifyProbe } from '../../../../lib/verifyProbe';
+import { requireNodeSignature } from '../../../../lib/nodeAuth';
+import { isTaskExecutionEnabled, supportsTaskKind } from '../../../../lib/taskKinds';
 
 const SCAN_DEPTH = 20; // max tasks to inspect before giving up
-const ASSIGNMENT_TTL = 3600; // 1h window to complete a task before its assignment record expires
+const ASSIGNMENT_TTL = 3600;
 
 function nodeCanHandle(task: any, caps: string[], resources: any): boolean {
     // Check required capabilities
@@ -47,19 +51,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const body                = req.body as any;
         const nodeId: string      = body.node_id      || '';
         const caps:   string[]    = body.capabilities || [];
+        const supportedTaskKinds: string[] = Array.isArray(body.supported_task_kinds)
+            ? body.supported_task_kinds.filter((kind: unknown): kind is string => typeof kind === 'string')
+            : [];
         const resources           = body.resources    || {};
         const priorityOnly: boolean = !!body.priority_only;
 
         // ── Node identity check ───────────────────────────────────────────
         if (!nodeId) return res.status(400).json({ error: 'node_id required' });
-        const { kvGet } = await import('../../../../lib/kv');
         const nodeRaw = await kvGet(`node:${nodeId}`);
         if (!nodeRaw) return res.status(403).json({ error: 'Unknown node — register first' });
         const storedWallet: string = (JSON.parse(nodeRaw) as any).wallet_address || '';
-        const headerWallet: string = (req.headers['x-wallet-address'] as string || '').trim();
-        if (storedWallet && headerWallet && storedWallet !== headerWallet) {
+        if (!storedWallet.trim()) return res.status(403).json({ error: 'Wallet required for paid task assignments' });
+        const headerWallet: string = ((req.headers['x-wallet-address'] as string) || '').trim().toLowerCase();
+        if (storedWallet && storedWallet.trim().toLowerCase() !== headerWallet) {
             return res.status(403).json({ error: 'Wallet mismatch' });
         }
+        const auth = await requireNodeSignature(nodeId, req.headers as any);
+        if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
 
         // ── Priority queue: node-specific inference tasks (fast O(1)) ──────
         if (nodeId) {
@@ -67,7 +76,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             if (raw) {
                 let task: any;
                 try { task = JSON.parse(raw); } catch { /* malformed */ }
-                if (task) return res.status(200).json({ task, source: 'priority' });
+                if (task) {
+                    if (!isTaskExecutionEnabled(task)) task = null;
+                }
+                if (task) {
+                    try {
+                        if (supportsTaskKind(task, supportedTaskKinds)
+                            && await assignTaskToNode(task, nodeId, ASSIGNMENT_TTL)) {
+                            return res.status(200).json({ task, source: 'priority' });
+                        }
+                        if (isTaskExecutionEnabled(task) && !supportsTaskKind(task, supportedTaskKinds)) {
+                            await kvPush(`tasks:inference:${nodeId}`, raw);
+                        }
+                    } catch (error) {
+                        await kvPush(`tasks:inference:${nodeId}`, raw);
+                        throw error;
+                    }
+                }
             }
         }
 
@@ -87,7 +112,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             let task: any;
             try { task = JSON.parse(raw); } catch { continue; }
 
-            if (!picked && nodeCanHandle(task, caps, resources)) {
+            if (!isTaskExecutionEnabled(task)) continue;
+            if (!picked
+                && nodeCanHandle(task, caps, resources)
+                && supportsTaskKind(task, supportedTaskKinds)) {
                 picked = task;
             } else {
                 skipped.push(task);
@@ -102,8 +130,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Record which node this task was handed to, so tasks/complete.ts can verify
         // the reward it's asked to pay out corresponds to a task actually assigned --
         // without this, any node_id could claim a reward for a fabricated task_id.
-        if (picked?.task_id) {
-            await kvSet(`task_assigned:${picked.task_id}`, JSON.stringify({ node_id: nodeId, assigned_at: Date.now() }), ASSIGNMENT_TTL).catch(() => {});
+        if (picked) {
+            try {
+                if (!(await assignTaskToNode(picked, nodeId, ASSIGNMENT_TTL))) picked = null;
+            } catch (error) {
+                await kvPush('tasks:queue', JSON.stringify(picked));
+                throw error;
+            }
+        }
+
+        if (!picked) {
+            const probe = await maybeCreateVerifyProbe(nodeId, caps);
+            if (probe && (await assignTaskToNode(probe, nodeId, ASSIGNMENT_TTL))) {
+                const visible = { ...probe };
+                delete visible.expected_hash;
+                return res.status(200).json({ task: visible, source: 'probe' });
+            }
         }
 
         return res.status(200).json({ task: picked || null });

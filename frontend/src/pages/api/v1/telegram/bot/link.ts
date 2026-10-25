@@ -8,13 +8,16 @@
  * Body: { telegram_id, wallet_address, username?, first_name?, referrer_id? }
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvGet, kvSet, kvIncr, kvIncrByFloat } from '../../../../../lib/kv';
+import { kvGet, kvSet, kvSetNX, kvConsumeQuota, kvIncr, kvIncrByFloat } from '../../../../../lib/kv';
 import { isValidBotToken } from '../../../../../lib/botAuth';
 
 const TON_ADDRESS_RE = /^(EQ[A-Za-z0-9_-]{46}|UQ[A-Za-z0-9_-]{46}|0:[a-fA-F0-9]{64})$/;
 const WELCOME_BONUS    = 0.5;
 const REFERRER_BONUS   = 1.0;
 const INVITEE_BONUS    = 0.2;  // extra for the new user (on top of welcome bonus)
+const DAILY_BONUS_BUDGET = 100;       // max subsidised sign-ups per day
+const MAX_REFERRALS_PER_USER = 20;    // lifetime paid referrals per inviter
+const TEN_YEARS = 10 * 365 * 86400;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -54,19 +57,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let referral_bonus  = 0;
 
     if (isNew) {
-        const bonuses: Promise<any>[] = [
-            kvIncrByFloat(`balance:${walletKey}`, WELCOME_BONUS).catch(() => {}),
-            kvIncr('stats:total_users').catch(() => {}),
-        ];
-        subsidized = true;
+        const bonuses: Promise<any>[] = [kvIncr('stats:total_users').catch(() => {})];
+
+        // Welcome/referral bonuses are unfunded ledger credits, so they are one-time per wallet
+        // (a wallet re-linked from many Telegram accounts can't farm them) and capped per day.
+        const firstForWallet = await kvSetNX(`bonus_claimed:${walletKey}`, '1', TEN_YEARS);
+        const withinBudget = firstForWallet && (await kvConsumeQuota('quota:welcome_bonus:day', DAILY_BONUS_BUDGET, 86400)).allowed;
+        subsidized = withinBudget;
+        if (withinBudget) bonuses.push(kvIncrByFloat(`balance:${walletKey}`, WELCOME_BONUS).catch(() => {}));
 
         // Referral: only credit if this is user's first wallet link and referrer != self
-        if (referrer_id && String(referrer_id) !== userId) {
+        if (withinBudget && referrer_id && String(referrer_id) !== userId) {
             const refId = String(referrer_id);
 
             // Get referrer's wallet to credit them
             const refWalletRaw = await kvGet(`tg_wallet:${refId}`).catch(() => null);
-            if (refWalletRaw) {
+            if (!refWalletRaw || String(refWalletRaw).toLowerCase() === walletKey) {
+                await Promise.all(bonuses);
+                return res.status(200).json({ success: true, wallet: wallet_address, telegram_id: userId, is_new_link: isNew, subsidized, referral_bonus });
+            }
+            const refQuota = await kvConsumeQuota(`quota:referrals:${refId}`, MAX_REFERRALS_PER_USER, TEN_YEARS);
+            if (!refQuota.allowed) {
+                await Promise.all(bonuses);
+                return res.status(200).json({ success: true, wallet: wallet_address, telegram_id: userId, is_new_link: isNew, subsidized, referral_bonus });
+            }
+            {
                 const refWalletKey = String(refWalletRaw).toLowerCase();
                 bonuses.push(
                     kvIncrByFloat(`balance:${refWalletKey}`, REFERRER_BONUS).catch(() => {})

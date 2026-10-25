@@ -196,7 +196,7 @@ async function* streamNodeClean(messages: ChatMessage[], opts = {}): AsyncGenera
 async function lookupKnowledge(query: string): Promise<string> {
     try {
         const resp = await fetch(
-            `https://platform.gstdtoken.com/api/v1/knowledge/resonance?q=${encodeURIComponent(query)}&limit=3`,
+            `https://app.gstdtoken.com/api/v1/knowledge/resonance?q=${encodeURIComponent(query)}&limit=3`,
             { signal: AbortSignal.timeout(3000) }
         );
         if (!resp.ok) return '';
@@ -241,7 +241,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // anyone could name an arbitrary victim wallet to charge for their query.
     let wallet = '';
     if (collectiveTier.cost > 0) {
-        const walletKey = sessionToken ? await kvGet(`session:${sessionToken}`).catch(() => null) : null;
+        const walletKey = sessionToken ? await kvGet(`ton-auth:session:${sessionToken}`) : null;
         if (!walletKey) {
             return res.status(402).json({
                 error: 'wallet_required',
@@ -251,9 +251,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
         wallet = walletKey as string;
 
-        const SELF_URL = process.env.VERCEL_URL
-            ? `https://${process.env.VERCEL_URL}`
-            : (process.env.NEXT_PUBLIC_APP_URL || 'https://platform.gstdtoken.com');
+        const SELF_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://app.gstdtoken.com';
         try {
             const deductResp = await fetch(`${SELF_URL}/api/v1/chat/deduct`, {
                 method: 'POST',

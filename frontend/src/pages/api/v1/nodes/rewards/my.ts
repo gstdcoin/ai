@@ -1,11 +1,13 @@
 /**
  * GET /api/v1/nodes/rewards/my?wallet=...
+ * Requires a verified TON wallet session; an optional wallet query must match it.
  * Returns tier/streak/earnings info for a wallet.
  * Stub — rewards are tracked on-chain; this returns
  * data from the node's own heartbeat record.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvKeys, kvMGet } from '../../../../../lib/kv';
+import { sessionWallet } from '../../../../../lib/walletSession';
 import type { NodeRecord } from '../register';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -13,7 +15,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const wallet = req.query.wallet as string;
+    const wallet = await sessionWallet(req.headers);
+    if (!wallet) return res.status(401).json({ error: 'Verified wallet session required' });
+
+    const requestedWallet = req.query.wallet;
+    if (requestedWallet !== undefined) {
+        if (typeof requestedWallet !== 'string' || !requestedWallet.trim()) {
+            return res.status(400).json({ error: 'wallet query param must be a single address' });
+        }
+        if (requestedWallet.trim().toLowerCase() !== wallet) {
+            return res.status(403).json({ error: 'Wallet does not match the authenticated session' });
+        }
+    }
 
     // Find node record by wallet address (root keys only; prefer named over UUID)
     let record: NodeRecord | null = null;
@@ -25,7 +38,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             const matches = values
                 .filter((v): v is string => v !== null)
                 .map(v => JSON.parse(v) as NodeRecord)
-                .filter(n => n.wallet_address === wallet);
+                .filter(n => n.wallet_address.toLowerCase() === wallet);
             // Prefer named node over UUID-generated IDs
             record = matches.find(n => !UUID_RE.test(n.node_id)) || matches[0] || null;
         }

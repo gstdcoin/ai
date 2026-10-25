@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import {
-    Home, Server, ListTodo, MessageSquare, BarChart3, HelpCircle,
-    X, Menu, Download, Users, Globe, FileText, Cpu,
+    Home, Server, ListTodo, MessageSquare, BarChart3,
+    X, Menu, Download, Users, FileText,
 } from 'lucide-react';
 import { Tab } from '../../types/tabs';
 
@@ -23,21 +23,18 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
 
     const tools: Array<{ label: string; icon: React.ReactNode; href: string }> = [
         { label: t('chat',    'Chat'),    icon: <MessageSquare size={18} />, href: '/chat'    },
-        { label: t('models',  'Models'),  icon: <Cpu           size={18} />, href: '/models'  },
         { label: t('stats',   'Stats'),   icon: <BarChart3     size={18} />, href: '/stats'   },
-        { label: t('network', 'Network'), icon: <Globe         size={18} />, href: '/network' },
     ];
 
     const info: Array<{ label: string; icon: React.ReactNode; href: string }> = [
         { label: t('downloads',  'Downloads'),  icon: <Download  size={18} />, href: '/downloads'  },
         { label: t('referrals',  'Referrals'),  icon: <Users     size={18} />, href: '/referrals'  },
         { label: t('docs',       'Docs'),        icon: <FileText  size={18} />, href: '/docs'       },
-        { label: t('help_center','Help'),        icon: <HelpCircle size={18} />, href: '/about'     },
     ];
 
     const close = () => setIsOpen(false);
 
-    const linkClass = 'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] text-gray-500 hover:text-gray-200 hover:bg-white/[0.04] transition-all';
+    const linkClass = 'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] text-gray-500 hover:text-gray-200 hover:bg-white/4 transition-all';
 
     return (
         <>
@@ -67,7 +64,7 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
             >
                 <div className="flex flex-col h-full overflow-y-auto">
                     {/* Logo */}
-                    <div className="flex items-center justify-between p-4 border-b border-white/[0.06]">
+                    <div className="flex items-center justify-between p-4 border-b border-white/6">
                         <span style={{
                             fontWeight: 800,
                             fontSize: 18,
@@ -97,7 +94,7 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
                                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] transition-all
                                     ${activeTab === tab.id
                                         ? 'bg-violet-500/10 text-white font-semibold border border-violet-500/15'
-                                        : 'text-gray-400 hover:text-white hover:bg-white/[0.04] border border-transparent'
+                                        : 'text-gray-400 hover:text-white hover:bg-white/4 border border-transparent'
                                     }`}
                             >
                                 {tab.icon}
@@ -105,7 +102,7 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
                             </button>
                         ))}
 
-                        <div className="h-px bg-white/[0.04] my-3" />
+                        <div className="h-px bg-white/4 my-3" />
 
                         {/* Tools */}
                         <div className="text-[10px] font-bold text-gray-600 uppercase tracking-wider px-3 mb-2">
@@ -118,7 +115,7 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
                             </a>
                         ))}
 
-                        <div className="h-px bg-white/[0.04] my-3" />
+                        <div className="h-px bg-white/4 my-3" />
 
                         {/* Info */}
                         <div className="text-[10px] font-bold text-gray-600 uppercase tracking-wider px-3 mb-2">
@@ -133,7 +130,7 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
                     </nav>
 
                     {/* Footer */}
-                    <div className="p-4 border-t border-white/[0.06]">
+                    <div className="p-4 border-t border-white/6">
                         <a
                             href="https://github.com/gstdcoin"
                             target="_blank"

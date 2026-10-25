@@ -133,7 +133,7 @@ export default function RegisterDeviceModal({ onClose, onDeviceRegistered }: Reg
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors glass-button p-1 rounded"
+            className="text-gray-400 hover:text-white transition-colors glass-button p-1 rounded-sm"
             aria-label={t('close', 'Close')}
           >
             <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

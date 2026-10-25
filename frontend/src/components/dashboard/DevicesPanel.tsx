@@ -116,7 +116,7 @@ export default function DevicesPanel() {
         <div className="p-6 rounded-2xl bg-emerald-500/5 border border-emerald-500/20">
           <h3 className="text-lg font-bold text-white mb-1">Become a Node Operator — Earn GSTD</h3>
           <p className="text-sm text-gray-400 mb-5">
-            Run Ollama + GSTD Node on any machine. Process AI requests from the network and earn 90% of every fee automatically.
+            Run Ollama + GSTD Node on any machine. Process AI requests from the network and receive the node share of each fee.
           </p>
           <div className="space-y-3 mb-5">
             <div className="flex gap-3">
@@ -173,7 +173,7 @@ export default function DevicesPanel() {
           <div className="p-6 rounded-2xl bg-emerald-500/5 border border-emerald-500/20">
             <h3 className="text-lg font-bold text-white mb-1">Start a Node — Earn GSTD</h3>
             <p className="text-sm text-gray-400 mb-5">
-              Run Ollama on any device and join the network. You earn 90% of every AI inference request your node processes.
+              Run Ollama on any device and join the network. You receive the node share of every AI inference request your node processes.
             </p>
             <div className="space-y-4 mb-5">
               <div className="flex gap-3">
@@ -201,7 +201,7 @@ export default function DevicesPanel() {
             </div>
             <div className="flex gap-2 flex-wrap text-[10px] text-gray-600 mb-4">
               {['🐧 Linux', '🍎 macOS', '🪟 WSL', '🐳 Docker', '🍓 Raspberry Pi'].map(p => (
-                <span key={p} className="px-2 py-0.5 rounded-full bg-white/5 border border-white/[0.06]">{p}</span>
+                <span key={p} className="px-2 py-0.5 rounded-full bg-white/5 border border-white/6">{p}</span>
               ))}
             </div>
             <button
@@ -294,14 +294,14 @@ export default function DevicesPanel() {
                     </td>
                     <td className="px-3 sm:px-6 py-4 whitespace-nowrap hidden lg:table-cell">
                       {(node as any).eco_certified && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">{t('ecoproof', 'Eco-Proof')}</span>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">{t('ecoproof', 'Eco-Proof')}</span>
                       )}
                     </td>
                     <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm">
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => setSelectedNode(node)}
-                          className="text-xs glass-button-gold text-black font-bold px-3 py-1.5 rounded"
+                          className="text-xs glass-button-gold text-black font-bold px-3 py-1.5 rounded-sm"
                           title="Run Node"
                         >
                           Run
@@ -311,7 +311,7 @@ export default function DevicesPanel() {
                             navigator.clipboard.writeText(node.id);
                             toast.success('Copied', 'Node ID copied to clipboard');
                           }}
-                          className="text-xs glass-button text-white px-2 py-1.5 rounded"
+                          className="text-xs glass-button text-white px-2 py-1.5 rounded-sm"
                           title="Copy Node ID"
                         >
                           Copy ID

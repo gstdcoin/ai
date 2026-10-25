@@ -5,7 +5,7 @@ const BOT_URL = 'https://t.me/gstdaibot';
 export default function ReferralPanel() {
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <div className="relative glass-card p-8 bg-gradient-to-br from-violet-600/10 to-transparent border-violet-500/20">
+            <div className="relative glass-card p-8 bg-linear-to-br from-violet-600/10 to-transparent border-violet-500/20">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-violet-500/5 rounded-full blur-[80px] -mr-32 -mt-32" />
                 <div className="relative z-10 flex flex-col items-start gap-6">
                     <div className="p-3 rounded-2xl bg-violet-500/10 border border-violet-500/20 text-violet-400">
@@ -52,7 +52,7 @@ export default function ReferralPanel() {
                 </div>
             </div>
 
-            <div className="glass-card p-6 bg-white/[0.02] border-white/5">
+            <div className="glass-card p-6 bg-white/2 border-white/5">
                 <p className="text-xs text-gray-500 leading-relaxed max-w-2xl">
                     In the bot, send <code>/start</code>, link your TON wallet, then use <code>/wallet</code> to see
                     it again anytime. Your personal invite link looks like

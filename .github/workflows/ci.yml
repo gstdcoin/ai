@@ -1,5 +1,5 @@
 # ============================================================================
-# GSTD Platform CI — Frontend-only (Vercel serverless, no Go backend)
+# GSTD Platform CI вЂ” frontend and API checks
 # ============================================================================
 name: CI
 
@@ -8,10 +8,13 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main]
-  workflow_dispatch:  # allow manual deploy from GitHub UI
+  workflow_dispatch:  # allow manual checks from GitHub UI
+
+permissions:
+  contents: read
 
 jobs:
-  # ── TypeScript + ESLint + Build ─────────────────────────────────────────
+  # в”Ђв”Ђ TypeScript + ESLint + Build в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
   frontend:
     runs-on: ubuntu-latest
     name: Frontend
@@ -36,6 +39,8 @@ jobs:
 
       - name: ESLint
         run: npm run lint
+      - name: Unit tests
+        run: npm test
 
       - name: Build
         run: npm run build
@@ -44,26 +49,407 @@ jobs:
           KV_REST_API_TOKEN: ${{ secrets.KV_REST_API_TOKEN || 'placeholder' }}
           NEXT_PUBLIC_APP_URL: https://app.gstdtoken.com
 
-  # ── Deploy to Vercel (production) ─────────────────────────────────────
+  # в”Ђв”Ђ Cloudflare Workers deployment в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
   deploy:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    name: Deploy
+    name: Deploy to Cloudflare
     needs: frontend
-    if: github.repository == 'gstdcoin/ai' && ((github.ref == 'refs/heads/main' && github.event_name == 'push') || github.event_name == 'workflow_dispatch')
-    env:
-      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      VERCEL_ORG_ID: team_nJrl4HPx1kF1r635js1KE2qd
-      VERCEL_PROJECT_ID: prj_j2gQqRULHdMowbDHZt7wSqs2z3Bf
+    defaults:
+      run:
+        working-directory: frontend
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Vercel CLI
-        run: npm install --global vercel@latest
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
 
-      - name: Deploy to production
-        run: vercel deploy --prod --yes --token "$VERCEL_TOKEN"
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
 
-  # ── Dependency Security Audit ──────────────────────────────────────────
+      - name: Build Cloudflare Worker
+        run: npm run cf:build
+        env:
+          KV_REST_API_URL: https://placeholder.upstash.io
+          KV_REST_API_TOKEN: placeholder
+          NEXT_PUBLIC_APP_URL: https://app.gstdtoken.com
+          NEXT_PUBLIC_API_URL: https://app.gstdtoken.com
+
+      - name: Validate deployment secrets
+        run: |
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "::error::Missing CLOUDFLARE_ACCOUNT_ID"; exit 1; }
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo "::error::Missing CLOUDFLARE_API_TOKEN"; exit 1; }
+          test -n "$KV_REST_API_URL" || { echo "::error::Missing KV_REST_API_URL"; exit 1; }
+          test -n "$KV_REST_API_TOKEN" || { echo "::error::Missing KV_REST_API_TOKEN"; exit 1; }
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          KV_REST_API_URL: ${{ secrets.KV_REST_API_URL }}
+          KV_REST_API_TOKEN: ${{ secrets.KV_REST_API_TOKEN }}
+
+      - name: Verify Upstash connectivity
+        run: |
+          node --input-type=module -e '
+            import { Redis } from "@upstash/redis/cloudflare";
+            try {
+              const redis = new Redis({
+                url: process.env.KV_REST_API_URL,
+                token: process.env.KV_REST_API_TOKEN
+              });
+              const response = await redis.ping();
+              if (response !== "PONG") throw new Error("Unexpected ping response");
+              await redis.get("health:ping");
+              console.log("Upstash REST PING and GET succeeded");
+            } catch (error) {
+              const status = Number.isInteger(error?.status) ? ` (HTTP ${error.status})` : "";
+              const type = error instanceof Error ? ` (${error.name})` : "";
+              console.error(`Upstash REST health probe failed${type}${status}; verify the configured database credentials and availability.`);
+              process.exit(1);
+            }
+          '
+        env:
+          KV_REST_API_URL: ${{ secrets.KV_REST_API_URL }}
+          KV_REST_API_TOKEN: ${{ secrets.KV_REST_API_TOKEN }}
+
+      - name: Bootstrap preview Worker
+        id: bootstrap
+        run: |
+          set -o pipefail
+          OPEN_NEXT_DEPLOY=true npx wrangler deploy --config wrangler.jsonc 2>&1 | tee "$RUNNER_TEMP/wrangler-bootstrap.log"
+          worker_url="$(grep -Eo 'https://[[:alnum:].-]+\.workers\.dev' "$RUNNER_TEMP/wrangler-bootstrap.log" | tail -n 1 || true)"
+          if [ -z "$worker_url" ]; then
+            echo "::error::Wrangler did not report a workers.dev URL"
+            exit 1
+          fi
+          echo "url=$worker_url" >> "$GITHUB_OUTPUT"
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+      - name: Generate Open Intelligence cron secret
+        run: |
+          cron_secret="$(openssl rand -hex 32)"
+          echo "::add-mask::$cron_secret"
+          printf 'OPEN_INTELLIGENCE_CRON_SECRET=%s\n' "$cron_secret" >> "$GITHUB_ENV"
+
+      - name: Configure Upstash runtime secrets
+        run: |
+          printf '%s' "$KV_REST_API_URL" | npx wrangler secret put KV_REST_API_URL --config=wrangler.jsonc
+          printf '%s' "$KV_REST_API_TOKEN" | npx wrangler secret put KV_REST_API_TOKEN --config=wrangler.jsonc
+          printf '%s' "$OPEN_INTELLIGENCE_CRON_SECRET" | npx wrangler secret put OPEN_INTELLIGENCE_CRON_SECRET --config=wrangler.jsonc
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          KV_REST_API_URL: ${{ secrets.KV_REST_API_URL }}
+          KV_REST_API_TOKEN: ${{ secrets.KV_REST_API_TOKEN }}
+
+      - name: Deploy preview and populate prerender cache
+        run: npm run cf:deploy -- --config=wrangler.jsonc
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+      - name: Verify preview health
+        run: |
+          for attempt in $(seq 1 12); do
+            status="$(curl --silent --output "$RUNNER_TEMP/health.json" --write-out '%{http_code}' "$WORKER_URL/api/v1/health" || true)"
+            if [ "$status" = "200" ]; then
+              cat "$RUNNER_TEMP/health.json"
+              exit 0
+            fi
+            echo "Preview health returned HTTP ${status:-000}; retry $attempt/12"
+            sleep 5
+          done
+          echo "::error::Preview health did not return HTTP 200"
+          cat "$RUNNER_TEMP/health.json" || true
+          exit 1
+        env:
+          WORKER_URL: ${{ steps.bootstrap.outputs.url }}
+
+      - name: Verify preview pages
+        run: |
+          set -euo pipefail
+          tail_log="$RUNNER_TEMP/worker-tail.jsonl"
+          npx wrangler tail gstd-ai-platform --config wrangler.jsonc --format json > "$tail_log" 2>&1 &
+          tail_pid=$!
+          sleep 5
+          if ! kill -0 "$tail_pid" 2>/dev/null; then
+            echo "::warning::Worker Tail did not stay connected; check the Workers Tail Read token permission"
+          fi
+
+          failed=0
+          index=0
+          for path in / /en /ru /en/stats /en/network /open-intelligence; do
+            index=$((index + 1))
+            body="$RUNNER_TEMP/page-${index}.html"
+            status="$(curl --silent --show-error --location --max-time 30 --header 'x-gstd-page-smoke: ci' --output "$body" --write-out '%{http_code}' "$WORKER_URL$path" || true)"
+            if [ "$status" != "200" ] || ! grep -iq '<!doctype html' "$body"; then
+              echo "::error::Preview page $path returned HTTP ${status:-000} or non-HTML content"
+              failed=1
+            else
+              echo "Preview page $path returned HTTP 200"
+            fi
+          done
+
+          dataset_body="$RUNNER_TEMP/open-intelligence-dataset.json"
+          dataset_status="$(curl --silent --show-error --location --max-time 30 --output "$dataset_body" --write-out '%{http_code}' "$WORKER_URL/api/v1/open-intelligence/ecosystem?limit=30" || true)"
+          if [ "$dataset_status" != "200" ] || ! node - "$dataset_body" <<'NODE'
+          const fs = require('fs');
+          const dataset = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          const expected = ['ai', 'gstdbot', 'A2A', 'web'];
+          if (dataset.dataset !== 'gstd-ecosystem-repository-activity'
+            || !Array.isArray(dataset.repositories)
+            || dataset.repositories.length !== expected.length
+            || expected.some((name, index) => dataset.repositories[index]?.repository !== name)
+            || !['awaiting_first_collection', 'baseline', 'observed'].includes(dataset.research?.status)) {
+            console.error('Open Intelligence API returned an unexpected dataset shape.');
+            process.exit(1);
+          }
+          NODE
+          then
+            echo "::error::Open Intelligence dataset API returned HTTP ${dataset_status:-000} or invalid data"
+            failed=1
+          else
+            echo "Open Intelligence dataset API returned the expected allowlisted schema"
+          fi
+
+          cron_status="$(curl --silent --show-error --location --max-time 30 --request POST --output "$RUNNER_TEMP/open-intelligence-cron.json" --write-out '%{http_code}' "$WORKER_URL/api/cron/open-intelligence" || true)"
+          if [ "$cron_status" != "401" ]; then
+            echo "::error::Unauthenticated Open Intelligence cron request returned HTTP ${cron_status:-000}, expected 401"
+            failed=1
+          else
+            echo "Open Intelligence cron rejects unauthenticated requests"
+          fi
+
+          sleep 2
+          kill "$tail_pid" 2>/dev/null || true
+          wait "$tail_pid" 2>/dev/null || true
+
+          node - "$tail_log" <<'NODE'
+          const fs = require('fs');
+          const logPath = process.argv[2];
+          const logText = fs.readFileSync(logPath, 'utf8').replace(/\u001b\[[0-9;]*m/g, '');
+          const secretValues = [
+            process.env.CLOUDFLARE_API_TOKEN,
+            process.env.OPEN_INTELLIGENCE_CRON_SECRET,
+          ].filter(Boolean);
+          const pagePaths = new Set(['/', '/en', '/ru', '/en/stats', '/en/network', '/open-intelligence']);
+          const details = [];
+          const requestPaths = new Map();
+          const events = [];
+          let requestCount = 0;
+          let invocationCount = 0;
+          let invalidRecords = 0;
+
+          let recordStart = -1;
+          let depth = 0;
+          let inString = false;
+          let escaped = false;
+          for (let i = 0; i < logText.length; i++) {
+            const character = logText[i];
+            if (recordStart < 0) {
+              if (character === '{') {
+                recordStart = i;
+                depth = 1;
+              }
+              continue;
+            }
+            if (inString) {
+              if (escaped) escaped = false;
+              else if (character === '\\') escaped = true;
+              else if (character === '"') inString = false;
+              continue;
+            }
+            if (character === '"') inString = true;
+            else if (character === '{') depth += 1;
+            else if (character === '}' && --depth === 0) {
+              try {
+                events.push(JSON.parse(logText.slice(recordStart, i + 1)));
+              } catch (error) {
+                if (!(error instanceof SyntaxError)) throw error;
+                invalidRecords += 1;
+              }
+              recordStart = -1;
+            }
+          }
+
+          for (const event of events) {
+            const requestUrl = event.event?.request?.url ?? event.request?.url;
+            let requestPath;
+            if (typeof requestUrl === 'string') {
+              requestCount += 1;
+              try {
+                requestPath = new URL(requestUrl).pathname;
+                requestPaths.set(requestPath, (requestPaths.get(requestPath) ?? 0) + 1);
+              } catch {
+                invalidRecords += 1;
+              }
+            }
+            if (requestPath && pagePaths.has(requestPath)) invocationCount += 1;
+            else if (requestPath) continue;
+
+            const exceptions = [
+              ...(Array.isArray(event.exceptions) ? event.exceptions : []),
+              ...(Array.isArray(event.errorInfo) ? event.errorInfo : []),
+              ...(Array.isArray(event.event?.exceptions) ? event.event.exceptions : []),
+              ...(Array.isArray(event.event?.errorInfo) ? event.event.errorInfo : []),
+            ];
+            for (const exception of exceptions) {
+              let message = String(exception.message ?? exception.error ?? '');
+              for (const secret of secretValues) message = message.replaceAll(secret, '[redacted]');
+              message = message
+                .replace(/https?:\/\/[^\s"'<>]+/gi, '[url]')
+                .replace(/[\r\n\t]/g, ' ')
+                .slice(0, 400);
+              details.push(`${String(exception.name ?? 'Error').slice(0, 80)}: ${message}`);
+            }
+            for (const log of event.logs ?? event.event?.logs ?? []) {
+              if (log.level !== 'error') continue;
+              const values = Array.isArray(log.message) ? log.message : [log.message];
+              let message = values
+                .map((value) => typeof value === 'string' ? value : JSON.stringify(value))
+                .join(' ');
+              for (const secret of secretValues) message = message.replaceAll(secret, '[redacted]');
+              message = message
+                .replace(/https?:\/\/[^\s"'<>]+/gi, '[url]')
+                .replace(/[\r\n\t]/g, ' ')
+                .slice(0, 400);
+              details.push(`Worker log: ${message}`);
+            }
+          }
+
+          const tailMessages = logText
+            .split(/\r?\n/)
+            .filter((line) => /error|failed|permission|denied|tail/i.test(line))
+            .map((line) => {
+              let message = line
+                .replace(/[\r\n\t]/g, ' ')
+                .replace(/https?:\/\/[^\s"'<>]+/gi, '[url]');
+              for (const secret of secretValues) message = message.replaceAll(secret, '[redacted]');
+              return message.replace(/[^\x20-\x7E]/g, ' ').slice(0, 400);
+            })
+            .filter(Boolean)
+            .slice(0, 3);
+          const pathSummary = [...requestPaths.entries()]
+            .map(([path, count]) => `${path} (${count})`)
+            .slice(0, 10)
+            .join(', ');
+          const summaryLines = details.length
+            ? ['### Preview Worker errors (redacted)', '', ...details.map((value) => `- ${value}`)]
+            : [invocationCount > 0
+              ? `Worker Tail captured ${invocationCount} matching request event(s), but no exceptions or error logs.`
+              : `Worker Tail captured ${events.length} JSON event(s), ${requestCount} request(s), and no smoke-test paths${pathSummary ? `; observed: ${pathSummary}` : ''}.`];
+          if (invalidRecords > 0) summaryLines.push(`Skipped ${invalidRecords} malformed JSON record(s).`);
+          if (invocationCount === 0 && tailMessages.length > 0) {
+            summaryLines.push(`Tail output: ${tailMessages.join(' | ')}`);
+          }
+          const summary = `${summaryLines.join('\n')}\n`;
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary);
+          for (const detail of [...new Set(details)].slice(0, 10)) {
+            const annotation = detail.replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
+            process.stdout.write(`::error title=Preview Worker::${annotation}\n`);
+          }
+          if (details.length === 0) {
+            const message = invocationCount > 0
+              ? `Tail captured ${invocationCount} matching request event(s) without errors.`
+              : `Tail captured ${events.length} JSON event(s), ${requestCount} request(s)${pathSummary ? `; paths: ${pathSummary}` : ''}. ${tailMessages.join(' | ')}`;
+            const annotation = message.replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
+            process.stdout.write(`::warning title=Preview Worker::${annotation}\n`);
+          }
+          console.log(`Captured ${events.length} JSON event(s), ${requestCount} request(s), ${invocationCount} smoke-test request(s), and ${details.length} filtered Worker error detail(s).`);
+          NODE
+
+          if [ "$failed" -ne 0 ]; then
+            exit 1
+          fi
+        env:
+          WORKER_URL: ${{ steps.bootstrap.outputs.url }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+      - name: Deploy production route
+        run: npm run cf:deploy -- --config=wrangler.production.jsonc
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+      - name: Verify production health
+        run: |
+          for attempt in $(seq 1 12); do
+            status="$(curl --silent --output "$RUNNER_TEMP/production-health.json" --write-out '%{http_code}' https://app.gstdtoken.com/api/v1/health || true)"
+            if [ "$status" = "200" ]; then
+              cat "$RUNNER_TEMP/production-health.json"
+              exit 0
+            fi
+            echo "Production health returned HTTP ${status:-000}; retry $attempt/12"
+            sleep 5
+          done
+          echo "::error::Production health did not return HTTP 200"
+          cat "$RUNNER_TEMP/production-health.json" || true
+          exit 1
+
+  # в”Ђв”Ђ Dependency Security Audit в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+      - name: Publish and verify Open Intelligence baseline
+        run: |
+          set -euo pipefail
+
+          page_status="$(curl --silent --show-error --location --max-time 30 --output "$RUNNER_TEMP/open-intelligence-production.html" --write-out '%{http_code}' https://app.gstdtoken.com/open-intelligence || true)"
+          if [ "$page_status" != "200" ] || ! grep -iq 'Ecosystem activity' "$RUNNER_TEMP/open-intelligence-production.html"; then
+            echo "::error::Production Open Intelligence page returned HTTP ${page_status:-000} or did not render its title"
+            exit 1
+          fi
+
+          harvest_status="$(curl --silent --show-error --location --max-time 60 --request POST --header "Authorization: Bearer $OPEN_INTELLIGENCE_CRON_SECRET" --output "$RUNNER_TEMP/open-intelligence-harvest.json" --write-out '%{http_code}' https://app.gstdtoken.com/api/cron/open-intelligence || true)"
+          harvest_valid=0
+          if node - "$RUNNER_TEMP/open-intelligence-harvest.json" <<'NODE'
+          const fs = require('fs');
+          const harvest = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          const failures = Array.isArray(harvest.sources)
+            ? harvest.sources.filter(source => source.status === 'error' || source.status === 'skipped_after_attempt')
+            : [];
+          if (failures.length) {
+            console.error(`Source failures: ${failures.map(source => `${source.repository}: ${source.error || source.status}`).join('; ')}`);
+          }
+          if (harvest.complete !== true
+            || !Array.isArray(harvest.sources)
+            || harvest.sources.length !== 4
+            || failures.length > 0) {
+            console.error('Open Intelligence baseline collection was incomplete.');
+            process.exit(1);
+          }
+          NODE
+          then harvest_valid=1
+          fi
+          if [ "$harvest_status" != "200" ] || [ "$harvest_valid" -ne 1 ]; then
+            echo "::error::Production Open Intelligence collection returned HTTP ${harvest_status:-000} or an incomplete result"
+            exit 1
+          fi
+
+          dataset_status="$(curl --silent --show-error --location --max-time 30 --header 'Cache-Control: no-cache' --output "$RUNNER_TEMP/open-intelligence-production.json" --write-out '%{http_code}' "https://app.gstdtoken.com/api/v1/open-intelligence/ecosystem?limit=30&verified_at=$(date +%s)" || true)"
+          if [ "$dataset_status" != "200" ] || ! node - "$RUNNER_TEMP/open-intelligence-production.json" <<'NODE'
+          const fs = require('fs');
+          const dataset = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          const expected = ['ai', 'gstdbot', 'A2A', 'web'];
+          if (!['baseline', 'observed'].includes(dataset.research?.status)
+            || dataset.research?.repositories_with_data !== 4
+            || !Array.isArray(dataset.repositories)
+            || expected.some((name, index) => dataset.repositories[index]?.repository !== name
+              || !dataset.repositories[index]?.latest)) {
+            console.error('Open Intelligence public API did not expose all collected snapshots.');
+            process.exit(1);
+          }
+          NODE
+          then
+            echo "::error::Production Open Intelligence API returned HTTP ${dataset_status:-000} or missing snapshots"
+            exit 1
+          fi
+
+          echo "Open Intelligence page, authenticated four-repository collection, and public baseline API all verified."
+
   audit:
     runs-on: ubuntu-latest
     name: Security Audit
@@ -78,5 +464,7 @@ jobs:
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci --legacy-peer-deps
-      - name: Audit (high+critical only)
-        run: npm audit --audit-level=high || true
+      # Dev/build-only advisories (braces via Tailwind 3 / eslint-config-next) have
+      # no upstream patch; production dependencies must stay free of high+critical.
+      - name: Audit production dependencies (high+critical)
+        run: npm audit --omit=dev --audit-level=high

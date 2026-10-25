@@ -7,7 +7,7 @@ import { getCommonStaticProps } from '../lib/i18n-static-props';
  * Unified Dashboard | Neural Node Logic | Leviathan Stream | Escrow 2.0 | RU/EN Localization
  */
 import React, { useEffect, useState, useRef } from 'react';
-import { useTranslation } from 'next-i18next';
+import { useTmaTranslation } from '../lib/tmaI18n';
 import { isTelegramWebApp, getTelegramWebApp } from '../lib/telegram';
 import { API_URL } from '../lib/config';
 import { useTMALocaleSync } from '../hooks/useTMALocale';
@@ -16,6 +16,7 @@ import LiveHashrateChart from '../components/tma/LiveHashrateChart';
 import GoldenAccumulationChart from '../components/tma/GoldenAccumulationChart';
 import { useWalletStore } from '../store/walletStore';
 import WalletConnect from '../components/WalletConnect';
+import BrowserWorkerPanel from '../components/tma/BrowserWorkerPanel';
 import AgentMarketplace from '../components/agents/AgentMarketplace';
 import { Zap, Activity, Bot, ArrowRightLeft } from 'lucide-react';
 
@@ -30,7 +31,7 @@ interface TMAStats {
 type TabId = 'overview' | 'worker' | 'agents' | 'trade';
 
 export default function TMAPage() {
-  const { t } = useTranslation('common');
+  const { t } = useTmaTranslation();
   useTMALocaleSync();
   const { address } = useWalletStore();
   const [stats, setStats] = useState<TMAStats | null>(null);
@@ -94,7 +95,7 @@ export default function TMAPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#030014] text-white pb-24">
+    <div className="min-h-screen bg-[#030014] text-white pb-24 overflow-x-hidden w-full max-w-full">
       {/* Leviathan Stream Bridge — Omnipresent on ALL screens */}
       <LeviathanTMATicker />
 
@@ -102,24 +103,24 @@ export default function TMAPage() {
         {/* Header */}
         <header className="text-center py-3">
           <h1 className="text-lg font-black tracking-tight">
-            <span className="bg-gradient-to-r from-amber-400 to-amber-600 bg-clip-text text-transparent">GSTD</span>
+            <span className="bg-linear-to-r from-amber-400 to-amber-600 bg-clip-text text-transparent">GSTD</span>
             {' '}{t('platform', 'Platform')}
           </h1>
         </header>
 
         {/* Tab Nav */}
-        <div className="flex gap-2 mb-4 overflow-x-auto scrollbar-hide pb-2 snap-x">
+        <div className="grid grid-cols-2 gap-2 mb-4">
           {tabs.map(({ id, label, icon }) => (
             <button
               key={id}
               onClick={() => setTab(id)}
-              className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-bold transition-colors whitespace-nowrap snap-start ${tab === id
+              className={`flex min-w-0 items-center justify-center gap-2 py-2.5 px-2 rounded-xl text-xs sm:text-sm font-bold transition-colors ${tab === id
                 ? 'bg-violet-500/30 border border-violet-500/50 text-violet-300'
                 : 'bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10'
                 }`}
             >
               {icon}
-              {label}
+              <span className="truncate">{label}</span>
             </button>
           ))}
         </div>
@@ -170,7 +171,7 @@ export default function TMAPage() {
             />
 
             {!address && (
-              <div className="rounded-xl bg-gradient-to-br from-violet-500/10 to-amber-500/10 border border-white/10 p-5 mt-4">
+              <div className="rounded-xl bg-linear-to-br from-violet-500/10 to-amber-500/10 border border-white/10 p-5 mt-4">
                 <h3 className="text-lg font-black text-white mb-2">{t('welcome_guide', 'Welcome to GSTD Sovereign Network')}</h3>
                 <p className="text-xs text-gray-400 mb-5 leading-relaxed">
                   {t('welcome_desc', 'The decentralized AI ecosystem that pays you. Start your journey in 3 simple steps:')}
@@ -192,7 +193,7 @@ export default function TMAPage() {
                     <div>
                       <h4 className="text-sm font-bold text-gray-200">{t('step2_title', 'Ignite Your Node')}</h4>
                       <p className="text-xs text-gray-500 mt-1">
-                        {t('step2_desc_prefix', 'Go to the')} <span className="text-emerald-400">{t('cta_worker', 'Ignite Node')}</span> {t('step2_desc_suffix', 'tab. Keep the app open to process decentralized AI tasks and earn GSTD passively.')}
+                        {t('step2_desc_prefix', 'Go to the')} <span className="text-emerald-400">{t('cta_worker', 'Ignite Node')}</span> {t('step2_desc_suffix', 'tab. Rewards are paid for completed AI tasks; keeping the app open only shows your device as online.')}
                       </p>
                     </div>
                   </div>
@@ -219,19 +220,31 @@ export default function TMAPage() {
 
         {tab === 'trade' && (
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="rounded-xl bg-gradient-to-br from-violet-600/10 to-blue-600/10 border border-violet-500/20 p-4 sm:p-6 text-center">
+            <div className="rounded-xl bg-linear-to-br from-violet-600/10 to-blue-600/10 border border-violet-500/20 p-4 sm:p-6 text-center">
               <h3 className="text-xl font-black text-white mb-2">{t('swap_title', 'GSTD Native Swap')}</h3>
               <p className="text-xs text-violet-300/70 mb-4 max-w-sm mx-auto">
                 {t('swap_desc', 'Exchange TON for GSTD securely via STON.fi decentralised liqudity pools. Powered directly inside Telegram.')}
               </p>
               
-              <div className="rounded-xl overflow-hidden bg-[#1a1a24] shadow-[0_0_30px_rgba(139,92,246,0.15)] border border-white/5 h-[500px]">
-                <iframe 
-                  src="https://app.ston.fi/swap?ft=TON&tt=EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO"
-                  className="w-full h-full border-0"
-                  title="STON.fi DEX Swap"
-                  allow="clipboard-read; clipboard-write; microphone; camera"
-                />
+              <div className="flex flex-col gap-3 max-w-sm mx-auto">
+                {[
+                  { label: 'STON.fi', url: 'https://app.ston.fi/swap?ft=TON&tt=EQDv6cYW9nNiKjN3Nwl8D6ABjUiH1gYfWVGZhfP7-9tZskTO' },
+                ].map((d) => (
+                  <a
+                    key={d.label}
+                    href={d.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(ev) => {
+                      const wa: any = getTelegramWebApp();
+                      if (wa?.openLink) { ev.preventDefault(); wa.openLink(d.url); }
+                    }}
+                    className="rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold py-3 text-sm transition-colors"
+                  >
+                    {t('swap_open', 'Swap on')} {d.label}
+                  </a>
+                ))}
+                <p className="text-[11px] text-gray-500">{t('swap_note', 'DEXes do not allow embedding, so the swap opens in your browser. Always verify the GSTD contract address.')}</p>
               </div>
             </div>
           </div>
@@ -239,6 +252,7 @@ export default function TMAPage() {
 
         {tab === 'worker' && (
           <div className="space-y-4">
+            <BrowserWorkerPanel address={address ?? undefined} />
             <MobileNodePanel address={address ?? undefined} />
           </div>
         )}
@@ -296,10 +310,10 @@ function getDeviceResources() {
 }
 
 function MobileNodePanel({ address }: { address: string | undefined }) {
-  const { t } = useTranslation('common');
+  const { t } = useTmaTranslation();
   const [isRunning, setIsRunning] = useState(false);
   const [tier, setTier] = useState<string>('spark');
-  const [ratePerHour, setRatePerHour] = useState(0.5);
+  const [ratePerHour, setRatePerHour] = useState(0);
   const [baseGstd, setBaseGstd] = useState(0);
   const [baseTs, setBaseTs] = useState(() => Date.now());
   const [uptimeMinutes, setUptimeMinutes] = useState(0);
@@ -344,7 +358,7 @@ function MobileNodePanel({ address }: { address: string | undefined }) {
       if (resp.ok) {
         const data = await resp.json();
         setTier(data.tier || 'spark');
-        setRatePerHour(data.rate_per_hour || 0.5);
+        setRatePerHour(Number(data.rate_per_hour) || 0);
         setBaseGstd(data.accumulated_gstd || 0);
         setBaseTs(Date.now());
         setUptimeMinutes(data.uptime_minutes || 0);
@@ -425,8 +439,8 @@ function MobileNodePanel({ address }: { address: string | undefined }) {
         </div>
 
         <div className="grid grid-cols-3 gap-2 text-center mb-3">
-          <div className="rounded-lg bg-black/20 p-2">
-            <div className="text-[9px] text-gray-500 uppercase font-bold">{t('earned', 'Earned')}</div>
+          <div className="min-w-0 rounded-lg bg-black/20 p-2">
+            <div className="truncate text-[9px] text-gray-500 uppercase font-bold">{t('earned', 'Earned')}</div>
             <div className="text-sm font-black text-amber-400 tabular-nums">{liveGstd.toFixed(4)}</div>
           </div>
           <div className="rounded-lg bg-black/20 p-2">
@@ -468,7 +482,7 @@ function MobileNodePanel({ address }: { address: string | undefined }) {
         <button
           onClick={claimRewards}
           disabled={loading || liveGstd < 0.01}
-          className="flex-1 py-3 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold text-sm disabled:opacity-50"
+          className={`flex-1 py-3 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold text-sm disabled:opacity-50 ${ratePerHour > 0 || liveGstd > 0 ? '' : 'hidden'}`}
         >
           {loading ? '...' : `💰 ${t('claim', 'Claim')}`}
         </button>
@@ -486,11 +500,10 @@ function MobileNodePanel({ address }: { address: string | undefined }) {
           {t('tier_rewards', 'Tier Rewards')}
         </div>
         <div className="space-y-1">
-          {[['⚡ Spark', '0.5 GSTD/h', 'Any device'], ['🔥 Flame', '1.0 GSTD/h', 'Pi 4 / basic laptop'], ['⛈️ Storm', '2.5 GSTD/h', '16GB RAM server'], ['🏔️ Titan', '4.0 GSTD/h', '32GB RAM + GPU'], ['👑 Sovereign', '8.0 GSTD/h', 'High-end server']].map(([label, rate, req]) => (
-            <div key={label} className="flex justify-between items-center text-xs">
+          {[['⚡ Spark'], ['🔥 Flame'], ['⛈️ Storm'], ['🏔️ Titan'], ['👑 Sovereign']].map(([label]) => (
+            <div key={label} className="flex justify-between items-center gap-2 text-xs">
               <span className="text-gray-300 font-bold">{label}</span>
-              <span className="text-amber-400 font-mono">{rate}</span>
-              <span className="text-gray-500 text-[10px]">{req}</span>
+              <span className="text-amber-400 font-mono">{t('per_task', 'per task')}</span>
             </div>
           ))}
         </div>

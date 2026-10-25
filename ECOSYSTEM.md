@@ -22,12 +22,12 @@ No central servers. No data centers owned by GSTD. The network is the product.
 
 | Repo | Language | Deployed at | Purpose |
 |------|----------|-------------|---------|
-| [gstdcoin/ai](https://github.com/gstdcoin/ai) | TypeScript/Next.js | app.gstdtoken.com (Vercel) | Platform API + Dashboard |
+| [gstdcoin/ai](https://github.com/gstdcoin/ai) | TypeScript/Next.js | Cloudflare target; deployment pending | Platform API + Dashboard |
 | [gstdcoin/gstdbot](https://github.com/gstdcoin/gstdbot) | TypeScript/Node.js | Node operator machines | Node OS — runs on every compute node |
 | [gstdcoin/gstd-bridge](https://github.com/gstdcoin/gstd-bridge) | Rust | Validator machines | Cross-chain bridge validator |
 | [gstdcoin/A2A](https://github.com/gstdcoin/A2A) | Python | pip package | Agent SDK — connects any AI agent as a node |
 | [gstdcoin/contracts](https://github.com/gstdcoin/contracts) | Tact (TON) | TON blockchain | Smart contracts: token, governance, settlement |
-| [gstdcoin/web](https://github.com/gstdcoin/web) | TypeScript/Next.js | gstdtoken.com (Vercel) | Public landing page |
+| [gstdcoin/web](https://github.com/gstdcoin/web) | TypeScript/Next.js | gstdtoken.com (Cloudflare Workers) | Public landing page |
 
 ---
 
@@ -65,7 +65,7 @@ gstdweb (landing page)
 ## Platform API (gstdcoin/ai)
 
 All routes are Next.js serverless functions in `frontend/src/pages/api/v1/`.  
-State lives entirely in Upstash Redis (Vercel KV). No database. No Go backend.
+State lives in the existing Upstash Redis database via its REST API. No Go backend. The app API is currently unavailable pending Cloudflare deployment.
 
 ```
 /api/v1/nodes/
@@ -194,7 +194,8 @@ stats:nodes_peak                  Counter  Peak concurrent nodes
 ## Deployment Checklist (new environment)
 
 ### Platform (app.gstdtoken.com)
-- [ ] Connect Vercel KV store (auto-adds `KV_REST_API_URL` + `KV_REST_API_TOKEN`)
+- [ ] Configure Cloudflare Worker deployment and cron replacement; keep the Vercel deploy job disabled
+- [ ] Configure GitHub Actions secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `KV_REST_API_URL`, `KV_REST_API_TOKEN`
 - [ ] Set `TREASURY_SECRET` (any random string)
 - [ ] `NEXT_PUBLIC_TON_VAULT` already set (EcosystemTreasury, live). Leave `NEXT_PUBLIC_SOL_VAULT` / `NEXT_PUBLIC_XRP_VAULT` unset — bridge is deferred, see "What's NOT Yet Live" below
 - [ ] After contract deploy: set `GSTD_JETTON_ADDRESS`
@@ -214,7 +215,7 @@ stats:nodes_peak                  Counter  Peak concurrent nodes
 - [ ] `cd contracts && npm install && npx blueprint build`
 - [ ] Test on testnet: `npx blueprint run deploy --testnet`
 - [ ] Deploy to mainnet: `npx blueprint run deploy --mainnet`
-- [ ] Copy addresses to Vercel env vars
+- [ ] Copy required addresses to Cloudflare Worker settings
 
 ---
 

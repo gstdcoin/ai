@@ -1,134 +1,127 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap')
+layer(base);
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
 
-:root {
+@plugin '@tailwindcss/typography';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
   --color-sea-50: #0a1929;
   --color-sea-100: #0f2540;
+  --color-sea-200: #143256;
+  --color-sea-300: #1a3f6d;
+  --color-sea-400: #1f4c83;
   --color-sea-500: #24599a;
+  --color-sea-600: #2966b0;
+  --color-sea-700: #2e73c7;
+  --color-sea-800: #3380dd;
   --color-sea-900: #388df4;
-  --color-gold-900: #FFD700;
 
-  /* Telegram theme variables (fallback if not in Telegram) */
-  --tg-theme-bg-color: #030014;
-  --tg-theme-text-color: #ffffff;
-  --tg-theme-hint-color: #9ca3af;
-  --tg-theme-link-color: #8b5cf6;
-  --tg-theme-button-color: #8b5cf6;
-  --tg-theme-button-text-color: #ffffff;
-  --tg-theme-secondary-bg-color: #08081a;
-  --tg-viewport-height: 100vh;
+  --color-gold-50: #fff9e6;
+  --color-gold-100: #fff3cc;
+  --color-gold-200: #ffedb3;
+  --color-gold-300: #ffe799;
+  --color-gold-400: #ffe180;
+  --color-gold-500: #ffdb66;
+  --color-gold-600: #ffd54d;
+  --color-gold-700: #ffcf33;
+  --color-gold-800: #ffc91a;
+  --color-gold-900: #ffd700;
 
-  /* Unified color system — aligned with gstdbot.gstdtoken.com */
-  --bg-primary: #030014;
-  --bg-secondary: #08081a;
-  --bg-tertiary: #0d0d25;
-  --card: rgba(255, 255, 255, 0.025);
-  --card-hover: rgba(255, 255, 255, 0.045);
-  --border-subtle: rgba(255, 255, 255, 0.06);
-  --border-medium: rgba(255, 255, 255, 0.10);
-  --border-hover: rgba(255, 255, 255, 0.12);
-  --text-primary: #ffffff;
-  --text-secondary: #9ca3af;
-  --text-tertiary: #6b7280;
-  --accent-violet: #8b5cf6;
-  --accent-cyan: #06b6d4;
-  --accent-emerald: #10b981;
-  --brand-gold: #ffd700;
+  --color-primary-50: #e6f2ff;
+  --color-primary-100: #b3d9ff;
+  --color-primary-200: #80bfff;
+  --color-primary-300: #4da6ff;
+  --color-primary-400: #1a8cff;
+  --color-primary-500: #0073e6;
+  --color-primary-600: #005cb3;
+  --color-primary-700: #004580;
+  --color-primary-800: #002e4d;
+  --color-primary-900: #00171a;
 
-  /* Additional aliases */
-  --tg-bg-color: var(--tg-theme-bg-color);
-  --tg-text-color: var(--tg-theme-text-color);
-  --tg-button-color: var(--tg-theme-button-color);
-  --tg-button-text-color: var(--tg-theme-button-text-color);
-  --tg-primary-button-color: var(--tg-theme-button-color);
-  --tg-primary-button-text-color: var(--tg-theme-button-text-color);
+  --font-sans: Inter, system-ui, sans-serif;
+  --font-display: Plus Jakarta Sans, Inter, system-ui, sans-serif;
+
+  --backdrop-blur-xs: 2px;
+
+  --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  --shadow-gold: 0 4px 20px rgba(255, 215, 0, 0.3);
+  --shadow-sea: 0 4px 20px rgba(38, 141, 244, 0.3);
+
+  --background-image-gradient-sea: linear-gradient(
+    135deg,
+    #0a1929 0%,
+    #1a3f6d 100%
+  );
+  --background-image-gradient-gold: linear-gradient(
+    135deg,
+    #ffd700 0%,
+    #ffc91a 100%
+  );
 }
 
-/* Dark theme as default */
-html {
-  color-scheme: dark;
-  background-color: var(--bg-primary) !important;
-  scroll-behavior: smooth;
-  overscroll-behavior-y: none;
-  -webkit-text-size-adjust: 100%;
-  -ms-text-size-adjust: 100%;
-  height: -webkit-fill-available;
-}
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
 
-body {
-  background-color: var(--bg-primary) !important;
-  color: var(--text-primary);
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  min-height: 100vh;
-  letter-spacing: -0.01em;
-  min-height: var(--tg-viewport-height, 100vh);
-  min-height: -webkit-fill-available;
-  overscroll-behavior-y: none;
-  -webkit-overflow-scrolling: touch;
-  touch-action: pan-y;
-  -webkit-tap-highlight-color: transparent;
-  -webkit-touch-callout: none;
-  -webkit-user-select: none;
-  user-select: none;
-  /* Improve text rendering */
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
-}
-
-/* Ensure Next.js root uses cosmic background */
-#__next {
-  background-color: var(--bg-primary) !important;
-  min-height: 100vh;
-}
-
-/* ─── Glassmorphism Utilities ─────────────────────────── */
-@layer utilities {
-  .glass {
-    background: rgba(255, 255, 255, 0.06);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid var(--border-subtle);
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
   }
+}
 
-  .glass-dark {
-    background: rgba(3, 0, 20, 0.8);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid var(--border-subtle);
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-  }
+@utility glass {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
 
-  .glass-gold {
-    background: rgba(255, 215, 0, 0.08);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 215, 0, 0.2);
-    box-shadow: 0 4px 20px rgba(255, 215, 0, 0.15);
-  }
+@utility glass-dark {
+  background: rgba(3, 0, 20, 0.8);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+@utility glass-gold {
+  background: rgba(255, 215, 0, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  box-shadow: 0 4px 20px rgba(255, 215, 0, 0.15);
 }
 
 /* ─── Components ──────────────────────────────────────── */
-@layer components {
 
-  .glass-card {
-    @apply relative overflow-hidden rounded-xl;
-    background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid var(--border-subtle);
-    box-shadow:
-      0 8px 32px rgba(0, 0, 0, 0.3),
-      0 0 0 1px rgba(255, 255, 255, 0.02) inset;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
+@utility glass-card {
+  @apply relative overflow-hidden rounded-xl;
+  background: linear-gradient(
+    135deg,
+    var(--bg-secondary) 0%,
+    var(--bg-primary) 100%
+  );
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-subtle);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.02) inset;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
-  .sov-card:hover,
-  .glass-card:hover {
+  &:hover {
     border-color: rgba(255, 215, 0, 0.15);
     background: var(--card-hover);
     box-shadow:
@@ -137,116 +130,238 @@ body {
       0 0 0 1px rgba(255, 255, 255, 0.05) inset;
     transform: translateY(-2px);
   }
+}
 
-  .stat-card {
-    @apply glass-card p-6;
-    position: relative;
+@utility sov-card {
+  &:hover {
+    border-color: rgba(255, 215, 0, 0.15);
+    background: var(--card-hover);
+    box-shadow:
+      0 12px 40px rgba(0, 0, 0, 0.4),
+      0 0 20px rgba(255, 215, 0, 0.04),
+      0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+    transform: translateY(-2px);
   }
+}
 
-  .stat-card::before {
+@utility stat-card {
+  @apply glass-card p-6;
+  position: relative;
+
+  &::before {
     content: '';
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.4), transparent);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(139, 92, 246, 0.4),
+      transparent
+    );
     opacity: 0;
     transition: opacity 0.3s ease;
   }
 
-  .stat-card:hover::before {
+  &:hover::before {
     opacity: 1;
   }
+}
 
-  .btn-cosmic {
-    @apply bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-500 hover:to-cyan-400 text-white font-bold shadow-lg shadow-violet-500/20 transition-all active:scale-95;
-  }
+@utility btn-cosmic {
+  @apply bg-linear-to-r from-violet-600 to-cyan-500 hover:from-violet-500 hover:to-cyan-400 text-white font-bold shadow-lg shadow-violet-500/20 transition-all active:scale-95;
+}
 
-  .glass-button {
-    @apply glass rounded-lg px-4 py-2 font-medium transition-all duration-200;
-    @apply hover:bg-white/10 active:scale-95;
-    min-height: 44px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-  }
+@utility glass-button {
+  @apply glass rounded-lg px-4 py-2 font-medium transition-all duration-200;
+  @apply hover:bg-white/10 active:scale-95;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
 
-  .tg-button {
-    background-color: var(--tg-theme-button-color, var(--accent-violet)) !important;
-    color: var(--tg-theme-button-text-color, white) !important;
-    border: none;
-    border-radius: 0.75rem;
-    padding: 0.75rem 1.5rem;
-    font-weight: 600;
-    font-size: 0.875rem;
-    min-height: 44px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  }
+@utility tg-button {
+  background-color: var(
+    --tg-theme-button-color,
+    var(--accent-violet)
+  ) !important;
+  color: var(--tg-theme-button-text-color, white) !important;
+  border: none;
+  border-radius: 0.75rem;
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 
-  .btn-primary {
-    background-color: var(--accent-violet) !important;
-    color: white !important;
-    border: none;
-    border-radius: 0.75rem;
-    padding: 0.75rem 1.5rem;
-    font-weight: 600;
-    font-size: 0.875rem;
-    min-height: 44px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    box-shadow: 0 2px 8px rgba(139, 92, 246, 0.2);
-  }
-
-  .tg-button:hover,
-  .btn-primary:hover {
+  &:hover {
     opacity: 0.9;
     transform: translateY(-1px);
     box-shadow: 0 4px 16px rgba(139, 92, 246, 0.25);
   }
 
-  .tg-button:active,
-  .btn-primary:active {
+  &:active {
     transform: translateY(0);
     opacity: 0.85;
   }
 
-  .tg-button:disabled,
-  .btn-primary:disabled {
+  &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
   }
+}
 
-  .glass-button-gold {
-    @apply glass-gold rounded-lg px-4 py-2 font-semibold text-gold-900 transition-all duration-200;
-    @apply hover:bg-gold-900/20 active:scale-95 shadow-gold;
-    min-height: 44px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
+@utility btn-primary {
+  background-color: var(--accent-violet) !important;
+  color: white !important;
+  border: none;
+  border-radius: 0.75rem;
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.2);
+
+  &:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(139, 92, 246, 0.25);
   }
 
-  .floating-action-button {
-    @apply fixed bottom-20 right-4 lg:bottom-8 lg:right-8 z-40;
-    @apply w-14 h-14 lg:w-16 lg:h-16 rounded-full;
-    @apply glass-button-gold shadow-gold;
-    @apply flex items-center justify-center;
-    @apply text-2xl lg:text-3xl font-bold;
-    @apply hover:scale-110 active:scale-95;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  &:active {
+    transform: translateY(0);
+    opacity: 0.85;
   }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+@utility glass-button-gold {
+  @apply glass-gold rounded-lg px-4 py-2 font-semibold text-gold-900 transition-all duration-200;
+  @apply hover:bg-gold-900/20 active:scale-95 shadow-gold;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+@utility floating-action-button {
+  @apply fixed bottom-20 right-4 lg:bottom-8 lg:right-8 z-40;
+  @apply w-14 h-14 lg:w-16 lg:h-16 rounded-full;
+  @apply glass-button-gold shadow-gold;
+  @apply flex items-center justify-center;
+  @apply text-2xl lg:text-3xl font-bold;
+  @apply hover:scale-110 active:scale-95;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@layer utilities {
+  :root {
+    --color-sea-50: #0a1929;
+    --color-sea-100: #0f2540;
+    --color-sea-500: #24599a;
+    --color-sea-900: #388df4;
+    --color-gold-900: #ffd700;
+
+    /* Telegram theme variables (fallback if not in Telegram) */
+    --tg-theme-bg-color: #030014;
+    --tg-theme-text-color: #ffffff;
+    --tg-theme-hint-color: #9ca3af;
+    --tg-theme-link-color: #8b5cf6;
+    --tg-theme-button-color: #8b5cf6;
+    --tg-theme-button-text-color: #ffffff;
+    --tg-theme-secondary-bg-color: #08081a;
+    --tg-viewport-height: 100vh;
+
+    /* Unified color system — aligned with gstdbot.gstdtoken.com */
+    --bg-primary: #030014;
+    --bg-secondary: #08081a;
+    --bg-tertiary: #0d0d25;
+    --card: rgba(255, 255, 255, 0.025);
+    --card-hover: rgba(255, 255, 255, 0.045);
+    --border-subtle: rgba(255, 255, 255, 0.06);
+    --border-medium: rgba(255, 255, 255, 0.1);
+    --border-hover: rgba(255, 255, 255, 0.12);
+    --text-primary: #ffffff;
+    --text-secondary: #9ca3af;
+    --text-tertiary: #6b7280;
+    --accent-violet: #8b5cf6;
+    --accent-cyan: #06b6d4;
+    --accent-emerald: #10b981;
+    --brand-gold: #ffd700;
+
+    /* Additional aliases */
+    --tg-bg-color: var(--tg-theme-bg-color);
+    --tg-text-color: var(--tg-theme-text-color);
+    --tg-button-color: var(--tg-theme-button-color);
+    --tg-button-text-color: var(--tg-theme-button-text-color);
+    --tg-primary-button-color: var(--tg-theme-button-color);
+    --tg-primary-button-text-color: var(--tg-theme-button-text-color);
+  }
+
+  /* Dark theme as default */
+  html {
+    color-scheme: dark;
+    background-color: var(--bg-primary) !important;
+    scroll-behavior: smooth;
+    overscroll-behavior-y: none;
+    -webkit-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+    height: -webkit-fill-available;
+  }
+
+  body {
+    background-color: var(--bg-primary) !important;
+    color: var(--text-primary);
+    font-family:
+      'Inter',
+      system-ui,
+      -apple-system,
+      sans-serif;
+    min-height: 100vh;
+    letter-spacing: -0.01em;
+    min-height: var(--tg-viewport-height, 100vh);
+    min-height: -webkit-fill-available;
+    overscroll-behavior-y: none;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+    /* Improve text rendering */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Ensure Next.js root uses cosmic background */
+  #__next {
+    background-color: var(--bg-primary) !important;
+    min-height: 100vh;
+  }
+
+  /* ─── Glassmorphism Utilities ─────────────────────────── */
 }
 
 /* ─── Scrollbar ───────────────────────────────────────── */
@@ -289,7 +404,7 @@ body {
 /* ─── Focus Styles ────────────────────────────────────── */
 button:focus-visible,
 a:focus-visible {
-  @apply outline-none ring-2 ring-violet-500/60 ring-offset-2 ring-offset-[#030014];
+  @apply outline-hidden ring-2 ring-violet-500/60 ring-offset-2 ring-offset-[#030014];
 }
 
 *:focus-visible {

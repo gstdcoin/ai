@@ -110,9 +110,9 @@ export default function LivePulse({ className = '' }: { className?: string }) {
     }, [events]);
 
     return (
-        <div className={`relative overflow-hidden rounded-2xl border border-white/[0.06] bg-black/60 backdrop-blur-xl ${className}`}>
+        <div className={`relative overflow-hidden rounded-2xl border border-white/6 bg-black/60 backdrop-blur-xl ${className}`}>
             {/* Header bar */}
-            <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.06]">
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/6">
                 <div className="flex items-center gap-2">
                     <span className="relative flex h-2.5 w-2.5">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60"></span>

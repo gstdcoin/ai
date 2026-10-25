@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-// In-memory sliding window rate limiter for Edge runtime.
-// Per Vercel: each Edge function instance is isolated — this is a best-effort
-// limit that protects against burst traffic per-instance.
+// In-memory sliding window rate limiter for the Edge runtime.
+// State is per isolate and resets on cold starts, so this is only a best-effort burst limit.
 const windows = new Map<string, { count: number; resetAt: number }>();
 
 function rateLimit(key: string, max: number, windowMs: number): boolean {
@@ -75,7 +74,7 @@ export default function middleware(req: NextRequest) {
     if (req.method === 'OPTIONS') {
         res.headers.set('Access-Control-Allow-Origin', '*');
         res.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-        res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Wallet-Address');
+        res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Session-Token, X-Wallet-Address');
     } else {
         res.headers.set('Access-Control-Allow-Origin', '*');
     }

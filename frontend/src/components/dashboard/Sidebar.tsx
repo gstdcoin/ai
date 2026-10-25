@@ -24,15 +24,15 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
   };
 
   return (
-    <aside className="w-full lg:w-64 bg-white shadow-sm border-b lg:border-b-0 lg:border-r border-gray-200 flex flex-row lg:flex-col overflow-x-auto lg:overflow-x-visible">
-      <div className="p-4 lg:p-6 border-b lg:border-b border-r lg:border-r-0 border-gray-200 flex-shrink-0">
+    <aside className="w-full lg:w-64 bg-white shadow-xs border-b lg:border-b-0 lg:border-r border-gray-200 flex flex-row lg:flex-col overflow-x-auto lg:overflow-x-visible">
+      <div className="p-4 lg:p-6 border-b lg:border-b border-r lg:border-r-0 border-gray-200 shrink-0">
         <h2 className="text-lg lg:text-xl font-bold text-gray-900 whitespace-nowrap">{t('title', 'GSTD Platform')}</h2>
       </div>
 
       <nav className="flex-1 flex lg:block p-2 lg:p-4 overflow-x-auto lg:overflow-x-visible">
         <ul className="flex lg:flex-col lg:space-y-2 space-x-2 lg:space-x-0">
           {menuItems.map((item) => (
-            <li key={item.id} className="flex-shrink-0">
+            <li key={item.id} className="shrink-0">
               <button
                 onClick={() => onTabChange(item.id)}
                 className={`flex items-center gap-2 lg:gap-3 px-3 lg:px-4 py-2 lg:py-3 rounded-lg transition-colors whitespace-nowrap ${
@@ -49,7 +49,7 @@ export default function Sidebar({ activeTab, onTabChange }: SidebarProps) {
         </ul>
       </nav>
 
-      <div className="p-2 lg:p-4 border-t border-gray-200 flex-shrink-0">
+      <div className="p-2 lg:p-4 border-t border-gray-200 shrink-0">
         <button
           onClick={changeLanguage}
           className="w-full flex items-center justify-center gap-2 px-3 lg:px-4 py-2 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors text-sm lg:text-base"

@@ -34,5 +34,4 @@ yarn dev
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
 ## Deployment
-This application is fully optimized for deployment on Vercel. 
-Simply run `npx vercel` or connect the GitHub repository for automatic CD/CI deployments.
+Production deployment is intended for Cloudflare Workers; Vercel is not used. Deployment is currently blocked until the Cloudflare workflow and its Upstash Redis secrets are configured. The API requires `KV_REST_API_URL` and `KV_REST_API_TOKEN` for persistent storage; do not deploy with the in-memory development fallback.

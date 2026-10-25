@@ -28,7 +28,7 @@ export default function GoldenAccumulationChart({ goldReserveGstd, goldMultiplie
       </div>
       <div className="h-2 rounded-full bg-emerald-500/20 overflow-hidden mb-2">
         <div
-          className="h-full bg-gradient-to-r from-emerald-500 to-cyan-400 rounded-full transition-all duration-700"
+          className="h-full bg-linear-to-r from-emerald-500 to-cyan-400 rounded-full transition-all duration-700"
           style={{ width: `${progressPct}%` }}
         />
       </div>

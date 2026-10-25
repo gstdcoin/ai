@@ -48,7 +48,7 @@ export default function InvestmentSavingsWidget() {
 
     return (
         <div className="glass-card p-6 relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-green-500/10 to-transparent rounded-full blur-2xl group-hover:opacity-100 opacity-50 transition-opacity" />
+            <div className="absolute top-0 right-0 w-32 h-32 bg-linear-to-br from-green-500/10 to-transparent rounded-full blur-2xl group-hover:opacity-100 opacity-50 transition-opacity" />
 
             <div className="relative z-10 flex flex-col justify-between h-full">
                 <div>

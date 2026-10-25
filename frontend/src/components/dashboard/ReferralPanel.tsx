@@ -62,7 +62,7 @@ export default function ReferralPanel() {
                 <div>
                     <h2 className="text-2xl font-bold text-white mb-2">{t('referral_program', 'Referral Program') || 'Referral Program'}</h2>
                     <p className="text-gray-400">
-                        {t('referral_desc', 'Earn +5% rewards for each friend you invite') || 'Invite friends and earn 5% of platform fees from their tasks.'}
+                        {t('referral_desc', 'Invite friends: +1 GSTD for you when a friend links a new wallet (up to 20 friends), +0.2 GSTD for the friend.') || 'Invite friends: +1 GSTD for you when a friend links a new wallet (up to 20 friends), +0.2 GSTD for the friend.'}
                     </p>
                 </div>
             </div>
@@ -122,7 +122,7 @@ export default function ReferralPanel() {
                         value={inviteCode}
                         onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
                         placeholder={t('enter_code', 'ENTER CODE')}
-                        className="flex-1 bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-gold-500/50"
+                        className="flex-1 bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-hidden focus:border-gold-500/50"
                         maxLength={10}
                     />
                     <button

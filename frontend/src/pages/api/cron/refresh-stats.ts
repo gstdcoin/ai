@@ -1,15 +1,16 @@
 /**
  * GET /api/cron/refresh-stats
  *
- * Vercel cron job — refreshes oracle stats cache and keeps
+ * Scheduled endpoint — refreshes oracle stats cache and keeps
  * stats:total_tasks_completed in sync with gstdbot's oracle log.
- * Runs every 5 minutes via vercel.json crons config.
+ * A Cloudflare Cron Trigger replacement must be configured before deployment.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvSet, kvKeys, kvMGet } from '../../../lib/kv';
+import { safeNodeUrl } from '../../../lib/safeNodeUrl';
 
-async function findNodeUrl(): Promise<string> {
-    if (process.env.GSTD_NODE_URL) return process.env.GSTD_NODE_URL;
+async function findNodeUrl(): Promise<string | null> {
+    if (process.env.GSTD_NODE_URL) return safeNodeUrl(process.env.GSTD_NODE_URL, { trusted: true });
     // KV registry (most reliable — updated by every heartbeat)
     try {
         const keys = (await kvKeys('node:')).filter((k: string) => !k.slice(5).includes(':'));
@@ -19,8 +20,8 @@ async function findNodeUrl(): Promise<string> {
             for (const raw of vals) {
                 if (!raw) continue;
                 const n: any = JSON.parse(raw as string);
-                const url = (n.node_url || n.multiaddrs?.[0] || '').replace(/\/$/, '');
-                if (!url.startsWith('http')) continue;
+                const url = safeNodeUrl(n.node_url || n.multiaddrs?.[0] || '');
+                if (!url) continue;
                 if (now - new Date(n.last_seen || 0).getTime() > 600_000) continue;
                 return url;
             }
@@ -29,11 +30,11 @@ async function findNodeUrl(): Promise<string> {
     // Fallback: GitHub-published file
     return fetch(`https://raw.githubusercontent.com/gstdcoin/ai/main/node-url.txt?t=${Math.floor(Date.now() / 30000)}`, {
         signal: AbortSignal.timeout(4000),
-    }).then(r => r.ok ? r.text().then(t => t.trim()) : '').catch(() => '');
+    }).then(r => r.ok ? r.text().then(t => safeNodeUrl(t)) : null).catch(() => null);
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-    // Only allow cron invocations (Vercel sets this header automatically)
+    // Only allow authenticated scheduled invocations.
     if (req.headers['authorization'] !== `Bearer ${process.env.CRON_SECRET}` &&
         req.method !== 'GET') {
         return res.status(401).json({ error: 'Unauthorized' });
@@ -42,7 +43,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
         const nodeUrl = await findNodeUrl();
 
-        if (!nodeUrl?.startsWith('http')) {
+        if (!nodeUrl) {
             return res.status(200).json({ ok: true, skipped: 'no node url', ts: Date.now() });
         }
 

@@ -15,6 +15,8 @@ import { kvGet, kvSet, kvIncr, kvKeys } from '../../../../../lib/kv';
 import { validateTelegramInitData } from '../../../../../lib/telegramAuth';
 
 const MOBILE_NODE_TTL = 360; // 6 minutes (heartbeat every 5 min)
+// Presence-only payouts are unfunded emission (no work is done), so they are off unless explicitly enabled.
+const PRESENCE_REWARDS = process.env.MOBILE_PRESENCE_REWARDS === 'enabled';
 const MAX_SESSIONS_PER_USER = 3; // caps the "spin up many fake device_ids" farming vector
 
 const TIER_RATES: Record<string, number> = {
@@ -75,6 +77,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Load existing session or start new one
     const existingRaw = await kvGet(sessionKey);
     const existing = existingRaw ? JSON.parse(existingRaw) : null;
+    if (existing?.wallet_address && wallet_address && existing.wallet_address !== wallet_address) {
+        return res.status(403).json({ error: 'This mobile session is already linked to a different wallet' });
+    }
 
     // Cap concurrent sessions per Telegram user — without this, one user could
     // spin up unlimited device_ids to farm rewards many times over.
@@ -90,7 +95,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const clamped = clampDeviceSpecs(cpu_cores, ram_gb, bandwidth_mbps);
     const tier = determineTier(clamped.cpu_cores, clamped.ram_gb, clamped.bandwidth_mbps);
-    const rate = TIER_RATES[tier];
+    const rate = PRESENCE_REWARDS ? TIER_RATES[tier] : 0;
 
     // Calculate earnings since last heartbeat
     let accumulatedGstd = existing?.accumulated_gstd || 0;

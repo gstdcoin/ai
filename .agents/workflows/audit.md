@@ -4,8 +4,8 @@ description: Full GSTD ecosystem health check and audit
 
 # GSTD Ecosystem Audit Workflow
 
-**Architecture:** Vercel (serverless) + Upstash Redis. No Docker, no Go backend, no PostgreSQL.
-All API is at `app.gstdtoken.com/api/v1` — `api.gstdtoken.com` does NOT exist.
+**Target architecture:** Cloudflare Workers + the existing Upstash Redis database. No Docker, no Go backend, no PostgreSQL. The app Worker is not deployed yet, so production API checks are expected to fail until deployment prerequisites are met. Do not deploy through Vercel.
+The intended API host is `app.gstdtoken.com/api/v1` — `api.gstdtoken.com` does NOT exist.
 
 Run the checks below manually from repository root.
 
@@ -15,7 +15,7 @@ Run the checks below manually from repository root.
 curl -s https://app.gstdtoken.com/api/v1/health | python3 -m json.tool
 ```
 
-Expected: `{"status":"ok","kv":"ok",...}`
+Expected after deployment: `{"status":"ok","kv":"ok",...}`. Until then, record the current HTTP status as unavailable; do not treat it as healthy.
 
 ## 2. Check external endpoints
 
@@ -81,10 +81,11 @@ done
 echo | openssl s_client -servername app.gstdtoken.com -connect app.gstdtoken.com:443 2>/dev/null | openssl x509 -noout -enddate
 ```
 
-## 8. Check Vercel deployment (requires Vercel CLI)
+## 8. Check deployment readiness
 
 ```bash
-vercel ls --token $VERCEL_TOKEN 2>/dev/null | head -5
+# Confirm the Cloudflare Worker workflow, required GitHub Actions secrets,
+# cron replacement, and smoke tests are configured before changing DNS.
 ```
 
 ## 9. Verify no broken links (dev)

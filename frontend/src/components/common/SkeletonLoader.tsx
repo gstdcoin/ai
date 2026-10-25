@@ -10,7 +10,7 @@ export function SkeletonLoader({ className = '', lines = 1, height = 'h-4' }: Sk
       {Array.from({ length: lines }).map((_, i) => (
         <div
           key={i}
-          className={`bg-gray-200 rounded ${height} ${i === lines - 1 ? 'w-3/4' : 'w-full'}`}
+          className={`bg-gray-200 rounded-sm ${height} ${i === lines - 1 ? 'w-3/4' : 'w-full'}`}
         />
       ))}
     </div>
@@ -19,11 +19,11 @@ export function SkeletonLoader({ className = '', lines = 1, height = 'h-4' }: Sk
 
 export function SkeletonCard() {
   return (
-    <div className="bg-white rounded-lg shadow p-6 animate-pulse">
-      <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
+    <div className="bg-white rounded-lg shadow-sm p-6 animate-pulse">
+      <div className="h-4 bg-gray-200 rounded-sm w-1/4 mb-4"></div>
       <div className="space-y-2">
-        <div className="h-4 bg-gray-200 rounded"></div>
-        <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+        <div className="h-4 bg-gray-200 rounded-sm"></div>
+        <div className="h-4 bg-gray-200 rounded-sm w-5/6"></div>
       </div>
     </div>
   );
@@ -31,7 +31,7 @@ export function SkeletonCard() {
 
 export function SkeletonTable({ rows = 5 }: { rows?: number }) {
   return (
-    <div className="bg-white rounded-lg shadow overflow-hidden">
+    <div className="bg-white rounded-lg shadow-sm overflow-hidden">
       <div className="animate-pulse">
         <div className="h-12 bg-gray-200"></div>
         {Array.from({ length: rows }).map((_, i) => (

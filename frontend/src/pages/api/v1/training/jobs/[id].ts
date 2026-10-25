@@ -1,5 +1,5 @@
 /**
- * GET /api/v1/training/jobs/:id — job status, progress, gradients, lora_url
+ * GET /api/v1/training/jobs/:id — owner-only historical job status
  *
  * Returns full TrainingJob record including:
  *   status: pending | training | aggregating | done | failed
@@ -10,6 +10,7 @@
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet } from '../../../../../lib/kv';
+import { sessionWallet } from '../../../../../lib/walletSession';
 import type { TrainingJob } from '../jobs';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -18,13 +19,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     try {
-        const { id } = req.query as { id: string };
-        if (!id) return res.status(400).json({ error: 'job id required' });
+        const wallet = await sessionWallet(req.headers);
+        if (!wallet) return res.status(401).json({ error: 'Not authenticated' });
+        const id = typeof req.query.id === 'string' ? req.query.id : '';
+        if (!/^[a-f0-9]{20}$/i.test(id)) return res.status(404).json({ error: 'Job not found' });
 
         const raw = await kvGet(`training:job:${id}`);
         if (!raw) return res.status(404).json({ error: 'Job not found' });
 
         const job: TrainingJob = JSON.parse(raw);
+        if (typeof job.wallet !== 'string' || job.wallet.toLowerCase() !== wallet) {
+            return res.status(404).json({ error: 'Job not found' });
+        }
 
         const avg_score = job.gradients.length > 0
             ? job.gradients.reduce((s, g) => s + g.metacognitive_score, 0) / job.gradients.length

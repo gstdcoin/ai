@@ -11,6 +11,7 @@
  */
 
 import { kvGet, kvKeys, kvMGet } from './kv';
+import { safeNodeUrl } from './safeNodeUrl';
 
 export const NODE_MODEL = 'llama3.2:3b';
 
@@ -59,8 +60,8 @@ export async function getActiveNodes(preferModel?: string): Promise<ActiveNode[]
             if (!raw) continue;
             try {
                 const n: any   = JSON.parse(raw);
-                const url: string = n.node_url || n.multiaddrs?.[0] || '';
-                if (!url.startsWith('http')) continue;
+                const url = safeNodeUrl(n.node_url || n.multiaddrs?.[0] || '');
+                if (!url) continue;
 
                 const lastSeenMs = now - new Date(n.last_seen || 0).getTime();
                 if (lastSeenMs > 600_000) continue; // TTL guard — node expired
@@ -73,7 +74,7 @@ export async function getActiveNodes(preferModel?: string): Promise<ActiveNode[]
                 );
                 const score = (hasModel ? 100 : 0) + (ramFreeMb / 1024) * 10 + cpuScore * 0.1;
 
-                nodes.push({ nodeId: n.node_id, url: url.replace(/\/$/, ''), score, models, ramFreeMb, cpuScore, lastSeenMs });
+                nodes.push({ nodeId: n.node_id, url, score, models, ramFreeMb, cpuScore, lastSeenMs });
             } catch { continue; }
         }
     } catch { /* KV unavailable */ }
@@ -87,7 +88,7 @@ export async function getActiveNodes(preferModel?: string): Promise<ActiveNode[]
  */
 export async function resolveNodeUrl(preferModel?: string): Promise<string> {
     // Env override (e.g. in CI or for testing)
-    const envUrl = (process.env.GSTD_NODE_URL || '').replace(/\/$/, '');
+    const envUrl = safeNodeUrl(process.env.GSTD_NODE_URL, { trusted: true });
     if (envUrl) return envUrl;
 
     // Best scored active node from KV
@@ -101,8 +102,8 @@ export async function resolveNodeUrl(preferModel?: string): Promise<string> {
             { signal: AbortSignal.timeout(4000) }
         );
         if (ghResp.ok) {
-            const url = (await ghResp.text()).trim().replace(/\/$/, '');
-            if (url.startsWith('http')) return url;
+            const url = safeNodeUrl(await ghResp.text());
+            if (url) return url;
         }
     } catch { /* GitHub unavailable */ }
 
@@ -122,7 +123,7 @@ export async function callNodeChat(
     const { maxTokens = 512, temperature = 0.7, timeoutMs = 30_000, model } = opts;
     const start   = Date.now();
     const nodes   = await getActiveNodes(model);
-    const envUrl  = (process.env.GSTD_NODE_URL || '').replace(/\/$/, '');
+    const envUrl  = safeNodeUrl(process.env.GSTD_NODE_URL, { trusted: true });
 
     // Candidate URLs: env override first, then scored nodes, then GitHub fallback
     const candidates: string[] = [];
@@ -137,8 +138,8 @@ export async function callNodeChat(
                 { signal: AbortSignal.timeout(4000) }
             );
             if (ghResp.ok) {
-                const url = (await ghResp.text()).trim().replace(/\/$/, '');
-                if (url.startsWith('http')) candidates.push(url);
+                const url = safeNodeUrl(await ghResp.text());
+                if (url) candidates.push(url);
             }
         } catch {}
     }

@@ -6,7 +6,8 @@
  * Used by dashboard, landing page stats, and gstdbot peer discovery.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvKeys, kvMGet, kvSet } from '../../../../lib/kv';
+import { kvGet, kvKeys, kvMGet, kvSet } from '../../../../lib/kv';
+import { dedupeNodeRecords, isNodeOnline } from '../../../../lib/node-status';
 import type { NodeRecord } from './register';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -16,7 +17,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     try {
         // Filter out sub-keys like node:X:pull_queue — only process root node entries
-        const keys = (await kvKeys('node:')).filter(k => !k.slice(5).includes(':'));
+        const [keys, totalRegistered] = await Promise.all([
+            kvKeys('node:').then(nodeKeys => nodeKeys.filter(k => !k.slice(5).includes(':'))),
+            kvGet('stats:total_registered'),
+        ]);
 
         let nodes: NodeRecord[] = [];
         if (keys.length > 0) {
@@ -26,38 +30,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 .map(v => JSON.parse(v) as NodeRecord);
         }
 
-        // Fallback: GitHub registry file (updated by tunnel.sh on each restart)
-        if (nodes.length === 0) {
-            try {
-                const ghResp = await fetch(
-                    'https://raw.githubusercontent.com/gstdcoin/ai/main/nodes-registry.json',
-                    { signal: AbortSignal.timeout(4000), cache: 'no-store' }
-                );
-                if (ghResp.ok) {
-                    const registry: any[] = await ghResp.json();
-                    nodes = registry as NodeRecord[];
-                }
-            } catch { /* GitHub unavailable */ }
-        }
-
-        // Deduplicate by node_url: prefer named nodes (e.g. "gstd-pi-bootstrap") over UUID-generated IDs
-        const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-/i;
-        nodes.sort((a, b) => {
-            const aUuid = UUID_RE.test(a.node_id) ? 1 : 0;
-            const bUuid = UUID_RE.test(b.node_id) ? 1 : 0;
-            return aUuid - bUuid;
-        });
-        const seenUrls = new Set<string>();
-        nodes = nodes.filter(n => {
-            const url = (n as any).node_url || n.multiaddrs?.[0] || '';
-            if (!url) return true;
-            if (seenUrls.has(url)) return false;
-            seenUrls.add(url);
-            return true;
-        });
+        const registeredNodes = dedupeNodeRecords(nodes);
+        const onlineNodes = registeredNodes.filter(node => isNodeOnline(node));
+        const totalRegisteredCount = Math.max(
+            parseInt(totalRegistered || '0', 10),
+            registeredNodes.length,
+        );
 
         // Strip sensitive fields for public listing
-        const public_nodes = nodes.map(n => ({
+        const public_nodes = onlineNodes.map(n => ({
             node_id:         n.node_id,
             name:            n.name,
             mode:            n.mode,
@@ -72,14 +53,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             gstd_earned:     n.gstd_earned || 0,
             uptime_hours:    n.uptime_hours,
             last_seen:       n.last_seen,
-            is_online:       (Date.now() - new Date((n as any).last_seen || 0).getTime()) < 600_000,
+            is_online:       true,
         }));
 
         // Cache node count for heartbeat endpoint (avoids expensive KEYS scan every heartbeat)
-        await kvSet('stats:nodes_online_cached', String(nodes.length), 300).catch(() => {});
+        await kvSet('stats:nodes_online_cached', String(public_nodes.length), 300).catch(() => {});
 
         return res.status(200).json({
-            count:      nodes.length,
+            count:      public_nodes.length,
+            total_registered: totalRegisteredCount,
+            offline_count: Math.max(0, totalRegisteredCount - public_nodes.length),
             peers:      public_nodes,
             nodes:      public_nodes,
             timestamp:  Date.now(),

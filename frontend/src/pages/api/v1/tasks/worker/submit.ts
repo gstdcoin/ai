@@ -6,26 +6,24 @@
  * Body: {
  *   task_id:          string
  *   node_id:          string
- *   result:           any     — task output; finetune results carry gradient metadata
- *   proof?:           string  — Ed25519 signature (optional, validated if present)
- *   reward_gstd?:     number
+ *   result:           any     — task output; disabled training task results are rejected
+ *   proof?:           string  — reserved for future verification; not currently checked
+ *   reward_gstd?:     number — ignored; reward is fixed when the server assigns the task
  *   execution_time_ms?: number
  * }
  *
- * If result contains metacognitive_score (finetune task), this endpoint
- * also forwards the gradient to update the training job.
+ * Training assignments are rejected by the atomic completion path before reward or job mutation.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvGet, kvSet, kvIncr, kvDel } from '../../../../../lib/kv';
-import { accrueReward, BASE_TASK_FEE } from '../../../../../lib/rewards';
+import { kvGet, kvIncr, kvIncrByFloat, kvCompleteAssignedTask } from '../../../../../lib/kv';
+import { COMMUNITY_TAX, BASE_TASK_FEE } from '../../../../../lib/rewards';
+import type { TaskAssignment } from '../../../../../lib/task-assignment';
 import type { NodeRecord } from '../../nodes/register';
-import type { TrainingJob, GradientRecord } from '../../training/jobs';
+import type { Campaign } from '../../campaigns/create';
+import { requireNodeSignature } from '../../../../../lib/nodeAuth';
+import { hasTaskResult } from '../../../../../lib/taskValidation';
 
 const NODE_TTL    = 600;
-const JOB_TTL     = 7 * 24 * 3600;
-const MIN_MC_SCORE = 0.3;
-const MAX_REWARD  = 50; // matches tasks/complete.ts -- caps arbitrary inflation
-
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
@@ -35,119 +33,78 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const body = req.body as any;
         const taskId:  string = body.task_id  || '';
         const nodeId:  string = body.node_id  || (req.headers['x-node-id'] as string) || '';
-        const result:  any    = body.result   || {};
-        const rewardGstd = Math.min(MAX_REWARD, Math.max(0, Number(body.reward_gstd) || 0));
+        const result:  any    = body.result;
 
         if (!taskId || !nodeId) {
             return res.status(400).json({ error: 'task_id and node_id required' });
         }
 
-        // Verify node ownership. If the node has a wallet on file, the caller
-        // must present a matching X-Wallet-Address -- omitting the header no
-        // longer bypasses the check (previously `nodeRaw && headerWallet`
-        // skipped verification entirely when the header was absent).
+        // Verify the registered wallet before consuming the one-time assignment.
         const headerWallet = ((req.headers['x-wallet-address'] as string) || '').trim().toLowerCase();
-        const [nodeRaw, assignedRaw] = await Promise.all([
-            kvGet(`node:${nodeId}`),
-            kvGet(`task_assigned:${taskId}`),
-        ]);
-        if (nodeRaw) {
-            const storedWallet = (JSON.parse(nodeRaw).wallet_address || '').toLowerCase();
-            if (storedWallet && storedWallet !== headerWallet) {
-                return res.status(403).json({ error: 'Wallet mismatch' });
-            }
+        const nodeRaw = await kvGet(`node:${nodeId}`);
+        if (!nodeRaw) return res.status(403).json({ error: 'Unknown node — register first' });
+        const nodeRecord: NodeRecord = JSON.parse(nodeRaw);
+        const walletAddress = (nodeRecord.wallet_address || '').trim();
+        if (!walletAddress) return res.status(403).json({ error: 'Wallet required for paid task submissions' });
+        if (walletAddress.toLowerCase() !== headerWallet) {
+            return res.status(403).json({ error: 'Wallet mismatch' });
+        }
+        const auth = await requireNodeSignature(nodeId, req.headers as any);
+        if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
+        if (body.error || !hasTaskResult(result)) {
+            return res.status(422).json({ error: 'A non-empty successful task result is required' });
         }
 
-        // Only credit a reward for a task_id this node was actually handed by
-        // tasks/worker/pending.ts -- otherwise a fabricated task_id could mint
-        // GSTD with no proof of work (same fix already applied to
-        // tasks/complete.ts / tasks/poll.ts). Consume the assignment so it
-        // can't be reused.
-        let assignmentValid = false;
-        if (assignedRaw) {
-            try {
-                const assignment = JSON.parse(assignedRaw as string) as { node_id: string };
-                assignmentValid = assignment.node_id === nodeId;
-            } catch { /* malformed, treat as invalid */ }
-            if (assignmentValid) await kvDel(`task_assigned:${taskId}`).catch(() => {});
+        const completion = await kvCompleteAssignedTask(
+            taskId,
+            nodeId,
+            walletAddress,
+            BASE_TASK_FEE,
+            COMMUNITY_TAX,
+            NODE_TTL,
+            86400 * 7,
+            typeof result?.hash === 'string' ? result.hash : '',
+        );
+        if (completion.status === 'invalid_result') {
+            await kvIncrByFloat('stats:probe_failed', 1);
+            return res.status(422).json({ error: 'Task result does not match the server verification probe' });
         }
-
+        if (completion.status === 'invalid') {
+            return res.status(409).json({ error: 'Task is not assigned to this node' });
+        }
+        if (completion.status === 'wallet_mismatch') {
+            return res.status(403).json({ error: 'Wallet mismatch' });
+        }
+        if (completion.status === 'disabled_task') {
+            return res.status(410).json({ error: 'Task execution is disabled' });
+        }
+        if (completion.status === 'duplicate') {
+            return res.status(200).json({ ok: true, task_id: taskId, duplicate: true });
+        }
+        let assignment: TaskAssignment;
+        try {
+            assignment = JSON.parse(completion.assignment) as TaskAssignment;
+        } catch {
+            return res.status(409).json({ error: 'Invalid task assignment' });
+        }
+        const rewardGstd = Number.isFinite(assignment.reward_gstd) && assignment.reward_gstd >= 0
+            ? assignment.reward_gstd
+            : BASE_TASK_FEE;
         const nodeWrites: Promise<any>[] = [];
-
-        if (nodeRaw) {
-            const record: NodeRecord = JSON.parse(nodeRaw);
-            record.tasks_completed = (record.tasks_completed || 0) + 1;
-            record.gstd_earned     = Math.round(((record.gstd_earned || 0) + (assignmentValid ? rewardGstd : 0)) * 1e6) / 1e6;
-            record.last_seen       = new Date().toISOString();
-            nodeWrites.push(kvSet(`node:${nodeId}`, JSON.stringify(record), NODE_TTL));
-
-            if (record.wallet_address && assignmentValid) {
-                nodeWrites.push(
-                    accrueReward(nodeId, record.wallet_address, rewardGstd || BASE_TASK_FEE, taskId)
-                        .catch(() => {})
-                );
-            }
+        if (assignment.expected_hash) {
+            nodeWrites.push(kvIncrByFloat('stats:probe_verified', 1));
         }
-
-        nodeWrites.push(kvIncr('stats:total_tasks_completed').then(() => {}));
-
-        // ── Finetune gradient handling ────────────────────────────────────────
-        let gradientAccepted = false;
-        let jobStatus = '';
-
-        const mcScore: number = Number(result.metacognitive_score ?? result.score ?? -1);
-        const jobId: string   = result.job_id   || body.job_id   || '';
-        const shardId: string = result.shard_id || body.shard_id || taskId;
-
-        if (jobId && mcScore >= 0) {
-            // This is a finetune result — update training job
-            if (mcScore >= MIN_MC_SCORE) {
-                const jobRaw = await kvGet(`training:job:${jobId}`);
-                if (jobRaw) {
-                    const job: TrainingJob = JSON.parse(jobRaw);
-
-                    // Reject duplicate shard
-                    if (!job.gradients.some(g => g.shard_id === shardId)) {
-                        const gradient: GradientRecord = {
-                            shard_id:             shardId,
-                            node_id:              nodeId,
-                            metacognitive_score:  mcScore,
-                            gradient_norm:        Number(result.gradient_norm ?? 0),
-                            val_loss_improvement: Number(result.val_loss_improvement ?? 0),
-                            lora_path:            result.lora_path || '',
-                            submitted_at:         new Date().toISOString(),
-                        };
-
-                        job.gradients.push(gradient);
-                        job.shards_done = Math.min(job.shards_total, job.shards_done + 1);
-                        job.updated_at  = new Date().toISOString();
-
-                        if (job.shards_done >= job.shards_total) {
-                            const best = [...job.gradients]
-                                .sort((a, b) => b.metacognitive_score - a.metacognitive_score)[0];
-                            job.status   = 'done';
-                            job.lora_url = best?.lora_path || '';
-                        } else {
-                            job.status = 'training';
-                        }
-
-                        nodeWrites.push(kvSet(`training:job:${jobId}`, JSON.stringify(job), JOB_TTL));
-                        gradientAccepted = true;
-                        jobStatus = job.status;
-                    }
-                }
-            }
-            nodeWrites.push(kvIncr('stats:training_gradients_submitted').then(() => {}));
+        if (assignment.protocol_fee_gstd > 0) {
+            nodeWrites.push(kvIncrByFloat('stats:protocol_treasury_gstd', assignment.protocol_fee_gstd).then(() => {}));
         }
+        if (assignment.campaign_id) nodeWrites.push(kvIncr(`cstats:${assignment.campaign_id}:tasks`));
 
         await Promise.all(nodeWrites);
 
         return res.status(200).json({
             ok:               true,
             task_id:          taskId,
-            reward_gstd:      assignmentValid ? rewardGstd : 0,
-            gradient_accepted: gradientAccepted,
-            job_status:       jobStatus || undefined,
+            reward_gstd:      rewardGstd,
         });
     } catch (err: any) {
         console.error('[tasks/worker/submit]', err.message);

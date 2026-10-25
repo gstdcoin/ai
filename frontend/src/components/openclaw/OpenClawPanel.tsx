@@ -243,13 +243,13 @@ export default function OpenClawPanel() {
       {/* Header */}
       <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-500/30 to-red-600/30 flex items-center justify-center">
+          <div className="w-9 h-9 rounded-xl bg-linear-to-br from-orange-500/30 to-red-600/30 flex items-center justify-center">
             <span style={{ fontSize: 20, lineHeight: 1 }}>🦞</span>
           </div>
           <div>
             <h2 className="text-sm font-bold text-white flex items-center gap-2">
               OpenClaw Control Panel
-              <span className="text-[9px] font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <span className="text-[9px] font-bold px-2 py-0.5 rounded-sm bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                 LIVE
               </span>
             </h2>
@@ -376,7 +376,7 @@ export default function OpenClawPanel() {
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-sm font-bold text-white flex items-center gap-2">
                 <Bot size={16} className="text-cyan-400" /> Registered Agents
-                <span className="text-[9px] px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 font-bold">
+                <span className="text-[9px] px-2 py-0.5 rounded-sm bg-cyan-500/10 text-cyan-400 font-bold">
                   {agents.length}
                 </span>
               </h3>
@@ -406,7 +406,7 @@ export default function OpenClawPanel() {
                       />
                       <span className="text-xs font-mono font-bold text-white">{a.agent_id}</span>
                       <span
-                        className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase"
+                        className="text-[9px] font-bold px-1.5 py-0.5 rounded-sm uppercase"
                         style={{
                           background: `${statusColor(a.status)}15`,
                           color: statusColor(a.status),
@@ -437,7 +437,7 @@ export default function OpenClawPanel() {
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-sm font-bold text-white flex items-center gap-2">
                 <ListTodo size={16} className="text-amber-400" /> Task Marketplace
-                <span className="text-[9px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 font-bold">
+                <span className="text-[9px] px-2 py-0.5 rounded-sm bg-amber-500/10 text-amber-400 font-bold">
                   {tasks.length}
                 </span>
               </h3>
@@ -465,7 +465,7 @@ export default function OpenClawPanel() {
                   <select
                     value={newTaskType}
                     onChange={(e) => setNewTaskType(e.target.value)}
-                    className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-white outline-none"
+                    className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-white outline-hidden"
                   >
                     <option value="pick_and_place">Pick & Place</option>
                     <option value="inspect">Inspect</option>
@@ -478,14 +478,14 @@ export default function OpenClawPanel() {
                     value={newTaskDesc}
                     onChange={(e) => setNewTaskDesc(e.target.value)}
                     placeholder="Task description..."
-                    className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-white outline-none resize-none h-16"
+                    className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-white outline-hidden resize-none h-16"
                   />
                   <div className="flex gap-2">
                     <input
                       type="number"
                       value={newTaskReward}
                       onChange={(e) => setNewTaskReward(e.target.value)}
-                      className="flex-1 bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-white outline-none"
+                      className="flex-1 bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-white outline-hidden"
                       placeholder="Reward GSTD"
                       step="0.1"
                       min="0"
@@ -518,7 +518,7 @@ export default function OpenClawPanel() {
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <span
-                        className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase"
+                        className="text-[9px] font-bold px-1.5 py-0.5 rounded-sm uppercase"
                         style={{
                           background: `${statusColor(task.status)}15`,
                           color: statusColor(task.status),
@@ -562,7 +562,7 @@ export default function OpenClawPanel() {
               <select
                 value={thinkModel}
                 onChange={(e) => setThinkModel(e.target.value)}
-                className="bg-black/30 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white outline-none"
+                className="bg-black/30 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white outline-hidden"
               >
                 <option value="groq/compound">groq/compound (Default)</option>
                 <option value="llama-3.3-70b-versatile">Llama 3.3 70B</option>
@@ -582,7 +582,7 @@ export default function OpenClawPanel() {
                   if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleThink();
                 }}
                 placeholder="Describe the robot task or ask for planning advice..."
-                className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none resize-none h-28 focus:border-orange-500/30 transition-colors"
+                className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-hidden resize-none h-28 focus:border-orange-500/30 transition-colors"
               />
               <button
                 onClick={handleThink}
@@ -645,7 +645,7 @@ export default function OpenClawPanel() {
               <h3 className="text-sm font-bold text-white flex items-center gap-2">
                 <Settings2 size={16} className="text-teal-400" /> Platform Autonomy Control
               </h3>
-              <button onClick={fetchAutonomy} className="p-1 rounded bg-white/5 hover:bg-white/10 transition-colors">
+              <button onClick={fetchAutonomy} className="p-1 rounded-sm bg-white/5 hover:bg-white/10 transition-colors">
                 <RefreshCw size={12} className="text-gray-400 hover:text-white" />
               </button>
             </div>
@@ -698,7 +698,7 @@ export default function OpenClawPanel() {
                      <div key={i} className="p-2 border border-white/5 rounded-lg text-left" style={{ background: 'rgba(0,0,0,0.3)' }}>
                        <div className="flex justify-between text-[10px] text-gray-500 mb-1">
                          <span>{new Date(d.time).toLocaleString()}</span>
-                         {d.score > 0 && <span className="text-orange-400 border border-orange-500/20 px-1 rounded">Score: {d.score.toFixed(1)}</span>}
+                         {d.score > 0 && <span className="text-orange-400 border border-orange-500/20 px-1 rounded-sm">Score: {d.score.toFixed(1)}</span>}
                        </div>
                        <div className="text-[10px] text-gray-400 mb-1 font-mono">{d.context}</div>
                        <div className="text-xs text-white whitespace-pre-wrap">{d.decision}</div>
@@ -725,15 +725,15 @@ export default function OpenClawPanel() {
                   key={m.id}
                   className={`rounded-xl p-4 border transition-all ${
                     m.default
-                      ? 'border-orange-500/20 bg-orange-500/[0.03]'
-                      : 'border-white/5 bg-white/[0.02]'
+                      ? 'border-orange-500/20 bg-orange-500/3'
+                      : 'border-white/5 bg-white/2'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-bold text-white">{m.name}</span>
                       {m.default && (
-                        <span className="text-[9px] px-2 py-0.5 rounded bg-orange-500/15 text-orange-400 font-bold uppercase">
+                        <span className="text-[9px] px-2 py-0.5 rounded-sm bg-orange-500/15 text-orange-400 font-bold uppercase">
                           Default
                         </span>
                       )}
@@ -745,7 +745,7 @@ export default function OpenClawPanel() {
                     {m.capabilities.map((cap) => (
                       <span
                         key={cap}
-                        className="text-[9px] px-2 py-0.5 rounded bg-white/5 text-gray-400"
+                        className="text-[9px] px-2 py-0.5 rounded-sm bg-white/5 text-gray-400"
                       >
                         {cap}
                       </span>

@@ -503,7 +503,7 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
                               type="button"
                               onClick={() => handleClaimCompensation(task)}
                               disabled={claimingCompensation === task.task_id}
-                              className="bg-green-500/20 text-green-400 px-2 sm:px-3 py-1 rounded hover:bg-green-500/30 disabled:opacity-50 text-xs sm:text-sm font-medium"
+                              className="bg-green-500/20 text-green-400 px-2 sm:px-3 py-1 rounded-sm hover:bg-green-500/30 disabled:opacity-50 text-xs sm:text-sm font-medium"
                             >
                               {claimingCompensation === task.task_id
                                 ? (t('claiming', 'Claiming...') || 'Claiming...')
@@ -515,7 +515,7 @@ function TasksPanel({ onTaskCreated, onCompensationClaimed }: TasksPanelProps) {
                               type="button"
                               onClick={() => handleDeleteTask(task)}
                               disabled={deletingTask === task.task_id}
-                              className="bg-red-500/20 text-red-400 px-2 sm:px-3 py-1 rounded hover:bg-red-500/30 disabled:opacity-50 text-xs sm:text-sm font-medium"
+                              className="bg-red-500/20 text-red-400 px-2 sm:px-3 py-1 rounded-sm hover:bg-red-500/30 disabled:opacity-50 text-xs sm:text-sm font-medium"
                             >
                               {deletingTask === task.task_id
                                 ? '...'

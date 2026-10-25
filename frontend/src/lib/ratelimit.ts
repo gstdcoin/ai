@@ -1,7 +1,7 @@
 /**
- * Simple in-memory rate limiter for Vercel serverless functions.
+ * Simple in-memory rate limiter for serverless isolates.
  * Uses a sliding window counter per IP.
- * Resets on cold start (acceptable for Vercel — instances are short-lived).
+ * Resets on cold start and is not shared across isolates.
  */
 
 interface WindowEntry { count: number; resetAt: number; }

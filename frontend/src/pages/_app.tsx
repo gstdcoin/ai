@@ -9,7 +9,6 @@ import { TelegramThemeProvider } from '../components/common/TelegramThemeProvide
 import { initTelegramWebApp, isTelegramWebApp, getTelegramColorScheme } from '../lib/telegram';
 import WalletListener from '../components/common/WalletListener';
 import EcosystemNav from '../components/layout/EcosystemNav';
-import LandingEmbed from '../components/layout/LandingEmbed';
 import EcosystemFooter from '../components/layout/EcosystemFooter';
 import AutoClaimWorker from '../components/common/AutoClaimWorker';
 import { useEcosystemStore } from '../store/ecosystemStore';
@@ -18,7 +17,6 @@ import dynamic from 'next/dynamic';
 import '../styles/globals.css';
 
 // Lazy-load wallet providers to avoid SSR issues
-const WalletProviders = dynamic(() => import('../components/common/WalletProviders'), { ssr: false });
 
 // Get manifestUrl from environment variable or use fallback
 const getManifestUrl = (): string => {
@@ -30,7 +28,7 @@ const getManifestUrl = (): string => {
     }
   }
   // Fallback to default HTTPS URL
-  return process.env.NEXT_PUBLIC_TONCONNECT_MANIFEST_URL || 'https://platform.gstdtoken.com/tonconnect-manifest.json';
+  return process.env.NEXT_PUBLIC_TONCONNECT_MANIFEST_URL || 'https://app.gstdtoken.com/tonconnect-manifest.json';
 };
 
 function App({ Component, pageProps }: AppProps) {
@@ -107,13 +105,12 @@ function App({ Component, pageProps }: AppProps) {
           }}
           language={tonConnectLanguage}
         >
-            {/* Ambient glow — matches gstdbot.gstdtoken.com aesthetic */}
+            {/* Ambient glow — matches the GSTD bot landing aesthetic */}
             <div className="page-glow" aria-hidden="true" />
             {isMounted && <WalletListener />}
             {isMounted && <AutoClaimWorker />}
             {router.pathname !== '/tma' && router.pathname !== '/about' && <EcosystemNav />}
             <main style={{ paddingTop: (router.pathname !== '/tma' && router.pathname !== '/about') ? 56 : 0, minHeight: '100vh', position: 'relative', zIndex: 1 }} className={(router.pathname !== '/tma' && router.pathname !== '/about') ? 'pb-20 lg:pb-0' : ''}>
-              {router.pathname !== '/tma' && router.pathname !== '/about' && <LandingEmbed />}
               <Component {...pageProps} />
             </main>
             {router.pathname !== '/tma' && router.pathname !== '/about' && router.pathname !== '/dashboard' && router.pathname !== '/chat' && !router.pathname.startsWith('/monitor') && <EcosystemFooter />}

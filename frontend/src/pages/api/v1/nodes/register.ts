@@ -6,6 +6,7 @@
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvSet, kvIncr } from '../../../../lib/kv';
+import { verifyNodeSignature, bindNodeKey } from '../../../../lib/nodeAuth';
 
 const NODE_TTL = 600; // 10 minutes
 
@@ -33,6 +34,26 @@ export interface NodeRecord {
     gpu_vram_mb?:     number;
     bandwidth_mbps?:  number;
     cpu_score?:       number;
+}
+
+export function normalizeNodeCapabilities(specs: { capabilities?: unknown; models?: unknown }): string[] {
+    let models: unknown;
+    if (Array.isArray(specs.capabilities)) {
+        models = specs.capabilities;
+    } else if (
+        typeof specs.capabilities === 'object'
+        && specs.capabilities !== null
+        && 'models' in specs.capabilities
+    ) {
+        models = specs.capabilities.models;
+    } else {
+        models = specs.models;
+    }
+
+    const candidates = models || specs.models || [];
+    return Array.isArray(candidates)
+        ? candidates.filter((capability): capability is string => typeof capability === 'string')
+        : [];
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -74,11 +95,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         // Preserve existing capabilities if the new registration doesn't provide them
         // (some node modules re-register without model lists; we must not overwrite valid caps)
+        const pubkey: string = String(body.node_pubkey || '');
+        if (pubkey) {
+            const h = req.headers as any;
+            if (!verifyNodeSignature(nodeId, pubkey, h['x-gstd-node-ts'], h['x-gstd-node-sig'])) {
+                return res.status(401).json({ error: 'node_pubkey requires a valid signature (proof of key ownership)' });
+            }
+            if (!(await bindNodeKey(nodeId, pubkey))) {
+                return res.status(403).json({ error: 'node_id is already bound to a different key' });
+            }
+        }
+
         const existingRaw = await kvGet(`node:${nodeId}`);
         const existing: NodeRecord | null = existingRaw ? JSON.parse(existingRaw) : null;
         if (existing) isNewNode = false;
 
-        const incomingCaps: string[] = specs.capabilities?.models || specs.models || [];
+        const incomingCaps = normalizeNodeCapabilities(specs);
         const capabilities = incomingCaps.length > 0 ? incomingCaps : (existing?.capabilities || []);
 
         // Prevent wallet hijacking: if node exists, incoming wallet must match stored wallet

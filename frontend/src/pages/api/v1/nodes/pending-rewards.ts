@@ -1,20 +1,19 @@
 /**
- * GET /api/v1/nodes/pending-rewards?wallet=<address>
- * Pending GSTD rewards for a wallet address.
+ * GET /api/v1/nodes/pending-rewards
+ * Pending GSTD rewards for the wallet bound to the caller's session.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet } from '../../../../lib/kv';
+import { sessionWallet } from '../../../../lib/walletSession';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
-    const { wallet } = req.query;
-    if (!wallet || typeof wallet !== 'string') {
-        return res.status(400).json({ error: 'wallet query param required' });
-    }
+    const wallet = await sessionWallet(req.headers);
+    if (!wallet) return res.status(401).json({ error: 'Not authenticated' });
 
     try {
-        const rewardKey = `rewards:pending:${wallet.toLowerCase()}`;
+        const rewardKey = `rewards:pending:${wallet}`;
         const raw = await kvGet(rewardKey);
         const pending = raw ? parseFloat(raw) : 0;
 

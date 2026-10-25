@@ -39,7 +39,7 @@ export const NetworkMap: React.FC<NetworkMapProps> = ({ nodes }) => {
                 </div>
             </div>
 
-            <div className="relative aspect-[2/1] bg-gray-950/20 rounded-xl overflow-hidden border border-white/5">
+            <div className="relative aspect-2/1 bg-gray-950/20 rounded-xl overflow-hidden border border-white/5">
                 <svg viewBox="0 0 1000 500" className="w-full h-full">
                     {/* Stylized Tech World Map */}
                     <path
@@ -82,7 +82,7 @@ export const NetworkMap: React.FC<NetworkMapProps> = ({ nodes }) => {
                 </svg>
 
                 {/* Overlay Gradient */}
-                <div className="absolute inset-0 bg-gradient-to-t from-gray-950/60 to-transparent pointer-events-none" />
+                <div className="absolute inset-0 bg-linear-to-t from-gray-950/60 to-transparent pointer-events-none" />
             </div>
 
             <div className="mt-4 flex gap-4 overflow-x-auto pb-2 scrollbar-hide">

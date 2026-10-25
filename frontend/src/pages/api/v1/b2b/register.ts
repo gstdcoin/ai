@@ -4,6 +4,7 @@
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvSet } from '../../../../lib/kv';
+import { sessionWallet } from '../../../../lib/walletSession';
 import { createHash, randomBytes } from 'crypto';
 
 const CLIENT_TTL = 60 * 60 * 24 * 365; // 1 year
@@ -11,14 +12,20 @@ const CLIENT_TTL = 60 * 60 * 24 * 365; // 1 year
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-    const { company_name, email, wallet_address } = req.body as any;
+    const { company_name, email, wallet_address } = req.body || {};
     // tier always starts at 'starter' — upgrades via admin endpoint only
     const tier = 'starter';
 
-    if (!wallet_address) return res.status(400).json({ error: 'wallet_address required' });
+    const wallet = await sessionWallet(req.headers);
+    if (!wallet) return res.status(401).json({ error: 'Verified wallet session required' });
+    if (wallet_address !== undefined) {
+        if (typeof wallet_address !== 'string' || wallet_address.trim().toLowerCase() !== wallet) {
+            return res.status(403).json({ error: 'Wallet does not match the authenticated session' });
+        }
+    }
 
     try {
-        const existingKey = `b2b:wallet:${wallet_address}`;
+        const existingKey = `b2b:wallet:${wallet}`;
         const existing = await kvGet(existingKey);
         if (existing) {
             // Never re-expose the key — user must have saved it at registration
@@ -32,7 +39,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Wallet KV: no api_key stored — key_hash only (audit trail without plaintext)
         const walletRecord = {
             client_id: clientId,
-            wallet: wallet_address,
+            wallet,
             key_hash: keyHash,
             profile: {
                 company_name: company_name || 'Developer',

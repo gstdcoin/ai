@@ -1,8 +1,19 @@
 /** @type {import('next').NextConfig} */
 const { i18n } = require('./next-i18next.config');
 
+// HTTP bridge hosts from https://config.ton.org/wallets-v2.json; wallets cannot connect if the browser may not reach them.
+const TON_CONNECT_BRIDGES = [
+  'api.defiway.com', 'api-node.bybit.com', 'bridge.mirai.app', 'bridge.stower.money', 'bridge.tonapi.io',
+  'bridge.uxuy.me', 'bridge.wallet.coffee.agency', 'connect.token.im', 'connect.ton.org', 'connect.tonhubapi.com',
+  'dapp.gateio.services', 'go-bridge.tomo.inc', 'sse-bridge.hot-labs.org', 'tc.architecton.su',
+  'ton-bridge.safepal.com', 'tonbridge.telegram.org', 'ton-connect.mytokenpocket.vip',
+  'ton-connect-bridge.bgwapi.io', 'ton-connect-bridge.echooo.link', 'tonconnectbridge.mytonwallet.org',
+  'wallet.binance.com', 'walletbot.me', 'web3.okx.com', 'web3-bridge.kolo.in', 'www.okx.com',
+].map((host) => `https://${host}`);
+
 const nextConfig = {
   reactStrictMode: true,
+  transpilePackages: ['@upstash/redis'],
   i18n,
   // Production: strip console.* (keep errors/warnings) — smaller bundles, cleaner logs
   compiler: {
@@ -16,7 +27,11 @@ const nextConfig = {
   experimental: {
     largePageDataBytes: 200 * 1024,
   },
+  outputFileTracingIncludes: {
+    '/*': ['./node_modules/ofetch/dist/**'],
+  },
   images: {
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: 'https',
@@ -33,7 +48,6 @@ const nextConfig = {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'https://app.gstdtoken.com',
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'https://app.gstdtoken.com',
     NEXT_PUBLIC_TONAPI_URL: process.env.NEXT_PUBLIC_TONAPI_URL || 'https://tonapi.io',
-    NEXT_PUBLIC_RPC_GATEWAY_URL: process.env.NEXT_PUBLIC_RPC_GATEWAY_URL || 'https://rpc.gstd.network/v1',
     TON_NETWORK: process.env.TON_NETWORK || 'mainnet',
     GSTD_JETTON_ADDRESS: process.env.GSTD_JETTON_ADDRESS || '',
   },
@@ -80,7 +94,6 @@ const nextConfig = {
         source: '/:path*',
         headers: [
           { key: 'X-Content-Type-Options',   value: 'nosniff' },
-          { key: 'X-Frame-Options',           value: 'SAMEORIGIN' },
           { key: 'X-XSS-Protection',          value: '1; mode=block' },
           { key: 'Referrer-Policy',           value: 'strict-origin-when-cross-origin' },
           { key: 'Permissions-Policy',        value: 'camera=(), microphone=(), geolocation=()' },
@@ -92,12 +105,13 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
-              "style-src 'self' 'unsafe-inline'",
+              "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://telegram.org https://static.cloudflareinsights.com",
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "img-src 'self' data: https:",
-              "font-src 'self' data:",
-              "connect-src 'self' https://app.gstdtoken.com https://tonapi.io https://toncenter.com https://rpc.gstd.network https://api.github.com wss: ws:",
-              "frame-ancestors 'self'",
+              "font-src 'self' data: https://fonts.gstatic.com",
+              // TonConnect loads the wallet list from config.ton.org and talks to each wallet's HTTP bridge.
+              `connect-src 'self' https://app.gstdtoken.com https://tonapi.io https://toncenter.com https://api.github.com https://config.ton.org https://cloudflareinsights.com ${TON_CONNECT_BRIDGES.join(' ')} wss: ws:`,
+              "frame-ancestors 'self' https://web.telegram.org https://*.telegram.org https://t.me",
             ].join('; '),
           },
         ],
@@ -137,7 +151,7 @@ const nextConfig = {
     ];
   },
   // No rewrites — all /api/v1/* are served by Next.js serverless functions.
-  // Backed by Upstash Redis (Vercel KV). No separate Go backend.
+  // Backed by Upstash Redis REST API. No separate Go backend.
   async redirects() {
     return [
       { source: '/bridge',   destination: '/nodes', permanent: true },
@@ -148,6 +162,14 @@ const nextConfig = {
       { source: '/fund',     destination: '/stats', permanent: true },
       { source: '/operator', destination: '/nodes', permanent: true },
       { source: '/hive',     destination: '/chat',  permanent: true },
+      { source: '/about',     destination: '/',      permanent: true },
+      { source: '/campaigns', destination: '/nodes', permanent: true },
+      { source: '/manifesto', destination: '/docs',  permanent: true },
+      { source: '/import',    destination: '/docs',  permanent: true },
+      { source: '/training',  destination: '/',      permanent: true },
+      { source: '/developers', destination: '/docs', permanent: true },
+      { source: '/network',   destination: '/stats', permanent: true },
+      { source: '/models',    destination: '/chat',  permanent: true },
     ];
   },
 
