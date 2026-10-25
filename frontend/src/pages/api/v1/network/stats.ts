@@ -8,8 +8,8 @@
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvSet, kvKeys, kvMGet, kvLLen } from '../../../../lib/kv';
-import { dedupeNodeRecords, isNodeOnline } from '../../../../lib/node-status';
-import { safeNodeUrl } from '../../../../lib/safeNodeUrl';
+import { dedupeNodeRecords, isNodeOnline, parseNodeRecords } from '../../../../lib/node-status';
+import type { NodeRecord } from '../nodes/register';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'GET') {
@@ -42,12 +42,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Filter out sub-keys like node:X:pull_queue — only count root node entries
         const rootNodeKeys = nodeKeys.filter((k: string) => !k.slice(5).includes(':'));
         const nodeValues = rootNodeKeys.length > 0 ? await kvMGet(rootNodeKeys) : [];
-        const nodeRecords = dedupeNodeRecords(
-            nodeValues
-                .filter((v): v is string => v !== null)
-                .map(v => { try { return JSON.parse(v); } catch { return null; } })
-                .filter(Boolean),
-        );
+        const nodeRecords = dedupeNodeRecords(parseNodeRecords<NodeRecord>(nodeValues));
         const nodesOnline = nodeRecords.filter(node => isNodeOnline(node)).length;
         // If total_registered KV counter is 0 (likely due to kvIncr failure), use the deduplicated registry count.
         const totalReg    = Math.max(parseInt(totalRegistered || '0', 10), nodeRecords.length);
@@ -56,51 +51,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const users       = parseInt(totalUsers          || '0', 10);
         const burned      = parseFloat(totalBurned       || '0');
 
-        // Tasks completed: prefer KV counter; fall back to summing node records (heartbeat sets these)
-        // then oracle/stats cache as last resort
-        let tasksDone = parseInt(totalTasksCompleted || '0', 10);
-        if (!tasksDone) {
-            // Sum tasks_completed from all node records (updated by PlatformLink heartbeat)
-            if (nodeRecords.length > 0) {
-                for (const node of nodeRecords) {
-                    tasksDone += parseInt(node.tasks_completed || '0', 10);
-                }
-            }
-        }
-        if (!tasksDone) {
-            const oracleCacheRaw = await kvGet('oracle:stats:cache').catch(() => null);
-            if (oracleCacheRaw) {
-                try {
-                    const parsed = typeof oracleCacheRaw === 'string' ? JSON.parse(oracleCacheRaw) : oracleCacheRaw;
-                    tasksDone = parsed?.total || 0;
-                } catch { /* ignore */ }
-            }
-        }
-        // Last resort: call oracle stats live from node
-        if (!tasksDone) {
-            try {
-                if (nodeRecords.length > 0) {
-                    const now = Date.now();
-                    for (const n of nodeRecords) {
-                        try {
-                            if (!isNodeOnline(n, now)) continue;
-                            const url = safeNodeUrl(n.node_url || n.multiaddrs?.[0] || '');
-                            if (!url) continue;
-                            const r = await fetch(`${url}/api/oracle/stats`, { signal: AbortSignal.timeout(4000) });
-                            if (r.ok) {
-                                const od: any = await r.json();
-                                tasksDone = od?.total || 0;
-                                if (tasksDone) break;
-                            }
-                        } catch { /* try next node */ }
-                    }
-                }
-            } catch { /* ignore */ }
-        }
-        // Sync the authoritative counter so subsequent reads are fast
-        if (tasksDone > parseInt(totalTasksCompleted || '0', 10)) {
-            kvSet('stats:total_tasks_completed', String(tasksDone)).catch(() => {});
-        }
+        const tasksDone = parseInt(totalTasksCompleted || '0', 10);
 
         // Read GSTD price: KV cache → live STON.fi fetch → seed fallback
         let gstdPrice = 0;
@@ -126,7 +77,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 }
             } catch { /* ignore */ }
         }
-        if (!gstdPrice) gstdPrice = 0.001; // pre-listing seed
+        // Zero means no live price is available; never publish a synthetic seed price.
 
         return res.status(200).json({
             // Node counts (real KV data)

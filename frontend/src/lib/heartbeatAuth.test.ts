@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { kvSet } from './kv';
+import { kvGet, kvSet } from './kv';
 import { signedHeaders, type WorkerIdentity } from './browserWorker';
 import heartbeat from '../pages/api/v1/nodes/heartbeat';
 import { nodeKeyRedisKey } from './nodeAuth';
@@ -18,6 +18,16 @@ function call(body: any, headers: Record<string, any> = {}): Promise<{ status: n
 }
 
 describe('heartbeat authentication', () => {
+    it('does not let a node inflate server-owned accepted tasks or earnings', async () => {
+        const nodeId = 'counter-test-node';
+        await kvSet(`node:${nodeId}`, JSON.stringify({
+            node_id: nodeId, wallet_address: 'UQtest', tasks_completed: 3, gstd_earned: 2,
+        }), 600);
+        const response = await call({ node_id: nodeId, tasks_completed: 999, gstd_earned: 999, uptime_hours: 1 });
+        expect(response.status).toBe(200);
+        expect(JSON.parse((await kvGet(`node:${nodeId}`))!)).toMatchObject({ tasks_completed: 3, gstd_earned: 2 });
+    });
+
     it('requires a signature once a node has a bound key', async () => {
         const kp = (await crypto.subtle.generateKey({ name: 'Ed25519' } as any, true, ['sign', 'verify'])) as CryptoKeyPair;
         const pubkeyHex = hex(await crypto.subtle.exportKey('raw', kp.publicKey));

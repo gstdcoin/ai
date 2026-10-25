@@ -12,7 +12,7 @@
 
 ## Project status
 
-The platform provides APIs and UI for node registration, heartbeats, task queues, and network statistics. These capabilities do not mean workers or paid jobs are currently available. At the last check (2026-10-21) production stats reported **0 online nodes, 0 tasks and 0 payouts**. Check the live endpoints before relying on network availability.
+The platform provides APIs and UI for node registration, heartbeats, task queues, and network statistics. These capabilities do not mean workers or paid jobs are currently available. Check the live endpoints before relying on network availability. The 2026-10-25 integration release fixes native node-signature verification within the Cloudflare CPU budget, Redis registry serialization, peer liveness and server-owned task counters. See [the operational contract](docs/PLATFORM_OPERATIONS.md) for validation and remaining boundaries.
 
 The codebase is evolving and is not an externally audited production financial system. Smart-contract deployment and limitations are documented in [gstdcoin/contracts](https://github.com/gstdcoin/contracts).
 

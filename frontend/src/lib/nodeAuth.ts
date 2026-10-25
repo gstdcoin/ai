@@ -5,8 +5,8 @@
  * Paid paths (poll/complete) require a fresh signature from the bound key, so a
  * leaked node_id + wallet address alone can no longer act as that node.
  */
-import { createHash } from 'crypto';
-import { signVerify } from '@ton/crypto';
+import { createHash } from 'node:crypto';
+import { verifyEd25519 } from './ed25519';
 import { kvGet, kvSetNX } from './kv';
 
 export const MAX_SKEW_MS = 60_000;
@@ -26,7 +26,7 @@ export function verifyNodeSignature(
         if (!Number.isFinite(ts) || Math.abs(now - ts) > MAX_SKEW_MS) return false;
         if (typeof sigHex !== 'string' || !HEX128.test(sigHex) || !HEX64.test(pubkeyHex)) return false;
         const msg = createHash('sha256').update(`${nodeId}:${ts}`).digest();
-        return signVerify(msg, Buffer.from(sigHex, 'hex'), Buffer.from(pubkeyHex, 'hex'));
+        return verifyEd25519(msg, Buffer.from(sigHex, 'hex'), Buffer.from(pubkeyHex, 'hex'));
     } catch {
         return false;
     }

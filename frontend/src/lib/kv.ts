@@ -1236,7 +1236,7 @@ export async function kvMGet(keys: string[]): Promise<(string | null)[]> {
     if (r) {
         try {
             const vals = await r.mget(...keys);
-            return (vals as (unknown | null)[]).map(v => v == null ? null : String(v));
+            return (vals as (unknown | null)[]).map(v => v == null ? null : typeof v === 'string' ? v : JSON.stringify(v));
         } catch (e) { handleRedisFailure(`kvMGet(${keys.length} keys)`, e); }
     }
     return keys.map(k => memGet(k));
@@ -1260,7 +1260,7 @@ export async function kvPop(key: string): Promise<string | null> {
     if (r) {
         try {
             const val = await r.rpop(key);
-            return val == null ? null : String(val);
+            return val == null ? null : typeof val === 'string' ? val : JSON.stringify(val);
         } catch (e) { handleRedisFailure(`kvPop('${key}')`, e); }
     }
     const raw = memGet(key);

@@ -1,72 +1,35 @@
-/**
- * POST /api/v1/tasks/result
- *
- * Called by nodes after completing an AI inference task.
- * Stores the result so completions.ts can short-poll for it.
- *
- * Body: { task_id, node_id, result, latency_ms, model }
- *
- * GET /api/v1/tasks/result?task_id=xxx
- * Returns result if ready, or { ready: false }.
- */
+/** Authenticated task result delivery; accounting is owned by tasks/complete. */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvSet } from '../../../../lib/kv';
+import { requireNodeSignature } from '../../../../lib/nodeAuth';
+import { hasTaskResult } from '../../../../lib/taskValidation';
 
-const RESULT_TTL = 120; // 2 min — caller picks it up or it expires
-
+const RESULT_TTL = 120;
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-    if (req.method === 'POST') {
-        const body = req.body as any;
-        const { task_id, node_id, result, latency_ms, model } = body;
-
-        if (!task_id || !result) {
-            return res.status(400).json({ error: 'task_id and result required' });
-        }
-
-        // Verify node ownership: X-Wallet-Address must match stored wallet
-        const headerWallet = ((req.headers['x-wallet-address'] as string) || '').trim().toLowerCase();
-        if (node_id && headerWallet) {
-            const nodeRaw = await kvGet(`node:${node_id}`).catch(() => null);
-            if (nodeRaw) {
-                const storedWallet = (JSON.parse(nodeRaw).wallet_address || '').toLowerCase();
-                if (storedWallet && storedWallet !== headerWallet) {
-                    return res.status(403).json({ error: 'Wallet mismatch' });
-                }
-            }
-        }
-
-        // Store node performance stat for routing
-        if (node_id && latency_ms > 0) {
-            const raw = await kvGet(`node:${node_id}`);
-            if (raw) {
-                const record = JSON.parse(raw);
-                // Exponential moving average of latency
-                const prev = record.avg_latency_ms || latency_ms;
-                record.avg_latency_ms    = Math.round(prev * 0.7 + latency_ms * 0.3);
-                record.tasks_completed   = (record.tasks_completed || 0) + 1;
-                record.last_seen         = new Date().toISOString();
-                await kvSet(`node:${node_id}`, JSON.stringify(record), 600);
-            }
-        }
-
-        await kvSet(
-            `task:result:${task_id}`,
-            JSON.stringify({ ready: true, result, latency_ms: latency_ms || 0, node_id, model }),
-            RESULT_TTL,
-        );
-
-        return res.status(200).json({ ok: true });
-    }
-
     if (req.method === 'GET') {
-        const taskId = req.query.task_id as string;
-        if (!taskId) return res.status(400).json({ error: 'task_id required' });
-
+        const taskId = req.query.task_id;
+        if (typeof taskId !== 'string' || !taskId) return res.status(400).json({ error: 'task_id required' });
         const raw = await kvGet(`task:result:${taskId}`);
-        if (!raw) return res.status(200).json({ ready: false });
-
-        return res.status(200).json(JSON.parse(raw));
+        return res.status(200).json(raw ? JSON.parse(raw) : { ready: false });
     }
-
-    return res.status(405).json({ error: 'Method not allowed' });
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+    const { task_id, node_id, result, latency_ms = 0, model } = req.body || {};
+    if (typeof task_id !== 'string' || !task_id || typeof node_id !== 'string' || !node_id)
+        return res.status(400).json({ error: 'task_id and node_id required' });
+    if (!hasTaskResult(result)) return res.status(422).json({ error: 'A non-empty successful result is required' });
+    const raw = await kvGet(`node:${node_id}`);
+    if (!raw) return res.status(403).json({ error: 'Unknown node' });
+    const wallet = String(JSON.parse(raw).wallet_address || '').toLowerCase();
+    if (!wallet || wallet !== String(req.headers['x-wallet-address'] || '').trim().toLowerCase())
+        return res.status(403).json({ error: 'Wallet mismatch' });
+    const auth = await requireNodeSignature(node_id, req.headers as any);
+    if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
+    const assigned = await kvGet(`task_assigned:${task_id}`);
+    const completed = assigned ? null : await kvGet(`task_completed:${task_id}`);
+    const record = assigned ? JSON.parse(assigned) : completed ? JSON.parse(completed) : null;
+    if (!record || record.node_id !== node_id) return res.status(409).json({ error: 'Task is not assigned to this node' });
+    if (record.expected_hash && String(result?.hash || '').toLowerCase() !== record.expected_hash.toLowerCase())
+        return res.status(422).json({ error: 'Invalid verification result' });
+    await kvSet(`task:result:${task_id}`, JSON.stringify({ ready: true, result, latency_ms, node_id, model }), RESULT_TTL);
+    return res.status(200).json({ ok: true });
 }

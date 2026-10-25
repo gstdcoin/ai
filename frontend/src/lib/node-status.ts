@@ -10,7 +10,8 @@ export const NODE_ONLINE_WINDOW_MS = 10 * 60 * 1000;
 
 export function dedupeNodeRecords<T extends NodeStatusRecord>(records: T[]): T[] {
     const sorted = [...records].sort((a, b) =>
-        Number(UUID_NODE_ID_RE.test(a.node_id || '')) - Number(UUID_NODE_ID_RE.test(b.node_id || '')),
+        (Date.parse(b.last_seen || '') || 0) - (Date.parse(a.last_seen || '') || 0)
+        || Number(UUID_NODE_ID_RE.test(a.node_id || '')) - Number(UUID_NODE_ID_RE.test(b.node_id || '')),
     );
     const seenUrls = new Set<string>();
     return sorted.filter(record => {
@@ -26,4 +27,16 @@ export function isNodeOnline(record: NodeStatusRecord, nowMs = Date.now()): bool
     const lastSeenMs = Date.parse(record.last_seen || '');
     const ageMs = nowMs - lastSeenMs;
     return Number.isFinite(lastSeenMs) && ageMs >= 0 && ageMs < NODE_ONLINE_WINDOW_MS;
+}
+
+/** Only registry records belong in node totals; the prefix also contains cache metadata. */
+export function parseNodeRecords<T extends NodeStatusRecord = NodeStatusRecord>(values: readonly (string | null)[]): T[] {
+    return values.flatMap(value => {
+        if (!value) return [];
+        try {
+            const record = JSON.parse(value);
+            return record && typeof record === 'object' && !Array.isArray(record)
+                && typeof record.node_id === 'string' ? [record as T] : [];
+        } catch { return []; }
+    });
 }

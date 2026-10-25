@@ -11,7 +11,7 @@ import {
     WalletContractV4,
     WalletContractV5R1,
 } from '@ton/ton';
-import { signVerify } from '@ton/crypto';
+import { verifyEd25519 } from './ed25519';
 
 const PROOF_MAX_AGE_SECONDS = 5 * 60;
 const PROOF_FUTURE_SKEW_SECONDS = 60;
@@ -151,7 +151,7 @@ export function verifyTonConnectProof(
             .update(Buffer.concat([Buffer.from([0xff, 0xff]), Buffer.from('ton-connect'), messageHash]))
             .digest();
 
-        return signVerify(signedHash, signature, publicKey);
+        return verifyEd25519(signedHash, signature, publicKey);
     } catch {
         return false;
     }
