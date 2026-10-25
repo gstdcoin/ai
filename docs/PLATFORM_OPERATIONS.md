@@ -18,7 +18,7 @@ The Redis SDK may return decoded JSON objects; multi-get and queue pop preserve 
 ## Validation for this release
 
 - Platform: 148 Vitest tests and 11 TonConnect tests pass; TypeScript, ESLint (warnings only) and Next.js production build pass.
-- Node: version 3.5.2; 203 tests pass, including subprocess failure/recovery; TypeScript build passes on Linux ARM64.
+- Node: version 3.5.3; 207 tests pass, including subprocess failure/recovery; TypeScript build passes on Linux ARM64.
 - A2A: 24 Python tests and 2 Node tests pass.
 - Contracts: 21 sandbox tests pass. These are not a production settlement transaction or independent audit.
 
@@ -40,3 +40,5 @@ Production dependencies use patched Next.js 16.4.3 and Zod 4.6.7; the production
 Check `/api/v1/health`, `/api/v1/nodes/list`, `/api/v1/nodes/peers`, `/api/v1/stats/public`, and `/api/v1/network/stats`.
 A green health response does not substitute for a completed task and successful result acceptance.
 Keep the node package version and the current public URL in the registry, and check error logs after a restart.
+
+Preview and production must use separate Worker names. Preview cron is disabled, and production secrets/routes are changed only after preview health/page validation passes. A preview failure must never replace the running production Worker.

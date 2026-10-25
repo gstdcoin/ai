@@ -154,6 +154,7 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
       - name: Verify preview health
+        id: preview_health
         run: |
           for attempt in $(seq 1 12); do
             status="$(curl --silent --output "$RUNNER_TEMP/health.json" --write-out '%{http_code}' "$WORKER_URL/api/v1/health" || true)"
@@ -170,11 +171,43 @@ jobs:
         env:
           WORKER_URL: ${{ steps.bootstrap.outputs.url }}
 
+      - name: Diagnose preview health failure
+        if: failure() && steps.preview_health.outcome == 'failure'
+        run: |
+          tail_log="$RUNNER_TEMP/health-tail.jsonl"
+          npx wrangler tail gstd-ai-platform-preview --config wrangler.jsonc --format json > "$tail_log" 2>&1 &
+          tail_pid=$!
+          trap 'kill "$tail_pid" 2>/dev/null || true' EXIT
+          sleep 5
+          curl --silent --max-time 20 "$WORKER_URL/api/v1/health" > /dev/null || true
+          sleep 3
+          node - "$tail_log" <<'NODE'
+          const fs = require('fs');
+          const log = fs.readFileSync(process.argv[2], 'utf8');
+          const secrets = [process.env.KV_REST_API_URL, process.env.KV_REST_API_TOKEN, process.env.CLOUDFLARE_API_TOKEN].filter(Boolean);
+          let count = 0;
+          for (const match of log.matchAll(/"(?:message|name|stack)":\s*("(?:[^"\\]|\\.)*")/g)) {
+            let message;
+            try { message = JSON.parse(match[1]); } catch { continue; }
+            for (const secret of secrets) message = message.replaceAll(secret, '[redacted]');
+            message = message.replace(/https?:\/\/[^\s"'<>]+/gi, '[url]').replace(/[\r\n\t]/g, ' ').slice(0, 1000);
+            console.log(message);
+            if (++count >= 12) break;
+          }
+          if (!count) console.log('No exception messages captured; check Workers Tail permissions.');
+          NODE
+        env:
+          WORKER_URL: ${{ steps.bootstrap.outputs.url }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          KV_REST_API_URL: ${{ secrets.KV_REST_API_URL }}
+          KV_REST_API_TOKEN: ${{ secrets.KV_REST_API_TOKEN }}
+
       - name: Verify preview pages
         run: |
           set -euo pipefail
           tail_log="$RUNNER_TEMP/worker-tail.jsonl"
-          npx wrangler tail gstd-ai-platform --config wrangler.jsonc --format json > "$tail_log" 2>&1 &
+          npx wrangler tail gstd-ai-platform-preview --config wrangler.jsonc --format json > "$tail_log" 2>&1 &
           tail_pid=$!
           sleep 5
           if ! kill -0 "$tail_pid" 2>/dev/null; then
@@ -370,6 +403,15 @@ jobs:
           WORKER_URL: ${{ steps.bootstrap.outputs.url }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+      - name: Configure validated production runtime secrets
+        run: |
+          node -e 'process.stdout.write(JSON.stringify({ KV_REST_API_URL: process.env.KV_REST_API_URL, KV_REST_API_TOKEN: process.env.KV_REST_API_TOKEN, OPEN_INTELLIGENCE_CRON_SECRET: process.env.OPEN_INTELLIGENCE_CRON_SECRET }))' | npx wrangler secret bulk --config=wrangler.production.jsonc
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          KV_REST_API_URL: ${{ secrets.KV_REST_API_URL }}
+          KV_REST_API_TOKEN: ${{ secrets.KV_REST_API_TOKEN }}
 
       - name: Deploy production route
         run: npm run cf:deploy -- --config=wrangler.production.jsonc
