@@ -1260,7 +1260,7 @@ export async function kvPop(key: string): Promise<string | null> {
     if (r) {
         try {
             const val = await r.rpop(key);
-            return val == null ? null : String(val);
+            return val == null ? null : typeof val === 'string' ? val : JSON.stringify(val);
         } catch (e) { handleRedisFailure(`kvPop('${key}')`, e); }
     }
     const raw = memGet(key);

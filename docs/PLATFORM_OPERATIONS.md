@@ -13,16 +13,18 @@ The marketing site is `https://gstdtoken.com`. The legacy `platform.gstdtoken.co
 6. Public node/peer/reward APIs parse actual node records and exclude metadata, corrupt records and expired peers.
 
 Node and TonConnect signature verification uses native Ed25519 rather than CPU-heavy JavaScript cryptography.
-The Redis SDK may return decoded JSON objects; multi-get preserves their JSON representation.
+The Redis SDK may return decoded JSON objects; multi-get and queue pop preserve their JSON representation. Task results require a signed assigned worker; completion-only reporting also makes the result retrievable.
 
 ## Validation for this release
 
-- Platform: 141 Vitest tests and 11 TonConnect tests pass; TypeScript, ESLint (warnings only) and Next.js production build pass.
-- Node: version 3.5.1; 202 tests pass, including subprocess failure/recovery; TypeScript build passes on Linux ARM64.
+- Platform: 148 Vitest tests and 11 TonConnect tests pass; TypeScript, ESLint (warnings only) and Next.js production build pass.
+- Node: version 3.5.2; 203 tests pass, including subprocess failure/recovery; TypeScript build passes on Linux ARM64.
 - A2A: 24 Python tests and 2 Node tests pass.
 - Contracts: 21 sandbox tests pass. These are not a production settlement transaction or independent audit.
 
 The release must also pass the repository's Cloudflare preview/deploy workflow and live node/task checks. Local tests alone do not prove production health.
+
+Production dependencies use patched Next.js 16.4.3 and Zod 4.6.7; the production dependency audit reports zero vulnerabilities. The TON SDK dependency override is covered by all 11 wallet-proof tests. CI deployment requires both frontend validation and the security audit.
 
 ## Accounting and deployment boundaries
 

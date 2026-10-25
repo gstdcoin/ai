@@ -10,7 +10,8 @@ export const NODE_ONLINE_WINDOW_MS = 10 * 60 * 1000;
 
 export function dedupeNodeRecords<T extends NodeStatusRecord>(records: T[]): T[] {
     const sorted = [...records].sort((a, b) =>
-        Number(UUID_NODE_ID_RE.test(a.node_id || '')) - Number(UUID_NODE_ID_RE.test(b.node_id || '')),
+        (Date.parse(b.last_seen || '') || 0) - (Date.parse(a.last_seen || '') || 0)
+        || Number(UUID_NODE_ID_RE.test(a.node_id || '')) - Number(UUID_NODE_ID_RE.test(b.node_id || '')),
     );
     const seenUrls = new Set<string>();
     return sorted.filter(record => {

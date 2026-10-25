@@ -8,6 +8,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvKeys, kvGet } from '../../../../lib/kv';
 import { sessionWallet } from '../../../../lib/walletSession';
 import type { NodeRecord } from './register';
+import { parseNodeRecords } from '../../../../lib/node-status';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
@@ -31,12 +32,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const keys = (await kvKeys('node:')).filter(k => !k.slice(5).includes(':'));
         const nodeRaws = await Promise.all(keys.map(k => kvGet(k)));
 
-        const myNodes = nodeRaws
-            .filter(Boolean)
-            .map(raw => {
-                try { return JSON.parse(raw!) as NodeRecord; } catch { return null; }
-            })
-            .filter((n): n is NodeRecord => n !== null && n.wallet_address.toLowerCase() === wallet);
+        const myNodes = parseNodeRecords<NodeRecord>(nodeRaws)
+            .filter(n => typeof n.wallet_address === 'string' && n.wallet_address.toLowerCase() === wallet);
 
         return res.status(200).json({
             nodes: myNodes,

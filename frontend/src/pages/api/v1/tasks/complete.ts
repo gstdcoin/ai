@@ -10,7 +10,7 @@
  * the server-side task assignment; client-supplied reward fields are ignored.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvGet, kvIncr, kvIncrByFloat, kvCompleteAssignedTask } from '../../../../lib/kv';
+import { kvGet, kvSetNX, kvIncr, kvIncrByFloat, kvCompleteAssignedTask } from '../../../../lib/kv';
 import { COMMUNITY_TAX, BASE_TASK_FEE } from '../../../../lib/rewards';
 import { requireNodeSignature } from '../../../../lib/nodeAuth';
 import { hasTaskResult } from '../../../../lib/taskValidation';
@@ -94,6 +94,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             await kvIncrByFloat('stats:probe_verified', 1);
         }
         const campaignId = assignment.campaign_id;
+        // PlatformLink and other workers use completion as their single reporting path.
+        // Preserve an earlier authenticated result if one is already present.
+        await kvSetNX(`task:result:${body.task_id}`, JSON.stringify({
+            ready: true, result: body.result, node_id: nodeId,
+            latency_ms: body.latency_ms || 0, model: body.model,
+        }), 120);
+
 
         const writes: Promise<void>[] = [];
 

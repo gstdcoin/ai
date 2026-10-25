@@ -6,7 +6,7 @@
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvSet, kvIncr } from '../../../../lib/kv';
-import { verifyNodeSignature, bindNodeKey } from '../../../../lib/nodeAuth';
+import { verifyNodeSignature, bindNodeKey, requireNodeSignatureIfBound } from '../../../../lib/nodeAuth';
 
 const NODE_TTL = 600; // 10 minutes
 
@@ -73,26 +73,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const now = new Date().toISOString();
         const specs = body.specs || body;
 
-        // URL-based deduplication: if a node with this URL already exists under a different key,
-        // reuse the canonical node_id so we never get two KV entries for the same physical node.
+        // A URL can rotate or be shared by aliases; it must never rewrite a signed node identity.
         const incomingUrl = (body.node_url || specs.node_url || body.multiaddrs?.[0] || '').replace(/\/$/, '');
         let isNewNode = true;
-
-        if (incomingUrl) {
-            // Fast path: URL index
-            const urlIdxKey = `url_idx:${Buffer.from(incomingUrl).toString('base64url').slice(0, 80)}`;
-            const cachedId = await kvGet(urlIdxKey);
-            if (cachedId && cachedId !== nodeId) {
-                // Redirect to the canonical node_id
-                nodeId = cachedId as string;
-                isNewNode = false;
-            } else if (!cachedId) {
-                // Register this URL → nodeId mapping (24h, well beyond tunnel rotation)
-                await kvSet(urlIdxKey, nodeId, 86400);
-            } else {
-                isNewNode = false; // same URL, same nodeId — re-registration
-            }
-        }
 
         // Preserve existing capabilities if the new registration doesn't provide them
         // (some node modules re-register without model lists; we must not overwrite valid caps)
@@ -105,6 +88,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             if (!(await bindNodeKey(nodeId, pubkey))) {
                 return res.status(403).json({ error: 'node_id is already bound to a different key' });
             }
+        } else {
+            const auth = await requireNodeSignatureIfBound(nodeId, req.headers as any);
+            if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
         }
 
         const existingRaw = await kvGet(`node:${nodeId}`);
