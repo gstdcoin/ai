@@ -3,30 +3,10 @@
  * Returns models currently available across active GSTD nodes with pricing.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvKeys, kvGet, kvMGet } from '../../../../lib/kv';
+import { kvKeys, kvMGet } from '../../../../lib/kv';
 
-// GSTD price per request by model
-const MODEL_PRICES: Record<string, number> = {
-    'llama3.2:1b':     0,
-    'llama3.2:3b':     0,
-    'phi3:mini':       0,
-    'gemma2:2b':       0,
-    'llama3.1:8b':     0.005,
-    'qwen2.5:7b':      0.005,
-    'mistral:7b':      0.005,
-    'phi3:medium':     0.005,
-    'qwen2.5:14b':     0.01,
-    'deepseek-r1:14b': 0.02,
-    'codellama:7b':    0.005,
-    'codellama:13b':   0.01,
-    'qwen2.5:32b':     0.03,
-    'mixtral:8x7b':    0.02,
-    'llama3.1:70b':    0.05,
-    'deepseek-r1:70b': 0.08,
-    'odysseus-chat':     0.001,
-    'odysseus-research': 0.05,
-    'odysseus-docs':     0.02,
-};
+import { getModelPrice } from '../../../../lib/billing';
+import { dedupeNodeRecords,parseNodeRecords,isNodeOnline } from '../../../../lib/node-status';
 
 export interface AvailableModel {
     model_id:       string;
@@ -82,14 +62,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const nodeKeys = (await kvKeys('node:')).filter((k: string) => !k.slice(5).includes(':'));
         if (nodeKeys.length > 0) {
             const values = await kvMGet(nodeKeys);
-            const now = Date.now();
-            for (const raw of values) {
-                if (!raw) continue;
-                const node: any = JSON.parse(raw);
-                const lastSeenMs = now - new Date(node.last_seen || 0).getTime();
-                if (lastSeenMs > 600_000) continue; // stale
+            for (const node of dedupeNodeRecords(parseNodeRecords<any>(values))) {
+                if (!isNodeOnline(node)) continue;
 
-                const caps: string[] = node.capabilities || node.models || [];
+                const caps: string[] = Array.isArray(node.capabilities) ? [...new Set<string>(node.capabilities.filter((c:unknown)=>typeof c==='string'))] : [];
                 for (const cap of caps) {
                     modelCount[cap] = (modelCount[cap] || 0) + 1;
                     if (node.avg_latency_ms) {
@@ -102,14 +78,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     } catch { /* KV unavailable — return empty */ }
 
     // Build response: combine live node data with price catalog
-    const seen = new Set<string>([...Object.keys(modelCount), ...Object.keys(MODEL_PRICES)]);
+    const seen = new Set<string>(Object.keys(modelCount));
     const models: AvailableModel[] = [];
 
     for (const modelId of seen) {
         const count   = modelCount[modelId] || 0;
         const latArr  = modelLatency[modelId] || [];
         const avgLat  = latArr.length > 0 ? Math.round(latArr.reduce((a, b) => a + b, 0) / latArr.length) : null;
-        const price   = MODEL_PRICES[modelId] ?? 0.005;
+        const price   = getModelPrice(modelId);
 
         models.push({
             model_id:       modelId,

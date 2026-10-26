@@ -517,11 +517,9 @@ jobs:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
-      - run: npm ci --legacy-peer-deps
-      # Dev/build-only advisories (braces via Tailwind 3 / eslint-config-next) have
-      # no upstream patch; production dependencies must stay free of high+critical.
-      - name: Audit production dependencies (high+critical)
-        run: npm audit --omit=dev --audit-level=high
+      - run: npm ci
+      - name: Audit runtime and build dependencies (high+critical)
+        run: npm audit --audit-level=high
 
   finance-inventory:
     if: github.ref == 'refs/heads/main'

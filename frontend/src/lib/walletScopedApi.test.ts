@@ -307,7 +307,10 @@ describe('wallet-scoped API authorization', () => {
     it('resolves bot tier requests only through the linked Telegram wallet', async () => {
         isValidBotToken.mockReturnValue(true);
         kvKeys.mockResolvedValue([]);
-        kvMGet.mockResolvedValue([]);
+        kvMGet.mockImplementation(async (keys:string[])=>keys.map(key=>
+            key==='money:v2:account:0:'+'11'.repeat(32)
+                ? JSON.stringify({available:'12000000000',pending:'0',reserved:'0',promo:'0',earned:'0'})
+                : key.startsWith('balance:')?'99':null));
         kvGet.mockImplementation(async (key: string) => {
             if (key === 'tg_wallet:123456') return '0:' + '11'.repeat(32);
             if (key === 'balance:0:' + '11'.repeat(32)) return '12';
@@ -321,7 +324,8 @@ describe('wallet-scoped API authorization', () => {
 
         expect(response.status).toBe(200);
         expect(response.body).toMatchObject({ wallet: '0:' + '11'.repeat(32), balance_gstd: 12 });
-        expect(kvGet).toHaveBeenCalledWith('balance:0:' + '11'.repeat(32));
+        expect(kvGet).not.toHaveBeenCalledWith('balance:0:' + '11'.repeat(32));
+        expect(response.body).toMatchObject({ledger_version:2});
     });
 
     it('does not issue a B2B API key for a wallet other than the session wallet', async () => {
