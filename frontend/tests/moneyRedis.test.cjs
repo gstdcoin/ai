@@ -45,6 +45,13 @@ async function run() {
         if(n>200)throw new Error('Local Redis did not start');
         await Promise.race([new Promise(resolve=>setTimeout(resolve,10)),serverError]);
     }
+    const kv=require('../src/lib/kv.ts');
+    const slots=await Promise.all(Array.from({length:20},(_,i)=>kv.kvNodeWalletSlot('slot-test-wallet','node-'+i,600,10)));
+    assert.equal(slots.filter(Boolean).length,10);
+    assert.equal(await kv.kvNodeWalletSlot('slot-test-wallet','node-0',600,10),true);
+    command('ZADD','node_wallet_slots:slot-test-wallet',Date.now()-1,'node-0');
+    assert.equal(await kv.kvNodeWalletSlot('slot-test-wallet','new-after-expiry',600,10),true);
+    console.log('Atomic live-node limit passed: concurrent cap, same-node renewal, expired-slot recovery.');
     const m=require('../src/lib/money.ts');
     const payer='0:'+'11'.repeat(32),operator='0:'+'22'.repeat(32),custody='0:'+'33'.repeat(32);
     await m.reconcileMoney({owner:custody,jettonWallet:custody,reserve:m.nano('1000000000').toString()},

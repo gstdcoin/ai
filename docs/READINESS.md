@@ -39,3 +39,9 @@ The obsolete domain gstdcoin.com did not resolve during this audit. gstdtoken.co
 ## What is deliberately excluded
 
 Presence rewards, automatic buybacks, speculative bridges/DeFi, unrestricted host/SSH management, automatic publication of user prompts, and fabricated multiple validators. The full ecosystem must not be called unstoppably decentralized or unhackable.
+
+## Registry recovery found during acceptance
+
+The legacy per-wallet registration counter counted repeated registrations after node TTL expiry, eventually refusing the same real node with `too_many_nodes`. This was reproduced during the 3.6.1 restart. A signed heartbeat of the existing identity restored its record; no token balances or keys were changed.
+
+The replacement is an atomic Redis lease set with at most ten live distinct identities per wallet. Existing identities renew without consuming another slot; expired leases free capacity. Heartbeats refresh leases. A disposable real-Redis test covers concurrent registrations, same-identity renewal and expiry. Both registration and heartbeat now require proof of a bound Ed25519 identity; anonymous heartbeat callers cannot manufacture online records. Use current signed node/SDK clients.

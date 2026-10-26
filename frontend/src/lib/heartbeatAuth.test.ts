@@ -23,7 +23,11 @@ describe('heartbeat authentication', () => {
         await kvSet(`node:${nodeId}`, JSON.stringify({
             node_id: nodeId, wallet_address: 'UQtest', tasks_completed: 3, gstd_earned: 2,
         }), 600);
-        const response = await call({ node_id: nodeId, tasks_completed: 999, gstd_earned: 999, uptime_hours: 1 });
+        const kp=(await crypto.subtle.generateKey({name:'Ed25519'} as any,true,['sign','verify'])) as CryptoKeyPair;
+        const pubkeyHex=hex(await crypto.subtle.exportKey('raw',kp.publicKey));
+        await kvSet(nodeKeyRedisKey(nodeId),pubkeyHex,600);
+        const headers=Object.fromEntries(Object.entries(await signedHeaders({nodeId,pubkeyHex,privateKey:kp.privateKey},'UQtest')).map(([k,v])=>[k.toLowerCase(),v]));
+        const response = await call({ node_id: nodeId, tasks_completed: 999, gstd_earned: 999, uptime_hours: 1 },headers);
         expect(response.status).toBe(200);
         expect(JSON.parse((await kvGet(`node:${nodeId}`))!)).toMatchObject({ tasks_completed: 3, gstd_earned: 2 });
     });
@@ -39,8 +43,8 @@ describe('heartbeat authentication', () => {
         expect((await call({ node_id: id.nodeId }, sigHeaders)).status).toBe(200);
     });
 
-    it('keeps accepting unbound legacy nodes', async () => {
+    it('rejects anonymous nodes instead of fabricating online records', async () => {
         const r = await call({ node_id: `legacy${Math.random().toString(16).slice(2, 10)}` });
-        expect(r.status).toBe(200);
+        expect(r.status).toBe(403);
     });
 });

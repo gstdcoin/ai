@@ -9,9 +9,9 @@
  *   - reward: GSTD earned this heartbeat (0 for now, platform controls this)
  *   - commands: optional array of remote commands to execute
  */
-import { nodeKeyRedisKey, requireNodeSignature } from '../../../../lib/nodeAuth';
+import { requireNodeSignature } from '../../../../lib/nodeAuth';
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvGet, kvSet, kvIncr, kvKeys, kvDel, kvRateLimit } from '../../../../lib/kv';
+import { kvGet, kvSet, kvIncr, kvKeys, kvDel, kvRateLimit, kvNodeWalletSlot } from '../../../../lib/kv';
 import { getClientIp } from '../../../../lib/ratelimit';
 import { nodeUpdateInfo } from '../../../../lib/nodeUpdate';
 import type { NodeRecord } from './register';
@@ -35,11 +35,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.status(400).json({ error: 'node_id required (4-64 alphanumeric chars)' });
         }
 
-        // A node that has a bound identity key must prove it; otherwise anyone could fake its liveness and stats.
-        if (await kvGet(nodeKeyRedisKey(nodeId))) {
-            const auth = await requireNodeSignature(nodeId, req.headers as any);
-            if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
-        }
+        // Unknown or unsigned callers cannot manufacture online-node records.
+        const auth=await requireNodeSignature(nodeId,req.headers as any);
+        if(!auth.ok)return res.status(auth.status).json({error:auth.error});
 
         // Rate limit per node_id so multiple nodes behind the same NAT don't share the limit
         const ip = getClientIp(req.headers as any);
@@ -80,6 +78,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 last_seen:      new Date().toISOString(),
                 tasks_completed: 0, gstd_earned: 0, uptime_hours: 0,
             };
+
+        if(record.wallet_address && !await kvNodeWalletSlot(record.wallet_address,nodeId,NODE_TTL,10))
+            return res.status(429).json({error:'too_many_nodes'});
 
         // Update live fields
         record.last_seen       = new Date().toISOString();
