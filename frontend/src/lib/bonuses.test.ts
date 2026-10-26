@@ -24,6 +24,15 @@ vi.mock('./kv', () => ({
         return balances.get(k)!;
     }),
 }));
+vi.mock('./money', () => ({
+    walletId: (wallet: string) => wallet,
+    nano: (value: number) => BigInt(Math.round(value*1e9)),
+    grantPromo: async (wallet: string, value: bigint, reference: string) => {
+        const key = 'promo:' + reference;
+        if (store.has(key)) return false;
+        store.set(key,'1'); balances.set('promo:' + wallet,(balances.get('promo:' + wallet)||0)+Number(value)/1e9); return true;
+    },
+}));
 vi.mock('./botAuth', () => ({ isValidBotToken: () => true }));
 
 import link from '../pages/api/v1/telegram/bot/link';
@@ -41,24 +50,24 @@ function call(handler: any, body: any) {
 beforeEach(() => { store.clear(); quotas.clear(); balances.clear(); });
 
 describe('telegram wallet-link bonuses', () => {
-    it('pays the welcome bonus once per wallet, even from many Telegram accounts', async () => {
+    it('grants service-only promo once as the welcome bonus once per wallet, even from many Telegram accounts', async () => {
         await call(link, { telegram_id: 1, wallet_address: W(1) });
         await call(link, { telegram_id: 2, wallet_address: W(1) });
-        expect(balances.get(`balance:${W(1).toLowerCase()}`)).toBe(0.5);
+        expect(balances.get(`promo:${W(1)}`)).toBe(5);
     });
 
     it('ignores self-referral through the same wallet', async () => {
         await call(link, { telegram_id: 1, wallet_address: W(1) });
         await call(link, { telegram_id: 2, wallet_address: W(1), referrer_id: 1 });
-        expect(balances.get(`balance:${W(1).toLowerCase()}`)).toBe(0.5);
+        expect(balances.get(`promo:${W(1)}`)).toBe(5);
     });
 
     it('credits a legitimate referral and caps referrals per inviter', async () => {
         await call(link, { telegram_id: 1, wallet_address: W(1) });
         await call(link, { telegram_id: 2, wallet_address: W(2), referrer_id: 1 });
-        expect(balances.get(`balance:${W(1).toLowerCase()}`)).toBe(1.5);
+        expect(balances.get(`promo:${W(1)}`)).toBe(15);
         for (let i = 3; i < 40; i++) await call(link, { telegram_id: i, wallet_address: W(i), referrer_id: 1 });
-        expect(balances.get(`balance:${W(1).toLowerCase()}`)).toBe(0.5 + 20);
+        expect(balances.get(`promo:${W(1)}`)).toBe(5 + 20*10);
     });
 
     it('stops subsidising sign-ups after the daily budget', async () => {

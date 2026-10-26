@@ -11,9 +11,9 @@
  * idempotent on-chain settlement flow is available.
  */
 
-import { kvGet, kvSet, kvKeys, kvIncrByFloat, kvAccrueTaskReward } from './kv';
+import { kvGet, kvKeys } from './kv';
 
-export const COMMUNITY_TAX     = 0.05;   // 5% to treasury
+export const COMMUNITY_TAX     = 0.15;   // 5% to treasury
 export const BASE_TASK_FEE     = 0.001;  // GSTD per completed inference task
 export interface RewardSnapshot {
     nodeId:        string;
@@ -40,28 +40,8 @@ export async function accrueReward(
     feeGstd: number = BASE_TASK_FEE,
     taskId?: string,
 ): Promise<{ nodeShare: number; communityShare: number }> {
-    const nodeShare      = Math.round(feeGstd * (1 - COMMUNITY_TAX) * 1e6) / 1e6;
-    const communityShare = Math.round(feeGstd * COMMUNITY_TAX * 1e6) / 1e6;
-    const walletKey      = wallet.toLowerCase();
-
-    if (taskId) {
-        const credited = await kvAccrueTaskReward(
-            taskId, walletKey, nodeId, nodeShare, communityShare, feeGstd,
-        );
-        return credited
-            ? { nodeShare, communityShare }
-            : { nodeShare: 0, communityShare: 0 };
-    }
-
-    await Promise.all([
-        kvIncrByFloat(`rewards:pending:${walletKey}`, nodeShare),
-        kvIncrByFloat(`rewards:lifetime:${nodeId}`, nodeShare),
-        kvIncrByFloat('rewards:treasury', communityShare),
-        kvIncrByFloat('stats:total_gstd_paid', feeGstd),
-        kvSet(`rewards:node_wallet:${nodeId}`, walletKey),
-    ]);
-
-    return { nodeShare, communityShare };
+    // Unfunded work has no monetary reward. Paid work settles through v2 escrow only.
+    return { nodeShare: 0, communityShare: 0 };
 }
 
 /**

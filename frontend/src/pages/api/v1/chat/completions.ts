@@ -15,7 +15,8 @@ import { kvGet, kvKeys, kvMGet, kvSet, kvRateLimit } from '../../../../lib/kv';
 import { randomBytes } from 'crypto';
 import { validateEnterpriseKey } from '../enterprise/keys';
 import { recordEnterpriseUsage } from '../enterprise/usage';
-import { chargeFee, refundFee } from '../../../../lib/billing';
+import { chargeFee, refundFee, getModelPrice } from '../../../../lib/billing';
+import { paidInference } from '../../../../lib/paidInference';
 import { sessionWallet } from '../../../../lib/walletSession';
 import { safeNodeUrl } from '../../../../lib/safeNodeUrl';
 
@@ -25,7 +26,7 @@ const MODEL_ALIASES: Record<string, string> = {
     'gpt-4o':                                      'llama3.1:70b',
     'gpt-4-turbo':                                 'llama3.1:70b',
     'gpt-3.5-turbo':                               'llama3.1:8b',
-    'auto':                                        'llama3.1:8b',
+    'auto':                                        'auto',
     // Legacy Groq IDs — transparently mapped, not routed to Groq
     'llama-3.3-70b-versatile':                     'llama3.1:70b',
     'llama-3.1-8b-instant':                        'llama3.1:8b',
@@ -207,6 +208,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     const walletAddress = !enterpriseKey ? authenticatedWallet : null;
 
+    if (!enterpriseKey && getModelPrice(resolvedModel) > 0) {
+        return paidInference(req,res,{ wallet: walletAddress, price: getModelPrice(resolvedModel), model: resolvedModel,
+            messages, maxTokens: maxTok, surface: 'api' });
+    }
     let billingCharge = 0;
     if (!enterpriseKey) {
         const charge = await chargeFee(walletAddress, resolvedModel, null);

@@ -4,7 +4,7 @@
   "main": "worker.ts",
   "compatibility_date": "2026-10-16",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
-  "triggers": { "crons": ["17 4 * * *"] },
+  "triggers": { "crons": ["17 4 * * *", "*/10 * * * *"] },
   "workers_dev": true,
   "assets": {
     "directory": ".open-next/assets",

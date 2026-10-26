@@ -163,6 +163,7 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
     const token = localStorage.getItem('session_token');
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
+          'Idempotency-Key': crypto.randomUUID(),
       ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       ...(token ? { 'X-Session-Token': token } : {}),
       ...(address ? { 'X-GSTD-Target-Wallet': address } : {}),
@@ -256,6 +257,7 @@ export default function ChatPanel({ compact, initialMode }: ChatPanelProps = {})
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Idempotency-Key': crypto.randomUUID(),
           ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
           ...(token ? { 'X-Session-Token': token } : {}),
         },

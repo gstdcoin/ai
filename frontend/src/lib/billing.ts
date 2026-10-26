@@ -1,7 +1,10 @@
-import { kvApplyDeltas, kvConsumeQuota, kvDebitBalance, kvGet } from './kv';
+import { consumePromoRequest } from './money';
+import { randomUUID } from 'crypto';
+import { kvConsumeQuota, kvGet } from './kv';
 
 // GSTD cost per request by Ollama model ID
 const MODEL_PRICES: Record<string, number> = {
+    'auto': 0,
     'llama3.2:1b':     0,
     'llama3.2:3b':     0,
     'phi3:mini':       0,
@@ -62,7 +65,7 @@ export type ChargeResult =
 /**
  * Attempt to charge a wallet for an inference request.
  * If model is free AND within daily limit → returns free: true.
- * Otherwise deducts GSTD and distributes: 90% node reward, 10% treasury.
+ * Paid models use paidInference with a backed v2 reservation and 85/10/5 capture.
  * nodeId null means no specific node (routed dynamically).
  */
 export async function chargeFee(
@@ -83,41 +86,18 @@ export async function chargeFee(
         if (quota.allowed) {
             return { ok: true, free: true, remaining: quota.remaining };
         }
+        if (wallet && await consumePromoRequest(wallet,randomUUID()))
+            return { ok: true, free: true, remaining: 0 };
         // Over free limit: if no wallet → reject
         if (!wallet) {
             return { ok: false, error: 'no_wallet', required: 0 };
         }
-        // Wallet present but over free limit: charge 0.001 GSTD (base fee)
+        // Exceeding a free quota must never silently charge money.
     }
 
-    if (!wallet) {
-        return { ok: false, error: 'no_wallet', required: price };
-    }
-
-    const charge = price === 0 ? 0.001 : price;
-    // 10% to treasury
-    const treasury  = charge * COMMISSION_RATE;
-    const nodeReward = charge - treasury;
-    const rewardKey = nodeId ? `rewards:pending:${nodeId.toLowerCase()}` : 'rewards:pool';
-    const debit = await kvDebitBalance(wallet, charge, [
-        { key: 'treasury:balance', amount: treasury },
-        { key: rewardKey, amount: nodeReward },
-    ]);
-    if (debit.status === 'insufficient') {
-        return { ok: false, error: 'insufficient_balance', balance: debit.balance, required: charge };
-    }
-    if (debit.status !== 'debited') throw new Error('Could not apply inference charge');
-
-    return { ok: true, free: false, charged: charge, treasury, nodeReward };
+    return { ok: false, error: wallet ? 'insufficient_balance' : 'no_wallet', required: price };
 }
 
-export async function refundFee(wallet: string, amount: number): Promise<void> {
-    if (amount <= 0) return;
-    const treasury = amount * COMMISSION_RATE;
-    const nodeReward = amount - treasury;
-    await kvApplyDeltas([
-        { key: `balance:${wallet.toLowerCase()}`, amount },
-        { key: 'treasury:balance', amount: -treasury },
-        { key: 'rewards:pool', amount: -nodeReward },
-    ]);
+export async function refundFee(_wallet: string, _amount: number): Promise<void> {
+    throw new Error('Legacy direct billing is disabled; release the v2 reservation by payment id');
 }

@@ -13,6 +13,7 @@ export const config = { maxDuration: 60 };
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { resolveNodeUrl, callNodeChat, streamNodeChat, NODE_MODEL, ChatMessage } from '../../lib/nodes';
 import { kvGet } from '../../lib/kv';
+import { paidInference } from '../../lib/paidInference';
 
 // ─── Expert personas ──────────────────────────────────────────────────────────
 // Virtual specialties — each gets a unique system prompt to the same GSTD node
@@ -235,45 +236,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const start = Date.now();
     const collectiveTier = TIERS[tier] || TIERS.free;
 
-    // ═══ GSTD DEDUCTION: Paid tiers require an authenticated session ═══
-    // Wallet is resolved from the session token (set by /api/v1/users/login),
-    // never trusted from a client-supplied header/body field -- otherwise
-    // anyone could name an arbitrary victim wallet to charge for their query.
-    let wallet = '';
     if (collectiveTier.cost > 0) {
-        const walletKey = sessionToken ? await kvGet(`ton-auth:session:${sessionToken}`) : null;
-        if (!walletKey) {
-            return res.status(402).json({
-                error: 'wallet_required',
-                message: `Connect your wallet to use ${collectiveTier.name} (${collectiveTier.cost} GSTD). Free tier is available without wallet.`,
-                cost: collectiveTier.cost,
-            });
-        }
-        wallet = walletKey as string;
-
-        const SELF_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://app.gstdtoken.com';
-        try {
-            const deductResp = await fetch(`${SELF_URL}/api/v1/chat/deduct`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-Session-Token': sessionToken! },
-                body: JSON.stringify({ amount: collectiveTier.cost, tier, tier_name: collectiveTier.name }),
-            });
-            if (deductResp.ok) {
-                const deductData = await deductResp.json();
-                console.log(`[CI] 💰 Deducted ${collectiveTier.cost} GSTD from ${wallet.substring(0, 12)}... (remaining: ${deductData.remaining || '?'})`);
-            } else {
-                const errData = await deductResp.json().catch(() => ({ message: 'Deduction failed' }));
-                return res.status(402).json({
-                    error: 'insufficient_balance',
-                    message: errData.message || `Need ${collectiveTier.cost} GSTD for ${collectiveTier.name}. Top up or switch to free tier.`,
-                    cost: collectiveTier.cost,
-                    balance: errData.balance || 0,
-                });
-            }
-        } catch (err: any) {
-            console.error('[CI] Backend deduction failed (network):', err?.message?.substring(0, 80));
-            return res.status(502).json({ error: 'deduction_failed', message: 'Could not verify balance. Please try again.' });
-        }
+        const wallet = sessionToken ? await kvGet(`ton-auth:session:${sessionToken}`) : null;
+        return paidInference(req,res,{ wallet, price: collectiveTier.cost, model: typeof model === 'string' && model !== 'compound' ? model : 'auto',
+            messages, maxTokens: tier === 'ultra' ? 2048 : tier === 'pro' ? 1536 : 1024, surface: 'web', tier });
     }
 
     // ─── FREE TIER — single GSTD node call ───────────────────────────────────
@@ -334,182 +300,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
     }
 
-    // ─── PAID TIERS — Multi-expert sequential calls + synthesis ──────────────
-    const experts = selectExperts(collectiveTier.expertCount);
-    console.log(`[CI] ${collectiveTier.badge} ${collectiveTier.name}: consulting ${experts.length} experts via GSTD network...`);
-
-    if (stream) {
-        res.setHeader('Content-Type', 'text/event-stream');
-        res.setHeader('Cache-Control', 'no-cache, no-transform');
-        res.setHeader('Connection', 'keep-alive');
-        res.setHeader('X-Accel-Buffering', 'no');
-
-        sendSSE(res, 'meta', {
-            tier, tierName: collectiveTier.name, badge: collectiveTier.badge,
-            expertCount: experts.length,
-            experts: experts.map(e => ({ name: e.name, specialty: e.specialty })),
-            phase: 'consulting',
-        });
-    }
-
-    // Phase 1: Sequential expert calls (Pi node handles one at a time)
-    // Keep tokens low (150) so each call finishes in ~10-15s
-    const expertResults: Array<{ content: string; latency: number; expert: ExpertSpec }> = [];
-    const userQ = messages.filter((m: ChatMessage) => m.role === 'user').pop()?.content || '';
-    const kbFacts = await lookupKnowledge(userQ);
-    const kbCtx = kbFacts ? `\n\nVERIFIED FACTS:\n${kbFacts}\nUse if relevant.` : '';
-
-    for (const expert of experts) {
-        const expertMsgs: ChatMessage[] = [
-            { role: 'system', content: expert.systemPrompt + kbCtx },
-            ...messages.filter((m: ChatMessage) => m.role !== 'system'),
-        ];
-        try {
-            const result = await callNodeChat(expertMsgs, { maxTokens: 150, temperature: 0.3, timeoutMs: 12_000 });
-            expertResults.push({ ...result, content: stripThinkBlocks(result.content), expert });
-            if (stream) {
-                sendSSE(res, 'expert_done', {
-                    name: expert.name, id: expert.id, specialty: expert.specialty,
-                    latency: result.latency, contentLength: result.content.length,
-                    preview: result.content.substring(0, 200) + (result.content.length > 200 ? '...' : ''),
-                });
-            }
-        } catch (err: any) {
-            console.warn(`[CI] Expert ${expert.id} failed:`, err?.message?.substring(0, 60));
-        }
-    }
-
-    // If all experts failed, fall back to single call
-    if (expertResults.length === 0) {
-        const fallbackMsgs: ChatMessage[] = [
-            { role: 'system', content: FREE_SYSTEM + kbCtx },
-            ...messages.filter((m: ChatMessage) => m.role !== 'system'),
-        ];
-        if (stream) {
-            sendSSE(res, 'meta', { phase: 'fallback' });
-            try {
-                for await (const chunk of streamNodeClean(fallbackMsgs, { maxTokens: 512, timeoutMs: 30_000 })) {
-                    sendSSE(res, 'delta', { content: chunk });
-                }
-            } catch (_e) {
-                sendSSE(res, 'delta', { content: '🐝 GSTD Node is temporarily busy. Please try again.' });
-            }
-            sendSSE(res, 'done', { tier, expertCount: 0, latency_ms: Date.now() - start, cost_gstd: 0 });
-            res.end();
-            return;
-        }
-        return res.status(503).json({ error: 'GSTD Node is temporarily busy. Please try again.' });
-    }
-
-    // ── Consensus score ──────────────────────────────────────────────────────
-    const extractKP = (text: string): string[] =>
-        text.split(/[.!?\n]/).filter(s => s.trim().length > 20).map(s => s.trim().toLowerCase().substring(0, 80));
-    const allPhrases = expertResults.map(r => extractKP(r.content));
-    let agreements = 0, totalChecked = 0;
-    if (allPhrases.length >= 2) {
-        for (let i = 0; i < allPhrases.length; i++) {
-            for (let j = i + 1; j < allPhrases.length; j++) {
-                for (const phrase of allPhrases[i]) {
-                    totalChecked++;
-                    const wi = new Set(phrase.split(/\s+/).filter(w => w.length > 3));
-                    if (allPhrases[j].some(pj => {
-                        const wj = new Set(pj.split(/\s+/).filter(w => w.length > 3));
-                        let ov = 0; for (const w of wi) { if (wj.has(w)) ov++; } return ov >= 3;
-                    })) agreements++;
-                }
-            }
-        }
-    }
-    const consensusScore = totalChecked > 0 ? Math.min(Math.round((agreements / totalChecked) * 100) + 15, 98) : 75;
-
-    if (stream) {
-        sendSSE(res, 'consensus', {
-            score: consensusScore, respondedExperts: expertResults.length, totalExperts: experts.length,
-            avgLatency: Math.round(expertResults.reduce((a, r) => a + r.latency, 0) / expertResults.length),
-            message: getConsensusMessage(consensusScore),
-        });
-        sendSSE(res, 'meta', {
-            phase: 'synthesizing', respondedExperts: expertResults.length, consensusScore,
-            message: `${expertResults.length} experts analyzed, ${consensusScore}% consensus, synthesizing...`,
-        });
-    }
-
-    // Phase 2: Build synthesis input
-    const conversationContext = messages.filter((m: ChatMessage) => m.role !== 'system').slice(0, -1)
-        .map((m: ChatMessage) => `${m.role}: ${m.content}`).join('\n');
-    const expertAnswersBlock = expertResults.map((r, i) =>
-        `--- EXPERT ${i + 1}: ${r.expert.name} (${r.expert.specialty}) [${r.latency}ms] ---\n${r.content}`
-    ).join('\n\n');
-    const contextPrefix = conversationContext ? `CONVERSATION CONTEXT:\n${conversationContext}\n\n` : '';
-
-    const synthesisMessages: ChatMessage[] = [
-        { role: 'system', content: collectiveTier.synthesisPrompt },
-        {
-            role: 'user',
-            content: contextPrefix +
-                `QUESTION:\n${userQ}\n\n${'─'.repeat(40)}\nEXPERT ANALYSES (${expertResults.length}):\n${'─'.repeat(40)}\n\n${expertAnswersBlock}\n\n${'─'.repeat(40)}\nProvide the synthesized answer:`,
-        },
-    ];
-
-    // Phase 3: Stream synthesis
-    if (stream) {
-        sendSSE(res, 'meta', { phase: 'streaming' });
-        let synthOk = false;
-        try {
-            for await (const chunk of streamNodeClean(synthesisMessages, { maxTokens: 512, timeoutMs: 20_000 })) {
-                sendSSE(res, 'delta', { content: chunk });
-            }
-            synthOk = true;
-        } catch (e: any) {
-            console.warn(`[CI] Synthesis failed:`, e?.message?.substring(0, 60));
-        }
-
-        if (!synthOk) {
-            const best = expertResults.reduce((a, b) => a.content.length > b.content.length ? a : b, expertResults[0]);
-            sendSSE(res, 'delta', { content: best.content });
-        }
-
-        const latencyMs = Date.now() - start;
-        sendSSE(res, 'done', {
-            tier, tierName: collectiveTier.name, badge: collectiveTier.badge,
-            expertCount: expertResults.length,
-            experts: expertResults.map(r => ({ name: r.expert.name, latency: r.latency })),
-            latency_ms: latencyMs, cost_gstd: collectiveTier.cost,
-            network: 'gstd-sovereign',
-        });
-        res.end();
-        console.log(`[CI] ${collectiveTier.badge} ${collectiveTier.name}: ${expertResults.length} experts, ${latencyMs}ms`);
-        return;
-    }
-
-    // Non-stream paid tier
-    try {
-        const synthResult = await callNodeChat(synthesisMessages, { maxTokens: 512, timeoutMs: 20_000 });
-        const latencyMs = Date.now() - start;
-        return res.status(200).json({
-            id: `ci-${Date.now()}`, object: 'chat.completion',
-            created: Math.floor(Date.now() / 1000), model: 'gstd-collective',
-            choices: [{ index: 0, message: { role: 'assistant', content: stripThinkBlocks(synthResult.content) }, finish_reason: 'stop' }],
-            collective: {
-                tier, tierName: collectiveTier.name, badge: collectiveTier.badge,
-                expertCount: expertResults.length,
-                experts: expertResults.map(r => ({ name: r.expert.name, latency: r.latency })),
-                latency_ms: latencyMs, cost_gstd: collectiveTier.cost,
-                network: 'gstd-sovereign',
-            },
-        });
-    } catch (_e) {
-        // Synthesis failed — return best expert response
-        const best = expertResults.reduce((a, b) => a.content.length > b.content.length ? a : b, expertResults[0]);
-        return res.status(200).json({
-            id: `ci-${Date.now()}`, object: 'chat.completion',
-            created: Math.floor(Date.now() / 1000), model: 'gstd-expert',
-            choices: [{ index: 0, message: { role: 'assistant', content: best.content }, finish_reason: 'stop' }],
-            collective: {
-                tier, tierName: collectiveTier.name, badge: collectiveTier.badge,
-                expertCount: expertResults.length, latency_ms: Date.now() - start, cost_gstd: collectiveTier.cost,
-                network: 'gstd-sovereign',
-            },
-        });
-    }
+    return res.status(400).json({ error: 'Invalid tier' });
 }

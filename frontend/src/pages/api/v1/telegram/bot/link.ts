@@ -1,20 +1,21 @@
 /**
  * POST /api/v1/telegram/bot/link
  * Links a TON wallet address to a Telegram user ID.
- * Grants +0.5 GSTD welcome bonus on first link.
- * If referrer_id supplied and this is a first link, awards 1 GSTD to the referrer
+ * Grants service-only promotional requests on first link.
+ * If referrer_id supplied and this is a first link, awards service-only promotional requests to the referrer
  * and records referral stats (referral_stats:{referrer_id}).
  *
  * Body: { telegram_id, wallet_address, username?, first_name?, referrer_id? }
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvSet, kvSetNX, kvConsumeQuota, kvIncr, kvIncrByFloat } from '../../../../../lib/kv';
+import { grantPromo, nano, walletId } from '../../../../../lib/money';
 import { isValidBotToken } from '../../../../../lib/botAuth';
 
 const TON_ADDRESS_RE = /^(EQ[A-Za-z0-9_-]{46}|UQ[A-Za-z0-9_-]{46}|0:[a-fA-F0-9]{64})$/;
-const WELCOME_BONUS    = 0.5;
-const REFERRER_BONUS   = 1.0;
-const INVITEE_BONUS    = 0.2;  // extra for the new user (on top of welcome bonus)
+const WELCOME_BONUS    = 5; // Service requests, not GSTD.
+const REFERRER_BONUS   = 10;
+const INVITEE_BONUS    = 2;  // extra for the new user (on top of welcome bonus)
 const DAILY_BONUS_BUDGET = 100;       // max subsidised sign-ups per day
 const MAX_REFERRALS_PER_USER = 20;    // lifetime paid referrals per inviter
 const TEN_YEARS = 10 * 365 * 86400;
@@ -40,7 +41,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const userId    = String(telegram_id);
-    const walletKey = wallet_address.toLowerCase();
+    let walletKey: string;
+    try { walletKey = walletId(wallet_address); } catch { return res.status(400).json({ error: 'Invalid TON address' }); }
     const existing  = await kvGet(`tg_wallet:${userId}`).catch(() => null);
     const isNew     = !existing;
 
@@ -59,12 +61,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (isNew) {
         const bonuses: Promise<any>[] = [kvIncr('stats:total_users').catch(() => {})];
 
-        // Welcome/referral bonuses are unfunded ledger credits, so they are one-time per wallet
+        // Welcome/referral bonuses are nonwithdrawable service quotas, so they are one-time per wallet
         // (a wallet re-linked from many Telegram accounts can't farm them) and capped per day.
         const firstForWallet = await kvSetNX(`bonus_claimed:${walletKey}`, '1', TEN_YEARS);
         const withinBudget = firstForWallet && (await kvConsumeQuota('quota:welcome_bonus:day', DAILY_BONUS_BUDGET, 86400)).allowed;
         subsidized = withinBudget;
-        if (withinBudget) bonuses.push(kvIncrByFloat(`balance:${walletKey}`, WELCOME_BONUS).catch(() => {}));
+        if (withinBudget) bonuses.push(grantPromo(walletKey, nano(WELCOME_BONUS), 'welcome:' + walletKey));
 
         // Referral: only credit if this is user's first wallet link and referrer != self
         if (withinBudget && referrer_id && String(referrer_id) !== userId) {
@@ -84,13 +86,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             {
                 const refWalletKey = String(refWalletRaw).toLowerCase();
                 bonuses.push(
-                    kvIncrByFloat(`balance:${refWalletKey}`, REFERRER_BONUS).catch(() => {})
+                    grantPromo(refWalletRaw, nano(REFERRER_BONUS), 'referrer:' + walletKey)
                 );
             }
 
             // Extra bonus for the invitee
             bonuses.push(
-                kvIncrByFloat(`balance:${walletKey}`, INVITEE_BONUS).catch(() => {})
+                grantPromo(walletKey, nano(INVITEE_BONUS), 'invitee:' + walletKey)
             );
             referral_bonus = INVITEE_BONUS;
 
@@ -110,6 +112,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     return res.status(200).json({
+        promo_only: true,
         success:       true,
         wallet:        wallet_address,
         telegram_id:   userId,
