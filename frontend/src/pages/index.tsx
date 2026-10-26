@@ -85,6 +85,7 @@ export default function Home() {
 
   useEffect(() => {
     const load = async () => {
+      if (document.hidden) return;
       try {
         const res = await fetch(`${API_BASE_URL}/api/v1/network/stats`);
         if (res.ok) setStats(await res.json());
@@ -93,7 +94,7 @@ export default function Home() {
       }
     };
     load();
-    const id = setInterval(load, 30000);
+    const id = setInterval(load, 120_000);
     return () => clearInterval(id);
   }, []);
 

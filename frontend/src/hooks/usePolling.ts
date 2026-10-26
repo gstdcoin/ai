@@ -25,15 +25,18 @@ export function usePolling(
       return;
     }
 
-    // Call immediately on mount/enable
-    callbackRef.current();
+    let inFlight = false;
+    let disposed = false;
+    const poll = async () => {
+      if (disposed || !enabledRef.current || document.hidden || inFlight) return;
+      inFlight = true;
+      try { await callbackRef.current(); } finally { inFlight = false; }
+    };
+    void poll().catch(() => {});
 
-    const intervalId = setInterval(() => {
-      if (enabledRef.current) {
-        callbackRef.current();
-      }
-    }, interval);
 
-    return () => clearInterval(intervalId);
+    const intervalId = setInterval(() => { void poll().catch(() => {}); }, interval);
+    return () => { disposed = true; clearInterval(intervalId); };
+
   }, [interval, enabled]);
 }

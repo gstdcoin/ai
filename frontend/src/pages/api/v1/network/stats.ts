@@ -16,7 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    res.setHeader('Cache-Control', 'public, max-age=15, stale-while-revalidate=30');
+    res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=60');
 
     try {
         const [
@@ -45,7 +45,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const nodeRecords = dedupeNodeRecords(parseNodeRecords<NodeRecord>(nodeValues));
         const nodesOnline = nodeRecords.filter(node => isNodeOnline(node)).length;
         // If total_registered KV counter is 0 (likely due to kvIncr failure), use the deduplicated registry count.
-        const totalReg    = Math.max(parseInt(totalRegistered || '0', 10), nodeRecords.length);
+        const totalReg = nodeRecords.length;
         const gstdPaid    = parseFloat(totalGstdPaid     || '0');
         const treasury    = parseFloat(treasuryBalance   || '0');
         const users       = parseInt(totalUsers          || '0', 10);
@@ -86,6 +86,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             active_workers:         nodesOnline,
             total_nodes:            totalReg,
             total_registered:       totalReg,
+            registration_events:    parseInt(totalRegistered || '0', 10),
             total_users:            users,
 
             // Task metrics (real KV data)

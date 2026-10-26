@@ -30,10 +30,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         const registeredNodes = dedupeNodeRecords(nodes);
         const onlineNodes = registeredNodes.filter(node => isNodeOnline(node));
-        const totalRegisteredCount = Math.max(
-            parseInt(totalRegistered || '0', 10),
-            registeredNodes.length,
-        );
+        const totalRegisteredCount = registeredNodes.length;
 
         // Strip sensitive fields for public listing
         const public_nodes = onlineNodes.map(n => ({
@@ -60,6 +57,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(200).json({
             count:      public_nodes.length,
             total_registered: totalRegisteredCount,
+            registration_events: parseInt(totalRegistered || '0', 10),
             offline_count: Math.max(0, totalRegisteredCount - public_nodes.length),
             peers:      public_nodes,
             nodes:      public_nodes,

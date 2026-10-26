@@ -46,12 +46,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             nodesOnline = dedupedRecords.filter(node => isNodeOnline(node)).length;
         }
 
-        const totalReg = Math.max(parseInt(totalRegistered || '0', 10), registeredNodes);
+        const totalReg = registeredNodes;
 
         return res.status(200).json({
             nodes_online:           nodesOnline,
             active_nodes:           nodesOnline,
             total_registered:       totalReg,
+            registration_events:    parseInt(totalRegistered || '0', 10),
             total_heartbeats:       parseInt(totalHeartbeats  || '0', 10),
             total_tasks_submitted:  parseInt(totalTasksSubmitted || '0', 10),
             total_tasks_completed:  tasksDone,
