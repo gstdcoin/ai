@@ -45,3 +45,7 @@ Presence rewards, automatic buybacks, speculative bridges/DeFi, unrestricted hos
 The legacy per-wallet registration counter counted repeated registrations after node TTL expiry, eventually refusing the same real node with `too_many_nodes`. This was reproduced during the 3.6.1 restart. A signed heartbeat of the existing identity restored its record; no token balances or keys were changed.
 
 The replacement is an atomic Redis lease set with at most ten live distinct identities per wallet. Existing identities renew without consuming another slot; expired leases free capacity. Heartbeats refresh leases. A disposable real-Redis test covers concurrent registrations, same-identity renewal and expiry. Both registration and heartbeat now require proof of a bound Ed25519 identity; anonymous heartbeat callers cannot manufacture online records. Use current signed node/SDK clients.
+
+## Duplicate packages
+
+Embedded `contracts/` deployment commands and `gstd-mcp-server/` launch commands are retired, with dependencies removed and fail-closed entry points. Use the dedicated `gstdcoin/contracts` and experimental signed `gstdcoin/A2A` repositories. This removes divergent launch/deployment paths; it does not assert that the canonical contracts are audited or their deployed bytecode matches all current sources.
