@@ -23,6 +23,14 @@ describe('verified mainnet GSTD custody and deposit format',()=>{
         expect(await promise).toEqual({owner,jettonWallet:fixture.account.address,reserve:'499000000000'});
         expect(mock).toHaveBeenCalledTimes(2);
     });
+    it('values an unindexed receiver wallet conservatively at zero',async()=>{
+        vi.useFakeTimers();
+        const mock=fetcher([{success:true,decoded:{jetton_wallet_address:fixture.account.address}}]);
+        mock.mockResolvedValueOnce({ok:false,status:404});
+        const promise=custodySnapshot(owner);
+        await vi.runAllTimersAsync();
+        expect((await promise).reserve).toBe('0');
+    });
     it('accepts the actual historical TEP-74 inbound receipt without using an asserted amount',async()=>{
         vi.useFakeTimers();
         fetcher([fixture,{success:true,decoded:{jetton_wallet_address:sourceWallet}}]);

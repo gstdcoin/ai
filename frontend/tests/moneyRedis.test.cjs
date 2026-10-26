@@ -78,6 +78,20 @@ async function run() {
     command('SET','money:v2:due','wrong-type');
     await assert.rejects(()=>m.reserveMoney(payer,'failure',1n,'bad',Date.now()+60_000));
     assert.equal(command('GET','money:v2:account:'+payer),snapshot);
+    // Exercise the production empty-ledger bootstrap Lua against the disposable database.
+    const bootstrap=fs.readFileSync(path.join(__dirname,'../../scripts/bootstrap-empty-money.mjs'),'utf8');
+    const lua=bootstrap.match(/const script=`([\s\S]*?)`;/)[1];
+    const initialise=()=>command('EVAL',lua,2,'money:v2:system','money:v2:inventory:bootstrap','{"allocated":"0"}','{"kind":"empty"}');
+    command('FLUSHDB');
+    assert.equal(initialise(),'initialised_empty');
+    assert.equal(initialise(),'already_initialised');
+    command('FLUSHDB');command('SET','balance:legacy','1');
+    assert.equal(initialise(),'nonempty_legacy_requires_review');
+    assert.equal(command('GET','money:v2:system'),null);
+    command('FLUSHDB');command('SET','money:v2:account:legacy','{"available":"1","pending":"0","reserved":"0"}');
+    assert.equal(initialise(),'nonempty_v2_requires_review');
+    command('FLUSHDB');command('SET','money:v2:account:promo','{"available":"0","pending":"0","reserved":"0","promo":"5"}');
+    assert.equal(initialise(),'initialised_empty');
     console.log('Redis production-path money checks passed: CAS races, exact amounts above 2^53, atomic capture/claim, queue rollback, fail-closed storage.');
 }
 run().then(()=>{process.exitCode=0;},error=>{console.error(error);process.exitCode=1;}).finally(async()=>{
