@@ -12,6 +12,7 @@
 
 import { kvGet, kvKeys, kvMGet } from './kv';
 import { safeNodeUrl } from './safeNodeUrl';
+import { dedupeNodeRecords, isNodeOnline, parseNodeRecords } from './node-status';
 
 export const NODE_MODEL = 'llama3.2:3b';
 
@@ -50,16 +51,15 @@ export async function getActiveNodes(preferModel?: string): Promise<ActiveNode[]
     const nodes: ActiveNode[] = [];
 
     try {
-        const nodeKeys = await kvKeys('node:');
+        const nodeKeys = (await kvKeys('node:')).filter(key => !key.slice(5).includes(':'));
         if (!nodeKeys.length) return nodes;
 
         const values = await kvMGet(nodeKeys);
         const now    = Date.now();
 
-        for (const raw of values) {
-            if (!raw) continue;
+        for (const n of dedupeNodeRecords(parseNodeRecords<any>(values))) {
             try {
-                const n: any   = JSON.parse(raw);
+                if (!isNodeOnline(n)) continue;
                 const url = safeNodeUrl(n.node_url || n.multiaddrs?.[0] || '');
                 if (!url) continue;
 
@@ -148,7 +148,9 @@ export async function callNodeChat(
 
     // Try candidates in order (best score first)
     let lastErr = '';
-    for (const url of candidates.slice(0, 3)) {
+    for (const url of Array.from(new Set(candidates)).slice(0, 3)) {
+        const remainingMs = timeoutMs - (Date.now() - start);
+        if (remainingMs <= 0) break;
         try {
             const resp = await fetch(`${url}/v1/chat/completions`, {
                 method:  'POST',
@@ -160,7 +162,7 @@ export async function callNodeChat(
                     temperature,
                     stream:     false,
                 }),
-                signal: AbortSignal.timeout(timeoutMs),
+                signal: AbortSignal.timeout(remainingMs),
             });
             if (!resp.ok) { lastErr = `Node ${resp.status}`; continue; }
             const data: any = await resp.json();

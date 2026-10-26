@@ -9,8 +9,8 @@ export const LANG_NAMES: Record<Lang, string> = {
 type Dict = Record<string, string>;
 
 const en: Dict = {
-    welcome: '🐝 <b>GSTD — decentralized AI compute</b>\n\nHi, {name}! Ask the AI, or turn your phone/PC into a node and earn GSTD for accepted work.\n\n{wallet}',
-    wallet_none: '🔗 Wallet not linked — send your TON address.',
+    welcome: '🐝 <b>GSTD — decentralized AI compute</b>\n\nHi, {name}! Send a question to try AI. You can also connect your computer as a node and build apps with its API.\n\n{wallet}',
+    wallet_none: '🔗 AI chat works without a wallet. Link a TON address with /wallet when you need node accounting.',
     wallet_linked: '🔗 Wallet: <code>{wallet}</code>',
     menu_title: '🐝 <b>Main menu</b>',
     btn_ai: '🤖 AI chat', btn_earn: '🖥 Earn', btn_wallet: '💎 Wallet', btn_invite: '👥 Invite',
@@ -33,7 +33,7 @@ const en: Dict = {
     invite_share: 'Join GSTD — decentralized AI compute. Ask AI and earn by sharing your device:',
     ai_hint: '🤖 Just send any question — the GSTD node network will answer.',
     ai_offline: '🐝 No nodes are online right now, so I cannot answer. You can fix that: run a node → /earn',
-    ai_edge_note: '⚡ Answered by the edge fallback: no GSTD node is online. Run a node to power the network → /earn',
+    ai_edge_note: '⚡ Answered by the Cloudflare fallback: the node request was unavailable. Run a node to power the network → /earn',
     ai_limit: '⏳ Daily AI limit reached ({limit} messages). Run a node to support the network → /earn',
     ai_slow: '⏳ Please wait a few seconds between messages.',
     ai_empty: '🐝 No response from the network. Try again.',
@@ -43,8 +43,8 @@ const en: Dict = {
 };
 
 const ru: Dict = {
-    welcome: '🐝 <b>GSTD — децентрализованные ИИ-вычисления</b>\n\nПривет, {name}! Задавайте вопросы ИИ или превратите телефон/ПК в ноду и получайте GSTD за принятую работу.\n\n{wallet}',
-    wallet_none: '🔗 Кошелёк не привязан — отправьте адрес TON.',
+    welcome: '🐝 <b>GSTD — децентрализованные ИИ-вычисления</b>\n\nПривет, {name}! Отправьте вопрос, чтобы попробовать ИИ. Можно также подключить свой компьютер как ноду и создавать приложения через её API.\n\n{wallet}',
+    wallet_none: '🔗 Для ИИ-чата кошелёк не нужен. Для учёта работы ноды привяжите адрес TON: /wallet.',
     wallet_linked: '🔗 Кошелёк: <code>{wallet}</code>',
     menu_title: '🐝 <b>Главное меню</b>',
     btn_ai: '🤖 ИИ-чат', btn_earn: '🖥 Заработок', btn_wallet: '💎 Кошелёк', btn_invite: '👥 Пригласить',
@@ -67,7 +67,7 @@ const ru: Dict = {
     invite_share: 'Присоединяйся к GSTD — децентрализованные ИИ-вычисления. Спрашивай ИИ и зарабатывай мощностью устройства:',
     ai_hint: '🤖 Просто отправьте вопрос — ответит сеть нод GSTD.',
     ai_offline: '🐝 Сейчас нет нод онлайн, ответить не могу. Это можно исправить: запустите ноду → /earn',
-    ai_edge_note: '⚡ Ответил резервный облачный ИИ: нод GSTD сейчас нет онлайн. Запустите ноду и усильте сеть → /earn',
+    ai_edge_note: '⚡ Ответил резервный ИИ Cloudflare: запрос к ноде сейчас недоступен. Запустите ноду и усильте сеть → /earn',
     ai_limit: '⏳ Дневной лимит ИИ исчерпан ({limit} сообщений). Запустите ноду и поддержите сеть → /earn',
     ai_slow: '⏳ Подождите пару секунд между сообщениями.',
     ai_empty: '🐝 Сеть не ответила. Попробуйте ещё раз.',
@@ -77,8 +77,8 @@ const ru: Dict = {
 };
 
 const uk: Dict = {
-    welcome: '🐝 <b>GSTD — децентралізовані ШІ-обчислення</b>\n\nПривіт, {name}! Ставте запитання ШІ або перетворіть телефон/ПК на ноду й отримуйте GSTD за прийняту роботу.\n\n{wallet}',
-    wallet_none: '🔗 Гаманець не прив’язано — надішліть адресу TON.',
+    welcome: '🐝 <b>GSTD — децентралізовані ШІ-обчислення</b>\n\nПривіт, {name}! Надішліть запитання, щоб спробувати ШІ. Також можна підключити комп’ютер як вузол і створювати застосунки через його API.\n\n{wallet}',
+    wallet_none: '🔗 Для ШІ-чату гаманець не потрібний. Для обліку роботи вузла додайте адресу TON: /wallet.',
     wallet_linked: '🔗 Гаманець: <code>{wallet}</code>',
     menu_title: '🐝 <b>Головне меню</b>',
     btn_ai: '🤖 ШІ-чат', btn_earn: '🖥 Заробіток', btn_wallet: '💎 Гаманець', btn_invite: '👥 Запросити',
@@ -101,7 +101,7 @@ const uk: Dict = {
     invite_share: 'Приєднуйся до GSTD — децентралізовані ШІ-обчислення. Питай ШІ та заробляй потужністю пристрою:',
     ai_hint: '🤖 Просто надішліть запитання — відповість мережа нод GSTD.',
     ai_offline: '🐝 Зараз немає нод онлайн, відповісти не можу. Це можна виправити: запустіть ноду → /earn',
-    ai_edge_note: '⚡ Відповів резервний хмарний ШІ: нод GSTD зараз немає онлайн. Запустіть ноду → /earn',
+    ai_edge_note: '⚡ Відповів резервний ШІ Cloudflare: запит до вузла зараз недоступний. Запустіть ноду → /earn',
     ai_limit: '⏳ Денний ліміт ШІ вичерпано ({limit} повідомлень). Запустіть ноду й підтримайте мережу → /earn',
     ai_slow: '⏳ Зачекайте кілька секунд між повідомленнями.',
     ai_empty: '🐝 Мережа не відповіла. Спробуйте ще раз.',
@@ -111,8 +111,8 @@ const uk: Dict = {
 };
 
 const es: Dict = {
-    welcome: '🐝 <b>GSTD — cómputo de IA descentralizado</b>\n\n¡Hola, {name}! Pregunta a la IA o convierte tu móvil/PC en un nodo y gana GSTD por el trabajo aceptado.\n\n{wallet}',
-    wallet_none: '🔗 Billetera no vinculada — envía tu dirección TON.',
+    welcome: '🐝 <b>GSTD — cómputo de IA descentralizado</b>\n\n¡Hola, {name}! Envía una pregunta para probar la IA. También puedes conectar tu ordenador como nodo y crear aplicaciones con su API.\n\n{wallet}',
+    wallet_none: '🔗 El chat de IA no requiere billetera. Vincula una dirección TON para tu nodo: /wallet.',
     wallet_linked: '🔗 Billetera: <code>{wallet}</code>',
     menu_title: '🐝 <b>Menú principal</b>',
     btn_ai: '🤖 Chat IA', btn_earn: '🖥 Ganar', btn_wallet: '💎 Billetera', btn_invite: '👥 Invitar',
@@ -135,7 +135,7 @@ const es: Dict = {
     invite_share: 'Únete a GSTD — cómputo de IA descentralizado. Pregunta a la IA y gana compartiendo tu dispositivo:',
     ai_hint: '🤖 Envía cualquier pregunta: la red de nodos GSTD responderá.',
     ai_offline: '🐝 No hay nodos en línea ahora, no puedo responder. Puedes arreglarlo: ejecuta un nodo → /earn',
-    ai_edge_note: '⚡ Respondió la IA de respaldo en la nube: no hay nodos GSTD en línea. Ejecuta un nodo → /earn',
+    ai_edge_note: '⚡ Respondió la IA de respaldo de Cloudflare: la solicitud al nodo no estuvo disponible. Ejecuta un nodo → /earn',
     ai_limit: '⏳ Límite diario de IA alcanzado ({limit} mensajes). Ejecuta un nodo para apoyar la red → /earn',
     ai_slow: '⏳ Espera unos segundos entre mensajes.',
     ai_empty: '🐝 La red no respondió. Inténtalo de nuevo.',
@@ -145,8 +145,8 @@ const es: Dict = {
 };
 
 const tr: Dict = {
-    welcome: '🐝 <b>GSTD — merkeziyetsiz yapay zekâ hesaplaması</b>\n\nMerhaba {name}! Yapay zekâya soru sor ya da telefonunu/PC’ni düğüme çevirip kabul edilen işler için GSTD kazan.\n\n{wallet}',
-    wallet_none: '🔗 Cüzdan bağlı değil — TON adresini gönder.',
+    welcome: '🐝 <b>GSTD — merkeziyetsiz yapay zekâ hesaplaması</b>\n\nMerhaba {name}! Yapay zekâyı denemek için bir soru gönder. Bilgisayarını düğüm olarak bağlayabilir ve API ile uygulamalar geliştirebilirsin.\n\n{wallet}',
+    wallet_none: '🔗 Yapay zekâ sohbeti için cüzdan gerekmez. Düğüm hesabı için TON adresini bağla: /wallet.',
     wallet_linked: '🔗 Cüzdan: <code>{wallet}</code>',
     menu_title: '🐝 <b>Ana menü</b>',
     btn_ai: '🤖 YZ sohbet', btn_earn: '🖥 Kazan', btn_wallet: '💎 Cüzdan', btn_invite: '👥 Davet et',
@@ -169,7 +169,7 @@ const tr: Dict = {
     invite_share: 'GSTD’ye katıl — merkeziyetsiz yapay zekâ hesaplaması. Yapay zekâya sor, cihazını paylaşarak kazan:',
     ai_hint: '🤖 Bir soru gönder — GSTD düğüm ağı cevaplar.',
     ai_offline: '🐝 Şu an çevrimiçi düğüm yok, cevap veremiyorum. Sen düzeltebilirsin: düğüm çalıştır → /earn',
-    ai_edge_note: '⚡ Yedek bulut yapay zekâ yanıtladı: çevrimiçi GSTD düğümü yok. Düğüm çalıştır → /earn',
+    ai_edge_note: '⚡ Cloudflare yedek yapay zekâ yanıtladı: düğüm isteği kullanılamadı. Düğüm çalıştır → /earn',
     ai_limit: '⏳ Günlük YZ limiti doldu ({limit} mesaj). Ağı desteklemek için düğüm çalıştır → /earn',
     ai_slow: '⏳ Mesajlar arasında birkaç saniye bekle.',
     ai_empty: '🐝 Ağdan cevap gelmedi. Tekrar dene.',
@@ -179,8 +179,8 @@ const tr: Dict = {
 };
 
 const zh: Dict = {
-    welcome: '🐝 <b>GSTD — 去中心化 AI 算力网络</b>\n\n你好，{name}！向 AI 提问，或把手机/电脑变成节点，为被接受的任务赚取 GSTD。\n\n{wallet}',
-    wallet_none: '🔗 未绑定钱包 — 请发送你的 TON 地址。',
+    welcome: '🐝 <b>GSTD — 去中心化 AI 算力网络</b>\n\n你好，{name}！发送问题即可体验 AI。也可以将电脑连接为节点，并通过 API 开发应用。\n\n{wallet}',
+    wallet_none: '🔗 AI 聊天无需钱包。节点结算账户可通过 /wallet 绑定 TON 地址。',
     wallet_linked: '🔗 钱包：<code>{wallet}</code>',
     menu_title: '🐝 <b>主菜单</b>',
     btn_ai: '🤖 AI 聊天', btn_earn: '🖥 赚取', btn_wallet: '💎 钱包', btn_invite: '👥 邀请',
@@ -203,7 +203,7 @@ const zh: Dict = {
     invite_share: '加入 GSTD — 去中心化 AI 算力网络。向 AI 提问，并通过共享设备赚取收益：',
     ai_hint: '🤖 直接发送任何问题，GSTD 节点网络会回答。',
     ai_offline: '🐝 目前没有在线节点，无法回答。你可以改变这一点：运行节点 → /earn',
-    ai_edge_note: '⚡ 由云端备用 AI 回答：当前没有在线的 GSTD 节点。运行节点 → /earn',
+    ai_edge_note: '⚡ 由 Cloudflare 备用 AI 回答：节点请求暂时不可用。运行节点 → /earn',
     ai_limit: '⏳ 今日 AI 额度已用完（{limit} 条）。运行节点支持网络 → /earn',
     ai_slow: '⏳ 请在两条消息之间等待几秒。',
     ai_empty: '🐝 网络没有响应，请重试。',

@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import { getCommonStaticProps } from '../lib/i18n-static-props';
 import { useState, useEffect } from 'react';
 import { API_BASE_URL } from '../lib/config';
-import { MessageSquare, ArrowRight, Server, Download, BarChart3 } from 'lucide-react';
+import { MessageSquare, ArrowRight, Server, Download, Code2 } from 'lucide-react';
 
 interface NetworkStats {
   active_workers?: number;
@@ -17,7 +17,7 @@ interface NetworkStats {
 const COPY = {
   en: {
     title: 'Decentralized AI compute on TON',
-    lead: 'GSTD connects people who need AI inference with node operators who run open models on their own hardware. Requests are paid in GSTD.',
+    lead: 'GSTD connects people who need AI inference with node operators who run open models on their own hardware. Start with the free chat; GSTD is the network compute payment token.',
     statusLive: (n: number) => `${n} node${n === 1 ? '' : 's'} online`,
     statusEmpty: 'The network is in early launch: no nodes are online right now, so requests are not served by the network yet.',
     statusEmptyHint: 'You can help by running a node. Until then, a short demo chat is available on gstdtoken.com.',
@@ -33,17 +33,17 @@ const COPY = {
     cards: [
       { title: 'Chat', text: 'Send a request to the network. It is served only while a node is online.', href: '/chat', cta: 'Open chat' },
       { title: 'Run a node', text: 'Install the open-source node with one command on a computer with Ollama.', href: '/nodes', cta: 'Setup guide' },
-      { title: 'Live statistics', text: 'Numbers come directly from the network API, with no estimates.', href: '/stats', cta: 'Open statistics' },
+      { title: 'Build with the API', text: 'Connect your application to a node through an OpenAI-compatible API.', href: 'https://gstdtoken.com/developers', cta: 'Send your first request' },
     ],
     links: 'Also',
     docs: 'Documentation',
     code: 'Source code',
-    tg: 'Telegram channel',
+    tg: 'AI in Telegram',
     note: 'GSTD is a utility token for paying for compute in the network. It is not an investment product.',
   },
   ru: {
     title: 'Децентрализованные ИИ-вычисления на TON',
-    lead: 'GSTD соединяет тех, кому нужен ИИ-инференс, с операторами нод, которые запускают открытые модели на своём оборудовании. Запросы оплачиваются в GSTD.',
+    lead: 'GSTD соединяет тех, кому нужен ИИ-инференс, с операторами нод, которые запускают открытые модели на своём оборудовании. Начните с бесплатного чата; GSTD — токен оплаты вычислений сети.',
     statusLive: (n: number) => `Нод онлайн: ${n}`,
     statusEmpty: 'Сеть на раннем старте: сейчас ни одной ноды нет онлайн, поэтому сеть пока не обрабатывает запросы.',
     statusEmptyHint: 'Помочь можно, запустив ноду. А пока на gstdtoken.com доступен короткий демо-чат.',
@@ -59,12 +59,12 @@ const COPY = {
     cards: [
       { title: 'Чат', text: 'Отправьте запрос в сеть. Он обрабатывается, только пока хотя бы одна нода онлайн.', href: '/chat', cta: 'Открыть чат' },
       { title: 'Запуск ноды', text: 'Установите ноду с открытым кодом одной командой на компьютере с Ollama.', href: '/nodes', cta: 'Инструкция' },
-      { title: 'Живая статистика', text: 'Цифры берутся напрямую из API сети, без оценок.', href: '/stats', cta: 'Открыть статистику' },
+      { title: 'Использовать API', text: 'Подключите приложение к ноде через OpenAI-совместимый API.', href: 'https://gstdtoken.com/developers', cta: 'Отправить первый запрос' },
     ],
     links: 'Ещё',
     docs: 'Документация',
     code: 'Исходный код',
-    tg: 'Канал в Telegram',
+    tg: 'ИИ в Telegram',
     note: 'GSTD — утилитарный токен для оплаты вычислений в сети. Это не инвестиционный продукт.',
   },
 } as const;
@@ -101,7 +101,7 @@ export default function Home() {
   const online = stats?.active_workers ?? 0;
   const num = (v?: number) => (typeof v === 'number' ? v.toLocaleString() : '—');
   const price = stats?.gstd_price_usd && stats.gstd_price_usd > 0 ? `$${stats.gstd_price_usd.toFixed(6)}` : '—';
-  const icons = [MessageSquare, Server, BarChart3];
+  const icons = [MessageSquare, Server, Code2];
 
   return (
     <div className="min-h-screen bg-[#030014] text-white font-sans selection:bg-violet-500/30">
@@ -185,7 +185,7 @@ export default function Home() {
           <Link href="/docs" style={{ textDecoration: 'none' }} className="hover:text-white">{c.docs}</Link>
           <Link href="/downloads" style={{ textDecoration: 'none' }} className="hover:text-white inline-flex items-center gap-1"><Download size={13} /> {locale === 'ru' ? 'Загрузки' : 'Downloads'}</Link>
           <a href="https://github.com/gstdcoin" style={{ textDecoration: 'none' }} className="hover:text-white">{c.code}</a>
-          <a href="https://t.me/gstdtoken" style={{ textDecoration: 'none' }} className="hover:text-white">{c.tg}</a>
+          <a href="https://t.me/gstdaibot" style={{ textDecoration: 'none' }} className="hover:text-white">{c.tg}</a>
         </div>
         <p className="text-xs text-gray-600 max-w-xl mx-auto">{c.note}</p>
       </section>

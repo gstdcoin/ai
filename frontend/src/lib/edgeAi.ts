@@ -29,7 +29,7 @@ export async function edgeChat(
     }
 
     const day = new Date().toISOString().slice(0, 10);
-    const budget = await kvConsumeQuota(`edge_ai_budget:${day}`, DAILY_CAP, 90_000).catch(() => ({ allowed: true }));
+    const budget = await kvConsumeQuota(`edge_ai_budget:${day}`, DAILY_CAP, 90_000);
     if (!budget.allowed) throw new Error('Edge AI daily budget exhausted');
 
     const { getCloudflareContext } = await import('@opennextjs/cloudflare');

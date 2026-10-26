@@ -1,60 +1,27 @@
-# GSTD Ecosystem Map
+# GSTD: one network, three ways to use it
 
-One page to understand how the pieces fit and where to start contributing.
+The product starts with utility, not token purchase. The three supported entry paths are: ask AI, connect a node, and build with the node API. Telegram is another interface to the same platform, not a second network.
 
-> **Honest status:** the platform API is live, but the network is early. Check
-> [live stats](https://app.gstdtoken.com/api/v1/stats/public) before relying on workers, tasks or payouts.
-> Contracts are not externally audited. Nothing here is financial advice.
+## Canonical entry points
 
-## How the pieces fit
-
-```
- Node OS (gstdbot)  ──heartbeat / tasks / results──▶  Platform API (this repo, Cloudflare Workers + Upstash Redis)
-        │                                                   │
-        └──── wallet identity (TON) ◀── TonConnect proof ───┤
-                                                            ▼
-                                   Contracts (TON): GSTD Jetton, SettlementMaster, AgentRegistry
- Clients / agents (A2A SDKs) ──submit tasks──▶ Platform API        Lending platform ──uses GSTD as collateral
-```
-
-| Repository | Role | Start here |
+| Need | Entry | Responsibility |
 |---|---|---|
-| [ai](https://github.com/gstdcoin/ai) | Platform API + web app on Cloudflare (single source of truth for nodes, tasks, stats) | `docs/ARCHITECTURE.md` |
-| [gstdbot](https://github.com/gstdcoin/gstdbot) | Node OS: turns a computer into a node | its README |
-| [contracts](https://github.com/gstdcoin/contracts) | TON smart contracts (Tact) | `deployment-mainnet.json` |
-| [A2A](https://github.com/gstdcoin/A2A) | Client libraries and examples for agents | its README |
-| [web](https://github.com/gstdcoin/web) | Public website | its README |
-| [gstd-lending-platform](https://github.com/gstdcoin/gstd-lending-platform) | Lending against GSTD (FastAPI + Next.js) | `backend/tests/README.md` |
-| [gstd-bridge](https://github.com/gstdcoin/gstd-bridge) | Cross-chain bridge (deferred, not deployed) | its README |
+| Ask AI without installation | https://gstdtoken.com/ai | Chat; identify node versus Cloudflare fallback honestly |
+| Platform chat and network status | https://app.gstdtoken.com | Canonical registry, queue, assignment and accepted-result accounting |
+| AI in Telegram | https://t.me/gstdaibot | Platform webhook, six locales, conversation state and bounded daily use |
+| Contribute compute | https://gstdtoken.com/nodes | One canonical installer from gstdcoin/gstdbot; installed models perform real work |
+| Build an application | https://gstdtoken.com/developers | A first OpenAI-compatible request to an operator gateway |
 
-Design rule: **one owner per concern.** Node and task state live only in the platform API; value movement only in
-contracts; other repos call these, they do not re-implement them.
+A wallet is not needed to try the free AI chat. GSTD is the compute payment token. Funded accepted work and on-chain settlement are separate from free/unfunded tasks; neither free chat nor mere presence promises a payout.
 
-## Choose your path
+## One execution path
 
-1. **Run a node** — follow the gstdbot README, then confirm your node appears in
-   `GET https://app.gstdtoken.com/api/v1/nodes/list`.
-2. **Build an agent / client** — use the A2A libraries and `docs/A2A_CONNECTION.md`.
-3. **Contribute code** — pick an issue, or a good first task below. Every repo has CI; keep it green.
-4. **Review security** — read `docs/CONTRACTS_VERIFICATION.md`; report vulnerabilities privately via each repo's security policy.
+A registered node owns a persistent Ed25519 identity and operator wallet. Signed heartbeats publish its current public address to app.gstdtoken.com. Gateways submit inference through the canonical queue; the existing worker wakes, computes locally, signs its completion, and makes the accepted result available. Browser and Telegram interfaces call live node inference; Cloudflare AI, when used, is labeled as fallback.
 
-## Good first contributions
+Applications start with HTTP POST /v1/chat/completions on an operator gateway. model=auto selects a model; messages carry the conversation; max_tokens bounds generation; stream=true produces SSE. Developers should agree access, rate limits and payment with the operator, keep secrets server-side, and avoid hardcoding temporary tunnel addresses.
 
-- Restore a legacy backend test suite in the lending platform (see `backend/tests/README.md`).
-- Replace remaining high-severity npm advisories that need major upgrades (Jest, Tailwind) in the lending frontend.
-- Add end-to-end documentation for a node's first heartbeat and task result.
-- Verify on-chain settlement against the deployed contracts and document the evidence.
+## Keep it small
 
-## Ground rules
+Reuse the existing website, platform, node and Telegram webhook. Do not add a new backend, parallel registry, app shell, token gate for first chat, or artificial dashboard metrics. Keep the free-tier schedules in [FREE_TIER_REQUEST_BUDGET.md](FREE_TIER_REQUEST_BUDGET.md). Add new task kinds only when an actual executor, validation and a simple user path exist.
 
-- Cloudflare only for hosting (no Vercel). Free-tier limits are a design constraint; avoid unbounded polling.
-- Never commit secrets; use `.env.example` placeholders and GitHub/Cloudflare secrets.
-- Do not claim features that are not verified in production.
-
-## Phones and growth (honest status)
-
-- **Today a phone can use the network** (free AI chat in the Telegram bot) and **show up as an online device** in the mini app. It does not earn GSTD for keeping the app open: presence-only payouts were unfunded emission and are disabled (`MOBILE_PRESENCE_REWARDS=enabled` re-enables them for a funded programme).
-- **Earning is per completed, funded task.** Full nodes (`gstdbot`) do this today. A phone worker (WebGPU/WASM tiny models, signed with a device key) is the open roadmap item; see [good first contributions](#good-first-contributions).
-- **Referrals** pay a one-time bonus per new wallet (inviter capped at 20 paid referrals; one bonus per wallet; 100 subsidised sign-ups per day). Self-referral and re-linking the same wallet pay nothing.
-- **@gstdaibot runs as a platform webhook** (`/api/v1/telegram/webhook`, token only in Cloudflare). Six languages (en, ru, uk, es, tr, zh), button menu, wallet linking, `/network` live stats, `/invite`, AI chat with a daily quota (`TG_AI_DAILY_LIMIT`, default 30). Register with `scripts/set-telegram-webhook.mjs`.
-- **Bot growth loop:** referral deep links, inline-mode share card (enable inline mode in @BotFather), and a daily post of real network numbers to the configured community chat (`communityChat`) only when the numbers changed.
+The current acceptance evidence covers a single physical node and installed llama3.2:3b. Independent multi-host consensus, distributed training, the bridge and mainnet settlement are outside that evidence. The temporary tunnel and Telegram owner setup remain explicit operational boundaries.
