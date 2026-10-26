@@ -35,7 +35,13 @@ vi.mock('./kv', () => ({ kvGet, kvKeys, kvMGet, kvSet, kvRateLimit }));
 vi.mock('./walletSession', () => ({ sessionWallet }));
 vi.mock('./nodes', () => ({ getActiveNodes, NODE_MODEL: 'llama3.2:3b' }));
 vi.mock('./ratelimit', () => ({ getClientIp }));
-vi.mock('./billing', () => ({ chargeFee, refundFee }));
+vi.mock('./billing', () => ({ chargeFee, refundFee, getModelPrice: () => 0.005 }));
+vi.mock('./paidInference', () => ({
+    paidInference: async (_req: unknown,res: any,options: any) => {
+        const charge = await chargeFee(options.wallet,options.model,null);
+        return res.status(402).json(charge);
+    },
+}));
 vi.mock('./botAuth', () => ({ isValidBotToken }));
 vi.mock('../pages/api/v1/enterprise/keys', () => ({ validateEnterpriseKey }));
 vi.mock('../pages/api/v1/enterprise/usage', () => ({ recordEnterpriseUsage }));
@@ -109,8 +115,8 @@ describe('wallet-scoped API authorization', () => {
 
         const response = await call(chatCompletions, {
             method: 'POST',
-            body: { model: 'llama3.1:8b', messages: [{ role: 'user', content: 'hello' }], wallet: 'victim-wallet' },
-            headers: { 'x-wallet-address': 'victim-wallet' },
+            body: { model: 'llama3.1:8b', messages: [{ role: 'user', content: 'hello' }], wallet: '0:' + '22'.repeat(32) },
+            headers: { 'x-wallet-address': '0:' + '22'.repeat(32) },
         });
 
         expect(response.status).toBe(402);
@@ -118,22 +124,22 @@ describe('wallet-scoped API authorization', () => {
     });
 
     it('uses the TON session wallet for inference charges instead of spoofed wallet fields', async () => {
-        sessionWallet.mockResolvedValue('owner-wallet');
+        sessionWallet.mockResolvedValue('0:' + '11'.repeat(32));
         chargeFee.mockResolvedValue({ ok: false, error: 'insufficient_balance', balance: 0, required: 0.005 });
 
         const response = await call(chatCompletions, {
             method: 'POST',
             sessionToken: 'verified-session',
-            body: { model: 'llama3.1:8b', messages: [{ role: 'user', content: 'hello' }], wallet: 'victim-wallet' },
-            headers: { 'x-wallet-address': 'victim-wallet' },
+            body: { model: 'llama3.1:8b', messages: [{ role: 'user', content: 'hello' }], wallet: '0:' + '22'.repeat(32) },
+            headers: { 'x-wallet-address': '0:' + '22'.repeat(32) },
         });
 
         expect(response.status).toBe(402);
-        expect(chargeFee).toHaveBeenCalledWith('owner-wallet', 'llama3.1:8b', null);
+        expect(chargeFee).toHaveBeenCalledWith('0:' + '11'.repeat(32), 'llama3.1:8b', null);
     });
 
     it('accepts a wallet session when the client also sends that token as a bearer credential', async () => {
-        sessionWallet.mockResolvedValue('owner-wallet');
+        sessionWallet.mockResolvedValue('0:' + '11'.repeat(32));
         chargeFee.mockResolvedValue({ ok: false, error: 'insufficient_balance', balance: 0, required: 0.005 });
 
         const response = await call(chatCompletions, {
@@ -144,14 +150,14 @@ describe('wallet-scoped API authorization', () => {
         });
 
         expect(response.status).toBe(402);
-        expect(chargeFee).toHaveBeenCalledWith('owner-wallet', 'llama3.1:8b', null);
+        expect(chargeFee).toHaveBeenCalledWith('0:' + '11'.repeat(32), 'llama3.1:8b', null);
     });
 
     it('rejects batch inference without a session even when a wallet is supplied by the caller', async () => {
         const response = await call(batchChat, {
             method: 'POST',
-            body: { prompts: ['hello'], wallet: 'victim-wallet' },
-            headers: { 'x-wallet-address': 'victim-wallet' },
+            body: { prompts: ['hello'], wallet: '0:' + '22'.repeat(32) },
+            headers: { 'x-wallet-address': '0:' + '22'.repeat(32) },
         });
 
         expect(response.status).toBe(401);
@@ -160,10 +166,10 @@ describe('wallet-scoped API authorization', () => {
     });
 
     it('rejects another wallet on the personal balance endpoint', async () => {
-        sessionWallet.mockResolvedValue('owner-wallet');
+        sessionWallet.mockResolvedValue('0:' + '11'.repeat(32));
 
         const response = await call(creditsBalance, {
-            query: { wallet: 'victim-wallet' },
+            query: { wallet: '0:' + '22'.repeat(32) },
             sessionToken: 'verified-session',
         });
 
@@ -172,10 +178,10 @@ describe('wallet-scoped API authorization', () => {
     });
 
     it('rejects another wallet on the access tier endpoint', async () => {
-        sessionWallet.mockResolvedValue('owner-wallet');
+        sessionWallet.mockResolvedValue('0:' + '11'.repeat(32));
 
         const response = await call(accessTier, {
-            query: { wallet: 'victim-wallet' },
+            query: { wallet: '0:' + '22'.repeat(32) },
             sessionToken: 'verified-session',
         });
 
@@ -184,13 +190,13 @@ describe('wallet-scoped API authorization', () => {
     });
 
     it('requires a session for node listings and rejects a mismatched wallet', async () => {
-        const unauthenticated = await call(myNodes, { query: { wallet_address: 'victim-wallet' } });
+        const unauthenticated = await call(myNodes, { query: { wallet_address: '0:' + '22'.repeat(32) } });
         expect(unauthenticated.status).toBe(401);
         expect(kvKeys).not.toHaveBeenCalled();
 
-        sessionWallet.mockResolvedValue('owner-wallet');
+        sessionWallet.mockResolvedValue('0:' + '11'.repeat(32));
         const mismatched = await call(myNodes, {
-            query: { wallet_address: 'victim-wallet' },
+            query: { wallet_address: '0:' + '22'.repeat(32) },
             sessionToken: 'verified-session',
         });
         expect(mismatched.status).toBe(403);
@@ -198,10 +204,10 @@ describe('wallet-scoped API authorization', () => {
     });
 
     it('rejects another wallet on node reward details', async () => {
-        sessionWallet.mockResolvedValue('owner-wallet');
+        sessionWallet.mockResolvedValue('0:' + '11'.repeat(32));
 
         const response = await call(myNodeRewards, {
-            query: { wallet: 'victim-wallet' },
+            query: { wallet: '0:' + '22'.repeat(32) },
             sessionToken: 'verified-session',
         });
 
@@ -210,11 +216,11 @@ describe('wallet-scoped API authorization', () => {
     });
 
     it('does not issue a persistent API key for a wallet other than the session wallet', async () => {
-        sessionWallet.mockResolvedValue('owner-wallet');
+        sessionWallet.mockResolvedValue('0:' + '11'.repeat(32));
 
         const response = await call(freeApiKey, {
             method: 'POST',
-            body: { wallet_address: 'victim-wallet', telegram_id: 'unverified-user' },
+            body: { wallet_address: '0:' + '22'.repeat(32), telegram_id: 'unverified-user' },
             sessionToken: 'verified-session',
         });
 
@@ -226,26 +232,26 @@ describe('wallet-scoped API authorization', () => {
     it('allows the Telegram bot to issue a key only for the linked wallet', async () => {
         isValidBotToken.mockReturnValue(true);
         kvGet.mockImplementation(async (key: string) => {
-            if (key === 'tg_wallet:123456') return 'owner-wallet';
-            if (key === 'balance:owner-wallet') return '10000';
+            if (key === 'tg_wallet:123456') return '0:' + '11'.repeat(32);
+            if (key === 'balance:0:' + '11'.repeat(32)) return '10000';
             return null;
         });
 
         const response = await call(freeApiKey, {
             method: 'POST',
-            body: { telegram_id: '123456', wallet_address: 'owner-wallet' },
+            body: { telegram_id: '123456', wallet_address: '0:' + '11'.repeat(32) },
             headers: { 'x-bot-token': 'valid-bot-token' },
         });
 
         expect(response.status).toBe(200);
-        expect(response.body).toMatchObject({ wallet_address: 'owner-wallet', already_issued: false });
-        expect(kvSet).toHaveBeenCalledWith('free_api_key:owner-wallet', expect.any(String));
+        expect(response.body).toMatchObject({ wallet_address: '0:' + '11'.repeat(32), already_issued: false });
+        expect(kvSet).toHaveBeenCalledWith('free_api_key:0:' + '11'.repeat(32), expect.any(String));
     });
 
     it('requires a wallet session to access wallet-specific staking details', async () => {
-        sessionWallet.mockResolvedValue('owner-wallet');
+        sessionWallet.mockResolvedValue('0:' + '11'.repeat(32));
 
-        const response = await call(stakingInfo, { query: { wallet: 'victim-wallet' } });
+        const response = await call(stakingInfo, { query: { wallet: '0:' + '22'.repeat(32) } });
 
         expect(response.status).toBe(403);
         expect(kvGet).not.toHaveBeenCalled();
@@ -294,8 +300,8 @@ describe('wallet-scoped API authorization', () => {
             headers: { 'x-bot-token': 'valid-bot-token' },
         });
 
-        expect(response.status).toBe(500);
-        expect(response.body).toMatchObject({ error: 'Could not load Telegram wallet balance' });
+        expect(response.status).toBe(503);
+        expect(response.body).toMatchObject({ error: 'ledger_unavailable' });
     });
 
     it('resolves bot tier requests only through the linked Telegram wallet', async () => {
@@ -303,8 +309,8 @@ describe('wallet-scoped API authorization', () => {
         kvKeys.mockResolvedValue([]);
         kvMGet.mockResolvedValue([]);
         kvGet.mockImplementation(async (key: string) => {
-            if (key === 'tg_wallet:123456') return 'owner-wallet';
-            if (key === 'balance:owner-wallet') return '12';
+            if (key === 'tg_wallet:123456') return '0:' + '11'.repeat(32);
+            if (key === 'balance:0:' + '11'.repeat(32)) return '12';
             return null;
         });
 
@@ -314,16 +320,16 @@ describe('wallet-scoped API authorization', () => {
         });
 
         expect(response.status).toBe(200);
-        expect(response.body).toMatchObject({ wallet: 'owner-wallet', balance_gstd: 12 });
-        expect(kvGet).toHaveBeenCalledWith('balance:owner-wallet');
+        expect(response.body).toMatchObject({ wallet: '0:' + '11'.repeat(32), balance_gstd: 12 });
+        expect(kvGet).toHaveBeenCalledWith('balance:0:' + '11'.repeat(32));
     });
 
     it('does not issue a B2B API key for a wallet other than the session wallet', async () => {
-        sessionWallet.mockResolvedValue('owner-wallet');
+        sessionWallet.mockResolvedValue('0:' + '11'.repeat(32));
 
         const response = await call(b2bRegister, {
             method: 'POST',
-            body: { wallet_address: 'victim-wallet', company_name: 'Example' },
+            body: { wallet_address: '0:' + '22'.repeat(32), company_name: 'Example' },
             sessionToken: 'verified-session',
         });
 
@@ -333,11 +339,11 @@ describe('wallet-scoped API authorization', () => {
     });
 
     it('does not allow an agent registration to claim another wallet identity', async () => {
-        sessionWallet.mockResolvedValue('owner-wallet');
+        sessionWallet.mockResolvedValue('0:' + '11'.repeat(32));
 
         const response = await call(agentsRegister, {
             method: 'POST',
-            body: { wallet: 'victim-wallet', capabilities: ['inference'] },
+            body: { wallet: '0:' + '22'.repeat(32), capabilities: ['inference'] },
             sessionToken: 'verified-session',
         });
 
@@ -346,11 +352,11 @@ describe('wallet-scoped API authorization', () => {
     });
 
     it("does not let callers queue a model pull on another wallet's node", async () => {
-        sessionWallet.mockResolvedValue('owner-wallet');
+        sessionWallet.mockResolvedValue('0:' + '11'.repeat(32));
 
         const response = await call(pullNodeModel, {
             method: 'POST',
-            body: { node_id: 'victim-node', model: 'llama3.2:3b', wallet_address: 'victim-wallet' },
+            body: { node_id: 'victim-node', model: 'llama3.2:3b', wallet_address: '0:' + '22'.repeat(32) },
             sessionToken: 'verified-session',
         });
 

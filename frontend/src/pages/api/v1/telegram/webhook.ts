@@ -117,7 +117,8 @@ async function viewBalance(c: Ctx): Promise<View> {
     return {
         text: t(c.lang, 'balance', {
             wallet: t(c.lang, 'wallet_linked', { wallet: shortAddr(wallet) }),
-            balance: fmt(data.balance_gstd), pending: fmt(pending),
+            balance: fmt(data.balance_gstd), pending: fmt(pending), promo: fmt(data.promo_credits),
+            legacy: fmt((Number(data.legacy_unreconciled_gstd)||0)+(Number(data.legacy_pending_unreconciled_gstd)||0)),
         }),
         kb,
     };

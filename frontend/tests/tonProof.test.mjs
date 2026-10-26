@@ -148,6 +148,7 @@ test('requires a one-time challenge and invalidates pre-proof sessions', async (
                 this.statusCode = code;
                 return this;
             },
+            setHeader() { return this; },
             json(value) {
                 this.body = value;
                 return this;
@@ -185,7 +186,7 @@ test('requires a one-time challenge and invalidates pre-proof sessions', async (
     const balanceResponse = mockResponse();
     await balanceHandler({
         method: 'GET',
-        headers: { 'x-session-token': loginResponse.body.session_token },
+        headers: { 'x-session-token': loginResponse.body.session_token }, query: {},
     }, balanceResponse);
     assert.equal(balanceResponse.statusCode, 200);
     assert.equal(balanceResponse.body.wallet, login.address.toLowerCase());
@@ -208,7 +209,7 @@ test('requires a one-time challenge and invalidates pre-proof sessions', async (
     const legacySessionResponse = mockResponse();
     await balanceHandler({
         method: 'GET',
-        headers: { 'x-session-token': 'legacy-token' },
+        headers: { 'x-session-token': 'legacy-token' }, query: {},
     }, legacySessionResponse);
     assert.equal(legacySessionResponse.statusCode, 401);
 });

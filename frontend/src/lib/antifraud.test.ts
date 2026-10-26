@@ -36,9 +36,9 @@ describe('task rewards', () => {
         expect(JSON.parse(store.get('task_assigned:t1')!).reward_gstd).toBe(0);
     });
 
-    it('uses and caps the server-side reward', async () => {
+    it('does not turn unbacked server reward metadata into a balance claim', async () => {
         await assignTaskToNode({ task_id: 't2', reward_gstd: 1000 }, 'n1', 60);
-        expect(JSON.parse(store.get('task_assigned:t2')!).reward_gstd).toBe(50);
+        expect(JSON.parse(store.get('task_assigned:t2')!).reward_gstd).toBe(0);
     });
 
     it('assigns a task only once', async () => {

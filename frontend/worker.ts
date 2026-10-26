@@ -23,7 +23,8 @@ export default {
             console.error('[open-intelligence/cron] OPEN_INTELLIGENCE_CRON_SECRET is not configured');
             return;
         }
-        const request = new Request('https://app.gstdtoken.com/api/cron/open-intelligence', {
+        const path = event.cron === '*/10 * * * *' ? 'finance' : 'open-intelligence';
+        const request = new Request('https://app.gstdtoken.com/api/cron/' + path, {
             method: 'POST',
             headers: {
                 Authorization: `Bearer ${env.OPEN_INTELLIGENCE_CRON_SECRET}`,

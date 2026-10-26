@@ -297,26 +297,37 @@ export default function ChatPage() {
             icon: <Shield size={16} />
         },
         {
-            id: 'standard', name: 'Council of 3', badge: '🔬', cost: 0.05, expertCount: 3,
-            desc: 'Three model passes are combined into one answer.',
+            id: 'standard', name: 'Standard', badge: '🔬', cost: 0.05, expertCount: 1,
+            desc: 'One registered node, up to 1,024 output tokens. Charged on success.',
             color: 'text-blue-400', bg: 'bg-blue-500/6', border: 'border-blue-500/20',
             icon: <Zap size={16} />
         },
         {
-            id: 'pro', name: 'Consensus 5', badge: '🔥', cost: 0.15, expertCount: 5,
-            desc: 'Five model passes are cross-checked and combined.',
+            id: 'pro', name: 'Pro', badge: '🔥', cost: 0.15, expertCount: 1,
+            desc: 'One registered node, up to 1,536 output tokens. Charged on success.',
             color: 'text-amber-400', bg: 'bg-amber-500/6', border: 'border-amber-500/20',
             icon: <Globe size={16} />
         },
         {
-            id: 'ultra', name: 'Expert Swarm', badge: '🧠', cost: 0.50, expertCount: 7,
-            desc: 'Seven model passes are cross-checked and combined. Slowest and most expensive.',
+            id: 'ultra', name: 'Extended', badge: '🧠', cost: 0.50, expertCount: 1,
+            desc: 'One registered node, up to 2,048 output tokens. Charged on success.',
             color: 'text-violet-400', bg: 'bg-violet-500/6', border: 'border-violet-500/20',
             icon: <Cpu size={16} />
         },
     ];
 
-    const { isConnected, gstdBalance, address } = useWalletStore();
+    const { isConnected, address } = useWalletStore();
+    const [creditBalance,setCreditBalance] = useState<number | null>(null);
+    useEffect(() => {
+        let active = true;
+        const token = localStorage.getItem('session_token');
+        setCreditBalance(null);
+        if (address && token) fetch('/api/v1/users/balance',{ headers: { 'X-Session-Token': token } })
+            .then(response => response.ok ? response.json() : null)
+            .then(data => { if (active && data) setCreditBalance(Number(data.gstd)||0); })
+            .catch(()=>{});
+        return () => { active=false; };
+    },[address]);
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [activeConvId, setActiveConvId] = useState<string | null>(null);
     const [input, setInput] = useState('');
@@ -442,8 +453,8 @@ export default function ChatPage() {
         ));
 
         // Check balance for paid tiers
-        const currentBalance = gstdBalance ?? 0;
-        if (tierInfo.cost > 0 && currentBalance < tierInfo.cost) {
+        const currentBalance = creditBalance ?? 0;
+        if (tierInfo.cost > 0 && creditBalance !== null && currentBalance < tierInfo.cost) {
             const errMsg: Message = {
                 id: 'msg_' + Date.now() + '_err',
                 role: 'assistant',
@@ -493,6 +504,7 @@ export default function ChatPage() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+          'Idempotency-Key': crypto.randomUUID(),
                     ...(address ? { 'X-Wallet-Address': address } : {}),
                     ...(sessionToken ? { 'X-Session-Token': sessionToken } : {}),
                 },
@@ -788,7 +800,7 @@ export default function ChatPage() {
                             </div>
                             <div className="min-w-0 flex-1">
                                 <div className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">{t('balance', 'Balance')}</div>
-                                <div className="text-sm text-white font-bold truncate">{(gstdBalance || 0).toFixed(2)} <span className="text-gray-500 font-normal text-xs">GSTD</span></div>
+                                <div className="text-sm text-white font-bold truncate">{(creditBalance || 0).toFixed(2)} <span className="text-gray-500 font-normal text-xs">GSTD</span></div>
                             </div>
                             <div className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
                         </div>
@@ -905,7 +917,7 @@ export default function ChatPage() {
                         {isConnected && (
                             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/3 border border-white/6">
                                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                                <span className="text-xs text-gray-400 font-medium">{(gstdBalance || 0).toFixed(2)} GSTD</span>
+                                <span className="text-xs text-gray-400 font-medium">{(creditBalance || 0).toFixed(2)} GSTD</span>
                             </div>
                         )}
                         <span className="text-[11px] text-gray-600 hidden sm:block font-medium">{t('sovereign_ai', 'GSTD AI')}</span>

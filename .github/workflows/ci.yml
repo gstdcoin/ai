@@ -42,6 +42,12 @@ jobs:
       - name: Unit tests
         run: npm test
 
+      - name: Install isolated Redis test tools
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq redis-server redis-tools
+
+      - name: Exact money transactions against disposable Redis
+        run: node tests/moneyRedis.test.cjs
+
       - name: Build
         run: npm run build
         env:
@@ -510,3 +516,18 @@ jobs:
       # no upstream patch; production dependencies must stay free of high+critical.
       - name: Audit production dependencies (high+critical)
         run: npm audit --omit=dev --audit-level=high
+
+  finance-inventory:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    name: Read-only legacy money inventory
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Inspect aggregate obligations without publishing user records
+        run: node scripts/inspect-legacy-money.mjs
+        env:
+          KV_REST_API_URL: ${{ secrets.KV_REST_API_URL }}
+          KV_REST_API_TOKEN: ${{ secrets.KV_REST_API_TOKEN }}

@@ -19,20 +19,21 @@
  *   duration_hours     number   — campaign lifetime (default 24h, max 720h)
  *   contact            string   — website/email for campaign owner
  *
- * Protocol fee: 10% of total_budget goes to protocol treasury.
+ * Budget is reserved without fees. Successful tasks distribute 85/10/5 once.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvCreateFundedCampaign } from '../../../../lib/kv';
+import { reserveMoney, nano, digest, walletId, MoneyError } from '../../../../lib/money';
 import { sessionWallet } from '../../../../lib/walletSession';
-import { randomBytes } from 'crypto';
 
-const PROTOCOL_FEE_PCT = 0.10;
+
+const PROTOCOL_FEE_PCT = 0; // Fees accrue only on accepted funded work.
 const MAX_DURATION_H   = 720;   // 30 days
 const MAX_BUDGET       = 1_000_000;
 const MAX_REWARD       = 100;
 const CAMPAIGN_TTL_BUF = 3600;  // keep 1h after expiry for reporting
 
 export interface Campaign {
+    ledger_version?: number;
     id:              string;
     funder_wallet:   string;
     company:         string;
@@ -65,6 +66,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     try {
         const body = req.body as any;
+        const requestId = req.headers['idempotency-key'];
+        if (typeof requestId !== 'string' || !/^[A-Za-z0-9_-]{8,100}$/.test(requestId))
+            return res.status(400).json({ error: 'idempotency_key_required' });
 
         if (!body.company || !body.title || !body.reward_per_task || !body.total_budget) {
             return res.status(400).json({ error: 'company, title, reward_per_task, total_budget required' });
@@ -74,10 +78,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const totalBudget   = Number(body.total_budget);
         const durationH     = Math.min(Number(body.duration_hours) || 24, MAX_DURATION_H);
 
-        if (rewardPerTask <= 0 || rewardPerTask > MAX_REWARD) {
+        if (!Number.isFinite(rewardPerTask) || rewardPerTask <= 0 || rewardPerTask > MAX_REWARD) {
             return res.status(400).json({ error: `reward_per_task must be 0–${MAX_REWARD}` });
         }
-        if (totalBudget <= 0 || totalBudget > MAX_BUDGET) {
+        if (!Number.isFinite(totalBudget) || totalBudget <= 0 || totalBudget > MAX_BUDGET) {
             return res.status(400).json({ error: `total_budget must be 0–${MAX_BUDGET}` });
         }
         if (rewardPerTask > totalBudget) {
@@ -85,20 +89,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         // Fund the campaign from the creator's verified credit balance.
-        const wallet = String(body.wallet_address || '').trim().toLowerCase();
+        const wallet = walletId(String(body.wallet_address || '').trim());
         if (!wallet) {
             return res.status(400).json({ error: 'wallet_address required to fund the campaign budget' });
         }
-        if ((await sessionWallet(req.headers)) !== wallet) {
+        const authenticated = await sessionWallet(req.headers);
+        if (!authenticated || walletId(authenticated) !== wallet) {
             return res.status(401).json({ error: 'Log in with this wallet (X-Session-Token) to fund a campaign' });
         }
-        const protocolFee = Math.round(totalBudget * PROTOCOL_FEE_PCT * 100) / 100;
-        const netBudget   = Math.round((totalBudget - protocolFee) * 100) / 100;
+        const protocolFee = 0;
+        const netBudget = totalBudget;
+        nano(totalBudget); nano(rewardPerTask);
         const expiresAt   = new Date(Date.now() + durationH * 3600_000).toISOString();
         const ttlSec      = durationH * 3600 + CAMPAIGN_TTL_BUF;
 
         const campaign: Campaign = {
-            id:               randomBytes(8).toString('hex'),
+            ledger_version: 2,
+            id:               digest([wallet,requestId]).slice(0,32),
             funder_wallet:    wallet,
             company:          String(body.company).slice(0, 128),
             title:            String(body.title).slice(0, 256),
@@ -125,29 +132,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             active:           true,
         };
 
-        const funding = await kvCreateFundedCampaign(
-            wallet,
-            totalBudget,
-            protocolFee,
-            `campaign:${campaign.id}`,
-            JSON.stringify(campaign),
-            ttlSec,
-        );
-        if (funding.status === 'insufficient') {
-            return res.status(402).json({ error: 'insufficient_balance', balance: funding.balance, required: totalBudget });
-        }
-        if (funding.status !== 'created') throw new Error('Could not atomically create funded campaign');
+        const funding = await reserveMoney(wallet, 'campaign:' + campaign.id, nano(totalBudget), digest(body),
+            Date.parse(expiresAt), 'campaign', { key: 'campaign:' + campaign.id, value: JSON.stringify(campaign) });
 
         return res.status(200).json({
             ok:               true,
             campaign_id:      campaign.id,
             net_budget:       netBudget,
             protocol_fee:     protocolFee,
-            expires_at:       expiresAt,
+            expires_at:       new Date(funding.expiresAt).toISOString(),
             max_tasks:        Math.floor(netBudget / rewardPerTask),
         });
     } catch (err: any) {
         console.error('[campaigns/create]', err.message);
-        return res.status(500).json({ error: 'Internal error' });
+        return res.status(err instanceof MoneyError && err.code === 'insufficient_balance' ? 402 : 503).json({ error: err instanceof MoneyError ? err.code : 'Internal error' });
     }
 }

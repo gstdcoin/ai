@@ -11,6 +11,7 @@
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvKeys, kvMGet } from '../../../../lib/kv';
+import { moneyJob } from '../../../../lib/money';
 import type { Campaign } from './create';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -35,7 +36,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             if (!raw) continue;
             try {
                 const c: Campaign = JSON.parse(raw);
-                if (!c.active) continue;
+                if (!c.active || c.ledger_version !== 2) continue;
+                const escrow = await moneyJob('campaign:' + c.id);
+                if (!escrow || escrow.state !== 'reserved') continue;
+                c.remaining_budget = Number(BigInt(escrow.available))/1e9;
                 if (new Date(c.expires_at).getTime() < now) continue;
                 if (c.remaining_budget < c.reward_per_task) continue;
                 if (type && c.required_type !== 'any' && c.required_type !== type) continue;

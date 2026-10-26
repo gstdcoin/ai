@@ -1,13 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { kvGet, kvClaimPending, sessionWallet } = vi.hoisted(() => ({
+const { kvGet, claimMoney, sessionWallet } = vi.hoisted(() => ({
     kvGet: vi.fn(),
-    kvClaimPending: vi.fn(),
+    claimMoney: vi.fn(),
     sessionWallet: vi.fn(),
 }));
 
-vi.mock('./kv', () => ({ kvGet, kvClaimPending }));
+vi.mock('./kv', () => ({ kvGet }));
+vi.mock('./money', () => ({ claimMoney, moneyBalance: kvGet, units: (n: bigint) => (Number(n)/1e9).toString() }));
 vi.mock('./walletSession', () => ({ sessionWallet }));
 
 import claimRewards from '../pages/api/v1/nodes/claim-rewards';
@@ -38,7 +39,7 @@ async function call(
 describe('node reward API contract', () => {
     beforeEach(() => {
         kvGet.mockReset();
-        kvClaimPending.mockReset();
+        claimMoney.mockReset();
         sessionWallet.mockReset();
     });
 
@@ -51,7 +52,7 @@ describe('node reward API contract', () => {
 
     it('returns pending_gstd for the wallet in the verified session', async () => {
         sessionWallet.mockResolvedValue('uqwallet');
-        kvGet.mockResolvedValue('0.25');
+        kvGet.mockResolvedValue({ wallet: 'uqwallet', pending_gstd: 0.25 });
 
         const response = await call(pendingRewards, 'GET', { session: 'valid-session' });
 
@@ -61,23 +62,20 @@ describe('node reward API contract', () => {
             pending_gstd: 0.25,
             claimable: true,
         });
-        expect(kvGet).toHaveBeenCalledWith('rewards:pending:uqwallet');
+        expect(kvGet).toHaveBeenCalledWith('uqwallet');
     });
 
     it('requires an authenticated wallet session to claim rewards', async () => {
         const response = await call(claimRewards, 'POST');
 
         expect(response.status).toBe(401);
-        expect(kvClaimPending).not.toHaveBeenCalled();
+        expect(claimMoney).not.toHaveBeenCalled();
     });
 
     it('claims rewards for the wallet in the verified session', async () => {
         sessionWallet.mockResolvedValue('uqwallet');
-        kvClaimPending.mockResolvedValue({
-            status: 'claimed',
-            gross: 0.25,
-            net: 0.25,
-            balance: 1.5,
+        claimMoney.mockResolvedValue({
+            amount: 250000000n, balance: 1500000000n,
         });
 
         const response = await call(claimRewards, 'POST', {
@@ -91,6 +89,6 @@ describe('node reward API contract', () => {
             claimed_gstd: 0.25,
             new_balance: 1.5,
         });
-        expect(kvClaimPending).toHaveBeenCalledWith('uqwallet', 0.001);
+        expect(claimMoney).toHaveBeenCalledWith('uqwallet');
     });
 });

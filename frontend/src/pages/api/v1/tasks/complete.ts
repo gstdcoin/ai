@@ -14,6 +14,7 @@ import { kvGet, kvSetNX, kvIncr, kvIncrByFloat, kvCompleteAssignedTask } from '.
 import { COMMUNITY_TAX, BASE_TASK_FEE } from '../../../../lib/rewards';
 import { requireNodeSignature } from '../../../../lib/nodeAuth';
 import { hasTaskResult } from '../../../../lib/taskValidation';
+import { captureMoney, releaseMoney, moneyJob, splitNano, units, walletId, digest } from '../../../../lib/money';
 import type { TaskAssignment } from '../../../../lib/task-assignment';
 import type { NodeRecord } from '../nodes/register';
 import type { Campaign } from '../campaigns/create';
@@ -49,6 +50,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (!body.task_id) {
             return res.status(400).json({ error: 'task_id required' });
         }
+        const assignedRaw = await kvGet('task_assigned:' + body.task_id);
+        const assigned = assignedRaw ? JSON.parse(assignedRaw) : null;
+        if (body.error && assigned?.node_id === nodeId && assigned?.funding_id) await releaseMoney(assigned.funding_id);
         if (body.error || !hasTaskResult(body.result)) {
             return res.status(422).json({ error: 'A non-empty successful task result is required' });
         }
@@ -75,21 +79,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (completion.status === 'disabled_task') {
             return res.status(410).json({ error: 'Task execution is disabled' });
         }
-        if (completion.status === 'duplicate') {
-            return res.status(200).json({ ok: true, task_id: body.task_id, duplicate: true });
-        }
+
         let assignment: TaskAssignment;
         try {
             assignment = JSON.parse(completion.assignment) as TaskAssignment;
         } catch {
             return res.status(409).json({ error: 'Invalid task assignment' });
         }
-        const rewardGstd = Number.isFinite(assignment.reward_gstd) && assignment.reward_gstd >= 0
-            ? assignment.reward_gstd
-            : BASE_TASK_FEE;
-        const protocolFee = Number.isFinite(assignment.protocol_fee_gstd) && assignment.protocol_fee_gstd >= 0
-            ? assignment.protocol_fee_gstd
-            : 0;
+        let rewardGstd = 0;
+        const protocolFee = 0; // Protocol/reserve shares commit atomically inside captureMoney.
+        if (assignment.funding_id) {
+            const funding = await moneyJob(assignment.funding_id);
+            if (!funding) return res.status(409).json({ error: 'funding_not_found' });
+            await captureMoney(assignment.funding_id, walletId((JSON.parse(nodeRaw) as NodeRecord).wallet_address),
+                { task_id: body.task_id, node_id: nodeId, result_hash: digest(body.result) });
+            rewardGstd = Number(units(splitNano(BigInt(funding.amount)).executor));
+        }
+        if (completion.status === 'duplicate') return res.status(200).json({ ok: true, task_id: body.task_id, duplicate: true, reward_gstd: rewardGstd });
         if (assignment.expected_hash) {
             await kvIncrByFloat('stats:probe_verified', 1);
         }

@@ -106,6 +106,7 @@ export default function SovereignTerminalModal({ isOpen, onClose, mode = 'faucet
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Idempotency-Key': crypto.randomUUID(),
           ...(localStorage.getItem('session_token')
             ? { 'X-Session-Token': localStorage.getItem('session_token')! }
             : {}),

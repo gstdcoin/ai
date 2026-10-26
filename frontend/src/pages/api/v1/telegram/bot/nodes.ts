@@ -5,6 +5,7 @@
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvKeys, kvMGet } from '../../../../../lib/kv';
+import { moneyBalance, walletId } from '../../../../../lib/money';
 import { isValidBotToken } from '../../../../../lib/botAuth';
 import { isNodeOnline } from '../../../../../lib/node-status';
 import type { NodeRecord } from '../../nodes/register';
@@ -19,12 +20,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const wallet = await kvGet(`tg_wallet:${telegramId}`).catch(() => null);
     if (!wallet) return res.status(200).json({ linked: false, nodes: [], pending_gstd: 0 });
 
-    const walletKey = wallet.toLowerCase();
+    const walletKey = walletId(wallet);
     const keys = (await kvKeys('node:')).filter(k => !k.slice(5).includes(':'));
     const values = keys.length ? await kvMGet(keys) : [];
     const nodes = values
         .map(v => { try { return v ? (JSON.parse(v) as NodeRecord) : null; } catch { return null; } })
-        .filter((n): n is NodeRecord => !!n && (n.wallet_address || '').toLowerCase() === walletKey)
+        .filter((n): n is NodeRecord => { try { return !!n && walletId(n.wallet_address || '') === walletKey; } catch { return false; } })
         .map(n => ({
             node_id: n.node_id,
             name: n.name,
@@ -36,11 +37,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             capabilities: n.capabilities,
         }));
 
-    const pendRaw = await kvGet(`rewards:pending:${walletKey}`).catch(() => null);
+    const balance = await moneyBalance(wallet);
     return res.status(200).json({
         linked: true,
         wallet,
         nodes,
-        pending_gstd: pendRaw ? parseFloat(pendRaw) || 0 : 0,
+        pending_gstd: balance.pending_gstd,
+        legacy_pending_unreconciled_gstd: balance.legacy_pending_unreconciled_gstd,
     });
 }

@@ -7,6 +7,7 @@
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvKeys, kvMGet } from '../../../../../lib/kv';
+import { moneyBalance } from '../../../../../lib/money';
 import { sessionWallet } from '../../../../../lib/walletSession';
 import type { NodeRecord } from '../register';
 import { parseNodeRecords } from '../../../../../lib/node-status';
@@ -47,6 +48,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(200).json({ registered: false });
     }
 
+    const balance = await moneyBalance(wallet);
     const uptimeHours = record.uptime_hours || 0;
 
     // Simple tier calculation based on uptime
@@ -62,7 +64,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         tier,
         streak:  { days: Math.floor(uptimeHours / 24), best: Math.floor(uptimeHours / 24) },
         stats:   { effective_rate_per_h: 0, tasks_completed: record.tasks_completed },
-        earnings: { total: record.gstd_earned || 0 },
+        earnings: { total: balance.lifetime_earned_gstd, pending: balance.pending_gstd, ledger_version: 2 },
         next_tier: tier.name === 'bronze' ? { name: 'silver', hours_needed: Math.max(0, 48 - uptimeHours) } : null,
     });
 }

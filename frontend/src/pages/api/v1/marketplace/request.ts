@@ -14,9 +14,10 @@
  *   priority        number   — 1–10 (default 1)
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvGet, kvReserveCampaignTask } from '../../../../lib/kv';
+import { kvGet } from '../../../../lib/kv';
+import { reserveCampaignTask, nano, units, splitNano, walletId, MoneyError, digest } from '../../../../lib/money';
 import { sessionWallet } from '../../../../lib/walletSession';
-import { randomBytes } from 'crypto';
+
 import type { Campaign } from '../campaigns/create';
 
 const CAMPAIGN_TTL_BUF = 3600;
@@ -27,6 +28,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     try {
         const body = req.body as any;
+        const requestId = req.headers['idempotency-key'];
+        if (typeof requestId !== 'string' || !/^[A-Za-z0-9_-]{8,100}$/.test(requestId))
+            return res.status(400).json({ error: 'idempotency_key_required' });
 
         if (!body.campaign_id || !body.type || !body.payload) {
             return res.status(400).json({ error: 'campaign_id, type, payload required' });
@@ -39,7 +43,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         const campaign: Campaign = JSON.parse(raw);
         // Tasks spend the funder's budget, so only the funding wallet may request them.
-        if ((await sessionWallet(req.headers)) !== String(campaign.funder_wallet || '').toLowerCase()) {
+        const authenticated = await sessionWallet(req.headers);
+        if (!authenticated || walletId(authenticated) !== walletId(campaign.funder_wallet)) {
             return res.status(403).json({ error: 'Only the campaign funder can request tasks' });
         }
         if (!campaign.active || new Date(campaign.expires_at).getTime() < Date.now()) {
@@ -49,7 +54,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.status(409).json({ error: 'Campaign budget exhausted' });
         }
 
-        const taskId = randomBytes(8).toString('hex');
+        if (campaign.ledger_version !== 2) return res.status(409).json({ error: 'legacy_campaign_requires_reconciliation' });
+        const taskId = digest([campaign.funder_wallet,campaign.id,requestId]).slice(0,32);
 
         // Build routable task with resource requirements
         const task = {
@@ -63,39 +69,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             created_at:       new Date().toISOString(),
         };
 
-        const remaining = Math.ceil((new Date(campaign.expires_at).getTime() - Date.now()) / 1000);
-        const reservation = await kvReserveCampaignTask(
-            `campaign:${campaign.id}`,
-            'tasks:queue',
-            JSON.stringify(task),
-            remaining + CAMPAIGN_TTL_BUF,
-            Date.now(),
-            Date.parse(campaign.expires_at),
-        );
-        if (reservation.status !== 'reserved') {
-            if (reservation.status === 'not_found') {
-                return res.status(404).json({ error: 'Campaign not found or expired' });
-            }
-            if (reservation.status === 'inactive' || reservation.status === 'expired') {
-                return res.status(410).json({ error: 'Campaign expired' });
-            }
-            if (reservation.status === 'exhausted') {
-                return res.status(409).json({ error: 'Campaign budget exhausted' });
-            }
-            console.error('[marketplace/request] Campaign reservation rejected invalid stored state');
-            return res.status(500).json({ error: 'Campaign reservation failed' });
-        }
+        const reservation = await reserveCampaignTask(campaign.id,task,nano(campaign.reward_per_task),
+            Math.min(Date.parse(campaign.expires_at),Date.now()+3600_000),
+            { campaign_id: campaign.id, company: campaign.company }, digest(body));
+        const split = splitNano(nano(campaign.reward_per_task));
+        const parent = await import('../../../../lib/money').then(m=>m.moneyJob('campaign:' + campaign.id));
+        const remainingBudget = Number(units(parent!.available));
 
         return res.status(200).json({
             ok:           true,
             task_id:      taskId,
-            reward_gstd:  reservation.nodeReward,
-            protocol_fee: reservation.protocolFee,
-            budget_left:  reservation.remainingBudget,
-            tasks_left:   Math.floor(reservation.remainingBudget / campaign.reward_per_task),
+            reward_gstd:  Number(units(split.executor)),
+            protocol_fee: Number(units(split.protocol)),
+            budget_left:  remainingBudget,
+            tasks_left:   Math.floor(remainingBudget / campaign.reward_per_task),
         });
     } catch (err: any) {
         console.error('[marketplace/request]', err.message);
-        return res.status(500).json({ error: 'Internal error' });
+        return res.status(err instanceof MoneyError ? 409 : 500).json({ error: err instanceof MoneyError ? err.code : 'Internal error' });
     }
 }

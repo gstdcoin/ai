@@ -1058,8 +1058,7 @@ export async function kvCompleteAssignedTask(
             local storedWallet = string.lower(node.wallet_address or '')
             if storedWallet == '' or storedWallet ~= ARGV[2] then return {'wallet_mismatch', ''} end
 
-            local reward = tonumber(assignment.reward_gstd)
-            if not reward or reward < 0 then reward = tonumber(ARGV[3]) end
+            local reward = 0 -- Legacy reward metadata is not proof of funded v2 work.
             local tax = tonumber(ARGV[4])
             local nodeShare = math.floor((reward * (1 - tax) * 1000000) + 0.5) / 1000000
             local communityShare = math.floor((reward * tax * 1000000) + 0.5) / 1000000
@@ -1148,7 +1147,7 @@ export async function kvCompleteAssignedTask(
     }
     node.tasks_completed = (Number(node.tasks_completed) || 0) + 1;
     const assignedReward = Number((JSON.parse(raw) as { reward_gstd?: unknown }).reward_gstd);
-    const rewardGstd = Number.isFinite(assignedReward) && assignedReward >= 0 ? assignedReward : fallbackReward;
+    const rewardGstd = 0; // Only captureMoney may accrue funded operator rewards.
     const nodeShare = Math.round(rewardGstd * (1 - communityTax) * 1e6) / 1e6;
     const communityShare = Math.round(rewardGstd * communityTax * 1e6) / 1e6;
     node.gstd_earned = Math.round(((Number(node.gstd_earned) || 0) + rewardGstd) * 1e6) / 1e6;
@@ -1290,4 +1289,71 @@ export async function kvIncr(key: string): Promise<number> {
     const cur = parseInt(memGet(key) || '0', 10) + 1;
     memSet(key, String(cur));
     return cur;
+}
+
+/** Exact-money CAS: amounts stay decimal strings; Lua never calculates balances.
+ * All comparisons/type checks precede writes. Journal entries and due/outbox
+ * changes commit in the same Redis script. No production memory fallback. */
+const moneyDue = new Map<string, number>();
+export async function kvMoneyCAS(
+    expected: Record<string, string | null>,
+    writes: Record<string, string>,
+    due?: { id: string; at: number | null },
+    queue?: { key: string; value: string },
+): Promise<boolean> {
+    const keys = Object.keys(expected);
+    if (!keys.length || Object.keys(writes).some(key => !(key in expected))) throw new Error('Invalid money CAS');
+    const r = await getRedis();
+    if (r) {
+        const script = `
+            local n = tonumber(ARGV[1])
+            for i = 1, n do
+                local kind = redis.call('TYPE', KEYS[i]).ok
+                if kind ~= 'none' and kind ~= 'string' then return redis.error_reply('Invalid money key type') end
+                local old = redis.call('GET', KEYS[i])
+                local present = ARGV[2 + (i-1)*3]
+                local expected = ARGV[3 + (i-1)*3]
+                if (present == '0' and old) or (present == '1' and old ~= expected) then return 0 end
+            end
+            local idx = 2 + n*3
+            local dueId = ARGV[idx]
+            local dueAt = ARGV[idx+1]
+            local queueKey = ARGV[idx+2]
+            if dueId ~= '' then
+                local kind = redis.call('TYPE', KEYS[n+1]).ok
+                if kind ~= 'none' and kind ~= 'zset' then return redis.error_reply('Invalid money due type') end
+            end
+            if queueKey ~= '' then
+                local kind = redis.call('TYPE', KEYS[n+2]).ok
+                if kind ~= 'none' and kind ~= 'list' then return redis.error_reply('Invalid money queue type') end
+            end
+            for i = 1, n do
+                local value = ARGV[4 + (i-1)*3]
+                if value ~= '' then redis.call('SET', KEYS[i], value) end
+            end
+            if dueId ~= '' then
+                if dueAt == '' then redis.call('ZREM', KEYS[n+1], dueId)
+                else redis.call('ZADD', KEYS[n+1], dueAt, dueId) end
+            end
+            if queueKey ~= '' then redis.call('LPUSH', KEYS[n+2], ARGV[idx+3]) end
+            return 1
+        `;
+        const args = [String(keys.length)];
+        for (const key of keys) args.push(expected[key] === null ? '0' : '1', expected[key] ?? '', writes[key] ?? '');
+        args.push(due?.id ?? '', due?.at == null ? '' : String(due.at), queue?.key ?? '', queue?.value ?? '');
+        return (await r.eval(script, [...keys, 'money:v2:due', queue?.key ?? 'money:v2:unused'], args)) === 1;
+    }
+    for (const key of keys) if (memGet(key) !== expected[key]) return false;
+    for (const [key, value] of Object.entries(writes)) memSet(key, value);
+    if (due) { if (due.at == null) moneyDue.delete(due.id); else moneyDue.set(due.id, due.at); }
+    if (queue) {
+        const values: string[] = JSON.parse(memGet(queue.key) || '[]');
+        values.push(queue.value); memSet(queue.key, JSON.stringify(values));
+    }
+    return true;
+}
+export async function kvMoneyDue(now: number, limit = 50): Promise<string[]> {
+    const r = await getRedis();
+    if (r) return await r.zrange('money:v2:due', 0, now, { byScore: true, offset: 0, count: limit }) as string[];
+    return [...moneyDue].filter(([,at]) => at <= now).sort((a,b) => a[1]-b[1]).slice(0,limit).map(([id]) => id);
 }
