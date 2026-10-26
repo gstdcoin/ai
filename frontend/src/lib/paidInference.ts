@@ -1,3 +1,4 @@
+import { executorPayout } from './nodePayout';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet } from './kv';
 import { getActiveNodes } from './nodes';
@@ -34,7 +35,7 @@ export async function paidInference(req: NextApiRequest, res: NextApiResponse, o
             const raw = await kvGet('node:' + candidate.nodeId);
             try {
                 const node = JSON.parse(raw || '{}');
-                executor = walletId(String(node.wallet_address || ''));
+                executor = await executorPayout(candidate.nodeId, String(node.wallet_address || ''));
                 target = candidate; break;
             } catch { continue; }
         }
