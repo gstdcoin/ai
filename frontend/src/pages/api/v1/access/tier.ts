@@ -12,6 +12,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvKeys, kvMGet } from '../../../../lib/kv';
 import { sessionWallet } from '../../../../lib/walletSession';
 import { isValidBotToken } from '../../../../lib/botAuth';
+import { moneyBalance, walletId } from '../../../../lib/money';
 
 export interface AccessTier {
     tier:        'basic' | 'contributor' | 'standard' | 'pro' | 'ultra';
@@ -27,73 +28,13 @@ export interface AccessTier {
     how_to_reach: string;
 }
 
-export const TIERS: AccessTier[] = [
-    {
-        tier:        'basic',
-        name:        'Basic',
-        min_gstd:    0,
-        max_gstd:    9.99,
-        emoji:       '🌱',
-        ai_models:   ['llama3.2:3b', 'llama3.2:1b', 'phi3:mini', 'gemma2:2b'],
-        smartmix:    'free',
-        queries_per_day: 50,
-        cost_per_query_gstd: 0,
-        description: 'Free forever. Connect wallet + run a node to start earning.',
-        how_to_reach: 'You are here. Link your wallet and run a node to earn GSTD.',
-    },
-    {
-        tier:        'contributor',
-        name:        'Contributor',
-        min_gstd:    10,
-        max_gstd:    99.99,
-        emoji:       '🐝',
-        ai_models:   ['llama3.2:3b', 'llama3.1:8b', 'qwen2.5:7b', 'mistral:7b', 'phi3:mini'],
-        smartmix:    'free',
-        queries_per_day: 200,
-        cost_per_query_gstd: 0,
-        description: 'Earned by running a node for a few hours. More models, higher query limit.',
-        how_to_reach: 'Run a node for ~20 hours (Bronze tier earns 0.5 GSTD/h).',
-    },
-    {
-        tier:        'standard',
-        name:        'Standard',
-        min_gstd:    100,
-        max_gstd:    999.99,
-        emoji:       '⚡',
-        ai_models:   ['llama3.1:8b', 'qwen2.5:7b', 'qwen2.5:14b', 'mistral:7b', 'phi3:medium', 'deepseek-r1:14b'],
-        smartmix:    'standard',
-        queries_per_day: null,
-        cost_per_query_gstd: 0.5,
-        description: 'Council of 3 experts. Paid per query from your GSTD balance.',
-        how_to_reach: 'Earned by running a node for ~200 hours, or 8 days at Gold tier.',
-    },
-    {
-        tier:        'pro',
-        name:        'Pro',
-        min_gstd:    1000,
-        max_gstd:    9999.99,
-        emoji:       '🔥',
-        ai_models:   ['llama3.1:8b', 'llama3.1:70b', 'qwen2.5:32b', 'deepseek-r1:14b', 'deepseek-r1:70b', 'codellama:70b'],
-        smartmix:    'pro',
-        queries_per_day: null,
-        cost_per_query_gstd: 2.0,
-        description: 'Panel of 5 experts. All 16GB+ models available.',
-        how_to_reach: 'Earned by running a 8GB node for ~1000 hours.',
-    },
-    {
-        tier:        'ultra',
-        name:        'Ultra',
-        min_gstd:    10000,
-        max_gstd:    null,
-        emoji:       '🧠',
-        ai_models:   ['*'],  // all models
-        smartmix:    'ultra',
-        queries_per_day: null,
-        cost_per_query_gstd: 5.0,
-        description: 'Full swarm of 7 experts. Every model in the network. Enterprise quality.',
-        how_to_reach: 'Earned by running a flagship 32GB node for ~2000 hours.',
-    },
-];
+// Compatibility view only: access is determined by quota, model price and live capacity.
+export const TIERS: AccessTier[] = [{
+    tier:'basic',name:'Compute access',min_gstd:0,max_gstd:null,emoji:'🌱',
+    ai_models:[],smartmix:'free',queries_per_day:50,cost_per_query_gstd:0,
+    description:'Free quota is separate from paid credit. Model availability and price are checked per request.',
+    how_to_reach:'Earn GSTD from accepted paid work or make a verified deposit. No hourly rewards.',
+}];
 
 function getTier(balance: number): AccessTier {
     for (let i = TIERS.length - 1; i >= 0; i--) {
@@ -130,7 +71,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         try {
             const linkedWallet = await kvGet(`tg_wallet:${requestedTelegramId}`);
             if (!linkedWallet) return res.status(404).json({ error: 'No wallet linked to this Telegram account' });
-            wallet = String(linkedWallet).toLowerCase();
+            wallet = walletId(String(linkedWallet));
         } catch (err: any) {
             console.error('[access/tier telegram]', err?.message || err);
             return res.status(500).json({ error: 'Could not resolve linked Telegram wallet' });
@@ -147,17 +88,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (wallet) {
         res.setHeader('Cache-Control', 'private, no-store');
         try {
-            const [balRaw, pendRaw, stakRaw] = await Promise.all([
-                kvGet(`balance:${wallet}`),
-                kvGet(`rewards:pending:${wallet}`),
-                kvGet(`staked:${wallet}`),
-            ]);
-            balance = balRaw ? Number(balRaw) : 0;
-            pending = pendRaw ? Number(pendRaw) : 0;
-            staked = stakRaw ? Number(stakRaw) : 0;
-            if (![balance, pending, staked].every(Number.isFinite) || balance < 0 || pending < 0 || staked < 0) {
-                throw new Error('Invalid stored wallet tier data');
-            }
+            const ledger = await moneyBalance(wallet);
+            balance = ledger.balance_gstd;
+            pending = ledger.pending_gstd;
+            staked = 0;
 
             const nodeKeys = await kvKeys('node:*');
             const nodeValues = await kvMGet(nodeKeys);
@@ -190,14 +124,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         next_tier:       nextTier,
         gstd_to_next:    toNextTier,
         all_tiers:       TIERS,
-        earning_paths: [
-            { method: 'Mobile node (Bronze)',   rate_per_hour: 0.5,  note: 'Run via Telegram TMA — zero setup' },
-            { method: 'Mobile node (Silver)',   rate_per_hour: 1.0,  note: 'Mid-range device' },
-            { method: 'Mobile node (Gold)',     rate_per_hour: 2.0,  note: 'Flagship device' },
-            { method: 'Desktop node (8GB)',     rate_per_hour: 1.5,  note: 'Earns for AI inference tasks' },
-            { method: 'Desktop node (32GB)',    rate_per_hour: 5.0,  note: 'Handles flagship model requests' },
-        ],
-        zero_balance_note: 'You do NOT need GSTD to start. Link your wallet → run a node → earn GSTD automatically.',
+        earning_paths: [{method:'Accepted funded work',executor_pct:85,rate_per_hour:null}],
+        zero_balance_note:'A node can start without GSTD. Earnings require available funded accepted work; no guaranteed income.',
+        ledger_version:2,
+        pricing_endpoint:'/api/v1/models/available',
+        payments_url:'/payments',
         timestamp: Date.now(),
     });
 }

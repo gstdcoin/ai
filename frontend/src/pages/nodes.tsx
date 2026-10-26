@@ -20,7 +20,7 @@ interface TierInfo {
   pending_gstd: number;
 }
 
-const DOCKER_CMD = 'docker run -d -p 8080:8080 -e GSTD_WALLET_ADDRESS=YOUR_WALLET ghcr.io/gstdcoin/gstd-node:latest';
+const DOCKER_CMD = 'git clone https://github.com/gstdcoin/gstdbot.git && cd gstdbot && docker compose up --build -d';
 const SCRIPT_CMD = 'curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash';
 
 const COPY = {
@@ -40,11 +40,11 @@ const COPY = {
     netErr: 'Network error',
     pickTitle: 'Choose how to run it',
     mobileTitle: 'Telegram',
-    mobileText: 'Open the bot and tap Launch Node. No installation.',
+    mobileText: 'Use the bot to chat and manage your account. Opening Telegram does not turn a phone into a compute executor.',
     mobileCta: 'Open in Telegram',
     dockerTitle: 'Docker',
-    dockerText: 'Replace YOUR_WALLET with your TON address.',
-    scriptTitle: 'Install script (Linux / macOS)',
+    dockerText: 'Build from source; configure your public wallet and an Ollama endpoint first. Container setup requires separate validation.',
+    scriptTitle: 'Install script (Linux / WSL2)',
     scriptText: 'Installs the node, Ollama and a systemd service. Read the script before running it.',
     copy: 'Copy',
     copied: 'Copied',
@@ -69,11 +69,11 @@ const COPY = {
     netErr: 'Ошибка сети',
     pickTitle: 'Выберите способ запуска',
     mobileTitle: 'Telegram',
-    mobileText: 'Откройте бота и нажмите Launch Node. Установка не нужна.',
+    mobileText: 'Используйте бота для чата и аккаунта. Открытый Telegram не превращает телефон в вычислительную ноду.',
     mobileCta: 'Открыть в Telegram',
     dockerTitle: 'Docker',
-    dockerText: 'Замените YOUR_WALLET на свой адрес TON.',
-    scriptTitle: 'Скрипт установки (Linux / macOS)',
+    dockerText: 'Сборка из исходников: сначала настройте публичный кошелёк и адрес Ollama. Контейнерная установка требует отдельной проверки.',
+    scriptTitle: 'Скрипт установки (Linux / WSL2)',
     scriptText: 'Ставит ноду, Ollama и службу systemd. Прочитайте скрипт перед запуском.',
     copy: 'Копировать',
     copied: 'Скопировано',
@@ -125,7 +125,7 @@ export default function NodesPage() {
       return;
     }
     try {
-      setTier(await apiGet<TierInfo>('/access/tier', { wallet: walletAddress }));
+      setTier(await apiGet<TierInfo>('/credits/balance'));
     } catch {
       setTier(null);
     }

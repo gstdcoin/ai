@@ -13,15 +13,15 @@ const INSTALL_CMD = 'curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdb
 const PLATFORMS = [
     { name: 'Linux (Ubuntu/Debian)', icon: '🐧', arch: 'x86_64 / ARM64', cmd: INSTALL_CMD, recommended: true },
     { name: 'macOS', icon: '🍎', arch: 'Apple Silicon / Intel', cmd: INSTALL_CMD, recommended: false },
-    { name: 'Windows (WSL)', icon: '🪟', arch: 'x86_64 via WSL2', cmd: `wsl --install && ${INSTALL_CMD}`, recommended: false },
-    { name: 'Raspberry Pi', icon: '🍓', arch: 'ARMv7 / ARM64', cmd: INSTALL_CMD, recommended: false },
+    { name: 'Windows (WSL)', icon: '🪟', arch: 'x86_64 via WSL2', cmd: INSTALL_CMD, recommended: false },
+    { name: 'Raspberry Pi', icon: '🍓', arch: 'ARM64 (64-bit OS)', cmd: INSTALL_CMD, recommended: false },
 ];
 
 const FEATURES = [
-    { icon: Cpu, title: 'AI Inference', desc: 'Serve Ollama models (llama3.2:3b and others) to the GSTD oracle network' },
-    { icon: Zap, title: 'Earn GSTD', desc: '0.5 GSTD per completed inference task, settled on TON blockchain' },
-    { icon: Shield, title: 'Sovereign AI', desc: 'Your data stays on your device. Inference runs locally via Ollama' },
-    { icon: Globe, title: 'Swarm Network', desc: 'Join the growing distributed compute grid. Operators receive the larger share of task fees' },
+    { icon: Cpu, title: 'AI Inference', desc: 'Serve installed Ollama models to the GSTD compute network' },
+    { icon: Zap, title: 'Earn GSTD', desc: '85% of accepted paid work; no fixed earnings. Withdrawals require the custody owner signature.' },
+    { icon: Shield, title: 'Sovereign AI', desc: 'Local mode stays on your device. Network mode shares your request with the selected executor.' },
+    { icon: Globe, title: 'Swarm Network', desc: 'Join the growing distributed compute grid. Operators receive 85% of accepted paid task fees' },
 ];
 
 export default function DownloadsPage() {
@@ -51,8 +51,8 @@ export default function DownloadsPage() {
                             Install <span className="text-gradient-gold">GSTD Node OS</span>
                         </h1>
                         <p className="sec-subtitle">
-                            Transform any device into a sovereign AI node in under 60 seconds.
-                            Earn GSTD tokens, access free AI models, join the Swarm.
+                            Set up a compute node and install a model that fits your hardware.
+                            Run local AI; earn GSTD when funded work is available and accepted.
                         </p>
                     </div>
 
@@ -65,7 +65,7 @@ export default function DownloadsPage() {
                                 <h2 className="text-xl font-black text-white">Quick Install</h2>
                             </div>
                             <p className="text-gray-400 text-sm mb-6">
-                                Open your terminal and run this single command. Works on Linux, macOS, WSL, and Raspberry Pi.
+                                Run in a Linux terminal, including WSL2. On Windows install WSL2 first, then open its Linux shell. ARM devices need a 64-bit OS. macOS support needs a separate installation check.
                             </p>
 
                             <div className="flex items-center gap-2 p-1 bg-black/40 border border-white/10 rounded-2xl">
@@ -85,10 +85,10 @@ export default function DownloadsPage() {
                                     ✓ Auto-installs Node.js
                                 </span>
                                 <span className="px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-[10px] font-black uppercase tracking-widest">
-                                    ✓ Systemd Service
+                                    ✓ Managed process on Linux
                                 </span>
                                 <span className="px-3 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 text-[10px] font-black uppercase tracking-widest">
-                                    ✓ Auto-Updates (OTA)
+                                    ✓ Operator-controlled updates
                                 </span>
                                 <span className="px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-black uppercase tracking-widest">
                                     ✓ Dashboard on :8080

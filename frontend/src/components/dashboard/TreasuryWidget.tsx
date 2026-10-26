@@ -3,7 +3,7 @@ import { useTranslation } from 'next-i18next';
 import { logger } from '../../lib/logger';
 import { API_BASE_URL } from '../../lib/config';
 
-const TREASURY_WALLET = 'EQA--JXG8VSyBJmLMqb2J2t4Pya0TS9SXHh7vHh8Iez25sLp';
+
 
 export default function TreasuryWidget() {
   const { t } = useTranslation('common');
@@ -13,8 +13,7 @@ export default function TreasuryWidget() {
 
   useEffect(() => {
     loadTreasuryBalance();
-    const interval = setInterval(loadTreasuryBalance, 30000);
-    return () => clearInterval(interval);
+
   }, []);
 
   const loadTreasuryBalance = async () => {
@@ -26,8 +25,7 @@ export default function TreasuryWidget() {
       const response = await fetch(`${apiBase}/api/v1/fund/status`);
 
       if (!response.ok) {
-        logger.warn(`Treasury API returned ${response.status}: ${response.statusText}`);
-        return;
+        throw new Error('Treasury API unavailable');
       }
 
       const contentType = response.headers.get('content-type');
@@ -38,10 +36,12 @@ export default function TreasuryWidget() {
 
       const data = await response.json();
 
-      const balance = data?.protocol_treasury_gstd ?? data?.treasury_balance ?? 0;
+      const balance = data?.treasury_gstd;
+      if (!Number.isFinite(balance)) throw new Error('Invalid fund balance');
       setTreasuryGstd(balance);
     } catch (err: any) {
       logger.error('Error loading treasury balance', err);
+      setError('Data unavailable');
     } finally {
       setLoading(false);
     }
@@ -92,7 +92,7 @@ export default function TreasuryWidget() {
             <span className="text-lg text-gray-400">GSTD</span>
           </div>
           <div className="text-xs text-gray-500 font-mono bg-black/20 px-3 py-2 rounded-lg">
-            {t('treasury_address', 'Treasury') || 'Treasury'}: {TREASURY_WALLET.slice(0, 8)}...{TREASURY_WALLET.slice(-6)}
+            <a href="/payments">GSTD · 85% / 10% / 5%</a>
           </div>
         </div>
       )}

@@ -1,30 +1,10 @@
-/**
- * POST /api/v1/mobile/node/register
- *
- * Register or heartbeat a mobile node. Returns session info + reward tier.
- * Called periodically (every 5 min) by the Telegram Mini App while node is active.
- *
- * Tiers based on device resources:
- *   Bronze:   CPU < 4 cores or RAM < 3GB                     — 0.5 GSTD/h
- *   Silver:   CPU 4–7 cores or RAM 3–7GB                     — 1.0 GSTD/h
- *   Gold:     CPU 8+ cores or RAM 8–15GB or bandwidth 10+    — 2.0 GSTD/h
- *   Platinum: RAM 16GB+ or bandwidth 50Mbps+                 — 5.0 GSTD/h
- */
+/** Mobile interface session only. Presence is not compute and earns no GSTD. */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvSet, kvIncr, kvKeys } from '../../../../../lib/kv';
 import { validateTelegramInitData } from '../../../../../lib/telegramAuth';
 
 const MOBILE_NODE_TTL = 360; // 6 minutes (heartbeat every 5 min)
-// Presence-only payouts are unfunded emission (no work is done), so they are off unless explicitly enabled.
-const PRESENCE_REWARDS = process.env.MOBILE_PRESENCE_REWARDS === 'enabled';
-const MAX_SESSIONS_PER_USER = 3; // caps the "spin up many fake device_ids" farming vector
-
-const TIER_RATES: Record<string, number> = {
-    bronze: 0.5,
-    silver: 1.0,
-    gold: 2.0,
-    platinum: 5.0,
-};
+const MAX_SESSIONS_PER_USER = 3;
 
 // Realistic phone/tablet upper bounds — clamp rather than reject so genuine
 // high-end devices aren't blocked, but claimed specs can no longer be
@@ -95,15 +75,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const clamped = clampDeviceSpecs(cpu_cores, ram_gb, bandwidth_mbps);
     const tier = determineTier(clamped.cpu_cores, clamped.ram_gb, clamped.bandwidth_mbps);
-    const rate = PRESENCE_REWARDS ? TIER_RATES[tier] : 0;
-
-    // Calculate earnings since last heartbeat
-    let accumulatedGstd = existing?.accumulated_gstd || 0;
-    if (existing?.last_heartbeat_ts) {
-        const elapsedHours = (nowTs - existing.last_heartbeat_ts) / 3_600_000;
-        const earned = elapsedHours * rate;
-        accumulatedGstd += earned;
-    }
+    const rate = 0;
+    const accumulatedGstd = 0; // No presence-based token credits.
 
     const session = {
         tg_user_id,

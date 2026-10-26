@@ -6,16 +6,15 @@
  * regardless of where the frontend is hosted.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvKeys } from '../../../../lib/kv';
+import { kvKeys, kvMGet } from '../../../../lib/kv';
+import { dedupeNodeRecords, parseNodeRecords, isNodeOnline } from '../../../../lib/node-status';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'GET') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const proto  = req.headers['x-forwarded-proto'] || 'https';
-    const host   = req.headers.host || 'app.gstdtoken.com';
-    const origin = process.env.NEXT_PUBLIC_API_URL || `${proto}://${host}`;
+    const origin = process.env.NEXT_PUBLIC_API_URL || 'https://app.gstdtoken.com';
 
     const [allNodeKeys, campaignKeys] = await Promise.all([
         kvKeys('node:'),
@@ -23,26 +22,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     ]);
     const nodeKeys = allNodeKeys.filter((k: string) => !k.slice(5).includes(':'));
 
-    // Fallback node count from GitHub registry when KV is empty (no Redis configured)
-    let activeNodes = nodeKeys.length;
-    if (activeNodes === 0) {
-        try {
-            const ghResp = await fetch(
-                'https://raw.githubusercontent.com/gstdcoin/ai/main/nodes-registry.json',
-                { signal: AbortSignal.timeout(3000), cache: 'no-store' }
-            );
-            if (ghResp.ok) {
-                const registry: any[] = await ghResp.json();
-                activeNodes = registry.length;
-            }
-        } catch { /* GitHub unavailable */ }
-    }
+    const records=dedupeNodeRecords(parseNodeRecords(await kvMGet(nodeKeys)));
+    const activeNodes=records.filter(node=>isNodeOnline(node)).length;
 
     res.setHeader('Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
 
     return res.status(200).json({
         network: 'GSTD Decentralized AI Network',
-        version: '3.4',
+        version: '3.6',
         chain:   'TON',
         token: {
             symbol:   'GSTD',
@@ -58,29 +45,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         inference: {
             endpoint:      `${origin}/api/v1/chat/completions`,
             openai_compat:  true,
-            cost_per_req:  '0.001 GSTD',
-            models: [
-                'llama-3.3-70b-versatile',
-                'llama-3.1-8b-instant',
-                'meta-llama/llama-4-scout-17b-16e-instruct',
-                'qwen/qwen3-32b',
-                'moonshotai/kimi-k2-instruct',
-                'mixtral-8x7b-32768',
-                'gemma2-9b-it',
-            ],
+            cost_per_req:  'Model-specific; check /api/v1/models/available before a request',
+            models_endpoint: `${origin}/api/v1/models/available`,
             note: 'OpenAI-compatible. Use an enterprise API key or a verified TON wallet session (X-Session-Token) for wallet billing.',
         },
         marketplace: {
             resources_endpoint: `${origin}/api/v1/marketplace/resources`,
             campaigns_endpoint: `${origin}/api/v1/campaigns/list`,
             active_campaigns:   campaignKeys.length,
-            task_types:         ['inference', 'storage', 'compute', 'relay'],
+            task_types:         ['inference'],
         },
         treasury: {
             endpoint:       `${origin}/api/v1/treasury/status`,
-            protocol_fee:   '10% of all campaign tasks',
-            distribution:   '90% → Node Operators | 10% → Protocol Treasury (buybacks + liquidity)',
-            threshold_gstd: 10,
+            protocol_fee:   '10% of accepted paid work',
+            distribution:   '85% executor | 10% protocol | 5% reserve; no automatic buybacks',
+            automatic_distribution_enabled: false,
         },
         install_node: 'curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash',
         docs:         origin,
