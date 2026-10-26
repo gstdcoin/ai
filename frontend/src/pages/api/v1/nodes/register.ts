@@ -5,8 +5,8 @@
  * Node TTL: 10 minutes (heartbeat must refresh it).
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvGet, kvSet, kvIncr } from '../../../../lib/kv';
-import { verifyNodeSignature, bindNodeKey, requireNodeSignatureIfBound } from '../../../../lib/nodeAuth';
+import { kvGet, kvSet, kvIncr, kvNodeWalletSlot } from '../../../../lib/kv';
+import { verifyNodeSignature, bindNodeKey, requireNodeSignature } from '../../../../lib/nodeAuth';
 
 const NODE_TTL = 600; // 10 minutes
 
@@ -66,8 +66,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const body = req.body as any;
         let nodeId: string = body.node_id || body.specs?.node_id || body.name?.replace(/\s/g, '-');
 
-        if (!nodeId) {
-            return res.status(400).json({ error: 'node_id required' });
+        if (typeof nodeId!=='string'||!/^[a-zA-Z0-9_.-]{4,64}$/.test(nodeId)) {
+            return res.status(400).json({ error: 'node_id required (4-64 alphanumeric chars)' });
         }
 
         const now = new Date().toISOString();
@@ -89,7 +89,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 return res.status(403).json({ error: 'node_id is already bound to a different key' });
             }
         } else {
-            const auth = await requireNodeSignatureIfBound(nodeId, req.headers as any);
+            const auth = await requireNodeSignature(nodeId, req.headers as any);
             if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
         }
 
@@ -107,24 +107,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.status(403).json({ error: 'Node already registered with a different wallet' });
         }
 
-        // Cap new node_ids per wallet. Registration has no proof of wallet
-        // ownership (no signature -- see STATUS.md's security audit note), so a single
-        // actor can spin up unlimited free node_ids under one wallet, each
-        // polling for and "completing" real tasks with no result-quality
-        // check, multiplying reward accrual with no extra hardware or cost.
-        // This doesn't close that gap, only bounds its cheapest form.
-        const MAX_NODES_PER_WALLET = 10;
-        if (isNewNode && incomingWallet) {
-            const walletNodeCountKey = `wallet_node_count:${incomingWallet.toLowerCase()}`;
-            const currentCount = parseInt((await kvGet(walletNodeCountKey)) || '0', 10);
-            if (currentCount >= MAX_NODES_PER_WALLET) {
-                return res.status(429).json({
-                    error: 'too_many_nodes',
-                    message: `Max ${MAX_NODES_PER_WALLET} node_ids per wallet. Contact support if you have a legitimate need for more.`,
-                });
-            }
-            await kvIncr(walletNodeCountKey).catch(() => {});
-        }
+        // Count live distinct identities, not historical restarts of an expired node record.
+        if(incomingWallet && !await kvNodeWalletSlot(incomingWallet,nodeId,NODE_TTL,10))
+            return res.status(429).json({error:'too_many_nodes',message:'At most 10 live node identities per wallet; existing identities can renew.'});
 
         const record: NodeRecord & { node_url?: string } = {
             node_id:         nodeId,

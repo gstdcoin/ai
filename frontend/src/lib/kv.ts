@@ -1363,3 +1363,24 @@ export async function kvMoneyDue(now: number, limit = 50): Promise<string[]> {
     if (r) return await r.zrange('money:v2:due', 0, now, { byScore: true, offset: 0, count: limit }) as string[];
     return [...moneyDue].filter(([,at]) => at <= now).sort((a,b) => a[1]-b[1]).slice(0,limit).map(([id]) => id);
 }
+
+/** Atomic distinct live-node limit. Restarts and expired root records do not consume permanent slots. */
+export async function kvNodeWalletSlot(wallet:string,nodeId:string,ttlSec=600,limit=10):Promise<boolean>{
+    if(!wallet.trim()||!nodeId||!Number.isSafeInteger(ttlSec)||ttlSec<1||!Number.isSafeInteger(limit)||limit<1)
+        throw new Error('Invalid node wallet slot');
+    const key='node_wallet_slots:'+wallet.trim().toLowerCase(),now=Date.now();
+    const script=`
+        redis.call('ZREMRANGEBYSCORE',KEYS[1],'-inf',ARGV[1])
+        if not redis.call('ZSCORE',KEYS[1],ARGV[2]) and redis.call('ZCARD',KEYS[1])>=tonumber(ARGV[3]) then return 0 end
+        redis.call('ZADD',KEYS[1],ARGV[4],ARGV[2])
+        redis.call('PEXPIRE',KEYS[1],ARGV[5])
+        return 1
+    `;
+    const redis=await getRedis();
+    if(redis){try{return Number(await redis.eval(script,[key],[String(now),nodeId,String(limit),String(now+ttlSec*1000),String(ttlSec*1000)]))===1;}
+        catch(error){handleRedisFailure('kvNodeWalletSlot',error);}}
+    const slots:Record<string,number>=JSON.parse(memGet(key)||'{}');
+    for(const [id,until] of Object.entries(slots))if(until<=now)delete slots[id];
+    if(!(nodeId in slots)&&Object.keys(slots).length>=limit)return false;
+    slots[nodeId]=now+ttlSec*1000;memSet(key,JSON.stringify(slots),ttlSec);return true;
+}

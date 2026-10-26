@@ -1,31 +1,7 @@
-# GSTD Smart Contracts (v1.4.0)
+# Retired duplicate — not a production component
 
-This repository contains the Tact and Fift smart contracts that anchor the GSTD Sovereign AI Network.
+Use the maintained repository: https://github.com/gstdcoin/contracts .
 
-## Components
+This embedded copy is not installed or deployed by the platform. Its old launch/deployment entry points are disabled so an outdated example cannot access a wallet or redeploy a contract accidentally. Historical implementation is available in Git history. Source files remaining here are reference material, not a verified release.
 
-| Contract | Purpose | Feature Details |
-|----------|---------|-----------------|
-| **GSTDJetton** | Core ERC-20 equivalent | 1B max supply natively |
-| **SettlementMaster** | Fee Distribution | 90% → node operators / 10% → protocol treasury |
-| **AgentRegistry** | Identity Mapping | Genesis Lock, Sovereign Tiers |
-| **DAOVoting** | Decentralized Upgrades | On-chain config voting, 48h locks |
-
-## Compiling & Deploying
-The project is built on modern `Tact` tooling and `@ton/ton`.
-
-```bash
-npm install
-npm run build
-```
-
-Then invoke tests/deployments using `ts-node`:
-```bash
-npx ts-node scripts/deploy-nodes.ts
-```
-
-Set the `.env` variables ensuring `DEPLOYER_MNEMONIC` correlates with your active wallet, and execute against either `testnet` or `mainnet`.
-
-## 1.4.0 Security Optimizations
-- Fully stripped unneeded text payloads into Binary Cell payloads increasing throughput.
-- Unrolled all node/address lookup states without local iteration loops for extreme performance gains during A2A settlements.
+The active platform payment path is documented in [READINESS](../docs/READINESS.md) and uses the existing GSTD Jetton with owner-signed withdrawals, not this legacy deployment.
