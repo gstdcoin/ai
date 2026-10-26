@@ -240,7 +240,8 @@ async function handleAI(c: Ctx, text: string): Promise<void> {
         return;
     }
     const day = new Date().toISOString().slice(0, 10);
-    const quota = await kvConsumeQuota(`tg_ai_day:${c.userId}:${day}`, AI_DAILY_LIMIT, 90_000).catch(() => ({ allowed: true }));
+    const quota = await kvConsumeQuota(`tg_ai_day:${c.userId}:${day}`, AI_DAILY_LIMIT, 90_000).catch(() => null);
+    if (!quota) { await show(c, { text: t(c.lang, 'error') }); return; }
     if (!quota.allowed) {
         await show(c, { text: t(c.lang, 'ai_limit', { limit: AI_DAILY_LIMIT }), kb: [[{ text: t(c.lang, 'btn_earn'), callback_data: 'earn' }]] });
         return;
@@ -254,7 +255,7 @@ async function handleAI(c: Ctx, text: string): Promise<void> {
         { role: 'user', content: text },
     ];
     try {
-        const response = await callNodeChat(messages, { maxTokens: 600, temperature: 0.7, timeoutMs: 20_000 });
+        const response = await callNodeChat(messages, { maxTokens: 192, temperature: 0.7, timeoutMs: 45_000 });
         if (!response.content) { await show(c, { text: t(c.lang, 'ai_empty') }); return; }
         session.history.push({ role: 'user', content: text }, { role: 'assistant', content: response.content });
         await saveSession(c.userId, session);
@@ -262,9 +263,9 @@ async function handleAI(c: Ctx, text: string): Promise<void> {
     } catch (err: any) {
         const msg = err?.message || '';
         const offline = msg.includes('No GSTD node') || msg.includes('available');
-        if (offline) {
+        {
             try {
-                const content = await edgeChat(messages, 500);
+                const content = await edgeChat(messages, 192);
                 if (content) {
                     session.history.push({ role: 'user', content: text }, { role: 'assistant', content });
                     await saveSession(c.userId, session);
