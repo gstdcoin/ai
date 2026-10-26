@@ -9,6 +9,8 @@ export const LANG_NAMES: Record<Lang, string> = {
 type Dict = Record<string, string>;
 
 const en: Dict = {
+    cloud_enabled: "Cloudflare fallback enabled by your choice. Your questions may be sent to Cloudflare if nodes are unavailable. Disable: /cloud off",
+    cloud_disabled: "Node network only. Corporate AI fallback is disabled. Optional consent: /cloud on",
     welcome: '🐝 <b>GSTD — decentralized AI compute</b>\n\nHi, {name}! Send a question to try AI. You can also connect your computer as a node and build apps with its API.\n\n{wallet}',
     wallet_none: '🔗 AI chat works without a wallet. Link a TON address with /wallet when you need node accounting.',
     wallet_linked: '🔗 Wallet: <code>{wallet}</code>',
@@ -19,7 +21,7 @@ const en: Dict = {
     wallet_prompt: '🔗 <b>Link your wallet</b>\n\nSend your TON address (starts with EQ or UQ). You need 0 GSTD to start.\n\nNo wallet? <a href="https://tonkeeper.com">Tonkeeper</a> · <a href="https://mytonwallet.io">MyTonWallet</a>',
     wallet_ok: '✅ <b>Wallet linked</b>\n<code>{wallet}</code>\n\nNext: run a node to earn → /earn',
     wallet_fail: '❌ Could not link the wallet right now. Try again in a minute.',
-    balance: '💎 <b>Balance</b>\n\n{wallet}\n💰 <b>{balance} GSTD</b>\n⏳ Claimable: <b>{pending} GSTD</b>\n🎟 Service requests: {promo}\n🧾 Legacy credits pending review: {legacy}\nInternal credit; on-chain withdrawal is not enabled.',
+    balance: '💎 <b>Balance</b>\n\n{wallet}\n💰 <b>{balance} GSTD</b>\n⏳ Claimable: <b>{pending} GSTD</b>\n🎟 Service requests: {promo}\n🧾 Legacy credits pending review: {legacy}\nInternal credits. Withdraw in the app: /payments; the custody owner signs payouts.',
     earn: '🖥 <b>Earn GSTD with your compute</b>\n\n{step1}\n2️⃣ Run a node with one command:\n<code>{cmd}</code>\n3️⃣ Track it here: /node\n\n<i>Rewards are paid only for completed, accepted tasks and depend on network demand. No guaranteed rates.</i>',
     step_wallet_ok: '1️⃣ ✅ Wallet linked', step_wallet_todo: '1️⃣ /wallet — link your wallet',
     need_wallet: '🔗 Link your TON wallet first → /wallet',
@@ -43,6 +45,8 @@ const en: Dict = {
 };
 
 const ru: Dict = {
+    cloud_enabled: "Резервный ИИ Cloudflare включён по вашему выбору. При недоступности нод вопросы могут передаваться Cloudflare. Отключить: /cloud off",
+    cloud_disabled: "Только сеть нод. Корпоративный ИИ отключён. Включить по желанию: /cloud on",
     welcome: '🐝 <b>GSTD — децентрализованные ИИ-вычисления</b>\n\nПривет, {name}! Отправьте вопрос, чтобы попробовать ИИ. Можно также подключить свой компьютер как ноду и создавать приложения через её API.\n\n{wallet}',
     wallet_none: '🔗 Для ИИ-чата кошелёк не нужен. Для учёта работы ноды привяжите адрес TON: /wallet.',
     wallet_linked: '🔗 Кошелёк: <code>{wallet}</code>',
@@ -53,7 +57,7 @@ const ru: Dict = {
     wallet_prompt: '🔗 <b>Привяжите кошелёк</b>\n\nОтправьте адрес TON (начинается с EQ или UQ). Для старта GSTD не нужны.\n\nНет кошелька? <a href="https://tonkeeper.com">Tonkeeper</a> · <a href="https://mytonwallet.io">MyTonWallet</a>',
     wallet_ok: '✅ <b>Кошелёк привязан</b>\n<code>{wallet}</code>\n\nДалее: запустите ноду → /earn',
     wallet_fail: '❌ Не удалось привязать кошелёк. Попробуйте через минуту.',
-    balance: '💎 <b>Баланс</b>\n\n{wallet}\n💰 <b>{balance} GSTD</b>\n⏳ К получению: <b>{pending} GSTD</b>\n🎟 Промозапросы: {promo}\n🧾 Старые начисления на сверке: {legacy}\nВнутренний баланс; вывод в блокчейн пока недоступен.',
+    balance: '💎 <b>Баланс</b>\n\n{wallet}\n💰 <b>{balance} GSTD</b>\n⏳ К получению: <b>{pending} GSTD</b>\n🎟 Промозапросы: {promo}\n🧾 Старые начисления на сверке: {legacy}\nВнутренний баланс. Вывод в приложении: /payments; перевод подписывает владелец резерва.',
     earn: '🖥 <b>Зарабатывайте GSTD вычислениями</b>\n\n{step1}\n2️⃣ Запустите ноду одной командой:\n<code>{cmd}</code>\n3️⃣ Следите здесь: /node\n\n<i>Награда платится только за выполненные и принятые задачи и зависит от спроса в сети. Гарантированных ставок нет.</i>',
     step_wallet_ok: '1️⃣ ✅ Кошелёк привязан', step_wallet_todo: '1️⃣ /wallet — привяжите кошелёк',
     need_wallet: '🔗 Сначала привяжите кошелёк TON → /wallet',
@@ -77,6 +81,8 @@ const ru: Dict = {
 };
 
 const uk: Dict = {
+    cloud_enabled: "Резервний ШІ Cloudflare увімкнено за вашим вибором. Якщо вузли недоступні, запити можуть передаватися Cloudflare. Вимкнути: /cloud off",
+    cloud_disabled: "Лише мережа вузлів. Корпоративний ШІ вимкнено. За бажанням: /cloud on",
     welcome: '🐝 <b>GSTD — децентралізовані ШІ-обчислення</b>\n\nПривіт, {name}! Надішліть запитання, щоб спробувати ШІ. Також можна підключити комп’ютер як вузол і створювати застосунки через його API.\n\n{wallet}',
     wallet_none: '🔗 Для ШІ-чату гаманець не потрібний. Для обліку роботи вузла додайте адресу TON: /wallet.',
     wallet_linked: '🔗 Гаманець: <code>{wallet}</code>',
@@ -87,7 +93,7 @@ const uk: Dict = {
     wallet_prompt: '🔗 <b>Прив’яжіть гаманець</b>\n\nНадішліть адресу TON (починається з EQ або UQ). Для старту GSTD не потрібні.\n\nНемає гаманця? <a href="https://tonkeeper.com">Tonkeeper</a> · <a href="https://mytonwallet.io">MyTonWallet</a>',
     wallet_ok: '✅ <b>Гаманець прив’язано</b>\n<code>{wallet}</code>\n\nДалі: запустіть ноду → /earn',
     wallet_fail: '❌ Не вдалося прив’язати гаманець. Спробуйте за хвилину.',
-    balance: '💎 <b>Баланс</b>\n\n{wallet}\n💰 <b>{balance} GSTD</b>\n⏳ До отримання: <b>{pending} GSTD</b>\n🎟 Промозапити: {promo}\n🧾 Старі нарахування на звірці: {legacy}\nВнутрішній баланс; виведення в блокчейн ще недоступне.',
+    balance: '💎 <b>Баланс</b>\n\n{wallet}\n💰 <b>{balance} GSTD</b>\n⏳ До отримання: <b>{pending} GSTD</b>\n🎟 Промозапити: {promo}\n🧾 Старі нарахування на звірці: {legacy}\nВнутрішній баланс. Виведення в застосунку: /payments; переказ підписує власник резерву.',
     earn: '🖥 <b>Заробляйте GSTD обчисленнями</b>\n\n{step1}\n2️⃣ Запустіть ноду однією командою:\n<code>{cmd}</code>\n3️⃣ Стежте тут: /node\n\n<i>Винагорода платиться лише за виконані та прийняті завдання й залежить від попиту в мережі. Гарантованих ставок немає.</i>',
     step_wallet_ok: '1️⃣ ✅ Гаманець прив’язано', step_wallet_todo: '1️⃣ /wallet — прив’яжіть гаманець',
     need_wallet: '🔗 Спершу прив’яжіть гаманець TON → /wallet',
@@ -111,6 +117,8 @@ const uk: Dict = {
 };
 
 const es: Dict = {
+    cloud_enabled: "Has activado Cloudflare como respaldo. Si no hay nodos disponibles, tus preguntas pueden enviarse a Cloudflare. Desactivar: /cloud off",
+    cloud_disabled: "Solo la red de nodos. El respaldo corporativo está desactivado. Consentimiento opcional: /cloud on",
     welcome: '🐝 <b>GSTD — cómputo de IA descentralizado</b>\n\n¡Hola, {name}! Envía una pregunta para probar la IA. También puedes conectar tu ordenador como nodo y crear aplicaciones con su API.\n\n{wallet}',
     wallet_none: '🔗 El chat de IA no requiere billetera. Vincula una dirección TON para tu nodo: /wallet.',
     wallet_linked: '🔗 Billetera: <code>{wallet}</code>',
@@ -121,7 +129,7 @@ const es: Dict = {
     wallet_prompt: '🔗 <b>Vincula tu billetera</b>\n\nEnvía tu dirección TON (empieza por EQ o UQ). No necesitas GSTD para empezar.\n\n¿Sin billetera? <a href="https://tonkeeper.com">Tonkeeper</a> · <a href="https://mytonwallet.io">MyTonWallet</a>',
     wallet_ok: '✅ <b>Billetera vinculada</b>\n<code>{wallet}</code>\n\nSiguiente: ejecuta un nodo → /earn',
     wallet_fail: '❌ No se pudo vincular la billetera. Inténtalo en un minuto.',
-    balance: '💎 <b>Saldo</b>\n\n{wallet}\n💰 <b>{balance} GSTD</b>\n⏳ Reclamable: <b>{pending} GSTD</b>\n🎟 Solicitudes promocionales: {promo}\n🧾 Créditos anteriores en revisión: {legacy}\nSaldo interno; retiro en cadena aún no disponible.',
+    balance: '💎 <b>Saldo</b>\n\n{wallet}\n💰 <b>{balance} GSTD</b>\n⏳ Reclamable: <b>{pending} GSTD</b>\n🎟 Solicitudes promocionales: {promo}\n🧾 Créditos anteriores en revisión: {legacy}\nSaldo interno. Retiro en la app: /payments; el custodio firma los pagos.',
     earn: '🖥 <b>Gana GSTD con tu cómputo</b>\n\n{step1}\n2️⃣ Ejecuta un nodo con un comando:\n<code>{cmd}</code>\n3️⃣ Sigue aquí: /node\n\n<i>Las recompensas se pagan solo por tareas completadas y aceptadas y dependen de la demanda de la red. Sin tarifas garantizadas.</i>',
     step_wallet_ok: '1️⃣ ✅ Billetera vinculada', step_wallet_todo: '1️⃣ /wallet — vincula tu billetera',
     need_wallet: '🔗 Primero vincula tu billetera TON → /wallet',
@@ -145,6 +153,8 @@ const es: Dict = {
 };
 
 const tr: Dict = {
+    cloud_enabled: "Cloudflare yedeğini seçtiniz. Düğümler kullanılamıyorsa sorular Cloudflare ile paylaşılabilir. Kapat: /cloud off",
+    cloud_disabled: "Yalnızca düğüm ağı. Kurumsal yapay zekâ yedeği kapalı. İsteğe bağlı: /cloud on",
     welcome: '🐝 <b>GSTD — merkeziyetsiz yapay zekâ hesaplaması</b>\n\nMerhaba {name}! Yapay zekâyı denemek için bir soru gönder. Bilgisayarını düğüm olarak bağlayabilir ve API ile uygulamalar geliştirebilirsin.\n\n{wallet}',
     wallet_none: '🔗 Yapay zekâ sohbeti için cüzdan gerekmez. Düğüm hesabı için TON adresini bağla: /wallet.',
     wallet_linked: '🔗 Cüzdan: <code>{wallet}</code>',
@@ -155,7 +165,7 @@ const tr: Dict = {
     wallet_prompt: '🔗 <b>Cüzdanını bağla</b>\n\nTON adresini gönder (EQ veya UQ ile başlar). Başlamak için GSTD gerekmez.\n\nCüzdanın yok mu? <a href="https://tonkeeper.com">Tonkeeper</a> · <a href="https://mytonwallet.io">MyTonWallet</a>',
     wallet_ok: '✅ <b>Cüzdan bağlandı</b>\n<code>{wallet}</code>\n\nSıradaki: düğüm çalıştır → /earn',
     wallet_fail: '❌ Cüzdan şu an bağlanamadı. Bir dakika sonra dene.',
-    balance: '💎 <b>Bakiye</b>\n\n{wallet}\n💰 <b>{balance} GSTD</b>\n⏳ Alınabilir: <b>{pending} GSTD</b>\n🎟 Promosyon istekleri: {promo}\n🧾 İncelenen eski krediler: {legacy}\nDahili bakiye; zincir üzerinden çekim henüz açık değil.',
+    balance: '💎 <b>Bakiye</b>\n\n{wallet}\n💰 <b>{balance} GSTD</b>\n⏳ Alınabilir: <b>{pending} GSTD</b>\n🎟 Promosyon istekleri: {promo}\n🧾 İncelenen eski krediler: {legacy}\nDahili bakiye. Uygulamada çekim: /payments; rezerv sahibi ödemeleri imzalar.',
     earn: '🖥 <b>İşlem gücünle GSTD kazan</b>\n\n{step1}\n2️⃣ Tek komutla düğüm çalıştır:\n<code>{cmd}</code>\n3️⃣ Buradan takip et: /node\n\n<i>Ödüller yalnızca tamamlanan ve kabul edilen görevler için verilir ve ağ talebine bağlıdır. Garanti edilen oran yoktur.</i>',
     step_wallet_ok: '1️⃣ ✅ Cüzdan bağlı', step_wallet_todo: '1️⃣ /wallet — cüzdanını bağla',
     need_wallet: '🔗 Önce TON cüzdanını bağla → /wallet',
@@ -179,6 +189,8 @@ const tr: Dict = {
 };
 
 const zh: Dict = {
+    cloud_enabled: "你已选择启用 Cloudflare 备用 AI。节点不可用时，问题可能发送至 Cloudflare。关闭：/cloud off",
+    cloud_disabled: "仅使用节点网络。企业 AI 备用服务已关闭。可选择启用：/cloud on",
     welcome: '🐝 <b>GSTD — 去中心化 AI 算力网络</b>\n\n你好，{name}！发送问题即可体验 AI。也可以将电脑连接为节点，并通过 API 开发应用。\n\n{wallet}',
     wallet_none: '🔗 AI 聊天无需钱包。节点结算账户可通过 /wallet 绑定 TON 地址。',
     wallet_linked: '🔗 钱包：<code>{wallet}</code>',
@@ -189,7 +201,7 @@ const zh: Dict = {
     wallet_prompt: '🔗 <b>绑定钱包</b>\n\n发送你的 TON 地址（以 EQ 或 UQ 开头）。开始时无需持有 GSTD。\n\n还没有钱包？<a href="https://tonkeeper.com">Tonkeeper</a> · <a href="https://mytonwallet.io">MyTonWallet</a>',
     wallet_ok: '✅ <b>钱包已绑定</b>\n<code>{wallet}</code>\n\n下一步：运行节点 → /earn',
     wallet_fail: '❌ 暂时无法绑定钱包，请一分钟后重试。',
-    balance: '💎 <b>余额</b>\n\n{wallet}\n💰 <b>{balance} GSTD</b>\n⏳ 可领取：<b>{pending} GSTD</b>\n🎟 推广请求次数：{promo}\n🧾 待核对的旧积分：{legacy}\n这是内部余额，链上提现尚未启用。',
+    balance: '💎 <b>余额</b>\n\n{wallet}\n💰 <b>{balance} GSTD</b>\n⏳ 可领取：<b>{pending} GSTD</b>\n🎟 推广请求次数：{promo}\n🧾 待核对的旧积分：{legacy}\n内部余额。在应用中提现：/payments；由储备钱包所有者签署付款。',
     earn: '🖥 <b>用算力赚取 GSTD</b>\n\n{step1}\n2️⃣ 一条命令运行节点：\n<code>{cmd}</code>\n3️⃣ 在这里查看：/node\n\n<i>仅对已完成并被接受的任务支付奖励，取决于网络需求，不保证固定收益。</i>',
     step_wallet_ok: '1️⃣ ✅ 钱包已绑定', step_wallet_todo: '1️⃣ /wallet — 绑定钱包',
     need_wallet: '🔗 请先绑定 TON 钱包 → /wallet',

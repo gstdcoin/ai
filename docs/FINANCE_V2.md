@@ -1,3 +1,7 @@
+# Current status
+
+The original v2 accounting release below is retained as history. Owner-signed mainnet withdrawal requests, receipt verification and recovery are now implemented; see [WITHDRAWALS_AND_PRIVACY.md](WITHDRAWALS_AND_PRIVACY.md). The /payments page is the canonical interface. No automatic custody signer or new settlement contract has been deployed. Historical references below to disabled withdrawals refer to the prior release, not the current owner-signed path.
+
 # GSTD money rules v2
 
 Status: implemented behind a reserve-reconciliation gate. No mainnet contract deployment or token transfer is part of this change. On-chain withdrawals remain disabled.

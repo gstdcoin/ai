@@ -1525,5 +1525,6 @@
   "ticker_queue": "Очередь",
   "ticker_paid": "Выплачено GSTD",
   "ticker_unavailable": "Статистика сети временно недоступна",
-  "per_task": "за задачу"
+  "per_task": "за задачу",
+  "nav_payments": "Платежи"
 }

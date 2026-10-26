@@ -113,7 +113,7 @@ async function viewBalance(c: Ctx): Promise<View> {
     const pending = Number(data.pending_gstd) || 0;
     const kb: any[][] = [];
     if (pending >= 0.01) kb.push([{ text: t(c.lang, 'btn_claim'), callback_data: 'claim' }]);
-    kb.push([{ text: t(c.lang, 'btn_node'), callback_data: 'nodes' }], ...backKb(c.lang));
+    kb.push([{ text:t(c.lang,'btn_app'),web_app:{url:SWARM_URL+'/payments'} }], [{ text: t(c.lang, 'btn_node'), callback_data: 'nodes' }], ...backKb(c.lang));
     return {
         text: t(c.lang, 'balance', {
             wallet: t(c.lang, 'wallet_linked', { wallet: shortAddr(wallet) }),
@@ -264,7 +264,7 @@ async function handleAI(c: Ctx, text: string): Promise<void> {
     } catch (err: any) {
         const msg = err?.message || '';
         const offline = msg.includes('No GSTD node') || msg.includes('available');
-        {
+        if (await kvGet('tg_cloud_consent:'+c.userId) === 'yes') {
             try {
                 const content = await edgeChat(messages, 96);
                 if (content) {
@@ -339,7 +339,11 @@ async function processUpdate(update: any): Promise<void> {
             const ref = parseReferrer(parsed.args);
             if (ref && ref !== String(userId)) await kvSetNX(`tg_ref:${userId}`, ref, 30 * 86400).catch(() => {});
         }
-        if (parsed.cmd === 'new') {
+        if (parsed.cmd === 'cloud') {
+            const enabled=parsed.args.trim().toLowerCase()==='on';
+            await kvSet('tg_cloud_consent:'+userId,enabled?'yes':'no');
+            await show(ctx,{text:t(lang,enabled?'cloud_enabled':'cloud_disabled')});
+        } else if (parsed.cmd === 'new') {
             await saveSession(userId, { model: 'auto', history: [] });
             await show(ctx, { text: t(lang, 'reset') });
         } else if (COMMAND_VIEW[parsed.cmd]) {

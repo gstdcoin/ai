@@ -1521,5 +1521,6 @@
   "ticker_queue": "Queue",
   "ticker_paid": "GSTD paid",
   "ticker_unavailable": "Network stats temporarily unavailable",
-  "per_task": "per task"
+  "per_task": "per task",
+  "nav_payments": "Payments"
 }
