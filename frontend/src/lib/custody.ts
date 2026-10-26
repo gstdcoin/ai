@@ -37,6 +37,7 @@ export async function custodySnapshot(owner: string) {
 export async function verifyDeposit(hash: string, sender: string, receiverJettonWallet: string) {
     if (!/^[a-fA-F0-9]{64}$/.test(hash)) throw new MoneyError('invalid_transaction_hash');
     hash = hash.toLowerCase(); sender = walletId(sender); receiverJettonWallet = walletId(receiverJettonWallet);
+    await pace();
     const data = await get('blockchain/transactions/' + hash);
     const root = Cell.fromBoc(Buffer.from(data.raw,'hex'))[0];
     if (root.hash().toString('hex') !== hash || walletId(data.account.address) !== receiverJettonWallet)
@@ -55,4 +56,41 @@ export async function verifyDeposit(hash: string, sender: string, receiverJetton
     const senderJettonWallet = await jettonWalletFor(sender);
     if (msg.info.src.toRawString() !== senderJettonWallet) throw new MoneyError('invalid_jetton_sender');
     return { hash, amount: String(amount), sender, queryId: String(queryId), utime: tx.now };
+}
+
+/** Reads only public chain state. Standard TON wallet seqno binds the signing window. */
+export async function custodyWalletSeqno(owner: string): Promise<string> {
+    const data=await get('blockchain/accounts/'+encodeURIComponent(walletId(owner))+'/methods/seqno');
+    if(!data.success || !data.stack?.[0]?.num) throw new MoneyError('custody_wallet_not_ready');
+    return BigInt(data.stack[0].num).toString();
+}
+export async function chainHeadTime(): Promise<number> {
+    const head=await get('blockchain/masterchain-head');
+    if(!Number.isSafeInteger(head.gen_utime)) throw new MoneyError('chain_snapshot_unavailable');
+    return head.gen_utime;
+}
+
+export async function findWithdrawalReceipt(w: {wallet:string;amount:string;queryId:string;dispatchedAt?:number},owner:string) {
+    const receiver=await jettonWalletFor(w.wallet);
+    let before='';
+    for(let page=0;page<3;page++){
+        await pace();
+        const data=await get('blockchain/accounts/'+encodeURIComponent(receiver)+'/transactions?limit=20'+
+            (before?'&before_lt='+before:''),true);
+        if(!data?.transactions?.length)return null;
+        for(const item of data.transactions){
+            if(!item.raw)continue;
+            const root=Cell.fromBoc(Buffer.from(item.raw,'hex'))[0],tx=loadTransaction(root.beginParse());
+            before=tx.lt.toString();
+            if(tx.now < Math.floor((w.dispatchedAt||0)/1000)-30)return null;
+            const msg=tx.inMessage;
+            if(!msg||msg.info.type!=='internal'||msg.info.bounced)continue;
+            const b=msg.body.beginParse();
+            if(b.remainingBits<96||b.loadUint(32)!==0x178d4519)continue;
+            const query=b.loadUintBig(64).toString(),amount=b.loadCoins().toString(),from=b.loadAddress().toRawString();
+            if(query===w.queryId&&amount===w.amount&&from===walletId(owner))
+                return verifyDeposit(root.hash().toString('hex'),owner,receiver);
+        }
+    }
+    return null; // Bounded search is not evidence of failure. A receipt hash can still be supplied.
 }

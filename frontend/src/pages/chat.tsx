@@ -38,6 +38,7 @@ interface Message {
     isStreaming?: boolean;
     collectiveInfo?: CollectiveInfo;
     latencyMs?: number;
+    paymentId?: string;
     timestamp: number;
 }
 
@@ -566,6 +567,10 @@ export default function ChatPage() {
 
                     try {
                         const parsed = JSON.parse(data);
+                        if (parsed.payment_id) {
+                            setConversations(prev=>prev.map(c=>c.id===convId?{...c,messages:c.messages.map(m=>
+                                m.id===aiMsgId?{...m,paymentId:parsed.payment_id}:m)}:c));
+                        }
                         if (parsed.content) {
                             fullContent += parsed.content;
                             setConversations(prev => prev.map(c =>
@@ -1015,6 +1020,13 @@ export default function ChatPage() {
                                                             <RotateCcw size={13} />
                                                             Regenerate
                                                         </button>
+                                                        {msg.paymentId && <button className="text-xs text-gray-400 underline" onClick={async()=>{
+                                                            const token=localStorage.getItem('session_token');
+                                                            const response=await fetch('/api/v1/finance/responses?id='+encodeURIComponent(msg.paymentId!),{
+                                                                method:'DELETE',headers:{'X-Session-Token':token||''}});
+                                                            if(response.ok)setConversations(prev=>prev.map(c=>({...c,messages:c.messages.map(m=>
+                                                                m.id===msg.id?{...m,paymentId:undefined}:m)})));
+                                                        }}>Delete server copy</button>}
                                                         <span className="text-[10px] text-gray-700">{formatTime(msg.timestamp)}</span>
                                                     </div>
                                                 )}

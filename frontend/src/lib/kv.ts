@@ -1300,8 +1300,10 @@ export async function kvMoneyCAS(
     writes: Record<string, string>,
     due?: { id: string; at: number | null },
     queue?: { key: string; value: string },
+    expires: Record<string,number> = {},
 ): Promise<boolean> {
     const keys = Object.keys(expected);
+    if (Object.entries(expires).some(([key,ttl])=>!keys.includes(key)||!Number.isSafeInteger(ttl)||ttl<1||ttl>3600)) throw new Error('Invalid private response lifetime');
     if (!keys.length || Object.keys(writes).some(key => !(key in expected))) throw new Error('Invalid money CAS');
     const r = await getRedis();
     if (r) {
@@ -1327,9 +1329,13 @@ export async function kvMoneyCAS(
                 local kind = redis.call('TYPE', KEYS[n+2]).ok
                 if kind ~= 'none' and kind ~= 'list' then return redis.error_reply('Invalid money queue type') end
             end
+            local expiry = cjson.decode(ARGV[idx+4])
             for i = 1, n do
                 local value = ARGV[4 + (i-1)*3]
-                if value ~= '' then redis.call('SET', KEYS[i], value) end
+                if value ~= '' then
+                    redis.call('SET', KEYS[i], value)
+                    if expiry[KEYS[i]] then redis.call('EXPIRE',KEYS[i],expiry[KEYS[i]]) end
+                end
             end
             if dueId ~= '' then
                 if dueAt == '' then redis.call('ZREM', KEYS[n+1], dueId)
@@ -1340,11 +1346,11 @@ export async function kvMoneyCAS(
         `;
         const args = [String(keys.length)];
         for (const key of keys) args.push(expected[key] === null ? '0' : '1', expected[key] ?? '', writes[key] ?? '');
-        args.push(due?.id ?? '', due?.at == null ? '' : String(due.at), queue?.key ?? '', queue?.value ?? '');
+        args.push(due?.id ?? '', due?.at == null ? '' : String(due.at), queue?.key ?? '', queue?.value ?? '', JSON.stringify(expires));
         return (await r.eval(script, [...keys, 'money:v2:due', queue?.key ?? 'money:v2:unused'], args)) === 1;
     }
     for (const key of keys) if (memGet(key) !== expected[key]) return false;
-    for (const [key, value] of Object.entries(writes)) memSet(key, value);
+    for (const [key, value] of Object.entries(writes)) memSet(key, value, expires[key]);
     if (due) { if (due.at == null) moneyDue.delete(due.id); else moneyDue.set(due.id, due.at); }
     if (queue) {
         const values: string[] = JSON.parse(memGet(queue.key) || '[]');

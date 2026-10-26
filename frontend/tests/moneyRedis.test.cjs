@@ -73,6 +73,17 @@ async function run() {
     await m.releaseMoney('campaign:test');
     assert.equal((await m.moneyBalance(payer)).available_nano,'1000000000');
     assert.equal((await m.moneyBalance(payer)).reserved_nano,'0');
+    const withdrawal=await m.requestWithdrawal(operator,m.nano('1'),'redis-withdrawal');
+    await m.dispatchWithdrawal(withdrawal.id,custody,'10');
+    await m.confirmWithdrawal(withdrawal.id,{
+        hash:'aa'.repeat(32),sender:custody,amount:m.nano('1').toString(),
+        queryId:withdrawal.queryId,utime:Math.floor(Date.now()/1000)
+    },{owner:custody,jettonWallet:custody,reserve:m.nano('999999999').toString()});
+    assert.equal((await m.moneyBalance(operator)).available_nano,'84999999000000000');
+    assert.equal((await m.readMoneySystem()).allocated,'100000000000000000');
+    assert.ok(command('TTL','money:v2:response:race')>0);
+    assert.ok(command('TTL','money:v2:response:race')<=600);
+    assert.equal((await m.moneyJob('race')).result.answer,undefined);
     const snapshot=command('GET','money:v2:account:'+payer);
     // A storage fault fails closed in production.
     command('SET','money:v2:due','wrong-type');

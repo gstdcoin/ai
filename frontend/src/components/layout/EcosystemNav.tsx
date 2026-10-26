@@ -23,14 +23,14 @@ const PRIMARY_KEYS = [
 ] as const;
 
 const MORE_KEYS = [
-    'nav_open_intelligence', 'nav_docs', 'nav_downloads', 'nav_telegram',
+    'nav_payments', 'nav_open_intelligence', 'nav_docs', 'nav_downloads', 'nav_telegram',
 ] as const;
 
 type SectionDef = { titleKey: string; keys: readonly string[] };
 
 const MOBILE_SECTIONS: SectionDef[] = [
     { titleKey: 'nav_section_core', keys: ['nav_home', 'nav_chat', 'nav_nodes', 'nav_stats', 'nav_leaderboard'] },
-    { titleKey: 'nav_section_explore', keys: ['nav_open_intelligence', 'nav_docs', 'nav_downloads', 'nav_telegram'] },
+    { titleKey: 'nav_section_explore', keys: ['nav_payments', 'nav_open_intelligence', 'nav_docs', 'nav_downloads', 'nav_telegram'] },
 ];
 
 export default function EcosystemNav() {
@@ -74,6 +74,7 @@ export default function EcosystemNav() {
             window.location.origin.replace(/\/+$/, '') === APP_BASE);
 
     const allItems: NavItem[] = [
+        {key:'nav_payments',href:APP_BASE+'/payments',icon:<Activity size={15}/>,short:'Payments'},
         { key: 'nav_home',       href: isOnApp ? '/' : APP_BASE,    icon: <Home size={15} />,           external: !isOnApp },
         { key: 'nav_chat',       href: `${APP_BASE}/chat`,           icon: <MessageSquare size={15} />,  external: !isOnApp, short: 'AI Chat' },
         { key: 'nav_nodes',      href: `${APP_BASE}/nodes`,          icon: <Server size={15} />,         external: !isOnApp, short: 'Nodes' },

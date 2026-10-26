@@ -18,7 +18,11 @@ export async function paidInference(req: NextApiRequest, res: NextApiResponse, o
     try {
         const previous = await moneyJob(jobId);
         if (previous && previous.fingerprint !== fingerprint) throw new MoneyError('idempotency_conflict');
-        if (previous?.state === 'captured') return sendResult(req,res,previous.result,options.surface);
+        if (previous?.state === 'captured') {
+            const cached=await kvGet('money:v2:response:'+jobId);
+            if (!cached) return res.status(409).json({error:'paid_response_expired_or_deleted',payment_id:jobId,charged_again:false});
+            return sendResult(req,res,JSON.parse(cached),options.surface);
+        }
         if (previous) {
             if (previous.state === 'reserved' && previous.expiresAt <= Date.now()) await releaseMoney(jobId);
             return res.status(409).json({ error: previous.expiresAt <= Date.now() ? 'reservation_expired' : 'request_already_processed', payment_id: jobId });
@@ -62,7 +66,7 @@ export async function paidInference(req: NextApiRequest, res: NextApiResponse, o
                     protocol_gstd: Number(units(shares.protocol)), reserve_gstd: Number(units(shares.reserve)) } },
         };
         const captured = await captureMoney(jobId, executor, result);
-        return sendResult(req,res,captured.result,options.surface);
+        return sendResult(req,res,result,options.surface);
     } catch (error) {
         // If capture succeeded but the response was lost, releaseMoney is a no-op.
         // A retry with the same key retrieves the captured response without another charge.
