@@ -6,7 +6,7 @@ import { kvGet, kvSet, kvConsumeQuota } from './kv';
  * (EDGE_AI_DAILY_CAP) and a short cache of identical first questions, so the free
  * quota is not burned by a burst of users.
  */
-export const EDGE_MODEL = '@cf/meta/llama-3.1-8b-instruct';
+export const EDGE_MODEL = '@cf/meta/llama-3.2-3b-instruct';
 const DAILY_CAP = Math.max(1, Number(process.env.EDGE_AI_DAILY_CAP) || 400);
 const CACHE_TTL_SEC = 3600;
 
@@ -33,7 +33,7 @@ export async function edgeChat(
     if (!budget.allowed) throw new Error('Edge AI daily budget exhausted');
 
     const { getCloudflareContext } = await import('@opennextjs/cloudflare');
-    const env: any = getCloudflareContext().env;
+    const env: any = (await getCloudflareContext({ async: true })).env;
     if (!env?.AI?.run) throw new Error('Edge AI not configured');
     const out = await env.AI.run(EDGE_MODEL, { messages, max_tokens: maxTokens });
     const text = String(out?.response || '').trim();

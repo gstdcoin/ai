@@ -24,4 +24,4 @@ Applications start with HTTP POST /v1/chat/completions on an operator gateway. m
 
 Reuse the existing website, platform, node and Telegram webhook. Do not add a new backend, parallel registry, app shell, token gate for first chat, or artificial dashboard metrics. Keep the free-tier schedules in [FREE_TIER_REQUEST_BUDGET.md](FREE_TIER_REQUEST_BUDGET.md). Add new task kinds only when an actual executor, validation and a simple user path exist.
 
-The current acceptance evidence covers a single physical node and installed llama3.2:3b. Independent multi-host consensus, distributed training, the bridge and mainnet settlement are outside that evidence. The temporary tunnel and Telegram owner setup remain explicit operational boundaries.
+The current installation has one physical Pi. Its operator selects a lightweight model for auto requests; installed larger models remain explicit options. Model size affects quality and latency. Independent multi-host consensus, distributed training, the bridge and mainnet settlement are outside that evidence. The temporary tunnel and Telegram owner setup remain explicit operational boundaries.

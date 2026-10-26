@@ -250,12 +250,12 @@ async function handleAI(c: Ctx, text: string): Promise<void> {
     const session = await getSession(c.userId);
     await tg('sendChatAction', { chat_id: c.chatId, action: 'typing' });
     const messages = [
-        { role: 'system', content: 'You are GSTD Sovereign AI — a decentralized AI running on the GSTD node network. Respond in the user\'s language. Be accurate, concise, and helpful.' },
-        ...session.history.slice(-16),
+        { role: 'system', content: 'You are GSTD Sovereign AI — a decentralized AI running on the GSTD node network. Respond in the user\'s language. Be accurate and helpful. Answer briefly in at most two or three sentences.' },
+        ...session.history.slice(-6),
         { role: 'user', content: text },
     ];
     try {
-        const response = await callNodeChat(messages, { maxTokens: 192, temperature: 0.7, timeoutMs: 45_000 });
+        const response = await callNodeChat(messages, { maxTokens: 96, temperature: 0.7, timeoutMs: 45_000 });
         if (!response.content) { await show(c, { text: t(c.lang, 'ai_empty') }); return; }
         session.history.push({ role: 'user', content: text }, { role: 'assistant', content: response.content });
         await saveSession(c.userId, session);
@@ -265,7 +265,7 @@ async function handleAI(c: Ctx, text: string): Promise<void> {
         const offline = msg.includes('No GSTD node') || msg.includes('available');
         {
             try {
-                const content = await edgeChat(messages, 192);
+                const content = await edgeChat(messages, 96);
                 if (content) {
                     session.history.push({ role: 'user', content: text }, { role: 'assistant', content });
                     await saveSession(c.userId, session);
