@@ -110,6 +110,7 @@ export default function NodesPage() {
   const [claimMsg, setClaimMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const fetchNetwork = useCallback(async () => {
+      if (document.hidden) return;
     try {
       const res = await fetch(`${API_BASE_URL}/api/v1/network/stats`);
       if (res.ok) setNetwork(await res.json());
@@ -132,7 +133,7 @@ export default function NodesPage() {
 
   useEffect(() => {
     fetchNetwork();
-    const id = setInterval(fetchNetwork, 30000);
+    const id = setInterval(fetchNetwork, 120_000);
     return () => clearInterval(id);
   }, [fetchNetwork]);
 

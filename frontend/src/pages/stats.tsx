@@ -69,6 +69,7 @@ export default function PublicStats() {
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
 
   const load = useCallback(async () => {
+      if (document.hidden) return;
     setLoading(true);
     try {
       const res = await fetch(`${API_BASE_URL}/api/v1/network/stats`);
@@ -85,7 +86,7 @@ export default function PublicStats() {
 
   useEffect(() => {
     load();
-    const id = setInterval(load, 30000);
+    const id = setInterval(load, 120_000);
     return () => clearInterval(id);
   }, [load]);
 

@@ -179,3 +179,5 @@ See [gstdcoin/gstdbot](https://github.com/gstdcoin/gstdbot) for full setup guide
 ## License
 
 Source-available under the [PolyForm Noncommercial License 1.0.0](LICENSE), with an additional permission for taking part in the GSTD network (including receiving GSTD rewards). Commercial use by companies needs a separate license. Not an OSI open-source license.
+
+Free-tier request schedules and operational limits: [request budget](docs/FREE_TIER_REQUEST_BUDGET.md).

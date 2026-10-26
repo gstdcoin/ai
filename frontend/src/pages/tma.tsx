@@ -50,6 +50,7 @@ export default function TMAPage() {
 
   useEffect(() => {
     const fetchStats = async () => {
+      if (document.hidden) return;
       try {
         const publicRes = await fetch(`${API_URL}/stats/public`);
         const publicData = publicRes.ok ? await publicRes.json() : {};
@@ -75,7 +76,7 @@ export default function TMAPage() {
       }
     };
     fetchStats();
-    const iv = setInterval(fetchStats, 30000);
+    const iv = setInterval(fetchStats, 120_000);
     return () => clearInterval(iv);
   }, []);
 
