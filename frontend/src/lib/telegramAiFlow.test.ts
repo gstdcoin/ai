@@ -16,14 +16,14 @@ describe('Telegram AI user flow', () => {
  it('answers a user without a linked wallet and gives the node a bounded 45-second budget',async () => {
    vi.mocked(callNodeChat).mockResolvedValue({content:'Solar energy uses sunlight.',latency:100});
    await invoke();
-   expect(callNodeChat).toHaveBeenCalledWith(expect.any(Array),expect.objectContaining({maxTokens:192,timeoutMs:45000}));
+   expect(callNodeChat).toHaveBeenCalledWith(expect.any(Array),expect.objectContaining({maxTokens:96,timeoutMs:45000}));
    expect(request.mock.calls.some(([,options]:any) => JSON.parse(options.body).text==='Solar energy uses sunlight.')).toBe(true);
  });
  it('labels a quota-bounded fallback after a node timeout instead of silently dropping the question',async () => {
    vi.mocked(callNodeChat).mockRejectedValue(new Error('operation timed out'));
    vi.mocked(edgeChat).mockResolvedValue('Fallback answer');
    await invoke();
-   expect(edgeChat).toHaveBeenCalledWith(expect.any(Array),192);
+   expect(edgeChat).toHaveBeenCalledWith(expect.any(Array),96);
    expect(request.mock.calls.some(([,options]:any) => {const text=JSON.parse(options.body).text;return typeof text==='string' && text.includes('Fallback answer') && text.includes('Cloudflare');})).toBe(true);
  });
  it('does not spend node or fallback compute when quota storage fails',async () => {

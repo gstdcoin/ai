@@ -14,7 +14,7 @@ import { kvGet, kvKeys, kvMGet } from './kv';
 import { safeNodeUrl } from './safeNodeUrl';
 import { dedupeNodeRecords, isNodeOnline, parseNodeRecords } from './node-status';
 
-export const NODE_MODEL = 'llama3.2:3b';
+export const NODE_MODEL = 'auto';
 
 export interface ChatMessage {
     role: string;

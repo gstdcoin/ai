@@ -32,4 +32,4 @@ Per AGENTS.md, token rotation, setting the Worker token and running frontend/scr
 
 See [ECOSYSTEM.md](ECOSYSTEM.md) for website, node and developer entry points. Paid settlement, reward amounts and independent multi-host operation require their own acceptance evidence.
 
-The node call has a 45-second total timeout and a concise 192-token response budget. A failed node call can use the explicitly labeled Cloudflare fallback within its daily cap. A quota-storage failure stops compute rather than allowing unbounded fallback usage.
+The node call has a 45-second total timeout and a concise 96-token response budget. A failed node call can use the explicitly labeled Cloudflare fallback within its daily cap. A quota-storage failure stops compute rather than allowing unbounded fallback usage.
