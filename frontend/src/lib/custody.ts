@@ -2,8 +2,9 @@ import { Cell, loadTransaction } from '@ton/core';
 import { MoneyError, walletId } from './money';
 export const PLATFORM_CUSTODY_OWNER = '0:cc1db8988345b901e6eb39bd6fda9350fc6a02b22df7bcb4ac2542a2fdf29931';
 export const GSTD_MASTER = '0:efe9c616f673622a337737097c0fa0018d4887d6061f59519985f3fbfbdb59b2';
-async function get(path: string) {
+async function get(path: string, allowMissing = false) {
     const response = await fetch('https://tonapi.io/v2/' + path,{ signal: AbortSignal.timeout(10_000), cache: 'no-store' });
+    if (allowMissing && response.status === 404) return null;
     if (!response.ok) throw new MoneyError('chain_snapshot_unavailable');
     return await response.json() as any;
 }
@@ -24,7 +25,10 @@ export async function custodySnapshot(owner: string) {
     await pace();
     const jettonWallet = await jettonWalletFor(owner);
     await pace(); // Respect the unauthenticated chain provider's free request rate.
-    const wallet = await method(jettonWallet,'get_wallet_data');
+    const result = await get('blockchain/accounts/' + encodeURIComponent(jettonWallet) + '/methods/get_wallet_data',true);
+    if (result === null) return { owner, jettonWallet, reserve: '0' };
+    if (!result.success || !result.decoded) throw new MoneyError('chain_snapshot_unavailable');
+    const wallet = result.decoded;
     if (walletId(wallet.owner) !== owner || walletId(wallet.jetton) !== GSTD_MASTER ||
         !/^\d+$/.test(String(wallet.balance))) throw new MoneyError('invalid_custody_wallet');
     return { owner, jettonWallet, reserve: String(wallet.balance) };

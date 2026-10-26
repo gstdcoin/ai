@@ -77,3 +77,8 @@ A single scheduled finance call performs a bounded refund recovery and, after cu
 The suite covers conservation, full refund, duplicate/retry behaviour, concurrent reservations, nano precision, self-operated work, promo separation, campaign escrow and actual public TON receipt serialization. A disposable Redis test executes the production Lua path, including values above JavaScript's safe integer range, queue failures and fail-closed storage. No production Redis records or funds are used by these tests.
 
 This release does not solve the earlier source/deployed-bytecode mismatch in Settlement V2/Escrow. Their mainnet payouts must remain disabled until the deployed code is independently tied to reviewed sources and the full Jetton receipt-based withdrawal flow is verified.
+
+## Empty-ledger activation
+The production inventory at 2026-10-26T08:16:38Z found zero balance records, zero pending reward records and zero internal legacy fund balances. The owner designated the custody address above. A deployment bootstrap may therefore initialise only zero assets/zero liabilities, after an atomic recheck that no legacy or v2 monetary balances appeared in the meantime. It creates no credits and transfers no tokens. Any nonempty or ambiguous state blocks bootstrap and requires the explicit reviewed-manifest path.
+
+A missing undeployed Jetton wallet is conservatively valued at zero, never a positive reserve. Authenticated balance responses expose the designated deposit owner only after initialisation. Future credits require real successful deposits after activation.

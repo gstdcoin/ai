@@ -441,6 +441,12 @@ jobs:
           exit 1
 
   # в”Ђв”Ђ Dependency Security Audit в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+      - name: Initialise an empty money ledger without allocating any funds
+        run: node ../scripts/bootstrap-empty-money.mjs
+        env:
+          KV_REST_API_URL: ${{ secrets.KV_REST_API_URL }}
+          KV_REST_API_TOKEN: ${{ secrets.KV_REST_API_TOKEN }}
+
       - name: Publish and verify Open Intelligence baseline
         run: |
           set -euo pipefail

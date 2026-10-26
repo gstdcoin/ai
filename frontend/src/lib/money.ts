@@ -100,7 +100,8 @@ export async function moneyBalance(wallet: string) {
         promo_credits: Number(units(a.promo)), lifetime_earned_gstd: Number(units(a.earned)), available_nano: a.available, pending_nano: a.pending,
         reserved_nano: a.reserved, promo_nano: a.promo, backing_verified: backed,
         legacy_unreconciled_gstd: Number(legacy || 0), legacy_pending_unreconciled_gstd: Number(pending || 0),
-        withdrawal_enabled: false };
+        withdrawal_enabled: false, deposit_owner: s ? JSON.parse(s).owner : null,
+        deposit_jetton_wallet: s ? JSON.parse(s).jettonWallet : null };
 }
 export async function moneyJob(job: string): Promise<MoneyJob | null> {
     const raw = await kvGet(jobKey(job)); return raw ? JSON.parse(raw) : null;
