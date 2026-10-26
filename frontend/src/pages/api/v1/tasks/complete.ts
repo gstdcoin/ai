@@ -91,7 +91,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (assignment.funding_id) {
             const funding = await moneyJob(assignment.funding_id);
             if (!funding) return res.status(409).json({ error: 'funding_not_found' });
-            await captureMoney(assignment.funding_id, walletId((JSON.parse(nodeRaw) as NodeRecord).wallet_address),
+            await captureMoney(assignment.funding_id, walletId(assignment.payout_wallet || (JSON.parse(nodeRaw) as NodeRecord).wallet_address),
                 { task_id: body.task_id, node_id: nodeId, result_hash: digest(body.result) });
             rewardGstd = Number(units(splitNano(BigInt(funding.amount)).executor));
         }

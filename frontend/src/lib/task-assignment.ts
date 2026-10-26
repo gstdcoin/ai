@@ -1,9 +1,11 @@
-import { kvSetNX } from './kv';
+import { executorPayout } from './nodePayout';
+import { kvGet, kvSetNX } from './kv';
 import { isTaskExecutionEnabled } from './taskKinds';
 import { moneyJob } from './money';
 
 export interface TaskAssignment {
     funding_id?: string;
+    payout_wallet?: string;
     node_id: string;
     assigned_at: number;
     task_type?: string;
@@ -33,6 +35,11 @@ export async function assignTaskToNode(
     if (task.funding_version === 2 && task.funding_id === task.task_id) {
         const funding = await moneyJob(task.task_id);
         if (!funding || funding.state !== 'reserved' || funding.kind !== 'task' || funding.expiresAt <= Date.now()) return false;
+        const raw = await kvGet('node:'+nodeId);
+        const node = raw ? JSON.parse(raw) : null;
+        if(!node?.wallet_address)return false;
+        // Freeze recipient at assignment; later operator changes cannot redirect this job.
+        assignment.payout_wallet = await executorPayout(nodeId,node.wallet_address);
         assignment.funding_id = task.task_id;
     }
     if (typeof task.type === 'string') assignment.task_type = task.type;
