@@ -288,7 +288,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         // Non-streaming free
         try {
-            const result = await callNodeChat(nodeMsgs, { maxTokens: 1024, timeoutMs: 30_000, model:selectedFreeModel });
+            const result = await callNodeChat(nodeMsgs, { maxTokens: 1024, timeoutMs: 50_000, model:selectedFreeModel });
             return res.status(200).json({
                 id: `ci-${Date.now()}`, object: 'chat.completion',
                 created: Math.floor(Date.now() / 1000), model: selectedFreeModel,

@@ -69,9 +69,8 @@ export async function getActiveNodes(preferModel?: string): Promise<ActiveNode[]
                 const models: string[]  = n.capabilities || n.models || [];
                 const ramFreeMb: number = n.ram_free_mb  ?? (n.ram_mb ? n.ram_mb * 0.4 : 0);
                 const cpuScore: number  = n.cpu_score    ?? n.cpu_cores * 10;
-                const hasModel          = models.some(
-                    (m: string) => m.toLowerCase().includes(model.toLowerCase().split(':')[0])
-                );
+                const hasModel = models.includes(model);
+                if (model !== 'auto' && !hasModel) continue;
                 const score = (hasModel ? 100 : 0) + (ramFreeMb / 1024) * 10 + cpuScore * 0.1;
 
                 nodes.push({ nodeId: n.node_id, url, score, models, ramFreeMb, cpuScore, lastSeenMs });
@@ -89,11 +88,11 @@ export async function getActiveNodes(preferModel?: string): Promise<ActiveNode[]
 export async function resolveNodeUrl(preferModel?: string): Promise<string> {
     // Env override (e.g. in CI or for testing)
     const envUrl = safeNodeUrl(process.env.GSTD_NODE_URL, { trusted: true });
-    if (envUrl) return envUrl;
 
     // Best scored active node from KV
     const active = await getActiveNodes(preferModel);
     if (active.length > 0) return active[0].url;
+    if (envUrl) return envUrl;
 
     // Fallback: GitHub file (single Pi node publishing its tunnel URL)
     try {
@@ -127,8 +126,8 @@ export async function callNodeChat(
 
     // Candidate URLs: env override first, then scored nodes, then GitHub fallback
     const candidates: string[] = [];
-    if (envUrl) candidates.push(envUrl);
     candidates.push(...nodes.map((n) => n.url));
+    if (envUrl && candidates.length === 0) candidates.push(envUrl);
 
     // GitHub fallback only if no KV nodes
     if (candidates.length === 0) {
@@ -167,6 +166,7 @@ export async function callNodeChat(
             if (!resp.ok) { lastErr = `Node ${resp.status}`; continue; }
             const data: any = await resp.json();
             if (data._gstd?.tier === 'fallback') { lastErr = 'Node busy'; continue; }
+            if (model && model !== 'auto' && data.model !== model) { lastErr = 'model_mismatch'; continue; }
             const content = data.choices?.[0]?.message?.content || '';
             if (!content) { lastErr = 'Empty response'; continue; }
             const matchedNode = nodes.find((n) => n.url === url);
