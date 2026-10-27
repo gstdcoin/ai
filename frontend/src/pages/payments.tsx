@@ -50,7 +50,7 @@ export default function PaymentsPage() {
     const button='rounded-lg bg-violet-600 px-4 py-2 disabled:opacity-40';
     const input='rounded-lg border border-white/20 bg-black/30 px-3 py-2 w-full';
     return <main className="mx-auto max-w-3xl px-5 py-12 text-white space-y-6">
-        <Head><title>{p('title')} · GSTD</title><meta name="description" content={p('intro')}/></Head>
+        <Head><title>{p('title')+' · GSTD'}</title><meta name="description" content={p('intro')}/></Head>
         <header className="space-y-3"><h1 className="text-3xl font-semibold">{p('title')}</h1><p className="text-gray-300">{p('intro')}</p></header>
         <section className="rounded-xl border border-violet-400/30 bg-violet-500/5 p-5 space-y-3">
             <h2 className="text-xl font-semibold">{p('node_title')}</h2>
