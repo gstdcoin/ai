@@ -1,4 +1,5 @@
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
+import { i18nConfig } from './i18n-config';
 
 /**
  * Shared i18n props for Pages Router (getStaticProps / getServerSideProps).
@@ -6,6 +7,6 @@ import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
  */
 export async function getCommonStaticProps(locale?: string | null) {
   return {
-    ...(await serverSideTranslations(locale ?? 'en', ['common'])),
+    ...(await serverSideTranslations(locale ?? 'en', ['common'], i18nConfig)),
   };
 }
