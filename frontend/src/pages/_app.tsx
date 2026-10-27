@@ -1,5 +1,6 @@
 import type { AppProps } from 'next/app';
 import { appWithTranslation } from 'next-i18next';
+import { i18nConfig } from '../lib/i18n-config';
 import { TonConnectUIProvider, THEME } from '@tonconnect/ui-react';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
@@ -121,4 +122,4 @@ function App({ Component, pageProps }: AppProps) {
   );
 }
 
-export default appWithTranslation(App);
+export default appWithTranslation(App, i18nConfig);
