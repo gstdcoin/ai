@@ -74,15 +74,15 @@ export default function EcosystemNav() {
             window.location.origin.replace(/\/+$/, '') === APP_BASE);
 
     const allItems: NavItem[] = [
-        {key:'nav_payments',href:APP_BASE+'/payments',icon:<Activity size={15}/>,short:'Payments'},
+        {key:'nav_payments',href:isOnApp?'/payments':APP_BASE+'/payments',external:!isOnApp,icon:<Activity size={15}/>,short:'Payments'},
         { key: 'nav_home',       href: isOnApp ? '/' : APP_BASE,    icon: <Home size={15} />,           external: !isOnApp },
-        { key: 'nav_chat',       href: `${APP_BASE}/chat`,           icon: <MessageSquare size={15} />,  external: !isOnApp, short: 'AI Chat' },
-        { key: 'nav_nodes',      href: `${APP_BASE}/nodes`,          icon: <Server size={15} />,         external: !isOnApp, short: 'Nodes' },
-        { key: 'nav_stats',      href: `${APP_BASE}/stats`,          icon: <BarChart3 size={15} />,      external: !isOnApp, short: 'Stats' },
-        { key: 'nav_leaderboard',href: `${APP_BASE}/leaderboard`,    icon: <Trophy size={15} />,         external: !isOnApp, short: 'Leaders' },
-        { key: 'nav_open_intelligence', href: `${APP_BASE}/open-intelligence`, icon: <Activity size={15} />, external: !isOnApp },
-        { key: 'nav_docs',       href: `${APP_BASE}/docs`,           icon: <BookOpen size={15} />,       external: !isOnApp, short: 'Docs' },
-        { key: 'nav_downloads',  href: `${APP_BASE}/downloads`,      icon: <Download size={15} />,       external: !isOnApp, short: 'Downloads' },
+        { key: 'nav_chat',       href: isOnApp ? '/chat' : `${APP_BASE}/chat`,           icon: <MessageSquare size={15} />,  external: !isOnApp, short: 'AI Chat' },
+        { key: 'nav_nodes',      href: isOnApp ? '/nodes' : `${APP_BASE}/nodes`,          icon: <Server size={15} />,         external: !isOnApp, short: 'Nodes' },
+        { key: 'nav_stats',      href: isOnApp ? '/stats' : `${APP_BASE}/stats`,          icon: <BarChart3 size={15} />,      external: !isOnApp, short: 'Stats' },
+        { key: 'nav_leaderboard',href: isOnApp ? '/leaderboard' : `${APP_BASE}/leaderboard`,    icon: <Trophy size={15} />,         external: !isOnApp, short: 'Leaders' },
+        { key: 'nav_open_intelligence', href: isOnApp ? '/open-intelligence' : `${APP_BASE}/open-intelligence`, icon: <Activity size={15} />, external: !isOnApp },
+        { key: 'nav_docs',       href: isOnApp ? '/docs' : `${APP_BASE}/docs`,           icon: <BookOpen size={15} />,       external: !isOnApp, short: 'Docs' },
+        { key: 'nav_downloads',  href: isOnApp ? '/downloads' : `${APP_BASE}/downloads`,      icon: <Download size={15} />,       external: !isOnApp, short: 'Downloads' },
         { key: 'nav_telegram',   href: 'https://t.me/gstdaibot',    icon: <ExternalLink size={13} />,   external: true,     short: 'Telegram' },
     ];
 
@@ -106,7 +106,7 @@ export default function EcosystemNav() {
 
     const getLabel = (item: NavItem) => {
         const fallback = item.key.replace('nav_', '');
-        return item.short || t(item.key, fallback.charAt(0).toUpperCase() + fallback.slice(1));
+        return t(item.key, item.short || fallback.charAt(0).toUpperCase() + fallback.slice(1));
     };
 
     const renderNavLink = (item: NavItem, opts?: { compact?: boolean }) => {

@@ -24,14 +24,14 @@ export default function EcosystemFooter() {
     const links = [
         { label: t('footer_terms', 'Terms'), href: '/terms', external: false },
         { label: t('footer_privacy', 'Privacy'), href: '/privacy', external: false },
-        { label: 'Chat', href: '/chat', external: false },
-        { label: 'Nodes', href: '/nodes', external: false },
-        { label: 'Leaderboard', href: '/leaderboard', external: false },
-        { label: 'Stats', href: '/stats', external: false },
-        { label: 'Docs', href: '/docs', external: false },
-        { label: 'Downloads', href: '/downloads', external: false },
+        { label: t('nav_chat', 'Chat'), href: '/chat', external: false },
+        { label: t('nav_nodes', 'Nodes'), href: '/nodes', external: false },
+        { label: t('nav_leaderboard', 'Leaderboard'), href: '/leaderboard', external: false },
+        { label: t('nav_stats', 'Stats'), href: '/stats', external: false },
+        { label: t('nav_docs', 'Docs'), href: '/docs', external: false },
+        { label: t('nav_downloads', 'Downloads'), href: '/downloads', external: false },
         { label: t('footer_telegram', 'Telegram'), href: 'https://t.me/gstdtoken', external: true },
-        { label: 'Bot', href: 'https://t.me/gstdaibot', external: true },
+        { label: t('nav_bot', 'Bot'), href: 'https://t.me/gstdaibot', external: true },
         { label: t('footer_github', 'GitHub'), href: 'https://github.com/gstdcoin', external: true },
         { label: 'API', href: 'https://app.gstdtoken.com/api/v1/stats/public', external: true },
     ];
@@ -65,7 +65,7 @@ export default function EcosystemFooter() {
                         padding: '2px 6px', borderRadius: 4,
                         background: 'rgba(255,215,0,0.12)', color: '#ffd700',
                         letterSpacing: 0.5,
-                    }}>ECOSYSTEM</span>
+                    }}>{t('footer_ecosystem', 'Ecosystem')}</span>
                 </div>
 
                 {/* Links */}

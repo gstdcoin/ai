@@ -1522,7 +1522,7 @@
   "ticker_paid": "GSTD paid",
   "ticker_unavailable": "Network stats temporarily unavailable",
   "per_task": "per task",
-  "nav_payments": "Payments",
+  "nav_payments": "Balance & rewards",
   "payments_page": {
     "title": "Balance & rewards",
     "intro": "Claim your node rewards, pay for AI requests and request a GSTD withdrawal to your TON wallet.",
@@ -1601,5 +1601,6 @@
       "payout_in_flight": "A payout is already being processed. Do not send it again.",
       "another_payout_requires_reconciliation": "A previous payout needs blockchain reconciliation before another can proceed."
     }
-  }
+  },
+  "footer_ecosystem": "Ecosystem"
 }

@@ -1148,7 +1148,7 @@
   "nav_open_intelligence": "Открытая аналитика",
   "nav_developers": "Разработчикам",
   "nav_leaderboard": "Лидерборд",
-  "nav_stats": "Statistics",
+  "nav_stats": "Статистика",
   "nav_nodes": "Ноды",
   "footer_bridge": "Мост",
   "nodes_page_title": "Награды за ноды — GSTD",
@@ -1526,7 +1526,7 @@
   "ticker_paid": "Выплачено GSTD",
   "ticker_unavailable": "Статистика сети временно недоступна",
   "per_task": "за задачу",
-  "nav_payments": "Платежи",
+  "nav_payments": "Баланс и награды",
   "payments_page": {
     "title": "Баланс и награды",
     "intro": "Здесь можно получить начисленные награды ноды, оплатить запросы к ИИ и оформить вывод GSTD в TON-кошелёк.",
@@ -1605,5 +1605,6 @@
       "payout_in_flight": "Выплата уже обрабатывается. Не создавайте повторную отправку.",
       "another_payout_requires_reconciliation": "Предыдущая выплата ожидает проверки в блокчейне. Сначала необходимо подтвердить её результат."
     }
-  }
+  },
+  "footer_ecosystem": "Экосистема"
 }
