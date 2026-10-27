@@ -333,7 +333,9 @@ export default function ChatPage() {
     const [activeConvId, setActiveConvId] = useState<string | null>(null);
     const [input, setInput] = useState('');
     const [isStreaming, setIsStreaming] = useState(false);
-    const [selectedModel, setSelectedModel] = useState('compound');
+    const [selectedModel, setSelectedModel] = useState('auto');
+    const [liveModels,setLiveModels]=useState<Array<{model_id:string;nodes_count:number;price_gstd:number}>>([]);
+    useEffect(()=>{let active=true;fetch('/api/v1/models/available').then(r=>r.ok?r.json():null).then(d=>{if(active&&Array.isArray(d?.models)){setLiveModels(d.models);const requested=new URLSearchParams(window.location.search).get('model');const found=d.models.find((m:any)=>m.model_id===requested);if(found){setSelectedModel(found.model_id);if(found.price_gstd>0)setSelectedTier('standard')}}}).catch(()=>{});return()=>{active=false}},[]);
     const [selectedTier, setSelectedTier] = useState('free');
     const [showTierPicker, setShowTierPicker] = useState(false);
     const [showSidebar, setShowSidebar] = useState(false);
@@ -898,7 +900,7 @@ export default function ChatPage() {
                         </div>
 
                         {/* Model selector for free tier */}
-                        {selectedTier === 'free' && (
+                        {(
                             <div className="relative group">
                                 <select
                                     value={selectedModel}
@@ -906,12 +908,10 @@ export default function ChatPage() {
                                     className="appearance-none pl-3.5 pr-8 py-1.5 rounded-xl bg-white/3 border border-white/8 text-[12px] font-bold text-gray-400 outline-hidden hover:border-violet-500/30 hover:bg-white/6 transition-all cursor-pointer shadow-xs tracking-tight"
                                     title="Select AI architecture"
                                 >
-                                    <option value="compound">🌐 Sovereign Compound AI</option>
-                                    <option value="llama-3.3-70b">🦙 Meta Llama 3.3 70B</option>
-                                    <option value="qwen3-32b">🧮 Alibaba Qwen3 32B</option>
-                                    <option value="gpt-oss-120b">🧠 DeepSeek GPT-OSS</option>
-                                    <option value="kimi-k2">📚 Moonshot Kimi K2</option>
-                                    <option value="llama-4-scout">🔍 Llama 4 Preview</option>
+                                    <option value="auto">Auto — configured node default</option>
+                                    {liveModels.filter(m=>selectedTier!=='free'||m.price_gstd===0).map(m=>(
+                                        <option key={m.model_id} value={m.model_id}>{m.model_id} · {m.nodes_count} node(s)</option>
+                                    ))}
                                 </select>
                                 <ChevronDown size={11} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-600 pointer-events-none group-hover:text-violet-400 transition-colors" />
                             </div>

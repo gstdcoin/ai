@@ -14,6 +14,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { resolveNodeUrl, callNodeChat, streamNodeChat, NODE_MODEL, ChatMessage } from '../../lib/nodes';
 import { kvGet } from '../../lib/kv';
 import { paidInference } from '../../lib/paidInference';
+import {getModelPrice} from '../../lib/billing';
 
 // ─── Expert personas ──────────────────────────────────────────────────────────
 // Virtual specialties — each gets a unique system prompt to the same GSTD node
@@ -242,6 +243,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             messages, maxTokens: tier === 'ultra' ? 2048 : tier === 'pro' ? 1536 : 1024, surface: 'web', tier });
     }
 
+    const selectedFreeModel = typeof model === 'string' && model !== 'compound' ? model : 'auto';
+    if (selectedFreeModel !== 'auto' && getModelPrice(selectedFreeModel) > 0) return res.status(402).json({error:'paid_model_requires_paid_tier',message:'Choose a paid tier to reserve GSTD for this model.'});
+
     // ─── FREE TIER — single GSTD node call ───────────────────────────────────
     if (tier === 'free' || collectiveTier.expertCount <= 1) {
         const userQ = messages.filter((m: ChatMessage) => m.role === 'user').pop()?.content || '';
@@ -262,11 +266,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             sendSSE(res, 'meta', {
                 tier: 'free', tierName: 'GSTD Node', badge: '🐝',
                 expertCount: 1, experts: [{ name: 'GSTD Node', specialty: 'sovereign AI' }],
-                model: NODE_MODEL,
+                model: selectedFreeModel,
             });
 
             try {
-                for await (const chunk of streamNodeClean(nodeMsgs, { maxTokens: 1024, timeoutMs: 50_000 })) {
+                for await (const chunk of streamNodeClean(nodeMsgs, { maxTokens: 1024, timeoutMs: 50_000, model:selectedFreeModel })) {
                     sendSSE(res, 'delta', { content: chunk });
                 }
             } catch (nodeErr: any) {
@@ -275,7 +279,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
             sendSSE(res, 'done', {
                 tier: 'free', tierName: 'GSTD Node', badge: '🐝',
-                model: 'GSTD Pi Node', modelId: NODE_MODEL, expertCount: 1,
+                model: selectedFreeModel, modelId: selectedFreeModel, expertCount: 1,
                 latency_ms: Date.now() - start, cost_gstd: 0,
             });
             res.end();
@@ -284,10 +288,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         // Non-streaming free
         try {
-            const result = await callNodeChat(nodeMsgs, { maxTokens: 1024, timeoutMs: 30_000 });
+            const result = await callNodeChat(nodeMsgs, { maxTokens: 1024, timeoutMs: 30_000, model:selectedFreeModel });
             return res.status(200).json({
                 id: `ci-${Date.now()}`, object: 'chat.completion',
-                created: Math.floor(Date.now() / 1000), model: NODE_MODEL,
+                created: Math.floor(Date.now() / 1000), model: selectedFreeModel,
                 choices: [{ index: 0, message: { role: 'assistant', content: stripThinkBlocks(result.content) }, finish_reason: 'stop' }],
                 collective: {
                     tier: 'free', tierName: 'GSTD Node', badge: '🐝',
