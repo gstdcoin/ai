@@ -58,7 +58,7 @@ export default function PaymentsPage() {
             <p className="text-sm text-gray-400">{p('node_note')}</p>
         </section>
         <section className="rounded-xl border border-white/15 p-5 space-y-3">
-            <h2 className="text-xl">{p('wallet_title')}</h2><p className="text-sm text-gray-400">{p('wallet_hint')}</p><WalletConnect/>
+            <h2 className="text-xl">{p('wallet_title')}</h2><p className="text-sm text-gray-400">{p('wallet_hint')}</p>{address?<WalletConnect/>:<button type="button" className={button} onClick={()=>tonConnect.openModal()}>{p('connect')}</button>}
             {address && <button className="underline" disabled={busy} onClick={()=>act(async()=>{})}>{p('refresh')}</button>}
         </section>
         {status && <p role="status" className="break-words text-amber-200">{status==='done'?p('done'):errorText(status)}</p>}

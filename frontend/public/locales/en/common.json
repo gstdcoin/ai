@@ -1600,7 +1600,8 @@
       "ledger_busy": "The balance is being updated. Try checking again shortly.",
       "payout_in_flight": "A payout is already being processed. Do not send it again.",
       "another_payout_requires_reconciliation": "A previous payout needs blockchain reconciliation before another can proceed."
-    }
+    },
+    "connect": "Connect TON wallet"
   },
   "footer_ecosystem": "Ecosystem"
 }
