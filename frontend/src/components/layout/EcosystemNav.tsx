@@ -68,10 +68,9 @@ export default function EcosystemNav() {
     }, []);
 
     const APP_BASE = APP_PUBLIC_ORIGIN;
-    const isOnApp =
-        typeof window !== 'undefined' &&
-        (window.location.hostname === 'platform.gstdtoken.com' ||
-            window.location.origin.replace(/\/+$/, '') === APP_BASE);
+    // This component belongs to the platform Pages app. Keep internal links
+    // identical on the server and client so the initial HTML preserves locale.
+    const isOnApp = true;
 
     const allItems: NavItem[] = [
         {key:'nav_payments',href:isOnApp?'/payments':APP_BASE+'/payments',external:!isOnApp,icon:<Activity size={15}/>,short:'Payments'},
