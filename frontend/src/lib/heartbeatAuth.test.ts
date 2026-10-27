@@ -27,9 +27,9 @@ describe('heartbeat authentication', () => {
         const pubkeyHex=hex(await crypto.subtle.exportKey('raw',kp.publicKey));
         await kvSet(nodeKeyRedisKey(nodeId),pubkeyHex,600);
         const headers=Object.fromEntries(Object.entries(await signedHeaders({nodeId,pubkeyHex,privateKey:kp.privateKey},'UQtest')).map(([k,v])=>[k.toLowerCase(),v]));
-        const response = await call({ node_id: nodeId, tasks_completed: 999, gstd_earned: 999, uptime_hours: 1 },headers);
+        const response = await call({ node_id: nodeId, tasks_completed: 999, gstd_earned: 999, uptime_hours: 1, platform:'linux', arch:'arm64', cpu_cores:4, ram_mb:7820, capabilities:['small:1b','large:3b'], models_loaded:['small:1b'] },headers);
         expect(response.status).toBe(200);
-        expect(JSON.parse((await kvGet(`node:${nodeId}`))!)).toMatchObject({ tasks_completed: 3, gstd_earned: 2 });
+        expect(JSON.parse((await kvGet(`node:${nodeId}`))!)).toMatchObject({ tasks_completed: 3, gstd_earned: 2, platform:'linux',arch:'arm64',cpu_cores:4,ram_mb:7820,capabilities:['small:1b','large:3b'],models_loaded:['small:1b'] });
     });
 
     it('requires a signature once a node has a bound key', async () => {
