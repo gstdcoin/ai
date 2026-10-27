@@ -4,7 +4,8 @@
  * Returns RAM requirements, categories, and live availability from the GSTD swarm.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvKeys, kvGet } from '../../../../lib/kv';
+import { kvKeys, kvMGet } from '../../../../lib/kv';
+import {dedupeNodeRecords,parseNodeRecords,isNodeOnline} from '../../../../lib/node-status';
 
 export interface ModelEntry {
     id:           string;   // pull ID (e.g. "llama3.1:8b" or "hf.co/org/model")
@@ -192,19 +193,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { tier, category, source, min_ram, available_only } = req.query;
 
     // Count live nodes per model from swarm heartbeat data
-    const nodeKeys = await kvKeys('node:*').catch(() => [] as string[]);
+    const nodeKeys = (await kvKeys('node:').catch(() => [] as string[])).filter(k=>!k.slice(5).includes(':'));
     const modelNodeCount = new Map<string, number>();
-
-    for (const key of nodeKeys) {
-        const raw = await kvGet(key).catch(() => null);
-        if (!raw) continue;
-        try {
-            const node = JSON.parse(raw as string);
-            const caps: string[] = node.capabilities || node.models || [];
-            for (const cap of caps) {
-                modelNodeCount.set(cap, (modelNodeCount.get(cap) || 0) + 1);
-            }
-        } catch { /* skip malformed */ }
+    const records = nodeKeys.length ? await kvMGet(nodeKeys).catch(()=>[]) : [];
+    for (const node of dedupeNodeRecords(parseNodeRecords<any>(records))) {
+        if (!isNodeOnline(node)) continue;
+        const caps = Array.isArray(node.capabilities) ? [...new Set<string>(node.capabilities.filter((m:unknown)=>typeof m==='string'))] : [];
+        for (const model of caps) modelNodeCount.set(model,(modelNodeCount.get(model)||0)+1);
     }
 
     let catalog = CATALOG.map(m => ({

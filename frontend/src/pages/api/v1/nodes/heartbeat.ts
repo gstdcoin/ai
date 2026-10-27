@@ -87,7 +87,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Preserve server-owned task counters and earnings from the stored record.
         record.uptime_hours    = body.uptime_hours ?? record.uptime_hours;
         if (body.multiaddrs?.length)    record.multiaddrs  = body.multiaddrs;
-        if (body.capabilities?.length)  record.capabilities = body.capabilities;
+        if (Array.isArray(body.capabilities)) record.capabilities = [...new Set<string>(body.capabilities.filter((m:unknown)=>typeof m==='string' && m.length>0 && m.length<=160))].slice(0,128);
+        if (typeof body.platform === 'string' && body.platform.length <= 32) record.platform = body.platform;
+        if (typeof body.arch === 'string' && body.arch.length <= 32) record.arch = body.arch;
+        if (Number.isSafeInteger(body.cpu_cores) && body.cpu_cores > 0 && body.cpu_cores <= 4096) record.cpu_cores = body.cpu_cores;
+        if (Number.isSafeInteger(body.ram_mb) && body.ram_mb > 0 && body.ram_mb <= 16777216) record.ram_mb = body.ram_mb;
         if (body.mode)                  record.mode         = body.mode;
         if (body.node_url)              (record as any).node_url = body.node_url;
         // Resource stats — enables marketplace matching + locality scoring
@@ -98,7 +102,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (body.cpu_score       != null) (record as any).cpu_score       = Number(body.cpu_score);
         // models_loaded: list of Ollama models hot in RAM — used for locality-aware routing
         if (Array.isArray(body.models_loaded) && body.models_loaded.length > 0) {
-            record.capabilities = body.models_loaded;
+            (record as any).models_loaded = body.models_loaded.filter((m:unknown)=>typeof m==='string' && record.capabilities.includes(m));
         }
 
         // Also cache the node_url for fast lookup by completions endpoint
