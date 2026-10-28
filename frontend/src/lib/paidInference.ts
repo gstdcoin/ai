@@ -1,3 +1,4 @@
+import { canonicalModelId } from './modelId';
 import { executorPayout } from './nodePayout';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet } from './kv';
@@ -52,7 +53,7 @@ export async function paidInference(req: NextApiRequest, res: NextApiResponse, o
         if (!response.ok) throw new MoneyError('inference_failed');
         const data: any = await response.json();
         const content = String(data.choices?.[0]?.message?.content || '').replace(/<think>[\s\S]*?<\/think>\s*/g,'').trim();
-        if (options.model !== 'auto' && data.model !== options.model) throw new MoneyError('model_mismatch');
+        if (options.model !== 'auto' && (typeof data.model !== 'string' || canonicalModelId(data.model) !== canonicalModelId(options.model))) throw new MoneyError('model_mismatch');
         if (!content || data._gstd?.tier === 'fallback' || data._gstd?.error) throw new MoneyError('inference_failed');
         if ((req as any).aborted || (res as any).destroyed) throw new MoneyError('client_disconnected');
         const shares = splitNano(nano(options.price));

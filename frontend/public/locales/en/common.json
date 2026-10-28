@@ -1603,5 +1603,21 @@
     },
     "connect": "Connect TON wallet"
   },
-  "footer_ecosystem": "Ecosystem"
+  "footer_ecosystem": "Ecosystem",
+  "chat_accounting": {
+    "free_name": "Free",
+    "free_desc": "One node answers your request. Up to 50 free requests per day.",
+    "standard_name": "Standard",
+    "standard_desc": "One registered node, up to 1,024 output tokens. Charged on success.",
+    "pro_name": "Longer answer",
+    "pro_desc": "One registered node, up to 1,536 output tokens. Charged on success.",
+    "ultra_name": "Extended answer",
+    "ultra_desc": "One registered node, up to 2,048 output tokens. Charged on success.",
+    "mode": "Answer length",
+    "single_node": "One node per request",
+    "mode_note": "Each mode makes one model call. Modes change the output limit, not the number of experts. A named model uses its catalogue price; auto uses the displayed mode price. Check important facts yourself.",
+    "daily_limit": "The daily limit of 50 free requests has been reached. Try again after 00:00 UTC or choose a paid model.",
+    "quota_unavailable": "The free request limit cannot be checked right now. No inference was started. Please try again later.",
+    "request_unavailable": "The request could not be completed. Please try again later."
+  }
 }
