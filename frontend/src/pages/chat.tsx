@@ -818,7 +818,7 @@ export default function ChatPage() {
                         </div>
                     ) : (
                         <Link href="/?source=chat" className="flex items-center justify-center gap-2 p-3 rounded-xl bg-violet-500/10 border border-violet-500/20 text-sm text-violet-400 hover:bg-violet-500/15 transition-all font-medium">
-                            <Wallet size={14} /> {t('connect_wallet', 'Connect Wallet')}
+                            <Wallet size={14} /> {t('chat_accounting.connect_wallet')}
                             <ExternalLink size={12} />
                         </Link>
                     )}
@@ -911,11 +911,11 @@ export default function ChatPage() {
                                     value={selectedModel}
                                     onChange={(e) => setSelectedModel(e.target.value)}
                                     className="appearance-none pl-3.5 pr-8 py-1.5 rounded-xl bg-white/3 border border-white/8 text-[12px] font-bold text-gray-400 outline-hidden hover:border-violet-500/30 hover:bg-white/6 transition-all cursor-pointer shadow-xs tracking-tight"
-                                    title="Select AI architecture"
+                                    title={t('chat_accounting.select_model')}
                                 >
-                                    <option value="auto">Auto — configured node default</option>
+                                    <option value="auto">{t('chat_accounting.auto_model')}</option>
                                     {liveModels.filter(m=>selectedTier!=='free'||m.price_gstd===0).map(m=>(
-                                        <option key={m.model_id} value={m.model_id}>{m.model_id} · {m.nodes_count} node(s)</option>
+                                        <option key={m.model_id} value={m.model_id}>{m.model_id} · {t('chat_accounting.model_nodes', { count: m.nodes_count })}</option>
                                     ))}
                                 </select>
                                 <ChevronDown size={11} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-600 pointer-events-none group-hover:text-violet-400 transition-colors" />
@@ -952,7 +952,7 @@ export default function ChatPage() {
                                         </div>
                                     ) : (
                                         <p className="text-[15px] text-gray-500 leading-relaxed max-w-sm mx-auto mb-6 font-medium">
-                                            {onlineNodes === null ? 'Ask a question. Answers come from open models on network nodes.' : `${onlineNodes} node${onlineNodes === 1 ? '' : 's'} online. Answers come from open models on network nodes.`}
+                                            {onlineNodes === null ? t('chat_accounting.network_intro') : t('chat_accounting.network_online', { count: onlineNodes })}
                                         </p>
                                     )}
                                 </div>
@@ -1093,7 +1093,7 @@ export default function ChatPage() {
                             )}
                         </div>
                         <p className="text-[10px] text-gray-700 text-center mt-2.5">
-                            {currentTier.badge} {currentTier.name} · {t('chat_accounting.single_node')}{currentTier.cost > 0 ? ` · ${currentTier.cost} GSTD` : ' · Free'} · Shift+Enter for new line
+                            {currentTier.badge} {currentTier.name} · {t('chat_accounting.single_node')}{currentTier.cost > 0 ? ` · ${currentTier.cost} GSTD` : ` · ${t('chat_accounting.free_name')}`} · {t('chat_accounting.new_line')}
                         </p>
                     </div>
                 </div>
