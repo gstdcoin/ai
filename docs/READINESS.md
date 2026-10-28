@@ -1,4 +1,4 @@
-# GSTD release readiness — 2026-10-26
+# GSTD release readiness — 2026-10-28
 
 Production entry points: [website](https://gstdtoken.com), [platform](https://app.gstdtoken.com), [payments](https://app.gstdtoken.com/payments), [Telegram](https://t.me/gstdaibot).
 
@@ -12,22 +12,22 @@ The system is an early single-node deployment. Green CI is necessary, but does n
 
 | Scenario | Evidence / remaining gate |
 | --- | --- |
-| Local inference | Physical node 3.6.1 returned responses; a 3B model passed a basic arithmetic check. The 0.5B model also produced a wrong answer; high answer quality is not established. |
+| Local inference | Physical node 3.7.0 and the public platform returned a basic arithmetic response using llama3.2:3b. This demonstrates routing, not general answer quality; a smaller model previously produced a wrong answer. |
 | Node identity and registry | Ed25519 regression tests; one real node reported online. |
 | Browser and Telegram delivery | Website/API are reachable. Actual end-user Telegram delivery must be rechecked after changes; HTTP health is not sufficient. |
 | Paid accounting | Unit tests and real disposable Redis CAS tests cover reservation, split, replay, refund and withdrawal state transitions. |
 | Positive on-chain withdrawal | NOT VERIFIED end to end: needs actual backed customer credit and custody-owner signature. No fabricated balances or self-awarded test rewards. |
-| Fresh install | Installer syntax and dependency/build checks; the Linux amd64 container build and offline non-root gateway startup passed CI (including auth/retired-route checks). The full install script on clean hosts, macOS, WSL and ARM still need separate acceptance runs. |
+| Fresh install | Fresh-source installer CI passed on Linux amd64 Node 22 and a Debian container without a preinstalled Node runtime, using a fixture inference service. Offline non-root startup, authentication and retired routes passed. Real clean ARM64/GPU/WSL installations remain unverified; native macOS installation is not claimed. |
 | Multi-node routing and failure | Needs a second independently operated physical node. One process or one host cannot demonstrate decentralization. |
-| Backups and disaster recovery | An isolated test restored both node identities and rejected corrupt-key replacement. A production restore drill for balances, queue and configuration is still required. |
-| Security | Runtime dependency checks and focused authorization regressions pass; full independent security/contract audit remains outstanding. |
+| Backups and disaster recovery | Isolated tests restore node identities and reject replacement of corrupt keys, saved wallets and saved configuration. A complete user backup workflow and a restore drill on another machine for balances, queue and configuration are still required. |
+| Security | Runtime dependency checks and focused authorization regressions pass. A low-severity deepmerge advisory remains in the TON Connect dependency chain with no npm-provided fix at this check. A full independent security/contract audit remains outstanding. |
 | Free infrastructure | Hidden-tab-aware polling and bounded finance cron are implemented. Validate actual Cloudflare/Redis daily usage under representative load before a public traffic campaign. |
 | Token/contracts | Existing GSTD Jetton is used. Legacy Settlement contracts are not the new payment engine; source/bytecode verification and a separate deployment/audit are required before changing that. |
 
 ## Repositories
 
 - `ai`: platform, billing, node registry and Telegram webhook. Source of truth for balances and paid work.
-- `gstdbot`: compute node and canonical installer. Node processes must not hold a Telegram bot token or custody signing key. The minimal CLI and shared compute limiter are in 3.6.1.
+- `gstdbot`: compute node and canonical installer. Node processes must not hold a Telegram bot token or custody signing key. The current compute release line is 3.7; the minimal CLI and shared compute limiter are enabled.
 - `web`: public website and separate free demo; does not maintain another billing ledger.
 - `A2A`: experimental signed Python/JavaScript clients. Standalone monitors do not claim tasks without an executor.
 - `contracts`: token and legacy/research contracts, with explicit deployment/audit status.

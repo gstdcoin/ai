@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { APP_PUBLIC_ORIGIN } from '../../lib/config';
+import { websiteUrl } from '../../lib/website';
 import { TonConnectButton } from '@tonconnect/ui-react';
 import {
     Home, MessageSquare, Activity,
@@ -23,14 +24,14 @@ const PRIMARY_KEYS = [
 ] as const;
 
 const MORE_KEYS = [
-    'nav_payments', 'nav_open_intelligence', 'nav_docs', 'nav_downloads', 'nav_telegram',
+    'nav_payments', 'nav_open_intelligence', 'nav_site', 'nav_docs', 'nav_downloads', 'nav_telegram',
 ] as const;
 
 type SectionDef = { titleKey: string; keys: readonly string[] };
 
 const MOBILE_SECTIONS: SectionDef[] = [
     { titleKey: 'nav_section_core', keys: ['nav_home', 'nav_chat', 'nav_nodes', 'nav_stats', 'nav_leaderboard'] },
-    { titleKey: 'nav_section_explore', keys: ['nav_payments', 'nav_open_intelligence', 'nav_docs', 'nav_downloads', 'nav_telegram'] },
+    { titleKey: 'nav_section_explore', keys: ['nav_payments', 'nav_open_intelligence', 'nav_site', 'nav_docs', 'nav_downloads', 'nav_telegram'] },
 ];
 
 export default function EcosystemNav() {
@@ -73,6 +74,7 @@ export default function EcosystemNav() {
     const isOnApp = true;
 
     const allItems: NavItem[] = [
+        { key:'nav_site', href:websiteUrl(router.locale), external:true, icon:<ExternalLink size={13}/> },
         {key:'nav_payments',href:isOnApp?'/payments':APP_BASE+'/payments',external:!isOnApp,icon:<Activity size={15}/>,short:'Payments'},
         { key: 'nav_home',       href: isOnApp ? '/' : APP_BASE,    icon: <Home size={15} />,           external: !isOnApp },
         { key: 'nav_chat',       href: isOnApp ? '/chat' : `${APP_BASE}/chat`,           icon: <MessageSquare size={15} />,  external: !isOnApp, short: 'AI Chat' },
@@ -80,8 +82,8 @@ export default function EcosystemNav() {
         { key: 'nav_stats',      href: isOnApp ? '/stats' : `${APP_BASE}/stats`,          icon: <BarChart3 size={15} />,      external: !isOnApp, short: 'Stats' },
         { key: 'nav_leaderboard',href: isOnApp ? '/leaderboard' : `${APP_BASE}/leaderboard`,    icon: <Trophy size={15} />,         external: !isOnApp, short: 'Leaders' },
         { key: 'nav_open_intelligence', href: isOnApp ? '/open-intelligence' : `${APP_BASE}/open-intelligence`, icon: <Activity size={15} />, external: !isOnApp },
-        { key: 'nav_docs',       href: isOnApp ? '/docs' : `${APP_BASE}/docs`,           icon: <BookOpen size={15} />,       external: !isOnApp, short: 'Docs' },
-        { key: 'nav_downloads',  href: isOnApp ? '/downloads' : `${APP_BASE}/downloads`,      icon: <Download size={15} />,       external: !isOnApp, short: 'Downloads' },
+        { key: 'nav_docs',       href: websiteUrl(router.locale,'docs'),           icon: <BookOpen size={15} />,       external: true, short: 'Docs' },
+        { key: 'nav_downloads',  href: websiteUrl(router.locale,'nodes'),      icon: <Download size={15} />,       external: true, short: 'Downloads' },
         { key: 'nav_telegram',   href: 'https://t.me/gstdaibot',    icon: <ExternalLink size={13} />,   external: true,     short: 'Telegram' },
     ];
 

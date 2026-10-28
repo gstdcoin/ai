@@ -80,6 +80,7 @@ beforeEach(() => {
     kvSetNX.mockClear();
     kvCompleteAssignedTask.mockClear();
     store.set(`node:${nodeId}`, JSON.stringify({ node_id: nodeId, wallet_address: wallet, capabilities: [] }));
+    store.set('task_assigned:task-1', JSON.stringify({node_id:nodeId,reward_gstd:0,protocol_fee_gstd:0}));
 });
 
 describe('legacy worker task routes', () => {

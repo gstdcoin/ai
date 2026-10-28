@@ -6,6 +6,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvKeys, kvMGet } from '../../../../lib/kv';
 
 import { getModelPrice } from '../../../../lib/billing';
+import { safeNodeUrl } from '../../../../lib/safeNodeUrl';
 import { dedupeNodeRecords,parseNodeRecords,isNodeOnline } from '../../../../lib/node-status';
 
 export interface AvailableModel {
@@ -64,6 +65,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             const values = await kvMGet(nodeKeys);
             for (const node of dedupeNodeRecords(parseNodeRecords<any>(values))) {
                 if (!isNodeOnline(node)) continue;
+                // Chat uses direct HTTPS inference; outbound-only campaign workers
+                // must not advertise models that this router cannot contact.
+                if (!safeNodeUrl(node.node_url || node.multiaddrs?.[0] || '')) continue;
 
                 const caps: string[] = Array.isArray(node.capabilities) ? [...new Set<string>(node.capabilities.filter((c:unknown)=>typeof c==='string'))] : [];
                 for (const cap of caps) {

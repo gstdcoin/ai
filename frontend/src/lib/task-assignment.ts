@@ -15,6 +15,7 @@ export interface TaskAssignment {
     job_id?: string;
     shard_id?: string;
     expected_hash?: string;
+    expected_model?: string;
 }
 
 export async function assignTaskToNode(
@@ -46,6 +47,9 @@ export async function assignTaskToNode(
     if (typeof task.expected_hash === 'string' && /^[0-9a-f]{64}$/.test(task.expected_hash)) assignment.expected_hash = task.expected_hash;
     if (typeof task.campaign_id === 'string') assignment.campaign_id = task.campaign_id;
     const payload = task.payload && typeof task.payload === 'object' ? task.payload : {};
+    const requestedModel = typeof payload.model === 'string' ? payload.model : task.model;
+    if (typeof requestedModel === 'string' && requestedModel.trim() && requestedModel.length <= 160 && requestedModel !== 'auto')
+        assignment.expected_model = requestedModel;
     if (typeof payload.job_id === 'string') assignment.job_id = payload.job_id;
     if (typeof payload.shard_id === 'string') assignment.shard_id = payload.shard_id;
     if (typeof task.job_id === 'string') assignment.job_id = task.job_id;

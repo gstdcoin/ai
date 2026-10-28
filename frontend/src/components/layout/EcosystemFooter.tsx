@@ -1,5 +1,7 @@
 import React, { useMemo } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
+import { websiteUrl } from '../../lib/website';
 import { useTranslation } from 'next-i18next';
 import { useEcosystemStore, type EcosystemFeatures } from '../../store/ecosystemStore';
 
@@ -13,6 +15,7 @@ function optionalModuleLabels(f: EcosystemFeatures): string[] {
 
 export default function EcosystemFooter() {
     const { t } = useTranslation('common');
+    const { locale } = useRouter();
     const features = useEcosystemStore((s) => s.features);
     const disabledHint = useMemo(() => {
         if (!features) return null;
@@ -22,14 +25,15 @@ export default function EcosystemFooter() {
     }, [features]);
 
     const links = [
+        { label:t('nav_site'), href:websiteUrl(locale), external:true },
         { label: t('footer_terms', 'Terms'), href: '/terms', external: false },
         { label: t('footer_privacy', 'Privacy'), href: '/privacy', external: false },
         { label: t('nav_chat', 'Chat'), href: '/chat', external: false },
         { label: t('nav_nodes', 'Nodes'), href: '/nodes', external: false },
         { label: t('nav_leaderboard', 'Leaderboard'), href: '/leaderboard', external: false },
         { label: t('nav_stats', 'Stats'), href: '/stats', external: false },
-        { label: t('nav_docs', 'Docs'), href: '/docs', external: false },
-        { label: t('nav_downloads', 'Downloads'), href: '/downloads', external: false },
+        { label: t('nav_docs', 'Docs'), href: websiteUrl(locale,'docs'), external: true },
+        { label: t('nav_downloads', 'Downloads'), href: websiteUrl(locale,'nodes'), external: true },
         { label: t('footer_telegram', 'Telegram'), href: 'https://t.me/gstdtoken', external: true },
         { label: t('nav_bot', 'Bot'), href: 'https://t.me/gstdaibot', external: true },
         { label: t('footer_github', 'GitHub'), href: 'https://github.com/gstdcoin', external: true },

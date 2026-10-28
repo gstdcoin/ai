@@ -4,7 +4,8 @@ import { useRouter } from 'next/router';
 import { getCommonStaticProps } from '../lib/i18n-static-props';
 import { useState, useEffect } from 'react';
 import { API_BASE_URL } from '../lib/config';
-import { MessageSquare, ArrowRight, Server, Download, Code2 } from 'lucide-react';
+import { MessageSquare, ArrowRight, Server, Download, Wallet } from 'lucide-react';
+import { websiteUrl } from '../lib/website';
 
 interface NetworkStats {
   active_workers?: number;
@@ -16,13 +17,13 @@ interface NetworkStats {
 
 const COPY = {
   en: {
-    title: 'Decentralized AI compute on TON',
-    lead: 'GSTD connects people who need AI inference with node operators who run open models on their own hardware. Start with the free chat; GSTD is the network compute payment token.',
+    title: 'GSTD workspace',
+    lead: 'Use the network: choose a model, send a request, check connected nodes, and manage your GSTD balance. Project information and installation guides live on the main website.',
     statusLive: (n: number) => `${n} node${n === 1 ? '' : 's'} online`,
     statusEmpty: 'The network is in early launch: no nodes are online right now, so requests are not served by the network yet.',
-    statusEmptyHint: 'You can help by running a node. Until then, a short demo chat is available on gstdtoken.com.',
+    statusEmptyHint: 'Run a node using the guide on the main website, or check again when an operator comes online.',
     chat: 'Open chat',
-    node: 'Run a node',
+    node: 'Network nodes',
     demo: 'Demo chat on gstdtoken.com',
     stats: 'Network now',
     registered: 'Registered nodes',
@@ -32,8 +33,8 @@ const COPY = {
     price: 'GSTD price',
     cards: [
       { title: 'Chat', text: 'Send a request to the network. It is served only while a node is online.', href: '/chat', cta: 'Open chat' },
-      { title: 'Run a node', text: 'Install the open-source node with one command on a computer with Ollama.', href: '/nodes', cta: 'Setup guide' },
-      { title: 'Build with the API', text: 'Connect your application to a node through an OpenAI-compatible API.', href: 'https://gstdtoken.com/developers', cta: 'Send your first request' },
+      { title: 'Network nodes', text: 'See live executors, installed models and their public API addresses.', href: '/nodes', cta: 'Open registry' },
+      { title: 'Balance and rewards', text: 'Manage paid requests and accepted-work rewards in one place. A connected node does not earn just for being online.', href: '/payments', cta: 'Open balance' },
     ],
     links: 'Also',
     docs: 'Documentation',
@@ -42,13 +43,13 @@ const COPY = {
     note: 'GSTD is a utility token for paying for compute in the network. It is not an investment product.',
   },
   ru: {
-    title: 'Децентрализованные ИИ-вычисления на TON',
-    lead: 'GSTD соединяет тех, кому нужен ИИ-инференс, с операторами нод, которые запускают открытые модели на своём оборудовании. Начните с бесплатного чата; GSTD — токен оплаты вычислений сети.',
+    title: 'Рабочее пространство GSTD',
+    lead: 'Пользуйтесь сетью: выбирайте модель, отправляйте запросы, проверяйте подключённые ноды и управляйте балансом GSTD. Описание проекта и инструкции по установке находятся на основном сайте.',
     statusLive: (n: number) => `Нод онлайн: ${n}`,
     statusEmpty: 'Сеть на раннем старте: сейчас ни одной ноды нет онлайн, поэтому сеть пока не обрабатывает запросы.',
-    statusEmptyHint: 'Помочь можно, запустив ноду. А пока на gstdtoken.com доступен короткий демо-чат.',
+    statusEmptyHint: 'Запустите ноду по инструкции на основном сайте или проверьте сеть, когда оператор подключится.',
     chat: 'Открыть чат',
-    node: 'Запустить ноду',
+    node: 'Ноды сети',
     demo: 'Демо-чат на gstdtoken.com',
     stats: 'Сеть сейчас',
     registered: 'Зарегистрировано нод',
@@ -58,8 +59,8 @@ const COPY = {
     price: 'Цена GSTD',
     cards: [
       { title: 'Чат', text: 'Отправьте запрос в сеть. Он обрабатывается, только пока хотя бы одна нода онлайн.', href: '/chat', cta: 'Открыть чат' },
-      { title: 'Запуск ноды', text: 'Установите ноду с открытым кодом одной командой на компьютере с Ollama.', href: '/nodes', cta: 'Инструкция' },
-      { title: 'Использовать API', text: 'Подключите приложение к ноде через OpenAI-совместимый API.', href: 'https://gstdtoken.com/developers', cta: 'Отправить первый запрос' },
+      { title: 'Ноды сети', text: 'Смотрите доступных исполнителей, установленные модели и публичные адреса API.', href: '/nodes', cta: 'Открыть реестр' },
+      { title: 'Баланс и награды', text: 'Оплата запросов и награды за принятую работу собраны в одном месте. Само подключение ноды не приносит дохода.', href: '/payments', cta: 'Открыть баланс' },
     ],
     links: 'Ещё',
     docs: 'Документация',
@@ -88,9 +89,10 @@ export default function Home() {
       if (document.hidden) return;
       try {
         const res = await fetch(`${API_BASE_URL}/api/v1/network/stats`);
-        if (res.ok) setStats(await res.json());
+        if (!res.ok) throw new Error('registry_unavailable');
+        setStats(await res.json());
       } catch {
-        // keep the previous values
+        setStats(null);
       }
     };
     load();
@@ -100,8 +102,7 @@ export default function Home() {
 
   const online = stats?.active_workers ?? 0;
   const num = (v?: number) => (typeof v === 'number' ? v.toLocaleString() : '—');
-  const price = stats?.gstd_price_usd && stats.gstd_price_usd > 0 ? `$${stats.gstd_price_usd.toFixed(6)}` : '—';
-  const icons = [MessageSquare, Server, Code2];
+  const icons = [MessageSquare, Server, Wallet];
 
   return (
     <div className="min-h-screen bg-[#030014] text-white font-sans selection:bg-violet-500/30">
@@ -143,11 +144,11 @@ export default function Home() {
           </Link>
           {online === 0 && (
             <a
-              href="https://gstdtoken.com/ai"
+              href={websiteUrl(locale,'nodes')}
               className="inline-flex items-center justify-center gap-2 px-5 py-3.5 text-sm text-cyan-300 font-semibold"
               style={{ textDecoration: 'none' }}
             >
-              {c.demo} <ArrowRight size={14} />
+              {locale === 'ru' ? 'О проекте и установке' : 'About GSTD and installation'} <ArrowRight size={14} />
             </a>
           )}
         </div>
@@ -155,12 +156,10 @@ export default function Home() {
 
       <section className="px-4 sm:px-6 pb-12 w-full max-w-4xl mx-auto" id="stats">
         <h2 className="text-xs uppercase tracking-widest text-gray-500 font-bold mb-3 text-center">{c.stats}</h2>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <Stat value={num(stats?.total_nodes)} label={c.registered} />
           <Stat value={num(stats?.active_workers)} label={c.online} />
           <Stat value={num(stats?.total_tasks)} label={c.tasks} />
-          <Stat value={num(stats?.total_users)} label={c.users} />
-          <Stat value={price} label={c.price} />
         </div>
       </section>
 
@@ -182,8 +181,8 @@ export default function Home() {
 
       <section className="px-4 sm:px-6 pb-16 w-full max-w-4xl mx-auto text-center">
         <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-gray-400 mb-4">
-          <Link href="/docs" style={{ textDecoration: 'none' }} className="hover:text-white">{c.docs}</Link>
-          <Link href="/downloads" style={{ textDecoration: 'none' }} className="hover:text-white inline-flex items-center gap-1"><Download size={13} /> {locale === 'ru' ? 'Загрузки' : 'Downloads'}</Link>
+          <a href={websiteUrl(locale,'docs')} style={{ textDecoration: 'none' }} className="hover:text-white">{c.docs}</a>
+          <a href={websiteUrl(locale,'nodes')} style={{ textDecoration: 'none' }} className="hover:text-white inline-flex items-center gap-1"><Download size={13} /> {locale === 'ru' ? 'Установка ноды' : 'Install a node'}</a>
           <a href="https://github.com/gstdcoin" style={{ textDecoration: 'none' }} className="hover:text-white">{c.code}</a>
           <a href="https://t.me/gstdaibot" style={{ textDecoration: 'none' }} className="hover:text-white">{c.tg}</a>
         </div>

@@ -1,22 +1,17 @@
-# GSTD Documentation
+# GSTD documentation
 
-## Основные документы
+Start with the current operating model; historical design documents do not describe enabled production features.
 
-| Документ | Описание |
-|----------|----------|
-| [VISION.md](VISION.md) | Визия — независимый ИИ для человечества |
-| [A2A_CONNECTION.md](A2A_CONNECTION.md) | API endpoints, handshake, ключи |
-| [skills/SKILL.md](skills/SKILL.md) | OpenClaw — автоматическая инструкция |
-| [BUY_GSTD_TELEGRAM_WALLET.md](BUY_GSTD_TELEGRAM_WALLET.md) | Покупка GSTD через Telegram Wallet |
-| [CONTRACTS_VERIFICATION.md](CONTRACTS_VERIFICATION.md) | Контракты, безопасность |
-| [ECOSYSTEM.md](ECOSYSTEM.md) | Карта экосистемы и как присоединиться |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Архитектура платформы (Cloudflare) |
-| [AGENT_GUIDE.md](AGENT_GUIDE.md) | Агенты: кошельки, запуск, GSTD |
+| Need | Current guide |
+|---|---|
+| Website, application and node roles | [ECOSYSTEM.md](ECOSYSTEM.md) |
+| What is tested and what remains manual | [READINESS.md](READINESS.md) |
+| Funded work, balances and 85/10/5 | [FINANCE_V2.md](FINANCE_V2.md) |
+| Owner-signed withdrawals and data controls | [WITHDRAWALS_AND_PRIVACY.md](WITHDRAWALS_AND_PRIVACY.md) |
+| Platform operation and deployment | [PLATFORM_OPERATIONS.md](PLATFORM_OPERATIONS.md) |
+| Free infrastructure request budget | [FREE_TIER_REQUEST_BUDGET.md](FREE_TIER_REQUEST_BUDGET.md) |
+| Node installation and operator panel | [Canonical node guide](https://github.com/gstdcoin/gstdbot/blob/main/docs/OPERATOR_PANEL.md) |
+| Signed integration clients | [A2A repository](https://github.com/gstdcoin/A2A) |
+| Contract deployment/verification limits | [CONTRACTS_VERIFICATION.md](CONTRACTS_VERIFICATION.md) |
 
-## API
-
-- **Base URL:** https://app.gstdtoken.com
-- **Health:** GET /api/v1/health
-- **Handshake:** POST /api/v1/agents/handshake
-- **Challenge:** GET /api/v1/agents/challenge
-- **Claim Key:** POST /api/v1/agents/claim-key
+Other topic and vision files are reference material. Their existence is not proof that a payment option, integration or service is deployed. In particular, bridge research, legacy settlement designs and token-purchase tutorials are not the current compute payment engine. Use the application balance page for supported platform operations and never send signing keys to a guide, node or bot.

@@ -6,6 +6,7 @@ A shared compute network: use AI, contribute a node, and spend earned GSTD on ot
 - [Balance, deposits and owner-signed withdrawals](https://app.gstdtoken.com/payments)
 - [Money rules](docs/FINANCE_V2.md) · [Withdrawals and data controls](docs/WITHDRAWALS_AND_PRIVACY.md)
 - [Compute node](https://github.com/gstdcoin/gstdbot/blob/main/docs/COMPUTE_PROFILE.md)
+- [Website/app roles and node work delivery](docs/ECOSYSTEM.md)
 
 Only funded accepted work earns tokens. The split is 85% executor / 10% protocol / 5% reserve; claiming or requesting withdrawal adds no GSTD commission. Existing GSTD is used; no new issuance or guaranteed yield is promised.
 

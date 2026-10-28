@@ -13,7 +13,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvSetNX, kvIncr, kvIncrByFloat, kvCompleteAssignedTask } from '../../../../lib/kv';
 import { COMMUNITY_TAX, BASE_TASK_FEE } from '../../../../lib/rewards';
 import { requireNodeSignature } from '../../../../lib/nodeAuth';
-import { hasTaskResult } from '../../../../lib/taskValidation';
+import { hasTaskResult, declaredTaskModelMismatch } from '../../../../lib/taskValidation';
 import { captureMoney, releaseMoney, moneyJob, splitNano, units, walletId, digest } from '../../../../lib/money';
 import type { TaskAssignment } from '../../../../lib/task-assignment';
 import type { NodeRecord } from '../nodes/register';
@@ -51,10 +51,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.status(400).json({ error: 'task_id required' });
         }
         const assignedRaw = await kvGet('task_assigned:' + body.task_id);
-        const assigned = assignedRaw ? JSON.parse(assignedRaw) : null;
+        let assigned = assignedRaw ? JSON.parse(assignedRaw) : null;
+        // A retry validates against the same frozen assignment in its receipt.
+        // Never consume an assignment before a correctable declared-model error.
+        if (!assigned) {
+            const completedRaw = await kvGet('task_completed:' + body.task_id);
+            const completed = completedRaw ? JSON.parse(completedRaw) : null;
+            if (completed?.node_id === nodeId && typeof completed.assignment === 'string')
+                assigned = JSON.parse(completed.assignment);
+        }
+        if (!assigned || assigned.node_id !== nodeId)
+            return res.status(409).json({ error: 'Task is not assigned to this node' });
         if (body.error && assigned?.node_id === nodeId && assigned?.funding_id) await releaseMoney(assigned.funding_id);
         if (body.error || !hasTaskResult(body.result)) {
             return res.status(422).json({ error: 'A non-empty successful task result is required' });
+        }
+        if (declaredTaskModelMismatch(assigned.expected_model, body)) {
+            return res.status(422).json({ error: 'model_mismatch', requested_model: assigned.expected_model });
         }
         const completion = await kvCompleteAssignedTask(
             body.task_id,

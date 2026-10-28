@@ -2,262 +2,53 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useState, useEffect, useCallback } from 'react';
-import { useTonAddress } from '@tonconnect/ui-react';
 import { GetStaticProps } from 'next';
-import { Copy, Check, Smartphone } from 'lucide-react';
 import { getCommonStaticProps } from '../lib/i18n-static-props';
-import { API_BASE_URL } from '../lib/config';
-import { apiGet } from '../lib/apiClient';
+import { websiteUrl } from '../lib/website';
+import { safeNodeUrl } from '../lib/safeNodeUrl';
 
-interface NetworkStats {
-  active_workers?: number;
-  active_nodes?: number;
-  total_nodes?: number;
-}
-
-interface TierInfo {
-  balance_gstd: number;
-  pending_gstd: number;
-}
-
-const DOCKER_CMD = 'git clone https://github.com/gstdcoin/gstdbot.git && cd gstdbot && docker compose up --build -d';
-const SCRIPT_CMD = 'curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash';
-
-const COPY = {
-  en: {
-    title: 'Run a node',
-    lead: 'A node serves AI requests with open models on your own hardware. You need a TON wallet address; no GSTD is required to start.',
-    online: (n: number) => `${n} node${n === 1 ? '' : 's'} online`,
-    none: 'No nodes online yet. The first operators will appear here as soon as they connect.',
-    registered: 'registered',
-    wallet: 'Wallet',
-    balance: 'GSTD balance',
-    pending: 'Pending GSTD',
-    claim: 'Claim',
-    claiming: 'Claiming…',
-    claimed: 'Claimed',
-    claimFail: 'Claim failed',
-    netErr: 'Network error',
-    pickTitle: 'Choose how to run it',
-    mobileTitle: 'Telegram',
-    mobileText: 'Use the bot to chat and manage your account. Opening Telegram does not turn a phone into a compute executor.',
-    mobileCta: 'Open in Telegram',
-    dockerTitle: 'Docker',
-    dockerText: 'Build from source; configure your public wallet and an Ollama endpoint first. Container setup requires separate validation.',
-    scriptTitle: 'Install script (Linux / WSL2)',
-    scriptText: 'Installs the node, Ollama and a systemd service. Read the script before running it.',
-    copy: 'Copy',
-    copied: 'Copied',
-    earnTitle: 'About rewards',
-    earn: 'Rewards are paid in GSTD only for completed and accepted tasks, and depend on how much work the network receives. The amount is not guaranteed, and there are no fixed hourly rates.',
-    guide: 'Full setup guide',
-    board: 'Leaderboard',
-  },
-  ru: {
-    title: 'Запуск ноды',
-    lead: 'Нода обрабатывает ИИ-запросы на открытых моделях на вашем оборудовании. Нужен адрес кошелька TON; GSTD для старта не требуется.',
-    online: (n: number) => `Нод онлайн: ${n}`,
-    none: 'Нод онлайн пока нет. Первые операторы появятся здесь, как только подключатся.',
-    registered: 'зарегистрировано',
-    wallet: 'Кошелёк',
-    balance: 'Баланс GSTD',
-    pending: 'К получению, GSTD',
-    claim: 'Забрать',
-    claiming: 'Выдача…',
-    claimed: 'Получено',
-    claimFail: 'Не удалось получить',
-    netErr: 'Ошибка сети',
-    pickTitle: 'Выберите способ запуска',
-    mobileTitle: 'Telegram',
-    mobileText: 'Используйте бота для чата и аккаунта. Открытый Telegram не превращает телефон в вычислительную ноду.',
-    mobileCta: 'Открыть в Telegram',
-    dockerTitle: 'Docker',
-    dockerText: 'Сборка из исходников: сначала настройте публичный кошелёк и адрес Ollama. Контейнерная установка требует отдельной проверки.',
-    scriptTitle: 'Скрипт установки (Linux / WSL2)',
-    scriptText: 'Ставит ноду, Ollama и службу systemd. Прочитайте скрипт перед запуском.',
-    copy: 'Копировать',
-    copied: 'Скопировано',
-    earnTitle: 'О вознаграждении',
-    earn: 'Вознаграждение в GSTD платится только за выполненные и принятые задания и зависит от того, сколько работы поступает в сеть. Сумма не гарантируется, фиксированных ставок в час нет.',
-    guide: 'Полная инструкция',
-    board: 'Лидерборд',
-  },
-} as const;
-
-function CopyButton({ text, label, done }: { text: string; label: string; done: string }) {
-  const [copied, setCopied] = useState(false);
-  const copy = () => {
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  };
-  return (
-    <button onClick={copy} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-white/7 border border-white/12 text-white/70">
-      {copied ? <Check size={12} /> : <Copy size={12} />}
-      {copied ? done : label}
-    </button>
-  );
-}
-
+type LiveNode = { node_id:string; name:string; capabilities:string[]; cpu_cores:number; has_gpu:boolean; platform:string; node_url?:string; tasks_completed:number; last_seen:string };
+type Registry = {nodes:LiveNode[]; count:number; timestamp:number};
 export default function NodesPage() {
-  const { locale } = useRouter();
-  const c = locale === 'ru' ? COPY.ru : COPY.en;
-  const walletAddress = useTonAddress();
-  const [network, setNetwork] = useState<NetworkStats | null>(null);
-  const [tier, setTier] = useState<TierInfo | null>(null);
-  const [claiming, setClaiming] = useState(false);
-  const [claimMsg, setClaimMsg] = useState<{ ok: boolean; text: string } | null>(null);
-
-  const fetchNetwork = useCallback(async () => {
-      if (document.hidden) return;
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/v1/network/stats`);
-      if (res.ok) setNetwork(await res.json());
-    } catch {
-      // keep the previous values
-    }
-  }, []);
-
-  const fetchTier = useCallback(async () => {
-    if (!walletAddress) {
-      setTier(null);
-      return;
-    }
-    try {
-      setTier(await apiGet<TierInfo>('/credits/balance'));
-    } catch {
-      setTier(null);
-    }
-  }, [walletAddress]);
-
-  useEffect(() => {
-    fetchNetwork();
-    const id = setInterval(fetchNetwork, 120_000);
-    return () => clearInterval(id);
-  }, [fetchNetwork]);
-
-  useEffect(() => {
-    fetchTier();
-  }, [fetchTier]);
-
-  const claimRewards = async () => {
-    if (!walletAddress || !tier?.pending_gstd) return;
-    setClaiming(true);
-    setClaimMsg(null);
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/v1/telegram/bot/claim_reward`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ wallet: walletAddress }),
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setClaimMsg({ ok: true, text: `${c.claimed} ${data.claimed_net?.toFixed(4) || ''} GSTD` });
-        fetchTier();
-      } else {
-        setClaimMsg({ ok: false, text: data.error || c.claimFail });
-      }
-    } catch {
-      setClaimMsg({ ok: false, text: c.netErr });
-    }
-    setClaiming(false);
-  };
-
-  const online = network?.active_workers ?? network?.active_nodes ?? 0;
-  const box = 'rounded-2xl border border-white/10 bg-white/3 p-5';
-  const code = 'rounded-lg bg-black/40 px-3 py-2.5 font-mono text-[11.5px] text-cyan-200 break-all leading-relaxed mb-3';
-
-  return (
-    <>
-      <Head>
-        <title>{c.title} — GSTD</title>
-        <meta name="description" content={c.lead} />
-      </Head>
-
-      <div className="min-h-screen bg-[#030014] text-white pt-16">
-        <div className="max-w-3xl mx-auto px-4 pb-20">
-          <h1 className="text-4xl font-black mb-3">{c.title}</h1>
-          <p className="text-gray-400 mb-6 leading-relaxed">{c.lead}</p>
-
-          {network && (
-            <div className={`mb-8 rounded-xl border px-4 py-3 text-sm ${online > 0 ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-300' : 'border-amber-500/30 bg-amber-500/5 text-amber-200'}`}>
-              {online > 0 ? <strong>{c.online(online)}</strong> : c.none}
-              {typeof network.total_nodes === 'number' && <span className="text-gray-400"> · {network.total_nodes} {c.registered}</span>}
-            </div>
-          )}
-
-          {walletAddress && tier && (
-            <div className={`${box} mb-8 flex flex-wrap items-center justify-between gap-4`}>
-              <div>
-                <div className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-1">{c.wallet}</div>
-                <div className="font-mono text-sm text-gray-300">{walletAddress.slice(0, 8)}…{walletAddress.slice(-6)}</div>
-              </div>
-              <div className="text-center">
-                <div className="text-xl font-black text-cyan-300">{tier.balance_gstd.toFixed(2)}</div>
-                <div className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">{c.balance}</div>
-              </div>
-              <div className="text-center">
-                <div className="text-xl font-black text-amber-300">{tier.pending_gstd.toFixed(4)}</div>
-                <div className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">{c.pending}</div>
-              </div>
-              <div className="flex flex-col items-end gap-1">
-                {tier.pending_gstd > 0.0001 && (
-                  <button onClick={claimRewards} disabled={claiming} className="px-4 py-2 rounded-xl border border-amber-400/35 bg-amber-400/15 text-amber-300 font-bold text-sm disabled:opacity-60">
-                    {claiming ? c.claiming : c.claim}
-                  </button>
-                )}
-                {claimMsg && <span className={`text-xs ${claimMsg.ok ? 'text-emerald-300' : 'text-red-300'}`}>{claimMsg.text}</span>}
-              </div>
-            </div>
-          )}
-
-          <h2 className="text-xl font-black mb-4">{c.pickTitle}</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
-            <div className={box}>
-              <div className="font-bold mb-1">{c.mobileTitle}</div>
-              <p className="text-sm text-gray-400 mb-4 leading-relaxed">{c.mobileText}</p>
-              <a
-                href="https://t.me/gstdaibot?start=node"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 text-sm font-bold"
-                style={{ textDecoration: 'none' }}
-              >
-                <Smartphone size={14} /> {c.mobileCta}
-              </a>
-            </div>
-
-            <div className={box}>
-              <div className="font-bold mb-1">{c.dockerTitle}</div>
-              <p className="text-sm text-gray-400 mb-3 leading-relaxed">{c.dockerText}</p>
-              <div className={code}>{DOCKER_CMD}</div>
-              <CopyButton text={DOCKER_CMD} label={c.copy} done={c.copied} />
-            </div>
-
-            <div className={box}>
-              <div className="font-bold mb-1">{c.scriptTitle}</div>
-              <p className="text-sm text-gray-400 mb-3 leading-relaxed">{c.scriptText}</p>
-              <div className={code}>{SCRIPT_CMD}</div>
-              <CopyButton text={SCRIPT_CMD} label={c.copy} done={c.copied} />
-            </div>
-          </div>
-
-          <div className={`${box} mb-8`}>
-            <div className="font-bold mb-1">{c.earnTitle}</div>
-            <p className="text-sm text-gray-400 leading-relaxed">{c.earn}</p>
-          </div>
-
-          <div className="flex gap-6 text-sm">
-            <Link href="/docs" className="text-cyan-300 font-bold" style={{ textDecoration: 'none' }}>{c.guide} →</Link>
-            <Link href="/leaderboard" className="text-cyan-300 font-bold" style={{ textDecoration: 'none' }}>{c.board} →</Link>
-          </div>
-        </div>
-      </div>
-    </>
-  );
+ const {locale}=useRouter();const ru=locale==='ru';
+ const [registry,setRegistry]=useState<Registry|null>(null);
+ const [failed,setFailed]=useState(false);const [loading,setLoading]=useState(false);
+ const load=useCallback(async()=>{
+  if(document.hidden)return;setLoading(true);
+  try {const r=await fetch('/api/v1/nodes/list');if(!r.ok)throw new Error('registry_unavailable');const data=await r.json();if(!Array.isArray(data.nodes))throw new Error('invalid_registry');setRegistry(data);setFailed(false);}
+  catch {setRegistry(null);setFailed(true);}finally{setLoading(false);}
+ },[]);
+ useEffect(()=>{void load();const timer=setInterval(load,120000);return()=>clearInterval(timer);},[load]);
+ const box='rounded-2xl border border-white/10 bg-white/3 p-5';
+ const title=ru?'Ноды сети':'Network nodes';
+ return <main className="max-w-4xl mx-auto px-5 pt-16 pb-24 text-white min-h-screen">
+  <Head><title>{title+' — GSTD'}</title></Head>
+  <h1 className="text-4xl font-black mb-4">{title}</h1>
+  <p className="text-gray-400 leading-relaxed mb-6">{ru?'Живой реестр подключённых исполнителей. Модели появляются здесь после регистрации ноды и её обновлений состояния. Установка описана на основном сайте, а баланс и получение наград доступны на одной странице приложения.':'The live registry of connected executors. Models appear after node registration and heartbeats. Installation lives on the main website; balance and reward collection share one page in this app.'}</p>
+  <div className="flex flex-wrap gap-3 mb-8">
+   <a className="px-5 py-3 rounded-xl bg-violet-600 font-bold" href={websiteUrl(locale,'nodes')}>{ru?'Установить ноду':'Install a node'} →</a>
+   <Link className="px-5 py-3 rounded-xl border border-cyan-400/30 text-cyan-300 font-bold" href="/payments?from=node">{ru?'Баланс и награды':'Balance and rewards'} →</Link>
+   <Link className="px-5 py-3 rounded-xl border border-white/10" href="/chat">{ru?'Выбрать модель в чате':'Choose a model in chat'} →</Link>
+  </div>
+  <section className={box+' mb-7'}>
+   <h2 className="font-bold text-lg mb-2">{ru?'Как нода приносит пользу':'How a node provides value'}</h2>
+   <p className="text-sm text-gray-400 leading-relaxed">{ru?'Запускайте свои модели локально, а при доступной оплаченной работе делитесь вычислениями с сетью. За принятую оплаченную работу исполнителю причитается 85%, протоколу 10%, резерву 5%. Платные кампании доставляются через исходящую очередь и не требуют публичной панели. Для прямых запросов чата нужен публичный HTTPS API. Пустая очередь, бесплатный чат и само присутствие в сети не создают выводимых токенов.':'Run your own models locally and share compute when paid work is available. Accepted paid work allocates 85% to the executor, 10% to the protocol and 5% to reserve. Funded campaigns use an outbound queue and do not require a public panel. Direct chat requests need a public HTTPS API. An empty queue, free chat or network presence creates no withdrawable tokens.'}</p>
+   <p className="text-sm text-gray-400 leading-relaxed mt-3">{ru?'В панели ноды укажите свой адрес получения наград. Подключите тот же TON-кошелёк на странице «Баланс и награды». Получение награды зачисляет внутренний баланс; вывод в TON — отдельная операция с подписью владельца кошелька обеспечения.':'Set your reward address in the node panel. Connect that same TON wallet on Balance and rewards. Claiming credits the internal balance; a TON withdrawal is a separate operation signed by the custody wallet owner.'}</p>
+  </section>
+  <div className="flex flex-wrap items-center justify-between gap-3 mb-4"><h2 className="text-xl font-bold">{registry?(ru?'Нод онлайн: ':'Nodes online: ')+registry.count:(ru?'Реестр сети':'Network registry')}</h2><button onClick={()=>void load()} disabled={loading} className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 disabled:opacity-50">{loading?(ru?'Загрузка…':'Loading…'):(ru?'Обновить':'Refresh')}</button></div>
+  {!registry&&<p className="text-gray-400 mb-5">{failed?(ru?'Реестр временно недоступен. Предыдущие данные скрыты; это не означает, что все ноды отключены.':'The registry is temporarily unavailable. Previous data is hidden; this does not mean every node is offline.'):(ru?'Загружаем состояние сети…':'Loading network status…')}</p>}
+  {registry?.nodes.length===0&&<div className={box}>{ru?'Сейчас реестр не показывает онлайн-нод. Установленная нода появится после успешной регистрации и heartbeat. Если задания нет, нода ожидает работу, а не зарабатывает за простой.':'The registry currently shows no online nodes. An installed node appears after successful registration and heartbeat. Without a task, a node waits for work rather than earning for idle time.'}</div>}
+  <div className="grid gap-4">{registry?.nodes.map(node=><article key={node.node_id} className={box}>
+   <div className="flex flex-wrap justify-between gap-2"><h3 className="font-bold text-lg break-all">{node.name||node.node_id}</h3><span className="text-emerald-300 text-sm">{ru?'Онлайн':'Online'}</span></div>
+   <p className="font-mono text-xs text-gray-500 mt-1 break-all">ID: {node.node_id}</p>
+   <p className="text-sm text-gray-400 mt-3">{node.platform} · CPU: {node.cpu_cores} · GPU: {node.has_gpu?(ru?'заявлен':'reported'):(ru?'нет':'none')}</p>
+   <p className="text-sm text-gray-300 mt-3">{ru?'Модели и возможности: ':'Models and capabilities: '}{node.capabilities?.length?node.capabilities.join(', '):(ru?'пока не заявлены':'not reported yet')}</p>
+   <p className="text-xs text-cyan-300 mt-3">{safeNodeUrl(node.node_url)?(ru?'Исходящая очередь и заявленный публичный HTTPS; доступность чата проверяется при запросе.':'Outbound queue and a configured public HTTPS route; chat availability is checked on request.'):(ru?'Исходящая очередь заданий. Прямой чат недоступен без публичного HTTPS-адреса.':'Outbound task queue. Direct chat requires a public HTTPS endpoint.')}</p>
+   <p className="text-xs text-gray-500 mt-3">{ru?'Принято заданий, включая бесплатные: ':'Accepted tasks, including unpaid work: '}{node.tasks_completed||0}. {ru?'Этот счётчик не равен доходу.':'This counter is not earnings.'}</p>
+   {safeNodeUrl(node.node_url)&&<div className="text-xs text-gray-400 mt-3"><span>{ru?'Публичный API ноды (адрес может меняться):':'Public node API (the address may rotate):'}</span><code className="block break-all text-cyan-200 mt-1">{safeNodeUrl(node.node_url)+'/v1'}</code></div>}
+   <p className="text-xs text-gray-500 mt-3">{ru?'Состояние от ':'Last seen: '}{new Date(node.last_seen).toLocaleString(ru?'ru-RU':'en-US')}</p>
+  </article>)}</div>
+  <p className="text-xs text-gray-500 mt-6">{ru?'Для приложений используйте единый API https://app.gstdtoken.com/api/v1 — он выбирает доступного исполнителя. Переход к более мощной модели требует наличия этой модели в живом каталоге; скрытой замены нет.':'Applications should use https://app.gstdtoken.com/api/v1 to select an available executor. A more powerful model must be present in the live catalog; it is never silently substituted.'}</p>
+ </main>;
 }
-
-export const getStaticProps: GetStaticProps = async ({ locale }) => ({
-  props: await getCommonStaticProps(locale),
-});
+export const getStaticProps:GetStaticProps=async({locale})=>({props:await getCommonStaticProps(locale)});
