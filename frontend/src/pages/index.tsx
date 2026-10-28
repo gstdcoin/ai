@@ -1,3 +1,4 @@
+import Head from 'next/head';
 import Link from 'next/link';
 import { GetStaticProps } from 'next';
 import { useRouter } from 'next/router';
@@ -106,6 +107,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[#030014] text-white font-sans selection:bg-violet-500/30">
+      <Head><title>{c.title + ' — GSTD'}</title></Head>
       <section className="px-4 sm:px-6 pt-16 pb-10 w-full max-w-4xl mx-auto text-center">
         <h1 className="text-4xl sm:text-6xl font-black tracking-tight mb-5 leading-[1.1]">{c.title}</h1>
         <p className="text-lg text-gray-400 max-w-2xl mx-auto leading-relaxed mb-8">{c.lead}</p>
