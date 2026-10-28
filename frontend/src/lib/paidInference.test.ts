@@ -60,4 +60,15 @@ describe('paid inference orchestration',()=>{
         expect((await call('no-node-key')).code).toBe(503);
         expect((await moneyBalance(wallet)).reserved_gstd).toBe(0);
     });
+    it('reserves and captures the catalogue amount with the same 85/10/5 split',async()=>{
+        vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:true,json:async()=>({model:'catalogue:latest',choices:[{message:{content:'accepted'}}]})}));
+        const before=(await moneyBalance(executor)).pending_gstd;
+        const response=await call('catalogue-price-key',{price:0.005,model:'catalogue'});
+        expect(response.code).toBe(200);
+        expect((await moneyBalance(wallet)).balance_gstd).toBeCloseTo(9.995,9);
+        expect((await moneyBalance(wallet)).reserved_gstd).toBe(0);
+        expect((await moneyBalance(executor)).pending_gstd-before).toBeCloseTo(0.00425,9);
+        expect(response.body._gstd.billing).toMatchObject({charged_gstd:0.005,executor_gstd:0.00425,protocol_gstd:0.0005,reserve_gstd:0.00025});
+    });
+
 });

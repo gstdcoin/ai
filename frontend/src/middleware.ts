@@ -74,7 +74,7 @@ export default function middleware(req: NextRequest) {
     if (req.method === 'OPTIONS') {
         res.headers.set('Access-Control-Allow-Origin', '*');
         res.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-        res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Session-Token, X-Wallet-Address');
+        res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Session-Token, X-Wallet-Address, Idempotency-Key');
     } else {
         res.headers.set('Access-Control-Allow-Origin', '*');
     }

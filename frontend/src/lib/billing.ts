@@ -2,42 +2,9 @@ import { consumePromoRequest } from './money';
 import { randomUUID } from 'crypto';
 import { kvConsumeQuota, kvGet } from './kv';
 
-// GSTD cost per request by Ollama model ID
-const MODEL_PRICES: Record<string, number> = {
-    'auto': 0,
-    'llama3.2:1b':     0,
-    'llama3.2:3b':     0,
-    'phi3:mini':       0,
-    'gemma2:2b':       0,
-    // Paid models
-    'llama3.1:8b':     0.005,
-    'qwen2.5:7b':      0.005,
-    'mistral:7b':      0.005,
-    'phi3:medium':     0.005,
-    'qwen2.5:14b':     0.01,
-    'deepseek-r1:14b': 0.02,
-    'codellama:7b':    0.005,
-    'codellama:13b':   0.01,
-    'qwen2.5:32b':     0.03,
-    'mixtral:8x7b':    0.02,
-    'llama3.1:70b':    0.05,
-    'deepseek-r1:70b': 0.08,
-    // Odysseus special capabilities
-    'odysseus-chat':     0.001,
-    'odysseus-research': 0.05,
-    'odysseus-docs':     0.02,
-};
-
+import { getModelPrice } from './modelPricing';
+export { getModelPrice, isFreeModel } from './modelPricing';
 const FREE_DAILY_LIMIT = 50;
-const COMMISSION_RATE  = 0.1;
-
-export function getModelPrice(model: string): number {
-    return MODEL_PRICES[model] ?? 0.005;
-}
-
-export function isFreeModel(model: string): boolean {
-    return (MODEL_PRICES[model] ?? -1) === 0;
-}
 
 function todayKey(): string {
     return new Date().toISOString().slice(0, 10);
@@ -50,6 +17,10 @@ export async function checkFreeQuota(identifier: string): Promise<{ allowed: boo
     const used = parseInt(raw || '0', 10);
     const remaining = Math.max(0, FREE_DAILY_LIMIT - used);
     return { allowed: used < FREE_DAILY_LIMIT, remaining };
+}
+
+export async function consumeFreeQuota(identifier: string) {
+    return kvConsumeQuota(`usage:free:${identifier.toLowerCase()}:${todayKey()}`, FREE_DAILY_LIMIT, 90_000);
 }
 
 export async function incrementFreeUsage(identifier: string): Promise<void> {
@@ -72,17 +43,14 @@ export async function chargeFee(
     wallet: string | null,
     model: string,
     nodeId: string | null,
+    quotaIdentifier?: string,
 ): Promise<ChargeResult> {
     const price = getModelPrice(model);
 
     // Free models — check daily quota
     if (price === 0) {
-        const identifier = wallet || 'anon';
-        const quota = await kvConsumeQuota(
-            `usage:free:${identifier.toLowerCase()}:${todayKey()}`,
-            FREE_DAILY_LIMIT,
-            90_000,
-        );
+        const identifier = wallet || quotaIdentifier || 'anon';
+        const quota = await consumeFreeQuota(identifier);
         if (quota.allowed) {
             return { ok: true, free: true, remaining: quota.remaining };
         }

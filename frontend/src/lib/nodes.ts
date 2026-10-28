@@ -1,3 +1,4 @@
+import { canonicalModelId } from './modelId';
 /**
  * GSTD Node Network — shared helpers for resolving and calling
  * nodes in the decentralized GSTD swarm.
@@ -69,7 +70,7 @@ export async function getActiveNodes(preferModel?: string): Promise<ActiveNode[]
                 const models: string[]  = n.capabilities || n.models || [];
                 const ramFreeMb: number = n.ram_free_mb  ?? (n.ram_mb ? n.ram_mb * 0.4 : 0);
                 const cpuScore: number  = n.cpu_score    ?? n.cpu_cores * 10;
-                const hasModel = models.includes(model);
+                const hasModel = models.some(id => canonicalModelId(id) === canonicalModelId(model));
                 if (model !== 'auto' && !hasModel) continue;
                 const score = (hasModel ? 100 : 0) + (ramFreeMb / 1024) * 10 + cpuScore * 0.1;
 
@@ -165,8 +166,8 @@ export async function callNodeChat(
             });
             if (!resp.ok) { lastErr = `Node ${resp.status}`; continue; }
             const data: any = await resp.json();
-            if (data._gstd?.tier === 'fallback') { lastErr = 'Node busy'; continue; }
-            if (model && model !== 'auto' && data.model !== model) { lastErr = 'model_mismatch'; continue; }
+            if (data._gstd?.tier === 'fallback' || data._gstd?.error) { lastErr = 'Node busy'; continue; }
+            if (model && model !== 'auto' && (typeof data.model !== 'string' || canonicalModelId(data.model) !== canonicalModelId(model))) { lastErr = 'model_mismatch'; continue; }
             const content = data.choices?.[0]?.message?.content || '';
             if (!content) { lastErr = 'Empty response'; continue; }
             const matchedNode = nodes.find((n) => n.url === url);
@@ -210,6 +211,8 @@ export async function callNodeParallel(
         });
         if (!resp.ok) throw new Error(`Node ${resp.status}`);
         const data: any = await resp.json();
+        if (data._gstd?.error || data._gstd?.tier === 'fallback') throw new Error('inference_failed');
+        if (model && model !== 'auto' && (typeof data.model !== 'string' || canonicalModelId(data.model) !== canonicalModelId(model))) throw new Error('model_mismatch');
         const content = data.choices?.[0]?.message?.content || '';
         if (!content) throw new Error('Empty');
         return { content, latency: Date.now() - start, nodeId: node.nodeId };
@@ -263,11 +266,15 @@ export async function* streamNodeChat(
             if (!line.startsWith('data: ')) continue;
             const chunk = line.slice(6).trim();
             if (chunk === '[DONE]') return;
-            try {
-                const parsed = JSON.parse(chunk);
-                const delta = parsed.choices?.[0]?.delta?.content;
-                if (delta) yield delta;
-            } catch { continue; }
+            let parsed: any;
+            try { parsed = JSON.parse(chunk); } catch { continue; }
+            if (parsed.error || parsed._gstd?.error || parsed._gstd?.tier === 'fallback') throw new Error('inference_failed');
+            if (model && model !== 'auto' && (typeof parsed.model !== 'string' || canonicalModelId(parsed.model) !== canonicalModelId(model))) {
+                await reader.cancel();
+                throw new Error('model_mismatch');
+            }
+            const delta = parsed.choices?.[0]?.delta?.content;
+            if (delta) yield delta;
         }
     }
 }

@@ -58,6 +58,11 @@ jobs:
 
   # в”Ђв”Ђ Cloudflare Workers deployment в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
   deploy:
+    # Preview and production share Worker versions and secret bindings across runs.
+    # Finish an active deployment before another run mutates those resources.
+    concurrency:
+      group: gstd-platform-cloudflare-deploy
+      cancel-in-progress: false
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     name: Deploy to Cloudflare

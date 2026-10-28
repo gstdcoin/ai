@@ -1,3 +1,4 @@
+import { canonicalModelId } from '../../../../lib/modelId';
 /**
  * POST /api/v1/chat/completions
  *
@@ -11,121 +12,17 @@ export const config = { maxDuration: 115 };
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getClientIp } from '../../../../lib/ratelimit';
-import { kvGet, kvKeys, kvMGet, kvSet, kvRateLimit } from '../../../../lib/kv';
+import { kvSet, kvRateLimit } from '../../../../lib/kv';
 import { randomBytes } from 'crypto';
 import { validateEnterpriseKey } from '../enterprise/keys';
 import { recordEnterpriseUsage } from '../enterprise/usage';
 import { chargeFee, refundFee, getModelPrice } from '../../../../lib/billing';
 import { paidInference } from '../../../../lib/paidInference';
 import { sessionWallet } from '../../../../lib/walletSession';
-import { safeNodeUrl } from '../../../../lib/safeNodeUrl';
+import { getActiveNodes } from '../../../../lib/nodes';
 
-// Map OpenAI/legacy model IDs → Ollama IDs (all inference via GSTD nodes)
-const MODEL_ALIASES: Record<string, string> = {
-    'gpt-4':                                       'llama3.1:70b',
-    'gpt-4o':                                      'llama3.1:70b',
-    'gpt-4-turbo':                                 'llama3.1:70b',
-    'gpt-3.5-turbo':                               'llama3.1:8b',
-    'auto':                                        'auto',
-    // Legacy Groq IDs — transparently mapped, not routed to Groq
-    'llama-3.3-70b-versatile':                     'llama3.1:70b',
-    'llama-3.1-8b-instant':                        'llama3.1:8b',
-    'meta-llama/llama-4-scout-17b-16e-instruct':   'llama3.1:8b',
-    'qwen/qwen3-32b':                              'qwen2.5:32b',
-    'moonshotai/kimi-k2-instruct':                 'qwen2.5:7b',
-    'openai/gpt-oss-120b':                         'llama3.1:70b',
-    'openai/gpt-oss-20b':                          'qwen2.5:7b',
-    'mixtral-8x7b-32768':                          'mixtral:8x7b',
-    'gemma2-9b-it':                                'gemma2:2b',
-    // Native Ollama IDs — pass through
-    'llama3.2:3b':    'llama3.2:3b',
-    'llama3.2:1b':    'llama3.2:1b',
-    'llama3.1:8b':    'llama3.1:8b',
-    'llama3.1:70b':   'llama3.1:70b',
-    'qwen2.5:7b':     'qwen2.5:7b',
-    'qwen2.5:14b':    'qwen2.5:14b',
-    'qwen2.5:32b':    'qwen2.5:32b',
-    'mistral:7b':     'mistral:7b',
-    'phi3:mini':      'phi3:mini',
-    'phi3:medium':    'phi3:medium',
-    'gemma2:2b':      'gemma2:2b',
-    'deepseek-r1:14b': 'deepseek-r1:14b',
-    'deepseek-r1:70b': 'deepseek-r1:70b',
-    'codellama:7b':   'codellama:7b',
-    'codellama:13b':  'codellama:13b',
-    'nomic-embed-text': 'nomic-embed-text',
-};
-
-const DEFAULT_MODEL   = 'llama3.2:3b';
-const ROUTE_TIMEOUT   = 110_000;
-const NODE_MAX_AGE_MS = 600_000; // 10 minutes
-
-interface NodeRecord {
-    node_url?: string;
-    multiaddrs?: string[];
-    capabilities?: string[];
-    last_seen?: string;
-    tasks_completed?: number;
-    has_gpu?: boolean;
-}
-
-// Pick the best online node that supports `model`.
-// Falls back to any online node if no capability-specific match (allows unknown models).
-async function resolveNodeUrl(model: string): Promise<string> {
-    // 1. Env override (single-node dev/test mode)
-    const envUrl = safeNodeUrl(process.env.GSTD_NODE_URL, { trusted: true });
-    if (envUrl) return envUrl;
-
-    // 2. Scan KV for live nodes, prefer those with the requested model
-    const withModel: Array<{ url: string; tasks: number }> = [];
-    const anyNode:   Array<{ url: string; tasks: number }> = [];
-
-    try {
-        const nodeKeys = (await kvKeys('node:')).filter((k: string) => !k.slice(5).includes(':'));
-        if (nodeKeys.length > 0) {
-            const values = await kvMGet(nodeKeys);
-            const now = Date.now();
-            for (const raw of values) {
-                if (!raw) continue;
-                const node: NodeRecord = JSON.parse(raw as string);
-                const url = safeNodeUrl(node.node_url || node.multiaddrs?.[0] || '');
-                if (!url) continue;
-                const age = now - new Date(node.last_seen || 0).getTime();
-                if (age > NODE_MAX_AGE_MS) continue;
-
-                const entry = { url, tasks: node.tasks_completed ?? 0 };
-                anyNode.push(entry);
-
-                const caps: string[] = node.capabilities || [];
-                // Match exact model, or any node if model is a free/basic model
-                if (caps.includes(model) || caps.length === 0) {
-                    withModel.push(entry);
-                }
-            }
-        }
-    } catch { /* KV unavailable */ }
-
-    // Pick least-loaded from capability-matched nodes, then fall back to any
-    const candidates = withModel.length > 0 ? withModel : anyNode;
-    if (candidates.length > 0) {
-        candidates.sort((a, b) => a.tasks - b.tasks);
-        return candidates[0].url;
-    }
-
-    // 3. GitHub fallback — updated by tunnel.sh on each tunnel start
-    try {
-        const ghResp = await fetch(
-            `https://raw.githubusercontent.com/gstdcoin/ai/main/node-url.txt?t=${Math.floor(Date.now() / 30000)}`,
-            { signal: AbortSignal.timeout(4000) }
-        );
-        if (ghResp.ok) {
-            const url = safeNodeUrl(await ghResp.text());
-            if (url) return url;
-        }
-    } catch { /* GitHub unavailable */ }
-
-    return '';
-}
+const DEFAULT_MODEL = 'llama3.2:3b';
+const ROUTE_TIMEOUT = 110_000;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') {
@@ -186,10 +83,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Check enterprise model restriction
-    let resolvedModel = MODEL_ALIASES[model] || (typeof model === 'string' && model ? model : DEFAULT_MODEL);
+    const resolvedModel = typeof model === 'string' && model ? model : DEFAULT_MODEL;
     if (enterpriseKey && enterpriseKey.allowed_models.length > 0) {
         if (!enterpriseKey.allowed_models.includes(resolvedModel)) {
-            resolvedModel = enterpriseKey.allowed_models[0];
+            return res.status(403).json({ error: 'model_not_allowed', model: resolvedModel });
         }
     }
 
@@ -214,7 +111,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     let billingCharge = 0;
     if (!enterpriseKey) {
-        const charge = await chargeFee(walletAddress, resolvedModel, null);
+        const charge = await chargeFee(walletAddress, resolvedModel, null, 'ip:' + getClientIp(req.headers));
         if (!charge.ok) {
             if (charge.error === 'no_wallet') {
                 return res.status(402).json({
@@ -237,7 +134,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // ── Resolve GSTD node (model-aware: picks node that has this model) ───
-    const nodeUrl = await resolveNodeUrl(resolvedModel);
+    const candidates = await getActiveNodes(resolvedModel);
+    const nodeUrl = candidates[0]?.url;
 
     if (!nodeUrl) {
         if (walletAddress && billingCharge > 0) await refundFee(walletAddress, billingCharge);
@@ -252,7 +150,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 finish_reason: 'stop',
             }],
             usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
-            _gstd: { error: 'no_node_available' },
+            _gstd: { error: resolvedModel === 'auto' ? 'no_node_available' : 'model_unavailable' },
         });
     }
 
@@ -280,7 +178,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         const data: any = await resp.json();
+        if (resolvedModel !== 'auto' && (typeof data.model !== 'string' || canonicalModelId(data.model) !== canonicalModelId(resolvedModel))) {
+            return res.status(502).json({ error: 'model_mismatch', requested_model: resolvedModel });
+        }
         const content   = data.choices?.[0]?.message?.content || '';
+        if (!content.trim() || data._gstd?.error || data._gstd?.tier === 'fallback') {
+            return res.status(502).json({ error: 'inference_failed', model: resolvedModel });
+        }
         const usage     = data.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
 
         // Record enterprise usage

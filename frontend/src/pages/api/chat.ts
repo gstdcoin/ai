@@ -14,7 +14,8 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { resolveNodeUrl, callNodeChat, streamNodeChat, NODE_MODEL, ChatMessage } from '../../lib/nodes';
 import { kvGet } from '../../lib/kv';
 import { paidInference } from '../../lib/paidInference';
-import {getModelPrice} from '../../lib/billing';
+import {getModelPrice, consumeFreeQuota} from '../../lib/billing';
+import {getClientIp} from '../../lib/ratelimit';
 
 // ─── Expert personas ──────────────────────────────────────────────────────────
 // Virtual specialties — each gets a unique system prompt to the same GSTD node
@@ -237,17 +238,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const start = Date.now();
     const collectiveTier = TIERS[tier] || TIERS.free;
 
-    if (collectiveTier.cost > 0) {
+    const selectedFreeModel = typeof model === 'string' && model !== 'compound' ? model : 'auto';
+    if (collectiveTier.cost === 0 && selectedFreeModel !== 'auto' && getModelPrice(selectedFreeModel) > 0) return res.status(402).json({error:'paid_model_requires_paid_tier',message:'Choose a paid tier to reserve GSTD for this model.'});
+    const requestPrice = collectiveTier.cost > 0 && selectedFreeModel !== 'auto' ? getModelPrice(selectedFreeModel) : collectiveTier.cost;
+    if (requestPrice > 0) {
         const wallet = sessionToken ? await kvGet(`ton-auth:session:${sessionToken}`) : null;
-        return paidInference(req,res,{ wallet, price: collectiveTier.cost, model: typeof model === 'string' && model !== 'compound' ? model : 'auto',
+        return paidInference(req,res,{ wallet, price: requestPrice, model: typeof model === 'string' && model !== 'compound' ? model : 'auto',
             messages, maxTokens: tier === 'ultra' ? 2048 : tier === 'pro' ? 1536 : 1024, surface: 'web', tier });
     }
 
-    const selectedFreeModel = typeof model === 'string' && model !== 'compound' ? model : 'auto';
-    if (selectedFreeModel !== 'auto' && getModelPrice(selectedFreeModel) > 0) return res.status(402).json({error:'paid_model_requires_paid_tier',message:'Choose a paid tier to reserve GSTD for this model.'});
+    try {
+        const wallet = sessionToken ? await kvGet(`ton-auth:session:${sessionToken}`) : null;
+        const quota = await consumeFreeQuota(wallet || 'ip:' + getClientIp(req.headers));
+        if (!quota.allowed) return res.status(429).json({error:'free_daily_quota_exceeded',limit:50});
+    } catch { return res.status(503).json({error:'quota_service_unavailable'}); }
 
     // ─── FREE TIER — single GSTD node call ───────────────────────────────────
-    if (tier === 'free' || collectiveTier.expertCount <= 1) {
+    if (requestPrice === 0) {
         const userQ = messages.filter((m: ChatMessage) => m.role === 'user').pop()?.content || '';
         const kbFacts = await lookupKnowledge(userQ);
         const kbCtx = kbFacts ? `\n\nVERIFIED FACTS:\n${kbFacts}\nUse if relevant.` : '';

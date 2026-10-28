@@ -1,3 +1,4 @@
+import { getModelPrice } from '../lib/modelPricing';
 import { GetStaticProps } from 'next';
 import { useTranslation } from 'next-i18next';
 import { getCommonStaticProps } from '../lib/i18n-static-props';
@@ -290,28 +291,28 @@ export default function ChatPage() {
     const { t } = useTranslation('common');
 
     // ─── Collective Intelligence Tiers ─────────────────────────────
-    const INTELLIGENCE_TIERS = [
+    const BASE_TIERS = [
         {
-            id: 'free', name: 'Standard Mode', badge: '🆓', cost: 0, expertCount: 1,
-            desc: 'One model answers your request.',
+            id: 'free', name: t('chat_accounting.free_name'), badge: '🆓', cost: 0, expertCount: 1,
+            desc: t('chat_accounting.free_desc'),
             color: 'text-gray-400', bg: 'bg-white/3', border: 'border-white/6',
             icon: <Shield size={16} />
         },
         {
-            id: 'standard', name: 'Standard', badge: '🔬', cost: 0.05, expertCount: 1,
-            desc: 'One registered node, up to 1,024 output tokens. Charged on success.',
+            id: 'standard', name: t('chat_accounting.standard_name'), badge: '🔬', cost: 0.05, expertCount: 1,
+            desc: t('chat_accounting.standard_desc'),
             color: 'text-blue-400', bg: 'bg-blue-500/6', border: 'border-blue-500/20',
             icon: <Zap size={16} />
         },
         {
-            id: 'pro', name: 'Pro', badge: '🔥', cost: 0.15, expertCount: 1,
-            desc: 'One registered node, up to 1,536 output tokens. Charged on success.',
+            id: 'pro', name: t('chat_accounting.pro_name'), badge: '🔥', cost: 0.15, expertCount: 1,
+            desc: t('chat_accounting.pro_desc'),
             color: 'text-amber-400', bg: 'bg-amber-500/6', border: 'border-amber-500/20',
             icon: <Globe size={16} />
         },
         {
-            id: 'ultra', name: 'Extended', badge: '🧠', cost: 0.50, expertCount: 1,
-            desc: 'One registered node, up to 2,048 output tokens. Charged on success.',
+            id: 'ultra', name: t('chat_accounting.ultra_name'), badge: '🧠', cost: 0.50, expertCount: 1,
+            desc: t('chat_accounting.ultra_desc'),
             color: 'text-violet-400', bg: 'bg-violet-500/6', border: 'border-violet-500/20',
             icon: <Cpu size={16} />
         },
@@ -337,6 +338,7 @@ export default function ChatPage() {
     const [liveModels,setLiveModels]=useState<Array<{model_id:string;nodes_count:number;price_gstd:number}>>([]);
     useEffect(()=>{let active=true;fetch('/api/v1/models/available').then(r=>r.ok?r.json():null).then(d=>{if(active&&Array.isArray(d?.models)){setLiveModels(d.models);const requested=new URLSearchParams(window.location.search).get('model');const found=d.models.find((m:any)=>m.model_id===requested);if(found){setSelectedModel(found.model_id);if(found.price_gstd>0)setSelectedTier('standard')}}}).catch(()=>{});return()=>{active=false}},[]);
     const [selectedTier, setSelectedTier] = useState('free');
+    const INTELLIGENCE_TIERS = BASE_TIERS.map(tier=>({...tier,cost:tier.id==='free'||selectedModel==='auto'?tier.cost:getModelPrice(selectedModel)}));
     const [showTierPicker, setShowTierPicker] = useState(false);
     const [showSidebar, setShowSidebar] = useState(false);
     const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -534,7 +536,10 @@ export default function ChatPage() {
                     setCollectivePhase(null);
                     return;
                 }
-                throw new Error(`Error ${response.status}`);
+                const errData = await response.json().catch(() => ({}));
+                if (errData.error === 'free_daily_quota_exceeded') throw new Error(t('chat_accounting.daily_limit'));
+                if (errData.error === 'quota_service_unavailable') throw new Error(t('chat_accounting.quota_unavailable'));
+                throw new Error(t('chat_accounting.request_unavailable'));
             }
 
             // ─── Parse SSE stream ────────────────────────────────
@@ -791,7 +796,7 @@ export default function ChatPage() {
                         <span className="text-sm">{currentTier.badge}</span>
                         <div className="flex-1 min-w-0">
                             <div className={`text-[11px] font-medium truncate ${currentTier.color}`}>{currentTier.name}</div>
-                            <div className="text-[9px] text-gray-600">{currentTier.expertCount} {currentTier.expertCount === 1 ? 'expert' : 'experts'}</div>
+                            <div className="text-[9px] text-gray-600">{t('chat_accounting.single_node')}</div>
                         </div>
                         {currentTier.cost > 0 ? (
                             <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 font-bold">{currentTier.cost} GSTD</span>
@@ -849,13 +854,13 @@ export default function ChatPage() {
                                     <div className="fixed inset-0 z-40" onClick={() => setShowTierPicker(false)} />
                                     <div className="absolute top-full left-0 mt-3 w-84 bg-[#0a0a1f] border border-white/10 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.8)] z-50 py-1.5 overflow-hidden backdrop-blur-3xl">
                                         <div className="px-4 py-2.5 border-b border-white/4 bg-white/2">
-                                            <span className="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em]">Answer mode</span>
+                                            <span className="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em]">{t('chat_accounting.mode')}</span>
                                         </div>
                                         <div className="p-1 px-2 space-y-1">
                                             {INTELLIGENCE_TIERS.map(tier => (
                                                 <button
                                                     key={tier.id}
-                                                    onClick={() => { setSelectedTier(tier.id); setShowTierPicker(false); }}
+                                                    onClick={() => { setSelectedTier(tier.id); if(tier.id==='free'&&getModelPrice(selectedModel)>0)setSelectedModel('auto'); setShowTierPicker(false); }}
                                                     className={`w-full px-3 py-3 rounded-xl transition-all duration-200 text-left relative group ${selectedTier === tier.id ? `${tier.bg} border border-white/5` : 'hover:bg-white/3'}`}
                                                 >
                                                     <div className="flex items-start gap-3.5">
@@ -874,7 +879,7 @@ export default function ChatPage() {
                                                             <div className="text-[11px] text-gray-500 leading-snug mt-1 font-medium italic opacity-70 mb-1">{tier.desc}</div>
                                                             <div className="flex items-center gap-1.5 opacity-40 group-hover:opacity-100 transition-opacity">
                                                                 <div className="w-1 h-1 rounded-full bg-violet-400" />
-                                                                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{tier.expertCount} AI architectures</span>
+                                                                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{t('chat_accounting.single_node')}</span>
                                                             </div>
                                                         </div>
                                                         {selectedTier === tier.id && (
@@ -890,7 +895,7 @@ export default function ChatPage() {
                                             <div className="flex gap-2.5">
                                                 <Brain size={14} className="text-violet-400 shrink-0 mt-0.5" />
                                                 <p className="text-[10px] text-gray-500 leading-relaxed font-medium">
-                                                    Paid tiers run several model passes and combine them. This can improve answers but does not remove mistakes; check important facts yourself.
+                                                    {t('chat_accounting.mode_note')}
                                                 </p>
                                             </div>
                                         </div>
@@ -1088,7 +1093,7 @@ export default function ChatPage() {
                             )}
                         </div>
                         <p className="text-[10px] text-gray-700 text-center mt-2.5">
-                            {currentTier.badge} {currentTier.name} · {currentTier.expertCount} {currentTier.expertCount === 1 ? 'expert' : 'experts'}{currentTier.cost > 0 ? ` · ${currentTier.cost} GSTD` : ' · Free'} · Shift+Enter for new line
+                            {currentTier.badge} {currentTier.name} · {t('chat_accounting.single_node')}{currentTier.cost > 0 ? ` · ${currentTier.cost} GSTD` : ' · Free'} · Shift+Enter for new line
                         </p>
                     </div>
                 </div>
