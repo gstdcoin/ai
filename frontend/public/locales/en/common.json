@@ -1626,5 +1626,6 @@
     "network_intro": "Ask a question. Answers come from open models on network nodes.",
     "network_online": "Nodes online: {{count}}. Answers come from open models on network nodes.",
     "new_line": "Shift+Enter for a new line"
-  }
+  },
+  "nav_site": "About GSTD"
 }

@@ -1,30 +1,27 @@
 # Platform operational contract
 
-Updated 2026-10-25. The canonical platform is `https://app.gstdtoken.com`.
+Updated 2026-10-28. The canonical platform is `https://app.gstdtoken.com`.
 The marketing site is `https://gstdtoken.com`. The legacy `platform.gstdtoken.com` Worker has a separate registry and must not be used as evidence for this platform.
 
 ## Supported core
 
 1. A real node registers with its persistent Ed25519 identity and operator wallet.
-2. Signed heartbeats refresh its 10-minute liveness lease and current public URL.
+2. Signed heartbeats refresh its 10-minute liveness lease and, when configured, its current public URL. Outbound assigned work does not require a public URL; direct network chat does.
 3. Authenticated POST `/api/v1/tasks/poll` atomically assigns supported work.
 4. The node computes locally and submits a successful non-empty result to `/api/v1/tasks/complete`.
-5. Only accepted assignments change task counters and ledger rewards. Heartbeats cannot set those counters.
+5. Only accepted assignments change task counters; only accepted funded work creates ledger rewards. Heartbeats cannot set either counter.
 6. Public node/peer/reward APIs parse actual node records and exclude metadata, corrupt records and expired peers.
 
 Node and TonConnect signature verification uses native Ed25519 rather than CPU-heavy JavaScript cryptography.
 The Redis SDK may return decoded JSON objects; multi-get and queue pop preserve their JSON representation. Task results require a signed assigned worker; completion-only reporting also makes the result retrievable.
 
-## Validation for this release
+## Validation and evidence
 
-- Platform: 149 Vitest tests and 11 TonConnect tests pass; TypeScript, ESLint (warnings only) and Next.js production build pass.
-- Node: version 3.5.4; 207 tests pass, including subprocess failure/recovery; TypeScript build passes on Linux ARM64.
-- A2A: 24 Python tests and 5 Node tests pass.
-- Contracts: 21 sandbox tests pass. These are not a production settlement transaction or independent audit.
+Current acceptance is tracked in [READINESS.md](READINESS.md), with [GitHub CI and deployment results](https://github.com/gstdcoin/ai/actions). Run the platform test suite, TypeScript checks and disposable Redis financial tests before publishing. The node repository separately checks fresh-source installation and offline non-root startup.
 
-The release must also pass the repository's Cloudflare preview/deploy workflow and live node/task checks. Local tests alone do not prove production health.
+The real platform uses one physical 3.7 compute node. Local and public-platform inference have returned real model responses. Isolated accounting tests are not mainnet transactions or proof of multi-host resilience.
 
-Production dependencies use patched Next.js 16.4.3 and Zod 4.6.7; the production dependency audit reports zero vulnerabilities. The TON SDK dependency override is covered by all 11 wallet-proof tests. CI deployment requires both frontend validation and the security audit.
+Dependency audits and wallet-proof regressions are required. At the October 28 check there are no moderate/high/critical npm advisories in the platform tree, but a low-severity deepmerge issue remains in the TON Connect dependency chain without an npm-provided fix. Do not describe this as a clean independent security audit.
 
 ## Accounting and deployment boundaries
 

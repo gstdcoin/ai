@@ -1,27 +1,37 @@
-# GSTD: one network, three ways to use it
+# GSTD: one ecosystem, clear entry points
 
-The product starts with utility, not token purchase. The three supported entry paths are: ask AI, connect a node, and build with the node API. Telegram is another interface to the same platform, not a second network.
+Start with utility: ask AI, connect a node, or build with the API. Telegram is another interface to the platform. The website and application have different roles; they do not maintain separate balances or registries.
 
 ## Canonical entry points
 
 | Need | Entry | Responsibility |
 |---|---|---|
-| Ask AI without installation | https://gstdtoken.com/ai | Chat; identify node versus Cloudflare fallback honestly |
-| Platform chat and network status | https://app.gstdtoken.com | Canonical registry, queue, assignment and accepted-result accounting |
-| AI in Telegram | https://t.me/gstdaibot | Platform webhook, six locales, conversation state and bounded daily use |
-| Contribute compute | https://gstdtoken.com/nodes | One canonical installer from gstdcoin/gstdbot; installed models perform real work |
-| Build an application | https://gstdtoken.com/developers | A first OpenAI-compatible request to an operator gateway |
+| Learn what GSTD does | https://gstdtoken.com | Explanation, requirements and project information |
+| Use network AI | https://app.gstdtoken.com/chat | Main application chat and explicit model selection |
+| Try the separate free demonstration | https://gstdtoken.com/ai | Demo preserved at its existing URL; Cloudflare fallback requires explicit consent |
+| See live nodes | https://app.gstdtoken.com/nodes | Canonical registry and operator status |
+| Balance, rewards and withdrawals | https://app.gstdtoken.com/payments | One payment ledger; connect the personal payout wallet configured on the node |
+| Install a node | https://gstdtoken.com/nodes | Supported hardware and the canonical installer from gstdcoin/gstdbot |
+| Build an application | https://gstdtoken.com/developers | API documentation and repository links |
+| Use Telegram | https://t.me/gstdaibot | Platform webhook and conversation interface |
 
-A wallet is not needed to try the free AI chat. GSTD is the compute payment token. Funded accepted work and on-chain settlement are separate from free/unfunded tasks; neither free chat nor mere presence promises a payout.
+RU/EN links preserve the selected language. Moving from the website demo to the application does not automatically transfer its private conversation. A wallet is not needed for free AI use.
 
-## One execution path
+## Two delivery methods, one accounting rule
 
-A registered node owns a persistent Ed25519 identity and operator wallet. Signed heartbeats publish its current public address to app.gstdtoken.com. Gateways submit inference through the canonical queue; the existing worker wakes, computes locally, signs its completion, and makes the accepted result available. Browser and Telegram interfaces call live node inference; Cloudflare AI, when used, is labeled as fallback.
+A registered node owns a persistent Ed25519 identity and an external payout address. Signed registration and heartbeats publish capabilities to the canonical platform registry. Registration and an online badge are not earnings.
 
-Applications start with HTTP POST /v1/chat/completions on an operator gateway. model=auto selects a model; messages carry the conversation; max_tokens bounds generation; stream=true produces SSE. Developers should agree access, rate limits and payment with the operator, keep secrets server-side, and avoid hardcoding temporary tunnel addresses.
+- **Direct inference:** application chat chooses an available registered executor with a reachable public inference URL. A paid request reserves backed GSTD before computation and captures it only after an accepted response. A private node without such a URL is not automatically reachable by this method.
+- **Assigned background work:** a funded campaign can create an assigned task. The signed worker polls outward, computes locally, and submits its signed result. This path does not require an incoming public node URL. Only accepted funded tasks can create rewards; an empty queue means no assignment is available.
 
-## Keep it small
+Both paid methods use 85% executor / 10% protocol / 5% reserve. Free local requests, the demo, promotional use and unfunded tasks do not create withdrawable GSTD. Earned credits can be used for paid network requests or an owner-signed withdrawal. A real backed mainnet deposit-to-withdrawal cycle remains an explicit acceptance gate, not an achievement inferred from unit tests.
 
-Reuse the existing website, platform, node and Telegram webhook. Do not add a new backend, parallel registry, app shell, token gate for first chat, or artificial dashboard metrics. Keep the free-tier schedules in [FREE_TIER_REQUEST_BUDGET.md](FREE_TIER_REQUEST_BUDGET.md). Add new task kinds only when an actual executor, validation and a simple user path exist.
+## Keep the node small
 
-The current installation has one physical Pi. Its operator selects a lightweight model for auto requests; installed larger models remain explicit options. Model size affects quality and latency. Independent multi-host consensus, distributed training, the bridge and mainnet settlement are outside that evidence. The temporary tunnel and Telegram owner setup remain explicit operational boundaries.
+Use the PIN-protected operator panel to check registration, installed models, payout address, load and update status. Hardware compatibility is an estimate, not a promise that any model runs on any device. Linux clusters currently run independent nodes; one model is not automatically pooled across machines.
+
+Local node inference defaults to local processing. Sending a query to the platform or another operator necessarily reveals its plaintext to that executor. Corporate fallback must be explicit. Do not hardcode temporary tunnel URLs or put private signing keys in a browser, node configuration or public repository.
+
+Keep the existing [free-tier request budget](FREE_TIER_REQUEST_BUDGET.md). The website, application and node reuse the canonical registry and payment ledger. Do not add parallel billing, fabricated metrics or presence rewards.
+
+The deployment currently has one physical compute node. Platform/Redis/custody, temporary public URLs and hosting remain operational dependencies. Multiple physical nodes, end-user Telegram delivery and restore drills require separate evidence. See [release readiness](READINESS.md).
