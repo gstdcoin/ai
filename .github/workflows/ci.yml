@@ -131,7 +131,7 @@ jobs:
         id: bootstrap
         run: |
           set -o pipefail
-          OPEN_NEXT_DEPLOY=true npx wrangler deploy --config wrangler.jsonc 2>&1 | tee "$RUNNER_TEMP/wrangler-bootstrap.log"
+          OPEN_NEXT_DEPLOY=true bash ../scripts/retry-cloudflare-transient.sh npx wrangler deploy --config wrangler.jsonc 2>&1 | tee "$RUNNER_TEMP/wrangler-bootstrap.log"
           worker_url="$(grep -Eo 'https://[[:alnum:].-]+\.workers\.dev' "$RUNNER_TEMP/wrangler-bootstrap.log" | tail -n 1 || true)"
           if [ -z "$worker_url" ]; then
             echo "::error::Wrangler did not report a workers.dev URL"
@@ -160,7 +160,7 @@ jobs:
           KV_REST_API_TOKEN: ${{ secrets.KV_REST_API_TOKEN }}
 
       - name: Deploy preview and populate prerender cache
-        run: npm run cf:deploy -- --config=wrangler.jsonc
+        run: bash ../scripts/retry-cloudflare-transient.sh npm run cf:deploy -- --config=wrangler.jsonc
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -426,7 +426,7 @@ jobs:
           KV_REST_API_TOKEN: ${{ secrets.KV_REST_API_TOKEN }}
 
       - name: Deploy production route
-        run: npm run cf:deploy -- --config=wrangler.production.jsonc
+        run: bash ../scripts/retry-cloudflare-transient.sh npm run cf:deploy -- --config=wrangler.production.jsonc
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

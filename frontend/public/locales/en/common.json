@@ -1618,6 +1618,13 @@
     "mode_note": "Each mode makes one model call. Modes change the output limit, not the number of experts. A named model uses its catalogue price; auto uses the displayed mode price. Check important facts yourself.",
     "daily_limit": "The daily limit of 50 free requests has been reached. Try again after 00:00 UTC or choose a paid model.",
     "quota_unavailable": "The free request limit cannot be checked right now. No inference was started. Please try again later.",
-    "request_unavailable": "The request could not be completed. Please try again later."
+    "request_unavailable": "The request could not be completed. Please try again later.",
+    "connect_wallet": "Connect wallet",
+    "select_model": "Select a model",
+    "auto_model": "Auto — configured node default",
+    "model_nodes": "Nodes: {{count}}",
+    "network_intro": "Ask a question. Answers come from open models on network nodes.",
+    "network_online": "Nodes online: {{count}}. Answers come from open models on network nodes.",
+    "new_line": "Shift+Enter for a new line"
   }
 }

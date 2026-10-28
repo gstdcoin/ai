@@ -22,6 +22,9 @@ export function rateLimit(key: string, maxReq: number, windowMs: number): boolea
 }
 
 export function getClientIp(headers: Record<string, string | string[] | undefined>): string {
+    // Cloudflare sets this edge header; a client may supply X-Forwarded-For.
+    const edgeIp = headers['cf-connecting-ip'];
+    if (typeof edgeIp === 'string' && edgeIp.trim()) return edgeIp.trim();
     const fwd = headers['x-forwarded-for'];
     if (typeof fwd === 'string') return fwd.split(',')[0].trim();
     if (Array.isArray(fwd)) return fwd[0].split(',')[0].trim();
