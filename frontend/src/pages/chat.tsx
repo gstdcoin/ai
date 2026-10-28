@@ -801,7 +801,7 @@ export default function ChatPage() {
                         {currentTier.cost > 0 ? (
                             <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 font-bold">{currentTier.cost} GSTD</span>
                         ) : (
-                            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold">FREE</span>
+                            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold">{t('chat_accounting.free_name')}</span>
                         )}
                     </div>
 
@@ -873,7 +873,7 @@ export default function ChatPage() {
                                                                 {tier.cost > 0 ? (
                                                                     <span className="text-[9px] px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-500 font-black border border-amber-500/20 tabular-nums">{tier.cost} GSTD</span>
                                                                 ) : (
-                                                                    <span className="text-[9px] px-2 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-400 font-black border border-emerald-500/20 uppercase tracking-tighter">FREE</span>
+                                                                    <span className="text-[9px] px-2 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-400 font-black border border-emerald-500/20 uppercase tracking-tighter">{t('chat_accounting.free_name')}</span>
                                                                 )}
                                                             </div>
                                                             <div className="text-[11px] text-gray-500 leading-snug mt-1 font-medium italic opacity-70 mb-1">{tier.desc}</div>

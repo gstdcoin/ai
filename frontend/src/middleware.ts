@@ -18,6 +18,7 @@ function rateLimit(key: string, max: number, windowMs: number): boolean {
 
 function getIp(req: NextRequest): string {
     return (
+        req.headers.get('cf-connecting-ip') ??
         req.headers.get('x-forwarded-for')?.split(',')[0].trim() ??
         req.headers.get('x-real-ip') ??
         'unknown'
@@ -45,6 +46,18 @@ export default function middleware(req: NextRequest) {
         return NextResponse.next();
     }
 
+    // Preflight is a capability check, not an inference request. Do not forward
+    // OPTIONS to POST-only handlers or consume the inference burst quota.
+    if (req.method === 'OPTIONS') {
+        return new NextResponse(null, { status: 204, headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Session-Token, X-Wallet-Address, Idempotency-Key',
+            'Access-Control-Max-Age': '600',
+            'X-Content-Type-Options': 'nosniff',
+        } });
+    }
+
     const ip = getIp(req);
     const [max, windowMs] = LIMITS[pathname] ?? DEFAULT_LIMIT;
     const allowed = rateLimit(`${ip}:${pathname}`, max, windowMs);
@@ -57,6 +70,7 @@ export default function middleware(req: NextRequest) {
                 headers: {
                     'Content-Type': 'application/json',
                     'Retry-After': '60',
+                    'Access-Control-Allow-Origin': '*',
                     'X-RateLimit-Limit': String(max),
                 },
             }
@@ -71,13 +85,7 @@ export default function middleware(req: NextRequest) {
     res.headers.set('X-XSS-Protection', '1; mode=block');
     res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
     // Allow cross-origin requests for the public API (nodes/agents call from anywhere)
-    if (req.method === 'OPTIONS') {
-        res.headers.set('Access-Control-Allow-Origin', '*');
-        res.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-        res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Session-Token, X-Wallet-Address, Idempotency-Key');
-    } else {
-        res.headers.set('Access-Control-Allow-Origin', '*');
-    }
+    res.headers.set('Access-Control-Allow-Origin', '*');
 
     return res;
 }
