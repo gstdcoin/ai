@@ -349,7 +349,7 @@ export default function ChatPage() {
             setSelectedModel(requested);
         }
         setCatalogueState('loading');
-        fetch('/api/v1/models/available').then(response => {
+        fetch('/api/v1/models/available', { signal: AbortSignal.timeout(8000) }).then(response => {
             if (!response.ok) throw Error('catalogue_failed');
             return response.json();
         }).then(data => {
@@ -1110,7 +1110,8 @@ export default function ChatPage() {
                                 <button
                                     onClick={() => handleSend()}
                                     disabled={!input.trim() || !!modelBlockReason}
-                                    className={`p-2.5 sm:p-3 rounded-2xl transition-all shrink-0 ml-2 ${input.trim()
+                                    aria-label={t('chat_accounting.send_message')}
+                                    className={`p-2.5 sm:p-3 rounded-2xl transition-all shrink-0 ml-2 ${input.trim() && !modelBlockReason
                                         ? 'text-white bg-violet-600 hover:bg-violet-500 shadow-lg shadow-violet-500/25 scale-100 hover:scale-105'
                                         : 'text-gray-600 cursor-not-allowed bg-white/4'
                                         }`}

@@ -1631,7 +1631,8 @@
     "catalogue_failed": "Model availability could not be checked. Press Check availability again to retry; your selected model and draft remain unchanged.",
     "model_unavailable": "The requested model {{model}} is currently unavailable. Select another model explicitly; no replacement request has been sent.",
     "paid_tier_required": "The selected model {{model}} requires a paid tier. Select a paid tier or choose a different model; it will not be replaced automatically.",
-    "retry_availability": "Check availability again"
+    "retry_availability": "Check availability again",
+    "send_message": "Send message"
   },
   "nav_site": "About GSTD"
 }
