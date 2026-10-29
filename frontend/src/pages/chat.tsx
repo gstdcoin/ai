@@ -1,3 +1,4 @@
+import { requestedChatModel, chatModelBlockReason, type ChatCatalogueState } from '../lib/chatCatalogueSelection';
 import { getModelPrice } from '../lib/modelPricing';
 import { GetStaticProps } from 'next';
 import { useTranslation } from 'next-i18next';
@@ -336,8 +337,32 @@ export default function ChatPage() {
     const [isStreaming, setIsStreaming] = useState(false);
     const [selectedModel, setSelectedModel] = useState('auto');
     const [liveModels,setLiveModels]=useState<Array<{model_id:string;nodes_count:number;price_gstd:number}>>([]);
-    useEffect(()=>{let active=true;fetch('/api/v1/models/available').then(r=>r.ok?r.json():null).then(d=>{if(active&&Array.isArray(d?.models)){setLiveModels(d.models);const requested=new URLSearchParams(window.location.search).get('model');const found=d.models.find((m:any)=>m.model_id===requested);if(found){setSelectedModel(found.model_id);if(found.price_gstd>0)setSelectedTier('standard')}}}).catch(()=>{});return()=>{active=false}},[]);
+    const [catalogueState, setCatalogueState] = useState<ChatCatalogueState>('loading');
+    const [catalogueRevision, setCatalogueRevision] = useState(0);
+    const handoffApplied = useRef(false);
+    const userChangedModelOrTier = useRef(false);
+    useEffect(() => {
+        let active = true;
+        const requested = requestedChatModel(window.location.search);
+        if (!handoffApplied.current) {
+            handoffApplied.current = true;
+            setSelectedModel(requested);
+        }
+        setCatalogueState('loading');
+        fetch('/api/v1/models/available').then(response => {
+            if (!response.ok) throw Error('catalogue_failed');
+            return response.json();
+        }).then(data => {
+            if (!Array.isArray(data?.models)) throw Error('catalogue_failed');
+            if (!active) return;
+            setLiveModels(data.models);
+            setCatalogueState('ready');
+            if (catalogueRevision === 0 && !userChangedModelOrTier.current && data.models.some((model: any) => model.model_id === requested && model.price_gstd > 0)) setSelectedTier('standard');
+        }).catch(() => { if (active) setCatalogueState('failed'); });
+        return () => { active = false; };
+    }, [catalogueRevision]);
     const [selectedTier, setSelectedTier] = useState('free');
+    const modelBlockReason = chatModelBlockReason(selectedModel, liveModels, catalogueState, selectedTier);
     const INTELLIGENCE_TIERS = BASE_TIERS.map(tier=>({...tier,cost:tier.id==='free'||selectedModel==='auto'?tier.cost:getModelPrice(selectedModel)}));
     const [showTierPicker, setShowTierPicker] = useState(false);
     const [showSidebar, setShowSidebar] = useState(false);
@@ -437,7 +462,7 @@ export default function ChatPage() {
     // ─── Send Message (with SSE streaming) ──────────────────────
     const handleSend = async (overrideMessage?: string) => {
         const userMessage = (overrideMessage || input).trim();
-        if (!userMessage || isStreaming) return;
+        if (!userMessage || isStreaming || modelBlockReason) return;
         if (!overrideMessage) setInput('');
         if (inputRef.current) inputRef.current.style.height = 'auto';
 
@@ -860,7 +885,7 @@ export default function ChatPage() {
                                             {INTELLIGENCE_TIERS.map(tier => (
                                                 <button
                                                     key={tier.id}
-                                                    onClick={() => { setSelectedTier(tier.id); if(tier.id==='free'&&getModelPrice(selectedModel)>0)setSelectedModel('auto'); setShowTierPicker(false); }}
+                                                    onClick={() => { userChangedModelOrTier.current = true; setSelectedTier(tier.id); setShowTierPicker(false); }}
                                                     className={`w-full px-3 py-3 rounded-xl transition-all duration-200 text-left relative group ${selectedTier === tier.id ? `${tier.bg} border border-white/5` : 'hover:bg-white/3'}`}
                                                 >
                                                     <div className="flex items-start gap-3.5">
@@ -909,13 +934,14 @@ export default function ChatPage() {
                             <div className="relative group">
                                 <select
                                     value={selectedModel}
-                                    onChange={(e) => setSelectedModel(e.target.value)}
+                                    onChange={(e) => { userChangedModelOrTier.current = true; setSelectedModel(e.target.value); if (liveModels.some(model => model.model_id === e.target.value && model.price_gstd > 0) && selectedTier === 'free') setSelectedTier('standard'); }}
                                     className="appearance-none pl-3.5 pr-8 py-1.5 rounded-xl bg-white/3 border border-white/8 text-[12px] font-bold text-gray-400 outline-hidden hover:border-violet-500/30 hover:bg-white/6 transition-all cursor-pointer shadow-xs tracking-tight"
                                     title={t('chat_accounting.select_model')}
                                 >
                                     <option value="auto">{t('chat_accounting.auto_model')}</option>
-                                    {liveModels.filter(m=>selectedTier!=='free'||m.price_gstd===0).map(m=>(
-                                        <option key={m.model_id} value={m.model_id}>{m.model_id} · {t('chat_accounting.model_nodes', { count: m.nodes_count })}</option>
+                                    {selectedModel !== 'auto' && !liveModels.some(model => model.model_id === selectedModel) && <option value={selectedModel}>{selectedModel} · {t('chat_accounting.model_missing')}</option>}
+                                    {liveModels.map(m=>(
+                                        <option key={m.model_id} value={m.model_id}>{m.model_id} · {t('chat_accounting.model_nodes', { count: m.nodes_count })} · {m.price_gstd} GSTD</option>
                                     ))}
                                 </select>
                                 <ChevronDown size={11} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-600 pointer-events-none group-hover:text-violet-400 transition-colors" />
@@ -1059,6 +1085,7 @@ export default function ChatPage() {
                 {/* ─── Input area ─────────────────────────────────────── */}
                 <div className="border-t border-white/6 p-3 sm:p-5 bg-linear-to-t from-[#030014] via-[#030014]/95 to-transparent">
                     <div className="max-w-3xl mx-auto w-full">
+                        {modelBlockReason && <p role="status" className="mb-3 text-sm text-amber-300">{t('chat_accounting.' + modelBlockReason, { model: selectedModel })} {(modelBlockReason === 'catalogue_failed' || modelBlockReason === 'model_unavailable') && <button type="button" onClick={() => setCatalogueRevision(revision => revision + 1)} className="ml-2 underline">{t('chat_accounting.retry_availability')}</button>}</p>}
                         <div className="relative flex items-end gap-0 bg-white/4 border border-white/8 rounded-2xl px-4 sm:px-5 py-3 sm:py-3.5 focus-within:border-violet-500/30 focus-within:shadow-[0_0_30px_rgba(139,92,246,0.08)] transition-all shadow-[0_-8px_40px_rgba(0,0,0,0.4)]">
                             <textarea
                                 ref={inputRef}
@@ -1082,7 +1109,7 @@ export default function ChatPage() {
                             ) : (
                                 <button
                                     onClick={() => handleSend()}
-                                    disabled={!input.trim()}
+                                    disabled={!input.trim() || !!modelBlockReason}
                                     className={`p-2.5 sm:p-3 rounded-2xl transition-all shrink-0 ml-2 ${input.trim()
                                         ? 'text-white bg-violet-600 hover:bg-violet-500 shadow-lg shadow-violet-500/25 scale-100 hover:scale-105'
                                         : 'text-gray-600 cursor-not-allowed bg-white/4'
