@@ -1599,9 +1599,13 @@
       "insufficient_backing": "There is not enough verified backing for this operation. No new charge is made.",
       "ledger_busy": "The balance is being updated. Try checking again shortly.",
       "payout_in_flight": "A payout is already being processed. Do not send it again.",
-      "another_payout_requires_reconciliation": "A previous payout needs blockchain reconciliation before another can proceed."
+      "another_payout_requires_reconciliation": "A previous payout needs blockchain reconciliation before another can proceed.",
+      "withdrawal_request_cooldown": "Wait up to one minute before creating a new withdrawal request. Your balance has not been charged again."
     },
-    "connect": "Connect TON wallet"
+    "connect": "Connect TON wallet",
+    "withdraw_rate": "A new withdrawal request can be created once per minute. Rechecking the same request does not reserve funds again.",
+    "reject_request": "Decline request and return the full reserve",
+    "operator_declined": "The payout operator declined this request before signing. The full amount is available in your balance again."
   },
   "footer_ecosystem": "Ecosystem",
   "chat_accounting": {

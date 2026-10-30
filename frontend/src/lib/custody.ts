@@ -43,6 +43,9 @@ export async function verifyDeposit(hash: string, sender: string, receiverJetton
     if (root.hash().toString('hex') !== hash || walletId(data.account.address) !== receiverJettonWallet)
         throw new MoneyError('invalid_deposit_transaction');
     const tx = loadTransaction(root.beginParse()), msg = tx.inMessage;
+    // Bind the account inside the hashed transaction, not only indexer metadata.
+    if (tx.address !== BigInt('0x' + receiverJettonWallet.split(':')[1]))
+        throw new MoneyError('invalid_deposit_transaction');
     const description = tx.description;
     if (description.type !== 'generic' || description.aborted || description.computePhase.type !== 'vm' ||
         !description.computePhase.success || description.actionPhase?.success === false ||

@@ -25,7 +25,7 @@ const AI_DAILY_LIMIT = Math.max(1, parseInt(process.env.TG_AI_DAILY_LIMIT || '30
 const TON_ADDRESS_RE = /^(EQ[A-Za-z0-9_-]{46}|UQ[A-Za-z0-9_-]{46}|0:[a-fA-F0-9]{64})$/;
 const INSTALL_URL = 'https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh';
 
-interface Ctx { chatId: number; userId: number; lang: Lang; name: string; msgId?: number }
+interface Ctx { chatId: number; userId: number; lang: Lang; name: string; msgId?: number; updateId?: number }
 interface View { text: string; kb?: any[][] }
 
 const escHtml = (s: unknown) => String(s ?? '?').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] as string));
@@ -33,6 +33,11 @@ const fmt = (n: unknown, d = 4) => (Number(n) || 0).toFixed(d);
 const shortAddr = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
 
 // ── Telegram + platform API ──────────────────────────────────────────────────
+class TelegramApiError extends Error {
+    constructor(method: string, readonly notModified = false) {
+        super('telegram_delivery_failed:' + method);
+    }
+}
 async function tg(method: string, body: object): Promise<any> {
     if (!TOKEN) return null;
     const resp = await fetch(`https://api.telegram.org/bot${TOKEN}/${method}`, {
@@ -41,7 +46,11 @@ async function tg(method: string, body: object): Promise<any> {
         body: JSON.stringify(body),
         signal: AbortSignal.timeout(10_000),
     });
-    return resp.json().catch(() => ({}));
+    const data = await resp.json().catch(() => null);
+    if (!resp.ok || data?.ok !== true) {
+        throw new TelegramApiError(method, /message is not modified/i.test(data?.description || ''));
+    }
+    return data;
 }
 
 async function botApi(path: string, init: { method?: string; body?: unknown } = {}): Promise<any> {
@@ -60,8 +69,12 @@ async function show(ctx: Ctx, v: View): Promise<void> {
     const payload: any = { text: v.text, parse_mode: 'HTML', disable_web_page_preview: true };
     if (v.kb) payload.reply_markup = { inline_keyboard: v.kb };
     if (ctx.msgId) {
-        const r = await tg('editMessageText', { chat_id: ctx.chatId, message_id: ctx.msgId, ...payload });
-        if (r?.ok || /not modified/i.test(r?.description || '')) return;
+        try {
+            await tg('editMessageText', { chat_id: ctx.chatId, message_id: ctx.msgId, ...payload });
+            return;
+        } catch (error) {
+            if (error instanceof TelegramApiError && error.notModified) return;
+        }
     }
     await tg('sendMessage', { chat_id: ctx.chatId, ...payload });
 }
@@ -113,7 +126,7 @@ async function viewBalance(c: Ctx): Promise<View> {
     const pending = Number(data.pending_gstd) || 0;
     const kb: any[][] = [];
     if (pending >= 0.01) kb.push([{ text: t(c.lang, 'btn_claim'), callback_data: 'claim' }]);
-    kb.push([{ text:t(c.lang,'btn_app'),web_app:{url:SWARM_URL+'/payments'} }], [{ text: t(c.lang, 'btn_node'), callback_data: 'nodes' }], ...backKb(c.lang));
+    kb.push([{ text:t(c.lang,'btn_app'),web_app:{url:SWARM_URL+(c.lang==='ru'?'/ru':'')+'/payments'} }], [{ text: t(c.lang, 'btn_node'), callback_data: 'nodes' }], ...backKb(c.lang));
     return {
         text: t(c.lang, 'balance', {
             wallet: t(c.lang, 'wallet_linked', { wallet: shortAddr(wallet) }),
@@ -211,7 +224,7 @@ async function runView(c: Ctx, name: string): Promise<void> {
     try {
         await show(c, await VIEWS[name](c));
     } catch (err: any) {
-        console.error('[telegram/webhook] view', name, err.message);
+        console.error('[telegram/webhook] view', name, 'failed');
         await show(c, { text: t(c.lang, 'error'), kb: backKb(c.lang) });
     }
 }
@@ -235,7 +248,27 @@ async function linkWallet(c: Ctx, address: string, username: string): Promise<vo
 }
 
 // ── AI chat ──────────────────────────────────────────────────────────────────
+interface CachedAiReply { body: { chat_id: number; text: string; reply_markup?: any }; session: { model: string; history: any[] }; sent?: boolean }
+const replyKey = (c: Ctx) => c.updateId === undefined ? null : 'tg_ai_reply:' + c.updateId;
+
+async function deliverAiReply(c: Ctx, reply: CachedAiReply): Promise<void> {
+    const key = replyKey(c);
+    // Persist before transmission: a webhook retry must not run paid/limited compute again.
+    if (key) await kvSet(key, JSON.stringify(reply), 3600);
+    await tg('sendMessage', reply.body);
+    await saveSession(c.userId, reply.session);
+    if (key) await kvSet(key, JSON.stringify({ ...reply, sent: true }), 3600);
+}
+
 async function handleAI(c: Ctx, text: string): Promise<void> {
+    const key = replyKey(c);
+    const cached = key ? await kvGet(key) : null;
+    if (cached) {
+        const reply: CachedAiReply = JSON.parse(cached);
+        if (!reply.body || reply.body.chat_id !== c.chatId || typeof reply.body.text !== 'string' || !reply.session) throw Error('telegram_reply_cache_invalid');
+        if (!reply.sent) await deliverAiReply(c, reply);
+        return;
+    }
     if (!(await kvSetNX(`tg_ai_gap:${c.userId}`, '1', 3).catch(() => true))) {
         await show(c, { text: t(c.lang, 'ai_slow') });
         return;
@@ -249,46 +282,48 @@ async function handleAI(c: Ctx, text: string): Promise<void> {
     }
 
     const session = await getSession(c.userId);
-    await tg('sendChatAction', { chat_id: c.chatId, action: 'typing' });
+    await tg('sendChatAction', { chat_id: c.chatId, action: 'typing' }).catch(() => null);
     const messages = [
         { role: 'system', content: 'You are GSTD Sovereign AI — a decentralized AI running on the GSTD node network. Respond in the user\'s language. Be accurate and helpful. Answer briefly in at most two or three sentences.' },
         ...session.history.slice(-6),
         { role: 'user', content: text },
     ];
+    let content = '', cloud = false;
     try {
         const response = await callNodeChat(messages, { maxTokens: 96, temperature: 0.7, timeoutMs: 45_000 });
-        if (!response.content) { await show(c, { text: t(c.lang, 'ai_empty') }); return; }
-        session.history.push({ role: 'user', content: text }, { role: 'assistant', content: response.content });
-        await saveSession(c.userId, session);
-        await tg('sendMessage', { chat_id: c.chatId, text: response.content.slice(0, 4096) });
+        content = response.content;
     } catch (err: any) {
         const msg = err?.message || '';
         const offline = msg.includes('No GSTD node') || msg.includes('available');
-        if (await kvGet('tg_cloud_consent:'+c.userId) === 'yes') {
+        if (await kvGet('tg_cloud_consent:' + c.userId) === 'yes') {
             try {
-                const content = await edgeChat(messages, 96);
-                if (content) {
-                    session.history.push({ role: 'user', content: text }, { role: 'assistant', content });
-                    await saveSession(c.userId, session);
-                    await tg('sendMessage', {
-                        chat_id: c.chatId,
-                        text: `${content.slice(0, 3900)}\n\n${t(c.lang, 'ai_edge_note')}`,
-                        reply_markup: { inline_keyboard: [[{ text: t(c.lang, 'btn_earn'), callback_data: 'earn' }]] },
-                    });
-                    return;
-                }
+                content = await edgeChat(messages, 96);
+                cloud = !!content;
             } catch { /* fall through to the offline message */ }
         }
-        await show(c, {
-            text: t(c.lang, offline ? 'ai_offline' : 'ai_empty'),
-            kb: offline ? [[{ text: t(c.lang, 'btn_earn'), callback_data: 'earn' }]] : undefined,
-        });
+        if (!content) {
+            await show(c, {
+                text: t(c.lang, offline ? 'ai_offline' : 'ai_empty'),
+                kb: offline ? [[{ text: t(c.lang, 'btn_earn'), callback_data: 'earn' }]] : undefined,
+            });
+            return;
+        }
     }
+    if (!content.trim()) { await show(c, { text: t(c.lang, 'ai_empty') }); return; }
+    session.history.push({ role: 'user', content: text }, { role: 'assistant', content });
+    // Delivery errors never trigger another model or transmit the query to a fallback.
+    await deliverAiReply(c, {
+        session,
+        body: {
+            chat_id: c.chatId,
+            text: cloud ? `${content.slice(0, 3900)}\n\n${t(c.lang, 'ai_edge_note')}` : content.slice(0, 4096),
+            ...(cloud ? { reply_markup: { inline_keyboard: [[{ text: t(c.lang, 'btn_earn'), callback_data: 'earn' }]] } } : {}),
+        },
+    });
 }
 
 // ── Dispatcher ───────────────────────────────────────────────────────────────
 async function processUpdate(update: any): Promise<void> {
-    if (update.update_id != null && !(await kvSetNX(`tg_upd:${update.update_id}`, '1', 3600).catch(() => true))) return;
 
     if (update.inline_query) {
         const q = update.inline_query;
@@ -308,10 +343,10 @@ async function processUpdate(update: any): Promise<void> {
     if (cb) {
         const userId = cb.from?.id;
         const chatId = cb.message?.chat?.id;
-        await tg('answerCallbackQuery', { callback_query_id: cb.id });
+        await tg('answerCallbackQuery', { callback_query_id: cb.id }).catch(() => null);
         if (!userId || !chatId) return;
         const lang = await getLang(userId, cb.from?.language_code);
-        const ctx: Ctx = { chatId, userId, lang, name: cb.from?.first_name || '', msgId: cb.message?.message_id };
+        const ctx: Ctx = { chatId, userId, lang, name: cb.from?.first_name || '', msgId: cb.message?.message_id, updateId: update.update_id };
         const data: string = cb.data || '';
         if (data.startsWith('setlang:')) {
             const nl = resolveLang(data.slice(8));
@@ -328,7 +363,7 @@ async function processUpdate(update: any): Promise<void> {
     if (!msg?.text || msg.chat?.type !== 'private') return;
     const userId: number = msg.from?.id;
     const lang = await getLang(userId, msg.from?.language_code);
-    const ctx: Ctx = { chatId: msg.chat.id, userId, lang, name: msg.from?.first_name || '' };
+    const ctx: Ctx = { chatId: msg.chat.id, userId, lang, name: msg.from?.first_name || '', updateId: update.update_id };
     const text: string = msg.text.trim();
 
     if (TON_ADDRESS_RE.test(text)) { await linkWallet(ctx, text, msg.from?.username || ''); return; }
@@ -357,17 +392,44 @@ async function processUpdate(update: any): Promise<void> {
     await handleAI(ctx, text);
 }
 
+/** Only inference updates may resume from a persisted reply after failed delivery.
+ * Commands can mutate account mappings; replaying an older command after a newer
+ * one must never restore a stale wallet or repeat a financial action.
+ */
+function isAiUpdate(update: any): boolean {
+    if (update?.inline_query || update?.callback_query) return false;
+    const message = update?.message;
+    if (typeof message?.text !== 'string' || !message.text || message.chat?.type !== 'private') return false;
+    const text = message.text.trim();
+    return !TON_ADDRESS_RE.test(text) && !parseCommand(text);
+}
+
 // ── Handler ──────────────────────────────────────────────────────────────────
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
     if (!TOKEN) return res.status(503).json({ error: 'TELEGRAM_BOT_TOKEN not configured' });
     if (!isValidWebhookRequest(req, TOKEN)) return res.status(401).json({ error: 'Invalid webhook secret' });
 
-    // Complete processing before responding; do not rely on background work after the response.
+    // AI delivery can resume safely from its outbox without repeating inference.
+    // Commands/callbacks retain start-deduplication to prevent stale mutation replay.
+    // Storage errors fail closed. AI leases expire naturally without an unlock race.
+    const updateId = req.body?.update_id;
+    const key = Number.isSafeInteger(updateId) && updateId >= 0 ? 'tg_upd:' + updateId : null;
+    const retryableAi = isAiUpdate(req.body);
     try {
+        if (key) {
+            if (retryableAi) {
+                if (await kvGet(key)) return res.status(200).json({ ok: true });
+                if (!(await kvSetNX(key + ':processing', '1', 120))) return res.status(503).json({ ok: false, error: 'update_processing' });
+            } else if (!(await kvSetNX(key, '1', 86400))) {
+                return res.status(200).json({ ok: true });
+            }
+        }
         await processUpdate(req.body);
+        if (key && retryableAi) await kvSet(key, '1', 86400);
+        return res.status(200).json({ ok: true });
     } catch (err: any) {
-        console.error('[telegram/webhook]', err.message);
+        console.error('[telegram/webhook]', err instanceof TelegramApiError ? err.message : 'processing_failed');
+        return res.status(503).json({ ok: false, error: 'processing_failed' });
     }
-    return res.status(200).json({ ok: true });
 }

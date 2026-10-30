@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { Cell, loadTransaction } from '@ton/core';
+import { Cell, loadTransaction, beginCell, storeTransaction } from '@ton/core';
 import fixture from '../../tests/fixtures/gstd-deposit.json';
 import { custodySnapshot, verifyDeposit, GSTD_MASTER } from './custody';
 const tx = loadTransaction(Cell.fromBoc(Buffer.from(fixture.raw,'hex'))[0].beginParse());
@@ -37,6 +37,15 @@ describe('verified mainnet GSTD custody and deposit format',()=>{
         const promise=verifyDeposit(fixture.hash,sender,fixture.account.address);
         await vi.runAllTimersAsync();
         expect(await promise).toMatchObject({amount:'499000000000',sender,hash:fixture.hash});
+    });
+    it('rejects indexer metadata that disagrees with the account inside the transaction',async()=>{
+        vi.useFakeTimers();
+        const forged = beginCell().store(storeTransaction({...tx,address:BigInt('0x'+'11'.repeat(32))})).endCell();
+        fetcher([{...fixture,hash:forged.hash().toString('hex'),raw:forged.toBoc().toString('hex')},
+            {success:true,decoded:{jetton_wallet_address:sourceWallet}}]);
+        const assertion=expect(verifyDeposit(forged.hash().toString('hex'),sender,fixture.account.address))
+            .rejects.toThrow('invalid_deposit_transaction');
+        await vi.runAllTimersAsync();await assertion;
     });
     it('rejects a forged sender wallet even if the body and destination look valid',async()=>{
         vi.useFakeTimers();
