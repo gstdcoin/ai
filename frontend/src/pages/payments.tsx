@@ -8,7 +8,7 @@ import { useTonConnectUI } from '@tonconnect/ui-react';
 import WalletConnect from '../components/WalletConnect';
 import { useWalletStore } from '../store/walletStore';
 
-type Withdrawal = { id:string;wallet:string;amount:string;state:string;receiptHash?:string };
+type Withdrawal = { id:string;wallet:string;amount:string;state:string;receiptHash?:string;cancellationReason?:'user_cancelled'|'operator_declined' };
 export default function PaymentsPage() {
     const {t}=useTranslation('common');
     const p=(key:string)=>t('payments_page.'+key);
@@ -86,15 +86,16 @@ export default function PaymentsPage() {
             <h2 className="text-xl">{p('withdraw_title')}</h2><p className="text-sm text-gray-300">{p('withdraw_hint')}</p>
             <label className="block space-y-2"><span>{p('amount_label')}</span><input className={input} value={amount} onChange={e=>setAmount(e.target.value)} inputMode="decimal" placeholder={p('amount_placeholder')}/></label>
             <button className={button} disabled={busy || !(Number(amount)>0)} onClick={()=>act(()=>api('/api/v1/finance/withdrawals',{action:'request',amount_gstd:amount},crypto.randomUUID()))}>{p('withdraw_request')}</button>
-            <p className="text-sm text-gray-400">{p('withdraw_fee')}</p>
+            <p className="text-sm text-gray-400">{p('withdraw_fee')}</p><p className="text-sm text-gray-400">{p('withdraw_rate')}</p>
         </section>}
         {balance && <section className="space-y-3"><h2 className="text-xl">{operator?p('operator_history'):p('history')}</h2>{!rows.length&&<p className="text-gray-400">{p('history_empty')}</p>}
         {rows.map(w=><article key={w.id} className="rounded-xl border border-white/15 p-5 space-y-3">
             <p><b>{(Number(w.amount)/1e9).toFixed(9)} GSTD</b> · {t('payments_page.states.'+w.state,{defaultValue:p('state_unknown')})}</p>
+            {w.cancellationReason==='operator_declined' && <p className="text-sm text-amber-300">{p('operator_declined')}</p>}
             <p className="text-sm">{p('recipient')}</p><code className="block break-all text-xs">{w.wallet}</code>
             <details><summary className="cursor-pointer text-sm text-gray-400">{p('request_id')}</summary><code className="block break-all text-xs">{w.id}</code></details>
             {w.state==='requested' && <>
-                {operator && <div className="space-y-2"><p className="text-sm text-gray-400">{p('operator_hint')}</p><button className={button} disabled={busy} onClick={()=>act(()=>sign(w.id))}>{p('sign')}</button></div>}
+                {operator && <div className="space-y-2"><p className="text-sm text-gray-400">{p('operator_hint')}</p><button className={button} disabled={busy} onClick={()=>act(()=>sign(w.id))}>{p('sign')}</button><button className="block underline text-amber-300" disabled={busy} onClick={()=>act(()=>api('/api/v1/finance/withdrawals',{action:'reject',id:w.id}))}>{p('reject_request')}</button></div>}
                 {w.wallet===balance?.wallet && <button className="ml-3 underline" disabled={busy} onClick={()=>act(()=>api('/api/v1/finance/withdrawals',{action:'cancel',id:w.id}))}>{p('cancel')}</button>}
             </>}
             {['dispatching','submitted'].includes(w.state) && <>

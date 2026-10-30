@@ -15,3 +15,5 @@ Start with the current operating model; historical design documents do not descr
 | Contract deployment/verification limits | [CONTRACTS_VERIFICATION.md](CONTRACTS_VERIFICATION.md) |
 
 Other topic and vision files are reference material. Their existence is not proof that a payment option, integration or service is deployed. In particular, bridge research, legacy settlement designs and token-purchase tutorials are not the current compute payment engine. Use the application balance page for supported platform operations and never send signing keys to a guide, node or bot.
+
+Payment controls, safe rejection/reconciliation, Telegram retry semantics and no-cost verification limits: [PAYMENTS_SAFETY.md](PAYMENTS_SAFETY.md).

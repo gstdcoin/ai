@@ -298,10 +298,13 @@ export async function consumePromoRequest(wallet: string, reference: string): Pr
 export type Withdrawal = { id: string; wallet: string; amount: string; queryId: string;
     state: 'requested' | 'dispatching' | 'submitted' | 'confirmed' | 'cancelled';
     createdAt: number; dispatchedAt?: number; validUntil?: number; bocHash?: string;
-    receiptHash?: string; reserveAtDispatch?: string; walletSeqno?:string; confirmedAt?: number };
+    receiptHash?: string; reserveAtDispatch?: string; walletSeqno?:string; confirmedAt?: number;
+    cancellationReason?: 'user_cancelled' | 'operator_declined'; cancelledAt?: number };
 const WQUEUE = PREFIX + 'withdraw-queue';
 const withdrawalKey = (withdrawalId: string) => PREFIX + 'withdrawal:' + id(withdrawalId);
 const withdrawalIndex = (wallet: string) => PREFIX + 'withdraw-index:' + walletId(wallet);
+const withdrawalRequestRateKey = (wallet: string) => PREFIX + 'withdraw-request-rate:' + walletId(wallet);
+export const WITHDRAWAL_REQUEST_COOLDOWN_SECONDS = 60;
 export async function getWithdrawal(withdrawalId: string): Promise<Withdrawal | null> {
     const raw = await kvGet(withdrawalKey(withdrawalId)); return raw ? JSON.parse(raw) : null;
 }
@@ -314,8 +317,8 @@ export async function requestWithdrawal(wallet: string, amount: bigint, requestI
     wallet = walletId(wallet); id(requestId);
     if (amount <= 0n || amount > MAX_NANO) throw new MoneyError('invalid_amount');
     const withdrawalId = digest(['withdrawal',wallet,requestId]), key = withdrawalKey(withdrawalId);
-    const ak = accountKey(wallet), index = withdrawalIndex(wallet);
-    return atomic<Withdrawal>([SYS,ak,key,index,WQUEUE], old=>{
+    const ak = accountKey(wallet), index = withdrawalIndex(wallet), rateKey = withdrawalRequestRateKey(wallet);
+    return atomic<Withdrawal>([SYS,ak,key,index,WQUEUE,rateKey], old=>{
         if (old[key]) {
             const previous: Withdrawal = JSON.parse(old[key]!);
             if (previous.amount !== String(amount)) throw new MoneyError('idempotency_conflict');
@@ -326,13 +329,18 @@ export async function requestWithdrawal(wallet: string, amount: bigint, requestI
         const history: string[] = JSON.parse(old[index] || '[]');
         if (queue.length >= 200) throw new MoneyError('withdrawal_queue_full');
         if (history.some(item=>queue.includes(item))) throw new MoneyError('withdrawal_already_pending');
+        const lastRequested = Number(old[rateKey] || '0');
+        if (!Number.isSafeInteger(lastRequested) || lastRequested < 0) throw new MoneyError('invalid_ledger');
+        if (Date.now() - lastRequested < WITHDRAWAL_REQUEST_COOLDOWN_SECONDS * 1000)
+            throw new MoneyError('withdrawal_request_cooldown');
         const a = parseAccount(old[ak]);
         change(a,'available',-amount); change(a,'reserved',amount);
         const withdrawal: Withdrawal = { id: withdrawalId, wallet, amount: String(amount),
             queryId: String(BigInt('0x'+withdrawalId.slice(0,16))), state: 'requested', createdAt: Date.now() };
         queue.push(withdrawalId); history.push(withdrawalId);
         return { value: withdrawal, tx: { writes: { [ak]: JSON.stringify(a), [key]: JSON.stringify(withdrawal),
-            [index]: JSON.stringify(history.slice(-1000)), [WQUEUE]: JSON.stringify(queue) } } };
+            [index]: JSON.stringify(history.slice(-1000)), [WQUEUE]: JSON.stringify(queue),
+            [rateKey]: String(Date.now()) }, expires: { [rateKey]: WITHDRAWAL_REQUEST_COOLDOWN_SECONDS } } };
     });
 }
 export async function cancelWithdrawal(withdrawalId: string, wallet: string): Promise<Withdrawal> {
@@ -346,9 +354,31 @@ export async function cancelWithdrawal(withdrawalId: string, wallet: string): Pr
         if (w.state !== 'requested') throw new MoneyError('withdrawal_requires_chain_reconciliation');
         const a=parseAccount(old[ak]),amount=BigInt(w.amount);
         change(a,'reserved',-amount);change(a,'available',amount);w.state='cancelled';
+        w.cancellationReason='user_cancelled';w.cancelledAt=Date.now();
         const queue: string[]=JSON.parse(old[WQUEUE]||'[]');
         return {value:w,tx:{writes:{[ak]:JSON.stringify(a),[key]:JSON.stringify(w),
             [WQUEUE]:JSON.stringify(queue.filter(item=>item!==withdrawalId))}}};
+    });
+}
+/** The custody owner can free a queued request without a chain transaction.
+ * Once dispatch wins the atomic race, only chain reconciliation may release it. */
+export async function rejectWithdrawal(withdrawalId: string, owner: string): Promise<Withdrawal> {
+    const known = await getWithdrawal(withdrawalId);
+    if (!known) throw new MoneyError('withdrawal_not_found');
+    const key=withdrawalKey(withdrawalId),ak=accountKey(known.wallet);
+    return atomic([SYS,ak,key,WQUEUE],old=>{
+        if (!old[SYS] || JSON.parse(old[SYS]!).owner !== walletId(owner))
+            throw new MoneyError('custody_owner_required');
+        if (!old[key]) throw new MoneyError('withdrawal_not_found');
+        const w:Withdrawal=JSON.parse(old[key]!);
+        if (w.state === 'cancelled') return {value:w};
+        if (w.state !== 'requested') throw new MoneyError('withdrawal_requires_chain_reconciliation');
+        const a=parseAccount(old[ak]),amount=BigInt(w.amount);
+        change(a,'reserved',-amount);change(a,'available',amount);
+        w.state='cancelled';w.cancellationReason='operator_declined';w.cancelledAt=Date.now();
+        const queue:string[]=JSON.parse(old[WQUEUE]||'[]');
+        return {value:w,tx:{writes:{[ak]:JSON.stringify(a),[key]:JSON.stringify(w),
+            [WQUEUE]:JSON.stringify(queue.filter(item=>item!==w.id))}}};
     });
 }
 export async function dispatchWithdrawal(withdrawalId: string, owner: string, walletSeqno: string): Promise<Withdrawal & { acquired: boolean }> {
