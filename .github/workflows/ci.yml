@@ -469,12 +469,14 @@ jobs:
           const fs = require('fs');
           const harvest = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
           const failures = Array.isArray(harvest.sources)
-            ? harvest.sources.filter(source => source.status === 'error' || source.status === 'skipped_after_attempt')
+            ? harvest.sources.filter(source => !['updated', 'not_modified', 'skipped_today', 'skipped_after_attempt'].includes(source.status))
             : [];
           if (failures.length) {
             console.error(`Source failures: ${failures.map(source => `${source.repository}: ${source.error || source.status}`).join('; ')}`);
           }
-          if (harvest.complete !== true
+          const deferred = Array.isArray(harvest.sources) && harvest.sources.some(source => source.status === 'skipped_after_attempt');
+          if (deferred) console.log('::warning::Daily source request limit reached; validating the retained baseline and its age below.');
+          if ((harvest.complete !== true && !deferred)
             || !Array.isArray(harvest.sources)
             || harvest.sources.length !== 4
             || failures.length > 0) {
@@ -484,7 +486,7 @@ jobs:
           NODE
           then harvest_valid=1
           fi
-          if [ "$harvest_status" != "200" ] || [ "$harvest_valid" -ne 1 ]; then
+          if { [ "$harvest_status" != "200" ] && [ "$harvest_status" != "207" ]; } || [ "$harvest_valid" -ne 1 ]; then
             echo "::error::Production Open Intelligence collection returned HTTP ${harvest_status:-000} or an incomplete result"
             exit 1
           fi
@@ -498,8 +500,11 @@ jobs:
             || dataset.research?.repositories_with_data !== 4
             || !Array.isArray(dataset.repositories)
             || expected.some((name, index) => dataset.repositories[index]?.repository !== name
-              || !dataset.repositories[index]?.latest)) {
-            console.error('Open Intelligence public API did not expose all collected snapshots.');
+              || !dataset.repositories[index]?.latest
+              || !Number.isFinite(Date.parse(dataset.repositories[index].latest.observed_at))
+              || Date.parse(dataset.repositories[index].latest.observed_at) > Date.now() + 300_000
+              || Date.now() - Date.parse(dataset.repositories[index].latest.observed_at) > 48 * 3600_000)) {
+            console.error('Open Intelligence public API is missing snapshots or its retained baseline is older than 48 hours.');
             process.exit(1);
           }
           NODE
@@ -508,7 +513,7 @@ jobs:
             exit 1
           fi
 
-          echo "Open Intelligence page, authenticated four-repository collection, and public baseline API all verified."
+          echo "Open Intelligence page, authenticated collection status, and complete public baseline (at most 48 hours old) verified."
 
   audit:
     runs-on: ubuntu-latest
