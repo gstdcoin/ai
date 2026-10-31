@@ -52,6 +52,12 @@ export default function PaymentsPage() {
     return <main className="mx-auto max-w-3xl px-5 py-12 text-white space-y-6">
         <Head><title>{p('title')+' · GSTD'}</title><meta name="description" content={p('intro')}/></Head>
         <header className="space-y-3"><h1 className="text-3xl font-semibold">{p('title')}</h1><p className="text-gray-300">{p('intro')}</p></header>
+        <section className="rounded-xl border border-white/15 p-5 space-y-3" aria-labelledby="payment-signatures">
+            <h2 id="payment-signatures" className="text-xl font-semibold">{p('signing_title')}</h2>
+            <ol className="list-decimal pl-5 space-y-2 text-gray-300"><li>{p('signing_login')}</li><li>{p('signing_deposit')}</li><li>{p('signing_claim')}</li><li>{p('signing_withdraw')}</li></ol>
+            <p className="text-sm text-amber-200">{p('custody_notice')}</p>
+            <p className="text-sm text-gray-400">{p('signature_safety')}</p>
+        </section>
         <section className="rounded-xl border border-violet-400/30 bg-violet-500/5 p-5 space-y-3">
             <h2 className="text-xl font-semibold">{p('node_title')}</h2>
             <ol className="list-decimal pl-5 space-y-2 text-gray-300"><li>{p('node_step1')}</li><li>{p('node_step2')}</li><li>{p('node_step3')}</li></ol>
@@ -83,9 +89,9 @@ export default function PaymentsPage() {
             </details>
         </section>}
         {balance && <section className="rounded-xl border border-white/15 p-5 space-y-3">
-            <h2 className="text-xl">{p('withdraw_title')}</h2><p className="text-sm text-gray-300">{p('withdraw_hint')}</p>
+            <h2 className="text-xl">{p('withdraw_title')}</h2><p className="text-sm text-gray-300">{p('withdraw_hint')}</p><p className="text-sm text-gray-400">{p('withdraw_before_request')}</p>
             <label className="block space-y-2"><span>{p('amount_label')}</span><input className={input} value={amount} onChange={e=>setAmount(e.target.value)} inputMode="decimal" placeholder={p('amount_placeholder')}/></label>
-            <button className={button} disabled={busy || !(Number(amount)>0)} onClick={()=>act(()=>api('/api/v1/finance/withdrawals',{action:'request',amount_gstd:amount},crypto.randomUUID()))}>{p('withdraw_request')}</button>
+            <button className={button} disabled={busy || !balance.backing_verified || !(Number(amount)>0) || Number(amount)>Number(balance.balance_gstd)} onClick={()=>act(()=>api('/api/v1/finance/withdrawals',{action:'request',amount_gstd:amount},crypto.randomUUID()))}>{p('withdraw_request')}</button>
             <p className="text-sm text-gray-400">{p('withdraw_fee')}</p><p className="text-sm text-gray-400">{p('withdraw_rate')}</p>
         </section>}
         {balance && <section className="space-y-3"><h2 className="text-xl">{operator?p('operator_history'):p('history')}</h2>{!rows.length&&<p className="text-gray-400">{p('history_empty')}</p>}
