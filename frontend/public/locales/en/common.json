@@ -1646,5 +1646,22 @@
     "retry_availability": "Check availability again",
     "send_message": "Send message"
   },
-  "nav_site": "About GSTD"
+  "nav_site": "About GSTD",
+  "chat_first_use": {
+    "resources": "AI hardware",
+    "placeholder": "Ask GSTD {{model}}…",
+    "offline": "No nodes are online right now. Please try again when an operator reconnects.",
+    "wallet_required": "Connect your wallet for paid requests",
+    "balance_required": "Not enough available GSTD",
+    "paid_hint": "Choose the free tier or open your balance and payments.",
+    "payments": "Balance and payments",
+    "cost": "Cost",
+    "balance": "Balance",
+    "prompt_code": "Write a short Python function that counts words in a string. Explain it briefly.",
+    "prompt_explain": "Explain how a neural network learns in three simple sentences.",
+    "prompt_node": "What resources does a local AI model need? Explain RAM, storage and GPU briefly.",
+    "prompt_translate": "Translate into English: «Добрый день! Спасибо за вашу помощь».",
+    "prompt_crypto": "Explain the difference between a token and a network transaction fee in simple terms.",
+    "prompt_math": "A notebook costs 80 and a pen costs 20. How much do three notebooks and two pens cost? Explain briefly."
+  }
 }

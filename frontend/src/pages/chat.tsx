@@ -289,7 +289,7 @@ function MarkdownMessage({ content, isStreaming }: MarkdownMessageProps) {
 
 // ─── Chat Page ───────────────────────────────────────────────────
 export default function ChatPage() {
-    const { t } = useTranslation('common');
+    const { t, i18n } = useTranslation('common');
 
     // ─── Collective Intelligence Tiers ─────────────────────────────
     const BASE_TIERS = [
@@ -553,7 +553,7 @@ export default function ChatPage() {
                     const errData = await response.json().catch(() => ({}));
                     const errMsg: Message = {
                         id: 'msg_' + Date.now() + '_err', role: 'assistant',
-                        content: `⚠️ **${errData.error === 'wallet_required' ? 'Wallet Required' : 'Insufficient GSTD Balance'}**\n\n${errData.message || 'Connect wallet or switch to free tier.'}\n\n${errData.cost ? `**Cost:** ${errData.cost} GSTD` : ''} ${errData.balance !== undefined ? `| **Balance:** ${errData.balance.toFixed(4)} GSTD` : ''}\n\n💡 Switch to **🆓 Single Expert** (free) or [top up your wallet](/dashboard).`,
+                        content: `⚠️ **${t(errData.error === 'wallet_required' ? 'chat_first_use.wallet_required' : 'chat_first_use.balance_required')}**\n\n${t('chat_first_use.paid_hint')}\n\n${Number.isFinite(Number(errData.cost)) && errData.cost !== undefined ? `${t('chat_first_use.cost')}: ${Number(errData.cost)} GSTD\n` : ''}${Number.isFinite(Number(errData.balance)) && errData.balance !== undefined ? `${t('chat_first_use.balance')}: ${Number(errData.balance).toFixed(4)} GSTD\n` : ''}\n[${t('chat_first_use.payments')}](${i18n.language === 'ru' ? '/ru' : ''}/payments)`,
                         timestamp: Date.now(),
                     };
                     setConversations(prev => prev.map(c => c.id === convId ? { ...c, messages: [...c.messages, errMsg] } : c));
@@ -740,12 +740,12 @@ export default function ChatPage() {
 
     // ─── Quick Suggestions ────────────────────────────────────────
     const suggestions = [
-        { icon: '💻', text: t('chat_suggest_code', 'Write code'), prompt: 'Write a Python script to analyze a CSV file and create a summary report with statistics' },
-        { icon: '📝', text: t('chat_suggest_explain', 'Explain a concept'), prompt: 'Explain how neural networks work in simple terms with examples' },
-        { icon: '🐝', text: t('chat_suggest_node', 'Run a GSTD Node'), prompt: 'How do I install and configure a GSTD Node with wallet auth, SSL, and DynDNS?' },
-        { icon: '🌍', text: t('chat_suggest_translate', 'Translate text'), prompt: 'Translate the following text and explain any cultural nuances' },
-        { icon: '📊', text: t('chat_suggest_crypto', 'Crypto & DeFi'), prompt: 'Explain the difference between AMM liquidity pools and order book exchanges with examples' },
-        { icon: '🧮', text: t('chat_suggest_math', 'Math & Analysis'), prompt: 'Solve and explain step by step: Find the derivative of f(x) = x^3 * ln(x) and find critical points' },
+        { icon: '💻', text: t('chat_suggest_code', 'Write code'), prompt: t('chat_first_use.prompt_code', "Write a short Python function that counts words in a string. Explain it briefly.") },
+        { icon: '📝', text: t('chat_suggest_explain', 'Explain a concept'), prompt: t('chat_first_use.prompt_explain', "Explain how a neural network learns in three simple sentences.") },
+        { icon: '🐝', text: t('chat_first_use.resources', 'AI hardware'), prompt: t('chat_first_use.prompt_node', "What resources does a local AI model need? Explain RAM, storage and GPU briefly.") },
+        { icon: '🌍', text: t('chat_suggest_translate', 'Translate text'), prompt: t('chat_first_use.prompt_translate', "Translate into English: \u00ab\u0414\u043e\u0431\u0440\u044b\u0439 \u0434\u0435\u043d\u044c! \u0421\u043f\u0430\u0441\u0438\u0431\u043e \u0437\u0430 \u0432\u0430\u0448\u0443 \u043f\u043e\u043c\u043e\u0449\u044c\u00bb.") },
+        { icon: '📊', text: t('chat_suggest_crypto', 'Crypto & DeFi'), prompt: t('chat_first_use.prompt_crypto', "Explain the difference between a token and a network transaction fee in simple terms.") },
+        { icon: '🧮', text: t('chat_suggest_math', 'Math & Analysis'), prompt: t('chat_first_use.prompt_math', "A notebook costs 80 and a pen costs 20. How much do three notebooks and two pens cost? Explain briefly.") },
     ];
 
     // ─── Render ──────────────────────────────────────────────────
@@ -973,8 +973,7 @@ export default function ChatPage() {
                                     <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-white mb-2">GSTD Chat</h1>
                                     {onlineNodes === 0 ? (
                                         <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-[13px] text-amber-200 text-left leading-relaxed">
-                                            No nodes are online right now, so the network cannot answer yet. A short demo chat is available at{' '}
-                                            <a href="https://gstdtoken.com/ai" className="underline font-semibold">gstdtoken.com/ai</a>.
+                                            {t('chat_first_use.offline', 'No nodes are online right now. Please try again later.')}
                                         </div>
                                     ) : (
                                         <p className="text-[15px] text-gray-500 leading-relaxed max-w-sm mx-auto mb-6 font-medium">
@@ -1092,7 +1091,7 @@ export default function ChatPage() {
                                 value={input}
                                 onChange={(e) => handleInputChange(e.target.value)}
                                 onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                                placeholder={`Message GSTD ${currentTier.name}…`}
+                                placeholder={t('chat_first_use.placeholder', { model: currentTier.name, defaultValue: 'Ask GSTD…' })}
                                 rows={1}
                                 disabled={isStreaming}
                                 className="flex-1 bg-transparent outline-hidden resize-none text-sm sm:text-[15px] text-gray-200 placeholder:text-gray-600 max-h-48 py-1 leading-relaxed disabled:opacity-50"
