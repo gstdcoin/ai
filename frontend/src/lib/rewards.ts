@@ -1,19 +1,15 @@
 /**
- * F1 Reward Distribution — inspired by cosmos-sdk x/distribution
+ * Legacy reward balance readers and a non-executable settlement preview.
  *
- * Formula: nodeReward = jobFee × (1 - COMMUNITY_TAX) × (nodeComputePower / totalNetworkPower)
- *
- * In GSTD's simpler model each inference job has a fixed fee and a single executing node,
- * so the formula simplifies to: nodeReward = jobFee × (1 - COMMUNITY_TAX).
- * Community tax flows to the treasury for protocol development and grants.
- *
- * Rewards accumulate in Redis. Payouts remain disabled until a verified,
- * idempotent on-chain settlement flow is available.
+ * Unfunded accrual is disabled here. Funded, accepted work settles atomically
+ * through money.ts ledger reservations: 85% executor, 10% protocol, 5% reserve.
+ * Current withdrawals use the authenticated owner-signed finance flow;
+ * this legacy module neither dispatches payouts nor clears balances.
  */
 
 import { kvGet, kvKeys } from './kv';
 
-export const COMMUNITY_TAX     = 0.15;   // 5% to treasury
+export const COMMUNITY_TAX     = 0.15;   // Legacy combined protocol/reserve share; not an accrual mechanism
 export const BASE_TASK_FEE     = 0.001;  // GSTD per completed inference task
 export interface RewardSnapshot {
     nodeId:        string;
@@ -29,11 +25,7 @@ export interface SettlementEntry {
     nodeIds: string[];
 }
 
-/**
- * Accrue reward for a single completed inference job.
- * Adds nodeShare to node's pending balance and communityShare to treasury.
- * Idempotent per task_id — pass task_id to prevent double-counting.
- */
+/** Compatibility no-op. Free/unfunded work must not create monetary rewards. */
 export async function accrueReward(
     nodeId:  string,
     wallet:  string,
