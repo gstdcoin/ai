@@ -19,11 +19,12 @@ interface NetworkStats {
 const COPY = {
   en: {
     title: 'GSTD workspace',
-    lead: 'Use the network: choose a model, send a request, check connected nodes, and manage your GSTD balance. Project information and installation guides live on the main website.',
+    lead: 'Ask a question, draft text or get help with code from models running on GSTD nodes. Start with free chat; a wallet is needed only for paid features.',
     statusLive: (n: number) => `${n} node${n === 1 ? '' : 's'} online`,
     statusEmpty: 'The network is in early launch: no nodes are online right now, so requests are not served by the network yet.',
     statusEmptyHint: 'Run a node using the guide on the main website, or check again when an operator comes online.',
-    chat: 'Open chat',
+    chat: 'Try AI for free',
+    firstUse: 'Start without a wallet or GSTD. Free requests have a daily limit and require an available node.',
     node: 'Network nodes',
     demo: 'Demo chat on gstdtoken.com',
     stats: 'Network now',
@@ -45,11 +46,12 @@ const COPY = {
   },
   ru: {
     title: 'Рабочее пространство GSTD',
-    lead: 'Пользуйтесь сетью: выбирайте модель, отправляйте запросы, проверяйте подключённые ноды и управляйте балансом GSTD. Описание проекта и инструкции по установке находятся на основном сайте.',
+    lead: 'Задавайте вопросы, готовьте тексты и разбирайтесь с кодом с помощью моделей на нодах GSTD. Начните с бесплатного чата; кошелёк нужен только для платных возможностей.',
     statusLive: (n: number) => `Нод онлайн: ${n}`,
     statusEmpty: 'Сеть на раннем старте: сейчас ни одной ноды нет онлайн, поэтому сеть пока не обрабатывает запросы.',
     statusEmptyHint: 'Запустите ноду по инструкции на основном сайте или проверьте сеть, когда оператор подключится.',
-    chat: 'Открыть чат',
+    chat: 'Попробовать ИИ бесплатно',
+    firstUse: 'Начните без кошелька и GSTD. У бесплатных запросов есть суточный лимит; для ответа нужна доступная нода.',
     node: 'Ноды сети',
     demo: 'Демо-чат на gstdtoken.com',
     stats: 'Сеть сейчас',
@@ -154,6 +156,7 @@ export default function Home() {
             </a>
           )}
         </div>
+        <p className="mt-4 text-sm text-gray-400 max-w-xl mx-auto">{c.firstUse}</p>
       </section>
 
       <section className="px-4 sm:px-6 pb-12 w-full max-w-4xl mx-auto" id="stats">
