@@ -1605,7 +1605,15 @@
     "connect": "Connect TON wallet",
     "withdraw_rate": "A new withdrawal request can be created once per minute. Rechecking the same request does not reserve funds again.",
     "reject_request": "Decline request and return the full reserve",
-    "operator_declined": "The payout operator declined this request before signing. The full amount is available in your balance again."
+    "operator_declined": "The payout operator declined this request before signing. The full amount is available in your balance again.",
+    "signing_title": "Who signs and pays for each action",
+    "signing_login": "Sign-in: you prove wallet ownership. This transfers no funds and requires no TON fee.",
+    "signing_deposit": "Deposit: you send GSTD from your wallet and pay native TON network costs. Review the token, amount and recipient before signing.",
+    "signing_claim": "Move rewards to balance: this updates platform accounting, without an on-chain transfer or TON fee.",
+    "signing_withdraw": "Withdrawal: you request a payout; the custody wallet owner signs the transfer and pays TON. Funds reach your connected wallet after blockchain confirmation.",
+    "custody_notice": "Your paid balance is recorded by the platform. Withdrawal requires the custody wallet owner’s signature: requesting a payout does not send tokens immediately.",
+    "signature_safety": "No seed phrase or private key is ever required. Reject a wallet request if its action, amount or recipient differs from what you expect.",
+    "withdraw_before_request": "The operator can decline a request before transfer preparation and return the full reserve. After transfer preparation, blockchain reconciliation is required."
   },
   "footer_ecosystem": "Ecosystem",
   "chat_accounting": {
