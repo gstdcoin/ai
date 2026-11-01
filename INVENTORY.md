@@ -62,7 +62,7 @@
 |---------|--------|-------|
 | `GET /api/v1/queue/stats` | ✅ | Task queue depth |
 | `GET /api/v1/models/catalog` | ✅ | 25+ models with availability |
-| `POST /api/v1/models/pull` | ✅ | Trigger model download on node |
+| `POST /api/v1/models/pull` | ✅ | Owner-authenticated alias for the bounded node model queue; requires node_id |
 | Access tier system (`/api/v1/access/tier`) | ✅ | 5 tiers, zero-balance onboarding |
 | Wallet linking (TON, MetaMask, Phantom) | ✅ | Via TonConnect + WalletStore |
 | Rate limiting (Edge) | ✅ | `src/middleware.ts` on all `/api/*` |

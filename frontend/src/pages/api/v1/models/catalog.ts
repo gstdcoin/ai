@@ -221,7 +221,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             ollama:       'https://ollama.com/library',
             huggingface:  'https://huggingface.co/models?library=gguf',
         },
-        pull_command: 'POST /api/v1/models/pull { model_id, node_url }',
+        pull_command: 'POST /api/v1/nodes/pull-model { node_id, model } with X-Session-Token from the node owner',
         timestamp: Date.now(),
     });
 }

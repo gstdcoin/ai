@@ -44,14 +44,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Check node is online (last seen < 10 min)
     const age = Date.now() - new Date(node.last_seen || 0).getTime();
-    if (age > 600_000) return res.status(503).json({ error: 'Node is offline (last seen > 10 minutes ago)' });
+    if (!Number.isFinite(age) || age < -60_000 || age > 600_000) return res.status(503).json({ error: 'Node is offline (last seen > 10 minutes ago)' });
 
     // Read current pull queue
     const queueKey = `node:${node_id}:pull_queue`;
     let queue: string[] = [];
     try {
         const raw = await kvGet(queueKey);
-        if (raw) queue = JSON.parse(raw as string);
+        if (raw) {
+            const parsed: unknown = JSON.parse(raw as string);
+            if (Array.isArray(parsed) && parsed.every(item => typeof item === 'string' && ALLOWED_MODEL_RE.test(item))) queue = parsed;
+            else return res.status(503).json({ error: 'Model queue unavailable' });
+        }
     } catch { queue = []; }
 
     if (queue.includes(model)) {

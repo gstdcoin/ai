@@ -1,153 +1,51 @@
 /**
- * POST /api/v1/chat/batch
- *
- * Batch inference endpoint — inspired by dria-sdk pipeline dispatch pattern.
- * Distributes multiple prompts across available GSTD nodes in parallel
- * and aggregates results.
- *
- * Access: Standard tier (100+ GSTD) and above.
- * Auth:   Authorization: Bearer gstd_<api_key>  OR  x-wallet-address header
- *         with on-chain balance check.
- *
- * Request body:
- *   {
- *     prompts:     string[]          // 1–50 prompts
- *     system?:     string            // shared system prompt
- *     model?:      string            // Ollama model (default: llama3.2:3b)
- *     max_tokens?: number            // per-prompt token limit (default: 256)
- *   }
- *
- * Response:
- *   {
- *     results: { index: number; content: string; latency_ms: number }[]
- *     nodes_used: number
- *     total_ms: number
- *     failed: number
- *   }
+ * Bounded batch facade over the canonical completion handler.
+ * Each item keeps the same model permissions, quota and funded accounting.
  */
-export const config = { maxDuration: 55 };
-
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { getClientIp } from '../../../../lib/ratelimit';
-import { kvRateLimit } from '../../../../lib/kv';
-import { getActiveNodes, NODE_MODEL } from '../../../../lib/nodes';
-import { kvGet }        from '../../../../lib/kv';
-import { validateEnterpriseKey } from '../enterprise/keys';
+export const config = { maxDuration: 115 };
+import type { NextApiRequest,NextApiResponse } from 'next';
+import { createHash } from 'crypto';
+import completions from './completions';
 import { sessionWallet } from '../../../../lib/walletSession';
-
-const MAX_PROMPTS    = 50;
-const MIN_BALANCE    = 100;   // Standard tier minimum
-
-async function getWalletBalance(wallet: string): Promise<number> {
-    const raw = await kvGet(`balance:${wallet}`);
-    const balance = raw === null ? 0 : Number(raw);
-    if (!Number.isFinite(balance) || balance < 0) throw new Error('Invalid wallet balance');
-    return balance;
-}
-
-async function authorizeRequest(req: NextApiRequest): Promise<{ ok: boolean; reason?: string; status?: number }> {
-    // Enterprise API key (validated via hash lookup — not raw key as KV suffix)
-    const auth = req.headers['authorization'] || '';
-    const bearerMatch = (auth as string).match(/^Bearer (gstd_\S+)$/);
-    if (bearerMatch) {
-        const key = await validateEnterpriseKey(bearerMatch[1]);
-        if (key) return { ok: true };
+const MAX_PROMPTS=3;
+export default async function handler(req:NextApiRequest,res:NextApiResponse) {
+    if(req.method!=='POST')return res.status(405).json({error:'Method not allowed'});
+    const bearer=req.headers.authorization;
+    if(typeof bearer!=='string' || !/^Bearer gstd_\S+$/.test(bearer)) {
+        try { if(!await sessionWallet(req.headers))return res.status(401).json({error:'Verified wallet session or enterprise key required'}); }
+        catch { return res.status(503).json({error:'Authentication unavailable'}); }
     }
-
-    // Wallet identity must come from a session created after TON proof.
-    const wallet = await sessionWallet(req.headers);
-    if (!wallet) {
-        return { ok: false, status: 401, reason: 'Batch API requires a verified TON wallet session or enterprise API key.' };
-    }
-
-    const balance = await getWalletBalance(wallet);
-    if (balance >= MIN_BALANCE) return { ok: true };
-    return { ok: false, reason: `Batch API requires ${MIN_BALANCE}+ GSTD (Standard tier). Your balance: ${balance.toFixed(2)} GSTD` };
-}
-
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-
-    const ip = getClientIp(req.headers as any);
-    if (!(await kvRateLimit(`batch:${ip}`, 5, 60_000))) {
-        return res.status(429).json({ error: 'Rate limit: 5 batch requests/minute' });
-    }
-
-    let auth: Awaited<ReturnType<typeof authorizeRequest>>;
-    try {
-        auth = await authorizeRequest(req);
-    } catch (err: any) {
-        console.error('[chat/batch auth]', err?.message || err);
-        return res.status(500).json({ error: 'Could not verify batch API access' });
-    }
-    if (!auth.ok) return res.status(auth.status || 403).json({ error: auth.reason });
-
-    const { prompts, system, model, max_tokens = 256 } = req.body || {};
-
-    if (!Array.isArray(prompts) || prompts.length === 0) {
-        return res.status(400).json({ error: 'prompts array required' });
-    }
-    if (prompts.length > MAX_PROMPTS) {
-        return res.status(400).json({ error: `Max ${MAX_PROMPTS} prompts per batch` });
-    }
-
-    const targetModel = model || NODE_MODEL;
-    const start       = Date.now();
-
-    // Get all available nodes, scored by model locality (datenlord pattern)
-    const nodes = await getActiveNodes(targetModel);
-    if (nodes.length === 0) {
-        return res.status(503).json({ error: 'No GSTD nodes available' });
-    }
-
-    // dria-sdk dispatch pattern: assign each prompt to a node in round-robin,
-    // then fan-out all assignments in parallel
-    const assignments = prompts.map((prompt: string, idx: number) => ({
-        index:  idx,
-        prompt,
-        node:   nodes[idx % nodes.length],
+    const {prompts,system,model,max_tokens=256}=req.body||{};
+    if(!Array.isArray(prompts)||prompts.length<1||prompts.length>MAX_PROMPTS||
+        prompts.some(p=>typeof p!=='string'||!p.trim()||p.length>16000)||
+        (system!==undefined&&(typeof system!=='string'||system.length>16000)))
+        return res.status(400).json({error:'Provide 1–3 nonempty text prompts (max 16000 characters each).'});
+    const id=req.headers['idempotency-key'];
+    if(typeof id!=='string'||!/^[A-Za-z0-9_-]{8,100}$/.test(id))
+        return res.status(400).json({error:'idempotency_key_required'});
+    const fingerprint=createHash('sha256').update(JSON.stringify({prompts,system,model,max_tokens})).digest('hex');
+    const started=Date.now();
+    const results=await Promise.all(prompts.map(async(prompt:string,index:number)=>{
+        const t=Date.now();let status=200;let value:any;
+        const itemKey=createHash('sha256').update(id+':'+index).digest('hex');
+        const subreq=Object.assign(Object.create(req),{
+            headers:{...req.headers,'idempotency-key':itemKey},
+            body:{model,max_tokens:Math.max(1,Math.min(Number(max_tokens)||256,512)),stream:false,
+                messages:[...(system?[{role:'system',content:system}]:[]),{role:'user',content:prompt}]},
+        });
+        const response:any={status(n:number){status=n;return this;},json(v:any){value=v;return this;},setHeader(){return this;}};
+        try{
+            await completions(subreq,response);
+            const content=status===200?value?.choices?.[0]?.message?.content:null;
+            return{index,content:typeof content==='string'&&content.trim()?content:null,latency_ms:Date.now()-t,
+                status,error:status!==200?value?.error:undefined,node_id:value?._gstd?.node_id || value?._gstd?.routed_via,payment_id:value?._gstd?.payment_id};
+        }catch{return{index,content:null,latency_ms:Date.now()-t,status:503,error:'completion_unavailable'};}
     }));
-
-    const systemMsg = system || 'You are GSTD Sovereign AI. Be accurate and concise.';
-
-    const results = await Promise.all(
-        assignments.map(async ({ index, prompt, node }) => {
-            const t0 = Date.now();
-            try {
-                const resp = await fetch(`${node.url}/v1/chat/completions`, {
-                    method:  'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        model:      targetModel,
-                        messages: [
-                            { role: 'system',  content: systemMsg },
-                            { role: 'user',    content: String(prompt) },
-                        ],
-                        max_tokens: Math.min(Number(max_tokens) || 256, 512),
-                        temperature: 0.7,
-                        stream: false,
-                    }),
-                    signal: AbortSignal.timeout(25_000),
-                });
-
-                if (!resp.ok) return { index, content: null, latency_ms: Date.now() - t0, error: `Node ${resp.status}` };
-                const data: any = await resp.json();
-                const content   = data.choices?.[0]?.message?.content || '';
-                return { index, content: content || null, latency_ms: Date.now() - t0 };
-            } catch (e: any) {
-                return { index, content: null, latency_ms: Date.now() - t0, error: e.message };
-            }
-        })
-    );
-
-    const succeeded = results.filter((r) => r.content !== null);
-    const failed    = results.filter((r) => r.content === null);
-
-    return res.status(200).json({
-        results:    succeeded.map(({ index, content, latency_ms }) => ({ index, content, latency_ms })),
-        nodes_used: Math.min(nodes.length, assignments.length),
-        total_ms:   Date.now() - start,
-        failed:     failed.length,
-        ...(failed.length > 0 ? { failed_indices: failed.map((r) => r.index) } : {}),
+    const succeeded=results.filter(r=>r.content!==null),failed=results.filter(r=>r.content===null);
+    return res.status(succeeded.length?200:(failed[0]?.status||503)).json({
+        results:succeeded,nodes_used:new Set(succeeded.map(r=>r.node_id).filter(Boolean)).size,
+        total_ms:Date.now()-started,failed:failed.length,failed_indices:failed.map(r=>r.index),
+        errors:failed.map(({index,status,error})=>({index,status,error})),batch_fingerprint:fingerprint,
+        note:'Each item uses the canonical completion permissions and accounting. Reuse the same key and body to retry paid requests.',
     });
 }

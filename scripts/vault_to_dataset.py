@@ -40,7 +40,7 @@ def get_db_connection():
         host=os.getenv("DB_HOST", "172.18.0.1"),
         port=int(os.getenv("DB_PORT", "5432")),
         user=os.getenv("DB_USER", "postgres"),
-        password=os.getenv("DB_PASSWORD", "Gstd_Secure_2026"),
+        password=os.environ['DB_PASSWORD'],
         dbname=os.getenv("DB_NAME", "distributed_computing"),
     )
 

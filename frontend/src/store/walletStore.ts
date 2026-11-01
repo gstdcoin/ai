@@ -70,7 +70,12 @@ export const useWalletStore = create<WalletState>()(
         address,
         lastActiveTimestamp: Date.now()
       }),
-      disconnect: () => set({
+      disconnect: () => {
+        if (typeof window !== 'undefined') {
+          try { window.localStorage.removeItem('session_token'); } catch { /* Restricted browser storage. */ }
+          try { window.sessionStorage.removeItem('session_token'); } catch { /* Restricted browser storage. */ }
+        }
+        set({
         isConnected: false,
         address: null,
         tonBalance: null,
@@ -79,7 +84,8 @@ export const useWalletStore = create<WalletState>()(
         user: null,
         workerActive: false,
         lastActiveTimestamp: null
-      }),
+      });
+      },
       setAddress: (address: string | null) => set({
         address,
         isConnected: !!address,
