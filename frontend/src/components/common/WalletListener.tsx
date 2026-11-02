@@ -141,46 +141,12 @@ export default function WalletListener() {
 
                         // Fetch balance + pending earnings
                         try {
-                            const [balanceData, pendingData, swarmData] = await Promise.all([
-                                apiGet<any>('/users/balance'),
-                                apiGet<any>('/users/pending_balance').catch(() => ({ pending_balance: 0 })),
-                                apiGet<any>(`/swarm/account/${walletAddress}`).catch(() => ({ balance: null })),
-                            ]);
+                            const balance = await apiGet<any>('/credits/balance');
                             useWalletStore.getState().updateBalance(
-                                (balanceData.ton || 0).toString(),
-                                balanceData.gstd || 0,
-                                swarmData?.balance ?? null,
-                                pendingData.pending_balance || 0
+                                String(balance.ton || 0), balance.balance_gstd || 0, null, balance.pending_gstd || 0
                             );
-
-                            // Auto-claim welcome bonus for new users (1.0 GSTD)
-                            const currentBalance = balanceData.gstd || 0;
-                            try {
-                                const bonusStatus = await apiGet<any>(`/bonus/status?wallet=${walletAddress}`);
-                                if (bonusStatus?.welcome_bonus_available) {
-                                    const bonus = await apiPost('/bonus/welcome', { wallet_address: walletAddress, source: 'web' });
-                                    if (bonus?.amount && bonus.amount > 0) {
-                                        toast.success(`+${bonus.amount} GSTD`, 'Welcome bonus!');
-                                        // Refresh balance
-                                        const [freshBalance, freshSwarm] = await Promise.all([
-                                            apiGet<any>('/users/balance'),
-                                            apiGet<any>(`/swarm/account/${walletAddress}`).catch(() => ({ balance: null }))
-                                        ]);
-                                        useWalletStore.getState().updateBalance(
-                                            (freshBalance.ton || 0).toString(),
-                                            freshBalance.gstd || 0,
-                                            freshSwarm?.balance ?? null,
-                                            pendingData.pending_balance || 0
-                                        );
-                                    }
-                                }
-                                // Daily faucet for returning users with low balance
-                                if (currentBalance < 0.5 && bonusStatus?.daily_faucet_available) {
-                                    await apiPost('/telegram/faucet', { wallet_address: walletAddress }).catch(() => { });
-                                }
-                            } catch (_e) { /* bonus claim failed — non-critical */ }
                         } catch (e) { /* silent */ }
-                        // Redirect is handled by index.tsx useEffect (isConnected → /dashboard)
+                        // Navigation stays with the page the user selected.
                     }
                 } catch (e: any) {
                     logger.error('TonConnect login failed', e);
@@ -200,23 +166,19 @@ export default function WalletListener() {
 
     }, [wallet, isConnected, connect, disconnect, setUser, tonConnectUI]);
 
-    // Periodic balance refresh every 30 seconds when connected
+    // One ledger read every two minutes; skip hidden tabs.
     useEffect(() => {
         const state = useWalletStore.getState();
         if (!state.isConnected || !state.address) return;
 
         const fetchBalance = async () => {
             try {
-                const [balanceData, pendingData, swarmData] = await Promise.all([
-                    apiGet<any>('/users/balance'),
-                    apiGet<any>('/users/pending_balance').catch(() => ({ pending_balance: 0 })),
-                    apiGet<any>(`/swarm/account/${state.address}`).catch(() => ({ balance: null })),
-                ]);
+                if (document.hidden) return;
+                const balance = await apiGet<any>('/credits/balance');
+                const current=useWalletStore.getState();
+                if(!current.isConnected || current.address!==state.address)return;
                 useWalletStore.getState().updateBalance(
-                    (balanceData.ton || 0).toString(),
-                    balanceData.gstd || 0,
-                    swarmData?.balance ?? null,
-                    pendingData.pending_balance || 0
+                    String(balance.ton || 0), balance.balance_gstd || 0, null, balance.pending_gstd || 0
                 );
             } catch (e) {
                 // Silent fail for balance refresh (no session or network error)
@@ -226,14 +188,14 @@ export default function WalletListener() {
         // Fetch after initial delay (login already fetched first)
         const timeout = setTimeout(fetchBalance, 10000);
 
-        // Then every 30 seconds
-        const interval = setInterval(fetchBalance, 30000);
+        // Then every two minutes
+        const interval = setInterval(fetchBalance, 120000);
 
         return () => {
             clearTimeout(timeout);
             clearInterval(interval);
         };
-    }, [isConnected]);
+    }, [isConnected, wallet?.account?.address]);
 
     return null;
 }
