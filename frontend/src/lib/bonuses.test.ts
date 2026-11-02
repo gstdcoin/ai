@@ -34,6 +34,9 @@ vi.mock('./money', () => ({
     },
 }));
 vi.mock('./botAuth', () => ({ isValidBotToken: () => true }));
+const auth = vi.hoisted(()=>({wallet:'',user:''}));
+vi.mock('./walletSession',()=>({sessionWallet:async()=>auth.wallet}));
+vi.mock('./telegramAuth',()=>({validateTelegramInitData:()=>auth.user}));
 
 import link from '../pages/api/v1/telegram/bot/link';
 import claim from '../pages/api/v1/mobile/node/claim';
@@ -41,6 +44,7 @@ import claim from '../pages/api/v1/mobile/node/claim';
 const W = (n: number) => 'EQ' + String(n).padStart(46, 'a');
 
 function call(handler: any, body: any) {
+    auth.wallet=body.wallet_address;auth.user=String(body.telegram_id);
     const res: any = { statusCode: 0, body: null };
     res.status = (c: number) => { res.statusCode = c; return res; };
     res.json = (b: any) => { res.body = b; return res; };

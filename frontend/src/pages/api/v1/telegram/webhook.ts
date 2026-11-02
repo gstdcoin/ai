@@ -1,3 +1,4 @@
+import { verifiedTelegramWallet } from '../../../../lib/telegramWallet';
 /**
  * POST /api/v1/telegram/webhook
  *
@@ -20,6 +21,7 @@ import { LANGS, LANG_NAMES, Lang, resolveLang, t, parseCommand, parseReferrer } 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
 const SWARM_URL = process.env.GSTD_SWARM_URL || 'https://app.gstdtoken.com';
 const TMA_URL = `${SWARM_URL}/tma`;
+const appUrl=(lang:Lang)=>TMA_URL+'?lang='+encodeURIComponent(lang);
 const BOT_USERNAME = 'gstdaibot';
 const AI_DAILY_LIMIT = Math.max(1, parseInt(process.env.TG_AI_DAILY_LIMIT || '30', 10) || 30);
 const TON_ADDRESS_RE = /^(EQ[A-Za-z0-9_-]{46}|UQ[A-Za-z0-9_-]{46}|0:[a-fA-F0-9]{64})$/;
@@ -86,7 +88,7 @@ async function getLang(userId: number, code?: string): Promise<Lang> {
 }
 
 async function getWallet(userId: number): Promise<string> {
-    return ((await kvGet(`tg_wallet:${userId}`).catch(() => null)) as string) || '';
+    return await verifiedTelegramWallet(userId) || '';
 }
 
 async function getSession(userId: number): Promise<{ model: string; history: any[] }> {
@@ -105,7 +107,7 @@ const menuKb = (l: Lang): any[][] => [
     [{ text: t(l, 'btn_ai'), callback_data: 'ai' }, { text: t(l, 'btn_earn'), callback_data: 'earn' }],
     [{ text: t(l, 'btn_wallet'), callback_data: 'wallet' }, { text: t(l, 'btn_invite'), callback_data: 'invite' }],
     [{ text: t(l, 'btn_network'), callback_data: 'network' }, { text: t(l, 'btn_settings'), callback_data: 'lang' }],
-    [{ text: t(l, 'btn_app'), web_app: { url: TMA_URL } }, { text: t(l, 'btn_help'), callback_data: 'help' }],
+    [{ text: t(l, 'btn_app'), web_app: { url: appUrl(l) } }, { text: t(l, 'btn_help'), callback_data: 'help' }],
 ];
 const backKb = (l: Lang): any[][] => [[{ text: t(l, 'btn_menu'), callback_data: 'menu' }]];
 
@@ -121,7 +123,7 @@ async function viewStart(c: Ctx): Promise<View> {
 
 async function viewBalance(c: Ctx): Promise<View> {
     const wallet = await getWallet(c.userId);
-    if (!wallet) return { text: t(c.lang, 'wallet_prompt'), kb: backKb(c.lang) };
+    if (!wallet) return { text: t(c.lang, 'wallet_prompt'), kb: [[{text:t(c.lang,'btn_app'),web_app:{url:appUrl(c.lang)}}],...backKb(c.lang)] };
     const data = await botApi(`/api/v1/telegram/bot/balance?telegram_id=${c.userId}`);
     const pending = Number(data.pending_gstd) || 0;
     const kb: any[][] = [];
@@ -143,7 +145,7 @@ async function viewEarn(c: Ctx): Promise<View> {
     const cmd = `curl -fsSL ${INSTALL_URL} | GSTD_WALLET_ADDRESS=${wallet || '<YOUR_TON_WALLET>'} bash`;
     return {
         text: t(c.lang, 'earn', { step1, cmd: escHtml(cmd) }),
-        kb: [[{ text: t(c.lang, 'btn_app'), web_app: { url: TMA_URL } }], [{ text: t(c.lang, 'btn_node'), callback_data: 'nodes' }, { text: t(c.lang, 'btn_wallet'), callback_data: 'wallet' }], ...backKb(c.lang)],
+        kb: [[{ text: t(c.lang, 'btn_app'), web_app: { url: appUrl(c.lang) } }], [{ text: t(c.lang, 'btn_node'), callback_data: 'nodes' }, { text: t(c.lang, 'btn_wallet'), callback_data: 'wallet' }], ...backKb(c.lang)],
     };
 }
 
@@ -198,7 +200,7 @@ async function viewInvite(c: Ctx): Promise<View> {
 
 async function viewWallet(c: Ctx): Promise<View> {
     const wallet = await getWallet(c.userId);
-    return wallet ? viewBalance(c) : { text: t(c.lang, 'wallet_prompt'), kb: backKb(c.lang) };
+    return wallet ? viewBalance(c) : { text: t(c.lang, 'wallet_prompt'), kb: [[{text:t(c.lang,'btn_app'),web_app:{url:appUrl(c.lang)}}],...backKb(c.lang)] };
 }
 
 const viewHelp = async (c: Ctx): Promise<View> => ({ text: t(c.lang, 'help'), kb: backKb(c.lang) });
@@ -230,21 +232,8 @@ async function runView(c: Ctx, name: string): Promise<void> {
 }
 
 // ── Wallet linking ───────────────────────────────────────────────────────────
-async function linkWallet(c: Ctx, address: string, username: string): Promise<void> {
-    const refRaw = await kvGet(`tg_ref:${c.userId}`).catch(() => null);
-    try {
-        await botApi('/api/v1/telegram/bot/link', {
-            method: 'POST',
-            body: { telegram_id: c.userId, wallet_address: address, username, first_name: c.name, referrer_id: refRaw || undefined },
-        });
-    } catch {
-        await show(c, { text: t(c.lang, 'wallet_fail') });
-        return;
-    }
-    await show(c, {
-        text: t(c.lang, 'wallet_ok', { wallet: escHtml(address) }),
-        kb: [[{ text: t(c.lang, 'btn_earn'), callback_data: 'earn' }], ...backKb(c.lang)],
-    });
+async function linkWallet(c:Ctx,_address:string,_username:string):Promise<void> {
+    await show(c,{text:t(c.lang,'wallet_prompt'),kb:[[{text:t(c.lang,'btn_app'),web_app:{url:appUrl(c.lang)}}],...backKb(c.lang)]});
 }
 
 // ── AI chat ──────────────────────────────────────────────────────────────────

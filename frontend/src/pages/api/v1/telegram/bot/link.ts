@@ -11,6 +11,9 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvSet, kvSetNX, kvConsumeQuota, kvIncr, kvIncrByFloat } from '../../../../../lib/kv';
 import { grantPromo, nano, walletId } from '../../../../../lib/money';
 import { isValidBotToken } from '../../../../../lib/botAuth';
+import { sessionWallet } from '../../../../../lib/walletSession';
+import { validateTelegramInitData } from '../../../../../lib/telegramAuth';
+import { verifiedTelegramWallet } from '../../../../../lib/telegramWallet';
 
 const TON_ADDRESS_RE = /^(EQ[A-Za-z0-9_-]{46}|UQ[A-Za-z0-9_-]{46}|0:[a-fA-F0-9]{64})$/;
 const WELCOME_BONUS    = 5; // Service requests, not GSTD.
@@ -20,12 +23,13 @@ const DAILY_BONUS_BUDGET = 100;       // max subsidised sign-ups per day
 const MAX_REFERRALS_PER_USER = 20;    // lifetime paid referrals per inviter
 const TEN_YEARS = 10 * 365 * 86400;
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export async function linkWithWalletProof(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-    // Without this, anyone could re-point an arbitrary telegram_id's wallet
-    // mapping (hijacking future payouts) or farm welcome/referral bonuses
-    // with fabricated telegram_ids that were never real Telegram accounts.
-    if (!isValidBotToken(req)) return res.status(401).json({ error: 'Invalid bot token' });
+    const session=await sessionWallet(req.headers);
+    if(!session)return res.status(403).json({error:'wallet_ownership_proof_required'});
+    const authenticatedTelegram=validateTelegramInitData(req.body?.telegram_init_data);
+    if(!authenticatedTelegram || String(req.body?.telegram_id)!==authenticatedTelegram)
+        return res.status(403).json({error:'verified_telegram_identity_required'});
 
     const { telegram_id, wallet_address, username, first_name, referrer_id } = req.body as {
         telegram_id?:  string | number;
@@ -43,10 +47,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const userId    = String(telegram_id);
     let walletKey: string;
     try { walletKey = walletId(wallet_address); } catch { return res.status(400).json({ error: 'Invalid TON address' }); }
-    const existing  = await kvGet(`tg_wallet:${userId}`).catch(() => null);
+    if(walletId(session)!==walletKey)return res.status(403).json({error:'wallet_session_mismatch'});
+    const existing = await verifiedTelegramWallet(userId);
     const isNew     = !existing;
 
     await Promise.all([
+        kvSet(`tg_wallet_verified:${userId}`, walletKey),
         kvSet(`tg_wallet:${userId}`, wallet_address),
         kvSet(`tg_meta:${userId}`, JSON.stringify({
             username:    username   || '',
@@ -73,7 +79,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             const refId = String(referrer_id);
 
             // Get referrer's wallet to credit them
-            const refWalletRaw = await kvGet(`tg_wallet:${refId}`).catch(() => null);
+            const refWalletRaw = await verifiedTelegramWallet(refId);
             if (!refWalletRaw || String(refWalletRaw).toLowerCase() === walletKey) {
                 await Promise.all(bonuses);
                 return res.status(200).json({ success: true, wallet: wallet_address, telegram_id: userId, is_new_link: isNew, subsidized, referral_bonus });
@@ -120,4 +126,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         subsidized,
         referral_bonus,
     });
+}
+
+export default async function handler(req:NextApiRequest,res:NextApiResponse) {
+ if(!isValidBotToken(req))return res.status(401).json({error:'Invalid bot token'});
+ return linkWithWalletProof(req,res);
 }

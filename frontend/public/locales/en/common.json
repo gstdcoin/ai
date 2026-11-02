@@ -511,7 +511,7 @@
   "ticker_bank_vault": "Bank Vault",
   "ticker_golden_match": "Golden Pattern Match",
   "ticker_no_data": "No data from Leviathan. Check Backend Pollers.",
-  "ticker_architect_ready": "Leviathan Live Stream — АРХИТЕКТОР, СИСТЕМА СТАЛА ПРОЗРАЧНОЙ",
+  "ticker_architect_ready": "GSTD live network status",
   "ticker_seeking": "STATUS: LEVIATHAN SEEKING SIGNAL...",
   "ticker_forecast": "Forecast: Expecting market reaction in {{hours}}h based on experience ({{count}} chains)",
   "ticker_temporal_precision": "Temporal Precision: predicted {{predicted}}h, actual {{actual}}h (refined)",

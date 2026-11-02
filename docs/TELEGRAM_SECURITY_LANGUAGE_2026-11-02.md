@@ -1,0 +1,9 @@
+# Telegram identity and language — 2 November 2026
+
+Mini App English/Russian selection is explicit and retained. The preference order is manual app choice, bot entry language, Telegram language as an initial default, then route locale. Bot inline app buttons carry its saved language. Existing Telegram chat-menu URLs still open /tma; the app itself shows English / Русский, so no bot-token rotation or menu re-registration is needed for this release. Additional language overlays remain available automatically unless the user explicitly chooses English/Russian.
+
+Wallet address text in chat is no longer proof of ownership. The Mini App offers an explicit Link wallet to Telegram action after connecting the wallet. The server independently verifies both the TON-authenticated session and signed Telegram initData, checks identity and canonical wallet equality, then writes tg_wallet_verified:<id>. All bot balance, node, claim, tier and API-key lookups use only this verified association. Old tg_wallet records are preserved for historical review but confer no account-data authority. Existing users must re-confirm their wallet in the Mini App. Never provide a seed phrase or private key.
+
+The proof gate uses the existing TON session authentication and Telegram HMAC verifier; it does not add a blockchain transfer or sign an outgoing custody payment. Pending-to-available reward claims remain same-wallet CAS operations. Promotion quotas remain nonwithdrawable and capped. No financial policy or funding flag changed.
+
+Validation includes valid signed Telegram fixtures, forged/stale/mismatched identities, a mismatched TON session, rejection of legacy address-only associations, chatbot address/replay non-mutation, English bot preference on a Russian Telegram account and locale-selection regression tests. Runtime Telegram account verification is separate from these synthetic tests.

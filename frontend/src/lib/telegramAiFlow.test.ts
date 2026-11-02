@@ -90,7 +90,7 @@ describe('Telegram delivery and webhook retry safety', () => {
 
 
 it('preserves Russian locale when opening wallet accounting from the bot',async()=>{
- vi.mocked(kvGet).mockImplementation(async key=>String(key).startsWith('tg_wallet:')?'0:'+'22'.repeat(32):null);
+ vi.mocked(kvGet).mockImplementation(async key=>String(key).startsWith('tg_wallet_verified:')?'0:'+'22'.repeat(32):null);
  request.mockImplementation(async(url:string)=>new Response(JSON.stringify(url.includes('/api/v1/telegram/bot/balance')?{balance_gstd:0,pending_gstd:0}:{ok:true})));
  const response={status:vi.fn().mockReturnThis(),json:vi.fn()};
  await handler({method:'POST',headers:{},body:{update_id:2,message:{chat:{id:123,type:'private'},from:{id:123,language_code:'ru'},text:'/balance'}}},response);
@@ -99,13 +99,14 @@ it('preserves Russian locale when opening wallet accounting from the bot',async(
 });
 
 
-it('does not replay an older wallet link after failed delivery and a newer link',async()=>{
+it('never changes a verified wallet from an address message or its replay',async()=>{
  const store=new Map<string,string>();
  vi.mocked(kvGet).mockImplementation(async key=>store.get(String(key))||null);
  vi.mocked(kvSet).mockImplementation(async(key,value)=>{store.set(key,value);});
  vi.mocked(kvSetNX).mockImplementation(async(key,value)=>{if(store.has(key))return false;store.set(key,value);return true;});
  const oldWallet='0:'+'33'.repeat(32),newWallet='0:'+'44'.repeat(32);
- let linked='',linkCalls=0,failDelivery=true;
+ let linked=newWallet,linkCalls=0,failDelivery=true;
+ store.set('tg_wallet_verified:123',newWallet);
  request.mockImplementation(async(url:string,options:any)=>{
   if(url.endsWith('/api/v1/telegram/bot/link')){linked=JSON.parse(options.body).wallet_address;linkCalls++;return new Response(JSON.stringify({success:true}));}
   return new Response(JSON.stringify({ok:!failDelivery}));
@@ -116,11 +117,11 @@ it('does not replay an older wallet link after failed delivery and a newer link'
   return response;
  };
  const first=await link(10,oldWallet);
- expect(first.status).toHaveBeenCalledWith(503);expect(linked).toBe(oldWallet);
+ expect(first.status).toHaveBeenCalledWith(503);expect(linked).toBe(newWallet);
  failDelivery=false;await link(11,newWallet);expect(linked).toBe(newWallet);
  const replay=await link(10,oldWallet);
  expect(replay.status).toHaveBeenCalledWith(200);
- expect(linkCalls).toBe(2);expect(linked).toBe(newWallet);
+ expect(linkCalls).toBe(0);expect(linked).toBe(newWallet);
 });
 
 it('fails closed before non-AI mutations when start deduplication cannot be persisted',async()=>{
@@ -129,4 +130,12 @@ it('fails closed before non-AI mutations when start deduplication cannot be pers
  await handler({method:'POST',headers:{},body:{update_id:12,message:{chat:{id:123,type:'private'},from:{id:123},text:'0:'+'55'.repeat(32)}}},response);
  expect(response.status).toHaveBeenCalledWith(503);
  expect(request).not.toHaveBeenCalled();
+});
+
+it('carries the saved English bot preference into the Mini App for a Russian Telegram user',async()=>{
+ vi.mocked(kvGet).mockImplementation(async key=>key==='tg_lang:123'?'en':null);
+ const response={status:vi.fn().mockReturnThis(),json:vi.fn()};
+ await handler({method:'POST',headers:{},body:{update_id:21,message:{chat:{id:123,type:'private'},from:{id:123,language_code:'ru'},text:'/menu'}}},response);
+ const sent=request.mock.calls.filter(([url]:any)=>url.endsWith('/sendMessage')).map(([,options]:any)=>JSON.parse(options.body));
+ expect(sent.some(body=>body.reply_markup?.inline_keyboard.flat().some((b:any)=>b.web_app?.url==='https://app.gstdtoken.com/tma?lang=en'))).toBe(true);
 });

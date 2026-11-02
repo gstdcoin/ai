@@ -1,3 +1,4 @@
+import { verifiedTelegramWallet } from '../../../../lib/telegramWallet';
 /**
  * GET /api/v1/access/tier?wallet=<address>
  * Wallet-scoped data requires a verified TON session matching the query address,
@@ -69,7 +70,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (typeof requestedTelegramId === 'string') {
         if (!isValidBotToken(req)) return res.status(401).json({ error: 'Invalid bot token' });
         try {
-            const linkedWallet = await kvGet(`tg_wallet:${requestedTelegramId}`);
+            const linkedWallet = await verifiedTelegramWallet(requestedTelegramId);
             if (!linkedWallet) return res.status(404).json({ error: 'No wallet linked to this Telegram account' });
             wallet = walletId(String(linkedWallet));
         } catch (err: any) {

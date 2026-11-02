@@ -1,3 +1,4 @@
+import { verifiedTelegramWallet } from '../../../../lib/telegramWallet';
 /**
  * POST /api/v1/free-api/key
  *
@@ -45,7 +46,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const userId = String(telegram_id || '');
         if (!/^\d{1,15}$/.test(userId)) return res.status(400).json({ error: 'Valid telegram_id required for bot requests' });
         try {
-            const linkedWallet = await kvGet(`tg_wallet:${userId}`);
+            const linkedWallet = await verifiedTelegramWallet(userId);
             if (!linkedWallet) return res.status(404).json({ error: 'No wallet linked to this Telegram account' });
             walletKey = String(linkedWallet).toLowerCase();
         } catch (err: any) {

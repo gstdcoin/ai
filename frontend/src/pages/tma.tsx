@@ -11,6 +11,8 @@ import { useTmaTranslation } from '../lib/tmaI18n';
 import { isTelegramWebApp, getTelegramWebApp } from '../lib/telegram';
 import { API_URL } from '../lib/config';
 import { useTMALocaleSync } from '../hooks/useTMALocale';
+import LanguageSelector from '../components/tma/LanguageSelector';
+import TelegramWalletLink from '../components/tma/TelegramWalletLink';
 import LeviathanTMATicker from '../components/tma/LeviathanTMATicker';
 import LiveHashrateChart from '../components/tma/LiveHashrateChart';
 import GoldenAccumulationChart from '../components/tma/GoldenAccumulationChart';
@@ -83,7 +85,7 @@ export default function TMAPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#030014] flex items-center justify-center">
-        <div className="text-amber-400 animate-pulse">{t('loading', 'Loading...')}</div>
+        <div><LanguageSelector /><div className="text-amber-400 animate-pulse">{t('loading', 'Loading...')}</div></div>
       </div>
     );
   }
@@ -107,8 +109,10 @@ export default function TMAPage() {
             <span className="bg-linear-to-r from-amber-400 to-amber-600 bg-clip-text text-transparent">GSTD</span>
             {' '}{t('platform', 'Platform')}
           </h1>
+          <LanguageSelector />
         </header>
 
+        <TelegramWalletLink />
         {/* Tab Nav */}
         <div className="grid grid-cols-2 gap-2 mb-4">
           {tabs.map(({ id, label, icon }) => (

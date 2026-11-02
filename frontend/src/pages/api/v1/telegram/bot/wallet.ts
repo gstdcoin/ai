@@ -1,3 +1,4 @@
+import { verifiedTelegramWallet } from '../../../../../lib/telegramWallet';
 /**
  * GET  /api/v1/telegram/bot/wallet?telegram_id=<id>
  * Returns the linked TON wallet for a Telegram user.
@@ -15,7 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!/^\d{1,15}$/.test(telegramId)) return res.status(400).json({ error: 'telegram_id required' });
 
     try {
-        const wallet = await kvGet(`tg_wallet:${telegramId}`);
+        const wallet = await verifiedTelegramWallet(telegramId);
         return res.status(200).json({
             telegram_id: telegramId,
             wallet:      wallet || '',

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { getTelegramUser } from './telegram';
+import { useRouter } from 'next/router';
+import { savedAppLocale,appLocale } from './appLocale';
 
 /**
  * Client-side overlay for the Telegram Mini App so users whose Telegram language is not
@@ -104,13 +106,14 @@ export function resolveTmaLang(code?: string): string | null {
 /** Drop-in replacement for useTranslation('common') inside the mini app. */
 export function useTmaTranslation() {
   const { t, i18n } = useTranslation('common');
+  const router=useRouter();
   const [lang, setLang] = useState<string | null>(null);
 
   useEffect(() => {
     // Only override when Telegram's language has no en/ru catalog.
     const code = getTelegramUser()?.language_code || (typeof navigator !== 'undefined' ? navigator.language : '');
-    setLang(resolveTmaLang(code));
-  }, []);
+    setLang(savedAppLocale()||appLocale(router.query.lang)?null:resolveTmaLang(code));
+  }, [router.query.lang,i18n.language]);
 
   const tt = useCallback((key: string, fallback?: string): string => {
     if (lang && DICTS[lang][key]) return DICTS[lang][key];

@@ -232,7 +232,7 @@ describe('wallet-scoped API authorization', () => {
     it('allows the Telegram bot to issue a key only for the linked wallet', async () => {
         isValidBotToken.mockReturnValue(true);
         kvGet.mockImplementation(async (key: string) => {
-            if (key === 'tg_wallet:123456') return '0:' + '11'.repeat(32);
+            if (key === 'tg_wallet_verified:123456') return '0:' + '11'.repeat(32);
             if (key === 'balance:0:' + '11'.repeat(32)) return '10000';
             return null;
         });
@@ -312,7 +312,7 @@ describe('wallet-scoped API authorization', () => {
                 ? JSON.stringify({available:'12000000000',pending:'0',reserved:'0',promo:'0',earned:'0'})
                 : key.startsWith('balance:')?'99':null));
         kvGet.mockImplementation(async (key: string) => {
-            if (key === 'tg_wallet:123456') return '0:' + '11'.repeat(32);
+            if (key === 'tg_wallet_verified:123456') return '0:' + '11'.repeat(32);
             if (key === 'balance:0:' + '11'.repeat(32)) return '12';
             return null;
         });
