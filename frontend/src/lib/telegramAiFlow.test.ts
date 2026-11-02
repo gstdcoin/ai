@@ -139,3 +139,15 @@ it('carries the saved English bot preference into the Mini App for a Russian Tel
  const sent=request.mock.calls.filter(([url]:any)=>url.endsWith('/sendMessage')).map(([,options]:any)=>JSON.parse(options.body));
  expect(sent.some(body=>body.reply_markup?.inline_keyboard.flat().some((b:any)=>b.web_app?.url==='https://app.gstdtoken.com/tma?lang=en'))).toBe(true);
 });
+
+it('updates the persistent app menu in the chosen language without changing global bot settings',async()=>{
+ const response={status:vi.fn().mockReturnThis(),json:vi.fn()};
+ await handler({method:'POST',headers:{},body:{update_id:22,callback_query:{id:'fixture-callback',from:{id:123,language_code:'ru'},message:{chat:{id:123,type:'private'},message_id:99},data:'setlang:en'}}},response);
+ const menus=request.mock.calls.filter(([url]:any)=>url.endsWith('/setChatMenuButton')).map(([,options]:any)=>JSON.parse(options.body));
+ expect(menus).toEqual([{chat_id:123,menu_button:{type:'web_app',text:'📱 Open app',web_app:{url:'https://app.gstdtoken.com/tma?lang=en'}}}]);
+});
+it('does not reveal account views through a group callback',async()=>{
+ const response={status:vi.fn().mockReturnThis(),json:vi.fn()};
+ await handler({method:'POST',headers:{},body:{update_id:23,callback_query:{id:'group-callback',from:{id:123},message:{chat:{id:-123,type:'supergroup'},message_id:100},data:'wallet'}}},response);
+ expect(request.mock.calls.every(([url]:any)=>url.endsWith('/answerCallbackQuery'))).toBe(true);
+});

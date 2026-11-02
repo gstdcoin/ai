@@ -115,7 +115,12 @@ async function viewMenu(c: Ctx): Promise<View> {
     return { text: t(c.lang, 'menu_title'), kb: menuKb(c.lang) };
 }
 
+async function syncAppMenu(c:Ctx):Promise<void> {
+    await tg('setChatMenuButton',{chat_id:c.chatId,menu_button:{type:'web_app',text:t(c.lang,'btn_app'),web_app:{url:appUrl(c.lang)}}}).catch(()=>null);
+}
+
 async function viewStart(c: Ctx): Promise<View> {
+    await syncAppMenu(c);
     const wallet = await getWallet(c.userId);
     const w = wallet ? t(c.lang, 'wallet_linked', { wallet: shortAddr(wallet) }) : t(c.lang, 'wallet_none');
     return { text: t(c.lang, 'welcome', { name: escHtml(c.name), wallet: w }), kb: menuKb(c.lang) };
@@ -333,7 +338,7 @@ async function processUpdate(update: any): Promise<void> {
         const userId = cb.from?.id;
         const chatId = cb.message?.chat?.id;
         await tg('answerCallbackQuery', { callback_query_id: cb.id }).catch(() => null);
-        if (!userId || !chatId) return;
+        if (!userId || !chatId || cb.message?.chat?.type !== 'private') return;
         const lang = await getLang(userId, cb.from?.language_code);
         const ctx: Ctx = { chatId, userId, lang, name: cb.from?.first_name || '', msgId: cb.message?.message_id, updateId: update.update_id };
         const data: string = cb.data || '';
@@ -341,6 +346,7 @@ async function processUpdate(update: any): Promise<void> {
             const nl = resolveLang(data.slice(8));
             await kvSet(`tg_lang:${userId}`, nl).catch(() => {});
             ctx.lang = nl;
+            await syncAppMenu(ctx);
             await show(ctx, { text: `${t(nl, 'lang_set')}\n\n${t(nl, 'menu_title')}`, kb: menuKb(nl) });
         } else if (VIEWS[data]) {
             await runView(ctx, data);
