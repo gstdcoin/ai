@@ -1663,5 +1663,24 @@
     "prompt_translate": "Translate into English: «Добрый день! Спасибо за вашу помощь».",
     "prompt_crypto": "Explain the difference between a token and a network transaction fee in simple terms.",
     "prompt_math": "A notebook costs 80 and a pen costs 20. How much do three notebooks and two pens cost? Explain briefly."
+  },
+  "mini_app": {
+    "overview": "Overview",
+    "worker": "Compute worker",
+    "chat": "AI chat",
+    "tasks_total": "Completed tasks (all time)",
+    "intro": "Ask AI or share compute when funded work is available. Rewards require completed and accepted paid tasks; keeping the app open does not earn tokens.",
+    "step1_title": "Verify your wallet",
+    "step1_desc": "Connect your TON wallet and confirm its link to Telegram to access your account in the bot.",
+    "step2_title": "Share compute",
+    "step2_desc": "Open Compute worker to verify available funded tasks. An empty queue is normal; no earnings are guaranteed.",
+    "step3_title": "Use the AI network",
+    "step3_desc": "Choose a model in AI chat. Paid work shows its price and reserves funded GSTD before execution.",
+    "chat_desc": "Choose a live model in the application chat. Model availability and paid-work pricing come from the platform.",
+    "open_chat": "Open AI chat",
+    "payments": "Balance and rewards",
+    "swap_title": "Get GSTD",
+    "swap_desc": "The exchange opens on the external STON.fi service. Review token, price and fees there before signing.",
+    "stats_error": "Network statistics are temporarily unavailable."
   }
 }
