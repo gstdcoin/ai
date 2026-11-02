@@ -10,7 +10,7 @@ import {getActiveNodes} from './nodes';
 beforeEach(()=>vi.clearAllMocks());
 async function call(body:any,headers:any={authorization:'Bearer gstd_fixture','idempotency-key':'batch-test-key'}) {
  let status=200,value:any;
- await batch({method:'POST',body,headers} as any,{status(n:number){status=n;return this;},json(v:any){value=v;return this;}} as any);
+ await batch(Object.create({get method(){return 'POST';},get body(){return body;},get headers(){return headers;}}) as any,{status(n:number){status=n;return this;},json(v:any){value=v;return this;}} as any);
  return{status,value};
 }
 it('enforces the canonical enterprise model restriction without contacting a node',async()=>{

@@ -4,7 +4,7 @@ vi.mock('./walletSession',()=>({sessionWallet:async()=>state.wallet}));
 vi.mock('./kv',()=>({kvGet:async(key:string)=>key.endsWith(':pull_queue')?null:state.node,kvSet:state.writes}));
 import pull from '../pages/api/v1/models/pull';
 beforeEach(()=>{state.wallet=null;state.node=null;state.writes.mockClear();});
-async function call(body:any) {let status=200,value:any;await pull({method:'POST',body,headers:{}} as any,
+async function call(body:any) {let status=200,value:any;await pull(Object.create({get method(){return 'POST';},get headers(){return {};},get body(){return body;}}) as any,
  {status(n:number){status=n;return this;},json(v:any){value=v;return this;}} as any);return{status,value};}
 it('does not contact a caller-selected URL and rejects unauthenticated pulls',async()=>{
  const network=vi.spyOn(globalThis,'fetch').mockRejectedValue(new Error('network must not be used'));

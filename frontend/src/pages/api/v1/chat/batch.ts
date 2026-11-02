@@ -28,10 +28,10 @@ export default async function handler(req:NextApiRequest,res:NextApiResponse) {
     const results=await Promise.all(prompts.map(async(prompt:string,index:number)=>{
         const t=Date.now();let status=200;let value:any;
         const itemKey=createHash('sha256').update(id+':'+index).digest('hex');
-        const subreq=Object.assign(Object.create(req),{
-            headers:{...req.headers,'idempotency-key':itemKey},
-            body:{model,max_tokens:Math.max(1,Math.min(Number(max_tokens)||256,512)),stream:false,
-                messages:[...(system?[{role:'system',content:system}]:[]),{role:'user',content:prompt}]},
+        const subreq=Object.create(req,{
+            headers:{value:{...req.headers,'idempotency-key':itemKey}},
+            body:{value:{model,max_tokens:Math.max(1,Math.min(Number(max_tokens)||256,512)),stream:false,
+                messages:[...(system?[{role:'system',content:system}]:[]),{role:'user',content:prompt}]}},
         });
         const response:any={status(n:number){status=n;return this;},json(v:any){value=v;return this;},setHeader(){return this;}};
         try{
