@@ -21,7 +21,7 @@ import { paidInference } from '../../../../lib/paidInference';
 import { sessionWallet } from '../../../../lib/walletSession';
 import { getActiveNodes } from '../../../../lib/nodes';
 
-const DEFAULT_MODEL = 'llama3.2:3b';
+const DEFAULT_MODEL = 'auto';
 const ROUTE_TIMEOUT = 110_000;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
