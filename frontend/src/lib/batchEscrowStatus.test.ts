@@ -24,3 +24,7 @@ it('reads actual bound owners, asset and all share states, rejecting forged wall
  expect(result.shares).toHaveLength(3);
  forge=true;await expect(batchStatus(input,rpc,async()=>{})).rejects.toThrow('testnet_state_mismatch');
 });
+
+it('does not expose a frozen payer wallet as an empty undeployed batch',async()=>{
+ await expect(batchStatus(input,{get:async()=>({status:'frozen',balance:'1'})},async()=>{})).rejects.toThrow('testnet_unavailable');
+});

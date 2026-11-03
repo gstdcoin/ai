@@ -72,7 +72,10 @@ Do not treat this test UI as a production payment-recovery system.
 
 Chain reads occur only on button presses. The anonymous test endpoint has a shared
 three-status-checks/minute limit and paces free-indexer calls. Another visitor can
-consume that limit; wait a minute. No continuous polling or paid RPC is enabled.
+consume that limit; wait a minute. Failed TonAPI reads select a fixed TON Center
+testnet fallback for that status check, with no redirects or broadcast. Frozen
+accounts and failed getters on active accounts are never reported as empty.
+No continuous polling or paid RPC is enabled.
 
 ## Still required before autonomous mainnet settlement
 
