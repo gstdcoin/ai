@@ -28,3 +28,5 @@ The pilot payer must equal the node's separately signed testnet beneficiary. All
 ## Validation
 
 The integration tests cover altered commitments, wallet ownership/domain/time/text checks, insufficient funding, one-time enqueue, exact-node/model assignment, invalid result rejection, duplicate completion, primary payout preservation and zero internal ledger credit. Existing payment, task and wallet tests must pass before deployment.
+
+Active smart-contract destinations use bounceable friendly addresses; deployment messages with StateInit use non-bounceable addresses. Authorization follows the official TON Connect text-signature construction: https://github.com/ton-blockchain/ton-connect/blob/main/spec/rpc.md#signature--text-and-binary .

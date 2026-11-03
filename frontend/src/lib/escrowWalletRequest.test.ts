@@ -11,7 +11,7 @@ it('every escrow transaction passes the installed SDK validator before any walle
  try{
   for(const testAssetVersion of [1,2] as const)for(const action of ['mint','deploy','fund','accept','expire','sync','refund','reclaim','report','withdraw'] as const){
    const tx=await batchTransaction({...input,testAssetVersion},action,action==='withdraw'?worker:payer);
-   for(const message of tx.messages){const a=Address.parseFriendly(message.address);expect(a.isTestOnly).toBe(true);expect(a.isBounceable).toBe(false);}
+   for(const message of tx.messages){const a=Address.parseFriendly(message.address);expect(a.isTestOnly).toBe(true);expect(a.isBounceable).toBe(!message.stateInit);}
    // A disconnected SDK must reach the connection check, not fail payload validation.
    await expect(sdk.sendTransaction(tx)).rejects.toBeInstanceOf(WalletNotConnectedError);
   }

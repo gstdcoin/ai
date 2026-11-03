@@ -71,3 +71,5 @@ it('cannot modify the primary payout or replay a payout signature with another r
  await expect(setTestnetNodePayout({nodeId:node,address:payer,revision:raw.revision+1,timestamp,signature})).rejects.toThrow('invalid_payout_signature');
  expect(await kvGet(main)).toBe('primary-preserved');
 });
+
+it('matches a separately encoded UTF-8 TON Connect signData digest fixture',()=>{expect(pilotSignDataDigest('0:'+'11'.repeat(32),'app.gstdtoken.com',1764424200,'GSTD: разрешение').toString('hex')).toBe('6639598f2a7688011427cebcb85fe6e040b06babf80f8e83dab576d37f62a55a');});

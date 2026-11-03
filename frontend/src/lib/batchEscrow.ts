@@ -51,7 +51,7 @@ export async function batchTransaction(input:BatchInput,action:BatchAction,actor
  if(!Number.isInteger(role)||role<0||role>2)throw Error('invalid_role');
  const expected=action==='withdraw'?c.recipients[role].toRawString():c.payer.toRawString();
  if(actor!==expected)throw Error('wrong_signer');
- const message=(address:Address,amount:string,payload:Cell,init?:{code:Cell;data:Cell})=>({address:address.toString({bounceable:false,testOnly:true}),amount,payload:serialize(payload),
+ const message=(address:Address,amount:string,payload:Cell,init?:{code:Cell;data:Cell})=>({address:address.toString({bounceable:!init,testOnly:true}),amount,payload:serialize(payload),
   ...(init?{stateInit:serialize(beginCell().store(storeStateInit(init)).endCell())}:{})});
  let messages;
  if(action==='mint')messages=[message(c.master.address,'200000000',beginCell().store(storeMintTestGstd({$$type:'MintTestGstd',amount:1_000_000_000_000n,queryId:queryId()})).endCell(),c.master.init)];
