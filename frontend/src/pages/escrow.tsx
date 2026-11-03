@@ -8,6 +8,7 @@ import TonConnect,{UserRejectsError} from '@tonconnect/sdk';
 import {Address} from '@ton/core';
 import {getCommonStaticProps} from '../lib/i18n-static-props';
 import type {BatchInput,BatchAction} from '../lib/batchEscrow';
+import {hasExpectedEscrowState} from '../lib/escrowObservation';
 import {escrowStoragePrefix,escrowPendingKey,readEscrowPending,withEscrowOperation,type PendingEscrowOperation} from '../lib/escrowOperations';
 const storagePrefix=escrowStoragePrefix;
 const pendingKey=escrowPendingKey;
@@ -50,15 +51,7 @@ function EscrowLab(){
  async function refresh(){
   const d=await api('status');setChain(d.status);
   if(pending&&d.status.checked_at>pending.since){
-   const s=d.status,total=(s.shares||[]).reduce((a:bigint,x:any)=>a+BigInt(x.balance_nano),0n);
-   const native=BigInt(s.native_nano||'0')+(s.shares||[]).reduce((a:bigint,x:any)=>a+BigInt(x.native_nano||'0'),0n);
-   const done=(pending.action==='mint'&&BigInt(s.payer_balance)>BigInt(pending.payer||'0'))||
-    (pending.action==='deploy'&&s.deployed)||(pending.action==='fund'&&(s.mask===7||total>BigInt(pending.total)))||
-    (pending.action==='accept'&&s.state===1)||(pending.action==='expire'&&s.state===2)||
-    (pending.action==='withdraw'&&BigInt(s.shares[pending.role]?.balance_nano||'0')<BigInt(pending.balance))||
-    (pending.action==='refund'&&total<BigInt(pending.total))||
-    (pending.action==='sync'&&s.shares?.length===3&&s.shares.every((x:any)=>x.state===s.state))||
-    (pending.action==='report'&&s.mask===7)||(pending.action==='reclaim'&&native<BigInt(pending.native));
+   const done=hasExpectedEscrowState(pending,d.status);
    if(done)await withEscrowOperation(localStorage,navigator.locks,plan.task,async op=>{if(op.clear(pending.id)){setPending(null);setNotice(p('confirmed'));}else setPending(op.current());});
   }
  }

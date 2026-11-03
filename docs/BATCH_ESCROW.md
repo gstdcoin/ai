@@ -68,7 +68,8 @@ across restored drafts. Wallet requests use an exclusive origin-scoped Web Lock
 with no queued prompts; operation IDs prevent stale confirmations from clearing
 a newer pending operation. Unsupported browsers fail before signing. This does
 not coordinate different devices/profiles or prove transaction finality. No transaction is retried
-automatically. State-change evidence is not complete transaction-trace validation.
+automatically. Partial funding, refund or native-reclaim progress does not clear
+the pending operation. State-change evidence is not complete transaction-trace validation.
 If a wallet action fails without a definitive rejection, or a multi-message
 operation partially completes, inspect the wallet and chain before recovery.
 Do not treat this test UI as a production payment-recovery system.
