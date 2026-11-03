@@ -11,7 +11,7 @@ async function rpcFetch(url:string,options:RequestInit={}){
 // Fixed public testnet hosts only. Select one fallback per status check, never broadcast.
 export function testnetRpc():Rpc {
  let fallback=false,primary="not_attempted",secondary="not_attempted";
- const bucket=(e:any)=>{const m=String(e?.message||"");if(/illegal invocation/i.test(m))return"illegal_invocation";if(/signal/i.test(m))return"signal";if(/cache/i.test(m))return"cache";if(/timeout|abort/i.test(m))return"timeout";if(/fetch/i.test(m))return"fetch";return["TypeError","Error","TimeoutError","AbortError"].includes(e?.name)?e.name:"failure";};
+ const bucket=(e:any)=>{const m=String(e?.message||"");if(/illegal invocation/i.test(m))return"illegal_invocation";if(/signal/i.test(m))return"signal";if(/cache/i.test(m))return"cache";if(/timeout|abort/i.test(m))return"timeout";if(/fetch/i.test(m))return"fetch";const name=["TypeError","Error","TimeoutError","AbortError"].includes(e?.name)?e.name:"failure";return name+":"+m.replace(/https?:\/\/[^\s]+/gi,"[url]").replace(/[A-Za-z0-9_=-]{24,}/g,"[value]").replace(/[^a-zA-Z0-9 :()._\x27-]/g,"_").slice(0,90);};
  const wait=()=>new Promise(r=>setTimeout(r,1100));
  async function center(path:string){
   const match=/^blockchain\/accounts\/([^/]+)(?:\/methods\/(state|funding_mask|get_wallet_data))?$/.exec(path);
