@@ -3,7 +3,7 @@ import {Address,beginCell} from '@ton/core';
 import {testnetRpc} from './batchEscrowStatus';
 const owner='0:'+'11'.repeat(32),master='0:'+'22'.repeat(32);
 const addressCell=(a:string)=>beginCell().storeAddress(Address.parse(a)).endCell().toBoc().toString('base64');
-afterEach(()=>vi.unstubAllGlobals());
+afterEach(()=>{vi.unstubAllGlobals();vi.unstubAllEnvs();});
 it('falls back on a failed free provider and stays on the fixed testnet fallback within this check',async()=>{
  const calls:string[]=[];
  vi.stubGlobal('fetch',vi.fn(async(url:string)=>{calls.push(String(url));return calls.length===1?new Response('',{status:429}):Response.json({ok:true,result:{state:'uninitialized',balance:'0'}});}));
@@ -41,4 +41,19 @@ it('uses Workers-supported manual redirects and never follows an untrusted Locat
  }));
  expect(await testnetRpc().get('blockchain/accounts/'+encodeURIComponent(owner))).toEqual({status:'uninit',balance:'0'});
  expect(calls).toHaveLength(2);expect(calls.every(x=>x.startsWith('https://testnet.tonapi.io/')||x.startsWith('https://testnet.toncenter.com/'))).toBe(true);
+});
+
+it('keeps provider keys server-side and scoped to their own fixed testnet hosts',async()=>{
+ vi.stubEnv('ESCROW_TESTNET_TONAPI_KEY','test-only-tonapi');vi.stubEnv('ESCROW_TESTNET_TONCENTER_API_KEY','test-only-toncenter');
+ const calls:Array<{url:string;headers:Headers}>=[];
+ vi.stubGlobal('fetch',vi.fn(async(url:string,options?:RequestInit)=>{calls.push({url:String(url),headers:new Headers(options?.headers)});return calls.length===1?new Response('',{status:429}):Response.json({ok:true,result:{state:'uninitialized',balance:'0'}});}));
+ const result=await testnetRpc().get('blockchain/accounts/'+encodeURIComponent(owner));
+ expect(calls[0].headers.get('Authorization')).toBe('Bearer test-only-tonapi');expect(calls[0].headers.has('X-API-Key')).toBe(false);
+ expect(calls[1].headers.get('X-API-Key')).toBe('test-only-toncenter');expect(calls[1].headers.has('Authorization')).toBe(false);
+ expect(JSON.stringify(result)+calls.map(c=>c.url).join('')).not.toContain('test-only');
+});
+it('uses a configured TON Center key directly instead of spending an anonymous TonAPI request',async()=>{
+ vi.stubEnv('ESCROW_TESTNET_TONAPI_KEY','');vi.stubEnv('ESCROW_TESTNET_TONCENTER_API_KEY','test-only-toncenter');
+ const calls:string[]=[];vi.stubGlobal('fetch',vi.fn(async(url:string)=>{calls.push(String(url));return Response.json({ok:true,result:{state:'uninitialized',balance:'0'}});}));
+ await testnetRpc().get('blockchain/accounts/'+encodeURIComponent(owner));expect(calls).toHaveLength(1);expect(calls[0]).toMatch(/^https:\/\/testnet\.toncenter\.com\//);
 });

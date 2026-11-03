@@ -89,3 +89,20 @@ No continuous polling or paid RPC is enabled.
 - Real GSTD deposit/work/withdrawal verification after the owner supplies test funds.
 
 No mainnet contract was deployed and no user transaction was signed in this work.
+
+## Owner setup: a free dedicated testnet RPC key
+
+Anonymous providers may return429 to shared Cloudflare egress IPs even when this
+application sends few requests. A dedicated free TON Center key is recommended.
+In Cloudflare Workers & Pages, open gstd-ai-platform → Settings → Variables and
+Secrets → Add → Secret, set ESCROW_TESTNET_TONCENTER_API_KEY to your testnet key,
+and deploy that secret change. The optional preview Worker is named
+ gstd-ai-platform-preview; add its own key there if testing the preview endpoint.
+Do not put the value in GitHub code, chat, NEXT_PUBLIC variables, or a URL.
+
+Alternatively set ESCROW_TESTNET_TONAPI_KEY for TonAPI. Only the corresponding
+fixed testnet host receives that credential: X-API-Key for TON Center,
+Authorization: Bearer for TonAPI. Redirects are manual and never followed.
+A sole TON Center key bypasses the anonymous TonAPI attempt. Existing global
+check limits and pacing are unchanged; adding a key never enables automatic polling.
+No payment, wallet signing key, or mainnet permission is required by this setting.

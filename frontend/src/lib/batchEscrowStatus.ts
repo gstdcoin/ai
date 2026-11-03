@@ -10,7 +10,12 @@ async function rpcFetch(url:string,options:RequestInit={}){
 }
 // Fixed public testnet hosts only. Select one fallback per status check, never broadcast.
 export function testnetRpc():Rpc {
- let fallback=false,primary="not_attempted",secondary="not_attempted";
+ const credential=(name:string)=>{const key=process.env[name]?.trim();if(key&&(!/^[\x21-\x7e]+$/.test(key)||key.length>2048))throw Error('testnet_credential_invalid');return key;};
+ const apiKey=credential('ESCROW_TESTNET_TONAPI_KEY'),centerKey=credential('ESCROW_TESTNET_TONCENTER_API_KEY');
+ const apiHeaders:Record<string,string>=apiKey?{Authorization:'Bearer '+apiKey}:{};
+ const centerHeaders:Record<string,string>=centerKey?{'X-API-Key':centerKey}:{};
+ // Prefer the independently keyed provider over an anonymous shared-IP request.
+ let fallback=!!centerKey&&!apiKey,primary="not_attempted",secondary="not_attempted";
  const bucket=(e:any)=>{const m=String(e?.message||"");if(/illegal invocation/i.test(m))return"illegal_invocation";if(/signal/i.test(m))return"signal";if(/cache/i.test(m))return"cache";if(/timeout|abort/i.test(m))return"timeout";if(/fetch/i.test(m))return"fetch";const name=["TypeError","Error","TimeoutError","AbortError"].includes(e?.name)?e.name:"failure";return name+":"+m.replace(/https?:\/\/[^\s]+/gi,"[url]").replace(/[A-Za-z0-9_=-]{24,}/g,"[value]").replace(/[^a-zA-Z0-9 :()._\x27-]/g,"_").slice(0,90);};
  const wait=()=>new Promise(r=>setTimeout(r,1100));
  async function center(path:string){
@@ -18,13 +23,13 @@ export function testnetRpc():Rpc {
   if(!match)throw Error('testnet_unavailable');
   const address=rawAddress(decodeURIComponent(match[1])),method=match[2];
   async function account(){
-   const r=await rpcFetch('https://testnet.toncenter.com/api/v2/getAddressInformation?'+new URLSearchParams({address}),{redirect:'manual'});
+   const r=await rpcFetch('https://testnet.toncenter.com/api/v2/getAddressInformation?'+new URLSearchParams({address}),{redirect:'manual',headers:centerHeaders});
    secondary='http_'+r.status;if(!r.ok)throw Error('testnet_unavailable');
    const d=await r.json();secondary+=d.ok===true?"_ok":"_api_error";if(!d.ok||!d.result||!/^\d+$/.test(String(d.result.balance))||!['active','uninitialized','frozen'].includes(d.result.state))throw Error('testnet_unavailable');
    return{status:d.result.state==='uninitialized'?'uninit':d.result.state,balance:String(d.result.balance)};
   }
   if(!method)return account();
-  const r=await rpcFetch('https://testnet.toncenter.com/api/v2/runGetMethod',{method:'POST',redirect:'manual',headers:{'Content-Type':'application/json'},
+  const r=await rpcFetch('https://testnet.toncenter.com/api/v2/runGetMethod',{method:'POST',redirect:'manual',headers:{'Content-Type':'application/json',...centerHeaders},
    body:JSON.stringify({address,method,stack:[]})});
   secondary="http_"+r.status;const d=await r.json();secondary+=d.ok===true?"_ok":"_api_error";
   if(!r.ok||!d.ok||d.result?.exit_code!==0){
@@ -40,7 +45,7 @@ export function testnetRpc():Rpc {
  }
  return{async get(path:string){
   if(!fallback){try{
-   const r=await rpcFetch('https://testnet.tonapi.io/v2/'+path,{redirect:'manual'});
+   const r=await rpcFetch('https://testnet.tonapi.io/v2/'+path,{redirect:'manual',headers:apiHeaders});
    primary="http_"+r.status;if(r.status===404)return null;
    if(r.ok){const data=await r.json();if(!path.includes('/methods/')&&(!['active','uninit','nonexist','frozen'].includes(data.status)||!/^\d+$/.test(String(data.balance))))throw Error('testnet_unavailable');return data;}
   }catch(e){primary+="_"+bucket(e);}
