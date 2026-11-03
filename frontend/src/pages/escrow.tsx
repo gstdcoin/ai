@@ -9,6 +9,8 @@ import {Address} from '@ton/core';
 import {getCommonStaticProps} from '../lib/i18n-static-props';
 import type {BatchInput,BatchAction} from '../lib/batchEscrow';
 const storagePrefix='gstd_escrow_testnet_v1:';
+const pendingKey=(task:string)=>storagePrefix+'pending:'+task;
+function savedPending(task:string){const raw=localStorage.getItem(pendingKey(task));if(!raw)return null;const value=JSON.parse(raw);if(!value||value.task!==task||!Number.isSafeInteger(value.since)||value.since<=0||!['mint','deploy','fund','accept','expire','withdraw','refund','sync','report','reclaim'].includes(value.action)||![0,1,2].includes(value.role)||!['payer','total','balance','native'].every(key=>typeof value[key]==='string'&&/^\d+$/.test(value[key])))throw Error('invalid_batch');return value;}
 const canonical=(value:string)=>{try{return Address.parse(value).toRawString();}catch{return'';}};
 const tokens=(value:string)=>{try{const n=BigInt(value);return (n/1_000_000_000n).toString()+'.'+(n%1_000_000_000n).toString().padStart(9,'0');}catch{return'—';}};
 export default function EscrowPage(){
@@ -39,8 +41,8 @@ function EscrowLab(){
  }
  async function work(fn:()=>Promise<void>){setBusy(true);setNotice('');try{await fn();}catch(e:any){setNotice(t('escrow_lab.errors.'+e.message,{defaultValue:p('errors.escrow_unavailable')}));}finally{setBusy(false);}}
  async function preview(){
-  const d=await api('preview');setPlan(d.preview);setChain(null);
-  localStorage.setItem(storagePrefix+'draft',JSON.stringify(input));setNotice(p('review'));
+  const d=await api('preview');const unfinished=savedPending(d.preview.task);setPlan(d.preview);setChain(null);setPending(unfinished);
+  localStorage.setItem(storagePrefix+'draft',JSON.stringify(input));setNotice(p(unfinished?'pending':'review'));
  }
  async function refresh(){
   const d=await api('status');setChain(d.status);
@@ -54,24 +56,27 @@ function EscrowLab(){
     (pending.action==='refund'&&total<BigInt(pending.total))||
     (pending.action==='sync'&&s.shares?.length===3&&s.shares.every((x:any)=>x.state===s.state))||
     (pending.action==='report'&&s.mask===7)||(pending.action==='reclaim'&&native<BigInt(pending.native));
-   if(done){setPending(null);setNotice(p('confirmed'));}
+   if(done){localStorage.removeItem(pendingKey(plan.task));setPending(null);setNotice(p('confirmed'));}
   }
  }
  async function send(action:BatchAction,role=0){
-  if(!testnet||pending)throw Error('wrong_network');
+  if(!testnet)throw Error('wrong_network');
+  if(pending||savedPending(plan.task))throw Error('operation_pending');
   const result=await api(action,role);
   const current=ton.account;
   if(!current||current.chain!=='-3'||canonical(current.address)!==result.transaction.from||result.transaction.network!=='-3'||result.preview.task!==plan.task)throw Error('wrong_network');
-  const snapshot={action,role,since:Date.now(),payer:chain?.payer_balance||'0',
+  if(savedPending(plan.task))throw Error('operation_pending');
+  const snapshot={task:plan.task,action,role,since:Date.now(),payer:chain?.payer_balance||'0',
    total:String((chain?.shares||[]).reduce((a:bigint,x:any)=>a+BigInt(x.balance_nano),0n)),
    balance:chain?.shares?.[role]?.balance_nano||'0',
    native:String(BigInt(chain?.native_nano||'0')+(chain?.shares||[]).reduce((a:bigint,x:any)=>a+BigInt(x.native_nano||'0'),0n))};
-  setPending(snapshot);
+  localStorage.setItem(pendingKey(plan.task),JSON.stringify(snapshot));setPending(snapshot);
   try{await ton.sendTransaction(result.transaction);setNotice(p('submitted'));}
-  catch(e:any){if(e instanceof UserRejectsError){setPending(null);setNotice(p('rejected'));}else setNotice(p('uncertain'));}
+  catch(e:any){if(e instanceof UserRejectsError){localStorage.removeItem(pendingKey(plan.task));setPending(null);setNotice(p('rejected'));}else setNotice(p('uncertain'));}
  }
  function restore(){try{const raw=localStorage.getItem(storagePrefix+'draft');if(raw){setInput(JSON.parse(raw));setPlan(null);setChain(null);setNotice(p('restore_review'));}}catch{setNotice(p('errors.invalid_batch'));}}
  function download(){if(!input)return;const blob=new Blob([JSON.stringify({network:'-3',input,plan},null,2)],{type:'application/json'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='gstd-testnet-escrow.json';a.click();URL.revokeObjectURL(url);}
+ useEffect(()=>{if(!plan)return;const listener=(e:StorageEvent)=>{if(e.key===pendingKey(plan.task)){try{setPending(savedPending(plan.task));}catch{setNotice(p('errors.invalid_batch'));}}};window.addEventListener('storage',listener);return()=>window.removeEventListener('storage',listener);},[plan]);
  const blocked=busy||!!pending||!testnet;
  const payer=!!plan&&address===plan.payer;
  const native=BigInt(chain?.native_nano||'0')+(chain?.shares||[]).reduce((a:bigint,x:any)=>a+BigInt(x.native_nano||'0'),0n);
@@ -100,7 +105,7 @@ function EscrowLab(){
   {plan&&input&&<><section className="rounded-xl border border-white/15 p-5 space-y-3"><h2 className="text-xl">{p('review_title')}</h2>
     <p>{p('payer')}: <code className="break-all">{plan.payer}</code></p>
     <p>{p('test_asset')}: <code className="break-all">{plan.master}</code></p><p>{p('coordinator')}: <code className="break-all">{plan.task}</code></p>
-    <p>{p('storage')}: {plan.minimum_storage_ton} TON</p>
+    <p>{p('storage')}: {plan.minimum_storage_ton} TON</p><p className="text-sm text-gray-400">{p('wallet_storage')}</p>
     <p>{p('budget_explanation')}</p><p>{p('budget_path')}: {plan.normal_path_attached_ton} TON; {p('per_request')}: {plan.normal_path_attached_ton_per_request.toFixed(6)} TON</p>
     <p className="text-sm text-gray-400">{p('not_fee_quote')}</p>
     <p className="text-sm text-gray-300">{p('gas_proof')}</p>

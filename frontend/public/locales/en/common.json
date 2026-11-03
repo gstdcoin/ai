@@ -1740,7 +1740,7 @@
     "submitted": "Wallet returned a signature. Check chain state; this is not a payment receipt.",
     "rejected": "Wallet request rejected. No automatic retry was made.",
     "uncertain": "Transaction status is uncertain. Inspect your wallet and chain state before retrying.",
-    "pending": "An operation is awaiting chain evidence. Sending again is disabled. Use Check chain state; no request is retried automatically.",
+    "pending": "An operation is awaiting chain evidence. Sending again is disabled, including after reload when this batch is restored. Use Check chain state; no request is retried automatically. If no state change appears, inspect your wallet transaction before attempting recovery.",
     "confirmed": "Expected chain state observed.",
     "recovery": "Recovery and unused TON",
     "recovery_hint": "Resynchronize a delayed decision, retry a funding notification, or reclaim unused native TON to the payer. Each contract retains 0.02 TON for storage. These actions do not change the accepted/refunded decision.",
@@ -1760,10 +1760,12 @@
       "testnet_state_mismatch": "Token or contract state did not match the verified plan. Operation stopped.",
       "escrow_unavailable": "Cannot prepare the test operation. Retry later.",
       "rate_limited": "Free-service limit reached. Wait one minute.",
-      "invalid_action": "Unknown test operation."
+      "invalid_action": "Unknown test operation.",
+      "operation_pending": "A saved operation still awaits chain evidence. Restore this batch and check its state before sending again."
     },
     "faucet": "Get free testnet TON ↗",
     "payer": "Payer / refund owner",
-    "up_to": "up to"
+    "up_to": "up to",
+    "wallet_storage": "Canonical token wallets also retain native TON for their own storage. These balances are not included in the four-contract reserve or in consumed transaction fees."
   }
 }
