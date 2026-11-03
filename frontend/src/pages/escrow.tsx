@@ -1,13 +1,14 @@
 import {useEffect,useState} from 'react';
 import type {GetStaticProps} from 'next';
 import Head from 'next/head';
-import Link from 'next/link';
+import {useRouter} from 'next/router';
 import {useTranslation} from 'next-i18next';
 import {TonConnectUIProvider,useTonConnectUI,useTonWallet} from '@tonconnect/ui-react';
 import TonConnect,{UserRejectsError} from '@tonconnect/sdk';
 import {Address} from '@ton/core';
 import {getCommonStaticProps} from '../lib/i18n-static-props';
 import type {BatchInput,BatchAction} from '../lib/batchEscrow';
+import {createEscrowConnector} from '../lib/escrowConnector';
 import {hasExpectedEscrowState} from '../lib/escrowObservation';
 import {escrowStoragePrefix,escrowPendingKey,readEscrowPending,withEscrowOperation,type PendingEscrowOperation} from '../lib/escrowOperations';
 const storagePrefix=escrowStoragePrefix;
@@ -17,17 +18,14 @@ const canonical=(value:string)=>{try{return Address.parse(value).toRawString();}
 const tokens=(value:string)=>{try{const n=BigInt(value);return (n/1_000_000_000n).toString()+'.'+(n%1_000_000_000n).toString().padStart(9,'0');}catch{return'—';}};
 export default function EscrowPage(){
  const {t,i18n}=useTranslation('common');const [connector,setConnector]=useState<TonConnect|null>(null);
- useEffect(()=>{setConnector(new TonConnect({manifestUrl:location.origin+'/tonconnect-manifest.json',storage:{
-  getItem:async key=>localStorage.getItem(storagePrefix+key),
-  setItem:async(key,value)=>{localStorage.setItem(storagePrefix+key,value);},
-  removeItem:async key=>{localStorage.removeItem(storagePrefix+key);},
- }}));},[]);
+ useEffect(()=>{setConnector(createEscrowConnector(location.origin,localStorage));},[]);
  return <><Head><title>{t('escrow_lab.title')} · GSTD</title></Head>{connector?
   <TonConnectUIProvider connector={connector} widgetRootId="tc-escrow-widget-root" language={i18n.language.startsWith('ru')?'ru':'en'}
-   walletsRequiredFeatures={{sendTransaction:{minMessages:4}}}><EscrowLab/></TonConnectUIProvider>:
+   walletsRequiredFeatures={{sendTransaction:{minMessages:4}}}><EscrowLab expectedConnector={connector}/></TonConnectUIProvider>:
   <p className="p-10 text-white">{t('escrow_lab.loading')}</p>}</>;
 }
-function EscrowLab(){
+function EscrowLab({expectedConnector}:{expectedConnector:TonConnect}){
+ const router=useRouter();
  const {t}=useTranslation('common');const p=(key:string)=>t('escrow_lab.'+key);
  const wallet=useTonWallet(),[ton]=useTonConnectUI();
  const address=canonical(wallet?.account.address||''),testnet=wallet?.account.chain==='-3';
@@ -56,6 +54,7 @@ function EscrowLab(){
   }
  }
  async function send(action:BatchAction,role=0){
+  if(ton.connector!==expectedConnector)throw Error('reload_required');
   if(!testnet)throw Error('wrong_network');
   await withEscrowOperation(localStorage,navigator.locks,plan.task,async op=>{
   if(pending||op.current())throw Error('operation_pending');
@@ -75,13 +74,15 @@ function EscrowLab(){
  function restore(){try{const raw=localStorage.getItem(storagePrefix+'draft');if(raw){setInput(JSON.parse(raw));setPlan(null);setChain(null);setNotice(p('restore_review'));}}catch{setNotice(p('errors.invalid_batch'));}}
  function download(){if(!input)return;const blob=new Blob([JSON.stringify({network:'-3',input,plan},null,2)],{type:'application/json'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='gstd-testnet-escrow.json';a.click();URL.revokeObjectURL(url);}
  useEffect(()=>{if(!plan)return;const listener=(e:StorageEvent)=>{if(e.key===pendingKey(plan.task)){try{setPending(savedPending(plan.task));}catch{setNotice(p('errors.invalid_batch'));}}};window.addEventListener('storage',listener);return()=>window.removeEventListener('storage',listener);},[plan]);
- const blocked=busy||!!pending||!testnet;
+ const isolated=ton.connector===expectedConnector;
+ const blocked=busy||!!pending||!testnet||!isolated;
  const payer=!!plan&&address===plan.payer;
  const native=BigInt(chain?.native_nano||'0')+(chain?.shares||[]).reduce((a:bigint,x:any)=>a+BigInt(x.native_nano||'0'),0n);
  const button='rounded-lg bg-violet-600 px-4 py-2 disabled:opacity-40';
  const field='rounded border border-white/20 bg-black/30 px-3 py-2 w-full';
+ if(!isolated)return <main className="mx-auto max-w-4xl px-5 py-10 text-white space-y-5"><h1>{p('title')}</h1><p role="alert">{p('errors.reload_required')}</p><a className={button} href={router.asPath}>{p('reload')}</a></main>;
  return <main className="mx-auto max-w-4xl px-5 py-10 text-white space-y-6">
-  <header className="space-y-3"><Link className="underline" href="/payments">{p('back')}</Link><h1 className="text-3xl font-semibold">{p('title')}</h1><p>{p('intro')}</p>
+  <header className="space-y-3"><a className="underline" href={(router.locale&&router.locale!=='en'?'/'+router.locale:'')+'/payments'}>{p('back')}</a><h1 className="text-3xl font-semibold">{p('title')}</h1><p>{p('intro')}</p>
    <p role="alert" className="rounded-xl border border-amber-500/50 bg-amber-500/10 p-4">{p('test_only')}</p></header>
   <section className="rounded-xl border border-white/15 p-5 space-y-3"><h2 className="text-xl">{p('wallet')}</h2>
    <p className="text-gray-300">{p('isolated')}</p><code className="block break-all">{address||p('not_connected')}</code>

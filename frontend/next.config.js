@@ -116,6 +116,15 @@ const nextConfig = {
           },
         ],
       },
+      // Wallet web apps must be able to read these public, credential-free manifests.
+      ...['/tonconnect-manifest.json', '/tonconnect-testnet-manifest.json'].map((source) => ({
+        source,
+        headers: [
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Access-Control-Allow-Methods', value: 'GET, HEAD, OPTIONS' },
+          { key: 'Content-Type', value: 'application/json; charset=utf-8' },
+        ],
+      })),
       {
         source: '/sw.js',
         headers: [

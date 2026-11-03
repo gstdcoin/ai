@@ -35,6 +35,7 @@ const getManifestUrl = (): string => {
 function App({ Component, pageProps }: AppProps) {
   const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
+  const isolatedEscrow = router.pathname === '/escrow';
 
   useEffect(() => {
     // Initialize Telegram WebApp on mount
@@ -75,11 +76,11 @@ function App({ Component, pageProps }: AppProps) {
 
   // Start ecosystem data auto-refresh (tokenomics, nodes, staking, queue stats)
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (!isolatedEscrow && typeof window !== 'undefined') {
       const cleanup = useEcosystemStore.getState().startAutoRefresh();
       return cleanup;
     }
-  }, []);
+  }, [isolatedEscrow]);
 
   const manifestUrl = getManifestUrl();
 
@@ -90,6 +91,20 @@ function App({ Component, pageProps }: AppProps) {
 
   // Определить язык для TonConnect на основе текущей локали приложения
   const tonConnectLanguage = router.locale === 'en' ? 'en' : 'ru';
+
+  // ui-react keeps one module-level instance. A testnet document must never mount
+  // the platform provider/listeners first, or it would inherit their mainnet connection.
+  if (isolatedEscrow) return (
+    <ErrorBoundary>
+      <TelegramThemeProvider>
+        <div className="page-glow" aria-hidden="true" />
+        <main style={{ minHeight: '100vh', position: 'relative', zIndex: 1 }}>
+          <Component {...pageProps} />
+        </main>
+        <Toaster position="top-right" richColors closeButton />
+      </TelegramThemeProvider>
+    </ErrorBoundary>
+  );
 
   return (
     <ErrorBoundary>

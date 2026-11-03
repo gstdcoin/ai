@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { GetStaticProps } from 'next';
 import Head from 'next/head';
+import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { useTranslation } from 'next-i18next';
 import { getCommonStaticProps } from '../lib/i18n-static-props';
@@ -11,6 +12,7 @@ import { useWalletStore } from '../store/walletStore';
 type Withdrawal = { id:string;wallet:string;amount:string;state:string;receiptHash?:string;cancellationReason?:'user_cancelled'|'operator_declined' };
 export default function PaymentsPage() {
     const {t}=useTranslation('common');
+    const router=useRouter();
     const p=(key:string)=>t('payments_page.'+key);
     const {address}=useWalletStore();
     const [tonConnect]=useTonConnectUI();
@@ -51,7 +53,7 @@ export default function PaymentsPage() {
     const input='rounded-lg border border-white/20 bg-black/30 px-3 py-2 w-full';
     return <main className="mx-auto max-w-3xl px-5 py-12 text-white space-y-6">
         <Head><title>{p('title')+' · GSTD'}</title><meta name="description" content={p('intro')}/></Head>
-        <p><Link href="/escrow" className="underline text-violet-300">{p('escrow_lab')}</Link></p>
+        <p><a href={(router.locale&&router.locale!=='en'?'/'+router.locale:'')+'/escrow'} className="underline text-violet-300">{p('escrow_lab')}</a></p>
         <header className="space-y-3"><h1 className="text-3xl font-semibold">{p('title')}</h1><p className="text-gray-300">{p('intro')}</p></header>
         <section className="rounded-xl border border-white/15 p-5 space-y-3" aria-labelledby="payment-signatures">
             <h2 id="payment-signatures" className="text-xl font-semibold">{p('signing_title')}</h2>

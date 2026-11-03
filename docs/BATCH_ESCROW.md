@@ -110,3 +110,14 @@ Authorization: Bearer for TonAPI. Redirects are manual and never followed.
 A sole TON Center key bypasses the anonymous TonAPI attempt. Existing global
 check limits and pacing are unchanged; adding a key never enables automatic polling.
 No payment, wallet signing key, or mainnet permission is required by this setting.
+
+
+## Connection isolation
+
+The test page requests network-3 through TonConnect SDK before wallet selection.
+The main platform provider, wallet listener and automatic claim worker are not
+mounted in the testnet document. Links across this boundary use full document
+navigation: ui-react shares one module-level instance, so nesting providers is
+not connection isolation. A connector-identity guard fails closed on an unexpected
+SPA entry and offers a full-document reload. The new wallet-connection prefix does
+not remove existing escrow drafts/pending records or platform wallet storage.
