@@ -3,7 +3,8 @@ import {batchContext,rawAddress,type BatchInput} from './batchEscrow';
 type Rpc={get(path:string):Promise<any>};
 // Fixed public testnet hosts only. Select one fallback per status check, never broadcast.
 export function testnetRpc():Rpc {
- let fallback=false;
+ let fallback=false,primary="not_attempted",secondary="not_attempted";
+ const bucket=(e:any)=>{const m=String(e?.message||"");if(/signal/i.test(m))return"signal";if(/cache/i.test(m))return"cache";if(/timeout|abort/i.test(m))return"timeout";if(/fetch/i.test(m))return"fetch";return["TypeError","Error","TimeoutError","AbortError"].includes(e?.name)?e.name:"failure";};
  const wait=()=>new Promise(r=>setTimeout(r,1100));
  async function center(path:string){
   const match=/^blockchain\/accounts\/([^/]+)(?:\/methods\/(state|funding_mask|get_wallet_data))?$/.exec(path);
@@ -11,14 +12,14 @@ export function testnetRpc():Rpc {
   const address=rawAddress(decodeURIComponent(match[1])),method=match[2];
   async function account(){
    const r=await fetch('https://testnet.toncenter.com/api/v2/getAddressInformation?'+new URLSearchParams({address}),{redirect:'error',signal:AbortSignal.timeout(8000)});
-   if(!r.ok)throw Error('testnet_unavailable');
-   const d=await r.json();if(!d.ok||!d.result||!/^\d+$/.test(String(d.result.balance))||!['active','uninitialized','frozen'].includes(d.result.state))throw Error('testnet_unavailable');
+   secondary='http_'+r.status;if(!r.ok)throw Error('testnet_unavailable');
+   const d=await r.json();secondary+=d.ok===true?"_ok":"_api_error";if(!d.ok||!d.result||!/^\d+$/.test(String(d.result.balance))||!['active','uninitialized','frozen'].includes(d.result.state))throw Error('testnet_unavailable');
    return{status:d.result.state==='uninitialized'?'uninit':d.result.state,balance:String(d.result.balance)};
   }
   if(!method)return account();
   const r=await fetch('https://testnet.toncenter.com/api/v2/runGetMethod',{method:'POST',redirect:'error',headers:{'Content-Type':'application/json'},
    body:JSON.stringify({address,method,stack:[]}),signal:AbortSignal.timeout(8000)});
-  const d=await r.json();
+  secondary="http_"+r.status;const d=await r.json();secondary+=d.ok===true?"_ok":"_api_error";
   if(!r.ok||!d.ok||d.result?.exit_code!==0){
    // Only a separately confirmed inactive account can mean "not deployed".
    await wait();const a=await account();if(a.status==='uninit')return null;throw Error('testnet_unavailable');
@@ -33,11 +34,11 @@ export function testnetRpc():Rpc {
  return{async get(path:string){
   if(!fallback){try{
    const r=await fetch('https://testnet.tonapi.io/v2/'+path,{redirect:'error',signal:AbortSignal.timeout(8000)});
-   if(r.status===404)return null;
+   primary="http_"+r.status;if(r.status===404)return null;
    if(r.ok){const data=await r.json();if(!path.includes('/methods/')&&(!['active','uninit','nonexist','frozen'].includes(data.status)||!/^\d+$/.test(String(data.balance))))throw Error('testnet_unavailable');return data;}
-  }catch{/* Retry read-only through a different fixed provider, once per check. */}
+  }catch(e){primary+="_"+bucket(e);}
   fallback=true;}
-  try{return await center(path);}catch{throw Error('testnet_unavailable');}
+  try{return await center(path);}catch(e){throw Object.assign(Error('testnet_unavailable'),{provider_diagnostic:'tonapi_'+primary+'_toncenter_'+secondary+'_'+bucket(e)});}
  }};
 }
 export async function batchStatus(input:BatchInput,rpc:Rpc=testnetRpc(),pace:()=>Promise<void>=()=>new Promise(r=>setTimeout(r,1100))){
