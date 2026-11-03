@@ -121,3 +121,22 @@ navigation: ui-react shares one module-level instance, so nesting providers is
 not connection isolation. A connector-identity guard fails closed on an unexpected
 SPA entry and offers a full-document reload. The new wallet-connection prefix does
 not remove existing escrow drafts/pending records or platform wallet storage.
+
+### Wallet request compatibility
+
+SDK 3.4 requires user-friendly message destination addresses. The escrow transaction
+builder encodes every destination as a non-bounceable, test-only friendly address;
+raw addresses remain the canonical identity for previews, signers and deterministic
+contract derivation. No contract address, payload, recipient or amount changes.
+`escrowWalletRequest.test.ts` sends all ten action shapes to the actual installed SDK
+while disconnected: each must reach WalletNotConnectedError, proving local payload
+validation passed without sending a request. The old raw destination is tested to
+fail before transport. Only that SDK local-validation error (or explicit rejection)
+clears its own operation record; unknown failures remain blocked.
+
+For a legacy blocked test-token mint, the UI can archive the old draft and create a
+new test batch only while the observed coordinator is undeployed and no shares are
+funded. The original pending record is never removed or replayed, and the archive
+contains the original input, plan and pending snapshot. This is not transaction
+cancellation or a recovery path for deposits, withdrawals or other financial actions.
+Reject any old mint prompt that later appears in the wallet.

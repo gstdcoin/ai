@@ -1769,6 +1769,10 @@
     "payer": "Payer / refund owner",
     "up_to": "up to",
     "wallet_storage": "Canonical token wallets also retain native TON for their own storage. These balances are not included in the four-contract reserve or in consumed transaction fees.",
-    "reload": "Open isolated testnet page"
+    "reload": "Open isolated testnet page",
+    "invalid_wallet_request": "The request was not sent to the wallet: the SDK rejected its format before sending. An explicit retry is available after the format is fixed.",
+    "new_test_batch": "Start a new test batch",
+    "new_test_batch_hint": "If no wallet prompt appeared while minting free tGSTD, you can start a new test batch. The previous batch and pending operation remain archived in this browser; its request is not cancelled. Reject the old request if it appears in your wallet. This is available only for valueless test-token minting before funds are reserved.",
+    "new_test_batch_notice": "A new test draft was created. The previous batch remains archived in this browser; nothing was automatically resent. Select “Check batch”, then “Check network state”."
   }
 }

@@ -8,6 +8,7 @@ import TonConnect,{UserRejectsError} from '@tonconnect/sdk';
 import {Address} from '@ton/core';
 import {getCommonStaticProps} from '../lib/i18n-static-props';
 import type {BatchInput,BatchAction} from '../lib/batchEscrow';
+import {isEscrowRequestValidationError} from '../lib/escrowWalletErrors';
 import {createEscrowConnector} from '../lib/escrowConnector';
 import {hasExpectedEscrowState} from '../lib/escrowObservation';
 import {escrowStoragePrefix,escrowPendingKey,readEscrowPending,withEscrowOperation,type PendingEscrowOperation} from '../lib/escrowOperations';
@@ -68,8 +69,16 @@ function EscrowLab({expectedConnector}:{expectedConnector:TonConnect}){
    native:String(BigInt(chain?.native_nano||'0')+(chain?.shares||[]).reduce((a:bigint,x:any)=>a+BigInt(x.native_nano||'0'),0n))};
   op.begin(snapshot);setPending(snapshot);
   try{await ton.sendTransaction(result.transaction);setNotice(p('submitted'));}
-  catch(e:any){if(e instanceof UserRejectsError){if(op.clear(snapshot.id))setPending(null);else setPending(op.current());setNotice(p('rejected'));}else setNotice(p('uncertain'));}
+  catch(e:any){if(e instanceof UserRejectsError||isEscrowRequestValidationError(e)){if(op.clear(snapshot.id))setPending(null);else setPending(op.current());setNotice(p(e instanceof UserRejectsError?'rejected':'invalid_wallet_request'));}else setNotice(p('uncertain'));}
   });
+ }
+ function restartTestMint(){
+  if(!pending||pending.action!=='mint'||!chain||chain.deployed||chain.shares?.some((s:any)=>BigInt(s.balance_nano)>0n))return;
+  // Preserve the original draft AND its pending record. Never clear or replay a financial operation.
+  localStorage.setItem(storagePrefix+'archive:'+plan.task,JSON.stringify({network:'-3',input,plan,pending}));
+  const next={...input!,taskId:newTaskId(),deadline:Math.floor(Date.now()/1000)+3600};
+  localStorage.setItem(storagePrefix+'draft',JSON.stringify(next));
+  setInput(next);setPlan(null);setChain(null);setPending(null);setNotice(p('new_test_batch_notice'));
  }
  function restore(){try{const raw=localStorage.getItem(storagePrefix+'draft');if(raw){setInput(JSON.parse(raw));setPlan(null);setChain(null);setNotice(p('restore_review'));}}catch{setNotice(p('errors.invalid_batch'));}}
  function download(){if(!input)return;const blob=new Blob([JSON.stringify({network:'-3',input,plan},null,2)],{type:'application/json'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='gstd-testnet-escrow.json';a.click();URL.revokeObjectURL(url);}
@@ -100,7 +109,7 @@ function EscrowLab({expectedConnector}:{expectedConnector:TonConnect}){
    {plan&&<button className="ml-4 underline" onClick={download}>{p('download')}</button>}
   </section>}
   {notice&&<p role="status" className="text-amber-200 break-words">{notice}</p>}
-  {pending&&<p className="rounded border border-amber-500/50 p-4">{p('pending')}</p>}
+  {pending&&<div className="rounded border border-amber-500/50 p-4 space-y-3"><p>{p('pending')}</p>{pending.action==='mint'&&chain&&!chain.deployed&&!chain.shares?.some((s:any)=>BigInt(s.balance_nano)>0n)&&<><p>{p('new_test_batch_hint')}</p><button className={button} disabled={busy} onClick={()=>work(async()=>restartTestMint())}>{p('new_test_batch')}</button></>}</div>}
   {plan&&input&&<><section className="rounded-xl border border-white/15 p-5 space-y-3"><h2 className="text-xl">{p('review_title')}</h2>
     <p>{p('payer')}: <code className="break-all">{plan.payer}</code></p>
     <p>{p('test_asset')}: <code className="break-all">{plan.master}</code></p><p>{p('coordinator')}: <code className="break-all">{plan.task}</code></p>

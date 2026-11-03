@@ -1,5 +1,5 @@
 import {it,expect} from 'vitest';
-import {Cell,loadStateInit,contractAddress} from '@ton/core';
+import {Address,Cell,loadStateInit,contractAddress} from '@ton/core';
 import {batchPreview,batchTransaction,batchContext,type BatchInput} from './batchEscrow';
 import manifest from './escrow-generated/manifest.json';
 import proof from './escrow-generated/cost-proof.json';
@@ -25,7 +25,7 @@ it('prepares testnet-only signing payloads and refuses a different signer',async
  await expect(batchTransaction(input,'accept',worker)).rejects.toThrow('wrong_signer');
  await expect(batchTransaction(input,'withdraw',payer,0)).rejects.toThrow('wrong_signer');
  const tx=await batchTransaction(input,'withdraw',worker,0);
- expect(tx.from).toBe(worker);expect(tx.messages[0].address).toBe((await batchPreview(input)).shares[0].address);
+ expect(tx.from).toBe(worker);expect(Address.parse(tx.messages[0].address).toRawString()).toBe((await batchPreview(input)).shares[0].address);
 });
 it('the deployment stateInit matches the displayed address; funding goes only to derived shares',async()=>{
  const p=await batchPreview(input),tx=await batchTransaction(input,'deploy',payer);
