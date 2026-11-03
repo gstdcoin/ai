@@ -153,8 +153,9 @@ Reject any old mint prompt that later appears in the wallet.
   their returns, with no outgoing funding transfer; all share balances remained
   zero in the checked snapshot. No retry was issued. This is not proof of a
   permanently failed transaction or permission to clear the operation.
-- Acceptance, beneficiary claims, timeout/refund, receipts and paid AI-job binding
-  remain unverified in the live chain. Mainnet remains blocked.
+- At this initial checkpoint, acceptance, beneficiary claims, timeout/refund,
+  receipts and paid AI-job binding had not been verified. See the later V2 outcome
+  below; mainnet remains blocked.
 
 Wallet diagnostics now persist fixed public error categories, the transport's
 request-dispatched callback, request expiry and signature-returned state alongside
@@ -187,5 +188,44 @@ token-import guidance. The funding endpoint and button require enough verified
 payer token balance to cover all missing shares. No wallet request is prepared
 when the verified balance is insufficient.
 
-The existing published fee comparison uses the legacy test asset. V2 costs and
-its real mobile wallet lifecycle still require independent live confirmation.
+The existing published fee comparison uses the legacy test asset. V2 cost measurement is separate. The mobile happy-path outcome is recorded below.
+
+### Completed V2 happy-path rehearsal (UTC 2026-11-03)
+
+The owner signed each operation in mobile Gram Wallet. Manual token-list import
+was not performed. Direct testnet getters and scoped transaction history confirmed:
+
+- Mint of 1000 tGSTD V2 with the intended on-chain name, symbol and 9 decimals.
+- Coordinator and all three share code hashes match the exported bindings.
+- Funding of a 1-token package: exactly 0.85 / 0.10 / 0.05 tGSTD.
+- Acceptance and three separate beneficiary-signed withdrawals.
+- Every share token balance becomes zero; repeated withdrawal buttons disable.
+- Final owner token balance returns to 1000 tGSTD. All roles deliberately use the
+  same owner in this rehearsal; this is not live multi-party permission testing.
+- Reclaim of unused native coins from the four escrow contracts, preserving
+  exactly 0.02 TON per contract (0.08 total). Canonical token-wallet storage is
+  separate. Attached execution budgets are not measured consumed fees.
+
+Eight owner-signed transactions cover mint, deploy, funding, acceptance, three
+withdrawals and native reclaim. Detailed address/transaction evidence is retained
+in the owner's local verification report, not required in public documentation.
+
+### Live-mainnet-configuration simulation (not a broadcast)
+
+The current mainnet configuration was fetched read-only with TON Center
+`getConfigAll`, global ID -239, config hash
+`bb18654caf0886bff5c7c5241d2c33d659392fcbee6e51ed93c98e275165c480`.
+The canonical mainnet token's reported wallet code was independently rechecked
+and matches pinned hash
+`a46ef8746f4ea669c2ce9455be129b693cd1c638cb021faaac58c7df01e0a163`.
+All eight existing escrow scenarios passed again with this config and a shifted
+test epoch preserving their relative timing. Their balances remain synthetic.
+This checks acceptance, withdrawal, expiry/refund, partial funding, forged
+messages, decision delivery recovery and gas failure under the observed config;
+it is neither a full chain fork nor an actual mainnet transaction.
+
+Outstanding release gates remain: live expiry/refund and uncertain-transaction
+reconciliation, an independent beneficiary-wallet rehearsal, job/receipt binding
+with exactly one settlement mode, a reviewed mainnet deployment/recipient
+manifest, and a small real GSTD mainnet cycle after deployment. Testnet success
+and simulation alone do not authorize unrestricted mainnet balances or payouts.
