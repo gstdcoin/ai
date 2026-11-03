@@ -30,3 +30,15 @@ it('does not classify a frozen account as an absent token wallet',async()=>{
   String(url).includes('/runGetMethod')?Response.json({ok:true,result:{exit_code:11,stack:[]}}):Response.json({ok:true,result:{state:'frozen',balance:'20000000'}})));
  await expect(testnetRpc().get('blockchain/accounts/'+encodeURIComponent(owner)+'/methods/get_wallet_data')).rejects.toThrow('testnet_unavailable');
 });
+
+it('uses Workers-supported manual redirects and never follows an untrusted Location',async()=>{
+ const calls:string[]=[];
+ vi.stubGlobal('fetch',vi.fn(async(url:string,options?:RequestInit)=>{
+  if(options?.redirect==='error')throw new TypeError('Unsupported redirect mode: error');
+  expect(options?.redirect).toBe('manual');calls.push(String(url));
+  if(String(url).startsWith('https://testnet.tonapi.io/'))return new Response('',{status:302,headers:{Location:'http://127.0.0.1/private'}});
+  return Response.json({ok:true,result:{state:'uninitialized',balance:'0'}});
+ }));
+ expect(await testnetRpc().get('blockchain/accounts/'+encodeURIComponent(owner))).toEqual({status:'uninit',balance:'0'});
+ expect(calls).toHaveLength(2);expect(calls.every(x=>x.startsWith('https://testnet.tonapi.io/')||x.startsWith('https://testnet.toncenter.com/'))).toBe(true);
+});

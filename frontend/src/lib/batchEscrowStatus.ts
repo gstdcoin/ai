@@ -18,13 +18,13 @@ export function testnetRpc():Rpc {
   if(!match)throw Error('testnet_unavailable');
   const address=rawAddress(decodeURIComponent(match[1])),method=match[2];
   async function account(){
-   const r=await rpcFetch('https://testnet.toncenter.com/api/v2/getAddressInformation?'+new URLSearchParams({address}),{redirect:'error'});
+   const r=await rpcFetch('https://testnet.toncenter.com/api/v2/getAddressInformation?'+new URLSearchParams({address}),{redirect:'manual'});
    secondary='http_'+r.status;if(!r.ok)throw Error('testnet_unavailable');
    const d=await r.json();secondary+=d.ok===true?"_ok":"_api_error";if(!d.ok||!d.result||!/^\d+$/.test(String(d.result.balance))||!['active','uninitialized','frozen'].includes(d.result.state))throw Error('testnet_unavailable');
    return{status:d.result.state==='uninitialized'?'uninit':d.result.state,balance:String(d.result.balance)};
   }
   if(!method)return account();
-  const r=await rpcFetch('https://testnet.toncenter.com/api/v2/runGetMethod',{method:'POST',redirect:'error',headers:{'Content-Type':'application/json'},
+  const r=await rpcFetch('https://testnet.toncenter.com/api/v2/runGetMethod',{method:'POST',redirect:'manual',headers:{'Content-Type':'application/json'},
    body:JSON.stringify({address,method,stack:[]})});
   secondary="http_"+r.status;const d=await r.json();secondary+=d.ok===true?"_ok":"_api_error";
   if(!r.ok||!d.ok||d.result?.exit_code!==0){
@@ -40,7 +40,7 @@ export function testnetRpc():Rpc {
  }
  return{async get(path:string){
   if(!fallback){try{
-   const r=await rpcFetch('https://testnet.tonapi.io/v2/'+path,{redirect:'error'});
+   const r=await rpcFetch('https://testnet.tonapi.io/v2/'+path,{redirect:'manual'});
    primary="http_"+r.status;if(r.status===404)return null;
    if(r.ok){const data=await r.json();if(!path.includes('/methods/')&&(!['active','uninit','nonexist','frozen'].includes(data.status)||!/^\d+$/.test(String(data.balance))))throw Error('testnet_unavailable');return data;}
   }catch(e){primary+="_"+bucket(e);}
