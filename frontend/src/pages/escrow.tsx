@@ -8,9 +8,10 @@ import TonConnect,{UserRejectsError} from '@tonconnect/sdk';
 import {Address} from '@ton/core';
 import {getCommonStaticProps} from '../lib/i18n-static-props';
 import type {BatchInput,BatchAction} from '../lib/batchEscrow';
-const storagePrefix='gstd_escrow_testnet_v1:';
-const pendingKey=(task:string)=>storagePrefix+'pending:'+task;
-function savedPending(task:string){const raw=localStorage.getItem(pendingKey(task));if(!raw)return null;const value=JSON.parse(raw);if(!value||value.task!==task||!Number.isSafeInteger(value.since)||value.since<=0||!['mint','deploy','fund','accept','expire','withdraw','refund','sync','report','reclaim'].includes(value.action)||![0,1,2].includes(value.role)||!['payer','total','balance','native'].every(key=>typeof value[key]==='string'&&/^\d+$/.test(value[key])))throw Error('invalid_batch');return value;}
+import {escrowStoragePrefix,escrowPendingKey,readEscrowPending,withEscrowOperation,type PendingEscrowOperation} from '../lib/escrowOperations';
+const storagePrefix=escrowStoragePrefix;
+const pendingKey=escrowPendingKey;
+const savedPending=(task:string)=>readEscrowPending(localStorage,task);
 const canonical=(value:string)=>{try{return Address.parse(value).toRawString();}catch{return'';}};
 const tokens=(value:string)=>{try{const n=BigInt(value);return (n/1_000_000_000n).toString()+'.'+(n%1_000_000_000n).toString().padStart(9,'0');}catch{return'—';}};
 export default function EscrowPage(){
@@ -31,6 +32,8 @@ function EscrowLab(){
  const address=canonical(wallet?.account.address||''),testnet=wallet?.account.chain==='-3';
  const [input,setInput]=useState<BatchInput|null>(null),[plan,setPlan]=useState<any>(null),[chain,setChain]=useState<any>(null);
  const [busy,setBusy]=useState(false),[notice,setNotice]=useState(''),[pending,setPending]=useState<any>(null);
+ const [nowSec,setNowSec]=useState(()=>Math.floor(Date.now()/1000));
+ useEffect(()=>{if(!input?.deadline)return;const timer=setTimeout(()=>setNowSec(Math.floor(Date.now()/1000)),Math.max(0,input.deadline*1000-Date.now()+1000));return()=>clearTimeout(timer);},[input?.deadline]);
  useEffect(()=>{
   if(!input&&address)setInput({payer:address,worker:address,protocol:address,reserve:address,budget:'1',requests:100,taskId:newTaskId(),deadline:Math.floor(Date.now()/1000)+3600});
  },[address,input]);
@@ -39,7 +42,7 @@ function EscrowLab(){
    body:JSON.stringify({input,action,actor:address,role})});
   const d=await r.json();if(!r.ok)throw Error(d.error||'escrow_unavailable');return d;
  }
- async function work(fn:()=>Promise<void>){setBusy(true);setNotice('');try{await fn();}catch(e:any){setNotice(t('escrow_lab.errors.'+e.message,{defaultValue:p('errors.escrow_unavailable')}));}finally{setBusy(false);}}
+ async function work(fn:()=>Promise<void>){setNowSec(Math.floor(Date.now()/1000));setBusy(true);setNotice('');try{await fn();}catch(e:any){setNotice(t('escrow_lab.errors.'+e.message,{defaultValue:p('errors.escrow_unavailable')}));}finally{setBusy(false);}}
  async function preview(){
   const d=await api('preview');const unfinished=savedPending(d.preview.task);setPlan(d.preview);setChain(null);setPending(unfinished);
   localStorage.setItem(storagePrefix+'draft',JSON.stringify(input));setNotice(p(unfinished?'pending':'review'));
@@ -56,23 +59,25 @@ function EscrowLab(){
     (pending.action==='refund'&&total<BigInt(pending.total))||
     (pending.action==='sync'&&s.shares?.length===3&&s.shares.every((x:any)=>x.state===s.state))||
     (pending.action==='report'&&s.mask===7)||(pending.action==='reclaim'&&native<BigInt(pending.native));
-   if(done){localStorage.removeItem(pendingKey(plan.task));setPending(null);setNotice(p('confirmed'));}
+   if(done)await withEscrowOperation(localStorage,navigator.locks,plan.task,async op=>{if(op.clear(pending.id)){setPending(null);setNotice(p('confirmed'));}else setPending(op.current());});
   }
  }
  async function send(action:BatchAction,role=0){
   if(!testnet)throw Error('wrong_network');
-  if(pending||savedPending(plan.task))throw Error('operation_pending');
+  await withEscrowOperation(localStorage,navigator.locks,plan.task,async op=>{
+  if(pending||op.current())throw Error('operation_pending');
   const result=await api(action,role);
   const current=ton.account;
   if(!current||current.chain!=='-3'||canonical(current.address)!==result.transaction.from||result.transaction.network!=='-3'||result.preview.task!==plan.task)throw Error('wrong_network');
-  if(savedPending(plan.task))throw Error('operation_pending');
-  const snapshot={task:plan.task,action,role,since:Date.now(),payer:chain?.payer_balance||'0',
+  if(op.current())throw Error('operation_pending');
+  const snapshot:PendingEscrowOperation={id:newTaskId(),task:plan.task,action,role,since:Date.now(),payer:chain?.payer_balance||'0',
    total:String((chain?.shares||[]).reduce((a:bigint,x:any)=>a+BigInt(x.balance_nano),0n)),
    balance:chain?.shares?.[role]?.balance_nano||'0',
    native:String(BigInt(chain?.native_nano||'0')+(chain?.shares||[]).reduce((a:bigint,x:any)=>a+BigInt(x.native_nano||'0'),0n))};
-  localStorage.setItem(pendingKey(plan.task),JSON.stringify(snapshot));setPending(snapshot);
+  op.begin(snapshot);setPending(snapshot);
   try{await ton.sendTransaction(result.transaction);setNotice(p('submitted'));}
-  catch(e:any){if(e instanceof UserRejectsError){localStorage.removeItem(pendingKey(plan.task));setPending(null);setNotice(p('rejected'));}else setNotice(p('uncertain'));}
+  catch(e:any){if(e instanceof UserRejectsError){if(op.clear(snapshot.id))setPending(null);else setPending(op.current());setNotice(p('rejected'));}else setNotice(p('uncertain'));}
+  });
  }
  function restore(){try{const raw=localStorage.getItem(storagePrefix+'draft');if(raw){setInput(JSON.parse(raw));setPlan(null);setChain(null);setNotice(p('restore_review'));}}catch{setNotice(p('errors.invalid_batch'));}}
  function download(){if(!input)return;const blob=new Blob([JSON.stringify({network:'-3',input,plan},null,2)],{type:'application/json'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='gstd-testnet-escrow.json';a.click();URL.revokeObjectURL(url);}
@@ -117,8 +122,8 @@ function EscrowLab(){
      <button className={button} disabled={blocked||!payer||chain?.deployed} onClick={()=>work(()=>send('deploy'))}>{p('deploy')}</button>
      <button className={button} disabled={busy} onClick={()=>work(refresh)}>{p('check')}</button>
      <button className={button} disabled={blocked||!payer||chain?.state!==0||chain?.mask===7} onClick={()=>work(()=>send('fund'))}>{p('fund')} · {p('up_to')} {plan.budgets_ton.fund} TON</button>
-     <button className={button} disabled={blocked||!payer||chain?.state!==0||chain?.mask!==7||Date.now()/1000>input.deadline} onClick={()=>work(()=>send('accept'))}>{p('accept')} · {plan.budgets_ton.accept} TON</button>
-     <button className={button} disabled={blocked||!payer||!chain?.deployed||chain?.state===1||Date.now()/1000<=input.deadline} onClick={()=>work(()=>send('expire'))}>{p('expire')} · {plan.budgets_ton.expire} TON</button>
+     <button className={button} disabled={blocked||!payer||chain?.state!==0||chain?.mask!==7||nowSec>input.deadline} onClick={()=>work(()=>send('accept'))}>{p('accept')} · {plan.budgets_ton.accept} TON</button>
+     <button className={button} disabled={blocked||!payer||!chain?.deployed||chain?.state===1||nowSec<=input.deadline} onClick={()=>work(()=>send('expire'))}>{p('expire')} · {plan.budgets_ton.expire} TON</button>
      <button className={button} disabled={blocked||!payer||chain?.state!==2||!(chain?.shares||[]).some((s:any)=>BigInt(s.balance_nano)>0n)} onClick={()=>work(()=>send('refund'))}>{p('refund')} · {p('up_to')} {plan.budgets_ton.refund_all} TON</button>
     </div>
     {chain&&<p>{p('state')}: {p(chain.state===1?'accepted':chain.state===2?'refunded':chain.deployed?'reserved':'undeployed')} · {p('funding')}: {[1,2,4].filter(x=>(chain.mask&x)!==0).length}/3</p>}

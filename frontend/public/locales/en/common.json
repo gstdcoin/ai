@@ -1761,7 +1761,8 @@
       "escrow_unavailable": "Cannot prepare the test operation. Retry later.",
       "rate_limited": "Free-service limit reached. Wait one minute.",
       "invalid_action": "Unknown test operation.",
-      "operation_pending": "A saved operation still awaits chain evidence. Restore this batch and check its state before sending again."
+      "operation_pending": "A saved operation still awaits chain evidence. Restore this batch and check its state before sending again.",
+      "browser_lock_unavailable": "This browser cannot safely coordinate wallet requests across tabs. Update it or use a current browser; signing was not started."
     },
     "faucet": "Get free testnet TON ↗",
     "payer": "Payer / refund owner",
