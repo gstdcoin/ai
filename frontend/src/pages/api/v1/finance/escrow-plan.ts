@@ -7,7 +7,7 @@ export const config={api:{bodyParser:{sizeLimit:'8kb'}}};
 const actions=new Set(['mint','deploy','fund','accept','expire','sync','withdraw','refund','reclaim','report']);
 export default async function handler(req:NextApiRequest,res:NextApiResponse){
  res.setHeader('Cache-Control','private, no-store');
- res.setHeader('X-GSTD-Escrow-RPC','3');
+ res.setHeader('X-GSTD-Escrow-RPC','4');
  if(req.method!=='POST')return res.status(405).json({error:'method_not_allowed'});
  try{
   if(!await kvRateLimit('escrow:plan:'+getClientIp(req.headers),12,60_000))return res.status(429).json({error:'rate_limited'});
