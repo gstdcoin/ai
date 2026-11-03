@@ -57,3 +57,10 @@ it('uses a configured TON Center key directly instead of spending an anonymous T
  const calls:string[]=[];vi.stubGlobal('fetch',vi.fn(async(url:string)=>{calls.push(String(url));return Response.json({ok:true,result:{state:'uninitialized',balance:'0'}});}));
  await testnetRpc().get('blockchain/accounts/'+encodeURIComponent(owner));expect(calls).toHaveLength(1);expect(calls[0]).toMatch(/^https:\/\/testnet\.toncenter\.com\//);
 });
+
+it('never exposes credential values reflected in a provider transport error',async()=>{
+ vi.stubEnv('ESCROW_TESTNET_TONAPI_KEY','test-only-private-key');vi.stubEnv('ESCROW_TESTNET_TONCENTER_API_KEY','test-only-second-key');
+ vi.stubGlobal('fetch',vi.fn(async()=>{throw Error('remote rejected test-only-private-key test-only-second-key');}));
+ const error=await testnetRpc().get('blockchain/accounts/'+encodeURIComponent(owner)).catch(e=>e);
+ expect(error.message).toBe('testnet_unavailable');expect(error.provider_diagnostic).not.toContain('test-only');expect(error.provider_diagnostic).not.toContain('remote rejected');
+});
