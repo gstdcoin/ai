@@ -24,6 +24,7 @@ export default async function handler(req:NextApiRequest,res:NextApiResponse){
   }
   if(!actions.has(action))return res.status(400).json({error:'invalid_action'});
   if(action==='fund'&&(!status?.deployed||status.state!==0||status.shares.length!==3))throw Error('state_not_ready');
+  if(action==='fund'&&BigInt(status!.payer_balance)<status!.shares.reduce((sum,s)=>sum+BigInt(s.missing_nano),0n))throw Error('insufficient_test_tokens');
   if(action==='accept'&&(!status?.deployed||status.state!==0||status.mask!==7))throw Error('state_not_ready');
   if(action==='withdraw'){
    if(!status?.deployed||status.state!==1||status.shares[role]?.state!==1||BigInt(status.shares[role]?.balance_nano||'0')<=0n)throw Error('state_not_ready');
@@ -35,7 +36,7 @@ export default async function handler(req:NextApiRequest,res:NextApiResponse){
    action==='refund'?status!.shares.map(s=>BigInt(s.balance_nano)):undefined);
   return res.status(200).json({preview,transaction,network:'-3',test_only:true});
  }catch(error:any){
-  const allowed=['invalid_address','invalid_budget','invalid_batch','invalid_role','wrong_signer','already_funded','invalid_action','state_not_ready','testnet_unavailable','testnet_state_mismatch'];
+  const allowed=['invalid_address','invalid_budget','invalid_batch','invalid_role','wrong_signer','already_funded','invalid_action','state_not_ready','insufficient_test_tokens','testnet_unavailable','testnet_state_mismatch'];
   return res.status(allowed.includes(error?.message)?409:503).json({error:allowed.includes(error?.message)?error.message:'escrow_unavailable',...(error?.message==='testnet_unavailable'&&typeof error.provider_diagnostic==='string'?{provider_diagnostic:error.provider_diagnostic.slice(0,300)}:{})});
  }
 }

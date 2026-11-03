@@ -3,10 +3,11 @@ import {randomBytes} from 'node:crypto';
 import {GstdTaskEscrow,storeSyncTask,storeAcceptFundedTask,storeRefundExpiredTask,storeReclaimEscrowTon} from './escrow-generated/GstdTaskEscrow';
 import {GstdEscrowShare,storeWithdrawAcceptedShare,storeRefundExpiredShare} from './escrow-generated/GstdEscrowShare';
 import {TestGstdMaster,storeMintTestGstd} from './escrow-generated/TestGstdMaster';
+import {TestGstdMasterV2} from './escrow-generated/TestGstdMasterV2';
 import walletArtifact from './escrow-generated/wallet-code.json';
 
 export const ESCROW_NETWORK='-3' as const;
-export interface BatchInput {payer:string;worker:string;protocol:string;reserve:string;budget:string;taskId:string;deadline:number;requests:number}
+export interface BatchInput {payer:string;worker:string;protocol:string;reserve:string;budget:string;taskId:string;deadline:number;requests:number;testAssetVersion?:1|2}
 export type BatchAction='mint'|'deploy'|'fund'|'accept'|'expire'|'sync'|'withdraw'|'refund'|'reclaim'|'report';
 export function amountNano(value:string):bigint {
  if(!/^(0|[1-9]\d{0,3})(\.\d{1,9})?$/.test(value))throw Error('invalid_budget');
@@ -20,13 +21,14 @@ export function rawAddress(value:string):string{
 const serialize=(body:Cell)=>body.toBoc().toString('base64');
 const queryId=()=>BigInt('0x'+randomBytes(8).toString('hex'));
 export async function batchContext(input:BatchInput){
- if(!input||typeof input.budget!=='string'||typeof input.taskId!=='string'||!/^[a-f0-9]{64}$/.test(input.taskId)||
+ if(!input||(input.testAssetVersion!==undefined&&input.testAssetVersion!==1&&input.testAssetVersion!==2)||typeof input.budget!=='string'||typeof input.taskId!=='string'||!/^[a-f0-9]{64}$/.test(input.taskId)||
   !Number.isSafeInteger(input.deadline)||input.deadline<=0||input.deadline>Math.floor(Date.now()/1000)+7*86400||
   !Number.isSafeInteger(input.requests)||input.requests<1||input.requests>10_000)throw Error('invalid_batch');
  const payer=Address.parse(rawAddress(input.payer)),recipients=[input.worker,input.protocol,input.reserve].map(a=>Address.parse(rawAddress(a)));
  const budget=amountNano(input.budget),amounts=[budget*85n/100n,budget*10n/100n,budget-budget*85n/100n-budget*10n/100n];
  const code=Cell.fromBoc(Buffer.from(walletArtifact.code_hex,'hex'))[0];if(code.hash().toString('hex')!==walletArtifact.code_hash)throw Error('invalid_artifact');
- const master=await TestGstdMaster.fromInit(code);
+ // Missing version means the original asset: never silently rebind a saved task.
+ const master=input.testAssetVersion===2?await TestGstdMasterV2.fromInit(code):await TestGstdMaster.fromInit(code);
  const task=await GstdTaskEscrow.fromInit(payer,...recipients as [Address,Address,Address],BigInt('0x'+input.taskId),budget,BigInt(input.deadline),code,master.address,-3n);
  const shares=await Promise.all(recipients.map((recipient,i)=>GstdEscrowShare.fromInit(task.address,payer,recipient,BigInt(i),amounts[i],code,master.address,-3n)));
  const tokenWallet=(owner:Address)=>contractAddress(0,{code,data:beginCell().storeCoins(0).storeAddress(owner).storeAddress(master.address).storeBit(false).endCell()});
@@ -34,7 +36,7 @@ export async function batchContext(input:BatchInput){
 }
 export async function batchPreview(input:BatchInput){
  const c=await batchContext(input);
- return{network:ESCROW_NETWORK,test_only:true,asset:'valueless test token',master:c.master.address.toRawString(),task:c.task.address.toRawString(),
+ return{network:ESCROW_NETWORK,test_only:true,test_asset_version:input.testAssetVersion??1,asset:'valueless test token',master:c.master.address.toRawString(),task:c.task.address.toRawString(),
   payer:c.payer.toRawString(),payerTokenWallet:c.tokenWallet(c.payer).toRawString(),budget_nano:String(c.budget),requests:input.requests,deadline:input.deadline,
   shares:c.shares.map((s,i)=>({role:i,owner:c.recipients[i].toRawString(),amount_nano:String(c.amounts[i]),address:s.address.toRawString(),tokenWallet:c.tokenWallet(s.address).toRawString()})),
   // Attached execution budgets are not a claim about consumed gas.

@@ -163,3 +163,29 @@ display or signing. Its absence is not proof that nothing arrived. Legacy record
 remain blocked and explicitly report that their old delivery stage is unknown.
 Exported recovery files include these non-secret diagnostics. Error recognition
 uses the stable SDK validation prefix rather than a minified constructor name.
+
+### Explicit metadata-bearing test asset V2
+
+New drafts set `testAssetVersion: 2` and use `TestGstdMasterV2`. Its immutable
+on-chain TEP-64 content contains `GSTD Test Token`, `tGSTD`, decimals `9` and a
+valueless-testnet description. No metadata HTTP service is required. The original
+master returned an empty content cell, which the My Wallet/Gram engine metadata
+loader rejects. This is a verified compatibility gap, not proof that it was the
+only cause of the disappearing mobile funding request.
+
+Missing/explicit version 1 always keeps the original master and task derivation.
+Legacy exported bindings and hashes are byte-identical. V2 is a separate test
+asset and does not convert existing V1 balances. A new test needs a new mint and
+new signatures. The UI can archive an empty legacy coordinator and prepare V2
+only when state/mask and all three observed balances are zero. Any pending
+operation must be at least ten minutes old; it remains preserved, not cancelled
+or retried. This is a local rehearsal convenience, not transaction reconciliation
+or authority to enable mainnet. Save the original recovery file first.
+
+The UI provides a testnet-friendly master-address copy button and manual wallet
+token-import guidance. The funding endpoint and button require enough verified
+payer token balance to cover all missing shares. No wallet request is prepared
+when the verified balance is insufficient.
+
+The existing published fee comparison uses the legacy test asset. V2 costs and
+its real mobile wallet lifecycle still require independent live confirmation.

@@ -9,7 +9,7 @@ async function call(body:any,method='POST'){
  const res={code:200,body:null as any,setHeader(){},status(code:number){this.code=code;return this;},json(value:any){this.body=value;return this;}};
  await handler({method,headers:{},body} as any,res as any);return res;
 }
-beforeEach(()=>{state.allow=true;state.status={deployed:true,state:0,mask:0,shares:[{state:0,balance_nano:'0',missing_nano:'850000000'},{state:0,balance_nano:'0',missing_nano:'100000000'},{state:0,balance_nano:'0',missing_nano:'50000000'}]};});
+beforeEach(()=>{state.allow=true;state.status={payer_balance:'1000000000',deployed:true,state:0,mask:0,shares:[{state:0,balance_nano:'0',missing_nano:'850000000'},{state:0,balance_nano:'0',missing_nano:'100000000'},{state:0,balance_nano:'0',missing_nano:'50000000'}]};});
 it('rejects mainnet plans and non-POST access; preview never enables a mainnet transaction',async()=>{
  expect((await call({},'GET')).code).toBe(405);
  const bad=await call({input,network:'-239'});expect(bad.code).toBe(409);expect(bad.body.error).toBe('wrong_network');
@@ -30,4 +30,11 @@ it('does not prepare a token withdrawal from pending or empty shares',async()=>{
 });
 it('limits free-service requests before preparing a transaction',async()=>{
  state.allow=false;expect((await call({input,action:'mint',actor:input.payer})).code).toBe(429);
+});
+
+it('refuses to open a funding request when the verified payer token balance is insufficient',async()=>{
+ state.status.payer_balance='999999999';const blocked=await call({input,action:'fund',actor:input.payer});
+ expect(blocked.code).toBe(409);expect(blocked.body.error).toBe('insufficient_test_tokens');
+ state.status.payer_balance='1000000000';const ready=await call({input,action:'fund',actor:input.payer});
+ expect(ready.code).toBe(200);expect(ready.body.transaction.messages).toHaveLength(3);
 });

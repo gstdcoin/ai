@@ -13,6 +13,10 @@
     "TestGstdMaster": {
       "code_hash": "1f0ecf491c3fe82d78173bda337a33d9aae2182a066bed0e6d80d33a2e854355",
       "binding_sha256": "b2b2aff805dfd08b18818eb9f2409545ff1972afe3e885a57d63988293f02e19"
+    },
+    "TestGstdMasterV2": {
+      "code_hash": "10281da9d3f619d3d63c9d37cdca11bd66435edbac5742e108e59ac5b4fd4981",
+      "binding_sha256": "34a178c44f83d519f65ead61aaf1f02425cc6893d0f0506b188306dae94df5ed"
     }
   }
 }

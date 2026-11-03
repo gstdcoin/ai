@@ -35,7 +35,7 @@ function EscrowLab({expectedConnector}:{expectedConnector:TonConnect}){
  const [nowSec,setNowSec]=useState(()=>Math.floor(Date.now()/1000));
  useEffect(()=>{if(!input?.deadline)return;const timer=setTimeout(()=>setNowSec(Math.floor(Date.now()/1000)),Math.max(0,input.deadline*1000-Date.now()+1000));return()=>clearTimeout(timer);},[input?.deadline]);
  useEffect(()=>{
-  if(!input&&address)setInput({payer:address,worker:address,protocol:address,reserve:address,budget:'1',requests:100,taskId:newTaskId(),deadline:Math.floor(Date.now()/1000)+3600});
+  if(!input&&address)setInput({payer:address,worker:address,protocol:address,reserve:address,budget:'1',requests:100,testAssetVersion:2,taskId:newTaskId(),deadline:Math.floor(Date.now()/1000)+3600});
  },[address,input]);
  async function api(action:string,role=0){
   const r=await fetch('/api/v1/finance/escrow-plan',{method:'POST',headers:{'Content-Type':'application/json'},
@@ -76,9 +76,16 @@ function EscrowLab({expectedConnector}:{expectedConnector:TonConnect}){
   if(!pending||pending.action!=='mint'||!chain||chain.deployed||chain.shares?.some((s:any)=>BigInt(s.balance_nano)>0n))return;
   // Preserve the original draft AND its pending record. Never clear or replay a financial operation.
   localStorage.setItem(storagePrefix+'archive:'+plan.task,JSON.stringify({network:'-3',input,plan,pending}));
-  const next={...input!,taskId:newTaskId(),deadline:Math.floor(Date.now()/1000)+3600};
+  const next={...input!,testAssetVersion:2 as const,taskId:newTaskId(),deadline:Math.floor(Date.now()/1000)+3600};
   localStorage.setItem(storagePrefix+'draft',JSON.stringify(next));
   setInput(next);setPlan(null);setChain(null);setPending(null);setNotice(p('new_test_batch_notice'));
+ }
+ function startCompatibleTestAsset(){
+  if(!input||input.testAssetVersion===2||!chain?.deployed||chain.state!==0||chain.mask!==0||chain.shares?.length!==3||chain.shares.some((s:any)=>BigInt(s.balance_nano)!==0n))return;
+  if(pending&&Date.now()-pending.since<600_000)return;
+  localStorage.setItem(storagePrefix+'archive:'+plan.task,JSON.stringify({network:'-3',input,plan,pending}));
+  const next={...input,testAssetVersion:2 as const,taskId:newTaskId(),deadline:Math.floor(Date.now()/1000)+3600};
+  localStorage.setItem(storagePrefix+'draft',JSON.stringify(next));setInput(next);setPlan(null);setChain(null);setPending(null);setNotice(p('compatible_asset_started'));
  }
  function restore(){try{const raw=localStorage.getItem(storagePrefix+'draft');if(raw){setInput(JSON.parse(raw));setPlan(null);setChain(null);setNotice(p('restore_review'));}}catch{setNotice(p('errors.invalid_batch'));}}
  function download(){if(!input)return;const blob=new Blob([JSON.stringify({network:'-3',input,plan,pending},null,2)],{type:'application/json'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='gstd-testnet-escrow.json';a.click();URL.revokeObjectURL(url);}
@@ -109,14 +116,15 @@ function EscrowLab({expectedConnector}:{expectedConnector:TonConnect}){
    {plan&&<button className="ml-4 underline" onClick={download}>{p('download')}</button>}
   </section>}
   {notice&&<p role="status" className="text-amber-200 break-words">{notice}</p>}
+  {plan&&input?.testAssetVersion!==2&&chain?.deployed&&chain.state===0&&chain.mask===0&&chain.shares?.length===3&&chain.shares.every((s:any)=>BigInt(s.balance_nano)===0n)&&(!pending||nowSec*1000-pending.since>=600_000)&&<div className="rounded border border-violet-500/50 p-4 space-y-3"><p>{p('compatible_asset_hint')}</p><button className={button} disabled={busy} onClick={()=>work(async()=>startCompatibleTestAsset())}>{p('compatible_asset_start')}</button></div>}
   {pending&&<div className="rounded border border-amber-500/50 p-4 space-y-3"><p>{p('pending')}</p><p>{p('wallet_request_stage')}: {p(pending.signed?'wallet_signed':pending.requestSent?'wallet_delivered':pending.requestSent===false?'wallet_not_confirmed':'wallet_stage_unknown')}</p>{pending.failureCode&&<p>{p('wallet_errors.'+pending.failureCode)}</p>}{pending.action==='mint'&&chain&&!chain.deployed&&!chain.shares?.some((s:any)=>BigInt(s.balance_nano)>0n)&&<><p>{p('new_test_batch_hint')}</p><button className={button} disabled={busy} onClick={()=>work(async()=>restartTestMint())}>{p('new_test_batch')}</button></>}</div>}
   {plan&&input&&<><section className="rounded-xl border border-white/15 p-5 space-y-3"><h2 className="text-xl">{p('review_title')}</h2>
     <p>{p('payer')}: <code className="break-all">{plan.payer}</code></p>
-    <p>{p('test_asset')}: <code className="break-all">{plan.master}</code></p><p>{p('coordinator')}: <code className="break-all">{plan.task}</code></p>
+    <p>{p(plan.test_asset_version===2?'test_asset_v2':'test_asset_legacy')}</p><p>{p('test_asset')}: <code className="break-all">{plan.master}</code></p>{plan.test_asset_version===2&&<><p>{p('test_asset_import')}</p><button className={button} disabled={busy} onClick={()=>work(async()=>{await navigator.clipboard.writeText(Address.parse(plan.master).toString({testOnly:true,bounceable:true}));setNotice(p('asset_address_copied'));})}>{p('copy_asset_address')}</button></>}<p>{p('coordinator')}: <code className="break-all">{plan.task}</code></p>
     <p>{p('storage')}: {plan.minimum_storage_ton} TON</p><p className="text-sm text-gray-400">{p('wallet_storage')}</p>
     <p>{p('budget_explanation')}</p><p>{p('budget_path')}: {plan.normal_path_attached_ton} TON; {p('per_request')}: {plan.normal_path_attached_ton_per_request.toFixed(6)} TON</p>
     <p className="text-sm text-gray-400">{p('not_fee_quote')}</p>
-    <p className="text-sm text-gray-300">{p('gas_proof')}</p>
+    <p className="text-sm text-gray-300">{p('gas_proof')}{input.testAssetVersion===2&&' '+p('gas_proof_legacy_asset')}</p>
     {plan.shares.map((s:any)=><div key={s.role} className="rounded border border-white/10 p-3"><b>{p(['worker','protocol','reserve'][s.role])}: {tokens(s.amount_nano)} tGSTD</b><code className="block break-all text-sm">{s.owner}</code></div>)}
    </section>
    <section className="rounded-xl border border-white/15 p-5 space-y-3"><h2 className="text-xl">{p('actions')}</h2><p>{p('steps')}</p>
@@ -124,7 +132,7 @@ function EscrowLab({expectedConnector}:{expectedConnector:TonConnect}){
      <button className={button} disabled={blocked||!payer||!chain} onClick={()=>work(()=>send('mint'))}>{p('mint')}</button>
      <button className={button} disabled={blocked||!payer||chain?.deployed} onClick={()=>work(()=>send('deploy'))}>{p('deploy')}</button>
      <button className={button} disabled={busy} onClick={()=>work(refresh)}>{p('check')}</button>
-     <button className={button} disabled={blocked||!payer||chain?.state!==0||chain?.mask===7} onClick={()=>work(()=>send('fund'))}>{p('fund')} · {p('up_to')} {plan.budgets_ton.fund} TON</button>
+     <button className={button} disabled={blocked||!payer||chain?.state!==0||chain?.mask===7||BigInt(chain?.payer_balance||'0')<(chain?.shares||[]).reduce((sum:bigint,s:any)=>sum+BigInt(s.missing_nano),0n)} onClick={()=>work(()=>send('fund'))}>{p('fund')} · {p('up_to')} {plan.budgets_ton.fund} TON</button>
      <button className={button} disabled={blocked||!payer||chain?.state!==0||chain?.mask!==7||nowSec>input.deadline} onClick={()=>work(()=>send('accept'))}>{p('accept')} · {plan.budgets_ton.accept} TON</button>
      <button className={button} disabled={blocked||!payer||!chain?.deployed||chain?.state===1||nowSec<=input.deadline} onClick={()=>work(()=>send('expire'))}>{p('expire')} · {plan.budgets_ton.expire} TON</button>
      <button className={button} disabled={blocked||!payer||chain?.state!==2||!(chain?.shares||[]).some((s:any)=>BigInt(s.balance_nano)>0n)} onClick={()=>work(()=>send('refund'))}>{p('refund')} · {p('up_to')} {plan.budgets_ton.refund_all} TON</button>

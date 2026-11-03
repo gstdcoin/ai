@@ -9,8 +9,8 @@ function connector(){return new TonConnect({manifestUrl:'https://app.gstdtoken.c
 it('every escrow transaction passes the installed SDK validator before any wallet/network access',async()=>{
  const sdk=connector(),fetchSpy=vi.spyOn(globalThis,'fetch').mockRejectedValue(Error('unexpected network'));
  try{
-  for(const action of ['mint','deploy','fund','accept','expire','sync','refund','reclaim','report','withdraw'] as const){
-   const tx=await batchTransaction(input,action,action==='withdraw'?worker:payer);
+  for(const testAssetVersion of [1,2] as const)for(const action of ['mint','deploy','fund','accept','expire','sync','refund','reclaim','report','withdraw'] as const){
+   const tx=await batchTransaction({...input,testAssetVersion},action,action==='withdraw'?worker:payer);
    for(const message of tx.messages){const a=Address.parseFriendly(message.address);expect(a.isTestOnly).toBe(true);expect(a.isBounceable).toBe(false);}
    // A disconnected SDK must reach the connection check, not fail payload validation.
    await expect(sdk.sendTransaction(tx)).rejects.toBeInstanceOf(WalletNotConnectedError);

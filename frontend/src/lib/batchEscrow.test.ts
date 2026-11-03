@@ -56,3 +56,12 @@ it('ties the published fee comparison to exactly the exported contract code',()=
  for(const name of ['GstdTaskEscrow','GstdEscrowShare','TestGstdMaster'] as const)expect(proof.code_hashes[name]).toBe(manifest.contracts[name].code_hash);
  expect(BigInt(proof.batch_total_fees_nano)*3n).toBeLessThan(BigInt(proof.five_separate_total_fees_nano));
 });
+
+it('keeps legacy saved batches bound to their original asset and opts into metadata V2 explicitly',async()=>{
+ const legacy=await batchPreview(input),explicitLegacy=await batchPreview({...input,testAssetVersion:1}),updated=await batchPreview({...input,testAssetVersion:2});
+ expect(legacy.master).toBe('0:9d6e79e52a2c77c6800f9515868ba50b426e24d3d9c1181f31485b91e3b70e8d');
+ expect(explicitLegacy.task).toBe(legacy.task);expect(legacy.test_asset_version).toBe(1);expect(updated.test_asset_version).toBe(2);
+ expect(updated.master).not.toBe(legacy.master);expect(updated.task).not.toBe(legacy.task);
+ const context=await batchContext({...input,testAssetVersion:2});expect(context.master.init!.code.hash().toString('hex')).toBe(manifest.contracts.TestGstdMasterV2.code_hash);
+ await expect(batchPreview({...input,testAssetVersion:3} as unknown as BatchInput)).rejects.toThrow('invalid_batch');
+});

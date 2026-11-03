@@ -1763,7 +1763,8 @@
       "invalid_action": "Unknown test operation.",
       "operation_pending": "A saved operation still awaits chain evidence. Restore this batch and check its state before sending again.",
       "browser_lock_unavailable": "This browser cannot safely coordinate wallet requests across tabs. Update it or use a current browser; signing was not started.",
-      "reload_required": "This page inherited a platform wallet session. Reopen the isolated testnet page before connecting or signing."
+      "reload_required": "This page inherited a platform wallet session. Reopen the isolated testnet page before connecting or signing.",
+      "insufficient_test_tokens": "Not enough test tGSTD to fund this batch. Mint test tokens first, then check the network state."
     },
     "faucet": "Get free testnet TON ↗",
     "payer": "Payer / refund owner",
@@ -1788,6 +1789,15 @@
       "wrong_network": "The SDK reported a wallet/transaction network mismatch.",
       "unsupported": "The wallet does not support this operation or message count.",
       "transport_or_ui": "A connection or TON Connect window error occurred. Transaction outcome is unknown; retry remains blocked."
-    }
+    },
+    "test_asset_v2": "Test asset V2: the name, tGSTD symbol and 9 decimals are stored on-chain under TEP-64.",
+    "test_asset_legacy": "Legacy test asset V1: metadata is absent; the original task address is preserved.",
+    "compatible_asset_hint": "This empty test batch can be replaced by a new rehearsal using V2, which includes wallet metadata. The previous batch and uncertain operation remain archived in this browser and are not cancelled. This creates a different contract and requires new signatures. Save recovery data first. Reject any old request that appears in the wallet.",
+    "compatible_asset_start": "Prepare a new test with asset V2",
+    "compatible_asset_started": "The old test remains archived in this browser. A new V2 draft was prepared; no tokens or TON were transferred.",
+    "gas_proof_legacy_asset": "This comparison used test asset V1, not V2; costs for the new asset are checked separately.",
+    "test_asset_import": "If tGSTD is missing from your wallet token list, add it manually using the master address above while staying on TON testnet. Then reopen your wallet before funding.",
+    "copy_asset_address": "Copy tGSTD testnet address",
+    "asset_address_copied": "The test tGSTD master address was copied."
   }
 }
