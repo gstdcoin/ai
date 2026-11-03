@@ -1,5 +1,6 @@
 import {Address,beginCell,Cell,contractAddress,storeStateInit} from '@ton/core';
 import {randomBytes} from 'node:crypto';
+import {validatePilotJob,type EscrowPilotJob} from './escrowJobManifest';
 import {GstdTaskEscrow,storeSyncTask,storeAcceptFundedTask,storeRefundExpiredTask,storeReclaimEscrowTon} from './escrow-generated/GstdTaskEscrow';
 import {GstdEscrowShare,storeWithdrawAcceptedShare,storeRefundExpiredShare} from './escrow-generated/GstdEscrowShare';
 import {TestGstdMaster,storeMintTestGstd} from './escrow-generated/TestGstdMaster';
@@ -7,7 +8,7 @@ import {TestGstdMasterV2} from './escrow-generated/TestGstdMasterV2';
 import walletArtifact from './escrow-generated/wallet-code.json';
 
 export const ESCROW_NETWORK='-3' as const;
-export interface BatchInput {payer:string;worker:string;protocol:string;reserve:string;budget:string;taskId:string;deadline:number;requests:number;testAssetVersion?:1|2}
+export interface BatchInput {payer:string;worker:string;protocol:string;reserve:string;budget:string;taskId:string;deadline:number;requests:number;testAssetVersion?:1|2;job?:EscrowPilotJob}
 export type BatchAction='mint'|'deploy'|'fund'|'accept'|'expire'|'sync'|'withdraw'|'refund'|'reclaim'|'report';
 export function amountNano(value:string):bigint {
  if(!/^(0|[1-9]\d{0,3})(\.\d{1,9})?$/.test(value))throw Error('invalid_budget');
@@ -24,6 +25,7 @@ export async function batchContext(input:BatchInput){
  if(!input||(input.testAssetVersion!==undefined&&input.testAssetVersion!==1&&input.testAssetVersion!==2)||typeof input.budget!=='string'||typeof input.taskId!=='string'||!/^[a-f0-9]{64}$/.test(input.taskId)||
   !Number.isSafeInteger(input.deadline)||input.deadline<=0||input.deadline>Math.floor(Date.now()/1000)+7*86400||
   !Number.isSafeInteger(input.requests)||input.requests<1||input.requests>10_000)throw Error('invalid_batch');
+ if(input.job!==undefined)validatePilotJob(input);
  const payer=Address.parse(rawAddress(input.payer)),recipients=[input.worker,input.protocol,input.reserve].map(a=>Address.parse(rawAddress(a)));
  const budget=amountNano(input.budget),amounts=[budget*85n/100n,budget*10n/100n,budget-budget*85n/100n-budget*10n/100n];
  const code=Cell.fromBoc(Buffer.from(walletArtifact.code_hex,'hex'))[0];if(code.hash().toString('hex')!==walletArtifact.code_hash)throw Error('invalid_artifact');

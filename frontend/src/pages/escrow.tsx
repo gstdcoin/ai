@@ -31,6 +31,7 @@ function EscrowLab({expectedConnector}:{expectedConnector:TonConnect}){
  const wallet=useTonWallet(),[ton]=useTonConnectUI();
  const address=canonical(wallet?.account.address||''),testnet=wallet?.account.chain==='-3';
  const [input,setInput]=useState<BatchInput|null>(null),[plan,setPlan]=useState<any>(null),[chain,setChain]=useState<any>(null);
+ const [job,setJob]=useState<any>(null);
  const [busy,setBusy]=useState(false),[notice,setNotice]=useState(''),[pending,setPending]=useState<any>(null);
  const [nowSec,setNowSec]=useState(()=>Math.floor(Date.now()/1000));
  useEffect(()=>{if(!input?.deadline)return;const timer=setTimeout(()=>setNowSec(Math.floor(Date.now()/1000)),Math.max(0,input.deadline*1000-Date.now()+1000));return()=>clearTimeout(timer);},[input?.deadline]);
@@ -48,11 +49,33 @@ function EscrowLab({expectedConnector}:{expectedConnector:TonConnect}){
   localStorage.setItem(storagePrefix+'draft',JSON.stringify(input));setNotice(p(unfinished?'pending':'review'));
  }
  async function refresh(){
-  const d=await api('status');setChain(d.status);
+  const d=await api('status');setChain(d.status);setJob(d.job||null);
   if(pending&&d.status.checked_at>pending.since){
    const done=hasExpectedEscrowState(pending,d.status);
    if(done)await withEscrowOperation(localStorage,navigator.locks,plan.task,async op=>{if(op.clear(pending.id)){setPending(null);setNotice(p('confirmed'));}else setPending(op.current());});
   }
+ }
+ async function jobApi(action:string,extra:Record<string,unknown>={}){
+  const r=await fetch('/api/v1/finance/escrow-job',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({network:'-3',action,input,...extra})});
+  const d=await r.json();if(!r.ok)throw Error(d.error||'escrow_job_unavailable');return d;
+ }
+ async function prepareJob(){
+  if(!testnet||pending)throw Error('wrong_network');
+  if(plan&&(!chain||chain.state!==1||chain.shares.some((s:any)=>BigInt(s.balance_nano)!==0n)))throw Error('state_not_ready');
+  const d=await jobApi('prepare',{payer:address,model:'qwen2.5:0.5b'});
+  if(plan)localStorage.setItem(storagePrefix+'archive:'+plan.task,JSON.stringify({network:'-3',input,plan,pending,job}));
+  localStorage.setItem(storagePrefix+'draft',JSON.stringify(d.input));
+  setInput(d.input);setPlan(d.preview);setChain(null);setPending(null);setJob(d.job);setNotice(p('job_prepared'));
+ }
+ async function executeJob(){
+  if(!testnet||ton.connector!==expectedConnector||address!==input?.payer)throw Error('wrong_network');
+  const challenge=await jobApi('challenge');
+  if(challenge.job){setJob(challenge.job);return;}
+  const authorization=await ton.signData({type:'text',text:challenge.text,network:'-3',from:address});
+  const current=ton.account;
+  if(!current||current.chain!=='-3'||canonical(current.address)!==address)throw Error('wrong_network');
+  const d=await jobApi('execute',{nonce:challenge.nonce,authorization,stateInit:current.walletStateInit});
+  setJob(d.job);setNotice(p('job_queued'));
  }
  async function send(action:BatchAction,role=0){
   if(ton.connector!==expectedConnector)throw Error('reload_required');
@@ -87,8 +110,8 @@ function EscrowLab({expectedConnector}:{expectedConnector:TonConnect}){
   const next={...input,testAssetVersion:2 as const,taskId:newTaskId(),deadline:Math.floor(Date.now()/1000)+3600};
   localStorage.setItem(storagePrefix+'draft',JSON.stringify(next));setInput(next);setPlan(null);setChain(null);setPending(null);setNotice(p('compatible_asset_started'));
  }
- function restore(){try{const raw=localStorage.getItem(storagePrefix+'draft');if(raw){setInput(JSON.parse(raw));setPlan(null);setChain(null);setNotice(p('restore_review'));}}catch{setNotice(p('errors.invalid_batch'));}}
- function download(){if(!input)return;const blob=new Blob([JSON.stringify({network:'-3',input,plan,pending},null,2)],{type:'application/json'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='gstd-testnet-escrow.json';a.click();URL.revokeObjectURL(url);}
+ function restore(){try{const raw=localStorage.getItem(storagePrefix+'draft');if(raw){setInput(JSON.parse(raw));setPlan(null);setChain(null);setJob(null);setNotice(p('restore_review'));}}catch{setNotice(p('errors.invalid_batch'));}}
+ function download(){if(!input)return;const blob=new Blob([JSON.stringify({network:'-3',input,plan,pending,job},null,2)],{type:'application/json'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='gstd-testnet-escrow.json';a.click();URL.revokeObjectURL(url);}
  useEffect(()=>{if(!plan)return;const listener=(e:StorageEvent)=>{if(e.key===pendingKey(plan.task)){try{setPending(savedPending(plan.task));}catch{setNotice(p('errors.invalid_batch'));}}};window.addEventListener('storage',listener);return()=>window.removeEventListener('storage',listener);},[plan]);
  const isolated=ton.connector===expectedConnector;
  const blocked=busy||!!pending||!testnet||!isolated;
@@ -106,6 +129,14 @@ function EscrowLab({expectedConnector}:{expectedConnector:TonConnect}){
     <button className={button} disabled={busy} onClick={()=>work(async()=>{await ton.openModal();})}>{p('connect')}</button>}
    <p><a className="underline" href="https://t.me/testgiver_ton_bot" target="_blank" rel="noreferrer">{p('faucet')}</a></p>
    <button className="ml-4 underline" disabled={busy||!!pending} onClick={restore}>{p('restore')}</button>
+  </section>
+  <section className="rounded-xl border border-violet-500/40 p-5 space-y-3"><h2 className="text-xl">{p('job_title')}</h2><p>{p('job_intro')}</p>
+   <button className={button} disabled={blocked||!!plan&&(!chain||chain.state!==1||chain.shares?.some((s:any)=>BigInt(s.balance_nano)!==0n))} onClick={()=>work(prepareJob)}>{p('job_prepare')}</button>
+   {input?.job&&<><p>{p('job_model')}: <b>{input.job.model}</b> · {input.budget} tGSTD</p><p>{p('job_node')}: <code className="break-all">{input.job.node_id}</code></p><p>{p('job_state')}: {p('job_state_'+(job?.state||'prepared'))}</p>
+    <button className={button} disabled={blocked||!payer||chain?.state!==0||chain?.mask!==7||job?.state!=='prepared'||nowSec>input.deadline-120} onClick={()=>work(executeJob)}>{p('job_run')}</button>
+    <button className={button+' ml-3'} disabled={busy} onClick={()=>work(async()=>{const d=await jobApi('status');setJob(d.job);})}>{p('job_check')}</button>
+    {job?.receipt&&<div className="space-y-2"><p>{p('job_result')}: <b>{job.receipt.result}</b> · {job.receipt.latency_ms} ms</p><code className="block break-all">{job.receipt.result_hash}</code><p>{p('job_no_ledger')}</p></div>}
+   </>}
   </section>
   {input&&<section className="rounded-xl border border-white/15 p-5 space-y-3"><h2 className="text-xl">{p('batch')}</h2><p className="text-gray-300">{p('demo_recipients')}</p>
    <label className="block">{p('budget')}<input className={field} value={input.budget} disabled={!!plan||busy} inputMode="decimal" onChange={e=>setInput({...input,budget:e.target.value})}/></label>
@@ -133,7 +164,7 @@ function EscrowLab({expectedConnector}:{expectedConnector:TonConnect}){
      <button className={button} disabled={blocked||!payer||chain?.deployed} onClick={()=>work(()=>send('deploy'))}>{p('deploy')}</button>
      <button className={button} disabled={busy} onClick={()=>work(refresh)}>{p('check')}</button>
      <button className={button} disabled={blocked||!payer||chain?.state!==0||chain?.mask===7||BigInt(chain?.payer_balance||'0')<(chain?.shares||[]).reduce((sum:bigint,s:any)=>sum+BigInt(s.missing_nano),0n)} onClick={()=>work(()=>send('fund'))}>{p('fund')} · {p('up_to')} {plan.budgets_ton.fund} TON</button>
-     <button className={button} disabled={blocked||!payer||chain?.state!==0||chain?.mask!==7||nowSec>input.deadline} onClick={()=>work(()=>send('accept'))}>{p('accept')} · {plan.budgets_ton.accept} TON</button>
+     <button className={button} disabled={blocked||!payer||chain?.state!==0||chain?.mask!==7||nowSec>input.deadline||!!input.job&&job?.state!=='computed'} onClick={()=>work(()=>send('accept'))}>{p('accept')} · {plan.budgets_ton.accept} TON</button>
      <button className={button} disabled={blocked||!payer||!chain?.deployed||chain?.state===1||nowSec<=input.deadline} onClick={()=>work(()=>send('expire'))}>{p('expire')} · {plan.budgets_ton.expire} TON</button>
      <button className={button} disabled={blocked||!payer||chain?.state!==2||!(chain?.shares||[]).some((s:any)=>BigInt(s.balance_nano)>0n)} onClick={()=>work(()=>send('refund'))}>{p('refund')} · {p('up_to')} {plan.budgets_ton.refund_all} TON</button>
     </div>

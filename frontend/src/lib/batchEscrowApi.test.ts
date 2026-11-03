@@ -1,7 +1,7 @@
 import {beforeEach,it,expect,vi} from 'vitest';
 import type {BatchInput} from './batchEscrow';
 const state=vi.hoisted(()=>({allow:true,status:null as any}));
-vi.mock('./kv',()=>({kvRateLimit:async()=>state.allow}));
+vi.mock('./kv',()=>({kvGet:async()=>null,kvRateLimit:async()=>state.allow}));
 vi.mock('./batchEscrowStatus',()=>({batchStatus:async()=>state.status}));
 import handler from '../pages/api/v1/finance/escrow-plan';
 const input:BatchInput={payer:'0:'+'11'.repeat(32),worker:'0:'+'22'.repeat(32),protocol:'0:'+'33'.repeat(32),reserve:'0:'+'44'.repeat(32),budget:'1',requests:100,taskId:'55'.repeat(32),deadline:Math.floor(Date.now()/1000)+3600};

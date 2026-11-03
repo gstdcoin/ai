@@ -156,3 +156,15 @@ export function verifyTonConnectProof(
         return false;
     }
 }
+
+/** Trusted key extraction for domain-bound signData authorization. No network call or supplied-key trust. */
+export function extractVerifiedWalletPublicKey(value:string,walletStateInit:string):Buffer|null{
+ try{
+  if(typeof walletStateInit!=='string'||walletStateInit.length===0||walletStateInit.length>65_536)return null;
+  const address=Address.parse(value),roots=Cell.fromBoc(Buffer.from(walletStateInit,'base64'));
+  if(roots.length!==1||!roots[0].hash().equals(address.hash))return null;
+  const init=loadStateInit(roots[0].beginParse());if(!init.code||!init.data)return null;
+  const layout=SUPPORTED_WALLET_CODE_LAYOUTS.find(x=>x.codeHash===init.code!.hash().toString('hex'));if(!layout)return null;
+  const data=init.data.beginParse();data.skip(layout.publicKeyOffsetBits);return data.loadBuffer(32);
+ }catch{return null;}
+}

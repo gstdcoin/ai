@@ -1,9 +1,12 @@
+import { pilotAssignment } from './escrowJobs';
 import { executorPayout } from './nodePayout';
 import { kvGet, kvSetNX } from './kv';
 import { isTaskExecutionEnabled } from './taskKinds';
 import { moneyJob } from './money';
 
 export interface TaskAssignment {
+    settlement_mode?: 'testnet_contract';
+    escrow_job?: string;
     funding_id?: string;
     payout_wallet?: string;
     node_id: string;
@@ -33,6 +36,12 @@ export async function assignTaskToNode(
         reward_gstd: 0, // Legacy accrual disabled; v2 escrow owns money.
         protocol_fee_gstd: 0,
     };
+    if (task.settlement_mode === 'testnet_contract') {
+        if (task.funding_id || task.funding_version) return false;
+        const pilot = await pilotAssignment(task,nodeId);
+        if (!pilot) return false;
+        Object.assign(assignment,pilot,{settlement_mode:'testnet_contract'});
+    }
     if (task.funding_version === 2 && task.funding_id === task.task_id) {
         const funding = await moneyJob(task.task_id);
         if (!funding || funding.state !== 'reserved' || funding.kind !== 'task' || funding.expiresAt <= Date.now()) return false;

@@ -15,6 +15,7 @@ import { COMMUNITY_TAX, BASE_TASK_FEE } from '../../../../lib/rewards';
 import { requireNodeSignature } from '../../../../lib/nodeAuth';
 import { hasTaskResult, declaredTaskModelMismatch } from '../../../../lib/taskValidation';
 import { captureMoney, releaseMoney, moneyJob, splitNano, units, walletId, digest } from '../../../../lib/money';
+import { completePilotJob } from '../../../../lib/escrowJobs';
 import type { TaskAssignment } from '../../../../lib/task-assignment';
 import type { NodeRecord } from '../nodes/register';
 import type { Campaign } from '../campaigns/create';
@@ -69,6 +70,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (declaredTaskModelMismatch(assigned.expected_model, body)) {
             return res.status(422).json({ error: 'model_mismatch', requested_model: assigned.expected_model });
         }
+        let escrowReceipt;
+        if (assigned.settlement_mode === 'testnet_contract') {
+            if (assigned.funding_id || !assigned.escrow_job) return res.status(409).json({error:'invalid_escrow_job'});
+            try { escrowReceipt = await completePilotJob(assigned.escrow_job,nodeId,body.model,body.result,body.latency_ms); }
+            catch { return res.status(422).json({error:'invalid_escrow_job_result'}); }
+        }
         const completion = await kvCompleteAssignedTask(
             body.task_id,
             nodeId,
@@ -108,6 +115,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 { task_id: body.task_id, node_id: nodeId, result_hash: digest(body.result) });
             rewardGstd = Number(units(splitNano(BigInt(funding.amount)).executor));
         }
+        if (escrowReceipt) return res.status(200).json({ok:true,task_id:body.task_id,duplicate:completion.status==='duplicate',reward_gstd:0,escrow_receipt:escrowReceipt});
         if (completion.status === 'duplicate') return res.status(200).json({ ok: true, task_id: body.task_id, duplicate: true, reward_gstd: rewardGstd });
         if (assignment.expected_hash) {
             await kvIncrByFloat('stats:probe_verified', 1);
