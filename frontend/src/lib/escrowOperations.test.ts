@@ -49,3 +49,23 @@ it('releases the browser lock after failure and prevents an escaped controller f
  await withEscrowOperation(x.storage,x.locks,task,async op=>op.begin(operation('new')));
  expect(readEscrowPending(x.storage,task)?.id).toBe('new');
 });
+
+it('persists wallet diagnostic stages without clearing or mutating the financial operation',async()=>{
+ const x=environment();
+ await withEscrowOperation(x.storage,x.locks,task,async op=>{
+  op.begin({...operation(),validUntil:1000,requestSent:false});
+  const sent=op.annotate('one',{requestSent:true});expect(sent?.requestSent).toBe(true);
+  const failed=op.annotate('one',{failureCode:'wallet_unknown'});
+  expect(failed).toMatchObject({id:'one',task,action:'deploy',requestSent:true,validUntil:1000,failureCode:'wallet_unknown'});
+  expect(op.annotate('stale',{signed:true})).toBe(null);
+  expect(op.current()?.id).toBe('one');
+ });
+ expect(readEscrowPending(x.storage,task)?.failureCode).toBe('wallet_unknown');
+});
+it('rejects corrupted diagnostic fields rather than dropping a pending operation',()=>{
+ const x=environment();
+ for(const fields of [{validUntil:1.5},{requestSent:'yes'},{signed:1},{failureCode:'arbitrary message'}]){
+  x.storage.setItem(escrowPendingKey(task),JSON.stringify({...operation(),...fields}));
+  expect(()=>readEscrowPending(x.storage,task)).toThrow('invalid_batch');
+ }
+});

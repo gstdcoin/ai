@@ -8,7 +8,7 @@ import TonConnect,{UserRejectsError} from '@tonconnect/sdk';
 import {Address} from '@ton/core';
 import {getCommonStaticProps} from '../lib/i18n-static-props';
 import type {BatchInput,BatchAction} from '../lib/batchEscrow';
-import {isEscrowRequestValidationError} from '../lib/escrowWalletErrors';
+import {isEscrowRequestValidationError,escrowWalletErrorCode} from '../lib/escrowWalletErrors';
 import {createEscrowConnector} from '../lib/escrowConnector';
 import {hasExpectedEscrowState} from '../lib/escrowObservation';
 import {escrowStoragePrefix,escrowPendingKey,readEscrowPending,withEscrowOperation,type PendingEscrowOperation} from '../lib/escrowOperations';
@@ -63,13 +63,13 @@ function EscrowLab({expectedConnector}:{expectedConnector:TonConnect}){
   const current=ton.account;
   if(!current||current.chain!=='-3'||canonical(current.address)!==result.transaction.from||result.transaction.network!=='-3'||result.preview.task!==plan.task)throw Error('wrong_network');
   if(op.current())throw Error('operation_pending');
-  const snapshot:PendingEscrowOperation={id:newTaskId(),task:plan.task,action,role,since:Date.now(),payer:chain?.payer_balance||'0',
+  const snapshot:PendingEscrowOperation={id:newTaskId(),task:plan.task,action,role,since:Date.now(),validUntil:result.transaction.validUntil,requestSent:false,signed:false,payer:chain?.payer_balance||'0',
    total:String((chain?.shares||[]).reduce((a:bigint,x:any)=>a+BigInt(x.balance_nano),0n)),
    balance:chain?.shares?.[role]?.balance_nano||'0',
    native:String(BigInt(chain?.native_nano||'0')+(chain?.shares||[]).reduce((a:bigint,x:any)=>a+BigInt(x.native_nano||'0'),0n))};
   op.begin(snapshot);setPending(snapshot);
-  try{await ton.sendTransaction(result.transaction);setNotice(p('submitted'));}
-  catch(e:any){if(e instanceof UserRejectsError||isEscrowRequestValidationError(e)){if(op.clear(snapshot.id))setPending(null);else setPending(op.current());setNotice(p(e instanceof UserRejectsError?'rejected':'invalid_wallet_request'));}else setNotice(p('uncertain'));}
+  try{await ton.sendTransaction(result.transaction,{onRequestSent:()=>{try{setPending(op.annotate(snapshot.id,{requestSent:true}));}catch{/* Keep the original pending record if diagnostic persistence fails. */}}});setPending(op.annotate(snapshot.id,{signed:true}));setNotice(p('submitted'));}
+  catch(e:any){if(e instanceof UserRejectsError||isEscrowRequestValidationError(e)){if(op.clear(snapshot.id))setPending(null);else setPending(op.current());setNotice(p(e instanceof UserRejectsError?'rejected':'invalid_wallet_request'));}else{try{setPending(op.annotate(snapshot.id,{failureCode:escrowWalletErrorCode(e)}));}catch{/* Unknown failures never clear pending state. */}setNotice(p('uncertain'));}}
   });
  }
  function restartTestMint(){
@@ -81,7 +81,7 @@ function EscrowLab({expectedConnector}:{expectedConnector:TonConnect}){
   setInput(next);setPlan(null);setChain(null);setPending(null);setNotice(p('new_test_batch_notice'));
  }
  function restore(){try{const raw=localStorage.getItem(storagePrefix+'draft');if(raw){setInput(JSON.parse(raw));setPlan(null);setChain(null);setNotice(p('restore_review'));}}catch{setNotice(p('errors.invalid_batch'));}}
- function download(){if(!input)return;const blob=new Blob([JSON.stringify({network:'-3',input,plan},null,2)],{type:'application/json'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='gstd-testnet-escrow.json';a.click();URL.revokeObjectURL(url);}
+ function download(){if(!input)return;const blob=new Blob([JSON.stringify({network:'-3',input,plan,pending},null,2)],{type:'application/json'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='gstd-testnet-escrow.json';a.click();URL.revokeObjectURL(url);}
  useEffect(()=>{if(!plan)return;const listener=(e:StorageEvent)=>{if(e.key===pendingKey(plan.task)){try{setPending(savedPending(plan.task));}catch{setNotice(p('errors.invalid_batch'));}}};window.addEventListener('storage',listener);return()=>window.removeEventListener('storage',listener);},[plan]);
  const isolated=ton.connector===expectedConnector;
  const blocked=busy||!!pending||!testnet||!isolated;
@@ -109,7 +109,7 @@ function EscrowLab({expectedConnector}:{expectedConnector:TonConnect}){
    {plan&&<button className="ml-4 underline" onClick={download}>{p('download')}</button>}
   </section>}
   {notice&&<p role="status" className="text-amber-200 break-words">{notice}</p>}
-  {pending&&<div className="rounded border border-amber-500/50 p-4 space-y-3"><p>{p('pending')}</p>{pending.action==='mint'&&chain&&!chain.deployed&&!chain.shares?.some((s:any)=>BigInt(s.balance_nano)>0n)&&<><p>{p('new_test_batch_hint')}</p><button className={button} disabled={busy} onClick={()=>work(async()=>restartTestMint())}>{p('new_test_batch')}</button></>}</div>}
+  {pending&&<div className="rounded border border-amber-500/50 p-4 space-y-3"><p>{p('pending')}</p><p>{p('wallet_request_stage')}: {p(pending.signed?'wallet_signed':pending.requestSent?'wallet_delivered':pending.requestSent===false?'wallet_not_confirmed':'wallet_stage_unknown')}</p>{pending.failureCode&&<p>{p('wallet_errors.'+pending.failureCode)}</p>}{pending.action==='mint'&&chain&&!chain.deployed&&!chain.shares?.some((s:any)=>BigInt(s.balance_nano)>0n)&&<><p>{p('new_test_batch_hint')}</p><button className={button} disabled={busy} onClick={()=>work(async()=>restartTestMint())}>{p('new_test_batch')}</button></>}</div>}
   {plan&&input&&<><section className="rounded-xl border border-white/15 p-5 space-y-3"><h2 className="text-xl">{p('review_title')}</h2>
     <p>{p('payer')}: <code className="break-all">{plan.payer}</code></p>
     <p>{p('test_asset')}: <code className="break-all">{plan.master}</code></p><p>{p('coordinator')}: <code className="break-all">{plan.task}</code></p>

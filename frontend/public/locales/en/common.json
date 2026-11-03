@@ -1773,6 +1773,21 @@
     "invalid_wallet_request": "The request was not sent to the wallet: the SDK rejected its format before sending. An explicit retry is available after the format is fixed.",
     "new_test_batch": "Start a new test batch",
     "new_test_batch_hint": "If no wallet prompt appeared while minting free tGSTD, you can start a new test batch. The previous batch and pending operation remain archived in this browser; its request is not cancelled. Reject the old request if it appears in your wallet. This is available only for valueless test-token minting before funds are reserved.",
-    "new_test_batch_notice": "A new test draft was created. The previous batch remains archived in this browser; nothing was automatically resent. Select “Check batch”, then “Check network state”."
+    "new_test_batch_notice": "A new test draft was created. The previous batch remains archived in this browser; nothing was automatically resent. Select “Check batch”, then “Check network state”.",
+    "wallet_request_stage": "Wallet request status",
+    "wallet_signed": "The wallet returned a signature; blockchain confirmation is checked separately.",
+    "wallet_delivered": "TON Connect confirmed dispatch to the wallet; this does not confirm signing or transfer.",
+    "wallet_not_confirmed": "TON Connect has not confirmed dispatch to the wallet. This does not prove the request never arrived.",
+    "wallet_stage_unknown": "The dispatch stage was not recorded for this older operation.",
+    "wallet_errors": {
+      "validation": "The SDK rejected the request format locally before sending.",
+      "rejected": "The wallet reported rejection by the user.",
+      "bad_request": "The wallet rejected the request parameters. Retry remains blocked until the chain is checked.",
+      "wallet_unknown": "The wallet returned an internal error without confirming a transfer.",
+      "disconnected": "The SDK reported that the wallet was disconnected.",
+      "wrong_network": "The SDK reported a wallet/transaction network mismatch.",
+      "unsupported": "The wallet does not support this operation or message count.",
+      "transport_or_ui": "A connection or TON Connect window error occurred. Transaction outcome is unknown; retry remains blocked."
+    }
   }
 }

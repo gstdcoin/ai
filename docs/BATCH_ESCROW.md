@@ -140,3 +140,26 @@ funded. The original pending record is never removed or replayed, and the archiv
 contains the original input, plan and pending snapshot. This is not transaction
 cancellation or a recovery path for deposits, withdrawals or other financial actions.
 Reject any old mint prompt that later appears in the wallet.
+
+### Live rehearsal on 2026-11-03 (partial, not a release sign-off)
+
+- The owner connected the funded testnet account and signed the mint and deployment.
+- `get_wallet_data` confirmed 1000000000000 nano-tGSTD (1000 tGSTD).
+- Coordinator `0:ab9c3fc671aead2823fd1a87c1e29a0703c276f20c0323373b1a98164d8caec1`
+  is active; its observed code hash exactly matches the exported
+  `4ea8dbe18b3bf18207703e8c64fef6fc9b1e2ead8a533f9cd5aab84e08a72717`.
+- Funding on mobile Gram Wallet opened and disappeared. The application received
+  an uncertain error. The subsequent wallet history contained mint/deploy and
+  their returns, with no outgoing funding transfer; all share balances remained
+  zero in the checked snapshot. No retry was issued. This is not proof of a
+  permanently failed transaction or permission to clear the operation.
+- Acceptance, beneficiary claims, timeout/refund, receipts and paid AI-job binding
+  remain unverified in the live chain. Mainnet remains blocked.
+
+Wallet diagnostics now persist fixed public error categories, the transport's
+request-dispatched callback, request expiry and signature-returned state alongside
+the same pending operation ID. A dispatched callback is not proof of wallet UI
+display or signing. Its absence is not proof that nothing arrived. Legacy records
+remain blocked and explicitly report that their old delivery stage is unknown.
+Exported recovery files include these non-secret diagnostics. Error recognition
+uses the stable SDK validation prefix rather than a minified constructor name.
