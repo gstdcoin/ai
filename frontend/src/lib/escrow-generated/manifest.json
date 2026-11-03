@@ -1,0 +1,18 @@
+{
+  "generated_from": "gstdcoin/contracts",
+  "network": "testnet only in platform UI",
+  "contracts": {
+    "GstdTaskEscrow": {
+      "code_hash": "4ea8dbe18b3bf18207703e8c64fef6fc9b1e2ead8a533f9cd5aab84e08a72717",
+      "binding_sha256": "2c0e07cef2dffe1089e507dfede93d2b6552ed4ec61ba6d37044e1eaecbc6528"
+    },
+    "GstdEscrowShare": {
+      "code_hash": "c364ece101f8156c13755dfd013d427e8438bb425435e7a317a240e3a403f8d9",
+      "binding_sha256": "980799612e087235a51f682ad1df8335cac8e1d2978b096605ad97b7f2abaed9"
+    },
+    "TestGstdMaster": {
+      "code_hash": "1f0ecf491c3fe82d78173bda337a33d9aae2182a066bed0e6d80d33a2e854355",
+      "binding_sha256": "b2b2aff805dfd08b18818eb9f2409545ff1972afe3e885a57d63988293f02e19"
+    }
+  }
+}

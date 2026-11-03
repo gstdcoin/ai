@@ -1,0 +1,18 @@
+{
+  "configuration": "TON Sandbox testnet networkID, bundled fee config; not a mainnet quote",
+  "requests": 5,
+  "batch_total_fees_nano": "38391541",
+  "five_separate_total_fees_nano": "191947035",
+  "ratio": 4.999722074193375,
+  "includes_wallet_transactions": true,
+  "excludes_test_token_mint": true,
+  "attached_budget_is_not_consumed_fee": true,
+  "recorded_date": "2026-11-03",
+  "includes_native_reclaim": true,
+  "retained_storage_nano_per_contract": "20000000",
+  "code_hashes": {
+    "GstdTaskEscrow": "4ea8dbe18b3bf18207703e8c64fef6fc9b1e2ead8a533f9cd5aab84e08a72717",
+    "GstdEscrowShare": "c364ece101f8156c13755dfd013d427e8438bb425435e7a317a240e3a403f8d9",
+    "TestGstdMaster": "1f0ecf491c3fe82d78173bda337a33d9aae2182a066bed0e6d80d33a2e854355"
+  }
+}
