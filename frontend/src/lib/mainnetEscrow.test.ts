@@ -7,13 +7,13 @@ import {mainnetJobHash,mainnetPreview,mainnetTransaction,mainnetContext,verifyMa
 import {mainnetRpc,testnetRpc} from './batchEscrowStatus';
 import artifact from './escrow-generated/wallet-code.json';
 const input=():MainnetInput=>{
- const value:MainnetInput={manifest_version:1,network:'-239',payer:policy.pilotPayers[0],worker:'0:'+'22'.repeat(32),protocol:policy.protocol,reserve:policy.reserve,budget:'0.005000000',taskId:'0'.repeat(64),deadline:Math.floor(Date.now()/1000)+1800,requests:1,execution:{version:1,node_id:'mainnet-node-fixture',model:'qwen2.5:0.5b',prompt_hash:'33'.repeat(32),max_tokens:128,nonce:'44'.repeat(32),payout_revision:1}};
+ const value:MainnetInput={manifest_version:1,network:'-239',payer:'0:'+'11'.repeat(32),worker:'0:'+'22'.repeat(32),protocol:policy.protocol,reserve:policy.reserve,budget:'0.005000000',taskId:'0'.repeat(64),deadline:Math.floor(Date.now()/1000)+1800,requests:1,execution:{version:1,node_id:'mainnet-node-fixture',model:'qwen2.5:0.5b',prompt_hash:'33'.repeat(32),max_tokens:128,nonce:'44'.repeat(32),payout_revision:1}};
  value.taskId=mainnetJobHash(value);return value;
 };
 afterEach(()=>{vi.unstubAllGlobals();vi.unstubAllEnvs();vi.useRealTimers();});
 it('derives canonical mainnet contracts with fixed recipients, code hashes and an exact split',async()=>{
  const value=input(),c=await mainnetContext(value),p=await mainnetPreview(value);
- expect(p).toMatchObject({network:'-239',test_only:false,master:policy.master,mode:'controlled_pilot',budget_nano:'5000000'});
+ expect(p).toMatchObject({network:'-239',test_only:false,master:policy.master,mode:'public_beta',budget_nano:'5000000'});
  expect(p.shares.map(s=>s.amount_nano)).toEqual(['4250000','500000','250000']);
  expect(c.task.init!.code.hash().toString('hex')).toBe(policy.coordinatorCodeHash);
  expect(c.shares.every(s=>s.init!.code.hash().toString('hex')===policy.shareCodeHash)).toBe(true);

@@ -4,7 +4,7 @@ import {amountNano,rawAddress,type BatchAction} from './batchEscrow';
 import {GstdTaskEscrow,storeSyncTask,storeAcceptFundedTask,storeRefundExpiredTask,storeReclaimEscrowTon} from './escrow-generated/GstdTaskEscrow';
 import {GstdEscrowShare,storeWithdrawAcceptedShare,storeRefundExpiredShare} from './escrow-generated/GstdEscrowShare';
 import walletArtifact from './escrow-generated/wallet-code.json';
-import {MAINNET_ESCROW as policy} from './mainnetEscrowManifest';
+import {MAINNET_ESCROW as policy,MAINNET_ACCESS} from './mainnetEscrowManifest';
 import {mainnetRpc,readEscrowStatus,type Rpc} from './batchEscrowStatus';
 import {kvGet,kvSetNX,kvMoneyCAS} from './kv';
 export interface MainnetExecution{version:1;node_id:string;model:string;prompt_hash:string;max_tokens:number;nonce:string;payout_revision:number}
@@ -30,7 +30,7 @@ export async function mainnetContext(input:MainnetRecoveryInput|MainnetInput){
 }
 export async function mainnetPreview(input:MainnetRecoveryInput|MainnetInput){
  const c=await mainnetContext(input);
- return{network:policy.network,test_only:false,asset:'GSTD',manifest_version:policy.version,mode:policy.mode,master:policy.master,task:c.task.address.toRawString(),payer:c.payer.toRawString(),payerTokenWallet:c.tokenWallet(c.payer).toRawString(),budget_nano:String(c.budget),deadline:input.deadline,
+ return{network:policy.network,test_only:false,asset:'GSTD',manifest_version:policy.version,mode:MAINNET_ACCESS.mode,master:policy.master,task:c.task.address.toRawString(),payer:c.payer.toRawString(),payerTokenWallet:c.tokenWallet(c.payer).toRawString(),budget_nano:String(c.budget),deadline:input.deadline,
  shares:c.shares.map((s,i)=>({role:i,owner:c.recipients[i].toRawString(),amount_nano:String(c.amounts[i]),address:s.address.toRawString(),tokenWallet:c.tokenWallet(s.address).toRawString()})),
  budgets_ton:{deploy:'0.40',fund:'0.30',accept:'0.30',withdraw_each:'0.08',expire:'0.30',refund_all:'0.24',sync:'0.30'},minimum_storage_ton:'0.08',normal_path_attached_ton:'1.24',fees_are_attached_budgets:true};
 }

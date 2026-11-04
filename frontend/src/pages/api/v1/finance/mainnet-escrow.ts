@@ -1,13 +1,13 @@
 import type {NextApiRequest,NextApiResponse} from 'next';
 import {requireNodeSignature} from '../../../../lib/nodeAuth';
-import {mainnetWalletChallenge,authenticateMainnetWallet,requireMainnetWalletSession,allowMainnetBeneficiary} from '../../../../lib/mainnetWalletSession';
+import {mainnetWalletChallenge,authenticateMainnetWallet,requireMainnetWalletSession} from '../../../../lib/mainnetWalletSession';
 import {randomBytes} from 'node:crypto';
 import {kvGet,kvSetNX,kvRateLimit} from '../../../../lib/kv';
 import {getClientIp} from '../../../../lib/ratelimit';
 import {rawAddress,type BatchAction} from '../../../../lib/batchEscrow';
 import {mainnetPreview,mainnetStatus,mainnetTransaction,withMainnetRpc,mainnetPreflight} from '../../../../lib/mainnetEscrow';
-import {MAINNET_ESCROW} from '../../../../lib/mainnetEscrowManifest';
-import {mainnetCatalog,mainnetRpcConfigured,prepareMainnetJob,authorizedMainnetJob,readMainnetJob,hasMainnetAccess,privateMainnetJobView,queueMainnetJob,requireMainnetReceipt,requirePilotPayer} from '../../../../lib/mainnetJobs';
+import {MAINNET_ESCROW,MAINNET_ACCESS} from '../../../../lib/mainnetEscrowManifest';
+import {mainnetCatalog,mainnetRpcConfigured,prepareMainnetJob,authorizedMainnetJob,readMainnetJob,hasMainnetAccess,privateMainnetJobView,queueMainnetJob,requireMainnetReceipt,requireMainnetPayer} from '../../../../lib/mainnetJobs';
 import {verifyPilotAuthorization} from '../../../../lib/escrowJobAuth';
 export const config={api:{bodyParser:{sizeLimit:'32kb'}}};
 const financial=new Set(['deploy','fund','accept','expire','sync','withdraw','refund','reclaim','report']);
@@ -18,7 +18,7 @@ export default async function handler(req:NextApiRequest,res:NextApiResponse){
   if(req.body?.network!=='-239')return res.status(409).json({error:'wrong_network'});
   if(!await kvRateLimit('escrow:mainnet:api:'+getClientIp(req.headers),12,60000))return res.status(429).json({error:'rate_limited'});
   const {action,input,access_token,actor,role=0}=req.body;
-  if(action==='catalog')return res.status(200).json({manifest:MAINNET_ESCROW,rpc_configured:mainnetRpcConfigured(),offers:await mainnetCatalog()});
+  if(action==='catalog')return res.status(200).json({manifest:MAINNET_ESCROW,access:MAINNET_ACCESS,rpc_configured:mainnetRpcConfigured(),offers:await mainnetCatalog()});
   if(action==='wallet-challenge')return res.status(200).json(await mainnetWalletChallenge(actor));
   if(action==='wallet-auth')return res.status(200).json(await authenticateMainnetWallet({wallet:actor,nonce:req.body.nonce,authorization:req.body.authorization,stateInit:req.body.stateInit}));
   if(action==='preflight'){
@@ -31,7 +31,7 @@ export default async function handler(req:NextApiRequest,res:NextApiResponse){
   if(action==='prepare'){
    await requireMainnetWalletSession(req.body.wallet_token,req.body.payer);
    if(!await kvRateLimit('escrow:mainnet:prepare',5,60000))return res.status(429).json({error:'rate_limited'});
-   const prepared=await prepareMainnetJob(req.body);await allowMainnetBeneficiary(prepared.input.worker);
+   const prepared=await prepareMainnetJob(req.body);
    return res.status(200).json(prepared);
   }
   const preview=await mainnetPreview(input);
@@ -50,7 +50,7 @@ export default async function handler(req:NextApiRequest,res:NextApiResponse){
    await requireMainnetWalletSession(req.body.wallet_token,input.payer);
    const found=await authorizedMainnetJob(input,access_token);
    if(found.record.state!=='prepared')return res.status(200).json({job:privateMainnetJobView(found.record)});
-   requirePilotPayer(input.payer);
+   requireMainnetPayer(input.payer);
    if(!mainnetRpcConfigured())throw Error('mainnet_rpc_not_configured');
    const nonce=req.body.nonce;if(typeof nonce!=='string'||!/^[a-f0-9]{64}$/.test(nonce))throw Error('invalid_authorization');
    const raw=await kvGet('escrow:mainnet:challenge:'+nonce),challenge=raw?JSON.parse(raw):null;
@@ -68,7 +68,7 @@ export default async function handler(req:NextApiRequest,res:NextApiResponse){
   if(financial.has(action)){
    const expected=action==='withdraw'?preview.shares[role]?.owner:preview.payer;
    if(!expected||rawAddress(actor)!==expected)throw Error('wrong_signer');
-   if(['deploy','fund','accept'].includes(action))requirePilotPayer(input.payer);
+   if(['deploy','fund','accept'].includes(action))requireMainnetPayer(input.payer);
   }
   if(!await kvRateLimit('escrow:mainnet:chain',2,60000))return res.status(429).json({error:'rate_limited'});
   const status=await withMainnetRpc(rpc=>mainnetStatus(input,rpc));

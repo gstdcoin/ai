@@ -1837,6 +1837,7 @@
     "loading": "Loading mainnet panel…",
     "back": "← Platform payments",
     "real_funds": "REAL GSTD AND TON. Every financial operation is signed in your wallet. Test tokens are not used here.",
+    "public_beta": "Open beta: anyone can connect a wallet and participate. Nodes appear after registration, wallet linking and advertising an available model. Each task is capped at 1 GSTD. A real mainnet cycle has not yet been verified; users pay TON fees.",
     "pilot": "Controlled first release: only the node payout wallet may pay for now. Each task is capped at 1 GSTD. Public access follows a verified real payment and payouts.",
     "manual_acceptance": "The payer evaluates the answer and explicitly accepts it. The contract does not judge AI quality or arbitrate disputes; both parties must agree.",
     "wallet": "Mainnet wallet",

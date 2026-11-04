@@ -3,8 +3,7 @@ import {createHash} from 'node:crypto';
 import {WalletContractV4} from '@ton/ton';
 import {beginCell,storeStateInit} from '@ton/core';
 import {keyPairFromSeed,sign} from '@ton/crypto';
-const state=vi.hoisted(()=>({payer:'',nodes:[] as any[],chain:null as any}));
-vi.mock('./mainnetEscrowManifest',async original=>{const actual=await original<any>();return{...actual,MAINNET_ESCROW:{...actual.MAINNET_ESCROW,get pilotPayers(){return[state.payer];}}};});
+const state=vi.hoisted(()=>({nodes:[] as any[],chain:null as any}));
 vi.mock('./nodes',()=>({getActiveNodes:async()=>state.nodes}));
 vi.mock('./kv',async original=>({...await original<any>(),kvRateLimit:async()=>true}));
 vi.mock('./money',async original=>({...await original<any>(),captureMoney:vi.fn(async()=>{throw Error('Contract jobs must not capture ledger money');})}));
@@ -30,7 +29,7 @@ async function call(fn:any,body:any,headers:any={},method='POST'){
 const api=(action:string,extra:any={})=>call(handler,{network:'-239',action,actor:payer,wallet_token:walletToken,...extra});
 const authorize=(text:string)=>{const timestamp=Math.floor(Date.now()/1000);return{domain:'app.gstdtoken.com',timestamp,address:payer,payload:{type:'text',text},signature:sign(pilotSignDataDigest(payer,'app.gstdtoken.com',timestamp,text),payerKey.secretKey).toString('base64')};};
 beforeEach(async()=>{
- state.payer=payer;state.nodes=[{nodeId:node,models:[model]}];
+ state.nodes=[{nodeId:node,models:[model]}];
  state.chain={deployed:true,state:0,mask:7,payer_balance:'1000000000',native_nano:'20000000',shares:['4250000','500000','250000'].map((amount,role)=>({role,state:0,balance_nano:amount,missing_nano:'0',native_nano:'20000000'}))};
  vi.stubEnv('ESCROW_MAINNET_TONCENTER_API_KEY','fixture-mainnet-key');
  await kvSet(nodeKeyRedisKey(node),nodeKey.publicKey.toString('hex'),600);
@@ -40,7 +39,7 @@ beforeEach(async()=>{
  const auth=await api('wallet-auth',{nonce:challenge.nonce,authorization:authorize(challenge.text),stateInit});expect(auth.code).toBe(200);walletToken=auth.body.wallet_token;
 });
 async function prepare(){const r=await api('prepare',{payer,node_id:node,model,prompt:privatePrompt,max_tokens:128,wallet_state_init:stateInit,consent:true});expect(r.code).toBe(200);return r.body;}
-it('requires the controlled payer, explicit disclosure consent and the exact advertised model',async()=>{
+it('requires wallet ownership, explicit disclosure consent and the exact advertised model',async()=>{
  expect((await api('catalog',{network:'-3'})).code).toBe(409);
  expect((await api('prepare',{payer:worker,node_id:node,model,prompt:privatePrompt,max_tokens:128,wallet_state_init:stateInit,consent:true})).body.error).toBe('mainnet_wallet_auth_required');
  expect((await api('prepare',{payer,node_id:node,model,prompt:privatePrompt,max_tokens:128,wallet_state_init:stateInit,consent:false})).code).toBe(409);

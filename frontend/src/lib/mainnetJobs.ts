@@ -16,7 +16,8 @@ const hash=(s:string)=>createHash('sha256').update(s).digest('hex');
 export interface MainnetReceipt{result:string;result_hash:string;model:string;node_id:string;latency_ms:number;completed_at:string;settlement_mode:'mainnet_contract';ledger_credited:false}
 export interface MainnetJobRecord{task:string;queue_task:string;input:MainnetInput;prompt:string;access_hash:string;state:'prepared'|'queued'|'computed';created_at:number;funded_at?:number;receipt?:MainnetReceipt}
 export function mainnetRpcConfigured(){return !!escrowRuntimeSecret('ESCROW_MAINNET_TONCENTER_API_KEY');}
-export function requirePilotPayer(address:string){if(!policy.pilotPayers.includes(rawAddress(address)))throw Error('mainnet_pilot_wallet_required');}
+// Public participation still requires a verified wallet session and funded job.
+export function requireMainnetPayer(address:string){return rawAddress(address);}
 export async function mainnetCatalog(){
  const nodes=await getActiveNodes();const offers=[];
  for(const node of nodes){const payout=await nodePayout(node.nodeId);if(!payout)continue;
@@ -26,7 +27,7 @@ export async function mainnetCatalog(){
  }return offers;
 }
 export async function prepareMainnetJob(value:{payer:string;node_id:string;model:string;prompt:string;max_tokens:number;consent:boolean;wallet_state_init:string}){
- const payer=rawAddress(value.payer);requirePilotPayer(payer);
+ const payer=rawAddress(value.payer);requireMainnetPayer(payer);
  if(!extractVerifiedWalletPublicKey(payer,value.wallet_state_init))throw Error('unsupported_mainnet_wallet');
  if(value.consent!==true||typeof value.prompt!=='string'||!value.prompt.trim()||value.prompt.length>4000||Buffer.byteLength(value.prompt)>16000||Array.from(value.prompt).some(c=>{const n=c.charCodeAt(0);return n<32&&![9,10,13].includes(n)||n===127;})||!Number.isSafeInteger(value.max_tokens)||value.max_tokens<1||value.max_tokens>policy.maxTokens)throw Error('invalid_mainnet_job');
  const offer=(await mainnetCatalog()).find(o=>o.node_id===value.node_id&&o.model===value.model);if(!offer)throw Error('mainnet_executor_unavailable');
