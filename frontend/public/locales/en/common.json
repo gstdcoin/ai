@@ -1826,6 +1826,9 @@
     "job_state_prepared": "Prepared",
     "job_state_queued": "Queued",
     "job_state_computed": "Completed: ready for acceptance",
-    "job_state_expired": "Expired: computation blocked; complete the refund"
+    "job_state_expired": "Expired: computation blocked; complete the refund",
+    "job_state_refunded": "Refund completed",
+    "job_state_paid": "All three shares withdrawn",
+    "job_state_accepted": "Accepted on-chain: claim the shares"
   }
 }

@@ -118,6 +118,7 @@ function EscrowLab({expectedConnector}:{expectedConnector:TonConnect}){
  const isolated=ton.connector===expectedConnector;
  const blocked=busy||!!pending||!testnet||!isolated;
  const payer=!!plan&&address===plan.payer;
+ const jobStage=isSettledEscrow(chain)?chain.state===2?'refunded':'paid':chain?.state===1?'accepted':input&&nowSec>input.deadline?'expired':job?.state||'prepared';
  const native=BigInt(chain?.native_nano||'0')+(chain?.shares||[]).reduce((a:bigint,x:any)=>a+BigInt(x.native_nano||'0'),0n);
  const button='rounded-lg bg-violet-600 px-4 py-2 disabled:opacity-40';
  const field='rounded border border-white/20 bg-black/30 px-3 py-2 w-full';
@@ -134,7 +135,7 @@ function EscrowLab({expectedConnector}:{expectedConnector:TonConnect}){
   </section>
   <section className="rounded-xl border border-violet-500/40 p-5 space-y-3"><h2 className="text-xl">{p('job_title')}</h2><p>{p('job_intro')}</p>
    <button className={button} disabled={blocked||!!plan&&!isSettledEscrow(chain)} onClick={()=>work(prepareJob)}>{p('job_prepare')}</button>
-   {input?.job&&<><p>{p('job_model')}: <b>{input.job.model}</b> · {input.budget} tGSTD</p><p>{p('job_node')}: <code className="break-all">{input.job.node_id}</code></p><p>{p('job_state')}: {p('job_state_'+(nowSec>input.deadline&&chain?.state!==1?'expired':job?.state||'prepared'))}</p>
+   {input?.job&&<><p>{p('job_model')}: <b>{input.job.model}</b> · {input.budget} tGSTD</p><p>{p('job_node')}: <code className="break-all">{input.job.node_id}</code></p><p>{p('job_state')}: {p('job_state_'+jobStage)}</p>
     <button className={button} disabled={blocked||!payer||chain?.state!==0||chain?.mask!==7||job?.state!=='prepared'||nowSec>input.deadline-120} onClick={()=>work(executeJob)}>{p('job_run')}</button>
     <button className={button+' ml-3'} disabled={busy} onClick={()=>work(async()=>{const d=await jobApi('status');setJob(d.job);})}>{p('job_check')}</button>
     {job?.receipt&&<div className="space-y-2"><p>{p('job_result')}: <b>{job.receipt.result}</b> · {job.receipt.latency_ms} ms</p><code className="block break-all">{job.receipt.result_hash}</code><p>{p('job_no_ledger')}</p></div>}
