@@ -1,3 +1,4 @@
+import {escrowRuntimeSecret} from './escrowRuntimeSecrets';
 import {randomBytes,createHash,timingSafeEqual} from 'node:crypto';
 import {getActiveNodes} from './nodes';
 import {nodePayout} from './nodePayout';
@@ -14,7 +15,7 @@ const TTL=3600;
 const hash=(s:string)=>createHash('sha256').update(s).digest('hex');
 export interface MainnetReceipt{result:string;result_hash:string;model:string;node_id:string;latency_ms:number;completed_at:string;settlement_mode:'mainnet_contract';ledger_credited:false}
 export interface MainnetJobRecord{task:string;queue_task:string;input:MainnetInput;prompt:string;access_hash:string;state:'prepared'|'queued'|'computed';created_at:number;funded_at?:number;receipt?:MainnetReceipt}
-export function mainnetRpcConfigured(){return !!process.env.ESCROW_MAINNET_TONCENTER_API_KEY?.trim();}
+export function mainnetRpcConfigured(){return !!escrowRuntimeSecret('ESCROW_MAINNET_TONCENTER_API_KEY');}
 export function requirePilotPayer(address:string){if(!policy.pilotPayers.includes(rawAddress(address)))throw Error('mainnet_pilot_wallet_required');}
 export async function mainnetCatalog(){
  const nodes=await getActiveNodes();const offers=[];

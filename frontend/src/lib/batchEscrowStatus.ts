@@ -1,4 +1,5 @@
 import {Cell,beginCell,Address} from '@ton/core';
+import {escrowRuntimeSecret} from './escrowRuntimeSecrets';
 import {batchContext,rawAddress,type BatchInput} from './batchEscrow';
 export type Rpc={get(path:string):Promise<any>;walletAddress?(master:string,owner:string):Promise<string>};
 // Keep native receiver binding and bound the body read as well as response headers.
@@ -16,7 +17,7 @@ function escrowRpc(network:'-3'|'-239'):Rpc {
  const testnet=network==='-3',unavailable=testnet?'testnet_unavailable':'mainnet_unavailable';
  const apiHost=testnet?'https://testnet.tonapi.io':'https://tonapi.io';
  const centerHost=testnet?'https://testnet.toncenter.com':'https://toncenter.com';
- const credential=(name:string)=>{const key=process.env[name]?.trim();if(key&&(!/^[\x21-\x7e]+$/.test(key)||key.length>2048))throw Error(testnet?'testnet_credential_invalid':'mainnet_credential_invalid');return key;};
+ const credential=(name:string)=>{const key=escrowRuntimeSecret(name);if(key&&(!/^[\x21-\x7e]+$/.test(key)||key.length>2048))throw Error(testnet?'testnet_credential_invalid':'mainnet_credential_invalid');return key;};
  const apiKey=credential(testnet?'ESCROW_TESTNET_TONAPI_KEY':'ESCROW_MAINNET_TONAPI_KEY'),centerKey=credential(testnet?'ESCROW_TESTNET_TONCENTER_API_KEY':'ESCROW_MAINNET_TONCENTER_API_KEY');
  const apiHeaders:Record<string,string>=apiKey?{Authorization:'Bearer '+apiKey}:{};
  const centerHeaders:Record<string,string>=centerKey?{'X-API-Key':centerKey}:{};
