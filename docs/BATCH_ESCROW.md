@@ -212,7 +212,7 @@ in the owner's local verification report, not required in public documentation.
 
 ### Live-mainnet-configuration simulation (not a broadcast)
 
-The current mainnet configuration was fetched read-only with TON Center
+The mainnet configuration observed on 3 November 2026 was fetched read-only with TON Center
 `getConfigAll`, global ID -239, config hash
 `bb18654caf0886bff5c7c5241d2c33d659392fcbee6e51ed93c98e275165c480`.
 The canonical mainnet token's reported wallet code was independently rechecked
@@ -224,8 +224,5 @@ This checks acceptance, withdrawal, expiry/refund, partial funding, forged
 messages, decision delivery recovery and gas failure under the observed config;
 it is neither a full chain fork nor an actual mainnet transaction.
 
-Outstanding release gates remain: live expiry/refund and uncertain-transaction
-reconciliation, an independent beneficiary-wallet rehearsal, job/receipt binding
-with exactly one settlement mode, a reviewed mainnet deployment/recipient
-manifest, and a small real GSTD mainnet cycle after deployment. Testnet success
+The live expiry/refund and operator-only funded node pilot were completed on 4 November 2026 (see TESTNET_NODE_ESCROW_PILOT.md). Outstanding release gates remain: uncertain/partial-transaction reconciliation, an independent beneficiary-wallet rehearsal, extending job/receipt binding beyond the arithmetic pilot to general production AI jobs and batches, a reviewed mainnet deployment/recipient manifest, and a small real GSTD mainnet cycle after deployment. Testnet success
 and simulation alone do not authorize unrestricted mainnet balances or payouts.

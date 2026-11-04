@@ -1818,7 +1818,7 @@
     "job_run": "Sign permission and run funded task",
     "job_check": "Check task result",
     "job_result": "Verified arithmetic result",
-    "job_no_ledger": "No internal GSTD credit. Accept the result, then claim each on-chain share.",
+    "job_no_ledger": "This task settles only through its contract. No internal GSTD balance is credited.",
     "job_queued": "Task queued once. Check the result shortly; no automatic retries.",
     "job_computed": "Completed: ready for acceptance",
     "job_prepared_state": "Prepared",
