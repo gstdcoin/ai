@@ -4,6 +4,7 @@ A shared compute network: use AI, contribute a node, and spend earned GSTD on ot
 
 - [Start here / Начните здесь](docs/START_HERE.md) — AI, node setup, wallet, models and both payment paths
 - [Mainnet contract settlement · open beta](https://app.gstdtoken.com/escrow-mainnet) · [implementation and limits](docs/MAINNET_ESCROW.md)
+- [Agent services and local MCP connector](docs/AGENT_GUIDE.md) · [OpenAPI](https://app.gstdtoken.com/agent-openapi.json)
 - [Try AI](https://app.gstdtoken.com/chat)
 - [Balance, deposits and owner-signed withdrawals](https://app.gstdtoken.com/payments)
 - [Money rules](docs/FINANCE_V2.md) · [Withdrawals and data controls](docs/WITHDRAWALS_AND_PRIVACY.md)

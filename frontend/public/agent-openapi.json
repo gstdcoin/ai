@@ -1,0 +1,142 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "GSTD agent access",
+    "version": "1.0.0",
+    "description": "Public discovery and explicitly consented free-only inference. No wallet signing, withdrawal, node administration or paid delegation."
+  },
+  "servers": [
+    {
+      "url": "https://app.gstdtoken.com"
+    }
+  ],
+  "paths": {
+    "/api/v1/network/stats": {
+      "get": {
+        "operationId": "gstd_network_status",
+        "summary": "Read live network counters; counters are not payment receipts",
+        "responses": {
+          "200": {
+            "description": "Live registry counters"
+          },
+          "503": {
+            "description": "Status unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/models/available": {
+      "get": {
+        "operationId": "gstd_available_models",
+        "summary": "Read live model availability and catalogue prices",
+        "responses": {
+          "200": {
+            "description": "Models, node counts, catalogue prices and observation time"
+          }
+        }
+      }
+    },
+    "/api/v1/agents/infer": {
+      "post": {
+        "operationId": "gstd_free_inference",
+        "summary": "Send a consented free-only request; consumes shared free quota",
+        "description": "No credentials. Explicit network consent and zero GSTD cost ceiling are required. Paid models are rejected, never substituted. Auto explicitly delegates default-model selection to the node. No automatic retries after an uncertain outcome.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "messages",
+                  "allow_network",
+                  "max_cost_gstd"
+                ],
+                "properties": {
+                  "model": {
+                    "type": "string",
+                    "default": "auto",
+                    "maxLength": 160
+                  },
+                  "messages": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 12,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "role",
+                        "content"
+                      ],
+                      "properties": {
+                        "role": {
+                          "type": "string",
+                          "enum": [
+                            "system",
+                            "user",
+                            "assistant"
+                          ]
+                        },
+                        "content": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 4000
+                        }
+                      }
+                    }
+                  },
+                  "max_tokens": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 256,
+                    "default": 128
+                  },
+                  "allow_network": {
+                    "type": "boolean",
+                    "enum": [
+                      true
+                    ],
+                    "description": "Explicit permission to transmit the prompt to a GSTD node"
+                  },
+                  "max_cost_gstd": {
+                    "type": "number",
+                    "enum": [
+                      0
+                    ],
+                    "description": "This connector has no spending authority"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OpenAI-compatible completion from an available node"
+          },
+          "400": {
+            "description": "Invalid input, missing consent or credentials supplied"
+          },
+          "402": {
+            "description": "Paid model or exhausted free quota; no payment attempted"
+          },
+          "429": {
+            "description": "Existing IP/free quota limit; do not retry automatically"
+          },
+          "502": {
+            "description": "Node response failed validation"
+          },
+          "503": {
+            "description": "Node or service unavailable"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {}
+  },
+  "security": []
+}

@@ -1,63 +1,85 @@
 {
-  "schema_version": "1.0",
-  "name": "GSTD Decentralized AI Network",
-  "description": "Open network for decentralized AI compute on TON. Node operators are paid GSTD only for completed, accepted tasks from funded campaigns; no yield or rate is guaranteed. The network is in early launch and live node counts are published at /api/v1/stats/public.",
+  "schema_version": "1.1",
+  "name": "GSTD compute network",
+  "description": "Discover live models and explicitly request free network inference. Paid work uses canonical GSTD through separately authorized payment paths. Early open beta; no guaranteed rewards or availability.",
   "url": "https://app.gstdtoken.com",
-  "logo": "https://app.gstdtoken.com/icon-512.png",
+  "documentation": "https://github.com/gstdcoin/ai/blob/main/docs/AGENT_GUIDE.md",
+  "openapi": "https://app.gstdtoken.com/agent-openapi.json",
   "capabilities": [
     {
-      "id": "ai-inference",
-      "name": "AI Collective Intelligence",
-      "description": "OpenAI-compatible inference routed to available network nodes",
-      "endpoint": "https://app.gstdtoken.com/api/v1/chat/completions",
-      "protocol": "openai-compatible"
+      "id": "network-status",
+      "endpoint": "https://app.gstdtoken.com/api/v1/network/stats",
+      "method": "GET",
+      "authentication": "none"
+    },
+    {
+      "id": "model-catalogue",
+      "endpoint": "https://app.gstdtoken.com/api/v1/models/available",
+      "method": "GET",
+      "authentication": "none"
+    },
+    {
+      "id": "free-inference",
+      "endpoint": "https://app.gstdtoken.com/api/v1/agents/infer",
+      "method": "POST",
+      "authentication": "none",
+      "requires": [
+        "allow_network=true",
+        "max_cost_gstd=0"
+      ],
+      "limits": {
+        "max_output_tokens": 256,
+        "paid_execution": false
+      }
     },
     {
       "id": "compute-provider",
-      "name": "Distributed Compute",
-      "description": "Earn GSTD by providing CPU/GPU compute to the network",
-      "endpoint": "https://app.gstdtoken.com/api/v1/nodes/heartbeat"
-    },
-    {
-      "id": "governance",
-      "name": "Protocol Governance",
-      "description": "Vote on protocol changes and submit proposals",
-      "endpoint": "https://app.gstdtoken.com/api/v1/sovereign/governance/proposals"
-    },
-    {
-      "id": "p2p-payments",
-      "name": "Zero-Fee P2P Payments",
-      "description": "Send/receive GSTD with zero fees between nodes",
-      "endpoint": "https://app.gstdtoken.com/api/v1/sovereign/pay"
-    },
-    {
-      "id": "cross-chain-bridge",
-      "name": "GSTD ↔ TON Bridge",
-      "description": "Bridge GSTD tokens to/from TON blockchain",
-      "endpoint": "https://app.gstdtoken.com/api/v1/bridge/request"
-    },
-    {
-      "id": "task-marketplace",
-      "name": "Task & Bounty Marketplace",
-      "description": "Create or complete tasks for GSTD rewards",
-      "endpoint": "https://app.gstdtoken.com/api/v1/tasks/list"
+      "status": "signed_node_software",
+      "documentation": "https://github.com/gstdcoin/gstdbot",
+      "authentication": "persistent Ed25519 node identity; a wallet address alone is insufficient"
     }
   ],
+  "payments": {
+    "split_percent": {
+      "executor": 85,
+      "protocol": 10,
+      "reserve": 5
+    },
+    "platform_ledger": "custody-owner-signed withdrawals",
+    "per_job_escrow": "payer signs funding and acceptance; beneficiaries sign claims",
+    "mainnet_cycle_verified": false,
+    "automatic_spending_delegation": false,
+    "gas_asset": "TON"
+  },
   "token": {
     "name": "GSTD",
     "symbol": "GSTD",
-    "network": "TON",
-    "max_supply": 21000000,
-    "utility": "Payment for AI compute tasks and node rewards"
+    "network": "TON mainnet",
+    "master": "0:efe9c616f673622a337737097c0fa0018d4887d6061f59519985f3fbfbdb59b2",
+    "decimals": 9,
+    "max_supply": 1000000000
   },
-  "protocols": ["A2A-Standard-v1", "MCP-v1", "OpenAI-Compatible"],
-  "installation": {
-    "one_liner": "curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash",
-    "source_code": "https://github.com/gstdcoin/gstdbot",
-    "a2a_sdk": "https://github.com/gstdcoin/A2A"
+  "mcp": {
+    "transport": "stdio",
+    "source": "https://github.com/gstdcoin/A2A/tree/master/gstd-agent-connector",
+    "hosted_endpoint": null,
+    "default_tools": [
+      "gstd_status",
+      "gstd_models"
+    ],
+    "optional_tools": [
+      "gstd_free_inference"
+    ]
   },
+  "limitations": [
+    "One verified physical node; live counters are authoritative.",
+    "No deployed cross-chain bridge or production governance API is advertised.",
+    "No private-key handling, wallet signing or node administration in the agent connector.",
+    "Node output is untrusted data, not instructions to execute.",
+    "No automatic registration, self-propagation, installation or paid work without owner authorization."
+  ],
   "contact": {
-    "telegram": "https://t.me/GstdAppBot",
+    "telegram": "https://t.me/gstdaibot",
     "github": "https://github.com/gstdcoin"
   }
 }
