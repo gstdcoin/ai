@@ -1,7 +1,8 @@
 import type {BatchAction} from './batchEscrow';
 import {escrowWalletErrorCodes,type EscrowWalletErrorCode} from './escrowWalletErrors';
 export const escrowStoragePrefix='gstd_escrow_testnet_v1:';
-export const escrowPendingKey=(task:string)=>escrowStoragePrefix+'pending:'+task;
+export const mainnetEscrowStoragePrefix='gstd_escrow_mainnet_v1:';
+export const escrowPendingKey=(task:string,network:'-3'|'-239'='-3')=>(network==='-239'?mainnetEscrowStoragePrefix:escrowStoragePrefix)+'pending:'+task;
 type StorageLike=Pick<Storage,'getItem'|'setItem'|'removeItem'>;
 interface BrowserLocks{
  request<T>(name:string,options:{mode:'exclusive';ifAvailable:true},callback:(lock:object|null)=>Promise<T>):Promise<T>;
@@ -13,8 +14,8 @@ export interface PendingEscrowOperation{
 }
 const actions=new Set(['mint','deploy','fund','accept','expire','withdraw','refund','sync','report','reclaim']);
 function checkTask(task:string){if(!/^0:[a-f0-9]{64}$/.test(task))throw Error('invalid_batch');}
-export function readEscrowPending(storage:StorageLike,task:string):PendingEscrowOperation|null{
- checkTask(task);const raw=storage.getItem(escrowPendingKey(task));if(!raw)return null;
+export function readEscrowPending(storage:StorageLike,task:string,network:'-3'|'-239'='-3'):PendingEscrowOperation|null{
+ checkTask(task);const raw=storage.getItem(escrowPendingKey(task,network));if(!raw)return null;
  if(raw.length>4096)throw Error('invalid_batch');
  const v=JSON.parse(raw);
  if(!v||v.task!==task||!Number.isSafeInteger(v.since)||v.since<=0||!actions.has(v.action)||![0,1,2].includes(v.role)||
@@ -35,31 +36,31 @@ interface OperationControl{
 }
 /** All writes/clears use this same origin-scoped lock. It is not a cross-device or chain lock. */
 export async function withEscrowOperation<T>(storage:StorageLike,locks:BrowserLocks|undefined,task:string,
- run:(control:OperationControl)=>Promise<T>):Promise<T>{
+ run:(control:OperationControl)=>Promise<T>,network:'-3'|'-239'='-3'):Promise<T>{
  checkTask(task);
  if(!locks?.request)throw Error('browser_lock_unavailable');
  // Never queue a second wallet prompt to run after the first user interaction finishes.
- return locks.request('gstd-escrow:'+task,{mode:'exclusive',ifAvailable:true},async lock=>{
+ return locks.request((network==='-239'?'gstd-mainnet-escrow:':'gstd-escrow:')+task,{mode:'exclusive',ifAvailable:true},async lock=>{
   if(!lock)throw Error('operation_pending');
   let active=true;
   const ensure=()=>{if(!active)throw Error('operation_pending');};
   const control:OperationControl={
-   current:()=>{ensure();return readEscrowPending(storage,task);},
+   current:()=>{ensure();return readEscrowPending(storage,task,network);},
    begin:value=>{
-    ensure();if(readEscrowPending(storage,task))throw Error('operation_pending');
+    ensure();if(readEscrowPending(storage,task,network))throw Error('operation_pending');
     if(value.task!==task||!value.id)throw Error('invalid_batch');
-    storage.setItem(escrowPendingKey(task),JSON.stringify(value));
+    storage.setItem(escrowPendingKey(task,network),JSON.stringify(value));
     // Fail before opening the wallet if persistence was unavailable or inconsistent.
-    if(readEscrowPending(storage,task)?.id!==value.id)throw Error('operation_pending');
+    if(readEscrowPending(storage,task,network)?.id!==value.id)throw Error('operation_pending');
    },
    annotate:(id,patch)=>{
-    ensure();const current=readEscrowPending(storage,task);if(current?.id!==id)return null;
+    ensure();const current=readEscrowPending(storage,task,network);if(current?.id!==id)return null;
     const next={...current,requestSent:patch.requestSent??current.requestSent,signed:patch.signed??current.signed,failureCode:patch.failureCode??current.failureCode};
-    storage.setItem(escrowPendingKey(task),JSON.stringify(next));return readEscrowPending(storage,task);
+    storage.setItem(escrowPendingKey(task,network),JSON.stringify(next));return readEscrowPending(storage,task,network);
    },
    clear:id=>{
-    ensure();if(readEscrowPending(storage,task)?.id!==id)return false;
-    storage.removeItem(escrowPendingKey(task));return true;
+    ensure();if(readEscrowPending(storage,task,network)?.id!==id)return false;
+    storage.removeItem(escrowPendingKey(task,network));return true;
    },
   };
   try{return await run(control);}finally{active=false;}

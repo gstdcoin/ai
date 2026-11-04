@@ -125,7 +125,7 @@ function EscrowLab({expectedConnector}:{expectedConnector:TonConnect}){
  if(!isolated)return <main className="mx-auto max-w-4xl px-5 py-10 text-white space-y-5"><h1>{p('title')}</h1><p role="alert">{p('errors.reload_required')}</p><a className={button} href={router.asPath}>{p('reload')}</a></main>;
  return <main className="mx-auto max-w-4xl px-5 py-10 text-white space-y-6">
   <header className="space-y-3"><a className="underline" href={(router.locale&&router.locale!=='en'?'/'+router.locale:'')+'/payments'}>{p('back')}</a><h1 className="text-3xl font-semibold">{p('title')}</h1><p>{p('intro')}</p>
-   <p role="alert" className="rounded-xl border border-amber-500/50 bg-amber-500/10 p-4">{p('test_only')}</p></header>
+   <p role="alert" className="rounded-xl border border-amber-500/50 bg-amber-500/10 p-4">{p('test_only')}</p><a className="underline" href={(router.locale==='ru'?'/ru':'')+'/escrow-mainnet'}>{p('mainnet_link')}</a></header>
   <section className="rounded-xl border border-white/15 p-5 space-y-3"><h2 className="text-xl">{p('wallet')}</h2>
    <p className="text-gray-300">{p('isolated')}</p><code className="block break-all">{address||p('not_connected')}</code>
    {wallet?<><p>{testnet?p('testnet'):p('wrong_network')}</p><button className={button} disabled={busy} onClick={()=>work(async()=>{await ton.disconnect();})}>{p('disconnect')}</button></>:

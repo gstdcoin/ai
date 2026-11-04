@@ -14,7 +14,7 @@ vi.mock('sonner',()=>({Toaster:()=>null}));
 import App from '../pages/_app';
 beforeEach(()=>{state.path='/escrow';state.providers=0;state.nav=0;});
 const child=()=>React.createElement('div',null,'page-content');
-it('renders the testnet document without creating the singleton platform wallet provider',()=>{
+it.each(['/escrow','/escrow-mainnet'])('renders %s without creating the singleton platform wallet provider',(path)=>{state.path=path;
  const html=renderToStaticMarkup(React.createElement(App,{Component:child,pageProps:{}} as any));
  expect(html).toContain('page-content');expect(state.providers).toBe(0);expect(state.nav).toBe(0);
 });

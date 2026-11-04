@@ -22,7 +22,7 @@ export function rawAddress(value:string):string{
 const serialize=(body:Cell)=>body.toBoc().toString('base64');
 const queryId=()=>BigInt('0x'+randomBytes(8).toString('hex'));
 export async function batchContext(input:BatchInput){
- if(!input||(input.testAssetVersion!==undefined&&input.testAssetVersion!==1&&input.testAssetVersion!==2)||typeof input.budget!=='string'||typeof input.taskId!=='string'||!/^[a-f0-9]{64}$/.test(input.taskId)||
+ if(!input||((input as any).network!==undefined&&(input as any).network!=='-3')||(input.testAssetVersion!==undefined&&input.testAssetVersion!==1&&input.testAssetVersion!==2)||typeof input.budget!=='string'||typeof input.taskId!=='string'||!/^[a-f0-9]{64}$/.test(input.taskId)||
   !Number.isSafeInteger(input.deadline)||input.deadline<=0||input.deadline>Math.floor(Date.now()/1000)+7*86400||
   !Number.isSafeInteger(input.requests)||input.requests<1||input.requests>10_000)throw Error('invalid_batch');
  if(input.job!==undefined)validatePilotJob(input);

@@ -76,3 +76,7 @@ by this checklist.
 ### Paid node evidence
 
 A one-request 0.005 tGSTD pilot ran qwen2.5:0.5b on the selected physical node, returned 391 for 17 × 23 in 744 ms, and was explicitly accepted by the payer. All three on-chain shares (0.00425 / 0.0005 / 0.00025 tGSTD) were withdrawn. Payer balance returned to 1000 tGSTD; internal ledger credit was zero. TonAPI returned 21 raw transactions for the coordinator and three native share contracts; raw hashes matched and no abort, failed VM or failed action was found in that bounded scope. This excludes owner-wallet and jetton-wallet history. The same operator wallet held all roles. Private address/hash evidence is retained in the owner’s local report. See TESTNET_NODE_ESCROW_PILOT.md for limits.
+
+## Controlled mainnet implementation
+
+Ordinary private inference requests now have a separate owner-signed mainnet path at /escrow-mainnet, with canonical GSTD, a fixed recipient manifest, explicit model/node/prompt commitments and a single contract settlement mode. This is a controlled first release limited to the owner-selected node wallet; live mainnet deployment, payments and payouts still require owner signatures and actual funds. See MAINNET_ESCROW.md for the current implementation, privacy boundaries and release checks. The testnet planner continues to reject mainnet recovery inputs.

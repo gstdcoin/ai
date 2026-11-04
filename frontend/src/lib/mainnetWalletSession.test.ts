@@ -1,0 +1,33 @@
+import {it,expect,vi,afterEach} from 'vitest';
+import {WalletContractV4} from '@ton/ton';
+import {beginCell,storeStateInit} from '@ton/core';
+import {keyPairFromSeed,sign} from '@ton/crypto';
+const state=vi.hoisted(()=>({wallet:''}));
+vi.mock('./mainnetEscrowManifest',async original=>{const actual=await original<any>();return{...actual,MAINNET_ESCROW:{...actual.MAINNET_ESCROW,get pilotPayers(){return[state.wallet];}}};});
+import {mainnetWalletChallenge,authenticateMainnetWallet,requireMainnetWalletSession,allowMainnetBeneficiary} from './mainnetWalletSession';
+import {pilotSignDataDigest} from './escrowJobAuth';
+const key=keyPairFromSeed(Buffer.alloc(32,86)),attacker=keyPairFromSeed(Buffer.alloc(32,87)),wallet=WalletContractV4.create({workchain:0,publicKey:key.publicKey}),address=wallet.address.toRawString();
+const init=beginCell().store(storeStateInit(wallet.init)).endCell().toBoc().toString('base64');
+const authorization=(text:string,signer=key,timestamp=Math.floor(Date.now()/1000))=>({address,domain:'app.gstdtoken.com',timestamp,payload:{type:'text',text},signature:sign(pilotSignDataDigest(address,'app.gstdtoken.com',timestamp,text),signer.secretKey).toString('base64')});
+afterEach(()=>vi.useRealTimers());
+it('requires actual wallet ownership, exact mainnet text and a one-time challenge before granting an hour of read access',async()=>{
+ state.wallet=address;
+ const foreign=WalletContractV4.create({workchain:0,publicKey:attacker.publicKey}).address.toRawString();
+ await expect(mainnetWalletChallenge(foreign)).rejects.toThrow('mainnet_pilot_wallet_required');
+ const challenge=await mainnetWalletChallenge(address),value={wallet:address,nonce:challenge.nonce,stateInit:init,authorization:authorization(challenge.text,attacker)};
+ expect(challenge.text).toContain('No permission to sign or transfer tokens.');
+ await expect(authenticateMainnetWallet(value)).rejects.toThrow('mainnet_wallet_auth_required');
+ await expect(authenticateMainnetWallet({...value,authorization:authorization(challenge.text.replace('mainnet','testnet'))})).rejects.toThrow('mainnet_wallet_auth_required');
+ await expect(authenticateMainnetWallet({...value,authorization:authorization(challenge.text,key,Math.floor(Date.now()/1000)-301)})).rejects.toThrow('mainnet_wallet_auth_required');
+ const auth=await authenticateMainnetWallet({...value,authorization:authorization(challenge.text)});
+ expect(auth.wallet_token).toMatch(/^[a-f0-9]{64}$/);expect(await requireMainnetWalletSession(auth.wallet_token,address)).toBe(address);
+ await expect(authenticateMainnetWallet({...value,authorization:authorization(challenge.text)})).rejects.toThrow('authorization_used');
+ await allowMainnetBeneficiary(foreign);await expect(requireMainnetWalletSession(auth.wallet_token,foreign)).rejects.toThrow('mainnet_wallet_auth_required');
+ await expect(requireMainnetWalletSession('00'.repeat(32),address)).rejects.toThrow('mainnet_wallet_auth_required');
+});
+it('expires sessions rather than trusting a browser-side expiry or copied address',async()=>{
+ vi.useFakeTimers();state.wallet=address;const challenge=await mainnetWalletChallenge(address);
+ const auth=await authenticateMainnetWallet({wallet:address,nonce:challenge.nonce,stateInit:init,authorization:authorization(challenge.text)});
+ await vi.advanceTimersByTimeAsync(3600001);
+ await expect(requireMainnetWalletSession(auth.wallet_token,address)).rejects.toThrow('mainnet_wallet_auth_required');
+});

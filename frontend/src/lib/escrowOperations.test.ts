@@ -69,3 +69,13 @@ it('rejects corrupted diagnostic fields rather than dropping a pending operation
   expect(()=>readEscrowPending(x.storage,task)).toThrow('invalid_batch');
  }
 });
+
+it('mainnet and testnet pending records and locks never clear or block each other',async()=>{
+ const x=environment();
+ await withEscrowOperation(x.storage,x.locks,task,async op=>op.begin(operation('testnet')));
+ expect(readEscrowPending(x.storage,task,'-239')).toBeNull();
+ await withEscrowOperation(x.storage,x.locks,task,async op=>{op.begin(operation('mainnet'));expect(op.current()?.id).toBe('mainnet');expect(op.clear('testnet')).toBe(false);},'-239');
+ expect(readEscrowPending(x.storage,task)?.id).toBe('testnet');expect(readEscrowPending(x.storage,task,'-239')?.id).toBe('mainnet');
+ await withEscrowOperation(x.storage,x.locks,task,async op=>{expect(op.clear('mainnet')).toBe(true);},'-239');
+ expect(readEscrowPending(x.storage,task)?.id).toBe('testnet');
+});

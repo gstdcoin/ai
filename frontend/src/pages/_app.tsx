@@ -35,7 +35,7 @@ const getManifestUrl = (): string => {
 function App({ Component, pageProps }: AppProps) {
   const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
-  const isolatedEscrow = router.pathname === '/escrow';
+  const isolatedEscrow = ['/escrow','/escrow-mainnet'].includes(router.pathname);
 
   useEffect(() => {
     // Initialize Telegram WebApp on mount

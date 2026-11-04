@@ -1,3 +1,4 @@
+import { mainnetAssignment } from './mainnetJobs';
 import { pilotAssignment } from './escrowJobs';
 import { executorPayout } from './nodePayout';
 import { kvGet, kvSetNX } from './kv';
@@ -5,7 +6,7 @@ import { isTaskExecutionEnabled } from './taskKinds';
 import { moneyJob } from './money';
 
 export interface TaskAssignment {
-    settlement_mode?: 'testnet_contract';
+    settlement_mode?: 'testnet_contract'|'mainnet_contract';
     escrow_job?: string;
     funding_id?: string;
     payout_wallet?: string;
@@ -41,6 +42,11 @@ export async function assignTaskToNode(
         const pilot = await pilotAssignment(task,nodeId);
         if (!pilot) return false;
         Object.assign(assignment,pilot,{settlement_mode:'testnet_contract'});
+    }
+    if (task.settlement_mode === 'mainnet_contract') {
+        if (task.funding_id || task.funding_version) return false;
+        const job=await mainnetAssignment(task,nodeId);if(!job)return false;
+        Object.assign(assignment,job,{settlement_mode:'mainnet_contract'});
     }
     if (task.funding_version === 2 && task.funding_id === task.task_id) {
         const funding = await moneyJob(task.task_id);

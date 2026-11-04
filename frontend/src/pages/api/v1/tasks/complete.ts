@@ -15,6 +15,7 @@ import { COMMUNITY_TAX, BASE_TASK_FEE } from '../../../../lib/rewards';
 import { requireNodeSignature } from '../../../../lib/nodeAuth';
 import { hasTaskResult, declaredTaskModelMismatch } from '../../../../lib/taskValidation';
 import { captureMoney, releaseMoney, moneyJob, splitNano, units, walletId, digest } from '../../../../lib/money';
+import { completeMainnetJob } from '../../../../lib/mainnetJobs';
 import { completePilotJob } from '../../../../lib/escrowJobs';
 import type { TaskAssignment } from '../../../../lib/task-assignment';
 import type { NodeRecord } from '../nodes/register';
@@ -75,6 +76,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             if (assigned.funding_id || !assigned.escrow_job) return res.status(409).json({error:'invalid_escrow_job'});
             try { escrowReceipt = await completePilotJob(assigned.escrow_job,nodeId,body.model,body.result,body.latency_ms); }
             catch { return res.status(422).json({error:'invalid_escrow_job_result'}); }
+        }
+        if(assigned.settlement_mode==='mainnet_contract'){
+            if(assigned.funding_id||!assigned.escrow_job)return res.status(409).json({error:'invalid_mainnet_job'});
+            try{escrowReceipt=await completeMainnetJob(assigned.escrow_job,nodeId,body.model,body.result,body.latency_ms);}
+            catch{return res.status(422).json({error:'invalid_mainnet_result'});}
         }
         const completion = await kvCompleteAssignedTask(
             body.task_id,

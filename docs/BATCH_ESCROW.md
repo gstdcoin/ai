@@ -226,3 +226,7 @@ it is neither a full chain fork nor an actual mainnet transaction.
 
 The live expiry/refund and operator-only funded node pilot were completed on 4 November 2026 (see TESTNET_NODE_ESCROW_PILOT.md). Outstanding release gates remain: uncertain/partial-transaction reconciliation, an independent beneficiary-wallet rehearsal, extending job/receipt binding beyond the arithmetic pilot to general production AI jobs and batches, a reviewed mainnet deployment/recipient manifest, and a small real GSTD mainnet cycle after deployment. Testnet success
 and simulation alone do not authorize unrestricted mainnet balances or payouts.
+
+## Controlled mainnet implementation
+
+Ordinary private inference requests now have a separate owner-signed mainnet path at /escrow-mainnet, with canonical GSTD, a fixed recipient manifest, explicit model/node/prompt commitments and a single contract settlement mode. This is a controlled first release limited to the owner-selected node wallet; live mainnet deployment, payments and payouts still require owner signatures and actual funds. See MAINNET_ESCROW.md for the current implementation, privacy boundaries and release checks. The testnet planner continues to reject mainnet recovery inputs.

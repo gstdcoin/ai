@@ -1,6 +1,6 @@
 {
   "generated_from": "gstdcoin/contracts",
-  "network": "testnet only in platform UI",
+  "network": "on-chain bound network; platform policy is separate",
   "contracts": {
     "GstdTaskEscrow": {
       "code_hash": "4ea8dbe18b3bf18207703e8c64fef6fc9b1e2ead8a533f9cd5aab84e08a72717",

@@ -9,6 +9,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (req.method === 'GET') {
         const taskId = req.query.task_id;
         if (typeof taskId !== 'string' || !taskId) return res.status(400).json({ error: 'task_id required' });
+        if(taskId.startsWith('escrow_mainnet_'))return res.status(404).json({error:'private_contract_result'});
         const raw = await kvGet(`task:result:${taskId}`);
         return res.status(200).json(raw ? JSON.parse(raw) : { ready: false });
     }
@@ -16,6 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { task_id, node_id, result, latency_ms = 0, model } = req.body || {};
     if (typeof task_id !== 'string' || !task_id || typeof node_id !== 'string' || !node_id)
         return res.status(400).json({ error: 'task_id and node_id required' });
+    if(task_id.startsWith('escrow_mainnet_'))return res.status(403).json({error:'private_contract_result'});
     if (!hasTaskResult(result)) return res.status(422).json({ error: 'A non-empty successful result is required' });
     const raw = await kvGet(`node:${node_id}`);
     if (!raw) return res.status(403).json({ error: 'Unknown node' });
