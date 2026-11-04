@@ -48,6 +48,6 @@ The platform observes authenticated completion. Current node authentication sign
 
 There is no automatic chain polling. Mainnet chain journeys are globally limited to two per minute and serialized by a short-lived lease. Each journey has a bounded time budget. Per-provider requests are paced; verified master/code and wallet derivation checks are cached for five minutes.
 
-Financial pending records are persisted before opening the wallet. An uncertain result remains blocked across reloads. A signature alone is not a payment receipt; partial funding never clears the full-funding operation. These browser locks do not coordinate other devices or direct blockchain clients. General cross-device and ambiguous-transaction reconciliation still requires separate live evidence before public activation.
+Financial pending records are persisted before opening the wallet. An uncertain result remains blocked across reloads. A signature alone is not a payment receipt; partial funding never clears the full-funding operation. These browser locks do not coordinate other devices or direct blockchain clients. General cross-device and ambiguous-transaction reconciliation still requires separate live evidence for the published open beta.
 
 Attached TON execution budgets are not measured consumed fees. Reclaimable change and escrow/jetton-wallet storage are separate from consumed gas. The controlled real cycle must verify actual balances, bytecode/data, transaction outcomes and receipts before broad release.

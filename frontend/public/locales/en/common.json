@@ -1524,6 +1524,12 @@
   "per_task": "per task",
   "nav_payments": "Balance & rewards",
   "payments_page": {
+    "paths_title": "Choose a payment path",
+    "paths_notice": "This page shows the platform balance: deposits, credits and withdrawal requests. Separate escrow jobs hold funds in contracts; they are not moved to this balance.",
+    "mainnet_escrow": "Separate job with direct TON mainnet settlement · open beta",
+    "mainnet_notice": "In escrow the payer signs funding and acceptance; beneficiaries sign their own claims. GSTD and TON are required. A real mainnet payout still needs verification.",
+    "start_guide": "Start here: AI, node, wallet and payments",
+    "testnet_title": "Practice without real funds · testnet",
     "title": "Balance & rewards",
     "intro": "Claim your node rewards, pay for AI requests and request a GSTD withdrawal to your TON wallet.",
     "node_title": "Coming from your node dashboard?",

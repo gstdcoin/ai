@@ -1,51 +1,51 @@
-# GSTD release readiness — 2026-10-28
+# GSTD release readiness — 2026-11-05
 
-Production entry points: [website](https://gstdtoken.com), [platform](https://app.gstdtoken.com), [payments](https://app.gstdtoken.com/payments), [Telegram](https://t.me/gstdaibot).
+Start with the bilingual [user guide](START_HERE.md) or [public start page](https://gstdtoken.com/docs#get-started). This document records evidence and gaps; it is not a security guarantee.
 
-## Scope of the usable core
+## Current status
 
-Local Ollama inference; opt-in requests to other nodes; signed node identities; funded-work reservation/capture/refund; 85% executor / 10% protocol / 5% reserve; owner-signed GSTD withdrawal requests. Free/promo requests create no withdrawable reward.
+GSTD is an **open beta on one verified physical compute node**. Any supported wallet can prove ownership; any active registered node with an explicit payout address and available model can advertise work. Registration does not create income.
 
-The system is an early single-node deployment. Green CI is necessary, but does not certify the entire ecosystem ready.
+There are two distinct payment paths:
 
-## Release gates
+- **Platform ledger:** backed credits, reservation/capture/refund and custody-owner-signed withdrawal requests at [Payments](https://app.gstdtoken.com/payments).
+- **Per-job mainnet escrow:** user-signed funding/acceptance and beneficiary-signed claims at [Mainnet escrow](https://app.gstdtoken.com/escrow-mainnet). These contract balances do not migrate to or appear as platform credits.
 
-| Scenario | Evidence / remaining gate |
+Both accepted paid-work paths use **85% executor / 10% protocol / 5% reserve**. Free/local/promotional requests do not create withdrawable GSTD. No presence rewards, automatic buybacks or guaranteed earnings.
+
+## Evidence and remaining gates
+
+| Scenario | Verified evidence | Still unverified |
+| --- | --- | --- |
+| Source and deployment | Platform d29aedf2 passed CI and Cloudflare deployment; website/node/SDK/bridge default-branch checks were green at the audit start. | A green build does not certify every live interaction or all dependencies. |
+| Real inference | One physical node; exact qwen2.5:0.5b returned 391 for 17 × 23 in the completed testnet job. | General answer quality, very large models and multiple independent executors. |
+| Identity and accounting | Signed registration/heartbeat, wallet-bound task authorization, idempotent completion, reservation/refund and Redis CAS tests. | Adversarial multi-operator production load. |
+| Full testnet escrow | Funded 0.005 tGSTD, actual node result, explicit acceptance, 0.00425/0.0005/0.00025 payouts; separate expiry/refund; recovery after reload; 21 raw transactions of coordinator/shares reconciled. | All roles used one test wallet. This is not independent-beneficiary mainnet proof. |
+| Mainnet RPC and canonical token | Read-only preflight passed: network -239, canonical master, pinned wallet code and master-derived wallet address. No financial transaction sent. | Real mainnet payment, accepted work, payout and fee reconciliation. The node wallet had 0 GSTD and 0.157332829 TON at that check. |
+| Wallet safety | Network-specific connections/storage, one-time text authorization, actor-bound sessions, pending-operation locks; no server treasury signer in escrow. | Cross-device/ambiguous-transaction reconciliation with independent wallets. A signature alone is not a receipt. |
+| Fresh installation | Linux x86-64 clean-source and offline-container CI with fixture inference passed on the node release line 3.7. | Clean ARM64/GPU/WSL hardware installation and actual drivers; macOS is best-effort, native Windows/32-bit ARM are not promised by the Bash installer. |
+| Node controls | Dashboard regression tests cover model catalogue, resource estimates, public-wallet linking and authenticated operator actions. | A new operator's complete authenticated production UI journey on separate hardware. |
+| Telegram and Mini App | Webhook authorization, conversation failure handling and localization regression tests exist; /start was reported working by the owner. | Final English/Russian Mini App and ordinary-question delivery on the owner's Telegram device after the latest release. |
+| Recovery | Offline identity/configuration restore tests and written recovery procedure. | Encrypted off-machine backup and full platform/node restore drill on another machine. |
+| Free infrastructure | Manual/cached catalogue reads, visible-tab polling, serialized mainnet RPC, bounded finance cron. | Representative public load. Cloudflare 1102 was observed during audit; later catalogue/preflight reads succeeded. Intermittent resource failures are not declared resolved by one success. |
+| Security | Focused authorization/accounting tests and CI dependency checks. | Exhaustive source review, independent contract assurance and proof against every exploit are not established. |
+
+Mainnet is not declared fully proven until a real funded cycle completes. The published mainnet page is explicitly beta and warns before real-fund signatures. Attached TON budgets are not consumed fees.
+
+## Repository roles
+
+| Repository | Role |
 | --- | --- |
-| Local inference | Physical node 3.7.0 and the public platform returned a basic arithmetic response using llama3.2:3b. This demonstrates routing, not general answer quality; a smaller model previously produced a wrong answer. |
-| Node identity and registry | Ed25519 regression tests; one real node reported online. |
-| Browser and Telegram delivery | Website/API are reachable. Actual end-user Telegram delivery must be rechecked after changes; HTTP health is not sufficient. |
-| Paid accounting | Unit tests and real disposable Redis CAS tests cover reservation, split, replay, refund and withdrawal state transitions. |
-| Positive on-chain withdrawal | NOT VERIFIED end to end: needs actual backed customer credit and custody-owner signature. No fabricated balances or self-awarded test rewards. |
-| Fresh install | Fresh-source installer CI passed on Linux amd64 Node 22 and a Debian container without a preinstalled Node runtime, using a fixture inference service. Offline non-root startup, authentication and retired routes passed. Real clean ARM64/GPU/WSL installations remain unverified; native macOS installation is not claimed. |
-| Multi-node routing and failure | Needs a second independently operated physical node. One process or one host cannot demonstrate decentralization. |
-| Backups and disaster recovery | Isolated tests restore node identities and reject replacement of corrupt keys, saved wallets and saved configuration. A complete user backup workflow and a restore drill on another machine for balances, queue and configuration are still required. |
-| Security | Runtime dependency checks and focused authorization regressions pass. A low-severity deepmerge advisory remains in the TON Connect dependency chain with no npm-provided fix at this check. A full independent security/contract audit remains outstanding. |
-| Free infrastructure | Hidden-tab-aware polling and bounded finance cron are implemented. Validate actual Cloudflare/Redis daily usage under representative load before a public traffic campaign. |
-| Token/contracts | Existing GSTD Jetton is used. Legacy Settlement contracts are not the new payment engine; source/bytecode verification and a separate deployment/audit are required before changing that. |
+| [ai](https://github.com/gstdcoin/ai) | Platform, canonical registry, ledger, escrow orchestration and Telegram webhook |
+| [gstdbot](https://github.com/gstdcoin/gstdbot) | Canonical node/installer and operator dashboard |
+| [web](https://github.com/gstdcoin/web) | Public explanation, start guide, installation and optional free demo |
+| [contracts](https://github.com/gstdcoin/contracts) | Contract sources, tests and deployment evidence; source publication does not deploy contracts |
+| [A2A](https://github.com/gstdcoin/A2A) | Experimental signed SDK clients; monitors are not compute executors by default |
+| [gstd-bridge](https://github.com/gstdcoin/gstd-bridge) | Deferred research; no production bridge or user deposits |
+| [gstdcoin](https://github.com/gstdcoin/gstdcoin) | Public profile and navigation |
 
-## Repositories
+The canonical domain is gstdtoken.com. The platform, Redis, DNS/hosting and bootstrap remain central dependencies. Temporary tunnel URLs may change. Do not describe this deployment as unstoppable, unhackable or fully decentralized.
 
-- `ai`: platform, billing, node registry and Telegram webhook. Source of truth for balances and paid work.
-- `gstdbot`: compute node and canonical installer. Node processes must not hold a Telegram bot token or custody signing key. The current compute release line is 3.7; the minimal CLI and shared compute limiter are enabled.
-- `web`: public website and separate free demo; does not maintain another billing ledger.
-- `A2A`: experimental signed Python/JavaScript clients. Standalone monitors do not claim tasks without an executor.
-- `contracts`: token and legacy/research contracts, with explicit deployment/audit status.
-- `gstd-bridge`: deferred research, no production bridge or user deposits.
-- `gstdcoin`: public profile and navigation.
+Embedded deployment/MCP copies are retired. Use the dedicated contract and A2A repositories. Cluster installation creates independent node identities, not pooled multi-machine model memory. Node software never needs a Telegram bot token, wallet seed or custody signing key.
 
-The obsolete domain gstdcoin.com did not resolve during this audit. gstdtoken.com is the canonical domain. Temporary trycloudflare.com node URLs are discoverable, not permanent deployment addresses.
-
-## What is deliberately excluded
-
-Presence rewards, automatic buybacks, speculative bridges/DeFi, unrestricted host/SSH management, automatic publication of user prompts, and fabricated multiple validators. The full ecosystem must not be called unstoppably decentralized or unhackable.
-
-## Registry recovery found during acceptance
-
-The legacy per-wallet registration counter counted repeated registrations after node TTL expiry, eventually refusing the same real node with `too_many_nodes`. This was reproduced during the 3.6.1 restart. A signed heartbeat of the existing identity restored its record; no token balances or keys were changed.
-
-The replacement is an atomic Redis lease set with at most ten live distinct identities per wallet. Existing identities renew without consuming another slot; expired leases free capacity. Heartbeats refresh leases. A disposable real-Redis test covers concurrent registrations, same-identity renewal and expiry. Both registration and heartbeat now require proof of a bound Ed25519 identity; anonymous heartbeat callers cannot manufacture online records. Use current signed node/SDK clients.
-
-## Duplicate packages
-
-Embedded `contracts/` deployment commands and `gstd-mcp-server/` launch commands are retired, with dependencies removed and fail-closed entry points. Use the dedicated `gstdcoin/contracts` and experimental signed `gstdcoin/A2A` repositories. This removes divergent launch/deployment paths; it does not assert that the canonical contracts are audited or their deployed bytecode matches all current sources.
+Further details: [ecosystem](ECOSYSTEM.md), [mainnet escrow](MAINNET_ESCROW.md), [finance](FINANCE_V2.md), [operator guide](https://github.com/gstdcoin/gstdbot/blob/main/docs/OPERATOR_PANEL.md).

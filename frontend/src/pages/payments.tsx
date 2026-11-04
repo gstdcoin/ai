@@ -53,8 +53,15 @@ export default function PaymentsPage() {
     const input='rounded-lg border border-white/20 bg-black/30 px-3 py-2 w-full';
     return <main className="mx-auto max-w-3xl px-5 py-12 text-white space-y-6">
         <Head><title>{p('title')+' · GSTD'}</title><meta name="description" content={p('intro')}/></Head>
-        <p><a href={(router.locale&&router.locale!=='en'?'/'+router.locale:'')+'/escrow'} className="underline text-violet-300">{p('escrow_lab')}</a></p>
         <header className="space-y-3"><h1 className="text-3xl font-semibold">{p('title')}</h1><p className="text-gray-300">{p('intro')}</p></header>
+        <section className="rounded-xl border border-violet-400/30 p-5 space-y-3" aria-labelledby="payment-paths">
+            <h2 id="payment-paths" className="text-xl font-semibold">{p('paths_title')}</h2>
+            <p className="text-gray-300">{p('paths_notice')}</p>
+            <p><Link href="/escrow-mainnet" className="underline text-violet-300">{p('mainnet_escrow')}</Link></p>
+            <p className="text-sm text-gray-400">{p('mainnet_notice')}</p>
+            <p><a href={'https://gstdtoken.com/docs?lang='+(router.locale==='ru'?'ru':'en')+'#get-started'} className="underline text-violet-300">{p('start_guide')}</a></p>
+            <details className="text-sm text-gray-400"><summary className="cursor-pointer">{p('testnet_title')}</summary><Link href="/escrow" className="underline text-violet-300">{p('escrow_lab')}</Link></details>
+        </section>
         <section className="rounded-xl border border-white/15 p-5 space-y-3" aria-labelledby="payment-signatures">
             <h2 id="payment-signatures" className="text-xl font-semibold">{p('signing_title')}</h2>
             <ol className="list-decimal pl-5 space-y-2 text-gray-300"><li>{p('signing_login')}</li><li>{p('signing_deposit')}</li><li>{p('signing_claim')}</li><li>{p('signing_withdraw')}</li></ol>
