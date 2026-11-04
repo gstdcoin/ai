@@ -1825,6 +1825,7 @@
     "job_queued_state": "Queued",
     "job_state_prepared": "Prepared",
     "job_state_queued": "Queued",
-    "job_state_computed": "Completed: ready for acceptance"
+    "job_state_computed": "Completed: ready for acceptance",
+    "job_state_expired": "Expired: computation blocked; complete the refund"
   }
 }

@@ -1,5 +1,5 @@
 import {it,expect} from 'vitest';
-import {hasExpectedEscrowState} from './escrowObservation';
+import {hasExpectedEscrowState,isSettledEscrow} from './escrowObservation';
 import type {PendingEscrowOperation} from './escrowOperations';
 const task='0:'+'11'.repeat(32);
 const pending=(action:PendingEscrowOperation['action']):PendingEscrowOperation=>({id:'one',task,action,role:0,since:100,payer:'0',total:'100',balance:'85',native:'400000000'});
@@ -36,4 +36,9 @@ it('recognizes only the expected irreversible decision and keeps sync limited to
  expect(hasExpectedEscrowState(pending('expire'),s)).toBe(false);
  expect(hasExpectedEscrowState(pending('sync'),s)).toBe(false);
  s.shares[2].state=1;expect(hasExpectedEscrowState(pending('sync'),s)).toBe(true);
+});
+
+it('permits a fresh batch after fully paid acceptance or fully completed refund, never partial progress',()=>{
+ const s=chain();for(const state of [1,2]){s.state=state;s.shares=[share(state),share(state),share(state)];expect(isSettledEscrow(s)).toBe(true);s.shares[1].balance_nano='1';expect(isSettledEscrow(s)).toBe(false);s.shares[1]=share(0);expect(isSettledEscrow(s)).toBe(false);}
+ s.state=0;s.shares=[share(),share(),share()];expect(isSettledEscrow(s)).toBe(false);expect(isSettledEscrow(null)).toBe(false);
 });

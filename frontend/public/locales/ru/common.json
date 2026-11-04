@@ -1829,6 +1829,7 @@
     "job_queued_state": "В очереди",
     "job_state_prepared": "Подготовлено",
     "job_state_queued": "В очереди",
-    "job_state_computed": "Выполнено: можно принять результат"
+    "job_state_computed": "Выполнено: можно принять результат",
+    "job_state_expired": "Срок истёк: вычисление заблокировано, выполните возврат"
   }
 }

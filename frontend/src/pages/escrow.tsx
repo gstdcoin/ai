@@ -10,7 +10,7 @@ import {getCommonStaticProps} from '../lib/i18n-static-props';
 import type {BatchInput,BatchAction} from '../lib/batchEscrow';
 import {isEscrowRequestValidationError,escrowWalletErrorCode} from '../lib/escrowWalletErrors';
 import {createEscrowConnector} from '../lib/escrowConnector';
-import {hasExpectedEscrowState} from '../lib/escrowObservation';
+import {hasExpectedEscrowState,isSettledEscrow} from '../lib/escrowObservation';
 import {escrowStoragePrefix,escrowPendingKey,readEscrowPending,withEscrowOperation,type PendingEscrowOperation} from '../lib/escrowOperations';
 const storagePrefix=escrowStoragePrefix;
 const pendingKey=escrowPendingKey;
@@ -61,8 +61,10 @@ function EscrowLab({expectedConnector}:{expectedConnector:TonConnect}){
  }
  async function prepareJob(){
   if(!testnet||pending)throw Error('wrong_network');
-  if(plan&&(!chain||chain.state!==1||chain.shares.some((s:any)=>BigInt(s.balance_nano)!==0n)))throw Error('state_not_ready');
+  if(plan&&!isSettledEscrow(chain))throw Error('state_not_ready');
   const d=await jobApi('prepare',{payer:address,model:'qwen2.5:0.5b'});
+  const oldDraft=localStorage.getItem(storagePrefix+'draft');
+  if(oldDraft)localStorage.setItem(storagePrefix+'archive:draft:'+Date.now(),oldDraft);
   if(plan)localStorage.setItem(storagePrefix+'archive:'+plan.task,JSON.stringify({network:'-3',input,plan,pending,job}));
   localStorage.setItem(storagePrefix+'draft',JSON.stringify(d.input));
   setInput(d.input);setPlan(d.preview);setChain(null);setPending(null);setJob(d.job);setNotice(p('job_prepared'));
@@ -131,8 +133,8 @@ function EscrowLab({expectedConnector}:{expectedConnector:TonConnect}){
    <button className="ml-4 underline" disabled={busy||!!pending} onClick={restore}>{p('restore')}</button>
   </section>
   <section className="rounded-xl border border-violet-500/40 p-5 space-y-3"><h2 className="text-xl">{p('job_title')}</h2><p>{p('job_intro')}</p>
-   <button className={button} disabled={blocked||!!plan&&(!chain||chain.state!==1||chain.shares?.some((s:any)=>BigInt(s.balance_nano)!==0n))} onClick={()=>work(prepareJob)}>{p('job_prepare')}</button>
-   {input?.job&&<><p>{p('job_model')}: <b>{input.job.model}</b> · {input.budget} tGSTD</p><p>{p('job_node')}: <code className="break-all">{input.job.node_id}</code></p><p>{p('job_state')}: {p('job_state_'+(job?.state||'prepared'))}</p>
+   <button className={button} disabled={blocked||!!plan&&!isSettledEscrow(chain)} onClick={()=>work(prepareJob)}>{p('job_prepare')}</button>
+   {input?.job&&<><p>{p('job_model')}: <b>{input.job.model}</b> · {input.budget} tGSTD</p><p>{p('job_node')}: <code className="break-all">{input.job.node_id}</code></p><p>{p('job_state')}: {p('job_state_'+(nowSec>input.deadline&&chain?.state!==1?'expired':job?.state||'prepared'))}</p>
     <button className={button} disabled={blocked||!payer||chain?.state!==0||chain?.mask!==7||job?.state!=='prepared'||nowSec>input.deadline-120} onClick={()=>work(executeJob)}>{p('job_run')}</button>
     <button className={button+' ml-3'} disabled={busy} onClick={()=>work(async()=>{const d=await jobApi('status');setJob(d.job);})}>{p('job_check')}</button>
     {job?.receipt&&<div className="space-y-2"><p>{p('job_result')}: <b>{job.receipt.result}</b> · {job.receipt.latency_ms} ms</p><code className="block break-all">{job.receipt.result_hash}</code><p>{p('job_no_ledger')}</p></div>}
@@ -165,7 +167,7 @@ function EscrowLab({expectedConnector}:{expectedConnector:TonConnect}){
      <button className={button} disabled={busy} onClick={()=>work(refresh)}>{p('check')}</button>
      <button className={button} disabled={blocked||!payer||chain?.state!==0||chain?.mask===7||BigInt(chain?.payer_balance||'0')<(chain?.shares||[]).reduce((sum:bigint,s:any)=>sum+BigInt(s.missing_nano),0n)} onClick={()=>work(()=>send('fund'))}>{p('fund')} · {p('up_to')} {plan.budgets_ton.fund} TON</button>
      <button className={button} disabled={blocked||!payer||chain?.state!==0||chain?.mask!==7||nowSec>input.deadline||!!input.job&&job?.state!=='computed'} onClick={()=>work(()=>send('accept'))}>{p('accept')} · {plan.budgets_ton.accept} TON</button>
-     <button className={button} disabled={blocked||!payer||!chain?.deployed||chain?.state===1||nowSec<=input.deadline} onClick={()=>work(()=>send('expire'))}>{p('expire')} · {plan.budgets_ton.expire} TON</button>
+     <button className={button} disabled={blocked||!payer||!chain?.deployed||chain?.state!==0||nowSec<=input.deadline} onClick={()=>work(()=>send('expire'))}>{p('expire')} · {plan.budgets_ton.expire} TON</button>
      <button className={button} disabled={blocked||!payer||chain?.state!==2||!(chain?.shares||[]).some((s:any)=>BigInt(s.balance_nano)>0n)} onClick={()=>work(()=>send('refund'))}>{p('refund')} · {p('up_to')} {plan.budgets_ton.refund_all} TON</button>
     </div>
     {chain&&<p>{p('state')}: {p(chain.state===1?'accepted':chain.state===2?'refunded':chain.deployed?'reserved':'undeployed')} · {p('funding')}: {[1,2,4].filter(x=>(chain.mask&x)!==0).length}/3</p>}

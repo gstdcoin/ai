@@ -26,3 +26,9 @@ export function hasExpectedEscrowState(p:PendingEscrowOperation,s:ChainState):bo
   }
  }catch{return false;}
 }
+
+/** A fresh batch may replace only a terminal batch whose three shares are empty and synchronized. */
+export function isSettledEscrow(s:ChainState|null|undefined):boolean{
+ try{return !!s&&s.deployed&&[1,2].includes(s.state as number)&&s.shares.length===3&&s.shares.every(x=>x.state===s.state&&amount(x.balance_nano)===0n);}
+ catch{return false;}
+}
