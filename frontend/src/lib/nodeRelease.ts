@@ -2,7 +2,7 @@ import {getCloudflareContext} from '@opennextjs/cloudflare';
 import approved from './nodeReleaseApproved.json';
 
 // Must match gstdbot/src/lib/platform-auth.ts. Never accept a caller's trust key.
-export const RELEASE_PUBLIC_KEY='1451788de7861b5b2dc31073606bdbab337682fe7acb74b317ad34e60ecd2a75';
+export const RELEASE_PUBLIC_KEY='82a7b29cca0bff9cdd7ac285277af45287bce77066cf40548ca16ab34a63f30e';
 export const APPROVED_NODE_RELEASE=Object.freeze(approved);
 export async function signApprovedRelease(seed:string|undefined,now=Date.now(),expectedKey=RELEASE_PUBLIC_KEY){
  if(!seed||!/^[a-fA-F0-9]{64}$/.test(seed)||!Number.isSafeInteger(now))throw Error('release_signing_unavailable');
