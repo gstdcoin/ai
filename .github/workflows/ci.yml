@@ -222,7 +222,7 @@ jobs:
             const response=await fetch(process.env.WORKER_URL+path,{headers:{'User-Agent':'GSTD-Release-Check','Accept':'application/json'}});
             const data=await response.json();
             if(!response.ok || (path.endsWith('/stats') ? !Number.isSafeInteger(data.nodes_online) : !Array.isArray(data.models))) {
-              console.error('Discovery verification failed',path,response.status,data.error||'',data.reason||'',data.error_kind||'');
+              console.error('Discovery verification failed',path,response.status,data.error||'',data.reason||'',data.error_kind||'',data.stage||'');
               process.exit(1);
             }
             console.log('Discovery verified',path,response.status);

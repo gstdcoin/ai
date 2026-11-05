@@ -1,5 +1,6 @@
 // Capture native fetch before OpenNext installs request-context wrappers.
 export const nativePublicFetch=globalThis.fetch.bind(globalThis);
+const NativeAbortController=globalThis.AbortController;
 /** Lightweight public discovery path: no Next.js rendering or ledger imports. */
 import {dedupeNodeRecords,isNodeOnline,parseNodeRecords} from './src/lib/node-status';
 import {safeNodeUrl} from './src/lib/safeNodeUrl';
@@ -12,9 +13,10 @@ async function commands(env:Env,body:unknown[][],transport:typeof fetch):Promise
  if(!endpoint||!token)throw Error('registry_configuration_unavailable');
  let parsed:URL;try{parsed=new URL(endpoint);}catch{throw Error('registry_endpoint_invalid');}
  if(parsed.protocol!=='https:')throw Error('registry_endpoint_invalid');
- let r:Response;try{r=await transport(endpoint.replace(/\/$/,'')+'/pipeline',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(5000),redirect:'error'});}catch{throw Error('registry_transport_failed');}
- if(!r.ok)throw Error('registry_http_'+r.status);
- let rows:any[];try{rows=await r.json() as any[];}catch{throw Error('registry_payload_invalid');}
+ const controller=new NativeAbortController(),timer=setTimeout(()=>controller.abort(),5000);
+ let r:Response;try{r=await transport(endpoint.replace(/\/$/,'')+'/pipeline',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(body),signal:controller.signal,redirect:'error'});}catch(e){clearTimeout(timer);const text=e instanceof Error?e.message:'';throw Error(/AbortSignal|signal/i.test(text)?'registry_signal_rejected':/redirect/i.test(text)?'registry_redirect_rejected':'registry_transport_failed');}
+ if(!r.ok){clearTimeout(timer);throw Error('registry_http_'+r.status);}
+ let rows:any[];try{rows=await r.json() as any[];}catch{throw Error('registry_payload_invalid');}finally{clearTimeout(timer);}
  if(!Array.isArray(rows)||rows.length!==body.length||rows.some(x=>x.error))throw Error('registry_command_failed');
  return rows.map(x=>Array.isArray(x.result)?x.result.map(decode):decode(x.result));
 }
