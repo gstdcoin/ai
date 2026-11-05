@@ -13,8 +13,8 @@ test('uploads a bounded release seed once and exports only the public key, then 
  assert.equal(uploads,1);assert.equal(artifact.worker,WORKER);assert.equal(artifact.secret,SECRET);assert.match(artifact.public_key,/^[a-f0-9]{64}$/);
  assert.equal(saved,artifact);assert(!JSON.stringify(artifact).includes(secret));assert(seed.every(n=>n===0));
 });
-test('does not claim success or export a key artifact after an uncertain upload',async()=>{
- const seed=Buffer.alloc(32,45);let written=false;
- await assert.rejects(provisionReleaseKey({request,now,random:()=>seed,putSecret:async()=>{throw Error('upload unavailable');},writePublicArtifact:async()=>{written=true;}}));
- assert.equal(written,false);assert(seed.every(n=>n===0));
+test('preserves only a public failed-state artifact after an uncertain upload',async()=>{
+ const seed=Buffer.alloc(32,45);const states=[];
+ await assert.rejects(provisionReleaseKey({request,now,random:()=>seed,putSecret:async()=>{throw Error('upload unavailable');},writePublicArtifact:async a=>{states.push(a.upload_status);}}));
+ assert.deepEqual(states,['prepared','failed_or_uncertain']);assert(seed.every(n=>n===0));
 });

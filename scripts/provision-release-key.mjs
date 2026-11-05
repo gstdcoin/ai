@@ -12,6 +12,7 @@ async function main(){
  const request=validateRecoveryRequest(JSON.parse(await readFile(resolve(root,'.github/release-recovery-approval.json'),'utf8')),key);
  const config=await readFile(resolve(root,'frontend/wrangler.production.jsonc'),'utf8');
  if(config.match(/"name"\s*:\s*"([^"]+)"/)?.[1]!==WORKER)throw Error('Recovery target is not the approved production Worker');
+ let artifactWritten=false;
  const artifact=await provisionReleaseKey({request,
   putSecret:seed=>new Promise((accept,reject)=>{
    const child=spawn(process.execPath,[resolve(root,'frontend/node_modules/wrangler/bin/wrangler.js'),'secret','put',SECRET,'--config','wrangler.production.jsonc'],
@@ -22,7 +23,7 @@ async function main(){
    child.on('close',code=>code===0?accept():reject(Error('Release-key upload failed; inspect access, not secret values')));
    child.stdin.end(seed.toString('hex'));
   }),
-  writePublicArtifact:artifact=>writeFile(resolve(process.env.RUNNER_TEMP,'public-release-key.json'),JSON.stringify(artifact,null,2)+'\n',{mode:0o600,flag:'wx'}),
+  writePublicArtifact:async artifact=>{await writeFile(resolve(process.env.RUNNER_TEMP,'public-release-key.json'),JSON.stringify(artifact,null,2)+'\n',{mode:0o600,flag:artifactWritten?'w':'wx'});artifactWritten=true;},
  });
  console.log(JSON.stringify(artifact)); // Public key and operation identity only.
 }

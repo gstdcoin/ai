@@ -6,7 +6,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: gstd-release-key-recovery
+  group: gstd-platform-cloudflare-deploy
   cancel-in-progress: false
 jobs:
   recover:
@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - name: Verify recovery safeguards without credentials
@@ -31,9 +31,10 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       - name: Publish public key only
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: public-release-key
           path: ${{ runner.temp }}/public-release-key.json
-          if-no-files-found: error
+          if-no-files-found: ignore
           retention-days: 30

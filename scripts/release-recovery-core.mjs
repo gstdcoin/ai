@@ -14,8 +14,9 @@ export async function provisionReleaseKey({putSecret,writePublicArtifact,random=
  try{
   const key=createPrivateKey({key:encoded,format:'der',type:'pkcs8'}),publicKey=createPublicKey(key).export({format:'der',type:'spki'}).subarray(-32);
   const artifact={worker:WORKER,secret:SECRET,request_id:request.id,public_key:publicKey.toString('hex'),fingerprint_sha256:createHash('sha256').update(publicKey).digest('hex'),created_at:new Date(now).toISOString()};
-  await putSecret(seed);
-  await writePublicArtifact(artifact);
-  return artifact;
+  await writePublicArtifact({...artifact,upload_status:'prepared'});
+  try{await putSecret(seed);}catch(error){await writePublicArtifact({...artifact,upload_status:'failed_or_uncertain'});throw error;}
+  const uploaded={...artifact,upload_status:'uploaded'};await writePublicArtifact(uploaded);
+  return uploaded;
  }finally{seed.fill(0);encoded.fill(0);}
 }
