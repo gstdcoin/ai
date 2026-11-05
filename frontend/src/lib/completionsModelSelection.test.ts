@@ -20,7 +20,10 @@ it('rejects a substituted model returned by a node',async()=>{
  const res=await invoke('phi3:mini');expect(res.code).toBe(502);expect(res.body.error).toBe('model_mismatch');
 });
 it('rejects forbidden enterprise models rather than choosing another',async()=>{
- vi.mocked(validateEnterpriseKey).mockResolvedValue({id:'test',rpm_limit:10,allowed_models:['phi3:mini']} as any);
+ vi.mocked(validateEnterpriseKey).mockResolvedValue({id:'test',monthly_limit_tokens:10000000,rpm_limit:10,allowed_models:['phi3:mini']} as any);
  const res=await invoke('llama3.2:3b',{authorization:'Bearer gstd_test'});expect(res.code).toBe(403);expect(fetch).not.toHaveBeenCalled();expect(getActiveNodes).not.toHaveBeenCalled();
 });
 it('returns the requested available model',async()=>{expect((await invoke('llama3.2:3b')).code).toBe(200)});
+
+// Consumer fixture: outbound transport is validated separately in nodeFetch.test.ts.
+vi.mock('./nodeFetch',()=>({fetchNode:(url:string,init:RequestInit)=>fetch(url,init)}));

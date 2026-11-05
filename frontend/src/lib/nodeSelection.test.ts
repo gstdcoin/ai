@@ -31,3 +31,6 @@ it('treats an omitted tag as latest without treating other variants as equal',as
  vi.stubGlobal('fetch',vi.fn().mockImplementation(async()=>new Response(JSON.stringify({model:'example:latest',choices:[{message:{content:'ok'}}]}))));
  expect((await callNodeChat([{role:'user',content:'hi'}],{model:'example'})).content).toBe('ok');
 });
+
+// Consumer fixture: outbound transport is validated separately in nodeFetch.test.ts.
+vi.mock('./nodeFetch',()=>({fetchNode:(url:string,init:RequestInit)=>fetch(url,init)}));

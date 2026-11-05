@@ -1,3 +1,4 @@
+import {fetchNode} from '../../../../lib/nodeFetch';
 import type {NextApiRequest,NextApiResponse} from 'next';
 import {sessionWallet} from '../../../../lib/walletSession';
 import {getActiveNodes} from '../../../../lib/nodes';
@@ -18,7 +19,7 @@ export default async function handler(req:NextApiRequest,res:NextApiResponse){
   const target=(await getActiveNodes(model)).find(x=>x.nodeId===node_id);
   if(!target)throw new MoneyError('node_unavailable');
   if(!await kvSetNX('economics:benchmark:'+node_id,'1',90)){res.setHeader('Retry-After','90');return res.status(429).json({error:'benchmark_cooldown'});}
-  const start=Date.now(),r=await fetch(target.url+'/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json'},
+  const start=Date.now(),r=await fetchNode(target.url+'/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json'},
    body:JSON.stringify({model,messages:[{role:'user',content:'Write the integers from 1 to 100, separated by spaces. No explanation.'}],max_tokens:64,stream:false,temperature:0}),
    signal:AbortSignal.timeout(55000)});
   if(!r.ok)throw new MoneyError('benchmark_failed');

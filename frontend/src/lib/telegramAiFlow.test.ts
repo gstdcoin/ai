@@ -151,3 +151,6 @@ it('does not reveal account views through a group callback',async()=>{
  await handler({method:'POST',headers:{},body:{update_id:23,callback_query:{id:'group-callback',from:{id:123},message:{chat:{id:-123,type:'supergroup'},message_id:100},data:'wallet'}}},response);
  expect(request.mock.calls.every(([url]:any)=>url.endsWith('/answerCallbackQuery'))).toBe(true);
 });
+
+// Consumer fixture: outbound transport is validated separately in nodeFetch.test.ts.
+vi.mock('./nodeFetch',()=>({fetchNode:(url:string,init:RequestInit)=>fetch(url,init)}));

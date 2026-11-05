@@ -72,3 +72,9 @@ describe('paid inference orchestration',()=>{
     });
 
 });
+
+// Consumer fixture: outbound transport is validated separately in nodeFetch.test.ts.
+vi.mock('./nodeFetch',()=>({fetchNode:(url:string,init:RequestInit)=>fetch(url,init)}));
+
+// Financial orchestration fixture assumes an independently attested executor.
+vi.mock('./nodeEndpointStatus',()=>({endpointVerified:()=>true}));

@@ -1,3 +1,4 @@
+import {fetchNode} from './nodeFetch';
 import { canonicalModelId } from './modelId';
 /**
  * GSTD Node Network — shared helpers for resolving and calling
@@ -86,14 +87,14 @@ export async function getActiveNodes(preferModel?: string): Promise<ActiveNode[]
  * Resolves the single best node URL to use for inference.
  * Resolution order: env var → scored KV nodes → GitHub fallback file.
  */
-export async function resolveNodeUrl(preferModel?: string): Promise<string> {
+async function resolveNodeTarget(preferModel?: string): Promise<{url:string;trusted:boolean}> {
     // Env override (e.g. in CI or for testing)
     const envUrl = safeNodeUrl(process.env.GSTD_NODE_URL, { trusted: true });
 
     // Best scored active node from KV
     const active = await getActiveNodes(preferModel);
-    if (active.length > 0) return active[0].url;
-    if (envUrl) return envUrl;
+    if (active.length > 0) return {url:active[0].url,trusted:false};
+    if (envUrl) return {url:envUrl,trusted:true};
 
     // Fallback: GitHub file (single Pi node publishing its tunnel URL)
     try {
@@ -103,12 +104,14 @@ export async function resolveNodeUrl(preferModel?: string): Promise<string> {
         );
         if (ghResp.ok) {
             const url = safeNodeUrl(await ghResp.text());
-            if (url) return url;
+            if (url) return {url,trusted:false};
         }
     } catch { /* GitHub unavailable */ }
 
-    return '';
+    return {url:'',trusted:false};
 }
+
+export async function resolveNodeUrl(preferModel?:string):Promise<string>{return (await resolveNodeTarget(preferModel)).url;}
 
 // ── Inference calls ───────────────────────────────────────────────────────────
 
@@ -126,9 +129,9 @@ export async function callNodeChat(
     const envUrl  = safeNodeUrl(process.env.GSTD_NODE_URL, { trusted: true });
 
     // Candidate URLs: env override first, then scored nodes, then GitHub fallback
-    const candidates: string[] = [];
-    candidates.push(...nodes.map((n) => n.url));
-    if (envUrl && candidates.length === 0) candidates.push(envUrl);
+    const candidates: {url:string;trusted:boolean}[] = [];
+    candidates.push(...nodes.map((n) => ({url:n.url,trusted:false})));
+    if (envUrl && candidates.length === 0) candidates.push({url:envUrl,trusted:true});
 
     // GitHub fallback only if no KV nodes
     if (candidates.length === 0) {
@@ -139,7 +142,7 @@ export async function callNodeChat(
             );
             if (ghResp.ok) {
                 const url = safeNodeUrl(await ghResp.text());
-                if (url) candidates.push(url);
+                if (url) candidates.push({url,trusted:false});
             }
         } catch {}
     }
@@ -148,11 +151,11 @@ export async function callNodeChat(
 
     // Try candidates in order (best score first)
     let lastErr = '';
-    for (const url of Array.from(new Set(candidates)).slice(0, 3)) {
+    for (const {url,trusted} of Array.from(new Map(candidates.map(n=>[n.url,n])).values()).slice(0, 3)) {
         const remainingMs = timeoutMs - (Date.now() - start);
         if (remainingMs <= 0) break;
         try {
-            const resp = await fetch(`${url}/v1/chat/completions`, {
+            const resp = await fetchNode(`${url}/v1/chat/completions`, {
                 method:  'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -163,7 +166,7 @@ export async function callNodeChat(
                     stream:     false,
                 }),
                 signal: AbortSignal.timeout(remainingMs),
-            });
+            },trusted);
             if (!resp.ok) { lastErr = `Node ${resp.status}`; continue; }
             const data: any = await resp.json();
             if (data._gstd?.tier === 'fallback' || data._gstd?.error) { lastErr = 'Node busy'; continue; }
@@ -197,7 +200,7 @@ export async function callNodeParallel(
 
     // Race: first node to return a valid response wins
     const attempts = targets.map(async (node) => {
-        const resp = await fetch(`${node.url}/v1/chat/completions`, {
+        const resp = await fetchNode(`${node.url}/v1/chat/completions`, {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -234,10 +237,10 @@ export async function* streamNodeChat(
     opts: NodeCallOptions = {}
 ): AsyncGenerator<string> {
     const { maxTokens = 2048, temperature = 0.7, timeoutMs = 55_000, model } = opts;
-    const nodeUrl = await resolveNodeUrl(model);
+    const {url:nodeUrl,trusted} = await resolveNodeTarget(model);
     if (!nodeUrl) throw new Error('No GSTD node available');
 
-    const resp = await fetch(`${nodeUrl}/v1/chat/completions`, {
+    const resp = await fetchNode(`${nodeUrl}/v1/chat/completions`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -248,7 +251,7 @@ export async function* streamNodeChat(
             stream:     true,
         }),
         signal: AbortSignal.timeout(timeoutMs),
-    });
+    },trusted);
 
     if (!resp.ok) throw new Error(`Node ${resp.status}`);
     const reader = resp.body?.getReader();

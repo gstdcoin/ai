@@ -1,3 +1,4 @@
+import {endpointVerified} from './src/lib/nodeEndpointStatus';
 // Capture native fetch before OpenNext installs request-context wrappers.
 export const nativePublicFetch=globalThis.fetch.bind(globalThis);
 const NativeAbortController=globalThis.AbortController;
@@ -43,21 +44,22 @@ export async function publicNetworkResponse(req:Request,env:Env,transport:typeof
    const [registered,done,paid,treasury,users,burned,price,ok,fail]=first[1].map((v:unknown)=>Number(v)||0),online=records.filter(n=>isNodeOnline(n)).length;
    return Response.json({nodes_online:online,active_nodes:online,active_workers:online,total_nodes:records.length,total_registered:records.length,registration_events:registered,total_users:users,total_tasks:done,probes_verified:ok,probes_failed:fail,tasks_24h:null,tasks_completed:done,queue_depth:Number(first[2])||0,total_gstd_paid:paid,protocol_treasury_gstd:treasury,total_burned:burned,gstd_price_usd:price,timestamp:Date.now()},{headers});
   }
-  const counts=new Map<string,{count:number;lat:number[]}>(),refs:{model:string;node:string;key:string}[]=[];
+  const counts=new Map<string,{count:number;lat:number[]}>(),refs:{model:string;node:string;key:string;verified:boolean}[]=[];
   for(const n of records){
    if(!isNodeOnline(n)||!safeNodeUrl(n.node_url||n.multiaddrs?.[0]||''))continue;
    for(const model of [...new Set<string>((Array.isArray(n.capabilities)?n.capabilities:[]).filter((s:unknown)=>typeof s==='string'))]){
     if(refs.length>=200)throw Error('registry_capacity_exceeded');
     const row=counts.get(model)||{count:0,lat:[]};row.count++;if(Number.isFinite(n.avg_latency_ms)&&n.avg_latency_ms>0)row.lat.push(n.avg_latency_ms);counts.set(model,row);
-    refs.push({model,node:n.node_id,key:await keyFor(n.node_id,model)});
+    refs.push({model,node:n.node_id,key:await keyFor(n.node_id,model),verified:endpointVerified(n)});
    }
   }
   const offers=refs.length?(await commands(env,[['MGET',...refs.map(r=>r.key)]],transport))[0]:[];
   const models=Array.from(counts,([model_id,row])=>{
    const profiles=refs.flatMap((r,i)=>{if(r.model!==model_id||!offers[i])return[];const o=typeof offers[i]==='string'?JSON.parse(offers[i]):offers[i];return canonicalModelId(o.model)===canonicalModelId(model_id)&&o.nodeId===r.node?[o]:[];});
-   const active=profiles.filter(o=>o.active),price=getModelPrice(model_id);
+   const eligible=refs.filter(r=>r.model===model_id&&r.verified&&!profiles.some(o=>o.nodeId===r.node&&!o.active));
+   const active=profiles.filter(o=>o.active&&eligible.some(r=>r.node===o.nodeId)),price=getModelPrice(model_id);
    const net=active.length?active.reduce((a,o)=>BigInt(o.netUsdMicro)<a?BigInt(o.netUsdMicro):a,BigInt(active[0].netUsdMicro)):null;
-   return {model_id,display_name:model_id,nodes_count:row.count,price_gstd:price,is_free:price===0,avg_latency_ms:row.lat.length?Math.round(row.lat.reduce((a,b)=>a+b,0)/row.lat.length):null,category:model_id.startsWith('codellama')?'code':model_id.startsWith('deepseek-r1')?'reasoning':model_id.startsWith('odysseus-research')?'research':model_id.startsWith('odysseus')?'workspace':'chat',pricing:price===0?'free':profiles.length?'quote_required':'legacy_fixed_gstd',operator_offers_count:active.length,paid_paused:profiles.length===row.count&&profiles.every(o=>!o.active),min_executor_usd:net===null?null:String(net/1000000n)+'.'+String(net%1000000n).padStart(6,'0')};
+   return {model_id,display_name:model_id,nodes_count:row.count,price_gstd:price,is_free:price===0,avg_latency_ms:row.lat.length?Math.round(row.lat.reduce((a,b)=>a+b,0)/row.lat.length):null,category:model_id.startsWith('codellama')?'code':model_id.startsWith('deepseek-r1')?'reasoning':model_id.startsWith('odysseus-research')?'research':model_id.startsWith('odysseus')?'workspace':'chat',pricing:price===0?'free':profiles.length?'quote_required':'legacy_fixed_gstd',operator_offers_count:active.length,paid_paused:price>0&&eligible.length===0,payment_ready_nodes:eligible.length,min_executor_usd:net===null?null:String(net/1000000n)+'.'+String(net%1000000n).padStart(6,'0')};
   }).sort((a,b)=>Number(b.is_free)-Number(a.is_free)||b.nodes_count-a.nodes_count||a.price_gstd-b.price_gstd);
   return Response.json({models,updated_at:new Date().toISOString()},{headers});
  }catch(e){const reason=e instanceof Error&&/^(registry_[a-z_]+|registry_http_[0-9]{3})$/.test(e.message)?e.message:'registry_response_invalid';return Response.json({error:'network_registry_unavailable',reason,error_kind:e instanceof Error?e.name:'UnknownError',stage},{status:503,headers:{...headers,'Cache-Control':'no-store'}});}

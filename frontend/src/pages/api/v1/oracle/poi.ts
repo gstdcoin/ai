@@ -1,3 +1,4 @@
+import {fetchNode} from '../../../../lib/nodeFetch';
 /**
  * GET /api/v1/oracle/poi
  *
@@ -27,7 +28,7 @@ async function fetchFromNode(): Promise<object | null> {
             const age = now - new Date(node.last_seen || 0).getTime();
             if (age > 600_000) continue;
 
-            const r = await fetch(`${url}/api/oracle/poi/summary`, {
+            const r = await fetchNode(`${url}/api/oracle/poi/summary`, {
                 signal: AbortSignal.timeout(6000),
             });
             if (r.ok) return await r.json();

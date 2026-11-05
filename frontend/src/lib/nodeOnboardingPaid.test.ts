@@ -129,3 +129,7 @@ it('refunds failed SDK work without earnings or fees',async()=>{
  const cancelled=await call(cancelCampaign,'POST',{campaign_id:f.campaignId},f.payerHeaders);
  expect(cancelled.status).toBe(200);expect((await moneyBalance(f.payer)).balance_gstd).toBe(10);
 });
+
+vi.mock('./nodeEndpointProof',()=>({ensureNodeEndpoint:async(_id:string,record:any)=>{Object.assign(record,{endpoint_verified_url:record.node_url,endpoint_verified_key:'ab'.repeat(32),endpoint_verified_at:Date.now()});return true;}}));
+
+vi.mock('./nodeFetch',()=>({fetchNode:(url:string,init:RequestInit)=>fetch(url,init)}));

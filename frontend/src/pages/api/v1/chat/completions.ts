@@ -1,3 +1,5 @@
+import {admitEnterpriseCapacity} from '../../../../lib/enterpriseCapacity';
+import {fetchNode} from '../../../../lib/nodeFetch';
 import { canonicalModelId } from '../../../../lib/modelId';
 /**
  * POST /api/v1/chat/completions
@@ -90,7 +92,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
     }
 
-    const maxTok  = Math.min(parseInt(max_tokens) || 2048, 16384);
+    if(max_tokens!==undefined&&(!Number.isSafeInteger(max_tokens)||max_tokens<1||max_tokens>16384))return res.status(400).json({error:'invalid_max_tokens'});
+    const maxTok = max_tokens ?? 2048;
     const temp    = Math.min(Math.max(parseFloat(temperature) || 0.7, 0), 2);
     const taskId  = randomBytes(8).toString('hex');
 
@@ -155,9 +158,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
     }
 
+    let enterpriseCapacity=null;
+    if(enterpriseKey){
+        const requestId=req.headers['idempotency-key'];
+        if(requestId!==undefined&&(typeof requestId!=='string'||!/^[A-Za-z0-9_-]{8,100}$/.test(requestId)))return res.status(400).json({error:'invalid_idempotency_key'});
+        try{enterpriseCapacity=await admitEnterpriseCapacity(enterpriseKey.id,enterpriseKey.monthly_limit_tokens,messages,maxTok,requestId||taskId);}
+        catch(e){const error=e instanceof Error?e.message:'enterprise_capacity_unavailable';return res.status(error==='enterprise_monthly_capacity_exceeded'?429:error==='enterprise_request_already_admitted'?409:error==='invalid_enterprise_capacity_request'?400:503).json({error,dispatched:false});}
+    }
+
     // ── Forward to GSTD node ───────────────────────────────────────────────
     try {
-        const resp = await fetch(`${nodeUrl}/v1/chat/completions`, {
+        const resp = await fetchNode(`${nodeUrl}/v1/chat/completions`, {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify({ model: resolvedModel, messages, stream: false, max_tokens: maxTok, temperature: temp }),
@@ -213,7 +224,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             _gstd: {
                 routed_via: nodeUrl,
                 model:      data.model || resolvedModel,
-                enterprise: enterpriseKey ? { org: enterpriseKey.org, tier: enterpriseKey.tier } : null,
+                enterprise: enterpriseKey ? { org: enterpriseKey.org, tier: enterpriseKey.tier,capacity:enterpriseCapacity } : null,
                 billing:    billingCharge > 0 ? { charged_gstd: billingCharge } : { free: true },
             },
         });

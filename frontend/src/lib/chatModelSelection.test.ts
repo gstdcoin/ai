@@ -38,3 +38,6 @@ it('fails closed before computation if quota storage is unavailable',async()=>{
  const res=response();await handler({method:'POST',headers:{},body:{tier:'free',messages:[{role:'user',content:'hello'}]}} as any,res as any);
  expect(res.statusCode).toBe(503);expect(callNodeChat).not.toHaveBeenCalled();
 });
+
+// Consumer fixture: outbound transport is validated separately in nodeFetch.test.ts.
+vi.mock('./nodeFetch',()=>({fetchNode:(url:string,init:RequestInit)=>fetch(url,init)}));

@@ -1,3 +1,5 @@
+import {fetchNode} from './nodeFetch';
+import {endpointVerified} from './nodeEndpointStatus';
 import {requiresWorkQuote,requireWorkQuote} from './workEconomics';
 import type {AgentGrant} from './money';
 import { canonicalModelId } from './modelId';
@@ -47,6 +49,7 @@ export async function paidInference(req: NextApiRequest, res: NextApiResponse, o
             const raw = await kvGet('node:' + candidate.nodeId);
             try {
                 const node = JSON.parse(raw || '{}');
+                if(!endpointVerified(node,candidate.url))continue;
                 executor = await executorPayout(candidate.nodeId, String(node.wallet_address || ''));
                 if(quote&&quote.executor!==executor)continue;
                 if(grant&&!grant.executors.some(e=>e.nodeId===candidate.nodeId&&e.wallet===executor))continue;
@@ -60,7 +63,7 @@ export async function paidInference(req: NextApiRequest, res: NextApiResponse, o
         const reservation = await reserveMoney(wallet,jobId,chargeNano,fingerprint,Date.now()+120_000,'chat',quote?{key:'economics:quote-use:v1:'+quote.id,value:JSON.stringify({jobId,wallet}),once:true}:undefined,grant?{id:grant.id,tokenHash:grant.tokenHash,model:options.model,nodeId:target.nodeId,executor,maxTokens:options.maxTokens}:undefined);
         if (!reservation.acquired) return res.status(409).json({ error: 'request_in_progress', payment_id: jobId });
         acquired = true;
-        const response = await fetch(target.url + '/v1/chat/completions', {
+        const response = await fetchNode(target.url + '/v1/chat/completions', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ model: options.model, messages: options.messages, stream: false,
                 max_tokens: options.maxTokens, temperature: 0.7 }),

@@ -1,3 +1,4 @@
+import {endpointVerified} from './nodeEndpointStatus';
 import {randomUUID} from 'node:crypto';
 import {canonicalModelId} from './modelId';
 import {Address} from '@ton/core';
@@ -81,6 +82,7 @@ export async function createWorkQuote(wallet:string,model:string,messages:{role:
   const offer:NodeOffer|null=rawOffers[i]?JSON.parse(rawOffers[i]!):null;
   if(!offer?.active||canonicalModelId(offer.model)!==canonicalModelId(model)||offer.nodeId!==candidates[i].nodeId||work.bytes>offer.maxInputBytes||maxTokens>offer.maxTokens)continue;
   const record=JSON.parse(await kvGet('node:'+offer.nodeId)||'{}');
+  if(!endpointVerified(record,candidates[i].url))continue;
   let executor:string;try{executor=await executorPayout(offer.nodeId,String(record.wallet_address||''));}catch{continue;}
   if(executor!==offer.wallet||grant&&!grant.executors.some(e=>e.nodeId===offer.nodeId&&e.wallet===executor))continue;
   offers.push({offer,executor});

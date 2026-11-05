@@ -106,3 +106,9 @@ it('canonical latest aliases cannot bypass an operator offer, and disabling an o
  await kvSet(offerKey('economic-node','economic-model'),JSON.stringify({...offer,active:false}));
  await expect(requiresWorkQuote('economic-node','economic-model:latest',[],operator)).rejects.toThrow('operator_offer_disabled');
 });
+
+// Consumer fixture: outbound transport is validated separately in nodeFetch.test.ts.
+vi.mock('./nodeFetch',()=>({fetchNode:(url:string,init:RequestInit)=>fetch(url,init)}));
+
+// Financial orchestration fixture assumes an independently attested executor.
+vi.mock('./nodeEndpointStatus',()=>({endpointVerified:()=>true}));

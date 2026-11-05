@@ -1,3 +1,4 @@
+import {ensureNodeEndpoint} from '../../../../lib/nodeEndpointProof';
 /**
  * POST /api/v1/nodes/heartbeat
  *
@@ -82,6 +83,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if(record.wallet_address && !await kvNodeWalletSlot(record.wallet_address,nodeId,NODE_TTL,10))
             return res.status(429).json({error:'too_many_nodes'});
 
+        const previousEndpoint={...record};
         // Update live fields
         record.last_seen       = new Date().toISOString();
         // Preserve server-owned task counters and earnings from the stored record.
@@ -105,6 +107,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             (record as any).models_loaded = body.models_loaded.filter((m:unknown)=>typeof m==='string' && record.capabilities.includes(m));
         }
 
+        await ensureNodeEndpoint(nodeId,record,previousEndpoint);
         // Also cache the node_url for fast lookup by completions endpoint
         const nodeUrlForCache = body.node_url || body.multiaddrs?.[0] || '';
         // peers_online: read the cache maintained by this endpoint and nodes/list.ts rather

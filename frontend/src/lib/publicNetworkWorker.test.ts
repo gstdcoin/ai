@@ -2,7 +2,7 @@ import {it,expect,vi,afterEach} from 'vitest';
 import {publicNetworkResponse} from '../../worker-public-network';
 import {offerKey} from './workEconomics';
 const env={KV_REST_API_URL:'https://redis.invalid',KV_REST_API_TOKEN:'fixture-only'};
-const node={node_id:'native-node',node_url:'https://native.example.com',last_seen:new Date().toISOString(),capabilities:['exact:small']};
+const node={node_id:'native-node',node_url:'https://native.example.com',last_seen:new Date().toISOString(),capabilities:['exact:small'],endpoint_verified_url:'https://native.example.com',endpoint_verified_key:'a'.repeat(64),endpoint_verified_at:Date.now()};
 afterEach(()=>vi.unstubAllGlobals());
 it('reads live counters in batches without Next rendering or publishing credentials',async()=>{
  const calls:any[]=[];vi.stubGlobal('fetch',vi.fn(async(_u,init)=>{expect(init.redirect).toBe('manual');const body=JSON.parse(init.body);calls.push(body);return Response.json(body.length===3?[{result:['node:native-node','node:metadata:cache']},{result:['1','7','0.1','0.01','2','0','0.02','3','1']},{result:4}]:[{result:[JSON.stringify(node)]}]);}));
@@ -25,4 +25,12 @@ it('does not follow a Redis redirect or forward its authorization elsewhere',asy
  const fetcher=vi.fn(async()=>new Response('',{status:302,headers:{Location:'https://attacker.invalid'}}));vi.stubGlobal('fetch',fetcher);
  const r=(await publicNetworkResponse(new Request('https://app.gstdtoken.com/api/v1/network/stats'),env))!;
  expect(r.status).toBe(503);expect(fetcher).toHaveBeenCalledTimes(1);expect((await r.json()).reason).toBe('registry_http_302');
+});
+
+it('advertises installed models without claiming an unverified endpoint can accept payment',async()=>{
+ let n=0;const unverified={...node,endpoint_verified_at:0};
+ vi.stubGlobal('fetch',vi.fn(async()=>Response.json([{result:++n===1?['node:native-node']:n===2?[JSON.stringify(unverified)]:[null]}])));
+ const r=(await publicNetworkResponse(new Request('https://app.gstdtoken.com/api/v1/models/available'),env))!;
+ const data=await r.json();expect(r.status).toBe(200);expect(data.models[0].nodes_count).toBe(1);
+ expect(data.models[0].paid_paused).toBe(true);expect(data.models[0].payment_ready_nodes).toBe(0);
 });

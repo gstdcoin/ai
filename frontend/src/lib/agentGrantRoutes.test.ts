@@ -59,3 +59,9 @@ it('requires a real owner signature and reuses receipts without duplicate infere
  expect((await call(paidHandler,{...body,request_id:'route-paid-request-3'},auth)).code).toBe(403);
  expect((await call(paidHandler,null,auth,'GET',{request_id:body.request_id})).value.state).toBe('captured');
 });
+
+// Consumer fixture: outbound transport is validated separately in nodeFetch.test.ts.
+vi.mock('./nodeFetch',()=>({fetchNode:(url:string,init:RequestInit)=>fetch(url,init)}));
+
+// Financial orchestration fixture assumes an independently attested executor.
+vi.mock('./nodeEndpointStatus',()=>({endpointVerified:()=>true}));

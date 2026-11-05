@@ -100,3 +100,9 @@ it('rehearses deposit, reserve, paid inference, refund, zero-fee claim and canon
  expect(system.payoutInFlight).toBeUndefined();
  expect((await getWithdrawal(requested.body.withdrawal.id))!.receiptHash).toBe(fixture.withdrawal.hash);
 },30_000);
+
+// Consumer fixture: outbound transport is validated separately in nodeFetch.test.ts.
+vi.mock('./nodeFetch',()=>({fetchNode:(url:string,init:RequestInit)=>fetch(url,init)}));
+
+// Financial orchestration fixture assumes an independently attested executor.
+vi.mock('./nodeEndpointStatus',()=>({endpointVerified:()=>true}));

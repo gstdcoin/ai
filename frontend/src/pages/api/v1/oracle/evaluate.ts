@@ -1,3 +1,6 @@
+import {admitEnterpriseCapacity} from '../../../../lib/enterpriseCapacity';
+import {canonicalModelId} from '../../../../lib/modelId';
+import {fetchNode} from '../../../../lib/nodeFetch';
 /**
  * POST /api/v1/oracle/evaluate
  *
@@ -34,9 +37,9 @@ interface NodeRecord {
     tasks_completed?: number;
 }
 
-async function getNodeUrl(): Promise<string> {
+async function getNodeUrl(): Promise<{url:string;trusted:boolean}|null> {
     const envUrl = safeNodeUrl(process.env.GSTD_NODE_URL, { trusted: true });
-    if (envUrl) return envUrl;
+    if (envUrl) return {url:envUrl,trusted:true};
 
     try {
         const nodeKeys = (await kvKeys('node:')).filter((k: string) => !k.slice(5).includes(':'));
@@ -55,7 +58,7 @@ async function getNodeUrl(): Promise<string> {
             }
             if (alive.length > 0) {
                 alive.sort((a, b) => a.tasks - b.tasks);
-                return alive[0].url;
+                return {url:alive[0].url,trusted:false};
             }
         }
     } catch { /* KV unavailable */ }
@@ -68,10 +71,10 @@ async function getNodeUrl(): Promise<string> {
         );
         if (r.ok) {
             const url = safeNodeUrl(await r.text());
-            if (url) return url;
+            if (url) return {url,trusted:false};
         }
     } catch { /* ignored */ }
-    return '';
+    return null;
 }
 
 function buildPrompt(body: Record<string, unknown>) {
@@ -160,8 +163,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const authHeader = String(req.headers['authorization'] || '');
     const bearerMatch = authHeader.match(/^Bearer (gstd_\S+)$/);
 
+    let enterpriseKey=null;
     if (bearerMatch) {
         const key = await validateEnterpriseKey(bearerMatch[1]);
+        enterpriseKey=key;
         if (!key) return res.status(401).json({ error: 'Invalid or expired enterprise API key' });
         if (!(await kvRateLimit(`oracle_ent:${key.id}`, key.rpm_limit, 60_000)))
             return res.status(429).json({ error: `Rate limit: ${key.rpm_limit} rpm` });
@@ -182,24 +187,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: 'Required: symbol, side' });
     }
 
-    const nodeUrl = await getNodeUrl();
-    if (!nodeUrl) {
+    const target = await getNodeUrl();
+    if (!target) {
         return res.status(503).json({
             error: 'No GSTD nodes online. Network is starting up — try again in 60s.',
             nodes_online: 0,
         });
     }
 
+    const nodeUrl=target.url;
     const messages = buildPrompt(body);
+    if(enterpriseKey){
+        if(enterpriseKey.allowed_models.length&&!enterpriseKey.allowed_models.includes('llama3.2:3b'))return res.status(403).json({error:'model_not_allowed'});
+        const requestId=req.headers['idempotency-key'];
+        if(requestId!==undefined&&(typeof requestId!=='string'||!/^[A-Za-z0-9_-]{8,100}$/.test(requestId)))return res.status(400).json({error:'invalid_idempotency_key'});
+        try{await admitEnterpriseCapacity(enterpriseKey.id,enterpriseKey.monthly_limit_tokens,messages,512,requestId||'oracle-'+randomId());}
+        catch(e){const error=e instanceof Error?e.message:'enterprise_capacity_unavailable';return res.status(error==='enterprise_monthly_capacity_exceeded'?429:error==='enterprise_request_already_admitted'?409:error==='invalid_enterprise_capacity_request'?400:503).json({error,dispatched:false});}
+    }
     const t0 = Date.now();
 
     try {
-        const nodeRes = await fetch(`${nodeUrl}/api/v1/chat`, {
+        const nodeRes = await fetchNode(`${nodeUrl}/api/v1/chat`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ messages, model: 'llama3.2:3b' }),
+            body: JSON.stringify({ messages, model: 'llama3.2:3b',max_tokens:512 }),
             signal: AbortSignal.timeout(110_000),
-        });
+        },target.trusted);
 
         if (!nodeRes.ok) {
             const txt = await nodeRes.text().catch(() => '');
@@ -207,6 +220,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         const data = await nodeRes.json();
+        if(typeof data.model!=='string'||canonicalModelId(data.model)!=='llama3.2:3b')return res.status(502).json({error:'model_mismatch'});
         const latency_ms = Date.now() - t0;
         const text   = data?.choices?.[0]?.message?.content || '';
         const gstd   = data?._gstd || {};

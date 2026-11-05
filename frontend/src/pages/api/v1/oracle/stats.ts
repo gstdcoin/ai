@@ -1,3 +1,4 @@
+import {fetchNode} from '../../../../lib/nodeFetch';
 /**
  * GET /api/v1/oracle/stats
  *
@@ -16,9 +17,9 @@ import { safeNodeUrl } from '../../../../lib/safeNodeUrl';
 const CACHE_KEY = 'oracle:stats:cache';
 const CACHE_TTL = 120; // 2 minutes
 
-async function findNodeUrl(): Promise<string | null> {
+async function findNodeUrl(): Promise<{url:string;trusted:boolean}|null> {
     // 1. Env override
-    if (process.env.GSTD_NODE_URL) return safeNodeUrl(process.env.GSTD_NODE_URL, { trusted: true });
+    if(process.env.GSTD_NODE_URL){const url=safeNodeUrl(process.env.GSTD_NODE_URL,{trusted:true});return url?{url,trusted:true}:null;}
     // 2. Live KV registry (most reliable — updated by every heartbeat)
     try {
         const keys = (await kvKeys('node:')).filter((k: string) => !k.slice(5).includes(':'));
@@ -31,7 +32,7 @@ async function findNodeUrl(): Promise<string | null> {
                 const url = safeNodeUrl(n.node_url || n.multiaddrs?.[0] || '');
                 if (!url) continue;
                 if (now - new Date(n.last_seen || 0).getTime() > 600_000) continue;
-                return url;
+                return {url,trusted:false};
             }
         }
     } catch { /* KV unavailable */ }
@@ -43,15 +44,16 @@ async function findNodeUrl(): Promise<string | null> {
         );
         if (!r.ok) return null;
         const url = safeNodeUrl(await r.text());
-        return url;
+        return url?{url,trusted:false}:null;
     } catch { return null; }
 }
 
 async function fetchFromNode(): Promise<object | null> {
-    const nodeUrl = await findNodeUrl();
-    if (!nodeUrl) return null;
+    const target = await findNodeUrl();
+    if (!target) return null;
+    const nodeUrl=target.url;
     try {
-        const res = await fetch(`${nodeUrl}/api/oracle/stats`, { signal: AbortSignal.timeout(8000) });
+        const res = await fetchNode(`${nodeUrl}/api/oracle/stats`, { signal: AbortSignal.timeout(8000) },target.trusted);
         if (!res.ok) return null;
         return await res.json();
     } catch { return null; }

@@ -1,3 +1,4 @@
+import {ensureNodeEndpoint} from '../../../../lib/nodeEndpointProof';
 /**
  * POST /api/v1/nodes/register
  *
@@ -123,15 +124,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             mode:            specs.mode || 'cloud',
             version:         specs.version || body.node_version || '3.0',
             capabilities,
-            multiaddrs:      specs.multiaddrs || [],
+            multiaddrs:      specs.multiaddrs || existing?.multiaddrs || [],
             registered_at:   existing?.registered_at || now,
             last_seen:       now,
             tasks_completed: existing?.tasks_completed || 0,
             gstd_earned:     existing?.gstd_earned     || 0,
             uptime_hours:    existing?.uptime_hours    || 0,
         };
-        if (incomingUrl) record.node_url = incomingUrl;
+        if (incomingUrl || existing?.node_url) record.node_url = incomingUrl || existing?.node_url;
 
+        await ensureNodeEndpoint(nodeId,record,existing);
         await kvSet(`node:${nodeId}`, JSON.stringify(record), NODE_TTL);
         if (isNewNode) await kvIncr('stats:total_registered');
 

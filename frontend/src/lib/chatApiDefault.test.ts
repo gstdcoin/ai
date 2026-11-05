@@ -26,3 +26,6 @@ it('an explicitly requested unavailable free model still fails without silently 
  expect(res.code).toBe(503);expect(res.body._gstd.error).toBe('model_unavailable');
  expect(state.nodes).toHaveBeenCalledWith('llama3.2:3b');expect(fetcher).not.toHaveBeenCalled();
 });
+
+// Consumer fixture: outbound transport is validated separately in nodeFetch.test.ts.
+vi.mock('./nodeFetch',()=>({fetchNode:(url:string,init:RequestInit)=>fetch(url,init)}));

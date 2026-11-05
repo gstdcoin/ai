@@ -1,3 +1,4 @@
+import {endpointVerified} from '../../../../lib/nodeEndpointStatus';
 /**
  * GET /api/v1/models/available
  * Returns models currently available across active GSTD nodes with pricing.
@@ -23,6 +24,7 @@ export interface AvailableModel {
     operator_offers_count?:number;
     min_executor_usd?:string|null;
     paid_paused?:boolean;
+    payment_ready_nodes?:number;
 }
 
 function displayName(id: string): string {
@@ -62,7 +64,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
     // Aggregate models from all active nodes
-    const offerRefs:{model:string;key:string}[]=[];
+    const offerRefs:{model:string;key:string;node:string;verified:boolean}[]=[];
     const modelCount: Record<string, number>       = {};
     const modelLatency: Record<string, number[]>   = {};
 
@@ -79,7 +81,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 const caps: string[] = Array.isArray(node.capabilities) ? [...new Set<string>(node.capabilities.filter((c:unknown)=>typeof c==='string'))] : [];
                 for (const cap of caps) {
                     modelCount[cap] = (modelCount[cap] || 0) + 1;
-                    if(offerRefs.length<200)offerRefs.push({model:cap,key:offerKey(node.node_id,cap)});
+                    if(offerRefs.length<200)offerRefs.push({model:cap,key:offerKey(node.node_id,cap),node:node.node_id,verified:endpointVerified(node)});
                     if (node.avg_latency_ms) {
                         if (!modelLatency[cap]) modelLatency[cap] = [];
                         modelLatency[cap].push(node.avg_latency_ms);
@@ -105,7 +107,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const latArr  = modelLatency[modelId] || [];
         const avgLat  = latArr.length > 0 ? Math.round(latArr.reduce((a, b) => a + b, 0) / latArr.length) : null;
         const price   = getModelPrice(modelId);
-        const profiles=offersByModel.get(modelId)||[],activeOffers=profiles.filter(o=>o.active);
+        const profiles=offersByModel.get(modelId)||[],eligible=offerRefs.filter(r=>r.model===modelId&&r.verified&&!profiles.some(o=>o.nodeId===r.node&&!o.active)),activeOffers=profiles.filter(o=>o.active&&eligible.some(r=>r.node===o.nodeId));
 
         models.push({
             model_id:       modelId,
@@ -117,7 +119,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             category:       modelCategory(modelId),
             pricing:price===0?'free':offersByModel.has(modelId)?'quote_required':'legacy_fixed_gstd',
             operator_offers_count:activeOffers.length,
-            paid_paused:profiles.length===count&&profiles.every(o=>!o.active),
+            paid_paused:price>0&&eligible.length===0,
+            payment_ready_nodes:eligible.length,
             min_executor_usd:activeOffers.length?usdUnits(activeOffers.reduce((min,o)=>BigInt(o.netUsdMicro)<min?BigInt(o.netUsdMicro):min,BigInt(activeOffers[0].netUsdMicro))):null,
         });
     }
