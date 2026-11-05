@@ -61,7 +61,9 @@ async function run() {
     assert.equal(races.filter(x=>x.acquired).length,1);
     await m.captureMoney('race',operator,{answer:'accepted'});
     assert.equal((await m.moneyBalance(operator)).pending_nano,'85000000000000000');
-    assert.deepEqual(JSON.parse(command('GET','money:v2:fund:protocol')),{nano:'10000000000000000'});
+    assert.equal(JSON.parse(command('GET','money:v2:fund:protocol')).nano,'0');
+    assert.equal(JSON.parse(command('GET','money:v2:fund:protocol')).creditedNano,'10000000000000000');
+    assert.equal((await m.moneyBalance(require('../src/lib/mainnetEscrowManifest.ts').MAINNET_ESCROW.protocol)).available_nano,'10000000000000000');
     const claim=await m.claimMoney(operator);
     assert.equal(claim.amount,85000000000000000n);
     await m.captureMoney('race',operator,{answer:'retry'});

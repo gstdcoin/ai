@@ -17,6 +17,7 @@ export default function PaymentsPage() {
     const {address}=useWalletStore();
     const [tonConnect]=useTonConnectUI();
     const [balance,setBalance]=useState<any>(null),[rows,setRows]=useState<Withdrawal[]>([]);
+    const [funds,setFunds]=useState<any>(null);
     const [operator,setOperator]=useState(false),[amount,setAmount]=useState(''),[hash,setHash]=useState('');
     const [receipts,setReceipts]=useState<Record<string,string>>({});
     const [status,setStatus]=useState(''),[busy,setBusy]=useState(false);
@@ -31,7 +32,8 @@ export default function PaymentsPage() {
         return data;
     }
     async function load() {
-        const [b,w]=await Promise.all([api('/api/v1/credits/balance'),api('/api/v1/finance/withdrawals?scope=operator')]);
+        const [b,w,f]=await Promise.all([api('/api/v1/credits/balance'),api('/api/v1/finance/withdrawals?scope=operator'),api('/api/v1/fund/status')]);
+        setFunds(f);
         setBalance(b);setRows(w.withdrawals);setOperator(w.operator);
     }
     useEffect(()=>{setBalance(null);setRows([]);setStatus('');setOperator(false);if(address)load().catch(e=>setStatus(e.message));},[address]);
@@ -57,6 +59,7 @@ export default function PaymentsPage() {
         <section className="rounded-xl border border-violet-400/30 p-5 space-y-3" aria-labelledby="payment-paths">
             <h2 id="payment-paths" className="text-xl font-semibold">{p('paths_title')}</h2>
             <p className="text-gray-300">{p('paths_notice')}</p>
+            <p><Link href="/buy" className="underline text-violet-300">{t('buy_gstd.title')}</Link></p>
             <p><Link href="/agent-access" className="underline text-violet-300">{t('agent_access.title')}</Link></p>
             <p><Link href="/escrow-mainnet" className="underline text-violet-300">{p('mainnet_escrow')}</Link></p>
             <p className="text-sm text-gray-400">{p('mainnet_notice')}</p>
@@ -89,6 +92,16 @@ export default function PaymentsPage() {
             <Link className="inline-block underline" href="/chat">{p('use_balance')}</Link>
             <p className="text-sm text-gray-400">{p('split')}</p>
             {!balance.backing_verified && <p role="alert" className="text-amber-300">{p('reserve_unavailable')}</p>}
+        </section>}
+        {balance && funds && balance.wallet===funds.protocol_beneficiary && <section className="rounded-xl border border-violet-400/30 p-5 space-y-3">
+            <h2 className="text-xl">{t('protocol_income.title')}</h2>
+            <p>{t('protocol_income.automatic')}</p>
+            <p>{t('protocol_income.credited')}: {funds.protocol_credited_gstd} GSTD</p>
+            <p>{t('protocol_income.historical')}: {funds.protocol_treasury_gstd} GSTD</p>
+            <button className={button} disabled={busy||!balance.backing_verified||!(funds.protocol_treasury_gstd>0)} onClick={()=>act(()=>api('/api/v1/finance/protocol',{action:'credit_protocol'},crypto.randomUUID()))}>{t('protocol_income.reconcile')}</button>
+            <p className="text-sm text-gray-400">{t('protocol_income.notice')}</p>
+            <p className="text-sm text-amber-200">{t('protocol_income.reserve')}</p>
+            <a className="underline" href={funds.reserve_target.poolUrl} target="_blank" rel="noopener noreferrer">{t('protocol_income.pool')}</a>
         </section>}
         {balance && <section className="rounded-xl border border-white/15 p-5 space-y-3">
             <h2 className="text-xl">{p('deposit_title')}</h2><p className="text-sm text-gray-300">{p('deposit_hint')}</p>

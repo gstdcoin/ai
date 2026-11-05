@@ -36,7 +36,7 @@ export default function TreasuryWidget() {
 
       const data = await response.json();
 
-      const balance = data?.treasury_gstd;
+      const balance = data?.protocol_credited_gstd;
       if (!Number.isFinite(balance)) throw new Error('Invalid fund balance');
       setTreasuryGstd(balance);
     } catch (err: any) {
@@ -53,10 +53,10 @@ export default function TreasuryWidget() {
         <div>
           <h3 className="text-lg font-bold text-white flex items-center gap-2 font-display">
             <span className="text-2xl">🏛️</span>
-            {t('platform_treasury', 'Platform Treasury') || 'Platform Treasury'}
+            {t('protocol_income.title')}
           </h3>
           <p className="text-xs text-gray-400 mt-1">
-            {t('treasury_fee_desc', '10% of all inference fees') || '10% of all inference fees'}
+            {t('protocol_income.credited')}
           </p>
         </div>
         <button

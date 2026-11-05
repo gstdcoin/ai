@@ -59,10 +59,10 @@ async function fixture() {
  expect((await moneyBalance(payer)).reserved_gstd).toBe(10);
  return {nodeId,payer,operator,signed,payerHeaders,operatorSession,campaignId:campaign.value.campaign_id,taskId:queued.value.task_id};
 }
-async function fundAmount(name:string) {const raw=await kvGet('money:v2:fund:'+name);return BigInt(raw?JSON.parse(raw).nano:'0');}
+async function allocationTotal(name:string) {const raw=await kvGet('money:v2:fund:'+name);const record=raw?JSON.parse(raw):{nano:'0'};return BigInt(record.nano)+(name==='protocol'?BigInt(record.creditedNano||'0'):0n);}
 
 it.each([['gstdbot',poll,complete],['SDK',pending,sdkSubmit]] as const)('accepts funded work from a new outbound-only %s node and settles exactly once',async(kind,pick,finish)=>{
- const f=await fixture(),protocol=await fundAmount('protocol'),reserve=await fundAmount('reserve');
+ const f=await fixture(),protocol=await allocationTotal('protocol'),reserve=await allocationTotal('reserve');
  const picked=await call(pick,kind==='SDK'?'GET':'POST',{node_id:f.nodeId,capabilities:[model],supported_task_kinds:['inference'],resources:{cpu_cores:4,ram_free_mb:4096}},f.signed(),{node_id:f.nodeId});
  expect(picked.status).toBe(200);expect(kind==='SDK'?picked.value.tasks[0].task_id:picked.value.task.task_id).toBe(f.taskId);
  const result={task_id:f.taskId,node_id:f.nodeId,model,result:{response:'4'},reward_gstd:999999};
@@ -74,15 +74,15 @@ it.each([['gstdbot',poll,complete],['SDK',pending,sdkSubmit]] as const)('accepts
   expect(await kvGet('task_completed:'+f.taskId)).toBeNull();
   expect((await moneyJob(f.taskId))?.state).toBe('reserved');
   expect((await moneyBalance(f.operator)).pending_gstd).toBe(0);
-  expect(await fundAmount('protocol')).toBe(protocol);expect(await fundAmount('reserve')).toBe(reserve);
+  expect(await allocationTotal('protocol')).toBe(protocol);expect(await allocationTotal('reserve')).toBe(reserve);
  }
 
  const accepted=await call(finish,'POST',result,f.signed());
  expect(accepted.status).toBe(200);expect(accepted.value.reward_gstd).toBe(8.5);
  expect((await moneyJob(f.taskId))?.state).toBe('captured');
  expect((await moneyBalance(f.operator)).pending_gstd).toBe(8.5);
- expect(await fundAmount('protocol')-protocol).toBe(nano('1'));
- expect(await fundAmount('reserve')-reserve).toBe(nano('0.5'));
+ expect(await allocationTotal('protocol')-protocol).toBe(nano('1'));
+ expect(await allocationTotal('reserve')-reserve).toBe(nano('0.5'));
  expect((await call(finish,'POST',result,f.signed())).value.duplicate).toBe(true);
  expect((await moneyBalance(f.operator)).pending_gstd).toBe(8.5);
  expect(JSON.parse((await kvGet('node:'+f.nodeId))!).tasks_completed).toBe(1);
@@ -100,7 +100,7 @@ it.each([['gstdbot',poll,complete],['SDK',pending,sdkSubmit]] as const)('accepts
  const remoteHeaders={'x-wallet-address':remoteWallet,'x-gstd-node-ts':String(timestamp),
   'x-gstd-node-sig':sign(createHash('sha256').update(remoteId+':'+timestamp).digest(),identity.secretKey).toString('hex')};
  expect((await call(register,'POST',{node_id:remoteId,node_pubkey:identity.publicKey.toString('hex'),node_url:remoteUrl,capabilities:[remoteModel]},remoteHeaders)).status).toBe(200);
- const protocolBefore=await fundAmount('protocol'),reserveBefore=await fundAmount('reserve');
+ const protocolBefore=await allocationTotal('protocol'),reserveBefore=await allocationTotal('reserve');
  const fetchMock=vi.spyOn(globalThis,'fetch').mockImplementation(async(url)=>{
   expect(String(url)).toBe(remoteUrl+'/v1/chat/completions');
   const account=await moneyBalance(f.operator);
@@ -116,16 +116,16 @@ it.each([['gstdbot',poll,complete],['SDK',pending,sdkSubmit]] as const)('accepts
  expect((await moneyBalance(f.operator)).balance_gstd).toBe(8.495);
  expect((await moneyBalance(f.operator)).reserved_gstd).toBe(0);
  expect((await moneyBalance(remoteWallet)).pending_gstd).toBe(0.00425);
- expect(await fundAmount('protocol')-protocolBefore).toBe(nano('0.0005'));
- expect(await fundAmount('reserve')-reserveBefore).toBe(nano('0.00025'));
+ expect(await allocationTotal('protocol')-protocolBefore).toBe(nano('0.0005'));
+ expect(await allocationTotal('reserve')-reserveBefore).toBe(nano('0.00025'));
 });
 it('refunds failed SDK work without earnings or fees',async()=>{
- const f=await fixture(),protocol=await fundAmount('protocol'),reserve=await fundAmount('reserve');
+ const f=await fixture(),protocol=await allocationTotal('protocol'),reserve=await allocationTotal('reserve');
  await call(pending,'GET',{},f.signed(),{node_id:f.nodeId});
  const failed=await call(sdkSubmit,'POST',{node_id:f.nodeId,task_id:f.taskId,error:'inference_failed'},f.signed());
  expect(failed.status).toBe(422);expect((await moneyJob(f.taskId))?.state).toBe('released');
  expect((await moneyBalance(f.operator)).pending_gstd).toBe(0);
- expect(await fundAmount('protocol')).toBe(protocol);expect(await fundAmount('reserve')).toBe(reserve);
+ expect(await allocationTotal('protocol')).toBe(protocol);expect(await allocationTotal('reserve')).toBe(reserve);
  const cancelled=await call(cancelCampaign,'POST',{campaign_id:f.campaignId},f.payerHeaders);
  expect(cancelled.status).toBe(200);expect((await moneyBalance(f.payer)).balance_gstd).toBe(10);
 });

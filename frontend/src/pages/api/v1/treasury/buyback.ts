@@ -20,7 +20,7 @@
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { matchesSecret } from '../../../../lib/secretAuth';
-import { kvGet } from '../../../../lib/kv';
+import { publicFinance } from '../../../../lib/publicFinance';
 
 const BUYBACK_MIN_GSTD   = 100;  // Only buyback when treasury has at least 100 GSTD
 const BUYBACK_PERCENT    = 0.5;  // Use 50% of treasury for each buyback cycle
@@ -34,7 +34,7 @@ async function getGstdPrice(): Promise<number> {
             return parseFloat(data?.asset?.dex_usd_price || '0') || 0;
         }
     } catch { /* fallback */ }
-    return 0.000079; // last known
+    return 0; // Unknown prices must never be fabricated.
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -44,8 +44,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const auth   = req.headers['x-treasury-secret'] || req.headers['authorization']?.replace('Bearer ', '');
     if (!matchesSecret(auth, secret)) return res.status(401).json({ error: 'Unauthorized' });
 
-    const treasuryRaw = await kvGet('treasury:balance');
-    const treasuryBalance = parseFloat(treasuryRaw || '0');
+    const finance = await publicFinance();
+    const treasuryBalance = finance.protocol_treasury_gstd;
 
     if (treasuryBalance < BUYBACK_MIN_GSTD) {
         return res.status(200).json({
@@ -58,6 +58,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const gstdPrice    = await getGstdPrice();
+    if (!(gstdPrice>0)) return res.status(503).json({error:'market_price_unavailable',executed:false});
     const buybackGstd  = treasuryBalance * BUYBACK_PERCENT;
     const buybackUsd   = buybackGstd * gstdPrice;
 

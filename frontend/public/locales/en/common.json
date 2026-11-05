@@ -391,7 +391,27 @@
   "protocol_contract": "Protocol Contract Address",
   "quick_links": "Quick Links",
   "token_info": "Token Info",
-  "buy_gstd": "Buy GSTD",
+  "buy_gstd": {
+    "title": "Buy GSTD",
+    "intro": "GSTD pays for network compute. Start small: buying tokens and funding a platform balance are separate operations.",
+    "step1": "1. Prepare a wallet",
+    "wallet_hint": "If you do not have GSTD, obtain TON/GRAM or USDT on TON using the purchase options available in your wallet.",
+    "wallet": "Open Tonkeeper website",
+    "card_notice": "Card purchases depend on country, wallet and provider; identity checks and fees may apply. Direct GSTD card purchases are not promised. Keep network coins for fees.",
+    "step2": "2. Swap for GSTD",
+    "swap_hint": "These buttons open STON.fi with our exact token address. Review the DEX quote, fees and final amount before signing.",
+    "from_ton": "TON/GRAM → GSTD",
+    "from_usdt": "USDT on TON → GSTD",
+    "quote_notice": "Do not raise slippage to force a failing quote. A route or sufficient liquidity may be unavailable. Price appreciation and returns are not guaranteed.",
+    "identity": "Verify token identity",
+    "step3": "3. Use compute",
+    "use_hint": "After a swap, GSTD is in your wallet. Fund the platform balance and set an agent allowance for automatic requests. Contract escrow is a separate wallet-signed payment path.",
+    "balance": "Fund platform balance",
+    "escrow": "Use contract escrow",
+    "agents": "Agent permissions",
+    "free": "Node installation and a free chat trial do not require purchasing GSTD.",
+    "try_free": "Try for free"
+  },
   "how_to_buy_gstd": "How to Buy GSTD",
   "buy_gstd_intro": "Buy GSTD using Telegram Wallet: get TON first, then swap on DEX.",
   "buy_gstd_keep_ton": "Keep a small TON balance for gas fees.",
@@ -1987,5 +2007,16 @@
     "wrong_network": "Connect the same TON mainnet wallet used for login.",
     "invalid_grant_policy": "Check the budget, per-request limit, lifetime and executor selection.",
     "request_failed": "The operation did not finish. Refresh permissions before retrying; do not repeat a wallet signature automatically."
-  }
+  },
+  "protocol_income": {
+    "title": "Protocol income — 10%",
+    "automatic": "The protocol share from new accepted paid work is automatically credited to this wallet's available platform balance.",
+    "credited": "Total credited to protocol",
+    "historical": "Accrued before automatic crediting",
+    "reconcile": "Credit accrued protocol share",
+    "notice": "This is a backed platform balance, not a blockchain transfer. Withdrawals use the existing request flow and custody-wallet signature; revenue differs from network turnover.",
+    "reserve": "The other 5% remains separate for GSTD/XAUt0 liquidity. XAUt0 acquisition and liquidity provision are not yet executed automatically.",
+    "pool": "Open target GSTD/XAUt0 pool"
+  },
+  "nav_buy": "Buy GSTD"
 }

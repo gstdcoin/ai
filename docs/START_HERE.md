@@ -24,6 +24,8 @@ GSTD соединяет людей, которым нужен ИИ, и опер�
 
 ### 3. Как получать и тратить GSTD
 
+[Купить GSTD: понятные шаги](https://app.gstdtoken.com/ru/buy). Новая доля протокола автоматически зачисляется подтверждённому администратору в обеспеченный баланс; 5% остаются отдельным резервом для выбранного пула GSTD/XAUt0. Автоматическое пополнение пула пока не развёрнуто. [Политика и границы автономности](AUTONOMOUS_ECONOMY.md).
+
 | Путь | Что означает баланс | Кто подписывает выплату |
 | --- | --- | --- |
 | [Баланс платформы](https://app.gstdtoken.com/ru/payments) | Обеспеченные средства и принятые оплаченные задания в учёте платформы | Владелец кошелька обеспечения после заявки пользователя |
@@ -69,6 +71,8 @@ Open [chat](https://app.gstdtoken.com/chat), choose an available model and expli
 Each machine has its own identity. Multi-host installations distribute requests; they do not automatically pool memory for one model. Registration currently permits ten live identities per registration wallet.
 
 ### Payments
+
+[Buy GSTD](https://app.gstdtoken.com/buy). New protocol revenue is automatically credited to its confirmed beneficiary in the backed ledger; the 5% remains separate for the selected GSTD/XAUt0 pool. Automatic liquidity provision is not deployed. [Economic policy and autonomy boundaries](AUTONOMOUS_ECONOMY.md).
 
 - [Platform balance](https://app.gstdtoken.com/payments): backed internal credits and withdrawal requests. The custody wallet owner signs payouts.
 - [Mainnet escrow · open beta](https://app.gstdtoken.com/escrow-mainnet): a separate job and on-chain funds. The payer signs funding and acceptance; each beneficiary signs their own claim. Platform balances are not migrated.

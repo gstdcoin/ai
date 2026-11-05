@@ -61,7 +61,9 @@ it('rehearses deposit, reserve, paid inference, refund, zero-fee claim and canon
  expect(workerCalls).toBe(1);
  expect((await moneyBalance(fixture.payer)).balance_gstd).toBe(90);
  expect((await moneyBalance(fixture.executor)).pending_nano).toBe(nano('8.5').toString());
- expect(JSON.parse((await kvGet('money:v2:fund:protocol'))!).nano).toBe(nano('1').toString());
+ expect(JSON.parse((await kvGet('money:v2:fund:protocol'))!).nano).toBe('0');
+ expect(JSON.parse((await kvGet('money:v2:fund:protocol'))!).creditedNano).toBe(nano('1').toString());
+ expect((await moneyBalance((await import('./mainnetEscrowManifest')).MAINNET_ESCROW.protocol)).available_nano).toBe(nano('1').toString());
  expect(JSON.parse((await kvGet('money:v2:fund:reserve'))!).nano).toBe(nano('0.5').toString());
  workerFails=true;
  const failed=await compute('journey-failure-v1',5);

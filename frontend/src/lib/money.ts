@@ -1,4 +1,5 @@
 import { Address } from '@ton/core';
+import {MAINNET_ESCROW} from './mainnetEscrowManifest';
 import { createHash, randomUUID } from 'crypto';
 import { kvGet, kvMGet, kvMoneyCAS, kvMoneyDue } from './kv';
 
@@ -131,8 +132,8 @@ export async function captureMoney(jobId: string, executorWallet: string, result
     if (!known) throw new MoneyError('reservation_not_found');
     executorWallet = walletId(executorWallet);
     const payer = accountKey(known.wallet), executor = accountKey(executorWallet);
-    const protocol = PREFIX + 'fund:protocol', reserve = PREFIX + 'fund:reserve', jk = jobKey(jobId), responseKey = PREFIX+'response:'+jobId;
-    return atomic([SYS, payer, executor, protocol, reserve, jk, responseKey, ...(known.grantId ? [agentGrantKey(known.grantId)] : [])], old => {
+    const protocol = PREFIX + 'fund:protocol', reserve = PREFIX + 'fund:reserve', beneficiary = accountKey(MAINNET_ESCROW.protocol), jk = jobKey(jobId), responseKey = PREFIX+'response:'+jobId;
+    return atomic([SYS, payer, executor, beneficiary, protocol, reserve, jk, responseKey, ...(known.grantId ? [agentGrantKey(known.grantId)] : [])], old => {
         const job: MoneyJob = JSON.parse(old[jk]!);
         if (job.state === 'captured') {
             if (job.executor !== executorWallet) throw new MoneyError('idempotency_conflict');
@@ -147,10 +148,15 @@ export async function captureMoney(jobId: string, executorWallet: string, result
         change(get(payer), 'reserved', -amount);
         change(get(executor), 'pending', shares.executor);
         change(get(executor), 'earned', shares.executor);
-        const p = BigInt(old[protocol] ? JSON.parse(old[protocol]!).nano : '0') + shares.protocol, r = BigInt(old[reserve] ? JSON.parse(old[reserve]!).nano : '0') + shares.reserve;
+        const protocolFund=parseProtocolFund(old[protocol]);
+        const protocolCredit=BigInt(protocolFund.nano)+shares.protocol;
+        // These are existing backed liabilities, moved to the confirmed beneficiary in the same CAS.
+        change(get(beneficiary),'available',protocolCredit);
+        const protocolRecord=creditedProtocolRecord(protocolFund,protocolCredit);
+        const r = BigInt(old[reserve] ? JSON.parse(old[reserve]!).nano : '0') + shares.reserve;
         job.state = 'captured'; job.available = '0'; job.executor = executorWallet;
         job.result = { digest: digest(result), retention: 'private_response_10_minutes' }; job.finishedAt = Date.now();
-        const writes: Record<string,string> = { [jk]: JSON.stringify(job), [responseKey]: JSON.stringify(result), [protocol]: JSON.stringify({ nano: String(p) }), [reserve]: JSON.stringify({ nano: String(r) }) };
+        const writes: Record<string,string> = { [jk]: JSON.stringify(job), [responseKey]: JSON.stringify(result), [protocol]: JSON.stringify(protocolRecord), [reserve]: JSON.stringify({ nano: String(r) }) };
         if(job.grantId) writes[agentGrantKey(job.grantId)]=finishGrant(old[agentGrantKey(job.grantId)],amount,true);
         for (const [key,a] of accounts) writes[key] = JSON.stringify(a);
         return { value: job, tx: { writes, due: { id: jobId, at: null }, expires: { [responseKey]: 600 } } };
@@ -556,4 +562,33 @@ function finishGrant(raw:string|null,amount:bigint,captured:boolean):string{
     g.reservedNano=String(BigInt(g.reservedNano)-amount);
     if(captured)g.spentNano=String(BigInt(g.spentNano)+amount);
     return JSON.stringify(g);
+}
+
+/** Protocol revenue is owner income, distinct from the protected 5% liquidity allocation. */
+type ProtocolFund={nano:string;creditedNano:string};
+function parseProtocolFund(raw:string|null):ProtocolFund{
+    const value=raw?JSON.parse(raw):{nano:'0'};
+    const creditedNano=value.creditedNano??'0';
+    if(typeof value.nano!=='string'||!/^\d+$/.test(value.nano)||typeof creditedNano!=='string'||!/^\d+$/.test(creditedNano))
+        throw new MoneyError('invalid_protocol_fund');
+    return{nano:value.nano,creditedNano};
+}
+function creditedProtocolRecord(value:ProtocolFund,amount:bigint){
+    return{nano:'0',creditedNano:String(BigInt(value.creditedNano)+amount),
+        beneficiary:MAINNET_ESCROW.protocol,mode:'automatic_backed_ledger_credit'};
+}
+/** Reconcile historical unclaimed protocol revenue. No token mint, reserve access or chain transfer. */
+export async function creditProtocolFund(wallet:string,requestId:string){
+    wallet=walletId(wallet);
+    if(wallet!==MAINNET_ESCROW.protocol)throw new MoneyError('protocol_beneficiary_required');
+    id(requestId);
+    const fund=PREFIX+'fund:protocol',account=accountKey(wallet),receipt=PREFIX+'protocol-credit:'+digest([wallet,requestId]);
+    return atomic([SYS,fund,account,receipt],old=>{
+        if(old[receipt])return{value:JSON.parse(old[receipt]!) as {amount_nano:string;wallet:string}};
+        system(old[SYS]);const p=parseProtocolFund(old[fund]),amount=BigInt(p.nano),a=parseAccount(old[account]);
+        change(a,'available',amount);
+        const result={amount_nano:String(amount),wallet};
+        return{value:result,tx:{writes:{[fund]:JSON.stringify(creditedProtocolRecord(p,amount)),
+            [account]:JSON.stringify(a),[receipt]:JSON.stringify(result)}}};
+    });
 }

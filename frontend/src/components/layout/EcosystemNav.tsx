@@ -24,14 +24,14 @@ const PRIMARY_KEYS = [
 ] as const;
 
 const MORE_KEYS = [
-    'nav_payments', 'nav_open_intelligence', 'nav_site', 'nav_docs', 'nav_downloads', 'nav_telegram',
+    'nav_payments', 'nav_buy', 'nav_open_intelligence', 'nav_site', 'nav_docs', 'nav_downloads', 'nav_telegram',
 ] as const;
 
 type SectionDef = { titleKey: string; keys: readonly string[] };
 
 const MOBILE_SECTIONS: SectionDef[] = [
     { titleKey: 'nav_section_core', keys: ['nav_home', 'nav_chat', 'nav_nodes', 'nav_stats', 'nav_leaderboard'] },
-    { titleKey: 'nav_section_explore', keys: ['nav_payments', 'nav_open_intelligence', 'nav_site', 'nav_docs', 'nav_downloads', 'nav_telegram'] },
+    { titleKey: 'nav_section_explore', keys: ['nav_payments', 'nav_buy', 'nav_open_intelligence', 'nav_site', 'nav_docs', 'nav_downloads', 'nav_telegram'] },
 ];
 
 export default function EcosystemNav() {
@@ -75,6 +75,7 @@ export default function EcosystemNav() {
 
     const allItems: NavItem[] = [
         { key:'nav_site', href:websiteUrl(router.locale), external:true, icon:<ExternalLink size={13}/> },
+        {key:'nav_buy',href:'/buy',icon:<Activity size={15}/>,short:'Buy GSTD'},
         {key:'nav_payments',href:isOnApp?'/payments':APP_BASE+'/payments',external:!isOnApp,icon:<Activity size={15}/>,short:'Payments'},
         { key: 'nav_home',       href: isOnApp ? '/' : APP_BASE,    icon: <Home size={15} />,           external: !isOnApp },
         { key: 'nav_chat',       href: isOnApp ? '/chat' : `${APP_BASE}/chat`,           icon: <MessageSquare size={15} />,  external: !isOnApp, short: 'AI Chat' },
@@ -94,7 +95,7 @@ export default function EcosystemNav() {
     const isActive = (href: string) => {
         const path = router.pathname;
         if (href === '/' || href === APP_BASE) return path === '/';
-        const segments = ['/chat', '/nodes', '/stats', '/leaderboard', '/open-intelligence', '/downloads', '/docs'];
+        const segments = ['/buy', '/payments', '/chat', '/nodes', '/stats', '/leaderboard', '/open-intelligence', '/downloads', '/docs'];
         for (const seg of segments) {
             if (href.includes(seg) && (path === seg || path.startsWith(seg + '/'))) return true;
         }
