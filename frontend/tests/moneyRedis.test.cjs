@@ -91,7 +91,6 @@ async function run() {
     assert.ok(command('TTL','money:v2:response:race')>0);
     assert.ok(command('TTL','money:v2:response:race')<=600);
     assert.equal((await m.moneyJob('race')).result.answer,undefined);
-    const snapshot=command('GET','money:v2:account:'+payer);
     // Grant reservations share the same production Lua transaction as payer debits.
     const policy={label:'redis-fixture',models:['qwen2.5:0.5b'],executors:[{nodeId:'redis-node',wallet:operator}],
         budgetNano:m.nano('0.01').toString(),perRequestNano:m.nano('0.005').toString(),
@@ -113,6 +112,7 @@ async function run() {
     assert.equal(finalGrant.spentNano,'5000000');assert.equal(finalGrant.reservedNano,'0');
     assert.equal(finalGrant.requests,2);
     console.log('Persistent grant production Redis checks passed: concurrent cap, revoke, executor binding, capture and refund.');
+    const snapshot=command('GET','money:v2:account:'+payer);
     // A storage fault fails closed in production.
     command('SET','money:v2:due','wrong-type');
     await assert.rejects(()=>m.reserveMoney(payer,'failure',1n,'bad',Date.now()+60_000));
