@@ -9,10 +9,12 @@ type Env=Record<string,unknown>;
 const counters=['stats:total_registered','stats:total_tasks_completed','stats:total_gstd_paid','treasury:balance','stats:total_users','stats:total_burned','market:gstd_price_usd','stats:probe_verified','stats:probe_failed'];
 async function commands(env:Env,body:unknown[][],transport:typeof fetch):Promise<any[]>{
  const endpoint=String(env.KV_REST_API_URL||env.UPSTASH_REDIS_REST_URL||process.env.KV_REST_API_URL||process.env.UPSTASH_REDIS_REST_URL||''),token=String(env.KV_REST_API_TOKEN||env.UPSTASH_REDIS_REST_TOKEN||process.env.KV_REST_API_TOKEN||process.env.UPSTASH_REDIS_REST_TOKEN||'');
- if(!endpoint||!token||new URL(endpoint).protocol!=='https:')throw Error('registry_configuration_unavailable');
- const r=await transport(endpoint.replace(/\/$/,'')+'/pipeline',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(5000),redirect:'error'});
+ if(!endpoint||!token)throw Error('registry_configuration_unavailable');
+ let parsed:URL;try{parsed=new URL(endpoint);}catch{throw Error('registry_endpoint_invalid');}
+ if(parsed.protocol!=='https:')throw Error('registry_endpoint_invalid');
+ let r:Response;try{r=await transport(endpoint.replace(/\/$/,'')+'/pipeline',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(5000),redirect:'error'});}catch{throw Error('registry_transport_failed');}
  if(!r.ok)throw Error('registry_http_'+r.status);
- const rows=await r.json() as any[];
+ let rows:any[];try{rows=await r.json() as any[];}catch{throw Error('registry_payload_invalid');}
  if(!Array.isArray(rows)||rows.length!==body.length||rows.some(x=>x.error))throw Error('registry_command_failed');
  return rows.map(x=>Array.isArray(x.result)?x.result.map(decode):decode(x.result));
 }
@@ -24,15 +26,18 @@ export async function publicNetworkResponse(req:Request,env:Env,transport:typeof
  if(!['/api/v1/network/stats','/api/v1/models/available'].includes(path))return null;
  const headers={'Content-Type':'application/json','Cache-Control':'public, max-age=30, s-maxage=30','X-GSTD-Discovery':'native-v1'};
  if(req.method!=='GET')return Response.json({error:'Method not allowed'},{status:405,headers:{...headers,Allow:'GET'}});
+ let stage='keys';
  try{
   const stats=path.endsWith('/stats');
   const first=await commands(env,stats?[['KEYS','node:*'],['MGET',...counters],['LLEN','tasks:queue']]:[['KEYS','node:*']],transport);
   if(!Array.isArray(first[0]))throw Error('registry_unavailable');
   const keys=first[0].filter((k:unknown)=>typeof k==='string'&&!k.slice(5).includes(':'));
   if(keys.length>1000)throw Error('registry_capacity_exceeded');
+  stage='nodes';
   const values=keys.length?(await commands(env,[['MGET',...keys]],transport))[0]:[];
+  stage='node_records';
   const records=dedupeNodeRecords(parseNodeRecords<any>(values.map(strings)));
-  if(stats){
+  if(stats){stage='counters';
    const [registered,done,paid,treasury,users,burned,price,ok,fail]=first[1].map((v:unknown)=>Number(v)||0),online=records.filter(n=>isNodeOnline(n)).length;
    return Response.json({nodes_online:online,active_nodes:online,active_workers:online,total_nodes:records.length,total_registered:records.length,registration_events:registered,total_users:users,total_tasks:done,probes_verified:ok,probes_failed:fail,tasks_24h:null,tasks_completed:done,queue_depth:Number(first[2])||0,total_gstd_paid:paid,protocol_treasury_gstd:treasury,total_burned:burned,gstd_price_usd:price,timestamp:Date.now()},{headers});
   }
@@ -53,5 +58,5 @@ export async function publicNetworkResponse(req:Request,env:Env,transport:typeof
    return {model_id,display_name:model_id,nodes_count:row.count,price_gstd:price,is_free:price===0,avg_latency_ms:row.lat.length?Math.round(row.lat.reduce((a,b)=>a+b,0)/row.lat.length):null,category:model_id.startsWith('codellama')?'code':model_id.startsWith('deepseek-r1')?'reasoning':model_id.startsWith('odysseus-research')?'research':model_id.startsWith('odysseus')?'workspace':'chat',pricing:price===0?'free':profiles.length?'quote_required':'legacy_fixed_gstd',operator_offers_count:active.length,paid_paused:profiles.length===row.count&&profiles.every(o=>!o.active),min_executor_usd:net===null?null:String(net/1000000n)+'.'+String(net%1000000n).padStart(6,'0')};
   }).sort((a,b)=>Number(b.is_free)-Number(a.is_free)||b.nodes_count-a.nodes_count||a.price_gstd-b.price_gstd);
   return Response.json({models,updated_at:new Date().toISOString()},{headers});
- }catch(e){const reason=e instanceof Error&&/^(registry_[a-z_]+|registry_http_[0-9]{3})$/.test(e.message)?e.message:'registry_response_invalid';return Response.json({error:'network_registry_unavailable',reason,error_kind:e instanceof Error?e.name:'UnknownError'},{status:503,headers:{...headers,'Cache-Control':'no-store'}});}
+ }catch(e){const reason=e instanceof Error&&/^(registry_[a-z_]+|registry_http_[0-9]{3})$/.test(e.message)?e.message:'registry_response_invalid';return Response.json({error:'network_registry_unavailable',reason,error_kind:e instanceof Error?e.name:'UnknownError',stage},{status:503,headers:{...headers,'Cache-Control':'no-store'}});}
 }
