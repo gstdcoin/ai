@@ -6,14 +6,15 @@ import {getModelPrice} from './src/lib/modelPricing';
 type Env=Record<string,unknown>;
 const counters=['stats:total_registered','stats:total_tasks_completed','stats:total_gstd_paid','treasury:balance','stats:total_users','stats:total_burned','market:gstd_price_usd','stats:probe_verified','stats:probe_failed'];
 async function commands(env:Env,body:unknown[][]):Promise<any[]>{
- const endpoint=String(env.KV_REST_API_URL||env.UPSTASH_REDIS_REST_URL||''),token=String(env.KV_REST_API_TOKEN||env.UPSTASH_REDIS_REST_TOKEN||'');
- if(!endpoint||!token||new URL(endpoint).protocol!=='https:')throw Error('registry_unavailable');
+ const endpoint=String(env.KV_REST_API_URL||env.UPSTASH_REDIS_REST_URL||process.env.KV_REST_API_URL||process.env.UPSTASH_REDIS_REST_URL||''),token=String(env.KV_REST_API_TOKEN||env.UPSTASH_REDIS_REST_TOKEN||process.env.KV_REST_API_TOKEN||process.env.UPSTASH_REDIS_REST_TOKEN||'');
+ if(!endpoint||!token||new URL(endpoint).protocol!=='https:')throw Error('registry_configuration_unavailable');
  const r=await fetch(endpoint.replace(/\/$/,'')+'/pipeline',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(5000),redirect:'error'});
- if(!r.ok)throw Error('registry_unavailable');
+ if(!r.ok)throw Error('registry_http_'+r.status);
  const rows=await r.json() as any[];
- if(!Array.isArray(rows)||rows.length!==body.length||rows.some(x=>x.error))throw Error('registry_unavailable');
- return rows.map(x=>x.result);
+ if(!Array.isArray(rows)||rows.length!==body.length||rows.some(x=>x.error))throw Error('registry_command_failed');
+ return rows.map(x=>Array.isArray(x.result)?x.result.map(decode):decode(x.result));
 }
+const decode=(v:unknown)=>{if(typeof v!=='string')return v;try{return JSON.parse(v);}catch{return v;}};
 const strings=(v:unknown)=>v==null?null:typeof v==='string'?v:JSON.stringify(v);
 async function keyFor(node:string,model:string){const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify([node,canonicalModelId(model)])));return 'economics:offer:v1:'+Array.from(new Uint8Array(bytes),v=>v.toString(16).padStart(2,'0')).join('');}
 export async function publicNetworkResponse(req:Request,env:Env):Promise<Response|null>{
@@ -50,5 +51,5 @@ export async function publicNetworkResponse(req:Request,env:Env):Promise<Respons
    return {model_id,display_name:model_id,nodes_count:row.count,price_gstd:price,is_free:price===0,avg_latency_ms:row.lat.length?Math.round(row.lat.reduce((a,b)=>a+b,0)/row.lat.length):null,category:model_id.startsWith('codellama')?'code':model_id.startsWith('deepseek-r1')?'reasoning':model_id.startsWith('odysseus-research')?'research':model_id.startsWith('odysseus')?'workspace':'chat',pricing:price===0?'free':profiles.length?'quote_required':'legacy_fixed_gstd',operator_offers_count:active.length,paid_paused:profiles.length===row.count&&profiles.every(o=>!o.active),min_executor_usd:net===null?null:String(net/1000000n)+'.'+String(net%1000000n).padStart(6,'0')};
   }).sort((a,b)=>Number(b.is_free)-Number(a.is_free)||b.nodes_count-a.nodes_count||a.price_gstd-b.price_gstd);
   return Response.json({models,updated_at:new Date().toISOString()},{headers});
- }catch{return Response.json({error:'network_registry_unavailable'},{status:503,headers:{...headers,'Cache-Control':'no-store'}});}
+ }catch(e){const reason=e instanceof Error&&/^(registry_[a-z_]+|registry_http_[0-9]{3})$/.test(e.message)?e.message:'registry_response_invalid';return Response.json({error:'network_registry_unavailable',reason},{status:503,headers:{...headers,'Cache-Control':'no-store'}});}
 }
