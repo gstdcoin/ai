@@ -1,0 +1,39 @@
+name: Owner-approved release key recovery
+on:
+  push:
+    branches: [main]
+    paths: ['.github/release-recovery-approval.json']
+permissions:
+  contents: read
+concurrency:
+  group: gstd-release-key-recovery
+  cancel-in-progress: false
+jobs:
+  recover:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Verify recovery safeguards without credentials
+        run: node --test scripts/release-recovery.test.mjs
+      - name: Install locked tooling without deployment credentials
+        working-directory: frontend
+        run: npm ci --ignore-scripts
+      - name: Provision only the approved release-signing secret
+        run: node scripts/provision-release-key.mjs
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      - name: Publish public key only
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-release-key
+          path: ${{ runner.temp }}/public-release-key.json
+          if-no-files-found: error
+          retention-days: 30
