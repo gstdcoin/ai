@@ -33,6 +33,14 @@
       }
     },
     {
+      "id": "bounded-paid-inference",
+      "status": "implemented_platform_ledger",
+      "endpoint": "/api/v1/agents/paid-infer",
+      "permission_ui": "https://app.gstdtoken.com/agent-access",
+      "authentication": "Bearer owner-signed spending grant",
+      "limits": "persistent budget, exact models, executor wallets, expiry, attempts; no withdrawal or TON signatures"
+    },
+    {
       "id": "compute-provider",
       "status": "signed_node_software",
       "documentation": "https://github.com/gstdcoin/gstdbot",
@@ -48,7 +56,7 @@
     "platform_ledger": "custody-owner-signed withdrawals",
     "per_job_escrow": "payer signs funding and acceptance; beneficiaries sign claims",
     "mainnet_cycle_verified": false,
-    "automatic_spending_delegation": false,
+    "automatic_spending_delegation": "owner-signed revocable platform-balance allowance only; no TON signing",
     "gas_asset": "TON"
   },
   "token": {
@@ -68,7 +76,10 @@
       "gstd_models"
     ],
     "optional_tools": [
-      "gstd_free_inference"
+      "gstd_free_inference",
+      "gstd_spending_status",
+      "gstd_paid_inference",
+      "gstd_paid_receipt"
     ]
   },
   "limitations": [

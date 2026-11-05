@@ -15,8 +15,11 @@ No seed, treasury signer, wallet-session credential, shell tool, automatic regis
 Use the [canonical node](https://github.com/gstdcoin/gstdbot) with a persistent signed Ed25519 identity and explicit payout address. Signed SDK clients remain experimental; a wallet header or API key alone does not authorize worker registration/results. Only accepted funded work earns 85% / 10% protocol / 5% reserve.
 
 ## Payments and limits
-[Platform balance](https://app.gstdtoken.com/payments) and [per-job mainnet escrow](https://app.gstdtoken.com/escrow-mainnet) are separate. This free consumer adapter neither spends their balances nor signs blockchain operations. Positive delegated budgets are not implemented. A real mainnet paid cycle remains unverified.
+[Platform balance](https://app.gstdtoken.com/payments) and [per-job mainnet escrow](https://app.gstdtoken.com/escrow-mainnet) are separate. The free route never spends balances. The separate paid route uses backed platform credits only, never per-job escrow or blockchain signatures. Optional positive delegated budgets are implemented through the owner-signed, revocable platform-balance allowance at [Agent permissions](https://app.gstdtoken.com/agent-access). It is not an on-chain wallet allowance. A real mainnet paid cycle remains unverified.
 
 The public /mcp route is not deployed. Local stdio clients can run the packaged connector; HTTP services use OpenAPI. Installing a plugin in another service and granting access require its owner's action. The old PoW/unsigned-registration/automatic-earnings examples are retired.
 
 See [Start here](START_HERE.md), [readiness](READINESS.md) and [mainnet contract boundaries](MAINNET_ESCROW.md).
+
+## Owner-authorized paid inference
+Sign the exact model/executor/budget/expiry policy once at /agent-access, download the private credential, and configure only its absolute file path in GSTD_AGENT_GRANT_FILE. Do not paste the token into a conversation. The connector exposes permission status, paid inference and request receipt tools. Record request_id before sending; uncertain outcomes require receipt lookup. Server-side budget counters and ledger debits update in the same atomic Redis transaction. Invalid responses release funds; attempts remain consumed. Revocation blocks new reservations, not already reserved jobs. The signed policy automatically accepts nonempty exact-model output; it does not prove quality or operator honesty. See the RU/EN connector guide for setup and threat boundaries.

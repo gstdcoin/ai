@@ -1,3 +1,4 @@
+import type {AgentGrant} from './money';
 import { canonicalModelId } from './modelId';
 import { executorPayout } from './nodePayout';
 import type { NextApiRequest, NextApiResponse } from 'next';
@@ -7,15 +8,16 @@ import { MoneyError, captureMoney, digest, moneyJob, nano, releaseMoney, reserve
 
 export async function paidInference(req: NextApiRequest, res: NextApiResponse, options: {
     wallet: string | null; price: number; model: string; messages: { role: string; content: string }[];
-    maxTokens: number; surface: 'web' | 'api'; tier?: string;
+    maxTokens: number; surface: 'web' | 'api'; tier?: string; grant?:AgentGrant;
 }) {
     if (!options.wallet) return res.status(402).json({ error: 'wallet_required', cost: options.price });
     const rawId = req.headers['idempotency-key'];
     if (typeof rawId !== 'string' || !/^[A-Za-z0-9_-]{8,100}$/.test(rawId))
         return res.status(400).json({ error: 'idempotency_key_required' });
     const wallet = walletId(options.wallet);
-    const jobId = 'chat:' + digest([wallet,rawId]);
-    const fingerprint = digest(options);
+    const jobId = 'chat:' + digest(options.grant ? [wallet,options.grant.id,rawId] : [wallet,rawId]);
+    const {grant,...requestOptions}=options;
+    const fingerprint = digest({...requestOptions,...(grant?{grantId:grant.id}:{})});
     let acquired = false;
     try {
         const previous = await moneyJob(jobId);
@@ -37,11 +39,12 @@ export async function paidInference(req: NextApiRequest, res: NextApiResponse, o
             try {
                 const node = JSON.parse(raw || '{}');
                 executor = await executorPayout(candidate.nodeId, String(node.wallet_address || ''));
+                if(grant&&!grant.executors.some(e=>e.nodeId===candidate.nodeId&&e.wallet===executor))continue;
                 target = candidate; break;
             } catch { continue; }
         }
         if (!target) throw new MoneyError('no_paid_executor');
-        const reservation = await reserveMoney(wallet,jobId,nano(options.price),fingerprint,Date.now()+120_000);
+        const reservation = await reserveMoney(wallet,jobId,nano(options.price),fingerprint,Date.now()+120_000,'chat',undefined,grant?{id:grant.id,tokenHash:grant.tokenHash,model:options.model,nodeId:target.nodeId,executor,maxTokens:options.maxTokens}:undefined);
         if (!reservation.acquired) return res.status(409).json({ error: 'request_in_progress', payment_id: jobId });
         acquired = true;
         const response = await fetch(target.url + '/v1/chat/completions', {
@@ -67,7 +70,7 @@ export async function paidInference(req: NextApiRequest, res: NextApiResponse, o
                 billing: { charged_gstd: options.price, executor_gstd: Number(units(shares.executor)),
                     protocol_gstd: Number(units(shares.protocol)), reserve_gstd: Number(units(shares.reserve)) } },
         };
-        const captured = await captureMoney(jobId, executor, result);
+        await captureMoney(jobId, executor, result);
         return sendResult(req,res,result,options.surface);
     } catch (error) {
         // If capture succeeded but the response was lost, releaseMoney is a no-op.

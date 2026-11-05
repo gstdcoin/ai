@@ -42,7 +42,7 @@ export type MoneySystem = { owner: string; jettonWallet: string; reserve: string
 export type MoneyJob = { id: string; wallet: string; amount: string; available: string;
     state: 'reserved' | 'captured' | 'released'; kind: 'chat' | 'campaign' | 'task';
     fingerprint: string; expiresAt: number; parent?: string; executor?: string; result?: unknown;
-    createdAt: number; finishedAt?: number };
+    createdAt: number; finishedAt?: number; grantId?: string; grantExecutor?:string };
 const emptyAccount = (): Account => ({ available: '0', reserved: '0', pending: '0', promo: '0', earned: '0' });
 function parseAccount(raw: string | null): Account {
     const a = raw ? JSON.parse(raw) as Account : emptyAccount();
@@ -107,21 +107,22 @@ export async function moneyJob(job: string): Promise<MoneyJob | null> {
     const raw = await kvGet(jobKey(job)); return raw ? JSON.parse(raw) : null;
 }
 export async function reserveMoney(wallet: string, jobId: string, amount: bigint, fingerprint: string,
-    expiresAt: number, kind: MoneyJob['kind'] = 'chat', extra?: { key: string; value: string }): Promise<MoneyJob & { acquired: boolean }> {
+    expiresAt: number, kind: MoneyJob['kind'] = 'chat', extra?: { key: string; value: string }, grant?: GrantUse): Promise<MoneyJob & { acquired: boolean }> {
     wallet = walletId(wallet); const ak = accountKey(wallet), jk = jobKey(jobId);
     if (amount <= 0n || amount > MAX_NANO || expiresAt <= Date.now()) throw new MoneyError('invalid_reservation');
-    return atomic<MoneyJob & { acquired: boolean }>([SYS, ak, jk, ...(extra ? [extra.key] : [])], old => {
+    return atomic<MoneyJob & { acquired: boolean }>([SYS, ak, jk, ...(extra ? [extra.key] : []), ...(grant ? [agentGrantKey(grant.id)] : [])], old => {
         if (old[jk]) {
             const previous: MoneyJob = JSON.parse(old[jk]!);
             if (previous.wallet !== wallet || previous.amount !== String(amount) || previous.fingerprint !== fingerprint)
                 throw new MoneyError('idempotency_conflict');
             return { value: { ...previous, acquired: false } };
         }
+        const grantWrite = grant ? reserveGrant(old[agentGrantKey(grant.id)],wallet,amount,grant) : null;
         system(old[SYS]); const a = parseAccount(old[ak]);
         change(a, 'available', -amount); change(a, 'reserved', amount);
         const job: MoneyJob = { id: jobId, wallet, amount: String(amount), available: String(amount),
-            state: 'reserved', kind, fingerprint, expiresAt, createdAt: Date.now() };
-        const writes = { [ak]: JSON.stringify(a), [jk]: JSON.stringify(job), ...(extra ? { [extra.key]: extra.value } : {}) };
+            state: 'reserved', kind, fingerprint, expiresAt, createdAt: Date.now(), ...(grant ? {grantId:grant.id,grantExecutor:grant.executor}: {}) };
+        const writes = { [ak]: JSON.stringify(a), [jk]: JSON.stringify(job), ...(extra ? { [extra.key]: extra.value } : {}), ...(grantWrite ? {[agentGrantKey(grantWrite.id)]:JSON.stringify(grantWrite)}:{}) };
         return { value: { ...job, acquired: true }, tx: { writes, due: { id: jobId, at: expiresAt } } };
     });
 }
@@ -131,12 +132,13 @@ export async function captureMoney(jobId: string, executorWallet: string, result
     executorWallet = walletId(executorWallet);
     const payer = accountKey(known.wallet), executor = accountKey(executorWallet);
     const protocol = PREFIX + 'fund:protocol', reserve = PREFIX + 'fund:reserve', jk = jobKey(jobId), responseKey = PREFIX+'response:'+jobId;
-    return atomic([SYS, payer, executor, protocol, reserve, jk, responseKey], old => {
+    return atomic([SYS, payer, executor, protocol, reserve, jk, responseKey, ...(known.grantId ? [agentGrantKey(known.grantId)] : [])], old => {
         const job: MoneyJob = JSON.parse(old[jk]!);
         if (job.state === 'captured') {
             if (job.executor !== executorWallet) throw new MoneyError('idempotency_conflict');
             return { value: job };
         }
+        if(job.grantExecutor&&job.grantExecutor!==executorWallet)throw new MoneyError('grant_scope_denied');
         if (job.state !== 'reserved' || job.kind === 'campaign' || job.expiresAt <= Date.now())
             throw new MoneyError('reservation_expired');
         system(old[SYS]); const amount = BigInt(job.amount), shares = splitNano(amount);
@@ -149,6 +151,7 @@ export async function captureMoney(jobId: string, executorWallet: string, result
         job.state = 'captured'; job.available = '0'; job.executor = executorWallet;
         job.result = { digest: digest(result), retention: 'private_response_10_minutes' }; job.finishedAt = Date.now();
         const writes: Record<string,string> = { [jk]: JSON.stringify(job), [responseKey]: JSON.stringify(result), [protocol]: JSON.stringify({ nano: String(p) }), [reserve]: JSON.stringify({ nano: String(r) }) };
+        if(job.grantId) writes[agentGrantKey(job.grantId)]=finishGrant(old[agentGrantKey(job.grantId)],amount,true);
         for (const [key,a] of accounts) writes[key] = JSON.stringify(a);
         return { value: job, tx: { writes, due: { id: jobId, at: null }, expires: { [responseKey]: 600 } } };
     });
@@ -157,13 +160,13 @@ export async function releaseMoney(jobId: string, wallet?: string): Promise<Mone
     const known = await moneyJob(jobId); if (!known) throw new MoneyError('reservation_not_found');
     if (wallet && walletId(wallet) !== known.wallet) throw new MoneyError('wallet_mismatch');
     const ak = accountKey(known.wallet), jk = jobKey(jobId);
-    return atomic([ak, jk], old => {
+    return atomic([ak, jk, ...(known.grantId ? [agentGrantKey(known.grantId)] : [])], old => {
         const job: MoneyJob = JSON.parse(old[jk]!);
         if (job.state !== 'reserved') return { value: job };
         const amount = BigInt(job.available), a = parseAccount(old[ak]);
         change(a, 'reserved', -amount); change(a, 'available', amount);
         job.state = 'released'; job.available = '0'; job.finishedAt = Date.now();
-        return { value: job, tx: { writes: { [ak]: JSON.stringify(a), [jk]: JSON.stringify(job) }, due: { id: jobId, at: null } } };
+        return { value: job, tx: { writes: { [ak]: JSON.stringify(a), [jk]: JSON.stringify(job), ...(job.grantId ? {[agentGrantKey(job.grantId)]:finishGrant(old[agentGrantKey(job.grantId)],amount,false)}:{}) }, due: { id: jobId, at: null } } };
     });
 }
 export async function claimMoney(wallet: string) {
@@ -465,4 +468,92 @@ export async function expireUnsentWithdrawal(withdrawalId:string,
         return{value:w,tx:{writes:{[SYS]:JSON.stringify(s),[key]:JSON.stringify(w),[ak]:JSON.stringify(a),
             [WQUEUE]:JSON.stringify(queue.filter(item=>item!==w.id))}}};
     });
+}
+
+/** Persistent paid-inference allowances. Never authorize TON signing or withdrawals. */
+export type GrantPolicy = {
+    label:string; models:string[]; executors:{nodeId:string;wallet:string}[];
+    budgetNano:string; perRequestNano:string; maxRequests:number; maxTokens:number; expiresAt:number;
+};
+export type AgentGrant = GrantPolicy & {
+    id:string; wallet:string; tokenHash:string; spentNano:string; reservedNano:string;
+    requests:number; createdAt:number; revokedAt:number|null;
+};
+export type GrantUse = {id:string;tokenHash:string;model:string;nodeId:string;executor:string;maxTokens:number};
+export const agentGrantKey=(value:string)=>PREFIX+'agent-grant:'+id(value);
+const grantIndex=(wallet:string)=>PREFIX+'agent-grants:'+walletId(wallet);
+export function validateGrantPolicy(input:unknown):GrantPolicy {
+    const p=input as GrantPolicy;
+    if(!p||typeof p!=='object'||Object.keys(p).sort().join(',')!=='budgetNano,executors,expiresAt,label,maxRequests,maxTokens,models,perRequestNano' ||
+       typeof p.label!=='string'||!p.label.trim()||p.label.length>60||Array.from(p.label).some(c=>c.charCodeAt(0)<32||c.charCodeAt(0)===127)||
+       !Array.isArray(p.models)||!p.models.length||p.models.length>20||new Set(p.models).size!==p.models.length||
+       p.models.some(m=>typeof m!=='string'||m==='auto'||!/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,159}$/.test(m))||
+       !Array.isArray(p.executors)||!p.executors.length||p.executors.length>20||
+       p.executors.some(e=>!e||Object.keys(e).sort().join(',')!=='nodeId,wallet'||typeof e.nodeId!=='string'||!/^[A-Za-z0-9_-]{1,100}$/.test(e.nodeId)||walletId(e.wallet)!==e.wallet)||
+       !Number.isSafeInteger(p.maxRequests)||p.maxRequests<1||p.maxRequests>10000||
+       !Number.isSafeInteger(p.maxTokens)||p.maxTokens<1||p.maxTokens>512||
+       !Number.isSafeInteger(p.expiresAt)||p.expiresAt<=Date.now()||p.expiresAt>Date.now()+7*86400000||
+       typeof p.budgetNano!=='string'||! /^(0|[1-9]\d{0,18})$/.test(p.budgetNano)||
+       typeof p.perRequestNano!=='string'||! /^(0|[1-9]\d{0,18})$/.test(p.perRequestNano)||
+       BigInt(p.budgetNano)<=0n||BigInt(p.budgetNano)>nano('1000')||
+       BigInt(p.perRequestNano)<=0n||BigInt(p.perRequestNano)>BigInt(p.budgetNano))throw new MoneyError('invalid_grant_policy');
+    return p;
+}
+export function publicGrant(g:AgentGrant) {
+    const {tokenHash,...value}=g; void tokenHash;
+    return {...value,remainingNano:String(BigInt(g.budgetNano)-BigInt(g.spentNano)-BigInt(g.reservedNano)),
+        scope:'paid_inference_only',signing_authority:false,withdrawal_authority:false};
+}
+export async function getAgentGrant(grantId:string):Promise<AgentGrant|null>{
+    const raw=await kvGet(agentGrantKey(grantId));return raw?JSON.parse(raw):null;
+}
+export async function listAgentGrants(wallet:string){
+    const raw=await kvGet(grantIndex(wallet)),ids:string[]=raw?JSON.parse(raw):[];
+    const rawValues=ids.length?await kvMGet(ids.map(agentGrantKey)):[];
+    return rawValues.filter((g):g is string=>!!g).map(g=>publicGrant(JSON.parse(g)));
+}
+/** Caller verifies fresh TON signData over the exact challenge; CAS consumes it once. */
+export async function createAgentGrant(wallet:string,policy:GrantPolicy,nonce:string,challengeRaw:string) {
+    wallet=walletId(wallet);validateGrantPolicy(policy);
+    const grantId=randomUUID(),secret=randomUUID().replace(/-/g,'')+randomUUID().replace(/-/g,'');
+    const token='gstd_agent_'+grantId+'.'+secret;
+    const ck='agent-grant:challenge:'+nonce,ik=grantIndex(wallet),gk=agentGrantKey(grantId);
+    const grant:AgentGrant={...policy,id:grantId,wallet,tokenHash:digest(token),spentNano:'0',reservedNano:'0',
+        requests:0,createdAt:Date.now(),revokedAt:null};
+    return atomic([ck,ik,gk],old=>{
+        if(old[ck]!==challengeRaw||old[gk])throw new MoneyError('grant_challenge_used');
+        const ids:string[]=old[ik]?JSON.parse(old[ik]!):[];
+        if(ids.length>=100)throw new MoneyError('grant_owner_limit');
+        return{value:{grant:publicGrant(grant),token},tx:{writes:{
+            [ck]:'used',[ik]:JSON.stringify([...ids,grantId]),[gk]:JSON.stringify(grant)},expires:{[ck]:600}}};
+    });
+}
+export async function revokeAgentGrant(wallet:string,grantId:string){
+    wallet=walletId(wallet);const key=agentGrantKey(grantId);
+    return atomic([key],old=>{
+        if(!old[key])throw new MoneyError('grant_not_found');
+        const g:AgentGrant=JSON.parse(old[key]!);
+        if(g.wallet!==wallet)throw new MoneyError('grant_not_found');
+        g.revokedAt??=Date.now();
+        return{value:publicGrant(g),tx:{writes:{[key]:JSON.stringify(g)}}};
+    });
+}
+function reserveGrant(raw:string|null,wallet:string,amount:bigint,use:GrantUse):AgentGrant{
+    if(!raw)throw new MoneyError('grant_not_found');
+    const g:AgentGrant=JSON.parse(raw);
+    if(g.id!==use.id||g.wallet!==wallet||g.tokenHash!==use.tokenHash||g.revokedAt||g.expiresAt<=Date.now())throw new MoneyError('grant_inactive');
+    if(!g.models.includes(use.model)||!g.executors.some(e=>e.nodeId===use.nodeId&&e.wallet===use.executor)||
+       use.maxTokens>g.maxTokens||use.maxTokens<1)throw new MoneyError('grant_scope_denied');
+    if(amount>BigInt(g.perRequestNano)||BigInt(g.spentNano)+BigInt(g.reservedNano)+amount>BigInt(g.budgetNano)||
+       g.requests>=g.maxRequests)throw new MoneyError('grant_budget_exhausted');
+    g.reservedNano=String(BigInt(g.reservedNano)+amount);g.requests++;
+    return g;
+}
+function finishGrant(raw:string|null,amount:bigint,captured:boolean):string{
+    if(!raw)throw new MoneyError('grant_not_found');
+    const g:AgentGrant=JSON.parse(raw);
+    if(BigInt(g.reservedNano)<amount)throw new MoneyError('invalid_grant_ledger');
+    g.reservedNano=String(BigInt(g.reservedNano)-amount);
+    if(captured)g.spentNano=String(BigInt(g.spentNano)+amount);
+    return JSON.stringify(g);
 }

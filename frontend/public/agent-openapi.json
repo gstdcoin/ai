@@ -2,8 +2,8 @@
   "openapi": "3.0.3",
   "info": {
     "title": "GSTD agent access",
-    "version": "1.0.0",
-    "description": "Public discovery and explicitly consented free-only inference. No wallet signing, withdrawal, node administration or paid delegation."
+    "version": "1.1.0",
+    "description": "Public discovery, consented free inference and separately authorized bounded platform-balance spending. No wallet signing or withdrawals."
   },
   "servers": [
     {
@@ -133,10 +133,136 @@
           }
         }
       }
+    },
+    "/api/v1/agents/paid-infer": {
+      "get": {
+        "operationId": "gstd_spending_or_receipt",
+        "summary": "Read permission or a request receipt; never retries or spends",
+        "security": [
+          {
+            "AgentGrant": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "request_id",
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,100}$"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Permission, or payment state with private response when retained"
+          },
+          "401": {
+            "description": "Invalid grant token"
+          },
+          "404": {
+            "description": "Request not found"
+          }
+        }
+      },
+      "post": {
+        "operationId": "gstd_paid_inference",
+        "summary": "Spend within a separately owner-signed allowance",
+        "description": "Record request_id before sending. It binds the exact request; no automatic retries, fallback, model substitution or quota-to-paid upgrade. Revoked/expired grants deny new reservations. Existing reservations may finish. Automatic nonempty exact-model acceptance is part of the signed policy. A model name is not cryptographic proof of quality. Backed ledger credits required.",
+        "security": [
+          {
+            "AgentGrant": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "request_id",
+                  "model",
+                  "prompt",
+                  "max_tokens",
+                  "allow_network",
+                  "max_cost_gstd"
+                ],
+                "properties": {
+                  "request_id": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{8,100}$"
+                  },
+                  "model": {
+                    "type": "string",
+                    "maxLength": 160,
+                    "description": "Exact model authorized by the grant; auto is forbidden."
+                  },
+                  "prompt": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4000
+                  },
+                  "max_tokens": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 512
+                  },
+                  "allow_network": {
+                    "type": "boolean",
+                    "enum": [
+                      true
+                    ]
+                  },
+                  "max_cost_gstd": {
+                    "type": "string",
+                    "pattern": "^(0|[1-9][0-9]*)([.][0-9]{1,9})?$",
+                    "example": "0.005"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Captured exact-model response with 85/10/5 receipt"
+          },
+          "400": {
+            "description": "Invalid request or grant"
+          },
+          "401": {
+            "description": "Invalid grant token"
+          },
+          "402": {
+            "description": "Insufficient balance or cost cap"
+          },
+          "403": {
+            "description": "Revoked or expired"
+          },
+          "409": {
+            "description": "Already processed or conflict; inspect receipt"
+          },
+          "429": {
+            "description": "Rate limited; no automatic retry"
+          },
+          "503": {
+            "description": "Unavailable or execution failed; inspect receipt before retry"
+          }
+        }
+      }
     }
   },
   "components": {
-    "securitySchemes": {}
+    "securitySchemes": {
+      "AgentGrant": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Private owner-signed, revocable platform-balance inference allowance. Never a wallet session or enterprise key."
+      }
+    }
   },
   "security": []
 }

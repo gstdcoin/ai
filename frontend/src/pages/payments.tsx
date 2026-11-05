@@ -57,6 +57,7 @@ export default function PaymentsPage() {
         <section className="rounded-xl border border-violet-400/30 p-5 space-y-3" aria-labelledby="payment-paths">
             <h2 id="payment-paths" className="text-xl font-semibold">{p('paths_title')}</h2>
             <p className="text-gray-300">{p('paths_notice')}</p>
+            <p><Link href="/agent-access" className="underline text-violet-300">{t('agent_access.title')}</Link></p>
             <p><Link href="/escrow-mainnet" className="underline text-violet-300">{p('mainnet_escrow')}</Link></p>
             <p className="text-sm text-gray-400">{p('mainnet_notice')}</p>
             <p><a href={'https://gstdtoken.com/docs?lang='+(router.locale==='ru'?'ru':'en')+'#get-started'} className="underline text-violet-300">{p('start_guide')}</a></p>

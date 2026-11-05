@@ -92,6 +92,27 @@ async function run() {
     assert.ok(command('TTL','money:v2:response:race')<=600);
     assert.equal((await m.moneyJob('race')).result.answer,undefined);
     const snapshot=command('GET','money:v2:account:'+payer);
+    // Grant reservations share the same production Lua transaction as payer debits.
+    const policy={label:'redis-fixture',models:['qwen2.5:0.5b'],executors:[{nodeId:'redis-node',wallet:operator}],
+        budgetNano:m.nano('0.01').toString(),perRequestNano:m.nano('0.005').toString(),
+        maxRequests:10,maxTokens:32,expiresAt:Date.now()+60000};
+    const nonce='ee'.repeat(32),challenge='fixture-verified-authorization';
+    command('SET','agent-grant:challenge:'+nonce,challenge);
+    const g=await m.createAgentGrant(payer,policy,nonce,challenge);
+    const use={id:g.grant.id,tokenHash:m.digest(g.token),model:policy.models[0],nodeId:'redis-node',executor:operator,maxTokens:32};
+    const runs=await Promise.allSettled(Array.from({length:8},(_,i)=>m.reserveMoney(payer,'grant-'+i,m.nano('0.005'),'f'+i,Date.now()+30000,'chat',undefined,use)));
+    assert.equal(runs.filter(x=>x.status==='fulfilled').length,2);
+    const jobs=runs.flatMap((r,i)=>r.status==='fulfilled'?['grant-'+i]:[]);
+    await m.revokeAgentGrant(payer,use.id);
+    await assert.rejects(()=>m.reserveMoney(payer,'grant-revoked',m.nano('0.005'),'revoked',Date.now()+30000,'chat',undefined,use),/grant_inactive/);
+    await assert.rejects(()=>m.captureMoney(jobs[0],custody,{}),/grant_scope_denied/);
+    await m.captureMoney(jobs[0],operator,{answer:'accepted'});
+    await m.captureMoney(jobs[0],operator,{answer:'accepted'});
+    await m.releaseMoney(jobs[1]);await m.releaseMoney(jobs[1]);
+    const finalGrant=await m.getAgentGrant(use.id);
+    assert.equal(finalGrant.spentNano,'5000000');assert.equal(finalGrant.reservedNano,'0');
+    assert.equal(finalGrant.requests,2);
+    console.log('Persistent grant production Redis checks passed: concurrent cap, revoke, executor binding, capture and refund.');
     // A storage fault fails closed in production.
     command('SET','money:v2:due','wrong-type');
     await assert.rejects(()=>m.reserveMoney(payer,'failure',1n,'bad',Date.now()+60_000));
