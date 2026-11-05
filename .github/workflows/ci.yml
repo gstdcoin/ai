@@ -215,6 +215,22 @@ jobs:
           KV_REST_API_URL: ${{ secrets.KV_REST_API_URL }}
           KV_REST_API_TOKEN: ${{ secrets.KV_REST_API_TOKEN }}
 
+      - name: Verify preview public discovery
+        run: |
+          node --input-type=module - <<'NODE'
+          for (const path of ['/api/v1/network/stats','/api/v1/models/available']) {
+            const response=await fetch(process.env.WORKER_URL+path,{headers:{'User-Agent':'GSTD-Release-Check','Accept':'application/json'}});
+            const data=await response.json();
+            if(!response.ok || (path.endsWith('/stats') ? !Number.isSafeInteger(data.nodes_online) : !Array.isArray(data.models))) {
+              console.error('Discovery verification failed',path,response.status,data.error||'',data.reason||'',data.error_kind||'');
+              process.exit(1);
+            }
+            console.log('Discovery verified',path,response.status);
+          }
+          NODE
+        env:
+          WORKER_URL: ${{ steps.bootstrap.outputs.url }}
+
       - name: Verify preview pages
         run: |
           set -euo pipefail

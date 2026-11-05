@@ -1,5 +1,5 @@
+import {publicNetworkResponse,nativePublicFetch} from './worker-public-network';
 import openNextWorker from './.open-next/worker.js';
-import {publicNetworkResponse} from './worker-public-network';
 
 type WorkerEnvironment = Record<string, unknown> & {
     OPEN_INTELLIGENCE_CRON_SECRET?: string;
@@ -22,10 +22,10 @@ export default {
             const cacheKey=new Request(new URL(path,request.url).toString());
             const hit=cache?await cache.match(cacheKey):null;
             if(hit)return hit;
-            const response=await publicNetworkResponse(request,env);
+            const response=await publicNetworkResponse(request,env,nativePublicFetch);
             if(response){if(response.ok&&cache)ctx.waitUntil(cache.put(cacheKey,response.clone()));return response;}
         }
-        return (await publicNetworkResponse(request,env)) || openNextWorker.fetch(request, env, ctx);
+        return (await publicNetworkResponse(request,env,nativePublicFetch)) || openNextWorker.fetch(request, env, ctx);
     },
 
     scheduled(event: ScheduledEvent, env: WorkerEnvironment, ctx: WorkerExecutionContext): void {
