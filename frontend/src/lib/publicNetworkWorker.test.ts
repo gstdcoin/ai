@@ -5,7 +5,7 @@ const env={KV_REST_API_URL:'https://redis.invalid',KV_REST_API_TOKEN:'fixture-on
 const node={node_id:'native-node',node_url:'https://native.example.com',last_seen:new Date().toISOString(),capabilities:['exact:small']};
 afterEach(()=>vi.unstubAllGlobals());
 it('reads live counters in batches without Next rendering or publishing credentials',async()=>{
- const calls:any[]=[];vi.stubGlobal('fetch',vi.fn(async(_u,init)=>{const body=JSON.parse(init.body);calls.push(body);return Response.json(body.length===3?[{result:['node:native-node','node:metadata:cache']},{result:['1','7','0.1','0.01','2','0','0.02','3','1']},{result:4}]:[{result:[JSON.stringify(node)]}]);}));
+ const calls:any[]=[];vi.stubGlobal('fetch',vi.fn(async(_u,init)=>{expect(init.redirect).toBe('manual');const body=JSON.parse(init.body);calls.push(body);return Response.json(body.length===3?[{result:['node:native-node','node:metadata:cache']},{result:['1','7','0.1','0.01','2','0','0.02','3','1']},{result:4}]:[{result:[JSON.stringify(node)]}]);}));
  const r=(await publicNetworkResponse(new Request('https://app.gstdtoken.com/api/v1/network/stats'),env))!;
  expect(r.status).toBe(200);const data=await r.json();expect(data.nodes_online).toBe(1);expect(data.total_tasks).toBe(7);expect(data.queue_depth).toBe(4);expect(JSON.stringify(data)).not.toContain('fixture-only');expect(calls).toHaveLength(2);
 });
@@ -19,4 +19,10 @@ it('does not publish zero statistics on storage failure or process other paths',
  expect((await publicNetworkResponse(new Request('https://app.gstdtoken.com/api/v1/network/stats'),env))!.status).toBe(503);
  expect(await publicNetworkResponse(new Request('https://app.gstdtoken.com/api/v1/finance/balance'),env)).toBeNull();
  expect((await publicNetworkResponse(new Request('https://app.gstdtoken.com/api/v1/network/stats',{method:'POST'}),env))!.status).toBe(405);
+});
+
+it('does not follow a Redis redirect or forward its authorization elsewhere',async()=>{
+ const fetcher=vi.fn(async()=>new Response('',{status:302,headers:{Location:'https://attacker.invalid'}}));vi.stubGlobal('fetch',fetcher);
+ const r=(await publicNetworkResponse(new Request('https://app.gstdtoken.com/api/v1/network/stats'),env))!;
+ expect(r.status).toBe(503);expect(fetcher).toHaveBeenCalledTimes(1);expect((await r.json()).reason).toBe('registry_http_302');
 });

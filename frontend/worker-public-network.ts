@@ -14,7 +14,7 @@ async function commands(env:Env,body:unknown[][],transport:typeof fetch):Promise
  let parsed:URL;try{parsed=new URL(endpoint);}catch{throw Error('registry_endpoint_invalid');}
  if(parsed.protocol!=='https:')throw Error('registry_endpoint_invalid');
  const controller=new NativeAbortController(),timer=setTimeout(()=>controller.abort(),5000);
- let r:Response;try{r=await transport(endpoint.replace(/\/$/,'')+'/pipeline',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(body),signal:controller.signal,redirect:'error'});}catch(e){clearTimeout(timer);const text=e instanceof Error?e.message:'';throw Error(/AbortSignal|signal/i.test(text)?'registry_signal_rejected':/redirect/i.test(text)?'registry_redirect_rejected':'registry_transport_failed');}
+ let r:Response;try{r=await transport(endpoint.replace(/\/$/,'')+'/pipeline',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(body),signal:controller.signal,redirect:'manual'});}catch(e){clearTimeout(timer);const text=e instanceof Error?e.message:'';throw Error(/AbortSignal|signal/i.test(text)?'registry_signal_rejected':/redirect/i.test(text)?'registry_redirect_rejected':'registry_transport_failed');}
  if(!r.ok){clearTimeout(timer);throw Error('registry_http_'+r.status);}
  let rows:any[];try{rows=await r.json() as any[];}catch{throw Error('registry_payload_invalid');}finally{clearTimeout(timer);}
  if(!Array.isArray(rows)||rows.length!==body.length||rows.some(x=>x.error))throw Error('registry_command_failed');
