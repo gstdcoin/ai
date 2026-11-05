@@ -1,8 +1,8 @@
 {
   "action": "rotate-node-release-key",
   "expectedPublicKey": "1451788de7861b5b2dc31073606bdbab337682fe7acb74b317ad34e60ecd2a75",
-  "expiresAt": 1793916620348,
-  "id": "173aa6dd-2576-463a-ba45-3cee641cbada",
-  "issuedAt": 1793913020348,
+  "expiresAt": 1793917038939,
+  "id": "ffb3f154-f881-481b-8a68-591b47cb8071",
+  "issuedAt": 1793913438939,
   "worker": "gstd-ai-platform"
 }

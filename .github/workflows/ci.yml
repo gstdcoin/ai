@@ -63,7 +63,8 @@ jobs:
     concurrency:
       group: gstd-platform-cloudflare-deploy
       cancel-in-progress: false
-    if: github.ref == 'refs/heads/main'
+    # Approval-only recovery commits do not redeploy application code or race secret provisioning.
+    if: github.ref == 'refs/heads/main' && !startsWith(github.event.head_commit.message, 'Authorize owner-approved release recovery')
     runs-on: ubuntu-latest
     name: Deploy to Cloudflare
     needs: [frontend, audit]
