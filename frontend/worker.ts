@@ -1,4 +1,5 @@
 import openNextWorker from './.open-next/worker.js';
+import {publicNetworkResponse} from './worker-public-network';
 
 type WorkerEnvironment = Record<string, unknown> & {
     OPEN_INTELLIGENCE_CRON_SECRET?: string;
@@ -14,8 +15,17 @@ interface WorkerExecutionContext {
 }
 
 export default {
-    fetch(request: Request, env: WorkerEnvironment, ctx: WorkerExecutionContext): Promise<Response> {
-        return openNextWorker.fetch(request, env, ctx);
+    async fetch(request: Request, env: WorkerEnvironment, ctx: WorkerExecutionContext): Promise<Response> {
+        const path=new URL(request.url).pathname;
+        if(request.method==='GET'&&['/api/v1/network/stats','/api/v1/models/available'].includes(path)){
+            const cache=(globalThis as any).caches?.default;
+            const cacheKey=new Request(new URL(path,request.url).toString());
+            const hit=cache?await cache.match(cacheKey):null;
+            if(hit)return hit;
+            const response=await publicNetworkResponse(request,env);
+            if(response){if(response.ok&&cache)ctx.waitUntil(cache.put(cacheKey,response.clone()));return response;}
+        }
+        return (await publicNetworkResponse(request,env)) || openNextWorker.fetch(request, env, ctx);
     },
 
     scheduled(event: ScheduledEvent, env: WorkerEnvironment, ctx: WorkerExecutionContext): void {
