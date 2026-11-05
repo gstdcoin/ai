@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "GSTD agent access",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "description": "Public discovery, consented free inference and separately authorized bounded platform-balance spending. No wallet signing or withdrawals."
   },
   "servers": [
@@ -220,6 +220,10 @@
                     "type": "string",
                     "pattern": "^(0|[1-9][0-9]*)([.][0-9]{1,9})?$",
                     "example": "0.005"
+                  },
+                  "quote_id": {
+                    "type": "string",
+                    "description": "Required for an operator USD offer; use the same prompt/model/token budget as the quote. Single use for a new paid job."
                   }
                 }
               }
@@ -250,6 +254,114 @@
           },
           "503": {
             "description": "Unavailable or execution failed; inspect receipt before retry"
+          },
+          "428": {
+            "description": "An operator quote is required before execution or debit"
+          }
+        }
+      }
+    },
+    "/api/v1/economics/status": {
+      "get": {
+        "operationId": "gstd_pricing_status",
+        "summary": "Read observed market reference and pricing boundaries",
+        "responses": {
+          "200": {
+            "description": "USD reference; no stablecoin payout or profit guarantee"
+          },
+          "503": {
+            "description": "No usable market observation; no fabricated fallback"
+          }
+        }
+      }
+    },
+    "/api/v1/economics/quotes": {
+      "post": {
+        "operationId": "gstd_paid_quote",
+        "summary": "Obtain a short-lived exact-work quote without reserving money",
+        "security": [
+          {
+            "AgentGrant": []
+          },
+          {
+            "WalletSession": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "model",
+                  "messages",
+                  "max_tokens",
+                  "allow_network"
+                ],
+                "properties": {
+                  "model": {
+                    "type": "string",
+                    "maxLength": 160,
+                    "description": "Exact model; auto forbidden"
+                  },
+                  "messages": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 200,
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "role",
+                        "content"
+                      ],
+                      "properties": {
+                        "role": {
+                          "type": "string",
+                          "enum": [
+                            "system",
+                            "user",
+                            "assistant"
+                          ]
+                        },
+                        "content": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "max_tokens": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 16384
+                  },
+                  "allow_network": {
+                    "type": "boolean",
+                    "enum": [
+                      true
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Fixed GSTD quote valid for 90 seconds, bound to work and owner; no funds reserved"
+          },
+          "400": {
+            "description": "Invalid request or grant limit"
+          },
+          "401": {
+            "description": "Owner authentication required"
+          },
+          "409": {
+            "description": "No eligible priced operator"
+          },
+          "503": {
+            "description": "Pricing unavailable"
           }
         }
       }
@@ -261,6 +373,12 @@
         "type": "http",
         "scheme": "bearer",
         "description": "Private owner-signed, revocable platform-balance inference allowance. Never a wallet session or enterprise key."
+      },
+      "WalletSession": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Session-Token",
+        "description": "Verified TON owner session; not a grant bearer or enterprise key."
       }
     }
   },

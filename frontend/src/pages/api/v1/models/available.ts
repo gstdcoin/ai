@@ -3,6 +3,8 @@
  * Returns models currently available across active GSTD nodes with pricing.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
+import {canonicalModelId} from '../../../../lib/modelId';
+import {offerKey,usdUnits,NodeOffer} from '../../../../lib/workEconomics';
 import { kvKeys, kvMGet } from '../../../../lib/kv';
 
 import { getModelPrice } from '../../../../lib/billing';
@@ -17,6 +19,10 @@ export interface AvailableModel {
     is_free:        boolean;
     avg_latency_ms: number | null;
     category:       string;
+    pricing?:'quote_required'|'legacy_fixed_gstd'|'free';
+    operator_offers_count?:number;
+    min_executor_usd?:string|null;
+    paid_paused?:boolean;
 }
 
 function displayName(id: string): string {
@@ -56,6 +62,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
     // Aggregate models from all active nodes
+    const offerRefs:{model:string;key:string}[]=[];
     const modelCount: Record<string, number>       = {};
     const modelLatency: Record<string, number[]>   = {};
 
@@ -72,6 +79,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 const caps: string[] = Array.isArray(node.capabilities) ? [...new Set<string>(node.capabilities.filter((c:unknown)=>typeof c==='string'))] : [];
                 for (const cap of caps) {
                     modelCount[cap] = (modelCount[cap] || 0) + 1;
+                    if(offerRefs.length<200)offerRefs.push({model:cap,key:offerKey(node.node_id,cap)});
                     if (node.avg_latency_ms) {
                         if (!modelLatency[cap]) modelLatency[cap] = [];
                         modelLatency[cap].push(node.avg_latency_ms);
@@ -84,12 +92,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Build response: combine live node data with price catalog
     const seen = new Set<string>(Object.keys(modelCount));
     const models: AvailableModel[] = [];
+    const offersByModel=new Map<string,NodeOffer[]>();
+    if(offerRefs.length){
+        try{const raw=await kvMGet(offerRefs.map(x=>x.key));for(let i=0;i<raw.length;i++){
+            if(!raw[i])continue;const offer:NodeOffer=JSON.parse(raw[i]!);
+            if(canonicalModelId(offer.model)===canonicalModelId(offerRefs[i].model)){const key=offerRefs[i].model,list=offersByModel.get(key)||[];list.push(offer);offersByModel.set(key,list);}
+        }}catch{/* Offers are indicative; fresh quotes remain authoritative. */}
+    }
 
     for (const modelId of seen) {
         const count   = modelCount[modelId] || 0;
         const latArr  = modelLatency[modelId] || [];
         const avgLat  = latArr.length > 0 ? Math.round(latArr.reduce((a, b) => a + b, 0) / latArr.length) : null;
         const price   = getModelPrice(modelId);
+        const profiles=offersByModel.get(modelId)||[],activeOffers=profiles.filter(o=>o.active);
 
         models.push({
             model_id:       modelId,
@@ -99,6 +115,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             is_free:        price === 0,
             avg_latency_ms: avgLat,
             category:       modelCategory(modelId),
+            pricing:price===0?'free':offersByModel.has(modelId)?'quote_required':'legacy_fixed_gstd',
+            operator_offers_count:activeOffers.length,
+            paid_paused:profiles.length===count&&profiles.every(o=>!o.active),
+            min_executor_usd:activeOffers.length?usdUnits(activeOffers.reduce((min,o)=>BigInt(o.netUsdMicro)<min?BigInt(o.netUsdMicro):min,BigInt(activeOffers[0].netUsdMicro))):null,
         });
     }
 

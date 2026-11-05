@@ -105,6 +105,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     const walletAddress = !enterpriseKey ? authenticatedWallet : null;
 
+    if(enterpriseKey&&getModelPrice(resolvedModel)>0)return res.status(402).json({error:'funded_wallet_required_for_paid_inference'});
     if (!enterpriseKey && getModelPrice(resolvedModel) > 0) {
         return paidInference(req,res,{ wallet: walletAddress, price: getModelPrice(resolvedModel), model: resolvedModel,
             messages, maxTokens: maxTok, surface: 'api' });

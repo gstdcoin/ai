@@ -108,6 +108,7 @@ function MainnetPanel({expected}:{expected:TonConnect}){
    <p>{p(!catalog?'loading':catalog.rpc_configured?'rpc_ready':'rpc_missing')}</p><button className={button} disabled={busy||!walletAuthorized||!catalog?.rpc_configured} onClick={()=>work(async()=>{const d=await api('preflight');setPreflight(d.preflight);})}>{p('preflight')}</button>{preflight&&<p>{p('operator_balance')}: {amount(preflight.operator_gstd_nano)} GSTD · {amount(preflight.operator_ton_nano)} TON</p>}
    <label className="block">{p('model')}<select className={field} value={selected} disabled={busy||!!draft} onChange={e=>setSelected(e.target.value)}><option value="">{p('choose_model')}</option>{offers.map((o:any)=><option key={key(o)} value={key(o)}>{o.model} · {o.price} GSTD · {o.node_id.slice(0,12)}</option>)}</select></label>
    {catalog&&!offers.length&&<p>{p('no_models')}</p>}
+   <p className="text-sm text-gray-400">{p('economics_notice')}</p>
    <label className="block">{p('prompt')}<textarea className={field} rows={5} maxLength={4000} value={prompt} disabled={busy||!!draft} onChange={e=>setPrompt(e.target.value)}/></label>
    <label className="block">{p('max_tokens')}<input className={field} type="number" min={1} max={512} value={maxTokens} disabled={busy||!!draft} onChange={e=>setMaxTokens(Number(e.target.value))}/></label>
    <label className="flex gap-3"><input type="checkbox" checked={consent} disabled={busy||!!draft} onChange={e=>setConsent(e.target.checked)}/>{p('consent')}</label>

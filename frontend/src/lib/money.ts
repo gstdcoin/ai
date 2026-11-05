@@ -108,7 +108,7 @@ export async function moneyJob(job: string): Promise<MoneyJob | null> {
     const raw = await kvGet(jobKey(job)); return raw ? JSON.parse(raw) : null;
 }
 export async function reserveMoney(wallet: string, jobId: string, amount: bigint, fingerprint: string,
-    expiresAt: number, kind: MoneyJob['kind'] = 'chat', extra?: { key: string; value: string }, grant?: GrantUse): Promise<MoneyJob & { acquired: boolean }> {
+    expiresAt: number, kind: MoneyJob['kind'] = 'chat', extra?: { key: string; value: string; once?:boolean }, grant?: GrantUse): Promise<MoneyJob & { acquired: boolean }> {
     wallet = walletId(wallet); const ak = accountKey(wallet), jk = jobKey(jobId);
     if (amount <= 0n || amount > MAX_NANO || expiresAt <= Date.now()) throw new MoneyError('invalid_reservation');
     return atomic<MoneyJob & { acquired: boolean }>([SYS, ak, jk, ...(extra ? [extra.key] : []), ...(grant ? [agentGrantKey(grant.id)] : [])], old => {
@@ -118,13 +118,14 @@ export async function reserveMoney(wallet: string, jobId: string, amount: bigint
                 throw new MoneyError('idempotency_conflict');
             return { value: { ...previous, acquired: false } };
         }
+        if(extra?.once&&old[extra.key])throw new MoneyError('quote_already_used');
         const grantWrite = grant ? reserveGrant(old[agentGrantKey(grant.id)],wallet,amount,grant) : null;
         system(old[SYS]); const a = parseAccount(old[ak]);
         change(a, 'available', -amount); change(a, 'reserved', amount);
         const job: MoneyJob = { id: jobId, wallet, amount: String(amount), available: String(amount),
             state: 'reserved', kind, fingerprint, expiresAt, createdAt: Date.now(), ...(grant ? {grantId:grant.id,grantExecutor:grant.executor}: {}) };
         const writes = { [ak]: JSON.stringify(a), [jk]: JSON.stringify(job), ...(extra ? { [extra.key]: extra.value } : {}), ...(grantWrite ? {[agentGrantKey(grantWrite.id)]:JSON.stringify(grantWrite)}:{}) };
-        return { value: { ...job, acquired: true }, tx: { writes, due: { id: jobId, at: expiresAt } } };
+        return { value: { ...job, acquired: true }, tx: { writes, due: { id: jobId, at: expiresAt },...(extra?.once?{expires:{[extra.key]:3600}}:{}) } };
     });
 }
 export async function captureMoney(jobId: string, executorWallet: string, result: unknown): Promise<MoneyJob> {

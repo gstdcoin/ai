@@ -1,3 +1,4 @@
+import {checkQueuedOffer} from './workEconomics';
 import { mainnetAssignment } from './mainnetJobs';
 import { pilotAssignment } from './escrowJobs';
 import { executorPayout } from './nodePayout';
@@ -56,6 +57,7 @@ export async function assignTaskToNode(
         if(!node?.wallet_address)return false;
         // Freeze recipient at assignment; later operator changes cannot redirect this job.
         assignment.payout_wallet = await executorPayout(nodeId,node.wallet_address);
+        await checkQueuedOffer(task,nodeId,assignment.payout_wallet,BigInt(funding.amount),Array.isArray(node.capabilities)?node.capabilities:[]);
         assignment.funding_id = task.task_id;
     }
     if (typeof task.type === 'string') assignment.task_type = task.type;

@@ -14,7 +14,7 @@ export default function AgentAccessPage(){
 function AgentAccessForm(){
  const {t}=useTranslation('common'),p=(k:string)=>t('agent_access.'+k);
  const wallet=useTonWallet(),[ton]=useTonConnectUI();
- const [model,setModel]=useState(''),[models,setModels]=useState<{model_id:string;price_gstd:number}[]>([]);
+ const [model,setModel]=useState(''),[models,setModels]=useState<{model_id:string;price_gstd:number;pricing?:string}[]>([]);
  const [offers,setOffers]=useState<Executor[]>([]),[selected,setSelected]=useState<string[]>([]),[grants,setGrants]=useState<Grant[]>([]);
  const [budget,setBudget]=useState('0.05'),[cap,setCap]=useState('0.005'),[hours,setHours]=useState('24');
  const [busy,setBusy]=useState(false),[notice,setNotice]=useState(''),[secret,setSecret]=useState('');
@@ -25,7 +25,7 @@ function AgentAccessForm(){
   const d=await r.json();if(!r.ok)throw Error(d.error||'request_failed');return d;
  }
  useEffect(()=>{
-  let live=true;fetch('/api/v1/models/available').then(r=>r.json()).then(d=>{if(live)setModels(d.models.filter((m:any)=>m.price_gstd>0&&m.nodes_count>0));}).catch(()=>setNotice('request_failed'));
+  let live=true;fetch('/api/v1/models/available').then(r=>r.json()).then(d=>{if(live)setModels(d.models.filter((m:any)=>m.price_gstd>0&&m.nodes_count>0&&!m.paid_paused));}).catch(()=>setNotice('request_failed'));
   return()=>{live=false;};
  },[]);
  useEffect(()=>{
@@ -68,7 +68,7 @@ function AgentAccessForm(){
  {notice&&<p role="alert">{p(['auth_required','wrong_network','invalid_grant_policy'].includes(notice)?notice:'request_failed')}</p>}
  <section className="border border-white/20 rounded-xl p-5 space-y-4">
  <h2 className="text-xl">{p('create')}</h2>
- <label className="block">{p('model')}<select className={input} value={model} onChange={e=>{setModel(e.target.value);setOffers([]);setSelected([]);}}><option value="">{p('choose')}</option>{models.map(m=><option key={m.model_id} value={m.model_id}>{m.model_id} · {m.price_gstd} GSTD</option>)}</select></label>
+ <label className="block">{p('model')}<select className={input} value={model} onChange={e=>{setModel(e.target.value);setOffers([]);setSelected([]);}}><option value="">{p('choose')}</option>{models.map(m=><option key={m.model_id} value={m.model_id}>{m.model_id} · {m.pricing==='quote_required'?t('chat_pricing.by_quote'):m.price_gstd+' GSTD'}</option>)}</select></label>
  <p>{p('executors')}</p>{offers.map(e=><label key={e.nodeId} className="block break-all text-sm"><input type="checkbox" checked={selected.includes(e.nodeId)} onChange={ev=>setSelected(ev.target.checked?[...selected,e.nodeId]:selected.filter(id=>id!==e.nodeId))}/> {e.nodeId}<br/>{e.wallet}</label>)}
  <label className="block">{p('budget')}<input className={input} inputMode="decimal" value={budget} onChange={e=>setBudget(e.target.value)}/></label>
  <label className="block">{p('cap')}<input className={input} inputMode="decimal" value={cap} onChange={e=>setCap(e.target.value)}/></label>

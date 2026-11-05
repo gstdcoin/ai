@@ -1,3 +1,4 @@
+import {requiresWorkQuote,requireWorkQuote} from './workEconomics';
 import type {AgentGrant} from './money';
 import { canonicalModelId } from './modelId';
 import { executorPayout } from './nodePayout';
@@ -17,7 +18,9 @@ export async function paidInference(req: NextApiRequest, res: NextApiResponse, o
     const wallet = walletId(options.wallet);
     const jobId = 'chat:' + digest(options.grant ? [wallet,options.grant.id,rawId] : [wallet,rawId]);
     const {grant,...requestOptions}=options;
-    const fingerprint = digest({...requestOptions,...(grant?{grantId:grant.id}:{})});
+    const quoteId=req.body?.quote_id;
+    const fingerprint = digest({...requestOptions,...(grant?{grantId:grant.id}:{}),...(quoteId?{quoteId}:{})});
+    let price=options.price;
     let acquired = false;
     try {
         const previous = await moneyJob(jobId);
@@ -31,20 +34,30 @@ export async function paidInference(req: NextApiRequest, res: NextApiResponse, o
             if (previous.state === 'reserved' && previous.expiresAt <= Date.now()) await releaseMoney(jobId);
             return res.status(409).json({ error: previous.expiresAt <= Date.now() ? 'reservation_expired' : 'request_already_processed', payment_id: jobId });
         }
+        const quote=quoteId?await requireWorkQuote(quoteId,wallet,options.model,options.messages,options.maxTokens,grant?.id):null;
+        if(quote){
+            if(typeof req.body?.max_cost_gstd!=='string'||nano(req.body.max_cost_gstd)<BigInt(quote.amountNano))throw new MoneyError('price_exceeds_permission');
+            price=Number(units(quote.amountNano));
+        }
         // A paid task is routed only to a registered operator with a valid payout address.
         const candidates = await getActiveNodes(options.model);
-        let target: (typeof candidates)[number] | undefined, executor = '';
+        let target: (typeof candidates)[number] | undefined, executor = '',targetRequiresQuote=false;
         for (const candidate of candidates) {
+            if(quote&&quote.nodeId!==candidate.nodeId)continue;
             const raw = await kvGet('node:' + candidate.nodeId);
             try {
                 const node = JSON.parse(raw || '{}');
                 executor = await executorPayout(candidate.nodeId, String(node.wallet_address || ''));
+                if(quote&&quote.executor!==executor)continue;
                 if(grant&&!grant.executors.some(e=>e.nodeId===candidate.nodeId&&e.wallet===executor))continue;
+                if(!quote)targetRequiresQuote=await requiresWorkQuote(candidate.nodeId,options.model,candidate.models||[],executor);
                 target = candidate; break;
             } catch { continue; }
         }
         if (!target) throw new MoneyError('no_paid_executor');
-        const reservation = await reserveMoney(wallet,jobId,nano(options.price),fingerprint,Date.now()+120_000,'chat',undefined,grant?{id:grant.id,tokenHash:grant.tokenHash,model:options.model,nodeId:target.nodeId,executor,maxTokens:options.maxTokens}:undefined);
+        const chargeNano=quote?BigInt(quote.amountNano):nano(price);
+        if(!quote&&targetRequiresQuote)throw new MoneyError('price_quote_required');
+        const reservation = await reserveMoney(wallet,jobId,chargeNano,fingerprint,Date.now()+120_000,'chat',quote?{key:'economics:quote-use:v1:'+quote.id,value:JSON.stringify({jobId,wallet}),once:true}:undefined,grant?{id:grant.id,tokenHash:grant.tokenHash,model:options.model,nodeId:target.nodeId,executor,maxTokens:options.maxTokens}:undefined);
         if (!reservation.acquired) return res.status(409).json({ error: 'request_in_progress', payment_id: jobId });
         acquired = true;
         const response = await fetch(target.url + '/v1/chat/completions', {
@@ -59,15 +72,16 @@ export async function paidInference(req: NextApiRequest, res: NextApiResponse, o
         if (options.model !== 'auto' && (typeof data.model !== 'string' || canonicalModelId(data.model) !== canonicalModelId(options.model))) throw new MoneyError('model_mismatch');
         if (!content || data._gstd?.tier === 'fallback' || data._gstd?.error) throw new MoneyError('inference_failed');
         if ((req as any).aborted || (res as any).destroyed) throw new MoneyError('client_disconnected');
-        const shares = splitNano(nano(options.price));
+        const shares = splitNano(chargeNano);
         const result = {
             id: jobId, object: 'chat.completion', created: Math.floor(Date.now()/1000), model: data.model || options.model,
             choices: [{ index: 0, message: { role: 'assistant', content }, finish_reason: 'stop' }],
             usage: data.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
             collective: { tier: options.tier, expertCount: 1, experts: [target.nodeId],
-                cost_gstd: options.price, latency_ms: Date.now()-reservation.createdAt },
+                cost_gstd: price, latency_ms: Date.now()-reservation.createdAt },
             _gstd: { node_id: target.nodeId, payment_id: jobId, ledger_version: 2,
-                billing: { charged_gstd: options.price, executor_gstd: Number(units(shares.executor)),
+                quote_id:quote?.id||null,pricing:quote?'operator_usd_offer':'legacy_fixed_gstd',
+                billing: { charged_nano:String(chargeNano),charged_gstd: price, executor_gstd: Number(units(shares.executor)),
                     protocol_gstd: Number(units(shares.protocol)), reserve_gstd: Number(units(shares.reserve)) } },
         };
         await captureMoney(jobId, executor, result);
@@ -78,7 +92,7 @@ export async function paidInference(req: NextApiRequest, res: NextApiResponse, o
         let refunded = false;
         if (acquired) { const job = await releaseMoney(jobId); refunded = job.state === 'released'; }
         const code = error instanceof MoneyError ? error.code : 'inference_failed';
-        return res.status(code === 'insufficient_balance' ? 402 : code === 'idempotency_conflict' ? 409 : 503)
+        return res.status(code === 'insufficient_balance'||code==='price_exceeds_permission' ? 402 : code === 'idempotency_conflict' ? 409 : code==='price_quote_required'?428:code.startsWith('price_quote_')||code==='quote_already_used'?409:503)
             .json({ error: code, refunded, payment_id: jobId });
     }
 }

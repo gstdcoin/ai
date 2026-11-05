@@ -114,11 +114,18 @@ async function run() {
     assert.equal(finalGrant.spentNano,'5000000');assert.equal(finalGrant.reservedNano,'0');
     assert.equal(finalGrant.requests,2);
     console.log('Persistent grant production Redis checks passed: concurrent cap, revoke, executor binding, capture and refund.');
+    const quoteRaces=await Promise.allSettled(Array.from({length:8},(_,i)=>m.reserveMoney(payer,'quote-once-'+i,m.nano('0.001'),'q'+i,Date.now()+30000,'chat',{key:'quote-use-fixture',value:String(i),once:true})));
+    assert.equal(quoteRaces.filter(r=>r.status==='fulfilled').length,1);
+    const quoteWinner=quoteRaces.findIndex(r=>r.status==='fulfilled');
+    await m.releaseMoney('quote-once-'+quoteWinner);
+    assert.ok(command('TTL','quote-use-fixture')>0);
+    console.log('Quoted work production Redis check passed: one quote cannot reserve two different jobs.');
     const snapshot=command('GET','money:v2:account:'+payer);
     // A storage fault fails closed in production.
     command('SET','money:v2:due','wrong-type');
-    await assert.rejects(()=>m.reserveMoney(payer,'failure',1n,'bad',Date.now()+60_000));
+    await assert.rejects(()=>m.reserveMoney(payer,'failure',1n,'bad',Date.now()+60_000,'chat',{key:'quote-failure',value:'fixture',once:true}));
     assert.equal(command('GET','money:v2:account:'+payer),snapshot);
+    assert.equal(command('GET','quote-failure'),null);
     // Exercise the production empty-ledger bootstrap Lua against the disposable database.
     const bootstrap=fs.readFileSync(path.join(__dirname,'../../scripts/bootstrap-empty-money.mjs'),'utf8');
     const lua=bootstrap.match(/const script=`([\s\S]*?)`;/)[1];

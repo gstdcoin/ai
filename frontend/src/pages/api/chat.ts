@@ -244,7 +244,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (requestPrice > 0) {
         const wallet = sessionToken ? await kvGet(`ton-auth:session:${sessionToken}`) : null;
         return paidInference(req,res,{ wallet, price: requestPrice, model: typeof model === 'string' && model !== 'compound' ? model : 'auto',
-            messages, maxTokens: tier === 'ultra' ? 2048 : tier === 'pro' ? 1536 : 1024, surface: 'web', tier });
+            messages, maxTokens: Number.isSafeInteger(req.body.max_tokens)&&req.body.max_tokens>=1?Math.min(req.body.max_tokens,req.body.quote_id?16384:tier==='ultra'?2048:tier==='pro'?1536:1024):tier==='ultra'?2048:tier==='pro'?1536:1024, surface: 'web', tier });
     }
 
     try {

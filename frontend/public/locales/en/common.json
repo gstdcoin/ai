@@ -1975,7 +1975,8 @@
     "unsupported_wallet": "This wallet lacks required text signing. Choose a compatible TON wallet before funding.",
     "authorize_wallet": "Verify wallet ownership · no transfer",
     "wallet_authorized": "Wallet verified for one hour",
-    "available": "Available in wallet"
+    "available": "Available in wallet",
+    "economics_notice": "Operators with configured USD offers use platform-balance quotes. They are excluded from new fixed-price escrow jobs here; previously prepared jobs retain their commitments."
   },
   "agent_access": {
     "title": "Agent spending permissions",
@@ -2018,5 +2019,60 @@
     "reserve": "The other 5% remains separate for GSTD/XAUt0 liquidity. XAUt0 acquisition and liquidity provision are not yet executed automatically.",
     "pool": "Open target GSTD/XAUt0 pool"
   },
-  "nav_buy": "Buy GSTD"
+  "nav_buy": "Buy GSTD",
+  "node_economics": {
+    "title": "Node economics",
+    "intro": "Operators set their own minimum payment in a USD reference. Buyers pay GSTD using a short-lived quote and explicit spending ceiling.",
+    "risk": "A quote fixes the agreed payment temporarily. It does not guarantee a USD return after receiving GSTD. Account for price changes, demand, idle time, model quality and conversion costs.",
+    "offer": "Your offer",
+    "node": "Node owned by your payout wallet",
+    "model": "Exact model",
+    "choose": "Choose",
+    "net": "Minimum executor share per accepted request, USD",
+    "tokens": "Maximum output-token budget",
+    "bytes": "Maximum input text size, UTF-8 bytes",
+    "fixed": "This is a fixed price per accepted request within these limits, not metered actual tokens. The network adds protocol and reserve shares using 85/10/5. Empty responses and failed work are not paid.",
+    "state": "Offer state",
+    "active": "Enabled",
+    "inactive": "Not enabled",
+    "activate": "Save and enable offer",
+    "disable": "Disable offer",
+    "commitment": "Issued quotes remain valid for up to 90 seconds; reserved jobs keep their commitments. Disabling an offer stops new paid work for this model. Nodes without a configured offer retain legacy tariffs whose profitability is unverified. Existing free trials are a separate unrewarded mode.",
+    "calculator": "Cost calculator and timing sample",
+    "assumptions": "Enter your own costs. An empty field means unknown, not zero. The editable 25% utilization is an example, not a demand forecast. Desired profit is not included unless you include it in your costs.",
+    "hourly": "All-in node cost per hour, USD",
+    "seconds": "Paid-work duration, seconds",
+    "utilization": "Expected share of time doing paid work, %",
+    "estimated_cost": "Estimated executor cost per request",
+    "gross_cost": "Buyer price covering this cost at an 85% executor share",
+    "measure": "Run a short network timing sample on my model",
+    "sample": "Last sample",
+    "characters": "characters",
+    "sample_notice": "One measurement including networking and warmup, with a 64-token output budget. It is not a measured operating cost, quality proof or full-workload benchmark.",
+    "payments": "Balance and payouts",
+    "saved": "Offer saved.",
+    "auth_required": "Connect the node payout wallet and complete login, then refresh.",
+    "failed": "The operation did not finish. Check wallet ownership, node availability and limits; no funds were charged.",
+    "disabled": "New paid work disabled",
+    "estimated_margin": "Offer minus estimated costs, before conversion and taxes",
+    "below_cost": "Your selected payment is below your own estimated costs. Adjust the price, utilization or work limits; a positive estimate still does not guarantee realized profit.",
+    "suggestion": "Use an estimated {{tokens}}-token limit from this sample (not a runtime guarantee)"
+  },
+  "chat_pricing": {
+    "confirm": "Pay for a request to {{model}}?\nExecutor: {{node}}\nPrice: {{gstd}} GSTD (about {{usd}} USD at quote time).\nOutput budget: up to {{tokens}} tokens. Fixed price per accepted request.\nQuote valid for 90 seconds. GSTD value may change after payment.\nConfirm transmission and payment?",
+    "unavailable": "No suitable quote is available. Choose an exact model with a matching operator offer. No funds charged.",
+    "by_quote": "Price by quote",
+    "uncertain": "If the paid request was already sent, its outcome needs verification. Use Check payment and recover response. Do not create another paid request before checking its receipt.",
+    "check_receipt": "Check payment and recover response",
+    "receipt_pending": "Request state is not yet confirmed. Check the connected wallet and repeat only the receipt lookup; it does not repeat payment.",
+    "receipt_state": "Payment state: {{state}}. An expired or deleted response is not recomputed automatically. This lookup does not charge funds.",
+    "regenerate": "This creates a new request that may require a new payment. To recover an existing paid answer, check its receipt first. Continue?",
+    "states": {
+      "reserved": "funds reserved",
+      "captured": "work paid",
+      "released": "reservation returned"
+    },
+    "output_budget": "Output-token budget"
+  },
+  "nav_node_economics": "My node pricing"
 }

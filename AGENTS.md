@@ -34,3 +34,5 @@ Read this before changing anything. It applies to humans and AI agents. Rules ar
 Rotate the bot token (`/revoke`), set `TELEGRAM_BOT_TOKEN` as a Worker secret and run `scripts/set-telegram-webhook.mjs`; reset the Upstash password and update GitHub Secrets; update node `gstd-desktop`; enable inline mode in @BotFather.
 
 New accepted paid ledger work credits 10% automatically to MAINNET_ESCROW.protocol, atomically with 85% executor and 5% reserve. Do not double-count cumulative credited income as fund balance. The owner selected the GSTD/XAUt0 pool EQA--JXG8VSyBJmLMqb2J2t4Pya0TS9SXHh7vHh8Iez25sLp; observation is read-only and execution is not deployed. Preserve old escrow commitments and never spend customer backing on liquidity. See docs/AUTONOMOUS_ECONOMY.md.
+
+Operator USD offers are opt-in via verified payout ownership. New quoted work must enforce exact request/owner/executor binding, quote TTL, integer amount and buyer/grant caps; consume the quote atomically with reserveMoney. Never silently raise old grant budgets. No fabricated market fallback, no guaranteed profit or stablecoin payout, and no mainnet LP execution is claimed. See docs/MARKET_PRICING.md.

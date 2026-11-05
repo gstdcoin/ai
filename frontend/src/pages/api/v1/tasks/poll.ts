@@ -150,6 +150,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         return res.status(200).json({ task: picked || null });
     } catch (err: any) {
+        if(typeof err?.code==='string'&&err.code.startsWith('operator_'))return res.status(200).json({task:null,reason:err.code});
         console.error('[tasks/poll]', err.message);
         return res.status(500).json({ error: 'Internal error' });
     }

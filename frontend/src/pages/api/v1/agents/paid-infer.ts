@@ -22,7 +22,7 @@ export default async function handler(req:NextApiRequest,res:NextApiResponse){
   if(req.method!=='POST'){res.setHeader('Allow','GET, POST');return res.status(405).end();}
   if(grant.revokedAt||grant.expiresAt<=Date.now())return res.status(403).json({error:'grant_inactive'});
   const b=req.body;
-  if(!b||typeof b!=='object'||Object.keys(b).some(k=>!['model','prompt','max_tokens','allow_network','max_cost_gstd','request_id'].includes(k))||
+  if(!b||typeof b!=='object'||Object.keys(b).some(k=>!['model','prompt','max_tokens','allow_network','max_cost_gstd','request_id','quote_id'].includes(k))||
    b.allow_network!==true||typeof b.model!=='string'||!grant.models.includes(b.model)||b.model==='auto'||
    typeof b.prompt!=='string'||!b.prompt.trim()||b.prompt.length>4000||Buffer.byteLength(b.prompt)>16000||
    !Number.isSafeInteger(b.max_tokens)||b.max_tokens<1||b.max_tokens>grant.maxTokens||
@@ -31,10 +31,10 @@ export default async function handler(req:NextApiRequest,res:NextApiResponse){
   const price=getModelPrice(b.model);
   if(!(price>0))return res.status(400).json({error:'use_free_inference_endpoint'});
   const amount=nano(price),cap=nano(b.max_cost_gstd);
-  if(amount>cap||amount>BigInt(grant.perRequestNano))return res.status(402).json({error:'price_exceeds_permission',price_gstd:price});
+  if(!b.quote_id&&(amount>cap||amount>BigInt(grant.perRequestNano)))return res.status(402).json({error:'price_exceeds_permission',price_gstd:price});
   // Grant bearer is deliberately not a broad wallet session or enterprise API key.
   req.headers['idempotency-key']=b.request_id;
-  req.body={stream:false};
+  req.body={stream:false,quote_id:b.quote_id,max_cost_gstd:b.max_cost_gstd};
   const scoped=req;
   return await paidInference(scoped,res,{wallet:grant.wallet,price,model:b.model,
    messages:[{role:'user',content:b.prompt}],maxTokens:b.max_tokens,surface:'api',grant});

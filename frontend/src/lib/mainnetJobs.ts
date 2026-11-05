@@ -1,10 +1,11 @@
+import {offerKey,NodeOffer} from './workEconomics';
 import {escrowRuntimeSecret} from './escrowRuntimeSecrets';
 import {randomBytes,createHash,timingSafeEqual} from 'node:crypto';
 import {getActiveNodes} from './nodes';
 import {nodePayout} from './nodePayout';
 import {getModelPrice} from './modelPricing';
 import {nano,units} from './money';
-import {kvGet,kvSetNX,kvMoneyCAS} from './kv';
+import {kvGet,kvMGet,kvSetNX,kvMoneyCAS} from './kv';
 import {extractVerifiedWalletPublicKey} from './tonProof';
 import {canonicalModelId} from './modelId';
 import {rawAddress} from './batchEscrow';
@@ -20,8 +21,10 @@ export function mainnetRpcConfigured(){return !!escrowRuntimeSecret('ESCROW_MAIN
 export function requireMainnetPayer(address:string){return rawAddress(address);}
 export async function mainnetCatalog(){
  const nodes=await getActiveNodes();const offers=[];
+ const refs=nodes.flatMap(n=>n.models.filter(validMainnetModel).map(model=>offerKey(n.nodeId,model))),quotedOffers=new Map<string,NodeOffer>();
+ const quotedRaw=refs.length?await kvMGet(refs):[];for(let i=0;i<refs.length;i++)if(quotedRaw[i])quotedOffers.set(refs[i],JSON.parse(quotedRaw[i]!));
  for(const node of nodes){const payout=await nodePayout(node.nodeId);if(!payout)continue;
-  for(const model of node.models){if(!validMainnetModel(model))continue;const price=units(nano(getModelPrice(model)));if(BigInt(nano(price))<=0n||BigInt(nano(price))>BigInt(policy.maxBudgetNano))continue;
+  for(const model of node.models){if(!validMainnetModel(model))continue;const quoted=quotedOffers.get(offerKey(node.nodeId,model));if(quoted&&quoted.wallet===payout.address)continue;const price=units(nano(getModelPrice(model)));if(BigInt(nano(price))<=0n||BigInt(nano(price))>BigInt(policy.maxBudgetNano))continue;
    offers.push({node_id:node.nodeId,model,price,worker:payout.address,payout_revision:payout.revision});
   }
  }return offers;

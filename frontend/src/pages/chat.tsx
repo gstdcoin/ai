@@ -41,6 +41,7 @@ interface Message {
     collectiveInfo?: CollectiveInfo;
     latencyMs?: number;
     paymentId?: string;
+    requestId?:string;
     timestamp: number;
 }
 
@@ -336,7 +337,8 @@ export default function ChatPage() {
     const [input, setInput] = useState('');
     const [isStreaming, setIsStreaming] = useState(false);
     const [selectedModel, setSelectedModel] = useState('auto');
-    const [liveModels,setLiveModels]=useState<Array<{model_id:string;nodes_count:number;price_gstd:number}>>([]);
+    const [outputBudget,setOutputBudget]=useState(128);
+    const [liveModels,setLiveModels]=useState<Array<{model_id:string;nodes_count:number;price_gstd:number;pricing?:string;paid_paused?:boolean}>>([]);
     const [catalogueState, setCatalogueState] = useState<ChatCatalogueState>('loading');
     const [catalogueRevision, setCatalogueRevision] = useState(0);
     const handoffApplied = useRef(false);
@@ -482,30 +484,17 @@ export default function ChatPage() {
             c.id === convId ? { ...c, messages: [...c.messages, userMsg], title: c.messages.length === 0 ? userMessage.slice(0, 50) : c.title } : c
         ));
 
-        // Check balance for paid tiers
-        const currentBalance = creditBalance ?? 0;
-        if (tierInfo.cost > 0 && creditBalance !== null && currentBalance < tierInfo.cost) {
-            const errMsg: Message = {
-                id: 'msg_' + Date.now() + '_err',
-                role: 'assistant',
-                content: `⚠️ **Insufficient GSTD balance**\n\nYou need **${tierInfo.cost} GSTD** for ${tierInfo.name} but have **${currentBalance.toFixed(2)} GSTD**.\n\nSwitch to **🆓 Single Expert** (free) or top up your balance.`,
-                timestamp: Date.now(),
-            };
-            setConversations(prev => prev.map(c =>
-                c.id === convId ? { ...c, messages: [...c.messages, errMsg] } : c
-            ));
-            return;
-        }
-
         setIsStreaming(true);
         setCollectivePhase(selectedTier !== 'free' ? 'consulting' : null);
         setExpertResultsState([]);
         setConsensusScoreState(null);
         setConsensusMessageState('');
         setCurrentExpertCount(tierInfo.expertCount);
+        const paymentKey=crypto.randomUUID();
         const aiMsgId = 'msg_' + Date.now() + '_ai';
         const aiMsg: Message = {
             id: aiMsgId,
+            requestId:tierInfo.cost>0?paymentKey:undefined,
             role: 'assistant',
             content: '',
             model: selectedModel,
@@ -530,22 +519,38 @@ export default function ChatPage() {
             ];
 
             const sessionToken = typeof window !== 'undefined' ? localStorage.getItem('session_token') : null;
-            const response = await fetch('/api/chat', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-          'Idempotency-Key': crypto.randomUUID(),
-                    ...(address ? { 'X-Wallet-Address': address } : {}),
-                    ...(sessionToken ? { 'X-Session-Token': sessionToken } : {}),
-                },
-                body: JSON.stringify({
-                    model: selectedModel,
-                    messages: apiMessages,
-                    tier: selectedTier,
-                    stream: true,
-                }),
-                signal: controller.signal,
-            });
+            if(tierInfo.cost>0){
+                const previous=JSON.parse(localStorage.getItem('gstd:recent-payment-references')||'[]');
+                if(!Array.isArray(previous))throw Error('payment_reference_storage_unavailable');
+                localStorage.setItem('gstd:recent-payment-references',JSON.stringify([...previous.filter(x=>x?.created_at>Date.now()-7*86400000).slice(-49),{request_id:paymentKey,wallet:address,created_at:Date.now()}]));
+            }
+            const requestHeaders={'Content-Type':'application/json','Idempotency-Key':paymentKey,...(sessionToken?{'X-Session-Token':sessionToken}:{})};
+            async function quotedRequest():Promise<Response|null>{
+                const quoted=await fetch('/api/v1/economics/quotes',{method:'POST',headers:requestHeaders,
+                    body:JSON.stringify({model:selectedModel,messages:apiMessages,max_tokens:outputBudget,allow_network:true}),signal:controller.signal});
+                const prepared=await quoted.json();
+                if(!quoted.ok||!prepared.quote)throw Error(t('chat_pricing.unavailable'));
+                const q=prepared.quote;
+                if(!window.confirm(t('chat_pricing.confirm',{model:q.model,node:q.nodeId,gstd:q.price_gstd,usd:q.price_usd,tokens:outputBudget}))){
+                    setConversations(prev=>prev.map(c=>c.id===convId?{...c,messages:c.messages.filter(m=>m.id!==aiMsgId)}:c));return null;
+                }
+                return fetch('/api/chat',{method:'POST',headers:requestHeaders,
+                    body:JSON.stringify({model:selectedModel,messages:apiMessages,tier:selectedTier,stream:true,max_tokens:outputBudget,quote_id:q.id,max_cost_gstd:q.price_gstd}),signal:controller.signal});
+            }
+            const quotedPricing=liveModels.some(m=>m.model_id===selectedModel&&m.pricing==='quote_required');
+            let response:Response;
+            if(quotedPricing){
+                const result=await quotedRequest();if(!result)return;response=result;
+            }else{
+                response=await fetch('/api/chat',{method:'POST',headers:requestHeaders,
+                    body:JSON.stringify({model:selectedModel,messages:apiMessages,tier:selectedTier,stream:true}),signal:controller.signal});
+            }
+            // An explicit 428 is emitted before reservation. Never retry a timeout or uncertain payment.
+            if(response.status===428&&!quotedPricing){
+                const required=await response.json();
+                if(required.error!=='price_quote_required')throw Error(t('chat_pricing.unavailable'));
+                const result=await quotedRequest();if(!result)return;response=result;
+            }
 
             if (!response.ok) {
                 // Handle 402 (insufficient balance) with user-friendly message
@@ -678,7 +683,7 @@ export default function ChatPage() {
                     c.id === convId ? {
                         ...c,
                         messages: c.messages.map(m =>
-                            m.id === aiMsgId ? { ...m, isStreaming: false, content: m.content || '⏹ Generation stopped.' } : m
+                            m.id === aiMsgId ? { ...m, isStreaming: false, content: m.content || (tierInfo.cost>0?t('chat_pricing.uncertain'):'⏹ Generation stopped.') } : m
                         )
                     } : c
                 ));
@@ -687,7 +692,7 @@ export default function ChatPage() {
                     c.id === convId ? {
                         ...c,
                         messages: c.messages.map(m =>
-                            m.id === aiMsgId ? { ...m, content: `Error: ${err?.message || 'Network error'}. Try again.`, isStreaming: false } : m
+                            m.id === aiMsgId ? { ...m, content: tierInfo.cost>0?t('chat_pricing.uncertain'):`Error: ${err?.message || 'Network error'}. Try again.`, isStreaming: false } : m
                         )
                     } : c
                 ));
@@ -929,6 +934,11 @@ export default function ChatPage() {
                             )}
                         </div>
 
+                        {selectedTier!=='free'&&liveModels.some(m=>m.model_id===selectedModel&&m.pricing==='quote_required')&&<label className="text-xs text-gray-400">{t('chat_pricing.output_budget')}
+                            <select className="ml-2 bg-gray-950 border border-white/10 rounded-lg p-2" value={outputBudget} onChange={e=>setOutputBudget(Number(e.target.value))}>
+                                {[32,64,128,256,512,1024,2048].map(n=><option key={n} value={n}>{n}</option>)}
+                            </select>
+                        </label>}
                         {/* Model selector for free tier */}
                         {(
                             <div className="relative group">
@@ -941,7 +951,7 @@ export default function ChatPage() {
                                     <option value="auto">{t('chat_accounting.auto_model')}</option>
                                     {selectedModel !== 'auto' && !liveModels.some(model => model.model_id === selectedModel) && <option value={selectedModel}>{selectedModel} · {t('chat_accounting.model_missing')}</option>}
                                     {liveModels.map(m=>(
-                                        <option key={m.model_id} value={m.model_id}>{m.model_id} · {t('chat_accounting.model_nodes', { count: m.nodes_count })} · {m.price_gstd} GSTD</option>
+                                        <option key={m.model_id} value={m.model_id}>{m.model_id} · {t('chat_accounting.model_nodes', { count: m.nodes_count })} · {m.pricing==='quote_required'?t('chat_pricing.by_quote'):m.price_gstd+' GSTD'}</option>
                                     ))}
                                 </select>
                                 <ChevronDown size={11} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-600 pointer-events-none group-hover:text-violet-400 transition-colors" />
@@ -1019,6 +1029,17 @@ export default function ChatPage() {
 
 
                                                 {/* Model & latency badge (always visible) */}
+                                                {msg.requestId&&!msg.isStreaming&&<button className="mt-2 text-xs underline text-violet-300" onClick={async()=>{
+                                                    try{
+                                                        const token=localStorage.getItem('session_token');
+                                                        const r=await fetch('/api/v1/finance/responses?request_id='+encodeURIComponent(msg.requestId!),{headers:{'X-Session-Token':token||''}});
+                                                        const d=await r.json();
+                                                        if(!r.ok){window.alert(t('chat_pricing.receipt_pending'));return;}
+                                                        const content=d.response?.choices?.[0]?.message?.content;
+                                                        if(d.state==='captured'&&typeof content==='string')setConversations(prev=>prev.map(c=>({...c,messages:c.messages.map(m=>m.id===msg.id?{...m,content,paymentId:d.payment_id,isStreaming:false}:m)})));
+                                                        else window.alert(t('chat_pricing.receipt_state',{state:t('chat_pricing.states.'+d.state,{defaultValue:d.state})}));
+                                                    }catch{window.alert(t('chat_pricing.receipt_pending'));}
+                                                }}>{t('chat_pricing.check_receipt')}</button>}
                                                 {msg.content && !msg.isStreaming && (msg.latencyMs || msg.collectiveInfo) && (
                                                     <div className="flex items-center flex-wrap gap-2 pt-1.5">
                                                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/4 border border-white/6 text-[11px] text-gray-500">
@@ -1046,7 +1067,7 @@ export default function ChatPage() {
                                                             {copiedId === msg.id ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
                                                             {copiedId === msg.id ? 'Copied' : 'Copy'}
                                                         </button>
-                                                        <button onClick={handleRegenerate} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-gray-600 hover:text-gray-200 hover:bg-white/6 transition text-xs font-medium">
+                                                        <button onClick={()=>{if(!msg.requestId||window.confirm(t('chat_pricing.regenerate')))handleRegenerate();}} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-gray-600 hover:text-gray-200 hover:bg-white/6 transition text-xs font-medium">
                                                             <RotateCcw size={13} />
                                                             Regenerate
                                                         </button>

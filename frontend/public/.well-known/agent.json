@@ -57,7 +57,9 @@
     "per_job_escrow": "payer signs funding and acceptance; beneficiaries sign claims",
     "mainnet_cycle_verified": false,
     "automatic_spending_delegation": "owner-signed revocable platform-balance allowance only; no TON signing",
-    "gas_asset": "TON"
+    "gas_asset": "TON",
+    "pricing": "Optional owner-published USD offers, settled in GSTD by single-use expiring quotes; legacy nodes unchanged",
+    "guaranteed_profit": false
   },
   "token": {
     "name": "GSTD",
@@ -79,7 +81,8 @@
       "gstd_free_inference",
       "gstd_spending_status",
       "gstd_paid_inference",
-      "gstd_paid_receipt"
+      "gstd_paid_receipt",
+      "gstd_paid_quote"
     ]
   },
   "limitations": [
