@@ -1708,7 +1708,9 @@
     "payments": "Balance and rewards",
     "swap_title": "Get GSTD",
     "swap_desc": "The exchange opens on the external STON.fi service. Review token, price and fees there before signing.",
-    "stats_error": "Network statistics are temporarily unavailable."
+    "stats_error": "Network statistics are temporarily unavailable.",
+    "worker_lifecycle": "Switching tabs keeps this session. Leaving Telegram pauses browser work; it resumes when you return. Closing or reloading requires Start again. For continuous compute, install a server node.",
+    "worker_paused": "Paused while Telegram is in the background."
   },
   "escrow_lab": {
     "title": "Batch escrow · TON testnet",

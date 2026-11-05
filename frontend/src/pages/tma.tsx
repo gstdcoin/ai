@@ -226,11 +226,9 @@ export default function TMAPage() {
           </div>
         )}
 
-        {tab === 'worker' && (
-          <div className="space-y-4">
-            <BrowserWorkerPanel address={address ?? undefined} />
-          </div>
-        )}
+        <div hidden={tab !== 'worker'} className="space-y-4">
+          <BrowserWorkerPanel address={address ?? undefined} />
+        </div>
 
         {tab === 'agents' && (
           <div className="space-y-4">

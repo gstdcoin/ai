@@ -2,6 +2,7 @@
 
 A shared compute network: use AI, contribute a node, and spend earned GSTD on other nodes.
 
+- [Карта репозиториев и документации / Project map](docs/INDEX.md)
 - [Start here / Начните здесь](docs/START_HERE.md) — AI, node setup, wallet, models and both payment paths
 - [Mainnet contract settlement · open beta](https://app.gstdtoken.com/escrow-mainnet) · [implementation and limits](docs/MAINNET_ESCROW.md)
 - [Agent services and local MCP connector](docs/AGENT_GUIDE.md) · [OpenAPI](https://app.gstdtoken.com/agent-openapi.json)

@@ -9,6 +9,14 @@ export const LANG_NAMES: Record<Lang, string> = {
 type Dict = Record<string, string>;
 
 const en: Dict = {
+    btn_tools: "✍️ Useful tools",
+    tool_summary: "Summarize",
+    tool_translate: "Translate to English",
+    tool_rewrite: "Improve writing",
+    tool_summary_prompt: "Reply with a short text to summarize. It will be sent to a GSTD node. Do not send secrets.",
+    tool_translate_prompt: "Reply with a short text to translate into English. It will be sent to a GSTD node. Do not send secrets.",
+    tool_rewrite_prompt: "Reply with a short draft to improve. It will be sent to a GSTD node. Do not send secrets.",
+
     cloud_enabled: "Cloudflare fallback enabled by your choice. Your questions may be sent to Cloudflare if nodes are unavailable. Disable: /cloud off",
     cloud_disabled: "Node network only. Corporate AI fallback is disabled. Optional consent: /cloud on",
     welcome: '🐝 <b>GSTD — decentralized AI compute</b>\n\nHi, {name}! Send a question to try AI. You can also connect your computer as a node and build apps with its API.\n\n{wallet}',
@@ -45,6 +53,14 @@ const en: Dict = {
 };
 
 const ru: Dict = {
+    btn_tools: "✍️ Полезные инструменты",
+    tool_summary: "Сократить текст",
+    tool_translate: "Перевести на английский",
+    tool_rewrite: "Улучшить текст",
+    tool_summary_prompt: "Ответьте коротким текстом для сокращения. Он будет передан ноде GSTD. Не отправляйте секреты.",
+    tool_translate_prompt: "Ответьте коротким текстом для перевода на английский. Он будет передан ноде GSTD. Не отправляйте секреты.",
+    tool_rewrite_prompt: "Ответьте коротким черновиком для улучшения. Он будет передан ноде GSTD. Не отправляйте секреты.",
+
     cloud_enabled: "Резервный ИИ Cloudflare включён по вашему выбору. При недоступности нод вопросы могут передаваться Cloudflare. Отключить: /cloud off",
     cloud_disabled: "Только сеть нод. Корпоративный ИИ отключён. Включить по желанию: /cloud on",
     welcome: '🐝 <b>GSTD — децентрализованные ИИ-вычисления</b>\n\nПривет, {name}! Отправьте вопрос, чтобы попробовать ИИ. Можно также подключить свой компьютер как ноду и создавать приложения через её API.\n\n{wallet}',
@@ -81,6 +97,14 @@ const ru: Dict = {
 };
 
 const uk: Dict = {
+    btn_tools: "✍️ Корисні інструменти",
+    tool_summary: "Скоротити текст",
+    tool_translate: "Перекласти англійською",
+    tool_rewrite: "Покращити текст",
+    tool_summary_prompt: "Дайте відповідь коротким текстом для скорочення. Його буде передано вузлу GSTD. Не надсилайте секрети.",
+    tool_translate_prompt: "Дайте відповідь коротким текстом для перекладу англійською. Його буде передано вузлу GSTD. Не надсилайте секрети.",
+    tool_rewrite_prompt: "Дайте відповідь короткою чернеткою для покращення. Її буде передано вузлу GSTD. Не надсилайте секрети.",
+
     cloud_enabled: "Резервний ШІ Cloudflare увімкнено за вашим вибором. Якщо вузли недоступні, запити можуть передаватися Cloudflare. Вимкнути: /cloud off",
     cloud_disabled: "Лише мережа вузлів. Корпоративний ШІ вимкнено. За бажанням: /cloud on",
     welcome: '🐝 <b>GSTD — децентралізовані ШІ-обчислення</b>\n\nПривіт, {name}! Надішліть запитання, щоб спробувати ШІ. Також можна підключити комп’ютер як вузол і створювати застосунки через його API.\n\n{wallet}',
@@ -117,6 +141,14 @@ const uk: Dict = {
 };
 
 const es: Dict = {
+    btn_tools: "✍️ Herramientas útiles",
+    tool_summary: "Resumir",
+    tool_translate: "Traducir al inglés",
+    tool_rewrite: "Mejorar texto",
+    tool_summary_prompt: "Responde con un texto corto para resumir. Se enviará a un nodo GSTD. No envíes secretos.",
+    tool_translate_prompt: "Responde con un texto corto para traducir al inglés. Se enviará a un nodo GSTD. No envíes secretos.",
+    tool_rewrite_prompt: "Responde con un borrador corto para mejorar. Se enviará a un nodo GSTD. No envíes secretos.",
+
     cloud_enabled: "Has activado Cloudflare como respaldo. Si no hay nodos disponibles, tus preguntas pueden enviarse a Cloudflare. Desactivar: /cloud off",
     cloud_disabled: "Solo la red de nodos. El respaldo corporativo está desactivado. Consentimiento opcional: /cloud on",
     welcome: '🐝 <b>GSTD — cómputo de IA descentralizado</b>\n\n¡Hola, {name}! Envía una pregunta para probar la IA. También puedes conectar tu ordenador como nodo y crear aplicaciones con su API.\n\n{wallet}',
@@ -153,6 +185,14 @@ const es: Dict = {
 };
 
 const tr: Dict = {
+    btn_tools: "✍️ Yararlı araçlar",
+    tool_summary: "Özetle",
+    tool_translate: "İngilizceye çevir",
+    tool_rewrite: "Metni iyileştir",
+    tool_summary_prompt: "Özetlemek için kısa bir metinle yanıtlayın. GSTD düğümüne gönderilecektir. Gizli bilgi göndermeyin.",
+    tool_translate_prompt: "İngilizceye çevirmek için kısa bir metinle yanıtlayın. GSTD düğümüne gönderilecektir. Gizli bilgi göndermeyin.",
+    tool_rewrite_prompt: "İyileştirmek için kısa bir taslakla yanıtlayın. GSTD düğümüne gönderilecektir. Gizli bilgi göndermeyin.",
+
     cloud_enabled: "Cloudflare yedeğini seçtiniz. Düğümler kullanılamıyorsa sorular Cloudflare ile paylaşılabilir. Kapat: /cloud off",
     cloud_disabled: "Yalnızca düğüm ağı. Kurumsal yapay zekâ yedeği kapalı. İsteğe bağlı: /cloud on",
     welcome: '🐝 <b>GSTD — merkeziyetsiz yapay zekâ hesaplaması</b>\n\nMerhaba {name}! Yapay zekâyı denemek için bir soru gönder. Bilgisayarını düğüm olarak bağlayabilir ve API ile uygulamalar geliştirebilirsin.\n\n{wallet}',
@@ -189,6 +229,14 @@ const tr: Dict = {
 };
 
 const zh: Dict = {
+    btn_tools: "✍️ 实用工具",
+    tool_summary: "摘要",
+    tool_translate: "翻译成英语",
+    tool_rewrite: "润色文本",
+    tool_summary_prompt: "请回复需要摘要的短文本。文本将发送到 GSTD 节点。请勿发送机密。",
+    tool_translate_prompt: "请回复需要翻译成英语的短文本。文本将发送到 GSTD 节点。请勿发送机密。",
+    tool_rewrite_prompt: "请回复需要润色的短草稿。文本将发送到 GSTD 节点。请勿发送机密。",
+
     cloud_enabled: "你已选择启用 Cloudflare 备用 AI。节点不可用时，问题可能发送至 Cloudflare。关闭：/cloud off",
     cloud_disabled: "仅使用节点网络。企业 AI 备用服务已关闭。可选择启用：/cloud on",
     welcome: '🐝 <b>GSTD — 去中心化 AI 算力网络</b>\n\n你好，{name}！发送问题即可体验 AI。也可以将电脑连接为节点，并通过 API 开发应用。\n\n{wallet}',

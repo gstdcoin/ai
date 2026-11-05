@@ -105,9 +105,9 @@ async function saveSession(userId: number, s: { model: string; history: any[] })
 // ── Views ────────────────────────────────────────────────────────────────────
 const menuKb = (l: Lang): any[][] => [
     [{ text: t(l, 'btn_ai'), callback_data: 'ai' }, { text: t(l, 'btn_earn'), callback_data: 'earn' }],
-    [{ text: t(l, 'btn_wallet'), callback_data: 'wallet' }, { text: t(l, 'btn_invite'), callback_data: 'invite' }],
+    [{ text: t(l, 'btn_wallet'), callback_data: 'wallet' }, { text: t(l, 'btn_node'), callback_data: 'nodes' }],
     [{ text: t(l, 'btn_network'), callback_data: 'network' }, { text: t(l, 'btn_settings'), callback_data: 'lang' }],
-    [{ text: t(l, 'btn_app'), web_app: { url: appUrl(l) } }, { text: t(l, 'btn_help'), callback_data: 'help' }],
+    [{ text: t(l, 'btn_app'), web_app: { url: appUrl(l) } }, { text: t(l, 'btn_tools'), callback_data: 'tools' }],
 ];
 const backKb = (l: Lang): any[][] => [[{ text: t(l, 'btn_menu'), callback_data: 'menu' }]];
 
@@ -209,7 +209,10 @@ async function viewWallet(c: Ctx): Promise<View> {
 }
 
 const viewHelp = async (c: Ctx): Promise<View> => ({ text: t(c.lang, 'help'), kb: backKb(c.lang) });
-const viewAiHint = async (c: Ctx): Promise<View> => ({ text: t(c.lang, 'ai_hint'), kb: backKb(c.lang) });
+const TOOLS=['summary','translate','rewrite'] as const;
+type AiTool=typeof TOOLS[number];
+const toolInstruction:Record<AiTool,string>={summary:'Summarize the supplied text concisely. Preserve its meaning.',translate:'Translate the supplied text into English. Return only the translation.',rewrite:'Improve clarity and grammar of the supplied text in its original language. Preserve meaning and return only the revised text.'};
+const viewAiHint = async (c: Ctx): Promise<View> => ({ text: t(c.lang, 'ai_hint'), kb: [...TOOLS.map(tool=>[{text:t(c.lang,'tool_'+tool),callback_data:'tool:'+tool}]),...backKb(c.lang)] });
 
 async function viewLang(c: Ctx): Promise<View> {
     const rows = LANGS.map(l => ({ text: LANG_NAMES[l], callback_data: `setlang:${l}` }));
@@ -220,11 +223,11 @@ async function viewLang(c: Ctx): Promise<View> {
 
 const VIEWS: Record<string, (c: Ctx) => Promise<View>> = {
     menu: viewMenu, start: viewStart, balance: viewBalance, earn: viewEarn, nodes: viewNodes, claim: viewClaim,
-    network: viewNetwork, invite: viewInvite, wallet: viewWallet, help: viewHelp, ai: viewAiHint, lang: viewLang,
+    network: viewNetwork, invite: viewInvite, wallet: viewWallet, help: viewHelp, ai: viewAiHint, tools:viewAiHint, lang: viewLang,
 };
 const COMMAND_VIEW: Record<string, string> = {
     start: 'start', menu: 'menu', help: 'help', balance: 'balance', wallet: 'wallet', earn: 'earn',
-    node: 'nodes', nodes: 'nodes', claim: 'claim', network: 'network', invite: 'invite', lang: 'lang',
+    tools:'tools', node: 'nodes', nodes: 'nodes', claim: 'claim', network: 'network', invite: 'invite', lang: 'lang',
 };
 
 async function runView(c: Ctx, name: string): Promise<void> {
@@ -254,7 +257,7 @@ async function deliverAiReply(c: Ctx, reply: CachedAiReply): Promise<void> {
     if (key) await kvSet(key, JSON.stringify({ ...reply, sent: true }), 3600);
 }
 
-async function handleAI(c: Ctx, text: string): Promise<void> {
+async function handleAI(c: Ctx, text: string, tool?:AiTool): Promise<void> {
     const key = replyKey(c);
     const cached = key ? await kvGet(key) : null;
     if (cached) {
@@ -279,7 +282,8 @@ async function handleAI(c: Ctx, text: string): Promise<void> {
     await tg('sendChatAction', { chat_id: c.chatId, action: 'typing' }).catch(() => null);
     const messages = [
         { role: 'system', content: 'You are GSTD Sovereign AI — a decentralized AI running on the GSTD node network. Respond in the user\'s language. Be accurate and helpful. Answer briefly in at most two or three sentences.' },
-        ...session.history.slice(-6),
+        ...(tool?[{role:'system',content:toolInstruction[tool]}]:[]),
+        ...(tool?[]:session.history.slice(-6)),
         { role: 'user', content: text },
     ];
     let content = '', cloud = false;
@@ -342,7 +346,9 @@ async function processUpdate(update: any): Promise<void> {
         const lang = await getLang(userId, cb.from?.language_code);
         const ctx: Ctx = { chatId, userId, lang, name: cb.from?.first_name || '', msgId: cb.message?.message_id, updateId: update.update_id };
         const data: string = cb.data || '';
-        if (data.startsWith('setlang:')) {
+        if(data.startsWith('tool:')&&TOOLS.includes(data.slice(5) as AiTool)){
+            await tg('sendMessage',{chat_id:chatId,text:t(lang,'tool_'+data.slice(5)+'_prompt'),reply_markup:{force_reply:true,selective:true}});
+        } else if (data.startsWith('setlang:')) {
             const nl = resolveLang(data.slice(8));
             await kvSet(`tg_lang:${userId}`, nl).catch(() => {});
             ctx.lang = nl;
@@ -384,7 +390,10 @@ async function processUpdate(update: any): Promise<void> {
         return;
     }
 
-    await handleAI(ctx, text);
+    const replied=msg.reply_to_message;
+    const ownPrompt=replied?.from?.is_bot===true&&String(replied.from.username||'').toLowerCase()===BOT_USERNAME.toLowerCase();
+    const tool=ownPrompt?TOOLS.find(tool=>LANGS.some(l=>replied.text===t(l,'tool_'+tool+'_prompt'))):undefined;
+    await handleAI(ctx, text, tool);
 }
 
 /** Only inference updates may resume from a persisted reply after failed delivery.

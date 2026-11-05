@@ -66,7 +66,7 @@ export async function executeTask(task: any): Promise<Record<string, unknown> | 
 }
 
 async function post(path: string, id: WorkerIdentity, wallet: string, body: unknown) {
-    return fetch(path, { method: 'POST', headers: await signedHeaders(id, wallet), body: JSON.stringify(body) });
+    return fetch(path, { method: 'POST', headers: await signedHeaders(id, wallet), body: JSON.stringify(body), signal:AbortSignal.timeout(15_000) });
 }
 
 export async function registerWorker(id: WorkerIdentity, wallet: string): Promise<boolean> {
@@ -105,7 +105,7 @@ export async function runOnce(id: WorkerIdentity, wallet: string): Promise<boole
         supported_task_kinds: ['sha256_verify'],
         resources: { cpu_cores: (navigator as any).hardwareConcurrency || 2 },
     });
-    if (!poll.ok) return false;
+    if (!poll.ok) throw new Error('worker_poll_unavailable');
     const { task } = await poll.json();
     if (!task?.task_id && !task?.id) return false;
     const taskId = task.task_id || task.id;
@@ -115,5 +115,6 @@ export async function runOnce(id: WorkerIdentity, wallet: string): Promise<boole
         return false;
     }
     const done = await post('/api/v1/tasks/complete', id, wallet, { node_id: id.nodeId, task_id: taskId, result });
-    return done.ok;
+    if(!done.ok)throw new Error('worker_completion_unavailable');
+    return true;
 }

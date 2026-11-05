@@ -154,3 +154,27 @@ it('does not reveal account views through a group callback',async()=>{
 
 // Consumer fixture: outbound transport is validated separately in nodeFetch.test.ts.
 vi.mock('./nodeFetch',()=>({fetchNode:(url:string,init:RequestInit)=>fetch(url,init)}));
+
+describe('Telegram practical tools',()=>{
+ const runUpdate=async(body:any)=>{const response={status:vi.fn().mockReturnThis(),json:vi.fn()};await handler({method:'POST',headers:{},body},response);return response;};
+ it('opens a localized reply prompt without consuming AI quota or compute',async()=>{
+  await runUpdate({update_id:71,callback_query:{id:'cb-71',from:{id:123,language_code:'ru'},data:'tool:summary',message:{message_id:8,chat:{id:123,type:'private'}}}});
+  expect(callNodeChat).not.toHaveBeenCalled();expect(kvConsumeQuota).not.toHaveBeenCalled();
+  const prompt=request.mock.calls.map(([,o]:any)=>JSON.parse(o.body)).find(o=>o.reply_markup?.force_reply);
+  expect(prompt.text).toContain('для сокращения');expect(prompt.text).toContain('ноде GSTD');
+ });
+ it('uses the selected task for a reply to the genuine bot prompt, retaining existing quotas',async()=>{
+  vi.mocked(callNodeChat).mockResolvedValue({content:'A concise summary.',latency:100});
+  const {t}=await import('./tgbot/i18n');
+  await runUpdate({update_id:72,message:{chat:{id:123,type:'private'},from:{id:123,language_code:'en'},text:'Some source text.',reply_to_message:{from:{is_bot:true,username:'gstdaibot'},text:t('en','tool_summary_prompt')}}});
+  expect(callNodeChat).toHaveBeenCalledTimes(1);expect(kvConsumeQuota).toHaveBeenCalledTimes(1);
+  const messages=vi.mocked(callNodeChat).mock.calls[0][0];
+  expect(messages.some((m:any)=>m.role==='system'&&m.content.includes('Summarize the supplied text'))).toBe(true);
+ });
+ it('does not infer a tool mode from an unrelated sender',async()=>{
+  vi.mocked(callNodeChat).mockResolvedValue({content:'Normal answer.',latency:100});
+  const {t}=await import('./tgbot/i18n');
+  await runUpdate({update_id:73,message:{chat:{id:123,type:'private'},from:{id:123,language_code:'en'},text:'Hello.',reply_to_message:{from:{is_bot:true,username:'unrelated_bot'},text:t('en','tool_translate_prompt')}}});
+  expect(vi.mocked(callNodeChat).mock.calls[0][0].some((m:any)=>m.content.includes('Translate the supplied text into English'))).toBe(false);
+ });
+});
