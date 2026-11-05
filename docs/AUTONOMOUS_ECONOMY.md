@@ -68,3 +68,15 @@ Free trials remain bounded, separately funded service quotas and never create wi
 - Multiple independent physical compute operators and a practical recovery drill.
 - Discovery/queue/hosting redundancy; currently the platform, Redis, DNS and hosting remain central dependencies.
 - Demand: useful workloads, measured quality and repeat users. Software cannot guarantee adoption or manufacture legitimate paid demand.
+
+## Revenue-scale check before claiming self-sustainability
+
+At the observed GSTD market price USD 0.000029708124375123594 and the current small-model price 0.005 GSTD/request:
+- payment: approximately USD 0.00000014854;
+- executor 85%: approximately USD 0.00000012626;
+- protocol 10%: approximately USD 0.00000001485;
+- reserve 5%: approximately USD 0.000000007427.
+
+At unchanged price and tariff, about 134.6 million such paid requests would accrue USD 1 to the reserve, before conversion/gas costs. This does not prove economic viability, and token appreciation must not be assumed. Free/accepted request counts cannot substitute for revenue.
+
+Before claiming profitable operators or self-funding liquidity, measure actual compute cost, set an explicit pricing policy with the owner, show fresh GSTD quotes and protect existing agreed prices and agent caps. A future cost-based price policy should quote in GSTD, reject stale/unsafe market inputs and preserve already committed job amounts. Do not silently raise tariffs or expand existing spending allowances.
