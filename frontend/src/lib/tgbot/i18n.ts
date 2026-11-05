@@ -9,6 +9,7 @@ export const LANG_NAMES: Record<Lang, string> = {
 type Dict = Record<string, string>;
 
 const en: Dict = {
+    btn_models: "🤖 Choose a network model",
     btn_tools: "✍️ Useful tools",
     tool_summary: "Summarize",
     tool_translate: "Translate to English",
@@ -53,6 +54,7 @@ const en: Dict = {
 };
 
 const ru: Dict = {
+    btn_models: "🤖 Выбрать сетевую модель",
     btn_tools: "✍️ Полезные инструменты",
     tool_summary: "Сократить текст",
     tool_translate: "Перевести на английский",
@@ -97,6 +99,7 @@ const ru: Dict = {
 };
 
 const uk: Dict = {
+    btn_models: "🤖 Обрати мережеву модель",
     btn_tools: "✍️ Корисні інструменти",
     tool_summary: "Скоротити текст",
     tool_translate: "Перекласти англійською",
@@ -141,6 +144,7 @@ const uk: Dict = {
 };
 
 const es: Dict = {
+    btn_models: "🤖 Elegir modelo de red",
     btn_tools: "✍️ Herramientas útiles",
     tool_summary: "Resumir",
     tool_translate: "Traducir al inglés",
@@ -185,6 +189,7 @@ const es: Dict = {
 };
 
 const tr: Dict = {
+    btn_models: "🤖 Ağ modeli seç",
     btn_tools: "✍️ Yararlı araçlar",
     tool_summary: "Özetle",
     tool_translate: "İngilizceye çevir",
@@ -229,6 +234,7 @@ const tr: Dict = {
 };
 
 const zh: Dict = {
+    btn_models: "🤖 选择网络模型",
     btn_tools: "✍️ 实用工具",
     tool_summary: "摘要",
     tool_translate: "翻译成英语",

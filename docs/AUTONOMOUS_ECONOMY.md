@@ -31,6 +31,10 @@ Observed 2026-11-05: reserve0 115 micro-XAUt0 = 0.000115 XAUt0; reserve1 8368253
 
 GET /api/v1/treasury/liquidity checks exact pool, router, token addresses, raw decimal amounts and deprecation. Observations are cached for five minutes, with a refresh lock and bounded HTTP timeout. It never prepares or sends financial transactions and always reports automatic_execution_enabled:false until an executor actually exists.
 
+## Contract candidate and reproducible evidence
+
+The [paused candidate](https://github.com/gstdcoin/contracts/blob/master/docs/LIQUIDITY_RESERVE.md) now has a successful LP mint and full GSTD refund against real STON.fi code in isolated TON Sandbox. It implements single-sided provision as a protocol experiment, not approval to use that route economically on mainnet. The balanced/deeper-reference policy below remains the production requirement. LP custody, reserve-funding journal, keeper economic checks and real deployment are unfinished. Test funds and captured contract code never imply a real liquidity deposit.
+
 ## Proposed autonomous liquidity execution — not yet deployed
 
 Use a new, dedicated reserve vault that cannot access customer money or the protocol's 10%. Do not give a generic AI agent treasury keys, unrestricted router payloads or arbitrary destination access.

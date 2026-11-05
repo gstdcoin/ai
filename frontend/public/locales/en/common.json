@@ -1710,7 +1710,9 @@
     "swap_desc": "The exchange opens on the external STON.fi service. Review token, price and fees there before signing.",
     "stats_error": "Network statistics are temporarily unavailable.",
     "worker_lifecycle": "Switching tabs keeps this session. Leaving Telegram pauses browser work; it resumes when you return. Closing or reloading requires Start again. For continuous compute, install a server node.",
-    "worker_paused": "Paused while Telegram is in the background."
+    "worker_paused": "Paused while Telegram is in the background.",
+    "ai_first_title": "Start with a useful answer",
+    "ai_first_desc": "Ask AI without connecting a wallet. Free access depends on quotas and available nodes. Paid models show their price and request-sharing consent in chat."
   },
   "escrow_lab": {
     "title": "Batch escrow · TON testnet",

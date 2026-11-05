@@ -117,6 +117,11 @@ export default function TMAPage() {
         {/* Tab Content */}
         {tab === 'overview' && (
           <div className="space-y-4">
+            <div className="rounded-xl border border-violet-500/30 bg-violet-500/10 p-4 space-y-3">
+              <h2 className="font-bold">{t('mini_app.ai_first_title','Start with a useful answer')}</h2>
+              <p className="text-xs text-gray-300">{t('mini_app.ai_first_desc','Ask AI without connecting a wallet. Free access depends on quotas and available nodes. Paid models show their price and request-sharing consent in chat.')}</p>
+              <button onClick={()=>setTab('agents')} className="rounded-xl bg-violet-600 px-4 py-3 text-sm font-bold">{t('mini_app.open_chat','Open AI chat')}</button>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-xl bg-white/5 border border-white/10 p-4">
                 <div className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-1">{t('connection_status', 'Connection')}</div>

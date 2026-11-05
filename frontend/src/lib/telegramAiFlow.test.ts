@@ -178,3 +178,18 @@ describe('Telegram practical tools',()=>{
   expect(vi.mocked(callNodeChat).mock.calls[0][0].some((m:any)=>m.content.includes('Translate the supplied text into English'))).toBe(false);
  });
 });
+
+it('shares useful inline tools rather than referral links and never executes inline input',async()=>{
+ const response={status:vi.fn().mockReturnThis(),json:vi.fn()};
+ await handler({method:'POST',headers:{},body:{update_id:81,inline_query:{id:'inline-81',from:{id:123,language_code:'en'},query:'private source text'}}},response);
+ const answer=request.mock.calls.filter(([url]:any)=>url.endsWith('/answerInlineQuery')).map(([,o]:any)=>JSON.parse(o.body))[0];
+ expect(answer.results).toHaveLength(3);expect(JSON.stringify(answer)).not.toContain('ref_');
+ expect(JSON.stringify(answer)).not.toContain('private source text');expect(answer.results[0].input_message_content.message_text).toContain('start=tool_summary');
+ expect(callNodeChat).not.toHaveBeenCalled();expect(kvConsumeQuota).not.toHaveBeenCalled();
+});
+it('opens a shared tool without executing or charging until the recipient sends text',async()=>{
+ const response={status:vi.fn().mockReturnThis(),json:vi.fn()};
+ await handler({method:'POST',headers:{},body:{update_id:82,message:{chat:{id:123,type:'private'},from:{id:123,language_code:'en'},text:'/start tool_translate'}}},response);
+ expect(request.mock.calls.some(([,o]:any)=>JSON.parse(o.body).reply_markup?.force_reply)).toBe(true);
+ expect(callNodeChat).not.toHaveBeenCalled();expect(kvConsumeQuota).not.toHaveBeenCalled();
+});

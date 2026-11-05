@@ -212,7 +212,10 @@ const viewHelp = async (c: Ctx): Promise<View> => ({ text: t(c.lang, 'help'), kb
 const TOOLS=['summary','translate','rewrite'] as const;
 type AiTool=typeof TOOLS[number];
 const toolInstruction:Record<AiTool,string>={summary:'Summarize the supplied text concisely. Preserve its meaning.',translate:'Translate the supplied text into English. Return only the translation.',rewrite:'Improve clarity and grammar of the supplied text in its original language. Preserve meaning and return only the revised text.'};
-const viewAiHint = async (c: Ctx): Promise<View> => ({ text: t(c.lang, 'ai_hint'), kb: [...TOOLS.map(tool=>[{text:t(c.lang,'tool_'+tool),callback_data:'tool:'+tool}]),...backKb(c.lang)] });
+async function sendToolPrompt(c:Ctx,tool:AiTool){
+    await tg('sendMessage',{chat_id:c.chatId,text:t(c.lang,'tool_'+tool+'_prompt'),reply_markup:{force_reply:true,selective:true}});
+}
+const viewAiHint = async (c: Ctx): Promise<View> => ({ text: t(c.lang, 'ai_hint'), kb: [...TOOLS.map(tool=>[{text:t(c.lang,'tool_'+tool),callback_data:'tool:'+tool}]),[{text:t(c.lang,'btn_models'),web_app:{url:SWARM_URL+(c.lang==='ru'?'/ru':'')+'/chat'}}],...backKb(c.lang)] });
 
 async function viewLang(c: Ctx): Promise<View> {
     const rows = LANGS.map(l => ({ text: LANG_NAMES[l], callback_data: `setlang:${l}` }));
@@ -326,13 +329,15 @@ async function processUpdate(update: any): Promise<void> {
     if (update.inline_query) {
         const q = update.inline_query;
         const lang = await getLang(q.from.id, q.from.language_code);
-        const link = `https://t.me/${BOT_USERNAME}?start=ref_${q.from.id}`;
+        // Share an actual tool entry point, not a referral counter or an AI answer
+        // computed before consent. Inline queries never run inference.
         await tg('answerInlineQuery', {
-            inline_query_id: q.id, cache_time: 60, is_personal: true,
-            results: [{
-                type: 'article', id: `invite_${q.from.id}`, title: 'GSTD', description: t(lang, 'invite_share'),
-                input_message_content: { message_text: `${t(lang, 'invite_share')}\n${link}` },
-            }],
+            inline_query_id:q.id,cache_time:60,is_personal:true,
+            results:TOOLS.map(tool=>({
+                type:'article',id:'tool_'+tool,title:t(lang,'tool_'+tool),
+                description:t(lang,'tool_'+tool+'_prompt'),
+                input_message_content:{message_text:t(lang,'tool_'+tool)+'\n'+`https://t.me/${BOT_USERNAME}?start=tool_${tool}`},
+            })),
         });
         return;
     }
@@ -347,7 +352,7 @@ async function processUpdate(update: any): Promise<void> {
         const ctx: Ctx = { chatId, userId, lang, name: cb.from?.first_name || '', msgId: cb.message?.message_id, updateId: update.update_id };
         const data: string = cb.data || '';
         if(data.startsWith('tool:')&&TOOLS.includes(data.slice(5) as AiTool)){
-            await tg('sendMessage',{chat_id:chatId,text:t(lang,'tool_'+data.slice(5)+'_prompt'),reply_markup:{force_reply:true,selective:true}});
+            await sendToolPrompt(ctx,data.slice(5) as AiTool);
         } else if (data.startsWith('setlang:')) {
             const nl = resolveLang(data.slice(8));
             await kvSet(`tg_lang:${userId}`, nl).catch(() => {});
@@ -371,6 +376,10 @@ async function processUpdate(update: any): Promise<void> {
 
     const parsed = parseCommand(text);
     if (parsed) {
+        if(parsed.cmd==='start'&&parsed.args.startsWith('tool_')&&TOOLS.includes(parsed.args.slice(5) as AiTool)){
+            await sendToolPrompt(ctx,parsed.args.slice(5) as AiTool);
+            return;
+        }
         if (parsed.cmd === 'start') {
             const ref = parseReferrer(parsed.args);
             if (ref && ref !== String(userId)) await kvSetNX(`tg_ref:${userId}`, ref, 30 * 86400).catch(() => {});

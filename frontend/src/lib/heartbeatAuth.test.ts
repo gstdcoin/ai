@@ -1,4 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+// Authentication tests must not depend on a live GitHub version lookup.
+vi.mock('./nodeUpdate',()=>({nodeUpdateInfo:vi.fn(async()=>({update_available:false,latest_version:'3.7.1'}))}));
 import { kvGet, kvSet } from './kv';
 import { signedHeaders, type WorkerIdentity } from './browserWorker';
 import heartbeat from '../pages/api/v1/nodes/heartbeat';
