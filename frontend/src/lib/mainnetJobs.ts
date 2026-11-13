@@ -34,7 +34,7 @@ export async function prepareMainnetJob(value:{payer:string;node_id:string;model
  if(!extractVerifiedWalletPublicKey(payer,value.wallet_state_init))throw Error('unsupported_mainnet_wallet');
  if(value.consent!==true||typeof value.prompt!=='string'||!value.prompt.trim()||value.prompt.length>4000||Buffer.byteLength(value.prompt)>16000||Array.from(value.prompt).some(c=>{const n=c.charCodeAt(0);return n<32&&![9,10,13].includes(n)||n===127;})||!Number.isSafeInteger(value.max_tokens)||value.max_tokens<1||value.max_tokens>policy.maxTokens)throw Error('invalid_mainnet_job');
  const offer=(await mainnetCatalog()).find(o=>o.node_id===value.node_id&&o.model===value.model);if(!offer)throw Error('mainnet_executor_unavailable');
- const input:MainnetInput={manifest_version:1,network:'-239',payer,worker:offer.worker,protocol:policy.protocol,reserve:policy.reserve,budget:offer.price,taskId:'0'.repeat(64),deadline:Math.floor(Date.now()/1000)+1800,requests:1,
+ const input:MainnetInput={manifest_version:2,network:'-239',payer,worker:offer.worker,protocol:policy.protocol,reserve:policy.reserve,budget:offer.price,taskId:'0'.repeat(64),deadline:Math.floor(Date.now()/1000)+1800,requests:1,
  execution:{version:1,node_id:offer.node_id,model:offer.model,prompt_hash:hash(value.prompt),max_tokens:value.max_tokens,nonce:randomBytes(32).toString('hex'),payout_revision:offer.payout_revision}};
  input.taskId=mainnetJobHash(input);const access_token=randomBytes(32).toString('hex');
  const record:MainnetJobRecord={task:input.taskId,queue_task:'escrow_mainnet_'+input.taskId,input,prompt:value.prompt,access_hash:hash(access_token),state:'prepared',created_at:Date.now()};

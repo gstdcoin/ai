@@ -14,6 +14,8 @@ import { canonicalModelId } from './modelId';
 
 import { kvGet, kvKeys, kvMGet } from './kv';
 import { safeNodeUrl } from './safeNodeUrl';
+import { endpointVerified } from './nodeEndpointStatus';
+import { nodeKeyRedisKey } from './nodeAuth';
 import { dedupeNodeRecords, isNodeOnline, parseNodeRecords } from './node-status';
 
 export const NODE_MODEL = 'auto';
@@ -29,6 +31,7 @@ export interface NodeCallOptions {
     timeoutMs?:   number;
     parallel?:    boolean;  // fan-out to multiple nodes (Pro/Ultra tier)
     model?:       string;   // preferred model for locality scoring
+    trustedNodes?: ReadonlyMap<string,string>; // Require the operator's pinned key and fresh proof for the exact URL.
 }
 
 export interface ActiveNode {
@@ -48,18 +51,25 @@ export interface ActiveNode {
  * Score = (hasModel ? 100 : 0) + (ramFree_GB * 10) + (cpuScore * 0.1)
  * Concept from datenlord: route to nodes where the requested model is already loaded.
  */
-export async function getActiveNodes(preferModel?: string): Promise<ActiveNode[]> {
+export async function getActiveNodes(preferModel?: string, trustedNodes?: ReadonlyMap<string,string>): Promise<ActiveNode[]> {
     const model = preferModel || NODE_MODEL;
     const nodes: ActiveNode[] = [];
 
     try {
-        const nodeKeys = (await kvKeys('node:')).filter(key => !key.slice(5).includes(':'));
+        const trusted = trustedNodes ? [...trustedNodes.keys()] : null;
+        const nodeKeys = trusted ? trusted.map(id => 'node:' + id) : (await kvKeys('node:')).filter(key => !key.slice(5).includes(':'));
         if (!nodeKeys.length) return nodes;
 
-        const values = await kvMGet(nodeKeys);
+        const values = await kvMGet(trusted ? [...nodeKeys, ...trusted.map(nodeKeyRedisKey)] : nodeKeys);
         const now    = Date.now();
+        const records = trusted ? trusted.flatMap((id, index) => {
+            const [record] = parseNodeRecords<any>([values[index]]);
+            const key = values[index + trusted.length];
+            return record?.node_id === id && key && key === trustedNodes?.get(id) && record.endpoint_verified_key === key &&
+                endpointVerified(record, undefined, now) ? [record] : [];
+        }) : parseNodeRecords<any>(values);
 
-        for (const n of dedupeNodeRecords(parseNodeRecords<any>(values))) {
+        for (const n of dedupeNodeRecords(records)) {
             try {
                 if (!isNodeOnline(n)) continue;
                 const url = safeNodeUrl(n.node_url || n.multiaddrs?.[0] || '');
@@ -123,18 +133,18 @@ export async function callNodeChat(
     messages: ChatMessage[],
     opts: NodeCallOptions = {}
 ): Promise<{ content: string; latency: number; nodeId?: string }> {
-    const { maxTokens = 512, temperature = 0.7, timeoutMs = 30_000, model } = opts;
+    const { maxTokens = 512, temperature = 0.7, timeoutMs = 30_000, model, trustedNodes } = opts;
     const start   = Date.now();
-    const nodes   = await getActiveNodes(model);
+    const nodes   = await getActiveNodes(model, trustedNodes);
     const envUrl  = safeNodeUrl(process.env.GSTD_NODE_URL, { trusted: true });
 
     // Candidate URLs: env override first, then scored nodes, then GitHub fallback
     const candidates: {url:string;trusted:boolean}[] = [];
     candidates.push(...nodes.map((n) => ({url:n.url,trusted:false})));
-    if (envUrl && candidates.length === 0) candidates.push({url:envUrl,trusted:true});
+    if (!trustedNodes && envUrl && candidates.length === 0) candidates.push({url:envUrl,trusted:true});
 
     // GitHub fallback only if no KV nodes
-    if (candidates.length === 0) {
+    if (!trustedNodes && candidates.length === 0) {
         try {
             const ghResp = await fetch(
                 `https://raw.githubusercontent.com/gstdcoin/ai/main/node-url.txt?t=${Math.floor(Date.now() / 30000)}`,

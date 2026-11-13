@@ -32,6 +32,7 @@ beforeEach(async()=>{
  state.nodes=[{nodeId:node,models:[model]}];
  state.chain={deployed:true,state:0,mask:7,payer_balance:'1000000000',native_nano:'20000000',shares:['4250000','500000','250000'].map((amount,role)=>({role,state:0,balance_nano:amount,missing_nano:'0',native_nano:'20000000'}))};
  vi.stubEnv('ESCROW_MAINNET_TONCENTER_API_KEY','fixture-mainnet-key');
+ vi.stubEnv('ESCROW_MAINNET_V2_ENABLED','true');
  await kvSet(nodeKeyRedisKey(node),nodeKey.publicKey.toString('hex'),600);
  await kvSet('node:'+node,JSON.stringify({node_id:node,wallet_address:worker,tasks_completed:0,gstd_earned:0}),600);
  await kvSet('node_payout:'+node,JSON.stringify({address:worker,revision:1,updated_at:new Date().toISOString()}),600);
@@ -39,6 +40,10 @@ beforeEach(async()=>{
  const auth=await api('wallet-auth',{nonce:challenge.nonce,authorization:authorize(challenge.text),stateInit});expect(auth.code).toBe(200);walletToken=auth.body.wallet_token;
 });
 async function prepare(){const r=await api('prepare',{payer,node_id:node,model,prompt:privatePrompt,max_tokens:128,wallet_state_init:stateInit,consent:true});expect(r.code).toBe(200);return r.body;}
+it('blocks new payment commitments until v2 is explicitly enabled',async()=>{
+ vi.stubEnv('ESCROW_MAINNET_V2_ENABLED','false');
+ expect((await api('prepare',{payer,node_id:node,model,prompt:privatePrompt,max_tokens:128,wallet_state_init:stateInit,consent:true})).body.error).toBe('mainnet_new_tasks_unavailable');
+});
 it('requires wallet ownership, explicit disclosure consent and the exact advertised model',async()=>{
  expect((await api('catalog',{network:'-3'})).code).toBe(409);
  expect((await api('prepare',{payer:worker,node_id:node,model,prompt:privatePrompt,max_tokens:128,wallet_state_init:stateInit,consent:true})).body.error).toBe('mainnet_wallet_auth_required');

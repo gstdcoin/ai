@@ -16,6 +16,8 @@ The server commits dispatch state before presenting a transaction for signature.
 
 Normal unsigned requests can be cancelled and refunded. An uncertain dispatch cannot be cancelled by a timer or a client claim. If the signing window expired, a public chain head more than two minutes beyond expiry and an unchanged custody wallet seqno can prove that this window was not used, permitting recovery of an unsigned/unbroadcast request. Other uncertain states remain reserved for chain reconciliation; they must never be manually cleared just to retry.
 
+The custody owner can use the hash of a finalized aborted transaction on the source Jetton wallet to reconcile an already submitted withdrawal. The platform checks the exact signed dispatch, transfer body and lack of a token outflow. A missing transaction, an unrelated wallet sequence change or a downstream failure does not meet this check.
+
 Both the user and operator can ask the API to search recent recipient transactions or supply the receiver transaction hash. One bounded background monitor also checks the single in-flight payout; an unsuccessful bounded search is not proof of failure. A recipient hash remains an independent recovery path.
 
 Deposits and fresh allocations pause while a payout is in flight, preventing overlapping allocation of custody assets. Existing internal movements retain their liabilities. The custody balance and obligations are periodically reconciled; missing/stale backing fails closed.

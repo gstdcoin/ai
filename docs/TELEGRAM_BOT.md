@@ -24,6 +24,8 @@ The interface supports English, Russian, Ukrainian, Spanish, Turkish and Chinese
 
 The AI route uses a live node through the shared platform node helpers and has a Cloudflare fallback. Source code and a configured secret do not prove Telegram is delivering updates: acceptance requires an actual private /start and question from a human account.
 
+Set the Worker binding `TG_TRUSTED_NODE_KEYS` to the independently verified operator keys (`node-id=ed25519-public-key-hex`, comma-separated). Private chat only uses a listed key with a fresh proof for the exact endpoint. Without a matching node, the existing consent-controlled Cloudflare fallback remains available.
+
 ## Security and setup
 
 The webhook verifies X-Telegram-Bot-Api-Secret-Token derived from the bot token and deduplicates update_id. A POST with no secret must return HTTP 401; it must not send a message. Do not use fabricated Telegram chat/user IDs as a production test.

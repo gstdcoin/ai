@@ -9,7 +9,7 @@ import { useTonConnectUI } from '@tonconnect/ui-react';
 import WalletConnect from '../components/WalletConnect';
 import { useWalletStore } from '../store/walletStore';
 
-type Withdrawal = { id:string;wallet:string;amount:string;state:string;receiptHash?:string;cancellationReason?:'user_cancelled'|'operator_declined' };
+type Withdrawal = { id:string;wallet:string;amount:string;state:string;receiptHash?:string;failureHash?:string;cancellationReason?:'user_cancelled'|'operator_declined'|'chain_failed' };
 export default function PaymentsPage() {
     const {t}=useTranslation('common');
     const router=useRouter();
@@ -48,8 +48,15 @@ export default function PaymentsPage() {
         // Dispatch is recorded before opening the wallet. Never retry automatically.
         try {
             const result=await tonConnect.sendTransaction(prepared.transaction);
-            await api('/api/v1/finance/withdrawals',{action:'submitted',id,boc:result.boc});
+            sessionStorage.setItem('gstd:withdrawal-boc:'+id,result.boc);
+            await registerSubmission(id);
         } catch { throw new Error('signature_uncertain'); }
+    }
+    async function registerSubmission(id:string) {
+        const key='gstd:withdrawal-boc:'+id,boc=sessionStorage.getItem(key);
+        if(!boc)throw new Error('signature_uncertain');
+        await api('/api/v1/finance/withdrawals',{action:'submitted',id,boc});
+        sessionStorage.removeItem(key);
     }
     const button='rounded-lg bg-violet-600 px-4 py-2 disabled:opacity-40';
     const input='rounded-lg border border-white/20 bg-black/30 px-3 py-2 w-full';
@@ -123,6 +130,7 @@ export default function PaymentsPage() {
         {rows.map(w=><article key={w.id} className="rounded-xl border border-white/15 p-5 space-y-3">
             <p><b>{(Number(w.amount)/1e9).toFixed(9)} GSTD</b> · {t('payments_page.states.'+w.state,{defaultValue:p('state_unknown')})}</p>
             {w.cancellationReason==='operator_declined' && <p className="text-sm text-amber-300">{p('operator_declined')}</p>}
+            {w.cancellationReason==='chain_failed' && <p className="text-sm text-amber-300">{p('chain_failed')}</p>}
             <p className="text-sm">{p('recipient')}</p><code className="block break-all text-xs">{w.wallet}</code>
             <details><summary className="cursor-pointer text-sm text-gray-400">{p('request_id')}</summary><code className="block break-all text-xs">{w.id}</code></details>
             {w.state==='requested' && <>
@@ -131,13 +139,16 @@ export default function PaymentsPage() {
             </>}
             {['dispatching','submitted'].includes(w.state) && <>
                 <p className="text-sm text-amber-300">{p('awaiting')}</p>
+                {operator&&w.state==='dispatching'&&<button className="block underline" disabled={busy} onClick={()=>act(()=>registerSubmission(w.id))}>{p('register_signature')}</button>}
                 <details className="space-y-3"><summary className="cursor-pointer">{p('receipt_help')}</summary>
                     <label className="block space-y-2"><span>{p('hash_label')}</span><input className={input} value={receipts[w.id]||''} onChange={e=>setReceipts({...receipts,[w.id]:e.target.value})} placeholder={p('hash_placeholder')}/></label>
                     <button className={button} disabled={busy || !/^[a-f0-9]{64}$/i.test((receipts[w.id]||'').trim())} onClick={()=>act(()=>api('/api/v1/finance/withdrawals',{action:'confirm',id:w.id,tx_hash:receipts[w.id].trim()}))}>{p('verify_receipt')}</button>
                     <button className="block underline" disabled={busy} onClick={()=>act(()=>api('/api/v1/finance/withdrawals',{action:'recover-unsent',id:w.id}))}>{p('recover')}</button>
+                    {operator && w.state==='submitted' && <button className="block underline" disabled={busy || !/^[a-f0-9]{64}$/i.test((receipts[w.id]||'').trim())} onClick={()=>act(()=>api('/api/v1/finance/withdrawals',{action:'recover-failed',id:w.id,tx_hash:receipts[w.id].trim()}))}>{p('recover_failed')}</button>}
                 </details>
             </>}
             {w.receiptHash && <a className="underline" href={'https://tonviewer.com/transaction/'+w.receiptHash} target="_blank" rel="noreferrer">{p('transaction')}</a>}
+            {w.failureHash && <a className="underline" href={'https://tonviewer.com/transaction/'+w.failureHash} target="_blank" rel="noreferrer">{p('transaction')}</a>}
         </article>)}</section>}
     </main>;
 }

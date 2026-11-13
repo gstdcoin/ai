@@ -17,6 +17,7 @@ import complete from '../pages/api/v1/tasks/complete';
 import sdkSubmit from '../pages/api/v1/tasks/worker/submit';
 import createCampaign from '../pages/api/v1/campaigns/create';
 import requestTask from '../pages/api/v1/marketplace/request';
+import campaignResult from '../pages/api/v1/marketplace/result';
 import cancelCampaign from '../pages/api/v1/campaigns/cancel';
 import claimRewards from '../pages/api/v1/nodes/claim-rewards';
 import creditBalance from '../pages/api/v1/credits/balance';
@@ -78,7 +79,16 @@ it.each([['gstdbot',poll,complete],['SDK',pending,sdkSubmit]] as const)('accepts
  }
 
  const accepted=await call(finish,'POST',result,f.signed());
- expect(accepted.status).toBe(200);expect(accepted.value.reward_gstd).toBe(8.5);
+ expect(accepted.status).toBe(200);expect(accepted.value).toMatchObject({reward_gstd:0,acceptance_pending:true});
+ expect((await moneyJob(f.taskId))?.state).toBe('reserved');
+ expect((await moneyBalance(f.operator)).pending_gstd).toBe(0);
+ const proposed=await call(campaignResult,'GET',{},f.payerHeaders,{task_id:f.taskId});
+ expect(proposed.value).toMatchObject({ready:true,result:{response:'4'}});
+ const acceptance={task_id:f.taskId,result_hash:proposed.value.result_hash};
+ expect((await call(campaignResult,'POST',acceptance,{'x-session-token':f.operatorSession})).status).toBe(404);
+ expect((await call(campaignResult,'POST',{...acceptance,result_hash:'0'.repeat(64)},f.payerHeaders)).status).toBe(409);
+ expect((await call(campaignResult,'POST',acceptance,f.payerHeaders)).value.state).toBe('captured');
+ expect((await call(campaignResult,'POST',acceptance,f.payerHeaders)).value.state).toBe('captured');
  expect((await moneyJob(f.taskId))?.state).toBe('captured');
  expect((await moneyBalance(f.operator)).pending_gstd).toBe(8.5);
  expect(await allocationTotal('protocol')-protocol).toBe(nano('1'));
@@ -86,7 +96,7 @@ it.each([['gstdbot',poll,complete],['SDK',pending,sdkSubmit]] as const)('accepts
  expect((await call(finish,'POST',result,f.signed())).value.duplicate).toBe(true);
  expect((await moneyBalance(f.operator)).pending_gstd).toBe(8.5);
  expect(JSON.parse((await kvGet('node:'+f.nodeId))!).tasks_completed).toBe(1);
- expect(JSON.parse((await kvGet('task:result:'+f.taskId))!).ready).toBe(true);
+ expect(await kvGet('task:result:'+f.taskId)).toBeNull();
  const balance=await call(creditBalance,'GET',{}, {'x-session-token':f.operatorSession});
  expect(balance.value.pending_rewards_gstd).toBe(8.5);
  const claim=await call(claimRewards,'POST',{}, {'x-session-token':f.operatorSession});

@@ -12,10 +12,11 @@ import { verifiedTelegramWallet } from '../../../../lib/telegramWallet';
  * bot token, see lib/telegramWebhookAuth.ts). Updates are deduplicated by update_id.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvGet, kvSet, kvSetNX, kvConsumeQuota } from '../../../../lib/kv';
+import { kvGet, kvMGet, kvSet, kvSetNX, kvConsumeQuota, kvMoneyCAS } from '../../../../lib/kv';
 import { callNodeChat } from '../../../../lib/nodes';
 import { edgeChat } from '../../../../lib/edgeAi';
 import { isValidWebhookRequest } from '../../../../lib/telegramWebhookAuth';
+import { nodeInstallCommand } from '../../../../lib/nodeInstaller';
 import { LANGS, LANG_NAMES, Lang, resolveLang, t, parseCommand, parseReferrer } from '../../../../lib/tgbot/i18n';
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
@@ -24,10 +25,14 @@ const TMA_URL = `${SWARM_URL}/tma`;
 const appUrl=(lang:Lang)=>TMA_URL+'?lang='+encodeURIComponent(lang);
 const BOT_USERNAME = 'gstdaibot';
 const AI_DAILY_LIMIT = Math.max(1, parseInt(process.env.TG_AI_DAILY_LIMIT || '30', 10) || 30);
+const TRUSTED_NODES = new Map<string,string>();
+for (const entry of (process.env.TG_TRUSTED_NODE_KEYS || '').split(',')) {
+    const pair = /^([A-Za-z0-9_.-]{4,64})=([a-f0-9]{64})$/.exec(entry.trim());
+    if (pair) TRUSTED_NODES.set(pair[1], pair[2]);
+}
 const TON_ADDRESS_RE = /^(EQ[A-Za-z0-9_-]{46}|UQ[A-Za-z0-9_-]{46}|0:[a-fA-F0-9]{64})$/;
-const INSTALL_URL = 'https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh';
 
-interface Ctx { chatId: number; userId: number; lang: Lang; name: string; msgId?: number; updateId?: number }
+interface Ctx { chatId: number; userId: number; lang: Lang; name: string; msgId?: number; updateId?: number; messageDate?: number }
 interface View { text: string; kb?: any[][] }
 
 const escHtml = (s: unknown) => String(s ?? '?').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] as string));
@@ -91,15 +96,45 @@ async function getWallet(userId: number): Promise<string> {
     return await verifiedTelegramWallet(userId) || '';
 }
 
-async function getSession(userId: number): Promise<{ model: string; history: any[] }> {
-    const raw = await kvGet(`tg_session:${userId}`).catch(() => null);
-    if (raw) try { return JSON.parse(raw as string); } catch {}
-    return { model: 'auto', history: [] };
+interface ChatSession { model: string; history: any[]; generation?: string; revision?: number }
+const sessionKey = (userId: number) => `tg_session:${userId}`;
+const privacyOrderKey = (userId: number, action: 'cloud' | 'new') => `tg_privacy_order:${userId}:${action}`;
+
+async function withReplyLock<T>(userId: number, work: () => Promise<T>): Promise<T> {
+    const key = `tg_reply_lock:${userId}`, token = crypto.randomUUID();
+    if (!await kvSetNX(key, token, 120)) throw Error('telegram_reply_processing');
+    try { return await work(); }
+    finally { await kvMoneyCAS({ [key]: token }, { [key]: 'released' }, undefined, undefined, { [key]: 1 }); }
 }
 
-async function saveSession(userId: number, s: { model: string; history: any[] }): Promise<void> {
-    if (s.history.length > 40) s.history = s.history.slice(-30);
-    await kvSet(`tg_session:${userId}`, JSON.stringify(s), 3600).catch(() => {});
+async function getSession(userId: number): Promise<{ raw: string | null; resetOrder: string | null; session: ChatSession }> {
+    const [raw, resetOrder] = await kvMGet([sessionKey(userId), privacyOrderKey(userId, 'new')]);
+    const session = raw ? JSON.parse(raw) : { model: 'auto', history: [] };
+    if (!Array.isArray(session.history)) throw Error('telegram_session_invalid');
+    if (resetOrder) {
+        const { date, updateId } = JSON.parse(resetOrder);
+        const generation = `${date}:${updateId}`;
+        if (session.generation !== generation) return { raw, resetOrder, session: { model: 'auto', history: [], generation } };
+    }
+    return { raw, resetOrder, session };
+}
+
+async function updatePrivacy(userId: number, action: 'cloud' | 'new', date: number, updateId: number, enabled: boolean) {
+    if (!Number.isSafeInteger(date) || date <= 0 || !Number.isSafeInteger(updateId) || updateId < 0)
+        throw Error('telegram_privacy_order_missing');
+    const orderKey = privacyOrderKey(userId, action);
+    const key = action === 'new' ? sessionKey(userId) : `tg_cloud_consent:${userId}`;
+    for (let attempt = 0; attempt < 4; attempt++) {
+        const [rawOrder, current] = await Promise.all([kvGet(orderKey), kvGet(key)]);
+        const previous = rawOrder ? JSON.parse(rawOrder) : null;
+        if (previous && (previous.date > date || (previous.date === date && previous.updateId > updateId))) return false;
+        if (previous?.date === date && previous.updateId === updateId) return true;
+        const value = action === 'new' ? JSON.stringify({ model: 'auto', history: [], generation: `${date}:${updateId}` }) : enabled ? 'yes' : 'no';
+        if (await kvMoneyCAS({ [orderKey]: rawOrder, [key]: current }, {
+            [orderKey]: JSON.stringify({ date, updateId }), [key]: value,
+        }, undefined, undefined, action === 'new' ? { [key]: 3600 } : {})) return true;
+    }
+    throw Error('telegram_privacy_write_conflict');
 }
 
 // ── Views ────────────────────────────────────────────────────────────────────
@@ -147,9 +182,8 @@ async function viewBalance(c: Ctx): Promise<View> {
 async function viewEarn(c: Ctx): Promise<View> {
     const wallet = await getWallet(c.userId);
     const step1 = t(c.lang, wallet ? 'step_wallet_ok' : 'step_wallet_todo');
-    const cmd = `curl -fsSL ${INSTALL_URL} | GSTD_WALLET_ADDRESS=${wallet || '<YOUR_TON_WALLET>'} bash`;
     return {
-        text: t(c.lang, 'earn', { step1, cmd: escHtml(cmd) }),
+        text: t(c.lang, 'earn', { step1, cmd: escHtml(nodeInstallCommand) }),
         kb: [[{ text: t(c.lang, 'btn_app'), web_app: { url: appUrl(c.lang) } }], [{ text: t(c.lang, 'btn_node'), callback_data: 'nodes' }, { text: t(c.lang, 'btn_wallet'), callback_data: 'wallet' }], ...backKb(c.lang)],
     };
 }
@@ -248,26 +282,58 @@ async function linkWallet(c:Ctx,_address:string,_username:string):Promise<void> 
 }
 
 // ── AI chat ──────────────────────────────────────────────────────────────────
-interface CachedAiReply { body: { chat_id: number; text: string; reply_markup?: any }; session: { model: string; history: any[] }; sent?: boolean }
+interface CachedAiReply {
+    body: { chat_id: number; text: string; reply_markup?: any };
+    turn: { user: string; assistant: string };
+    generation?: string;
+    baseRevision?: number;
+}
 const replyKey = (c: Ctx) => c.updateId === undefined ? null : 'tg_ai_reply:' + c.updateId;
 
 async function deliverAiReply(c: Ctx, reply: CachedAiReply): Promise<void> {
-    const key = replyKey(c);
-    // Persist before transmission: a webhook retry must not run paid/limited compute again.
-    if (key) await kvSet(key, JSON.stringify(reply), 3600);
-    await tg('sendMessage', reply.body);
-    await saveSession(c.userId, reply.session);
-    if (key) await kvSet(key, JSON.stringify({ ...reply, sent: true }), 3600);
+    await withReplyLock(c.userId, async () => {
+        const key = replyKey(c);
+        const current = await getSession(c.userId);
+        if (reply.generation !== current.session.generation) {
+            if (key) await kvSet(key, JSON.stringify({ sent: true }), 3600);
+            return;
+        }
+        // Persist before transmission: a webhook retry must not repeat inference.
+        if (key) await kvSet(key, JSON.stringify(reply), 3600);
+        await tg('sendMessage', reply.body);
+        if (key) await kvSet(key, JSON.stringify({ sent: true }), 3600);
+        if (current.session.revision === reply.baseRevision) {
+            const stateKey = sessionKey(c.userId);
+            const history = [...current.session.history, { role: 'user', content: reply.turn.user },
+                { role: 'assistant', content: reply.turn.assistant }].slice(-30);
+            const next: ChatSession = { ...current.session, history, revision: c.updateId };
+            await kvMoneyCAS({ [stateKey]: current.raw, [privacyOrderKey(c.userId, 'new')]: current.resetOrder },
+                { [stateKey]: JSON.stringify(next) }, undefined, undefined, { [stateKey]: 3600 });
+        }
+    });
 }
 
 async function handleAI(c: Ctx, text: string, tool?:AiTool): Promise<void> {
     const key = replyKey(c);
     const cached = key ? await kvGet(key) : null;
     if (cached) {
-        const reply: CachedAiReply = JSON.parse(cached);
-        if (!reply.body || reply.body.chat_id !== c.chatId || typeof reply.body.text !== 'string' || !reply.session) throw Error('telegram_reply_cache_invalid');
-        if (!reply.sent) await deliverAiReply(c, reply);
+        const reply: CachedAiReply & { sent?: boolean; session?: unknown } = JSON.parse(cached);
+        if (reply.sent) return;
+        // Legacy reply caches contain full history. Discard them on retry during migration.
+        if (reply.session) {
+            if (key) await kvSet(key, JSON.stringify({ sent: true }), 3600);
+            return;
+        }
+        if (!reply.body || reply.body.chat_id !== c.chatId || typeof reply.body.text !== 'string' ||
+            typeof reply.turn?.user !== 'string' || typeof reply.turn?.assistant !== 'string') throw Error('telegram_reply_cache_invalid');
+        await deliverAiReply(c, reply);
         return;
+    }
+    const { session, resetOrder } = await getSession(c.userId);
+    if (resetOrder) {
+        const { date, updateId } = JSON.parse(resetOrder);
+        if (c.messageDate === undefined || c.updateId === undefined || c.messageDate < date ||
+            (c.messageDate === date && c.updateId <= updateId)) return;
     }
     if (!(await kvSetNX(`tg_ai_gap:${c.userId}`, '1', 3).catch(() => true))) {
         await show(c, { text: t(c.lang, 'ai_slow') });
@@ -281,8 +347,8 @@ async function handleAI(c: Ctx, text: string, tool?:AiTool): Promise<void> {
         return;
     }
 
-    const session = await getSession(c.userId);
     await tg('sendChatAction', { chat_id: c.chatId, action: 'typing' }).catch(() => null);
+    if ((await kvGet(privacyOrderKey(c.userId,'new'))) !== resetOrder) return;
     const messages = [
         { role: 'system', content: 'You are GSTD Sovereign AI — a decentralized AI running on the GSTD node network. Respond in the user\'s language. Be accurate and helpful. Answer briefly in at most two or three sentences.' },
         ...(tool?[{role:'system',content:toolInstruction[tool]}]:[]),
@@ -291,12 +357,14 @@ async function handleAI(c: Ctx, text: string, tool?:AiTool): Promise<void> {
     ];
     let content = '', cloud = false;
     try {
-        const response = await callNodeChat(messages, { maxTokens: 96, temperature: 0.7, timeoutMs: 45_000 });
+        const response = await callNodeChat(messages, { maxTokens: 96, temperature: 0.7, timeoutMs: 45_000, trustedNodes: TRUSTED_NODES });
         content = response.content;
     } catch (err: any) {
         const msg = err?.message || '';
         const offline = msg.includes('No GSTD node') || msg.includes('available');
-        if (await kvGet('tg_cloud_consent:' + c.userId) === 'yes') {
+        const [consent, currentResetOrder] = await kvMGet(['tg_cloud_consent:' + c.userId, privacyOrderKey(c.userId,'new')]);
+        if (currentResetOrder !== resetOrder) return;
+        if (consent === 'yes') {
             try {
                 content = await edgeChat(messages, 96);
                 cloud = !!content;
@@ -311,10 +379,11 @@ async function handleAI(c: Ctx, text: string, tool?:AiTool): Promise<void> {
         }
     }
     if (!content.trim()) { await show(c, { text: t(c.lang, 'ai_empty') }); return; }
-    session.history.push({ role: 'user', content: text }, { role: 'assistant', content });
     // Delivery errors never trigger another model or transmit the query to a fallback.
     await deliverAiReply(c, {
-        session,
+        turn: { user: text, assistant: content },
+        generation: session.generation,
+        baseRevision: session.revision,
         body: {
             chat_id: c.chatId,
             text: cloud ? `${content.slice(0, 3900)}\n\n${t(c.lang, 'ai_edge_note')}` : content.slice(0, 4096),
@@ -369,7 +438,7 @@ async function processUpdate(update: any): Promise<void> {
     if (!msg?.text || msg.chat?.type !== 'private') return;
     const userId: number = msg.from?.id;
     const lang = await getLang(userId, msg.from?.language_code);
-    const ctx: Ctx = { chatId: msg.chat.id, userId, lang, name: msg.from?.first_name || '', updateId: update.update_id };
+    const ctx: Ctx = { chatId: msg.chat.id, userId, lang, name: msg.from?.first_name || '', updateId: update.update_id, messageDate: msg.date };
     const text: string = msg.text.trim();
 
     if (TON_ADDRESS_RE.test(text)) { await linkWallet(ctx, text, msg.from?.username || ''); return; }
@@ -386,11 +455,11 @@ async function processUpdate(update: any): Promise<void> {
         }
         if (parsed.cmd === 'cloud') {
             const enabled=parsed.args.trim().toLowerCase()==='on';
-            await kvSet('tg_cloud_consent:'+userId,enabled?'yes':'no');
-            await show(ctx,{text:t(lang,enabled?'cloud_enabled':'cloud_disabled')});
+            if (await updatePrivacy(userId, 'cloud', msg.date, update.update_id, enabled))
+                await show(ctx,{text:t(lang,enabled?'cloud_enabled':'cloud_disabled')});
         } else if (parsed.cmd === 'new') {
-            await saveSession(userId, { model: 'auto', history: [] });
-            await show(ctx, { text: t(lang, 'reset') });
+            if (await withReplyLock(userId, () => updatePrivacy(userId, 'new', msg.date, update.update_id, false)))
+                await show(ctx, { text: t(lang, 'reset') });
         } else if (COMMAND_VIEW[parsed.cmd]) {
             await runView(ctx, COMMAND_VIEW[parsed.cmd]);
         } else {
@@ -417,6 +486,13 @@ function isAiUpdate(update: any): boolean {
     return !TON_ADDRESS_RE.test(text) && !parseCommand(text);
 }
 
+function isPrivacyUpdate(update: any): boolean {
+    const msg = update?.message;
+    if (msg?.chat?.type !== 'private' || typeof msg.text !== 'string') return false;
+    const cmd = parseCommand(msg.text.trim())?.cmd;
+    return cmd === 'new' || cmd === 'cloud';
+}
+
 // ── Handler ──────────────────────────────────────────────────────────────────
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -428,10 +504,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Storage errors fail closed. AI leases expire naturally without an unlock race.
     const updateId = req.body?.update_id;
     const key = Number.isSafeInteger(updateId) && updateId >= 0 ? 'tg_upd:' + updateId : null;
-    const retryableAi = isAiUpdate(req.body);
+    const retryable = isAiUpdate(req.body) || isPrivacyUpdate(req.body);
     try {
         if (key) {
-            if (retryableAi) {
+            if (retryable) {
                 if (await kvGet(key)) return res.status(200).json({ ok: true });
                 if (!(await kvSetNX(key + ':processing', '1', 120))) return res.status(503).json({ ok: false, error: 'update_processing' });
             } else if (!(await kvSetNX(key, '1', 86400))) {
@@ -439,7 +515,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
         }
         await processUpdate(req.body);
-        if (key && retryableAi) await kvSet(key, '1', 86400);
+        if (key && retryable) await kvSet(key, '1', 86400);
         return res.status(200).json({ ok: true });
     } catch (err: any) {
         console.error('[telegram/webhook]', err instanceof TelegramApiError ? err.message : 'processing_failed');

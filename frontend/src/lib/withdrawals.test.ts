@@ -1,7 +1,7 @@
 import { describe,it,expect,vi } from 'vitest';
 import { Address,Cell } from '@ton/core';
 import { nano,reconcileMoney,reserveMoney,captureMoney,claimMoney,moneyBalance,requestWithdrawal,
-    dispatchWithdrawal,cancelWithdrawal,rejectWithdrawal,getWithdrawal,listWithdrawals,noteWithdrawalSubmission,confirmWithdrawal,expireUnsentWithdrawal,readMoneySystem } from './money';
+    dispatchWithdrawal,cancelWithdrawal,rejectWithdrawal,getWithdrawal,listWithdrawals,noteWithdrawalSubmission,confirmWithdrawal,expireUnsentWithdrawal,reconcileFailedWithdrawal,readMoneySystem } from './money';
 import { withdrawalTransaction } from './payout';
 const owner='0:'+'aa'.repeat(32),wallet='0:'+'bb'.repeat(32),other='0:'+'cc'.repeat(32);
 let sequence=0;
@@ -86,6 +86,21 @@ describe('owner-signed GSTD withdrawal accounting',()=>{
             await expireUnsentWithdrawal(a.id,{seqno:'7',chainTime:prepared.validUntil!+121});
             expect((await moneyBalance(w)).balance_gstd).toBe(100);
         } finally {vi.useRealTimers();}
+    });
+    it('releases the global lock only for the exact independently verified failed dispatch',async()=>{
+        const w=await funded(),a=await requestWithdrawal(w,nano('5'),'confirmed-failed-withdrawal');
+        await dispatchWithdrawal(a.id,owner,'8');
+        const normalizedBocHash='bc'.repeat(32);
+        await noteWithdrawalSubmission(a.id,owner,'ab'.repeat(32),normalizedBocHash);
+        const before=(await readMoneySystem())!;
+        const proof={hash:'42'.repeat(32),owner,jettonWallet:owner,normalizedBocHash,amount:a.amount,wallet:w,queryId:a.queryId};
+        await expect(reconcileFailedWithdrawal(a.id,{...proof,normalizedBocHash:'dd'.repeat(32)})).rejects.toThrow('receipt_mismatch');
+        expect((await readMoneySystem())!.payoutInFlight).toBe(a.id);
+        await expect(reconcileFailedWithdrawal(a.id,proof)).resolves.toMatchObject({state:'cancelled',cancellationReason:'chain_failed'});
+        await reconcileFailedWithdrawal(a.id,proof);
+        expect((await readMoneySystem())!.payoutInFlight).toBeUndefined();
+        expect((await readMoneySystem())!.allocated).toBe(before.allocated);
+        expect((await moneyBalance(w)).balance_gstd).toBe(100);
     });
     it('serializes owner rejection against dispatch so no payout can coexist with a returned reserve',async()=>{
         const w=await funded(),a=await requestWithdrawal(w,nano('2'),'reject-dispatch-race');

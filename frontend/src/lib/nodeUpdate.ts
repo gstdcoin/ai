@@ -1,7 +1,7 @@
 import { kvGet, kvSet } from './kv';
+import { nodeInstallGuide } from './nodeInstaller';
 
 const VERSION_URL = 'https://raw.githubusercontent.com/gstdcoin/gstdbot/main/package.json';
-const INSTALL_URL = 'https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh';
 const CACHE_KEY = 'node:latest_version';
 const CACHE_TTL_S = 3600;
 
@@ -35,11 +35,11 @@ export async function getLatestNodeVersion(timeoutMs = 2000): Promise<string | n
 
 export async function nodeUpdateInfo(current: string | undefined, timeoutMs?: number) {
     const latest = await getLatestNodeVersion(timeoutMs);
-    if (!latest || !current) return { update_available: false, latest_version: latest, update_url: INSTALL_URL };
+    if (!latest || !current) return { update_available: false, latest_version: latest, update_url: nodeInstallGuide };
     return {
         update_available: compareVersions(current, latest) < 0,
         latest_version: latest,
         current_version: current,
-        update_url: INSTALL_URL,
+        update_url: nodeInstallGuide,
     };
 }

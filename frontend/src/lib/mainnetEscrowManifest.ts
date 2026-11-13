@@ -13,3 +13,13 @@ export const MAINNET_ESCROW = Object.freeze({
 
 /** Operational access policy; does not change existing financial commitments. */
 export const MAINNET_ACCESS=Object.freeze({mode:'public_beta' as const,wallets:'open' as const,nodes:'open' as const});
+
+export const MAINNET_ESCROW_V2 = Object.freeze({
+ ...MAINNET_ESCROW,version:2 as const,
+ coordinatorCodeHash:'7bf4e113d6dd889fa99331a32d2437a6014f3a341058f2e1de8664ee68e44cbf',
+ shareCodeHash:'782976bc6e6b0e330a2ce80e151c03161811184862a9acae11ba0bb086983180',
+});
+
+export function mainnetV2Enabled() {
+ return process.env.ESCROW_MAINNET_V2_ENABLED === 'true';
+}

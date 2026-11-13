@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Address } from '@ton/core';
 import { kvSet, kvGet } from './kv';
 import { nano, units, walletId, reconcileMoney, reserveMoney, captureMoney, releaseMoney, claimMoney,
-    moneyBalance, splitNano, grantPromo, consumePromoRequest, reserveCampaignTask, moneyJob, reapMoney } from './money';
+    moneyBalance, splitNano, grantPromo, consumePromoRequest, reserveCampaignTask, recordCampaignProposal, acceptCampaignProposal, digest, moneyJob, reapMoney } from './money';
 
 const payer = '0:'+'11'.repeat(32), operator = '0:'+'22'.repeat(32), custody = '0:'+'33'.repeat(32);
 let counter = 0;
@@ -103,7 +103,10 @@ describe('v2 backed money ledger',()=>{
         await reserveCampaignTask(campaign,{task_id:task,type:'inference'},nano('100'),Date.now()+30_000,{});
         expect((await moneyJob(task))?.amount).toBe(nano('100').toString());
         const before=await moneyBalance(operator);
-        await captureMoney(task,operator,{accepted:true});
+        const result={answer:'accepted'};
+        await expect(captureMoney(task,operator,result)).rejects.toThrow('campaign_acceptance_required');
+        await recordCampaignProposal(task,operator,result);
+        await acceptCampaignProposal(task,wallet,digest(result));
         expect((await moneyBalance(operator)).pending_gstd-before.pending_gstd).toBe(85);
         await releaseMoney(job,wallet);
         expect((await moneyBalance(wallet)).reserved_gstd).toBe(0);

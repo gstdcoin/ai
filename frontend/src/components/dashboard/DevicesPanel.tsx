@@ -9,6 +9,7 @@ import { useAutoTaskWorker } from '../../hooks/useAutoTaskWorker';
 import { logger } from '../../lib/logger';
 import { apiGet } from '../../lib/apiClient';
 import { toast } from '../../lib/toast';
+import { nodeInstallCommand } from '../../lib/nodeInstaller';
 
 interface Node {
   id: string;
@@ -130,7 +131,7 @@ export default function DevicesPanel() {
               <span className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">2</span>
               <div>
                 <div className="text-sm font-semibold text-white mb-1">Install & start GSTD Node</div>
-                <code className="text-xs text-gray-400 bg-black/30 px-3 py-2 rounded-lg font-mono block">curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash</code>
+                <code className="text-xs text-gray-400 bg-black/30 px-3 py-2 rounded-lg font-mono block break-all">{nodeInstallCommand}</code>
               </div>
             </div>
           </div>
@@ -187,7 +188,7 @@ export default function DevicesPanel() {
                 <span className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">2</span>
                 <div>
                   <div className="text-sm font-semibold text-white mb-1">Install & Start GSTD Node</div>
-                  <code className="text-xs text-gray-400 bg-black/30 px-3 py-2 rounded-lg font-mono block">curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash</code>
+                  <code className="text-xs text-gray-400 bg-black/30 px-3 py-2 rounded-lg font-mono block break-all">{nodeInstallCommand}</code>
                 </div>
               </div>
               <div className="flex gap-3">

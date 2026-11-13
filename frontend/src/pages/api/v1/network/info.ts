@@ -8,6 +8,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvKeys, kvMGet } from '../../../../lib/kv';
 import { dedupeNodeRecords, parseNodeRecords, isNodeOnline } from '../../../../lib/node-status';
+import { nodeInstallCommand } from '../../../../lib/nodeInstaller';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'GET') {
@@ -61,7 +62,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             distribution:   '85% executor | 10% protocol | 5% reserve; no automatic buybacks',
             automatic_distribution_enabled: false,
         },
-        install_node: 'curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh | bash',
+        install_node: nodeInstallCommand,
         docs:         origin,
         github:       'https://github.com/gstdcoin',
         timestamp:    Date.now(),

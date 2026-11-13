@@ -2,7 +2,7 @@ import {it,expect,vi,afterEach} from 'vitest';
 import {Address,Cell} from '@ton/core';
 import TonConnect,{WalletNotConnectedError} from '@tonconnect/sdk';
 import {batchContext} from './batchEscrow';
-import {MAINNET_ESCROW as policy} from './mainnetEscrowManifest';
+import {MAINNET_ESCROW as policy,MAINNET_ESCROW_V2} from './mainnetEscrowManifest';
 import {mainnetJobHash,mainnetPreview,mainnetTransaction,mainnetContext,verifyMainnetMaster,verifyMainnetWallet,withMainnetRpc,type MainnetInput} from './mainnetEscrow';
 import {mainnetRpc,testnetRpc} from './batchEscrowStatus';
 import artifact from './escrow-generated/wallet-code.json';
@@ -22,10 +22,23 @@ it('derives canonical mainnet contracts with fixed recipients, code hashes and a
 });
 it('rejects testnet input, test assets, changed recipients and unknown manifest versions',async()=>{
  const value=input();
- for(const bad of [{...value,network:'-3'},{...value,testAssetVersion:2},{...value,protocol:value.worker},{...value,manifest_version:2}])await expect(mainnetContext(bad as any)).rejects.toThrow();
+ for(const bad of [{...value,network:'-3'},{...value,testAssetVersion:2},{...value,protocol:value.worker},{...value,manifest_version:2},{...value,manifest_version:3}])await expect(mainnetContext(bad as any)).rejects.toThrow();
  await expect(mainnetTransaction(value,'mint',value.payer)).rejects.toThrow('invalid_action');
  await expect(mainnetTransaction(value,'accept',value.worker)).rejects.toThrow('wrong_signer');
  await expect(mainnetTransaction(value,'withdraw',value.payer,0)).rejects.toThrow('wrong_signer');
+});
+it('binds v2 to separate bytecode and encodes payer-only surplus without changing v1 recovery',async()=>{
+ const old=input(),value:MainnetInput={...old,manifest_version:2};value.taskId=mainnetJobHash(value);
+ const c=await mainnetContext(value),p=await mainnetPreview(value);
+ expect(p.manifest_version).toBe(2);
+ expect(p.task).not.toBe((await mainnetPreview(old)).task);
+ expect(c.task.init!.code.hash().toString('hex')).toBe(MAINNET_ESCROW_V2.coordinatorCodeHash);
+ expect(c.shares[0].init!.code.hash().toString('hex')).toBe(MAINNET_ESCROW_V2.shareCodeHash);
+ await expect(mainnetTransaction(value,'surplus',value.worker,0,undefined,10n)).rejects.toThrow('wrong_signer');
+ await expect(mainnetTransaction(old,'surplus',old.payer,0,undefined,10n)).rejects.toThrow('invalid_action');
+ const tx=await mainnetTransaction(value,'surplus',value.payer,0,undefined,10n);
+ const body=Cell.fromBase64(tx.messages[0].payload).beginParse();
+ expect(body.loadUint(32)).toBe(0x4754450a);expect(body.loadCoins()).toBe(10n);
 });
 it('every unsigned mainnet action passes the installed wallet SDK and never addresses testnet',async()=>{
  const value=input(),sdk=new TonConnect({manifestUrl:'https://app.gstdtoken.com/tonconnect-mainnet-escrow-manifest.json',storage:{getItem:async()=>null,setItem:async()=>{},removeItem:async()=>{}}});

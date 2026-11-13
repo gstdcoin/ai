@@ -3,6 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvSet } from '../../../../lib/kv';
 import { requireNodeSignature } from '../../../../lib/nodeAuth';
 import { hasTaskResult } from '../../../../lib/taskValidation';
+import { moneyJob } from '../../../../lib/money';
 
 const RESULT_TTL = 120;
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -10,6 +11,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const taskId = req.query.task_id;
         if (typeof taskId !== 'string' || !taskId) return res.status(400).json({ error: 'task_id required' });
         if(taskId.startsWith('escrow_mainnet_'))return res.status(404).json({error:'private_contract_result'});
+        if (/^[a-f0-9]{32}$/.test(taskId) && (await moneyJob(taskId))?.parent?.startsWith('campaign:'))
+            return res.status(404).json({ error: 'private_campaign_result' });
         const raw = await kvGet(`task:result:${taskId}`);
         return res.status(200).json(raw ? JSON.parse(raw) : { ready: false });
     }
@@ -30,6 +33,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const completed = assigned ? null : await kvGet(`task_completed:${task_id}`);
     const record = assigned ? JSON.parse(assigned) : completed ? JSON.parse(completed) : null;
     if (!record || record.node_id !== node_id) return res.status(409).json({ error: 'Task is not assigned to this node' });
+    if (/^[a-f0-9]{32}$/.test(task_id) && (await moneyJob(task_id))?.parent?.startsWith('campaign:'))
+        return res.status(403).json({ error: 'use_task_completion_for_campaign' });
     if (record.expected_hash && String(result?.hash || '').toLowerCase() !== record.expected_hash.toLowerCase())
         return res.status(422).json({ error: 'Invalid verification result' });
     await kvSet(`task:result:${task_id}`, JSON.stringify({ ready: true, result, latency_ms, node_id, model }), RESULT_TTL);

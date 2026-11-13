@@ -14,7 +14,7 @@ import { kvGet, kvSetNX, kvIncr, kvIncrByFloat, kvCompleteAssignedTask } from '.
 import { COMMUNITY_TAX, BASE_TASK_FEE } from '../../../../lib/rewards';
 import { requireNodeSignature } from '../../../../lib/nodeAuth';
 import { hasTaskResult, declaredTaskModelMismatch } from '../../../../lib/taskValidation';
-import { captureMoney, releaseMoney, moneyJob, splitNano, units, walletId, digest } from '../../../../lib/money';
+import { captureMoney, releaseMoney, moneyJob, recordCampaignProposal, splitNano, units, walletId, digest } from '../../../../lib/money';
 import { completeMainnetJob } from '../../../../lib/mainnetJobs';
 import { completePilotJob } from '../../../../lib/escrowJobs';
 import type { TaskAssignment } from '../../../../lib/task-assignment';
@@ -117,6 +117,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (assignment.funding_id) {
             const funding = await moneyJob(assignment.funding_id);
             if (!funding) return res.status(409).json({ error: 'funding_not_found' });
+            if (funding.parent?.startsWith('campaign:')) {
+                if (!assignment.payout_wallet) return res.status(409).json({ error: 'funded_assignment_missing_payout' });
+                const pending = await recordCampaignProposal(assignment.funding_id, assignment.payout_wallet, body.result);
+                if (assignment.campaign_id && completion.status !== 'duplicate') await kvIncr(`cstats:${assignment.campaign_id}:tasks`);
+                return res.status(200).json({ ok:true, task_id:body.task_id, duplicate:completion.status==='duplicate',
+                    reward_gstd:pending?0:Number(units(splitNano(BigInt(funding.amount)).executor)), acceptance_pending:pending });
+            }
             await captureMoney(assignment.funding_id, walletId(assignment.payout_wallet || (JSON.parse(nodeRaw) as NodeRecord).wallet_address),
                 { task_id: body.task_id, node_id: nodeId, result_hash: digest(body.result) });
             rewardGstd = Number(units(splitNano(BigInt(funding.amount)).executor));

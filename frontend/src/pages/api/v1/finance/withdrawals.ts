@@ -1,9 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { Cell } from '@ton/core';
+import { Cell, loadMessage } from '@ton/core';
 import { sessionWallet } from '../../../../lib/walletSession';
 import { MoneyError, walletId, nano, requestWithdrawal, cancelWithdrawal, rejectWithdrawal, dispatchWithdrawal,
-    noteWithdrawalSubmission, confirmWithdrawal, expireUnsentWithdrawal, getWithdrawal, listWithdrawals, readMoneySystem, WITHDRAWAL_REQUEST_COOLDOWN_SECONDS } from '../../../../lib/money';
-import { PLATFORM_CUSTODY_OWNER, custodySnapshot, jettonWalletFor, verifyDeposit, custodyWalletSeqno, chainHeadTime, findWithdrawalReceipt } from '../../../../lib/custody';
+    noteWithdrawalSubmission, confirmWithdrawal, expireUnsentWithdrawal, reconcileFailedWithdrawal, getWithdrawal, listWithdrawals, readMoneySystem, WITHDRAWAL_REQUEST_COOLDOWN_SECONDS } from '../../../../lib/money';
+import { PLATFORM_CUSTODY_OWNER, custodySnapshot, jettonWalletFor, verifyDeposit, custodyWalletSeqno, chainHeadTime, findWithdrawalReceipt, normalizedWithdrawalMessage, verifyFailedWithdrawal } from '../../../../lib/custody';
 import { withdrawalTransaction } from '../../../../lib/payout';
 export default async function handler(req:NextApiRequest,res:NextApiResponse) {
     res.setHeader('Cache-Control','private, no-store');
@@ -38,14 +38,32 @@ export default async function handler(req:NextApiRequest,res:NextApiResponse) {
                 fee_gstd:0,attached_ton:'0.05',note:'Native execution budget paid by custody owner; wallet returns unused TON.'});
         }
         if(action==='recover-unsent') {
-            const evidence={seqno:await custodyWalletSeqno(PLATFORM_CUSTODY_OWNER),chainTime:await chainHeadTime()};
+            const chainTime=await chainHeadTime();
+            const evidence={seqno:await custodyWalletSeqno(PLATFORM_CUSTODY_OWNER),chainTime};
             return res.status(200).json({withdrawal:await expireUnsentWithdrawal(id,evidence)});
         }
         if (action==='submitted') {
             if (!operator) return res.status(403).json({error:'custody_owner_required'});
             if (typeof boc!=='string' || boc.length>100000) throw new MoneyError('invalid_message_boc');
-            const hash=Cell.fromBoc(Buffer.from(boc,'base64'))[0].hash().toString('hex');
-            return res.status(200).json({withdrawal:await noteWithdrawalSubmission(id,wallet,hash)});
+            let hash:string,normalized:string;
+            try {
+                const roots=Cell.fromBoc(Buffer.from(boc,'base64'));
+                if(roots.length!==1)throw Error('invalid_message_boc');
+                hash=roots[0].hash().toString('hex');
+                normalized=normalizedWithdrawalMessage(loadMessage(roots[0].beginParse()),wallet);
+            } catch { throw new MoneyError('invalid_message_boc'); }
+            return res.status(200).json({withdrawal:await noteWithdrawalSubmission(id,wallet,hash,normalized)});
+        }
+        if (action==='recover-failed') {
+            if (!operator) return res.status(403).json({error:'custody_owner_required'});
+            const hash=typeof tx_hash==='string'?tx_hash.toLowerCase():'';
+            if(known.state==='cancelled'&&known.cancellationReason==='chain_failed'&&known.failureHash===hash)
+                return res.status(200).json({withdrawal:known});
+            if(known.state!=='submitted')throw new MoneyError('withdrawal_requires_chain_reconciliation');
+            const system=await readMoneySystem();
+            if(!system||system.payoutInFlight!==id)throw new MoneyError('withdrawal_requires_chain_reconciliation');
+            const proof=await verifyFailedWithdrawal(hash,known,system.owner,system.jettonWallet);
+            return res.status(200).json({withdrawal:await reconcileFailedWithdrawal(id,proof)});
         }
         if (action==='confirm') {
             if (known.state==='confirmed' && known.receiptHash===tx_hash) return res.status(200).json({withdrawal:known});

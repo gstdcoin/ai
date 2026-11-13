@@ -1,0 +1,2 @@
+export const nodeInstallGuide = 'https://github.com/gstdcoin/gstdbot#installation';
+export const nodeInstallCommand = "(installer=$(mktemp) && trap 'rm -f \"$installer\"' EXIT && curl -fsSL https://raw.githubusercontent.com/gstdcoin/gstdbot/main/install.sh -o \"$installer\" && printf '%s  %s\\n' c314582d0712ec9f9611cd3c86f18d1a54099d41f2a8fec2d37f7d315b323732 \"$installer\" | sha256sum -c - && bash \"$installer\")";

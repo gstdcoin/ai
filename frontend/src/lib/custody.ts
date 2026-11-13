@@ -1,5 +1,7 @@
-import { Cell, loadTransaction } from '@ton/core';
-import { MoneyError, walletId } from './money';
+import { beginCell, Cell, loadTransaction, type Message } from '@ton/core';
+import { MoneyError, walletId, type Withdrawal } from './money';
+import { withdrawalPayload } from './payout';
+import { escrowRuntimeSecret } from './escrowRuntimeSecrets';
 export const PLATFORM_CUSTODY_OWNER = '0:cc1db8988345b901e6eb39bd6fda9350fc6a02b22df7bcb4ac2542a2fdf29931';
 export const GSTD_MASTER = '0:efe9c616f673622a337737097c0fa0018d4887d6061f59519985f3fbfbdb59b2';
 async function get(path: string, allowMissing = false) {
@@ -71,6 +73,68 @@ export async function chainHeadTime(): Promise<number> {
     const head=await get('blockchain/masterchain-head');
     if(!Number.isSafeInteger(head.gen_utime)) throw new MoneyError('chain_snapshot_unavailable');
     return head.gen_utime;
+}
+
+/** Standard external-in message identity independent of the wallet's BOC layout. */
+export function normalizedWithdrawalMessage(message: Message, owner: string): string {
+    if (message.info.type !== 'external-in' || message.info.dest.toRawString() !== walletId(owner))
+        throw new MoneyError('invalid_message_boc');
+    return beginCell().storeUint(2,2).storeUint(0,2).storeAddress(message.info.dest).storeCoins(0)
+        .storeBit(false).storeBit(true).storeRef(message.body).endCell().hash().toString('hex');
+}
+
+/** Verify the exact signed dispatch and a finalized abort at the canonical source Jetton wallet. */
+export async function verifyFailedWithdrawal(hash: string, w: Withdrawal, owner: string, jettonWallet: string) {
+    if (!/^[a-f0-9]{64}$/.test(hash) || !w.normalizedBocHash || !w.validUntil || !w.dispatchedAt)
+        throw new MoneyError('withdrawal_requires_chain_reconciliation');
+    owner=walletId(owner);jettonWallet=walletId(jettonWallet);
+    const verifiedWallet=await jettonWalletFor(owner);
+    if(verifiedWallet!==jettonWallet)throw new MoneyError('invalid_custody_wallet');
+    await pace();
+    const head=await get('blockchain/masterchain-head');
+    if(!Number.isSafeInteger(head.gen_utime)||head.gen_utime<=w.validUntil+120||!Number.isSafeInteger(head.seqno))
+        throw new MoneyError('withdrawal_requires_chain_reconciliation');
+
+    const key=escrowRuntimeSecret('ESCROW_MAINNET_TONCENTER_API_KEY');
+    const params=new URLSearchParams({hash:Buffer.from(hash,'hex').toString('base64'),limit:'1'});
+    const finalized=await fetch(`https://toncenter.com/api/v3/transactions?${params}`, {
+        headers: key ? {'X-API-Key':key} : {}, cache:'no-store', redirect:'error', signal:AbortSignal.timeout(10000),
+    });
+    if(!finalized.ok)throw new MoneyError('chain_snapshot_unavailable');
+    const {transactions}=await finalized.json();
+    const indexed=transactions?.[0];
+    if(typeof indexed?.hash!=='string'||Buffer.from(indexed.hash,'base64').toString('hex')!==hash||
+       !Number.isSafeInteger(indexed.mc_block_seqno)||indexed.mc_block_seqno<=0||indexed.mc_block_seqno>=head.seqno)
+        throw new MoneyError('withdrawal_requires_chain_reconciliation');
+
+    await pace();
+    const source=await get('blockchain/transactions/'+hash);
+    const root=Cell.fromBoc(Buffer.from(source.raw,'hex'))[0];
+    const tx=loadTransaction(root.beginParse()), msg=tx.inMessage;
+    const proof={hash, owner, jettonWallet, normalizedBocHash:w.normalizedBocHash, amount:w.amount, wallet:w.wallet, queryId:w.queryId};
+    const matchesDispatch=(ownerTx:typeof tx)=>!!ownerTx.inMessage&&ownerTx.inMessage.info.type==='external-in'&&
+        ownerTx.address===BigInt('0x'+owner.split(':')[1])&&
+        normalizedWithdrawalMessage(ownerTx.inMessage,owner)===w.normalizedBocHash&&
+        ownerTx.now>=Math.floor(w.dispatchedAt!/1000)&&ownerTx.now<=w.validUntil!;
+    if(root.hash().toString('hex')!==hash)throw new MoneyError('withdrawal_requires_chain_reconciliation');
+    if(tx.address!==BigInt('0x'+jettonWallet.split(':')[1])||
+       tx.description.type!=='generic'||!tx.description.aborted||!msg||msg.info.type!=='internal'||msg.info.bounced||
+       msg.info.src.toRawString()!==owner||msg.info.dest.toRawString()!==jettonWallet||
+       !msg.body.hash().equals(withdrawalPayload(w,owner).hash())||
+       tx.outMessages.values().some(out=>out.info.type!=='internal'||!out.info.bounced||out.info.dest.toRawString()!==owner))
+        throw new MoneyError('withdrawal_requires_chain_reconciliation');
+
+    await pace();
+    const dispatch=await get('blockchain/messages/'+w.normalizedBocHash+'/transaction');
+    const ownerTx=loadTransaction(Cell.fromBoc(Buffer.from(dispatch.raw,'hex'))[0].beginParse());
+    const input=msg.info;
+    if(!matchesDispatch(ownerTx)||
+       ownerTx.outMessages.values().length!==1||!ownerTx.outMessages.values().some(out=>
+        out.info.type==='internal'&&!out.info.bounced&&out.info.src.toRawString()===owner&&
+        out.info.dest.toRawString()===jettonWallet&&out.info.createdLt===input.createdLt&&
+        out.info.createdAt===input.createdAt&&out.body.hash().equals(msg.body.hash())))
+        throw new MoneyError('withdrawal_requires_chain_reconciliation');
+    return proof;
 }
 
 export async function findWithdrawalReceipt(w: {wallet:string;amount:string;queryId:string;dispatchedAt?:number},owner:string) {

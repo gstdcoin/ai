@@ -1,17 +1,32 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-vi.mock('./kv', () => ({ kvGet: vi.fn(async () => null), kvSet: vi.fn(async () => {}), kvSetNX: vi.fn(async () => true), kvConsumeQuota: vi.fn(async () => ({allowed:true})) }));
+vi.mock('./kv', () => ({ kvGet: vi.fn(async () => null), kvMGet: vi.fn(async () => [null, null]), kvSet: vi.fn(async () => {}), kvSetNX: vi.fn(async () => true), kvMoneyCAS: vi.fn(async () => true), kvConsumeQuota: vi.fn(async () => ({allowed:true})) }));
 vi.mock('./nodes', () => ({ callNodeChat: vi.fn() }));
 vi.mock('./edgeAi', () => ({ edgeChat: vi.fn() }));
 vi.mock('./telegramWebhookAuth', () => ({ isValidWebhookRequest: vi.fn(() => true) }));
-import { kvGet, kvSet, kvSetNX, kvConsumeQuota } from './kv';
+import { kvGet, kvMGet, kvSet, kvSetNX, kvMoneyCAS, kvConsumeQuota } from './kv';
 import { callNodeChat } from './nodes';
 import { edgeChat } from './edgeAi';
 let handler: any;
 let request: ReturnType<typeof vi.fn>;
 beforeAll(async () => { vi.stubEnv('TELEGRAM_BOT_TOKEN','unit-test-token'); handler=(await import('../pages/api/v1/telegram/webhook')).default; });
 afterAll(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
-beforeEach(() => { vi.clearAllMocks(); vi.mocked(kvGet).mockResolvedValue(null); vi.mocked(kvSet).mockResolvedValue(undefined); vi.mocked(kvSetNX).mockResolvedValue(true); request=vi.fn(async () => new Response(JSON.stringify({ok:true}))); vi.stubGlobal('fetch',request); vi.mocked(kvConsumeQuota).mockResolvedValue({allowed:true} as any); });
-const invoke = async () => { const response={status:vi.fn().mockReturnThis(),json:vi.fn()}; await handler({method:'POST',headers:{},body:{update_id:1,message:{chat:{id:123,type:'private'},from:{id:123,language_code:'en',first_name:'Test'},text:'Explain solar energy briefly.'}}},response); return response; };
+beforeEach(() => { vi.clearAllMocks(); vi.mocked(kvGet).mockResolvedValue(null); vi.mocked(kvMGet).mockImplementation(keys=>Promise.all(keys.map(key=>kvGet(key)))); vi.mocked(kvSet).mockResolvedValue(undefined); vi.mocked(kvSetNX).mockResolvedValue(true); vi.mocked(kvMoneyCAS).mockReset().mockResolvedValue(true); request=vi.fn(async () => new Response(JSON.stringify({ok:true}))); vi.stubGlobal('fetch',request); vi.mocked(kvConsumeQuota).mockResolvedValue({allowed:true} as any); });
+const invoke = async (text='Explain solar energy briefly.', update_id=1, date=1794000000) => { const response={status:vi.fn().mockReturnThis(),json:vi.fn()}; await handler({method:'POST',headers:{},body:{update_id,message:{chat:{id:123,type:'private'},from:{id:123,language_code:'en',first_name:'Test'},text,date}}},response); return response; };
+
+function useStore(store: Map<string,string>) {
+ vi.mocked(kvGet).mockImplementation(async key=>store.get(key)??null);
+ vi.mocked(kvMGet).mockImplementation(async keys=>keys.map(key=>store.get(key)??null));
+ vi.mocked(kvSet).mockImplementation(async (key,value)=>{store.set(key,value);});
+ vi.mocked(kvSetNX).mockImplementation(async (key,value)=>{if(store.has(key))return false;store.set(key,value);return true;});
+ vi.mocked(kvMoneyCAS).mockImplementation(async (expected,writes,_due,_queue,expires)=>{
+  if(Object.entries(expected).some(([key,value])=>(store.get(key)??null)!==value))return false;
+  for(const [key,value] of Object.entries(writes)){
+   if(expires?.[key]===1)store.delete(key);
+   else store.set(key,value);
+  }
+  return true;
+ });
+}
 describe('Telegram AI user flow', () => {
  it('answers a user without a linked wallet and gives the node a bounded 45-second budget',async () => {
    vi.mocked(callNodeChat).mockResolvedValue({content:'Solar energy uses sunlight.',latency:100});
@@ -43,9 +58,7 @@ describe('Telegram AI user flow', () => {
 describe('Telegram delivery and webhook retry safety', () => {
  it('retries a cached AI reply without new compute or quota after Telegram rejects delivery',async()=>{
    const store=new Map<string,string>([['tg_cloud_consent:123','yes']]);
-   vi.mocked(kvGet).mockImplementation(async key=>store.get(String(key))||null);
-   vi.mocked(kvSet).mockImplementation(async(key,value)=>{store.set(key,value);});
-   vi.mocked(kvSetNX).mockImplementation(async(key,value)=>{if(store.has(key))return false;store.set(key,value);return true;});
+   useStore(store);
    vi.mocked(callNodeChat).mockResolvedValue({content:'Cached node answer',latency:100});
    let rejectDelivery=true;
    request.mockImplementation(async(url:string)=>new Response(JSON.stringify(url.endsWith('/sendMessage')&&rejectDelivery?{ok:false,description:'Too Many Requests'}:{ok:true,result:{message_id:7}})));
@@ -86,6 +99,43 @@ describe('Telegram delivery and webhook retry safety', () => {
    expect(response.status).toHaveBeenCalledWith(503);
    expect(callNodeChat).not.toHaveBeenCalled();expect(edgeChat).not.toHaveBeenCalled();
  });
+});
+
+it('retries a reset after a transient write failure and discards a prior-generation answer', async () => {
+ const store=new Map<string,string>([['tg_session:123', JSON.stringify({model:'auto',history:[{role:'user',content:'old'}]})]]);
+ useStore(store);
+ let finish!: (value: {content:string;latency:number}) => void;
+ let started!: () => void;
+ const entered=new Promise<void>(resolve=>{started=resolve;});
+ vi.mocked(callNodeChat).mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve;started();}));
+ const ai=invoke();
+ await entered;
+ vi.mocked(kvMoneyCAS).mockRejectedValueOnce(new Error('temporary Redis failure'));
+ expect((await invoke('/new',2)).status).toHaveBeenCalledWith(503);
+ expect(store.has('tg_upd:2')).toBe(false);
+ store.delete('tg_upd:2:processing');
+ expect((await invoke('/new',2)).status).toHaveBeenCalledWith(200);
+ finish({content:'Late reply',latency:1});
+ await ai;
+ expect(JSON.parse(store.get('tg_session:123')!).history).toEqual([]);
+ expect(request.mock.calls.some(([,options]:any)=>JSON.parse(options.body).text==='Late reply')).toBe(false);
+});
+
+it('keeps a newer cloud revocation when an older command is retried', async () => {
+ const store=new Map<string,string>();
+ useStore(store);
+ await invoke('/cloud off',3);
+ await invoke('/cloud on',2);
+ expect(store.get('tg_cloud_consent:123')).toBe('no');
+});
+
+it('does not replay an older message into a cleared conversation', async () => {
+ const store=new Map<string,string>();
+ useStore(store);
+ await invoke('/new',3);
+ await invoke('Older message',2);
+ expect(callNodeChat).not.toHaveBeenCalled();
+ expect(JSON.parse(store.get('tg_session:123')!).history).toEqual([]);
 });
 
 

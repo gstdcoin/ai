@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Cell, loadTransaction, beginCell, storeTransaction } from '@ton/core';
 import fixture from '../../tests/fixtures/gstd-deposit.json';
-import { custodySnapshot, verifyDeposit, GSTD_MASTER } from './custody';
+import { custodySnapshot, verifyDeposit, verifyFailedWithdrawal, GSTD_MASTER } from './custody';
+import type { Withdrawal } from './money';
 const tx = loadTransaction(Cell.fromBoc(Buffer.from(fixture.raw,'hex'))[0].beginParse());
 if (tx.inMessage?.info.type !== 'internal') throw new Error('Invalid public fixture');
 const sourceWallet = tx.inMessage.info.src.toRawString();
@@ -57,4 +58,17 @@ describe('verified mainnet GSTD custody and deposit format',()=>{
         fetcher([fixture]);
         await expect(verifyDeposit('aa'.repeat(32),sender,fixture.account.address)).rejects.toThrow('invalid_deposit_transaction');
     });
+});
+
+it('keeps an ambiguous withdrawal reserved when the provider cannot prove finality',async()=>{
+    vi.useFakeTimers();
+    const withdrawal={id:'fixture',wallet:owner,amount:'1000',queryId:'7',state:'submitted',createdAt:1,
+        dispatchedAt:1000,validUntil:100,normalizedBocHash:'bb'.repeat(32)} satisfies Withdrawal;
+    const mock=fetcher([{success:true,decoded:{jetton_wallet_address:sourceWallet}},
+        {gen_utime:221,seqno:500},{transactions:[{hash:Buffer.from('aa'.repeat(32),'hex').toString('base64'),mc_block_seqno:500}]}]);
+    const assertion=expect(verifyFailedWithdrawal('aa'.repeat(32),withdrawal,sender,sourceWallet))
+        .rejects.toThrow('withdrawal_requires_chain_reconciliation');
+    await vi.runAllTimersAsync();
+    await assertion;
+    expect(mock).toHaveBeenCalledTimes(3);
 });

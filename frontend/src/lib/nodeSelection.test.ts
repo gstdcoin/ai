@@ -13,6 +13,24 @@ it('prefers the live registry over a stale configured tunnel',async()=>{
  expect(request.mock.calls[0][0]).toBe('https://current-node.example.com/v1/chat/completions');
 });
 
+it('routes private chat only to an approved identity with a fresh URL and matching bound key',async()=>{
+ const endpoint='https://current-node.example.com',key='11'.repeat(32),trustedNodes=new Map([['real',key]]);
+ const record={node_id:'real',node_url:endpoint,last_seen:new Date().toISOString(),capabilities:['exact:small'],cpu_cores:4,
+  endpoint_verified_url:endpoint,endpoint_verified_key:key,endpoint_verified_at:Date.now()};
+ vi.stubEnv('GSTD_NODE_URL','https://old-node.example.com');
+ const request=vi.fn().mockResolvedValue(new Response(JSON.stringify({model:'exact:small',choices:[{message:{content:'ok'}}]})));
+ vi.stubGlobal('fetch',request);
+ vi.mocked(kvMGet).mockResolvedValue([JSON.stringify({...record,endpoint_verified_at:0}),key]);
+ await expect(callNodeChat([{role:'user',content:'hello'}],{model:'exact:small',trustedNodes})).rejects.toThrow('No GSTD node');
+ const newKey='22'.repeat(32);
+ vi.mocked(kvMGet).mockResolvedValue([JSON.stringify({...record,endpoint_verified_key:newKey}),newKey]);
+ await expect(callNodeChat([{role:'user',content:'hello'}],{model:'exact:small',trustedNodes})).rejects.toThrow('No GSTD node');
+ expect(request).not.toHaveBeenCalled();
+ vi.mocked(kvMGet).mockResolvedValue([JSON.stringify(record),key]);
+ expect((await callNodeChat([{role:'user',content:'hello'}],{model:'exact:small',trustedNodes})).content).toBe('ok');
+ expect(request).toHaveBeenCalledTimes(1);
+});
+
 it('does not expose streamed output from a substituted model',async()=>{
  registry();vi.stubGlobal('fetch',vi.fn().mockResolvedValue(new Response('data: '+JSON.stringify({model:'wrong:model',choices:[{delta:{content:'wrong output'}}]})+'\n\n')));
  const chunks:string[]=[];

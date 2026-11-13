@@ -1,4 +1,4 @@
-import type {BatchAction} from './batchEscrow';
+import type {MainnetAction} from './mainnetEscrow';
 import {escrowWalletErrorCodes,type EscrowWalletErrorCode} from './escrowWalletErrors';
 export const escrowStoragePrefix='gstd_escrow_testnet_v1:';
 export const mainnetEscrowStoragePrefix='gstd_escrow_mainnet_v1:';
@@ -8,11 +8,11 @@ interface BrowserLocks{
  request<T>(name:string,options:{mode:'exclusive';ifAvailable:true},callback:(lock:object|null)=>Promise<T>):Promise<T>;
 }
 export interface PendingEscrowOperation{
- id:string;task:string;action:BatchAction;role:number;since:number;
+ id:string;task:string;action:MainnetAction;role:number;since:number;
  payer:string;total:string;balance:string;native:string;
  validUntil?:number;requestSent?:boolean;signed?:boolean;failureCode?:EscrowWalletErrorCode;
 }
-const actions=new Set(['mint','deploy','fund','accept','expire','withdraw','refund','sync','report','reclaim']);
+const actions=new Set(['mint','deploy','fund','accept','expire','withdraw','refund','sync','report','reclaim','surplus']);
 function checkTask(task:string){if(!/^0:[a-f0-9]{64}$/.test(task))throw Error('invalid_batch');}
 export function readEscrowPending(storage:StorageLike,task:string,network:'-3'|'-239'='-3'):PendingEscrowOperation|null{
  checkTask(task);const raw=storage.getItem(escrowPendingKey(task,network));if(!raw)return null;
@@ -31,6 +31,7 @@ export function readEscrowPending(storage:StorageLike,task:string,network:'-3'|'
 interface OperationControl{
  current():PendingEscrowOperation|null;
  begin(value:PendingEscrowOperation):void;
+ replace(id:string,value:PendingEscrowOperation):void;
  annotate(id:string,patch:Pick<PendingEscrowOperation,'requestSent'|'signed'|'failureCode'>):PendingEscrowOperation|null;
  clear(id:string):boolean;
 }
@@ -44,14 +45,20 @@ export async function withEscrowOperation<T>(storage:StorageLike,locks:BrowserLo
   if(!lock)throw Error('operation_pending');
   let active=true;
   const ensure=()=>{if(!active)throw Error('operation_pending');};
+  const persist=(value:PendingEscrowOperation)=>{
+   if(value.task!==task||!value.id)throw Error('invalid_batch');
+   storage.setItem(escrowPendingKey(task,network),JSON.stringify(value));
+   if(readEscrowPending(storage,task,network)?.id!==value.id)throw Error('operation_pending');
+  };
   const control:OperationControl={
    current:()=>{ensure();return readEscrowPending(storage,task,network);},
    begin:value=>{
     ensure();if(readEscrowPending(storage,task,network))throw Error('operation_pending');
-    if(value.task!==task||!value.id)throw Error('invalid_batch');
-    storage.setItem(escrowPendingKey(task,network),JSON.stringify(value));
-    // Fail before opening the wallet if persistence was unavailable or inconsistent.
-    if(readEscrowPending(storage,task,network)?.id!==value.id)throw Error('operation_pending');
+    persist(value);
+   },
+   replace:(id,value)=>{
+    ensure();if(readEscrowPending(storage,task,network)?.id!==id)throw Error('operation_pending');
+    persist(value);
    },
    annotate:(id,patch)=>{
     ensure();const current=readEscrowPending(storage,task,network);if(current?.id!==id)return null;

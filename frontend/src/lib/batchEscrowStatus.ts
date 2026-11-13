@@ -27,7 +27,7 @@ function escrowRpc(network:'-3'|'-239'):Rpc {
  const bucket=(e:any)=>{const m=String(e?.message||'');if(/redirect value/i.test(m))return'unsupported_redirect';if(/illegal invocation/i.test(m))return'illegal_invocation';if(/signal/i.test(m))return'signal';if(/cache/i.test(m))return'cache';if(/timeout|abort/i.test(m))return'timeout';if(/fetch/i.test(m))return'fetch';return['TypeError','Error','TimeoutError','AbortError'].includes(e?.name)?e.name:'failure';};
  const wait=()=>new Promise(r=>setTimeout(r,1100));
  async function center(path:string){
-  const match=/^blockchain\/accounts\/([^/]+)(?:\/methods\/(state|funding_mask|get_wallet_data|get_jetton_data))?$/.exec(path);
+  const match=/^blockchain\/accounts\/([^/]+)(?:\/methods\/(state|funding_mask|beneficiary_remaining|payer_surplus|transfer_pending|get_wallet_data|get_jetton_data))?$/.exec(path);
   if(!match)throw Error(unavailable);
   const address=rawAddress(decodeURIComponent(match[1])),method=match[2];
   async function account(){
@@ -70,7 +70,7 @@ function escrowRpc(network:'-3'|'-239'):Rpc {
 export async function batchStatus(input:BatchInput,rpc:Rpc=testnetRpc(),pace:()=>Promise<void>=()=>new Promise(r=>setTimeout(r,1100))){
  return readEscrowStatus(await batchContext(input),rpc,pace);
 }
-export interface EscrowStatusContext{payer:Address;master:{address:Address};task:{address:Address};shares:{address:Address}[];amounts:bigint[];tokenWallet:(owner:Address)=>Address}
+export interface EscrowStatusContext{payer:Address;master:{address:Address};task:{address:Address};shares:{address:Address}[];amounts:bigint[];tokenWallet:(owner:Address)=>Address;version?:1|2}
 export async function readEscrowStatus(c:EscrowStatusContext,rpc:Rpc,pace:()=>Promise<void>=()=>new Promise(r=>setTimeout(r,1100))){
  async function method(address:string,name:string){
   await pace();const r=await rpc.get('blockchain/accounts/'+encodeURIComponent(address)+'/methods/'+name);
@@ -100,7 +100,15 @@ export async function readEscrowStatus(c:EscrowStatusContext,rpc:Rpc,pace:()=>Pr
   }
   await pace();const native=await rpc.get('blockchain/accounts/'+encodeURIComponent(c.shares[i].address.toRawString()));
   if(native?.status==='frozen')throw Error('testnet_unavailable');
-  shares.push({role:i,state:s?number(s):null,native_nano:String(native?.balance||'0'),balance_nano:balance,missing_nano:String(c.amounts[i]>BigInt(balance)?c.amounts[i]-BigInt(balance):0n)});
+  let settlement: {beneficiary_remaining?:string;payer_surplus?:string;transfer_pending?:boolean}={};
+  if(c.version===2&&phase===1&&s&&number(s)===1){
+   const remaining=await method(c.shares[i].address.toRawString(),'beneficiary_remaining');
+   const surplus=await method(c.shares[i].address.toRawString(),'payer_surplus');
+   const pending=await method(c.shares[i].address.toRawString(),'transfer_pending');
+   if(!remaining||!surplus||!pending)throw Error('testnet_unavailable');
+   settlement={beneficiary_remaining:BigInt(remaining.stack[0].num).toString(),payer_surplus:BigInt(surplus.stack[0].num).toString(),transfer_pending:number(pending)!==0};
+  }
+  shares.push({role:i,state:s?number(s):null,native_nano:String(native?.balance||'0'),balance_nano:balance,missing_nano:String(c.amounts[i]>BigInt(balance)?c.amounts[i]-BigInt(balance):0n),...settlement});
  }
  return{checked_at:Date.now(),deployed:true,state:phase,mask:ready,payer_balance:String(payerBalance||'0'),native_nano:String(account.balance||'0'),shares};
 }

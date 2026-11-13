@@ -3,34 +3,40 @@ import {randomBytes,createHash} from 'node:crypto';
 import {amountNano,rawAddress,type BatchAction} from './batchEscrow';
 import {GstdTaskEscrow,storeSyncTask,storeAcceptFundedTask,storeRefundExpiredTask,storeReclaimEscrowTon} from './escrow-generated/GstdTaskEscrow';
 import {GstdEscrowShare,storeWithdrawAcceptedShare,storeRefundExpiredShare} from './escrow-generated/GstdEscrowShare';
+import {GstdTaskEscrowV2} from './escrow-generated/GstdTaskEscrowV2';
+import {GstdEscrowShareV2,storeReturnAcceptedSurplus} from './escrow-generated/GstdEscrowShareV2';
 import walletArtifact from './escrow-generated/wallet-code.json';
-import {MAINNET_ESCROW as policy,MAINNET_ACCESS} from './mainnetEscrowManifest';
+import {MAINNET_ESCROW as policy,MAINNET_ESCROW_V2,MAINNET_ACCESS} from './mainnetEscrowManifest';
 import {mainnetRpc,readEscrowStatus,type Rpc} from './batchEscrowStatus';
 import {kvGet,kvSetNX,kvMoneyCAS} from './kv';
 export interface MainnetExecution{version:1;node_id:string;model:string;prompt_hash:string;max_tokens:number;nonce:string;payout_revision:number}
-export interface MainnetRecoveryInput{manifest_version:1;network:'-239';payer:string;worker:string;protocol:string;reserve:string;budget:string;taskId:string;deadline:number;requests:1}
+export interface MainnetRecoveryInput{manifest_version:1|2;network:'-239';payer:string;worker:string;protocol:string;reserve:string;budget:string;taskId:string;deadline:number;requests:1}
 export interface MainnetInput extends MainnetRecoveryInput{execution:MainnetExecution}
+export type MainnetAction=BatchAction|'surplus';
 export const validMainnetModel=(value:unknown):value is string=>typeof value==='string'&&value.length>0&&value.length<=160&&value!=='auto'&&Array.from(value).every(c=>c.charCodeAt(0)>=33&&c.charCodeAt(0)<=126);
 export function mainnetJobHash(input:MainnetInput):string{
- const j=input?.execution;if(input?.manifest_version!==1||input?.network!=='-239'||input.requests!==1||!j||j.version!==1||typeof j.node_id!=='string'||!/^[A-Za-z0-9_.-]{4,64}$/.test(j.node_id)||!validMainnetModel(j.model)||!/^[a-f0-9]{64}$/.test(j.prompt_hash)||!/^[a-f0-9]{64}$/.test(j.nonce)||!Number.isSafeInteger(j.max_tokens)||j.max_tokens<1||j.max_tokens>policy.maxTokens||!Number.isSafeInteger(j.payout_revision)||j.payout_revision<1)throw Error('invalid_mainnet_job');
+ const j=input?.execution;if(![1,2].includes(input?.manifest_version)||input?.network!=='-239'||input.requests!==1||!j||j.version!==1||typeof j.node_id!=='string'||!/^[A-Za-z0-9_.-]{4,64}$/.test(j.node_id)||!validMainnetModel(j.model)||!/^[a-f0-9]{64}$/.test(j.prompt_hash)||!/^[a-f0-9]{64}$/.test(j.nonce)||!Number.isSafeInteger(j.max_tokens)||j.max_tokens<1||j.max_tokens>policy.maxTokens||!Number.isSafeInteger(j.payout_revision)||j.payout_revision<1)throw Error('invalid_mainnet_job');
  if(rawAddress(input.protocol)!==policy.protocol||rawAddress(input.reserve)!==policy.reserve)throw Error('invalid_mainnet_recipients');
- return createHash('sha256').update(JSON.stringify(['gstd:mainnet-job:v1',policy.version,policy.network,policy.master,rawAddress(input.payer),rawAddress(input.worker),policy.protocol,policy.reserve,input.budget,input.deadline,j.node_id,j.model,j.prompt_hash,j.max_tokens,j.nonce,j.payout_revision])).digest('hex');
+ return createHash('sha256').update(JSON.stringify(['gstd:mainnet-job:v'+input.manifest_version,input.manifest_version,policy.network,policy.master,rawAddress(input.payer),rawAddress(input.worker),policy.protocol,policy.reserve,input.budget,input.deadline,j.node_id,j.model,j.prompt_hash,j.max_tokens,j.nonce,j.payout_revision])).digest('hex');
 }
 export async function mainnetContext(input:MainnetRecoveryInput|MainnetInput){
- if(input?.manifest_version!==1||input.network!=='-239'||input.requests!==1||typeof input.taskId!=='string'||!/^[a-f0-9]{64}$/.test(input.taskId)||rawAddress(input.protocol)!==policy.protocol||rawAddress(input.reserve)!==policy.reserve||(input as any)?.testAssetVersion!==undefined||(input as any)?.job!==undefined||!Number.isSafeInteger(input?.deadline)||input.deadline<=0||input.deadline>Math.floor(Date.now()/1000)+86400||((input as MainnetInput).execution!==undefined&&mainnetJobHash(input as MainnetInput)!==input.taskId))throw Error('invalid_mainnet_job');
+ if(![1,2].includes(input?.manifest_version)||input.network!=='-239'||input.requests!==1||typeof input.taskId!=='string'||!/^[a-f0-9]{64}$/.test(input.taskId)||rawAddress(input.protocol)!==policy.protocol||rawAddress(input.reserve)!==policy.reserve||(input as any)?.testAssetVersion!==undefined||(input as any)?.job!==undefined||!Number.isSafeInteger(input?.deadline)||input.deadline<=0||input.deadline>Math.floor(Date.now()/1000)+86400||((input as MainnetInput).execution!==undefined&&mainnetJobHash(input as MainnetInput)!==input.taskId))throw Error('invalid_mainnet_job');
  const payer=Address.parse(rawAddress(input.payer)),recipients=[input.worker,input.protocol,input.reserve].map(a=>Address.parse(rawAddress(a))),budget=amountNano(input.budget);
  if(budget>BigInt(policy.maxBudgetNano))throw Error('mainnet_budget_limit');
  const amounts=[budget*85n/100n,budget*10n/100n,budget-budget*85n/100n-budget*10n/100n],code=Cell.fromBoc(Buffer.from(walletArtifact.code_hex,'hex'))[0],master={address:Address.parse(policy.master)};
  if(code.hash().toString('hex')!==policy.walletCodeHash)throw Error('invalid_artifact');
- const task=await GstdTaskEscrow.fromInit(payer,...recipients as [Address,Address,Address],BigInt('0x'+input.taskId),budget,BigInt(input.deadline),code,master.address,-239n);
- const shares=await Promise.all(recipients.map((recipient,i)=>GstdEscrowShare.fromInit(task.address,payer,recipient,BigInt(i),amounts[i],code,master.address,-239n)));
- if(task.init!.code.hash().toString('hex')!==policy.coordinatorCodeHash||shares.some(s=>s.init!.code.hash().toString('hex')!==policy.shareCodeHash))throw Error('invalid_artifact');
+ const deployment=input.manifest_version===2?MAINNET_ESCROW_V2:policy;
+ const Task=input.manifest_version===2?GstdTaskEscrowV2:GstdTaskEscrow;
+ const Share=input.manifest_version===2?GstdEscrowShareV2:GstdEscrowShare;
+ const task=await Task.fromInit(payer,...recipients as [Address,Address,Address],BigInt('0x'+input.taskId),budget,BigInt(input.deadline),code,master.address,-239n);
+ const shares=await Promise.all(recipients.map((recipient,i)=>Share.fromInit(task.address,payer,recipient,BigInt(i),amounts[i],code,master.address,-239n)));
+ if(task.init!.code.hash().toString('hex')!==deployment.coordinatorCodeHash||shares.some(s=>s.init!.code.hash().toString('hex')!==deployment.shareCodeHash))throw Error('invalid_artifact');
  const tokenWallet=(owner:Address)=>contractAddress(0,{code,data:beginCell().storeCoins(0).storeAddress(owner).storeAddress(master.address).storeBit(false).endCell()});
- return{payer,recipients,budget,amounts,code,master,task,shares,tokenWallet};
+ return{payer,recipients,budget,amounts,code,master,task,shares,tokenWallet,version:input.manifest_version};
 }
 export async function mainnetPreview(input:MainnetRecoveryInput|MainnetInput){
  const c=await mainnetContext(input);
- return{network:policy.network,test_only:false,asset:'GSTD',manifest_version:policy.version,mode:MAINNET_ACCESS.mode,master:policy.master,task:c.task.address.toRawString(),payer:c.payer.toRawString(),payerTokenWallet:c.tokenWallet(c.payer).toRawString(),budget_nano:String(c.budget),deadline:input.deadline,
+ return{network:policy.network,test_only:false,asset:'GSTD',manifest_version:input.manifest_version,mode:MAINNET_ACCESS.mode,master:policy.master,task:c.task.address.toRawString(),payer:c.payer.toRawString(),payerTokenWallet:c.tokenWallet(c.payer).toRawString(),budget_nano:String(c.budget),deadline:input.deadline,
  shares:c.shares.map((s,i)=>({role:i,owner:c.recipients[i].toRawString(),amount_nano:String(c.amounts[i]),address:s.address.toRawString(),tokenWallet:c.tokenWallet(s.address).toRawString()})),
  budgets_ton:{deploy:'0.40',fund:'0.30',accept:'0.30',withdraw_each:'0.08',expire:'0.30',refund_all:'0.24',sync:'0.30'},minimum_storage_ton:'0.08',normal_path_attached_ton:'1.24',fees_are_attached_budgets:true};
 }
@@ -50,7 +56,7 @@ export async function mainnetStatus(input:MainnetRecoveryInput|MainnetInput,rpc:
  try{return await readEscrowStatus(context,rpc,pace);}catch(e:any){if(e.message==='testnet_state_mismatch')throw Error('mainnet_state_mismatch');if(e.message==='testnet_unavailable')throw Error('mainnet_unavailable');throw e;}
 }
 const queryId=()=>BigInt('0x'+randomBytes(8).toString('hex'));
-export async function mainnetTransaction(input:MainnetRecoveryInput|MainnetInput,action:BatchAction,actor:string,role=0,funding?:bigint[],withdrawal?:bigint,refunds?:bigint[]){
+export async function mainnetTransaction(input:MainnetRecoveryInput|MainnetInput,action:MainnetAction,actor:string,role=0,funding?:bigint[],withdrawal?:bigint,refunds?:bigint[]){
  const c=await mainnetContext(input);actor=rawAddress(actor);
  if(!Number.isInteger(role)||role<0||role>2)throw Error('invalid_role');
  if(actor!==(action==='withdraw'?c.recipients[role].toRawString():c.payer.toRawString()))throw Error('wrong_signer');
@@ -62,6 +68,7 @@ export async function mainnetTransaction(input:MainnetRecoveryInput|MainnetInput
  else if(action==='expire')messages=[message(c.task.address,'300000000',beginCell().store(storeRefundExpiredTask({$$type:'RefundExpiredTask'})).endCell())];
  else if(action==='sync')messages=[message(c.task.address,'300000000',beginCell().store(storeSyncTask({$$type:'SyncTask'})).endCell())];
  else if(action==='withdraw')messages=[message(c.shares[role].address,'80000000',beginCell().store(storeWithdrawAcceptedShare({$$type:'WithdrawAcceptedShare',amount:withdrawal??c.amounts[role],queryId:queryId()})).endCell())];
+ else if(action==='surplus'&&input.manifest_version===2&&withdrawal&&withdrawal>0n)messages=[message(c.shares[role].address,'80000000',beginCell().store(storeReturnAcceptedSurplus({$$type:'ReturnAcceptedSurplus',amount:withdrawal,queryId:queryId()})).endCell())];
  else if(action==='refund')messages=c.shares.flatMap((s,i)=>{const amount=refunds?.[i]??c.amounts[i];return amount>0n?[message(s.address,'80000000',beginCell().store(storeRefundExpiredShare({$$type:'RefundExpiredShare',amount,queryId:queryId()})).endCell())]:[];});
  else if(action==='reclaim')messages=[c.task.address,...c.shares.map(s=>s.address)].map(a=>message(a,'30000000',beginCell().store(storeReclaimEscrowTon({$$type:'ReclaimEscrowTon'})).endCell()));
  else if(action==='report')messages=c.shares.map(s=>message(s.address,'30000000',beginCell().storeUint(0x47544508,32).endCell()));

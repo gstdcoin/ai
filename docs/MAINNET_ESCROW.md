@@ -20,6 +20,8 @@ Store a mainnet TON Center key as the Cloudflare Worker secret ESCROW_MAINNET_TO
 
 The authenticated preflight verifies the canonical jetton wallet code and compares local token-wallet derivation with the master's own get_wallet_address getter. It reads the owner-selected node wallet's actual GSTD and TON balances. A configured key alone is not proof of a healthy provider or sufficient funds.
 
+The operator wallet and signed bootstrap node have access to diagnostics. Financial recovery and status have separate quotas. Manifest v2 adds cumulative beneficiary limits and returns surplus to the payer. Existing v1 recovery files keep their original contract addresses. Enable `ESCROW_MAINNET_V2_ENABLED` only after validating the v2 funding, payout and recovery flow on a non-production chain.
+
 Before chain reads or preparation, a wallet proves ownership with a one-hour, network/domain-bound text-signature session. The session cannot sign transfers. Anonymous callers cannot consume the shared mainnet RPC quota. The existing registered bootstrap-node identity may also run read-only preflight diagnostics; it cannot authorize financial operations. There is no operator wallet allowlist. Every wallet still proves ownership; an authenticated session can prepare unsigned transactions only for a party to the selected contract.
 
 The wallet must support TON Connect text signing and a recognized wallet StateInit. Seed phrases and financial private keys never enter the platform or node. Mainnet and testnet use separate wallet manifests, connection stores, recovery stores, pending-operation keys and browser locks.

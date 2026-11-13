@@ -128,17 +128,61 @@ export async function reserveMoney(wallet: string, jobId: string, amount: bigint
         return { value: { ...job, acquired: true }, tx: { writes, due: { id: jobId, at: expiresAt },...(extra?.once?{expires:{[extra.key]:3600}}:{}) } };
     });
 }
-export async function captureMoney(jobId: string, executorWallet: string, result: unknown): Promise<MoneyJob> {
+const proposalKey = (job: string) => PREFIX + 'campaign-proposal:' + id(job);
+interface CampaignProposal { executor: string; result: unknown; hash: string }
+
+export async function recordCampaignProposal(jobId: string, executor: string, result: unknown) {
+    const key = proposalKey(jobId), jk = jobKey(jobId);
+    const proposal: CampaignProposal = { executor: walletId(executor), result, hash: digest(result) };
+    return atomic([jk, key], old => {
+        const job: MoneyJob | null = old[jk] ? JSON.parse(old[jk]) : null;
+        if (!job?.parent?.startsWith('campaign:')) throw new MoneyError('reservation_not_found');
+        if (job.state === 'captured') return { value: false };
+        if (job.state !== 'reserved' || job.expiresAt <= Date.now()) throw new MoneyError('reservation_expired');
+        if (old[key]) {
+            const previous: CampaignProposal = JSON.parse(old[key]);
+            if (previous.executor !== proposal.executor || previous.hash !== proposal.hash) throw new MoneyError('idempotency_conflict');
+            return { value: true };
+        }
+        const ttl = Math.min(3600, Math.max(1, Math.ceil((job.expiresAt - Date.now()) / 1000)));
+        return { value: true, tx: { writes: { [key]: JSON.stringify(proposal) }, expires: { [key]: ttl } } };
+    });
+}
+
+export async function campaignProposal(jobId: string, payer: string) {
+    const job = await moneyJob(jobId);
+    if (!job?.parent?.startsWith('campaign:') || job.wallet !== walletId(payer)) throw new MoneyError('reservation_not_found');
+    const raw = await kvGet(proposalKey(jobId));
+    return { job, proposal: raw && (job.state === 'captured' || (job.state === 'reserved' && job.expiresAt > Date.now())) ? JSON.parse(raw) as CampaignProposal : null };
+}
+
+export async function acceptCampaignProposal(jobId: string, payer: string, hash: string) {
+    const { job, proposal } = await campaignProposal(jobId, payer);
+    if (job.state === 'captured') {
+        if ((job.result as {digest?:string} | undefined)?.digest !== hash) throw new MoneyError('idempotency_conflict');
+        return job;
+    }
+    if (!proposal || proposal.hash !== hash) throw new MoneyError('campaign_result_mismatch');
+    return captureMoney(jobId, proposal.executor, proposal.result, payer);
+}
+
+export async function captureMoney(jobId: string, executorWallet: string, result: unknown, campaignPayer?: string): Promise<MoneyJob> {
     const known = await moneyJob(jobId);
     if (!known) throw new MoneyError('reservation_not_found');
     executorWallet = walletId(executorWallet);
     const payer = accountKey(known.wallet), executor = accountKey(executorWallet);
     const protocol = PREFIX + 'fund:protocol', reserve = PREFIX + 'fund:reserve', beneficiary = accountKey(MAINNET_ESCROW.protocol), jk = jobKey(jobId), responseKey = PREFIX+'response:'+jobId;
-    return atomic([SYS, payer, executor, beneficiary, protocol, reserve, jk, responseKey, ...(known.grantId ? [agentGrantKey(known.grantId)] : [])], old => {
+    const proposal = known.parent?.startsWith('campaign:') ? proposalKey(jobId) : null;
+    return atomic([SYS, payer, executor, beneficiary, protocol, reserve, jk, responseKey, ...(proposal ? [proposal] : []), ...(known.grantId ? [agentGrantKey(known.grantId)] : [])], old => {
         const job: MoneyJob = JSON.parse(old[jk]!);
+        if (proposal && (!campaignPayer || walletId(campaignPayer) !== job.wallet)) throw new MoneyError('campaign_acceptance_required');
         if (job.state === 'captured') {
-            if (job.executor !== executorWallet) throw new MoneyError('idempotency_conflict');
+            if (job.executor !== executorWallet || (proposal && (job.result as {digest?:string} | undefined)?.digest !== digest(result))) throw new MoneyError('idempotency_conflict');
             return { value: job };
+        }
+        if (proposal) {
+            const accepted: CampaignProposal | null = old[proposal] ? JSON.parse(old[proposal]) : null;
+            if (!accepted || accepted.executor !== executorWallet || accepted.hash !== digest(result)) throw new MoneyError('campaign_result_mismatch');
         }
         if(job.grantExecutor&&job.grantExecutor!==executorWallet)throw new MoneyError('grant_scope_denied');
         if (job.state !== 'reserved' || job.kind === 'campaign' || job.expiresAt <= Date.now())
@@ -307,9 +351,9 @@ export async function consumePromoRequest(wallet: string, reference: string): Pr
 
 export type Withdrawal = { id: string; wallet: string; amount: string; queryId: string;
     state: 'requested' | 'dispatching' | 'submitted' | 'confirmed' | 'cancelled';
-    createdAt: number; dispatchedAt?: number; validUntil?: number; bocHash?: string;
+    createdAt: number; dispatchedAt?: number; validUntil?: number; bocHash?: string; normalizedBocHash?: string;
     receiptHash?: string; reserveAtDispatch?: string; walletSeqno?:string; confirmedAt?: number;
-    cancellationReason?: 'user_cancelled' | 'operator_declined'; cancelledAt?: number };
+    cancellationReason?: 'user_cancelled' | 'operator_declined' | 'chain_failed'; cancelledAt?: number; failureHash?: string };
 const WQUEUE = PREFIX + 'withdraw-queue';
 const withdrawalKey = (withdrawalId: string) => PREFIX + 'withdrawal:' + id(withdrawalId);
 const withdrawalIndex = (wallet: string) => PREFIX + 'withdraw-index:' + walletId(wallet);
@@ -406,18 +450,43 @@ export async function dispatchWithdrawal(withdrawalId: string, owner: string, wa
         return {value:{...w,acquired:true},tx:{writes:{[SYS]:JSON.stringify(s),[key]:JSON.stringify(w)}}};
     });
 }
-export async function noteWithdrawalSubmission(withdrawalId: string, owner: string, bocHash: string) {
-    if (!/^[a-f0-9]{64}$/.test(bocHash)) throw new MoneyError('invalid_message_hash');
+export async function noteWithdrawalSubmission(withdrawalId: string, owner: string, bocHash: string, normalizedBocHash?: string) {
+    if (!/^[a-f0-9]{64}$/.test(bocHash) || (normalizedBocHash && !/^[a-f0-9]{64}$/.test(normalizedBocHash))) throw new MoneyError('invalid_message_hash');
     const key=withdrawalKey(withdrawalId);
     return atomic([SYS,key],old=>{
         if (!old[SYS] || JSON.parse(old[SYS]!).owner !== walletId(owner)) throw new MoneyError('custody_owner_required');
         if (!old[key]) throw new MoneyError('withdrawal_not_found');
         const w:Withdrawal=JSON.parse(old[key]!);
         if (w.state === 'confirmed') return {value:w};
-        if (w.bocHash && w.bocHash !== bocHash) throw new MoneyError('idempotency_conflict');
+        if ((w.bocHash && w.bocHash !== bocHash) || (w.normalizedBocHash && normalizedBocHash && w.normalizedBocHash !== normalizedBocHash))
+            throw new MoneyError('idempotency_conflict');
         if (w.state !== 'dispatching' && w.state !== 'submitted') throw new MoneyError('invalid_withdrawal_state');
         w.state='submitted';w.bocHash=bocHash;
+        if(normalizedBocHash)w.normalizedBocHash=normalizedBocHash;
         return {value:w,tx:{writes:{[key]:JSON.stringify(w)}}};
+    });
+}
+
+export async function reconcileFailedWithdrawal(withdrawalId: string, proof: {
+    hash: string; owner: string; jettonWallet: string; normalizedBocHash: string; amount: string; wallet: string; queryId: string;
+}): Promise<Withdrawal> {
+    const known=await getWithdrawal(withdrawalId);
+    if(!known)throw new MoneyError('withdrawal_not_found');
+    const key=withdrawalKey(withdrawalId),ak=accountKey(known.wallet),receipt=PREFIX+'withdraw-receipt:'+id(proof.hash);
+    return atomic([SYS,key,ak,WQUEUE,receipt],old=>{
+        const w:Withdrawal=JSON.parse(old[key]!);
+        if(w.state==='cancelled'&&w.cancellationReason==='chain_failed'&&w.failureHash===proof.hash)return {value:w};
+        const s:MoneySystem=JSON.parse(old[SYS]!);
+        if(w.state!=='submitted'||s.payoutInFlight!==w.id||s.owner!==proof.owner||s.jettonWallet!==proof.jettonWallet||
+           w.normalizedBocHash!==proof.normalizedBocHash||w.wallet!==proof.wallet||w.amount!==proof.amount||w.queryId!==proof.queryId||old[receipt])
+            throw new MoneyError('withdrawal_receipt_mismatch');
+        const a=parseAccount(old[ak]),amount=BigInt(w.amount);
+        change(a,'reserved',-amount);change(a,'available',amount);
+        w.state='cancelled';w.cancellationReason='chain_failed';w.failureHash=proof.hash;w.cancelledAt=Date.now();
+        delete s.payoutInFlight;
+        const queue:string[]=JSON.parse(old[WQUEUE]||'[]');
+        return {value:w,tx:{writes:{[SYS]:JSON.stringify(s),[key]:JSON.stringify(w),[ak]:JSON.stringify(a),
+            [receipt]:JSON.stringify({withdrawal:w.id,hash:proof.hash,failed:true}),[WQUEUE]:JSON.stringify(queue.filter(item=>item!==w.id))}}};
     });
 }
 /** Receipt must be independently verified by custody.ts before entering this transaction. */

@@ -9,9 +9,9 @@ import {Address} from '@ton/core';
 import {getCommonStaticProps} from '../lib/i18n-static-props';
 import {createMainnetEscrowConnector} from '../lib/escrowConnector';
 import {mainnetEscrowStoragePrefix as prefix,readEscrowPending,withEscrowOperation,type PendingEscrowOperation} from '../lib/escrowOperations';
-import {hasExpectedEscrowState,isSettledEscrow} from '../lib/escrowObservation';
+import {canExpirePendingEscrow,canRecoverPendingPayout,canRecoverPendingRefund,canSyncPendingEscrow,hasExpectedEscrowState,isExpiredIncomingEscrow,isSettledEscrow} from '../lib/escrowObservation';
 import {isEscrowRequestValidationError,escrowWalletErrorCode} from '../lib/escrowWalletErrors';
-import type {BatchAction} from '../lib/batchEscrow';
+import type {MainnetAction} from '../lib/mainnetEscrow';
 const canonical=(value:string)=>{try{return Address.parse(value).toRawString();}catch{return'';}};
 const amount=(s:string)=>{try{const n=BigInt(s);return String(n/1000000000n)+'.'+String(n%1000000000n).padStart(9,'0');}catch{return'—';}};
 const newId=()=>Array.from(crypto.getRandomValues(new Uint8Array(32))).map(n=>n.toString(16).padStart(2,'0')).join('');
@@ -66,8 +66,15 @@ function MainnetPanel({expected}:{expected:TonConnect}){
   save({network:'-239',input:d.input,preview:d.preview,access_token:d.access_token,job:d.job,prompt});setChain(null);setPending(null);setNotice(p('prepared'));
  }
  async function refresh(){
-  const d=await api('status');setChain(d.status);if(d.job)save({...draft,job:d.job});
-  if(pending&&hasExpectedEscrowState(pending,d.status))await withEscrowOperation(localStorage,navigator.locks,plan.task,async op=>{if(op.clear(pending.id)){setPending(null);setNotice(p('confirmed'));}else setPending(op.current());},'-239');
+  const prior=readEscrowPending(localStorage,plan.task,'-239');
+  const d=await api('status',prior?.validUntil&&['refund','withdraw','surplus'].includes(prior.action)?{recovery_valid_until:prior.validUntil}:{});
+  setChain(d.status);if(d.job)save({...draft,job:d.job});
+  if(pending||readEscrowPending(localStorage,plan.task,'-239'))await withEscrowOperation(localStorage,navigator.locks,plan.task,async op=>{
+   const current=op.current();
+   if(current&&hasExpectedEscrowState(current,d.status)&&op.clear(current.id))setNotice(p('confirmed'));
+   else if(current&&isExpiredIncomingEscrow(current,d.status)&&op.clear(current.id))setNotice('');
+   setPending(op.current());
+  },'-239');
  }
  async function execute(){
   if(!correct||!isolated||address!==input?.payer)throw Error('wrong_network');
@@ -76,16 +83,28 @@ function MainnetPanel({expected}:{expected:TonConnect}){
   const current=ton.account;if(current?.chain!=='-239'||canonical(current.address)!==address)throw Error('wrong_network');
   const d=await api('execute',{nonce:challenge.nonce,authorization,stateInit:current.walletStateInit});save({...draft,job:d.job});setNotice(p('queued'));
  }
- async function send(action:BatchAction,role=0){
+ async function send(action:MainnetAction,role=0){
   if(!correct||!isolated)throw Error('wrong_network');
   await withEscrowOperation(localStorage,navigator.locks,plan.task,async op=>{
-   if(pending||op.current())throw Error('operation_pending');
-   const d=await api(action,{role}),current=ton.account;
+   const previous=op.current();
+   if(previous&&!(action==='expire'&&canExpirePendingEscrow(previous,chain,input.deadline,Date.now()))&&
+      !(action==='sync'&&canSyncPendingEscrow(previous,chain))&&
+      !(action==='refund'&&canRecoverPendingRefund(previous,chain,chain?.recovery_chain_time))&&
+      !(action===previous.action&&role===previous.role&&canRecoverPendingPayout(previous,chain,chain?.recovery_chain_time)))throw Error('operation_pending');
+   const d=await api(action,{role,...(previous&&['refund','withdraw','surplus'].includes(action)?{recovery_valid_until:previous.validUntil}:{})}),current=ton.account;
    if(current?.chain!=='-239'||canonical(current.address)!==d.transaction.from||d.transaction.network!=='-239'||d.preview.task!==plan.task)throw Error('wrong_network');
+   if(previous&&(action==='expire'||action==='sync')){
+    // Keep the original record while the coordinator reapplies its immutable decision.
+    try{await ton.sendTransaction(d.transaction);setNotice(p('submitted'));}
+    catch(e){setNotice(p(e instanceof UserRejectsError?'rejected':'uncertain'));}
+    setChain(null); // A further attempt requires a fresh authenticated status read.
+    return;
+   }
    const snapshot:PendingEscrowOperation={id:newId(),task:plan.task,action,role,since:Date.now(),validUntil:d.transaction.validUntil,requestSent:false,signed:false,payer:chain?.payer_balance||'0',total:String((chain?.shares||[]).reduce((n:bigint,s:any)=>n+BigInt(s.balance_nano),0n)),balance:chain?.shares?.[role]?.balance_nano||'0',native:String(BigInt(chain?.native_nano||'0')+(chain?.shares||[]).reduce((n:bigint,s:any)=>n+BigInt(s.native_nano),0n))};
-   op.begin(snapshot);setPending(snapshot);
+   if(previous)op.replace(previous.id,snapshot);else op.begin(snapshot);
+   setPending(snapshot);
    try{await ton.sendTransaction(d.transaction,{onRequestSent:()=>{try{setPending(op.annotate(snapshot.id,{requestSent:true}));}catch{/* Original pending record stays authoritative. */}}});setPending(op.annotate(snapshot.id,{signed:true}));setNotice(p('submitted'));}
-   catch(e:any){if(e instanceof UserRejectsError||isEscrowRequestValidationError(e)){if(op.clear(snapshot.id))setPending(null);setNotice(p(e instanceof UserRejectsError?'rejected':'invalid_request'));}else{try{setPending(op.annotate(snapshot.id,{failureCode:escrowWalletErrorCode(e)}));}catch{/* Never clear an uncertain operation. */}setNotice(p('uncertain'));}}
+   catch(e:any){if(e instanceof UserRejectsError||isEscrowRequestValidationError(e)){if(previous){op.replace(snapshot.id,previous);setPending(previous);}else if(op.clear(snapshot.id))setPending(null);setNotice(p(e instanceof UserRejectsError?'rejected':'invalid_request'));}else{try{setPending(op.annotate(snapshot.id,{failureCode:escrowWalletErrorCode(e)}));}catch{/* Never clear an uncertain operation. */}setNotice(p('uncertain'));}}
   },'-239');
  }
  function download(privateData:boolean){
@@ -94,7 +113,8 @@ function MainnetPanel({expected}:{expected:TonConnect}){
   const blob=new Blob([JSON.stringify(value,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=privateData?'gstd-mainnet-private-recovery.json':'gstd-mainnet-payment-details.json';a.click();URL.revokeObjectURL(url);
  }
  const button='rounded-lg bg-violet-600 px-4 py-2 disabled:opacity-40',field='w-full rounded border border-white/20 bg-black/30 px-3 py-2';
- const blocked=busy||!!pending||!correct||!isolated||!walletAuthorized||!catalog?.rpc_configured,payer=address===input?.payer,publicAccess=catalog?.access?.wallets==='open';
+ const unavailable=busy||!correct||!isolated||!walletAuthorized||!catalog?.rpc_configured;
+ const blocked=unavailable||!!pending,payer=address===input?.payer,publicAccess=catalog?.access?.wallets==='open';
  const state=isSettledEscrow(chain)?chain.state===2?'refunded':'paid':chain?.state===1?'accepted':input&&now>input.deadline*1000?'expired':job?.state||'prepared';
  if(!isolated)return <main className="p-10 text-white"><p>{p('errors.reload_required')}</p><a href={router.asPath}>{p('reload')}</a></main>;
  return <main className="mx-auto max-w-4xl px-5 py-10 text-white space-y-5">
@@ -105,14 +125,14 @@ function MainnetPanel({expected}:{expected:TonConnect}){
    <label className="block">{p('import')}<input className="block" type="file" accept="application/json" disabled={busy||!!pending} onChange={e=>{const file=e.target.files?.[0];if(file)work(async()=>{if(file.size>100000)throw Error('invalid_mainnet_job');await restore(JSON.parse(await file.text()));});}}/></label>
   </section>
   <section className="rounded-xl border border-white/15 p-5 space-y-3"><h2>{p('request')}</h2><button className={button} disabled={busy} onClick={()=>work(loadCatalog)}>{p('refresh_catalog')}</button>
-   <p>{p(!catalog?'loading':catalog.rpc_configured?'rpc_ready':'rpc_missing')}</p><button className={button} disabled={busy||!walletAuthorized||!catalog?.rpc_configured} onClick={()=>work(async()=>{const d=await api('preflight');setPreflight(d.preflight);})}>{p('preflight')}</button>{preflight&&<p>{p('operator_balance')}: {amount(preflight.operator_gstd_nano)} GSTD · {amount(preflight.operator_ton_nano)} TON</p>}
+   <p>{p(!catalog?'loading':catalog.rpc_configured?'rpc_ready':'rpc_missing')}</p>{address===catalog?.manifest?.protocol&&<button className={button} disabled={busy||!walletAuthorized||!catalog?.rpc_configured} onClick={()=>work(async()=>{const d=await api('preflight');setPreflight(d.preflight);})}>{p('preflight')}</button>}{preflight&&<p>{p('operator_balance')}: {amount(preflight.operator_gstd_nano)} GSTD · {amount(preflight.operator_ton_nano)} TON</p>}
    <label className="block">{p('model')}<select className={field} value={selected} disabled={busy||!!draft} onChange={e=>setSelected(e.target.value)}><option value="">{p('choose_model')}</option>{offers.map((o:any)=><option key={key(o)} value={key(o)}>{o.model} · {o.price} GSTD · {o.node_id.slice(0,12)}</option>)}</select></label>
    {catalog&&!offers.length&&<p>{p('no_models')}</p>}
    <p className="text-sm text-gray-400">{p('economics_notice')}</p>
    <label className="block">{p('prompt')}<textarea className={field} rows={5} maxLength={4000} value={prompt} disabled={busy||!!draft} onChange={e=>setPrompt(e.target.value)}/></label>
    <label className="block">{p('max_tokens')}<input className={field} type="number" min={1} max={512} value={maxTokens} disabled={busy||!!draft} onChange={e=>setMaxTokens(Number(e.target.value))}/></label>
    <label className="flex gap-3"><input type="checkbox" checked={consent} disabled={busy||!!draft} onChange={e=>setConsent(e.target.checked)}/>{p('consent')}</label>
-   <button className={button} disabled={busy||!!pending||!correct||!publicAccess||!walletAuthorized||!canSignText||!offer||!consent||!prompt.trim()||!!draft} onClick={()=>work(prepare)}>{p('prepare')}</button>
+   <button className={button} disabled={busy||!!pending||!correct||!publicAccess||!catalog?.rpc_configured||catalog?.manifest?.version!==2||!walletAuthorized||!canSignText||!offer||!consent||!prompt.trim()||!!draft} onClick={()=>work(prepare)}>{p('prepare')}</button>
    {draft&&isSettledEscrow(chain)&&<button className={button+' ml-3'} disabled={busy||!!pending} onClick={()=>work(async()=>{localStorage.setItem(prefix+'archive:'+Date.now(),JSON.stringify(draft));setDraft(null);setChain(null);setPrompt('');setConsent(false);setNotice(p('new_request'));})}>{p('new_request')}</button>}
   </section>
   {notice&&<p role="status" className="text-amber-200">{notice}</p>}
@@ -128,13 +148,22 @@ function MainnetPanel({expected}:{expected:TonConnect}){
    <button className={button} disabled={blocked||!payer||chain?.state!==0||chain?.mask!==7||job?.state!=='prepared'||!draft.access_token||now+300000>=input.deadline*1000} onClick={()=>work(execute)}>{p('run')}</button>
    <button className={button} disabled={busy||!draft.access_token} onClick={()=>work(async()=>{const d=await api('job-status');save({...draft,job:d.job});})}>{p('result')}</button>
    <button className={button} disabled={blocked||!payer||chain?.state!==0||chain?.mask!==7||job?.state!=='computed'||now>=input.deadline*1000} onClick={()=>work(()=>send('accept'))}>{p('accept')} · 0.30 TON</button>
-   <button className={button} disabled={blocked||!payer||chain?.state!==0||now<=input.deadline*1000} onClick={()=>work(()=>send('expire'))}>{p('expire')} · 0.30 TON</button>
-   <button className={button} disabled={blocked||!payer||chain?.state!==2||!chain?.shares?.some((s:any)=>BigInt(s.balance_nano)>0n)} onClick={()=>work(()=>send('refund'))}>{p('refund')} · ≤0.24 TON</button>
+   <button className={button} disabled={unavailable||!payer||chain?.state!==0||now<=input.deadline*1000||(!!pending&&!canExpirePendingEscrow(pending,chain,input.deadline,now))} onClick={()=>work(()=>send('expire'))}>{p('expire')} · 0.30 TON</button>
+   <button className={button} disabled={unavailable||!payer||chain?.state!==2||!chain?.shares?.some((s:any)=>BigInt(s.balance_nano)>0n)||(!!pending&&!canRecoverPendingRefund(pending,chain,chain?.recovery_chain_time))} onClick={()=>work(()=>send('refund'))}>{p('refund')} · ≤0.24 TON</button>
   </div><p>{p('check_limits')}</p>{chain&&payer&&(chain.state===0||!chain.deployed)&&BigInt(chain.payer_balance)<(chain.deployed?chain.shares.reduce((n:bigint,s:any)=>n+BigInt(s.missing_nano),0n):BigInt(plan.budget_nano))&&<p role="alert">{p('errors.insufficient_gstd')} {p('available')}: {amount(chain.payer_balance)} GSTD</p>}
    {job?.receipt&&<div className="space-y-2"><h3>{p('answer')}</h3><pre className="whitespace-pre-wrap break-words rounded bg-black/30 p-3">{job.receipt.result}</pre><p>{job.receipt.latency_ms} ms</p><code className="block break-all">{job.receipt.result_hash}</code><p>{p('no_ledger')}</p></div>}
   </section>
-  {plan.shares.map((s:any)=><section key={s.role} className="rounded-xl border border-white/15 p-5 space-y-3"><h2>{p('role_'+s.role)}</h2><p>{p('onchain')}: {amount(chain?.shares?.[s.role]?.balance_nano||'0')} GSTD</p><button className={button} disabled={blocked||address!==s.owner||chain?.state!==1||chain?.shares?.[s.role]?.state!==1||BigInt(chain?.shares?.[s.role]?.balance_nano||'0')<=0n} onClick={()=>work(()=>send('withdraw',s.role))}>{p('withdraw')} · 0.08 TON</button></section>)}
-  <details className="rounded-xl border border-white/15 p-5 space-y-3"><summary>{p('recovery')}</summary><p>{p('recovery_hint')}</p><button className={button} disabled={blocked||!payer||!chain?.deployed} onClick={()=>work(()=>send('sync'))}>{p('sync')} · 0.30 TON</button><button className={button+' ml-3'} disabled={blocked||!payer||!chain?.deployed||BigInt(chain?.native_nano||'0')+(chain?.shares||[]).reduce((n:bigint,s:any)=>n+BigInt(s.native_nano),0n)<=100000000n} onClick={()=>work(()=>send('reclaim'))}>{p('reclaim')} · 0.12 TON</button></details>
+  {plan.shares.map((s:any)=>{
+   const share=chain?.shares?.[s.role];
+   const ready=chain?.state===1&&share?.state===1&&!share.transfer_pending&&BigInt(share.balance_nano)>0n;
+   const retry=pending?.role===s.role&&canRecoverPendingPayout(pending,chain,chain?.recovery_chain_time);
+   return <section key={s.role} className="rounded-xl border border-white/15 p-5 space-y-3">
+    <h2>{p('role_'+s.role)}</h2><p>{p('onchain')}: {amount(share?.balance_nano||'0')} GSTD</p>
+    <button className={button} disabled={unavailable||!ready||address!==s.owner||share?.beneficiary_remaining==='0'||(!!pending&&!(retry&&pending.action==='withdraw'))} onClick={()=>work(()=>send('withdraw',s.role))}>{p('withdraw')} · 0.08 TON</button>
+    {input.manifest_version===2&&payer&&BigInt(share?.payer_surplus||'0')>0n&&<button className={button+' ml-3'} disabled={unavailable||!ready||(!!pending&&!(retry&&pending.action==='surplus'))} onClick={()=>work(()=>send('surplus',s.role))}>{p('return_surplus')} · {amount(share.payer_surplus)} GSTD</button>}
+   </section>;
+  })}
+  <details className="rounded-xl border border-white/15 p-5 space-y-3"><summary>{p('recovery')}</summary><p>{p('recovery_hint')}</p><button className={button} disabled={unavailable||!payer||!chain?.deployed||(!!pending&&!canSyncPendingEscrow(pending,chain))} onClick={()=>work(()=>send('sync'))}>{p('sync')} · 0.30 TON</button><button className={button+' ml-3'} disabled={blocked||!payer||!chain?.deployed||BigInt(chain?.native_nano||'0')+(chain?.shares||[]).reduce((n:bigint,s:any)=>n+BigInt(s.native_nano),0n)<=100000000n} onClick={()=>work(()=>send('reclaim'))}>{p('reclaim')} · 0.12 TON</button></details>
   </>}
  </main>;
 }
