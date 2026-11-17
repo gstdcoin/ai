@@ -8,7 +8,8 @@ main
 /tmp/
 
 # Go
-vendor/
+/vendor/*
+!/vendor/picomatch/
 
 # IDE
 .idea/
@@ -39,3 +40,4 @@ gstd-v*
 nohup.out
 .vercel/*
 !.vercel/project.json
+
