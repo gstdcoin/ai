@@ -156,7 +156,7 @@ function MainnetPanel({expected}:{expected:TonConnect}){
   {plan.shares.map((s:any)=>{
    const share=chain?.shares?.[s.role];
    const ready=chain?.state===1&&share?.state===1&&!share.transfer_pending&&BigInt(share.balance_nano)>0n;
-   const retry=pending?.role===s.role&&canRecoverPendingPayout(pending,chain,chain?.recovery_chain_time);
+   const retry=!!pending&&pending.role===s.role&&canRecoverPendingPayout(pending,chain,chain?.recovery_chain_time);
    return <section key={s.role} className="rounded-xl border border-white/15 p-5 space-y-3">
     <h2>{p('role_'+s.role)}</h2><p>{p('onchain')}: {amount(share?.balance_nano||'0')} GSTD</p>
     <button className={button} disabled={unavailable||!ready||address!==s.owner||share?.beneficiary_remaining==='0'||(!!pending&&!(retry&&pending.action==='withdraw'))} onClick={()=>work(()=>send('withdraw',s.role))}>{p('withdraw')} · 0.08 TON</button>
