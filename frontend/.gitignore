@@ -40,4 +40,3 @@ gstd-v*
 nohup.out
 .vercel/*
 !.vercel/project.json
-
