@@ -36,3 +36,5 @@ Escrow v2 was compiled and tested in TON Sandbox with four different payer/execu
 CPU execution can verify a small Ollama model, exact-model routing and worker failure behavior. GPU hardware performance and capacity remain a separate evidence item. A first public compute release can expose only measured CPU capacity. Bridge withdrawals remain outside that release because their implementation is incomplete.
 
 On 2026-11-18 a separately started local Ollama 0.34.0 instance ran `qwen2.5:0.5b` on CPU with `num_gpu=0`, 1,024 context tokens and 24 maximum output tokens. It completed both checks: exact `READY` and `5` for 2 + 3. Client-observed elapsed times including model loading were 2,037 ms and 2,007 ms. The process used a loopback listener and stopped after the checks. These two samples establish execution on this machine; throughput, load reliability and GPU measurements need their own runs.
+
+The Rust research bridge also completed `cargo test --locked --offline --quiet` on the local Windows toolchain, with four tests passing. This tests the implemented research paths. Its chain withdrawal methods remain unfinished.
