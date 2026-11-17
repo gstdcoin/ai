@@ -7,7 +7,7 @@ import {GstdTaskEscrowV2} from './escrow-generated/GstdTaskEscrowV2';
 import {GstdEscrowShareV2,storeReturnAcceptedSurplus} from './escrow-generated/GstdEscrowShareV2';
 import walletArtifact from './escrow-generated/wallet-code.json';
 import {MAINNET_ESCROW as policy,MAINNET_ESCROW_V2,MAINNET_ACCESS} from './mainnetEscrowManifest';
-import {mainnetRpc,readEscrowStatus,type Rpc} from './batchEscrowStatus';
+import {mainnetDiagnosticRpc,mainnetRpc,readEscrowStatus,type Rpc} from './batchEscrowStatus';
 import {kvGet,kvSetNX,kvMoneyCAS} from './kv';
 export interface MainnetExecution{version:1;node_id:string;model:string;prompt_hash:string;max_tokens:number;nonce:string;payout_revision:number}
 export interface MainnetRecoveryInput{manifest_version:1|2;network:'-239';payer:string;worker:string;protocol:string;reserve:string;budget:string;taskId:string;deadline:number;requests:1}
@@ -40,8 +40,8 @@ export async function mainnetPreview(input:MainnetRecoveryInput|MainnetInput){
  shares:c.shares.map((s,i)=>({role:i,owner:c.recipients[i].toRawString(),amount_nano:String(c.amounts[i]),address:s.address.toRawString(),tokenWallet:c.tokenWallet(s.address).toRawString()})),
  budgets_ton:{deploy:'0.40',fund:'0.30',accept:'0.30',withdraw_each:'0.08',expire:'0.30',refund_all:'0.24',sync:'0.30'},minimum_storage_ton:'0.08',normal_path_attached_ton:'1.24',fees_are_attached_budgets:true};
 }
-export async function verifyMainnetMaster(rpc:Rpc=mainnetRpc()){
- const key='escrow:mainnet:master-code:'+policy.master+':'+policy.walletCodeHash;
+export async function verifyMainnetMaster(rpc:Rpc=mainnetRpc(),namespace='escrow:mainnet'){
+ const key=namespace+':master-code:'+policy.master+':'+policy.walletCodeHash;
  if(await kvGet(key)==='verified')return;
  const r=await rpc.get('blockchain/accounts/'+encodeURIComponent(policy.master)+'/methods/get_jetton_data');
  const value=r?.decoded?.jetton_wallet_code;if(!r?.success||typeof value!=='string')throw Error('mainnet_master_unverified');
@@ -78,8 +78,8 @@ export async function mainnetTransaction(input:MainnetRecoveryInput|MainnetInput
 }
 
 /** Compare local jetton derivation with the canonical master's own getter before any funding. */
-export async function verifyMainnetWallet(owner:Address,expected:Address,rpc:Rpc){
- const key='escrow:mainnet:wallet:'+policy.master+':'+owner.toRawString()+':'+policy.walletCodeHash;
+export async function verifyMainnetWallet(owner:Address,expected:Address,rpc:Rpc,namespace='escrow:mainnet'){
+ const key=namespace+':wallet:'+policy.master+':'+owner.toRawString()+':'+policy.walletCodeHash;
  if(await kvGet(key)===expected.toRawString())return;
  if(!rpc.walletAddress)throw Error('mainnet_master_unverified');
  await new Promise(r=>setTimeout(r,1100));
@@ -88,18 +88,25 @@ export async function verifyMainnetWallet(owner:Address,expected:Address,rpc:Rpc
 }
 /** One mainnet chain journey at a time, avoiding overlapping free-provider request bursts. */
 export async function withMainnetRpc<T>(run:(rpc:Rpc)=>Promise<T>):Promise<T>{
- const key='escrow:mainnet:rpc-lease',token=randomBytes(32).toString('hex');
+ return withRpcLease('escrow:mainnet:rpc-lease',mainnetRpc(),run);
+}
+export async function withMainnetDiagnosticRpc<T>(run:(rpc:Rpc)=>Promise<T>):Promise<T>{
+ return withRpcLease('escrow:mainnet:diagnostic:rpc-lease',mainnetDiagnosticRpc(),run);
+}
+async function withRpcLease<T>(key:string,rpc:Rpc,run:(rpc:Rpc)=>Promise<T>):Promise<T>{
+ const token=randomBytes(32).toString('hex');
  if(!await kvSetNX(key,token,90))throw Error('mainnet_rpc_busy');
- const deadline=Date.now()+55000,rpc=mainnetRpc();
+ const deadline=Date.now()+55000;
  const check=()=>{if(Date.now()>=deadline)throw Error('mainnet_unavailable');};
  try{return await run({get:async path=>{check();return rpc.get(path);},walletAddress:async(master,owner)=>{check();return rpc.walletAddress!(master,owner);}});}
  finally{await kvMoneyCAS({[key]:token},{[key]:'released:'+token},undefined,undefined,{[key]:1});}
 }
 export async function mainnetPreflight(rpc:Rpc){
- await verifyMainnetMaster(rpc);
+ const namespace='escrow:mainnet:diagnostic';
+ await verifyMainnetMaster(rpc,namespace);
  const owner=Address.parse(policy.protocol),code=Cell.fromBoc(Buffer.from(walletArtifact.code_hex,'hex'))[0];
  const wallet=contractAddress(0,{code,data:beginCell().storeCoins(0).storeAddress(owner).storeAddress(Address.parse(policy.master)).storeBit(false).endCell()});
- await verifyMainnetWallet(owner,wallet,rpc);
+ await verifyMainnetWallet(owner,wallet,rpc,namespace);
  await new Promise(r=>setTimeout(r,1100));const account=await rpc.get('blockchain/accounts/'+encodeURIComponent(owner.toRawString()));
  await new Promise(r=>setTimeout(r,1100));const tokenAccount=await rpc.get('blockchain/accounts/'+encodeURIComponent(wallet.toRawString()));
  let balance='0';if(tokenAccount?.status==='frozen')throw Error('mainnet_state_mismatch');

@@ -12,17 +12,21 @@ async function rpcFetch(url:string,options:RequestInit={}){
 // Fixed network-specific public hosts only. Select one fallback per status check, never broadcast.
 export function testnetRpc():Rpc{return escrowRpc('-3');}
 export function mainnetRpc():Rpc{return escrowRpc('-239');}
-function escrowRpc(network:'-3'|'-239'):Rpc {
+export function mainnetDiagnosticRpc():Rpc{return escrowRpc('-239',true);}
+function escrowRpc(network:'-3'|'-239',diagnostic=false):Rpc {
  if(network!=='-3'&&network!=='-239')throw Error('wrong_network');
  const testnet=network==='-3',unavailable=testnet?'testnet_unavailable':'mainnet_unavailable';
  const apiHost=testnet?'https://testnet.tonapi.io':'https://tonapi.io';
  const centerHost=testnet?'https://testnet.toncenter.com':'https://toncenter.com';
  const credential=(name:string)=>{const key=escrowRuntimeSecret(name);if(key&&(!/^[\x21-\x7e]+$/.test(key)||key.length>2048))throw Error(testnet?'testnet_credential_invalid':'mainnet_credential_invalid');return key;};
- const apiKey=credential(testnet?'ESCROW_TESTNET_TONAPI_KEY':'ESCROW_MAINNET_TONAPI_KEY'),centerKey=credential(testnet?'ESCROW_TESTNET_TONCENTER_API_KEY':'ESCROW_MAINNET_TONCENTER_API_KEY');
+ const centerSecret=testnet?'ESCROW_TESTNET_TONCENTER_API_KEY':'ESCROW_MAINNET_TONCENTER_API_KEY';
+ const apiKey=diagnostic?undefined:credential(testnet?'ESCROW_TESTNET_TONAPI_KEY':'ESCROW_MAINNET_TONAPI_KEY');
+ const centerKey=credential(diagnostic?'ESCROW_MAINNET_DIAGNOSTIC_TONCENTER_API_KEY':centerSecret);
+ if(diagnostic&&(!centerKey||centerKey===escrowRuntimeSecret(centerSecret)))throw Error('mainnet_diagnostic_rpc_not_configured');
  const apiHeaders:Record<string,string>=apiKey?{Authorization:'Bearer '+apiKey}:{};
  const centerHeaders:Record<string,string>=centerKey?{'X-API-Key':centerKey}:{};
  // Prefer the independently keyed provider over an anonymous shared-IP request.
- let fallback=!!centerKey&&!apiKey,primary="not_attempted",secondary="not_attempted";
+ let fallback=diagnostic||!!centerKey&&!apiKey,primary="not_attempted",secondary="not_attempted";
  // Public diagnostics contain only fixed categories, never raw provider messages/headers.
  const bucket=(e:any)=>{const m=String(e?.message||'');if(/redirect value/i.test(m))return'unsupported_redirect';if(/illegal invocation/i.test(m))return'illegal_invocation';if(/signal/i.test(m))return'signal';if(/cache/i.test(m))return'cache';if(/timeout|abort/i.test(m))return'timeout';if(/fetch/i.test(m))return'fetch';return['TypeError','Error','TimeoutError','AbortError'].includes(e?.name)?e.name:'failure';};
  const wait=()=>new Promise(r=>setTimeout(r,1100));

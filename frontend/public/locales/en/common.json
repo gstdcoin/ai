@@ -1953,6 +1953,7 @@
       "wrong_network": "Select the correct wallet network.",
       "mainnet_pilot_wallet_required": "The first release is limited to the node payout wallet shown above.",
       "mainnet_rpc_not_configured": "Mainnet reading is not configured. No transfer was prepared.",
+      "mainnet_diagnostic_rpc_not_configured": "Operator diagnostics need a dedicated TON Center quota. Settlement uses its existing RPC.",
       "mainnet_rpc_busy": "Another mainnet check is running. Wait and check again; transfers are not repeated.",
       "mainnet_job_access_denied": "Private task access is missing or expired. Use your private recovery file.",
       "mainnet_job_expired": "The task expired. Use the contract refund after its deadline.",

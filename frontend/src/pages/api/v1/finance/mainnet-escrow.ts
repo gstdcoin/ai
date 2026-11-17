@@ -5,7 +5,7 @@ import {randomBytes} from 'node:crypto';
 import {kvGet,kvSetNX,kvRateLimit} from '../../../../lib/kv';
 import {getClientIp} from '../../../../lib/ratelimit';
 import {rawAddress} from '../../../../lib/batchEscrow';
-import {mainnetPreview,mainnetStatus,mainnetTransaction,withMainnetRpc,mainnetPreflight,type MainnetAction} from '../../../../lib/mainnetEscrow';
+import {mainnetPreview,mainnetStatus,mainnetTransaction,withMainnetRpc,withMainnetDiagnosticRpc,mainnetPreflight,type MainnetAction} from '../../../../lib/mainnetEscrow';
 import {MAINNET_ESCROW,MAINNET_ESCROW_V2,MAINNET_ACCESS,mainnetV2Enabled} from '../../../../lib/mainnetEscrowManifest';
 import {mainnetCatalog,mainnetRpcConfigured,prepareMainnetJob,authorizedMainnetJob,readMainnetJob,hasMainnetAccess,privateMainnetJobView,queueMainnetJob,requireMainnetReceipt,requireMainnetPayer} from '../../../../lib/mainnetJobs';
 import {verifyPilotAuthorization} from '../../../../lib/escrowJobAuth';
@@ -22,8 +22,9 @@ export default async function handler(req:NextApiRequest,res:NextApiResponse){
  if(req.method!=='POST')return res.status(405).json({error:'method_not_allowed'});
  try{
   if(req.body?.network!=='-239')return res.status(409).json({error:'wrong_network'});
-  if(!await kvRateLimit('escrow:mainnet:api:'+getClientIp(req.headers),12,60000))return res.status(429).json({error:'rate_limited'});
   const {action,input,access_token,actor,role=0}=req.body;
+  const rateNamespace=action==='preflight'?'escrow:mainnet:diagnostic:ip:':'escrow:mainnet:api:';
+  if(!await kvRateLimit(rateNamespace+getClientIp(req.headers),12,60000))return res.status(429).json({error:'rate_limited'});
   if(action==='catalog')return res.status(200).json({manifest:mainnetV2Enabled()?MAINNET_ESCROW_V2:MAINNET_ESCROW,access:MAINNET_ACCESS,rpc_configured:mainnetRpcConfigured(),offers:await mainnetCatalog()});
   if(action==='wallet-challenge')return res.status(200).json(await mainnetWalletChallenge(actor));
   if(action==='wallet-auth')return res.status(200).json(await authenticateMainnetWallet({wallet:actor,nonce:req.body.nonce,authorization:req.body.authorization,stateInit:req.body.stateInit}));
@@ -35,7 +36,7 @@ export default async function handler(req:NextApiRequest,res:NextApiResponse){
    }
    if(!mainnetRpcConfigured())throw Error('mainnet_rpc_not_configured');
    if(!await kvRateLimit('escrow:mainnet:diagnostic',1,60000))return res.status(429).json({error:'rate_limited'});
-   return res.status(200).json({preflight:await withMainnetRpc(mainnetPreflight)});
+   return res.status(200).json({preflight:await withMainnetDiagnosticRpc(mainnetPreflight)});
   }
   if(action==='prepare'){
    await requireMainnetWalletSession(req.body.wallet_token,req.body.payer);
@@ -125,6 +126,7 @@ export default async function handler(req:NextApiRequest,res:NextApiResponse){
   const transaction=await mainnetTransaction(input,action as MainnetAction,actor,role,action==='fund'?status.shares.map(s=>BigInt(s.missing_nano)):undefined,payout,action==='refund'?status.shares.map(s=>BigInt(s.balance_nano)):undefined);
   return res.status(200).json({preview,transaction,network:'-239',test_only:false});
  }catch(e:any){
+  if(e?.message==='mainnet_diagnostic_rpc_not_configured')return res.status(503).json({error:e.message});
   const allowed=['invalid_address','invalid_mainnet_job','invalid_mainnet_recipients','mainnet_budget_limit','mainnet_pilot_wallet_required','mainnet_wallet_auth_required','unsupported_mainnet_wallet','mainnet_job_access_denied','mainnet_job_expired','mainnet_executor_unavailable','mainnet_job_conflict','mainnet_job_not_completed','mainnet_rpc_not_configured','mainnet_rpc_busy','mainnet_master_unverified','mainnet_master_mismatch','mainnet_state_mismatch','mainnet_unavailable','wrong_signer','invalid_role','invalid_action','invalid_authorization','authorization_used','state_not_ready','insufficient_gstd','already_funded'];
   return res.status(allowed.includes(e?.message)?409:503).json({error:allowed.includes(e?.message)?e.message:'mainnet_unavailable',...(e?.message==='mainnet_unavailable'&&typeof e.provider_diagnostic==='string'?{provider_diagnostic:e.provider_diagnostic.slice(0,300)}:{})});
  }

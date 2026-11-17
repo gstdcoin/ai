@@ -1,10 +1,11 @@
 import {it,expect,vi,afterEach} from 'vitest';
-import {Address,Cell} from '@ton/core';
+import {Address,beginCell,Cell} from '@ton/core';
 import TonConnect,{WalletNotConnectedError} from '@tonconnect/sdk';
 import {batchContext} from './batchEscrow';
 import {MAINNET_ESCROW as policy,MAINNET_ESCROW_V2} from './mainnetEscrowManifest';
-import {mainnetJobHash,mainnetPreview,mainnetTransaction,mainnetContext,verifyMainnetMaster,verifyMainnetWallet,withMainnetRpc,type MainnetInput} from './mainnetEscrow';
-import {mainnetRpc,testnetRpc} from './batchEscrowStatus';
+import {mainnetJobHash,mainnetPreview,mainnetTransaction,mainnetContext,verifyMainnetMaster,verifyMainnetWallet,withMainnetRpc,withMainnetDiagnosticRpc,type MainnetInput} from './mainnetEscrow';
+import {mainnetDiagnosticRpc,mainnetRpc,testnetRpc} from './batchEscrowStatus';
+import {kvDel} from './kv';
 import artifact from './escrow-generated/wallet-code.json';
 const input=():MainnetInput=>{
  const value:MainnetInput={manifest_version:1,network:'-239',payer:'0:'+'11'.repeat(32),worker:'0:'+'22'.repeat(32),protocol:policy.protocol,reserve:policy.reserve,budget:'0.005000000',taskId:'0'.repeat(64),deadline:Math.floor(Date.now()/1000)+1800,requests:1,execution:{version:1,node_id:'mainnet-node-fixture',model:'qwen2.5:0.5b',prompt_hash:'33'.repeat(32),max_tokens:128,nonce:'44'.repeat(32),payout_revision:1}};
@@ -83,6 +84,53 @@ it('serializes mainnet RPC journeys and expires the per-journey time budget with
  await expect(withMainnetRpc(async()=>null)).rejects.toThrow('mainnet_rpc_busy');release();expect(await first).toBe('done');
  await vi.advanceTimersByTimeAsync(1001);
  await expect(withMainnetRpc(async rpc=>{await vi.advanceTimersByTimeAsync(56000);return rpc.get('blockchain/accounts/'+encodeURIComponent(policy.master));})).rejects.toThrow('mainnet_unavailable');
+});
+
+it('allows a settlement RPC journey while the operator diagnostic lease is held',async()=>{
+ vi.stubEnv('ESCROW_MAINNET_TONCENTER_API_KEY','settlement-fixture');
+ vi.stubEnv('ESCROW_MAINNET_DIAGNOSTIC_TONCENTER_API_KEY','diagnostic-fixture');
+ await kvDel('escrow:mainnet:rpc-lease');
+ let release!:()=>void,entered!:()=>void;
+ const ready=new Promise<void>(r=>{entered=r;}),held=new Promise<void>(r=>{release=r;});
+ const diagnostic=withMainnetDiagnosticRpc(async()=>{entered();await held;return 'diagnosed';});
+ try{
+  await ready;
+  await expect(withMainnetDiagnosticRpc(async()=>null)).rejects.toThrow('mainnet_rpc_busy');
+  await expect(withMainnetRpc(async()=> 'settled')).resolves.toBe('settled');
+ }finally{release();await diagnostic;}
+});
+
+it('rejects absent and reused diagnostic credentials before reaching a provider',async()=>{
+ vi.stubEnv('ESCROW_MAINNET_TONCENTER_API_KEY','settlement-fixture');
+ const fetcher=vi.fn();vi.stubGlobal('fetch',fetcher);
+ for(const key of ['','settlement-fixture']){
+  vi.stubEnv('ESCROW_MAINNET_DIAGNOSTIC_TONCENTER_API_KEY',key);
+  await expect(withMainnetDiagnosticRpc(async()=>null)).rejects.toThrow('mainnet_diagnostic_rpc_not_configured');
+ }
+ expect(fetcher).not.toHaveBeenCalled();
+});
+
+it('uses only the diagnostic key for account and master reads and does not fall back',async()=>{
+ vi.stubEnv('ESCROW_MAINNET_TONCENTER_API_KEY','settlement-fixture');
+ vi.stubEnv('ESCROW_MAINNET_TONAPI_KEY','settlement-tonapi-fixture');
+ vi.stubEnv('ESCROW_MAINNET_DIAGNOSTIC_TONCENTER_API_KEY','diagnostic-fixture');
+ const address=input().payer;
+ const slice=beginCell().storeAddress(Address.parse(address)).endCell().toBoc().toString('base64');
+ const fetcher=vi.fn<typeof fetch>()
+  .mockResolvedValueOnce(Response.json({ok:true,result:{state:'active',balance:'123'}}))
+  .mockResolvedValueOnce(Response.json({ok:true,result:{exit_code:0,stack:[['slice',{bytes:slice}]]}}))
+  .mockResolvedValueOnce(Response.json({ok:false},{status:429}));
+ vi.stubGlobal('fetch',fetcher);
+ const rpc=mainnetDiagnosticRpc();
+ const path='blockchain/accounts/'+encodeURIComponent(policy.master);
+ await expect(rpc.get(path)).resolves.toEqual({status:'active',balance:'123'});
+ await expect(rpc.walletAddress!(policy.master,address)).resolves.toBe(address);
+ await expect(rpc.get(path)).rejects.toThrow('mainnet_unavailable');
+ expect(fetcher.mock.calls).toHaveLength(3);
+ for(const [url,init] of fetcher.mock.calls){
+  expect(String(url)).toMatch(/^https:\/\/toncenter\.com\/api\/v2\//);
+  expect(new Headers(init?.headers).get('x-api-key')).toBe('diagnostic-fixture');
+ }
 });
 
 it('public payment recovery derives the same contract without exposing private execution metadata',async()=>{

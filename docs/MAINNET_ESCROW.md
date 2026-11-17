@@ -18,6 +18,8 @@ The platform backing wallet and existing platform balances are separate. This re
 
 Store a mainnet TON Center key as the Cloudflare Worker secret ESCROW_MAINNET_TONCENTER_API_KEY on gstd-ai-platform, then deploy. Keep the separate testnet secret. Never put keys in a repository, page, query string, recovery file or chat.
 
+For the operator preflight, set `ESCROW_MAINNET_DIAGNOSTIC_TONCENTER_API_KEY` using a TON Center quota independent of settlement. Diagnostics reject a missing or identical key, use a separate Redis lease and proof cache, and do not fall back to the settlement providers. Funding, recovery and balance reads keep the existing credentials. An independently allocated upstream quota is required in addition to a distinct key.
+
 The authenticated preflight verifies the canonical jetton wallet code and compares local token-wallet derivation with the master's own get_wallet_address getter. It reads the owner-selected node wallet's actual GSTD and TON balances. A configured key alone is not proof of a healthy provider or sufficient funds.
 
 The operator wallet and signed bootstrap node have access to diagnostics. Financial recovery and status have separate quotas. Manifest v2 adds cumulative beneficiary limits and returns surplus to the payer. Existing v1 recovery files keep their original contract addresses. Enable `ESCROW_MAINNET_V2_ENABLED` only after validating the v2 funding, payout and recovery flow on a non-production chain.
