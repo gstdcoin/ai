@@ -65,7 +65,8 @@ function EconomicsForm(){
  <label className="block">{p('utilization')}<input className={input} type="number" min="1" max="100" value={util} onChange={e=>setUtil(e.target.value)}/></label>
  {estimate!==null&&Number.isFinite(estimate)&&<><p>{p('estimated_cost')}: {estimate.toFixed(6)} USD · {p('gross_cost')}: {(estimate/.85).toFixed(6)} USD</p><p>{p('estimated_margin')}: {(Number(net)-estimate).toFixed(6)} USD</p>{Number(net)<estimate&&<p role="alert" className="text-amber-200">{p('below_cost')}</p>}</>}
  </section>
- <Link href="/payments" className="underline">{p('payments')}</Link>
+ <Link href="/host-offers" className="underline">GPU / VRAM</Link>
+ <Link href="/payments" className="ml-4 underline">{p('payments')}</Link>
  </main>;
 }
 export const getStaticProps:GetStaticProps=async({locale})=>({props:await getCommonStaticProps(locale)});

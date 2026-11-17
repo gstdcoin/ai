@@ -3,6 +3,25 @@ export interface NodeStatusRecord {
     node_url?: string;
     multiaddrs?: string[];
     last_seen?: string | null;
+    maintenance_window?: { starts_at: number; ends_at: number } | null;
+    maintenance_storage_error?: boolean;
+}
+
+export function nodeMaintenanceUpdate(value: unknown, error: unknown, now = Date.now()) {
+    if (value === undefined && error === undefined) return {};
+    const window = value as NodeStatusRecord['maintenance_window'];
+    if (value !== null && (!window || !Number.isSafeInteger(window.starts_at) || !Number.isSafeInteger(window.ends_at)
+        || window.starts_at < 0 || window.starts_at > now + 90 * 86400_000
+        || window.ends_at <= window.starts_at || window.ends_at - window.starts_at > 7 * 86400_000)) return {};
+    return {
+        maintenance_window: window ? { starts_at: window.starts_at, ends_at: window.ends_at } : null,
+        maintenance_storage_error: error === true,
+    };
+}
+
+export function nodeAcceptingWork(record: NodeStatusRecord, now = Date.now()): boolean {
+    const window = record.maintenance_window;
+    return !record.maintenance_storage_error && !(window && now >= window.starts_at && now < window.ends_at);
 }
 
 const UUID_NODE_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-/i;

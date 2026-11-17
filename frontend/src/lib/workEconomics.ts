@@ -30,6 +30,13 @@ export function gstdToUsdMicro(amount:bigint,price:string):bigint{
  usdToGstd(1n,price);const [w,f='']=price.split('.'),den=10n**BigInt(f.length),num=BigInt(w)*den+BigInt(f||'0');
  return ceil(amount*num*1000000n,1000000000n*den);
 }
+export function priceNodeOffer(netUsdMicro:string, marketPrice:string) {
+ const net=BigInt(netUsdMicro);
+ if(net<=0n||net>1000000000n)throw new MoneyError('invalid_usd_amount');
+ const gross=ceil(net*100n,85n),amount=usdToGstd(gross,marketPrice);
+ if(amount*85n/100n<usdToGstd(net,marketPrice))throw new MoneyError('quote_precision_insufficient');
+ return {amount,grossUsdMicro:gstdToUsdMicro(amount,marketPrice)};
+}
 export function validateQuotedWork(model:unknown,messages:unknown,maxTokens:unknown){
  if(typeof model!=='string'||model==='auto'||!/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,159}$/.test(model)||
  !Number.isSafeInteger(maxTokens)||Number(maxTokens)<1||Number(maxTokens)>16384||
@@ -91,11 +98,10 @@ export async function createWorkQuote(wallet:string,model:string,messages:{role:
  if(!offers.length)throw new MoneyError('no_priced_executor');
  const selected=offers[0],market=await currentMarketPrice();
  // Gross up the operator's requested net payment; integer rounding cannot underpay its 85% share.
- const gross=ceil(BigInt(selected.offer.netUsdMicro)*100n,85n),amount=usdToGstd(gross,market.price);
- if(amount*85n/100n<usdToGstd(BigInt(selected.offer.netUsdMicro),market.price))throw new MoneyError('quote_precision_insufficient');
+ const {amount,grossUsdMicro}=priceNodeOffer(selected.offer.netUsdMicro,market.price);
  if(grant&&(amount>BigInt(grant.perRequestNano)||amount+BigInt(grant.spentNano)+BigInt(grant.reservedNano)>BigInt(grant.budgetNano)))throw new MoneyError('price_exceeds_permission');
  const quote:WorkQuote={id:randomUUID(),wallet,grantId:grant?.id||null,model,nodeId:selected.offer.nodeId,executor:selected.executor,
- requestHash:requestHash(model,messages,maxTokens),amountNano:String(amount),grossUsdMicro:String(gstdToUsdMicro(amount,market.price)),netUsdMicro:selected.offer.netUsdMicro,
+ requestHash:requestHash(model,messages,maxTokens),amountNano:String(amount),grossUsdMicro:String(grossUsdMicro),netUsdMicro:selected.offer.netUsdMicro,
  priceUsd:market.price,marketObservedAt:market.observedAt,expiresAt:Date.now()+90000,offerRevision:selected.offer.revision};
  await kvSet('economics:quote:v1:'+quote.id,JSON.stringify(quote),180);
  return{...quote,price_gstd:units(amount),price_usd:usdUnits(quote.grossUsdMicro),operator_net_usd:usdUnits(selected.offer.netUsdMicro),

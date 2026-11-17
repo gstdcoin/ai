@@ -8,10 +8,11 @@ import {ensureNodeEndpoint} from '../../../../lib/nodeEndpointProof';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { kvGet, kvSet, kvIncr, kvNodeWalletSlot } from '../../../../lib/kv';
 import { verifyNodeSignature, bindNodeKey, requireNodeSignature } from '../../../../lib/nodeAuth';
+import { nodeMaintenanceUpdate, type NodeStatusRecord } from '../../../../lib/node-status';
 
 const NODE_TTL = 600; // 10 minutes
 
-export interface NodeRecord {
+export interface NodeRecord extends NodeStatusRecord {
     node_id:          string;
     node_url?:        string;
     name:             string;
@@ -130,6 +131,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             tasks_completed: existing?.tasks_completed || 0,
             gstd_earned:     existing?.gstd_earned     || 0,
             uptime_hours:    existing?.uptime_hours    || 0,
+            ...nodeMaintenanceUpdate(existing?.maintenance_window, existing?.maintenance_storage_error),
+            ...nodeMaintenanceUpdate(body.maintenance_window, body.maintenance_storage_error),
         };
         if (incomingUrl || existing?.node_url) record.node_url = incomingUrl || existing?.node_url;
 

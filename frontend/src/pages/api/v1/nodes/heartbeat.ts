@@ -16,6 +16,7 @@ import { kvGet, kvSet, kvIncr, kvKeys, kvDel, kvRateLimit, kvNodeWalletSlot } fr
 import { getClientIp } from '../../../../lib/ratelimit';
 import { nodeUpdateInfo } from '../../../../lib/nodeUpdate';
 import type { NodeRecord } from './register';
+import { nodeMaintenanceUpdate } from '../../../../lib/node-status';
 
 const NODE_TTL = 600;
 const NODE_ID_RE = /^[a-zA-Z0-9_.-]{4,64}$/;
@@ -86,6 +87,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const previousEndpoint={...record};
         // Update live fields
         record.last_seen       = new Date().toISOString();
+        Object.assign(record, nodeMaintenanceUpdate(body.maintenance_window, body.maintenance_storage_error));
         // Preserve server-owned task counters and earnings from the stored record.
         record.uptime_hours    = body.uptime_hours ?? record.uptime_hours;
         if (body.multiaddrs?.length)    record.multiaddrs  = body.multiaddrs;

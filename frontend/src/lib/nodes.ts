@@ -14,7 +14,7 @@ import { canonicalModelId } from './modelId';
 
 import { kvGet, kvKeys, kvMGet } from './kv';
 import { safeNodeUrl } from './safeNodeUrl';
-import { dedupeNodeRecords, isNodeOnline, parseNodeRecords } from './node-status';
+import { dedupeNodeRecords, isNodeOnline, nodeAcceptingWork, parseNodeRecords } from './node-status';
 
 export const NODE_MODEL = 'auto';
 
@@ -61,7 +61,7 @@ export async function getActiveNodes(preferModel?: string): Promise<ActiveNode[]
 
         for (const n of dedupeNodeRecords(parseNodeRecords<any>(values))) {
             try {
-                if (!isNodeOnline(n)) continue;
+                if (!isNodeOnline(n, now) || !nodeAcceptingWork(n, now)) continue;
                 const url = safeNodeUrl(n.node_url || n.multiaddrs?.[0] || '');
                 if (!url) continue;
 
