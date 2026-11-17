@@ -1,4 +1,4 @@
-# GSTD release readiness — 2026-11-05
+# GSTD release readiness — 2026-11-17
 
 Start with the bilingual [user guide](START_HERE.md) or [public start page](https://gstdtoken.com/docs#get-started). This document records evidence and gaps; it is not a security guarantee.
 
@@ -17,11 +17,11 @@ Both accepted paid-work paths use **85% executor / 10% protocol / 5% reserve**. 
 
 | Scenario | Verified evidence | Still unverified |
 | --- | --- | --- |
-| Source and deployment | Platform d29aedf2 passed CI and Cloudflare deployment; website/node/SDK/bridge default-branch checks were green at the audit start. | A green build does not certify every live interaction or all dependencies. |
+| Source and deployment | Public site, app health and Telegram landing page returned HTTP 200; the webhook rejected an unauthenticated request. | Release candidates listed below still require their own CI and deployment verification. |
 | Real inference | One physical node; exact qwen2.5:0.5b returned 391 for 17 × 23 in the completed testnet job. | General answer quality, very large models and multiple independent executors. |
 | Identity and accounting | Signed registration/heartbeat, wallet-bound task authorization, idempotent completion, reservation/refund and Redis CAS tests. | Adversarial multi-operator production load. |
 | Full testnet escrow | Funded 0.005 tGSTD, actual node result, explicit acceptance, 0.00425/0.0005/0.00025 payouts; separate expiry/refund; recovery after reload; 21 raw transactions of coordinator/shares reconciled. | All roles used one test wallet. This is not independent-beneficiary mainnet proof. |
-| Mainnet RPC and canonical token | Read-only preflight passed: network -239, canonical master, pinned wallet code and master-derived wallet address. No financial transaction sent. | Real mainnet payment, accepted work, payout and fee reconciliation. The node wallet had 0 GSTD and 0.157332829 TON at that check. |
+| Mainnet RPC and canonical token | Production catalog returned HTTP 200, RPC configured and manifest v1. A separate public TON read matched the pinned wallet code and master-derived address. | An authenticated production preflight with the current binding and a real funded payment, acceptance, payout and fee reconciliation. |
 | Wallet safety | Network-specific connections/storage, one-time text authorization, actor-bound sessions, pending-operation locks; no server treasury signer in escrow. | Cross-device/ambiguous-transaction reconciliation with independent wallets. A signature alone is not a receipt. |
 | Fresh installation | Linux x86-64 clean-source and offline-container CI with fixture inference passed on the node release line 3.7. | Clean ARM64/GPU/WSL hardware installation and actual drivers; macOS is best-effort, native Windows/32-bit ARM are not promised by the Bash installer. |
 | Node controls | Dashboard regression tests cover model catalogue, resource estimates, public-wallet linking and authenticated operator actions. | A new operator's complete authenticated production UI journey on separate hardware. |
@@ -31,6 +31,22 @@ Both accepted paid-work paths use **85% executor / 10% protocol / 5% reserve**. 
 | Security | Focused authorization/accounting tests and CI dependency checks. | Exhaustive source review, independent contract assurance and proof against every exploit are not established. |
 
 Mainnet is not declared fully proven until a real funded cycle completes. The published mainnet page is explicitly beta and warns before real-fund signatures. Attached TON budgets are not consumed fees.
+
+## Published release candidates
+
+Production reported escrow manifest v1 with its RPC configured. A live mainnet funding, acceptance and payout cycle still awaits verification. The node release endpoint served signed version 3.7.2 at commit `ccf459c`.
+
+| Scope | Published candidate |
+| --- | --- |
+| Escrow v2 contracts | [contracts PR #6](https://github.com/gstdcoin/contracts/pull/6) |
+| Mainnet safety and Telegram updates | [Platform remediation branch](https://github.com/gstdcoin/ai/tree/codex/mainnet-remediation) |
+| Verified host catalog | [Platform host offers branch](https://github.com/gstdcoin/ai/tree/codex/verified-host-offers) |
+| Signed node installation and updates | [Node PR #8](https://github.com/gstdcoin/gstdbot/pull/8) |
+| Paired managed-inference benchmark | [Node PR #9](https://github.com/gstdcoin/gstdbot/pull/9) |
+| Host checks, task history and maintenance | [Node PR #10](https://github.com/gstdcoin/gstdbot/pull/10) |
+| Same-origin network statistics and installer verification | [Website PR #10](https://github.com/gstdcoin/web/pull/10) |
+
+The linked branches and pull requests show change proposals. Production verification uses the deployed endpoints and the signed manifest.
 
 ## Repository roles
 
