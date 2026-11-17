@@ -10,11 +10,11 @@
  * the server-side task assignment; client-supplied reward fields are ignored.
  */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { kvGet, kvSetNX, kvIncr, kvIncrByFloat, kvCompleteAssignedTask } from '../../../../lib/kv';
+import { kvGet, kvSet, kvSetNX, kvIncr, kvIncrByFloat, kvCompleteAssignedTask } from '../../../../lib/kv';
 import { COMMUNITY_TAX, BASE_TASK_FEE } from '../../../../lib/rewards';
 import { requireNodeSignature } from '../../../../lib/nodeAuth';
 import { hasTaskResult, declaredTaskModelMismatch } from '../../../../lib/taskValidation';
-import { captureMoney, releaseMoney, moneyJob, splitNano, units, walletId, digest } from '../../../../lib/money';
+import { captureMoney, releaseMoney, MoneyError, splitNano, units, walletId, digest } from '../../../../lib/money';
 import { completeMainnetJob } from '../../../../lib/mainnetJobs';
 import { completePilotJob } from '../../../../lib/escrowJobs';
 import type { TaskAssignment } from '../../../../lib/task-assignment';
@@ -29,15 +29,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     try {
-        const body   = req.body as any;
-        const nodeId: string = body.node_id || (req.headers['x-node-id'] as string);
+        const body = req.body ?? {};
+        const nodeId = body.node_id || req.headers['x-node-id'];
 
-        if (!nodeId) {
+        if (typeof nodeId !== 'string' || !nodeId.trim() || nodeId.length > 200) {
             return res.status(400).json({ error: 'node_id required' });
         }
 
         // Verify the registered wallet before consuming the one-time assignment.
-        const headerWallet = ((req.headers['x-wallet-address'] as string) || '').trim().toLowerCase();
+        const walletHeader = req.headers['x-wallet-address'];
+        const headerWallet = typeof walletHeader === 'string' ? walletHeader.trim().toLowerCase() : '';
 
         const nodeRaw = await kvGet(`node:${nodeId}`);
         if (!nodeRaw) return res.status(403).json({ error: 'Unknown node — register first' });
@@ -49,7 +50,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const auth = await requireNodeSignature(nodeId, req.headers as any);
         if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
 
-        if (!body.task_id) {
+        if (typeof body.task_id !== 'string' || !body.task_id.trim() || body.task_id.length > 200) {
             return res.status(400).json({ error: 'task_id required' });
         }
         const assignedRaw = await kvGet('task_assigned:' + body.task_id);
@@ -64,13 +65,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
         if (!assigned || assigned.node_id !== nodeId)
             return res.status(409).json({ error: 'Task is not assigned to this node' });
-        if (body.error && assigned?.node_id === nodeId && assigned?.funding_id) await releaseMoney(assigned.funding_id);
+        // Older SDKs submit explicit failure on this route. Release and capture
+        // arbitrate against the same money job; only a reserved job can change.
+        if (body.error && assigned.funding_id === body.task_id) await releaseMoney(assigned.funding_id);
         if (body.error || !hasTaskResult(body.result)) {
             return res.status(422).json({ error: 'A non-empty successful task result is required' });
         }
         if (declaredTaskModelMismatch(assigned.expected_model, body)) {
             return res.status(422).json({ error: 'model_mismatch', requested_model: assigned.expected_model });
         }
+        if (assigned.task_type === 'finetune' || assigned.task_type === 'bridge_verify' || assigned.job_id || assigned.shard_id)
+            return res.status(410).json({ error: 'Task execution is disabled' });
         let escrowReceipt;
         if (assigned.settlement_mode === 'testnet_contract') {
             if (assigned.funding_id || !assigned.escrow_job) return res.status(409).json({error:'invalid_escrow_job'});
@@ -81,6 +86,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             if(assigned.funding_id||!assigned.escrow_job)return res.status(409).json({error:'invalid_mainnet_job'});
             try{escrowReceipt=await completeMainnetJob(assigned.escrow_job,nodeId,body.model,body.result,body.latency_ms);}
             catch{return res.status(422).json({error:'invalid_mainnet_result'});}
+        }
+        let rewardGstd = 0;
+        let fundedResultTtl = 0;
+        if (assigned.funding_id) {
+            if (assigned.expected_hash || assigned.funding_id !== body.task_id || !assigned.payout_wallet)
+                return res.status(409).json({ error: 'invalid_funded_assignment' });
+            // Funded work can only become visible as completed after capture.
+            const funding = await captureMoney(assigned.funding_id, walletId(assigned.payout_wallet),
+                { task_id: body.task_id, node_id: nodeId, result_hash: digest(body.result) });
+            rewardGstd = Number(units(splitNano(BigInt(funding.amount)).executor));
+            if (funding.finishedAt) fundedResultTtl = Math.floor((funding.finishedAt + 120_000 - Date.now()) / 1000);
         }
         const completion = await kvCompleteAssignedTask(
             body.task_id,
@@ -112,47 +128,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         } catch {
             return res.status(409).json({ error: 'Invalid task assignment' });
         }
-        let rewardGstd = 0;
-        const protocolFee = 0; // Protocol/reserve shares commit atomically inside captureMoney.
-        if (assignment.funding_id) {
-            const funding = await moneyJob(assignment.funding_id);
-            if (!funding) return res.status(409).json({ error: 'funding_not_found' });
-            await captureMoney(assignment.funding_id, walletId(assignment.payout_wallet || (JSON.parse(nodeRaw) as NodeRecord).wallet_address),
-                { task_id: body.task_id, node_id: nodeId, result_hash: digest(body.result) });
-            rewardGstd = Number(units(splitNano(BigInt(funding.amount)).executor));
-        }
         if (escrowReceipt) return res.status(200).json({ok:true,task_id:body.task_id,duplicate:completion.status==='duplicate',reward_gstd:0,escrow_receipt:escrowReceipt});
+        const resultTtl = assignment.funding_id ? fundedResultTtl : completion.status === 'duplicate' ? 0 : 120;
+        if (resultTtl > 0) {
+            const writeResult = assignment.funding_id ? kvSet : kvSetNX;
+            await writeResult(`task:result:${body.task_id}`, JSON.stringify({
+                ready: true, result: body.result, node_id: nodeId,
+                latency_ms: body.latency_ms || 0, model: body.model,
+            }), resultTtl);
+        }
         if (completion.status === 'duplicate') return res.status(200).json({ ok: true, task_id: body.task_id, duplicate: true, reward_gstd: rewardGstd });
         if (assignment.expected_hash) {
             await kvIncrByFloat('stats:probe_verified', 1);
         }
-        const campaignId = assignment.campaign_id;
-        // PlatformLink and other workers use completion as their single reporting path.
-        // Preserve an earlier authenticated result if one is already present.
-        await kvSetNX(`task:result:${body.task_id}`, JSON.stringify({
-            ready: true, result: body.result, node_id: nodeId,
-            latency_ms: body.latency_ms || 0, model: body.model,
-        }), 120);
-
-
-        const writes: Promise<void>[] = [];
-
-        // Separate counter: rewriting the campaign blob would race with budget reservations.
-        if (campaignId) writes.push(kvIncr(`cstats:${campaignId}:tasks`).then(() => {}));
-
-        // Global stats
-        if (protocolFee > 0) writes.push(kvIncrByFloat('stats:protocol_treasury_gstd', protocolFee).then(() => {}));
-
-        // Accumulate the server-assigned reward in the node's pending balance.
-        await Promise.all(writes);
+        if (assignment.campaign_id) await kvIncr(`cstats:${assignment.campaign_id}:tasks`);
 
         return res.status(200).json({
             ok:          true,
             task_id:     body.task_id,
             reward_gstd: rewardGstd,
         });
-    } catch (err: any) {
-        console.error('[tasks/complete]', err.message);
+    } catch (error) {
+        if (error instanceof MoneyError && ['idempotency_conflict', 'reservation_expired', 'reservation_not_found'].includes(error.code))
+            return res.status(409).json({ error: error.code });
+        console.error('[tasks/complete] Unable to finalize task');
         return res.status(500).json({ error: 'Internal error' });
     }
 }

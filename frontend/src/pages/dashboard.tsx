@@ -1,13 +1,29 @@
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import type { GetStaticProps } from 'next';
 import { getCommonStaticProps } from '../lib/i18n-static-props';
 
 /** Compatibility entrypoint for the former duplicate dashboard. */
 export default function DashboardPage() {
  const router=useRouter();const {locale}=router;const ru=locale==='ru';
+ const [health,setHealth]=useState<'idle'|'checking'|'ready'|'local'|'unavailable'>('idle');
+ async function checkHealth() {
+  setHealth('checking');
+  try {
+   const response=await fetch('/api/v1/health',{signal:AbortSignal.timeout(5000)});
+   const report=await response.json();
+   setHealth(!response.ok||report.status!=='ok'?'unavailable':report.storage==='memory'?'local':'ready');
+  } catch {setHealth('unavailable');}
+ }
+ const healthText={
+  idle:'',
+  checking:ru?'Проверяем хранилище':'Checking storage',
+  ready:ru?'Хранилище платформы доступно':'Platform storage is reachable',
+  local:ru?'Локальное хранилище в памяти':'Local in-memory storage',
+  unavailable:ru?'Хранилище платформы недоступно':'Platform storage is unavailable',
+ };
  useEffect(()=>{
   const routes:Record<string,string>={chat:'/chat',devices:'/nodes',nodes:'/nodes',wallet:'/payments',payments:'/payments',stats:'/stats'};
   const tab=typeof router.query.tab==='string'?router.query.tab:'';
@@ -24,6 +40,10 @@ export default function DashboardPage() {
   <h1 className="text-4xl font-black mb-4">{ru?'Мой GSTD':'My GSTD'}</h1>
   <p className="text-gray-400 mb-8">{ru?'Чат, ноды и баланс используют общие страницы приложения. Управление моделями, обновлениями и оборудованием находится в защищённой панели вашей ноды.':'Chat, nodes and balances use the shared application pages. Manage models, updates and hardware in your node’s protected dashboard.'}</p>
   <div className="grid sm:grid-cols-2 gap-4">{links.map(item=><Link key={item.href} href={item.href} className="rounded-2xl border border-white/10 bg-white/5 p-6 hover:border-violet-400 transition-colors"><h2 className="text-xl font-bold mb-2">{item.title} →</h2><p className="text-sm text-gray-400">{item.text}</p></Link>)}</div>
+  <div className="mt-6 flex flex-wrap items-center gap-3 text-sm">
+   <button type="button" onClick={checkHealth} disabled={health==='checking'} className="rounded-lg border border-white/20 px-3 py-2 text-violet-200 disabled:opacity-60">{ru?'Проверить платформу':'Check platform health'}</button>
+   <span role="status" className="text-gray-300">{healthText[health]}</span>
+  </div>
   <p className="mt-7 text-sm text-gray-400">{ru?'Награды начисляются только за принятую оплаченную работу. Само подключение ноды и бесплатные запросы не создают выводимых токенов.':'Rewards require accepted paid work. Connecting a node and serving free requests do not create withdrawable tokens.'}</p>
   <a className="inline-block mt-5 underline text-violet-300" href="https://gstdtoken.com/developers">{ru?'API оплачиваемых задач и интеграции':'Funded task API and integrations'} →</a>
  </main>;

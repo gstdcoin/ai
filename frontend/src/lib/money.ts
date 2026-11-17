@@ -138,6 +138,8 @@ export async function captureMoney(jobId: string, executorWallet: string, result
         const job: MoneyJob = JSON.parse(old[jk]!);
         if (job.state === 'captured') {
             if (job.executor !== executorWallet) throw new MoneyError('idempotency_conflict');
+            if (job.kind === 'task' && (job.result as { digest?: string } | undefined)?.digest !== digest(result))
+                throw new MoneyError('idempotency_conflict');
             return { value: job };
         }
         if(job.grantExecutor&&job.grantExecutor!==executorWallet)throw new MoneyError('grant_scope_denied');

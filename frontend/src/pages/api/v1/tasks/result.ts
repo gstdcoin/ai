@@ -30,7 +30,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const completed = assigned ? null : await kvGet(`task_completed:${task_id}`);
     const record = assigned ? JSON.parse(assigned) : completed ? JSON.parse(completed) : null;
     if (!record || record.node_id !== node_id) return res.status(409).json({ error: 'Task is not assigned to this node' });
-    if (record.expected_hash && String(result?.hash || '').toLowerCase() !== record.expected_hash.toLowerCase())
+    const assignment = typeof record.assignment === 'string' ? JSON.parse(record.assignment) : record;
+    if (assignment.funding_id || assignment.settlement_mode)
+        return res.status(409).json({ error: 'use_task_completion' });
+    if (assignment.expected_hash && String(result?.hash || '').toLowerCase() !== assignment.expected_hash.toLowerCase())
         return res.status(422).json({ error: 'Invalid verification result' });
     await kvSet(`task:result:${task_id}`, JSON.stringify({ ready: true, result, latency_ms, node_id, model }), RESULT_TTL);
     return res.status(200).json({ ok: true });

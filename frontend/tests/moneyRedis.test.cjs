@@ -46,6 +46,15 @@ async function run() {
         await Promise.race([new Promise(resolve=>setTimeout(resolve,10)),serverError]);
     }
     const kv=require('../src/lib/kv.ts');
+    command('SET','node:reporter','{"wallet_address":"wallet"}','EX','60');
+    command('SET','task_assigned:failure-case','{"node_id":"reporter"}','EX','60');
+    assert.equal(await kv.kvRecordAssignedTaskFailure('failure-case','reporter','other-wallet'),'invalid');
+    const failureReports=await Promise.all(Array.from({length:8},()=>
+        kv.kvRecordAssignedTaskFailure('failure-case','reporter','wallet')));
+    assert.equal(failureReports.filter(status=>status==='recorded').length,1);
+    assert.equal(failureReports.filter(status=>status==='duplicate').length,7);
+    assert.equal(command('GET','stats:total_tasks_failed'),'1');
+    assert.equal(command('EXISTS','task_assigned:failure-case'),1);
     const slots=await Promise.all(Array.from({length:20},(_,i)=>kv.kvNodeWalletSlot('slot-test-wallet','node-'+i,600,10)));
     assert.equal(slots.filter(Boolean).length,10);
     assert.equal(await kv.kvNodeWalletSlot('slot-test-wallet','node-0',600,10),true);

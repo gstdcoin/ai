@@ -128,6 +128,27 @@ jobs:
           KV_REST_API_URL: ${{ secrets.KV_REST_API_URL }}
           KV_REST_API_TOKEN: ${{ secrets.KV_REST_API_TOKEN }}
 
+      - name: Check preview Redis isolation
+        shell: bash
+        run: |
+          if ! node --input-type=module -e '
+            const e = process.env;
+            try {
+              const preview = new URL(e.PREVIEW_REDIS_URL);
+              const production = new URL(e.PROD_REDIS_URL);
+              process.exit(preview.protocol === "https:" && preview.origin !== production.origin &&
+                e.PREVIEW_REDIS_TOKEN && e.PREVIEW_REDIS_TOKEN !== e.PROD_REDIS_TOKEN ? 0 : 1);
+            } catch { process.exit(1); }
+          '; then
+            echo "::error::Configure independent PREVIEW_KV_REST_API_URL and PREVIEW_KV_REST_API_TOKEN."
+            exit 1
+          fi
+        env:
+          PREVIEW_REDIS_URL: ${{ secrets.PREVIEW_KV_REST_API_URL }}
+          PREVIEW_REDIS_TOKEN: ${{ secrets.PREVIEW_KV_REST_API_TOKEN }}
+          PROD_REDIS_URL: ${{ secrets.KV_REST_API_URL }}
+          PROD_REDIS_TOKEN: ${{ secrets.KV_REST_API_TOKEN }}
+
       - name: Bootstrap preview Worker
         id: bootstrap
         run: |
@@ -157,8 +178,8 @@ jobs:
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          KV_REST_API_URL: ${{ secrets.KV_REST_API_URL }}
-          KV_REST_API_TOKEN: ${{ secrets.KV_REST_API_TOKEN }}
+          KV_REST_API_URL: ${{ secrets.PREVIEW_KV_REST_API_URL }}
+          KV_REST_API_TOKEN: ${{ secrets.PREVIEW_KV_REST_API_TOKEN }}
 
       - name: Deploy preview and populate prerender cache
         run: bash ../scripts/retry-cloudflare-transient.sh npm run cf:deploy -- --config=wrangler.jsonc
@@ -213,8 +234,8 @@ jobs:
           WORKER_URL: ${{ steps.bootstrap.outputs.url }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          KV_REST_API_URL: ${{ secrets.KV_REST_API_URL }}
-          KV_REST_API_TOKEN: ${{ secrets.KV_REST_API_TOKEN }}
+          KV_REST_API_URL: ${{ secrets.PREVIEW_KV_REST_API_URL }}
+          KV_REST_API_TOKEN: ${{ secrets.PREVIEW_KV_REST_API_TOKEN }}
 
       - name: Verify preview public discovery
         run: |

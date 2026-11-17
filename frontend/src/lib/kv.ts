@@ -76,6 +76,13 @@ async function getRedis(): Promise<Redis | null> {
 
 // ── Public API ─────────────────────────────────────────────────────
 
+export async function kvProbe(): Promise<'redis' | 'memory'> {
+    const redis = await getRedis();
+    if (!redis) return 'memory';
+    await redis.get('health:ping');
+    return 'redis';
+}
+
 export async function kvGet(key: string): Promise<string | null> {
     const r = await getRedis();
     if (r) {
@@ -983,6 +990,48 @@ export async function kvAccrueTaskReward(
     add('stats:total_gstd_paid', feeGstd);
     memSet(`rewards:node_wallet:${nodeId}`, walletKey);
     return true;
+}
+
+/** Counts a failure report once during its assignment, without deciding settlement. */
+export async function kvRecordAssignedTaskFailure(taskId: string, nodeId: string, wallet: string): Promise<'recorded' | 'duplicate' | 'invalid'> {
+    const assignmentKey = `task_assigned:${taskId}`;
+    const completionKey = `task_completed:${taskId}`;
+    const nodeKey = `node:${nodeId}`;
+    const failureKey = `task_failure_reported:${taskId}`;
+    const counterKey = 'stats:total_tasks_failed';
+    const r = await getRedis();
+    if (r) {
+        const script = `
+            local node = redis.call('GET', KEYS[3])
+            local raw = redis.call('GET', KEYS[1])
+            if not node or not raw or redis.call('EXISTS', KEYS[2]) == 1 then return 'invalid' end
+            local ok, assignment = pcall(cjson.decode, raw)
+            local nodeOk, worker = pcall(cjson.decode, node)
+            if not ok or not nodeOk or assignment.node_id ~= ARGV[1]
+                or string.lower(string.match(worker.wallet_address or '', '^%s*(.-)%s*$')) ~= ARGV[2] then return 'invalid' end
+            local ttl = redis.call('PTTL', KEYS[1])
+            if ttl < 1 then return 'invalid' end
+            if redis.call('EXISTS', KEYS[4]) == 1 then return 'duplicate' end
+            redis.call('INCR', KEYS[5])
+            redis.call('PSETEX', KEYS[4], ttl, '1')
+            return 'recorded'
+        `;
+        try {
+            const status = await r.eval<string[], string>(script, [assignmentKey, completionKey, nodeKey, failureKey, counterKey], [nodeId, wallet]);
+            return status === 'recorded' || status === 'duplicate' ? status : 'invalid';
+        } catch (error) {
+            handleRedisFailure('kvRecordAssignedTaskFailure', error);
+        }
+    }
+
+    const assignment = JSON.parse(memGet(assignmentKey) || 'null');
+    const node = JSON.parse(memGet(nodeKey) || 'null');
+    if (!assignment || assignment.node_id !== nodeId || memGet(completionKey)
+        || node?.wallet_address?.trim().toLowerCase() !== wallet) return 'invalid';
+    if (memGet(failureKey)) return 'duplicate';
+    memSet(counterKey, String(Number(memGet(counterKey) || '0') + 1));
+    memSet(failureKey, '1', 3600);
+    return 'recorded';
 }
 
 export type TaskCompletionResult =

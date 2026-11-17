@@ -53,10 +53,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
         const caps = record.capabilities || [];
         const resources: Record<string, number> = {
-            storage_free_gb: record.storage_free_gb ?? 10,
-            ram_free_mb:     record.ram_free_mb     ?? 2048,
+            storage_free_gb: record.storage_free_gb ?? 0,
+            ram_free_mb:     record.ram_free_mb     ?? 0,
             gpu_vram_mb:     record.gpu_vram_mb     ?? 0,
-            cpu_cores:       record.cpu_cores       ?? 1,
+            cpu_cores:       record.cpu_cores       ?? 0,
         };
 
         // Check node-specific priority queue first (O(1))
