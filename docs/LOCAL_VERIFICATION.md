@@ -22,3 +22,17 @@ Use Node.js 22, Python 3.11 or 3.12, and a local Ollama instance. Keep the check
 The live ledger requires reconciled backing. Use the disposable Redis suite to check reserve, capture and refund without spending GSTD. Keep platform ledger payouts, TON escrow payouts and the research bridge independent when verifying a release.
 
 For Cloudflare release checks, give the preview Worker independent `PREVIEW_KV_REST_API_URL` and `PREVIEW_KV_REST_API_TOKEN` repository secrets. Verify that an existing preview Worker also uses the separate database. The workflow requires distinct credentials before deploying and running the preview smoke tests.
+
+## Verification with a zero cash budget
+
+The standard Linux GitHub Actions runner is free for public repositories. The platform CI already installs Redis and runs `node tests/moneyRedis.test.cjs` against a disposable database. This covers real Lua and Redis behavior without allocating production backing.
+
+For the actual Upstash REST client on Windows or Linux, run `node tests/moneyRest.test.cjs --create-free-database` from `frontend`. The explicit flag provisions a new temporary Upstash database, checks that it is empty, and runs only synthetic accounting. Credentials remain in process memory. The service automatically expires the database after 72 hours. This database is for the test session. A persistent preview still needs its own configured credentials.
+
+An execution on 2026-11-18 verified the real Upstash REST path with production memory fallback disabled. Eight concurrent failure reports produced one increment. Eight concurrent reservation requests acquired one reservation. Capture credited exactly 85/10/5, identical capture retried safely, a changed result was rejected, and cancellation returned the synthetic payer's remaining reservation. This establishes application and datastore behavior with artificial balances.
+
+Escrow v2 was compiled and tested in TON Sandbox with four different payer/executor/protocol/reserve addresses. The three scenarios cover beneficiary caps and excess return, expiry refund, and complete 85/10/5 delivery. The emulator recorded transaction-tree total fees of 6,086,472 nanoTON for acceptance, 3,506,486 per claim, 6,076,608 for expiry, and 3,334,966 for the tested refund. These values describe this local configuration and workload. They are estimates for selecting attached TON budgets, and mainnet fees require later reconciliation.
+
+CPU execution can verify a small Ollama model, exact-model routing and worker failure behavior. GPU hardware performance and capacity remain a separate evidence item. A first public compute release can expose only measured CPU capacity. Bridge withdrawals remain outside that release because their implementation is incomplete.
+
+On 2026-11-18 a separately started local Ollama 0.34.0 instance ran `qwen2.5:0.5b` on CPU with `num_gpu=0`, 1,024 context tokens and 24 maximum output tokens. It completed both checks: exact `READY` and `5` for 2 + 3. Client-observed elapsed times including model loading were 2,037 ms and 2,007 ms. The process used a loopback listener and stopped after the checks. These two samples establish execution on this machine; throughput, load reliability and GPU measurements need their own runs.
