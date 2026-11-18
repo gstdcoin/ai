@@ -8,7 +8,12 @@ for(const [file,expectedUrl] of [['tonconnect-manifest.json',canonical],['toncon
  let last;
  for(let attempt=0;attempt<3;attempt++){
   try{
-   const response=await fetch(new URL('/'+file,base),{redirect:'manual',signal:AbortSignal.timeout(10000),headers:{Origin:'https://wallet.example.com'}});
+   const headers={Origin:'https://wallet.example.com'};
+   if(base.hostname.endsWith('.workers.dev') && process.env.GSTD_PREVIEW_ACCESS_KEY){
+    if(!/^[a-f0-9]{64}$/.test(process.env.GSTD_PREVIEW_ACCESS_KEY))throw Error('invalid preview access key');
+    headers['x-gstd-preview-key']=process.env.GSTD_PREVIEW_ACCESS_KEY;
+   }
+   const response=await fetch(new URL('/'+file,base),{redirect:'manual',signal:AbortSignal.timeout(10000),headers});
    if(response.status!==200)throw Error('HTTP '+response.status);
    if(response.headers.get('access-control-allow-origin')!=='*')throw Error('missing credential-free CORS');
    if(!response.headers.get('content-type')?.includes('application/json'))throw Error('unexpected content type');

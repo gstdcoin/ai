@@ -46,17 +46,23 @@ jobs:
       - name: Unit tests
         run: npm test
 
+      - name: Private preview deployment boundary
+        run: node --test tests/previewDeployment.test.mjs
+
       - name: Install isolated Redis test tools
         run: sudo apt-get update -qq && sudo apt-get install -y -qq redis-server redis-tools
 
       - name: Exact money transactions against disposable Redis
         run: node tests/moneyRedis.test.cjs
 
-      - name: Build
-        run: npm run build
+      - name: REST leases, Testnet hashes and transport fault recovery
+        run: node tests/moneyRest.test.cjs --create-free-database
+
+      - name: Build production Cloudflare adapter
+        run: npm run cf:build
         env:
-          KV_REST_API_URL: ${{ secrets.KV_REST_API_URL || 'https://placeholder.upstash.io' }}
-          KV_REST_API_TOKEN: ${{ secrets.KV_REST_API_TOKEN || 'placeholder' }}
+          KV_REST_API_URL: https://placeholder.upstash.io
+          KV_REST_API_TOKEN: placeholder
           NEXT_PUBLIC_APP_URL: https://app.gstdtoken.com
 
   # в”Ђв”Ђ Cloudflare Workers deployment в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
@@ -134,6 +140,14 @@ jobs:
           KV_REST_API_URL: ${{ secrets.KV_REST_API_URL }}
           KV_REST_API_TOKEN: ${{ secrets.KV_REST_API_TOKEN }}
 
+      - name: Prepare isolated preview Redis
+        run: node ../scripts/prepare-preview-redis.mjs
+        env:
+          CONFIGURED_PREVIEW_REDIS_URL: ${{ secrets.PREVIEW_KV_REST_API_URL }}
+          CONFIGURED_PREVIEW_REDIS_TOKEN: ${{ secrets.PREVIEW_KV_REST_API_TOKEN }}
+          PROD_REDIS_URL: ${{ secrets.KV_REST_API_URL }}
+          PROD_REDIS_TOKEN: ${{ secrets.KV_REST_API_TOKEN }}
+
       - name: Check preview Redis isolation
         shell: bash
         run: |
@@ -146,12 +160,10 @@ jobs:
                 e.PREVIEW_REDIS_TOKEN && e.PREVIEW_REDIS_TOKEN !== e.PROD_REDIS_TOKEN ? 0 : 1);
             } catch { process.exit(1); }
           '; then
-            echo "::error::Configure independent PREVIEW_KV_REST_API_URL and PREVIEW_KV_REST_API_TOKEN."
+            echo "::error::Preview Redis isolation was not established."
             exit 1
           fi
         env:
-          PREVIEW_REDIS_URL: ${{ secrets.PREVIEW_KV_REST_API_URL }}
-          PREVIEW_REDIS_TOKEN: ${{ secrets.PREVIEW_KV_REST_API_TOKEN }}
           PROD_REDIS_URL: ${{ secrets.KV_REST_API_URL }}
           PROD_REDIS_TOKEN: ${{ secrets.KV_REST_API_TOKEN }}
 
@@ -178,14 +190,12 @@ jobs:
 
       - name: Configure Upstash runtime secrets
         run: |
-          printf '%s' "$KV_REST_API_URL" | npx wrangler secret put KV_REST_API_URL --config=wrangler.jsonc
-          printf '%s' "$KV_REST_API_TOKEN" | npx wrangler secret put KV_REST_API_TOKEN --config=wrangler.jsonc
-          printf '%s' "$OPEN_INTELLIGENCE_CRON_SECRET" | npx wrangler secret put OPEN_INTELLIGENCE_CRON_SECRET --config=wrangler.jsonc
+          node -e 'process.stdout.write(JSON.stringify({KV_REST_API_URL:process.env.KV_REST_API_URL,KV_REST_API_TOKEN:process.env.KV_REST_API_TOKEN,OPEN_INTELLIGENCE_CRON_SECRET:process.env.OPEN_INTELLIGENCE_CRON_SECRET,GSTD_PREVIEW_ACCESS_KEY:process.env.GSTD_PREVIEW_ACCESS_KEY,GSTD_PREVIEW_EXPIRES_AT:process.env.GSTD_PREVIEW_EXPIRES_AT}))' | npx wrangler secret bulk --config=wrangler.jsonc
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          KV_REST_API_URL: ${{ secrets.PREVIEW_KV_REST_API_URL }}
-          KV_REST_API_TOKEN: ${{ secrets.PREVIEW_KV_REST_API_TOKEN }}
+          KV_REST_API_URL: ${{ env.PREVIEW_REDIS_URL }}
+          KV_REST_API_TOKEN: ${{ env.PREVIEW_REDIS_TOKEN }}
 
       - name: Deploy preview and populate prerender cache
         run: bash ../scripts/retry-cloudflare-transient.sh npm run cf:deploy -- --config=wrangler.jsonc
@@ -193,11 +203,20 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
+      - name: Verify preview rejects requests without the CI capability
+        run: |
+          for path in /api/v1/health / /tonconnect-manifest.json; do
+            status="$(curl --silent --max-time 15 --output /dev/null --write-out '%{http_code}' "$WORKER_URL$path")"
+            test "$status" = 403 || { echo "::error::Preview is not private"; exit 1; }
+          done
+        env:
+          WORKER_URL: ${{ steps.bootstrap.outputs.url }}
+
       - name: Verify preview health
         id: preview_health
         run: |
           for attempt in $(seq 1 12); do
-            status="$(curl --silent --output "$RUNNER_TEMP/health.json" --write-out '%{http_code}' "$WORKER_URL/api/v1/health" || true)"
+            status="$(node ../scripts/preview-fetch.mjs "$WORKER_URL" /api/v1/health "$RUNNER_TEMP/health.json" || true)"
             if [ "$status" = "200" ]; then
               cat "$RUNNER_TEMP/health.json"
               exit 0
@@ -219,12 +238,12 @@ jobs:
           tail_pid=$!
           trap 'kill "$tail_pid" 2>/dev/null || true' EXIT
           sleep 5
-          curl --silent --max-time 20 "$WORKER_URL/api/v1/health" > /dev/null || true
+          node ../scripts/preview-fetch.mjs "$WORKER_URL" /api/v1/health "$RUNNER_TEMP/health-diagnostic.json" > /dev/null || true
           sleep 3
           node - "$tail_log" <<'NODE'
           const fs = require('fs');
           const log = fs.readFileSync(process.argv[2], 'utf8');
-          const secrets = [process.env.KV_REST_API_URL, process.env.KV_REST_API_TOKEN, process.env.CLOUDFLARE_API_TOKEN].filter(Boolean);
+          const secrets = [process.env.KV_REST_API_URL, process.env.KV_REST_API_TOKEN, process.env.CLOUDFLARE_API_TOKEN,process.env.GSTD_PREVIEW_ACCESS_KEY].filter(Boolean);
           let count = 0;
           for (const match of log.matchAll(/"(?:message|name|stack)":\s*("(?:[^"\\]|\\.)*")/g)) {
             let message;
@@ -240,14 +259,15 @@ jobs:
           WORKER_URL: ${{ steps.bootstrap.outputs.url }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          KV_REST_API_URL: ${{ secrets.PREVIEW_KV_REST_API_URL }}
-          KV_REST_API_TOKEN: ${{ secrets.PREVIEW_KV_REST_API_TOKEN }}
+          KV_REST_API_URL: ${{ env.PREVIEW_REDIS_URL }}
+          KV_REST_API_TOKEN: ${{ env.PREVIEW_REDIS_TOKEN }}
 
       - name: Verify preview public discovery
         run: |
           node --input-type=module - <<'NODE'
+          import {previewFetch} from '../scripts/preview-fetch.mjs';
           for (const path of ['/api/v1/network/stats','/api/v1/models/available']) {
-            const response=await fetch(process.env.WORKER_URL+path,{headers:{'User-Agent':'GSTD-Release-Check','Accept':'application/json'}});
+            const response=await previewFetch(process.env.WORKER_URL,path,{headers:{'User-Agent':'GSTD-Release-Check','Accept':'application/json'}});
             const data=await response.json();
             if(!response.ok || (path.endsWith('/stats') ? !Number.isSafeInteger(data.nodes_online) : !Array.isArray(data.models))) {
               console.error('Discovery verification failed',path,response.status,data.error||'',data.reason||'',data.error_kind||'',data.stage||'');
@@ -275,7 +295,7 @@ jobs:
           for path in / /en /ru /en/stats /en/network /open-intelligence; do
             index=$((index + 1))
             body="$RUNNER_TEMP/page-${index}.html"
-            status="$(curl --silent --show-error --location --max-time 30 --header 'x-gstd-page-smoke: ci' --output "$body" --write-out '%{http_code}' "$WORKER_URL$path" || true)"
+            status="$(node ../scripts/preview-fetch.mjs "$WORKER_URL" "$path" "$body" || true)"
             if [ "$status" != "200" ] || ! grep -iq '<!doctype html' "$body"; then
               echo "::error::Preview page $path returned HTTP ${status:-000} or non-HTML content"
               failed=1
@@ -285,7 +305,7 @@ jobs:
           done
 
           dataset_body="$RUNNER_TEMP/open-intelligence-dataset.json"
-          dataset_status="$(curl --silent --show-error --location --max-time 30 --output "$dataset_body" --write-out '%{http_code}' "$WORKER_URL/api/v1/open-intelligence/ecosystem?limit=30" || true)"
+          dataset_status="$(node ../scripts/preview-fetch.mjs "$WORKER_URL" '/api/v1/open-intelligence/ecosystem?limit=30' "$dataset_body" || true)"
           if [ "$dataset_status" != "200" ] || ! node - "$dataset_body" <<'NODE'
           const fs = require('fs');
           const dataset = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
@@ -306,7 +326,7 @@ jobs:
             echo "Open Intelligence dataset API returned the expected allowlisted schema"
           fi
 
-          cron_status="$(curl --silent --show-error --location --max-time 30 --request POST --output "$RUNNER_TEMP/open-intelligence-cron.json" --write-out '%{http_code}' "$WORKER_URL/api/cron/open-intelligence" || true)"
+          cron_status="$(node ../scripts/preview-fetch.mjs "$WORKER_URL" /api/cron/open-intelligence "$RUNNER_TEMP/open-intelligence-cron.json" POST || true)"
           if [ "$cron_status" != "401" ]; then
             echo "::error::Unauthenticated Open Intelligence cron request returned HTTP ${cron_status:-000}, expected 401"
             failed=1
@@ -325,6 +345,9 @@ jobs:
           const secretValues = [
             process.env.CLOUDFLARE_API_TOKEN,
             process.env.OPEN_INTELLIGENCE_CRON_SECRET,
+            process.env.GSTD_PREVIEW_ACCESS_KEY,
+            process.env.PREVIEW_REDIS_TOKEN,
+            process.env.PREVIEW_REDIS_URL,
           ].filter(Boolean);
           const pagePaths = new Set(['/', '/en', '/ru', '/en/stats', '/en/network', '/open-intelligence']);
           const details = [];
