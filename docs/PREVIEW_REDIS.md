@@ -6,6 +6,8 @@ If both owner-configured `PREVIEW_KV_REST_API_URL` and `PREVIEW_KV_REST_API_TOKE
 
 Credentials are masked before SDK probes and supplied through job-scoped `GITHUB_ENV` and preview Worker secrets. The production secret step continues to use only the original production bindings. No token or provider database descriptor is committed, printed in an error or uploaded as an artifact.
 
+When the owner has configured the GitHub secret `ESCROW_MAINNET_TONCENTER_API_KEY`, the production step first reads configuration parameter 19 through the fixed Toncenter mainnet endpoint and verifies global ID `-239`. Only then does it forward the key to the production Worker with the other runtime secrets. A missing optional input preserves an existing Worker binding; an invalid key/network blocks publication. A post-deploy catalog check confirms `rpc_configured: true` when a key was supplied. This read-only probe does not sign, broadcast or activate a contract.
+
 ## Preview access
 
 The preview configuration sets `GSTD_PRIVATE_PREVIEW=true`, has no crons, and runs the Worker before static assets. All requests, including wallet manifests and cached pages, require a random 256-bit `x-gstd-preview-key`. The Worker rejects requests before application dispatch when the key/expiry is missing, incorrect or expired. Access expires 30 minutes after provisioning; ordinary public requests get 403. Requests and responses reaching the app do not carry the capability header; successful preview responses use `private, no-store`. Preview discovery bypasses the shared public-response cache. Production has no private-preview flag.
