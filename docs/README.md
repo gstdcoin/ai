@@ -4,6 +4,10 @@ Start with the current operating model; historical design documents do not descr
 
 | Need | Current guide |
 |---|---|
+| Starting point and repository map | [INDEX.md](INDEX.md) |
+| Default branches, proposals and maintenance | [REPOSITORY_MAINTENANCE.md](REPOSITORY_MAINTENANCE.md) |
+| Isolated preview Redis and runtime RPC | [PREVIEW_REDIS.md](PREVIEW_REDIS.md) |
+| Repeatable local/free checks | [LOCAL_VERIFICATION.md](LOCAL_VERIFICATION.md) |
 | Website, application and node roles | [ECOSYSTEM.md](ECOSYSTEM.md) |
 | What is tested and what remains manual | [READINESS.md](READINESS.md) |
 | Funded work, balances and 85/10/5 | [FINANCE_V2.md](FINANCE_V2.md) |

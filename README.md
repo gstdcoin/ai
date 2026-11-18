@@ -1,5 +1,11 @@
 # GSTD AI platform
 
+[![CI](https://github.com/gstdcoin/ai/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/gstdcoin/ai/actions/workflows/ci.yml)
+
+[Project map / Карта проекта](https://github.com/gstdcoin/ai/blob/main/docs/INDEX.md) · [Release evidence](https://github.com/gstdcoin/ai/blob/main/docs/READINESS.md) · [Repository maintenance](https://github.com/gstdcoin/ai/blob/main/docs/REPOSITORY_MAINTENANCE.md)
+
+Default branch: `main`.
+
 A shared compute network: use AI, contribute a node, and spend earned GSTD on other nodes.
 
 - [Карта репозиториев и документации / Project map](docs/INDEX.md)
@@ -14,7 +20,7 @@ A shared compute network: use AI, contribute a node, and spend earned GSTD on ot
 
 Only funded accepted work earns tokens. The split is 85% executor / 10% protocol / 5% reserve; claiming or requesting withdrawal adds no GSTD commission. Existing GSTD is used; no new issuance or guaranteed yield is promised.
 
-The current production network has one physical node. The platform registry, Redis accounting, custody owner, DNS/hosting and bootstrap services remain central dependencies. Direct node-local inference can operate separately, but the deployed ecosystem is not unstoppable or trustless. The verified-task P2P core is experimental and does not replace the production payment ledger.
+Current node counts come from the [live registry](https://app.gstdtoken.com/api/v1/network/stats). The platform registry, Redis accounting, custody owner, DNS/hosting and bootstrap services remain central dependencies. Direct node-local inference can operate separately, but the deployed ecosystem is not unstoppable or trustless. The verified-task P2P core is experimental and does not replace the production payment ledger.
 
 ## License and commercial integration
 
@@ -24,3 +30,9 @@ The core is source-available, not OSI open source. Base noncommercial rights, ea
 
 
 Historical design notes are archived in docs/ARCHIVED_PLATFORM_README.md. They do not describe enabled production features.
+
+## Development and operations
+
+Use Node.js 22 and npm 11.13.0. The application is in `frontend/`; run `npm ci`, `npx tsc --noEmit`, `npm run lint` and `npm test` there. Cloudflare build/deployment and real Redis checks are described in [local verification](docs/LOCAL_VERIFICATION.md) and [private preview isolation](docs/PREVIEW_REDIS.md).
+
+Production runs on `app.gstdtoken.com`; the public website is maintained in `gstdcoin/web`. The Telegram bot is a webhook in this repository. Canonical contract development is in `gstdcoin/contracts` and agent clients/MCP in `gstdcoin/A2A`; embedded copies are retired. See the [documentation index](docs/README.md) and [review queue](docs/REPOSITORY_MAINTENANCE.md).

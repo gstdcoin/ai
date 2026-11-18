@@ -1,6 +1,6 @@
 # Platform operational contract
 
-Updated 2026-10-28. The canonical platform is `https://app.gstdtoken.com`.
+Updated 2026-11-18. The canonical platform is `https://app.gstdtoken.com`.
 The marketing site is `https://gstdtoken.com`. The legacy `platform.gstdtoken.com` Worker has a separate registry and must not be used as evidence for this platform.
 
 ## Supported core
@@ -19,9 +19,9 @@ The Redis SDK may return decoded JSON objects; multi-get and queue pop preserve 
 
 Current acceptance is tracked in [READINESS.md](READINESS.md), with [GitHub CI and deployment results](https://github.com/gstdcoin/ai/actions). Run the platform test suite, TypeScript checks and disposable Redis financial tests before publishing. The node repository separately checks fresh-source installation and offline non-root startup.
 
-The real platform uses one physical 3.7 compute node. Local and public-platform inference have returned real model responses. Isolated accounting tests are not mainnet transactions or proof of multi-host resilience.
+Read current node counts from the canonical live registry; independent multi-operator resilience remains an acceptance gate. Local and public-platform inference have returned real model responses. Isolated accounting tests are not mainnet transactions or proof of multi-host resilience.
 
-Dependency audits and wallet-proof regressions are required. At the October 28 check there are no moderate/high/critical npm advisories in the platform tree, but a low-severity deepmerge issue remains in the TON Connect dependency chain without an npm-provided fix. Do not describe this as a clean independent security audit.
+Dependency audits and wallet-proof regressions are required. The November 18 release CI passed dependency audits, parser/installed-consumer guards, type/lint/tests and the Cloudflare build. The local Picomatch fork has explicit compatibility restrictions and cannot be validated by registry audit alone. See frontend/DEPENDENCY_VERIFICATION.md and READINESS; this is not an independent security audit.
 
 ## Accounting and deployment boundaries
 
@@ -38,7 +38,7 @@ Check `/api/v1/health`, `/api/v1/nodes/list`, `/api/v1/nodes/peers`, `/api/v1/st
 A green health response does not substitute for a completed task and successful result acceptance.
 Keep the node package version and the current public URL in the registry, and check error logs after a restart.
 
-Preview and production must use separate Worker names. Preview cron is disabled, and production secrets/routes are changed only after preview health/page validation passes. A preview failure must never replace the running production Worker.
+Preview uses a private job capability and an independent empty temporary Redis by default; configured owner preview credentials are optional. See [PREVIEW_REDIS.md](PREVIEW_REDIS.md). Preview and production must use separate Worker names. Preview cron is disabled, and production secrets/routes are changed only after preview health/page validation passes. A preview failure must never replace the running production Worker.
 
 ## Live single-node acceptance, 2026-10-25
 
