@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createHash } from 'crypto';
 import { keyPairFromSeed, sign } from '@ton/crypto';
 
-const { store, queues, kvPop, kvPush, kvSetNX, kvCompleteAssignedTask } = vi.hoisted(() => ({
+const { store, queues, kvPop, kvPush, kvSetNX, kvCompleteAssignedTask, kvRecordAssignedTaskFailure } = vi.hoisted(() => ({
     store: new Map<string, string>(),
     queues: new Map<string, string[]>(),
     kvPop: vi.fn(async (key: string) => queues.get(key)?.shift() ?? null),
@@ -20,6 +20,7 @@ const { store, queues, kvPop, kvPush, kvSetNX, kvCompleteAssignedTask } = vi.hoi
         status: 'ok' as const,
         assignment: JSON.stringify({ reward_gstd: 0, protocol_fee_gstd: 0 }),
     })),
+    kvRecordAssignedTaskFailure: vi.fn(),
 }));
 
 vi.mock('./kv', () => ({
@@ -31,11 +32,13 @@ vi.mock('./kv', () => ({
     kvPop,
     kvPush,
     kvCompleteAssignedTask,
+    kvRecordAssignedTaskFailure,
 }));
 
 import pending from '../pages/api/v1/tasks/worker/pending';
 import submit from '../pages/api/v1/tasks/worker/submit';
 import poll from '../pages/api/v1/tasks/poll';
+import fail from '../pages/api/v1/tasks/fail';
 
 const nodeId = 'node-test-1';
 const wallet = 'UQtest';
@@ -79,8 +82,22 @@ beforeEach(() => {
     kvPush.mockClear();
     kvSetNX.mockClear();
     kvCompleteAssignedTask.mockClear();
+    kvRecordAssignedTaskFailure.mockReset();
     store.set(`node:${nodeId}`, JSON.stringify({ node_id: nodeId, wallet_address: wallet, capabilities: [] }));
     store.set('task_assigned:task-1', JSON.stringify({node_id:nodeId,reward_gstd:0,protocol_fee_gstd:0}));
+});
+
+describe('worker failure reports', () => {
+    it('requires the registered signature and forwards only the assignment identifiers', async () => {
+        store.set(`node_key:${nodeId}`, publicKey);
+        const body = { task_id: 'task-1', node_id: nodeId, error: 'discarded worker detail' };
+        expect((await call(fail, 'POST', body)).status).toBe(401);
+        expect(kvRecordAssignedTaskFailure).not.toHaveBeenCalled();
+        kvRecordAssignedTaskFailure.mockResolvedValueOnce('duplicate');
+        const response = await call(fail, 'POST', body, signedHeaders());
+        expect(response).toEqual({ status: 200, json: { ok: true, duplicate: true } });
+        expect(kvRecordAssignedTaskFailure).toHaveBeenCalledWith('task-1', nodeId, wallet.toLowerCase());
+    });
 });
 
 describe('legacy worker task routes', () => {

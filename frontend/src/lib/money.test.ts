@@ -104,6 +104,8 @@ describe('v2 backed money ledger',()=>{
         expect((await moneyJob(task))?.amount).toBe(nano('100').toString());
         const before=await moneyBalance(operator);
         await captureMoney(task,operator,{accepted:true});
+        await captureMoney(task,operator,{accepted:true});
+        await expect(captureMoney(task,operator,{accepted:false})).rejects.toThrow('idempotency_conflict');
         expect((await moneyBalance(operator)).pending_gstd-before.pending_gstd).toBe(85);
         await releaseMoney(job,wallet);
         expect((await moneyBalance(wallet)).reserved_gstd).toBe(0);
