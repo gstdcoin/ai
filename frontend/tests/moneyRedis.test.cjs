@@ -10,10 +10,31 @@ const serverBin = process.env.MONEY_REDIS_SERVER || 'redis-server';
 const cliBin = process.env.MONEY_REDIS_CLI || 'redis-cli';
 const directory = fs.mkdtempSync(path.join(os.tmpdir(),'gstd-money-redis-'));
 const socket = path.join(directory,'redis.sock');
-const server = spawn(serverBin,['--port','0','--unixsocket',socket,'--save','','--appendonly','no'],{stdio:'ignore'});
-const serverError = new Promise((_,reject)=>server.once('error',reject));
+let startupFailure;
+function startServer(){
+    startupFailure=undefined;
+    const child=spawn(serverBin,['--port','0','--unixsocket',socket,'--unixsocketperm','700',
+        '--save','','--appendonly','yes','--appendfsync','always','--dir',directory],{stdio:'ignore'});
+    child.once('error',error=>{startupFailure=error;});return child;
+}
+let server=startServer();
 function command(...args) {
-    return JSON.parse(execFileSync(cliBin,['-s',socket,'--json',...args.map(String)],{encoding:'utf8'}));
+    return JSON.parse(execFileSync(cliBin,['-s',socket,'--json',...args.map(String)],{encoding:'utf8',timeout:5000,stdio:['ignore','pipe','ignore']}));
+}
+async function ready(){
+    for(let n=0;n<250;n++){
+        if(startupFailure)throw startupFailure;
+        try{if(command('PING')==='PONG')return;}catch{}
+        await new Promise(resolve=>setTimeout(resolve,20));
+    }
+    throw Error('Isolated AOF Redis did not become ready');
+}
+async function stopServer(signal){
+    if(server.exitCode!==null)return;
+    await new Promise((resolve,reject)=>{
+        const timer=setTimeout(()=>reject(Error('Isolated Redis did not stop')),5000);
+        server.once('exit',()=>{clearTimeout(timer);resolve();});server.kill(signal);
+    });
 }
 class Redis {
     async mget(...keys) {
@@ -41,10 +62,7 @@ process.env.NODE_ENV='production'; // Redis failures must throw; memory fallback
 process.env.KV_REST_API_URL='https://isolated-money-test.invalid';
 process.env.KV_REST_API_TOKEN='isolated-test';
 async function run() {
-    for(let n=0;!fs.existsSync(socket);n++) {
-        if(n>200)throw new Error('Local Redis did not start');
-        await Promise.race([new Promise(resolve=>setTimeout(resolve,10)),serverError]);
-    }
+    await ready();
     const kv=require('../src/lib/kv.ts');
     command('SET','node:reporter','{"wallet_address":"wallet"}','EX','60');
     command('SET','task_assigned:failure-case','{"node_id":"reporter"}','EX','60');
@@ -129,6 +147,21 @@ async function run() {
     await m.releaseMoney('quote-once-'+quoteWinner);
     assert.ok(command('TTL','quote-use-fixture')>0);
     console.log('Quoted work production Redis check passed: one quote cannot reserve two different jobs.');
+    // A forced process crash must preserve acknowledged ledger and queue writes.
+    // appendfsync=always tests AOF recovery; this does not simulate disk failure.
+    const persistedKeys=['money:v2:system','money:v2:account:'+payer,'money:v2:account:'+operator,
+        'money:v2:fund:reserve'];
+    const persisted=command('MGET',...persistedKeys),queued=command('LRANGE','tasks:queue','0','-1');
+    const capturedBefore=await m.moneyJob('race');assert.equal(capturedBefore.state,'captured');
+    await stopServer('SIGKILL');
+    if(fs.existsSync(socket))fs.unlinkSync(socket);
+    server=startServer();await ready();
+    assert.deepEqual(command('MGET',...persistedKeys),persisted);
+    assert.deepEqual(command('LRANGE','tasks:queue','0','-1'),queued);
+    assert.deepEqual(await m.moneyJob('race'),capturedBefore);
+    assert.equal((await m.moneyBalance(payer)).reserved_nano,'0');
+    assert.equal((await m.getAgentGrant(use.id)).spentNano,'5000000');
+    console.log('AOF crash recovery passed: acknowledged money:v2 balances, journal and queue survived SIGKILL and restart.');
     const snapshot=command('GET','money:v2:account:'+payer);
     // A storage fault fails closed in production.
     command('SET','money:v2:due','wrong-type');
@@ -152,8 +185,7 @@ async function run() {
     console.log('Redis production-path money checks passed: CAS races, exact amounts above 2^53, atomic capture/claim, queue rollback, fail-closed storage.');
 }
 run().then(()=>{process.exitCode=0;},error=>{console.error(error);process.exitCode=1;}).finally(async()=>{
-    server.kill('SIGTERM');
-    await new Promise(resolve=>{if(server.exitCode!==null)return resolve();server.once('exit',resolve);setTimeout(resolve,2000);});
+    if(server.pid)await stopServer('SIGTERM');
     Module._load=originalLoad;
     if(directory.startsWith(path.join(os.tmpdir(),'gstd-money-redis-')))fs.rmSync(directory,{recursive:true,force:true});
 });
