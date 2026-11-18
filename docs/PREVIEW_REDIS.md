@@ -8,6 +8,8 @@ Credentials are masked before SDK probes and supplied through job-scoped `GITHUB
 
 When the owner has configured the GitHub secret `ESCROW_MAINNET_TONCENTER_API_KEY`, the production step first reads configuration parameter 19 through the fixed Toncenter mainnet endpoint and verifies global ID `-239`. Only then does it forward the key to the production Worker with the other runtime secrets. A missing optional input preserves an existing Worker binding; an invalid key/network blocks publication. A post-deploy catalog check confirms `rpc_configured: true` when a key was supplied. This read-only probe does not sign, broadcast or activate a contract.
 
+If a completed deployment logs `No repository RPC key supplied` and the catalog still reports `rpc_configured:false`, save that secret in [gstdcoin/ai Actions secrets](https://github.com/gstdcoin/ai/settings/secrets/actions), then run the CI workflow on main again. The secret value belongs in GitHub settings, never chat, a source commit or a workflow input. Preview isolation and normal platform health do not depend on this optional mainnet RPC credential.
+
 ## Preview access
 
 The preview configuration sets `GSTD_PRIVATE_PREVIEW=true`, has no crons, and runs the Worker before static assets. All requests, including wallet manifests and cached pages, require a random 256-bit `x-gstd-preview-key`. The Worker rejects requests before application dispatch when the key/expiry is missing, incorrect or expired. Access expires 30 minutes after provisioning; ordinary public requests get 403. Requests and responses reaching the app do not carry the capability header; successful preview responses use `private, no-store`. Preview discovery bypasses the shared public-response cache. Production has no private-preview flag.
@@ -35,3 +37,4 @@ The REST test creates its own disposable database, separate from deployment prev
 The local Redis test requires Linux `redis-server` and `redis-cli` (installed by CI). It listens only on an owner-restricted Unix socket, enables AOF with `appendfsync always`, acknowledges ledger/queue writes, kills its own process, restarts from the same directory and verifies balances, captured-job journal, grant state and queue contents. This verifies process-crash recovery, not recovery from storage-device loss. No container, public Redis port or paid service is required.
 
 The deployed platform uses stateless Redis REST requests: recovery means a later request succeeds against the same persisted state, rather than reconnecting a TCP connection pool. Outages continue to fail closed; no local balance cache is substituted.
+
