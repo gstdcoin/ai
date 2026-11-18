@@ -26,7 +26,7 @@ export function createTelegramHealthProbe(transport: typeof fetch, now = Date.no
             try {
                 const call = async (method: 'getMe' | 'getWebhookInfo') => {
                     const response = await transport(`https://api.telegram.org/bot${token}/${method}`, {
-                        method: 'GET', redirect: 'error', signal: AbortSignal.timeout(5000),
+                        method: 'GET', redirect: 'manual', signal: AbortSignal.timeout(5000),
                     });
                     if (!response.ok) throw new Error('telegram_unavailable');
                     const data = await response.json() as any;

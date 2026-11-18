@@ -5,7 +5,7 @@ const webhook = { url: 'https://app.gstdtoken.com/api/v1/telegram/webhook', pend
     allowed_updates: ['message', 'callback_query', 'inline_query'] };
 const transport = (details: any = webhook, bot: any = { is_bot: true, username: 'gstdaibot' }) =>
     vi.fn(async (url: any, options: any) => {
-        expect(options.method).toBe('GET'); expect(options.redirect).toBe('error');
+        expect(options.method).toBe('GET'); expect(options.redirect).toBe('manual');
         expect(options.signal).toBeInstanceOf(AbortSignal);
         return Response.json({ ok: true, result: String(url).endsWith('/getMe') ? bot : details });
     });
@@ -44,6 +44,7 @@ describe('read-only Telegram diagnostics', () => {
     });
     it('sanitizes HTTP, API, timeout and malformed JSON failures without exposing credentials', async () => {
         for (const request of [async () => new Response(null, { status: 401 }),
+            async () => new Response(null, { status: 302, headers: { Location: 'https://unvalidated.example' } }),
             async () => Response.json({ ok: false, description: 'sensitive webhook metadata' }),
             async () => new Response('broken JSON'), async () => { throw new Error('https://api.telegram.org/botprivate-token/getMe'); }]) {
             const report = await createTelegramHealthProbe(request as any)('private-token');
