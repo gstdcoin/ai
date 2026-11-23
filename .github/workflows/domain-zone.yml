@@ -1,0 +1,25 @@
+name: Prepare requested Cloudflare domain
+on:
+  push:
+    branches: [codex/domain-cloudflare-setup]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: gstd-domain-zone-setup
+  cancel-in-progress: false
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify domain boundary tests
+        run: node --test scripts/domain-zone.test.mjs
+      - name: Inspect or create the requested pending DNS zone
+        run: node scripts/domain-zone.mjs --create-pending-zone
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
