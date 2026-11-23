@@ -150,7 +150,7 @@ ton-connect-manifest.json
 *.py
 !scripts/**/*.py
 load-balancer.conf.updated
-app.gstdtoken.com.conf
+app.gstdtoken.xyz.conf
 test-project/
 
 # Inspection & log dumps (generated locally, never commit)

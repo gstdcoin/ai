@@ -6,12 +6,12 @@ For [github.com/gstdcoin/A2A](https://github.com/gstdcoin/A2A) and any device co
 
 | Endpoint | Method | Auth | Description |
 |----------|--------|------|-------------|
-| `https://app.gstdtoken.com/api/v1/system/integrity` | GET | None | Genesis manifest hash for Sentinel verification |
-| `https://app.gstdtoken.com/api/v1/agents/handshake` | POST | X-API-Key (optional) | Register device, get agent_id |
-| `https://app.gstdtoken.com/api/v1/agents/challenge` | GET | None | PoW challenge for API key |
-| `https://app.gstdtoken.com/api/v1/agents/claim-key` | POST | None | Claim API key (wallet + PoW nonce) |
-| `https://app.gstdtoken.com/api/v1/auth/challenge` | GET | None | Same as agents/challenge |
-| `https://app.gstdtoken.com/api/v1/auth/claim-key` | POST | None | Same as agents/claim-key |
+| `https://app.gstdtoken.xyz/api/v1/system/integrity` | GET | None | Genesis manifest hash for Sentinel verification |
+| `https://app.gstdtoken.xyz/api/v1/agents/handshake` | POST | X-API-Key (optional) | Register device, get agent_id |
+| `https://app.gstdtoken.xyz/api/v1/agents/challenge` | GET | None | PoW challenge for API key |
+| `https://app.gstdtoken.xyz/api/v1/agents/claim-key` | POST | None | Claim API key (wallet + PoW nonce) |
+| `https://app.gstdtoken.xyz/api/v1/auth/challenge` | GET | None | Same as agents/challenge |
+| `https://app.gstdtoken.xyz/api/v1/auth/claim-key` | POST | None | Same as agents/claim-key |
 
 ## API Key for Devices (Headless / Swarm)
 
@@ -19,23 +19,23 @@ Any device can obtain an API key without dashboard login:
 
 ```bash
 # 1. Get PoW challenge
-CHALLENGE=$(curl -s https://app.gstdtoken.com/api/v1/agents/challenge)
+CHALLENGE=$(curl -s https://app.gstdtoken.xyz/api/v1/agents/challenge)
 
 # 2. Solve: SHA256(prefix + nonce) must start with "0000" (hex)
 #    Use your wallet_address and compute nonce (e.g. brute-force short nonces)
 
 # 3. Claim API key
-curl -X POST https://app.gstdtoken.com/api/v1/agents/claim-key \
+curl -X POST https://app.gstdtoken.xyz/api/v1/agents/claim-key \
   -H "Content-Type: application/json" \
   -d '{"wallet_address":"EQ...","nonce":"YOUR_NONCE"}'
 # Returns: {"api_key":"sk_sovereign_EQ..._nonce", ...}
 
 # 4. Use for all API calls
 curl -H "Authorization: Bearer sk_sovereign_EQ..._nonce" \
-  https://app.gstdtoken.com/api/v1/tasks/pending
+  https://app.gstdtoken.xyz/api/v1/tasks/pending
 ```
 
-**Dashboard keys:** Connect wallet at app.gstdtoken.com → SovereignSwitch → Generate API Key. Use `gstd_xxx` format.
+**Dashboard keys:** Connect wallet at app.gstdtoken.xyz → SovereignSwitch → Generate API Key. Use `gstd_xxx` format.
 
 ## Genesis Manifest Hash
 
@@ -62,7 +62,7 @@ node connect.js YOUR_AGENT_KEY
 ## OpenClaw Bridge
 
 ```bash
-# Uses GSTD_API_URL=https://app.gstdtoken.com by default
+# Uses GSTD_API_URL=https://app.gstdtoken.xyz by default
 python3 openclaw_bridge.py
 ```
 

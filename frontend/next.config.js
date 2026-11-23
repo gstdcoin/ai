@@ -35,7 +35,7 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'app.gstdtoken.com',
+        hostname: 'app.gstdtoken.xyz',
       },
       {
         protocol: 'http',
@@ -44,9 +44,9 @@ const nextConfig = {
     ],
   },
   env: {
-    API_URL: process.env.API_URL || 'https://app.gstdtoken.com',
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'https://app.gstdtoken.com',
-    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'https://app.gstdtoken.com',
+    API_URL: process.env.API_URL || 'https://app.gstdtoken.xyz',
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'https://app.gstdtoken.xyz',
+    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'https://app.gstdtoken.xyz',
     NEXT_PUBLIC_TONAPI_URL: process.env.NEXT_PUBLIC_TONAPI_URL || 'https://tonapi.io',
     TON_NETWORK: process.env.TON_NETWORK || 'mainnet',
     GSTD_JETTON_ADDRESS: process.env.GSTD_JETTON_ADDRESS || '',
@@ -110,7 +110,7 @@ const nextConfig = {
               "img-src 'self' data: https:",
               "font-src 'self' data: https://fonts.gstatic.com",
               // TonConnect loads the wallet list from config.ton.org and talks to each wallet's HTTP bridge.
-              `connect-src 'self' https://app.gstdtoken.com https://tonapi.io https://toncenter.com https://api.github.com https://config.ton.org https://cloudflareinsights.com ${TON_CONNECT_BRIDGES.join(' ')} wss: ws:`,
+              `connect-src 'self' https://app.gstdtoken.xyz https://tonapi.io https://toncenter.com https://api.github.com https://config.ton.org https://cloudflareinsights.com ${TON_CONNECT_BRIDGES.join(' ')} wss: ws:`,
               "frame-ancestors 'self' https://web.telegram.org https://*.telegram.org https://t.me",
             ].join('; '),
           },

@@ -6,7 +6,7 @@ import {mainnetWalletChallenge,authenticateMainnetWallet,requireMainnetWalletSes
 import {pilotSignDataDigest} from './escrowJobAuth';
 const key=keyPairFromSeed(Buffer.alloc(32,86)),attacker=keyPairFromSeed(Buffer.alloc(32,87)),wallet=WalletContractV4.create({workchain:0,publicKey:key.publicKey}),address=wallet.address.toRawString();
 const init=beginCell().store(storeStateInit(wallet.init)).endCell().toBoc().toString('base64');
-const authorization=(text:string,signer=key,timestamp=Math.floor(Date.now()/1000))=>({address,domain:'app.gstdtoken.com',timestamp,payload:{type:'text',text},signature:sign(pilotSignDataDigest(address,'app.gstdtoken.com',timestamp,text),signer.secretKey).toString('base64')});
+const authorization=(text:string,signer=key,timestamp=Math.floor(Date.now()/1000))=>({address,domain:'app.gstdtoken.xyz',timestamp,payload:{type:'text',text},signature:sign(pilotSignDataDigest(address,'app.gstdtoken.xyz',timestamp,text),signer.secretKey).toString('base64')});
 afterEach(()=>vi.useRealTimers());
 it('requires actual wallet ownership, exact mainnet text and a one-time challenge before granting an hour of read access',async()=>{
 

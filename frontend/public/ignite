@@ -9,7 +9,7 @@ if command -v curl >/dev/null 2>&1; then
 elif command -v wget >/dev/null 2>&1; then
   wget --https-only -q "$installer_url" -O "$installer_file"
 else
-  printf '%s\n' 'Install curl or wget, then retry. Documentation: https://gstdtoken.com/nodes' >&2
+  printf '%s\n' 'Install curl or wget, then retry. Documentation: https://gstdtoken.xyz/nodes' >&2
   exit 1
 fi
 # No demo identity, automatic bonus or presence reward is generated here.

@@ -27,7 +27,7 @@ async function call(fn:any,body:any,headers:any={},method='POST'){
  await fn({method,body,headers,query:{task_id:body.task_id}},res);return res;
 }
 const api=(action:string,extra:any={})=>call(handler,{network:'-239',action,actor:payer,wallet_token:walletToken,...extra});
-const authorize=(text:string)=>{const timestamp=Math.floor(Date.now()/1000);return{domain:'app.gstdtoken.com',timestamp,address:payer,payload:{type:'text',text},signature:sign(pilotSignDataDigest(payer,'app.gstdtoken.com',timestamp,text),payerKey.secretKey).toString('base64')};};
+const authorize=(text:string)=>{const timestamp=Math.floor(Date.now()/1000);return{domain:'app.gstdtoken.xyz',timestamp,address:payer,payload:{type:'text',text},signature:sign(pilotSignDataDigest(payer,'app.gstdtoken.xyz',timestamp,text),payerKey.secretKey).toString('base64')};};
 beforeEach(async()=>{
  state.nodes=[{nodeId:node,models:[model]}];
  state.chain={deployed:true,state:0,mask:7,payer_balance:'1000000000',native_nano:'20000000',shares:['4250000','500000','250000'].map((amount,role)=>({role,state:0,balance_nano:amount,missing_nano:'0',native_nano:'20000000'}))};
@@ -84,7 +84,7 @@ it('keeps private results out of public task delivery, requires funded owner con
  expect((await api('job-status',{input:paymentOnly,access_token})).body.error).toBe('mainnet_job_access_denied');
  state.chain.state=1;state.chain.shares.forEach((s:any)=>{s.state=1;s.balance_nano='0';});
  const workerChallenge=(await api('wallet-challenge',{actor:worker})).body;
- const ts=Math.floor(Date.now()/1000),workerAuthorization={domain:'app.gstdtoken.com',timestamp:ts,address:worker,payload:{type:'text',text:workerChallenge.text},signature:sign(pilotSignDataDigest(worker,'app.gstdtoken.com',ts,workerChallenge.text),workerOwnerKey.secretKey).toString('base64')};
+ const ts=Math.floor(Date.now()/1000),workerAuthorization={domain:'app.gstdtoken.xyz',timestamp:ts,address:worker,payload:{type:'text',text:workerChallenge.text},signature:sign(pilotSignDataDigest(worker,'app.gstdtoken.xyz',ts,workerChallenge.text),workerOwnerKey.secretKey).toString('base64')};
  const workerAuth=await api('wallet-auth',{actor:worker,nonce:workerChallenge.nonce,authorization:workerAuthorization,stateInit:beginCell().store(storeStateInit(workerWallet.init)).endCell().toBoc().toString('base64')});expect(workerAuth.code).toBe(200);
  const empty=await api('withdraw',{input,actor:worker,role:0,wallet_token:workerAuth.body.wallet_token});expect(empty.code).toBe(409);expect(empty.body.transaction).toBeUndefined();
 });

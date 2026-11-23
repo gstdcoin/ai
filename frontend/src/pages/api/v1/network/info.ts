@@ -14,7 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const origin = process.env.NEXT_PUBLIC_API_URL || 'https://app.gstdtoken.com';
+    const origin = process.env.NEXT_PUBLIC_API_URL || 'https://app.gstdtoken.xyz';
 
     const [allNodeKeys, campaignKeys] = await Promise.all([
         kvKeys('node:'),

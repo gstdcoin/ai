@@ -161,7 +161,7 @@ self.addEventListener('notificationclick', (event) => {
         // Focus existing window if available
         for (const client of clientList) {
           const clientHost = new URL(client.url).hostname;
-          if ((clientHost === 'gstdtoken.com' || clientHost.endsWith('.gstdtoken.com')) && 'focus' in client) {
+          if ((clientHost === 'gstdtoken.xyz' || clientHost.endsWith('.gstdtoken.xyz')) && 'focus' in client) {
             client.navigate(targetUrl);
             return client.focus();
           }

@@ -48,7 +48,7 @@ export default function NodesPage() {
    {safeNodeUrl(node.node_url)&&<div className="text-xs text-gray-400 mt-3"><span>{ru?'Публичный API ноды (адрес может меняться):':'Public node API (the address may rotate):'}</span><code className="block break-all text-cyan-200 mt-1">{safeNodeUrl(node.node_url)+'/v1'}</code></div>}
    <p className="text-xs text-gray-500 mt-3">{ru?'Состояние от ':'Last seen: '}{new Date(node.last_seen).toLocaleString(ru?'ru-RU':'en-US')}</p>
   </article>)}</div>
-  <p className="text-xs text-gray-500 mt-6">{ru?'Для приложений используйте единый API https://app.gstdtoken.com/api/v1 — он выбирает доступного исполнителя. Переход к более мощной модели требует наличия этой модели в живом каталоге; скрытой замены нет.':'Applications should use https://app.gstdtoken.com/api/v1 to select an available executor. A more powerful model must be present in the live catalog; it is never silently substituted.'}</p>
+  <p className="text-xs text-gray-500 mt-6">{ru?'Для приложений используйте единый API https://app.gstdtoken.xyz/api/v1 — он выбирает доступного исполнителя. Переход к более мощной модели требует наличия этой модели в живом каталоге; скрытой замены нет.':'Applications should use https://app.gstdtoken.xyz/api/v1 to select an available executor. A more powerful model must be present in the live catalog; it is never silently substituted.'}</p>
  </main>;
 }
 export const getStaticProps:GetStaticProps=async({locale})=>({props:await getCommonStaticProps(locale)});

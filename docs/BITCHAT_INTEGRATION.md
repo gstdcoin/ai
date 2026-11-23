@@ -22,7 +22,7 @@ GSTD Swarm интегрирует bitchat как **офлайн-транспор
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    GSTD SWARM (Online)                       │
-│  app.gstdtoken.com  │  Tasks  │  Hive  │  GSTD Economy       │
+│  app.gstdtoken.xyz  │  Tasks  │  Hive  │  GSTD Economy       │
 └─────────────────────────────────────────────────────────────┘
                               │
                     ┌─────────┴─────────┐

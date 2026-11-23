@@ -1,9 +1,9 @@
 // Public, read-only deployment check. Never log response bodies or credentials.
 import {setTimeout as delay} from 'node:timers/promises';
-const base=new URL(process.argv[2]||'https://app.gstdtoken.com');
+const base=new URL(process.argv[2]||'https://app.gstdtoken.xyz');
 if(base.protocol!=='https:'||base.username||base.password||
- !(base.hostname==='app.gstdtoken.com'||base.hostname.endsWith('.workers.dev')))throw Error('Unexpected wallet manifest check origin');
-const canonical='https://app.gstdtoken.com';
+ !(base.hostname==='app.gstdtoken.xyz'||base.hostname.endsWith('.workers.dev')))throw Error('Unexpected wallet manifest check origin');
+const canonical='https://app.gstdtoken.xyz';
 for(const [file,expectedUrl] of [['tonconnect-manifest.json',canonical],['tonconnect-testnet-manifest.json',canonical+'/escrow']]){
  let last;
  for(let attempt=0;attempt<3;attempt++){

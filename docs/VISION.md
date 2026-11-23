@@ -21,7 +21,7 @@ GSTD — неразрушимое и масштабируемое решение
 
 ### Техническая готовность
 
-- API: app.gstdtoken.com (единая точка входа)
+- API: app.gstdtoken.xyz (единая точка входа)
 - OpenClaw: SKILL.md — автоматическая инструкция
 - Dashboard: Devices, Chat, Tasks, Market, Help
 - Контракты: SettlementMaster, EcosystemTreasury, GSTDJetton

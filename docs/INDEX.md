@@ -1,6 +1,6 @@
 # GSTD: навигация по проекту / project map
 
-Начните с [пошагового руководства](START_HERE.md). Установить нужно только [ноду](https://github.com/gstdcoin/gstdbot), если вы предоставляете вычисления. Для ИИ достаточно [чата](https://app.gstdtoken.com/ru/chat) или [Telegram-бота](https://t.me/gstdaibot).
+Начните с [пошагового руководства](START_HERE.md). Установить нужно только [ноду](https://github.com/gstdcoin/gstdbot), если вы предоставляете вычисления. Для ИИ достаточно [чата](https://app.gstdtoken.xyz/ru/chat) или [Telegram-бота](https://t.me/gstdaibot).
 
 ## Какой репозиторий для чего
 
@@ -19,6 +19,7 @@
 - [Пользователю: ИИ, нода, кошелёк, оплата](START_HERE.md).
 - [Что включено и что ещё не проверено](READINESS.md).
 - [Порядок репозиториев, основные ветки и очередь PR](REPOSITORY_MAINTENANCE.md).
+- [Перенос на gstdtoken.xyz: DNS, HTTPS, кошельки и Telegram](DOMAIN_MIGRATION.md).
 - [Бесплатный изолированный preview и runtime RPC](PREVIEW_REDIS.md).
 - [Локальные проверки без денежных переводов](LOCAL_VERIFICATION.md).
 - [Сайт, приложение, бот и способы доставки работы](ECOSYSTEM.md).

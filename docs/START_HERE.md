@@ -6,16 +6,16 @@ GSTD соединяет людей, которым нужен ИИ, и опер�
 
 ### 1. Мне нужен ответ ИИ
 
-1. Откройте [чат](https://app.gstdtoken.com/ru/chat). Бесплатные запросы зависят от квоты и доступных исполнителей.
+1. Откройте [чат](https://app.gstdtoken.xyz/ru/chat). Бесплатные запросы зависят от квоты и доступных исполнителей.
 2. Выберите модель. Если её нет, выберите другую самостоятельно: список не создаёт доступ к отсутствующему оборудованию.
 3. Для передачи запроса другой ноде дайте явное согласие. Исполнитель видит запрос; не отправляйте ему секреты.
 4. Для платного запроса проверьте модель, цену и способ расчёта до подтверждения. Ошибка или недоступность не означает согласие на подмену модели.
 
 ### 2. Хочу запустить ноду
 
-[Экономика и тариф моей ноды](https://app.gstdtoken.com/ru/node-economics): подключите кошелёк выплат, выберите модель и установите свою минимальную оплату. Проба скорости и калькулятор не гарантируют доход. [Как работают котировки](MARKET_PRICING.md).
+[Экономика и тариф моей ноды](https://app.gstdtoken.xyz/ru/node-economics): подключите кошелёк выплат, выберите модель и установите свою минимальную оплату. Проба скорости и калькулятор не гарантируют доход. [Как работают котировки](MARKET_PRICING.md).
 
-1. Откройте [установку](https://gstdtoken.com/nodes?lang=ru). Основные цели — Linux x86-64/ARM64 и WSL2; модель и драйверы должны подходить оборудованию. Один Bash-установщик не поддерживает буквально любое устройство.
+1. Откройте [установку](https://gstdtoken.xyz/nodes?lang=ru). Основные цели — Linux x86-64/ARM64 и WSL2; модель и драйверы должны подходить оборудованию. Один Bash-установщик не поддерживает буквально любое устройство.
 2. После установки откройте **адрес панели, который напечатал установщик**. Обычно это локальный порт 8080; не используйте чужой IP из примера. Для первого входа нужен локальный setup-token, затем PIN. Обычные действия выполняются кнопками.
 3. В **«Кошельке начислений»** укажите свой публичный TON-адрес и нажмите **«Привязать мой кошелёк»**. Дождитесь подтверждения. Seed-фраза и приватный ключ не нужны. Старые задания и балансы не переносятся.
 4. В **«Каталоге моделей»** выберите вариант по оценке RAM/диска либо публичный GGUF из Hugging Face. Скачайте и проверьте локальным запросом. Оценка совместимости не гарантирует запуск или скорость.
@@ -26,13 +26,13 @@ GSTD соединяет людей, которым нужен ИИ, и опер�
 
 ### 3. Как получать и тратить GSTD
 
-[Купить GSTD: понятные шаги](https://app.gstdtoken.com/ru/buy). Новая доля протокола автоматически зачисляется подтверждённому администратору в обеспеченный баланс; 5% остаются отдельным резервом для выбранного пула GSTD/XAUt0. Автоматическое пополнение пула пока не развёрнуто. [Политика и границы автономности](AUTONOMOUS_ECONOMY.md).
+[Купить GSTD: понятные шаги](https://app.gstdtoken.xyz/ru/buy). Новая доля протокола автоматически зачисляется подтверждённому администратору в обеспеченный баланс; 5% остаются отдельным резервом для выбранного пула GSTD/XAUt0. Автоматическое пополнение пула пока не развёрнуто. [Политика и границы автономности](AUTONOMOUS_ECONOMY.md).
 
 | Путь | Что означает баланс | Кто подписывает выплату |
 | --- | --- | --- |
-| [Баланс платформы](https://app.gstdtoken.com/ru/payments) | Обеспеченные средства и принятые оплаченные задания в учёте платформы | Владелец кошелька обеспечения после заявки пользователя |
-| [Mainnet escrow · открытая бета](https://app.gstdtoken.com/ru/escrow-mainnet) | Отдельное задание и средства в его контрактах; это не баланс платформы | Плательщик резервирует и принимает; каждый получатель сам подписывает получение своей доли |
-| [Testnet](https://app.gstdtoken.com/ru/escrow) | Тестовые TON и tGSTD без реальной стоимости | Тестовые кошельки; не путать с mainnet |
+| [Баланс платформы](https://app.gstdtoken.xyz/ru/payments) | Обеспеченные средства и принятые оплаченные задания в учёте платформы | Владелец кошелька обеспечения после заявки пользователя |
+| [Mainnet escrow · открытая бета](https://app.gstdtoken.xyz/ru/escrow-mainnet) | Отдельное задание и средства в его контрактах; это не баланс платформы | Плательщик резервирует и принимает; каждый получатель сам подписывает получение своей доли |
+| [Testnet](https://app.gstdtoken.xyz/ru/escrow) | Тестовые TON и tGSTD без реальной стоимости | Тестовые кошельки; не путать с mainnet |
 
 Только принятая оплаченная работа: **85% исполнителю, 10% протоколу, 5% резерву**. Дополнительной комиссии GSTD за получение нет; газ TON оплачивает подписант. Установка, онлайн и бесплатные запросы не создают наград. Спрос и доход не гарантированы.
 
@@ -44,7 +44,7 @@ GSTD соединяет людей, которым нужен ИИ, и опер�
 
 ### 4. Создаю приложение
 
-[API и SDK](https://gstdtoken.com/developers?lang=ru). Используйте точный идентификатор модели, обрабатывайте недоступность и лимиты. Для работника нужна постоянная подписывающая Ed25519-идентичность; один адрес кошелька не авторизует запросы. [A2A](https://github.com/gstdcoin/A2A) экспериментальный; стандартная нода — [gstdbot](https://github.com/gstdcoin/gstdbot). Наличие примера не доказывает, что сервис включён.
+[API и SDK](https://gstdtoken.xyz/developers?lang=ru). Используйте точный идентификатор модели, обрабатывайте недоступность и лимиты. Для работника нужна постоянная подписывающая Ed25519-идентичность; один адрес кошелька не авторизует запросы. [A2A](https://github.com/gstdcoin/A2A) экспериментальный; стандартная нода — [gstdbot](https://github.com/gstdcoin/gstdbot). Наличие примера не доказывает, что сервис включён.
 
 ### Если что-то не работает
 
@@ -59,11 +59,11 @@ GSTD соединяет людей, которым нужен ИИ, и опер�
 
 ### Use AI
 
-Open [chat](https://app.gstdtoken.com/chat), choose an available model and explicitly consent before sharing a prompt with another node. Free access depends on quotas and capacity; buying GSTD is not required to start. An unavailable model is not silently replaced. Check the executor, price and payment method before paid work.
+Open [chat](https://app.gstdtoken.xyz/chat), choose an available model and explicitly consent before sharing a prompt with another node. Free access depends on quotas and capacity; buying GSTD is not required to start. An unavailable model is not silently replaced. Check the executor, price and payment method before paid work.
 
 ### Run a node
 
-1. Follow [installation](https://gstdtoken.com/nodes?lang=en) on Linux x86-64/ARM64 or WSL2. Hardware, Ollama and GPU drivers need validation.
+1. Follow [installation](https://gstdtoken.xyz/nodes?lang=en) on Linux x86-64/ARM64 or WSL2. Hardware, Ollama and GPU drivers need validation.
 2. Open **the dashboard address printed by your installer**. First setup uses the local setup token and a new PIN. Routine management uses dashboard buttons.
 3. In **Reward wallet**, bind your public TON address. Keep the node identity; existing balances and assigned jobs retain their previous recipient. Never provide a seed phrase or private key.
 4. Download a resource-compatible model from **Model directory**, a public Hugging Face GGUF or an explicit supported Ollama name. Test a local prompt first. Estimates are not runtime or speed guarantees.
@@ -74,11 +74,11 @@ Each machine has its own identity. Multi-host installations distribute requests;
 
 ### Payments
 
-[Buy GSTD](https://app.gstdtoken.com/buy). New protocol revenue is automatically credited to its confirmed beneficiary in the backed ledger; the 5% remains separate for the selected GSTD/XAUt0 pool. Automatic liquidity provision is not deployed. [Economic policy and autonomy boundaries](AUTONOMOUS_ECONOMY.md).
+[Buy GSTD](https://app.gstdtoken.xyz/buy). New protocol revenue is automatically credited to its confirmed beneficiary in the backed ledger; the 5% remains separate for the selected GSTD/XAUt0 pool. Automatic liquidity provision is not deployed. [Economic policy and autonomy boundaries](AUTONOMOUS_ECONOMY.md).
 
-- [Platform balance](https://app.gstdtoken.com/payments): backed internal credits and withdrawal requests. The custody wallet owner signs payouts.
-- [Mainnet escrow · open beta](https://app.gstdtoken.com/escrow-mainnet): a separate job and on-chain funds. The payer signs funding and acceptance; each beneficiary signs their own claim. Platform balances are not migrated.
-- [Testnet](https://app.gstdtoken.com/escrow): valueless test TON/tGSTD, separate wallets and network.
+- [Platform balance](https://app.gstdtoken.xyz/payments): backed internal credits and withdrawal requests. The custody wallet owner signs payouts.
+- [Mainnet escrow · open beta](https://app.gstdtoken.xyz/escrow-mainnet): a separate job and on-chain funds. The payer signs funding and acceptance; each beneficiary signs their own claim. Platform balances are not migrated.
+- [Testnet](https://app.gstdtoken.xyz/escrow): valueless test TON/tGSTD, separate wallets and network.
 
 Accepted paid work splits **85% executor / 10% protocol / 5% reserve**. No extra GSTD claim fee; signers pay TON gas. Installation, free inference and being online do not earn rewards. Demand and income are not guaranteed.
 
@@ -88,7 +88,7 @@ Attached TON budgets are not measured consumed fees. Mainnet RPC verification pa
 
 ### Build and troubleshoot
 
-Use the [API documentation](https://gstdtoken.com/developers?lang=en) and signed clients. A wallet address is not node authentication. A2A is experimental; use the canonical node for compute. Handle exact-model unavailability, quotas and errors.
+Use the [API documentation](https://gstdtoken.xyz/developers?lang=en) and signed clients. A wallet address is not node authentication. A2A is experimental; use the canonical node for compute. Handle exact-model unavailability, quotas and errors.
 
 No work may mean no funded demand. Missing rewards may mean a different wallet, network or payment path. Public single-file GGUF imports still need Ollama architecture support. Telegram delivery and Mini App language need a real user-device check. Keep node identity/configuration backups private; recovery on another physical machine remains a release gate.
 

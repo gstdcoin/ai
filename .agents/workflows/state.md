@@ -22,11 +22,11 @@ gstdcoin/gstd-bridge — Cross-chain bridge (Rust)
 
 | Service | Host | URL |
 |---|---|---|
-| Dashboard + API | Not deployed; Cloudflare target | `app.gstdtoken.com` |
-| Landing page | Cloudflare Workers | `gstdtoken.com` |
+| Dashboard + API | Not deployed; Cloudflare target | `app.gstdtoken.xyz` |
+| Landing page | Cloudflare Workers | `gstdtoken.xyz` |
 | Bootstrap node | Raspberry Pi | `gstd-pi-bootstrap` |
 | State storage | Upstash Redis (KV) | via `UPSTASH_REDIS_REST_*` |
-| AI inference | GSTD node network | `app.gstdtoken.com/api/v1/chat/completions` |
+| AI inference | GSTD node network | `app.gstdtoken.xyz/api/v1/chat/completions` |
 
 ## 📁 Repo Structure (gstdcoin/ai)
 
@@ -71,7 +71,7 @@ All GSTD-specific context is in this `state.md` and the codebase itself.
 
 ### Agent Guidelines
 - Always read `state.md` before making changes
-- After material changes, run: `curl https://app.gstdtoken.com/api/v1/stats/public`
+- After material changes, run: `curl https://app.gstdtoken.xyz/api/v1/stats/public`
 - Node-to-platform communication uses HTTPS REST only (no WebSocket)
 - Production secrets belong in GitHub Actions / Cloudflare Worker settings (never commit keys); values are not configured yet
 
@@ -100,17 +100,17 @@ git push origin main   # Cloudflare deployment for the landing page
 
 ```bash
 # Platform APIs
-curl https://app.gstdtoken.com/api/v1/stats/public
-curl https://app.gstdtoken.com/api/v1/nodes/list
-curl https://app.gstdtoken.com/api/v1/network/info
+curl https://app.gstdtoken.xyz/api/v1/stats/public
+curl https://app.gstdtoken.xyz/api/v1/nodes/list
+curl https://app.gstdtoken.xyz/api/v1/network/info
 
 # AI inference (routes to GSTD node network)
-curl -s -X POST https://app.gstdtoken.com/api/v1/chat/completions \
+curl -s -X POST https://app.gstdtoken.xyz/api/v1/chat/completions \
   -H 'Content-Type: application/json' \
   -d '{"messages":[{"role":"user","content":"ping"}],"max_tokens":10}'
 
 # Landing page
-curl -s -o /dev/null -w '%{http_code}' https://gstdtoken.com
+curl -s -o /dev/null -w '%{http_code}' https://gstdtoken.xyz
 ```
 
 ## 🧠 AI Models (served by GSTD node network)
@@ -154,8 +154,8 @@ Nodes process and post result to `task:result:{task_id}`.
 
 ## 🛡️ CORS Allowed Origins
 
-- `https://app.gstdtoken.com`
-- `https://gstdtoken.com`
+- `https://app.gstdtoken.xyz`
+- `https://gstdtoken.xyz`
 - `http://localhost:3000`
 - `https://web.telegram.org`
 - `https://t.me`

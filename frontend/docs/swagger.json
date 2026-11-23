@@ -7,11 +7,11 @@
     "info": {
         "description": "API documentation for GSTD Decentralized Physical Infrastructure Network Platform. This API enables distributed computing tasks, worker management, and TON blockchain integration.",
         "title": "GSTD DePIN Platform API",
-        "termsOfService": "https://app.gstdtoken.com/terms",
+        "termsOfService": "https://app.gstdtoken.xyz/terms",
         "contact": {
             "name": "GSTD Platform Support",
-            "url": "https://app.gstdtoken.com",
-            "email": "support@gstdtoken.com"
+            "url": "https://app.gstdtoken.xyz",
+            "email": "support@gstdtoken.xyz"
         },
         "license": {
             "name": "PolyForm Noncommercial 1.0.0",
@@ -19,7 +19,7 @@
         },
         "version": "1.0"
     },
-    "host": "app.gstdtoken.com",
+    "host": "app.gstdtoken.xyz",
     "basePath": "/api/v1",
     "paths": {
         "/nodes/my": {

@@ -56,7 +56,7 @@ export default {
             return;
         }
         const path = event.cron === '*/10 * * * *' ? 'finance' : 'open-intelligence';
-        const request = new Request('https://app.gstdtoken.com/api/cron/' + path, {
+        const request = new Request('https://app.gstdtoken.xyz/api/cron/' + path, {
             method: 'POST',
             headers: {
                 Authorization: `Bearer ${env.OPEN_INTELLIGENCE_CRON_SECRET}`,

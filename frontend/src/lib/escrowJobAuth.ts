@@ -11,7 +11,7 @@ export function pilotSignDataDigest(address:string,domain:string,timestamp:numbe
 /** Only the expected payer, exact fresh challenge text and owned app domain authorize execution. */
 export function verifyPilotAuthorization(value:any,stateInit:unknown,payer:string,text:string,now=Math.floor(Date.now()/1000)):boolean{
  try{
-  if(!value||value.domain!=='app.gstdtoken.com'||!Number.isSafeInteger(value.timestamp)||value.timestamp<now-300||value.timestamp>now+60||value.payload?.type!=='text'||value.payload.text!==text||typeof value.signature!=='string'||typeof value.address!=='string'||Address.parse(value.address).toRawString()!==payer||typeof stateInit!=='string')return false;
+  if(!value||value.domain!=='app.gstdtoken.xyz'||!Number.isSafeInteger(value.timestamp)||value.timestamp<now-300||value.timestamp>now+60||value.payload?.type!=='text'||value.payload.text!==text||typeof value.signature!=='string'||typeof value.address!=='string'||Address.parse(value.address).toRawString()!==payer||typeof stateInit!=='string')return false;
   const key=extractVerifiedWalletPublicKey(payer,stateInit),sig=Buffer.from(value.signature,'base64');if(!key||sig.length!==64||sig.toString('base64')!==value.signature)return false;
   return verifyEd25519(pilotSignDataDigest(payer,value.domain,value.timestamp,text),sig,key);
  }catch{return false;}

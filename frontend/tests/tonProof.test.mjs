@@ -32,7 +32,20 @@ require.extensions['.ts'] = (module, filename) => {
     });
     module._compile(compiled.outputText, filename);
 };
-const { verifyTonConnectProof } = require('../src/lib/tonProof.ts');
+const { verifyTonConnectProof, getAllowedTonConnectDomains } = require('../src/lib/tonProof.ts');
+
+test('domain migration trusts only the new canonical app unless explicitly configured', () => {
+    const previous = process.env.GSTD_TONCONNECT_AUTH_DOMAINS;
+    try {
+        delete process.env.GSTD_TONCONNECT_AUTH_DOMAINS;
+        assert.deepEqual(getAllowedTonConnectDomains(), ['app.gstdtoken.xyz']);
+        process.env.GSTD_TONCONNECT_AUTH_DOMAINS = 'localhost:3000';
+        assert.deepEqual(getAllowedTonConnectDomains(), ['localhost:3000']);
+    } finally {
+        if (previous === undefined) delete process.env.GSTD_TONCONNECT_AUTH_DOMAINS;
+        else process.env.GSTD_TONCONNECT_AUTH_DOMAINS = previous;
+    }
+});
 
 process.env.NODE_ENV = 'test';
 delete process.env.KV_REST_API_URL;
@@ -40,7 +53,7 @@ delete process.env.KV_REST_API_TOKEN;
 delete process.env.UPSTASH_REDIS_REST_URL;
 delete process.env.UPSTASH_REDIS_REST_TOKEN;
 
-const DOMAIN = 'app.gstdtoken.com';
+const DOMAIN = 'app.gstdtoken.xyz';
 const PAYLOAD = 'e2b6ba11d21a9e75'.repeat(4);
 const WALLET_VERSIONS = [
     ['V1R1', (publicKey) => WalletContractV1R1.create({ workchain: 0, publicKey })],
@@ -126,7 +139,7 @@ test('rejects proofs with altered domain, payload, key, address, timestamp, or s
         timestamp: Math.floor(Date.now() / 1000) - 301,
     };
 
-    assert.equal(verifyTonConnectProof(login, PAYLOAD, ['platform.gstdtoken.com']), false);
+    assert.equal(verifyTonConnectProof(login, PAYLOAD, ['platform.gstdtoken.xyz']), false);
     assert.equal(verifyTonConnectProof(login, 'other-payload', [DOMAIN]), false);
     assert.equal(verifyTonConnectProof({ ...login, publicKey: '00'.repeat(32) }, PAYLOAD, [DOMAIN]), false);
     assert.equal(verifyTonConnectProof({ ...login, address: secondWallet.address.toRawString() }, PAYLOAD, [DOMAIN]), false);

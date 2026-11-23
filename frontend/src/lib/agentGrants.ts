@@ -2,7 +2,7 @@ import {kvGet,kvSetNX} from './kv';
 import {randomBytes,timingSafeEqual} from 'node:crypto';
 import {AgentGrant,GrantPolicy,digest,getAgentGrant,validateGrantPolicy,walletId,MoneyError} from './money';
 export function grantAuthorizationText(wallet:string,policy:GrantPolicy,nonce:string){
- return ['GSTD paid inference allowance / Разрешение платных запросов','Domain: app.gstdtoken.com',
+ return ['GSTD paid inference allowance / Разрешение платных запросов','Domain: app.gstdtoken.xyz',
  'Network: TON mainnet (-239)','Owner: '+wallet,'Policy: '+JSON.stringify(policy),
  'Authorize automatic acceptance and 85/10/5 settlement for nonempty exact-model responses within this policy.',
  'Prompts are sent to the listed executors. This is a platform balance allowance, not a TON transfer or withdrawal.',

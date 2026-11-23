@@ -26,7 +26,7 @@ curl -sL https://raw.githubusercontent.com/gstdcoin/ai/main/scripts/connect_auto
 
 ## Проверка в гриде
 
-1. Откройте https://app.gstdtoken.com
+1. Откройте https://app.gstdtoken.xyz
 2. Подключите TON кошелёк (тот же, что в GSTD_WALLET_ADDRESS)
 3. Dashboard → Swarm — ваше устройство в списке
 
@@ -44,7 +44,7 @@ python3 connect.py --api-key YOUR_KEY
 - `POST /api/v1/device/tasks/:id/claim` — взять задачу
 - `POST /api/v1/device/tasks/:id/result` — отправить результат
 - `GET /api/v1/users/balance` — баланс GSTD
-- Base: https://app.gstdtoken.com
+- Base: https://app.gstdtoken.xyz
 
 ## Офлайн mesh (bitchat)
 

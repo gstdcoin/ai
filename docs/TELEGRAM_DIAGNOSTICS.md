@@ -1,6 +1,6 @@
 # Telegram service diagnostics
 
-`GET https://app.gstdtoken.com/api/v1/telegram/health` performs read-only Telegram Bot API calls using the existing Worker secret. It checks `getMe` against `@gstdaibot`, checks the canonical webhook URL and message/callback subscriptions with `getWebhookInfo`, and reports whether delivery has pending updates and recent errors.
+`GET https://app.gstdtoken.xyz/api/v1/telegram/health` performs read-only Telegram Bot API calls using the existing Worker secret. It checks `getMe` against `@gstdaibot`, checks the canonical webhook URL and message/callback subscriptions with `getWebhookInfo`, and reports whether delivery has pending updates and recent errors.
 
 HTTP 200 and `status: ok` mean those checks passed. HTTP 503 and `status: degraded` identify a missing credential, unreachable/rejected Bot API, unexpected identity/webhook/subscription, malformed metadata or a pending queue with a recent delivery error. A historical Telegram delivery error with an empty queue does not make a recovered service unhealthy. `delivery_backlog: pending` is distinct from both a clear queue and a known error.
 

@@ -28,7 +28,7 @@ it('rejects testnet input, test assets, changed recipients and unknown manifest 
  await expect(mainnetTransaction(value,'withdraw',value.payer,0)).rejects.toThrow('wrong_signer');
 });
 it('every unsigned mainnet action passes the installed wallet SDK and never addresses testnet',async()=>{
- const value=input(),sdk=new TonConnect({manifestUrl:'https://app.gstdtoken.com/tonconnect-mainnet-escrow-manifest.json',storage:{getItem:async()=>null,setItem:async()=>{},removeItem:async()=>{}}});
+ const value=input(),sdk=new TonConnect({manifestUrl:'https://app.gstdtoken.xyz/tonconnect-mainnet-escrow-manifest.json',storage:{getItem:async()=>null,setItem:async()=>{},removeItem:async()=>{}}});
  for(const action of ['deploy','fund','accept','expire','sync','withdraw','refund','reclaim','report'] as const){
   const tx=await mainnetTransaction(value,action,action==='withdraw'?value.worker:value.payer);
   expect(tx.network).toBe('-239');

@@ -90,12 +90,12 @@ repositories. A second daily observation is still needed before reporting trends
   [run #673](https://github.com/gstdcoin/ai/actions/runs/39420560078) passed all
   jobs, including the Linux Cloudflare build, preview health/page/API checks,
   production deploy, and production health verification.
-- Post-deploy smoke checks on `app.gstdtoken.com` returned HTTP 200 for health,
+- Post-deploy smoke checks on `app.gstdtoken.xyz` returned HTTP 200 for health,
   TMA, Open Intelligence page, and its public API. CI also collected and
   verified a four-repository Open Intelligence baseline. The apex
-  `gstdtoken.com` is the separate Cloudflare marketing site (`web` repo) with
+  `gstdtoken.xyz` is the separate Cloudflare marketing site (`web` repo) with
   its own `/api/health` (HTTP 200); the platform API intentionally lives only on
-  `app.gstdtoken.com`, so `gstdtoken.com/api/v1/health` returning 404 is by
+  `app.gstdtoken.xyz`, so `gstdtoken.xyz/api/v1/health` returning 404 is by
   design. Routing `/api/*` from the apex was deliberately not done: the site's
   live chat is designed to stay independent of the platform worker.
 - `gstd-mcp-server`: `npm audit fix` (lockfile only, no major bumps) cleared

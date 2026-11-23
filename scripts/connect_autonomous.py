@@ -13,7 +13,7 @@ import http.client
 import urllib.request
 import urllib.error
 
-API = os.environ.get("GSTD_API_URL", "https://app.gstdtoken.com")
+API = os.environ.get("GSTD_API_URL", "https://app.gstdtoken.xyz")
 WALLET = os.environ.get("GSTD_WALLET_ADDRESS", "")
 
 def main():
@@ -100,7 +100,7 @@ def main():
         print("❌ Handshake:", hs.get("error", hs))
         sys.exit(1)
     print("✅ Connected! Agent ID:", hs.get("agent_id", "—"))
-    print("📱 Connect same wallet at app.gstdtoken.com → device in Swarm")
+    print("📱 Connect same wallet at app.gstdtoken.xyz → device in Swarm")
 
     # 5. Worker loop: fetch tasks, claim, execute, submit
     print("🔄 Polling for tasks...")

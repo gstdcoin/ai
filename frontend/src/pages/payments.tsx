@@ -64,7 +64,7 @@ export default function PaymentsPage() {
             <p><Link href="/agent-access" className="underline text-violet-300">{t('agent_access.title')}</Link></p>
             <p><Link href="/escrow-mainnet" className="underline text-violet-300">{p('mainnet_escrow')}</Link></p>
             <p className="text-sm text-gray-400">{p('mainnet_notice')}</p>
-            <p><a href={'https://gstdtoken.com/docs?lang='+(router.locale==='ru'?'ru':'en')+'#get-started'} className="underline text-violet-300">{p('start_guide')}</a></p>
+            <p><a href={'https://gstdtoken.xyz/docs?lang='+(router.locale==='ru'?'ru':'en')+'#get-started'} className="underline text-violet-300">{p('start_guide')}</a></p>
             <details className="text-sm text-gray-400"><summary className="cursor-pointer">{p('testnet_title')}</summary><Link href="/escrow" className="underline text-violet-300">{p('escrow_lab')}</Link></details>
         </section>
         <section className="rounded-xl border border-white/15 p-5 space-y-3" aria-labelledby="payment-signatures">

@@ -35,7 +35,7 @@ test('preview capability follows same-origin redirects and never leaves the prev
         };
         assert.equal((await previewFetch('https://fixture.workers.dev','/')).status,200);
         assert.deepEqual(calls,['https://fixture.workers.dev/','https://fixture.workers.dev/en']);
-        await assert.rejects(()=>previewFetch('https://app.gstdtoken.com','/'),/invalid_private_preview_request/);
+        await assert.rejects(()=>previewFetch('https://app.gstdtoken.xyz','/'),/invalid_private_preview_request/);
     }finally{
         globalThis.fetch=original;
         if(previous===undefined)delete process.env.GSTD_PREVIEW_ACCESS_KEY;else process.env.GSTD_PREVIEW_ACCESS_KEY=previous;

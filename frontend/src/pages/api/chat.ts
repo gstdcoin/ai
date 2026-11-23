@@ -199,7 +199,7 @@ async function* streamNodeClean(messages: ChatMessage[], opts = {}): AsyncGenera
 async function lookupKnowledge(query: string): Promise<string> {
     try {
         const resp = await fetch(
-            `https://app.gstdtoken.com/api/v1/knowledge/resonance?q=${encodeURIComponent(query)}&limit=3`,
+            `https://app.gstdtoken.xyz/api/v1/knowledge/resonance?q=${encodeURIComponent(query)}&limit=3`,
             { signal: AbortSignal.timeout(3000) }
         );
         if (!resp.ok) return '';

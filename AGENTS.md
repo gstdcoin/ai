@@ -4,9 +4,9 @@ Read this before changing anything. It applies to humans and AI agents. Rules ar
 
 ## Standing rules
 
-1. **Cloudflare only, free limits.** No Vercel. Do not break `gstdtoken.com` or `app.gstdtoken.com`.
+1. **Cloudflare only, free limits.** No Vercel. Do not break `gstdtoken.xyz` or `app.gstdtoken.xyz`.
 2. **No secrets in code, logs or git history.** Tokens live only in Cloudflare/GitHub secrets. Never create a committed `.env`.
-3. **Honest numbers.** No fake nodes, tasks, stats, promos or guaranteed yields. Public numbers come from the platform registry (`app.gstdtoken.com/api/v1/network/stats`).
+3. **Honest numbers.** No fake nodes, tasks, stats, promos or guaranteed yields. Public numbers come from the platform registry (`app.gstdtoken.xyz/api/v1/network/stats`).
 4. **Rewards only for completed, accepted tasks.** Presence-only payouts stay disabled.
 5. **No automatic GHCR publishing, no SSH deploys.**
 6. **Lock files:** never generate `package-lock.json` with `--legacy-peer-deps` where CI uses `npm ci`; verify with `npm ci --dry-run`.
@@ -21,7 +21,7 @@ Read this before changing anything. It applies to humans and AI agents. Rules ar
 
 | Decision | Reason |
 |---|---|
-| `app.gstdtoken.com` is the single source of truth for the registry | `platform.gstdtoken.com` is a legacy worker with test data and no sources |
+| `app.gstdtoken.xyz` is the single source of truth for the registry | The former `platform.gstdtoken.com` worker contained test data and has no sources; do not recreate it on the new domain |
 | Node identity is Ed25519, trust on first use | Stops spoofing of node ids and wallets |
 | Reward claim is atomic (`kvClaimPending`) | Closed a double-claim race |
 | Telegram webhook secret = sha256 of the bot token | Rejects forged updates without extra secrets |

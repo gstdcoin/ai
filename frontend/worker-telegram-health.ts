@@ -1,4 +1,4 @@
-const EXPECTED_WEBHOOK = 'https://app.gstdtoken.com/api/v1/telegram/webhook';
+const EXPECTED_WEBHOOK = 'https://app.gstdtoken.xyz/api/v1/telegram/webhook';
 
 export interface TelegramHealth {
     status: 'ok' | 'degraded';
