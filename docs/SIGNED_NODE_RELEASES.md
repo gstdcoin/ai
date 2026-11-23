@@ -6,7 +6,7 @@ Approved version **3.7.3** is pinned to `c0ec226f9b64a3d0d8532b462ed9a0ce0d75d67
 
 The operator-authorized maintenance of the ARM node on server `bot` completed with a protected local backup and an independently verified fresh Ed25519 manifest. Its installed source matches the approved pin, health reports 3.7.3, and the signed update checker reports `update_available:false` and `can_apply:false`. Existing identity/wallet/PIN files and `.env` were preserved byte-for-byte. No PIN or private key was read into chat. Authenticated API routes continue returning 401 without a session.
 
-Ollama reports three installed models and is available. Both public website and platform statistics show **one online node** after registration on `app.gstdtoken.xyz`. These checks do not establish GPU performance or an accepted paid inference/payout. They apply to the `bot` node; the distinct `gstd-desktop` owner-only rule is unchanged.
+Ollama reports three installed models and is available. A local CPU generation using the already installed SmolLM2-135M model completed with non-empty output (10 tokens, 3.87 seconds); no model download or paid platform task was used. This is a smoke test, not a performance benchmark. Both public website and platform statistics show **one online node** after registration on `app.gstdtoken.xyz`. These checks do not establish GPU performance or an accepted paid inference/payout. They apply to the `bot` node; the distinct `gstd-desktop` owner-only rule is unchanged.
 
 ## Public release check — 2026-11-18
 

@@ -6,7 +6,7 @@ The owner selected `gstdtoken.xyz` on 2026-11-23. The public website belongs at 
 
 Cloudflare activated the zone on 2026-11-23 with authoritative nameservers `alaric.ns.cloudflare.com` and `harleigh.ns.cloudflare.com`. The root and `www` are bound to `gstd-web`; `app` is bound to `gstd-ai-platform`, on the existing Free account. HTTPS, website live statistics, platform Redis health and the new TonConnect manifest were verified after deployment. The `www` alias returns 308 to the root, preserving path/query.
 
-Source migration is merged across all seven repositories. The approved 3.7.3 release is installed on the ARM `bot` node; live statistics confirm one online node on the new platform. See [signed release evidence](SIGNED_NODE_RELEASES.md). The former .com hostname can redirect only while its DNS/HTTPS routing is controlled; application redirects cannot repair an unresolved domain. Telegram still has the former registered webhook, so its read-only health correctly reports degraded until the owner performs the cutover below. No Telegram message was sent during validation.
+Source migration is merged across all seven repositories. The approved 3.7.3 release is installed on the ARM `bot` node; live statistics confirm one online node on the new platform. See [signed release evidence](SIGNED_NODE_RELEASES.md). The former .com hostname can redirect only while its DNS/HTTPS routing is controlled; application redirects cannot repair an unresolved domain. The owner reported updating Telegram settings, but a fresh read-only probe at 2026-11-23 19:25 UTC still returned `webhook:false` and HTTP 503; token/API/identity checks passed and backlog was clear. BotFather changes alone do not update the webhook. Owner script completion and a matching new-domain webhook remain unverified. No Telegram message was sent during validation.
 
 ## Application changes
 
@@ -19,7 +19,7 @@ Source migration is merged across all seven repositories. The approved 3.7.3 rel
 
 ## Remaining external settings
 
-The GitHub About Homepage field still points to the former domain in `web`, `gstdbot`, `contracts`, `gstd-bridge`, `gstdcoin` and `A2A`; `ai` already points to the new app. The connector does not support repository-administration edits and browser control is unavailable, so the owner must change these metadata fields. Use the website root for the first five and the app origin for A2A. These fields are separate from repository files.
+The owner updated the GitHub About Homepage fields, and API reads confirmed all seven repositories on 2026-11-24: `ai` and `A2A` point to `https://app.gstdtoken.xyz`; `web`, `gstdbot`, `contracts`, `gstd-bridge` and `gstdcoin` point to `https://gstdtoken.xyz`. Repository metadata is now consistent with the maintained files.
 
 Public DNS returns NXDOMAIN for the former .com root and app. Code contains fixed canonical redirects, but a request must reach a valid DNS/HTTPS endpoint before an HTTP redirect can execute.
 
