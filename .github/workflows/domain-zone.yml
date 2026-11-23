@@ -19,7 +19,7 @@ jobs:
       - name: Verify domain boundary tests
         run: node --test scripts/domain-zone.test.mjs
       - name: Inspect or create the requested pending DNS zone
-        run: node scripts/domain-zone.mjs --activate
+        run: node scripts/domain-zone.mjs --bind-workers
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
