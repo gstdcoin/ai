@@ -76,7 +76,7 @@ The webhook handler exists at `/api/v1/telegram/webhook` but Telegram doesn't kn
 ```
 Required action:
   POST https://api.telegram.org/bot<TOKEN>/setWebhook
-  {"url": "https://app.gstdtoken.com/api/v1/telegram/webhook"}
+  {"url": "https://app.gstdtoken.xyz/api/v1/telegram/webhook"}
 
 Then: Set TELEGRAM_BOT_TOKEN in Vercel dashboard (not in Pi's .env)
 Then: Remove TELEGRAM_BOT_TOKEN from /home/bot/gstdbot/.env
@@ -139,7 +139,7 @@ These env vars exist in code but may not be in Vercel dashboard:
 | GROQ / `GROQ_API_KEY` | Fully removed | All inference via GSTD nodes |
 | Token burning | Disabled (burn_rate_pct: 0) | All fees → node operators |
 | `/hive` nav entry | Removed from nav | Old "Agent Collective" concept, loads missing `/skills.json` |
-| `api.gstdtoken.com` proxy rewrites | Already removed | Go backend doesn't exist |
+| `api.gstdtoken.xyz` proxy rewrites | Already removed | Go backend doesn't exist |
 
 ---
 

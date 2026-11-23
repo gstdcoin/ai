@@ -49,7 +49,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             { from: 'ton',    to: 'paxg',   fee_percent: 0.5 },
             { from: 'paxg',   to: 'ton',    fee_percent: 0.5 },
         ],
-        bridge_url:  'https://gstdtoken.com/bridge',
+        bridge_url:  'https://gstdtoken.xyz/bridge',
         status:      'operational',
         timestamp:   Date.now(),
     });

@@ -1,6 +1,6 @@
 # GSTD Telegram bot
 
-The bot is @gstdaibot: https://t.me/gstdaibot. It is a Cloudflare platform webhook at https://app.gstdtoken.com/api/v1/telegram/webhook. TELEGRAM_BOT_TOKEN is a Worker secret; nodes never run a second polling bot or hold that token.
+The bot is @gstdaibot: https://t.me/gstdaibot. It is a Cloudflare platform webhook at https://app.gstdtoken.xyz/api/v1/telegram/webhook. TELEGRAM_BOT_TOKEN is a Worker secret; nodes never run a second polling bot or hold that token.
 
 ## First use
 

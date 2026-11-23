@@ -7,8 +7,8 @@ import { createHash } from 'node:crypto';
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
 if (!token) { console.error('Set TELEGRAM_BOT_TOKEN in the environment'); process.exit(1); }
-const url = process.env.WEBHOOK_URL || 'https://app.gstdtoken.com/api/v1/telegram/webhook';
-const tma = process.env.TMA_URL || 'https://app.gstdtoken.com/tma';
+const url = process.env.WEBHOOK_URL || 'https://app.gstdtoken.xyz/api/v1/telegram/webhook';
+const tma = process.env.TMA_URL || 'https://app.gstdtoken.xyz/tma';
 const secret = createHash('sha256').update(`gstd-tg-webhook:${token}`).digest('hex');
 
 const call = async (method, body) => {

@@ -12,7 +12,7 @@ const TEXT = /\.(ts|tsx|js|mjs|json|md|yml|yaml|html|sh|toml|env|example)$/i;
 const rules = [
     { name: 'Telegram bot token', re: /\b\d{8,10}:AA[A-Za-z0-9_-]{33}\b/ },
     { name: 'private key', re: /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/ },
-    { name: 'dead domain gstdbot.gstdtoken.com', re: /gstdbot\.gstdtoken\.com/ },
+    { name: 'dead gstdbot hostname', re: /gstdbot\.gstdtoken\.(?:com|xyz)/ },
     { name: 'fake early-adopter promo', re: /Race to 10/i },
 ];
 const bannedFiles = [/(^|\/)vercel\.json$/, /^\.vercel\//, /(^|\/)\.env$/];

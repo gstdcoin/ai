@@ -9,11 +9,11 @@ const docTemplate = `{
     "info": {
         "description": "{{escape .Description}}",
         "title": "{{.Title}}",
-        "termsOfService": "https://app.gstdtoken.com/terms",
+        "termsOfService": "https://app.gstdtoken.xyz/terms",
         "contact": {
             "name": "GSTD Platform Support",
-            "url": "https://app.gstdtoken.com",
-            "email": "support@gstdtoken.com"
+            "url": "https://app.gstdtoken.xyz",
+            "email": "support@gstdtoken.xyz"
         },
         "license": {
             "name": "MIT",
@@ -630,7 +630,7 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
-	Host:             "app.gstdtoken.com",
+	Host:             "app.gstdtoken.xyz",
 	BasePath:         "/api/v1",
 	Schemes:          []string{"https", "http"},
 	Title:            "GSTD DePIN Platform API",

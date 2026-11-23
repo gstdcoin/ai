@@ -1,7 +1,7 @@
 #!/usr/bin/env tsx
 /**
  * GSTD settlement plan inspector.
- * Reads pending rewards from app.gstdtoken.com/api/v1/nodes/rewards/settle.
+ * Reads pending rewards from app.gstdtoken.xyz/api/v1/nodes/rewards/settle.
  *
  * Dry-run only. Live transfers remain disabled until payouts are reserved
  * atomically and on-chain receipts can be independently verified.
@@ -9,10 +9,10 @@
  *
  * Env vars required:
  *   TREASURY_SECRET            — matches the platform treasury secret
- *   GSTD_SWARM_URL             — https://app.gstdtoken.com
+ *   GSTD_SWARM_URL             — https://app.gstdtoken.xyz
  */
 
-const SWARM_URL      = (process.env.GSTD_SWARM_URL || 'https://app.gstdtoken.com').replace(/\/$/, '');
+const SWARM_URL      = (process.env.GSTD_SWARM_URL || 'https://app.gstdtoken.xyz').replace(/\/$/, '');
 const TREASURY_SECRET = process.env.TREASURY_SECRET || '';
 const DRY_RUN         = process.argv.includes('--dry-run');
 const MIN_PAYOUT      = 0.1; // GSTD — skip wallets below this amount

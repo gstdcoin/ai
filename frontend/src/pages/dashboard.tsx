@@ -45,7 +45,7 @@ export default function DashboardPage() {
    <span role="status" className="text-gray-300">{healthText[health]}</span>
   </div>
   <p className="mt-7 text-sm text-gray-400">{ru?'Награды начисляются только за принятую оплаченную работу. Само подключение ноды и бесплатные запросы не создают выводимых токенов.':'Rewards require accepted paid work. Connecting a node and serving free requests do not create withdrawable tokens.'}</p>
-  <a className="inline-block mt-5 underline text-violet-300" href="https://gstdtoken.com/developers">{ru?'API оплачиваемых задач и интеграции':'Funded task API and integrations'} →</a>
+  <a className="inline-block mt-5 underline text-violet-300" href="https://gstdtoken.xyz/developers">{ru?'API оплачиваемых задач и интеграции':'Funded task API and integrations'} →</a>
  </main>;
 }
 export const getStaticProps:GetStaticProps=async({locale})=>({props:await getCommonStaticProps(locale)});

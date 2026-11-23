@@ -16,8 +16,8 @@
   },
   "routes": [
     {
-      "pattern": "app.gstdtoken.com/*",
-      "zone_name": "gstdtoken.com"
+      "pattern": "app.gstdtoken.xyz",
+      "custom_domain": true
     }
   ]
 }

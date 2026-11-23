@@ -13,9 +13,9 @@
   },
   "api": {
     "type": "openapi",
-    "url": "https://app.gstdtoken.com/api/v1/swagger/doc.json"
+    "url": "https://app.gstdtoken.xyz/api/v1/swagger/doc.json"
   },
-  "logo_url": "https://app.gstdtoken.com/logo.png",
-  "contact_email": "support@gstdtoken.com",
-  "legal_info_url": "https://app.gstdtoken.com/terms"
+  "logo_url": "https://app.gstdtoken.xyz/logo.png",
+  "contact_email": "support@gstdtoken.xyz",
+  "legal_info_url": "https://app.gstdtoken.xyz/terms"
 }

@@ -11,8 +11,8 @@ Last updated: 2026-10-17
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| app.gstdtoken.com | ✅ Live | Cloudflare deployment run #640 succeeded; production health/KV returned `ok` on 2026-10-17. The node-list and public-stats endpoints now agree: 0 registered/online nodes, tasks, and payouts. No live node end-to-end cycle has been verified. Cron scheduling is still deferred. |
-| gstdtoken.com | ✅ Live | Landing page on Cloudflare Workers |
+| app.gstdtoken.xyz | ✅ Live | Cloudflare deployment run #640 succeeded; production health/KV returned `ok` on 2026-10-17. The node-list and public-stats endpoints now agree: 0 registered/online nodes, tasks, and payouts. No live node end-to-end cycle has been verified. Cron scheduling is still deferred. |
+| gstdtoken.xyz | ✅ Live | Landing page on Cloudflare Workers |
 | Upstash Redis | ✅ Connected | Production Worker health/KV check returned `ok` on 2026-10-17. |
 | TON Contracts | ✅ Deployed | GSTDJetton, SettlementMaster v2, AgentRegistry, DAOVoting, EcosystemTreasury, Escrow live on mainnet (re-verified on-chain 2026-08-13); GSTDJetton admin renounced (`addr_none`); SettlementMaster v2 adds quorum-attested P2P settlement, not externally audited. SettlementMaster/EcosystemTreasury owner deliberately NOT transferred to DAOVoting — see governance quorum bug below. |
 | DAOVoting governance | ⚠️ Live but unusable as designed | `Proposal.quorumStake` is set from `minProposalStake` (a GSTD-denominated constant, 10,000 GSTD = `1e13`) but votes are counted in raw attached TON (`CastVote`'s weight = `context().value`), not GSTD — see `DAOVoting.tact:243,284`. Since both use 9-decimal nano units, the code compares a TON-vote-sum against a threshold meant for GSTD, i.e. ~10,000 TON of real voter stake is needed to ever reach quorum. No proposal can realistically pass. Do not transfer SettlementMaster/EcosystemTreasury ownership to this contract until a v2 fixes the quorum math — doing so now would permanently brick protocol admin actions (pause, key rotation, parameter changes) with no way to ever govern your way out. |
@@ -23,7 +23,7 @@ Last updated: 2026-10-17
 
 ---
 
-## gstdcoin/ai — Platform (app.gstdtoken.com)
+## gstdcoin/ai — Platform (app.gstdtoken.xyz)
 
 **Branch:** `main` | **Deploy:** Cloudflare Workers via GitHub Actions; production deploy and health checks succeeded on 2026-10-17. Do not deploy via Vercel.
 
@@ -55,7 +55,7 @@ Last updated: 2026-10-17
 - [ ] DAOVoting deploy status not independently re-verified 2026-07-19 (Jetton/SettlementMaster/AgentRegistry were)
 
 ### Known issues / Do not re-do
-- `api.gstdtoken.com` does NOT exist — all API is at `app.gstdtoken.com/api/v1`
+- `api.gstdtoken.xyz` does NOT exist — all API is at `app.gstdtoken.xyz/api/v1`
 - No Go backend. No Docker in production. Cloudflare Workers + the existing Upstash Redis database are the production runtime; deploy changes only through the verified Cloudflare workflow.
 - `proxy.ts` is the Next.js 16 name for what was `middleware.ts` in Next.js 13-15
 - Dead pages `monitor/` and `predictions/` were removed — no API backend for them
@@ -124,7 +124,7 @@ leaving it vague:
       decentralized plain-HTTP gossip implementation (disk-persisted peer
       table, TTL, latency-based scoring, capability-match routing, gossip
       propagation), bootstrapping from `GSTD_SEED_PEERS` + a GitHub-raw seed
-      list -- not app.gstdtoken.com. Corrected 2026-08-16: this file used to
+      list -- not app.gstdtoken.xyz. Corrected 2026-08-16: this file used to
       say "P2P stub ... needs real peer discovery implementation" here, which
       was wrong by the time it was checked (verified by reading the file in
       full, then by actually running a node live and watching it gossip with
@@ -214,17 +214,17 @@ Treat as design docs, not a working system, until the Pending items are done.
 
 ---
 
-## gstdcoin/web — Landing Page (gstdtoken.com)
+## gstdcoin/web — Landing Page (gstdtoken.xyz)
 
 ### What's working
-- [x] Static Next.js site on Cloudflare Workers; the separate platform Worker at `app.gstdtoken.com` is live (see System Health)
+- [x] Static Next.js site on Cloudflare Workers; the separate platform Worker at `app.gstdtoken.xyz` is live (see System Health)
 - [x] CI: TypeScript check + build
 - [x] Real network stats widget: `LiveNetworkStatus.tsx` calls
       `/api/v1/stats/public` and is honest about failure -- shows an amber
       "API temporarily unreachable" banner and `—` instead of a fake `0` when
       the platform is down, never fabricates numbers. Corrected 2026-08-16:
       this was already built by the time it was checked, this file was stale.
-- [x] Live chat that bypasses app.gstdtoken.com entirely (`/api/chat`,
+- [x] Live chat that bypasses app.gstdtoken.xyz entirely (`/api/chat`,
       `/ai` page): tries real network nodes first via the same GitHub-raw
       seed list gstdbot's own peers.ts bootstraps from, falls back to
       Cloudflare Workers AI (same account, no new vendor) only if every node

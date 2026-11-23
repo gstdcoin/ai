@@ -212,7 +212,7 @@ async function fetchRepository(
 
     const headers: Record<string, string> = {
         Accept: 'application/atom+xml',
-        'User-Agent': 'GSTD-Open-Intelligence (+https://app.gstdtoken.com)',
+        'User-Agent': 'GSTD-Open-Intelligence (+https://app.gstdtoken.xyz)',
     };
     if (state.etag) headers['If-None-Match'] = state.etag;
 

@@ -29,7 +29,7 @@ func main() {
 	log.SetFlags(0)
 	apiURL := os.Getenv("API_URL")
 	if apiURL == "" {
-		apiURL = "https://app.gstdtoken.com"
+		apiURL = "https://app.gstdtoken.xyz"
 	}
 	apiURL = strings.TrimSuffix(apiURL, "/")
 	adminKey := os.Getenv("ADMIN_API_KEY")

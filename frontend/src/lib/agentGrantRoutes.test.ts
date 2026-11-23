@@ -12,7 +12,7 @@ const key=keyPairFromSeed(Buffer.alloc(32,93)),wrong=keyPairFromSeed(Buffer.allo
 const wallet=WalletContractV4.create({workchain:0,publicKey:key.publicKey}),address=wallet.address.toRawString();
 const init=beginCell().store(storeStateInit(wallet.init)).endCell().toBoc().toString('base64');
 const operator='0:'+'ef'.repeat(32);
-const authorization=(text:string,signer=key)=>{const timestamp=Math.floor(Date.now()/1000);return{address,domain:'app.gstdtoken.com',timestamp,payload:{type:'text',text},signature:sign(pilotSignDataDigest(address,'app.gstdtoken.com',timestamp,text),signer.secretKey).toString('base64')};};
+const authorization=(text:string,signer=key)=>{const timestamp=Math.floor(Date.now()/1000);return{address,domain:'app.gstdtoken.xyz',timestamp,payload:{type:'text',text},signature:sign(pilotSignDataDigest(address,'app.gstdtoken.xyz',timestamp,text),signer.secretKey).toString('base64')};};
 async function call(handler:any,body:any,headers:any={},method='POST',query={}){
  const res={code:200,value:null as any,setHeader(){return undefined;},status(n:number){this.code=n;return this;},json(v:any){this.value=v;return this;},end(){return this;}};
  await handler({method,body,headers,query} as any,res as any);return res;

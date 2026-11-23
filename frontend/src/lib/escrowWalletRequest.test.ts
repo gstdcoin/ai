@@ -5,7 +5,7 @@ import {batchTransaction,type BatchInput} from './batchEscrow';
 import {isEscrowRequestValidationError,escrowWalletErrorCode} from './escrowWalletErrors';
 const payer='0:'+'11'.repeat(32),worker='0:'+'22'.repeat(32);
 const input:BatchInput={payer,worker,protocol:payer,reserve:payer,budget:'1',requests:100,taskId:'55'.repeat(32),deadline:Math.floor(Date.now()/1000)+3600};
-function connector(){return new TonConnect({manifestUrl:'https://app.gstdtoken.com/tonconnect-testnet-manifest.json',storage:{getItem:async()=>null,setItem:async()=>undefined,removeItem:async()=>undefined}});}
+function connector(){return new TonConnect({manifestUrl:'https://app.gstdtoken.xyz/tonconnect-testnet-manifest.json',storage:{getItem:async()=>null,setItem:async()=>undefined,removeItem:async()=>undefined}});}
 it('every escrow transaction passes the installed SDK validator before any wallet/network access',async()=>{
  const sdk=connector(),fetchSpy=vi.spyOn(globalThis,'fetch').mockRejectedValue(Error('unexpected network'));
  try{

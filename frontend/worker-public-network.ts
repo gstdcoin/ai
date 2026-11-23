@@ -27,8 +27,10 @@ async function keyFor(node:string,model:string){const bytes=await crypto.subtle.
 export async function publicNetworkResponse(req:Request,env:Env,transport:typeof fetch=fetch):Promise<Response|null>{
  const path=new URL(req.url).pathname;
  if(!['/api/v1/network/stats','/api/v1/models/available'].includes(path))return null;
- const headers={'Content-Type':'application/json','Cache-Control':'public, max-age=30, s-maxage=30','X-GSTD-Discovery':'native-v1'};
- if(req.method!=='GET')return Response.json({error:'Method not allowed'},{status:405,headers:{...headers,Allow:'GET'}});
+ const headers={'Content-Type':'application/json','Cache-Control':'public, max-age=30, s-maxage=30','X-GSTD-Discovery':'native-v1',
+ 'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET, OPTIONS'};
+ if(req.method==='OPTIONS')return new Response(null,{status:204,headers});
+ if(req.method!=='GET')return Response.json({error:'Method not allowed'},{status:405,headers:{...headers,Allow:'GET, OPTIONS'}});
  let stage='keys';
  try{
   const stats=path.endsWith('/stats');

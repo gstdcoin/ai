@@ -11,6 +11,6 @@ export default function SmartTaskWidget(_props: SmartTaskWidgetProps) {
             ?'Выберите доступную модель в чате. Для платной работы стоимость показывается до отправки; баланс резервируется, а при сбое возвращается.'
             :'Choose an available model in chat. Paid work shows its price before sending, reserves your balance and refunds failed execution.'}</p>
         <Link href="/chat" className="inline-block rounded-lg bg-purple-600 px-4 py-2">{ru?'Открыть чат':'Open chat'}</Link>
-        <a className="ml-4 text-sm underline" href="https://gstdtoken.com/developers">{ru?'API оплачиваемых задач':'Funded task API'}</a>
+        <a className="ml-4 text-sm underline" href="https://gstdtoken.xyz/developers">{ru?'API оплачиваемых задач':'Funded task API'}</a>
     </section>;
 }

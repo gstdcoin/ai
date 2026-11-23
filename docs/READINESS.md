@@ -1,17 +1,17 @@
 # GSTD release readiness — 2026-11-18
 
-Start with the bilingual [user guide](START_HERE.md), [project map](INDEX.md) or [public start page](https://gstdtoken.com/docs#get-started). This page records dated evidence and remaining checks; it is not an independent security assurance.
+Start with the bilingual [user guide](START_HERE.md), [project map](INDEX.md) or [public start page](https://gstdtoken.xyz/docs#get-started). This page records dated evidence and remaining checks; it is not an independent security assurance.
 
 <a id="current-status"></a>
 
 ## Operating model
 
-The platform, public website and Telegram webhook are deployed. Use [live network stats](https://app.gstdtoken.com/api/v1/network/stats) for current node/workload counts. The platform registry, Redis, custody owner, DNS/hosting and bootstrap remain central dependencies. Independent multi-operator resilience is not established.
+The platform, public website and Telegram webhook are deployed. Use [live network stats](https://app.gstdtoken.xyz/api/v1/network/stats) for current node/workload counts. The platform registry, Redis, custody owner, DNS/hosting and bootstrap remain central dependencies. Independent multi-operator resilience is not established.
 
 Two payment paths remain separate:
 
-- **Platform ledger:** backed credits, atomic reservation/capture/refund and custody-owner-signed withdrawals at [Payments](https://app.gstdtoken.com/payments).
-- **Per-job mainnet escrow beta:** payer-signed funding/acceptance and beneficiary-signed claims at [Mainnet escrow](https://app.gstdtoken.com/escrow-mainnet). These balances do not become platform credits. Production still exposes the v1 manifest; the public v2 Testnet result does not activate v2 on mainnet.
+- **Platform ledger:** backed credits, atomic reservation/capture/refund and custody-owner-signed withdrawals at [Payments](https://app.gstdtoken.xyz/payments).
+- **Per-job mainnet escrow beta:** payer-signed funding/acceptance and beneficiary-signed claims at [Mainnet escrow](https://app.gstdtoken.xyz/escrow-mainnet). These balances do not become platform credits. Production still exposes the v1 manifest; the public v2 Testnet result does not activate v2 on mainnet.
 
 Accepted paid work uses **85% executor / 10% protocol / 5% reserve**. Free/local/promotional work creates no withdrawable GSTD. Heartbeat presence creates no reward; no income is guaranteed.
 

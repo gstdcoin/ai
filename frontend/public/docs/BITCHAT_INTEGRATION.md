@@ -22,7 +22,7 @@ GSTD Swarm integrates bitchat as **offline transport** for nodes in physical pro
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    GSTD SWARM (Online)                       │
-│  app.gstdtoken.com  │  Tasks  │  Hive  │  GSTD Economy       │
+│  app.gstdtoken.xyz  │  Tasks  │  Hive  │  GSTD Economy       │
 └─────────────────────────────────────────────────────────────┘
                               │
                     ┌─────────┴─────────┐

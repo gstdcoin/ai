@@ -141,19 +141,19 @@ definitions:
       to_address:
         type: string
     type: object
-host: app.gstdtoken.com
+host: app.gstdtoken.xyz
 info:
   contact:
-    email: support@gstdtoken.com
+    email: support@gstdtoken.xyz
     name: GSTD Platform Support
-    url: https://app.gstdtoken.com
+    url: https://app.gstdtoken.xyz
   description: API documentation for GSTD Decentralized Physical Infrastructure Network
     Platform. This API enables distributed computing tasks, worker management, and
     TON blockchain integration.
   license:
     name: MIT
     url: https://opensource.org/licenses/MIT
-  termsOfService: https://app.gstdtoken.com/terms
+  termsOfService: https://app.gstdtoken.xyz/terms
   title: GSTD DePIN Platform API
   version: "1.0"
 paths:

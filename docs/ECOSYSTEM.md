@@ -8,14 +8,14 @@ Start with utility: ask AI, connect a node, or build with the API. Telegram is a
 
 | Need | Entry | Responsibility |
 |---|---|---|
-| Learn what GSTD does | https://gstdtoken.com | Explanation, requirements and project information |
-| Use network AI | https://app.gstdtoken.com/chat | Main application chat and explicit model selection |
-| Try the separate free demonstration | https://gstdtoken.com/ai | Demo preserved at its existing URL; Cloudflare fallback requires explicit consent |
-| See live nodes | https://app.gstdtoken.com/nodes | Canonical registry and operator status |
-| Balance, rewards and withdrawals | https://app.gstdtoken.com/payments | One payment ledger; connect the personal payout wallet configured on the node |
-| Direct per-job contract settlement · open beta | https://app.gstdtoken.com/escrow-mainnet | Separate contract balances; payer signs funding/acceptance and beneficiaries sign claims |
-| Install a node | https://gstdtoken.com/nodes | Supported hardware and the canonical installer from gstdcoin/gstdbot |
-| Build an application | https://gstdtoken.com/developers | API documentation and repository links |
+| Learn what GSTD does | https://gstdtoken.xyz | Explanation, requirements and project information |
+| Use network AI | https://app.gstdtoken.xyz/chat | Main application chat and explicit model selection |
+| Try the separate free demonstration | https://gstdtoken.xyz/ai | Demo preserved at its existing URL; Cloudflare fallback requires explicit consent |
+| See live nodes | https://app.gstdtoken.xyz/nodes | Canonical registry and operator status |
+| Balance, rewards and withdrawals | https://app.gstdtoken.xyz/payments | One payment ledger; connect the personal payout wallet configured on the node |
+| Direct per-job contract settlement · open beta | https://app.gstdtoken.xyz/escrow-mainnet | Separate contract balances; payer signs funding/acceptance and beneficiaries sign claims |
+| Install a node | https://gstdtoken.xyz/nodes | Supported hardware and the canonical installer from gstdcoin/gstdbot |
+| Build an application | https://gstdtoken.xyz/developers | API documentation and repository links |
 | Use Telegram | https://t.me/gstdaibot | Platform webhook and conversation interface |
 
 RU/EN links preserve the selected language. Moving from the website demo to the application does not automatically transfer its private conversation. A wallet is not needed for free AI use.

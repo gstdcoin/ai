@@ -7,7 +7,7 @@
 
 ## Stack
 
-**Deployment status:** `app.gstdtoken.com` is deployed on Cloudflare Workers with the existing Upstash Redis database; CI deploys on push to `main`. Vercel is not used.
+**Deployment status:** `app.gstdtoken.xyz` is deployed on Cloudflare Workers with the existing Upstash Redis database; CI deploys on push to `main`. Vercel is not used.
 
 | Layer | Technology |
 |---|---|
@@ -58,7 +58,7 @@ graph TB
 ## API Routes
 
 ```
-app.gstdtoken.com/api/v1/
+app.gstdtoken.xyz/api/v1/
 ├── nodes/
 │   ├── register         POST — node startup
 │   ├── heartbeat        POST — keepalive (10-min TTL)

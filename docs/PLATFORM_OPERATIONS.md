@@ -1,7 +1,7 @@
 # Platform operational contract
 
-Updated 2026-11-18. The canonical platform is `https://app.gstdtoken.com`.
-The marketing site is `https://gstdtoken.com`. The legacy `platform.gstdtoken.com` Worker has a separate registry and must not be used as evidence for this platform.
+Updated 2026-11-18. The canonical platform is `https://app.gstdtoken.xyz`.
+The marketing site is `https://gstdtoken.xyz`. The legacy `platform.gstdtoken.xyz` Worker has a separate registry and must not be used as evidence for this platform.
 
 ## Supported core
 

@@ -18,7 +18,7 @@ import completeHandler from '../pages/api/v1/tasks/complete';
 const node='pilot-executor',model='qwen2.5:0.5b',key=keyPairFromSeed(Buffer.alloc(32,81));
 const wallet=WalletContractV4.create({workchain:0,publicKey:key.publicKey}),payer=wallet.address.toRawString();
 const init=beginCell().store(storeStateInit(wallet.init)).endCell().toBoc().toString('base64');
-function authorization(text:string){const timestamp=Math.floor(Date.now()/1000);return{domain:'app.gstdtoken.com',timestamp,address:payer,payload:{type:'text',text},signature:sign(pilotSignDataDigest(payer,'app.gstdtoken.com',timestamp,text),key.secretKey).toString('base64')};}
+function authorization(text:string){const timestamp=Math.floor(Date.now()/1000);return{domain:'app.gstdtoken.xyz',timestamp,address:payer,payload:{type:'text',text},signature:sign(pilotSignDataDigest(payer,'app.gstdtoken.xyz',timestamp,text),key.secretKey).toString('base64')};}
 async function call(handler:any,body:any,headers:any={}){
  const res={code:200,body:null as any,setHeader(){},status(code:number){this.code=code;return this;},json(body:any){this.body=body;return this;}};
  await handler({method:'POST',body,headers},res);return res;
@@ -72,4 +72,5 @@ it('cannot modify the primary payout or replay a payout signature with another r
  expect(await kvGet(main)).toBe('primary-preserved');
 });
 
-it('matches a separately encoded UTF-8 TON Connect signData digest fixture',()=>{expect(pilotSignDataDigest('0:'+'11'.repeat(32),'app.gstdtoken.com',1764424200,'GSTD: разрешение').toString('hex')).toBe('6639598f2a7688011427cebcb85fe6e040b06babf80f8e83dab576d37f62a55a');});
+it('preserves the historical independently encoded UTF-8 TON Connect digest fixture',()=>{expect(pilotSignDataDigest('0:'+'11'.repeat(32),'app.gstdtoken.com',1764424200,'GSTD: разрешение').toString('hex')).toBe('6639598f2a7688011427cebcb85fe6e040b06babf80f8e83dab576d37f62a55a');});
+it('binds the same UTF-8 authorization to a different digest on the new domain',()=>{expect(pilotSignDataDigest('0:'+'11'.repeat(32),'app.gstdtoken.xyz',1764424200,'GSTD: разрешение').toString('hex')).toBe('fc93ed9fdb619b195d0095c68da5cd07abc01c5b0149166b2d77bd06e5778537');});

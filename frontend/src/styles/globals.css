@@ -293,7 +293,7 @@ layer(base);
     --tg-theme-secondary-bg-color: #08081a;
     --tg-viewport-height: 100vh;
 
-    /* Unified color system — aligned with gstdbot.gstdtoken.com */
+    /* Unified color system — aligned with gstdbot.gstdtoken.xyz */
     --bg-primary: #030014;
     --bg-secondary: #08081a;
     --bg-tertiary: #0d0d25;
@@ -834,7 +834,7 @@ a:focus-visible {
   animation: glow-breathe 4s ease-in-out infinite;
 }
 
-/* ─── Glass Pro — matches gstdbot.gstdtoken.com card style ─ */
+/* ─── Glass Pro — matches gstdbot.gstdtoken.xyz card style ─ */
 .glass-pro {
   background: var(--card);
   backdrop-filter: blur(24px) saturate(200%);
@@ -930,7 +930,7 @@ a:focus-visible {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   SOVEREIGN DESIGN SYSTEM — ported from gstdbot.gstdtoken.com
+   SOVEREIGN DESIGN SYSTEM — ported from gstdbot.gstdtoken.xyz
    Applied uniformly across all platform pages
    ═══════════════════════════════════════════════════════════ */
 

@@ -27,13 +27,13 @@ No central servers. No data centers owned by GSTD. The network is the product.
 | [gstdcoin/gstd-bridge](https://github.com/gstdcoin/gstd-bridge) | Rust | Validator machines | Cross-chain bridge validator |
 | [gstdcoin/A2A](https://github.com/gstdcoin/A2A) | Python | pip package | Agent SDK — connects any AI agent as a node |
 | [gstdcoin/contracts](https://github.com/gstdcoin/contracts) | Tact (TON) | TON blockchain | Smart contracts: token, governance, settlement |
-| [gstdcoin/web](https://github.com/gstdcoin/web) | TypeScript/Next.js | gstdtoken.com (Cloudflare Workers) | Public landing page |
+| [gstdcoin/web](https://github.com/gstdcoin/web) | TypeScript/Next.js | gstdtoken.xyz (Cloudflare Workers) | Public landing page |
 
 ---
 
 ## Integration Points (Critical)
 
-All components talk to **one URL**: `https://app.gstdtoken.com/api/v1`
+All components talk to **one URL**: `https://app.gstdtoken.xyz/api/v1`
 
 ```
 gstdbot (node OS)
@@ -55,10 +55,10 @@ gstda2a (Python agent SDK)
   └── GET  /api/v1/health                ← connectivity check
 
 gstdweb (landing page)
-  └── links to app.gstdtoken.com         ← no direct API calls
+  └── links to app.gstdtoken.xyz         ← no direct API calls
 ```
 
-**Rule:** Never hardcode `api.gstdtoken.com` — that backend doesn't exist. All API is at `app.gstdtoken.com`.
+**Rule:** Never hardcode `api.gstdtoken.xyz` — that backend doesn't exist. All API is at `app.gstdtoken.xyz`.
 
 ---
 
@@ -193,7 +193,7 @@ stats:nodes_peak                  Counter  Peak concurrent nodes
 
 ## Deployment Checklist (new environment)
 
-### Platform (app.gstdtoken.com)
+### Platform (app.gstdtoken.xyz)
 - [ ] Configure Cloudflare Worker deployment and cron replacement; keep the Vercel deploy job disabled
 - [ ] Configure GitHub Actions secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `KV_REST_API_URL`, `KV_REST_API_TOKEN`
 - [ ] Set `TREASURY_SECRET` (any random string)
@@ -202,7 +202,7 @@ stats:nodes_peak                  Counter  Peak concurrent nodes
 
 ### Node OS (gstdbot)
 - [ ] `docker pull goldenbit/gstd-node:latest`
-- [ ] Set `GSTD_WALLET_ADDRESS`, `GSTD_SWARM_URL=https://app.gstdtoken.com`
+- [ ] Set `GSTD_WALLET_ADDRESS`, `GSTD_SWARM_URL=https://app.gstdtoken.xyz`
 - [ ] `docker run -e GSTD_WALLET_ADDRESS=EQ... goldenbit/gstd-node`
 
 ### Bridge Validator

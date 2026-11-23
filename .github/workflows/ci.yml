@@ -63,7 +63,7 @@ jobs:
         env:
           KV_REST_API_URL: https://placeholder.upstash.io
           KV_REST_API_TOKEN: placeholder
-          NEXT_PUBLIC_APP_URL: https://app.gstdtoken.com
+          NEXT_PUBLIC_APP_URL: https://app.gstdtoken.xyz
 
   # в”Ђв”Ђ Cloudflare Workers deployment в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
   deploy:
@@ -101,8 +101,8 @@ jobs:
         env:
           KV_REST_API_URL: https://placeholder.upstash.io
           KV_REST_API_TOKEN: placeholder
-          NEXT_PUBLIC_APP_URL: https://app.gstdtoken.com
-          NEXT_PUBLIC_API_URL: https://app.gstdtoken.com
+          NEXT_PUBLIC_APP_URL: https://app.gstdtoken.xyz
+          NEXT_PUBLIC_API_URL: https://app.gstdtoken.xyz
 
       - name: Validate deployment secrets
         run: |
@@ -509,7 +509,7 @@ jobs:
       - name: Verify production health
         run: |
           for attempt in $(seq 1 12); do
-            status="$(curl --silent --output "$RUNNER_TEMP/production-health.json" --write-out '%{http_code}' https://app.gstdtoken.com/api/v1/health || true)"
+            status="$(curl --silent --output "$RUNNER_TEMP/production-health.json" --write-out '%{http_code}' https://app.gstdtoken.xyz/api/v1/health || true)"
             if [ "$status" = "200" ]; then
               cat "$RUNNER_TEMP/production-health.json"
               exit 0
@@ -523,7 +523,7 @@ jobs:
 
   # в”Ђв”Ђ Dependency Security Audit в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
       - name: Verify production wallet manifests
-        run: node ../scripts/check-tonconnect-manifests.mjs https://app.gstdtoken.com
+        run: node ../scripts/check-tonconnect-manifests.mjs https://app.gstdtoken.xyz
 
       - name: Verify supplied owner RPC key reached the production Worker
         run: |
@@ -531,7 +531,7 @@ jobs:
           if(!process.env.ESCROW_MAINNET_TONCENTER_API_KEY?.trim()){
             console.log('No repository RPC key supplied; existing Worker binding preserved.');
           }else{
-            const response=await fetch('https://app.gstdtoken.com/api/v1/finance/mainnet-escrow',{
+            const response=await fetch('https://app.gstdtoken.xyz/api/v1/finance/mainnet-escrow',{
               method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({network:'-239',action:'catalog'}),
               redirect:'error',signal:AbortSignal.timeout(15000)});
             const data=await response.json();
@@ -552,13 +552,13 @@ jobs:
         run: |
           set -euo pipefail
 
-          page_status="$(curl --silent --show-error --location --max-time 30 --output "$RUNNER_TEMP/open-intelligence-production.html" --write-out '%{http_code}' https://app.gstdtoken.com/open-intelligence || true)"
+          page_status="$(curl --silent --show-error --location --max-time 30 --output "$RUNNER_TEMP/open-intelligence-production.html" --write-out '%{http_code}' https://app.gstdtoken.xyz/open-intelligence || true)"
           if [ "$page_status" != "200" ] || ! grep -iq 'Ecosystem activity' "$RUNNER_TEMP/open-intelligence-production.html"; then
             echo "::error::Production Open Intelligence page returned HTTP ${page_status:-000} or did not render its title"
             exit 1
           fi
 
-          harvest_status="$(curl --silent --show-error --location --max-time 60 --request POST --header "Authorization: Bearer $OPEN_INTELLIGENCE_CRON_SECRET" --output "$RUNNER_TEMP/open-intelligence-harvest.json" --write-out '%{http_code}' https://app.gstdtoken.com/api/cron/open-intelligence || true)"
+          harvest_status="$(curl --silent --show-error --location --max-time 60 --request POST --header "Authorization: Bearer $OPEN_INTELLIGENCE_CRON_SECRET" --output "$RUNNER_TEMP/open-intelligence-harvest.json" --write-out '%{http_code}' https://app.gstdtoken.xyz/api/cron/open-intelligence || true)"
           harvest_valid=0
           if node - "$RUNNER_TEMP/open-intelligence-harvest.json" <<'NODE'
           const fs = require('fs');
@@ -586,7 +586,7 @@ jobs:
             exit 1
           fi
 
-          dataset_status="$(curl --silent --show-error --location --max-time 30 --header 'Cache-Control: no-cache' --output "$RUNNER_TEMP/open-intelligence-production.json" --write-out '%{http_code}' "https://app.gstdtoken.com/api/v1/open-intelligence/ecosystem?limit=30&verified_at=$(date +%s)" || true)"
+          dataset_status="$(curl --silent --show-error --location --max-time 30 --header 'Cache-Control: no-cache' --output "$RUNNER_TEMP/open-intelligence-production.json" --write-out '%{http_code}' "https://app.gstdtoken.xyz/api/v1/open-intelligence/ecosystem?limit=30&verified_at=$(date +%s)" || true)"
           if [ "$dataset_status" != "200" ] || ! node - "$RUNNER_TEMP/open-intelligence-production.json" <<'NODE'
           const fs = require('fs');
           const dataset = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));

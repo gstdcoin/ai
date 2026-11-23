@@ -58,7 +58,7 @@ export interface TonConnectWalletProof {
 export function getAllowedTonConnectDomains(): string[] {
     const configuredDomains = process.env.GSTD_TONCONNECT_AUTH_DOMAINS;
     const domains = configuredDomains === undefined
-        ? ['app.gstdtoken.com', 'platform.gstdtoken.com']
+        ? ['app.gstdtoken.xyz']
         : configuredDomains.split(',');
 
     return domains.map((domain) => domain.trim().toLowerCase()).filter(Boolean);

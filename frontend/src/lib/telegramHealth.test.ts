@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createTelegramHealthProbe } from '../../worker-telegram-health';
 
-const webhook = { url: 'https://app.gstdtoken.com/api/v1/telegram/webhook', pending_update_count: 0,
+const webhook = { url: 'https://app.gstdtoken.xyz/api/v1/telegram/webhook', pending_update_count: 0,
     allowed_updates: ['message', 'callback_query', 'inline_query'] };
 const transport = (details: any = webhook, bot: any = { is_bot: true, username: 'gstdaibot' }) =>
     vi.fn(async (url: any, options: any) => {

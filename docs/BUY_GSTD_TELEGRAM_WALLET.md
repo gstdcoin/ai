@@ -64,4 +64,4 @@ GSTD появятся в вашем кошельке. Используйте и�
 
 ---
 
-*Актуальный курс GSTD смотрите на [app.gstdtoken.com](https://app.gstdtoken.com) в разделе Market.*
+*Актуальный курс GSTD смотрите на [app.gstdtoken.xyz](https://app.gstdtoken.xyz) в разделе Market.*

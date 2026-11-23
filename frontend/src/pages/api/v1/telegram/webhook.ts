@@ -19,7 +19,7 @@ import { isValidWebhookRequest } from '../../../../lib/telegramWebhookAuth';
 import { LANGS, LANG_NAMES, Lang, resolveLang, t, parseCommand, parseReferrer } from '../../../../lib/tgbot/i18n';
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
-const SWARM_URL = process.env.GSTD_SWARM_URL || 'https://app.gstdtoken.com';
+const SWARM_URL = process.env.GSTD_SWARM_URL || 'https://app.gstdtoken.xyz';
 const TMA_URL = `${SWARM_URL}/tma`;
 const appUrl=(lang:Lang)=>TMA_URL+'?lang='+encodeURIComponent(lang);
 const BOT_USERNAME = 'gstdaibot';

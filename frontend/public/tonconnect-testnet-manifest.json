@@ -1,7 +1,7 @@
 {
-  "url": "https://app.gstdtoken.com/escrow",
+  "url": "https://app.gstdtoken.xyz/escrow",
   "name": "GSTD Escrow — TON Testnet",
-  "iconUrl": "https://app.gstdtoken.com/logo.png",
-  "termsOfUseUrl": "https://app.gstdtoken.com/terms",
-  "privacyPolicyUrl": "https://app.gstdtoken.com/privacy"
+  "iconUrl": "https://app.gstdtoken.xyz/logo.png",
+  "termsOfUseUrl": "https://app.gstdtoken.xyz/terms",
+  "privacyPolicyUrl": "https://app.gstdtoken.xyz/privacy"
 }

@@ -2,25 +2,25 @@
   "schema_version": "1.1",
   "name": "GSTD compute network",
   "description": "Discover live models and explicitly request free network inference. Paid work uses canonical GSTD through separately authorized payment paths. Early open beta; no guaranteed rewards or availability.",
-  "url": "https://app.gstdtoken.com",
+  "url": "https://app.gstdtoken.xyz",
   "documentation": "https://github.com/gstdcoin/ai/blob/main/docs/AGENT_GUIDE.md",
-  "openapi": "https://app.gstdtoken.com/agent-openapi.json",
+  "openapi": "https://app.gstdtoken.xyz/agent-openapi.json",
   "capabilities": [
     {
       "id": "network-status",
-      "endpoint": "https://app.gstdtoken.com/api/v1/network/stats",
+      "endpoint": "https://app.gstdtoken.xyz/api/v1/network/stats",
       "method": "GET",
       "authentication": "none"
     },
     {
       "id": "model-catalogue",
-      "endpoint": "https://app.gstdtoken.com/api/v1/models/available",
+      "endpoint": "https://app.gstdtoken.xyz/api/v1/models/available",
       "method": "GET",
       "authentication": "none"
     },
     {
       "id": "free-inference",
-      "endpoint": "https://app.gstdtoken.com/api/v1/agents/infer",
+      "endpoint": "https://app.gstdtoken.xyz/api/v1/agents/infer",
       "method": "POST",
       "authentication": "none",
       "requires": [
@@ -36,7 +36,7 @@
       "id": "bounded-paid-inference",
       "status": "implemented_platform_ledger",
       "endpoint": "/api/v1/agents/paid-infer",
-      "permission_ui": "https://app.gstdtoken.com/agent-access",
+      "permission_ui": "https://app.gstdtoken.xyz/agent-access",
       "authentication": "Bearer owner-signed spending grant",
       "limits": "persistent budget, exact models, executor wallets, expiry, attempts; no withdrawal or TON signatures"
     },

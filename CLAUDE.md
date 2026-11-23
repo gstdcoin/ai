@@ -18,7 +18,7 @@ No KV credentials needed for local development — `src/lib/kv.ts` uses an in-me
 - ALL API logic lives in `src/pages/api/v1/` as Next.js serverless functions
 - KV access ONLY via `kvGet / kvSet / kvKeys / kvDel / kvIncr` from `src/lib/kv`
 - Rate limiting is handled globally by `src/middleware.ts` (Edge runtime — standard Next.js middleware convention)
-- No Go backend. No `api.gstdtoken.com` proxy. The rewrites were removed.
+- No Go backend. No `api.gstdtoken.xyz` proxy. The rewrites were removed.
 
 ## Adding a new API route
 1. Create `src/pages/api/v1/<path>.ts`
@@ -34,7 +34,7 @@ No KV credentials needed for local development — `src/lib/kv.ts` uses an in-me
 - `next.config.js` — CSP/security headers, no rewrites
 
 ## Cloudflare Deployment
-The Vercel deploy job has been removed. Cloudflare deployment is not ready until a Worker workflow, cron replacement, Redis secrets, and production smoke tests are configured. Do not point `app.gstdtoken.com` at a new Worker until those checks pass.
+The Vercel deploy job has been removed. Cloudflare deployment is not ready until a Worker workflow, cron replacement, Redis secrets, and production smoke tests are configured. Do not point `app.gstdtoken.xyz` at a new Worker until those checks pass.
 
 Required GitHub Actions secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `KV_REST_API_URL`, and `KV_REST_API_TOKEN`. Configure values in GitHub/Cloudflare settings; never send or commit secret values. Keep the existing Upstash database to preserve stored data.
 
@@ -52,5 +52,5 @@ Job state stored in KV as `training:job:{job_id}` (7-day TTL).
 ## Do NOT
 - Do not add `as any` casts in API routes — use proper types
 - Do not import from `../../../../../lib/kv` (count levels from file location)
-- Do not add rewrites pointing to `api.gstdtoken.com` — that backend doesn't exist
+- Do not add rewrites pointing to `api.gstdtoken.xyz` — that backend doesn't exist
 - Do not suppress errors in production — `logger.error()` always prints
