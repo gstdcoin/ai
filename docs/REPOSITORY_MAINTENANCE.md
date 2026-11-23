@@ -1,6 +1,8 @@
 # GSTD repository maintenance and review queue
 
-Checked 2026-11-18. [Project map](INDEX.md) · [Release evidence](READINESS.md) · [Start here](START_HERE.md).
+Updated 2026-11-24. [Project map](INDEX.md) · [Release evidence](READINESS.md) · [Start here](START_HERE.md).
+
+The seven-repository domain migration is merged. Website/platform production checks passed on `gstdtoken.xyz` and `app.gstdtoken.xyz`; approved node 3.7.3 is installed on server `bot`. See [domain cutover and remaining external settings](DOMAIN_MIGRATION.md) and [signed node evidence](SIGNED_NODE_RELEASES.md). Node PRs 12/13 and platform PRs 22/23 are merged. The installer proposal in node PR 8 remains a separate unmerged scope; it is not required for the signed dashboard fixes already shipped. Web statistics from PR 12 were shipped through PRs 13/14/15; that older draft still contains separate installer work.
 
 ## Canonical repositories
 

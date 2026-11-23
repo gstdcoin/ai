@@ -1,5 +1,13 @@
 # Signed node releases
 
+## Verified release and installed node — 2026-11-24 Asia/Qyzylorda
+
+Approved version **3.7.3** is pinned to `c0ec226f9b64a3d0d8532b462ed9a0ce0d75d67c`. Node PRs [12](https://github.com/gstdcoin/gstdbot/pull/12) and [13](https://github.com/gstdcoin/gstdbot/pull/13), and platform PR [23](https://github.com/gstdcoin/ai/pull/23) passed type/unit/build, installer/container and CodeQL checks. The public new-domain manifest was verified with the unchanged `82a7b29c…` trust root. No release key was rotated.
+
+The operator-authorized maintenance of the ARM node on server `bot` completed with a protected local backup and an independently verified fresh Ed25519 manifest. Its installed source matches the approved pin, health reports 3.7.3, and the signed update checker reports `update_available:false` and `can_apply:false`. Existing identity/wallet/PIN files and `.env` were preserved byte-for-byte. No PIN or private key was read into chat. Authenticated API routes continue returning 401 without a session.
+
+Ollama reports three installed models and is available. Both public website and platform statistics show **one online node** after registration on `app.gstdtoken.xyz`. These checks do not establish GPU performance or an accepted paid inference/payout. They apply to the `bot` node; the distinct `gstd-desktop` owner-only rule is unchanged.
+
 ## Public release check — 2026-11-18
 
 The live `/api/v1/nodes/update/manifest` endpoint returned approved version 3.7.2 at commit `ccf459cc31fde5872317bc291260561e63ebfe00`. Its fresh Ed25519 signature was verified against the pinned public root below. Main-branch source `ab7de386e4f27a8f8d026f9fa86ca1faf60eaa07` is a newer source state, not an automatically approved release. Installer/update hardening remains in [node PR 8](https://github.com/gstdcoin/gstdbot/pull/8).
