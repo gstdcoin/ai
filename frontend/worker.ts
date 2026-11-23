@@ -2,6 +2,7 @@ import {publicNetworkResponse,nativePublicFetch} from './worker-public-network';
 import openNextWorker from './.open-next/worker.js';
 import {previewAccess,type PreviewEnvironment} from './worker-preview-access';
 import {createTelegramHealthProbe} from './worker-telegram-health';
+import {repairTelegramDomain,TELEGRAM_DOMAIN_MAINTENANCE_PATH} from './src/lib/telegramDomainMaintenance';
 
 const telegramHealth = createTelegramHealthProbe(nativePublicFetch);
 
@@ -20,6 +21,7 @@ interface WorkerExecutionContext {
 
 async function platformFetch(request:Request,env:WorkerEnvironment,ctx:WorkerExecutionContext):Promise<Response>{
     const path=new URL(request.url).pathname;
+    if(path===TELEGRAM_DOMAIN_MAINTENANCE_PATH)return repairTelegramDomain(request,env,nativePublicFetch);
     if(path==='/api/v1/telegram/health'){
         if(request.method!=='GET')return Response.json({error:'Method not allowed'},{status:405,headers:{Allow:'GET','Cache-Control':'no-store'}});
         const report=await telegramHealth(String(env.TELEGRAM_BOT_TOKEN||process.env.TELEGRAM_BOT_TOKEN||''));
