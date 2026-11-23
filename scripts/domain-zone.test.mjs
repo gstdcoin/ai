@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { inspectDomainZone } from './domain-zone.mjs';
 const accountId = 'a'.repeat(32), token = 'test-only-token';
-const zone = { name: 'gstdtoken.xyz', account: { id: accountId }, status: 'pending',
+const zone = { id: 'b'.repeat(32), name: 'gstdtoken.xyz', account: { id: accountId }, status: 'pending',
   name_servers: ['first.ns.cloudflare.com', 'second.ns.cloudflare.com'], plan: { legacy_id: 'free' } };
 test('reads only the requested domain in the configured account without a write', async () => {
   let calls = 0;
@@ -30,4 +30,14 @@ test('does not create unless explicitly requested and rejects mismatched zones o
   assert.equal(report.status, 'not_added');
   await assert.rejects(() => inspectDomainZone({ token, accountId, request: async () => Response.json({ success: true, result: [{ ...zone, name: 'other.example' }] }) }), /identity_mismatch/);
   await assert.rejects(() => inspectDomainZone({ token, accountId, request: async () => Response.json({ success: false, errors: [{ code: 10000, message: token }] }, { status: 403 }) }), /cloudflare_http_403_codes_10000/);
+});
+test('requests one activation check only for the validated pending zone, without changing DNS records', async () => {
+  const calls = [];
+  const report = await inspectDomainZone({ token, accountId, activate: true, request: async (url, options) => {
+    calls.push({ path: new URL(url).pathname, method: options.method });
+    return Response.json({ success: true, result: url.includes('?') ? [zone] : options.method === 'PUT' ? { id: zone.id } : { ...zone, status: 'active' } });
+  } });
+  assert.equal(report.status, 'active'); assert.equal(report.activation_requested, true);
+  assert.equal(calls.filter(call => call.method === 'PUT').length, 1);
+  assert.equal(calls[1].path, `/client/v4/zones/${zone.id}/activation_check`);
 });

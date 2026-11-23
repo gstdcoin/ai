@@ -3,7 +3,7 @@ import { pathToFileURL } from 'node:url';
 export const DOMAIN = 'gstdtoken.xyz';
 
 // Restricted to the owner's requested domain. No registrar, subscription or credential writes.
-export async function inspectDomainZone({ token, accountId, createPending = false, request = fetch }) {
+export async function inspectDomainZone({ token, accountId, createPending = false, activate = false, request = fetch }) {
   if (!token || !/^[a-f0-9]{32}$/i.test(accountId || '')) throw new Error('missing_cloudflare_configuration');
   const call = async (path, init = {}) => {
     const response = await request(`https://api.cloudflare.com/client/v4${path}`, {
@@ -30,13 +30,21 @@ export async function inspectDomainZone({ token, accountId, createPending = fals
   if (!Array.isArray(nameservers) || nameservers.length !== 2 || nameservers.some(name => !/^[a-z0-9-]+\.ns\.cloudflare\.com$/.test(name))) {
     throw new Error('unexpected_nameservers');
   }
-  return { domain: DOMAIN, status: zone.status, nameservers, plan: zone.plan?.legacy_id || 'unknown' };
+  let activationRequested = false;
+  if (activate && zone.status === 'pending') {
+    if (!/^[a-f0-9]{32}$/i.test(zone.id || '')) throw new Error('unexpected_zone_response');
+    await call(`/zones/${zone.id}/activation_check`, { method: 'PUT' });
+    activationRequested = true;
+    zone = await call(`/zones/${zone.id}`);
+    if (zone.name !== DOMAIN || zone.account?.id !== accountId) throw new Error('zone_identity_mismatch');
+  }
+  return { domain: DOMAIN, status: zone.status, nameservers, plan: zone.plan?.legacy_id || 'unknown', activation_requested: activationRequested };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
     const report = await inspectDomainZone({ token: process.env.CLOUDFLARE_API_TOKEN,
-      accountId: process.env.CLOUDFLARE_ACCOUNT_ID, createPending: process.argv.includes('--create-pending-zone') });
+      accountId: process.env.CLOUDFLARE_ACCOUNT_ID, createPending: process.argv.includes('--create-pending-zone'), activate: process.argv.includes('--activate') });
     console.log(JSON.stringify(report));
     if (process.env.GITHUB_STEP_SUMMARY) {
       const { appendFile } = await import('node:fs/promises');
