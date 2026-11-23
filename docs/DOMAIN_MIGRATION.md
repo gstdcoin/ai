@@ -4,9 +4,9 @@ The owner selected `gstdtoken.xyz` on 2026-11-23. The public website belongs at 
 
 ## Cutover status
 
-The domain is registered in the .xyz registry. During preparation, public resolvers returned NXDOMAIN and registry nameservers were still `ns1.dyna-ns.net` and `ns2.dyna-ns.net`. The existing GitHub Cloudflare credential returned HTTP 403 when inspecting the new zone; no zone or nameservers were changed by that attempt. Repository changes alone do not establish DNS or HTTPS availability.
+Cloudflare activated the zone on 2026-11-23 with authoritative nameservers `alaric.ns.cloudflare.com` and `harleigh.ns.cloudflare.com`. The root and `www` are bound to `gstd-web`; `app` is bound to `gstd-ai-platform`, on the existing Free account. HTTPS, website live statistics, platform Redis health and the new TonConnect manifest were verified after deployment. The `www` alias returns 308 to the root, preserving path/query.
 
-Add this domain to the existing Cloudflare account on the Free plan, then set exactly the two nameservers assigned to this zone at Dynadot. Keep registrar DNSSEC settings consistent with the new authoritative provider; an obsolete DS record must not be left behind. The configured Worker custom domains then bind `gstdtoken.xyz` and `www.gstdtoken.xyz` to `gstd-web`, and `app.gstdtoken.xyz` to `gstd-ai-platform`. Do not substitute an IP address or a workers.dev CNAME for the required Cloudflare zone activation.
+Source migration is merged across all seven repositories. The former .com hostname can redirect only while its DNS/HTTPS routing is controlled; application redirects cannot repair an unresolved domain. Telegram still has the former registered webhook, so its read-only health correctly reports degraded until the owner performs the cutover below. No Telegram message was sent during validation.
 
 ## Application changes
 
@@ -21,6 +21,6 @@ Add this domain to the existing Cloudflare account on the Free plan, then set ex
 
 Run each repository's normal CI, including unit tests, type checks and builds. Wait for authoritative DNS delegation and valid HTTPS on the three custom hostnames. Verify platform `/api/v1/health` reports Redis, website `/api/health` reports ready, and website `/api/network/stats` returns validated live counters. Test the visible homepage in a browser. The platform's three public TonConnect manifests must use the new app origin and valid icon/legal URLs.
 
-The Telegram webhook and Mini App/menu URLs must be changed to the new app after HTTPS works. Token rotation, Worker-secret provisioning, `scripts/set-telegram-webhook.mjs` and BotFather operations remain owner actions under AGENTS.md. Do not rotate a working token for a domain change. The setup script's default now targets the new app; review its behavior before use because it also updates menus and drops pending updates. Read-only `/api/v1/telegram/health` must then report the canonical new webhook and healthy identity/delivery metadata. A successful metadata check does not prove a newly delivered user reply.
+The Telegram webhook and Mini App/menu URLs must be changed to the new app after HTTPS works. Token rotation, Worker-secret provisioning, `scripts/set-telegram-webhook.mjs` and BotFather operations remain owner actions under AGENTS.md. Do not rotate a working token for a domain change. The setup script's default now targets the new app; review its behavior before use because it also updates menus. Pending updates are preserved. Read-only `/api/v1/telegram/health` must then report the canonical new webhook and healthy identity/delivery metadata. A successful metadata check does not prove a newly delivered user reply.
 
 Do not claim email delivery for a new-domain contact alias until its mailbox/routing has been configured and tested. Mainnet payment, GPU performance, release signing and research-bridge limitations remain independent of this domain migration.

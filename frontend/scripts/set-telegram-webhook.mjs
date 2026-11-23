@@ -13,10 +13,11 @@ const secret = createHash('sha256').update(`gstd-tg-webhook:${token}`).digest('h
 
 const call = async (method, body) => {
     const r = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+        method: 'POST', redirect: 'error', signal: AbortSignal.timeout(10000), headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
     });
     const j = await r.json();
-    console.log(method, body.language_code || '', j.ok ? 'ok' : j);
+    if (!r.ok || j.ok !== true) throw new Error(`Telegram ${method} failed (HTTP ${r.status}); response omitted.`);
+    console.log(method, body.language_code || '', 'ok');
 };
 
 const L = {
@@ -35,7 +36,7 @@ const L = {
 };
 const NAMES = ['menu', 'earn', 'node', 'wallet', 'balance', 'network', 'invite', 'lang', 'new', 'help'];
 
-await call('setWebhook', { url, secret_token: secret, allowed_updates: ['message', 'callback_query', 'inline_query'], drop_pending_updates: true });
+await call('setWebhook', { url, secret_token: secret, allowed_updates: ['message', 'callback_query', 'inline_query'], drop_pending_updates: false });
 for (const [code, d] of Object.entries(L)) {
     const lc = code === 'en' ? {} : { language_code: code };
     await call('setMyCommands', { ...lc, commands: NAMES.map((command, i) => ({ command, description: d.cmds[i] })) });
