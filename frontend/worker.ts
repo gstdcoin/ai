@@ -1,6 +1,9 @@
 import {publicNetworkResponse,nativePublicFetch} from './worker-public-network';
 import openNextWorker from './.open-next/worker.js';
 import {previewAccess,type PreviewEnvironment} from './worker-preview-access';
+import {createTelegramHealthProbe} from './worker-telegram-health';
+
+const telegramHealth = createTelegramHealthProbe(nativePublicFetch);
 
 type WorkerEnvironment = Record<string, unknown> & PreviewEnvironment & {
     OPEN_INTELLIGENCE_CRON_SECRET?: string;
@@ -17,6 +20,11 @@ interface WorkerExecutionContext {
 
 async function platformFetch(request:Request,env:WorkerEnvironment,ctx:WorkerExecutionContext):Promise<Response>{
     const path=new URL(request.url).pathname;
+    if(path==='/api/v1/telegram/health'){
+        if(request.method!=='GET')return Response.json({error:'Method not allowed'},{status:405,headers:{Allow:'GET','Cache-Control':'no-store'}});
+        const report=await telegramHealth(String(env.TELEGRAM_BOT_TOKEN||process.env.TELEGRAM_BOT_TOKEN||''));
+        return Response.json(report,{status:report.status==='ok'?200:503,headers:{'Cache-Control':'public, max-age=60'}});
+    }
     if(env.GSTD_PRIVATE_PREVIEW===undefined&&request.method==='GET'&&['/api/v1/network/stats','/api/v1/models/available'].includes(path)){
         const cache=(globalThis as any).caches?.default;
         const cacheKey=new Request(new URL(path,request.url).toString());
