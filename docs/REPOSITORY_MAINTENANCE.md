@@ -42,3 +42,11 @@ Merged PRs and existing topic branches remain accessible for provenance. No bran
 5. Platform and website source pushes can deploy. Preview isolation, runtime-secret validation, signed node releases and contract owner signatures remain separate controls. No secret belongs in a README or commit.
 
 CI checks may run for documentation-only pushes in some repositories. Never interpret a green build as an independent security audit, paid demand, GPU capacity or a confirmed on-chain payout.
+
+## Product and automation status — 2026-11-24
+
+[Website PR 16](https://github.com/gstdcoin/web/pull/16) is merged and live: [Compute Passport](https://gstdtoken.xyz/network) shows real registry data, pinned-root signature verification and service health. [Platform PR 24](https://github.com/gstdcoin/ai/pull/24) is merged and deployed with the owner-authorized fixed-domain Telegram maintenance operation. Both passed their required source/preview/production checks.
+
+The later one-off [Telegram cutover run](https://github.com/gstdcoin/ai/actions/runs/45328945462) was refused before runner allocation because GitHub reports an account billing lock. Treat this as an external automation blocker, not a passing test or a source regression. Runtime releases must continue to wait for their required checks; current production remains the previously validated deployments. Restore Actions before rerunning the prepared cutover or relying on new CI runs. Preserve existing tokens and node identity.
+
+Node PR 8 and website PR 12 now describe only their remaining installer scope. Real-task history/scheduled maintenance in node PR 10 and reviewed-GPU offers remain separate candidates; no claim is made that their unmerged code is in production. No branch or historical evidence was deleted.

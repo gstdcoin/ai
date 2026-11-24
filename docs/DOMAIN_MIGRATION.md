@@ -34,3 +34,11 @@ Do not claim email delivery for a new-domain contact alias until its mailbox/rou
 ## Owner-authorized Telegram repair
 
 On 2026-11-24 the owner explicitly instructed the assistant to perform the cutover itself, overriding the owner-only restriction for this operation. A fixed production-only POST at `/api/v1/telegram/admin/canonical-domain` requires the existing operator cron secret, explicit maintenance intent and an empty non-browser request. It is disabled for previews. The bot token remains inside the Worker and is never exported. The handler verifies @gstdaibot identity, sets only the canonical webhook and global Mini App menu, preserves pending updates, and verifies the resulting settings. It sends no user messages, changes no wallet state and rotates no credential.
+
+## Verified product rollout — 2026-11-24
+
+The live [GSTD Compute Passport](https://gstdtoken.xyz/network) is deployed from website PR 16. Its public snapshot reports one online CPU node, the three advertised models, and cryptographically verified approved software 3.7.3. Hardware is labelled node-reported; per-model cost/TTFT/success-rate measurements remain unpublished. Website and platform production CI passed before the later account restriction.
+
+Owner-authorized cutover run [45328945462](https://github.com/gstdcoin/ai/actions/runs/45328945462) did not start: GitHub reported `The job was not started because your account is locked due to a billing issue.` Runner id was zero and there were no execution steps. It did not call Telegram or mutate the webhook/menu. The deployed maintenance route returns 403 without operator authorization; public Telegram health still reports webhook mismatch, with valid API/identity and clear backlog. Restore the GitHub Actions account, then rerun this prepared job and verify `/api/v1/telegram/health` returns 200 with `webhook:true`. No new token or credential rotation is required. The assistant has no operator secret in its local or server project configurations and has not exported the Worker token.
+
+Cloudflare dashboard inspection confirmed the production Worker ready, approximately 3,000 invocations over 24 hours and zero reported errors. These observations do not diagnose the separate GitHub billing restriction or prove new-message delivery. No payment or subscription action was performed.

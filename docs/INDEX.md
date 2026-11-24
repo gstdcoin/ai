@@ -37,3 +37,9 @@
 ## English
 
 Use [Start here](START_HERE.md) for AI, node setup and payments; [Readiness](READINESS.md) for evidence and remaining gates. The platform and Telegram webhook live in **ai**, the canonical compute node in **gstdbot**, the public website in **web**, contract sources/tests in **contracts**, agent clients/MCP in **A2A**. The bridge is deferred research. Do not install every repository or send funds to undeployed contracts. Archived documents and RFCs are historical or proposed behavior, not production activation.
+
+## Inspect the live network
+
+- [GSTD Compute Passport](https://gstdtoken.xyz/network): actual public registry data, approved software signature and service diagnostics.
+- [Passport implementation and evidence boundaries](https://github.com/gstdcoin/web/blob/main/docs/COMPUTE_PASSPORT.md).
+- [Current domain cutover and automation blocker](DOMAIN_MIGRATION.md).
