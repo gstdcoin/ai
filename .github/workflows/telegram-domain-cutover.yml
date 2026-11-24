@@ -1,0 +1,48 @@
+name: Apply owner-authorized Telegram canonical domain
+on:
+  push:
+    branches: [codex/telegram-domain-cutover]
+    paths: [.github/workflows/telegram-domain-cutover.yml]
+permissions:
+  contents: read
+concurrency:
+  group: gstd-telegram-canonical-cutover
+  cancel-in-progress: false
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply fixed domain and verify Telegram health
+        env:
+          OPEN_INTELLIGENCE_CRON_SECRET: ${{ secrets.OPEN_INTELLIGENCE_CRON_SECRET }}
+        run: |
+          node --input-type=module <<'JS'
+          try {
+            const secret=process.env.OPEN_INTELLIGENCE_CRON_SECRET;
+            if(!secret)throw Error('operator_secret_missing');
+            const r=await fetch('https://app.gstdtoken.xyz/api/v1/telegram/admin/canonical-domain',{
+              method:'POST',redirect:'error',signal:AbortSignal.timeout(30000),
+              headers:{Authorization:'Bearer '+secret,'x-gstd-maintenance':'canonical-domain-v1'}
+            });
+            const d=await r.json().catch(()=>null);
+            if(!r.ok||d?.success!==true||d.canonical_webhook!==true||d.canonical_menu!==true||d.pending_updates_preserved!==true)throw Error('canonical_cutover_failed_http_'+r.status);
+            console.log(JSON.stringify(d));
+            let healthy=false;
+            for(let attempt=0;attempt<13;attempt++){
+              const h=await fetch('https://app.gstdtoken.xyz/api/v1/telegram/health',{redirect:'error',signal:AbortSignal.timeout(10000)});
+              const report=await h.json();
+              if(h.ok&&report.status==='ok'&&report.checks?.webhook===true){healthy=true;break;}
+              await new Promise(resolve=>setTimeout(resolve,10000));
+            }
+            if(!healthy)throw Error('canonical_webhook_health_not_confirmed');
+            console.log('Canonical Telegram webhook and Mini App menu verified; no messages sent.');
+          } catch(error) {
+            const code=error instanceof Error?error.message:'';
+            console.error(/^(operator_secret_missing|canonical_cutover_failed_http_\d+|canonical_webhook_health_not_confirmed)$/.test(code)?code:'canonical_cutover_failed');
+            process.exitCode=1;
+          }
+          JS
