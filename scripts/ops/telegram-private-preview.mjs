@@ -1,6 +1,6 @@
 // One-off operator tool for an authenticated Cloudflare Quick Edit session.
 // Never deploy this tool. Discard the draft after use; production code stays unchanged.
-export const expiresAt=Date.parse('2026-11-24T05:40:00Z');
+export const expiresAt=Date.parse('2026-11-24T06:10:00Z');
 export function createRelay(transport=fetch,clock=Date.now){
  let applied=false;
  const reply=(body,status=200)=>Response.json(body,{status,headers:{'Cache-Control':'no-store'}});
